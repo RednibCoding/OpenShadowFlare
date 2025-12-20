@@ -288,32 +288,39 @@ void __cdecl RK_CutFilenameFromFullPath(char* fullPath)
 }
 
 /**
- * Extract filename from full path (remove directory)
+ * Extract filename from full path (remove directory) - MODIFIES IN PLACE
+ * Finds last backslash and moves filename to start of buffer
  */
-void __cdecl RK_CutDirectoryFromFullPath(char* dest, const char* fullPath)
+void __cdecl RK_CutDirectoryFromFullPath(char* path)
 {
-    OSF_FUNC_TRACE("fullPath='%s'", fullPath ? fullPath : "(null)");
-    if (!dest || !fullPath) return;
+    OSF_FUNC_TRACE("path='%s'", path ? path : "(null)");
+    if (!path || !*path) return;
     
-    size_t len = strlen(fullPath);
-    
-    // Find last backslash
-    int lastSlash = -1;
-    for (size_t i = 0; i < len; i++)
+    // Find last backslash (SJIS-aware)
+    char* lastSlash = NULL;
+    char* p = path;
+    while (*p)
     {
-        if (RK_CheckSJIS((unsigned char)fullPath[i]))
+        if (RK_CheckSJIS((unsigned char)*p))
         {
-            i++;
+            p++;  // Skip first byte
+            if (*p) p++;  // Skip second byte
             continue;
         }
-        if (fullPath[i] == '\\')
-            lastSlash = (int)i;
+        if (*p == '\\')
+            lastSlash = p;
+        p++;
     }
     
-    if (lastSlash >= 0)
-        strcpy(dest, fullPath + lastSlash + 1);
-    else
-        strcpy(dest, fullPath);
+    // If found a backslash, move filename to start
+    if (lastSlash)
+    {
+        char* src = lastSlash + 1;
+        char* dst = path;
+        while (*src)
+            *dst++ = *src++;
+        *dst = '\0';
+    }
 }
 
 /**
@@ -600,6 +607,68 @@ int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time
     if (time1->wMilliseconds < time2->wMilliseconds) return -1;
     
     return 0;  // Equal
+}
+
+/**
+ * Find all files matching a wildcard pattern
+ * Args: pattern = wildcard pattern (e.g., "*.txt"), outArray = receives allocated array
+ * Returns: number of matching files, 0 if none found
+ * Caller must free the returned array with RK_ReleaseFilesExist or GlobalFree
+ */
+int __cdecl RK_CheckFilesExist(const char* pattern, WIN32_FIND_DATAA** outArray)
+{
+    OSF_FUNC_TRACE("pattern='%s'", pattern ? pattern : "(null)");
+    
+    if (!pattern || !outArray) return 0;
+    
+    // Copy pattern and remove trailing slash
+    char localPattern[580];  // 0x244 bytes
+    strcpy(localPattern, pattern);
+    RK_CutLastRoot(localPattern);
+    
+    // First pass: count matching files
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA(localPattern, &findData);
+    
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        *outArray = NULL;
+        return 0;
+    }
+    
+    int count = 1;
+    while (FindNextFileA(hFind, &findData))
+    {
+        count++;
+    }
+    FindClose(hFind);
+    
+    // Allocate array for results (320 bytes per entry = sizeof(WIN32_FIND_DATAA))
+    // Original uses: count * 5 * 64 = count * 320
+    WIN32_FIND_DATAA* array = (WIN32_FIND_DATAA*)GlobalAlloc(0x40, count * sizeof(WIN32_FIND_DATAA));
+    if (!array)
+    {
+        *outArray = NULL;
+        return 0;
+    }
+    
+    // Second pass: fill the array
+    hFind = FindFirstFileA(localPattern, &array[0]);
+    if (hFind == INVALID_HANDLE_VALUE)
+    {
+        GlobalFree(array);
+        *outArray = NULL;
+        return 0;
+    }
+    
+    for (int i = 1; i < count; i++)
+    {
+        FindNextFileA(hFind, &array[i]);
+    }
+    FindClose(hFind);
+    
+    *outArray = array;
+    return count;
 }
 
 } // extern "C"
