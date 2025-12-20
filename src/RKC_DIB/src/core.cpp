@@ -10,6 +10,7 @@
  */
 
 #include <windows.h>
+#include <cstring>
 
 /**
  * RKC_DIB class structure - 12 bytes
@@ -59,6 +60,21 @@ extern "C" void __thiscall RKC_DIB_destructor(RKC_DIB* self) {
     RKC_DIB_Release(self);
 }
 
+/**
+ * RKC_DIB::operator= - Assignment operator (shallow copy of pointers)
+ * NOT REFERENCED - stub only, not imported by any module
+ * 
+ * Copies all 3 pointers from source to this DIB.
+ * WARNING: This is a shallow copy - both DIBs will point to the same memory!
+ * Returns reference to this DIB.
+ */
+extern "C" RKC_DIB* __thiscall RKC_DIB_operatorAssign(RKC_DIB* self, const RKC_DIB* source) {
+    self->bitmapInfo = source->bitmapInfo;
+    self->palette = source->palette;
+    self->bitmap = source->bitmap;
+    return self;
+}
+
 // ============================================================================
 // GETTERS
 // ============================================================================
@@ -77,6 +93,41 @@ extern "C" BITMAPINFOHEADER* __thiscall RKC_DIB_GetBitmapInfo(RKC_DIB* self) {
  */
 extern "C" RGBQUAD* __thiscall RKC_DIB_GetPalette(RKC_DIB* self) {
     return self->palette;
+}
+
+/**
+ * RKC_DIB::GetPaletteCount - Get number of palette entries
+ * NOT REFERENCED - stub only, not imported by any module (but used internally)
+ * 
+ * Returns palette count based on BPP:
+ * - BPP 1: biClrUsed or 2
+ * - BPP 4: biClrUsed or 16
+ * - BPP 8: biClrUsed or 256
+ * - BPP 16/24/32: 0 (no palette)
+ * - Invalid: -1
+ */
+extern "C" long __thiscall RKC_DIB_GetPaletteCount(RKC_DIB* self) {
+    if (!self->bitmapInfo) {
+        return -1;
+    }
+    
+    WORD bpp = self->bitmapInfo->biBitCount;
+    DWORD clrUsed = self->bitmapInfo->biClrUsed;
+    
+    switch (bpp) {
+        case 1:
+            return (clrUsed != 0) ? clrUsed : 2;
+        case 4:
+            return (clrUsed != 0) ? clrUsed : 16;
+        case 8:
+            return (clrUsed != 0) ? clrUsed : 256;
+        case 16:
+        case 24:
+        case 32:
+            return 0;
+        default:
+            return -1;
+    }
 }
 
 /**
@@ -133,6 +184,99 @@ extern "C" long __thiscall RKC_DIB_GetAlignWidth(RKC_DIB* self) {
         default:
             return -1;
     }
+}
+
+/**
+ * RKC_DIB::FillByte - Fill entire bitmap with a byte value
+ * USED BY: ShadowFlare.exe, o_RKC_DBFCONTROL.dll, o_RKC_UPDIB.dll
+ * 
+ * Fills the entire bitmap buffer with the specified byte value.
+ * Uses optimized 4-byte writes followed by remaining single bytes.
+ * Returns: 1 on success, 0 if no bitmap
+ */
+extern "C" int __thiscall RKC_DIB_FillByte(RKC_DIB* self, unsigned char fillValue) {
+    if (!self->bitmap) {
+        return 0;
+    }
+    
+    // Get aligned width (stride) and calculate total size
+    long stride = RKC_DIB_GetAlignWidth(self);
+    if (stride <= 0 || !self->bitmapInfo) {
+        return 0;
+    }
+    
+    long totalBytes = stride * self->bitmapInfo->biHeight;
+    
+    // Build 4-byte fill pattern (same byte repeated)
+    DWORD fillPattern = fillValue | (fillValue << 8) | (fillValue << 16) | (fillValue << 24);
+    
+    // Fill using DWORD writes for speed
+    DWORD* dst32 = (DWORD*)self->bitmap;
+    long dwordCount = totalBytes / 4;
+    for (long i = 0; i < dwordCount; i++) {
+        dst32[i] = fillPattern;
+    }
+    
+    // Fill remaining bytes
+    unsigned char* dst8 = self->bitmap + (dwordCount * 4);
+    long remaining = totalBytes & 3;
+    for (long i = 0; i < remaining; i++) {
+        dst8[i] = fillValue;
+    }
+    
+    return 1;
+}
+
+/**
+ * RKC_DIB::CopyPalette - Copy palette from another DIB
+ * NOT REFERENCED - stub only, not imported by any module (but used internally by Copy)
+ * 
+ * Copies palette entries from source DIB to this DIB.
+ * Both DIBs must have the same palette count.
+ * Returns: 1 on success, 0 on failure (mismatched counts)
+ */
+extern "C" int __thiscall RKC_DIB_CopyPalette(RKC_DIB* self, RKC_DIB* source) {
+    // Get source palette count
+    long srcCount = RKC_DIB_GetPaletteCount(source);
+    if (srcCount <= 0) {
+        return 0;  // No source palette
+    }
+    
+    // Get destination palette count
+    long dstCount = RKC_DIB_GetPaletteCount(self);
+    if (dstCount <= 0) {
+        return 0;  // No destination palette
+    }
+    
+    // Counts must match
+    if (srcCount != dstCount) {
+        return 0;
+    }
+    
+    // Copy palette entries (each RGBQUAD is 4 bytes)
+    memcpy(self->palette, source->palette, srcCount * sizeof(RGBQUAD));
+    
+    return 1;
+}
+
+/**
+ * RKC_DIB::SetPalette - Set palette from RGBQUAD array
+ * USED BY: o_RKC_UPDIB.dll
+ * 
+ * Copies palette entries from input array to this DIB's palette.
+ * Number of entries copied is determined by GetPaletteCount.
+ * Returns: 1 on success, 0 if no palette (no return code in original if count is 0)
+ */
+extern "C" int __thiscall RKC_DIB_SetPalette(RKC_DIB* self, RGBQUAD* sourcePalette) {
+    long count = RKC_DIB_GetPaletteCount(self);
+    if (count <= 0) {
+        return 0;  // No palette
+    }
+    
+    // Copy palette entries
+    memcpy(self->palette, sourcePalette, count * sizeof(RGBQUAD));
+    
+    return 1;
 }
 
 // ============================================================================
