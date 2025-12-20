@@ -29,9 +29,9 @@ EXPORTS
 	RK_LzEncodeFileToMemory=o_RK_FUNCTION.RK_LzEncodeFileToMemory @27
 	RK_LzEncodeMemoryToFile=o_RK_FUNCTION.RK_LzEncodeMemoryToFile @28
 	RK_LzEncodeMemoryToMemory=o_RK_FUNCTION.RK_LzEncodeMemoryToMemory @29
-	RK_MesDefineCheck=o_RK_FUNCTION.RK_MesDefineCheck @30
-	RK_MesDefineCut=o_RK_FUNCTION.RK_MesDefineCut @31
-	RK_MesDefineSet=o_RK_FUNCTION.RK_MesDefineSet @32
+	RK_MesDefineCheck=RK_MesDefineCheck @30
+	RK_MesDefineCut=RK_MesDefineCut @31
+	RK_MesDefineSet=RK_MesDefineSet @32
 	RK_ReleaseFilesExist=RK_ReleaseFilesExist @33
 	RK_SelectDirectory=o_RK_FUNCTION.RK_SelectDirectory @34
 	RK_SelectFilename=o_RK_FUNCTION.RK_SelectFilename @35

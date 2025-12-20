@@ -749,6 +749,95 @@ void __cdecl RK_ReleaseFilesExist(WIN32_FIND_DATAA** arrayPtr)
 }
 
 /**
+ * Check if a string is quoted (starts and ends with double quote)
+ * Args: str - string to check
+ * Returns: 1 if quoted, 0 otherwise
+ */
+int __cdecl RK_MesDefineCheck(const char* str)
+{
+    OSF_FUNC_TRACE("str='%s'", str ? str : "(null)");
+    if (!str) return 0;
+    
+    // Must start with quote
+    if (str[0] != '"') return 0;
+    
+    // Get length (skip first char)
+    size_t len = strlen(str + 1);
+    if (len == 0) return 0;
+    
+    // Check if last char is quote
+    return (str[len] == '"') ? 1 : 0;
+}
+
+/**
+ * Remove surrounding quotes from a string if present
+ * Args: str - string to modify in place
+ */
+void __cdecl RK_MesDefineCut(char* str)
+{
+    OSF_FUNC_TRACE("str='%s'", str ? str : "(null)");
+    if (!str) return;
+    
+    // If doesn't start with quote, nothing to do
+    if (str[0] != '"') return;
+    
+    size_t len = strlen(str);
+    if (len == 0) return;
+    
+    // Shift string left by 1 to remove leading quote
+    for (size_t i = 0; i < len; i++)
+    {
+        str[i] = str[i + 1];
+    }
+    
+    // Now check if it ends with quote and remove it
+    len = strlen(str);
+    if (len > 0 && str[len - 1] == '"')
+    {
+        str[len - 1] = '\0';
+    }
+}
+
+/**
+ * Add surrounding quotes to a string if not already quoted
+ * Args: str - string to modify in place (must have room for 2 extra chars)
+ */
+void __cdecl RK_MesDefineSet(char* str)
+{
+    OSF_FUNC_TRACE("str='%s'", str ? str : "(null)");
+    if (!str) return;
+    
+    // If already starts with quote, check if also ends with quote
+    if (str[0] == '"')
+    {
+        size_t len = strlen(str);
+        if (len > 0 && str[len - 1] == '"')
+            return;  // Already fully quoted
+        
+        // Ends without quote - add closing quote
+        str[len] = '"';
+        str[len + 1] = '\0';
+        return;
+    }
+    
+    // Not quoted - shift right and add quotes
+    size_t len = strlen(str);
+    
+    // Shift all chars right by 1
+    for (size_t i = len + 1; i > 0; i--)
+    {
+        str[i] = str[i - 1];
+    }
+    
+    // Add opening quote
+    str[0] = '"';
+    
+    // Add closing quote
+    str[len + 1] = '"';
+    str[len + 2] = '\0';
+}
+
+/**
  * Check if a drive letter is valid/available
  * Args: driveLetter - drive letter character (e.g., 'C', 'D')
  * Returns: 1 if drive exists, 0 if not
