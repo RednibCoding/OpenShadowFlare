@@ -52,28 +52,44 @@ This was discovered at function 0x00405750, which displays:
 
 ## Spells/Skills
 
-Known spells (from string analysis):
+Complete spell list (from 0x00407a60 MagicWindowDisplay):
 
-### Attack Spells
-- Fire Ball
-- Ice Bolt
-- Ice Blast
-- Hell Fire
-- Plasma
-- Lightning Storm
-- Flame Strike
-- Earth Spear
-- Sonic Blade
-- Dread Deathscythe
-- Medusa
+### Attack Spells (damage-based)
+| Spell | Stat Display |
+|-------|--------------|
+| Fire Ball | Attack |
+| Ice Bolt | Attack |
+| Ice Blast | Attack |
+| Hell Fire | Attack |
+| Plasma | Attack |
+| Lightning Storm | Attack |
+| Flame Strike | Attack |
+| Earth Spear | Attack |
+| Sonic Blade | Attack |
+| Dread Deathscythe | Attack |
+| Medusa | Attack |
+| Mud Javelin | Attack |
+| Explosion | Attack |
+| Elemental Strike | Attack |
+| Counter Burst | Attack |
 
-### Support/Utility
-- Heal
-- Energy Shield
-- Magic Shield
-- Berserker
-- Moon
-- Transport
+### Support/Utility Spells
+| Spell | Stat Display | Description |
+|-------|--------------|-------------|
+| Heal | Heal % | HP restoration |
+| Energy Shield | Shield % | Damage reduction |
+| Magic Shield | Def % | Defense boost |
+| Berserker | Attack % | Attack boost |
+| Moon | (none) | Unknown effect |
+| Transport | (none) | Teleportation |
+| Identify | (none) | Identify items |
+
+### Spell Stats
+Each spell has:
+- **Lv** - Spell level
+- **Exp** - Experience towards next level
+- **MP** - Mana cost
+- **Effect %** - Heal%, Def%, Shield%, Attack%, RefPer% (reflection percent)
 
 ## Character Stats
 

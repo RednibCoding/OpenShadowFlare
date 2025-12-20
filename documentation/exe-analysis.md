@@ -166,21 +166,25 @@ State transitions:
 ### Major Functions (by size)
 | Address    | Size (bytes) | Description |
 |------------|--------------|-------------|
-| 0x00429ec0 | 20119 | Command/Event dispatcher (huge switch) |
-| 0x00430f80 | 13677 | Script interpreter (75 opcodes) |
-| 0x00462f80 | 9247  | Item data loader (SFItemDataV0000) |
-| 0x004103c0 | 7773  | Options/Settings menu |
-| 0x0044cac0 | 7527  | Unknown (needs analysis) |
-| 0x00414990 | 7221  | Object/NPC display (RKC_RPGSCRN_OBJECTDISP) |
-| 0x00427b50 | 6780  | Scenario.Mct loader (MCED DATA v0000) |
-| 0x0040aed0 | 6758  | Unknown (needs analysis) |
-| 0x0044b580 | 5429  | SaveGame - write save file |
-| 0x00409a60 | 5212  | Status screen display |
-| 0x00405750 | 4936  | Character status/element display |
-| 0x00426200 | 4846  | Scenario loader |
-| 0x00423ca0 | 4306  | Unknown (needs analysis) |
-| 0x0041d970 | 2936  | Main gameplay update |
-| 0x00421e10 | 2710  | Character creation (class/gender select) |
+| 0x00429ec0 | 20119 | CommandDispatcher - Command/Event dispatcher (huge switch) |
+| 0x00430f80 | 13677 | ScriptInterpreter - 75 opcodes |
+| 0x00462f80 | 9247  | LoadItemData - magic SFItemDataV0000 |
+| 0x004103c0 | 7773  | OptionsMenu - Settings menu |
+| 0x0044cac0 | 7527  | LoadGame - load save file, XOR decrypt |
+| 0x00414990 | 7221  | ObjectNpcDisplay - via RKC_RPGSCRN_OBJECTDISP |
+| 0x00427b50 | 6780  | LoadScenarioMct - magic MCED DATA v0000 |
+| 0x0040aed0 | 6758  | ItemStatsDisplay - format item stat bonuses |
+| 0x0044b580 | 5429  | SaveGame - write save file, XOR encrypt |
+| 0x00409a60 | 5212  | StatusScreenDisplay |
+| 0x00405750 | 4936  | CharacterStatusDisplay - element bonuses |
+| 0x00426200 | 4846  | LoadScenario - main scenario loader |
+| 0x00423ca0 | 4306  | ScenarioLoader_Phase2 - called from State1 |
+| 0x00446320 | 3898  | (UI/input related - needs analysis) |
+| 0x0041afc0 | 3680  | NetworkServerHandler - RKC_NETWORK packets |
+| 0x00441c00 | 3462  | (needs analysis) |
+| 0x004039f0 | 3437  | SpritePacketSetup - RKC_UPDIB::SetPacket |
+| 0x0041d970 | 2936  | State2Handler_Main - main gameplay update |
+| 0x00421e10 | 2710  | CharacterCreation - class/gender select |
 | 0x004239b0 | ~500  | LoadSaveSlotInfo - read save headers |
 | 0x004021b0 | 129   | FindSaveSlot - find free save slot |
 
