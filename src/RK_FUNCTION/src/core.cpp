@@ -19,6 +19,7 @@ extern "C" {
 /**
  * Check if a byte is a SJIS lead byte (first byte of 2-byte character)
  * Returns: 1 if SJIS lead byte, 0 otherwise
+ * USED BY: ShadowFlare.exe, o_RKC_RPG_SCRIPT.dll, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
  */
 int __cdecl RK_CheckSJIS(int ch)
 {
@@ -31,6 +32,7 @@ int __cdecl RK_CheckSJIS(int ch)
 
 /**
  * Check if string contains SJIS characters
+ * USED BY: ShadowFlare.exe
  */
 int __cdecl RK_CheckStringSJIS(const char* str)
 {
@@ -48,6 +50,7 @@ int __cdecl RK_CheckStringSJIS(const char* str)
 
 /**
  * Check if path ends with backslash
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_CheckLastRoot(const char* path)
 {
@@ -63,6 +66,7 @@ int __cdecl RK_CheckLastRoot(const char* path)
 /**
  * Compare strings with optional case insensitivity (SJIS-aware)
  * Returns: 0 if str1 empty, 1 if equal, -1 if str1 < str2
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_StringsCompare(const char* str1, const char* str2, int caseInsensitive)
 {
@@ -121,6 +125,7 @@ int __cdecl RK_StringsCompare(const char* str1, const char* str2, int caseInsens
 /**
  * Copy string with automatic memory allocation
  * Takes src string and pointer to dest char*. Allocates memory for dest.
+ * NOT REFERENCED - stub only, not imported by any module
  */
 void __cdecl RK_StringsCopyAuto(const char* src, char** destPtr)
 {
@@ -149,6 +154,7 @@ void __cdecl RK_StringsCopyAuto(const char* src, char** destPtr)
  * mode 0: strip leading spaces/tabs
  * mode 1: strip all spaces/tabs
  * mode 2: strip trailing spaces/tabs
+ * USED BY: o_RKC_RPG_SCRIPT.dll
  */
 void __cdecl RK_DeleteTabSpaceString(char* str, int mode)
 {
@@ -214,6 +220,7 @@ void __cdecl RK_DeleteTabSpaceString(char* str, int mode)
 
 /**
  * Remove trailing backslash from path if present
+ * NOT REFERENCED - stub only, not imported by any module
  */
 void __cdecl RK_CutLastRoot(char* path)
 {
@@ -243,6 +250,7 @@ void __cdecl RK_CutLastRoot(char* path)
 
 /**
  * Add trailing backslash to path if not present
+ * USED BY: ShadowFlare.exe, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
  */
 void __cdecl RK_SetLastRoot(char* path)
 {
@@ -261,6 +269,7 @@ void __cdecl RK_SetLastRoot(char* path)
 
 /**
  * Extract directory from full path (remove filename)
+ * USED BY: o_RKC_RPGSCRN.dll
  */
 void __cdecl RK_CutFilenameFromFullPath(char* fullPath)
 {
@@ -290,6 +299,7 @@ void __cdecl RK_CutFilenameFromFullPath(char* fullPath)
 /**
  * Extract filename from full path (remove directory) - MODIFIES IN PLACE
  * Finds last backslash and moves filename to start of buffer
+ * USED BY: o_RKC_RPGSCRN.dll
  */
 void __cdecl RK_CutDirectoryFromFullPath(char* path)
 {
@@ -327,6 +337,7 @@ void __cdecl RK_CutDirectoryFromFullPath(char* path)
  * Copy string to dest with a maximum length, padding with spaces if shorter.
  * SJIS-aware: won't split a 2-byte character.
  * Args: src = source string, dest = destination buffer, maxLen = max chars to copy
+ * NOT REFERENCED - stub only, not imported by any module
  */
 void __cdecl RK_StringCopyNumber(const char* src, char* dest, int maxLen)
 {
@@ -389,6 +400,7 @@ void __cdecl RK_StringCopyNumber(const char* src, char* dest, int maxLen)
 /**
  * Analyze filename and split into name (without extension) and extension
  * Handles special cases: "." and ".." are treated as names with no extension
+ * USED BY: o_RKC_RPGSCRN.dll
  */
 void __cdecl RK_AnalyzeFilename(const char* filename, char* nameOut, char* extOut)
 {
@@ -454,6 +466,7 @@ void __cdecl RK_AnalyzeFilename(const char* filename, char* nameOut, char* extOu
  * Supports: ? = match any single char, * = match any sequence
  * Case-insensitive for ASCII letters, SJIS-aware
  * Returns: 1 if matches, 0 if not
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_FilenameCompareWildCard(const char* pattern, const char* filename)
 {
@@ -631,6 +644,7 @@ int __cdecl RK_FilenameCompareWildCard(const char* pattern, const char* filename
  * Check if a file or directory exists
  * Returns: 0 = not found, 1 = regular file, 2 = directory
  * If findData is provided, receives the WIN32_FIND_DATA
+ * USED BY: ShadowFlare.exe
  */
 int __cdecl RK_CheckFileExist(const char* filename, WIN32_FIND_DATAA* findData)
 {
@@ -675,6 +689,7 @@ int __cdecl RK_CheckFileExist(const char* filename, WIN32_FIND_DATAA* findData)
  * Args: pattern - file pattern (e.g., "*.txt"), outArray - receives pointer to allocated array
  * Returns: number of matching files (0 if none)
  * The array is allocated with GlobalAlloc and must be freed with RK_ReleaseFilesExist
+ * USED BY: ShadowFlare.exe, o_RKC_RPG_TABLE.dll
  */
 int __cdecl RK_CheckFilesExist(const char* pattern, WIN32_FIND_DATAA** outArray)
 {
@@ -733,6 +748,7 @@ int __cdecl RK_CheckFilesExist(const char* pattern, WIN32_FIND_DATAA** outArray)
 /**
  * Free array allocated by RK_CheckFilesExist
  * Args: arrayPtr - pointer to the WIN32_FIND_DATAA* that was filled by RK_CheckFilesExist
+ * USED BY: ShadowFlare.exe, o_RKC_RPG_TABLE.dll
  */
 void __cdecl RK_ReleaseFilesExist(WIN32_FIND_DATAA** arrayPtr)
 {
@@ -752,6 +768,7 @@ void __cdecl RK_ReleaseFilesExist(WIN32_FIND_DATAA** arrayPtr)
  * Check if a string is quoted (starts and ends with double quote)
  * Args: str - string to check
  * Returns: 1 if quoted, 0 otherwise
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_MesDefineCheck(const char* str)
 {
@@ -772,6 +789,7 @@ int __cdecl RK_MesDefineCheck(const char* str)
 /**
  * Remove surrounding quotes from a string if present
  * Args: str - string to modify in place
+ * NOT REFERENCED - stub only, not imported by any module
  */
 void __cdecl RK_MesDefineCut(char* str)
 {
@@ -801,6 +819,7 @@ void __cdecl RK_MesDefineCut(char* str)
 /**
  * Add surrounding quotes to a string if not already quoted
  * Args: str - string to modify in place (must have room for 2 extra chars)
+ * NOT REFERENCED - stub only, not imported by any module
  */
 void __cdecl RK_MesDefineSet(char* str)
 {
@@ -841,6 +860,7 @@ void __cdecl RK_MesDefineSet(char* str)
  * Check if a drive letter is valid/available
  * Args: driveLetter - drive letter character (e.g., 'C', 'D')
  * Returns: 1 if drive exists, 0 if not
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_CheckDriveEffective(int driveLetter)
 {
@@ -861,6 +881,7 @@ int __cdecl RK_CheckDriveEffective(int driveLetter)
  * Get file's last write time as SYSTEMTIME
  * Args: filename, pointer to SYSTEMTIME to receive result
  * Returns: 1 on success, 0 on failure
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_GetFileLastWrite(const char* filename, SYSTEMTIME* sysTime)
 {
@@ -887,6 +908,7 @@ int __cdecl RK_GetFileLastWrite(const char* filename, SYSTEMTIME* sysTime)
  * Set file's last write time from SYSTEMTIME
  * Args: filename, pointer to SYSTEMTIME with new time
  * Returns: 1 on success, 0 on failure
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_SetFileLastWrite(const char* filename, const SYSTEMTIME* sysTime)
 {
@@ -919,6 +941,7 @@ int __cdecl RK_SetFileLastWrite(const char* filename, const SYSTEMTIME* sysTime)
 /**
  * Compare two SYSTEMTIME structures
  * Returns: 1 if time1 > time2, -1 if time1 < time2, 0 if equal
+ * NOT REFERENCED - stub only, not imported by any module
  */
 int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time2)
 {
@@ -952,6 +975,316 @@ int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time
     if (time1->wMilliseconds < time2->wMilliseconds) return -1;
     
     return 0;  // Equal
+}
+
+/**
+ * LZSS Decompression: Memory to Memory
+ * Header format: "RCLIB-L\0" (8 bytes) + decompressed_size (4 bytes LE) + compressed_data
+ * Algorithm: 4KB sliding window, initial position 0xFEE, window fill 0x20 (space)
+ * Flags: LSB-first bit order (shift right)
+ * Match: 2 bytes = 12-bit offset (low 8 bits + high 4 bits) + 4-bit length (+ 3)
+ * 
+ * Args: srcData = compressed data, srcSize = compressed size, 
+ *       outData = receives pointer to allocated decompressed data,
+ *       outSize = receives decompressed size
+ * Returns: 1 on success, 0 on failure
+ * USED BY: ShadowFlare.exe, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll, o_RKC_UPDIB.dll
+ */
+int __cdecl RK_LzDecodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("srcSize=%d", srcSize);
+    
+    if (!srcData || !outData || srcSize < 12) return 0;
+    
+    const unsigned char* src = (const unsigned char*)srcData;
+    
+    // Check header: "RCLIB-L\0"
+    if (memcmp(src, "RCLIB-L", 8) != 0)
+        return 0;
+    
+    // Get decompressed size (little-endian 32-bit at offset 8)
+    int decompSize = *(const int*)(src + 8);
+    if (outSize)
+        *outSize = decompSize;
+    
+    // Allocate output buffer
+    unsigned char* dest = (unsigned char*)GlobalAlloc(0, decompSize);
+    if (!dest) return 0;
+    
+    *outData = dest;
+    
+    // Initialize sliding window (4KB, filled with spaces)
+    unsigned char window[4096];
+    memset(window, 0x20, sizeof(window));  // Fill with space character
+    
+    int srcPos = 12;  // Skip header + size
+    int destPos = 0;
+    int winPos = 0xFEE;  // Initial window position
+    
+    while (srcPos < srcSize && destPos < decompSize)
+    {
+        // Read flag byte
+        if (srcPos >= srcSize) break;
+        unsigned char flags = src[srcPos++];
+        
+        // Process 8 bits
+        for (int bit = 0; bit < 8 && destPos < decompSize; bit++)
+        {
+            if (flags & (1 << bit))
+            {
+                // Literal byte
+                if (srcPos >= srcSize) break;
+                unsigned char c = src[srcPos++];
+                dest[destPos++] = c;
+                window[winPos] = c;
+                winPos = (winPos + 1) & 0xFFF;
+            }
+            else
+            {
+                // Match reference
+                if (srcPos + 1 >= srcSize) break;
+                unsigned char b1 = src[srcPos++];
+                unsigned char b2 = src[srcPos++];
+                
+                // Decode: offset = b1 | ((b2 & 0xF0) << 4), length = (b2 & 0x0F) + 3
+                int offset = b1 | ((b2 & 0xF0) << 4);
+                int length = (b2 & 0x0F) + 3;
+                
+                // Copy from window
+                for (int i = 0; i < length && destPos < decompSize; i++)
+                {
+                    unsigned char c = window[(offset + i) & 0xFFF];
+                    dest[destPos++] = c;
+                    window[winPos] = c;
+                    winPos = (winPos + 1) & 0xFFF;
+                }
+            }
+        }
+    }
+    
+    return 1;
+}
+
+// ============================================================================
+// STUB FUNCTIONS - NOT REFERENCED by any module
+// These functions are exported but never called by the game or other DLLs
+// ============================================================================
+
+/**
+ * Huffman decode from file to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanDecodeFileToFile(const char* srcFile, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s', destFile='%s'", 
+                   srcFile ? srcFile : "(null)", destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * Huffman decode from file to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanDecodeFileToMemory(const char* srcFile, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s'", srcFile ? srcFile : "(null)");
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * Huffman decode from memory to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanDecodeMemoryToFile(const void* srcData, int srcSize, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * Huffman decode from memory to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanDecodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d", srcSize);
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * Huffman encode from file to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanEncodeFileToFile(const char* srcFile, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s', destFile='%s'", 
+                   srcFile ? srcFile : "(null)", destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * Huffman encode from file to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanEncodeFileToMemory(const char* srcFile, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s'", srcFile ? srcFile : "(null)");
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * Huffman encode from memory to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanEncodeMemoryToFile(const void* srcData, int srcSize, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * Huffman encode from memory to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_HuffmanEncodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d", srcSize);
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * LZ decode from file to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_LzDecodeFileToFile(const char* srcFile, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s', destFile='%s'", 
+                   srcFile ? srcFile : "(null)", destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * LZ decode from file to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_LzDecodeFileToMemory(const char* srcFile, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s'", srcFile ? srcFile : "(null)");
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * LZ decode from memory to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_LzDecodeMemoryToFile(const void* srcData, int srcSize, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * LZ encode from file to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_LzEncodeFileToFile(const char* srcFile, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s', destFile='%s'", 
+                   srcFile ? srcFile : "(null)", destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * LZ encode from file to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_LzEncodeFileToMemory(const char* srcFile, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcFile='%s'", srcFile ? srcFile : "(null)");
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * LZ encode from memory to file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_LzEncodeMemoryToFile(const void* srcData, int srcSize, const char* destFile)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
+    return 0;
+}
+
+/**
+ * LZ encode from memory to memory
+ * NOT REFERENCED - stub only, not imported by any module
+ * NOTE: This IS used by o_RKC_FONTMAKER.dll, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
+ * but we keep it as stub/forward until we need to implement it
+ * USED BY: o_RKC_FONTMAKER.dll, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
+ */
+int __cdecl RK_LzEncodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
+{
+    OSF_FUNC_TRACE("STUB: srcSize=%d", srcSize);
+    // TODO: This function IS used - needs real implementation
+    // For now, return failure so callers know encoding failed
+    if (outData) *outData = NULL;
+    if (outSize) *outSize = 0;
+    return 0;
+}
+
+/**
+ * Show directory selection dialog
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_SelectDirectory(void* hwnd, const char* title, char* outPath)
+{
+    OSF_FUNC_TRACE("STUB: title='%s'", title ? title : "(null)");
+    if (outPath) outPath[0] = '\0';
+    return 0;
+}
+
+/**
+ * Show file selection dialog
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_SelectFilename(void* hwnd, const char* filter, const char* title, char* outPath, int flags)
+{
+    OSF_FUNC_TRACE("STUB: title='%s'", title ? title : "(null)");
+    if (outPath) outPath[0] = '\0';
+    return 0;
+}
+
+/**
+ * Set absolute directory name with layer
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_SetAbsoluteDirNameLayer(const char* path, char* outPath, int layer)
+{
+    OSF_FUNC_TRACE("STUB: path='%s', layer=%d", path ? path : "(null)", layer);
+    if (outPath) outPath[0] = '\0';
+    return 0;
+}
+
+/**
+ * Write bit file (used for custom bitmap format?)
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+int __cdecl RK_WriteBitFile(const char* filename, void* data, int width, int height, int bpp)
+{
+    OSF_FUNC_TRACE("STUB: filename='%s', %dx%d, bpp=%d", 
+                   filename ? filename : "(null)", width, height, bpp);
+    return 0;
 }
 
 } // extern "C"
