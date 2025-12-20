@@ -450,6 +450,184 @@ void __cdecl RK_AnalyzeFilename(const char* filename, char* nameOut, char* extOu
 }
 
 /**
+ * Compare filename against a pattern with wildcards
+ * Supports: ? = match any single char, * = match any sequence
+ * Case-insensitive for ASCII letters, SJIS-aware
+ * Returns: 1 if matches, 0 if not
+ */
+int __cdecl RK_FilenameCompareWildCard(const char* pattern, const char* filename)
+{
+    OSF_FUNC_TRACE("pattern='%s', filename='%s'", 
+                   pattern ? pattern : "(null)", filename ? filename : "(null)");
+    
+    if (!pattern || !filename) return 0;
+    
+    // Find dot positions in pattern and filename (for extension handling)
+    int patternLen = (int)strlen(pattern);
+    int filenameLen = (int)strlen(filename);
+    
+    int patternDot = -1;  // Position of dot in pattern
+    int filenameDot = -1; // Position of dot in filename
+    
+    // Find last dot in pattern
+    for (int i = 0; i < patternLen; i++)
+    {
+        if (RK_CheckSJIS((unsigned char)pattern[i]))
+        {
+            i++;  // Skip second byte
+            continue;
+        }
+        if (pattern[i] == '.')
+            patternDot = i;
+    }
+    
+    // Find last dot in filename
+    for (int i = 0; i < filenameLen; i++)
+    {
+        if (RK_CheckSJIS((unsigned char)filename[i]))
+        {
+            i++;  // Skip second byte
+            continue;
+        }
+        if (filename[i] == '.')
+            filenameDot = i;
+    }
+    
+    // If pattern has no dot but filename does (or vice versa with extension), 
+    // they need special handling with wildcards
+    if (patternDot == -1 && filenameDot != -1)
+        return 0;
+    if (patternDot != -1 && filenameDot == -1)
+        return 0;
+    
+    // Match character by character
+    int pi = 0;  // Pattern index
+    int fi = 0;  // Filename index
+    
+    while (pattern[pi] != '\0')
+    {
+        if (filename[fi] == '\0')
+        {
+            // Filename ended but pattern still has chars
+            // Only OK if remaining pattern is all *
+            while (pattern[pi] == '*')
+                pi++;
+            return pattern[pi] == '\0' ? 1 : 0;
+        }
+        
+        unsigned char pc = (unsigned char)pattern[pi];
+        unsigned char fc = (unsigned char)filename[fi];
+        
+        // Handle SJIS characters in pattern
+        if (RK_CheckSJIS(pc))
+        {
+            // Must match both bytes exactly
+            if (pattern[pi] != filename[fi])
+                return 0;
+            pi++; fi++;
+            if (pattern[pi] != filename[fi])
+                return 0;
+            pi++; fi++;
+            continue;
+        }
+        
+        // Handle wildcards
+        if (pc == '?')
+        {
+            // Match any single character
+            if (RK_CheckSJIS(fc))
+            {
+                // Skip both bytes of SJIS char
+                pi++;
+                fi += 2;
+            }
+            else
+            {
+                pi++;
+                fi++;
+            }
+            continue;
+        }
+        
+        if (pc == '*')
+        {
+            // * matches zero or more characters up to extension boundary
+            pi++;
+            
+            // If we're before the dot in pattern and there's a dot in filename,
+            // * only matches up to the dot
+            if (patternDot != -1 && pi <= patternDot && filenameDot != -1 && fi < filenameDot)
+            {
+                // Move filename pointer up to the dot
+                fi = filenameDot + 1;
+                pi = patternDot + 1;
+                continue;
+            }
+            
+            // If at end of pattern, match everything
+            if (pattern[pi] == '\0')
+                return 1;
+            
+            // Try to match remaining pattern with rest of filename
+            while (filename[fi] != '\0')
+            {
+                // Recursive-like check: try matching from current position
+                const char* pp = &pattern[pi];
+                const char* fp = &filename[fi];
+                int matched = 1;
+                
+                while (*pp && *fp)
+                {
+                    if (*pp == '*' || *pp == '?')
+                        break;  // Need more complex handling
+                    
+                    unsigned char c1 = (unsigned char)*pp;
+                    unsigned char c2 = (unsigned char)*fp;
+                    
+                    // Case insensitive for ASCII
+                    if (c1 >= 'A' && c1 <= 'Z') c1 |= 0x20;
+                    if (c2 >= 'A' && c2 <= 'Z') c2 |= 0x20;
+                    
+                    if (c1 != c2)
+                    {
+                        matched = 0;
+                        break;
+                    }
+                    pp++; fp++;
+                }
+                
+                if (matched && (*pp == '\0' || *pp == '*' || *pp == '?'))
+                {
+                    // Found a match point, continue from here
+                    pi = (int)(pp - pattern);
+                    fi = (int)(fp - filename);
+                    break;
+                }
+                
+                fi++;
+            }
+            continue;
+        }
+        
+        // Regular character - case insensitive compare
+        unsigned char c1 = pc;
+        unsigned char c2 = fc;
+        
+        if (c1 >= 'A' && c1 <= 'Z') c1 |= 0x20;
+        if (c2 >= 'A' && c2 <= 'Z') c2 |= 0x20;
+        
+        if (c1 != c2)
+            return 0;
+        
+        pi++;
+        fi++;
+    }
+    
+    // Pattern ended - filename should also have ended
+    return (filename[fi] == '\0') ? 1 : 0;
+}
+
+/**
  * Check if a file or directory exists
  * Returns: 0 = not found, 1 = regular file, 2 = directory
  * If findData is provided, receives the WIN32_FIND_DATA

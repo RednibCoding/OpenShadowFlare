@@ -11,7 +11,7 @@ EXPORTS
 	RK_CutFilenameFromFullPath=RK_CutFilenameFromFullPath @9
 	RK_CutLastRoot=RK_CutLastRoot @10
 	RK_DeleteTabSpaceString=RK_DeleteTabSpaceString @11
-	RK_FilenameCompareWildCard=o_RK_FUNCTION.RK_FilenameCompareWildCard @12
+	RK_FilenameCompareWildCard=RK_FilenameCompareWildCard @12
 	RK_GetFileLastWrite=RK_GetFileLastWrite @13
 	RK_HuffmanDecodeFileToFile=o_RK_FUNCTION.RK_HuffmanDecodeFileToFile @14
 	RK_HuffmanDecodeFileToMemory=o_RK_FUNCTION.RK_HuffmanDecodeFileToMemory @15
