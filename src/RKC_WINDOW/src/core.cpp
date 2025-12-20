@@ -1,3 +1,10 @@
+/**
+ * RKC_WINDOW - Window management class
+ * 
+ * Wrapper for window operations. Most functions still forward to original DLL.
+ * USED BY: ShadowFlare.exe (constructor and destructor only)
+ */
+
 #include <iostream>
 #include <windows.h>
 #include <cstdint>
@@ -31,6 +38,10 @@ public:
 // typedef VOID(WINAPI* showPtr)(RKC_WINDOW* self, int32_t param_1);
 
 extern "C" {
+    /**
+     * Constructor - initialize all members to zero
+     * USED BY: ShadowFlare.exe
+     */
     void __thiscall RKC_Window_constructor(RKC_WINDOW* self)
     {
         self->member1 = 0;
@@ -52,47 +63,71 @@ extern "C" {
         self->member11 = 0;
     }
 
+    /**
+     * Destructor - empty
+     * USED BY: ShadowFlare.exe
+     */
     void __thiscall RKC_Window_deconstructor(RKC_WINDOW* self)
     {
         return;
     }
 
+    /**
+     * Assignment operator - shallow copy
+     * NOT REFERENCED - not imported by any module
+     */
     RKC_WINDOW& __thiscall EqualsOperator(RKC_WINDOW* self, const RKC_WINDOW& lhs)
     {
         self->m_hWnd = lhs.m_hWnd;
         return *self;
     }
 
+    /**
+     * Horizontal scroll handler
+     * NOT REFERENCED - not imported by any module
+     * Note: Forwards to original DLL
+     */
     void __thiscall HScroll(RKC_WINDOW* self, uint32_t param_1, uint64_t param_2)
     {
-        // TODO: Implement
         CallFunctionInDLL<void>(
             "o_RKC_WINDOW.dll",
             "?HScroll@RKC_WINDOW@@QAEXIJ",
             self, param_1, param_2);
     }
 
+    /**
+     * Vertical scroll handler
+     * NOT REFERENCED - not imported by any module
+     * Note: Forwards to original DLL
+     */
     void __thiscall VScroll(RKC_WINDOW* self, uint32_t param_1, uint64_t param_2)
     {
-        // TODO: Implement
         CallFunctionInDLL<void>(
             "o_RKC_WINDOW.dll",
             "?VScroll@RKC_WINDOW@@QAEXIJ@Z",
             self, param_1, param_2);
     }
 
+    /**
+     * Resize handler
+     * NOT REFERENCED - not imported by any module
+     * Note: Forwards to original DLL
+     */
     void __thiscall Resize(RKC_WINDOW* self)
     {
-        // TODO: Implement
         CallFunctionInDLL<void>(
             "o_RKC_WINDOW.dll",
             "?Resize@RKC_WINDOW@@QAEXX",
             self);
     }
 
+    /**
+     * Show/hide window
+     * NOT REFERENCED - not imported by any module
+     * Note: Forwards to original DLL
+     */
     void __thiscall Show(RKC_WINDOW* self, int param_1)
     {
-        // TODO: Implement
         CallFunctionInDLL<void>(
             "o_RKC_WINDOW.dll",
             "?Show@RKC_WINDOW@@QAEXH@",

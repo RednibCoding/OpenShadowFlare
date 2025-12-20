@@ -1,3 +1,12 @@
+/**
+ * RKC_FILE - File I/O wrapper class
+ * 
+ * Simple file handle wrapper used throughout the game for file operations.
+ * USED BY: ShadowFlare.exe, o_RKC_DIB.dll, o_RKC_DSOUND.dll, o_RKC_FONTMAKER.dll,
+ *          o_RKC_RPG_AICONTROL.dll, o_RKC_RPG_SCRIPT.dll, o_RKC_RPGSCRN.dll,
+ *          o_RKC_RPG_TABLE.dll, o_RKC_UPDIB.dll
+ */
+
 #include <windows.h>
 #include <cstdint>
 
@@ -9,16 +18,27 @@ public:
 
 extern "C"
 {
+    /**
+     * Constructor - initialize file handle to null
+     */
     void __thiscall RKC_FILE_constructor(RKC_FILE* self)
     {
         self->m_handle = 0;
     }
 
+    /**
+     * Destructor - reset file handle (does NOT close it)
+     */
     void __thiscall RKC_FILE_deconstructor(RKC_FILE* self)
     {
         self->m_handle = 0;
     }
 
+    /**
+     * Open or create a file
+     * Args: fileName = path to file, desiredAccess = mode (0=read, 1=write, 2=read/write, 3=append)
+     * Returns: 1 on success, 0 on failure
+     */
     int __thiscall Create(RKC_FILE* self, char* fileName, long desiredAccess)
     {
         bool result = false;
@@ -49,6 +69,10 @@ extern "C"
         return result;
     }
 
+    /**
+     * Close file handle
+     * Returns: 1 on success
+     */
     int __thiscall Close(RKC_FILE* self)
     {
         bool result = false;
@@ -62,6 +86,10 @@ extern "C"
         return result;
     }
 
+    /**
+     * Write data to file
+     * Returns: 1 if all bytes written successfully
+     */
     int __thiscall Write(RKC_FILE* self, void* buffer, long numBytesToWrite)
     {
         DWORD bytesWritten = 0;
@@ -72,6 +100,10 @@ extern "C"
         return result;
     }
 
+    /**
+     * Read data from file
+     * Returns: 1 if all bytes read successfully
+     */
     int __thiscall Read(RKC_FILE* self, void* buffer, long numBytesToRead)
     {
         DWORD bytesRead = 0;
@@ -82,6 +114,10 @@ extern "C"
         return result;
     }
 
+    /**
+     * Get file size in bytes
+     * USED BY: o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
+     */
     long __thiscall GetSize(RKC_FILE* self)
     {
         DWORD fileSizeHigh = 0;
@@ -91,6 +127,11 @@ extern "C"
         return -1;
     }
 
+    /**
+     * Seek to position in file
+     * moveMethod: 0=FILE_BEGIN, 1=FILE_CURRENT, 2=FILE_END
+     * USED BY: o_RKC_DIB.dll, o_RKC_UPDIB.dll
+     */
     int __thiscall Seek(RKC_FILE* self, long distanceToMove, long moveMethod)
     {
         if (moveMethod < 0 || moveMethod > 2)
@@ -99,12 +140,20 @@ extern "C"
         return SetFilePointer(self->m_handle, distanceToMove, 0, moveMethod);
     }
 
+    /**
+     * Assignment operator - shallow copy of handle
+     * NOT REFERENCED - not imported by any module
+     */
     RKC_FILE& __thiscall equalsOperator(RKC_FILE* self, const RKC_FILE& lhs)
     {
         self->m_handle = lhs.m_handle;
         return *self;
     }
 
+    /**
+     * Get underlying Windows HANDLE
+     * NOT REFERENCED - not imported by any module
+     */
     HANDLE __thiscall GetHandle(RKC_FILE* self)
     {
         return self->m_handle;
