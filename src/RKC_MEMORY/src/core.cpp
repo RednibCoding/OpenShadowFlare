@@ -1,4 +1,4 @@
-#include <Windows.h>
+#include <windows.h>
 #include <cstdint>
 
 class RKC_MEMORY
