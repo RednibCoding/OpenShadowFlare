@@ -464,6 +464,119 @@ int __cdecl RK_CheckFileExist(const char* filename, WIN32_FIND_DATAA* findData)
     return result;
 }
 
+/**
+ * Check if a drive letter is valid/available
+ * Args: driveLetter - drive letter character (e.g., 'C', 'D')
+ * Returns: 1 if drive exists, 0 if not
+ */
+int __cdecl RK_CheckDriveEffective(int driveLetter)
+{
+    DWORD drives = GetLogicalDrives();
+    
+    // Convert to lowercase and get drive index (0-25)
+    int index = (driveLetter | 0x20) - 'a';
+    
+    // Create bitmask for this drive
+    DWORD mask = 1 << index;
+    
+    // Return 1 if drive exists, 0 otherwise
+    return (drives & mask) ? 1 : 0;
+}
+
+/**
+ * Get file's last write time as SYSTEMTIME
+ * Args: filename, pointer to SYSTEMTIME to receive result
+ * Returns: 1 on success, 0 on failure
+ */
+int __cdecl RK_GetFileLastWrite(const char* filename, SYSTEMTIME* sysTime)
+{
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA(filename, &findData);
+    
+    if (hFind == INVALID_HANDLE_VALUE)
+        return 0;
+    
+    FindClose(hFind);
+    
+    // Convert file time to local file time
+    FILETIME localFileTime;
+    FileTimeToLocalFileTime(&findData.ftLastWriteTime, &localFileTime);
+    
+    // Convert local file time to system time
+    FileTimeToSystemTime(&localFileTime, sysTime);
+    
+    return 1;
+}
+
+/**
+ * Set file's last write time from SYSTEMTIME
+ * Args: filename, pointer to SYSTEMTIME with new time
+ * Returns: 1 on success, 0 on failure
+ */
+int __cdecl RK_SetFileLastWrite(const char* filename, const SYSTEMTIME* sysTime)
+{
+    // Convert SYSTEMTIME to FILETIME (local)
+    FILETIME localFileTime;
+    if (!SystemTimeToFileTime(sysTime, &localFileTime))
+        return 0;
+    
+    // Convert local file time to UTC file time
+    FILETIME utcFileTime;
+    if (!LocalFileTimeToFileTime(&localFileTime, &utcFileTime))
+        return 0;
+    
+    // Open the file for writing attributes
+    // 0xC0000000 = GENERIC_READ | GENERIC_WRITE
+    // 0x80 = FILE_ATTRIBUTE_NORMAL
+    // 3 = OPEN_EXISTING
+    HANDLE hFile = CreateFileA(filename, 0xC0000000, 0, NULL, 3, 0x80, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+        return 0;
+    
+    // Set the last write time (pass NULL for creation/access times)
+    BOOL result = SetFileTime(hFile, NULL, NULL, &utcFileTime);
+    CloseHandle(hFile);
+    
+    return result ? 1 : 0;
+}
+
+/**
+ * Compare two SYSTEMTIME structures
+ * Returns: 1 if time1 > time2, -1 if time1 < time2, 0 if equal
+ */
+int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time2)
+{
+    // Compare year
+    if (time1->wYear > time2->wYear) return 1;
+    if (time1->wYear < time2->wYear) return -1;
+    
+    // Compare month
+    if (time1->wMonth > time2->wMonth) return 1;
+    if (time1->wMonth < time2->wMonth) return -1;
+    
+    // Compare day (skip wDayOfWeek)
+    if (time1->wDay > time2->wDay) return 1;
+    if (time1->wDay < time2->wDay) return -1;
+    
+    // Compare hour
+    if (time1->wHour > time2->wHour) return 1;
+    if (time1->wHour < time2->wHour) return -1;
+    
+    // Compare minute
+    if (time1->wMinute > time2->wMinute) return 1;
+    if (time1->wMinute < time2->wMinute) return -1;
+    
+    // Compare second
+    if (time1->wSecond > time2->wSecond) return 1;
+    if (time1->wSecond < time2->wSecond) return -1;
+    
+    // Compare milliseconds
+    if (time1->wMilliseconds > time2->wMilliseconds) return 1;
+    if (time1->wMilliseconds < time2->wMilliseconds) return -1;
+    
+    return 0;  // Equal
+}
+
 } // extern "C"
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
