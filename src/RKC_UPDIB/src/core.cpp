@@ -252,3 +252,115 @@ extern "C" void* __thiscall RKC_UPDIB_GetUpd(void* self, long index) {
     void** upds = *(void***)(p + 0x08);
     return upds[index];
 }
+
+// ============================================================================
+// RKC_UPDIB_VS FUNCTIONS
+// ============================================================================
+
+/**
+ * RKC_UPDIB_VS class layout (8 bytes):
+ *   +0x00: void* unknown1        - First pointer (linked list?)
+ *   +0x04: void* vsPacketList    - First VSPacket in list
+ */
+
+/**
+ * RKC_UPDIB_VS::constructor - Initialize VS object
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" void* __thiscall RKC_UPDIB_VS_constructor(void* self) {
+    char* p = (char*)self;
+    *(void**)(p + 0x00) = nullptr;
+    *(void**)(p + 0x04) = nullptr;
+    return self;
+}
+
+// ============================================================================
+// RKC_UPDIB_VSBLOCK FUNCTIONS
+// ============================================================================
+
+/**
+ * RKC_UPDIB_VSBLOCK class layout (0x14 bytes):
+ *   +0x00: void* vsList         - List of VS objects
+ *   +0x04: long vsCount         - Count of VS objects  
+ *   +0x08: void* unknown1
+ *   +0x0c: void* unknown2
+ *   +0x10: void* nextBlock      - Next block in linked list
+ */
+
+/**
+ * RKC_UPDIB_VSBLOCK::constructor - Initialize VSBLOCK object
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_constructor(void* self) {
+    char* p = (char*)self;
+    *(void**)(p + 0x00) = nullptr;
+    *(void**)(p + 0x04) = nullptr;
+    *(void**)(p + 0x08) = nullptr;
+    *(void**)(p + 0x0c) = nullptr;
+    *(void**)(p + 0x10) = nullptr;
+    return self;
+}
+
+// ============================================================================
+// RKC_UPDIB_VSPACKET FUNCTIONS
+// ============================================================================
+
+/**
+ * RKC_UPDIB_VSPACKET class layout (0x54 bytes):
+ *   +0x00-0x10: Various pointers/values (zeroed)
+ *   +0x14-0x20: Four longs set to 1000 (0x3e8)
+ *   +0x24-0x28: Two longs (zeroed)
+ *   +0x2c: long set to -1
+ *   +0x30-0x34: Three shorts set to 1000
+ *   +0x38-0x3c: Two longs (zeroed)  
+ *   +0x3c: void* nextPacket - Next packet in linked list
+ *   +0x50: long (zeroed)
+ */
+
+/**
+ * RKC_UPDIB_VSPACKET::constructor - Initialize VSPACKET object
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_constructor(void* self) {
+    char* p = (char*)self;
+    
+    // Zero first block
+    *(long*)(p + 0x00) = 0;
+    *(long*)(p + 0x04) = 0;
+    *(long*)(p + 0x08) = 0;
+    *(long*)(p + 0x0c) = 0;
+    *(long*)(p + 0x10) = 0;
+    
+    // Set four longs to 1000
+    *(long*)(p + 0x14) = 1000;
+    *(long*)(p + 0x18) = 1000;
+    *(long*)(p + 0x1c) = 1000;
+    *(long*)(p + 0x20) = 1000;
+    
+    // Zero and set special values
+    *(long*)(p + 0x24) = 0;
+    *(long*)(p + 0x28) = 0;
+    *(long*)(p + 0x2c) = -1;
+    
+    // Three shorts set to 1000
+    *(short*)(p + 0x30) = 1000;
+    *(short*)(p + 0x32) = 1000;
+    *(short*)(p + 0x34) = 1000;
+    
+    // Zero remaining
+    *(long*)(p + 0x38) = 0;
+    *(long*)(p + 0x3c) = 0;  // nextPacket
+    *(long*)(p + 0x50) = 0;
+    
+    return self;
+}
+
+/**
+ * RKC_UPDIB_VSPACKET::destructor - Destroy VSPACKET object
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ * 
+ * Empty destructor - no cleanup needed.
+ */
+extern "C" void __thiscall RKC_UPDIB_VSPACKET_destructor(void* self) {
+    // Empty - nothing to clean up
+}

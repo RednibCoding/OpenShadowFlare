@@ -119,3 +119,29 @@ extern "C" WAVEFORMATEX* __thiscall RKC_DSOUND_VOICE_GetFormat(void* self) {
 extern "C" IDirectSoundBuffer* __thiscall RKC_DSOUND_VOICE_GetBuffer(void* self) {
     return *(IDirectSoundBuffer**)((char*)self + 0x11c);
 }
+
+// ============================================================================
+// RKC_DSOUND_VOC Class
+// ============================================================================
+// Layout (from decompilation):
+//   0x00: DWORD unknown1
+//   0x04: BYTE  unknown2 
+//   0x05-0x107: possibly char array (name/path?)
+//   0x108: DWORD unknown3
+//   0x10c: DWORD unknown4
+//   0x110: DWORD unknown5
+// Total size: ~0x114 bytes
+
+/**
+ * RKC_DSOUND_VOC::constructor - Initialize VOC object
+ * NOT REFERENCED - internal class, not imported by any module
+ */
+extern "C" void* __thiscall RKC_DSOUND_VOC_constructor(void* self) {
+    char* p = (char*)self;
+    *(long*)(p + 0x00) = 0;
+    *(char*)(p + 0x04) = 0;
+    *(long*)(p + 0x108) = 0;
+    *(long*)(p + 0x10c) = 0;
+    *(long*)(p + 0x110) = 0;
+    return self;
+}
