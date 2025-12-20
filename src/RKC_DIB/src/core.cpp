@@ -22,6 +22,39 @@ public:
     unsigned char* bitmap;         // +0x08
 };
 
+/**
+ * RKC_DIBHISPEEDMODE class - 289,984 bytes (0x46C00 = 0x468C0 * 4)
+ * Contains pre-calculated lookup tables for fast blending operations.
+ * The constructor builds complex tables, but destructor is empty.
+ */
+#define DIBHISPEEDMODE_SIZE 0x46C00
+
+// ============================================================================
+// RKC_DIBHISPEEDMODE FUNCTIONS
+// ============================================================================
+
+/**
+ * RKC_DIBHISPEEDMODE::~destructor - Empty destructor
+ * USED BY: o_RKC_UPDIB.dll
+ * 
+ * The lookup tables are embedded in the object (not heap allocated),
+ * so there's nothing to free.
+ */
+extern "C" void __thiscall RKC_DIBHISPEEDMODE_destructor(void* self) {
+    // Empty - no cleanup needed
+}
+
+/**
+ * RKC_DIBHISPEEDMODE::operator= - Copy lookup tables
+ * NOT REFERENCED - stub only, not imported by any module
+ * 
+ * Copies 0x468C0 DWORDs (289,984 bytes) from source to this.
+ */
+extern "C" void* __thiscall RKC_DIBHISPEEDMODE_operatorAssign(void* self, const void* source) {
+    memcpy(self, source, 0x468C0 * sizeof(DWORD));
+    return self;
+}
+
 // ============================================================================
 // CONSTRUCTOR / DESTRUCTOR
 // ============================================================================
