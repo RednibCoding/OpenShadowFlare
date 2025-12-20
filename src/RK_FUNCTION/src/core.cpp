@@ -9,6 +9,11 @@
 #include <cstring>
 #include <cstdio>
 
+// Debug/tracing system - set to 1 to enable function call tracing
+#define OSF_DEBUG 1
+#define DLL_NAME "RK_FUNCTION"
+#include "../../debug.h"
+
 extern "C" {
 
 /**
@@ -17,6 +22,7 @@ extern "C" {
  */
 int __cdecl RK_CheckSJIS(int ch)
 {
+    // Note: No tracing here - called too frequently, would spam logs
     unsigned char c = (unsigned char)ch;
     if ((c >= 0x80 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFF))
         return 1;
@@ -28,6 +34,7 @@ int __cdecl RK_CheckSJIS(int ch)
  */
 int __cdecl RK_CheckStringSJIS(const char* str)
 {
+    OSF_FUNC_TRACE("str='%s'", str ? str : "(null)");
     if (!str) return 0;
     
     while (*str)
@@ -44,6 +51,7 @@ int __cdecl RK_CheckStringSJIS(const char* str)
  */
 int __cdecl RK_CheckLastRoot(const char* path)
 {
+    OSF_FUNC_TRACE("path='%s'", path ? path : "(null)");
     if (!path) return 0;
     
     size_t len = strlen(path);
@@ -58,6 +66,9 @@ int __cdecl RK_CheckLastRoot(const char* path)
  */
 int __cdecl RK_StringsCompare(const char* str1, const char* str2, int caseInsensitive)
 {
+    OSF_FUNC_TRACE("'%s' vs '%s', ci=%d", 
+              str1 ? str1 : "(null)", str2 ? str2 : "(null)", caseInsensitive);
+    
     const unsigned char* s1 = (const unsigned char*)str1;
     const unsigned char* s2 = (const unsigned char*)str2;
     
@@ -113,6 +124,7 @@ int __cdecl RK_StringsCompare(const char* str1, const char* str2, int caseInsens
  */
 void __cdecl RK_StringsCopyAuto(const char* src, char** destPtr)
 {
+    OSF_FUNC_TRACE("src='%s'", src ? src : "(null)");
     if (!destPtr) return;
     
     // Clear existing pointer
@@ -140,6 +152,7 @@ void __cdecl RK_StringsCopyAuto(const char* src, char** destPtr)
  */
 void __cdecl RK_DeleteTabSpaceString(char* str, int mode)
 {
+    OSF_FUNC_TRACE("str='%s', mode=%d", str ? str : "(null)", mode);
     if (!str) return;
     
     if (mode == 0)
@@ -204,6 +217,7 @@ void __cdecl RK_DeleteTabSpaceString(char* str, int mode)
  */
 void __cdecl RK_CutLastRoot(char* path)
 {
+    OSF_FUNC_TRACE("path='%s'", path ? path : "(null)");
     if (!path) return;
     
     size_t len = strlen(path);
@@ -232,6 +246,7 @@ void __cdecl RK_CutLastRoot(char* path)
  */
 void __cdecl RK_SetLastRoot(char* path)
 {
+    OSF_FUNC_TRACE("path='%s'", path ? path : "(null)");
     if (!path) return;
     
     size_t len = strlen(path);
@@ -249,6 +264,7 @@ void __cdecl RK_SetLastRoot(char* path)
  */
 void __cdecl RK_CutFilenameFromFullPath(char* fullPath)
 {
+    OSF_FUNC_TRACE("fullPath='%s'", fullPath ? fullPath : "(null)");
     if (!fullPath) return;
     
     size_t len = strlen(fullPath);
@@ -276,6 +292,7 @@ void __cdecl RK_CutFilenameFromFullPath(char* fullPath)
  */
 void __cdecl RK_CutDirectoryFromFullPath(char* dest, const char* fullPath)
 {
+    OSF_FUNC_TRACE("fullPath='%s'", fullPath ? fullPath : "(null)");
     if (!dest || !fullPath) return;
     
     size_t len = strlen(fullPath);
@@ -306,6 +323,7 @@ void __cdecl RK_CutDirectoryFromFullPath(char* dest, const char* fullPath)
  */
 void __cdecl RK_StringCopyNumber(const char* src, char* dest, int maxLen)
 {
+    OSF_FUNC_TRACE("src='%s', maxLen=%d", src ? src : "(null)", maxLen);
     if (!dest) return;
     
     if (maxLen <= 0)
@@ -367,6 +385,7 @@ void __cdecl RK_StringCopyNumber(const char* src, char* dest, int maxLen)
  */
 void __cdecl RK_AnalyzeFilename(const char* filename, char* nameOut, char* extOut)
 {
+    OSF_FUNC_TRACE("filename='%s'", filename ? filename : "(null)");
     if (!filename || !nameOut || !extOut) return;
     
     // Special case: "."
@@ -430,6 +449,8 @@ void __cdecl RK_AnalyzeFilename(const char* filename, char* nameOut, char* extOu
  */
 int __cdecl RK_CheckFileExist(const char* filename, WIN32_FIND_DATAA* findData)
 {
+    OSF_FUNC_TRACE("%s", filename ? filename : "(null)");
+    
     if (!filename) return 0;
     
     // Copy filename to local buffer and remove trailing slash
@@ -471,6 +492,7 @@ int __cdecl RK_CheckFileExist(const char* filename, WIN32_FIND_DATAA* findData)
  */
 int __cdecl RK_CheckDriveEffective(int driveLetter)
 {
+    OSF_FUNC_TRACE("driveLetter='%c'", (char)driveLetter);
     DWORD drives = GetLogicalDrives();
     
     // Convert to lowercase and get drive index (0-25)
@@ -490,6 +512,7 @@ int __cdecl RK_CheckDriveEffective(int driveLetter)
  */
 int __cdecl RK_GetFileLastWrite(const char* filename, SYSTEMTIME* sysTime)
 {
+    OSF_FUNC_TRACE("filename='%s'", filename ? filename : "(null)");
     WIN32_FIND_DATAA findData;
     HANDLE hFind = FindFirstFileA(filename, &findData);
     
@@ -515,6 +538,7 @@ int __cdecl RK_GetFileLastWrite(const char* filename, SYSTEMTIME* sysTime)
  */
 int __cdecl RK_SetFileLastWrite(const char* filename, const SYSTEMTIME* sysTime)
 {
+    OSF_FUNC_TRACE("filename='%s'", filename ? filename : "(null)");
     // Convert SYSTEMTIME to FILETIME (local)
     FILETIME localFileTime;
     if (!SystemTimeToFileTime(sysTime, &localFileTime))
@@ -546,6 +570,7 @@ int __cdecl RK_SetFileLastWrite(const char* filename, const SYSTEMTIME* sysTime)
  */
 int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time2)
 {
+    OSF_FUNC_TRACE_NOARGS;
     // Compare year
     if (time1->wYear > time2->wYear) return 1;
     if (time1->wYear < time2->wYear) return -1;
@@ -581,5 +606,15 @@ int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            OSF_DEBUG_INIT();
+            OSF_TRACE("DllMain", "PROCESS_ATTACH");
+            break;
+        case DLL_PROCESS_DETACH:
+            OSF_TRACE("DllMain", "PROCESS_DETACH");
+            OSF_DEBUG_SHUTDOWN();
+            break;
+    }
     return TRUE;
 }
