@@ -3,7 +3,7 @@ EXPORTS
 	RK_AnalyzeFilename=RK_AnalyzeFilename @1
 	RK_CheckDriveEffective=RK_CheckDriveEffective @2
 	RK_CheckFileExist=RK_CheckFileExist @3
-	RK_CheckFilesExist=o_RK_FUNCTION.RK_CheckFilesExist @4
+	RK_CheckFilesExist=RK_CheckFilesExist @4
 	RK_CheckLastRoot=RK_CheckLastRoot @5
 	RK_CheckSJIS=RK_CheckSJIS @6
 	RK_CheckStringSJIS=RK_CheckStringSJIS @7
@@ -32,7 +32,7 @@ EXPORTS
 	RK_MesDefineCheck=o_RK_FUNCTION.RK_MesDefineCheck @30
 	RK_MesDefineCut=o_RK_FUNCTION.RK_MesDefineCut @31
 	RK_MesDefineSet=o_RK_FUNCTION.RK_MesDefineSet @32
-	RK_ReleaseFilesExist=o_RK_FUNCTION.RK_ReleaseFilesExist @33
+	RK_ReleaseFilesExist=RK_ReleaseFilesExist @33
 	RK_SelectDirectory=o_RK_FUNCTION.RK_SelectDirectory @34
 	RK_SelectFilename=o_RK_FUNCTION.RK_SelectFilename @35
 	RK_SetAbsoluteDirNameLayer=o_RK_FUNCTION.RK_SetAbsoluteDirNameLayer @36
