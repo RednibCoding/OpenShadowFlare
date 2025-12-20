@@ -1,8 +1,8 @@
 LIBRARY RK_FUNCTION
 EXPORTS
-	RK_AnalyzeFilename=o_RK_FUNCTION.RK_AnalyzeFilename @1
+	RK_AnalyzeFilename=RK_AnalyzeFilename @1
 	RK_CheckDriveEffective=o_RK_FUNCTION.RK_CheckDriveEffective @2
-	RK_CheckFileExist=o_RK_FUNCTION.RK_CheckFileExist @3
+	RK_CheckFileExist=RK_CheckFileExist @3
 	RK_CheckFilesExist=o_RK_FUNCTION.RK_CheckFilesExist @4
 	RK_CheckLastRoot=RK_CheckLastRoot @5
 	RK_CheckSJIS=RK_CheckSJIS @6
