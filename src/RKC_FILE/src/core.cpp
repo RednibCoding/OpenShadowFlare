@@ -144,9 +144,9 @@ extern "C"
      * Assignment operator - shallow copy of handle
      * NOT REFERENCED - not imported by any module
      */
-    RKC_FILE& __thiscall equalsOperator(RKC_FILE* self, const RKC_FILE& lhs)
+    RKC_FILE& __thiscall equalsOperator(RKC_FILE* self, const RKC_FILE& other)
     {
-        self->m_handle = lhs.m_handle;
+        self->m_handle = other.m_handle;
         return *self;
     }
 

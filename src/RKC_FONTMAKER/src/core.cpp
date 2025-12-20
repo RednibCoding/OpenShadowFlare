@@ -76,29 +76,31 @@ extern "C"
 
     /**
      * Draw double-size font character
+     * Args: hdc = device context, charCode = character to draw (SJIS or ASCII)
      * NOT REFERENCED - not imported by any module
      * Note: Forwards to original DLL
      */
-    bool __thiscall DrawDoubleFont(RKC_FONTMAKER* self, HDC* hdc, unsigned char* ucharParam)
+    bool __thiscall DrawDoubleFont(RKC_FONTMAKER* self, HDC* hdc, unsigned char* charCode)
     {
         bool result = CallFunctionInDLL<bool>(
             "o_RKC_FONTMAKER.dll",
             "?DrawDoubleFont@RKC_FONTMAKER@@QAEHPAUHDC__@@PAE@Z",
-            self, hdc, ucharParam);
+            self, hdc, charCode);
         return result;
     }
 
     /**
      * Draw normal-size font character
+     * Args: hdc = device context, charCode = character to draw (SJIS or ASCII)
      * NOT REFERENCED - not imported by any module
      * Note: Forwards to original DLL
      */
-    bool __thiscall DrawNormalFont(RKC_FONTMAKER* self, HDC* hdc, unsigned char* ucharParam)
+    bool __thiscall DrawNormalFont(RKC_FONTMAKER* self, HDC* hdc, unsigned char* charCode)
     {
         bool result = CallFunctionInDLL<bool>(
             "o_RKC_FONTMAKER.dll",
             "?DrawNormalFont@RKC_FONTMAKER@@QAEHPAUHDC__@@E@Z",
-            self, hdc, ucharParam);
+            self, hdc, charCode);
         return result;
     }
 
@@ -140,15 +142,16 @@ extern "C"
 
     /**
      * Initialize font with given parameters
+     * Args: hdc = device context, width = font width, height = font height, fontName = font face name
      * USED BY: ShadowFlare.exe
      * Note: Forwards to original DLL
      */
-    int32_t __thiscall Initialize(RKC_FONTMAKER* self, HDC* hdc, long param_2, long param_3, char* param_4)
+    int32_t __thiscall Initialize(RKC_FONTMAKER* self, HDC* hdc, long width, long height, char* fontName)
     {
         int32_t result = CallFunctionInDLL<int32_t>(
             "o_RKC_FONTMAKER.dll",
             "?Initialize@RKC_FONTMAKER@@QAEHPAUHDC__@@JJPAD@Z",
-            self, hdc, param_2, param_3, param_4);
+            self, hdc, width, height, fontName);
         return result;
     }
 
@@ -157,12 +160,12 @@ extern "C"
      * NOT REFERENCED - not imported by any module
      * Note: Forwards to original DLL
      */
-    RKC_FONTMAKER* __thiscall EqualsOperator(RKC_FONTMAKER* self, const RKC_FONTMAKER& lhs)
+    RKC_FONTMAKER* __thiscall EqualsOperator(RKC_FONTMAKER* self, const RKC_FONTMAKER& other)
     {
         RKC_FONTMAKER* result = CallFunctionInDLL<RKC_FONTMAKER*>(
             "o_RKC_FONTMAKER.dll",
             "??4RKC_FONTMAKER@@QAEAAV0@ABV0@@Z",
-            self, lhs);
+            self, other);
         return result;
     }
 
@@ -222,15 +225,16 @@ extern "C"
 
     /**
      * Save font bitmap to NJP file
+     * Args: hdc = device context, filename = output file path
      * USED BY: ShadowFlare.exe
      * Note: Forwards to original DLL
      */
-    int32_t __thiscall SaveNJPFile(RKC_FONTMAKER* self, HDC* hdc, char* param_2)
+    int32_t __thiscall SaveNJPFile(RKC_FONTMAKER* self, HDC* hdc, char* filename)
     {
         int32_t result = CallFunctionInDLL<int32_t>(
             "o_RKC_FONTMAKER.dll",
             "?SaveNJPFile@RKC_FONTMAKER@@QAEHPAUHDC__@@PAD@Z",
-            self, hdc, param_2);
+            self, hdc, filename);
         return result;
     }
 

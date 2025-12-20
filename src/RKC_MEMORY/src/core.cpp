@@ -56,10 +56,10 @@ extern "C"
      * Assignment operator - shallow copy
      * NOT REFERENCED - not imported by any module
      */
-    RKC_MEMORY& __thiscall equalsOperator(RKC_MEMORY* _this, const RKC_MEMORY& lhs)
+    RKC_MEMORY& __thiscall equalsOperator(RKC_MEMORY* _this, const RKC_MEMORY& other)
     {
-        _this->allocated = lhs.allocated;
-        _this->size = lhs.size;
+        _this->allocated = other.allocated;
+        _this->size = other.size;
         return *_this;
     }
 

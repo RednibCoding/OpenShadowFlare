@@ -329,7 +329,7 @@ extern "C" {
      */
     void __thiscall RKC_RPG_TABLEDATA_Release(RKC_RPG_TABLEDATA* self)
     {
-        // Deallocate memory for unknownPointerFieldC
+        // Deallocate memory for table (numeric values)
         if (self->table != nullptr) {
             for (int rowIndex = 0; rowIndex < self->rowCount; ++rowIndex) {
                 GlobalFree(reinterpret_cast<HGLOBAL>(&self->table[rowIndex]));

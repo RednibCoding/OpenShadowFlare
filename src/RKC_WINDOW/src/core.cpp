@@ -76,9 +76,9 @@ extern "C" {
      * Assignment operator - shallow copy
      * NOT REFERENCED - not imported by any module
      */
-    RKC_WINDOW& __thiscall EqualsOperator(RKC_WINDOW* self, const RKC_WINDOW& lhs)
+    RKC_WINDOW& __thiscall EqualsOperator(RKC_WINDOW* self, const RKC_WINDOW& other)
     {
-        self->m_hWnd = lhs.m_hWnd;
+        self->m_hWnd = other.m_hWnd;
         return *self;
     }
 
