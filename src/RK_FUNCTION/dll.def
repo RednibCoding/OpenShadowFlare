@@ -28,7 +28,7 @@ EXPORTS
 	RK_LzEncodeFileToFile=RK_LzEncodeFileToFile @26
 	RK_LzEncodeFileToMemory=RK_LzEncodeFileToMemory @27
 	RK_LzEncodeMemoryToFile=RK_LzEncodeMemoryToFile @28
-	RK_LzEncodeMemoryToMemory=o_RK_FUNCTION.RK_LzEncodeMemoryToMemory @29
+	RK_LzEncodeMemoryToMemory=RK_LzEncodeMemoryToMemory @29
 	RK_MesDefineCheck=RK_MesDefineCheck @30
 	RK_MesDefineCut=RK_MesDefineCut @31
 	RK_MesDefineSet=RK_MesDefineSet @32

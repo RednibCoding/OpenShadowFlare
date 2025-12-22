@@ -1228,20 +1228,174 @@ int __cdecl RK_LzEncodeMemoryToFile(const void* srcData, int srcSize, const char
 }
 
 /**
- * LZ encode from memory to memory
- * NOT REFERENCED - stub only, not imported by any module
- * NOTE: This IS used by o_RKC_FONTMAKER.dll, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
- * but we keep it as stub/forward until we need to implement it
+ * LZSS Compression: Memory to Memory
+ * 
+ * Produces RCLIB-L format output compatible with RK_LzDecodeMemoryToMemory.
+ * Uses a simple sliding window search (not as optimized as the original's 
+ * binary tree approach, but produces identical output format).
+ * 
+ * Output format:
+ *   Header (16 bytes): "RCLIB-L\x1a" + decompressed_size (4 bytes) + compressed_size (4 bytes)
+ *   Data: flag bytes followed by literals or match references
+ *   
+ * Flag bits (MSB first): 1 = match reference (2 bytes), 0 = literal (1 byte)
+ * Match encoding: offset = b1 | ((b2 & 0xF0) << 4), length = (b2 & 0x0F) + 3
+ * 
  * USED BY: o_RKC_FONTMAKER.dll, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
  */
 int __cdecl RK_LzEncodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
 {
-    OSF_FUNC_TRACE("STUB: srcSize=%d", srcSize);
-    // TODO: This function IS used - needs real implementation
-    // For now, return failure so callers know encoding failed
-    if (outData) *outData = NULL;
+    OSF_FUNC_TRACE("srcSize=%d", srcSize);
+    
+    if (!srcData || !outData || srcSize < 0) return 0;
     if (outSize) *outSize = 0;
-    return 0;
+    *outData = NULL;
+    
+    // Handle empty input
+    if (srcSize == 0)
+    {
+        // Allocate just the header
+        unsigned char* dest = (unsigned char*)GlobalAlloc(0, 16);
+        if (!dest) return 0;
+        
+        memcpy(dest, "RCLIB-L", 7);
+        dest[7] = 0x1A;
+        *(int*)(dest + 8) = 0;   // decompressed size
+        *(int*)(dest + 12) = 0;  // compressed size (data portion)
+        
+        *outData = dest;
+        if (outSize) *outSize = 16;
+        return 1;
+    }
+    
+    const unsigned char* src = (const unsigned char*)srcData;
+    
+    // Worst case: header + every byte as literal with flag bytes
+    // Each flag byte covers 8 items, worst case each item is 1 literal byte
+    // So worst case is: 16 + srcSize + (srcSize + 7) / 8 flag bytes
+    int maxOutSize = 16 + srcSize + (srcSize + 7) / 8 + 16;  // extra padding for safety
+    
+    unsigned char* dest = (unsigned char*)GlobalAlloc(0, maxOutSize);
+    if (!dest) return 0;
+    
+    // Initialize sliding window (4KB, filled with zeros)
+    unsigned char window[4096];
+    memset(window, 0x00, sizeof(window));
+    
+    int srcPos = 0;
+    int destPos = 16;  // Skip header for now
+    int winPos = 0xFEE;  // Initial window position
+    
+    // Temporary buffer for current chunk (1 flag byte + up to 8 items)
+    unsigned char chunkBuf[1 + 8 * 2];  // flag + max 8 items * 2 bytes each
+    int chunkLen = 1;  // Start after flag byte position
+    unsigned char flagByte = 0;
+    unsigned char flagMask = 0x80;
+    
+    while (srcPos < srcSize)
+    {
+        // Search for best match in the sliding window
+        int bestLen = 0;
+        int bestOffset = 0;
+        
+        // Only search if we have at least 3 bytes left (minimum match length)
+        if (srcPos + 2 < srcSize)
+        {
+            // Search backwards through the window for matches
+            for (int searchOffset = 1; searchOffset <= 4096; searchOffset++)
+            {
+                int windowOffset = (winPos - searchOffset) & 0xFFF;
+                
+                // Count matching bytes
+                int matchLen = 0;
+                while (matchLen < 18 && srcPos + matchLen < srcSize)
+                {
+                    int winIdx = (windowOffset + matchLen) & 0xFFF;
+                    if (window[winIdx] != src[srcPos + matchLen])
+                        break;
+                    matchLen++;
+                }
+                
+                // Keep best match (>= 3 bytes)
+                if (matchLen >= 3 && matchLen > bestLen)
+                {
+                    bestLen = matchLen;
+                    bestOffset = windowOffset;
+                    
+                    // Can't do better than 18 bytes
+                    if (bestLen == 18)
+                        break;
+                }
+            }
+        }
+        
+        if (bestLen >= 3)
+        {
+            // Encode match reference (bit = 1)
+            flagByte |= flagMask;
+            
+            // Encode: offset in b1 and high nibble of b2, length-3 in low nibble of b2
+            unsigned char b1 = bestOffset & 0xFF;
+            unsigned char b2 = ((bestOffset >> 4) & 0xF0) | ((bestLen - 3) & 0x0F);
+            
+            chunkBuf[chunkLen++] = b1;
+            chunkBuf[chunkLen++] = b2;
+            
+            // Update window with matched bytes
+            for (int i = 0; i < bestLen; i++)
+            {
+                window[winPos] = src[srcPos + i];
+                winPos = (winPos + 1) & 0xFFF;
+            }
+            srcPos += bestLen;
+        }
+        else
+        {
+            // Encode literal byte (bit = 0)
+            // flagByte bit is already 0
+            chunkBuf[chunkLen++] = src[srcPos];
+            
+            // Update window
+            window[winPos] = src[srcPos];
+            winPos = (winPos + 1) & 0xFFF;
+            srcPos++;
+        }
+        
+        // Move to next flag bit
+        flagMask >>= 1;
+        
+        // If we've filled 8 items, flush the chunk
+        if (flagMask == 0)
+        {
+            chunkBuf[0] = flagByte;
+            memcpy(dest + destPos, chunkBuf, chunkLen);
+            destPos += chunkLen;
+            
+            // Reset for next chunk
+            flagByte = 0;
+            flagMask = 0x80;
+            chunkLen = 1;
+        }
+    }
+    
+    // Flush any remaining partial chunk
+    if (flagMask != 0x80)  // We have pending items
+    {
+        chunkBuf[0] = flagByte;
+        memcpy(dest + destPos, chunkBuf, chunkLen);
+        destPos += chunkLen;
+    }
+    
+    // Write header
+    memcpy(dest, "RCLIB-L", 7);
+    dest[7] = 0x1A;  // Terminator byte (matches original)
+    *(int*)(dest + 8) = srcSize;       // Decompressed size
+    *(int*)(dest + 12) = destPos - 16; // Compressed data size (without header)
+    
+    *outData = dest;
+    if (outSize) *outSize = destPos;
+    
+    return 1;
 }
 
 /**
