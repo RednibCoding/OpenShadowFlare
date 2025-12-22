@@ -92,20 +92,151 @@ Script components:
 - Commands with operands (75 opcodes)
 - TempFlag / NetFlag - Script flags
 
-```
-Header (16 bytes):
-  0x00: char[16] magic = "NJudgeUniPat003"
-  0x10: uint32_t patternCount
+## NJP Sprite Format (NJudgeUniPat)
 
-Per Pattern (20 bytes + data):
-  0x00: uint8_t bpp           # Bits per pixel
-  0x04: uint32_t width
-  0x08: uint32_t height
-  0x0C: uint32_t flags
-  0x10: ... RCLIB-L compressed pixel data
+NJP files contain paletted sprite/pattern data with embedded color palettes. 524 of 545 NJP files
+in the game contain embedded palettes.
 
-Stride alignment: (width + 3) & ~3
+### File Structure Overview
+
 ```
++---------------------------+
+| Magic Header (16 bytes)   |
++---------------------------+
+| Pattern Count (4 bytes)   |
++---------------------------+
+| Pattern 0 Header (20 b)   |
+| RCLIB-L Block 0           |
++---------------------------+
+| Pattern 1 Header (20 b)   |
+| RCLIB-L Block 1           |
++---------------------------+
+| ... more patterns ...     |
++---------------------------+
+| Extended Header (12 b)    |
+| Extended Metadata (32*N)  |
++---------------------------+
+| Palette Section           |
++---------------------------+
+```
+
+### Magic Header (16 bytes)
+```
+Offset  Size  Description
+------  ----  -----------
+0x00    16    Magic: "NJudgeUniPat003\0"
+```
+
+### Main Header (4 bytes)
+```
+Offset  Size  Description
+------  ----  -----------
+0x10    4     Pattern count (uint32_t, little-endian)
+```
+
+### Pattern Header (20 bytes each)
+Before each RCLIB-L compressed block:
+```
+Offset  Size  Description
+------  ----  -----------
+0x00    4     Field0 (unknown, often 0)
+0x04    4     BPP - Bits per pixel (4 or 8)
+0x08    4     Width in pixels
+0x0C    4     Height in pixels
+0x10    4     Flags (bitfield, see below)
+```
+
+**Flags bitfield:**
+- Bit 0: Unknown
+- Other bits: Unknown (needs more analysis)
+
+**BPP values:**
+- 4 = 16-color palette (64 bytes)
+- 8 = 256-color palette (1024 bytes)
+
+### Pixel Data (RCLIB-L compressed)
+After each pattern header is an RCLIB-L compressed block containing the raw pixel indices.
+
+**Stride alignment:** `(width + 3) & ~3` (4-byte aligned rows)
+
+### Extended Header (12 bytes)
+Located after all pattern RCLIB-L blocks:
+```
+Offset  Size  Description
+------  ----  -----------
+0x00    4     Pattern count (repeated)
+0x04    4     Pattern count (repeated again)
+0x08    4     Palette count
+```
+
+### Extended Metadata (32 bytes per pattern)
+After extended header, 32 bytes of additional data per pattern:
+```
+Offset  Size  Description
+------  ----  -----------
+0x00    4     Width (repeated)
+0x04    4     Height (repeated)
+0x08    24    Other metadata (unknown)
+```
+
+### Palette Section
+Located after extended metadata. Palette data is stored in **BGRA format** (Blue, Green, Red, Alpha).
+
+**Color entry (4 bytes):**
+```
+Offset  Size  Description
+------  ----  -----------
+0x00    1     Blue (0-255)
+0x01    1     Green (0-255)
+0x02    1     Red (0-255)
+0x03    1     Alpha (usually 0x00)
+```
+
+**Palette sizes:**
+- 4-bit (16 colors): 64 bytes
+- 8-bit (256 colors): 1024 bytes
+
+### Parsing Algorithm
+
+To find the palette:
+1. Skip 16-byte magic + 4-byte pattern count
+2. For each pattern:
+   - Read 20-byte pattern header
+   - Read RCLIB-L block (check "RCLIB-L" magic, read decompSize at offset +8)
+   - Skip compressed data to next pattern
+3. After last pattern, read 12-byte extended header
+4. Skip 32 * pattern_count bytes of extended metadata
+5. Read palette_count palettes (each 64 or 1024 bytes based on BPP)
+
+### Example: Small 4-bit NJP (Pattern.Njp)
+```
+0x00: "NJudgeUniPat003\0"   Magic (16 bytes)
+0x10: 01 00 00 00           Pattern count = 1
+0x14: [20 bytes]            Pattern 0 header (BPP=4, W=21, H=7)
+0x28: [78 bytes]            RCLIB-L block 0
+0x76: 01 00 00 00           Extended header: pattern_count = 1
+0x7A: 01 00 00 00           Extended header: pattern_count = 1
+0x7E: 01 00 00 00           Extended header: palette_count = 1
+0x82: [48 bytes]            Extended metadata (32 bytes + 16 pad)
+0xB2: 01 00 00 00           Palette count confirmation
+0xB6: [64 bytes]            16-color BGRA palette
+```
+
+### Example: Large 8-bit NJP (Card.Njp)
+```
+0x00: "NJudgeUniPat003\0"   Magic (16 bytes)
+0x10: 45 00 00 00           Pattern count = 69
+0x14: [69 patterns...]      Pattern headers + RCLIB-L blocks
+0x7AA84: [ext header]       Extended header
+0x7AA90: [69*32 bytes]      Extended metadata
+0x8B994: [palette data]     Multiple 256-color BGRA palettes
+```
+
+### Notes
+- Some NJP files contain multiple palettes even when palette_count=1
+- The palette_count field may not always reflect the actual number of palettes
+- For reliable extraction, calculate palette region as: EOF - (palette_count * palette_size)
+- Color 0 is typically transparent in sprites
 
 ## RCLIB-L Compression (LZSS)
 
