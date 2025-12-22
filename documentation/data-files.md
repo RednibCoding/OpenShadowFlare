@@ -109,19 +109,89 @@ Stride alignment: (width + 3) & ~3
 
 ## RCLIB-L Compression (LZSS)
 
-```
-Header (12 bytes):
-  0x00: char[8] magic = "RCLIB-L\0"
-  0x08: uint32_t decompressedSize (little-endian)
+RCLIB-L is an LZSS-based compression format used for all game assets (sprites, maps, etc.).
 
-Algorithm:
-  - 4KB sliding window
-  - Initial window position: 0xFEE
-  - Window fill byte: 0x20 (space)
-  - Flags: LSB-first bit order
-  - Match encoding: 2 bytes (12-bit offset + 4-bit length)
-  - Match length: stored value + 3 (min 3, max 18)
+### Header (16 bytes)
 ```
+Offset  Size  Description
+------  ----  -----------
+0x00    7     Magic: "RCLIB-L" (ASCII)
+0x07    1     Terminator: usually 0x00 or 0x1A (varies, not checked)
+0x08    4     Decompressed size (uint32_t, little-endian)
+0x0C    4     Reserved/unused (skip these bytes)
+```
+
+### Decompression Algorithm
+
+**Initialization:**
+- 4KB (4096 bytes) sliding window, filled with **zeros** (0x00)
+- Initial window write position: **0xFEE** (4078)
+- Data starts at offset **16** (after header)
+
+**Flag Byte Processing:**
+- Read one flag byte from input
+- Process 8 bits, **MSB first** (bit 7 → bit 0)
+- Mask starts at 0x80, shifts right each iteration
+
+**Bit Interpretation:**
+| Bit Value | Meaning | Action |
+|-----------|---------|--------|
+| 0 (clear) | Literal | Read 1 byte, write to output and window |
+| 1 (set)   | Match   | Read 2-byte reference, copy from window |
+
+**Match Reference Encoding (2 bytes):**
+```
+Byte 1 (b1): Lower 8 bits of offset
+Byte 2 (b2): Upper 4 bits = offset high nibble, Lower 4 bits = length - 3
+
+Offset = b1 | ((b2 & 0xF0) << 4)    // 12-bit offset (0-4095)
+Length = (b2 & 0x0F) + 3            // Length 3-18 bytes
+```
+
+**Pseudocode:**
+```c
+void decompress_rclib_l(uint8_t* src, int srcSize, uint8_t* dest) {
+    uint8_t window[4096] = {0};    // Zero-filled
+    int srcPos = 16;                // Skip 16-byte header
+    int destPos = 0;
+    int winPos = 0xFEE;             // Initial window position
+    int decompSize = *(uint32_t*)(src + 8);
+    
+    while (srcPos < srcSize && destPos < decompSize) {
+        uint8_t flags = src[srcPos++];
+        
+        for (uint8_t mask = 0x80; mask != 0 && destPos < decompSize; mask >>= 1) {
+            if (flags & mask) {
+                // Match reference (bit = 1)
+                uint8_t b1 = src[srcPos++];
+                uint8_t b2 = src[srcPos++];
+                int offset = b1 | ((b2 & 0xF0) << 4);
+                int length = (b2 & 0x0F) + 3;
+                
+                for (int i = 0; i < length && destPos < decompSize; i++) {
+                    uint8_t c = window[(offset + i) & 0xFFF];
+                    dest[destPos++] = c;
+                    window[winPos] = c;
+                    winPos = (winPos + 1) & 0xFFF;
+                }
+            } else {
+                // Literal byte (bit = 0)
+                uint8_t c = src[srcPos++];
+                dest[destPos++] = c;
+                window[winPos] = c;
+                winPos = (winPos + 1) & 0xFFF;
+            }
+        }
+    }
+}
+```
+
+### Common Mistakes to Avoid
+1. **Header size**: 16 bytes, not 12 (there's 4 bytes of padding/reserved after decompSize)
+2. **Bit order**: MSB first (0x80 → 0x01), NOT LSB first
+3. **Bit meaning**: 1 = match, 0 = literal (opposite of some LZSS variants)
+4. **Window init**: Zero-filled (0x00), NOT space-filled (0x20)
+5. **Magic check**: Only compare 7 bytes ("RCLIB-L"), byte 8 varies
 
 ## Save File Format (.Ssv)
 
