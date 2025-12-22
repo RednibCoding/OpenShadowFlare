@@ -188,21 +188,17 @@ extern "C" {
 
     /**
      * Release all table data
-     * USED BY: ShadowFlare.exe
-     * Note: Currently empty - crashes when implemented
+     * NOT REFERENCED - not imported by any module
+     * 
+     * Note: This function is not called by the game or any other DLLs.
+     * Memory allocated by ReadBinaryFile (forwarded to original) uses their
+     * allocator, so we can't properly free it. Just clear the pointer.
      */
     void __thiscall RKC_RPG_TABLE_Release(RKC_RPG_TABLE* self)
     {
-        // TODO: find out why this crashes the game
-
-        // RKC_RPG_TABLEDATA* currentNode = self->headData;
-        // while (currentNode != nullptr) {
-        //     RKC_RPG_TABLEDATA* nextNode = currentNode->next;
-        //     RKC_RPG_TABLEDATA_deconstructor(currentNode);  // Call destructor for current node
-        //     delete currentNode;                        // Deallocate memory for current node
-        //     currentNode = nextNode;                    // Move to the next node
-        // }
-        // self->headData = nullptr;  // Set headData to nullptr after releasing all
+        // NOT USED by game - just clear the pointer
+        // Actual cleanup happens in destructor
+        self->headData = nullptr;
     }
 
     /**

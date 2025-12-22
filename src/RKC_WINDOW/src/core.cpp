@@ -84,54 +84,47 @@ extern "C" {
 
     /**
      * Horizontal scroll handler
-     * NOT REFERENCED - not imported by any module
-     * Note: Forwards to original DLL
+     * NOT REFERENCED - stub only, not imported by any module
      */
-    void __thiscall HScroll(RKC_WINDOW* self, uint32_t param_1, uint64_t param_2)
+    void __thiscall HScroll(RKC_WINDOW* self, uint32_t scrollCode, uint64_t pos)
     {
-        CallFunctionInDLL<void>(
-            "o_RKC_WINDOW.dll",
-            "?HScroll@RKC_WINDOW@@QAEXIJ",
-            self, param_1, param_2);
+        // NOT USED - stub
+        (void)self;
+        (void)scrollCode;
+        (void)pos;
     }
 
     /**
      * Vertical scroll handler
-     * NOT REFERENCED - not imported by any module
-     * Note: Forwards to original DLL
+     * NOT REFERENCED - stub only, not imported by any module
      */
-    void __thiscall VScroll(RKC_WINDOW* self, uint32_t param_1, uint64_t param_2)
+    void __thiscall VScroll(RKC_WINDOW* self, uint32_t scrollCode, uint64_t pos)
     {
-        CallFunctionInDLL<void>(
-            "o_RKC_WINDOW.dll",
-            "?VScroll@RKC_WINDOW@@QAEXIJ@Z",
-            self, param_1, param_2);
+        // NOT USED - stub
+        (void)self;
+        (void)scrollCode;
+        (void)pos;
     }
 
     /**
-     * Resize handler
-     * NOT REFERENCED - not imported by any module
-     * Note: Forwards to original DLL
+     * Resize handler - updates scroll bars based on client rect
+     * NOT REFERENCED - stub only, not imported by any module
      */
     void __thiscall Resize(RKC_WINDOW* self)
     {
-        CallFunctionInDLL<void>(
-            "o_RKC_WINDOW.dll",
-            "?Resize@RKC_WINDOW@@QAEXX",
-            self);
+        // NOT USED - stub
+        (void)self;
     }
 
     /**
      * Show/hide window
-     * NOT REFERENCED - not imported by any module
-     * Note: Forwards to original DLL
+     * NOT REFERENCED - stub only, not imported by any module
      */
-    void __thiscall Show(RKC_WINDOW* self, int param_1)
+    void __thiscall Show(RKC_WINDOW* self, int showCmd)
     {
-        CallFunctionInDLL<void>(
-            "o_RKC_WINDOW.dll",
-            "?Show@RKC_WINDOW@@QAEXH@",
-            self, param_1);
+        // NOT USED - stub
+        (void)self;
+        (void)showCmd;
     }
 }
 
