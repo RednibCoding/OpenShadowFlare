@@ -364,3 +364,59 @@ extern "C" void* __thiscall RKC_UPDIB_VSPACKET_constructor(void* self) {
 extern "C" void __thiscall RKC_UPDIB_VSPACKET_destructor(void* self) {
     // Empty - nothing to clean up
 }
+
+// ============================================================================
+// STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
+// ============================================================================
+
+// RKC_UPDIB_PATTERN stubs
+extern "C" void __thiscall RKC_UPDIB_PATTERN_destructor(void* self) {}
+extern "C" void* __thiscall RKC_UPDIB_PATTERN_operatorAssign(void* self, const void* src) { return self; }
+extern "C" void __thiscall RKC_UPDIB_PATTERN_Release(void* self) {}
+
+// RKC_UPDIB_UPD stubs
+extern "C" void* __thiscall RKC_UPDIB_UPD_constructor(void* self) { return self; }
+extern "C" void __thiscall RKC_UPDIB_UPD_destructor(void* self) {}
+extern "C" void* __thiscall RKC_UPDIB_UPD_operatorAssign(void* self, const void* src) { return self; }
+extern "C" RKC_DIB* __thiscall RKC_UPDIB_UPD_GetPaletteDIB(void* self, long index) { return nullptr; }
+extern "C" void* __thiscall RKC_UPDIB_UPD_GetPalette(void* self, long index) { return nullptr; }
+extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long flags) { return 0; }
+
+// RKC_UPDIB stubs
+extern "C" void* __thiscall RKC_UPDIB_operatorAssign(void* self, const void* src) { return self; }
+extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_DeleteVSBlock(void* self, long index) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_ExchangeUpd(void* self, long a, long b) { return 0; }
+extern "C" long __thiscall RKC_UPDIB_GetVSBlockCount(void* self) { return 0; }
+extern "C" void* __thiscall RKC_UPDIB_InsertVSBlock(void* self, long index) { return nullptr; }
+extern "C" void __thiscall RKC_UPDIB_Release(void* self) {}
+
+// RKC_UPDIB_VS stubs
+extern "C" void __thiscall RKC_UPDIB_VS_destructor(void* self) {}
+extern "C" void* __thiscall RKC_UPDIB_VS_operatorAssign(void* self, const void* src) { return self; }
+extern "C" int __thiscall RKC_UPDIB_VS_DeleteVSPacket(void* self, long index) { return 0; }
+extern "C" void __thiscall RKC_UPDIB_VS_FlushVSPacket(void* self) {}
+extern "C" long __thiscall RKC_UPDIB_VS_GetVSPacketCount(void* self) { return 0; }
+extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index) { return nullptr; }
+extern "C" void* __thiscall RKC_UPDIB_VS_InsertVSPacket(void* self, long index) { return nullptr; }
+extern "C" void __thiscall RKC_UPDIB_VS_Release(void* self) {}
+extern "C" int __thiscall RKC_UPDIB_VS_Render(void* self, RKC_DIB* dib, long x, long y, RECT* clip) { return 0; }
+extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket(void* self, long index, void* packet) { return nullptr; }
+
+// RKC_UPDIB_VSBLOCK stubs
+extern "C" void __thiscall RKC_UPDIB_VSBLOCK_destructor(void* self) {}
+extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_operatorAssign(void* self, const void* src) { return self; }
+extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count) { return 0; }
+extern "C" void __thiscall RKC_UPDIB_VSBLOCK_FlushVScreen(void* self) {}
+extern "C" long __thiscall RKC_UPDIB_VSBLOCK_GetVSCount(void* self) { return 0; }
+extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self) {}
+
+// RKC_UPDIB_VSPACKET stubs
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_operatorAssign(void* self, const void* src) { return self; }
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_copy(void* self, void* packet) { return nullptr; }
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_full(void* self, void* updib, long a, long b, long c, long d, long e, long f, long g, long h, long i, long j, short k, short l, short m, RECT* clip, RKC_DIB* dib) { return nullptr; }

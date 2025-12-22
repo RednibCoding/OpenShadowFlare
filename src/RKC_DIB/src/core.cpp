@@ -350,6 +350,65 @@ extern "C" RECT* __thiscall RKC_DIB_GetRect(RKC_DIB* self, RECT* outRect) {
 }
 
 // ============================================================================
+// STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
+// ============================================================================
+
+/**
+ * RKC_DIB::AddOffset - Add color offset to palette
+ * NOT REFERENCED - stub
+ */
+extern "C" int __thiscall RKC_DIB_AddOffset(RKC_DIB* self, RGBQUAD offset, int flag) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::ClearUnusedArea - Clear unused bitmap area
+ * NOT REFERENCED - stub
+ */
+extern "C" int __thiscall RKC_DIB_ClearUnusedArea(RKC_DIB* self) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::CompareBitmapColor - Compare pixel color at coordinates
+ * NOT REFERENCED - stub
+ */
+extern "C" int __thiscall RKC_DIB_CompareBitmapColor(RKC_DIB* self, long x, long y, RGBQUAD* color) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::Copy - Deep copy from source DIB
+ * NOT REFERENCED - stub
+ */
+extern "C" int __thiscall RKC_DIB_Copy(RKC_DIB* self, RKC_DIB* source) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::PaintArea - Paint rectangular area with color
+ * NOT REFERENCED - stub
+ */
+extern "C" int __thiscall RKC_DIB_PaintArea(RKC_DIB* self, long x, long y, RGBQUAD* color) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::ScreenPaintLineScan - Scanline paint operation
+ * NOT REFERENCED - stub
+ */
+extern "C" void __thiscall RKC_DIB_ScreenPaintLineScan(RKC_DIB* self, POINT* p1, long* a, POINT* p2, RGBQUAD* c1, RGBQUAD* c2) {
+}
+
+/**
+ * RKC_DIB::TransferToDDB - Transfer to device context (6-arg version)
+ * NOT REFERENCED - stub
+ */
+extern "C" int __thiscall RKC_DIB_TransferToDDB_6args(RKC_DIB* self, HDC hdc, long x, long y, long w, long h, long flags) {
+    return 0;
+}
+
+// ============================================================================
 // DLL ENTRY POINT
 // ============================================================================
 

@@ -166,4 +166,28 @@ long __thiscall RKC_DBFCONTROL_GetExStyle(void* self, long arg) {
     return result;
 }
 
+// ============================================================================
+// STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
+// ============================================================================
+
+// RKC_DBF - NOT USED BY EXE
+void* __thiscall RKC_DBF_constructor(void* self) { return self; }
+void __thiscall RKC_DBF_destructor(void* self) {}
+void* __thiscall RKC_DBF_operatorAssign(void* self, const void* src) { return self; }
+void __thiscall RKC_DBF_Draw(void* self) {}
+void __thiscall RKC_DBF_Flush(void* self) {}
+void __thiscall RKC_DBF_GetClipRect(void* self, void* rect) {}
+void __thiscall RKC_DBF_Release(void* self) {}
+
+// RKC_DBFCONTROL - NOT USED
+void* __thiscall RKC_DBFCONTROL_operatorAssign(void* self, const void* src) { return self; }
+void __thiscall RKC_DBFCONTROL_DisableDraw(void* self) {}
+void __thiscall RKC_DBFCONTROL_DrawFunction(void* self) {}
+void* __thiscall RKC_DBFCONTROL_Draw(void* self) { return nullptr; }
+void __thiscall RKC_DBFCONTROL_EnableDraw(void* self) {}
+void __thiscall RKC_DBFCONTROL_FlushDrawCount(void* self) {}
+void __thiscall RKC_DBFCONTROL_GetClipRect(void* self, void* rect, long arg) {}
+int __thiscall RKC_DBFCONTROL_Redraw(void* self) { return 0; }
+void __thiscall RKC_DBFCONTROL_Release(void* self) {}
+
 } // extern "C"
