@@ -994,12 +994,13 @@ int __cdecl RK_LzDecodeMemoryToMemory(const void* srcData, int srcSize, void** o
 {
     OSF_FUNC_TRACE("srcSize=%d", srcSize);
     
-    if (!srcData || !outData || srcSize < 12) return 0;
+    // Minimum size: 16 bytes header (8 magic + 4 size + 4 padding/reserved)
+    if (!srcData || !outData || srcSize <= 16) return -1;
     
     const unsigned char* src = (const unsigned char*)srcData;
     
-    // Check header: "RCLIB-L\0"
-    if (memcmp(src, "RCLIB-L", 8) != 0)
+    // Check header: "RCLIB-L" (only compare 7 bytes - byte 8 can vary)
+    if (memcmp(src, "RCLIB-L", 7) != 0)
         return 0;
     
     // Get decompressed size (little-endian 32-bit at offset 8)
@@ -1007,17 +1008,17 @@ int __cdecl RK_LzDecodeMemoryToMemory(const void* srcData, int srcSize, void** o
     if (outSize)
         *outSize = decompSize;
     
-    // Allocate output buffer
+    // Allocate output buffer using GlobalAlloc(GMEM_FIXED, size)
     unsigned char* dest = (unsigned char*)GlobalAlloc(0, decompSize);
     if (!dest) return 0;
     
     *outData = dest;
     
-    // Initialize sliding window (4KB, filled with spaces)
+    // Initialize sliding window (4KB, filled with zeros - NOT 0x20!)
     unsigned char window[4096];
-    memset(window, 0x20, sizeof(window));  // Fill with space character
+    memset(window, 0x00, sizeof(window));  // Fill with zeros
     
-    int srcPos = 12;  // Skip header + size
+    int srcPos = 16;  // Skip 16-byte header (magic + size + reserved)
     int destPos = 0;
     int winPos = 0xFEE;  // Initial window position
     
@@ -1027,22 +1028,13 @@ int __cdecl RK_LzDecodeMemoryToMemory(const void* srcData, int srcSize, void** o
         if (srcPos >= srcSize) break;
         unsigned char flags = src[srcPos++];
         
-        // Process 8 bits
-        for (int bit = 0; bit < 8 && destPos < decompSize; bit++)
+        // Process 8 bits - MSB first (mask starts at 0x80 and shifts right)
+        for (unsigned char mask = 0x80; mask != 0 && destPos < decompSize; mask >>= 1)
         {
-            if (flags & (1 << bit))
+            if (flags & mask)
             {
-                // Literal byte
-                if (srcPos >= srcSize) break;
-                unsigned char c = src[srcPos++];
-                dest[destPos++] = c;
-                window[winPos] = c;
-                winPos = (winPos + 1) & 0xFFF;
-            }
-            else
-            {
-                // Match reference
-                if (srcPos + 1 >= srcSize) break;
+                // Bit set = Match reference
+                if (srcPos + 2 > srcSize) break;
                 unsigned char b1 = src[srcPos++];
                 unsigned char b2 = src[srcPos++];
                 
@@ -1058,6 +1050,15 @@ int __cdecl RK_LzDecodeMemoryToMemory(const void* srcData, int srcSize, void** o
                     window[winPos] = c;
                     winPos = (winPos + 1) & 0xFFF;
                 }
+            }
+            else
+            {
+                // Bit clear = Literal byte
+                if (srcPos >= srcSize) break;
+                unsigned char c = src[srcPos++];
+                dest[destPos++] = c;
+                window[winPos] = c;
+                winPos = (winPos + 1) & 0xFFF;
             }
         }
     }

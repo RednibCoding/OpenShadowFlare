@@ -1,0 +1,44 @@
+{
+  "blockNames": {},
+  "bookmarks": {},
+  "comments": {
+    "4022e0": "Main game entry point",
+    "46863c": "CRT startup code"
+  },
+  "currentAddress": 4621884,
+  "loadedModules": [
+    "../tmp/ShadowFlare/o_RK_FUNCTION.dll",
+    "../tmp/ShadowFlare/o_RKC_FILE.dll",
+    "../tmp/ShadowFlare/o_RKC_MEMORY.dll",
+    "../tmp/ShadowFlare/o_RKC_DIB.dll",
+    "../tmp/ShadowFlare/o_RKC_DSOUND.dll",
+    "../tmp/ShadowFlare/o_RKC_WINDOW.dll",
+    "../tmp/ShadowFlare/o_RKC_FONTMAKER.dll",
+    "../tmp/ShadowFlare/o_RKC_DBFCONTROL.dll",
+    "../tmp/ShadowFlare/o_RKC_UPDIB.dll",
+    "../tmp/ShadowFlare/o_RKC_NETWORK.dll",
+    "../tmp/ShadowFlare/o_RKC_RPG_AICONTROL.dll",
+    "../tmp/ShadowFlare/o_RKC_RPG_SCRIPT.dll",
+    "../tmp/ShadowFlare/o_RKC_RPG_TABLE.dll",
+    "../tmp/ShadowFlare/o_RKC_RPGSCRN.dll"
+  ],
+  "meta": {
+    "binaryPath": "../tmp/ShadowFlare/ShadowFlare.exe",
+    "createdAt": "2025-12-22 17:05:07",
+    "modifiedAt": "2025-12-22 17:11:55",
+    "name": "ShadowFlare.exe",
+    "version": "1.0"
+  },
+  "stackVars": {},
+  "symbols": {
+    "100045a0": "RK_LzDecodeFileToFile",
+    "100047b0": "RK_LzDecodeFileToMemory",
+    "10004960": "RK_LzDecodeMemoryToMemory",
+    "10004b00": "RK_LzDecodeMemoryToFile",
+    "401550": "CheckMutex",
+    "4016b0": "InitializeGame",
+    "401eb0": "InitializeApp",
+    "4022e0": "WinMain",
+    "402520": "CreateWindow"
+  }
+}

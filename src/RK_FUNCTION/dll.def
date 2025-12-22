@@ -24,7 +24,7 @@ EXPORTS
 	RK_LzDecodeFileToFile=RK_LzDecodeFileToFile @22
 	RK_LzDecodeFileToMemory=RK_LzDecodeFileToMemory @23
 	RK_LzDecodeMemoryToFile=RK_LzDecodeMemoryToFile @24
-	RK_LzDecodeMemoryToMemory=o_RK_FUNCTION.RK_LzDecodeMemoryToMemory @25
+	RK_LzDecodeMemoryToMemory=RK_LzDecodeMemoryToMemory @25
 	RK_LzEncodeFileToFile=RK_LzEncodeFileToFile @26
 	RK_LzEncodeFileToMemory=RK_LzEncodeFileToMemory @27
 	RK_LzEncodeMemoryToFile=RK_LzEncodeMemoryToFile @28
