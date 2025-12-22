@@ -214,4 +214,143 @@ int __thiscall RKC_NETWORK_SERVER_GetActiveFlag(void* self) {
     return *(int*)((char*)self);
 }
 
+// ============================================================================
+// STUBS FOR UNUSED FUNCTIONS
+// The following functions are NOT imported by ShadowFlare.exe or any DLL.
+// They are stub implementations to eliminate forwarding to original DLL.
+// ============================================================================
+
+// --- RKC_NETWORK stubs ---
+
+void* __thiscall RKC_NETWORK_operatorAssign(void* self, const void* other) { return self; }
+
+// --- RKC_NETWORK_PACKET stubs ---
+
+void __thiscall RKC_NETWORK_PACKET_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_PACKET_operatorAssign(void* self, const void* other) { return self; }
+void __thiscall RKC_NETWORK_PACKET_AllocateData(void* self, long size) { }
+long __thiscall RKC_NETWORK_PACKET_GetDisc(void* self) { return *(long*)((char*)self + 0x0c); }
+void __thiscall RKC_NETWORK_PACKET_Release(void* self) { }
+void __thiscall RKC_NETWORK_PACKET_SetDisc(void* self, long disc) { *(long*)((char*)self + 0x0c) = disc; }
+void __thiscall RKC_NETWORK_PACKET_SetID(void* self, long id) { *(long*)((char*)self + 0x04) = id; }
+void __thiscall RKC_NETWORK_PACKET_SetInfoID(void* self, long infoId) { *(long*)((char*)self + 0x08) = infoId; }
+void __thiscall RKC_NETWORK_PACKET_SetLine(void* self, long line) { *(long*)((char*)self) = line; }
+void __thiscall RKC_NETWORK_PACKET_SetParam(void* self, long line, long id, long infoId, long disc, void* data, long size) {
+    char* p = (char*)self;
+    *(long*)(p + 0x00) = line;
+    *(long*)(p + 0x04) = id;
+    *(long*)(p + 0x08) = infoId;
+    *(long*)(p + 0x0c) = disc;
+    *(void**)(p + 0x10) = data;
+}
+
+// --- RKC_NETWORK_PACKETBLOCK stubs ---
+
+void __thiscall RKC_NETWORK_PACKETBLOCK_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_PACKETBLOCK_operatorAssign(void* self, const void* other) { return self; }
+int __thiscall RKC_NETWORK_PACKETBLOCK_Delete_index(void* self, long index) { return 0; }
+int __thiscall RKC_NETWORK_PACKETBLOCK_Delete_packet(void* self, void* packet) { return 0; }
+long __thiscall RKC_NETWORK_PACKETBLOCK_GetCount_line(void* self, long line) { return 0; }
+long __thiscall RKC_NETWORK_PACKETBLOCK_GetCount(void* self) { return 0; }
+long __thiscall RKC_NETWORK_PACKETBLOCK_GetNo(void* self, void* packet) { return -1; }
+void* __thiscall RKC_NETWORK_PACKETBLOCK_Insert(void* self, long line) { return nullptr; }
+
+// --- RKC_NETWORK_USERINFO stubs ---
+
+void __thiscall RKC_NETWORK_USERINFO_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_USERINFO_operatorAssign(void* self, const void* other) { return self; }
+char* __thiscall RKC_NETWORK_USERINFO_GetPassword(void* self) { return *(char**)((char*)self + 0x08); }
+void* __thiscall RKC_NETWORK_USERINFO_GetUserData(void* self) { return *(void**)((char*)self + 0x0c); }
+void __thiscall RKC_NETWORK_USERINFO_SetID(void* self, long id) { *(long*)((char*)self) = id; }
+void __thiscall RKC_NETWORK_USERINFO_SetPassword(void* self, char* password) { *(char**)((char*)self + 0x08) = password; }
+void __thiscall RKC_NETWORK_USERINFO_SetUserData(void* self, void* data) { *(void**)((char*)self + 0x0c) = data; }
+void __thiscall RKC_NETWORK_USERINFO_SetUserName(void* self, char* name) { *(char**)((char*)self + 0x04) = name; }
+
+// --- RKC_NETWORK_USERINFOBLOCK stubs ---
+
+void __thiscall RKC_NETWORK_USERINFOBLOCK_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_USERINFOBLOCK_operatorAssign(void* self, const void* other) { return self; }
+void* __thiscall RKC_NETWORK_USERINFOBLOCK_Append(void* self) { return nullptr; }
+int __thiscall RKC_NETWORK_USERINFOBLOCK_Delete(void* self, long index) { return 0; }
+void* __thiscall RKC_NETWORK_USERINFOBLOCK_Get(void* self, long index) { return nullptr; }
+long __thiscall RKC_NETWORK_USERINFOBLOCK_GetCount(void* self) { return 0; }
+void* __thiscall RKC_NETWORK_USERINFOBLOCK_GetFromID(void* self, long id) { return nullptr; }
+void* __thiscall RKC_NETWORK_USERINFOBLOCK_GetFromName(void* self, char* name) { return nullptr; }
+void __thiscall RKC_NETWORK_USERINFOBLOCK_Release(void* self) { }
+
+// --- RKC_NETWORK_TRANSFER stubs ---
+
+void __thiscall RKC_NETWORK_TRANSFER_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_TRANSFER_operatorAssign(void* self, const void* other) { return self; }
+int __thiscall RKC_NETWORK_TRANSFER_Recv(void* self, unsigned int socket, unsigned char* buf, long len) { return 0; }
+int __thiscall RKC_NETWORK_TRANSFER_RecvSub(void* self, unsigned int socket, unsigned char* buf, long len) { return 0; }
+int __thiscall RKC_NETWORK_TRANSFER_Send(void* self, unsigned int socket, unsigned char* buf, long len) { return 0; }
+int __thiscall RKC_NETWORK_TRANSFER_SendSub(void* self, unsigned int socket, unsigned char* buf, long len) { return 0; }
+
+// --- RKC_NETWORK_SERVER_SOCKET stubs ---
+
+void* __thiscall RKC_NETWORK_SERVER_SOCKET_constructor(void* self) { return self; }
+void __thiscall RKC_NETWORK_SERVER_SOCKET_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_SERVER_SOCKET_operatorAssign(void* self, const void* other) { return self; }
+unsigned int __thiscall RKC_NETWORK_SERVER_SOCKET_Get(void* self) { return 0; }
+void __thiscall RKC_NETWORK_SERVER_SOCKET_SocketComparisionThread(void* self) { }
+
+// --- RKC_NETWORK_SERVER_SOCKETCOMP stubs ---
+
+void* __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_constructor(void* self) { return self; }
+void __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_operatorAssign(void* self, const void* other) { return self; }
+int __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_InsertComparisionSocket(void* self, unsigned int socket) { return 0; }
+void __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_Release(void* self) { }
+
+// --- RKC_NETWORK_SERVER_CONNECTION stubs ---
+
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_constructor(void* self) {
+    memset(self, 0, 0x20);  // Clear structure
+    return self;
+}
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_operatorAssign(void* self, const void* other) { return self; }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_ConnectionThread(void* self, long param) { }
+int __thiscall RKC_NETWORK_SERVER_CONNECTION_CreateConnectionThread(void* self, long param) { return 0; }
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_GetIP(void* self) { return (void*)((char*)self + 0x08); }
+unsigned int __thiscall RKC_NETWORK_SERVER_CONNECTION_GetSocket(void* self, long index) { return 0; }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetID(void* self, long id) { *(long*)((char*)self) = id; }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetIP(void* self, void* ip) { }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetSocket(void* self, long index, unsigned int socket) { }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetStatus(void* self, long status) { *(long*)((char*)self + 0x10) = status; }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetUserID(void* self, long userId) { *(long*)((char*)self + 0x04) = userId; }
+
+// --- RKC_NETWORK_SERVER stubs ---
+
+void* __thiscall RKC_NETWORK_SERVER_constructor(void* self) {
+    memset(self, 0, 0x20);
+    return self;
+}
+void __thiscall RKC_NETWORK_SERVER_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_SERVER_operatorAssign(void* self, const void* other) { return self; }
+void __thiscall RKC_NETWORK_SERVER_AcceptThreadFunction(void* self) { }
+long __thiscall RKC_NETWORK_SERVER_GetActiveConnectionCount(void* self) { return 0; }
+void* __thiscall RKC_NETWORK_SERVER_GetEmptyConnection(void* self) { return nullptr; }
+long __thiscall RKC_NETWORK_SERVER_GetSocketCount(void* self) { return 0; }
+void* __thiscall RKC_NETWORK_SERVER_GetUseConnection(void* self, long id, void* ip, long port) { return nullptr; }
+void* __thiscall RKC_NETWORK_SERVER_GetUserInfoBlock(void* self) { return nullptr; }
+int __thiscall RKC_NETWORK_SERVER_Stop(void* self) { return 0; }
+
+// --- RKC_NETWORK_CLIENT stubs ---
+
+void* __thiscall RKC_NETWORK_CLIENT_constructor(void* self) {
+    memset(self, 0, 0x20);
+    return self;
+}
+void __thiscall RKC_NETWORK_CLIENT_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_CLIENT_operatorAssign(void* self, const void* other) { return self; }
+void __thiscall RKC_NETWORK_CLIENT_ConnectionThread(void* self, long param) { }
+void __thiscall RKC_NETWORK_CLIENT_ConnectThread(void* self) { }
+int __thiscall RKC_NETWORK_CLIENT_CreateConnectionThread(void* self, long param) { return 0; }
+long __thiscall RKC_NETWORK_CLIENT_GetConnectionID(void* self) { return 0; }
+void* __thiscall RKC_NETWORK_CLIENT_GetIP(void* self) { return nullptr; }
+void* __thiscall RKC_NETWORK_CLIENT_GetSendPacketBlock(void* self) { return nullptr; }
+void* __thiscall RKC_NETWORK_CLIENT_GetUserInfo(void* self) { return nullptr; }
+
 } // extern "C"
