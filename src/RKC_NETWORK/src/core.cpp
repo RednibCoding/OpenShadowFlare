@@ -13,13 +13,14 @@ extern "C" {
 // RKC_NETWORK_PACKET Class Layout (from decompilation)
 // ============================================================================
 // Offset  Field
-// 0x00    DWORD line (or ID) - initialized to -1
-// 0x04    DWORD unknown1 - initialized to 0
-// 0x08    DWORD unknown2 - initialized to 0
-// 0x0c    DWORD unknown3 - initialized to 0
-// 0x10    void* data - initialized to 0
-// 0x18    RKC_NETWORK_PACKET* next - initialized to 0
-// Total size: ~0x1c bytes
+// 0x00    long line              - packet line/index, initialized to -1
+// 0x04    long id                - packet ID, initialized to 0
+// 0x08    long size              - data size, initialized to 0
+// 0x0c    long infoId            - info ID, initialized to 0
+// 0x10    void* data             - data pointer, initialized to 0
+// 0x14    long disc              - disconnect flag?, initialized to 0
+// 0x18    RKC_NETWORK_PACKET* next - next packet in list, initialized to 0
+// Total size: 0x1c bytes
 
 /**
  * RKC_NETWORK_PACKET::constructor - Initialize packet object
@@ -27,12 +28,13 @@ extern "C" {
  */
 void* __thiscall RKC_NETWORK_PACKET_constructor(void* self) {
     char* p = (char*)self;
-    *(long*)(p + 0x00) = -1;  // line/ID
-    *(long*)(p + 0x04) = 0;
-    *(long*)(p + 0x08) = 0;
-    *(long*)(p + 0x0c) = 0;
-    *(long*)(p + 0x10) = 0;   // data
-    *(long*)(p + 0x18) = 0;   // next
+    *(long*)(p + 0x00) = -1;       // line
+    *(long*)(p + 0x04) = 0;        // id
+    *(long*)(p + 0x08) = 0;        // size
+    *(long*)(p + 0x0c) = 0;        // infoId
+    *(void**)(p + 0x10) = nullptr; // data
+    *(long*)(p + 0x14) = 0;        // disc
+    *(void**)(p + 0x18) = nullptr; // next
     return self;
 }
 
@@ -63,10 +65,34 @@ long __thiscall RKC_NETWORK_PACKET_GetID(void* self) {
 
 /**
  * RKC_NETWORK_PACKET::GetData - Get data pointer
- * USED BY: o_RKC_NETWORK.dll (internal)
+ * USED BY: ShadowFlare.exe
  */
 void* __thiscall RKC_NETWORK_PACKET_GetData(void* self) {
     return *(void**)((char*)self + 0x10);
+}
+
+/**
+ * RKC_NETWORK_PACKET::GetSize - Get data size
+ * USED BY: ShadowFlare.exe
+ */
+long __thiscall RKC_NETWORK_PACKET_GetSize(void* self) {
+    return *(long*)((char*)self + 0x08);
+}
+
+/**
+ * RKC_NETWORK_PACKET::GetInfoID - Get info ID
+ * USED BY: ShadowFlare.exe
+ */
+long __thiscall RKC_NETWORK_PACKET_GetInfoID(void* self) {
+    return *(long*)((char*)self + 0x0c);
+}
+
+/**
+ * RKC_NETWORK_PACKET::GetDisc - Get disconnect flag
+ * USED BY: ShadowFlare.exe
+ */
+long __thiscall RKC_NETWORK_PACKET_GetDisc(void* self) {
+    return *(long*)((char*)self + 0x14);
 }
 
 // ============================================================================
@@ -229,19 +255,21 @@ void* __thiscall RKC_NETWORK_operatorAssign(void* self, const void* other) { ret
 void __thiscall RKC_NETWORK_PACKET_destructor(void* self) { }
 void* __thiscall RKC_NETWORK_PACKET_operatorAssign(void* self, const void* other) { return self; }
 void __thiscall RKC_NETWORK_PACKET_AllocateData(void* self, long size) { }
-long __thiscall RKC_NETWORK_PACKET_GetDisc(void* self) { return *(long*)((char*)self + 0x0c); }
 void __thiscall RKC_NETWORK_PACKET_Release(void* self) { }
-void __thiscall RKC_NETWORK_PACKET_SetDisc(void* self, long disc) { *(long*)((char*)self + 0x0c) = disc; }
+void __thiscall RKC_NETWORK_PACKET_SetDisc(void* self, long disc) { *(long*)((char*)self + 0x14) = disc; }
 void __thiscall RKC_NETWORK_PACKET_SetID(void* self, long id) { *(long*)((char*)self + 0x04) = id; }
-void __thiscall RKC_NETWORK_PACKET_SetInfoID(void* self, long infoId) { *(long*)((char*)self + 0x08) = infoId; }
+void __thiscall RKC_NETWORK_PACKET_SetInfoID(void* self, long infoId) { *(long*)((char*)self + 0x0c) = infoId; }
 void __thiscall RKC_NETWORK_PACKET_SetLine(void* self, long line) { *(long*)((char*)self) = line; }
-void __thiscall RKC_NETWORK_PACKET_SetParam(void* self, long line, long id, long infoId, long disc, void* data, long size) {
+void __thiscall RKC_NETWORK_PACKET_SetSize(void* self, long size) { *(long*)((char*)self + 0x08) = size; }
+void __thiscall RKC_NETWORK_PACKET_SetParam(void* self, long line, long id, long size, long infoId, void* data, long disc) {
+    // Note: parameter order from decompilation is (line, id, size, infoId, data, disc)
     char* p = (char*)self;
     *(long*)(p + 0x00) = line;
     *(long*)(p + 0x04) = id;
-    *(long*)(p + 0x08) = infoId;
-    *(long*)(p + 0x0c) = disc;
-    *(void**)(p + 0x10) = data;
+    *(long*)(p + 0x08) = size;
+    *(long*)(p + 0x0c) = infoId;
+    *(void**)(p + 0x10) = data;  // Note: original allocates memory, stub just stores pointer
+    *(long*)(p + 0x14) = disc;
 }
 
 // --- RKC_NETWORK_PACKETBLOCK stubs ---
