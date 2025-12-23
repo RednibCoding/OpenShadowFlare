@@ -440,8 +440,6 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
         delete m_impl; m_impl = nullptr;
         return false;
     }
-    fprintf(stderr, "[haudio] waveOutOpen succeeded, rate=%d, channels=%d, bits=%d\n",
-            format.sampleRate, format.channels, format.bitsPerSample);
     
     // Allocate double-buffers
     size_t bufferFrames = (format.sampleRate * bufferMs) / 1000;
@@ -625,7 +623,6 @@ Voice* Mixer::play(const Sound& sound, float volume, bool loop) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     if (!sound.valid()) {
-        fprintf(stderr, "[haudio] play: sound is not valid!\n");
         return nullptr;
     }
     
@@ -639,12 +636,10 @@ Voice* Mixer::play(const Sound& sound, float volume, bool loop) {
             voice.m_looping = loop;
             voice.m_paused = false;
             voice.m_playing = true;
-            fprintf(stderr, "[haudio] play: started voice slot %zu, frames=%zu\n", i, sound.frames());
             return &voice;
         }
     }
     
-    fprintf(stderr, "[haudio] play: no free voice slots!\n");
     return nullptr;  // No free voice slots
 }
 
@@ -669,13 +664,32 @@ void Mixer::reset() {
         Sleep(10);
         waitCount++;
     }
+    
+    // Also reset the waveOut to cancel pending buffers
+    if (m_impl->hWaveOut) {
+        waveOutReset(m_impl->hWaveOut);
+    }
 #endif
     
-    // Now stop all voices (clears m_sound pointers)
-    stopAll();
+    // Now stop all voices with the lock held (callback can't run now)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (auto& voice : m_voices) {
+            voice.stop();
+        }
+    }
     
-    // Re-enable callback - it will just output silence since all voices are stopped
+    // Re-enable callback and re-queue buffers
     m_impl->running = true;
+    
+#ifdef HAUDIO_WINDOWS
+    // Re-queue both buffers (they were cancelled by waveOutReset)
+    for (int i = 0; i < 2; i++) {
+        std::memset(m_impl->buffers[i].data(), 0, 
+                    m_impl->buffers[i].size() * sizeof(int16_t));
+        waveOutWrite(m_impl->hWaveOut, &m_impl->waveHeaders[i], sizeof(WAVEHDR));
+    }
+#endif
 }
 
 void Mixer::mixAudio(int16_t* buffer, size_t frames) {
@@ -684,6 +698,12 @@ void Mixer::mixAudio(int16_t* buffer, size_t frames) {
     // Clear buffer
     std::memset(buffer, 0, frames * m_format.channels * sizeof(int16_t));
     
+    // Double-check we're still running after acquiring the lock
+    // This prevents races with reset() which sets running=false, then stops voices
+    if (m_impl && !m_impl->running) {
+        return;  // Just output silence
+    }
+    
     // Mix all active voices
     for (auto& voice : m_voices) {
         if (!voice.m_playing || voice.m_paused || !voice.m_sound) {
@@ -691,6 +711,13 @@ void Mixer::mixAudio(int16_t* buffer, size_t frames) {
         }
         
         const Sound& sound = *voice.m_sound;
+        
+        // Additional safety: check sound has data
+        if (!sound.valid() || sound.data() == nullptr) {
+            voice.m_playing = false;
+            continue;
+        }
+        
         const AudioFormat& srcFmt = sound.format();
         
         float vol = voice.m_volume * m_masterVolume;

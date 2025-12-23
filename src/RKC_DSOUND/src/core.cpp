@@ -142,8 +142,6 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
     voc.voiceCount = voiceCount;
     voc.variantCount = variantCount;
     
-    fprintf(stderr, "[RKC_DSOUND] ReadVocFile: voiceCount=%d, variantCount=%d\n", voiceCount, variantCount);
-    
     // Total voices = base voices * (variants + 1)
     int totalVoices = voiceCount * (variantCount + 1);
     voc.voices.resize(totalVoices);
@@ -171,13 +169,10 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
         }
         voice.name[255] = '\0';
         
-        fprintf(stderr, "[RKC_DSOUND] Voice %d: flags=0x%x, name='%s'\n", i, flags, voice.name);
-        
         if (flags & 1) {
             // Reference voice - data comes from another voice
             // Just mark as reference, we'll resolve later
             voice.refIndex = -2; // Mark as unresolved reference
-            fprintf(stderr, "[RKC_DSOUND] Voice %d: is reference\n", i);
         } else {
             // Skip alt_name for V003
             if (isV003) {
@@ -202,9 +197,6 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
                 return false;
             }
             
-            fprintf(stderr, "[RKC_DSOUND] Voice %d: '%s' format=%d, %dHz, %dch, %dbit, size=%d\n",
-                    i, voice.name, wfx.wFormatTag, wfx.nSamplesPerSec, wfx.nChannels, wfx.wBitsPerSample, size);
-            
             if (wfx.wFormatTag == 1 && size > 0) {
                 // PCM format - read audio data
                 std::vector<uint8_t> pcmData(size);
@@ -215,7 +207,6 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
                 }
                 
                 voice.sound.loadRaw(pcmData.data(), size, voice.format);
-                fprintf(stderr, "[RKC_DSOUND] Voice %d: loaded, sound.valid=%d\n", i, voice.sound.valid());
             }
         }
     }
@@ -250,10 +241,6 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
     
     voc.loaded = true;
     fclose(f);
-    
-    fprintf(stderr, "[RKC_DSOUND] Loaded %s: %d voices, %d variants\n", 
-            filename, voiceCount, variantCount);
-    
     return true;
 }
 
@@ -311,8 +298,6 @@ extern "C" void __thiscall RKC_DSOUND_destructor(void* self) {
 extern "C" int __thiscall RKC_DSOUND_Initialize(void* self, void* hwnd, long vocCount) {
     char* p = (char*)self;
     
-    fprintf(stderr, "[RKC_DSOUND] Initialize called with vocCount=%ld\n", vocCount);
-    
     // Create and init mixer
     if (!g_mixer) {
         g_mixer = new haudio::Mixer();
@@ -322,16 +307,12 @@ extern "C" int __thiscall RKC_DSOUND_Initialize(void* self, void* hwnd, long voc
         fmt.channels = 2;
         fmt.bitsPerSample = 16;
         
-        fprintf(stderr, "[RKC_DSOUND] Initializing mixer: %d Hz, %d ch, %d bit\n",
-                fmt.sampleRate, fmt.channels, fmt.bitsPerSample);
-        
         if (!g_mixer->init(fmt, 100)) {
             fprintf(stderr, "[RKC_DSOUND] Failed to initialize audio mixer\n");
             delete g_mixer;
             g_mixer = nullptr;
             return 0;
         }
-        fprintf(stderr, "[RKC_DSOUND] Mixer initialized successfully\n");
     }
     
     *(void**)(p + 0x00) = (void*)g_mixer; // Store mixer pointer where IDirectSound* was
@@ -382,8 +363,6 @@ extern "C" void __thiscall RKC_DSOUND_Release(void* self) {
  */
 extern "C" int __thiscall RKC_DSOUND_ReadVocFile(void* self, const char* filename, long vocIndex) {
     char* p = (char*)self;
-    
-    fprintf(stderr, "[RKC_DSOUND] ReadVocFile('%s', vocIndex=%ld)\n", filename, vocIndex);
     
     if (!*(void**)(p + 0x00)) return 0;
     
@@ -464,25 +443,18 @@ extern "C" long __thiscall RKC_DSOUND_Play(void* self, long vocIndex, long voice
                                             int loop, long pan, long volume) {
     char* p = (char*)self;
     
-    fprintf(stderr, "[RKC_DSOUND] Play(voc=%ld, voice=%ld, loop=%d, pan=%ld, vol=%ld)\n",
-            vocIndex, voiceIndex, loop, pan, volume);
-    
-    if (!*(void**)(p + 0x00)) { fprintf(stderr, "[RKC_DSOUND] Play: no mixer ptr\n"); return -1; }
-    if (!g_mixer) { fprintf(stderr, "[RKC_DSOUND] Play: g_mixer null\n"); return -1; }
+    if (!*(void**)(p + 0x00)) return -1;
+    if (!g_mixer) return -1;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs) { fprintf(stderr, "[RKC_DSOUND] Play: vocs null\n"); return -1; }
+    if (!vocs) return -1;
     
     VocContainer* voc = vocs[vocIndex];
-    if (!voc) { fprintf(stderr, "[RKC_DSOUND] Play: voc[%ld] null\n", vocIndex); return -1; }
-    if (!voc->loaded) { fprintf(stderr, "[RKC_DSOUND] Play: voc[%ld] not loaded\n", vocIndex); return -1; }
+    if (!voc) return -1;
+    if (!voc->loaded) return -1;
     
-    fprintf(stderr, "[RKC_DSOUND] Play: voc has %d voices, %d variants\n", voc->voiceCount, voc->variantCount);
-    fprintf(stderr, "[RKC_DSOUND] Play: voc->voices.size()=%zu\n", voc->voices.size());
-    
-    // For looping sounds (BGM), stop all audio first using reset() which handles synchronization
+    // For looping sounds (BGM), stop all audio first using reset()
     if (loop) {
-        fprintf(stderr, "[RKC_DSOUND] Play: BGM - calling reset()\n");
         g_mixer->reset();
     }
     
@@ -492,43 +464,30 @@ extern "C" long __thiscall RKC_DSOUND_Play(void* self, long vocIndex, long voice
     
     for (int variant = 0; variant <= voc->variantCount; variant++) {
         int idx = variant * voc->voiceCount + voiceIndex;
-        fprintf(stderr, "[RKC_DSOUND] Play: trying variant %d, idx=%d, totalVoices=%d\n", variant, idx, totalVoices);
         if (idx >= totalVoices) break;
         
         VoiceData& voice = voc->voices[idx];
         
         // Check if this slot is free (not playing)
         if (voice.playing && voice.playing->active()) {
-            fprintf(stderr, "[RKC_DSOUND] Play: variant %d is busy\n", variant);
             continue; // This variant is busy
         }
         
         // Get the actual sound (may be a reference)
         haudio::Sound* sound = &voice.sound;
-        fprintf(stderr, "[RKC_DSOUND] Play: refIndex=%d\n", voice.refIndex);
         if (voice.refIndex >= 0 && voice.refIndex < (int)voc->voices.size()) {
             sound = &voc->voices[voice.refIndex].sound;
         }
         
-        fprintf(stderr, "[RKC_DSOUND] Play: sound valid=%d, size=%zu\n", sound->valid(), sound->size());
         if (!sound->valid()) {
-            fprintf(stderr, "[RKC_DSOUND] Play: no sound data, skipping\n");
             continue; // No sound data
         }
         
         // Play the sound
         float vol = dsVolumeToLinear(volume);
-        fprintf(stderr, "[RKC_DSOUND] Playing voice %d variant %d, vol=%.2f, loop=%d\n",
-                (int)voiceIndex, variant, vol, loop);
         voice.playing = g_mixer->play(*sound, vol, loop != 0);
         voice.volume = volume;
         variantUsed = variant;
-        
-        if (voice.playing) {
-            fprintf(stderr, "[RKC_DSOUND] Playback started\n");
-        } else {
-            fprintf(stderr, "[RKC_DSOUND] Failed to start playback\n");
-        }
         
         return variantUsed;
     }
@@ -542,8 +501,6 @@ extern "C" long __thiscall RKC_DSOUND_Play(void* self, long vocIndex, long voice
  */
 extern "C" void __thiscall RKC_DSOUND_Stop(void* self, long vocIndex, long voiceIndex) {
     char* p = (char*)self;
-    
-    fprintf(stderr, "[RKC_DSOUND] Stop(voc=%ld, voice=%ld)\n", vocIndex, voiceIndex);
     
     if (!*(void**)(p + 0x00)) return;
     
@@ -560,7 +517,6 @@ extern "C" void __thiscall RKC_DSOUND_Stop(void* self, long vocIndex, long voice
         
         VoiceData& voice = voc->voices[idx];
         if (voice.playing) {
-            fprintf(stderr, "[RKC_DSOUND] Stop: stopping variant %d '%s'\n", variant, voice.name);
             voice.playing->stop();
             voice.playing = nullptr;
         }
