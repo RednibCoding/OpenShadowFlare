@@ -539,6 +539,197 @@ extern "C" RECT* __thiscall RKC_DIB_GetRect(RKC_DIB* self, RECT* outRect) {
 }
 
 // ============================================================================
+// TRANSFER FUNCTIONS - USED BY EXE AND OTHER DLLS
+// ============================================================================
+
+/**
+ * RKC_DIB::TransferToDDB - Transfer DIB to device context (3-arg version)
+ * USED BY: ShadowFlare.exe, o_RKC_DBFCONTROL.dll
+ * 
+ * Copies the DIB pixels to a device context using SetDIBitsToDevice.
+ * Parameters:
+ *   hdc - target device context
+ *   x   - x position in DC
+ *   y   - y position in DC
+ * 
+ * Returns: 1 on success, 0 if no bitmap
+ */
+extern "C" int __thiscall RKC_DIB_TransferToDDB(RKC_DIB* self, HDC hdc, long x, long y) {
+    if (!self->bitmap || !self->bitmapInfo) {
+        return 0;
+    }
+    
+    DWORD width = self->bitmapInfo->biWidth;
+    DWORD height = self->bitmapInfo->biHeight;
+    
+    SetDIBitsToDevice(
+        hdc,
+        x, y,                    // Destination x, y
+        width, height,           // Width, height
+        0, 0,                    // Source x, y
+        0, height,               // Start scan, num scans
+        self->bitmap,            // Pixel data
+        (BITMAPINFO*)self->bitmapInfo,  // Bitmap info (includes palette)
+        DIB_RGB_COLORS           // Color usage
+    );
+    
+    return 1;
+}
+
+/**
+ * RKC_DIB::ReadFile - Load a BMP file into this DIB
+ * USED BY: ShadowFlare.exe
+ * 
+ * Reads a Windows BMP file and loads it into this DIB object.
+ * Parameters:
+ *   filename - path to BMP file
+ *   flags    - bit flags controlling which BPPs to accept
+ *              bit 0 (0x01): accept 1bpp
+ *              bit 1 (0x02): accept 4bpp
+ *              bit 2 (0x04): accept 8bpp
+ *              bit 3 (0x08): accept 16bpp
+ *              bit 4 (0x10): accept 24bpp
+ * 
+ * Returns: 1 on success, 0 on failure
+ */
+extern "C" int __thiscall RKC_DIB_ReadFile(RKC_DIB* self, const char* filename, short flags) {
+    // Release existing data
+    RKC_DIB_Release(self);
+    
+    // Open the file using RKC_FILE via CallFunctionInDLL
+    // Actually, let's use Windows API directly since it's simpler
+    HANDLE hFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, 
+                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    
+    DWORD bytesRead;
+    
+    // Read BITMAPFILEHEADER (14 bytes)
+    // struct { WORD bfType; DWORD bfSize; WORD bfReserved1, bfReserved2; DWORD bfOffBits; }
+    unsigned char fileHeader[14];
+    if (!ReadFile(hFile, fileHeader, 14, &bytesRead, NULL) || bytesRead != 14) {
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    // Check BMP signature "BM"
+    if (fileHeader[0] != 'B' || fileHeader[1] != 'M') {
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    // Get pixel data offset from file header (at offset 10, 4 bytes LE)
+    DWORD pixelDataOffset = *(DWORD*)(fileHeader + 10);
+    
+    // Read BITMAPINFOHEADER (40 bytes)
+    BITMAPINFOHEADER infoHeader;
+    if (!ReadFile(hFile, &infoHeader, sizeof(BITMAPINFOHEADER), &bytesRead, NULL) || 
+        bytesRead != sizeof(BITMAPINFOHEADER)) {
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    // Check BPP against flags
+    WORD bpp = infoHeader.biBitCount;
+    bool accepted = false;
+    int paletteCount = 0;
+    
+    switch (bpp) {
+        case 1:
+            accepted = (flags & 0x01) != 0;
+            paletteCount = 2;
+            break;
+        case 4:
+            accepted = (flags & 0x02) != 0;
+            paletteCount = 16;
+            break;
+        case 8:
+            accepted = (flags & 0x04) != 0;
+            paletteCount = 256;
+            break;
+        case 16:
+            accepted = (flags & 0x08) != 0;
+            paletteCount = 0;
+            break;
+        case 24:
+            accepted = (flags & 0x10) != 0;
+            paletteCount = 0;
+            break;
+        default:
+            accepted = false;
+            break;
+    }
+    
+    if (!accepted) {
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    // Allocate header + palette
+    SIZE_T headerSize = 0x28 + (paletteCount * 4);
+    BITMAPINFOHEADER* pHeader = (BITMAPINFOHEADER*)GlobalAlloc(GPTR, headerSize);
+    if (!pHeader) {
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    // Copy header
+    memcpy(pHeader, &infoHeader, sizeof(BITMAPINFOHEADER));
+    pHeader->biClrImportant = 0;  // Original clears this
+    
+    self->bitmapInfo = pHeader;
+    
+    // Set palette pointer
+    if (paletteCount > 0) {
+        self->palette = (RGBQUAD*)((char*)pHeader + 0x28);
+        
+        // Read palette
+        if (!ReadFile(hFile, self->palette, paletteCount * 4, &bytesRead, NULL) ||
+            bytesRead != (DWORD)(paletteCount * 4)) {
+            RKC_DIB_Release(self);
+            CloseHandle(hFile);
+            return 0;
+        }
+    } else {
+        self->palette = nullptr;
+    }
+    
+    // Calculate image size
+    long alignWidth = RKC_DIB_GetAlignWidth(self);
+    if (alignWidth == -1) {
+        RKC_DIB_Release(self);
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    SIZE_T imageSize = alignWidth * infoHeader.biHeight;
+    
+    // Seek to pixel data
+    SetFilePointer(hFile, pixelDataOffset, NULL, FILE_BEGIN);
+    
+    // Allocate pixel buffer
+    self->bitmap = (unsigned char*)GlobalAlloc(GMEM_FIXED, imageSize);
+    if (!self->bitmap) {
+        RKC_DIB_Release(self);
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    // Read pixel data
+    if (!ReadFile(hFile, self->bitmap, (DWORD)imageSize, &bytesRead, NULL) ||
+        bytesRead != (DWORD)imageSize) {
+        RKC_DIB_Release(self);
+        CloseHandle(hFile);
+        return 0;
+    }
+    
+    CloseHandle(hFile);
+    return 1;
+}
+
+// ============================================================================
 // STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
 // ============================================================================
 

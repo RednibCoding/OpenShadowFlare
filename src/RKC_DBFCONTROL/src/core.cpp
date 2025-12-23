@@ -682,10 +682,10 @@ int __thiscall RKC_DBFCONTROL_Clear(void* self, void* rgbquad) {
 
 // RKC_DBFCONTROL - NOT USED
 void* __thiscall RKC_DBFCONTROL_operatorAssign(void* self, const void* src) { return self; }
-void __thiscall RKC_DBFCONTROL_DisableDraw(void* self) {}
+void __thiscall RKC_DBFCONTROL_DisableDraw(void* self) { *(int*)((char*)self) = 0; }
 void __thiscall RKC_DBFCONTROL_DrawFunction(void* self) {}
 void* __thiscall RKC_DBFCONTROL_Draw(void* self) { return nullptr; }
-void __thiscall RKC_DBFCONTROL_EnableDraw(void* self) {}
+void __thiscall RKC_DBFCONTROL_EnableDraw(void* self) { *(int*)((char*)self) = 1; }
 void __thiscall RKC_DBFCONTROL_FlushDrawCount(void* self) { *(int*)((char*)self + 0x68) = 0; }
 void __thiscall RKC_DBFCONTROL_GetClipRect(void* self, void* rect, long arg) {}
 int __thiscall RKC_DBFCONTROL_Redraw(void* self) { return 0; }
