@@ -5,7 +5,7 @@ from ghidra.app.decompiler import DecompInterface
 from ghidra.util.task import ConsoleTaskMonitor
 import os
 
-OUTPUT_DIR = "/home/micha/DEV/projects/OpenShadowFlare/documentation/"
+OUTPUT_DIR = "/home/micha/DEV/projects/OpenShadowFlare/ghidra/"
 
 def run():
     # Use program name for output file
