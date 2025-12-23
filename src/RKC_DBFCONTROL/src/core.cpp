@@ -181,6 +181,20 @@ long __thiscall RKC_DBF_GetVSBlockNo(void* self) {
     return *(long*)((char*)self + 0x04);
 }
 
+/**
+ * RKC_DBF::SetClipRect - Set clip rectangle
+ * Copies RECT to offset 0x14 within RKC_DBF
+ * USED BY: ShadowFlare.exe
+ */
+void __thiscall RKC_DBF_SetClipRect(void* self, void* rect) {
+    char* p = (char*)self;
+    uint32_t* r = (uint32_t*)rect;
+    *(uint32_t*)(p + 0x14) = r[0];  // left
+    *(uint32_t*)(p + 0x18) = r[1];  // top
+    *(uint32_t*)(p + 0x1c) = r[2];  // right
+    *(uint32_t*)(p + 0x20) = r[3];  // bottom
+}
+
 // ============================================================================
 // RKC_DBFCONTROL Class Layout (from decompilation)
 // ============================================================================
