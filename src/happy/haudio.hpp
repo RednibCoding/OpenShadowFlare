@@ -171,6 +171,9 @@ public:
     // Stop all sounds
     void stopAll();
     
+    // Reset audio device - stops all pending callbacks (use before deleting sound data)
+    void reset();
+    
     // Max simultaneous voices (default 32)
     static constexpr int MAX_VOICES = 32;
     
@@ -364,6 +367,7 @@ void Voice::setPaused(bool paused) {
 void Voice::stop() {
     m_playing = false;
     m_position = 0;
+    m_sound = nullptr;  // Clear pointer so mixer won't access freed memory
 }
 
 void Voice::setPosition(size_t frame) {
@@ -384,13 +388,18 @@ struct MixerImpl {
     std::vector<int16_t> buffers[2];
     int currentBuffer = 0;
     std::atomic<bool> running{false};
+    std::atomic<bool> inCallback{false};
     Mixer* mixer = nullptr;
     
     static void CALLBACK waveOutProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance,
                                       DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
         if (uMsg == WOM_DONE) {
             MixerImpl* impl = (MixerImpl*)dwInstance;
-            if (impl->running) {
+            if (!impl->running) return;  // Early exit if shutting down
+            
+            impl->inCallback = true;
+            
+            if (impl->running && impl->mixer) {
                 // Refill the completed buffer
                 WAVEHDR* hdr = (WAVEHDR*)dwParam1;
                 int bufIdx = (hdr == &impl->waveHeaders[0]) ? 0 : 1;
@@ -398,8 +407,12 @@ struct MixerImpl {
                 impl->mixer->mixAudio(impl->buffers[bufIdx].data(),
                                        impl->buffers[bufIdx].size() / impl->mixer->m_format.channels);
                 
-                waveOutWrite(impl->hWaveOut, hdr, sizeof(WAVEHDR));
+                if (impl->running) {
+                    waveOutWrite(impl->hWaveOut, hdr, sizeof(WAVEHDR));
+                }
             }
+            
+            impl->inCallback = false;
         }
     }
 };
@@ -423,9 +436,12 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
                                    (DWORD_PTR)MixerImpl::waveOutProc,
                                    (DWORD_PTR)m_impl, CALLBACK_FUNCTION);
     if (result != MMSYSERR_NOERROR) {
+        fprintf(stderr, "[haudio] waveOutOpen failed: %d\n", result);
         delete m_impl; m_impl = nullptr;
         return false;
     }
+    fprintf(stderr, "[haudio] waveOutOpen succeeded, rate=%d, channels=%d, bits=%d\n",
+            format.sampleRate, format.channels, format.bitsPerSample);
     
     // Allocate double-buffers
     size_t bufferFrames = (format.sampleRate * bufferMs) / 1000;
@@ -462,11 +478,19 @@ void Mixer::shutdown() {
     if (m_impl->hWaveOut) {
         waveOutReset(m_impl->hWaveOut);
         
+        // Wait for any in-progress callback to finish
+        int waitCount = 0;
+        while (m_impl->inCallback && waitCount < 100) {
+            Sleep(1);
+            waitCount++;
+        }
+        
         for (int i = 0; i < 2; i++) {
             waveOutUnprepareHeader(m_impl->hWaveOut, &m_impl->waveHeaders[i], sizeof(WAVEHDR));
         }
         
         waveOutClose(m_impl->hWaveOut);
+        m_impl->hWaveOut = nullptr;
     }
     
     delete m_impl; m_impl = nullptr;
@@ -600,8 +624,14 @@ void Mixer::setMasterVolume(float vol) {
 Voice* Mixer::play(const Sound& sound, float volume, bool loop) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
+    if (!sound.valid()) {
+        fprintf(stderr, "[haudio] play: sound is not valid!\n");
+        return nullptr;
+    }
+    
     // Find a free voice slot
-    for (auto& voice : m_voices) {
+    for (size_t i = 0; i < m_voices.size(); i++) {
+        auto& voice = m_voices[i];
         if (!voice.m_playing) {
             voice.m_sound = &sound;
             voice.m_position = 0;
@@ -609,10 +639,12 @@ Voice* Mixer::play(const Sound& sound, float volume, bool loop) {
             voice.m_looping = loop;
             voice.m_paused = false;
             voice.m_playing = true;
+            fprintf(stderr, "[haudio] play: started voice slot %zu, frames=%zu\n", i, sound.frames());
             return &voice;
         }
     }
     
+    fprintf(stderr, "[haudio] play: no free voice slots!\n");
     return nullptr;  // No free voice slots
 }
 
@@ -622,6 +654,28 @@ void Mixer::stopAll() {
     for (auto& voice : m_voices) {
         voice.stop();
     }
+}
+
+void Mixer::reset() {
+    if (!m_initialized || !m_impl) return;
+    
+    // Stop the callback from processing audio
+    m_impl->running = false;
+    
+    // Wait for any in-progress callback to finish
+#ifdef HAUDIO_WINDOWS
+    int waitCount = 0;
+    while (m_impl->inCallback && waitCount < 100) {
+        Sleep(10);
+        waitCount++;
+    }
+#endif
+    
+    // Now stop all voices (clears m_sound pointers)
+    stopAll();
+    
+    // Re-enable callback - it will just output silence since all voices are stopped
+    m_impl->running = true;
 }
 
 void Mixer::mixAudio(int16_t* buffer, size_t frames) {
@@ -639,36 +693,61 @@ void Mixer::mixAudio(int16_t* buffer, size_t frames) {
         const Sound& sound = *voice.m_sound;
         const AudioFormat& srcFmt = sound.format();
         
-        // Simple mixing: assumes same format as output for now
-        // TODO: Add sample rate and format conversion
-        if (srcFmt.sampleRate != m_format.sampleRate ||
-            srcFmt.channels != m_format.channels ||
-            srcFmt.bitsPerSample != m_format.bitsPerSample) {
-            // Skip incompatible sounds
-            continue;
-        }
-        
         float vol = voice.m_volume * m_masterVolume;
-        const int16_t* src = (const int16_t*)sound.data();
+        const uint8_t* srcData = sound.data();
         size_t srcFrames = sound.frames();
         
+        // Calculate sample rate ratio for resampling
+        double rateRatio = (double)srcFmt.sampleRate / m_format.sampleRate;
+        
         for (size_t i = 0; i < frames; i++) {
-            if (voice.m_position >= srcFrames) {
+            // Calculate source position with resampling
+            size_t srcPos = (size_t)(voice.m_position * rateRatio);
+            
+            if (srcPos >= srcFrames) {
                 if (voice.m_looping) {
                     voice.m_position = 0;
+                    srcPos = 0;
                 } else {
                     voice.m_playing = false;
                     break;
                 }
             }
             
-            for (int ch = 0; ch < m_format.channels; ch++) {
-                size_t srcIdx = voice.m_position * m_format.channels + ch;
-                size_t dstIdx = i * m_format.channels + ch;
-                
-                // Mix with clipping
-                int32_t sample = buffer[dstIdx] + (int32_t)(src[srcIdx] * vol);
-                buffer[dstIdx] = (int16_t)std::clamp(sample, -32768, 32767);
+            // Get sample from source (handling 8-bit and 16-bit)
+            int16_t leftSample, rightSample;
+            
+            if (srcFmt.bitsPerSample == 8) {
+                // 8-bit unsigned -> 16-bit signed
+                if (srcFmt.channels == 1) {
+                    int16_t sample = ((int16_t)srcData[srcPos] - 128) << 8;
+                    leftSample = rightSample = sample;
+                } else {
+                    leftSample = ((int16_t)srcData[srcPos * 2] - 128) << 8;
+                    rightSample = ((int16_t)srcData[srcPos * 2 + 1] - 128) << 8;
+                }
+            } else {
+                // 16-bit signed
+                const int16_t* src16 = (const int16_t*)srcData;
+                if (srcFmt.channels == 1) {
+                    leftSample = rightSample = src16[srcPos];
+                } else {
+                    leftSample = src16[srcPos * 2];
+                    rightSample = src16[srcPos * 2 + 1];
+                }
+            }
+            
+            // Mix into output buffer (assuming stereo output)
+            if (m_format.channels >= 2) {
+                size_t dstIdx = i * m_format.channels;
+                int32_t left = buffer[dstIdx] + (int32_t)(leftSample * vol);
+                int32_t right = buffer[dstIdx + 1] + (int32_t)(rightSample * vol);
+                buffer[dstIdx] = (int16_t)std::clamp(left, -32768, 32767);
+                buffer[dstIdx + 1] = (int16_t)std::clamp(right, -32768, 32767);
+            } else {
+                // Mono output
+                int32_t mono = buffer[i] + (int32_t)(((leftSample + rightSample) / 2) * vol);
+                buffer[i] = (int16_t)std::clamp(mono, -32768, 32767);
             }
             
             voice.m_position++;
