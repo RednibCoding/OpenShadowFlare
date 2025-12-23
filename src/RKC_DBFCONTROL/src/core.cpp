@@ -2,11 +2,156 @@
  * RKC_DBFCONTROL - Double Buffered Frame Control (incremental implementation)
  * 
  * Manages double-buffered rendering with DirectDraw.
+ * 
+ * In windowed mode, we hook Paint() to use OpenGL instead of GDI BitBlt.
+ * This allows cross-platform rendering while keeping original DLL logic.
  */
 
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 #include <ddraw.h>
+#include <GL/gl.h>
 #include <cstdint>
+#include <cstdio>
+#include "../../utils.h"
+
+// GL_BGRA_EXT constant (not always defined in MinGW headers)
+#ifndef GL_BGRA_EXT
+#define GL_BGRA_EXT 0x80E1
+#endif
+
+// Global OpenGL context for windowed mode rendering
+static HDC g_hdc = nullptr;
+static HGLRC g_hglrc = nullptr;
+static GLuint g_texture = 0;
+static int g_texWidth = 0;
+static int g_texHeight = 0;
+static bool g_glInitialized = false;
+
+// Debug logging
+static FILE* g_logFile = nullptr;
+
+static void DBF_LOG_INIT() {
+    g_logFile = fopen("dbfcontrol_log.txt", "w");
+    if (g_logFile) {
+        fprintf(g_logFile, "=== RKC_DBFCONTROL log started ===\n");
+        fflush(g_logFile);
+    }
+}
+
+static void DBF_LOG_SHUTDOWN() {
+    if (g_logFile) {
+        fprintf(g_logFile, "=== RKC_DBFCONTROL log ended ===\n");
+        fclose(g_logFile);
+        g_logFile = nullptr;
+    }
+}
+
+#define DBF_LOG(fmt, ...) do { \
+    if (g_logFile) { fprintf(g_logFile, "[DBF] " fmt "\n", ##__VA_ARGS__); fflush(g_logFile); } \
+} while(0)
+
+// Initialize OpenGL context on the given window
+static bool InitOpenGL(HWND hwnd, int width, int height) {
+    if (g_glInitialized) return true;
+    
+    DBF_LOG("InitOpenGL: hwnd=%p, %dx%d", hwnd, width, height);
+    
+    g_hdc = GetDC(hwnd);
+    if (!g_hdc) {
+        DBF_LOG("ERROR: GetDC failed");
+        return false;
+    }
+    
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(pfd);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+    
+    int format = ChoosePixelFormat(g_hdc, &pfd);
+    if (!format) {
+        DBF_LOG("ERROR: ChoosePixelFormat failed");
+        return false;
+    }
+    
+    if (!SetPixelFormat(g_hdc, format, &pfd)) {
+        DBF_LOG("ERROR: SetPixelFormat failed");
+        return false;
+    }
+    
+    g_hglrc = wglCreateContext(g_hdc);
+    if (!g_hglrc) {
+        DBF_LOG("ERROR: wglCreateContext failed");
+        return false;
+    }
+    
+    wglMakeCurrent(g_hdc, g_hglrc);
+    
+    // Set up 2D orthographic projection
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, width, height, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
+    glClearColor(0, 0, 0, 1);
+    
+    // Create texture for framebuffer
+    glGenTextures(1, &g_texture);
+    glBindTexture(GL_TEXTURE_2D, g_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, nullptr);
+    
+    g_texWidth = width;
+    g_texHeight = height;
+    g_glInitialized = true;
+    
+    DBF_LOG("OpenGL initialized: %s", (const char*)glGetString(GL_VERSION));
+    return true;
+}
+
+static void ShutdownOpenGL() {
+    if (g_texture) {
+        glDeleteTextures(1, &g_texture);
+        g_texture = 0;
+    }
+    if (g_hglrc) {
+        wglMakeCurrent(nullptr, nullptr);
+        wglDeleteContext(g_hglrc);
+        g_hglrc = nullptr;
+    }
+    // Note: don't release g_hdc here - the window still owns it
+    g_hdc = nullptr;
+    g_glInitialized = false;
+}
+
+// Present pixels to screen using OpenGL
+static void PresentOpenGL(void* pixels, int width, int height) {
+    if (!g_glInitialized) return;
+    
+    wglMakeCurrent(g_hdc, g_hglrc);
+    
+    // Upload pixels to texture
+    glBindTexture(GL_TEXTURE_2D, g_texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, pixels);
+    
+    // Draw fullscreen quad
+    glClear(GL_COLOR_BUFFER_BIT);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0); glVertex2f(0, 0);
+    glTexCoord2f(1, 0); glVertex2f((float)width, 0);
+    glTexCoord2f(1, 1); glVertex2f((float)width, (float)height);
+    glTexCoord2f(0, 1); glVertex2f(0, (float)height);
+    glEnd();
+    
+    SwapBuffers(g_hdc);
+}
 
 extern "C" {
 
@@ -164,6 +309,209 @@ long __thiscall RKC_DBFCONTROL_GetExStyle(void* self, long arg) {
     result = result & 0xf8;
     result = result + 0x10;
     return result;
+}
+
+// ============================================================================
+// OpenGL Paint Hook - replaces BitBlt in windowed mode
+// ============================================================================
+
+// Forward declaration for DrawEnd (we'll call original)
+typedef void (__thiscall *DrawEnd_t)(void* self);
+static DrawEnd_t g_origDrawEnd = nullptr;
+
+// Forward declaration for RKC_DIB::TransferToDDB
+// The original function copies DIB pixels to a device context.
+// Signature: int __thiscall TransferToDDB(RKC_DIB* this, HDC hdc, long x, long y)
+// Returns nonzero on success
+typedef int (__thiscall *TransferToDDB_t)(void* self, HDC hdc, long x, long y);
+static TransferToDDB_t g_origTransferToDDB = nullptr;
+
+// Forward declaration for RKC_DBF::GetDIBitmap  
+typedef void* (__thiscall *GetDIBitmap_t)(void* self);
+static GetDIBitmap_t g_origGetDIBitmap = nullptr;
+
+// Helper to load function from original DLL
+static void* LoadOrigFunc(const char* dll, const char* name) {
+    HMODULE mod = GetModuleHandleA(dll);
+    if (!mod) mod = LoadLibraryA(dll);
+    if (!mod) return nullptr;
+    return (void*)GetProcAddress(mod, name);
+}
+
+// Initialize function pointers from original DLLs
+static void InitOriginalFunctions() {
+    static bool initialized = false;
+    if (initialized) return;
+    
+    // Load DrawEnd from original RKC_DBFCONTROL
+    g_origDrawEnd = (DrawEnd_t)LoadOrigFunc("o_RKC_DBFCONTROL.dll", 
+        "?DrawEnd@RKC_DBFCONTROL@@QAEXXZ");
+    
+    // Load TransferToDDB from original RKC_DIB
+    // Note: return type is int (H in mangling), not void
+    g_origTransferToDDB = (TransferToDDB_t)LoadOrigFunc("o_RKC_DIB.dll",
+        "?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z");
+    
+    // Load GetDIBitmap from original RKC_DBFCONTROL (it's in our dll but we can use ours)
+    // Actually we have our own implementation above
+    
+    DBF_LOG("InitOriginalFunctions: DrawEnd=%p, TransferToDDB=%p", 
+            g_origDrawEnd, g_origTransferToDDB);
+    
+    initialized = true;
+}
+
+/**
+ * RKC_DBFCONTROL::Paint - Paint the current frame
+ * 
+ * In fullscreen mode (this+0x6c == 0): Uses DirectDraw surfaces
+ * In windowed mode (this+0x6c != 0): Uses GDI BitBlt -> we hook with OpenGL
+ * 
+ * param_1: HDC of the window (for windowed mode)
+ * param_2: some flag
+ * 
+ * USED BY: ShadowFlare.exe (WM_PAINT handler)
+ */
+void __thiscall RKC_DBFCONTROL_Paint(void* self, HDC param_1, int param_2) {
+    char* p = (char*)self;
+    
+    InitOriginalFunctions();
+    
+    // Check state flag at offset 0x00
+    if (*(int*)p != 1) {
+        if (g_origDrawEnd) g_origDrawEnd(self);
+        return;
+    }
+    
+    // Get current DBF index and calculate DBF pointer
+    // Original: this + (currentDBFIndex * -0x24) + 0x44
+    // Which is: this + 0x44 - (index * 0x24)
+    // Wait, the decompilation shows: this + *(int*)(this + 0xc) * -0x24 + 0x44
+    // Let me recalculate: index at 0x0c, DBF array starts at 0x20, each DBF is 0x24
+    // Standard: dbf = this + 0x20 + (index * 0x24)
+    // The weird negative means it's using (1 - index) to get the "other" buffer
+    int index = *(int*)(p + 0x0c);
+    void* dbf = p + 0x20 + (index * 0x24);
+    
+    // Get the DIB bitmap from the DBF (offset 0x08 in DBF)
+    void* dib = (char*)dbf + 0x08;
+    if (!dib) {
+        if (g_origDrawEnd) g_origDrawEnd(self);
+        return;
+    }
+    
+    // Check windowed vs fullscreen mode
+    int mode = *(int*)(p + 0x6c);
+    int screenWidth = *(int*)(p + 0x120);
+    int screenHeight = *(int*)(p + 0x124);
+    HWND hwnd = *(HWND*)(p + 0x1c);
+    
+    DBF_LOG("Paint: mode=%d, %dx%d, hwnd=%p", mode, screenWidth, screenHeight, hwnd);
+    
+    if (mode != 0) {
+        // Windowed mode - use OpenGL instead of BitBlt
+        
+        // Initialize OpenGL on first call
+        if (!g_glInitialized && hwnd) {
+            InitOpenGL(hwnd, screenWidth, screenHeight);
+        }
+        
+        if (g_glInitialized) {
+            // Create a temporary DC and bitmap to get the pixel data
+            HDC memDC = CreateCompatibleDC(param_1);
+            
+            // Get the HBITMAP from this+0x140
+            HBITMAP hBitmap = *(HBITMAP*)(p + 0x140);
+            if (hBitmap) {
+                HGDIOBJ oldBmp = SelectObject(memDC, hBitmap);
+                
+                // Call original TransferToDDB to render into our bitmap
+                if (g_origTransferToDDB) {
+                    g_origTransferToDDB(dib, memDC, 0, 0);
+                }
+                
+                // Call optional paint callback at this+0x138
+                void (*paintCallback)(HDC) = *(void (**)(HDC))(p + 0x138);
+                if (paintCallback) {
+                    paintCallback(memDC);
+                }
+                
+                // Get bitmap bits for OpenGL upload
+                BITMAP bm;
+                GetObject(hBitmap, sizeof(BITMAP), &bm);
+                
+                // Allocate buffer for pixel data
+                int stride = ((bm.bmWidth * 4 + 3) & ~3);
+                void* pixels = malloc(stride * bm.bmHeight);
+                if (pixels) {
+                    BITMAPINFOHEADER bi = {};
+                    bi.biSize = sizeof(bi);
+                    bi.biWidth = bm.bmWidth;
+                    bi.biHeight = -bm.bmHeight;  // top-down
+                    bi.biPlanes = 1;
+                    bi.biBitCount = 32;
+                    bi.biCompression = BI_RGB;
+                    
+                    GetDIBits(memDC, hBitmap, 0, bm.bmHeight, pixels, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
+                    
+                    // Present to screen with OpenGL
+                    PresentOpenGL(pixels, screenWidth, screenHeight);
+                    
+                    free(pixels);
+                }
+                
+                SelectObject(memDC, oldBmp);
+            }
+            DeleteDC(memDC);
+        } else {
+            // Fallback to original BitBlt path if OpenGL failed
+            HDC memDC = CreateCompatibleDC(param_1);
+            HBITMAP hBitmap = *(HBITMAP*)(p + 0x140);
+            if (hBitmap) {
+                SelectObject(memDC, hBitmap);
+                if (g_origTransferToDDB) {
+                    g_origTransferToDDB(dib, memDC, 0, 0);
+                }
+                void (*paintCallback)(HDC) = *(void (**)(HDC))(p + 0x138);
+                if (paintCallback) {
+                    paintCallback(memDC);
+                }
+                BitBlt(param_1, 0, 0, screenWidth, screenHeight, memDC, 0, 0, SRCCOPY);
+            }
+            DeleteDC(memDC);
+        }
+    } else {
+        // Fullscreen mode - forward to original implementation
+        // This uses DirectDraw which our ddraw_wrapper handles
+        typedef void (__thiscall *Paint_t)(void*, HDC, int);
+        static Paint_t origPaint = nullptr;
+        if (!origPaint) {
+            origPaint = (Paint_t)LoadOrigFunc("o_RKC_DBFCONTROL.dll",
+                "?Paint@RKC_DBFCONTROL@@QAEXPAUHDC__@@H@Z");
+        }
+        if (origPaint) {
+            origPaint(self, param_1, param_2);
+            return;  // Original calls DrawEnd itself
+        }
+    }
+    
+    if (g_origDrawEnd) g_origDrawEnd(self);
+}
+
+// DLL entry point for cleanup
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+    switch (fdwReason) {
+        case DLL_PROCESS_ATTACH:
+            DBF_LOG_INIT();
+            DBF_LOG("RKC_DBFCONTROL.dll loaded (OpenGL hook)");
+            break;
+        case DLL_PROCESS_DETACH:
+            ShutdownOpenGL();
+            DBF_LOG("RKC_DBFCONTROL.dll unloaded");
+            DBF_LOG_SHUTDOWN();
+            break;
+    }
+    return TRUE;
 }
 
 // ============================================================================
