@@ -30,6 +30,10 @@ public:
  */
 #define DIBHISPEEDMODE_SIZE 0x46C00
 
+// Forward declarations
+extern "C" long __thiscall RKC_DIB_GetAlignWidth(RKC_DIB* self);
+extern "C" void __thiscall RKC_DIB_Release(RKC_DIB* self);
+
 // ============================================================================
 // RKC_DIBHISPEEDMODE FUNCTIONS
 // ============================================================================
@@ -92,6 +96,101 @@ extern "C" void __thiscall RKC_DIB_Release(RKC_DIB* self) {
  */
 extern "C" void __thiscall RKC_DIB_destructor(RKC_DIB* self) {
     RKC_DIB_Release(self);
+}
+
+/**
+ * RKC_DIB::Create - Allocate and initialize a new DIB
+ * USED BY: ShadowFlare.exe, o_RKC_FONTMAKER.dll, o_RKC_DBFCONTROL.dll, o_RKC_UPDIB.dll
+ * 
+ * Parameters:
+ *   width  - bitmap width in pixels
+ *   height - bitmap height in pixels
+ *   bpp    - bits per pixel (1, 4, 8, 16, 24)
+ *   allocBitmap - if 1, allocate pixel buffer; otherwise just header+palette
+ * 
+ * Allocates BITMAPINFOHEADER + palette (for paletted modes).
+ * If allocBitmap is 1, also allocates the pixel data buffer.
+ * Returns: 1 on success, 0 on failure
+ */
+extern "C" int __thiscall RKC_DIB_Create(RKC_DIB* self, long width, long height, long bpp, int allocBitmap) {
+    // Release any existing data first
+    RKC_DIB_Release(self);
+    
+    // Validate: must have valid dimensions unless allocBitmap != 1
+    if ((width == 0 || height == 0) && allocBitmap == 1) {
+        return 0;
+    }
+    
+    // Calculate palette count based on BPP
+    int paletteCount;
+    switch (bpp) {
+        case 1:
+            paletteCount = 2;
+            break;
+        case 4:
+            paletteCount = 16;
+            break;
+        case 8:
+            paletteCount = 256;
+            break;
+        case 16:
+        case 24:
+            paletteCount = 0;
+            break;
+        default:
+            return 0;  // Invalid BPP
+    }
+    
+    // Allocate BITMAPINFOHEADER + palette
+    // Header is 0x28 (40) bytes, each palette entry is 4 bytes (RGBQUAD)
+    SIZE_T headerSize = 0x28 + (paletteCount * 4);
+    BITMAPINFOHEADER* pHeader = (BITMAPINFOHEADER*)GlobalAlloc(GPTR, headerSize);
+    if (!pHeader) {
+        return 0;
+    }
+    
+    self->bitmapInfo = pHeader;
+    
+    // Set palette pointer (right after header, or NULL if no palette)
+    if (paletteCount == 0) {
+        self->palette = nullptr;
+    } else {
+        self->palette = (RGBQUAD*)((char*)pHeader + 0x28);
+    }
+    
+    // Initialize header fields
+    pHeader->biSize = 0x28;           // Size of BITMAPINFOHEADER
+    pHeader->biWidth = width;
+    pHeader->biHeight = height;
+    pHeader->biPlanes = 1;
+    pHeader->biBitCount = (WORD)bpp;
+    pHeader->biCompression = 0;       // BI_RGB
+    pHeader->biXPelsPerMeter = 0;
+    pHeader->biYPelsPerMeter = 0;
+    pHeader->biClrUsed = 0;
+    pHeader->biClrImportant = 0;
+    
+    // Calculate aligned row width and image size
+    long alignWidth = RKC_DIB_GetAlignWidth(self);
+    if (alignWidth == -1) {
+        RKC_DIB_Release(self);
+        return 0;
+    }
+    
+    pHeader->biSizeImage = alignWidth * height;
+    
+    // Allocate pixel buffer if requested
+    if (allocBitmap != 1) {
+        return 1;  // Header only, no pixel buffer
+    }
+    
+    self->bitmap = (unsigned char*)GlobalAlloc(GMEM_FIXED, pHeader->biSizeImage);
+    if (!self->bitmap) {
+        RKC_DIB_Release(self);
+        return 0;
+    }
+    
+    return 1;
 }
 
 /**
