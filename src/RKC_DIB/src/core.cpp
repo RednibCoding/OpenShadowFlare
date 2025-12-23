@@ -12,6 +12,7 @@
 #include <windows.h>
 #include <cstring>
 #include <cstdio>
+#include "../../utils.h"
 
 /**
  * RKC_DIB class structure - 12 bytes
@@ -730,8 +731,152 @@ extern "C" int __thiscall RKC_DIB_ReadFile(RKC_DIB* self, const char* filename, 
 }
 
 // ============================================================================
+// TRANSFER FUNCTIONS - BLIT BETWEEN DIBS
+// ============================================================================
+
+/**
+ * RKC_DIB::TransferToDIBFast - Fast blit from source DIB to this DIB
+ * USED BY: ShadowFlare.exe, o_RKC_UPDIB.dll, o_RKC_RPGSCRN.dll
+ * 
+ * 7-arg version with full coordinates:
+ *   destX, destY - destination position in this DIB
+ *   width, height - area to copy
+ *   srcDIB       - source DIB
+ *   srcX, srcY   - source position in srcDIB
+ * 
+ * Supports 8->8, 8->16, 8->24, 24->24 bit transfers.
+ * Returns: 1 on success, 0 on failure
+ */
+extern "C" int __thiscall RKC_DIB_TransferToDIBFast_7args(
+    RKC_DIB* self, long destX, long destY, long width, long height,
+    RKC_DIB* srcDIB, long srcX, long srcY)
+{
+    // Validate bitmaps exist
+    if (!srcDIB->bitmap || !self->bitmap) return 0;
+    if (!srcDIB->bitmapInfo || !self->bitmapInfo) return 0;
+    
+    // Get BPP for both
+    WORD srcBpp = srcDIB->bitmapInfo->biBitCount;
+    WORD destBpp = self->bitmapInfo->biBitCount;
+    
+    // For 1bpp and 4bpp, we'd need TransferToDIB - not yet implemented
+    // For now just return 0 (caller will handle it)
+    if (srcBpp == 1 || srcBpp == 4) return 0;
+    
+    // Only support certain combinations
+    if (srcBpp != 8 && srcBpp != 24) return 0;
+    if (destBpp != 8 && destBpp != 16 && destBpp != 24) return 0;
+    if (destBpp < srcBpp) return 0;  // Can't reduce BPP
+    
+    // Get dimensions from bitmapInfo
+    long destImgW = self->bitmapInfo->biWidth;
+    long destImgH = self->bitmapInfo->biHeight;
+    long srcImgW = srcDIB->bitmapInfo->biWidth;
+    long srcImgH = srcDIB->bitmapInfo->biHeight;
+    
+    // Clipping - adjust for negative coordinates
+    if (destX < 0) { srcX -= destX; width += destX; destX = 0; }
+    if (destY < 0) { srcY -= destY; height += destY; destY = 0; }
+    if (srcX < 0) { destX -= srcX; width += srcX; srcX = 0; }
+    if (srcY < 0) { destY -= srcY; height += srcY; srcY = 0; }
+    
+    // Bounds checking
+    if (destX < 0 || destX >= destImgW) return 0;
+    if (srcX < 0 || srcX >= srcImgW) return 0;
+    
+    // Clip to image bounds
+    if (destX + width > destImgW) width = destImgW - destX;
+    if (destY + height > destImgH) height = destImgH - destY;
+    if (srcX + width > srcImgW) width = srcImgW - srcX;
+    if (srcY + height > srcImgH) height = srcImgH - srcY;
+    
+    if (width <= 0 || height <= 0) return 0;
+    
+    // Get strides (bytes per row, DWORD aligned)
+    long srcStride = RKC_DIB_GetAlignWidth(srcDIB);
+    long destStride = RKC_DIB_GetAlignWidth(self);
+    
+    // Calculate byte offsets for starting position
+    // DIBs are bottom-up: row 0 is at the bottom
+    // srcY=0 means top row visually = (height-1) in memory
+    long srcOffset = ((srcImgH - srcY - 1) * srcStride) + (srcBpp * srcX / 8);
+    long destOffset = ((destImgH - destY - 1) * destStride) + (destBpp * destX / 8);
+    
+    unsigned char* srcBits = srcDIB->bitmap;
+    unsigned char* destBits = self->bitmap;
+    RGBQUAD* srcPal = srcDIB->palette;
+    
+    // Copy rows
+    for (long row = 0; row < height; row++) {
+        unsigned char* src = srcBits + srcOffset;
+        unsigned char* dst = destBits + destOffset;
+        
+        if (srcBpp == 8 && destBpp == 8) {
+            // 8->8: Direct copy
+            memcpy(dst, src, width);
+        }
+        else if (srcBpp == 8 && destBpp == 16 && srcPal) {
+            // 8->16: Palette lookup to RGB555
+            unsigned short* dst16 = (unsigned short*)dst;
+            for (long x = 0; x < width; x++) {
+                RGBQUAD& c = srcPal[src[x]];
+                // RGB555: RRRRRGGGGBBBB (original uses this format)
+                dst16[x] = ((c.rgbRed & 0xF8) << 7) | ((c.rgbGreen & 0xF8) << 2) | (c.rgbBlue >> 3);
+            }
+        }
+        else if (srcBpp == 8 && destBpp == 24 && srcPal) {
+            // 8->24: Palette lookup to BGR
+            for (long x = 0; x < width; x++) {
+                RGBQUAD& c = srcPal[src[x]];
+                dst[x*3 + 0] = c.rgbBlue;
+                dst[x*3 + 1] = c.rgbGreen;
+                dst[x*3 + 2] = c.rgbRed;
+            }
+        }
+        else if (srcBpp == 24 && destBpp == 24) {
+            // 24->24: Direct copy
+            memcpy(dst, src, width * 3);
+        }
+        
+        // Move to previous row (DIBs are bottom-up, we go upward visually)
+        srcOffset -= srcStride;
+        destOffset -= destStride;
+    }
+    
+    return 1;
+}
+
+/**
+ * RKC_DIB::TransferToDIBFast - 4-arg version (uses source DIB dimensions)
+ * USED BY: ShadowFlare.exe, o_RKC_UPDIB.dll
+ * 
+ * Simplified version that copies entire source to dest at (destX, destY)
+ * For 1bpp and 4bpp sources, delegates to TransferToDIB (original DLL)
+ */
+extern "C" int __thiscall RKC_DIB_TransferToDIBFast_4args(
+    RKC_DIB* self, long destX, long destY, RKC_DIB* srcDIB)
+{
+    if (!srcDIB || !srcDIB->bitmapInfo) return 0;
+    
+    WORD srcBpp = srcDIB->bitmapInfo->biBitCount;
+    long srcW = srcDIB->bitmapInfo->biWidth;
+    long srcH = srcDIB->bitmapInfo->biHeight;
+    
+    // For 1bpp and 4bpp, delegate to TransferToDIB (which is forwarded to original DLL)
+    if (srcBpp == 1 || srcBpp == 4) {
+        // Call the 8-arg TransferToDIB: (destX, destY, width, height, srcDIB, srcX, srcY, flag)
+        return CallFunctionInDLL<int>("o_RKC_DIB.dll",
+            "?TransferToDIB@RKC_DIB@@QAEHJJJJPAV1@JJJ@Z",
+            self, destX, destY, srcW, srcH, srcDIB, 0L, 0L, 0L);
+    }
+    
+    return RKC_DIB_TransferToDIBFast_7args(self, destX, destY, srcW, srcH, srcDIB, 0, 0);
+}
+
+// ============================================================================
 // STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
 // ============================================================================
+
 
 /**
  * RKC_DIB::AddOffset - Add color offset to palette
