@@ -61,12 +61,18 @@ echo "========================================"
 for dir in "${dirs[@]}"; do
     echo -n "Compiling $dir... "
     
+    # Extra libs for specific DLLs
+    EXTRA_LIBS=""
+    if [ "$dir" = "RKC_DBFCONTROL" ]; then
+        EXTRA_LIBS="-lopengl32"
+    fi
+    
     $CXX -shared -static-libgcc -static-libstdc++ \
         -std=c++17 \
         -o "$BUILD_DIR/$dir.dll" \
         "$SCRIPT_DIR/$dir/src/core.cpp" \
         "$SCRIPT_DIR/$dir/dll.def" \
-        -lgdi32 -lcomdlg32 \
+        -lgdi32 -lcomdlg32 $EXTRA_LIBS \
         2>&1
     
     if [ $? -eq 0 ]; then

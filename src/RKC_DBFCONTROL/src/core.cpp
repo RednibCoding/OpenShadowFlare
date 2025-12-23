@@ -258,6 +258,16 @@ int __thiscall RKC_DBFCONTROL_GetThreadDrawFlag(void* self) {
 }
 
 /**
+ * RKC_DBFCONTROL::GetDrawingFlag - Get drawing flag (mutex protected in original)
+ * Returns flag at offset 0x04 - indicates if drawing is in progress
+ * Original uses mutex but we simplify since no threading.
+ * USED BY: ShadowFlare.exe
+ */
+int __thiscall RKC_DBFCONTROL_GetDrawingFlag(void* self) {
+    return *(int*)((char*)self + 0x04);
+}
+
+/**
  * RKC_DBFCONTROL::GetStyle - Get window style based on DBF index
  * Original logic:
  *   if (arg == -1) arg = [ecx+0x6c]
@@ -527,13 +537,37 @@ void __thiscall RKC_DBF_Flush(void* self) {}
 void __thiscall RKC_DBF_GetClipRect(void* self, void* rect) {}
 void __thiscall RKC_DBF_Release(void* self) {}
 
+// ============================================================================
+// IMPLEMENTED FUNCTIONS - USED BY EXE
+// ============================================================================
+
+/**
+ * RKC_DBFCONTROL::DrawEnd - Called after each frame is painted
+ * Increments draw count and clears the "drawing in progress" flag.
+ * Original uses mutex but we simplify since no threading.
+ * USED BY: ShadowFlare.exe
+ */
+void __thiscall RKC_DBFCONTROL_DrawEnd(void* self) {
+    char* p = (char*)self;
+    // Increment draw count at offset 0x68
+    *(int*)(p + 0x68) = *(int*)(p + 0x68) + 1;
+    // Clear drawing flag at offset 0x04 if it was 1
+    if (*(int*)(p + 0x04) == 1) {
+        *(int*)(p + 0x04) = 0;
+    }
+}
+
+// ============================================================================
+// STUBS - NOT USED BY EXE OR OTHER DLLS
+// ============================================================================
+
 // RKC_DBFCONTROL - NOT USED
 void* __thiscall RKC_DBFCONTROL_operatorAssign(void* self, const void* src) { return self; }
 void __thiscall RKC_DBFCONTROL_DisableDraw(void* self) {}
 void __thiscall RKC_DBFCONTROL_DrawFunction(void* self) {}
 void* __thiscall RKC_DBFCONTROL_Draw(void* self) { return nullptr; }
 void __thiscall RKC_DBFCONTROL_EnableDraw(void* self) {}
-void __thiscall RKC_DBFCONTROL_FlushDrawCount(void* self) {}
+void __thiscall RKC_DBFCONTROL_FlushDrawCount(void* self) { *(int*)((char*)self + 0x68) = 0; }
 void __thiscall RKC_DBFCONTROL_GetClipRect(void* self, void* rect, long arg) {}
 int __thiscall RKC_DBFCONTROL_Redraw(void* self) { return 0; }
 void __thiscall RKC_DBFCONTROL_Release(void* self) {}
