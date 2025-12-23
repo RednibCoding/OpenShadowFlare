@@ -66,6 +66,9 @@ for dir in "${dirs[@]}"; do
     if [ "$dir" = "RKC_DBFCONTROL" ]; then
         EXTRA_LIBS="-lopengl32"
     fi
+    if [ "$dir" = "RKC_DSOUND" ]; then
+        EXTRA_LIBS="-lwinmm"
+    fi
     
     $CXX -shared -static-libgcc -static-libstdc++ \
         -std=c++17 \

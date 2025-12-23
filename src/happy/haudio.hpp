@@ -8,7 +8,7 @@
  * Modern C++17, memory-safe
  * 
  * Usage:
- *   #define HHAUDIO_IMPLEMENTATION in ONE .cpp file before including
+ *   #define HAUDIO_IMPLEMENTATION in ONE .cpp file before including
  *   Link: -lasound (Linux), -lwinmm (Windows)
  * 
  * Features:
@@ -21,6 +21,7 @@
 #ifndef HAUDIO_HPP
 #define HAUDIO_HPP
 
+#include <array>
 #include <memory>
 #include <vector>
 #include <string>
@@ -32,9 +33,9 @@
  * Platform Detection
  *============================================================================*/
 #if defined(_WIN32) || defined(_WIN64)
-    #define HHAUDIO_WINDOWS
+    #define HAUDIO_WINDOWS
 #elif defined(__linux__)
-    #define HHAUDIO_LINUX
+    #define HAUDIO_LINUX
 #else
     #error "Unsupported platform (only Windows and Linux supported)"
 #endif
@@ -136,7 +137,11 @@ private:
  * Mixer - Audio output and mixing engine
  *============================================================================*/
 
+// Forward declare Impl - full definition in HAUDIO_IMPLEMENTATION section
+struct MixerImpl;
+
 class Mixer {
+    friend struct MixerImpl;  // Allow MixerImpl to access private members
 public:
     Mixer();
     ~Mixer();
@@ -170,9 +175,8 @@ public:
     static constexpr int MAX_VOICES = 32;
     
 private:
-    // Platform-specific implementation
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
+    // Platform-specific implementation (defined in HAUDIO_IMPLEMENTATION)
+    MixerImpl* m_impl = nullptr;
     
     AudioFormat m_format;
     float m_masterVolume = 1.0f;
@@ -374,7 +378,7 @@ void Voice::setPosition(size_t frame) {
 
 #ifdef HAUDIO_WINDOWS
 
-struct Mixer::Impl {
+struct MixerImpl {
     HWAVEOUT hWaveOut = nullptr;
     WAVEHDR waveHeaders[2];
     std::vector<int16_t> buffers[2];
@@ -385,7 +389,7 @@ struct Mixer::Impl {
     static void CALLBACK waveOutProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance,
                                       DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
         if (uMsg == WOM_DONE) {
-            Impl* impl = (Impl*)dwInstance;
+            MixerImpl* impl = (MixerImpl*)dwInstance;
             if (impl->running) {
                 // Refill the completed buffer
                 WAVEHDR* hdr = (WAVEHDR*)dwParam1;
@@ -404,7 +408,7 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
     if (m_initialized) return true;
     
     m_format = format;
-    m_impl = std::make_unique<Impl>();
+    m_impl = new MixerImpl();
     m_impl->mixer = this;
     
     WAVEFORMATEX wfx = {};
@@ -416,10 +420,10 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
     wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
     
     MMRESULT result = waveOutOpen(&m_impl->hWaveOut, WAVE_MAPPER, &wfx,
-                                   (DWORD_PTR)Impl::waveOutProc,
-                                   (DWORD_PTR)m_impl.get(), CALLBACK_FUNCTION);
+                                   (DWORD_PTR)MixerImpl::waveOutProc,
+                                   (DWORD_PTR)m_impl, CALLBACK_FUNCTION);
     if (result != MMSYSERR_NOERROR) {
-        m_impl.reset();
+        delete m_impl; m_impl = nullptr;
         return false;
     }
     
@@ -465,7 +469,7 @@ void Mixer::shutdown() {
         waveOutClose(m_impl->hWaveOut);
     }
     
-    m_impl.reset();
+    delete m_impl; m_impl = nullptr;
     m_initialized = false;
 }
 
@@ -473,7 +477,7 @@ void Mixer::shutdown() {
 
 #ifdef HAUDIO_LINUX
 
-struct Mixer::Impl {
+struct MixerImpl {
     snd_pcm_t* pcm = nullptr;
     std::thread audioThread;
     std::atomic<bool> running{false};
@@ -507,13 +511,13 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
     if (m_initialized) return true;
     
     m_format = format;
-    m_impl = std::make_unique<Impl>();
+    m_impl = new MixerImpl();
     m_impl->mixer = this;
     
     // Open default playback device
     int err = snd_pcm_open(&m_impl->pcm, "default", SND_PCM_STREAM_PLAYBACK, 0);
     if (err < 0) {
-        m_impl.reset();
+        delete m_impl; m_impl = nullptr;
         return false;
     }
     
@@ -542,7 +546,7 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
     err = snd_pcm_hw_params(m_impl->pcm, hwParams);
     if (err < 0) {
         snd_pcm_close(m_impl->pcm);
-        m_impl.reset();
+        delete m_impl; m_impl = nullptr;
         return false;
     }
     
@@ -554,7 +558,7 @@ bool Mixer::init(const AudioFormat& format, int bufferMs) {
     m_initialized = true;
     
     // Start audio thread
-    m_impl->audioThread = std::thread(&Impl::audioLoop, m_impl.get());
+    m_impl->audioThread = std::thread(&MixerImpl::audioLoop, m_impl);
     
     return true;
 }
@@ -573,7 +577,7 @@ void Mixer::shutdown() {
         snd_pcm_close(m_impl->pcm);
     }
     
-    m_impl.reset();
+    delete m_impl; m_impl = nullptr;
     m_initialized = false;
 }
 
@@ -674,6 +678,6 @@ void Mixer::mixAudio(int16_t* buffer, size_t frames) {
 
 } // namespace haudio
 
-#endif // HHAUDIO_IMPLEMENTATION
+#endif // HAUDIO_IMPLEMENTATION
 
 #endif // HAUDIO_HPP
