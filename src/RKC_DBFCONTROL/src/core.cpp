@@ -321,6 +321,28 @@ long __thiscall RKC_DBFCONTROL_GetExStyle(void* self, long arg) {
     return result;
 }
 
+/**
+ * RKC_DBFCONTROL::GetPosition - Get window position based on mode
+ * Returns CW_USEDEFAULT for windowed mode, (0,0) for fullscreen
+ * Note: Returns struct by value via hidden first param (MSVC convention)
+ * USED BY: ShadowFlare.exe
+ */
+void __thiscall RKC_DBFCONTROL_GetPosition(void* self, long* outPoint, long arg) {
+    char* p = (char*)self;
+    if (arg == -1) {
+        arg = *(long*)(p + 0x6c);
+    }
+    if (arg == 1) {
+        // Windowed mode: CW_USEDEFAULT
+        outPoint[0] = (long)0x80000000L;
+        outPoint[1] = (long)0x80000000L;
+    } else {
+        // Fullscreen: top-left corner
+        outPoint[0] = 0;
+        outPoint[1] = 0;
+    }
+}
+
 // ============================================================================
 // OpenGL Paint Hook - replaces BitBlt in windowed mode
 // ============================================================================
@@ -554,6 +576,28 @@ void __thiscall RKC_DBFCONTROL_DrawEnd(void* self) {
     // Clear drawing flag at offset 0x04 if it was 1
     if (*(int*)(p + 0x04) == 1) {
         *(int*)(p + 0x04) = 0;
+    }
+}
+
+/**
+ * RKC_DBFCONTROL::SetPaintFunction - Store paint callback pointer
+ * USED BY: ShadowFlare.exe
+ */
+void __thiscall RKC_DBFCONTROL_SetPaintFunction(void* self, void* callback) {
+    *(void**)((char*)self + 0x138) = callback;
+}
+
+/**
+ * RKC_DBFCONTROL::SetScreenClear - Set screen clear flag and color
+ * USED BY: ShadowFlare.exe
+ */
+void __thiscall RKC_DBFCONTROL_SetScreenClear(void* self, int flag, void* rgbquad) {
+    char* p = (char*)self;
+    *(int*)(p + 0x7c) = flag;
+    if (rgbquad != nullptr) {
+        *(uint32_t*)(p + 0x80) = *(uint32_t*)rgbquad;
+    } else {
+        *(uint32_t*)(p + 0x80) = 0;
     }
 }
 
