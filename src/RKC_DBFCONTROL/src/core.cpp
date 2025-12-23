@@ -343,6 +343,21 @@ void __thiscall RKC_DBFCONTROL_GetPosition(void* self, long* outPoint, long arg)
     }
 }
 
+/**
+ * RKC_DBFCONTROL::GetSurface - Get DirectDraw surface
+ * Returns primary surface (arg=0) or back buffer (arg=1)
+ * In windowed mode these are NULL since we use GDI/OpenGL.
+ * USED BY: ShadowFlare.exe
+ */
+void* __thiscall RKC_DBFCONTROL_GetSurface(void* self, int arg) {
+    char* p = (char*)self;
+    // Offset 0x130 = primary surface, 0x12c = back buffer
+    if (arg != 0) {
+        return *(void**)(p + 0x12c);  // Back buffer
+    }
+    return *(void**)(p + 0x130);  // Primary surface
+}
+
 // ============================================================================
 // OpenGL Paint Hook - replaces BitBlt in windowed mode
 // ============================================================================
