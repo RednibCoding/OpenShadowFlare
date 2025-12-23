@@ -220,6 +220,97 @@ extern "C" long __thiscall RKC_DIB_GetAlignWidth(RKC_DIB* self) {
     }
 }
 
+// Forward declaration
+extern "C" int __thiscall RKC_DIB_FillByte(RKC_DIB* self, unsigned char fillValue);
+
+/**
+ * RKC_DIB::Fill - Fill entire bitmap with a color value
+ * USED BY: o_RKC_DBFCONTROL.dll
+ * 
+ * Fills based on bit depth:
+ * - 1 bpp: 0xFF if color non-zero, else 0x00
+ * - 4 bpp: low nibble duplicated to both nibbles
+ * - 8 bpp: low byte directly
+ * - 16 bpp: 2-byte color per pixel
+ * - 24 bpp: 3-byte BGR color per pixel
+ * 
+ * Returns: 1 on success, 0 if no bitmap
+ */
+extern "C" int __thiscall RKC_DIB_Fill(RKC_DIB* self, long color) {
+    if (!self->bitmap || !self->bitmapInfo) {
+        return 0;
+    }
+    
+    WORD bpp = self->bitmapInfo->biBitCount;
+    
+    switch (bpp) {
+        case 1: {
+            // Fill with 0xFF if color non-zero, else 0x00
+            unsigned char fillVal = (color != 0) ? 0xFF : 0x00;
+            RKC_DIB_FillByte(self, fillVal);
+            return 1;
+        }
+        case 4: {
+            // Duplicate low nibble to both nibbles
+            unsigned char nibble = (unsigned char)(color & 0x0F);
+            unsigned char fillVal = nibble | (nibble << 4);
+            RKC_DIB_FillByte(self, fillVal);
+            return 1;
+        }
+        case 8: {
+            // Use low byte directly
+            RKC_DIB_FillByte(self, (unsigned char)(color & 0xFF));
+            return 1;
+        }
+        case 16: {
+            // 16bpp: write 2-byte color per pixel
+            long stride = RKC_DIB_GetAlignWidth(self);
+            if (stride <= 0) return 0;
+            
+            unsigned char* dst = self->bitmap;
+            long width = self->bitmapInfo->biWidth;
+            long height = self->bitmapInfo->biHeight;
+            unsigned char b0 = (unsigned char)(color & 0xFF);
+            unsigned char b1 = (unsigned char)((color >> 8) & 0xFF);
+            
+            for (long y = 0; y < height; y++) {
+                unsigned char* row = dst;
+                for (long x = 0; x < width; x++) {
+                    *row++ = b0;
+                    *row++ = b1;
+                }
+                dst += stride;
+            }
+            return 1;
+        }
+        case 24: {
+            // 24bpp: write 3-byte BGR color per pixel
+            long stride = RKC_DIB_GetAlignWidth(self);
+            if (stride <= 0) return 0;
+            
+            unsigned char* dst = self->bitmap;
+            long width = self->bitmapInfo->biWidth;
+            long height = self->bitmapInfo->biHeight;
+            unsigned char b = (unsigned char)(color & 0xFF);         // Blue
+            unsigned char g = (unsigned char)((color >> 8) & 0xFF);  // Green
+            unsigned char r = (unsigned char)((color >> 16) & 0xFF); // Red
+            
+            for (long y = 0; y < height; y++) {
+                unsigned char* row = dst;
+                for (long x = 0; x < width; x++) {
+                    *row++ = b;
+                    *row++ = g;
+                    *row++ = r;
+                }
+                dst += stride;
+            }
+            return 1;
+        }
+        default:
+            return 0;
+    }
+}
+
 /**
  * RKC_DIB::FillByte - Fill entire bitmap with a byte value
  * USED BY: ShadowFlare.exe, o_RKC_DBFCONTROL.dll, o_RKC_UPDIB.dll

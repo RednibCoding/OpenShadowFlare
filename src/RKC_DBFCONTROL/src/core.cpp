@@ -601,6 +601,52 @@ void __thiscall RKC_DBFCONTROL_SetScreenClear(void* self, int flag, void* rgbqua
     }
 }
 
+/**
+ * RKC_DBFCONTROL::SetClipRect - Set clip rect for both DBF objects
+ * Copies RECT to offsets 0x34 and 0x58 (the two embedded RKC_DBF clip rects)
+ * USED BY: ShadowFlare.exe
+ */
+void __thiscall RKC_DBFCONTROL_SetClipRect(void* self, void* rect) {
+    char* p = (char*)self;
+    uint32_t* r = (uint32_t*)rect;
+    // Copy to first DBF clip rect at 0x34
+    *(uint32_t*)(p + 0x34) = r[0];  // left
+    *(uint32_t*)(p + 0x38) = r[1];  // top
+    *(uint32_t*)(p + 0x3c) = r[2];  // right
+    *(uint32_t*)(p + 0x40) = r[3];  // bottom
+    // Copy to second DBF clip rect at 0x58
+    *(uint32_t*)(p + 0x58) = r[0];
+    *(uint32_t*)(p + 0x5c) = r[1];
+    *(uint32_t*)(p + 0x60) = r[2];
+    *(uint32_t*)(p + 0x64) = r[3];
+}
+
+/**
+ * RKC_DBFCONTROL::Clear - Clear both buffers with color or zero
+ * Calls RKC_DIB::Fill or RKC_DIB::FillByte on both embedded DIBs
+ * USED BY: ShadowFlare.exe
+ */
+int __thiscall RKC_DBFCONTROL_Clear(void* self, void* rgbquad) {
+    char* p = (char*)self;
+    // The two embedded RKC_DIB objects are at offsets 0x28 and 0x4c
+    // (actually inside RKC_DBF which starts at 0x20, and RKC_DIB is at +0x08 within RKC_DBF)
+    void* dib1 = p + 0x28;  // First DBF's DIB
+    void* dib2 = p + 0x4c;  // Second DBF's DIB
+    
+    if (rgbquad != nullptr) {
+        // Fill with color - RGBQUAD is 4 bytes (B,G,R,reserved)
+        // RKC_DIB::Fill takes long color value (BGR format)
+        uint32_t color = *(uint32_t*)rgbquad & 0x00FFFFFF;  // Mask off reserved byte
+        CallFunctionInDLL<int>("RKC_DIB.dll", "?Fill@RKC_DIB@@QAEHJ@Z", dib1, (long)color);
+        CallFunctionInDLL<int>("RKC_DIB.dll", "?Fill@RKC_DIB@@QAEHJ@Z", dib2, (long)color);
+    } else {
+        // Fill with zero bytes
+        CallFunctionInDLL<int>("RKC_DIB.dll", "?FillByte@RKC_DIB@@QAEHE@Z", dib1, (unsigned char)0);
+        CallFunctionInDLL<int>("RKC_DIB.dll", "?FillByte@RKC_DIB@@QAEHE@Z", dib2, (unsigned char)0);
+    }
+    return 1;
+}
+
 // ============================================================================
 // STUBS - NOT USED BY EXE OR OTHER DLLS
 // ============================================================================
