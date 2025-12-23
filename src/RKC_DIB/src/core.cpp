@@ -307,20 +307,7 @@ extern "C" int __thiscall RKC_DIB_SetPalette(RKC_DIB* self, RGBQUAD* sourcePalet
         return 0;  // No palette
     }
     
-    // PALETTE DUMP: Write palette to file for extraction
-    // This runs when the game sets a palette, so we can extract the actual palettes used.
-    static int paletteNum = 0;
-    char filename[256];
-    sprintf(filename, "palette_dump_%03d.bin", paletteNum++);
-    FILE* f = fopen(filename, "wb");
-    if (f) {
-        fwrite(sourcePalette, sizeof(RGBQUAD), count, f);
-        fclose(f);
-    }
-    
-    // Copy palette entries
     memcpy(self->palette, sourcePalette, count * sizeof(RGBQUAD));
-    
     return 1;
 }
 
