@@ -1,5 +1,6 @@
 /*
- * gfx2d.hpp - Simple 2D graphics layer using OpenGL 1.2 fixed-function
+ * h2d.hpp - Happy 2D - Simple 2D graphics layer using OpenGL 1.2 fixed-function
+ * Part of the Happy Library (hwl, h2d, haudio)
  * 
  * Designed to replace DirectDraw-based RKC_DIB/RKC_UPDIB/RKC_DBFCONTROL
  * with a cross-platform implementation.
@@ -10,15 +11,15 @@
  *   - Renderer: Handles drawing to screen (like RKC_DBFCONTROL)
  */
 
-#ifndef GFX2D_HPP
-#define GFX2D_HPP
+#ifndef H2D_HPP
+#define H2D_HPP
 
 #include <cstdint>
 #include <memory>
 #include <vector>
 #include <string>
 
-namespace gfx2d {
+namespace h2d {
 
 /*==============================================================================
  * Color types
@@ -218,6 +219,6 @@ private:
     Color m_colors[256];
 };
 
-} // namespace gfx2d
+} // namespace h2d
 
-#endif // GFX2D_HPP
+#endif // H2D_HPP

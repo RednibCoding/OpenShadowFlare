@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cstdio>
 
-namespace gfx2d {
+namespace h2d {
 
 // Helper to read uint32_t little-endian
 static inline uint32_t readU32LE(const uint8_t* p) {
@@ -644,4 +644,4 @@ void TextureAtlas::drawPattern(Renderer& renderer, int patternIndex, int x, int 
     }
 }
 
-} // namespace gfx2d
+} // namespace h2d

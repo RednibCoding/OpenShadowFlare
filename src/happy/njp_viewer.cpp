@@ -2,12 +2,12 @@
  * njp_viewer.cpp - Test loading and displaying NJP files from ShadowFlare
  * 
  * Build (Linux):
- *   g++ -std=c++17 -O2 njp_viewer.cpp njp_loader.cpp gfx2d.cpp -o njp_viewer -lX11 -lGL -ldl
+ *   g++ -std=c++17 -O2 njp_viewer.cpp njp_loader.cpp h2d.cpp -o njp_viewer -lX11 -lGL -ldl
  */
 
 #define HWL_IMPLEMENTATION
 #include "hwl.hpp"
-#include "gfx2d.hpp"
+#include "h2d.hpp"
 #include "njp_loader.hpp"
 
 #include <cstdio>
@@ -97,22 +97,22 @@ int main(int argc, char* argv[]) {
     }
     
     // Initialize renderer
-    gfx2d::Renderer renderer;
+    h2d::Renderer renderer;
     renderer.init(window->width(), window->height());
     
     // Create a palette for 8-bit sprites
-    gfx2d::Palette defaultPalette;
+    h2d::Palette defaultPalette;
     if (!paletteFile.empty()) {
-        defaultPalette = gfx2d::Palette::loadFromFile(paletteFile.c_str());
+        defaultPalette = h2d::Palette::loadFromFile(paletteFile.c_str());
     } else {
-        defaultPalette = gfx2d::Palette::createDefault();
+        defaultPalette = h2d::Palette::createDefault();
     }
     
     // Load first sprite sheet
     int currentFile = 0;
     int currentPattern = 0;
-    gfx2d::SpriteSheet sheet;
-    gfx2d::TextureAtlas atlas;
+    h2d::SpriteSheet sheet;
+    h2d::TextureAtlas atlas;
     
     auto loadFile = [&](int index) {
         if (index < 0 || index >= static_cast<int>(njpFiles.size())) return;
@@ -203,25 +203,25 @@ int main(int argc, char* argv[]) {
         
         if (needRedraw) {
             renderer.beginFrame();
-            renderer.clear(gfx2d::Color(40, 40, 50, 255));
+            renderer.clear(h2d::Color(40, 40, 50, 255));
             
             // Draw current pattern info
             int y = 10;
             
             // Draw the individual pattern (larger, for detail view)
-            const gfx2d::Pattern* pattern = sheet.getPattern(currentPattern);
+            const h2d::Pattern* pattern = sheet.getPattern(currentPattern);
             if (pattern && pattern->bitmap.valid()) {
                 // Create a temporary texture for this pattern
-                static gfx2d::Texture patternTex;
+                static h2d::Texture patternTex;
                 patternTex.createFromBitmap(pattern->bitmap);
                 
                 // Draw at 2x scale
-                gfx2d::Rect dest(50, 80, pattern->width * 2, pattern->height * 2);
+                h2d::Rect dest(50, 80, pattern->width * 2, pattern->height * 2);
                 renderer.drawTextureScaled(patternTex, dest);
                 
                 // Draw outline
-                renderer.drawRectOutline(gfx2d::Rect(49, 79, dest.w + 2, dest.h + 2), 
-                                          gfx2d::Color(255, 255, 0, 255));
+                renderer.drawRectOutline(h2d::Rect(49, 79, dest.w + 2, dest.h + 2), 
+                                          h2d::Color(255, 255, 0, 255));
             }
             
             // Draw all patterns from atlas (thumbnail strip)
@@ -230,21 +230,21 @@ int main(int argc, char* argv[]) {
             int thumbScale = 1;
             
             for (int i = 0; i < std::min(20, sheet.patternCount()); i++) {
-                const gfx2d::Pattern* p = sheet.getPattern(i);
+                const h2d::Pattern* p = sheet.getPattern(i);
                 if (p && p->width > 0 && p->height > 0) {
-                    gfx2d::Rect src = atlas.getPatternRect(i);
+                    h2d::Rect src = atlas.getPatternRect(i);
                     if (src.w > 0) {
                         int w = src.w * thumbScale;
                         int h = src.h * thumbScale;
                         
                         // Highlight current pattern
                         if (i == currentPattern) {
-                            renderer.drawRect(gfx2d::Rect(thumbX - 2, thumbY - 2, w + 4, h + 4),
-                                               gfx2d::Color(255, 255, 0, 255));
+                            renderer.drawRect(h2d::Rect(thumbX - 2, thumbY - 2, w + 4, h + 4),
+                                               h2d::Color(255, 255, 0, 255));
                         }
                         
                         renderer.drawTextureScaled(atlas.texture(), 
-                                                    gfx2d::Rect(thumbX, thumbY, w, h), src);
+                                                    h2d::Rect(thumbX, thumbY, w, h), src);
                         
                         thumbX += w + 4;
                         if (thumbX > window->width() - 100) {

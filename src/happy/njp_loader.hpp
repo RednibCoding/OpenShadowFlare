@@ -12,13 +12,13 @@
 #ifndef NJP_LOADER_HPP
 #define NJP_LOADER_HPP
 
-#include "gfx2d.hpp"
+#include "h2d.hpp"
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <memory>
 
-namespace gfx2d {
+namespace h2d {
 
 /*==============================================================================
  * Pattern - A single sprite frame/tile from an NJP file
@@ -128,6 +128,6 @@ private:
     std::vector<Rect> m_rects;  // Source rects for each pattern in the atlas
 };
 
-} // namespace gfx2d
+} // namespace h2d
 
 #endif // NJP_LOADER_HPP

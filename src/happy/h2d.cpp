@@ -1,8 +1,8 @@
 /*
- * gfx2d.cpp - Implementation of 2D graphics layer
+ * h2d.cpp - Implementation of Happy 2D graphics layer
  */
 
-#include "gfx2d.hpp"
+#include "h2d.hpp"
 #include <cstring>
 #include <algorithm>
 
@@ -13,7 +13,7 @@
 #endif
 #include <GL/gl.h>
 
-namespace gfx2d {
+namespace h2d {
 
 /*==============================================================================
  * Bitmap Implementation
@@ -554,4 +554,4 @@ Palette Palette::loadFromFile(const char* filename) {
     return pal;
 }
 
-} // namespace gfx2d
+} // namespace h2d

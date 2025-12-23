@@ -1,5 +1,6 @@
 /*
- * HWL.hpp - Window and Input for HWL (Happy Windowing Library)
+ * hwl.hpp - Happy Windowing Library
+ * Part of the Happy Library (hwl, h2d, haudio)
  * by Rednib Coding (Michael Binder)
  * 
  * Minimal cross-platform windowing
