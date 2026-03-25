@@ -69,10 +69,11 @@ extern "C" void* __thiscall RKC_DIBHISPEEDMODE_operatorAssign(void* self, const 
  * RKC_DIB::constructor - Initialize DIB object
  * USED BY: ShadowFlare.exe, o_RKC_FONTMAKER.dll, o_RKC_DBFCONTROL.dll, o_RKC_UPDIB.dll
  */
-extern "C" void __thiscall RKC_DIB_constructor(RKC_DIB* self) {
+extern "C" RKC_DIB* __thiscall RKC_DIB_constructor(RKC_DIB* self) {
     self->bitmapInfo = nullptr;
     self->palette = nullptr;
     self->bitmap = nullptr;
+    return self;
 }
 
 /**
@@ -1091,6 +1092,617 @@ extern "C" void __thiscall RKC_DIB_ScreenPaintLineScan(RKC_DIB* self, POINT* p1,
  */
 extern "C" int __thiscall RKC_DIB_TransferToDDB_6args(RKC_DIB* self, HDC hdc, long x, long y, long w, long h, long flags) {
     return 0;
+}
+
+// ============================================================================
+// ZOOM FUNCTIONS
+// ============================================================================
+
+// Helper: DWORD-aligned stride for a given pixel width and BPP
+static inline long dibStride(long width, int bpp) {
+    switch (bpp) {
+        case 8:  return (width + 3) & ~3;
+        case 16: return (width * 2 + 3) & ~3;
+        case 24: return (width * 3 + 3) & ~3;
+        default: return (width + 3) & ~3;
+    }
+}
+
+// Helper: pack RGBQUAD to RGB555
+static inline unsigned short rgbToRgb555(unsigned char b, unsigned char g, unsigned char r) {
+    return ((r & 0xF8) << 7) | ((g & 0xF8) << 2) | (b >> 3);
+}
+
+/**
+ * RKC_DIB::ZoomToDIB - Scale source DIB region to destination DIB region
+ * USED BY: o_RKC_UPDIB.dll
+ *
+ * Nearest-neighbor scaling from srcRect in srcDIB to destRect in this DIB.
+ * The RECT params use {left, top, right, bottom} as {x, y, width, height} --
+ * that's how the original code treats them.
+ *
+ * transColor < 0: copy all pixels (no transparency)
+ * transColor >= 0: skip source pixels matching this value
+ *
+ * Supports: 8->8, 8->16, 8->24, 24->24
+ */
+extern "C" int __thiscall RKC_DIB_ZoomToDIB(
+    RKC_DIB* self, RECT* destRect, RKC_DIB* srcDIB, RECT* srcRect, long transColor)
+{
+    if (!self->bitmap || !srcDIB->bitmap) return 0;
+    if (!self->bitmapInfo || !srcDIB->bitmapInfo) return 0;
+
+    // destRect/srcRect are used as {x, y, width, height}
+    long destX = destRect->left;
+    long destY = destRect->top;
+    long destW = destRect->right;   // width
+    long destH = destRect->bottom;  // height
+    long srcRX = srcRect->left;
+    long srcRY = srcRect->top;
+    long srcRW = srcRect->right;    // width
+    long srcRH = srcRect->bottom;   // height
+
+    // Compute destination end coords
+    long destEndX = destX + destW;
+    long destEndY = destY + destH;
+
+    long destImgW = self->bitmapInfo->biWidth;
+    long destImgH = self->bitmapInfo->biHeight;
+
+    // Bounds validation
+    if (destImgW <= destX) return 0;
+    if (destImgH <= destY) return 0;
+    if (destEndX < 1) return 0;
+    if (destEndY < 1) return 0;
+
+    // Clip to image bounds
+    long startX = (destX < 0) ? 0 : destX;
+    long startY = (destY < 0) ? 0 : destY;
+    if (destEndX > destImgW) destEndX = destImgW;
+    if (destEndY > destImgH) destEndY = destImgH;
+
+    WORD srcBpp = srcDIB->bitmapInfo->biBitCount;
+    WORD destBpp = self->bitmapInfo->biBitCount;
+    long srcImgW = srcDIB->bitmapInfo->biWidth;
+    long srcImgH = srcDIB->bitmapInfo->biHeight;
+    long srcStride = dibStride(srcImgW, srcBpp);
+    long destStride = dibStride(destImgW, destBpp);
+
+    unsigned char* srcBits = srcDIB->bitmap;
+    unsigned char* destBits = self->bitmap;
+    RGBQUAD* srcPal = srcDIB->palette;
+
+    // The no-transparency path (transColor < 0)
+    if (transColor < 0) {
+        if (srcBpp == 8 && destBpp == 8) {
+            for (long y = startY; y < destEndY; y++) {
+                long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+                long destRow = destImgH - y - 1;
+                unsigned char* dst = destBits + destRow * destStride + startX;
+                for (long x = startX; x < destEndX; x++) {
+                    long srcCol = (x - destX) * srcRW / destW + srcRX;
+                    *dst = srcBits[srcRow * srcStride + srcCol];
+                    dst++;
+                }
+            }
+            return 1;
+        }
+        if (srcBpp == 8 && destBpp == 24 && srcPal) {
+            for (long y = startY; y < destEndY; y++) {
+                long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+                long destRow = destImgH - y - 1;
+                unsigned char* dst = destBits + destRow * destStride + startX * 3;
+                for (long x = startX; x < destEndX; x++) {
+                    long srcCol = (x - destX) * srcRW / destW + srcRX;
+                    unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                    RGBQUAD& c = srcPal[idx];
+                    dst[0] = c.rgbBlue;
+                    dst[1] = c.rgbGreen;
+                    dst[2] = c.rgbRed;
+                    dst += 3;
+                }
+            }
+            return 1;
+        }
+        if (srcBpp == 8 && destBpp == 16 && srcPal) {
+            for (long y = startY; y < destEndY; y++) {
+                long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+                long destRow = destImgH - y - 1;
+                unsigned short* dst = (unsigned short*)(destBits + destRow * destStride) + startX;
+                for (long x = startX; x < destEndX; x++) {
+                    long srcCol = (x - destX) * srcRW / destW + srcRX;
+                    unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                    RGBQUAD& c = srcPal[idx];
+                    *dst = rgbToRgb555(c.rgbBlue, c.rgbGreen, c.rgbRed);
+                    dst++;
+                }
+            }
+            return 1;
+        }
+        if (srcBpp == 24 && destBpp == 24) {
+            for (long y = startY; y < destEndY; y++) {
+                long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+                long destRow = destImgH - y - 1;
+                unsigned char* dst = destBits + destRow * destStride + startX * 3;
+                for (long x = startX; x < destEndX; x++) {
+                    long srcCol = (x - destX) * srcRW / destW + srcRX;
+                    unsigned char* src = srcBits + srcRow * srcStride + srcCol * 3;
+                    dst[0] = src[0];
+                    dst[1] = src[1];
+                    dst[2] = src[2];
+                    dst += 3;
+                }
+            }
+            return 1;
+        }
+        return 0;
+    }
+
+    // Transparency path (transColor >= 0)
+    if (srcBpp == 8 && destBpp == 8) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char pixel = srcBits[srcRow * srcStride + srcCol];
+                if (pixel != (unsigned char)transColor) {
+                    *dst = pixel;
+                }
+                dst++;
+            }
+        }
+        return 1;
+    }
+    if (srcBpp == 8 && destBpp == 24 && srcPal) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX * 3;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)idx != (unsigned int)transColor) {
+                    RGBQUAD& c = srcPal[idx];
+                    dst[0] = c.rgbBlue;
+                    dst[1] = c.rgbGreen;
+                    dst[2] = c.rgbRed;
+                }
+                dst += 3;
+            }
+        }
+        return 1;
+    }
+    if (srcBpp == 8 && destBpp == 16 && srcPal) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned short* dst = (unsigned short*)(destBits + destRow * destStride) + startX;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)idx != (unsigned int)transColor) {
+                    RGBQUAD& c = srcPal[idx];
+                    *dst = rgbToRgb555(c.rgbBlue, c.rgbGreen, c.rgbRed);
+                }
+                dst++;
+            }
+        }
+        return 1;
+    }
+    if (srcBpp == 24 && destBpp == 24) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX * 3;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char* src = srcBits + srcRow * srcStride + srcCol * 3;
+                // transColor is packed BGR for 24bpp
+                unsigned long pixel = src[0] | (src[1] << 8) | (src[2] << 16);
+                if (pixel != (unsigned long)transColor) {
+                    dst[0] = src[0];
+                    dst[1] = src[1];
+                    dst[2] = src[2];
+                }
+                dst += 3;
+            }
+        }
+        return 1;
+    }
+
+    return 0;
+}
+
+// ============================================================================
+// ZOOM EXTENDED - with blending, palette offset, and additive modes
+// ============================================================================
+
+// Helper: clamp int to byte range
+static inline unsigned char clampByte(int val) {
+    if (val < 0) return 0;
+    if (val > 255) return 255;
+    return (unsigned char)val;
+}
+
+/**
+ * RKC_DIB::ZoomToDIBEx - Scale with blending and palette offset
+ * USED BY: o_RKC_UPDIB.dll
+ *
+ * Extended zoom with additional effects:
+ *   palOffset  - added to source palette index (only low byte used)
+ *   transColor - transparency color (must be >= 0; if < 0, returns 0 immediately)
+ *   blendAmt   - blend factor 0-1000 (1000 = fully opaque source)
+ *   flags      - bit 2: additive blending mode
+ *
+ * Supports: 8->8, 8->16, 8->24, 24->24
+ */
+extern "C" int __thiscall RKC_DIB_ZoomToDIBEx(
+    RKC_DIB* self, RECT* destRect, RKC_DIB* srcDIB, RECT* srcRect,
+    long palOffset, long transColor, long blendAmt, long flags)
+{
+    if (!self->bitmap || !srcDIB->bitmap) return 0;
+    if (!self->bitmapInfo || !srcDIB->bitmapInfo) return 0;
+
+    // destRect/srcRect used as {x, y, width, height}
+    long destX = destRect->left;
+    long destY = destRect->top;
+    long destW = destRect->right;
+    long destH = destRect->bottom;
+    long srcRX = srcRect->left;
+    long srcRY = srcRect->top;
+    long srcRW = srcRect->right;
+    long srcRH = srcRect->bottom;
+
+    long destEndX = destX + destW;
+    long destEndY = destY + destH;
+
+    long destImgW = self->bitmapInfo->biWidth;
+    long destImgH = self->bitmapInfo->biHeight;
+
+    if (destImgW <= destX) return 0;
+    if (destImgH <= destY) return 0;
+    if (destEndX < 1) return 0;
+    if (destEndY < 1) return 0;
+
+    long startX = (destX < 0) ? 0 : destX;
+    long startY = (destY < 0) ? 0 : destY;
+    if (destEndX > destImgW) destEndX = destImgW;
+    if (destEndY > destImgH) destEndY = destImgH;
+
+    // transColor must be >= 0 for ZoomToDIBEx
+    if (transColor < 0) return 0;
+
+    WORD srcBpp = srcDIB->bitmapInfo->biBitCount;
+    WORD destBpp = self->bitmapInfo->biBitCount;
+    long srcImgW = srcDIB->bitmapInfo->biWidth;
+    long srcImgH = srcDIB->bitmapInfo->biHeight;
+    long srcStride = dibStride(srcImgW, srcBpp);
+    long destStride = dibStride(destImgW, destBpp);
+
+    unsigned char* srcBits = srcDIB->bitmap;
+    unsigned char* destBits = self->bitmap;
+    RGBQUAD* srcPal = srcDIB->palette;
+    unsigned char palOff = (unsigned char)(palOffset & 0xFF);
+
+    // The original checks (flags & 4) to decide between normal and additive blending
+    bool additive = (flags & 4) != 0;
+
+    // ========== 8bpp -> 8bpp: palette index shifting, no color blending ==========
+    if (srcBpp == 8 && destBpp == 8) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char pixel = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)pixel != (unsigned int)transColor) {
+                    *dst = pixel + palOff;
+                }
+                dst++;
+            }
+        }
+        return 1;
+    }
+
+    // ========== 8bpp -> 24bpp ==========
+    if (srcBpp == 8 && destBpp == 24 && srcPal && !additive) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX * 3;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)idx != (unsigned int)transColor) {
+                    RGBQUAD& c = srcPal[(unsigned int)palOff + (unsigned int)idx];
+                    if (blendAmt >= 1000) {
+                        dst[0] = c.rgbBlue;
+                        dst[1] = c.rgbGreen;
+                        dst[2] = c.rgbRed;
+                    } else {
+                        // Blend: dest = dest * (1000 - blend) / 1000 + src * blend / 1000
+                        long inv = 1000 - blendAmt;
+                        dst[0] = (unsigned char)((int)dst[0] * inv / 1000 + (int)c.rgbBlue * blendAmt / 1000);
+                        dst[1] = (unsigned char)((int)dst[1] * inv / 1000 + (int)c.rgbGreen * blendAmt / 1000);
+                        dst[2] = (unsigned char)((int)dst[2] * inv / 1000 + (int)c.rgbRed * blendAmt / 1000);
+                    }
+                }
+                dst += 3;
+            }
+        }
+        return 1;
+    }
+
+    // ========== 8bpp -> 16bpp ==========
+    if (srcBpp == 8 && destBpp == 16 && srcPal && !additive) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned short* dst = (unsigned short*)(destBits + destRow * destStride) + startX;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)idx != (unsigned int)transColor) {
+                    RGBQUAD& c = srcPal[(unsigned int)palOff + (unsigned int)idx];
+                    if (blendAmt >= 1000) {
+                        *dst = rgbToRgb555(c.rgbBlue, c.rgbGreen, c.rgbRed);
+                    } else {
+                        // Unpack existing dest RGB555
+                        unsigned short existing = *dst;
+                        int dR = (existing >> 7) & 0xF8;
+                        int dG = (existing >> 2) & 0xF8;
+                        int dB = (existing & 0x1F) << 3;
+                        long inv = 1000 - blendAmt;
+                        int rr = (int)c.rgbRed * blendAmt / 1000 + dR * inv / 1000;
+                        int gg = (int)c.rgbGreen * blendAmt / 1000 + dG * inv / 1000;
+                        int bb = (int)c.rgbBlue * blendAmt / 1000 + dB * inv / 1000;
+                        *dst = rgbToRgb555(clampByte(bb), clampByte(gg), clampByte(rr));
+                    }
+                }
+                dst++;
+            }
+        }
+        return 1;
+    }
+
+    // ========== 24bpp -> 24bpp (normal blending) ==========
+    if (srcBpp == 24 && destBpp == 24 && !additive) {
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX * 3;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char* src = srcBits + srcRow * srcStride + srcCol * 3;
+                unsigned long pixel = src[0] | (src[1] << 8) | (src[2] << 16);
+                if (pixel != (unsigned long)transColor) {
+                    if (blendAmt >= 1000) {
+                        dst[0] = src[0];
+                        dst[1] = src[1];
+                        dst[2] = src[2];
+                    } else {
+                        long inv = 1000 - blendAmt;
+                        dst[0] = (unsigned char)((int)dst[0] * inv / 1000 + (int)src[0] * blendAmt / 1000);
+                        dst[1] = (unsigned char)((int)dst[1] * inv / 1000 + (int)src[1] * blendAmt / 1000);
+                        dst[2] = (unsigned char)((int)dst[2] * inv / 1000 + (int)src[2] * blendAmt / 1000);
+                    }
+                }
+                dst += 3;
+            }
+        }
+        return 1;
+    }
+
+    // ========== Additive blending modes (flags & 4) ==========
+
+    // 8bpp -> 16bpp additive
+    if (srcBpp == 8 && destBpp == 16 && srcPal && additive) {
+        long excess = blendAmt - 1000;
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned short* dst = (unsigned short*)(destBits + destRow * destStride) + startX;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)idx != (unsigned int)transColor) {
+                    RGBQUAD& c = srcPal[(unsigned int)palOff + (unsigned int)idx];
+                    unsigned short existing = *dst;
+                    int dR = (existing >> 7) & 0xF8;
+                    int dG = (existing >> 2) & 0xF8;
+                    int dB = (existing & 0x1F) << 3;
+                    int rr, gg, bb;
+                    if (blendAmt >= 1000) {
+                        if (blendAmt == 1000) {
+                            // Pure additive: dest + src, clamped
+                            rr = dR + (int)c.rgbRed;
+                            gg = dG + (int)c.rgbGreen;
+                            bb = dB + (int)c.rgbBlue;
+                        } else {
+                            // Excess additive: dest + src + (255-src)*excess/1000
+                            rr = dR + (int)c.rgbRed + (255 - (int)c.rgbRed) * excess / 1000;
+                            gg = dG + (int)c.rgbGreen + (255 - (int)c.rgbGreen) * excess / 1000;
+                            bb = dB + (int)c.rgbBlue + (255 - (int)c.rgbBlue) * excess / 1000;
+                        }
+                    } else {
+                        // Partial additive: dest + src * blend / 1000
+                        rr = dR + (int)c.rgbRed * blendAmt / 1000;
+                        gg = dG + (int)c.rgbGreen * blendAmt / 1000;
+                        bb = dB + (int)c.rgbBlue * blendAmt / 1000;
+                    }
+                    *dst = rgbToRgb555(clampByte(bb), clampByte(gg), clampByte(rr));
+                }
+                dst++;
+            }
+        }
+        return 1;
+    }
+
+    // 8bpp -> 24bpp additive
+    if (srcBpp == 8 && destBpp == 24 && srcPal && additive) {
+        long excess = blendAmt - 1000;
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX * 3;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char idx = srcBits[srcRow * srcStride + srcCol];
+                if ((unsigned int)idx != (unsigned int)transColor) {
+                    RGBQUAD& c = srcPal[(unsigned int)palOff + (unsigned int)idx];
+                    if (blendAmt >= 1000) {
+                        if (blendAmt == 1000) {
+                            dst[0] = clampByte((int)dst[0] + c.rgbBlue);
+                            dst[1] = clampByte((int)dst[1] + c.rgbGreen);
+                            dst[2] = clampByte((int)dst[2] + c.rgbRed);
+                        } else {
+                            dst[0] = clampByte((int)dst[0] + c.rgbBlue + (255 - (int)c.rgbBlue) * excess / 1000);
+                            dst[1] = clampByte((int)dst[1] + c.rgbGreen + (255 - (int)c.rgbGreen) * excess / 1000);
+                            dst[2] = clampByte((int)dst[2] + c.rgbRed + (255 - (int)c.rgbRed) * excess / 1000);
+                        }
+                    } else {
+                        dst[0] = clampByte((int)c.rgbBlue * blendAmt / 1000 + (int)dst[0]);
+                        dst[1] = clampByte((int)c.rgbGreen * blendAmt / 1000 + (int)dst[1]);
+                        dst[2] = clampByte((int)c.rgbRed * blendAmt / 1000 + (int)dst[2]);
+                    }
+                }
+                dst += 3;
+            }
+        }
+        return 1;
+    }
+
+    // 24bpp -> 24bpp additive
+    if (srcBpp == 24 && destBpp == 24 && additive) {
+        long excess = blendAmt - 1000;
+        for (long y = startY; y < destEndY; y++) {
+            long srcRow = srcImgH - ((y - destY) * srcRH / destH + srcRY) - 1;
+            long destRow = destImgH - y - 1;
+            unsigned char* dst = destBits + destRow * destStride + startX * 3;
+            for (long x = startX; x < destEndX; x++) {
+                long srcCol = (x - destX) * srcRW / destW + srcRX;
+                unsigned char* src = srcBits + srcRow * srcStride + srcCol * 3;
+                unsigned long pixel = src[0] | (src[1] << 8) | (src[2] << 16);
+                if (pixel != (unsigned long)transColor) {
+                    if (blendAmt >= 1000) {
+                        if (blendAmt == 1000) {
+                            dst[0] = clampByte((int)dst[0] + src[0]);
+                            dst[1] = clampByte((int)dst[1] + src[1]);
+                            dst[2] = clampByte((int)dst[2] + src[2]);
+                        } else {
+                            dst[0] = clampByte((int)dst[0] + src[0] + (255 - (int)src[0]) * excess / 1000);
+                            dst[1] = clampByte((int)dst[1] + src[1] + (255 - (int)src[1]) * excess / 1000);
+                            dst[2] = clampByte((int)dst[2] + src[2] + (255 - (int)src[2]) * excess / 1000);
+                        }
+                    } else {
+                        dst[0] = clampByte((int)src[0] * blendAmt / 1000 + (int)dst[0]);
+                        dst[1] = clampByte((int)src[1] * blendAmt / 1000 + (int)dst[1]);
+                        dst[2] = clampByte((int)src[2] * blendAmt / 1000 + (int)dst[2]);
+                    }
+                }
+                dst += 3;
+            }
+        }
+        return 1;
+    }
+
+    return 0;
+}
+
+// ============================================================================
+// STUBS FOR FUNCTIONS NOT IMPORTED BY ANY MODULE
+// ============================================================================
+
+/**
+ * RKC_DIB::Convert - Convert between BPP modes
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+extern "C" int __thiscall RKC_DIB_Convert(RKC_DIB* self, RKC_DIB* src, long mode) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::DrawBox - Draw outlined rectangle
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+extern "C" int __thiscall RKC_DIB_DrawBox(RKC_DIB* self, long x1, long y1, long x2, long y2,
+    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::DrawFill - Draw filled rectangle with optional hi-speed blending
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+extern "C" int __thiscall RKC_DIB_DrawFill(RKC_DIB* self, long x1, long y1, long x2, long y2,
+    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect,
+    void* hispeed) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::DrawLine - Draw line between two points
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+extern "C" int __thiscall RKC_DIB_DrawLine(RKC_DIB* self, long x1, long y1, long x2, long y2,
+    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::DrawPoint - Draw a single pixel
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+extern "C" int __thiscall RKC_DIB_DrawPoint(RKC_DIB* self, long x, long y,
+    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::TransferToDIBEx - Extended blit with blending (12 stack params version)
+ * USED BY: o_RKC_UPDIB.dll, ShadowFlare.exe
+ * Signature from mangled name: (long, long, long, long, RKC_DIB*, long, long, long, long, long, long, RKC_DIBHISPEEDMODE*)
+ */
+extern "C" int __thiscall RKC_DIB_TransferToDIBEx_11args(
+    RKC_DIB* self, long destX, long destY, long width, long height,
+    RKC_DIB* srcDIB, long srcX, long srcY, long palOff, long transColor, long alpha, long flags,
+    void* hispeed) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::TransferToDIBEx - Extended blit with flipping/mirroring (8 stack params version)
+ * USED BY: o_RKC_UPDIB.dll
+ * Signature from mangled name: (long, long, RKC_DIB*, long, long, long, long, RKC_DIBHISPEEDMODE*)
+ */
+extern "C" int __thiscall RKC_DIB_TransferToDIBEx_8args(
+    RKC_DIB* self, long destX, long destY,
+    RKC_DIB* srcDIB, long unk1, long unk2, long unk3, long flags,
+    void* hispeed) {
+    return 0;
+}
+
+/**
+ * RKC_DIB::WriteFile - Write DIB to BMP file
+ * NOT REFERENCED - stub only, not imported by any module
+ */
+extern "C" int __thiscall RKC_DIB_WriteFile(RKC_DIB* self, const char* filename) {
+    return 0;
+}
+
+/**
+ * RKC_DIBHISPEEDMODE::constructor - Build blending lookup tables
+ * NOT REFERENCED - stub only, not imported by any module
+ *
+ * The full constructor builds ~290KB of pre-calculated tables.
+ * Since nobody imports this, we just zero-init.
+ */
+extern "C" void* __thiscall RKC_DIBHISPEEDMODE_constructor(void* self) {
+    memset(self, 0, DIBHISPEEDMODE_SIZE);
+    return self;
 }
 
 // ============================================================================

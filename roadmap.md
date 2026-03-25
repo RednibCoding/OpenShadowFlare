@@ -3,23 +3,26 @@
 This document tracks the implementation status of all DLLs and their functions.
 
 ## Overview
-
-| DLL | Total | Real Impl | Internal Fwd | Stubs | External Fwd | Status |
-|-----|-------|-----------|--------------|-------|--------------|--------|
-| RK_FUNCTION | 43 | 24 | 0 | 17 | 2 | 95% local |
-| RKC_FILE | 10 | 10 | 0 | 0 | 0 | done |
-| RKC_MEMORY | 9 | 9 | 0 | 0 | 0 | done |
-| RKC_WINDOW | 7 | 3 | 4 | 0 | 0 | partial |
-| RKC_FONTMAKER | 13 | 6 | 7 | 0 | 0 | partial |
-| RKC_RPG_TABLE | 25 | ~19 | 5 | 0 | 1 | partial |
-| RKC_DIB | 42 | 0 | 0 | 0 | 42 | not started |
-| RKC_DSOUND | 43 | 0 | 0 | 0 | 43 | not started |
-| RKC_DBFCONTROL | 41 | 0 | 0 | 0 | 41 | not started |
-| RKC_UPDIB | 81 | 0 | 0 | 0 | 81 | not started |
-| RKC_NETWORK | 131 | 0 | 0 | 0 | 131 | not started |
-| RKC_RPG_AICONTROL | 51 | 0 | 0 | 0 | 51 | not started |
-| RKC_RPG_SCRIPT | 82 | 0 | 0 | 0 | 82 | not started |
-| RKC_RPGSCRN | 185 | 0 | 0 | 0 | 185 | not started |
+```
+DLL                 Functions  Completed  Status
+------------------  ---------  ---------  ------
+RK_FUNCTION                43         43  100%
+RKC_DSOUND                 48         48  100%
+RKC_FILE                   10         10  100%
+RKC_FONTMAKER              13         13  100%
+RKC_MEMORY                  9          9  100%
+RKC_WINDOW                  6          6  100%
+RKC_RPG_TABLE              25         24   96%
+RKC_DIB                    53         42   79%
+RKC_UPDIB                  89         71   80%
+RKC_RPG_AICONTROL          67         47   70%
+RKC_RPG_SCRIPT            112         87   78%
+RKC_DBFCONTROL             48         23   48%
+RKC_NETWORK               174        147   84%
+RKC_RPGSCRN               186         96   52%
+------------------  ---------  ---------  ------
+TOTAL                     883        666   75%
+```
 
 **Legend:**
 - **Real Impl** = actually implemented, no forwarding

@@ -42,7 +42,7 @@ extern "C" {
      * Constructor - initialize all members to zero
      * USED BY: ShadowFlare.exe
      */
-    void __thiscall RKC_Window_constructor(RKC_WINDOW* self)
+    RKC_WINDOW* __thiscall RKC_Window_constructor(RKC_WINDOW* self)
     {
         self->member1 = 0;
         self->member2 = 0;
@@ -61,6 +61,7 @@ extern "C" {
         self->member9 = 0;
         self->member10 = 0;
         self->member11 = 0;
+        return self;
     }
 
     /**

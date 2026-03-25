@@ -42,9 +42,10 @@ extern "C" {
      * Constructor - initialize empty table list
      * USED BY: ShadowFlare.exe
      */
-    void __thiscall RKC_RPG_TABLE_constructor(RKC_RPG_TABLE* self)
+    RKC_RPG_TABLE* __thiscall RKC_RPG_TABLE_constructor(RKC_RPG_TABLE* self)
     {
         self->headData = nullptr;
+        return self;
     }
 
     /**
@@ -283,13 +284,14 @@ extern "C" {
      * Constructor - initialize table data
      * NOT REFERENCED - not imported by any module
      */
-    void __thiscall RKC_RPG_TABLEDATA_constructor(RKC_RPG_TABLEDATA* self)
+    RKC_RPG_TABLEDATA* __thiscall RKC_RPG_TABLEDATA_constructor(RKC_RPG_TABLEDATA* self)
     {
         self->tableNo = 0xffffffff;
         self->rowCount = 0;
         self->columnCount = 0;
         self->table = nullptr;
         self->stringsTable = nullptr;
+        return self;
     }
 
     /**
