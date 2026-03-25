@@ -1618,71 +1618,874 @@ extern "C" int __thiscall RKC_DIB_ZoomToDIBEx(
 
 /**
  * RKC_DIB::Convert - Convert between BPP modes
- * NOT REFERENCED - stub only, not imported by any module
+ * USED BY: ShadowFlare.exe (save game screenshot mask)
+ *
+ * Converts src DIB (must be <=8bpp) into dest (this).
+ * If dest is uninitialized, creates it with dimensions from src and BPP = mode.
+ * If dest already exists, converts in-place using existing dest format.
+ *
+ * Supported conversions:
+ *   8bpp -> 1bpp (pixel != 0 -> bit 1, MSB first)
+ *   8bpp -> 4bpp (low nibble packed, high nibble = even pixel)
+ *   1/4/8bpp -> 8bpp (unpack to individual bytes, copies palette)
+ *   1/4/8bpp -> 24bpp (unpack + palette lookup to BGR)
  */
 extern "C" int __thiscall RKC_DIB_Convert(RKC_DIB* self, RKC_DIB* src, long mode) {
-    return 0;
+    if (!src->bitmap) return 0;
+
+    BITMAPINFOHEADER* srcHdr = src->bitmapInfo;
+    WORD srcBpp = srcHdr->biBitCount;
+    if (srcBpp > 8) return 0;
+
+    // If dest already has a header, validate compatibility
+    if (self->bitmapInfo) {
+        WORD destBpp = self->bitmapInfo->biBitCount;
+        if (destBpp == 1 && srcBpp != 8) return 0;
+        if (destBpp == 8 && srcBpp == 8) return 0;
+        if (destBpp == 4 && srcBpp != 8) return 0;
+    } else {
+        // Dest uninitialized - create based on mode
+        // Valid modes: 1, 4, 8, 24
+        if (mode == 8 || mode == 24 || mode == 4) {
+            if (mode == 1) {
+                // mode==1 requires src 8bpp
+                if (srcBpp != 8) return 0;
+            } else if (mode == 8) {
+                if (srcBpp == 8) return 0;
+            } else if (mode == 4) {
+                if (srcBpp != 8) return 0;
+            }
+        } else if (mode == 1) {
+            if (srcBpp != 8) return 0;
+        } else {
+            return 0;
+        }
+
+        int ret = RKC_DIB_Create(self, srcHdr->biWidth, srcHdr->biHeight, mode, 1);
+        if (!ret) return 0;
+    }
+
+    long srcStride = RKC_DIB_GetAlignWidth(src);
+    long destStride = RKC_DIB_GetAlignWidth(self);
+
+    // Determine src unpacking parameters
+    int srcPixelsPerByte;  // how many source pixels fit in one byte
+    int srcBitsPerPixel;   // bits per pixel in source
+    unsigned char srcMask; // mask for one pixel value
+    if (srcBpp == 8) {
+        srcPixelsPerByte = 1;
+        srcBitsPerPixel = 8;
+        srcMask = 0xFF;
+    } else if (srcBpp == 4) {
+        srcPixelsPerByte = 2;
+        srcBitsPerPixel = 4;
+        srcMask = 0x0F;
+    } else {
+        // 1bpp
+        srcPixelsPerByte = 8;
+        srcBitsPerPixel = 1;
+        srcMask = 0x01;
+    }
+
+    WORD destBpp = self->bitmapInfo->biBitCount;
+    long srcWidth = srcHdr->biWidth;
+    long destHeight = self->bitmapInfo->biHeight;
+
+    if (destBpp == 1) {
+        // Convert to 1bpp: pack 8 pixels per byte, MSB first
+        // Each source pixel != 0 becomes a 1 bit
+        int srcOffset = 0;
+        unsigned char* destRow = self->bitmap;
+        for (int y = 0; y < destHeight; y++) {
+            long destWidthPx = self->bitmapInfo->biWidth;
+            // Process 8 pixels at a time, aligned to byte boundaries
+            int roundedWidth = ((destWidthPx + 7) / 8) * 8;
+            int x = 0;
+            while (x < roundedWidth) {
+                unsigned char outByte = 0;
+                // bit 7 (0x80) = pixel x, bit 6 (0x40) = pixel x+1, etc.
+                if (x + 0 < destWidthPx && src->bitmap[srcOffset + x + 0] != 0) outByte |= 0x80;
+                if (x + 1 < destWidthPx && src->bitmap[srcOffset + x + 1] != 0) outByte |= 0x40;
+                if (x + 2 < destWidthPx && src->bitmap[srcOffset + x + 2] != 0) outByte |= 0x20;
+                if (x + 3 < destWidthPx && src->bitmap[srcOffset + x + 3] != 0) outByte |= 0x10;
+                if (x + 4 < destWidthPx && src->bitmap[srcOffset + x + 4] != 0) outByte |= 0x08;
+                if (x + 5 < destWidthPx && src->bitmap[srcOffset + x + 5] != 0) outByte |= 0x04;
+                if (x + 6 < destWidthPx && src->bitmap[srcOffset + x + 6] != 0) outByte |= 0x02;
+                if (x + 7 < destWidthPx && src->bitmap[srcOffset + x + 7] != 0) outByte |= 0x01;
+                destRow[x / 8] = outByte;
+                x += 8;
+            }
+            srcOffset += srcStride;
+            destRow += destStride;
+        }
+        return 1;
+    }
+
+    if (destBpp == 4) {
+        // Convert 8bpp to 4bpp: pack 2 pixels per byte
+        int srcOffset = 0;
+        unsigned char* destRow = self->bitmap;
+        for (int y = 0; y < destHeight; y++) {
+            long width = self->bitmapInfo->biWidth;
+            for (int x = 0; x + 2 <= width; x += 2) {
+                unsigned char hi = src->bitmap[srcOffset + x] & 0x0F;
+                unsigned char lo = src->bitmap[srcOffset + x + 1] & 0x0F;
+                destRow[x / 2] = (hi << 4) | lo;
+            }
+            srcOffset += srcStride;
+            destRow += destStride;
+        }
+        return 1;
+    }
+
+    if (destBpp == 8) {
+        // Convert 1/4bpp to 8bpp: unpack each pixel to a full byte
+        int srcByteOffset = 0;
+        int destByteOffset = 0;
+        for (int y = 0; y < destHeight; y++) {
+            long width = self->bitmapInfo->biWidth;
+            int dx = 0;
+            while (dx < width) {
+                unsigned char srcByte = src->bitmap[dx / srcPixelsPerByte + srcByteOffset];
+                // Unpack pixels from high bits to low bits
+                int bitsLeft = srcPixelsPerByte;
+                int limit = srcPixelsPerByte;
+                if (dx + srcPixelsPerByte > width) {
+                    limit = width - dx;
+                    if (width % srcPixelsPerByte != 0) {
+                        limit = width % srcPixelsPerByte;
+                    }
+                }
+                for (int i = srcPixelsPerByte - 1; i >= srcPixelsPerByte - limit; i--) {
+                    self->bitmap[destByteOffset + dx + (srcPixelsPerByte - 1 - i)] =
+                        (srcByte >> (srcBitsPerPixel * i)) & srcMask;
+                }
+                dx += srcPixelsPerByte;
+            }
+            srcByteOffset += srcStride;
+            destByteOffset += destStride;
+        }
+
+        // Copy palette from source to dest
+        long palCount = RKC_DIB_GetPaletteCount(src);
+        if (palCount > 0 && src->palette && self->palette) {
+            memcpy(self->palette, src->palette, palCount * sizeof(RGBQUAD));
+        }
+        return 1;
+    }
+
+    // destBpp == 24: Convert 1/4/8bpp to 24bpp using palette lookup
+    {
+        int srcByteOffset = 0;
+        int destByteOffset = 0;
+        for (int y = 0; y < destHeight; y++) {
+            long width = self->bitmapInfo->biWidth;
+            int dx = 0;
+            int destX = 0;
+            while (dx < width) {
+                unsigned char srcByte = src->bitmap[dx / srcPixelsPerByte + srcByteOffset];
+                int limit = srcPixelsPerByte;
+                if (dx + srcPixelsPerByte > width && width % srcPixelsPerByte != 0) {
+                    limit = width % srcPixelsPerByte;
+                }
+                // Unpack from MSB to LSB of the source byte
+                for (int i = limit - 1; i >= 0; i--) {
+                    int palIdx = (srcByte >> (srcBitsPerPixel * i)) & srcMask;
+                    int colorOff = palIdx * 4;
+                    unsigned char* destPx = self->bitmap + destByteOffset + destX;
+                    destPx[0] = ((unsigned char*)src->palette)[colorOff + 0]; // B
+                    destPx[1] = ((unsigned char*)src->palette)[colorOff + 1]; // G
+                    destPx[2] = ((unsigned char*)src->palette)[colorOff + 2]; // R
+                    destX += 3;
+                }
+                dx += srcPixelsPerByte;
+            }
+            srcByteOffset += srcStride;
+            destByteOffset += destStride;
+        }
+    }
+    return 1;
+}
+
+// -- Drawing helper functions --
+
+static inline int clamp255(int v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
+
+static inline unsigned short packRGB555(int r, int g, int b) {
+    return (unsigned short)(((r & 0xF8) << 7) | ((g & 0xF8) << 2) | ((b >> 3) & 0x1F));
+}
+
+// Blend a single 16bpp pixel in-place
+static void blendPixel16(unsigned short* px, unsigned char r, unsigned char g, unsigned char b,
+                         long blend, long flags) {
+    unsigned short old = *px;
+    int old_r = (old >> 7) & 0xF8;
+    int old_g = (old >> 2) & 0xF8;
+    int old_b = (old & 0x1F) << 3;
+
+    if (flags & 4) {
+        // Additive: add fill color (attenuated) to existing
+        *px = packRGB555(clamp255(old_r + (int)r * blend / 1000),
+                         clamp255(old_g + (int)g * blend / 1000),
+                         clamp255(old_b + (int)b * blend / 1000));
+    } else if (flags & 8) {
+        if (blend < 1000) {
+            // Darken: reduce existing pixel brightness
+            int factor = 1000 - blend;
+            *px = packRGB555(old_r - old_r * factor / 1000,
+                             old_g - old_g * factor / 1000,
+                             old_b - old_b * factor / 1000);
+        } else if (blend > 1000) {
+            // Brighten: push existing pixel towards white
+            int factor = blend - 1000;
+            *px = packRGB555(old_r + (0xFF - old_r) * factor / 1000,
+                             old_g + (0xFF - old_g) * factor / 1000,
+                             old_b + (0xFF - old_b) * factor / 1000);
+        }
+    } else {
+        // Alpha blend: lerp between existing and fill color
+        int inv = 1000 - blend;
+        *px = packRGB555(old_r * inv / 1000 + (int)r * blend / 1000,
+                         old_g * inv / 1000 + (int)g * blend / 1000,
+                         old_b * inv / 1000 + (int)b * blend / 1000);
+    }
+}
+
+// Blend a single 24bpp pixel (BGR byte order) in-place
+static void blendPixel24(unsigned char* px, unsigned char r, unsigned char g, unsigned char b,
+                         long blend, long flags) {
+    if (flags & 4) {
+        px[0] = clamp255(px[0] + (int)b * blend / 1000);
+        px[1] = clamp255(px[1] + (int)g * blend / 1000);
+        px[2] = clamp255(px[2] + (int)r * blend / 1000);
+    } else if (flags & 8) {
+        if (blend < 1000) {
+            int factor = 1000 - blend;
+            px[0] -= (int)px[0] * factor / 1000;
+            px[1] -= (int)px[1] * factor / 1000;
+            px[2] -= (int)px[2] * factor / 1000;
+        } else if (blend > 1000) {
+            int factor = blend - 1000;
+            px[0] += (0xFF - px[0]) * factor / 1000;
+            px[1] += (0xFF - px[1]) * factor / 1000;
+            px[2] += (0xFF - px[2]) * factor / 1000;
+        }
+    } else {
+        int inv = 1000 - blend;
+        px[0] = px[0] * inv / 1000 + (int)b * blend / 1000;
+        px[1] = px[1] * inv / 1000 + (int)g * blend / 1000;
+        px[2] = px[2] * inv / 1000 + (int)r * blend / 1000;
+    }
 }
 
 /**
- * RKC_DIB::DrawBox - Draw outlined rectangle
- * NOT REFERENCED - stub only, not imported by any module
- */
-extern "C" int __thiscall RKC_DIB_DrawBox(RKC_DIB* self, long x1, long y1, long x2, long y2,
-    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect) {
-    return 0;
-}
-
-/**
- * RKC_DIB::DrawFill - Draw filled rectangle with optional hi-speed blending
- * NOT REFERENCED - stub only, not imported by any module
- */
-extern "C" int __thiscall RKC_DIB_DrawFill(RKC_DIB* self, long x1, long y1, long x2, long y2,
-    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect,
-    void* hispeed) {
-    return 0;
-}
-
-/**
- * RKC_DIB::DrawLine - Draw line between two points
- * NOT REFERENCED - stub only, not imported by any module
- */
-extern "C" int __thiscall RKC_DIB_DrawLine(RKC_DIB* self, long x1, long y1, long x2, long y2,
-    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect) {
-    return 0;
-}
-
-/**
- * RKC_DIB::DrawPoint - Draw a single pixel
- * NOT REFERENCED - stub only, not imported by any module
+ * RKC_DIB::DrawPoint - Draw a single pixel with optional blending
+ * USED BY: o_RKC_DIB.dll (called by DrawLine)
+ *
+ * For 8bpp: 'r' is the palette index, no blending.
+ * For 16bpp: RGB555, supports opaque/alpha/additive/darken/brighten.
+ * For 24bpp: BGR byte order, same blend modes.
+ *
+ * blend=1000 means opaque. flags: bit 2=additive, bit 3=darken/brighten.
  */
 extern "C" int __thiscall RKC_DIB_DrawPoint(RKC_DIB* self, long x, long y,
-    unsigned char r, unsigned char g, unsigned char b, long unk1, long unk2, RECT* clipRect) {
-    return 0;
+    unsigned char r, unsigned char g, unsigned char b, long blend, long flags, RECT* clipRect) {
+    BITMAPINFOHEADER* hdr = self->bitmapInfo;
+    if (!hdr) return 0;
+    WORD bpp = hdr->biBitCount;
+    if (bpp != 8 && bpp != 16 && bpp != 24) return 0;
+
+    // Clip rect check
+    if (clipRect) {
+        if (x < clipRect->left || x > clipRect->right ||
+            y < clipRect->top || y > clipRect->bottom) return 0;
+    }
+    // Bounds check
+    if (x < 0 || y < 0 || x >= hdr->biWidth || y >= hdr->biHeight) return 0;
+
+    long stride = RKC_DIB_GetAlignWidth(self);
+    // DIBs are bottom-up
+    long rowOff = (hdr->biHeight - y - 1) * stride;
+
+    if (bpp == 8) {
+        self->bitmap[rowOff + x] = r;
+        return 1;
+    }
+    if (bpp == 16) {
+        unsigned short* px = (unsigned short*)(self->bitmap + rowOff + x * 2);
+        if (blend == 1000 && (flags & 0x0C) == 0) {
+            *px = packRGB555(r, g, b);
+        } else {
+            blendPixel16(px, r, g, b, blend, flags);
+        }
+        return 1;
+    }
+    // 24bpp
+    unsigned char* px = self->bitmap + rowOff + x * 3;
+    if (blend == 1000 && (flags & 0x0C) == 0) {
+        px[0] = b; px[1] = g; px[2] = r;
+    } else {
+        blendPixel24(px, r, g, b, blend, flags);
+    }
+    return 1;
+}
+
+/**
+ * RKC_DIB::DrawLine - Draw line between two points using DDA
+ * USED BY: o_RKC_DIB.dll (called by DrawBox)
+ *
+ * Steps along the longer axis, interpolating the shorter one.
+ * Each pixel drawn via DrawPoint which handles clipping and blending.
+ */
+extern "C" int __thiscall RKC_DIB_DrawLine(RKC_DIB* self, long x1, long y1, long x2, long y2,
+    unsigned char r, unsigned char g, unsigned char b, long blend, long flags, RECT* clipRect) {
+    BITMAPINFOHEADER* hdr = self->bitmapInfo;
+    if (!hdr) return 0;
+    WORD bpp = hdr->biBitCount;
+    if (bpp != 8 && bpp != 16 && bpp != 24) return 0;
+
+    // Matches the original's DDA approach: step along longer axis,
+    // use accumulator/count for the shorter axis interpolation.
+    if (x1 < x2) {
+        int dx = (int)(x2 - x1) + 1;
+        if (y1 < y2) {
+            int dy = (int)(y2 - y1) + 1;
+            if (dy < dx) {
+                int acc = 0;
+                for (int i = 0; i < dx; i++) {
+                    RKC_DIB_DrawPoint(self, x1 + i, acc / dx + y1, r, g, b, blend, flags, clipRect);
+                    acc += dy;
+                }
+            } else {
+                int acc = 0;
+                for (int i = 0; i < dy; i++) {
+                    RKC_DIB_DrawPoint(self, acc / dy + x1, y1 + i, r, g, b, blend, flags, clipRect);
+                    acc += dx;
+                }
+            }
+        } else if (y2 < y1) {
+            int dy = (int)(y1 - y2) + 1;
+            if (dy < dx) {
+                int acc = 0;
+                for (int i = 0; i < dx; i++) {
+                    RKC_DIB_DrawPoint(self, x1 + i, y1 - acc / dx, r, g, b, blend, flags, clipRect);
+                    acc += dy;
+                }
+            } else {
+                int acc = 0;
+                for (int i = 0; i < dy; i++) {
+                    RKC_DIB_DrawPoint(self, acc / dy + x1, y1 - i, r, g, b, blend, flags, clipRect);
+                    acc += dx;
+                }
+            }
+        } else {
+            // Horizontal line (y1 == y2)
+            for (int i = 0; i < dx; i++)
+                RKC_DIB_DrawPoint(self, x1 + i, y1, r, g, b, blend, flags, clipRect);
+        }
+    } else if (x2 < x1) {
+        int dx = (int)(x1 - x2) + 1;
+        if (y1 < y2) {
+            int dy = (int)(y2 - y1) + 1;
+            if (dy < dx) {
+                int acc = 0;
+                long cx = x1;
+                for (int i = 0; i < dx; i++) {
+                    RKC_DIB_DrawPoint(self, cx, acc / dx + y1, r, g, b, blend, flags, clipRect);
+                    acc += dy;
+                    cx--;
+                }
+            } else {
+                int acc = 0;
+                for (int i = 0; i < dy; i++) {
+                    RKC_DIB_DrawPoint(self, x1 - acc / dy, y1 + i, r, g, b, blend, flags, clipRect);
+                    acc += dx;
+                }
+            }
+        } else if (y2 < y1) {
+            int dx2 = dx;
+            int dy = (int)(y1 - y2) + 1;
+            if (dy < dx2) {
+                int acc = 0;
+                long cx = x1;
+                for (int i = 0; i < dx2; i++) {
+                    RKC_DIB_DrawPoint(self, cx, y1 - acc / dx2, r, g, b, blend, flags, clipRect);
+                    acc += dy;
+                    cx--;
+                }
+            } else {
+                int acc = 0;
+                long cy = y1;
+                for (int i = 0; i < dy; i++) {
+                    RKC_DIB_DrawPoint(self, x1 - acc / dy, cy, r, g, b, blend, flags, clipRect);
+                    cy--;
+                    acc += dx2;
+                }
+            }
+        } else {
+            // Horizontal line going left
+            long cx = x1;
+            for (int i = 0; i < dx; i++) {
+                RKC_DIB_DrawPoint(self, cx, y1, r, g, b, blend, flags, clipRect);
+                cx--;
+            }
+        }
+    } else {
+        // x1 == x2 - vertical line
+        if (y1 < y2) {
+            int dy = (int)(y2 - y1) + 1;
+            for (int i = 0; i < dy; i++)
+                RKC_DIB_DrawPoint(self, x1, y1 + i, r, g, b, blend, flags, clipRect);
+        } else if (y2 < y1) {
+            int dy = (int)(y1 - y2) + 1;
+            long cy = y1;
+            for (int i = 0; i < dy; i++) {
+                RKC_DIB_DrawPoint(self, x1, cy, r, g, b, blend, flags, clipRect);
+                cy--;
+            }
+        } else {
+            // Single point
+            RKC_DIB_DrawPoint(self, x1, y1, r, g, b, blend, flags, clipRect);
+        }
+    }
+    return 1;
+}
+
+/**
+ * RKC_DIB::DrawBox - Draw outlined rectangle (4 lines)
+ * USED BY: o_RKC_UPDIB.dll (via VSPACKET::RenderBox)
+ *
+ * Draws 4 edges: top, bottom, left, right. Clips to bitmap bounds
+ * before calling DrawLine.
+ */
+extern "C" int __thiscall RKC_DIB_DrawBox(RKC_DIB* self, long x1, long y1, long x2, long y2,
+    unsigned char r, unsigned char g, unsigned char b, long blend, long flags, RECT* clipRect) {
+    BITMAPINFOHEADER* hdr = self->bitmapInfo;
+    if (!hdr) return 0;
+    WORD bpp = hdr->biBitCount;
+    if (bpp != 8 && bpp != 16 && bpp != 24) return 0;
+
+    long w = hdr->biWidth;
+    long h = hdr->biHeight;
+
+    // Normalize coordinates
+    long left = (x1 <= x2) ? x1 : x2;
+    long right = (x1 > x2) ? x1 : x2;
+    long top = (y1 <= y2) ? y1 : y2;
+    long bottom = (y1 > y2) ? y1 : y2;
+
+    // Top edge
+    if (left < w && right >= 0 && top < h && top >= 0) {
+        long cl = left < 0 ? 0 : left;
+        long cr = right >= w ? w - 1 : right;
+        RKC_DIB_DrawLine(self, cl, top, cr, top, r, g, b, blend, flags, clipRect);
+    }
+    // Bottom edge
+    if (left < w && right >= 0 && bottom < h && bottom >= 0) {
+        long cl = left < 0 ? 0 : left;
+        long cr = right >= w ? w - 1 : right;
+        RKC_DIB_DrawLine(self, cl, bottom, cr, bottom, r, g, b, blend, flags, clipRect);
+    }
+    // Left edge
+    if (left < w && left >= 0 && top < h && bottom >= 0) {
+        long ct = top < 0 ? 0 : top;
+        long cb = bottom >= h ? h - 1 : bottom;
+        RKC_DIB_DrawLine(self, left, ct, left, cb, r, g, b, blend, flags, clipRect);
+    }
+    // Right edge
+    if (right < w && right >= 0 && top < h && bottom >= 0) {
+        long ct = top < 0 ? 0 : top;
+        long cb = bottom >= h ? h - 1 : bottom;
+        RKC_DIB_DrawLine(self, right, ct, right, cb, r, g, b, blend, flags, clipRect);
+    }
+    return 1;
+}
+
+/**
+ * RKC_DIB::DrawFill - Draw filled rectangle with optional blending
+ * USED BY: o_RKC_UPDIB.dll (via VSPACKET::RenderFill -> tooltip backgrounds, UI panels)
+ *
+ * For 8bpp: 'r' is the palette index, no blending (just memset).
+ * For 16bpp/24bpp: supports opaque, alpha blend, additive, darken, brighten.
+ * blend=1000 means fully opaque. flags: bit 2=additive, bit 3=darken/brighten.
+ * hispeed is a lookup table for optimized blending (we fall through to slow path).
+ */
+extern "C" int __thiscall RKC_DIB_DrawFill(RKC_DIB* self, long x1, long y1, long x2, long y2,
+    unsigned char r, unsigned char g, unsigned char b, long blend, long flags, RECT* clipRect,
+    void* hispeed) {
+    BITMAPINFOHEADER* hdr = self->bitmapInfo;
+    if (!hdr) return 0;
+    WORD bpp = hdr->biBitCount;
+    if (bpp != 8 && bpp != 16 && bpp != 24) return 0;
+
+    long w = hdr->biWidth;
+    long h = hdr->biHeight;
+
+    // Normalize coordinates so left <= right, top <= bottom
+    long left = (x1 <= x2) ? x1 : x2;
+    long top_y = (y1 <= y2) ? y1 : y2;
+    long right = (x1 > x2) ? x1 : x2;
+    long bottom_y = (y1 > y2) ? y1 : y2;
+
+    // Validate clip rect if provided
+    if (clipRect) {
+        if (clipRect->left >= w || clipRect->right < 0 ||
+            clipRect->top >= h || clipRect->bottom < 0) return 0;
+        if (left > clipRect->right || right < clipRect->left ||
+            top_y > clipRect->bottom || bottom_y < clipRect->top) return 0;
+
+        // Apply clip
+        if (left < clipRect->left) left = clipRect->left;
+        if (top_y < clipRect->top) top_y = clipRect->top;
+        if (right > clipRect->right) right = clipRect->right;
+        if (bottom_y > clipRect->bottom) bottom_y = clipRect->bottom;
+    }
+
+    // Visible area check
+    if (left >= w || right < 0 || top_y >= h || bottom_y < 0) return 0;
+
+    // Clamp to bitmap bounds
+    if (left < 0) left = 0;
+    if (top_y < 0) top_y = 0;
+    if (right >= w) right = w - 1;
+    if (bottom_y >= h) bottom_y = h - 1;
+    if (left < 0 || top_y < 0 || right < 0 || bottom_y < 0) return 0;
+
+    long stride = RKC_DIB_GetAlignWidth(self);
+    long fillWidth = right - left + 1;
+
+    // -- 8bpp: simple memset, no blending --
+    if (bpp == 8) {
+        for (long y = top_y; y <= bottom_y; y++) {
+            unsigned char* row = self->bitmap + (h - y - 1) * stride + left;
+            memset(row, r, fillWidth);
+        }
+        return 1;
+    }
+
+    // -- 16bpp (RGB555) --
+    if (bpp == 16) {
+        // Opaque fill: no blending, no flags
+        if ((flags & 0x0C) == 0 && blend == 1000) {
+            unsigned short color = packRGB555(r, g, b);
+            for (long y = top_y; y <= bottom_y; y++) {
+                unsigned short* row = (unsigned short*)(self->bitmap + (h - y - 1) * stride + left * 2);
+                for (long i = 0; i < fillWidth; i++)
+                    row[i] = color;
+            }
+            return 1;
+        }
+        // Blended fill: process each pixel
+        for (long y = top_y; y <= bottom_y; y++) {
+            unsigned short* row = (unsigned short*)(self->bitmap + (h - y - 1) * stride + left * 2);
+            for (long i = 0; i < fillWidth; i++)
+                blendPixel16(&row[i], r, g, b, blend, flags);
+        }
+        return 1;
+    }
+
+    // -- 24bpp (BGR byte order) --
+    // Opaque fill
+    if ((flags & 0x0C) == 0 && blend == 1000) {
+        for (long y = top_y; y <= bottom_y; y++) {
+            unsigned char* row = self->bitmap + (h - y - 1) * stride + left * 3;
+            for (long i = 0; i < fillWidth; i++) {
+                row[i * 3]     = b;
+                row[i * 3 + 1] = g;
+                row[i * 3 + 2] = r;
+            }
+        }
+        return 1;
+    }
+    // Blended fill
+    for (long y = top_y; y <= bottom_y; y++) {
+        unsigned char* row = self->bitmap + (h - y - 1) * stride + left * 3;
+        for (long i = 0; i < fillWidth; i++)
+            blendPixel24(&row[i * 3], r, g, b, blend, flags);
+    }
+    return 1;
 }
 
 /**
  * RKC_DIB::TransferToDIBEx - Extended blit with blending (12 stack params version)
  * USED BY: o_RKC_UPDIB.dll, ShadowFlare.exe
- * Signature from mangled name: (long, long, long, long, RKC_DIB*, long, long, long, long, long, long, RKC_DIBHISPEEDMODE*)
+ *
+ * Blits src DIB region onto dest (this) with palette lookup, transparency,
+ * alpha blending, and optional horizontal/vertical flipping.
+ *
+ * Params:
+ *   destX, destY: destination position
+ *   width, height: region size
+ *   srcDIB: source bitmap
+ *   srcX, srcY: source position
+ *   palOff: palette offset added to 8bpp src indices (& 0xFF)
+ *   transColor: transparent color index (skip if src pixel == transColor)
+ *   alpha: blend factor 0-1000 (1000 = opaque), or 0-2000 if additive
+ *   flags: bit 0-1 = flip mode (0=normal, 1=hflip, 2=vflip, 3=hvflip)
+ *          bit 2 = additive blending
+ *          bit 4 = use hispeed lookup tables
  */
 extern "C" int __thiscall RKC_DIB_TransferToDIBEx_11args(
     RKC_DIB* self, long destX, long destY, long width, long height,
     RKC_DIB* srcDIB, long srcX, long srcY, long palOff, long transColor, long alpha, long flags,
     void* hispeed) {
+
+    // Validate alpha range
+    bool additive = (flags & 4) != 0;
+    if (alpha < 0) return 0;
+    if (!additive && alpha > 1000) return 0;
+    if (additive && alpha > 2000) return 0;
+
+    if (!srcDIB->bitmap || !self->bitmap) return 0;
+
+    BITMAPINFOHEADER* srcHdr = srcDIB->bitmapInfo;
+    BITMAPINFOHEADER* dstHdr = self->bitmapInfo;
+    WORD srcBpp = srcHdr->biBitCount;
+    WORD dstBpp = dstHdr->biBitCount;
+
+    // Source must be 1, 4, 8, or 24 bpp
+    if (srcBpp != 1 && srcBpp != 4 && srcBpp != 8 && srcBpp != 24) return 0;
+    // Dest must be 4, 8, 16, or 24 bpp
+    if (dstBpp != 4 && dstBpp != 8 && dstBpp != 16 && dstBpp != 24) return 0;
+    // Dest bpp must be >= src bpp
+    if (dstBpp < srcBpp) return 0;
+
+    long srcW = srcHdr->biWidth;
+    long srcH = srcHdr->biHeight;
+    long dstW = dstHdr->biWidth;
+    long dstH = dstHdr->biHeight;
+
+    // Clip negative dest coords
+    if (destX < 0) { srcX -= destX; destX = 0; }
+    if (destY < 0) { srcY -= destY; destY = 0; }
+    if (srcX < 0) { destX -= srcX; srcX = 0; }
+    if (srcY < 0) { destY -= srcY; srcY = 0; }
+
+    if (destX < 0 || destX >= dstW || srcX < 0 || srcX >= srcW) return 0;
+
+    // Clip region to both source and dest bounds
+    if (dstW < width + destX) width = dstW - destX;
+    if (dstH < destY + height) height = dstH - destY;
+    if (srcW < width + srcX) width = srcW - srcX;
+    if (srcH < srcY + height) height = srcH - srcY;
+
+    if (width < 1 || height < 1) return 0;
+
+    long srcStride = RKC_DIB_GetAlignWidth(srcDIB);
+    long dstStride = RKC_DIB_GetAlignWidth(self);
+
+    // Flip mode from bottom 2 bits
+    int flipMode = flags & 3;
+
+    // Calculate initial source pixel offset (bottom-up DIB)
+    // For flip modes, source traversal direction changes
+    int srcBytesPerPixel = srcBpp / 8;  // works for 8 and 24
+    int dstBytesPerPixel = dstBpp / 8;
+
+    // ---- 8bpp source -> 8bpp dest (palette index copy w/ offset) ----
+    if (srcBpp == 8 && dstBpp == 8) {
+        if (additive) {
+            // Additive needs hispeed LUT for 8bpp->8bpp
+            if (!hispeed) return 1;
+        }
+        for (long row = 0; row < height; row++) {
+            // Source row (bottom-up): for flipMode 0,1: row from top, for 2,3: row from bottom
+            long sy = (flipMode & 2) ? srcY + row : (srcH - srcY - row - 1);
+            long dy = dstH - destY - row - 1;
+
+            unsigned char* srcRow = srcDIB->bitmap + sy * srcStride;
+            unsigned char* dstRow = self->bitmap + dy * dstStride;
+
+            for (long col = 0; col < width; col++) {
+                long sx = (flipMode & 1) ? (srcX + width - 1 - col) : (srcX + col);
+                unsigned char srcPx = srcRow[sx];
+                if ((long)(unsigned)srcPx == transColor) continue;
+                unsigned char idx = (unsigned char)(srcPx + palOff);
+                if (!additive) {
+                    dstRow[destX + col] = idx;
+                } else {
+                    // hispeed LUT-based blending for 8bpp
+                    unsigned char* lut = (unsigned char*)hispeed;
+                    unsigned char dst = dstRow[destX + col];
+                    dstRow[destX + col] = lut[(unsigned)dst + ((unsigned)idx + 0xFA3) * 256];
+                }
+            }
+        }
+        return 1;
+    }
+
+    // ---- 8bpp source -> 24bpp dest (palette lookup + blending) ----
+    if (srcBpp == 8 && dstBpp == 24) {
+        RGBQUAD* palette = srcDIB->palette;
+        if (!palette) return 0;
+
+        for (long row = 0; row < height; row++) {
+            long sy = (flipMode & 2) ? srcY + row : (srcH - srcY - row - 1);
+            long dy = dstH - destY - row - 1;
+
+            unsigned char* srcRow = srcDIB->bitmap + sy * srcStride;
+            unsigned char* dstRow = self->bitmap + dy * dstStride;
+
+            for (long col = 0; col < width; col++) {
+                long sx = (flipMode & 1) ? (srcX + width - 1 - col) : (srcX + col);
+                unsigned char srcPx = srcRow[sx];
+                if ((long)(unsigned)srcPx == transColor) continue;
+
+                unsigned char idx = (unsigned char)(srcPx + palOff);
+                unsigned char* color = (unsigned char*)&palette[idx];
+                unsigned char* dst = dstRow + (destX + col) * 3;
+
+                if (alpha == 1000 && !additive && !(flags & 0x10)) {
+                    // Opaque copy - BGR from palette
+                    dst[0] = color[0]; // B
+                    dst[1] = color[1]; // G
+                    dst[2] = color[2]; // R
+                } else if (additive) {
+                    // Additive blending
+                    dst[0] = (unsigned char)clamp255(dst[0] + (int)color[0] * alpha / 1000);
+                    dst[1] = (unsigned char)clamp255(dst[1] + (int)color[1] * alpha / 1000);
+                    dst[2] = (unsigned char)clamp255(dst[2] + (int)color[2] * alpha / 1000);
+                } else {
+                    // Alpha blend
+                    int inv = 1000 - alpha;
+                    dst[0] = (unsigned char)((int)color[0] * alpha / 1000 + (int)dst[0] * inv / 1000);
+                    dst[1] = (unsigned char)((int)color[1] * alpha / 1000 + (int)dst[1] * inv / 1000);
+                    dst[2] = (unsigned char)((int)color[2] * alpha / 1000 + (int)dst[2] * inv / 1000);
+                }
+            }
+        }
+        return 1;
+    }
+
+    // ---- 8bpp source -> 16bpp dest (RGB555 palette lookup + blending) ----
+    if (srcBpp == 8 && dstBpp == 16) {
+        RGBQUAD* palette = srcDIB->palette;
+        if (!palette) return 0;
+
+        for (long row = 0; row < height; row++) {
+            long sy = (flipMode & 2) ? srcY + row : (srcH - srcY - row - 1);
+            long dy = dstH - destY - row - 1;
+
+            unsigned char* srcRow = srcDIB->bitmap + sy * srcStride;
+            unsigned short* dstRow = (unsigned short*)(self->bitmap + dy * dstStride);
+
+            for (long col = 0; col < width; col++) {
+                long sx = (flipMode & 1) ? (srcX + width - 1 - col) : (srcX + col);
+                unsigned char srcPx = srcRow[sx];
+                if ((long)(unsigned)srcPx == transColor) continue;
+
+                unsigned char idx = (unsigned char)(srcPx + palOff);
+                unsigned char* color = (unsigned char*)&palette[idx];
+                unsigned short* dst = &dstRow[destX + col];
+
+                if (alpha == 1000 && !additive) {
+                    *dst = packRGB555(color[2], color[1], color[0]);
+                } else if (!additive) {
+                    blendPixel16(dst, color[2], color[1], color[0], alpha, 0);
+                } else {
+                    blendPixel16(dst, color[2], color[1], color[0], alpha, 4);
+                }
+            }
+        }
+        return 1;
+    }
+
+    // ---- 24bpp source -> 24bpp dest ----
+    if (srcBpp == 24 && dstBpp == 24) {
+        for (long row = 0; row < height; row++) {
+            long sy = (flipMode & 2) ? srcY + row : (srcH - srcY - row - 1);
+            long dy = dstH - destY - row - 1;
+
+            unsigned char* srcRow = srcDIB->bitmap + sy * srcStride;
+            unsigned char* dstRow = self->bitmap + dy * dstStride;
+
+            for (long col = 0; col < width; col++) {
+                long sx = (flipMode & 1) ? (srcX + width - 1 - col) : (srcX + col);
+                unsigned char* src = srcRow + sx * 3;
+                unsigned char* dst = dstRow + (destX + col) * 3;
+
+                // For 24bpp, transColor check is on the full pixel
+                // In practice this path is rarely used with transparency
+
+                if (alpha == 1000 && !additive) {
+                    dst[0] = src[0];
+                    dst[1] = src[1];
+                    dst[2] = src[2];
+                } else {
+                    blendPixel24(dst, src[2], src[1], src[0], alpha, additive ? 4 : 0);
+                }
+            }
+        }
+        return 1;
+    }
+
+    // ---- 1bpp/4bpp source -> higher bpp dest ----
+    // These are less common paths. For now handle the basic case.
+    if ((srcBpp == 1 || srcBpp == 4) && dstBpp >= 8) {
+        RGBQUAD* palette = srcDIB->palette;
+
+        int pixelsPerByte = (srcBpp == 1) ? 8 : 2;
+        int bitsPerPixel = srcBpp;
+        unsigned char mask = (srcBpp == 1) ? 0x01 : 0x0F;
+
+        for (long row = 0; row < height; row++) {
+            long sy = (flipMode & 2) ? srcY + row : (srcH - srcY - row - 1);
+            long dy = dstH - destY - row - 1;
+
+            unsigned char* srcRow = srcDIB->bitmap + sy * srcStride;
+            unsigned char* dstRow = self->bitmap + dy * dstStride;
+
+            for (long col = 0; col < width; col++) {
+                long sx = (flipMode & 1) ? (srcX + width - 1 - col) : (srcX + col);
+                int byteIdx = sx / pixelsPerByte;
+                int bitIdx = (pixelsPerByte - 1 - (sx % pixelsPerByte)) * bitsPerPixel;
+                unsigned char srcPx = (srcRow[byteIdx] >> bitIdx) & mask;
+
+                if ((long)(unsigned)srcPx == transColor) continue;
+
+                if (dstBpp == 8) {
+                    dstRow[destX + col] = (unsigned char)(srcPx + palOff);
+                } else if (dstBpp == 24 && palette) {
+                    unsigned char* color = (unsigned char*)&palette[srcPx];
+                    unsigned char* dst = dstRow + (destX + col) * 3;
+                    if (alpha == 1000 && !additive) {
+                        dst[0] = color[0]; dst[1] = color[1]; dst[2] = color[2];
+                    } else {
+                        blendPixel24(dst, color[2], color[1], color[0], alpha, additive ? 4 : 0);
+                    }
+                } else if (dstBpp == 16 && palette) {
+                    unsigned char* color = (unsigned char*)&palette[srcPx];
+                    unsigned short* dst = (unsigned short*)(dstRow + (destX + col) * 2);
+                    if (alpha == 1000 && !additive) {
+                        *dst = packRGB555(color[2], color[1], color[0]);
+                    } else {
+                        blendPixel16(dst, color[2], color[1], color[0], alpha, additive ? 4 : 0);
+                    }
+                }
+            }
+        }
+        return 1;
+    }
+
     return 0;
 }
 
 /**
  * RKC_DIB::TransferToDIBEx - Extended blit with flipping/mirroring (8 stack params version)
  * USED BY: o_RKC_UPDIB.dll
- * Signature from mangled name: (long, long, RKC_DIB*, long, long, long, long, RKC_DIBHISPEEDMODE*)
+ *
+ * Convenience wrapper that uses the full source dimensions.
+ * Expands to the 12-arg version with srcX=0, srcY=0, width=srcW, height=srcH.
  */
 extern "C" int __thiscall RKC_DIB_TransferToDIBEx_8args(
     RKC_DIB* self, long destX, long destY,
-    RKC_DIB* srcDIB, long unk1, long unk2, long unk3, long flags,
+    RKC_DIB* srcDIB, long palOff, long transColor, long alpha, long flags,
     void* hispeed) {
-    return 0;
+    if (!srcDIB || !srcDIB->bitmapInfo) return 0;
+    long srcW = srcDIB->bitmapInfo->biWidth;
+    long srcH = srcDIB->bitmapInfo->biHeight;
+    return RKC_DIB_TransferToDIBEx_11args(self, destX, destY, srcW, srcH,
+        srcDIB, 0, 0, palOff, transColor, alpha, flags, hispeed);
 }
 
 /**

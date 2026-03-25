@@ -189,16 +189,16 @@ extern "C" {
 
     /**
      * Release all table data
-     * NOT REFERENCED - not imported by any module
+     * NOT REFERENCED - not imported by any module (but called internally
+     * by the original DLL's ReadBinaryFile before re-populating).
      * 
-     * Note: This function is not called by the game or any other DLLs.
-     * Memory allocated by ReadBinaryFile (forwarded to original) uses their
-     * allocator, so we can't properly free it. Just clear the pointer.
+     * Can't implement locally: nodes are allocated by the original DLL's
+     * operator_new (via forwarded Insert/ReadBinaryFile), so freeing them
+     * with our CRT's delete causes a heap corruption crash.
+     * Must stay forwarded until Insert and ReadBinaryFile are also local.
      */
     void __thiscall RKC_RPG_TABLE_Release(RKC_RPG_TABLE* self)
     {
-        // NOT USED by game - just clear the pointer
-        // Actual cleanup happens in destructor
         self->headData = nullptr;
     }
 

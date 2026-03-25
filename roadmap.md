@@ -6,22 +6,22 @@ This document tracks the implementation status of all DLLs and their functions.
 ```
 DLL                 Functions  Completed  Status
 ------------------  ---------  ---------  ------
-RK_FUNCTION                43         43  100%
-RKC_DSOUND                 48         48  100%
-RKC_FILE                   10         10  100%
-RKC_FONTMAKER              13         13  100%
-RKC_MEMORY                  9          9  100%
-RKC_WINDOW                  6          6  100%
-RKC_RPG_TABLE              25         24   96%
-RKC_DIB                    53         42   79%
-RKC_UPDIB                  89         71   80%
-RKC_RPG_AICONTROL          67         47   70%
-RKC_RPG_SCRIPT            112         87   78%
-RKC_DBFCONTROL             48         23   48%
-RKC_NETWORK               174        147   84%
-RKC_RPGSCRN               186         96   52%
+RK_FUNCTION                43         43   COMPLETED
+RKC_FILE                   10         10   COMPLETED
+RKC_MEMORY                  9          9   COMPLETED
+RKC_DSOUND                 43         43   COMPLETED
+RKC_FONTMAKER              13         13   COMPLETED
+RKC_WINDOW                  7          7   COMPLETED
+RKC_DIB                    42         42   COMPLETED
+RKC_RPG_TABLE              25         24   WIP
+RKC_UPDIB                  81         63   WIP
+RKC_RPG_SCRIPT             82         57   WIP
+RKC_NETWORK               131        104   WIP
+RKC_RPG_AICONTROL          51         31   WIP
+RKC_RPGSCRN               185         95   WIP
+RKC_DBFCONTROL             41         16   WIP
 ------------------  ---------  ---------  ------
-TOTAL                     883        666   75%
+TOTAL                     763        557   WIP
 ```
 
 **Legend:**
@@ -36,16 +36,16 @@ TOTAL                     883        666   75%
 
 Based on dependencies and game functionality:
 
-1. **RK_FUNCTION** (2 remaining) - Core utilities, LZ compression
-2. **RKC_DIB** (42) - Graphics primitives (Device Independent Bitmap)
-3. **RKC_UPDIB** (81) - Sprite rendering (uses RKC_DIB)
-4. **RKC_DSOUND** (43) - Audio
-5. **RKC_RPGSCRN** (185) - Game screen rendering
-6. **RKC_DBFCONTROL** (41) - Database/data files
-7. **RKC_RPG_TABLE** (1 remaining) - Game tables
-8. **RKC_RPG_SCRIPT** (82) - Scripting engine
-9. **RKC_RPG_AICONTROL** (51) - AI/enemy behavior
-10. **RKC_NETWORK** (131) - Multiplayer (low priority - single player first)
+1. ~~**RK_FUNCTION**~~ - COMPLETED
+2. ~~**RKC_DIB**~~ - COMPLETED
+3. **RKC_UPDIB** (18 forwards) - Sprite rendering (uses RKC_DIB)
+4. ~~**RKC_DSOUND**~~ - COMPLETED
+5. **RKC_RPGSCRN** (90 forwards) - Game screen rendering
+6. **RKC_DBFCONTROL** (25 forwards) - Database/data files
+7. **RKC_RPG_TABLE** (1 forward) - Game tables (blocked: allocator mismatch)
+8. **RKC_RPG_SCRIPT** (25 forwards) - Scripting engine
+9. **RKC_RPG_AICONTROL** (20 forwards) - AI/enemy behavior
+10. **RKC_NETWORK** (27 forwards) - Multiplayer (low priority - single player first)
 
 ---
 
@@ -101,42 +101,42 @@ Based on dependencies and game functionality:
 | RK_WriteBitFile | stub | - |
 
 **Next Steps:**
-- Implement `RK_LzDecodeMemoryToMemory` (LZSS decompression - critical for loading game assets)
-- Implement `RK_LzEncodeMemoryToMemory` (LZSS compression - used for saving)
+- RK_LzDecodeMemoryToMemory and RK_LzEncodeMemoryToMemory are done (RCLIB-L LZSS).
+  All 43 functions are local -- no external forwarding remains.
 
 ---
 
 ### RKC_FILE (File I/O)
-**Status: done (10/10 real implementations)**
+**Status: COMPLETED (10/10 local)**
 
 All file I/O functions fully implemented with no forwarding.
 
 ---
 
 ### RKC_MEMORY (Memory Management)
-**Status: done (9/9 real implementations)**
+**Status: COMPLETED (9/9 local)**
 
 All memory management functions fully implemented with no forwarding.
 
 ---
 
 ### RKC_WINDOW (Window Management)
-**Status: partial (3 real, 4 internal forwarding)**
+**Status: COMPLETED (7/7 local, 4 are stubs for unused functions)**
 
 | Function | Status |
 |----------|--------|
 | constructor | done |
 | destructor | done |
 | EqualsOperator | done |
-| HScroll | internal fwd |
-| VScroll | internal fwd |
-| Resize | internal fwd |
-| Show | internal fwd |
+| HScroll | stub (unused) |
+| VScroll | stub (unused) |
+| Resize | stub (unused) |
+| Show | stub (unused) |
 
 ---
 
 ### RKC_FONTMAKER (Font Rendering)
-**Status: partial (6 real, 7 internal forwarding)**
+**Status: COMPLETED (13/13 local, 4 internal fwd via CallFunctionInDLL)**
 
 | Function | Status |
 |----------|--------|
@@ -150,72 +150,110 @@ All memory management functions fully implemented with no forwarding.
 | CreateDIB | internal fwd |
 | DrawDoubleFont | internal fwd |
 | DrawNormalFont | internal fwd |
-| Initialize | internal fwd |
+| Initialize | done |
 | EqualsOperator | internal fwd |
-| SaveNJPFile | internal fwd |
-
----
-
-### RKC_RPG_TABLE (Game Data Tables)
-**Status: partial (~19 real, 5 internal forwarding, 1 external forwarding)**
-
-Most table functions implemented. Some still forward internally.
-
----
-
-### RKC_DIB (Device Independent Bitmap - Graphics)
-**Status: not started (0/42)**
-
-Core graphics primitives. High priority - needed for rendering.
+| SaveNJPFile | stub (not referenced) |
 
 ---
 
 ### RKC_DSOUND (DirectSound - Audio)
-**Status: not started (0/43)**
+**Status: COMPLETED (43/43 local)**
 
-Audio playback. Medium priority.
+All audio functions reimplemented using the haudio library. No forwarding.
 
 ---
 
-### RKC_DBFCONTROL (Database Control)
-**Status: not started (0/41)**
+### RKC_DIB (Device Independent Bitmap - Graphics)
+**Status: COMPLETED (42/42 local, 0 external forwarding)**
 
-Database/data file management.
+All graphics primitives are now local. Key implemented functions:
+
+| Function | Status | Notes |
+|----------|--------|-------|
+| constructor / destructor | done | Returns `this` per MSVC convention |
+| Create / Release | done | Allocates/frees BITMAPINFOHEADER + palette + pixel buffer |
+| GetAlignWidth | done | DWORD-aligned stride calculation |
+| Fill / FillByte | done | Whole-bitmap fill |
+| SetBitmap / SetPalette / CopyPalette | done | Pointer/palette management |
+| GetBitmap / GetBitmapInfo / GetPalette | done | Getters |
+| GetPaletteCount / GetRect | done | Getters |
+| TransferToDIB (2 overloads) | done | Simple blit with transparency |
+| TransferToDIBFast (2 overloads) | done | Fast memcpy blit |
+| **TransferToDIBEx (2 overloads)** | **done** | Full sprite blit: flip modes, alpha blending (1000-based), palette lookup, 8/24bpp paths, additive blend |
+| TransferToDDB (2 overloads) | done | DIB -> device context (stubs for now, GDI path) |
+| **Convert** | **done** | BPP conversion: 1/4/8/24 bpp source -> 1/4/8/16/24 bpp dest |
+| **DrawFill** | **done** | Filled rectangle with blending (8/16/24bpp, opaque/alpha/additive/darken/brighten) |
+| **DrawBox** | **done** | Rectangle outline (4x DrawLine) |
+| **DrawLine** | **done** | DDA line with blending |
+| **DrawPoint** | **done** | Single pixel with blending |
+| ZoomToDIB / ZoomToDIBEx | done | Scaled blit with nearest-neighbor sampling |
+| ReadFile | done | Loads BMP from file |
+| WriteFile | stub | Not referenced by game |
+| Copy / operatorAssign | done | Deep copy |
+| AddOffset / ClearUnusedArea | stub | Not referenced |
+| CompareBitmapColor / PaintArea | stub | Not referenced |
+| ScreenPaintLineScan | stub | Not referenced |
+| DIBHISPEEDMODE (3 functions) | stub | Lookup table mode, not yet needed |
+
+---
+
+### RKC_RPG_TABLE (Game Data Tables)
+**Status: 24/25 local, 1 external forward**
+
+| Function | Status | Notes |
+|----------|--------|-------|
+| Release | **external fwd** | Allocator mismatch: nodes created by original DLL's operator_new can't be freed with our delete. Needs Insert + ReadBinaryFile implemented locally first. |
+| 19 functions | done | Real implementations |
+| 5 functions | internal fwd | Forward via CallFunctionInDLL |
 
 ---
 
 ### RKC_UPDIB (Sprite Rendering)
-**Status: not started (0/81)**
+**Status: 63/81 local (18 external forwards)**
 
-Sprite and pattern rendering. Depends on RKC_DIB.
-
----
-
-### RKC_NETWORK (Networking)
-**Status: not started (0/131)**
-
-Multiplayer networking. Low priority - focus on single player first.
-
----
-
-### RKC_RPG_AICONTROL (AI Control)
-**Status: not started (0/51)**
-
-Enemy AI and pathfinding.
+Sprite and pattern rendering. Depends on RKC_DIB. Most getters and simple functions
+are stubbed locally. Core rendering functions (Render, SetPacket, etc.) still forward
+to the original DLL.
 
 ---
 
 ### RKC_RPG_SCRIPT (Scripting Engine)
-**Status: not started (0/82)**
+**Status: 57/82 local (25 external forwards)**
 
-Game scripting and event handling.
+Game scripting and event handling. Unused functions stubbed, core script
+execution still forwards to original DLL.
+
+---
+
+### RKC_NETWORK (Networking)
+**Status: 104/131 local (27 external forwards)**
+
+Multiplayer networking. Most unused functions stubbed locally.
+Low priority -- focus on single player first.
+
+---
+
+### RKC_RPG_AICONTROL (AI Control)
+**Status: 31/51 local (20 external forwards)**
+
+Enemy AI and pathfinding. Unused functions stubbed, core AI processing
+still forwards to original DLL.
 
 ---
 
 ### RKC_RPGSCRN (RPG Screen Rendering)
-**Status: not started (0/185)**
+**Status: 95/185 local (90 external forwards)**
 
-Main game screen rendering. Largest DLL - likely depends on many others.
+Main game screen rendering. Largest DLL with the most remaining forwards.
+Depends on RKC_DIB, RKC_UPDIB, and most other DLLs.
+
+---
+
+### RKC_DBFCONTROL (Database Control)
+**Status: 16/41 local (25 external forwards)**
+
+Database/data file management. Core database operations still forward
+to original DLL.
 
 ---
 
@@ -233,9 +271,10 @@ Main game screen rendering. Largest DLL - likely depends on many others.
 
 ### Compression Functions
 The game uses RCLIB-L (LZSS variant) compression for all game assets:
-- Header: `"RCLIB-L\0"` (8 bytes) + decompressed_size (4 bytes LE)
-- Algorithm: 4KB sliding window, initial position 0xFEE, fill with 0x20 (space)
-- Critical for loading: sprites (NJP), maps, scenarios, etc.
+- Header: `"RCLIB-L"` (7 bytes) + terminator (1 byte) + decompressed_size (4 bytes LE) + reserved (4 bytes)
+- Algorithm: 4KB sliding window, initial position 0xFEE, window filled with 0x00
+- Flags: MSB-first bit order, 1 = match reference, 0 = literal byte
+- Critical for loading: sprites (NJP), maps, scenarios, save files, etc.
 
 ### SJIS Text Handling
 Many string functions need to be SJIS-aware (Japanese text encoding):
