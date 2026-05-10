@@ -10,12 +10,21 @@
 #include <windows.h>
 #include <cstring>
 
+#define OSF_DEBUG 1
+#define DLL_NAME "RKC_UPDIB"
+#include "../../debug.h"
+#include "../../utils.h"
+
 // Forward declarations
 class RKC_DIB;
 class RKC_DIBHISPEEDMODE;
 struct RKC_UPDIB_JUDGE;
 struct RKC_UPDIB_PARTSLIST;
 struct RKC_UPDIB_UPD_PARTS;
+
+extern "C" void* __thiscall RKC_UPDIB_GetUpd(void* self, long index);
+extern "C" void* __thiscall RKC_UPDIB_UPD_GetPattern(void* self, long index);
+extern "C" void __thiscall RKC_UPDIB_CreateTemporaryDIB(void* self);
 
 // ============================================================================
 // CLASS LAYOUTS (from reverse engineering)
@@ -185,11 +194,51 @@ extern "C" long __thiscall RKC_UPDIB_UPD_GetPartsCount(void* self) {
 }
 
 /**
+ * RKC_UPDIB_UPD::GetParts - Get parts entry by index
+ * USED BY: ShadowFlare.exe, o_RKC_UPDIB.dll (internal)
+ *
+ * Returns null when index >= partsCount. The original code does not reject
+ * negative indices here, so we keep the same behavior.
+ */
+extern "C" void* __thiscall RKC_UPDIB_UPD_GetParts(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    char* p = (char*)self;
+    long partsCount = *(long*)(p + 0x0c);
+    if (index >= partsCount) {
+        return nullptr;
+    }
+
+    char* parts = *(char**)(p + 0x10);
+    return parts + (index * 0x10);
+}
+
+/**
  * RKC_UPDIB_UPD::GetPatternCount - Get number of patterns
  * USED BY: ShadowFlare.exe, o_RKC_UPDIB.dll (internal)
  */
 extern "C" long __thiscall RKC_UPDIB_UPD_GetPatternCount(void* self) {
     return *(long*)((char*)self + 0x14);
+}
+
+/**
+ * RKC_UPDIB_UPD::GetPattern - Get pattern by index
+ * USED BY: o_RKC_RPGSCRN.dll, o_RKC_UPDIB.dll (internal)
+ *
+ * Returns null when index >= patternCount. The original code does not reject
+ * negative indices here, so we keep the same behavior.
+ */
+extern "C" void* __thiscall RKC_UPDIB_UPD_GetPattern(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    char* p = (char*)self;
+    long patternCount = *(long*)(p + 0x14);
+    if (index >= patternCount) {
+        return nullptr;
+    }
+
+    char* patterns = *(char**)(p + 0x18);
+    return patterns + (index * 0x28);
 }
 
 /**
@@ -229,6 +278,34 @@ extern "C" RKC_DIBHISPEEDMODE* __thiscall RKC_UPDIB_GetDIBHISpeedMode(void* self
 }
 
 /**
+ * RKC_UPDIB::GetFontParam - Get font cell size from pattern 0
+ * USED BY: ShadowFlare.exe
+ *
+ * The original code looks up UPD index -> pattern 0 and returns the
+ * pattern width and height divided by 16 using signed division semantics.
+ */
+extern "C" int __thiscall RKC_UPDIB_GetFontParam(void* self, long updIndex, long* outWidth, long* outHeight) {
+    OSF_FUNC_TRACE("self=%p, updIndex=%ld, outWidth=%p, outHeight=%p", self, updIndex, outWidth, outHeight);
+
+    void* upd = RKC_UPDIB_GetUpd(self, updIndex);
+    if (upd == nullptr) {
+        return 0;
+    }
+
+    void* pattern = RKC_UPDIB_UPD_GetPattern(upd, 0);
+    if (pattern == nullptr) {
+        return 0;
+    }
+
+    long width = *(long*)((char*)pattern + 0x14);
+    long height = *(long*)((char*)pattern + 0x18);
+
+    *outWidth = width / 16;
+    *outHeight = height / 16;
+    return 1;
+}
+
+/**
  * RKC_UPDIB::GetUpd - Get UPD by index
  * USED BY: ShadowFlare.exe, o_RKC_RPGSCRN.dll, o_RKC_UPDIB.dll (internal)
  * 
@@ -251,6 +328,124 @@ extern "C" void* __thiscall RKC_UPDIB_GetUpd(void* self, long index) {
     // Get array pointer at offset 0x08, return element at index
     void** upds = *(void***)(p + 0x08);
     return upds[index];
+}
+
+/**
+ * RKC_UPDIB::DeleteUpd - Release one UPD entry
+ * USED BY: ShadowFlare.exe
+ *
+ * The original code rejects negative indices and indices >= updCount.
+ * When the release succeeds, it rebuilds the temp DIB only if rebuildTempDib
+ * is exactly 1.
+ */
+extern "C" int __thiscall RKC_UPDIB_DeleteUpd(void* self, long index, int rebuildTempDib) {
+    OSF_FUNC_TRACE("self=%p, index=%ld, rebuildTempDib=%d", self, index, rebuildTempDib);
+
+    char* p = (char*)self;
+    long updCount = *(long*)(p + 0x04);
+    if (index < 0 || index >= updCount) {
+        return 0;
+    }
+
+    void** upds = *(void***)(p + 0x08);
+    void* upd = upds[index];
+    CallFunctionInDLL<void>("RKC_UPDIB.dll", "?Release@RKC_UPDIB_UPD@@QAEXXZ", upd);
+
+    if (rebuildTempDib == 1) {
+        RKC_UPDIB_CreateTemporaryDIB(self);
+    }
+
+    return 1;
+}
+
+/**
+ * RKC_UPDIB::GetVSBlock - Get VS block by index
+ * USED BY: ShadowFlare.exe, o_RKC_RPGSCRN.dll
+ *
+ * The original code walks the linked list at offset 0x00 and follows the
+ * nextBlock pointer at offset 0x10 until it reaches the requested index.
+ */
+extern "C" void* __thiscall RKC_UPDIB_GetVSBlock(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    char* block = *(char**)self;
+    long currentIndex = 0;
+
+    while (block != nullptr) {
+        if (currentIndex == index) {
+            return block;
+        }
+        block = *(char**)(block + 0x10);
+        currentIndex++;
+    }
+
+    return nullptr;
+}
+
+/**
+ * RKC_UPDIB::CreateTemporaryDIB - Rebuild the temp 8bpp DIB from UPD parts
+ * USED BY: o_RKC_RPGSCRN.dll
+ *
+ * The original code releases the embedded temp DIB at +0x1c, scans every UPD
+ * part entry, and keeps the largest width/height seen in the cached fields at
+ * +0x14 and +0x18. If both are nonzero, it recreates the temp DIB as 8bpp.
+ */
+extern "C" void __thiscall RKC_UPDIB_CreateTemporaryDIB(void* self) {
+    OSF_FUNC_TRACE("self=%p", self);
+
+    char* p = (char*)self;
+    void* tempDib = p + 0x1c;
+    CallFunctionInDLL<void>("RKC_DIB.dll", "?Release@RKC_DIB@@QAEXXZ", tempDib);
+
+    long updCount = *(long*)(p + 0x04);
+    if (updCount > 0) {
+        void** upds = *(void***)(p + 0x08);
+        for (long updIndex = 0; updIndex < updCount; ++updIndex) {
+            char* upd = (char*)upds[updIndex];
+            if (upd == nullptr) {
+                continue;
+            }
+
+            long partsCount = *(long*)(upd + 0x0c);
+            if (partsCount <= 0) {
+                continue;
+            }
+
+            char* parts = *(char**)(upd + 0x10);
+            for (long partIndex = 0; partIndex < partsCount; ++partIndex) {
+                char* part = parts + (partIndex * 0x10);
+                long width = *(long*)(part + 0x04);
+                long height = *(long*)(part + 0x08);
+
+                if (width > *(long*)(p + 0x14)) {
+                    *(long*)(p + 0x14) = width;
+                }
+                if (height > *(long*)(p + 0x18)) {
+                    *(long*)(p + 0x18) = height;
+                }
+            }
+        }
+    }
+
+    long maxWidth = *(long*)(p + 0x14);
+    if (maxWidth == 0) {
+        return;
+    }
+
+    long maxHeight = *(long*)(p + 0x18);
+    if (maxHeight == 0) {
+        return;
+    }
+
+    CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?Create@RKC_DIB@@QAEHJJJH@Z",
+        tempDib,
+        maxWidth,
+        maxHeight,
+        8L,
+        1
+    );
 }
 
 // ============================================================================
@@ -299,6 +494,44 @@ extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_constructor(void* self) {
     *(void**)(p + 0x0c) = nullptr;
     *(void**)(p + 0x10) = nullptr;
     return self;
+}
+
+/**
+ * RKC_UPDIB_VSBLOCK::GetVScreen - Get VS entry by index
+ * USED BY: o_RKC_RPGSCRN.dll
+ *
+ * Returns null when index >= vsCount. The original code does not reject
+ * negative indices here, so we keep the same behavior.
+ */
+extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_GetVScreen(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    char* p = (char*)self;
+    long vsCount = *(long*)(p + 0x04);
+    if (index >= vsCount) {
+        return nullptr;
+    }
+
+    char* vsArray = *(char**)(p + 0x08);
+    return vsArray + (index * 8);
+}
+
+/**
+ * RKC_UPDIB_VS::GetVSPacketCount - Count linked VS packets
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" long __thiscall RKC_UPDIB_VS_GetVSPacketCount(void* self) {
+    OSF_FUNC_TRACE("self=%p", self);
+
+    char* packet = *(char**)((char*)self + 0x04);
+    long count = 0;
+
+    while (packet != nullptr) {
+        packet = *(char**)(packet + 0x3c);
+        count++;
+    }
+
+    return count;
 }
 
 // ============================================================================
@@ -396,7 +629,6 @@ extern "C" void __thiscall RKC_UPDIB_VS_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VS_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VS_DeleteVSPacket(void* self, long index) { return 0; }
 extern "C" void __thiscall RKC_UPDIB_VS_FlushVSPacket(void* self) {}
-extern "C" long __thiscall RKC_UPDIB_VS_GetVSPacketCount(void* self) { return 0; }
 extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index) { return nullptr; }
 extern "C" void* __thiscall RKC_UPDIB_VS_InsertVSPacket(void* self, long index) { return nullptr; }
 extern "C" void __thiscall RKC_UPDIB_VS_Release(void* self) {}
