@@ -14,14 +14,14 @@ RKC_FONTMAKER              13         13   COMPLETED
 RKC_WINDOW                  7          7   COMPLETED
 RKC_DIB                    42         42   COMPLETED
 RKC_RPG_TABLE              25         24   WIP
-RKC_UPDIB                  81         63   WIP
+RKC_UPDIB                  81         70   WIP
 RKC_RPG_SCRIPT             82         57   WIP
 RKC_NETWORK               131        104   WIP
 RKC_RPG_AICONTROL          51         31   WIP
 RKC_RPGSCRN               185         95   WIP
 RKC_DBFCONTROL             41         16   WIP
 ------------------  ---------  ---------  ------
-TOTAL                     763        557   WIP
+TOTAL                     763        564   WIP
 ```
 
 **Legend:**
@@ -38,7 +38,7 @@ Based on dependencies and game functionality:
 
 1. ~~**RK_FUNCTION**~~ - COMPLETED
 2. ~~**RKC_DIB**~~ - COMPLETED
-3. **RKC_UPDIB** (18 forwards) - Sprite rendering (uses RKC_DIB)
+3. **RKC_UPDIB** (11 forwards) - Sprite rendering (uses RKC_DIB)
 4. ~~**RKC_DSOUND**~~ - COMPLETED
 5. **RKC_RPGSCRN** (90 forwards) - Game screen rendering
 6. **RKC_DBFCONTROL** (25 forwards) - Database/data files
@@ -209,11 +209,12 @@ All graphics primitives are now local. Key implemented functions:
 ---
 
 ### RKC_UPDIB (Sprite Rendering)
-**Status: 63/81 local (18 external forwards)**
+**Status: 70/81 local (11 external forwards)**
 
 Sprite and pattern rendering. Depends on RKC_DIB. Most getters and simple functions
-are stubbed locally. Core rendering functions (Render, SetPacket, etc.) still forward
-to the original DLL.
+are now implemented locally, including the UPD pattern/parts accessors, VS block and
+VS packet counting helpers, font parameter lookup, temp DIB rebuild, and UPD deletion.
+Core rendering functions (Render, SetPacket, etc.) still forward to the original DLL.
 
 ---
 

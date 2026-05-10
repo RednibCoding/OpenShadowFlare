@@ -619,7 +619,30 @@ extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long fl
 extern "C" void* __thiscall RKC_UPDIB_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count) { return 0; }
 extern "C" int __thiscall RKC_UPDIB_DeleteVSBlock(void* self, long index) { return 0; }
-extern "C" int __thiscall RKC_UPDIB_ExchangeUpd(void* self, long a, long b) { return 0; }
+/**
+ * RKC_UPDIB::ExchangeUpd - Swap two UPD entries in the array
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" int __thiscall RKC_UPDIB_ExchangeUpd(void* self, long a, long b) {
+    OSF_FUNC_TRACE("self=%p, a=%ld, b=%ld", self, a, b);
+
+    long updCount = *(long*)((char*)self + 0x04);
+    if (a < 0 || a >= updCount) {
+        return 0;
+    }
+    if (b < 0 || b >= updCount) {
+        return 0;
+    }
+    if (a == b) {
+        return 0;
+    }
+
+    void** upds = *(void***)((char*)self + 0x08);
+    void* tmp = upds[b];
+    upds[b] = upds[a];
+    upds[a] = tmp;
+    return 1;
+}
 /**
  * RKC_UPDIB::GetVSBlockCount - Count linked VS blocks
  * USED BY: o_RKC_UPDIB.dll (internal)
