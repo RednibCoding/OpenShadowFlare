@@ -212,9 +212,11 @@ All graphics primitives are now local. Key implemented functions:
 **Status: 70/81 local (11 external forwards)**
 
 Sprite and pattern rendering. Depends on RKC_DIB. Most getters and simple functions
-are now implemented locally, including the UPD pattern/parts accessors, VS block and
-VS packet counting helpers, font parameter lookup, temp DIB rebuild, and UPD deletion.
-Core rendering functions (Render, SetPacket, etc.) still forward to the original DLL.
+are now implemented locally, including the UPD pattern/parts accessors, palette getters,
+font parameter lookup, temp DIB rebuild, UPD block creation, and the VS/VSBLOCK/VSPACKET
+container helpers for insert/delete/flush/release-style management. Core rendering and
+data-loading entry points (Render, SetPacket, ReadUpd, Initialize, etc.) still forward
+to the original DLL or remain stubbed.
 
 ---
 

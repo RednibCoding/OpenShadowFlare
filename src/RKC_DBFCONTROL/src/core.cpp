@@ -28,6 +28,14 @@ static GLuint g_texture = 0;
 static int g_texWidth = 0;
 static int g_texHeight = 0;
 static bool g_glInitialized = false;
+static WNDPROC g_origWndProc = nullptr;
+static HWND g_hookedHwnd = nullptr;
+static int g_viewX = 0;
+static int g_viewY = 0;
+static int g_viewW = 640;
+static int g_viewH = 480;
+static int g_virtualW = 640;
+static int g_virtualH = 480;
 
 // Debug logging
 static FILE* g_logFile = nullptr;
@@ -51,6 +59,39 @@ static void DBF_LOG_SHUTDOWN() {
 #define DBF_LOG(fmt, ...) do { \
     if (g_logFile) { fprintf(g_logFile, "[DBF] " fmt "\n", ##__VA_ARGS__); fflush(g_logFile); } \
 } while(0)
+
+static LRESULT CALLBACK DBF_WndProcHook(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONUP: {
+            int x = (short)LOWORD(lParam);
+            int y = (short)HIWORD(lParam);
+
+            if (g_viewW > 0 && g_viewH > 0 && g_virtualW > 0 && g_virtualH > 0) {
+                int vx = (x - g_viewX) * g_virtualW / g_viewW;
+                int vy = (y - g_viewY) * g_virtualH / g_viewH;
+
+                if (vx < 0) vx = 0;
+                if (vy < 0) vy = 0;
+                if (vx >= g_virtualW) vx = g_virtualW - 1;
+                if (vy >= g_virtualH) vy = g_virtualH - 1;
+
+                lParam = MAKELPARAM((SHORT)vx, (SHORT)vy);
+            }
+            break;
+        }
+    }
+
+    if (g_origWndProc) {
+        return CallWindowProcA(g_origWndProc, hwnd, msg, wParam, lParam);
+    }
+    return DefWindowProcA(hwnd, msg, wParam, lParam);
+}
 
 // Initialize OpenGL context on the given window
 static bool InitOpenGL(HWND hwnd, int width, int height) {
@@ -111,12 +152,37 @@ static bool InitOpenGL(HWND hwnd, int width, int height) {
     g_texWidth = width;
     g_texHeight = height;
     g_glInitialized = true;
+
+    if (hwnd) {
+        LONG style = GetWindowLongA(hwnd, GWL_STYLE);
+        style |= (WS_OVERLAPPEDWINDOW | WS_THICKFRAME | WS_MAXIMIZEBOX | WS_MINIMIZEBOX);
+        style &= ~WS_POPUP;
+        SetWindowLongA(hwnd, GWL_STYLE, style);
+        SetWindowPos(
+            hwnd,
+            nullptr,
+            0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED
+        );
+    }
+
+    if (hwnd && !g_origWndProc) {
+        g_origWndProc = (WNDPROC)SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)DBF_WndProcHook);
+        g_hookedHwnd = hwnd;
+        DBF_LOG("WndProc hook installed: hwnd=%p orig=%p", hwnd, g_origWndProc);
+    }
     
     DBF_LOG("OpenGL initialized: %s", (const char*)glGetString(GL_VERSION));
     return true;
 }
 
 static void ShutdownOpenGL() {
+    if (g_hookedHwnd && g_origWndProc) {
+        SetWindowLongPtrA(g_hookedHwnd, GWLP_WNDPROC, (LONG_PTR)g_origWndProc);
+        g_origWndProc = nullptr;
+        g_hookedHwnd = nullptr;
+    }
+
     if (g_texture) {
         glDeleteTextures(1, &g_texture);
         g_texture = 0;
@@ -136,18 +202,53 @@ static void PresentOpenGL(void* pixels, int width, int height) {
     if (!g_glInitialized) return;
     
     wglMakeCurrent(g_hdc, g_hglrc);
+
+    HWND hwnd = WindowFromDC(g_hdc);
+    RECT rc = {};
+    int viewportW = width;
+    int viewportH = height;
+    if (hwnd && GetClientRect(hwnd, &rc)) {
+        int cw = rc.right - rc.left;
+        int ch = rc.bottom - rc.top;
+        if (cw > 0 && ch > 0) {
+            viewportW = cw;
+            viewportH = ch;
+        }
+    }
+
+    float sx = (float)viewportW / (float)width;
+    float sy = (float)viewportH / (float)height;
+    float scale = (sx < sy) ? sx : sy;
+    int drawW = (int)(width * scale);
+    int drawH = (int)(height * scale);
+    int drawX = (viewportW - drawW) / 2;
+    int drawY = (viewportH - drawH) / 2;
+
+    g_viewX = drawX;
+    g_viewY = drawY;
+    g_viewW = drawW;
+    g_viewH = drawH;
+    g_virtualW = width;
+    g_virtualH = height;
+
+    glViewport(0, 0, viewportW, viewportH);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, (double)viewportW, (double)viewportH, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
     
     // Upload pixels to texture
     glBindTexture(GL_TEXTURE_2D, g_texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_BGRA_EXT, GL_UNSIGNED_BYTE, pixels);
     
-    // Draw fullscreen quad
+    // Draw centered quad with preserved aspect ratio.
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_QUADS);
-    glTexCoord2f(0, 0); glVertex2f(0, 0);
-    glTexCoord2f(1, 0); glVertex2f((float)width, 0);
-    glTexCoord2f(1, 1); glVertex2f((float)width, (float)height);
-    glTexCoord2f(0, 1); glVertex2f(0, (float)height);
+    glTexCoord2f(0, 0); glVertex2f((float)drawX, (float)drawY);
+    glTexCoord2f(1, 0); glVertex2f((float)(drawX + drawW), (float)drawY);
+    glTexCoord2f(1, 1); glVertex2f((float)(drawX + drawW), (float)(drawY + drawH));
+    glTexCoord2f(0, 1); glVertex2f((float)drawX, (float)(drawY + drawH));
     glEnd();
     
     SwapBuffers(g_hdc);

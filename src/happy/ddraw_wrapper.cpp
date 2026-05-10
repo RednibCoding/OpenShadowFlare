@@ -174,6 +174,20 @@ static HRESULT STDMETHODCALLTYPE DD_SetCooperativeLevel(DDWrapper* self, HWND hw
     DDRAW_LOG("SetCooperativeLevel(hwnd=%p, flags=0x%x)", hwnd, flags);
     self->hwnd = hwnd;
     self->fullscreen = (flags & 0x11) != 0;  // DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE
+
+    if (self->hwnd) {
+        LONG style = GetWindowLongA(self->hwnd, GWL_STYLE);
+        style |= (WS_OVERLAPPEDWINDOW | WS_THICKFRAME | WS_MAXIMIZEBOX | WS_MINIMIZEBOX);
+        style &= ~WS_POPUP;
+        SetWindowLongA(self->hwnd, GWL_STYLE, style);
+        SetWindowPos(
+            self->hwnd,
+            nullptr,
+            0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED
+        );
+    }
+
     return S_OK;
 }
 
@@ -287,18 +301,45 @@ static void DD_Present(DDWrapper* dd, void* pixels, int w, int h) {
     if (!dd->hglrc) return;
     
     wglMakeCurrent(dd->hdc, dd->hglrc);
+
+    RECT rc = {};
+    int viewportW = w;
+    int viewportH = h;
+    if (dd->hwnd && GetClientRect(dd->hwnd, &rc)) {
+        int cw = rc.right - rc.left;
+        int ch = rc.bottom - rc.top;
+        if (cw > 0 && ch > 0) {
+            viewportW = cw;
+            viewportH = ch;
+        }
+    }
+
+    float scaleX = (float)viewportW / (float)w;
+    float scaleY = (float)viewportH / (float)h;
+    float scale = (scaleX < scaleY) ? scaleX : scaleY;
+    int drawW = (int)(w * scale);
+    int drawH = (int)(h * scale);
+    int drawX = (viewportW - drawW) / 2;
+    int drawY = (viewportH - drawH) / 2;
+
+    glViewport(0, 0, viewportW, viewportH);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, (double)viewportW, (double)viewportH, 0, -1, 1);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
     
     // Upload pixels to texture
     glBindTexture(GL_TEXTURE_2D, dd->texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_BGRA_EXT, GL_UNSIGNED_BYTE, pixels);
     
-    // Draw fullscreen quad
+    // Draw centered quad with preserved aspect ratio.
     glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_QUADS);
-    glTexCoord2f(0, 0); glVertex2f(0, 0);
-    glTexCoord2f(1, 0); glVertex2f((float)w, 0);
-    glTexCoord2f(1, 1); glVertex2f((float)w, (float)h);
-    glTexCoord2f(0, 1); glVertex2f(0, (float)h);
+    glTexCoord2f(0, 0); glVertex2f((float)drawX, (float)drawY);
+    glTexCoord2f(1, 0); glVertex2f((float)(drawX + drawW), (float)drawY);
+    glTexCoord2f(1, 1); glVertex2f((float)(drawX + drawW), (float)(drawY + drawH));
+    glTexCoord2f(0, 1); glVertex2f((float)drawX, (float)(drawY + drawH));
     glEnd();
     
     SwapBuffers(dd->hdc);

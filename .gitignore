@@ -1,4 +1,5 @@
 # Prerequisites
+.*/
 *.d
 
 # Compiled Object files
@@ -39,4 +40,3 @@ cmake-build-release
 cmake-build-debug32
 cmake-build-release32
 tmp/
-.github/

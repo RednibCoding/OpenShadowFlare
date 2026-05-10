@@ -9,6 +9,7 @@
 
 #include <windows.h>
 #include <cstring>
+#include <cstdlib>
 
 #define OSF_DEBUG 1
 #define DLL_NAME "RKC_UPDIB"
@@ -25,6 +26,53 @@ struct RKC_UPDIB_UPD_PARTS;
 extern "C" void* __thiscall RKC_UPDIB_GetUpd(void* self, long index);
 extern "C" void* __thiscall RKC_UPDIB_UPD_GetPattern(void* self, long index);
 extern "C" void __thiscall RKC_UPDIB_CreateTemporaryDIB(void* self);
+extern "C" long __thiscall RKC_UPDIB_GetVSBlockCount(void* self);
+extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self);
+extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index);
+
+static void* AllocateCountedArray(size_t count, size_t elementSize) {
+    size_t totalSize = sizeof(uint32_t) + (count * elementSize);
+    auto* raw = (uint8_t*)std::malloc(totalSize);
+    if (raw == nullptr) {
+        return nullptr;
+    }
+    *(uint32_t*)raw = (uint32_t)count;
+    void* array = raw + sizeof(uint32_t);
+    std::memset(array, 0, count * elementSize);
+    return array;
+}
+
+static uint32_t GetCountedArraySize(void* array) {
+    if (array == nullptr) {
+        return 0;
+    }
+    auto* raw = (uint8_t*)array - sizeof(uint32_t);
+    return *(uint32_t*)raw;
+}
+
+static void FreeCountedArray(void* array) {
+    if (array == nullptr) {
+        return;
+    }
+    auto* raw = (uint8_t*)array - sizeof(uint32_t);
+    std::free(raw);
+}
+
+static void DIB_Construct(void* dib) {
+    CallFunctionInDLL<void*>("RKC_DIB.dll", "??0RKC_DIB@@QAE@XZ", dib);
+}
+
+static void DIB_Destruct(void* dib) {
+    CallFunctionInDLL<void>("RKC_DIB.dll", "??1RKC_DIB@@QAE@XZ", dib);
+}
+
+static int DIB_Create(void* dib, long width, long height, long bpp, int allocBitmap) {
+    return CallFunctionInDLL<int>("RKC_DIB.dll", "?Create@RKC_DIB@@QAEHJJJH@Z", dib, width, height, bpp, allocBitmap);
+}
+
+static void DIB_SetBitmap(void* dib, unsigned char* bitmap) {
+    CallFunctionInDLL<unsigned char*>("RKC_DIB.dll", "?SetBitmap@RKC_DIB@@QAEPAEPAE@Z", dib, bitmap);
+}
 
 // ============================================================================
 // CLASS LAYOUTS (from reverse engineering)
@@ -605,20 +653,222 @@ extern "C" void __thiscall RKC_UPDIB_VSPACKET_destructor(void* self) {
 // RKC_UPDIB_PATTERN stubs
 extern "C" void __thiscall RKC_UPDIB_PATTERN_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_PATTERN_operatorAssign(void* self, const void* src) { return self; }
-extern "C" void __thiscall RKC_UPDIB_PATTERN_Release(void* self) {}
+extern "C" void __thiscall RKC_UPDIB_PATTERN_Release(void* self) {
+    char* p = (char*)self;
+
+    if (*(HGLOBAL*)(p + 0x04) != nullptr) {
+        GlobalFree(*(HGLOBAL*)(p + 0x04));
+        *(void**)(p + 0x04) = nullptr;
+    }
+    *(long*)(p + 0x00) = 0;
+
+    if (*(HGLOBAL*)(p + 0x08) != nullptr) {
+        GlobalFree(*(HGLOBAL*)(p + 0x08));
+        *(void**)(p + 0x08) = nullptr;
+    }
+
+    *(long*)(p + 0x1c) = -1;
+
+    if (*(HGLOBAL*)(p + 0x20) != nullptr) {
+        GlobalFree(*(HGLOBAL*)(p + 0x20));
+        *(void**)(p + 0x20) = nullptr;
+    }
+
+    void* icon = *(void**)(p + 0x24);
+    if (icon != nullptr) {
+        DIB_Destruct(icon);
+        std::free(icon);
+        *(void**)(p + 0x24) = nullptr;
+    }
+}
 
 // RKC_UPDIB_UPD stubs
-extern "C" void* __thiscall RKC_UPDIB_UPD_constructor(void* self) { return self; }
-extern "C" void __thiscall RKC_UPDIB_UPD_destructor(void* self) {}
+extern "C" void* __thiscall RKC_UPDIB_UPD_constructor(void* self) {
+    std::memset(self, 0, 0x30);
+    return self;
+}
+extern "C" void __thiscall RKC_UPDIB_UPD_destructor(void* self) {
+    char* p = (char*)self;
+
+    if (*(void**)(p + 0x10) != nullptr) {
+        if (*(void**)(p + 0x28) == nullptr) {
+            long partsCount = *(long*)(p + 0x0c);
+            char* parts = *(char**)(p + 0x10);
+            for (long i = 0; i < partsCount; ++i) {
+                HGLOBAL mem = *(HGLOBAL*)(parts + 0x0c + (i * 0x10));
+                if (mem != nullptr) {
+                    GlobalFree(mem);
+                    *(void**)(parts + 0x0c + (i * 0x10)) = nullptr;
+                }
+            }
+        } else {
+            std::free(*(void**)(p + 0x28));
+            *(void**)(p + 0x28) = nullptr;
+        }
+        GlobalFree(*(HGLOBAL*)(p + 0x10));
+    }
+    *(void**)(p + 0x10) = nullptr;
+    *(long*)(p + 0x0c) = 0;
+
+    if (*(void**)(p + 0x18) != nullptr) {
+        long patternCount = *(long*)(p + 0x14);
+        char* patterns = *(char**)(p + 0x18);
+
+        if (*(void**)(p + 0x2c) == nullptr) {
+            for (long i = 0; i < patternCount; ++i) {
+                GlobalFree(*(HGLOBAL*)(patterns + 0x04 + (i * 0x28)));
+                *(void**)(patterns + 0x04 + (i * 0x28)) = nullptr;
+            }
+        } else {
+            for (long i = 0; i < patternCount; ++i) {
+                *(void**)(patterns + 0x04 + (i * 0x28)) = nullptr;
+            }
+            GlobalFree(*(HGLOBAL*)(p + 0x2c));
+            *(void**)(p + 0x2c) = nullptr;
+        }
+
+        uint32_t count = GetCountedArraySize(patterns);
+        for (uint32_t i = 0; i < count; ++i) {
+            RKC_UPDIB_PATTERN_Release(patterns + (i * 0x28));
+        }
+        FreeCountedArray(patterns);
+    }
+    *(void**)(p + 0x18) = nullptr;
+    *(long*)(p + 0x14) = 0;
+
+    if (*(void**)(p + 0x20) != nullptr) {
+        long paletteCount = *(long*)(p + 0x1c);
+        char* dibs = *(char**)(p + 0x20);
+        for (long i = 0; i < paletteCount; ++i) {
+            DIB_SetBitmap(dibs + (i * 0x0c), nullptr);
+        }
+        uint32_t count = GetCountedArraySize(dibs);
+        for (uint32_t i = 0; i < count; ++i) {
+            DIB_Destruct(dibs + (i * 0x0c));
+        }
+        FreeCountedArray(dibs);
+    }
+    *(void**)(p + 0x20) = nullptr;
+    *(long*)(p + 0x1c) = 0;
+
+    *(long*)(p + 0x00) = 0;
+    if (*(HGLOBAL*)(p + 0x04) != nullptr) {
+        GlobalFree(*(HGLOBAL*)(p + 0x04));
+        *(void**)(p + 0x04) = nullptr;
+    }
+    *(long*)(p + 0x24) = 0;
+}
 extern "C" void* __thiscall RKC_UPDIB_UPD_operatorAssign(void* self, const void* src) { return self; }
-extern "C" RKC_DIB* __thiscall RKC_UPDIB_UPD_GetPaletteDIB(void* self, long index) { return nullptr; }
-extern "C" void* __thiscall RKC_UPDIB_UPD_GetPalette(void* self, long index) { return nullptr; }
+extern "C" RKC_DIB* __thiscall RKC_UPDIB_UPD_GetPaletteDIB(void* self, long index) {
+    char* p = (char*)self;
+    long paletteCount = *(long*)(p + 0x1c);
+    if (index < 0 || index >= paletteCount) {
+        return nullptr;
+    }
+    return (RKC_DIB*)(*(char**)(p + 0x20) + (index * 0x0c));
+}
+extern "C" void* __thiscall RKC_UPDIB_UPD_GetPalette(void* self, long index) {
+    char* p = (char*)self;
+    long paletteCount = *(long*)(p + 0x1c);
+    if (index < 0 || index >= paletteCount) {
+        return nullptr;
+    }
+    return *(void**)(*(char**)(p + 0x20) + 0x04 + (index * 0x0c));
+}
 extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long flags) { return 0; }
 
 // RKC_UPDIB stubs
 extern "C" void* __thiscall RKC_UPDIB_operatorAssign(void* self, const void* src) { return self; }
-extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count) { return 0; }
-extern "C" int __thiscall RKC_UPDIB_DeleteVSBlock(void* self, long index) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count) {
+    OSF_FUNC_TRACE("self=%p, count=%ld", self, count);
+
+    if (count < 1) {
+        return 0;
+    }
+
+    char* p = (char*)self;
+    void** oldUpds = *(void***)(p + 0x08);
+    long oldCount = *(long*)(p + 0x04);
+
+    HGLOBAL newBlock = GlobalAlloc(GMEM_FIXED, count * sizeof(void*));
+    if (newBlock == nullptr) {
+        return 0;
+    }
+
+    void** newUpds = (void**)newBlock;
+    std::memset(newUpds, 0, count * sizeof(void*));
+
+    long copied = 0;
+    if (oldUpds != nullptr) {
+        for (; copied < oldCount && copied < count; ++copied) {
+            newUpds[copied] = oldUpds[copied];
+            oldUpds[copied] = nullptr;
+        }
+    }
+
+    for (; copied < count; ++copied) {
+        void* upd = std::malloc(0x30);
+        if (upd == nullptr) {
+            for (long i = 0; i < copied; ++i) {
+                if (i >= oldCount && newUpds[i] != nullptr) {
+                    RKC_UPDIB_UPD_destructor(newUpds[i]);
+                    std::free(newUpds[i]);
+                }
+            }
+            GlobalFree(newBlock);
+            return 0;
+        }
+        newUpds[copied] = RKC_UPDIB_UPD_constructor(upd);
+    }
+
+    if (oldUpds != nullptr) {
+        for (long i = 0; i < oldCount; ++i) {
+            if (oldUpds[i] != nullptr) {
+                RKC_UPDIB_UPD_destructor(oldUpds[i]);
+                std::free(oldUpds[i]);
+            }
+        }
+        GlobalFree((HGLOBAL)oldUpds);
+    }
+
+    *(void***)(p + 0x08) = newUpds;
+    *(long*)(p + 0x04) = count;
+    return 1;
+}
+extern "C" int __thiscall RKC_UPDIB_DeleteVSBlock(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    long blockCount = RKC_UPDIB_GetVSBlockCount(self);
+    if (index < 0 || index >= blockCount) {
+        return 0;
+    }
+
+    char* p = (char*)self;
+    char* block = nullptr;
+
+    if (index == 0) {
+        block = *(char**)p;
+        char* next = *(char**)(block + 0x10);
+        *(char**)p = next;
+        if (next != nullptr) {
+            *(void**)(next + 0x0c) = nullptr;
+        }
+    } else {
+        char* prev = (char*)RKC_UPDIB_GetVSBlock(self, index - 1);
+        block = *(char**)(prev + 0x10);
+        char* next = *(char**)(block + 0x10);
+        if (next != nullptr) {
+            *(char**)(next + 0x0c) = prev;
+        }
+        *(char**)(prev + 0x10) = next;
+    }
+
+    if (block != nullptr) {
+        RKC_UPDIB_VSBLOCK_Release(block);
+        std::free(block);
+    }
+    return 1;
+}
 /**
  * RKC_UPDIB::ExchangeUpd - Swap two UPD entries in the array
  * USED BY: o_RKC_UPDIB.dll (internal)
@@ -660,14 +910,91 @@ extern "C" long __thiscall RKC_UPDIB_GetVSBlockCount(void* self) {
 
     return count;
 }
-extern "C" void* __thiscall RKC_UPDIB_InsertVSBlock(void* self, long index) { return nullptr; }
+extern "C" void* __thiscall RKC_UPDIB_InsertVSBlock(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    long blockCount = RKC_UPDIB_GetVSBlockCount(self);
+    if (index < 0 || index > blockCount) {
+        return nullptr;
+    }
+
+    char* block = (char*)std::malloc(0x14);
+    if (block == nullptr) {
+        return nullptr;
+    }
+    RKC_UPDIB_VSBLOCK_constructor(block);
+    *(void**)(block + 0x00) = self;
+
+    if (index == 0) {
+        *(void**)(block + 0x10) = *(void**)self;
+        if (*(void**)self != nullptr) {
+            *(void**)(*(char**)self + 0x0c) = block;
+        }
+        *(void**)self = block;
+        return block;
+    }
+
+    char* prev = (char*)RKC_UPDIB_GetVSBlock(self, index - 1);
+    char* next = *(char**)(prev + 0x10);
+    *(void**)(block + 0x0c) = prev;
+    *(void**)(block + 0x10) = next;
+    if (next != nullptr) {
+        *(void**)(next + 0x0c) = block;
+    }
+    *(void**)(prev + 0x10) = block;
+    return block;
+}
 extern "C" void __thiscall RKC_UPDIB_Release(void* self) {}
 
 // RKC_UPDIB_VS stubs
 extern "C" void __thiscall RKC_UPDIB_VS_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VS_operatorAssign(void* self, const void* src) { return self; }
-extern "C" int __thiscall RKC_UPDIB_VS_DeleteVSPacket(void* self, long index) { return 0; }
-extern "C" void __thiscall RKC_UPDIB_VS_FlushVSPacket(void* self) {}
+extern "C" int __thiscall RKC_UPDIB_VS_DeleteVSPacket(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    long count = RKC_UPDIB_VS_GetVSPacketCount(self);
+    if (index < 0 || index >= count) {
+        return 0;
+    }
+
+    char* p = (char*)self;
+    char* packet = nullptr;
+
+    if (index == 0) {
+        packet = *(char**)(p + 0x04);
+        char* next = *(char**)(packet + 0x3c);
+        *(char**)(p + 0x04) = next;
+        if (next != nullptr) {
+            *(void**)(next + 0x38) = nullptr;
+        }
+    } else {
+        char* prev = (char*)RKC_UPDIB_VS_GetVSPacket(self, index - 1);
+        packet = *(char**)(prev + 0x3c);
+        char* next = *(char**)(packet + 0x3c);
+        if (next != nullptr) {
+            *(char**)(next + 0x38) = prev;
+        }
+        *(char**)(prev + 0x3c) = next;
+    }
+
+    if (packet != nullptr) {
+        RKC_UPDIB_VSPACKET_destructor(packet);
+        std::free(packet);
+    }
+    return 1;
+}
+extern "C" void __thiscall RKC_UPDIB_VS_FlushVSPacket(void* self) {
+    OSF_FUNC_TRACE("self=%p", self);
+
+    char* packet = *(char**)((char*)self + 0x04);
+    while (packet != nullptr) {
+        char* next = *(char**)(packet + 0x3c);
+        RKC_UPDIB_VSPACKET_destructor(packet);
+        std::free(packet);
+        packet = next;
+    }
+    *(void**)((char*)self + 0x04) = nullptr;
+}
 /**
  * RKC_UPDIB_VS::GetVSPacket - Get linked VS packet by index
  * USED BY: o_RKC_UPDIB.dll (internal)
@@ -692,16 +1019,94 @@ extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index) {
 
     return nullptr;
 }
-extern "C" void* __thiscall RKC_UPDIB_VS_InsertVSPacket(void* self, long index) { return nullptr; }
-extern "C" void __thiscall RKC_UPDIB_VS_Release(void* self) {}
+extern "C" void* __thiscall RKC_UPDIB_VS_InsertVSPacket(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    long count = RKC_UPDIB_VS_GetVSPacketCount(self);
+    if (index < 0 || index > count) {
+        return nullptr;
+    }
+
+    char* packet = (char*)std::malloc(0x54);
+    if (packet == nullptr) {
+        return nullptr;
+    }
+    RKC_UPDIB_VSPACKET_constructor(packet);
+    *(void**)(packet + 0x00) = *(void**)self;
+
+    char* p = (char*)self;
+    if (index == 0) {
+        *(void**)(packet + 0x3c) = *(void**)(p + 0x04);
+        if (*(void**)(p + 0x04) != nullptr) {
+            *(void**)(*(char**)(p + 0x04) + 0x38) = packet;
+        }
+        *(void**)(p + 0x04) = packet;
+        return packet;
+    }
+
+    char* prev = (char*)RKC_UPDIB_VS_GetVSPacket(self, index - 1);
+    char* next = *(char**)(prev + 0x3c);
+    *(void**)(packet + 0x38) = prev;
+    *(void**)(packet + 0x3c) = next;
+    if (next != nullptr) {
+        *(void**)(next + 0x38) = packet;
+    }
+    *(void**)(prev + 0x3c) = packet;
+    return packet;
+}
+extern "C" void __thiscall RKC_UPDIB_VS_Release(void* self) {
+    while (RKC_UPDIB_VS_DeleteVSPacket(self, 0) == 1) {
+    }
+    *(void**)self = nullptr;
+}
 extern "C" int __thiscall RKC_UPDIB_VS_Render(void* self, RKC_DIB* dib, long x, long y, RECT* clip) { return 0; }
 extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket(void* self, long index, void* packet) { return nullptr; }
 
 // RKC_UPDIB_VSBLOCK stubs
 extern "C" void __thiscall RKC_UPDIB_VSBLOCK_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_operatorAssign(void* self, const void* src) { return self; }
-extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count) { return 0; }
-extern "C" void __thiscall RKC_UPDIB_VSBLOCK_FlushVScreen(void* self) {}
+extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count) {
+    OSF_FUNC_TRACE("self=%p, count=%ld", self, count);
+
+    if (count < 0) {
+        return 0;
+    }
+
+    char* p = (char*)self;
+    char* oldArray = *(char**)(p + 0x08);
+    if (oldArray != nullptr) {
+        uint32_t oldCount = GetCountedArraySize(oldArray);
+        for (uint32_t i = 0; i < oldCount; ++i) {
+            RKC_UPDIB_VS_Release(oldArray + (i * 8));
+        }
+        FreeCountedArray(oldArray);
+    }
+
+    char* vsArray = (char*)AllocateCountedArray((size_t)count, 8);
+    if (count > 0 && vsArray == nullptr) {
+        *(void**)(p + 0x08) = nullptr;
+        *(long*)(p + 0x04) = 0;
+        return 0;
+    }
+
+    *(char**)(p + 0x08) = vsArray;
+    for (long i = 0; i < count; ++i) {
+        RKC_UPDIB_VS_constructor(vsArray + (i * 8));
+        *(void**)(vsArray + (i * 8)) = *(void**)p;
+    }
+    *(long*)(p + 0x04) = count;
+    return 1;
+}
+extern "C" void __thiscall RKC_UPDIB_VSBLOCK_FlushVScreen(void* self) {
+    OSF_FUNC_TRACE("self=%p", self);
+
+    char* p = (char*)self;
+    long vsCount = *(long*)(p + 0x04);
+    char* vsArray = *(char**)(p + 0x08);
+    for (long i = 0; i < vsCount; ++i) {
+        RKC_UPDIB_VS_FlushVSPacket(vsArray + (i * 8));
+    }
+}
 /**
  * RKC_UPDIB_VSBLOCK::GetVSCount - Return VS entry count
  * USED BY: o_RKC_UPDIB.dll (internal)
@@ -710,7 +1115,21 @@ extern "C" long __thiscall RKC_UPDIB_VSBLOCK_GetVSCount(void* self) {
     OSF_FUNC_TRACE("self=%p", self);
     return *(long*)((char*)self + 0x04);
 }
-extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self) {}
+extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self) {
+    char* p = (char*)self;
+    char* vsArray = *(char**)(p + 0x08);
+    if (vsArray != nullptr) {
+        uint32_t count = GetCountedArraySize(vsArray);
+        for (uint32_t i = 0; i < count; ++i) {
+            RKC_UPDIB_VS_Release(vsArray + (i * 8));
+        }
+        FreeCountedArray(vsArray);
+    }
+    *(void**)(p + 0x08) = nullptr;
+    *(long*)(p + 0x04) = 0;
+    *(void**)(p + 0x10) = nullptr;
+    *(void**)p = nullptr;
+}
 
 // RKC_UPDIB_VSPACKET stubs
 extern "C" void* __thiscall RKC_UPDIB_VSPACKET_operatorAssign(void* self, const void* src) { return self; }
