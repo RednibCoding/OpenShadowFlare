@@ -25,10 +25,43 @@ struct RKC_UPDIB_UPD_PARTS;
 
 extern "C" void* __thiscall RKC_UPDIB_GetUpd(void* self, long index);
 extern "C" void* __thiscall RKC_UPDIB_UPD_GetPattern(void* self, long index);
+extern "C" void* __thiscall RKC_UPDIB_UPD_GetPalette(void* self, long index);
+extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long flags);
 extern "C" void __thiscall RKC_UPDIB_CreateTemporaryDIB(void* self);
+extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count);
 extern "C" long __thiscall RKC_UPDIB_GetVSBlockCount(void* self);
+extern "C" void* __thiscall RKC_UPDIB_InsertVSBlock(void* self, long index);
 extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self);
+extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count);
+extern "C" int __thiscall RKC_UPDIB_VSBLOCK_Render(void* self, RKC_DIB* dib, long vsIndex, long reverseVsOrder, long reversePacketOrder, RECT* clip);
 extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index);
+extern "C" void __thiscall RKC_UPDIB_Release(void* self);
+extern "C" void __thiscall RKC_UPDIB_UPD_Release(void* self);
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip);
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_constructor(void* self);
+extern "C" void __thiscall RKC_UPDIB_VSPACKET_destructor(void* self);
+extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket(void* self, long index, void* packet);
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_copy(void* self, void* packet);
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_full(
+    void* self,
+    void* updib,
+    long updIndex,
+    long patternIndex,
+    long paletteIndex,
+    long flags,
+    long x,
+    long y,
+    long scaleX,
+    long scaleY,
+    long alpha,
+    long blendMode,
+    long userValue,
+    short red,
+    short green,
+    short blue,
+    RECT* clip,
+    RKC_DIB* dib
+);
 
 static void* AllocateCountedArray(size_t count, size_t elementSize) {
     size_t totalSize = sizeof(uint32_t) + (count * elementSize);
@@ -72,6 +105,144 @@ static int DIB_Create(void* dib, long width, long height, long bpp, int allocBit
 
 static void DIB_SetBitmap(void* dib, unsigned char* bitmap) {
     CallFunctionInDLL<unsigned char*>("RKC_DIB.dll", "?SetBitmap@RKC_DIB@@QAEPAEPAE@Z", dib, bitmap);
+}
+
+static int DIB_FillByte(void* dib, unsigned char fillValue) {
+    return CallFunctionInDLL<int>("RKC_DIB.dll", "?FillByte@RKC_DIB@@QAEHE@Z", dib, fillValue);
+}
+
+static int DIB_SetPalette(void* dib, RGBQUAD* palette) {
+    return CallFunctionInDLL<int>("RKC_DIB.dll", "?SetPalette@RKC_DIB@@QAEHPAUtagRGBQUAD@@@Z", dib, palette);
+}
+
+static int DIB_ZoomToDIB(void* dib, RECT* destRect, void* srcDib, RECT* srcRect, long transparentColor) {
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?ZoomToDIB@RKC_DIB@@QAEHPAUtagRECT@@PAV1@0J@Z",
+        dib,
+        destRect,
+        srcDib,
+        srcRect,
+        transparentColor
+    );
+}
+
+static void* DIBHISPEEDMODE_Construct(void* mode) {
+    return CallFunctionInDLL<void*>("RKC_DIB.dll", "??0RKC_DIBHISPEEDMODE@@QAE@XZ", mode);
+}
+
+static void DIBHISPEEDMODE_Destruct(void* mode) {
+    CallFunctionInDLL<void>("RKC_DIB.dll", "??1RKC_DIBHISPEEDMODE@@QAE@XZ", mode);
+}
+
+static HMODULE GetOriginalUPDIBModule() {
+    static HMODULE module = LoadLibraryA("o_RKC_UPDIB.dll");
+    return module;
+}
+
+template <typename RetType, typename... Args>
+static RetType CallOriginalUPDIB(const char* funcName, Args... args) {
+    HMODULE module = GetOriginalUPDIBModule();
+    if (!module) {
+        printf("Failed to load o_RKC_UPDIB.dll with error code: 0x%x\n", GetLastError());
+        if constexpr (!std::is_void<RetType>()) {
+            return static_cast<RetType>(0);
+        } else {
+            return;
+        }
+    }
+
+    typedef RetType(THISCALL* FuncType)(Args...);
+    FuncType funcPtr = (FuncType)GetProcAddress(module, funcName);
+    if (!funcPtr) {
+        printf("Failed to find %s in o_RKC_UPDIB.dll with error code: 0x%x\n", funcName, GetLastError());
+        if constexpr (!std::is_void<RetType>()) {
+            return static_cast<RetType>(0);
+        } else {
+            return;
+        }
+    }
+
+    if constexpr (!std::is_void<RetType>()) {
+        return funcPtr(args...);
+    } else {
+        funcPtr(args...);
+    }
+}
+
+static int Original_UPD_Read(void* self, char* filename, long flags) {
+    return CallOriginalUPDIB<int>("?Read@RKC_UPDIB_UPD@@QAEHPADJ@Z", self, filename, flags);
+}
+
+static int Original_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) {
+    return CallOriginalUPDIB<int>("?Render@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
+}
+
+static int Original_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) {
+    return CallOriginalUPDIB<int>("?RenderBox@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
+}
+
+static int Original_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip) {
+    return CallOriginalUPDIB<int>("?RenderFill@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
+}
+
+static int Original_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip) {
+    return CallOriginalUPDIB<int>("?RenderLine@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
+}
+
+static int Original_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip) {
+    return CallOriginalUPDIB<int>("?RenderPoint@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
+}
+
+static int Original_UPDIB_Render(void* self, RKC_DIB* dib, long a, long b, long c, long d, RECT* clip) {
+    return CallOriginalUPDIB<int>("?Render@RKC_UPDIB@@QAEHPAVRKC_DIB@@JJJJPAUtagRECT@@@Z", self, dib, a, b, c, d, clip);
+}
+
+static int Original_UPDIB_Initialize(void* self, long vsBlockCount, long vsCount, long updCount, int createHispeedMode) {
+    return CallOriginalUPDIB<int>("?Initialize@RKC_UPDIB@@QAEHJJJH@Z", self, vsBlockCount, vsCount, updCount, createHispeedMode);
+}
+
+static int Original_VSBLOCK_Render(void* self, RKC_DIB* dib, long a, long b, long c, RECT* clip) {
+    return CallOriginalUPDIB<int>("?Render@RKC_UPDIB_VSBLOCK@@QAEHPAVRKC_DIB@@JJJPAUtagRECT@@@Z", self, dib, a, b, c, clip);
+}
+
+static int Original_UPDIB_SetPacket(
+    void* self,
+    long a1, long a2, long a3, long a4, long a5, long a6, long a7, long a8, long a9, long a10, long a11, long a12, long a13,
+    short s1, short s2, short s3,
+    RECT* clip,
+    RKC_DIB* dib
+) {
+    return CallOriginalUPDIB<int>(
+        "?SetPacket@RKC_UPDIB@@QAEHJJJJJJJJJJJJJFFFPAUtagRECT@@PAVRKC_DIB@@@Z",
+        self, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, s1, s2, s3, clip, dib
+    );
+}
+
+static void* Original_VS_SetPacket_full(
+    void* self,
+    long a1, long a2, long a3, long a4, long a5, long a6, long a7, long a8, long a9, long a10, long a11, long a12,
+    short s1, short s2, short s3,
+    RECT* clip,
+    RKC_DIB* dib
+) {
+    return CallOriginalUPDIB<void*>(
+        "?SetPacket@RKC_UPDIB_VS@@QAEPAVRKC_UPDIB_VSPACKET@@JJJJJJJJJJJJFFFPAUtagRECT@@PAVRKC_DIB@@@Z",
+        self, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, s1, s2, s3, clip, dib
+    );
+}
+
+static int Original_UPDIB_SetStringsPacket(
+    void* self,
+    long a1, long a2, long a3, long a4, long a5,
+    char* text,
+    unsigned char c1, unsigned char c2, unsigned char c3,
+    long a6, long a7, long a8, long a9, long a10
+) {
+    return CallOriginalUPDIB<int>(
+        "?SetStringsPacket@RKC_UPDIB@@QAEHJJJJJPADEEEJJJJJ@Z",
+        self, a1, a2, a3, a4, a5, text, c1, c2, c3, a6, a7, a8, a9, a10
+    );
 }
 
 // ============================================================================
@@ -309,6 +480,43 @@ extern "C" long __thiscall RKC_UPDIB_UPD_GetVersionNo(void* self) {
 // RKC_UPDIB FUNCTIONS  
 // ============================================================================
 
+extern "C" void* __thiscall RKC_UPDIB_constructor(void* self) {
+    char* p = (char*)self;
+    DIB_Construct(p + 0x1c);
+
+    *(void**)p = nullptr;
+    *(long*)(p + 0x04) = 0;
+    *(void**)(p + 0x08) = nullptr;
+    *(long*)(p + 0x14) = 0;
+    *(long*)(p + 0x18) = 0;
+    *(void**)(p + 0x28) = nullptr;
+
+    void* dibPtr = std::malloc(0x0c);
+    if (dibPtr != nullptr) {
+        DIB_Construct(dibPtr);
+    }
+    *(void**)(p + 0x2c) = dibPtr;
+    if (dibPtr != nullptr) {
+        DIB_Create(dibPtr, 1, 1, 8, 0);
+    }
+
+    return self;
+}
+
+extern "C" void __thiscall RKC_UPDIB_destructor(void* self) {
+    char* p = (char*)self;
+    RKC_UPDIB_Release(self);
+
+    void* dibPtr = *(void**)(p + 0x2c);
+    if (dibPtr != nullptr) {
+        DIB_Destruct(dibPtr);
+        std::free(dibPtr);
+        *(void**)(p + 0x2c) = nullptr;
+    }
+
+    DIB_Destruct(p + 0x1c);
+}
+
 /**
  * RKC_UPDIB::GetUpdCount - Get number of loaded UPDs
  * USED BY: ShadowFlare.exe
@@ -350,6 +558,117 @@ extern "C" int __thiscall RKC_UPDIB_GetFontParam(void* self, long updIndex, long
 
     *outWidth = width / 16;
     *outHeight = height / 16;
+    return 1;
+}
+
+extern "C" int __thiscall RKC_UPDIB_Initialize(void* self, long vsBlockCount, long vsCount, long updCount, int createHispeedMode) {
+    OSF_FUNC_TRACE("self=%p, vsBlockCount=%ld, vsCount=%ld, updCount=%ld, createHispeedMode=%d",
+        self, vsBlockCount, vsCount, updCount, createHispeedMode);
+    return Original_UPDIB_Initialize(self, vsBlockCount, vsCount, updCount, createHispeedMode);
+}
+
+extern "C" int __thiscall RKC_UPDIB_ReadUpd(
+    void* self,
+    long updIndex,
+    char* filename,
+    long flags,
+    long previewWidth,
+    long previewHeight,
+    int rebuildTempDib
+) {
+    OSF_FUNC_TRACE("self=%p, updIndex=%ld, filename=%s, flags=%ld, previewWidth=%ld, previewHeight=%ld, rebuildTempDib=%d",
+        self, updIndex, filename ? filename : "(null)", flags, previewWidth, previewHeight, rebuildTempDib);
+
+    char packet[0x54];
+    char dibStorage[0x0c];
+    long patternIndex = 0;
+
+    RKC_UPDIB_VSPACKET_constructor(packet);
+    DIB_Construct(dibStorage);
+
+    if (updIndex >= *(long*)((char*)self + 0x04)) {
+        DIB_Destruct(dibStorage);
+        RKC_UPDIB_VSPACKET_destructor(packet);
+        return 0;
+    }
+
+    void* upd = RKC_UPDIB_GetUpd(self, updIndex);
+    if (upd == nullptr || RKC_UPDIB_UPD_Read(upd, filename, flags) == 0) {
+        if (upd != nullptr) {
+            RKC_UPDIB_UPD_Release(upd);
+        }
+        DIB_Destruct(dibStorage);
+        RKC_UPDIB_VSPACKET_destructor(packet);
+        return 0;
+    }
+
+    if (rebuildTempDib == 1) {
+        RKC_UPDIB_CreateTemporaryDIB(self);
+    }
+
+    if (previewWidth != 0 && previewHeight != 0) {
+        RECT zoomDestRect;
+        SetRect(&zoomDestRect, 0, 0, previewWidth, previewHeight);
+
+        long patternCount = RKC_UPDIB_UPD_GetPatternCount(upd);
+        while (patternIndex < patternCount) {
+            char* pattern = (char*)RKC_UPDIB_UPD_GetPattern(upd, patternIndex);
+            if (pattern != nullptr) {
+                RKC_UPDIB_VSPACKET_SetPacket_full(
+                    packet,
+                    self,
+                    updIndex,
+                    patternIndex,
+                    -1,
+                    1,
+                    -*(long*)(pattern + 0x0c),
+                    -*(long*)(pattern + 0x10),
+                    1000,
+                    1000,
+                    1000,
+                    1000,
+                    0,
+                    1000,
+                    1000,
+                    1000,
+                    nullptr,
+                    nullptr
+                );
+
+                DIB_Create(dibStorage, *(long*)(pattern + 0x14), *(long*)(pattern + 0x18), 0x18, 1);
+                RKC_UPDIB_VSPACKET_Render(packet, (RKC_DIB*)dibStorage, nullptr);
+
+                if (*(void**)(pattern + 0x24) == nullptr) {
+                    void* icon = std::malloc(0x0c);
+                    if (icon != nullptr) {
+                        DIB_Construct(icon);
+                    }
+                    *(void**)(pattern + 0x24) = icon;
+                }
+
+                void* icon = *(void**)(pattern + 0x24);
+                if (icon != nullptr) {
+                    DIB_Create(icon, previewWidth, previewHeight, 0x18, 1);
+                    DIB_FillByte(icon, 0);
+
+                    RECT srcRect;
+                    SetRect(&srcRect, 0, 0, *(long*)(pattern + 0x14), *(long*)(pattern + 0x18));
+                    DIB_ZoomToDIB(icon, &zoomDestRect, dibStorage, &srcRect, -1);
+
+                    auto* palette = (RGBQUAD*)RKC_UPDIB_UPD_GetPalette(upd, *(long*)(pattern + 0x1c));
+                    if (palette != nullptr) {
+                        DIB_SetPalette(icon, palette);
+                    }
+                }
+            }
+
+            patternIndex++;
+            patternCount = RKC_UPDIB_UPD_GetPatternCount(upd);
+        }
+    }
+
+    DIB_Destruct(dibStorage);
+    RKC_UPDIB_VSPACKET_destructor(packet);
     return 1;
 }
 
@@ -397,7 +716,7 @@ extern "C" int __thiscall RKC_UPDIB_DeleteUpd(void* self, long index, int rebuil
 
     void** upds = *(void***)(p + 0x08);
     void* upd = upds[index];
-    CallFunctionInDLL<void>("RKC_UPDIB.dll", "?Release@RKC_UPDIB_UPD@@QAEXXZ", upd);
+    RKC_UPDIB_UPD_Release(upd);
 
     if (rebuildTempDib == 1) {
         RKC_UPDIB_CreateTemporaryDIB(self);
@@ -687,7 +1006,7 @@ extern "C" void* __thiscall RKC_UPDIB_UPD_constructor(void* self) {
     std::memset(self, 0, 0x30);
     return self;
 }
-extern "C" void __thiscall RKC_UPDIB_UPD_destructor(void* self) {
+extern "C" void __thiscall RKC_UPDIB_UPD_Release(void* self) {
     char* p = (char*)self;
 
     if (*(void**)(p + 0x10) != nullptr) {
@@ -758,6 +1077,9 @@ extern "C" void __thiscall RKC_UPDIB_UPD_destructor(void* self) {
     }
     *(long*)(p + 0x24) = 0;
 }
+extern "C" void __thiscall RKC_UPDIB_UPD_destructor(void* self) {
+    RKC_UPDIB_UPD_Release(self);
+}
 extern "C" void* __thiscall RKC_UPDIB_UPD_operatorAssign(void* self, const void* src) { return self; }
 extern "C" RKC_DIB* __thiscall RKC_UPDIB_UPD_GetPaletteDIB(void* self, long index) {
     char* p = (char*)self;
@@ -775,7 +1097,10 @@ extern "C" void* __thiscall RKC_UPDIB_UPD_GetPalette(void* self, long index) {
     }
     return *(void**)(*(char**)(p + 0x20) + 0x04 + (index * 0x0c));
 }
-extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long flags) { return 0; }
+extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long flags) {
+    OSF_FUNC_TRACE("self=%p, filename=%s, flags=%ld", self, filename ? filename : "(null)", flags);
+    return Original_UPD_Read(self, filename, flags);
+}
 
 // RKC_UPDIB stubs
 extern "C" void* __thiscall RKC_UPDIB_operatorAssign(void* self, const void* src) { return self; }
@@ -944,7 +1269,47 @@ extern "C" void* __thiscall RKC_UPDIB_InsertVSBlock(void* self, long index) {
     *(void**)(prev + 0x10) = block;
     return block;
 }
-extern "C" void __thiscall RKC_UPDIB_Release(void* self) {}
+extern "C" void __thiscall RKC_UPDIB_Release(void* self) {
+    char* p = (char*)self;
+
+    void** upds = *(void***)(p + 0x08);
+    long updCount = *(long*)(p + 0x04);
+    if (upds != nullptr) {
+        for (long i = 0; i < updCount; ++i) {
+            if (upds[i] != nullptr) {
+                RKC_UPDIB_UPD_destructor(upds[i]);
+                std::free(upds[i]);
+            }
+        }
+        GlobalFree((HGLOBAL)upds);
+        *(void***)(p + 0x08) = nullptr;
+    }
+    *(long*)(p + 0x04) = 0;
+
+    while (RKC_UPDIB_DeleteVSBlock(self, 0) == 1) {
+    }
+
+    void* hispeed = *(void**)(p + 0x28);
+    if (hispeed != nullptr) {
+        DIBHISPEEDMODE_Destruct(hispeed);
+        std::free(hispeed);
+        *(void**)(p + 0x28) = nullptr;
+    }
+}
+
+extern "C" int __thiscall RKC_UPDIB_Render(
+    void* self,
+    RKC_DIB* dib,
+    long vsBlockIndex,
+    long reverseBlockOrder,
+    long reversePacketOrder,
+    long unusedY,
+    RECT* clip
+) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, vsBlockIndex=%ld, reverseBlockOrder=%ld, reversePacketOrder=%ld, unusedY=%ld, clip=%p",
+        self, dib, vsBlockIndex, reverseBlockOrder, reversePacketOrder, unusedY, clip);
+    return Original_UPDIB_Render(self, dib, vsBlockIndex, reverseBlockOrder, reversePacketOrder, unusedY, clip);
+}
 
 // RKC_UPDIB_VS stubs
 extern "C" void __thiscall RKC_UPDIB_VS_destructor(void* self) {}
@@ -1059,8 +1424,74 @@ extern "C" void __thiscall RKC_UPDIB_VS_Release(void* self) {
     }
     *(void**)self = nullptr;
 }
-extern "C" int __thiscall RKC_UPDIB_VS_Render(void* self, RKC_DIB* dib, long x, long y, RECT* clip) { return 0; }
-extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket(void* self, long index, void* packet) { return nullptr; }
+extern "C" int __thiscall RKC_UPDIB_VS_Render(void* self, RKC_DIB* dib, long packetIndex, long reverseOrder, RECT* clip) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, packetIndex=%ld, reverseOrder=%ld, clip=%p", self, dib, packetIndex, reverseOrder, clip);
+
+    if (packetIndex == -1) {
+        char* packet = *(char**)((char*)self + 0x04);
+        if (reverseOrder == 0) {
+            if (packet != nullptr) {
+                for (char* next = *(char**)(packet + 0x3c); next != nullptr; next = *(char**)(next + 0x3c)) {
+                    packet = next;
+                }
+                while (packet != nullptr) {
+                    RKC_UPDIB_VSPACKET_Render(packet, dib, clip);
+                    packet = *(char**)(packet + 0x38);
+                }
+                return 1;
+            }
+        } else {
+            while (packet != nullptr) {
+                RKC_UPDIB_VSPACKET_Render(packet, dib, clip);
+                packet = *(char**)(packet + 0x3c);
+            }
+            return 1;
+        }
+    } else {
+        void* packet = RKC_UPDIB_VS_GetVSPacket(self, packetIndex);
+        if (packet != nullptr) {
+            RKC_UPDIB_VSPACKET_Render(packet, dib, clip);
+        }
+    }
+
+    return 1;
+}
+extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket(void* self, long index, void* packet) {
+    OSF_FUNC_TRACE("self=%p, index=%ld, packet=%p", self, index, packet);
+
+    void* newPacket = RKC_UPDIB_VS_InsertVSPacket(self, index);
+    if (newPacket != nullptr) {
+        RKC_UPDIB_VSPACKET_SetPacket_copy(newPacket, packet);
+        *(void**)newPacket = *(void**)self;
+    }
+    return newPacket;
+}
+extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket_full(
+    void* self,
+    long index,
+    long updIndex,
+    long patternIndex,
+    long paletteIndex,
+    long flags,
+    long x,
+    long y,
+    long scaleX,
+    long scaleY,
+    long alpha,
+    long blendMode,
+    long userValue,
+    short red,
+    short green,
+    short blue,
+    RECT* clip,
+    RKC_DIB* dib
+) {
+    OSF_FUNC_TRACE("self=%p, index=%ld, updIndex=%ld, patternIndex=%ld, paletteIndex=%ld, flags=%ld, x=%ld, y=%ld, scaleX=%ld, scaleY=%ld, alpha=%ld, blendMode=%ld, userValue=%ld, red=%d, green=%d, blue=%d, clip=%p, dib=%p",
+        self, index, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib);
+    return Original_VS_SetPacket_full(
+        self, index, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib
+    );
+}
 
 // RKC_UPDIB_VSBLOCK stubs
 extern "C" void __thiscall RKC_UPDIB_VSBLOCK_destructor(void* self) {}
@@ -1107,6 +1538,22 @@ extern "C" void __thiscall RKC_UPDIB_VSBLOCK_FlushVScreen(void* self) {
         RKC_UPDIB_VS_FlushVSPacket(vsArray + (i * 8));
     }
 }
+
+extern "C" void __thiscall RKC_UPDIB_FlushVSBlock(void* self, long index) {
+    if (index == -1) {
+        char* block = *(char**)self;
+        while (block != nullptr) {
+            RKC_UPDIB_VSBLOCK_FlushVScreen(block);
+            block = *(char**)(block + 0x10);
+        }
+        return;
+    }
+
+    void* block = RKC_UPDIB_GetVSBlock(self, index);
+    if (block != nullptr) {
+        RKC_UPDIB_VSBLOCK_FlushVScreen(block);
+    }
+}
 /**
  * RKC_UPDIB_VSBLOCK::GetVSCount - Return VS entry count
  * USED BY: o_RKC_UPDIB.dll (internal)
@@ -1131,12 +1578,167 @@ extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self) {
     *(void**)p = nullptr;
 }
 
+extern "C" int __thiscall RKC_UPDIB_VSBLOCK_Render(
+    void* self,
+    RKC_DIB* dib,
+    long vsIndex,
+    long reverseVsOrder,
+    long reversePacketOrder,
+    RECT* clip
+) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, vsIndex=%ld, reverseVsOrder=%ld, reversePacketOrder=%ld, clip=%p",
+        self, dib, vsIndex, reverseVsOrder, reversePacketOrder, clip);
+    return Original_VSBLOCK_Render(self, dib, vsIndex, reverseVsOrder, reversePacketOrder, clip);
+}
+
 // RKC_UPDIB_VSPACKET stubs
 extern "C" void* __thiscall RKC_UPDIB_VSPACKET_operatorAssign(void* self, const void* src) { return self; }
-extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
-extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
-extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
-extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
-extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip) { return 0; }
-extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_copy(void* self, void* packet) { return nullptr; }
-extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_full(void* self, void* updib, long a, long b, long c, long d, long e, long f, long g, long h, long i, long j, short k, short l, short m, RECT* clip, RKC_DIB* dib) { return nullptr; }
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
+    return Original_VSPACKET_Render(self, dib, clip);
+}
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
+    return Original_VSPACKET_RenderBox(self, dib, clip);
+}
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
+    return Original_VSPACKET_RenderFill(self, dib, clip);
+}
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
+    return Original_VSPACKET_RenderLine(self, dib, clip);
+}
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip) {
+    OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
+    return Original_VSPACKET_RenderPoint(self, dib, clip);
+}
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_copy(void* self, void* packet) {
+    OSF_FUNC_TRACE("self=%p, packet=%p", self, packet);
+
+    char* dst = (char*)self;
+    char* src = (char*)packet;
+    *(void**)(dst + 0x00) = *(void**)(src + 0x00);
+    *(long*)(dst + 0x04) = *(long*)(src + 0x04);
+    *(long*)(dst + 0x08) = *(long*)(src + 0x08);
+    *(long*)(dst + 0x0c) = *(long*)(src + 0x0c);
+    *(long*)(dst + 0x10) = *(long*)(src + 0x10);
+    *(long*)(dst + 0x14) = *(long*)(src + 0x14);
+    *(long*)(dst + 0x18) = *(long*)(src + 0x18);
+    *(long*)(dst + 0x1c) = *(long*)(src + 0x1c);
+    *(long*)(dst + 0x20) = *(long*)(src + 0x20);
+    *(long*)(dst + 0x24) = *(long*)(src + 0x24);
+    *(long*)(dst + 0x28) = *(long*)(src + 0x28);
+    *(long*)(dst + 0x2c) = *(long*)(src + 0x2c);
+    *(short*)(dst + 0x30) = *(short*)(src + 0x30);
+    *(short*)(dst + 0x32) = *(short*)(src + 0x32);
+    *(short*)(dst + 0x34) = *(short*)(src + 0x34);
+    *(long*)(dst + 0x40) = *(long*)(src + 0x40);
+    *(long*)(dst + 0x44) = *(long*)(src + 0x44);
+    *(long*)(dst + 0x48) = *(long*)(src + 0x48);
+    *(long*)(dst + 0x4c) = *(long*)(src + 0x4c);
+    *(long*)(dst + 0x50) = *(long*)(src + 0x50);
+    return self;
+}
+extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_full(
+    void* self,
+    void* updib,
+    long updIndex,
+    long patternIndex,
+    long paletteIndex,
+    long flags,
+    long x,
+    long y,
+    long scaleX,
+    long scaleY,
+    long alpha,
+    long blendMode,
+    long userValue,
+    short red,
+    short green,
+    short blue,
+    RECT* clip,
+    RKC_DIB* dib
+) {
+    OSF_FUNC_TRACE("self=%p, updib=%p, updIndex=%ld, patternIndex=%ld, paletteIndex=%ld, flags=%ld, x=%ld, y=%ld, scaleX=%ld, scaleY=%ld, alpha=%ld, blendMode=%ld, userValue=%ld, red=%d, green=%d, blue=%d, clip=%p, dib=%p",
+        self, updib, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib);
+
+    char* p = (char*)self;
+    *(void**)(p + 0x00) = updib;
+    *(long*)(p + 0x08) = userValue;
+    *(long*)(p + 0x10) = y;
+    *(long*)(p + 0x04) = flags;
+    *(long*)(p + 0x18) = alpha;
+    *(long*)(p + 0x0c) = x;
+    *(long*)(p + 0x20) = blendMode;
+    *(long*)(p + 0x14) = scaleX;
+    *(long*)(p + 0x28) = patternIndex;
+    *(long*)(p + 0x1c) = scaleY;
+    *(short*)(p + 0x30) = red;
+    *(long*)(p + 0x24) = updIndex;
+    *(short*)(p + 0x34) = blue;
+    *(long*)(p + 0x2c) = paletteIndex;
+    *(short*)(p + 0x32) = green;
+
+    if (clip != nullptr) {
+        *(long*)(p + 0x40) = clip->left;
+        *(long*)(p + 0x44) = clip->top;
+        *(long*)(p + 0x48) = clip->right;
+        *(long*)(p + 0x4c) = clip->bottom;
+    }
+
+    *(RKC_DIB**)(p + 0x50) = dib;
+    return self;
+}
+
+extern "C" int __thiscall RKC_UPDIB_SetPacket(
+    void* self,
+    long vsBlockIndex,
+    long vsIndex,
+    long updIndex,
+    long patternIndex,
+    long paletteIndex,
+    long flags,
+    long x,
+    long y,
+    long scaleX,
+    long scaleY,
+    long alpha,
+    long blendMode,
+    long userValue,
+    short red,
+    short green,
+    short blue,
+    RECT* clip,
+    RKC_DIB* dib
+) {
+    OSF_FUNC_TRACE("self=%p, vsBlockIndex=%ld, vsIndex=%ld, updIndex=%ld, patternIndex=%ld, paletteIndex=%ld, flags=%ld, x=%ld, y=%ld, scaleX=%ld, scaleY=%ld, alpha=%ld, blendMode=%ld, userValue=%ld, red=%d, green=%d, blue=%d, clip=%p, dib=%p",
+        self, vsBlockIndex, vsIndex, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib);
+    return Original_UPDIB_SetPacket(
+        self, vsBlockIndex, vsIndex, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib
+    );
+}
+
+extern "C" int __thiscall RKC_UPDIB_SetStringsPacket(
+    void* self,
+    long vsBlockIndex,
+    long vsIndex,
+    long updIndex,
+    long x,
+    long y,
+    char* text,
+    unsigned char red,
+    unsigned char green,
+    unsigned char blue,
+    long flags,
+    long limit,
+    long letterSpacing,
+    long lineSpacing,
+    long userValue
+) {
+    OSF_FUNC_TRACE("self=%p, vsBlockIndex=%ld, vsIndex=%ld, updIndex=%ld, x=%ld, y=%ld, text=%s, red=%u, green=%u, blue=%u, flags=%ld, limit=%ld, letterSpacing=%ld, lineSpacing=%ld, userValue=%ld",
+        self, vsBlockIndex, vsIndex, updIndex, x, y, text ? text : "(null)", red, green, blue, flags, limit, letterSpacing, lineSpacing, userValue);
+    return Original_UPDIB_SetStringsPacket(
+        self, vsBlockIndex, vsIndex, updIndex, x, y, text, red, green, blue, flags, limit, letterSpacing, lineSpacing, userValue
+    );
+}

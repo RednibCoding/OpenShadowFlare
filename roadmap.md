@@ -14,7 +14,7 @@ RKC_FONTMAKER              13         13   COMPLETED
 RKC_WINDOW                  7          7   COMPLETED
 RKC_DIB                    42         42   COMPLETED
 RKC_RPG_TABLE              25         24   WIP
-RKC_UPDIB                  81         70   WIP
+RKC_UPDIB                  81         81   WIP
 RKC_RPG_SCRIPT             82         57   WIP
 RKC_NETWORK               131        104   WIP
 RKC_RPG_AICONTROL          51         31   WIP
@@ -209,14 +209,20 @@ All graphics primitives are now local. Key implemented functions:
 ---
 
 ### RKC_UPDIB (Sprite Rendering)
-**Status: 70/81 local (11 external forwards)**
+**Status: 81/81 local exports**
 
 Sprite and pattern rendering. Depends on RKC_DIB. Most getters and simple functions
 are now implemented locally, including the UPD pattern/parts accessors, palette getters,
 font parameter lookup, temp DIB rebuild, UPD block creation, and the VS/VSBLOCK/VSPACKET
-container helpers for insert/delete/flush/release-style management. Core rendering and
-data-loading entry points (Render, SetPacket, ReadUpd, Initialize, etc.) still forward
-to the original DLL or remain stubbed.
+container helpers for insert/delete/flush/release-style management, plus the main
+RKC_UPDIB constructor/destructor, initialization path, UPD release path, and VS block flush.
+Important nuance: the DLL no longer forwards any exports externally, but the deepest
+UPD parser, initialization, packet orchestration, and render primitive bodies are still
+bridged internally to `o_RKC_UPDIB.dll` through local wrapper functions that now keep
+the original DLL persistently loaded so its allocator-backed objects remain valid.
+`RKC_UPDIB_UPD::Read`, `Initialize`, `SetPacket`/`SetStringsPacket`, and the render-side
+exports route through that persistent bridge; full standalone parser/render independence is
+still incomplete.
 
 ---
 
