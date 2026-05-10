@@ -620,7 +620,23 @@ extern "C" void* __thiscall RKC_UPDIB_operatorAssign(void* self, const void* src
 extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count) { return 0; }
 extern "C" int __thiscall RKC_UPDIB_DeleteVSBlock(void* self, long index) { return 0; }
 extern "C" int __thiscall RKC_UPDIB_ExchangeUpd(void* self, long a, long b) { return 0; }
-extern "C" long __thiscall RKC_UPDIB_GetVSBlockCount(void* self) { return 0; }
+/**
+ * RKC_UPDIB::GetVSBlockCount - Count linked VS blocks
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" long __thiscall RKC_UPDIB_GetVSBlockCount(void* self) {
+    OSF_FUNC_TRACE("self=%p", self);
+
+    char* block = *(char**)self;
+    long count = 0;
+
+    while (block != nullptr) {
+        block = *(char**)(block + 0x10);
+        count++;
+    }
+
+    return count;
+}
 extern "C" void* __thiscall RKC_UPDIB_InsertVSBlock(void* self, long index) { return nullptr; }
 extern "C" void __thiscall RKC_UPDIB_Release(void* self) {}
 
@@ -629,7 +645,30 @@ extern "C" void __thiscall RKC_UPDIB_VS_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VS_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VS_DeleteVSPacket(void* self, long index) { return 0; }
 extern "C" void __thiscall RKC_UPDIB_VS_FlushVSPacket(void* self) {}
-extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index) { return nullptr; }
+/**
+ * RKC_UPDIB_VS::GetVSPacket - Get linked VS packet by index
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ *
+ * The original code walks the linked list at +0x04 and returns null if the
+ * list ends before the requested index is reached.
+ */
+extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index) {
+    OSF_FUNC_TRACE("self=%p, index=%ld", self, index);
+
+    char* packet = *(char**)((char*)self + 0x04);
+    long currentIndex = 0;
+
+    while (packet != nullptr) {
+        if (currentIndex == index) {
+            return packet;
+        }
+
+        packet = *(char**)(packet + 0x3c);
+        currentIndex++;
+    }
+
+    return nullptr;
+}
 extern "C" void* __thiscall RKC_UPDIB_VS_InsertVSPacket(void* self, long index) { return nullptr; }
 extern "C" void __thiscall RKC_UPDIB_VS_Release(void* self) {}
 extern "C" int __thiscall RKC_UPDIB_VS_Render(void* self, RKC_DIB* dib, long x, long y, RECT* clip) { return 0; }
@@ -640,7 +679,14 @@ extern "C" void __thiscall RKC_UPDIB_VSBLOCK_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count) { return 0; }
 extern "C" void __thiscall RKC_UPDIB_VSBLOCK_FlushVScreen(void* self) {}
-extern "C" long __thiscall RKC_UPDIB_VSBLOCK_GetVSCount(void* self) { return 0; }
+/**
+ * RKC_UPDIB_VSBLOCK::GetVSCount - Return VS entry count
+ * USED BY: o_RKC_UPDIB.dll (internal)
+ */
+extern "C" long __thiscall RKC_UPDIB_VSBLOCK_GetVSCount(void* self) {
+    OSF_FUNC_TRACE("self=%p", self);
+    return *(long*)((char*)self + 0x04);
+}
 extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self) {}
 
 // RKC_UPDIB_VSPACKET stubs
