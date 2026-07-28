@@ -23,9 +23,12 @@ cmake --build cmake-build-debug
 ```
 
 The executable can now read the original `SFlare.Cfg`, handle the retail `/w`
-and `/f` switches, and run the original top-level title/loading/gameplay state
-transitions. The actual title and gameplay handlers are still empty, so what
-you see for now is the 640x480 render-loop foundation.
+and `/f` switches, and run the original top-level
+title/character-selection/gameplay transitions. The title and character-select
+enter/leave lifecycles are reconstructed too, including their asset manifests,
+save-slot behavior, input tables, random smoke delays, and shared menu music.
+Their drawing and per-frame interaction callbacks are not connected yet, so
+what you see for now is still the 640x480 render-loop foundation.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
@@ -44,3 +47,10 @@ The portable game code lives in the `OpenShadowFlare::GameCore` CMake target.
 It only uses the C++ standard library. Windowing, rendering, and audio stay in
 the thin executable runtime and the LWL, LGL, and LAL libraries, which keeps
 the reconstructed rules testable without starting a window.
+
+Source files are grouped by responsibility while keeping headers beside their
+implementations:
+
+- `core/` contains config, command-line, and retail utility code
+- `states/` contains the top-level dispatcher and reconstructed game states
+- `runtime/` contains the small executable shell using LWL, LGL, and LAL

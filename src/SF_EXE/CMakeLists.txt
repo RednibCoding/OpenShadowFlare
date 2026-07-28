@@ -1,8 +1,10 @@
 add_library(
   sf_game_core
-  src/command_line.cpp
-  src/game_config.cpp
-  src/game_state.cpp
+  core/command_line.cpp
+  core/game_config.cpp
+  core/retail_random.cpp
+  states/game_state.cpp
+  states/menu_states.cpp
 )
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
 
@@ -10,7 +12,7 @@ target_compile_features(sf_game_core PUBLIC cxx_std_17)
 target_include_directories(
   sf_game_core
   PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 set_target_properties(
   sf_game_core
@@ -24,7 +26,7 @@ else()
   target_compile_options(sf_game_core PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(ShadowFlare_rebuilt src/main.cpp)
+add_executable(ShadowFlare_rebuilt runtime/main.cpp)
 
 target_compile_features(ShadowFlare_rebuilt PRIVATE cxx_std_17)
 set_target_properties(ShadowFlare_rebuilt PROPERTIES CXX_EXTENSIONS OFF)

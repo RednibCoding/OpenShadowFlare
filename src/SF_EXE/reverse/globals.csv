@@ -21,3 +21,6 @@ address,name,portable_owner,status,notes
 0x0048d8d4,g_cursorVisible,,identified,
 0x0048d8e4,g_effectVolume,GameConfig::effect_volume,implemented,Clamped to -10000 through zero
 0x0048d8e8,g_bgmVolume,GameConfig::bgm_volume,implemented,Clamped to -10000 through zero
+0x0048e2b8,g_versionPatch,GameVersion::patch,implemented,Initialized to zero by the title-state constructor
+0x0048e2bc,g_versionMinor,GameVersion::minor,implemented,Initialized to four by the title-state constructor
+0x0048e2c0,g_versionMajor,GameVersion::major,implemented,Initialized to two by the title-state constructor

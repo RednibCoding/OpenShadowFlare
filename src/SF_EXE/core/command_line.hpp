@@ -3,7 +3,7 @@
 
 #include <string_view>
 
-namespace openshadowflare {
+namespace osf {
 
 struct GameConfig;
 
@@ -12,6 +12,6 @@ struct GameConfig;
 // not interpreted as switches.
 void applyRetailCommandLine(std::string_view command_line, GameConfig& config);
 
-}  // namespace openshadowflare
+}  // namespace osf
 
 #endif

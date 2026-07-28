@@ -6,6 +6,7 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00401b90,ShutdownGame,,analyzed,static,
 0x00401d10,SaveConfig,saveGameConfig / saveGameConfigFile,implemented,static,Exact 64-byte little-endian SFlare.Cfg layout
 0x00401eb0,LoadConfig,loadGameConfig / loadGameConfigFile,implemented,static,Validation clamping forced field and partial mutation behavior covered by native tests
+0x004021b0,FindNextSavePath,osf::findNextRetailSavePath,implemented,static,Checks Save slots 0000 through 0005 and preserves the final path when all six exist
 0x004022e0,WinMain,main,partial,static,Original entry behavior maps to the portable application lifecycle
 0x004023d0,UpdateGameState,GameStateDispatcher::transition,implemented,static,Renderer synchronization teardown initialization and raw state storage covered by native tests
 0x004026d0,OnKeyUp,,analyzed,static,Retail function is effectively empty
@@ -13,7 +14,15 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00402b30,WndProc,,analyzed,static,Behavior maps to LWL events rather than native messages
 0x0041d3f0,EnterGameplayState,,identified,static,Called when top-level state changes to 2
 0x0041d880,LeaveGameplayState,,identified,static,Called when leaving top-level state 2 and unconditionally during shutdown
-0x00420c40,EnterTitleState,,identified,static,Called when top-level state changes to 0
-0x00420df0,LeaveTitleState,,identified,static,Called when leaving top-level state 0 and unconditionally during shutdown
-0x00421a00,EnterLoadingState,,identified,static,Receives the transition argument when top-level state changes to 1
-0x00421bf0,LeaveLoadingState,,identified,static,Called when leaving top-level state 1 and unconditionally during shutdown
+0x00420b50,LoadTitleAssets,osf::TitleState::enter,implemented,static,Exact title and ten smoke resource paths and IDs with retail failure behavior
+0x00420c10,TitleStateConstructor,osf::TitleStateData::TitleStateData,implemented,static,Includes retail version 2.4.0 defaults
+0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and menu-music load covered by tests
+0x00420df0,LeaveTitleState,osf::TitleState::leave,implemented,static,Exact pattern and animation release sequence covered by tests
+0x00420e60,UpdateTitleState,,analyzed,static,Frame rendering menu interaction music start and timed transitions remain to be reconstructed
+0x00421920,LoadCharacterSelectAssets,osf::CharacterSelectState::enter,implemented,static,Select pattern path and unchecked failure behavior preserved
+0x00421950,CharacterSelectConstructor,osf::CharacterSelectStateData::CharacterSelectStateData,implemented,static,Portable ownership replaces two retail heap objects
+0x004219c0,CharacterSelectDestructor,,analyzed,static,Save catalog and persistent new-character data ownership understood
+0x00421a00,EnterCharacterSelectState,osf::CharacterSelectState::enter,implemented,static,Saved-game and new-character modes plus input audio cursor and field resets covered by tests
+0x00421bf0,LeaveCharacterSelectState,osf::CharacterSelectState::leave,implemented,static,Temporary buffer menu music and select pattern release covered by tests
+0x00421c50,UpdateCharacterSelectState,,analyzed,static,Frame dispatcher and gameplay transition at counter 0x13a0 remain to be reconstructed
+0x00467c6e,VisualCppRand,osf::RetailRandom::next,implemented,static,Exact unsigned 32-bit Visual C++ linear congruential generator covered by sequence test

@@ -1,4 +1,4 @@
-#include "openshadowflare/game_config.hpp"
+#include "game_config.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6,7 +6,7 @@
 #include <istream>
 #include <ostream>
 
-namespace openshadowflare {
+namespace osf {
 namespace {
 
 bool readInt32(std::istream& input, std::int32_t& value) {
@@ -162,4 +162,4 @@ bool saveGameConfigFile(const std::string& path, const GameConfig& config) {
     return output.is_open() && saveGameConfig(output, config);
 }
 
-}  // namespace openshadowflare
+}  // namespace osf

@@ -1,9 +1,11 @@
 #include "lal.h"
 #include "lgl.h"
 #include "lwl.h"
-#include "openshadowflare/command_line.hpp"
-#include "openshadowflare/game_config.hpp"
-#include "openshadowflare/game_state.hpp"
+#include "core/command_line.hpp"
+#include "core/game_config.hpp"
+#include "core/retail_random.hpp"
+#include "states/game_state.hpp"
+#include "states/menu_states.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -28,6 +30,10 @@ bool isSmokeTest(int argc, char** argv) {
 
 class Runtime {
 public:
+    Runtime()
+        : titleState_(random_),
+          gameState_(makeGameStateCallbacks()) {}
+
     ~Runtime() {
         lgl_reset();
         lwl_gl_context_destroy(context_);
@@ -40,7 +46,7 @@ public:
         }
     }
 
-    bool initialize(const openshadowflare::GameConfig& gameConfig) {
+    bool initialize(const osf::GameConfig& gameConfig) {
         if (!lwl_init()) {
             std::fprintf(stderr, "Could not initialize LWL.\n");
             return false;
@@ -90,7 +96,7 @@ public:
         }
 
         lglViewport(0, 0, kVirtualWidth, kVirtualHeight);
-        gameState_.transition(openshadowflare::GameState::title);
+        gameState_.transition(osf::GameState::title);
         return true;
     }
 
@@ -129,22 +135,42 @@ public:
     }
 
 private:
+    osf::GameStateDispatcherCallbacks makeGameStateCallbacks() {
+        osf::GameStateDispatcherCallbacks callbacks;
+        callbacks.title.enter = [this](std::int32_t) {
+            titleState_.enter();
+        };
+        callbacks.title.leave = [this] {
+            titleState_.leave();
+        };
+        callbacks.character_select.enter = [this](std::int32_t argument) {
+            characterSelectState_.enter(argument);
+        };
+        callbacks.character_select.leave = [this] {
+            characterSelectState_.leave();
+        };
+        return callbacks;
+    }
+
     LwlWindow* window_ = nullptr;
     LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
     bool audioInitialized_ = false;
-    openshadowflare::GameStateDispatcher gameState_;
+    osf::RetailRandom random_;
+    osf::TitleState titleState_;
+    osf::CharacterSelectState characterSelectState_;
+    osf::GameStateDispatcher gameState_;
 };
 
 }  // namespace
 
 int main(int argc, char** argv) {
-    openshadowflare::GameConfig gameConfig;
+    osf::GameConfig gameConfig;
 
     // Retail ignores config-load failure and retains its constructor defaults.
-    openshadowflare::loadGameConfigFile("SFlare.Cfg", gameConfig);
+    osf::loadGameConfigFile("SFlare.Cfg", gameConfig);
     for (int index = 1; index < argc; ++index) {
-        openshadowflare::applyRetailCommandLine(argv[index], gameConfig);
+        osf::applyRetailCommandLine(argv[index], gameConfig);
     }
 
     Runtime runtime;

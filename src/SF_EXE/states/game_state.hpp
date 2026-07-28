@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <functional>
 
-namespace openshadowflare {
+namespace osf {
 
 enum class GameState : std::int32_t {
     none = -1,
     title = 0,
-    loading = 1,
+    character_select = 1,
     gameplay = 2,
 };
 
@@ -23,7 +23,7 @@ struct GameStateDispatcherCallbacks {
     // portable renderer owns the waiting policy and exposes it through here.
     std::function<void()> wait_until_renderer_idle;
     GameStateCallbacks title;
-    GameStateCallbacks loading;
+    GameStateCallbacks character_select;
     GameStateCallbacks gameplay;
 };
 
@@ -45,6 +45,6 @@ private:
         static_cast<std::int32_t>(GameState::none);
 };
 
-}  // namespace openshadowflare
+}  // namespace osf
 
 #endif

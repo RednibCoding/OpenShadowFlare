@@ -1,11 +1,11 @@
-#include "openshadowflare/command_line.hpp"
+#include "command_line.hpp"
 
-#include "openshadowflare/game_config.hpp"
+#include "game_config.hpp"
 
 #include <cstddef>
 #include <cstdint>
 
-namespace openshadowflare {
+namespace osf {
 namespace {
 
 bool isRetailShiftJisLeadByte(std::uint8_t value) {
@@ -57,4 +57,4 @@ void applyRetailCommandLine(
     }
 }
 
-}  // namespace openshadowflare
+}  // namespace osf

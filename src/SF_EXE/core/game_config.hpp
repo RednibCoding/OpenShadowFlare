@@ -7,7 +7,7 @@
 #include <iosfwd>
 #include <string>
 
-namespace openshadowflare {
+namespace osf {
 
 constexpr std::size_t kGameConfigValueCount = 16;
 constexpr std::size_t kGameConfigByteSize =
@@ -39,6 +39,6 @@ bool loadGameConfigFile(const std::string& path, GameConfig& config);
 bool saveGameConfig(std::ostream& output, const GameConfig& config);
 bool saveGameConfigFile(const std::string& path, const GameConfig& config);
 
-}  // namespace openshadowflare
+}  // namespace osf
 
 #endif

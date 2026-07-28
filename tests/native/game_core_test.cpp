@@ -1,6 +1,6 @@
-#include "openshadowflare/command_line.hpp"
-#include "openshadowflare/game_config.hpp"
-#include "openshadowflare/game_state.hpp"
+#include "core/command_line.hpp"
+#include "core/game_config.hpp"
+#include "states/game_state.hpp"
 
 #include <array>
 #include <cstdint>
@@ -13,11 +13,11 @@
 
 namespace {
 
-using openshadowflare::GameConfig;
+using osf::GameConfig;
 
 std::string encode(const std::array<std::int32_t, 16>& values) {
     std::string bytes;
-    bytes.reserve(openshadowflare::kGameConfigByteSize);
+    bytes.reserve(osf::kGameConfigByteSize);
     for (const std::int32_t value : values) {
         const auto raw = static_cast<std::uint32_t>(value);
         bytes.push_back(static_cast<char>(raw & 0xffU));
@@ -60,7 +60,7 @@ bool testRetailDefaultsAndFixture() {
     }};
     std::istringstream input(encode(shippedValues), std::ios::binary);
     if (!check(
-            openshadowflare::loadGameConfig(input, config),
+            osf::loadGameConfig(input, config),
             "The shipped SFlare.Cfg values were rejected.")) {
         return false;
     }
@@ -79,7 +79,7 @@ bool testConfigValidationAndWriting() {
     config.unknown_48d540 = false;
     std::istringstream input(encode(values), std::ios::binary);
     if (!check(
-            openshadowflare::loadGameConfig(input, config),
+            osf::loadGameConfig(input, config),
             "Validatable config values unexpectedly failed to load.")) {
         return false;
     }
@@ -100,12 +100,12 @@ bool testConfigValidationAndWriting() {
 
     std::ostringstream output(std::ios::binary);
     if (!check(
-            openshadowflare::saveGameConfig(output, config),
+            osf::saveGameConfig(output, config),
             "Could not write a game config.")) {
         return false;
     }
     return check(
-        output.str().size() == openshadowflare::kGameConfigByteSize,
+        output.str().size() == osf::kGameConfigByteSize,
         "SFlare.Cfg output is not exactly 64 bytes.");
 }
 
@@ -118,7 +118,7 @@ bool testConfigFailureSideEffects() {
         }}).substr(0, 4);
     std::istringstream shortInput(onlyScreen, std::ios::binary);
     if (!check(
-            !openshadowflare::loadGameConfig(shortInput, truncated) &&
+            !osf::loadGameConfig(shortInput, truncated) &&
                 truncated.windowed_at_start,
             "A short config did not retain the retail partial mutation.")) {
         return false;
@@ -131,7 +131,7 @@ bool testConfigFailureSideEffects() {
     }};
     std::istringstream invalidInput(encode(values), std::ios::binary);
     return check(
-        !openshadowflare::loadGameConfig(invalidInput, invalidPriority) &&
+        !osf::loadGameConfig(invalidInput, invalidPriority) &&
             invalidPriority.click_priority == originalPriority,
         "An invalid click-priority permutation was accepted or copied.");
 }
@@ -139,7 +139,7 @@ bool testConfigFailureSideEffects() {
 bool testCommandLine() {
     GameConfig config;
     config.windowed_at_start = false;
-    openshadowflare::applyRetailCommandLine("/W anything /f /w", config);
+    osf::applyRetailCommandLine("/W anything /f /w", config);
     if (!check(
             config.windowed_at_start,
             "Later /w and case-insensitive parsing do not match retail.")) {
@@ -150,7 +150,7 @@ bool testCommandLine() {
     std::string shiftJis;
     shiftJis.push_back(static_cast<char>(0x81));
     shiftJis += "/w";
-    openshadowflare::applyRetailCommandLine(shiftJis, config);
+    osf::applyRetailCommandLine(shiftJis, config);
     if (!check(
             !config.windowed_at_start,
             "A Shift-JIS trail byte was incorrectly parsed as a switch.")) {
@@ -158,7 +158,7 @@ bool testCommandLine() {
     }
 
     constexpr char withEmbeddedNul[] = "ignored\0/w";
-    openshadowflare::applyRetailCommandLine(
+    osf::applyRetailCommandLine(
         std::string_view(withEmbeddedNul, sizeof(withEmbeddedNul) - 1),
         config);
     return check(
@@ -168,7 +168,7 @@ bool testCommandLine() {
 
 bool testStateDispatcher() {
     std::vector<std::string> calls;
-    openshadowflare::GameStateDispatcherCallbacks callbacks;
+    osf::GameStateDispatcherCallbacks callbacks;
     callbacks.wait_until_renderer_idle =
         [&calls] { calls.emplace_back("wait"); };
     callbacks.title.enter =
@@ -177,12 +177,13 @@ bool testStateDispatcher() {
         };
     callbacks.title.leave =
         [&calls] { calls.emplace_back("title leave"); };
-    callbacks.loading.enter =
+    callbacks.character_select.enter =
         [&calls](std::int32_t value) {
-            calls.emplace_back("loading enter " + std::to_string(value));
+            calls.emplace_back(
+                "character select enter " + std::to_string(value));
         };
-    callbacks.loading.leave =
-        [&calls] { calls.emplace_back("loading leave"); };
+    callbacks.character_select.leave =
+        [&calls] { calls.emplace_back("character select leave"); };
     callbacks.gameplay.enter =
         [&calls](std::int32_t value) {
             calls.emplace_back("gameplay enter " + std::to_string(value));
@@ -190,36 +191,36 @@ bool testStateDispatcher() {
     callbacks.gameplay.leave =
         [&calls] { calls.emplace_back("gameplay leave"); };
 
-    openshadowflare::GameStateDispatcher dispatcher(std::move(callbacks));
+    osf::GameStateDispatcher dispatcher(std::move(callbacks));
     if (!check(
             dispatcher.currentRetailState() == -1,
             "The retail state dispatcher did not start at -1.")) {
         return false;
     }
-    dispatcher.transition(openshadowflare::GameState::title, 99);
-    dispatcher.transition(openshadowflare::GameState::loading, 77);
-    dispatcher.transition(openshadowflare::GameState::loading, 8);
+    dispatcher.transition(osf::GameState::title, 99);
+    dispatcher.transition(osf::GameState::character_select, 77);
+    dispatcher.transition(osf::GameState::character_select, 8);
     dispatcher.transition(9, 123);
-    dispatcher.transition(openshadowflare::GameState::gameplay, 42);
+    dispatcher.transition(osf::GameState::gameplay, 42);
 
     const std::vector<std::string> expected{
         "wait",
         "title enter 0",
         "wait",
         "title leave",
-        "loading enter 77",
+        "character select enter 77",
         "wait",
-        "loading leave",
-        "loading enter 8",
+        "character select leave",
+        "character select enter 8",
         "wait",
-        "loading leave",
+        "character select leave",
         "wait",
         "gameplay enter 0",
     };
     return check(
         calls == expected &&
             dispatcher.currentState() ==
-                openshadowflare::GameState::gameplay,
+                osf::GameState::gameplay,
         "State transition call order differs from 0x004023d0.");
 }
 

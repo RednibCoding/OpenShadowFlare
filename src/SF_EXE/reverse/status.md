@@ -20,12 +20,22 @@ The first game-core slice covers:
 - the exact 16-value, 64-byte config load/save layout
 - retail validation, clamping, and partial updates on failed reads
 - Shift-JIS-aware `/w` and `/f` command-line handling
-- the title, loading, and gameplay transition dispatcher
+- the title, character-selection, and gameplay transition dispatcher
+- the title enter/leave lifecycle and its exact resource manifest
+- saved-game and new-character selection enter/leave behavior
+- the six-slot save-name search used by both menu states
+- both retail menu input-binding tables
+- the statically linked Visual C++ random-number generator
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
 the config before creating its LWL window, just as the retail entry point does.
 
-The title, loading, and gameplay handlers themselves are the next layer to
-reconstruct. Their callback boundary is already in place, so their game logic
-does not need to know how a native window or render context is implemented.
+The menu lifecycle code emits resource, input, cursor, and audio work through
+portable callbacks. Those callbacks deliberately describe what the game needs,
+not how a particular operating system provides it.
+
+The next menu layer is the per-frame title logic at `0x00420e60` and the
+character-selection dispatcher at `0x00421c50`. These functions contain menu
+interaction, fades, animation timing, and the transitions into selection and
+gameplay.

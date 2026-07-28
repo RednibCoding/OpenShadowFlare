@@ -30,4 +30,17 @@ if(TARGET sf_game_core)
   endif()
 
   add_test(NAME game_core COMMAND game_core_test)
+
+  add_executable(menu_states_test menu_states_test.cpp)
+  target_link_libraries(menu_states_test PRIVATE OpenShadowFlare::GameCore)
+  target_compile_features(menu_states_test PRIVATE cxx_std_17)
+  set_target_properties(menu_states_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(menu_states_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(menu_states_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME menu_states COMMAND menu_states_test)
 endif()

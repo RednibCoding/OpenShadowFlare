@@ -1,8 +1,8 @@
-#include "openshadowflare/game_state.hpp"
+#include "game_state.hpp"
 
 #include <utility>
 
-namespace openshadowflare {
+namespace osf {
 namespace {
 
 constexpr std::int32_t retailValue(GameState state) {
@@ -15,8 +15,8 @@ void leaveState(
     const std::function<void()>* leave = nullptr;
     if (state == retailValue(GameState::title)) {
         leave = &callbacks.title.leave;
-    } else if (state == retailValue(GameState::loading)) {
-        leave = &callbacks.loading.leave;
+    } else if (state == retailValue(GameState::character_select)) {
+        leave = &callbacks.character_select.leave;
     } else if (state == retailValue(GameState::gameplay)) {
         leave = &callbacks.gameplay.leave;
     }
@@ -33,8 +33,8 @@ void enterState(
     std::int32_t forwarded_argument = 0;
     if (state == retailValue(GameState::title)) {
         enter = &callbacks.title.enter;
-    } else if (state == retailValue(GameState::loading)) {
-        enter = &callbacks.loading.enter;
+    } else if (state == retailValue(GameState::character_select)) {
+        enter = &callbacks.character_select.enter;
         forwarded_argument = argument;
     } else if (state == retailValue(GameState::gameplay)) {
         enter = &callbacks.gameplay.enter;
@@ -78,4 +78,4 @@ GameState GameStateDispatcher::currentState() const {
     return static_cast<GameState>(current_state_);
 }
 
-}  // namespace openshadowflare
+}  // namespace osf
