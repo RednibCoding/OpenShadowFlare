@@ -3,7 +3,7 @@
 
 # OpenShadowFlare
 
-![Project Logo](readme/sf-logo-lg.png)
+![Project Logo](readme/sf-logo-sm.png)
 
 OpenShadowFlare is a community effort to preserve and rebuild ShadowFlare, a
 great little action RPG from the early 2000s that deserves to be playable for
