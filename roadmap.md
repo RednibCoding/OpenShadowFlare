@@ -21,27 +21,25 @@ ordinal, forwarder count, and standalone claim.
 | RKC_DSOUND | 43 | 0 | 0 | Local replacement backend; audio timing needs validation |
 | RKC_FONTMAKER | 13 | 0 | 0 | Standalone; glyph and complete NJP output verified |
 | RKC_RPG_TABLE | 25 | 0 | 0 | Standalone; real game database verified |
-| RKC_UPDIB | 81 | 0 | 2 | Hybrid; UPD decode and sprite composite remain |
+| RKC_UPDIB | 81 | 0 | 0 | Standalone; NJP/SDW decode and sprite rendering verified on retail assets |
 | RKC_DBFCONTROL | 41 | 0 | 0 | Standalone; differential and render-loop verified |
-| RKC_RPGSCRN | 185 | 54 | 0 | Hybrid; foundational layouts/accessors verified |
+| RKC_RPGSCRN | 185 | 0 | 0 | Standalone; CAF, OBL, compressed GND, ownership, sorting, and packet paths verified |
 | RKC_RPG_SCRIPT | 82 | 0 | 0 | Standalone retail binary/runtime path; text compiler remains |
 | RKC_RPG_AICONTROL | 51 | 0 | 0 | Standalone; real AI database verified byte-for-byte |
-| RKC_NETWORK | 131 | 25 | 0 | Hybrid; foundational packet/user/transfer layer verified |
+| RKC_NETWORK | 131 | 0 | 0 | Standalone; lifecycle, queues, socket threads, and live transport verified |
 
 Total ABI surface: 763 exports.
-Current external forwarders: 79. One hybrid DLL (`RKC_UPDIB`) has no PE
-forwarders but retains an explicitly inventoried original-backed runtime path.
+Current external forwarders: 0. All fourteen DLLs are standalone.
 
 ## Work order
 
 1. Keep the export/ordinal verifier green for every change.
-2. Expand differential probes for RK_FUNCTION, DIB, DSOUND, and FONTMAKER.
-3. Finish UPD parsing and sprite compositing, then remove `o_RKC_UPDIB.dll`.
-4. Extend DBFCONTROL validation to its fullscreen DirectDraw path.
-5. Replace RPGSCRN forwards; finish SCRIPT's developer text compiler.
-6. Reconstruct NETWORK last; single-player behavior remains the first target.
-7. Use `ShadowFlare.exe` only as a behavioral oracle until all DLLs are
-   standalone, then begin executable reconstruction.
+2. Keep expanding differential probes for RK_FUNCTION, DIB, DSOUND, UPDIB,
+   RPGSCRN, and authenticated NETWORK paths.
+3. Extend DBFCONTROL validation to its fullscreen DirectDraw path.
+4. Finish SCRIPT's unused developer text compiler.
+5. Begin reconstructing `ShadowFlare.exe`, using the retail executable as a
+   behavioral oracle and keeping the completed DLL layer stable.
 
 ## Required checks
 

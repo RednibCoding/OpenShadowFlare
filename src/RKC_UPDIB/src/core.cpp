@@ -8,8 +8,10 @@
  */
 
 #include <windows.h>
+#include <cstdint>
 #include <cstring>
 #include <cstdlib>
+#include <vector>
 
 #define OSF_DEBUG 1
 #define DLL_NAME "RKC_UPDIB"
@@ -134,55 +136,133 @@ static int DIB_ZoomToDIB(void* dib, RECT* destRect, void* srcDib, RECT* srcRect,
     );
 }
 
+static int DIB_ZoomToDIBEx(
+    void* dib, RECT* destRect, void* srcDib, RECT* srcRect,
+    long paletteOffset, long transparentColor, long alpha, long flags) {
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?ZoomToDIBEx@RKC_DIB@@QAEHPAUtagRECT@@PAV1@0JJJJ@Z",
+        dib, destRect, srcDib, srcRect, paletteOffset, transparentColor,
+        alpha, flags);
+}
+
+static int DIB_TransferFast(
+    void* dib, long x, long y, long width, long height,
+    void* source, long sourceX, long sourceY) {
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?TransferToDIBFast@RKC_DIB@@QAEHJJJJPAV1@JJ@Z",
+        dib, x, y, width, height, source, sourceX, sourceY);
+}
+
+static int DIB_Transfer(
+    void* dib, long x, long y, long width, long height,
+    void* source, long sourceX, long sourceY, long transparentColor) {
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?TransferToDIB@RKC_DIB@@QAEHJJJJPAV1@JJJ@Z",
+        dib, x, y, width, height, source, sourceX, sourceY,
+        transparentColor);
+}
+
+static int DIB_TransferEx(
+    void* dib, long x, long y, long width, long height, void* source,
+    long sourceX, long sourceY, long paletteOffset, long transparentColor,
+    long alpha, long flags, void* highSpeedMode) {
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?TransferToDIBEx@RKC_DIB@@QAEHJJJJPAV1@JJJJJJPAVRKC_DIBHISPEEDMODE@@@Z",
+        dib, x, y, width, height, source, sourceX, sourceY,
+        paletteOffset, transparentColor, alpha, flags, highSpeedMode);
+}
+
+static int DIB_TransferEx(
+    void* dib, long x, long y, void* source, long paletteOffset,
+    long transparentColor, long alpha, long flags, void* highSpeedMode) {
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?TransferToDIBEx@RKC_DIB@@QAEHJJPAV1@JJJJPAVRKC_DIBHISPEEDMODE@@@Z",
+        dib, x, y, source, paletteOffset, transparentColor, alpha, flags,
+        highSpeedMode);
+}
+
+struct UpdFileCursor {
+    std::vector<unsigned char> bytes;
+    size_t position = 0;
+
+    bool Load(const char* filename) {
+        if (!filename)
+            return false;
+        HANDLE file = CreateFileA(
+            filename, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE)
+            return false;
+        const DWORD size = GetFileSize(file, nullptr);
+        if (size == INVALID_FILE_SIZE) {
+            CloseHandle(file);
+            return false;
+        }
+        bytes.resize(size);
+        DWORD amount = 0;
+        const bool success =
+            size == 0
+            || (ReadFile(file, bytes.data(), size, &amount, nullptr)
+                && amount == size);
+        CloseHandle(file);
+        return success;
+    }
+
+    bool Read(void* output, size_t size) {
+        if (size > bytes.size() - position)
+            return false;
+        if (size)
+            std::memcpy(output, bytes.data() + position, size);
+        position += size;
+        return true;
+    }
+
+    template <typename Value>
+    bool Read(Value& value) {
+        return Read(&value, sizeof(value));
+    }
+
+    bool Skip(size_t size) {
+        if (size > bytes.size() - position)
+            return false;
+        position += size;
+        return true;
+    }
+};
+
+static size_t UpdBitmapStride(long bitsPerPixel, long width, bool shadow) {
+    if (shadow)
+        return (static_cast<size_t>((width + 7) / 8) + 3u) & ~3u;
+    if (bitsPerPixel == 4)
+        return (static_cast<size_t>((width + 1) / 2) + 3u) & ~3u;
+    return (static_cast<size_t>(width) + 3u) & ~3u;
+}
+
+static int DecodeUpdLz(
+    const void* source, int sourceSize, void** output, void* header) {
+    using Decode = int (__cdecl*)(const void*, int, void**, void*);
+    HMODULE module = LoadLibraryA("RK_FUNCTION.dll");
+    if (!module)
+        return 0;
+    auto decode = reinterpret_cast<Decode>(
+        GetProcAddress(module, "RK_LzDecodeMemoryToMemory"));
+    const int result =
+        decode ? decode(source, sourceSize, output, header) : 0;
+    FreeLibrary(module);
+    return result;
+}
+
 static void* DIBHISPEEDMODE_Construct(void* mode) {
     return CallFunctionInDLL<void*>("RKC_DIB.dll", "??0RKC_DIBHISPEEDMODE@@QAE@XZ", mode);
 }
 
 static void DIBHISPEEDMODE_Destruct(void* mode) {
     CallFunctionInDLL<void>("RKC_DIB.dll", "??1RKC_DIBHISPEEDMODE@@QAE@XZ", mode);
-}
-
-static HMODULE GetOriginalUPDIBModule() {
-    static HMODULE module = LoadLibraryA("o_RKC_UPDIB.dll");
-    return module;
-}
-
-template <typename RetType, typename... Args>
-static RetType CallOriginalUPDIB(const char* funcName, Args... args) {
-    HMODULE module = GetOriginalUPDIBModule();
-    if (!module) {
-        printf("Failed to load o_RKC_UPDIB.dll with error code: 0x%x\n", GetLastError());
-        if constexpr (!std::is_void<RetType>()) {
-            return static_cast<RetType>(0);
-        } else {
-            return;
-        }
-    }
-
-    typedef RetType(THISCALL* FuncType)(Args...);
-    FuncType funcPtr = (FuncType)GetProcAddress(module, funcName);
-    if (!funcPtr) {
-        printf("Failed to find %s in o_RKC_UPDIB.dll with error code: 0x%x\n", funcName, GetLastError());
-        if constexpr (!std::is_void<RetType>()) {
-            return static_cast<RetType>(0);
-        } else {
-            return;
-        }
-    }
-
-    if constexpr (!std::is_void<RetType>()) {
-        return funcPtr(args...);
-    } else {
-        funcPtr(args...);
-    }
-}
-
-static int Original_UPD_Read(void* self, char* filename, long flags) {
-    return CallOriginalUPDIB<int>("?Read@RKC_UPDIB_UPD@@QAEHPADJ@Z", self, filename, flags);
-}
-
-static int Original_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) {
-    return CallOriginalUPDIB<int>("?Render@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
 }
 
 // ============================================================================
@@ -926,10 +1006,10 @@ extern "C" void __thiscall RKC_UPDIB_VSPACKET_destructor(void* self) {
 }
 
 // ============================================================================
-// STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
+// LOCAL CLASS IMPLEMENTATIONS
 // ============================================================================
 
-// RKC_UPDIB_PATTERN stubs
+// RKC_UPDIB_PATTERN
 extern "C" void __thiscall RKC_UPDIB_PATTERN_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_PATTERN_operatorAssign(void* self, const void* src) { return self; }
 extern "C" void __thiscall RKC_UPDIB_PATTERN_Release(void* self) {
@@ -961,7 +1041,7 @@ extern "C" void __thiscall RKC_UPDIB_PATTERN_Release(void* self) {
     }
 }
 
-// RKC_UPDIB_UPD stubs
+// RKC_UPDIB_UPD
 extern "C" void* __thiscall RKC_UPDIB_UPD_constructor(void* self) {
     std::memset(self, 0, 0x30);
     return self;
@@ -1059,10 +1139,309 @@ extern "C" void* __thiscall RKC_UPDIB_UPD_GetPalette(void* self, long index) {
 }
 extern "C" int __thiscall RKC_UPDIB_UPD_Read(void* self, char* filename, long flags) {
     OSF_FUNC_TRACE("self=%p, filename=%s, flags=%ld", self, filename ? filename : "(null)", flags);
-    return Original_UPD_Read(self, filename, flags);
+    (void)flags;
+    auto* object = static_cast<unsigned char*>(self);
+    RKC_UPDIB_UPD_Release(self);
+
+    UpdFileCursor input;
+    if (!input.Load(filename))
+        return 0;
+
+    if (*(HGLOBAL*)(object + 4))
+        GlobalFree(*(HGLOBAL*)(object + 4));
+    const size_t filenameSize = std::strlen(filename) + 1;
+    *(char**)(object + 4) =
+        static_cast<char*>(GlobalAlloc(GPTR, filenameSize));
+    if (!*(char**)(object + 4))
+        return 0;
+    std::memcpy(*(char**)(object + 4), filename, filenameSize);
+
+    char header[16]{};
+    if (!input.Read(header, sizeof(header)))
+        return 0;
+    const bool united = std::memcmp(header, "UnitePatData", 12) == 0;
+    const bool noJudgement = std::memcmp(header, "NJudgeUniPat", 12) == 0;
+    const bool shadow = std::memcmp(header, "ShadowLowPat", 12) == 0;
+    if (!united && !noJudgement && !shadow)
+        return 0;
+    *(long*)object = united ? 1 : (noJudgement ? 2 : 4);
+
+    const long version = std::strtol(header + 12, nullptr, 10);
+    *(long*)(object + 0x24) = version;
+    if (version < 0 || version >= 4)
+        return 0;
+
+    long partsCount = 0;
+    if (!input.Read(partsCount) || partsCount < 0)
+        return 0;
+    *(long*)(object + 0x0c) = partsCount;
+
+    const size_t partDataStart = input.position + (version > 2 ? 4u : 0u);
+    size_t combinedPartBytes = 0;
+    if (version > 2) {
+        long ignored = 0;
+        if (!input.Read(ignored))
+            return 0;
+        for (long index = 0; index < partsCount; ++index) {
+            long bits = 0;
+            long width = 0;
+            long height = 0;
+            long compressed = 0;
+            if (!input.Read(bits) || !input.Read(width)
+                || !input.Read(height) || !input.Read(compressed)
+                || width < 0 || height < 0)
+                return 0;
+            if (shadow)
+                bits = 1;
+            const size_t bitmapSize =
+                UpdBitmapStride(bits, width, shadow)
+                * static_cast<size_t>(height);
+            if (combinedPartBytes > SIZE_MAX - bitmapSize)
+                return 0;
+            combinedPartBytes += bitmapSize;
+            if (compressed == 0) {
+                if (!input.Skip(bitmapSize))
+                    return 0;
+            } else {
+                unsigned char compressionHeader[16]{};
+                if (!input.Read(compressionHeader, sizeof(compressionHeader)))
+                    return 0;
+                std::uint32_t payloadSize = 0;
+                std::memcpy(&payloadSize, compressionHeader + 12, 4);
+                if (!input.Skip(payloadSize))
+                    return 0;
+            }
+        }
+        input.position = partDataStart;
+        if (combinedPartBytes) {
+            *(void**)(object + 0x28) = std::malloc(combinedPartBytes);
+            if (!*(void**)(object + 0x28))
+                return 0;
+        }
+    }
+
+    if (partsCount) {
+        *(void**)(object + 0x10) =
+            GlobalAlloc(GPTR, static_cast<SIZE_T>(partsCount) * 0x10);
+        if (!*(void**)(object + 0x10))
+            return 0;
+    }
+
+    size_t combinedOffset = 0;
+    for (long index = 0; index < partsCount; ++index) {
+        long bits = 0;
+        long width = 0;
+        long height = 0;
+        long compressed = 0;
+        if (!input.Read(bits) || !input.Read(width)
+            || !input.Read(height) || !input.Read(compressed)
+            || width < 0 || height < 0)
+            return 0;
+        if (shadow)
+            bits = 1;
+        const size_t bitmapSize =
+            UpdBitmapStride(bits, width, shadow)
+            * static_cast<size_t>(height);
+        auto* part = static_cast<unsigned char*>(*(void**)(object + 0x10))
+            + static_cast<size_t>(index) * 0x10;
+        if (!bitmapSize) {
+            *(void**)(part + 0x0c) = nullptr;
+            continue;
+        }
+
+        void* temporary = nullptr;
+        if (compressed == 0) {
+            temporary = GlobalAlloc(0, bitmapSize);
+            if (!temporary || !input.Read(temporary, bitmapSize)) {
+                if (temporary)
+                    GlobalFree(temporary);
+                return 0;
+            }
+        } else {
+            const size_t compressedStart = input.position;
+            unsigned char compressionHeader[16]{};
+            if (!input.Read(compressionHeader, sizeof(compressionHeader)))
+                return 0;
+            std::uint32_t payloadSize = 0;
+            std::memcpy(&payloadSize, compressionHeader + 12, 4);
+            if (!input.Skip(payloadSize))
+                return 0;
+            struct CompressionHeader {
+                char magic[8];
+                int uncompressedSize;
+                int compressedSize;
+            } decodedHeader{};
+            if (payloadSize > 0x7fffffff - 16
+                || !DecodeUpdLz(
+                    input.bytes.data() + compressedStart,
+                    static_cast<int>(payloadSize + 16),
+                    &temporary, &decodedHeader))
+                return 0;
+        }
+
+        *(long*)(part + 0x00) = bits;
+        *(long*)(part + 0x04) = width;
+        *(long*)(part + 0x08) = height;
+        if (version < 3) {
+            *(void**)(part + 0x0c) = GlobalAlloc(0, bitmapSize);
+        } else {
+            *(void**)(part + 0x0c) =
+                static_cast<unsigned char*>(*(void**)(object + 0x28))
+                + combinedOffset;
+            combinedOffset += bitmapSize;
+        }
+        if (!*(void**)(part + 0x0c)) {
+            GlobalFree(temporary);
+            return 0;
+        }
+        std::memcpy(*(void**)(part + 0x0c), temporary, bitmapSize);
+        GlobalFree(temporary);
+    }
+
+    long patternCount = 0;
+    if (!input.Read(patternCount) || patternCount < 0)
+        return 0;
+    *(long*)(object + 0x14) = patternCount;
+    long combinedListCount = 0;
+    if (version > 2) {
+        if (!input.Read(combinedListCount) || combinedListCount < 0)
+            return 0;
+        if (combinedListCount) {
+            *(void**)(object + 0x2c) =
+                GlobalAlloc(GPTR, static_cast<SIZE_T>(combinedListCount) * 0x1c);
+            if (!*(void**)(object + 0x2c))
+                return 0;
+        }
+    }
+
+    if (patternCount) {
+        *(void**)(object + 0x18) =
+            AllocateCountedArray(patternCount, 0x28);
+        if (!*(void**)(object + 0x18))
+            return 0;
+        for (long index = 0; index < patternCount; ++index)
+            RKC_UPDIB_PATTERN_constructor(
+                static_cast<unsigned char*>(*(void**)(object + 0x18))
+                + static_cast<size_t>(index) * 0x28);
+    }
+
+    size_t combinedListOffset = 0;
+    for (long patternIndex = 0; patternIndex < patternCount; ++patternIndex) {
+        auto* pattern =
+            static_cast<unsigned char*>(*(void**)(object + 0x18))
+            + static_cast<size_t>(patternIndex) * 0x28;
+        long listCount = 0;
+        if (!input.Read(listCount) || listCount < 0
+            || !input.Read(pattern + 0x0c, 0x10))
+            return 0;
+        *(long*)pattern = listCount;
+        if (united) {
+            *(void**)(pattern + 8) = GlobalAlloc(GPTR, 0xa8);
+            if (!*(void**)(pattern + 8)
+                || !input.Read(*(void**)(pattern + 8), 0xa8))
+                return 0;
+        }
+        if (version > 0 && !input.Read(*(long*)(pattern + 0x1c)))
+            return 0;
+
+        if (listCount) {
+            if (version < 3) {
+                *(void**)(pattern + 4) =
+                    GlobalAlloc(GPTR, static_cast<SIZE_T>(listCount) * 0x1c);
+            } else {
+                if (combinedListOffset
+                    + static_cast<size_t>(listCount)
+                    > static_cast<size_t>(combinedListCount))
+                    return 0;
+                *(void**)(pattern + 4) =
+                    static_cast<unsigned char*>(*(void**)(object + 0x2c))
+                    + combinedListOffset * 0x1c;
+                combinedListOffset += listCount;
+            }
+            if (!*(void**)(pattern + 4))
+                return 0;
+        }
+
+        for (long listIndex = 0; listIndex < listCount; ++listIndex) {
+            auto* item = static_cast<unsigned char*>(*(void**)(pattern + 4))
+                + static_cast<size_t>(listIndex) * 0x1c;
+            long partIndex = -1;
+            if (!input.Read(*(long*)(item + 0x00))
+                || !input.Read(partIndex))
+                return 0;
+            if (partIndex < 0 || partIndex >= partsCount) {
+                *(void**)(item + 0x18) = nullptr;
+            } else {
+                *(void**)(item + 0x18) =
+                    static_cast<unsigned char*>(*(void**)(object + 0x10))
+                    + static_cast<size_t>(partIndex) * 0x10;
+            }
+            if (!input.Read(item + 0x04, 8)
+                || !input.Read(*(long*)(item + 0x0c))
+                || !input.Read(*(long*)(item + 0x10))
+                || !input.Read(*(long*)(item + 0x14)))
+                return 0;
+        }
+        *(char**)(pattern + 0x20) = nullptr;
+    }
+
+    long paletteCount = 0;
+    if (!input.Read(paletteCount) || paletteCount < 0)
+        return 0;
+    *(long*)(object + 0x1c) = paletteCount;
+    if (paletteCount) {
+        *(void**)(object + 0x20) =
+            AllocateCountedArray(paletteCount, 0x0c);
+        if (!*(void**)(object + 0x20))
+            return 0;
+        for (long index = 0; index < paletteCount; ++index) {
+            auto* dib = static_cast<unsigned char*>(*(void**)(object + 0x20))
+                + static_cast<size_t>(index) * 0x0c;
+            DIB_Construct(dib);
+            if (!DIB_Create(dib, 1, 1, 8, 0))
+                return 0;
+            auto* palette = *(RGBQUAD**)(dib + 4);
+            for (long color = 0; color < 256; ++color) {
+                unsigned char entry[4]{};
+                if (!input.Read(entry, sizeof(entry)))
+                    return 0;
+                palette[color].rgbRed = entry[0];
+                palette[color].rgbGreen = entry[1];
+                palette[color].rgbBlue = entry[2];
+                palette[color].rgbReserved = 0;
+            }
+        }
+    }
+
+    if (version > 1 && patternCount > 0) {
+        long nameSize = 0;
+        // Names were appended by later authoring tools, but many version 2/3
+        // retail files end immediately after the palettes.
+        if (input.Read(nameSize)) {
+            if (nameSize < 0)
+                return 0;
+            for (long patternIndex = 0;
+                 patternIndex < patternCount; ++patternIndex) {
+                if (patternIndex > 0
+                    && (!input.Read(nameSize) || nameSize < 0))
+                    return 0;
+                auto* pattern =
+                    static_cast<unsigned char*>(*(void**)(object + 0x18))
+                    + static_cast<size_t>(patternIndex) * 0x28;
+                *(char**)(pattern + 0x20) =
+                    static_cast<char*>(GlobalAlloc(0, nameSize + 1));
+                if (!*(char**)(pattern + 0x20)
+                    || !input.Read(*(char**)(pattern + 0x20), nameSize))
+                    return 0;
+                (*(char**)(pattern + 0x20))[nameSize] = '\0';
+            }
+        }
+    }
+
+    return 1;
 }
 
-// RKC_UPDIB stubs
+// RKC_UPDIB
 extern "C" void* __thiscall RKC_UPDIB_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_CreateUpdBlock(void* self, long count) {
     OSF_FUNC_TRACE("self=%p, count=%ld", self, count);
@@ -1295,7 +1674,7 @@ extern "C" int __thiscall RKC_UPDIB_Render(
     return 1;
 }
 
-// RKC_UPDIB_VS stubs
+// RKC_UPDIB_VS
 extern "C" void __thiscall RKC_UPDIB_VS_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VS_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VS_DeleteVSPacket(void* self, long index) {
@@ -1496,7 +1875,7 @@ extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket_full(
         dib);
 }
 
-// RKC_UPDIB_VSBLOCK stubs
+// RKC_UPDIB_VSBLOCK
 extern "C" void __thiscall RKC_UPDIB_VSBLOCK_destructor(void* self) {}
 extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count) {
@@ -1610,11 +1989,12 @@ extern "C" int __thiscall RKC_UPDIB_VSBLOCK_Render(
     return 1;
 }
 
-// RKC_UPDIB_VSPACKET stubs
+// RKC_UPDIB_VSPACKET
 extern "C" void* __thiscall RKC_UPDIB_VSPACKET_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
-    const unsigned long flags = *(unsigned long*)((char*)self + 0x04);
+    auto* packet = static_cast<unsigned char*>(self);
+    const unsigned long flags = *(unsigned long*)(packet + 0x04);
     if (flags & 0x100)
         return RKC_UPDIB_VSPACKET_RenderPoint(self, dib, clip);
     if (flags & 0x200)
@@ -1623,7 +2003,327 @@ extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RE
         return RKC_UPDIB_VSPACKET_RenderBox(self, dib, clip);
     if (flags & 0x800)
         return RKC_UPDIB_VSPACKET_RenderFill(self, dib, clip);
-    return Original_VSPACKET_Render(self, dib, clip);
+
+    auto* updib = *(unsigned char**)packet;
+    if (flags & 0x1000) {
+        auto* source = *(unsigned char**)(packet + 0x50);
+        if (!source)
+            return 1;
+        auto* sourceInfo = *(BITMAPINFOHEADER**)source;
+        if (!sourceInfo)
+            return 1;
+        long destinationX = *(long*)(packet + 0x0c);
+        long destinationY = *(long*)(packet + 0x10);
+        long sourceX = 0;
+        long sourceY = 0;
+        long right = destinationX + sourceInfo->biWidth - 1;
+        long bottom = destinationY + sourceInfo->biHeight - 1;
+        if (flags & 0x20) {
+            const auto* packetClip = reinterpret_cast<const RECT*>(packet + 0x40);
+            if (destinationX < packetClip->left) {
+                sourceX = packetClip->left - destinationX;
+                destinationX = packetClip->left;
+            }
+            if (right > packetClip->right)
+                right = packetClip->right;
+            if (destinationY < packetClip->top) {
+                sourceY = packetClip->top - destinationY;
+                destinationY = packetClip->top;
+            }
+            if (bottom > packetClip->bottom)
+                bottom = packetClip->bottom;
+        }
+        const long width = right - destinationX + 1;
+        const long height = bottom - destinationY + 1;
+        const long transparentColor = (flags & 1) ? -1 : 0;
+        if (*(long*)(packet + 0x1c) == 1000
+            && *(long*)(packet + 0x08) == 0
+            && (flags & 0x0a) == 0) {
+            if (transparentColor == -1)
+                DIB_TransferFast(
+                    dib, destinationX, destinationY, width, height,
+                    source, sourceX, sourceY);
+            else
+                DIB_Transfer(
+                    dib, destinationX, destinationY, width, height,
+                    source, sourceX, sourceY, transparentColor);
+            return 1;
+        }
+        long effects = 0;
+        if (flags & 2)
+            effects |= 4;
+        if (flags & 8)
+            effects |= 0x10;
+        DIB_TransferEx(
+            dib, destinationX, destinationY, width, height,
+            source, sourceX, sourceY, *(long*)(packet + 8),
+            transparentColor, *(long*)(packet + 0x1c), effects,
+            updib ? *(void**)(updib + 0x28) : nullptr);
+        return 1;
+    }
+
+    if (!updib)
+        return 0;
+    auto* upd = static_cast<unsigned char*>(
+        RKC_UPDIB_GetUpd(updib, *(long*)(packet + 0x24)));
+    if (!upd)
+        return 0;
+    auto* pattern = static_cast<unsigned char*>(
+        RKC_UPDIB_UPD_GetPattern(upd, *(long*)(packet + 0x28)));
+    if (!pattern)
+        return 0;
+
+    long paletteNumber = *(long*)(packet + 0x2c);
+    if (paletteNumber == -1)
+        paletteNumber = *(long*)(pattern + 0x1c);
+    auto* selectedPalette = static_cast<RGBQUAD*>(
+        RKC_UPDIB_UPD_GetPalette(upd, paletteNumber));
+    if (!selectedPalette)
+        return 0;
+
+    unsigned char* paletteDib = nullptr;
+    if (*(short*)(packet + 0x30) == 1000
+        && *(short*)(packet + 0x32) == 1000
+        && *(short*)(packet + 0x34) == 1000
+        && (flags & 0x10)) {
+        paletteDib = reinterpret_cast<unsigned char*>(
+            RKC_UPDIB_UPD_GetPaletteDIB(upd, paletteNumber));
+        if (!paletteDib)
+            return 0;
+    } else {
+        paletteDib = *(unsigned char**)(updib + 0x2c);
+        if (!paletteDib)
+            return 0;
+    }
+
+    auto* build = reinterpret_cast<RECT*>(pattern + 0x0c);
+    if (build->right == 0 || build->bottom == 0)
+        return 0;
+
+    const long listCount = *(long*)pattern;
+    auto* lists = *(unsigned char**)(pattern + 4);
+    for (long listIndex = 0; listIndex < listCount; ++listIndex) {
+        auto* list = lists + static_cast<size_t>(listIndex) * 0x1c;
+        auto* part = *(unsigned char**)(list + 0x18);
+        if (!part)
+            return 0;
+        auto* info = *(BITMAPINFOHEADER**)paletteDib;
+        if (!info)
+            return 0;
+        info->biBitCount = static_cast<WORD>(*(long*)part);
+        info->biWidth = *(long*)(part + 4);
+        info->biHeight = *(long*)(part + 8);
+        DIB_SetBitmap(paletteDib, *(unsigned char**)(part + 0x0c));
+
+        const long transparentColor = (*(long*)part == 4) ? 0 : -16;
+        const long colorCount = transparentColor + 16;
+        long flip = 0;
+        if ((*(unsigned long*)list ^ flags) & 0x40000000)
+            flip |= 1;
+        if ((*(unsigned long*)list ^ flags) & 0x80000000)
+            flip |= 2;
+        unsigned char* sourceDib = paletteDib;
+        if (flip) {
+            sourceDib = updib + 0x1c;
+            DIB_TransferEx(
+                sourceDib, 0, 0, paletteDib, 0, -1, 1000, flip,
+                *(void**)(updib + 0x28));
+        }
+
+        const long partWidth = *(long*)(part + 4);
+        const long partHeight = *(long*)(part + 8);
+        long relativeX = 0;
+        long relativeY = 0;
+        if ((flags & 0x40000000) == 0)
+            relativeX = *(long*)(list + 4);
+        else
+            relativeX =
+                -(*(long*)(list + 0x10) * partWidth / 1000)
+                - *(long*)(list + 4);
+        if ((flags & 0x80000000) == 0)
+            relativeY = *(long*)(list + 8);
+        else
+            relativeY =
+                -(*(long*)(list + 0x14) * partHeight / 1000)
+                - *(long*)(list + 8);
+
+        RECT destination{
+            *(long*)(packet + 0x0c)
+                + *(long*)(packet + 0x14) * relativeX / 1000,
+            *(long*)(packet + 0x10)
+                + *(long*)(packet + 0x18) * relativeY / 1000,
+            *(long*)(packet + 0x0c)
+                + *(long*)(packet + 0x14)
+                    * (relativeX + *(long*)(list + 0x10) * partWidth / 1000)
+                    / 1000
+                - 1,
+            *(long*)(packet + 0x10)
+                + *(long*)(packet + 0x18)
+                    * (relativeY + *(long*)(list + 0x14) * partHeight / 1000)
+                    / 1000
+                - 1
+        };
+        RECT source{0, 0, partWidth - 1, partHeight - 1};
+
+        auto applyClip = [&](const RECT& bounds) {
+            if (destination.left < bounds.left) {
+                source.left += bounds.left - destination.left;
+                destination.left = bounds.left;
+            }
+            if (destination.right > bounds.right) {
+                source.right += bounds.right - destination.right;
+                destination.right = bounds.right;
+            }
+            if (destination.top < bounds.top) {
+                source.top += bounds.top - destination.top;
+                destination.top = bounds.top;
+            }
+            if (destination.bottom > bounds.bottom) {
+                source.bottom += bounds.bottom - destination.bottom;
+                destination.bottom = bounds.bottom;
+            }
+        };
+        if (clip && !(flags & 4)
+            && *(long*)(packet + 0x14) == 1000
+            && *(long*)(packet + 0x18) == 1000)
+            applyClip(*clip);
+        if ((flags & 0x20)
+            && *(long*)(packet + 0x14) == 1000
+            && *(long*)(packet + 0x18) == 1000)
+            applyClip(*reinterpret_cast<RECT*>(packet + 0x40));
+
+        destination.right = destination.right - destination.left + 1;
+        destination.bottom = destination.bottom - destination.top + 1;
+        source.right = source.right - source.left + 1;
+        source.bottom = source.bottom - source.top + 1;
+
+        const long paletteOffset =
+            *(long*)(list + 0x0c) + *(long*)(packet + 8);
+        const long transparentIndex = (flags & 1) ? -1 : 0;
+        if (destination.right > 0 && destination.bottom > 0
+            && source.right > 0 && source.bottom > 0) {
+            auto* activePalette = *(RGBQUAD**)(sourceDib + 4);
+            if (*(long*)part == 1) {
+                if (activePalette) {
+                    auto channel = [](short strength) -> BYTE {
+                        if (strength < 1000)
+                            return 0;
+                        return static_cast<BYTE>(
+                            ((strength - 1000) * 255) / 1000);
+                    };
+                    activePalette[1].rgbRed =
+                        channel(*(short*)(packet + 0x30));
+                    activePalette[1].rgbGreen =
+                        channel(*(short*)(packet + 0x32));
+                    activePalette[1].rgbBlue =
+                        channel(*(short*)(packet + 0x34));
+                }
+            } else if (!(flags & 0x80)) {
+                DIB_SetPalette(sourceDib, selectedPalette);
+                activePalette = *(RGBQUAD**)(sourceDib + 4);
+                if (activePalette && colorCount > 0) {
+                    const short redOffset =
+                        *(short*)(packet + 0x30) - 1000;
+                    const short greenOffset =
+                        *(short*)(packet + 0x32) - 1000;
+                    const short blueOffset =
+                        *(short*)(packet + 0x34) - 1000;
+                    auto adjust = [](BYTE value, short amount) -> BYTE {
+                        const int delta = amount < 1
+                            ? static_cast<int>(value) * amount / 1000
+                            : (255 - static_cast<int>(value)) * amount / 1000;
+                        return static_cast<BYTE>(
+                            static_cast<int>(value) + delta);
+                    };
+                    for (long color = 0; color < colorCount; ++color) {
+                        activePalette[color].rgbRed =
+                            adjust(activePalette[color].rgbRed, redOffset);
+                        activePalette[color].rgbGreen =
+                            adjust(activePalette[color].rgbGreen, greenOffset);
+                        activePalette[color].rgbBlue =
+                            adjust(activePalette[color].rgbBlue, blueOffset);
+                    }
+                    if (flags & 0x10) {
+                        for (long color = 0; color < colorCount; ++color) {
+                            activePalette[color].rgbRed =
+                                255 - activePalette[color].rgbRed;
+                            activePalette[color].rgbGreen =
+                                255 - activePalette[color].rgbGreen;
+                            activePalette[color].rgbBlue =
+                                255 - activePalette[color].rgbBlue;
+                        }
+                    }
+                    if (flags & 0x2000) {
+                        for (long color = 0; color < colorCount; ++color) {
+                            BYTE grey = activePalette[color].rgbRed;
+                            if (activePalette[color].rgbGreen > grey)
+                                grey = activePalette[color].rgbGreen;
+                            if (activePalette[color].rgbBlue > grey)
+                                grey = activePalette[color].rgbBlue;
+                            activePalette[color].rgbRed = grey;
+                            activePalette[color].rgbGreen = grey;
+                            activePalette[color].rgbBlue = grey;
+                        }
+                    }
+                }
+            } else if (activePalette) {
+                activePalette[0] = selectedPalette[0];
+                activePalette[2] = selectedPalette[2];
+                activePalette[1].rgbRed =
+                    static_cast<BYTE>(*(short*)(packet + 0x30));
+                activePalette[1].rgbGreen =
+                    static_cast<BYTE>(*(short*)(packet + 0x32));
+                activePalette[1].rgbBlue =
+                    static_cast<BYTE>(*(short*)(packet + 0x34));
+            }
+
+            const bool sameSize =
+                source.right == destination.right
+                && source.bottom == destination.bottom;
+            if (sameSize) {
+                if (*(long*)(packet + 0x1c) == 1000
+                    && paletteOffset == 0 && (flags & 0x0a) == 0) {
+                    if (transparentIndex == -1)
+                        DIB_TransferFast(
+                            dib, destination.left, destination.top,
+                            destination.right, destination.bottom, sourceDib,
+                            source.left, source.top);
+                    else
+                        DIB_Transfer(
+                            dib, destination.left, destination.top,
+                            destination.right, destination.bottom, sourceDib,
+                            source.left, source.top, transparentIndex);
+                } else {
+                    long effects = 0;
+                    if (flags & 2)
+                        effects |= 4;
+                    if (flags & 8)
+                        effects |= 0x10;
+                    DIB_TransferEx(
+                        dib, destination.left, destination.top,
+                        destination.right, destination.bottom, sourceDib,
+                        source.left, source.top, paletteOffset,
+                        transparentIndex, *(long*)(packet + 0x1c), effects,
+                        *(void**)(updib + 0x28));
+                }
+            } else if (*(long*)(packet + 0x1c) == 1000
+                && paletteOffset == 0 && (flags & 0x0a) == 0) {
+                DIB_ZoomToDIB(
+                    dib, &destination, sourceDib, &source, transparentIndex);
+            } else {
+                long effects = 0;
+                if (flags & 2)
+                    effects |= 4;
+                if (flags & 8)
+                    effects |= 0x10;
+                DIB_ZoomToDIBEx(
+                    dib, &destination, sourceDib, &source, paletteOffset,
+                    transparentIndex, *(long*)(packet + 0x1c), effects);
+            }
+        }
+        DIB_SetBitmap(paletteDib, nullptr);
+    }
+    return 1;
 }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);

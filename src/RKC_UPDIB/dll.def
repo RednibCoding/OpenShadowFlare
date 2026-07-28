@@ -46,7 +46,7 @@ EXPORTS
 ?SetStringsPacket@RKC_UPDIB@@QAEHJJJJJPADEEEJJJJJ@Z=RKC_UPDIB_SetStringsPacket @81
 
 ; ============================================================================
-; STUBS - NOT USED BY EXE OR OTHER DLLS
+; INTERNAL SUPPORT CLASSES
 ; ============================================================================
 ??0RKC_UPDIB_UPD@@QAE@XZ=RKC_UPDIB_UPD_constructor @3
 ??1RKC_UPDIB_PATTERN@@QAE@XZ=RKC_UPDIB_PATTERN_destructor @8

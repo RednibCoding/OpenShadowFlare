@@ -1,5 +1,5 @@
 /**
- * RKC_NETWORK - Network handling (incremental implementation)
+ * RKC_NETWORK - Network handling
  * 
  * Provides networking functionality for multiplayer.
  */
@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <new>
+#include <vector>
 
 namespace {
 HANDLE gNetworkMutex = nullptr;
@@ -49,6 +50,24 @@ char* CopyGlobalString(const char* source) {
 }
 
 extern "C" {
+
+void* __thiscall RKC_NETWORK_CLIENT_constructor(void* self);
+void __thiscall RKC_NETWORK_CLIENT_destructor(void* self);
+void __thiscall RKC_NETWORK_CLIENT_Release(void* self);
+void* __thiscall RKC_NETWORK_SERVER_constructor(void* self);
+void __thiscall RKC_NETWORK_SERVER_destructor(void* self);
+void __thiscall RKC_NETWORK_SERVER_Release(void* self);
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_constructor(void* self);
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_destructor(void* self);
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_Release(void* self);
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_ConnectionThread(
+    void* self, long param);
+void __thiscall RKC_NETWORK_CLIENT_ConnectionThread(void* self, long param);
+int __thiscall RKC_NETWORK_CLIENT_Connect(void* self, long timeout);
+void __thiscall RKC_NETWORK_SERVER_SOCKET_SocketComparisionThread(void* self);
+int __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_InsertComparisionSocket(
+    void* self, unsigned int socketValue);
+static DWORD WINAPI SocketComparisonThreadEntry(LPVOID context);
 
 // ============================================================================
 // RKC_NETWORK_PACKET Class Layout (from decompilation)
@@ -281,14 +300,52 @@ int __thiscall RKC_NETWORK_SERVER_GetActiveFlag(void* self) {
 }
 
 // ============================================================================
-// FOUNDATIONAL CLASSES AND REMAINING TRANSPORT STUBS
-// Packet ownership, user information, containers, and transfer framing below
-// are reconstructed. The client/server transport classes remain incremental.
+// PACKET CONTAINERS AND TRANSPORT
 // ============================================================================
 
-// --- RKC_NETWORK stubs ---
+// --- RKC_NETWORK ---
 
-void* __thiscall RKC_NETWORK_operatorAssign(void* self, const void* other) { return self; }
+void* __thiscall RKC_NETWORK_constructor(void* self) {
+    if (gNetworkMutex)
+        CloseHandle(gNetworkMutex);
+    gNetworkMutex = CreateMutexA(nullptr, FALSE, nullptr);
+    void* server = ::operator new(0x1dc, std::nothrow);
+    void* client = ::operator new(0x1d0, std::nothrow);
+    *(void**)self = server ? RKC_NETWORK_SERVER_constructor(server) : nullptr;
+    *(void**)((char*)self + 4) =
+        client ? RKC_NETWORK_CLIENT_constructor(client) : nullptr;
+    return self;
+}
+void __thiscall RKC_NETWORK_destructor(void* self) {
+    void* server = *(void**)self;
+    void* client = *(void**)((char*)self + 4);
+    if (server) {
+        RKC_NETWORK_SERVER_destructor(server);
+        ::operator delete(server);
+    }
+    if (client) {
+        RKC_NETWORK_CLIENT_destructor(client);
+        ::operator delete(client);
+    }
+    *(void**)self = nullptr;
+    *(void**)((char*)self + 4) = nullptr;
+    if (gNetworkMutex) {
+        CloseHandle(gNetworkMutex);
+        gNetworkMutex = nullptr;
+    }
+}
+void* __thiscall RKC_NETWORK_operatorAssign(void* self, const void* other) {
+    std::memcpy(self, other, 8);
+    return self;
+}
+int __thiscall RKC_NETWORK_SetMutex(void*) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    return 1;
+}
+int __thiscall RKC_NETWORK_ResetMutex(void*) {
+    ReleaseMutex(NetworkMutex());
+    return 1;
+}
 
 // --- RKC_NETWORK_PACKET ---
 
@@ -511,7 +568,11 @@ void __thiscall RKC_NETWORK_USERINFOBLOCK_Release(void* self);
 void __thiscall RKC_NETWORK_USERINFOBLOCK_destructor(void* self) {
     RKC_NETWORK_USERINFOBLOCK_Release(self);
 }
-void* __thiscall RKC_NETWORK_USERINFOBLOCK_operatorAssign(void* self, const void* other) { return self; }
+void* __thiscall RKC_NETWORK_USERINFOBLOCK_operatorAssign(
+    void* self, const void* other) {
+    std::memcpy(self, other, sizeof(void*));
+    return self;
+}
 void* __thiscall RKC_NETWORK_USERINFOBLOCK_Append(void* self) {
     auto* info = new (std::nothrow) NetworkUserInfo;
     if (!info)
@@ -580,7 +641,11 @@ void __thiscall RKC_NETWORK_USERINFOBLOCK_Release(void* self) {
 // --- RKC_NETWORK_TRANSFER ---
 
 void __thiscall RKC_NETWORK_TRANSFER_destructor(void* self) { }
-void* __thiscall RKC_NETWORK_TRANSFER_operatorAssign(void* self, const void* other) { return self; }
+void* __thiscall RKC_NETWORK_TRANSFER_operatorAssign(void* self, const void* other) {
+    *static_cast<unsigned char*>(self) =
+        *static_cast<const unsigned char*>(other);
+    return self;
+}
 int __thiscall RKC_NETWORK_TRANSFER_RecvSub(void*, unsigned int socket, unsigned char* buf, long len) {
     long received = 0;
     while (received != len) {
@@ -622,70 +687,933 @@ int __thiscall RKC_NETWORK_TRANSFER_Send(void* self, unsigned int socket, unsign
         && acknowledgement == -1;
 }
 
-// --- RKC_NETWORK_SERVER_SOCKET stubs ---
+// --- RKC_NETWORK_SERVER_SOCKET ---
 
-void* __thiscall RKC_NETWORK_SERVER_SOCKET_constructor(void* self) { return self; }
-void __thiscall RKC_NETWORK_SERVER_SOCKET_destructor(void* self) { }
-void* __thiscall RKC_NETWORK_SERVER_SOCKET_operatorAssign(void* self, const void* other) { return self; }
-unsigned int __thiscall RKC_NETWORK_SERVER_SOCKET_Get(void* self) { return 0; }
-void __thiscall RKC_NETWORK_SERVER_SOCKET_SocketComparisionThread(void* self) { }
-
-// --- RKC_NETWORK_SERVER_SOCKETCOMP stubs ---
-
-void* __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_constructor(void* self) { return self; }
-void __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_destructor(void* self) { }
-void* __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_operatorAssign(void* self, const void* other) { return self; }
-int __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_InsertComparisionSocket(void* self, unsigned int socket) { return 0; }
-void __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_Release(void* self) { }
-
-// --- RKC_NETWORK_SERVER_CONNECTION stubs ---
-
-void* __thiscall RKC_NETWORK_SERVER_CONNECTION_constructor(void* self) {
-    memset(self, 0, 0x20);  // Clear structure
+void* __thiscall RKC_NETWORK_SERVER_SOCKET_constructor(void* self) {
+    *(void**)self = nullptr;
+    *(HANDLE*)((char*)self + 4) = nullptr;
+    *(void**)((char*)self + 0xc) = nullptr;
     return self;
 }
-void __thiscall RKC_NETWORK_SERVER_CONNECTION_destructor(void* self) { }
-void* __thiscall RKC_NETWORK_SERVER_CONNECTION_operatorAssign(void* self, const void* other) { return self; }
-void __thiscall RKC_NETWORK_SERVER_CONNECTION_ConnectionThread(void* self, long param) { }
-int __thiscall RKC_NETWORK_SERVER_CONNECTION_CreateConnectionThread(void* self, long param) { return 0; }
-void* __thiscall RKC_NETWORK_SERVER_CONNECTION_GetIP(void* self) { return (void*)((char*)self + 0x08); }
-unsigned int __thiscall RKC_NETWORK_SERVER_CONNECTION_GetSocket(void* self, long index) { return 0; }
+void __thiscall RKC_NETWORK_SERVER_SOCKET_destructor(void* self) { }
+void* __thiscall RKC_NETWORK_SERVER_SOCKET_operatorAssign(
+    void* self, const void* other) {
+    std::memcpy(self, other, 0x10);
+    return self;
+}
+unsigned int __thiscall RKC_NETWORK_SERVER_SOCKET_Get(void* self) {
+    return *(unsigned int*)((char*)self + 8);
+}
+
+// --- RKC_NETWORK_SERVER_SOCKETCOMP ---
+
+void* __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_constructor(void* self) {
+    *(void**)((char*)self + 4) = nullptr;
+    return self;
+}
+void* __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_operatorAssign(
+    void* self, const void* other) {
+    std::memcpy(self, other, 8);
+    return self;
+}
+void __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_Release(void* self) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    char* current = *(char**)((char*)self + 4);
+    while (current) {
+        char* next = *(char**)(current + 0xc);
+        HANDLE thread = *(HANDLE*)(current + 4);
+        if (thread) {
+            TerminateThread(thread, 0);
+            CloseHandle(thread);
+        }
+        SOCKET socketValue = *(SOCKET*)(current + 8);
+        if (socketValue != INVALID_SOCKET) {
+            shutdown(socketValue, SD_BOTH);
+            closesocket(socketValue);
+        }
+        RKC_NETWORK_SERVER_SOCKET_destructor(current);
+        ::operator delete(current);
+        current = next;
+    }
+    *(void**)((char*)self + 4) = nullptr;
+    ReleaseMutex(NetworkMutex());
+}
+void __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_destructor(void* self) {
+    RKC_NETWORK_SERVER_SOCKETCOMP_Release(self);
+}
+int __thiscall RKC_NETWORK_SERVER_SOCKETCOMP_InsertComparisionSocket(
+    void* self, unsigned int socketValue) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    char* item = static_cast<char*>(::operator new(0x10, std::nothrow));
+    if (!item) {
+        ReleaseMutex(NetworkMutex());
+        shutdown(socketValue, SD_BOTH);
+        closesocket(socketValue);
+        return 0;
+    }
+    RKC_NETWORK_SERVER_SOCKET_constructor(item);
+    *(void**)item = *(void**)self;
+    *(SOCKET*)(item + 8) = socketValue;
+    *(void**)(item + 0xc) = *(void**)((char*)self + 4);
+    *(void**)((char*)self + 4) = item;
+    DWORD threadId = 0;
+    HANDLE thread = CreateThread(
+        nullptr, 0, SocketComparisonThreadEntry, item, 0, &threadId);
+    *(HANDLE*)(item + 4) = thread;
+    if (!thread) {
+        *(void**)((char*)self + 4) = *(void**)(item + 0xc);
+        RKC_NETWORK_SERVER_SOCKET_destructor(item);
+        ::operator delete(item);
+        shutdown(socketValue, SD_BOTH);
+        closesocket(socketValue);
+        ReleaseMutex(NetworkMutex());
+        return 0;
+    }
+    ReleaseMutex(NetworkMutex());
+    return 1;
+}
+
+static void* FindRecvPacket(void* block, long line, long infoId) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    NetworkPacket* packet = block ? *static_cast<NetworkPacket**>(block) : nullptr;
+    while (packet &&
+           (packet->line != line ||
+            (infoId != -1 && packet->infoId != infoId)))
+        packet = packet->next;
+    ReleaseMutex(NetworkMutex());
+    return packet;
+}
+
+static long QueueSendPacket(
+    void* block, long& sequence, long line, long size, long infoId,
+    void* data, long disc, int replace, int atFront) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    long insertion = atFront
+        ? 0
+        : RKC_NETWORK_PACKETBLOCK_GetCount(block);
+    if (replace && block) {
+        NetworkPacket* previous = nullptr;
+        NetworkPacket* packet = *static_cast<NetworkPacket**>(block);
+        bool removed = false;
+        while (packet) {
+            NetworkPacket* next = packet->next;
+            if (packet->disc == disc && packet->line == line) {
+                if (previous)
+                    previous->next = next;
+                else
+                    *static_cast<NetworkPacket**>(block) = next;
+                if (!removed)
+                    insertion = previous
+                        ? RKC_NETWORK_PACKETBLOCK_GetNo(block, previous) + 1
+                        : 0;
+                removed = true;
+                RKC_NETWORK_PACKET_destructor(packet);
+                delete packet;
+            } else {
+                previous = packet;
+            }
+            packet = next;
+        }
+    }
+    NetworkPacket* packet = static_cast<NetworkPacket*>(
+        RKC_NETWORK_PACKETBLOCK_Insert(block, insertion));
+    const long result = sequence++;
+    if (packet)
+        RKC_NETWORK_PACKET_SetParam(
+            packet, line, result, size, infoId, data, disc);
+    ReleaseMutex(NetworkMutex());
+    return result;
+}
+
+static bool TransferPacketBatch(
+    SOCKET socketValue, void* sendBlock, void* recvBlock, long line,
+    bool receive) {
+    unsigned char transferObject = 0;
+    if (receive) {
+        long batchSize = 0;
+        if (!RKC_NETWORK_TRANSFER_Recv(
+                &transferObject, socketValue,
+                reinterpret_cast<unsigned char*>(&batchSize), sizeof(batchSize)))
+            return false;
+        if (batchSize < 0 || batchSize > 64 * 1024 * 1024)
+            return false;
+        std::vector<unsigned char> batch(
+            static_cast<std::size_t>(batchSize));
+        if (batchSize &&
+            !RKC_NETWORK_TRANSFER_Recv(
+                &transferObject, socketValue, batch.data(), batchSize))
+            return false;
+        std::size_t position = 0;
+        while (position < batch.size()) {
+            if (batch.size() - position < 12)
+                return false;
+            long id = 0;
+            long size = 0;
+            long infoId = 0;
+            std::memcpy(&id, batch.data() + position, 4);
+            std::memcpy(&size, batch.data() + position + 4, 4);
+            std::memcpy(&infoId, batch.data() + position + 8, 4);
+            position += 12;
+            if (size < 0 ||
+                static_cast<std::size_t>(size) > batch.size() - position)
+                return false;
+            WaitForSingleObject(NetworkMutex(), INFINITE);
+            const long index = RKC_NETWORK_PACKETBLOCK_GetCount(recvBlock);
+            void* packet = RKC_NETWORK_PACKETBLOCK_Insert(recvBlock, index);
+            if (packet)
+                RKC_NETWORK_PACKET_SetParam(
+                    packet, line, id, size, infoId,
+                    size ? batch.data() + position : nullptr, -1);
+            ReleaseMutex(NetworkMutex());
+            position += static_cast<std::size_t>(size);
+        }
+        return true;
+    }
+
+    std::vector<unsigned char> batch;
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    NetworkPacket* packet =
+        sendBlock ? *static_cast<NetworkPacket**>(sendBlock) : nullptr;
+    while (packet) {
+        NetworkPacket* next = packet->next;
+        if (packet->line == line) {
+            const std::size_t oldSize = batch.size();
+            batch.resize(oldSize + 12 + static_cast<std::size_t>(
+                packet->size > 0 ? packet->size : 0));
+            std::memcpy(batch.data() + oldSize, &packet->id, 4);
+            std::memcpy(batch.data() + oldSize + 4, &packet->size, 4);
+            std::memcpy(batch.data() + oldSize + 8, &packet->infoId, 4);
+            if (packet->size > 0 && packet->data)
+                std::memcpy(
+                    batch.data() + oldSize + 12, packet->data,
+                    static_cast<std::size_t>(packet->size));
+            RKC_NETWORK_PACKETBLOCK_Delete_packet(sendBlock, packet);
+        }
+        packet = next;
+    }
+    ReleaseMutex(NetworkMutex());
+    if (batch.empty()) {
+        Sleep(1);
+        return true;
+    }
+    long batchSize = static_cast<long>(batch.size());
+    return RKC_NETWORK_TRANSFER_Send(
+               &transferObject, socketValue,
+               reinterpret_cast<unsigned char*>(&batchSize), sizeof(batchSize))
+        && RKC_NETWORK_TRANSFER_Send(
+               &transferObject, socketValue, batch.data(), batchSize);
+}
+
+static void RunPacketConnection(
+    void* owner, char* record, SOCKET socketValue,
+    void* sendBlock, void* recvBlock) {
+    const bool receive = *(long*)(record + 0xc) == 1;
+    const long line = *(long*)(record + 0x10);
+    while (TransferPacketBatch(
+        socketValue, sendBlock, recvBlock, line, receive)) {
+    }
+    *(HANDLE*)(record + 4) = nullptr;
+}
+
+static DWORD WINAPI ServerConnectionThreadEntry(LPVOID context) {
+    char* record = static_cast<char*>(context);
+    char* connection = *(char**)record;
+    const long index = *(long*)(record + 8);
+    RKC_NETWORK_SERVER_CONNECTION_ConnectionThread(connection, index);
+    return 0;
+}
+
+static DWORD WINAPI ClientConnectionThreadEntry(LPVOID context) {
+    char* record = static_cast<char*>(context);
+    char* client = *(char**)record;
+    const long index = *(long*)(record + 8);
+    RKC_NETWORK_CLIENT_ConnectionThread(client, index);
+    return 0;
+}
+
+static DWORD WINAPI SocketComparisonThreadEntry(LPVOID context) {
+    RKC_NETWORK_SERVER_SOCKET_SocketComparisionThread(context);
+    return 0;
+}
+
+// --- RKC_NETWORK_SERVER_CONNECTION ---
+
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_constructor(void* self) {
+    std::memset(self, 0, 0x28);
+    *(long*)self = -1;
+    *(long*)((char*)self + 4) = -1;
+    void* send = ::operator new(4, std::nothrow);
+    void* recv = ::operator new(4, std::nothrow);
+    *(void**)((char*)self + 0x20) =
+        send ? RKC_NETWORK_PACKETBLOCK_constructor(send) : nullptr;
+    *(void**)((char*)self + 0x24) =
+        recv ? RKC_NETWORK_PACKETBLOCK_constructor(recv) : nullptr;
+    return self;
+}
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_destructor(void* self) {
+    RKC_NETWORK_SERVER_CONNECTION_Release(self);
+    for (int offset : {0x20, 0x24}) {
+        void* block = *(void**)((char*)self + offset);
+        if (block) {
+            RKC_NETWORK_PACKETBLOCK_destructor(block);
+            ::operator delete(block);
+            *(void**)((char*)self + offset) = nullptr;
+        }
+    }
+    if (*(void**)((char*)self + 0x18))
+        GlobalFree(*(void**)((char*)self + 0x18));
+    if (*(void**)((char*)self + 0x1c))
+        GlobalFree(*(void**)((char*)self + 0x1c));
+}
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_operatorAssign(void* self, const void* other) {
+    std::memcpy(self, other, 0x28);
+    return self;
+}
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_ConnectionThread(
+    void* self, long param) {
+    char* connection = static_cast<char*>(self);
+    if (param < 0 || param >= *(long*)(connection + 0xc))
+        return;
+    char* record = *(char**)(connection + 0x18) + param * 0x14;
+    SOCKET socketValue = (*(SOCKET**)(connection + 0x1c))[param];
+    RunPacketConnection(
+        self, record, socketValue,
+        *(void**)(connection + 0x20), *(void**)(connection + 0x24));
+    RKC_NETWORK_SERVER_CONNECTION_Release(self);
+}
+int __thiscall RKC_NETWORK_SERVER_CONNECTION_CreateConnectionThread(
+    void* self, long param) {
+    char* connection = static_cast<char*>(self);
+    if (param < 0 || param >= *(long*)(connection + 0xc) ||
+        !*(char**)(connection + 0x18))
+        return 0;
+    char* record = *(char**)(connection + 0x18) + param * 0x14;
+    DWORD threadId = 0;
+    HANDLE thread = CreateThread(
+        nullptr, 0, ServerConnectionThreadEntry, record, 0, &threadId);
+    *(HANDLE*)(record + 4) = thread;
+    if (!thread) {
+        RKC_NETWORK_SERVER_CONNECTION_Release(self);
+        return 0;
+    }
+    return 1;
+}
+int __thiscall RKC_NETWORK_SERVER_CONNECTION_DeleteRecvPacket(void* self, void* packet) {
+    return RKC_NETWORK_PACKETBLOCK_Delete_packet(
+        *(void**)((char*)self + 0x24), packet);
+}
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_GetRecvPacket(
+    void* self, long line, long infoId) {
+    return FindRecvPacket(*(void**)((char*)self + 0x24), line, infoId);
+}
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_GetRecvPacketBlock(void* self) {
+    return *(void**)((char*)self + 0x24);
+}
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_GetSendPacketBlock(void* self) {
+    return *(void**)((char*)self + 0x20);
+}
+void* __thiscall RKC_NETWORK_SERVER_CONNECTION_GetIP(void* self) {
+    return (char*)self + 0x14;
+}
+unsigned int __thiscall RKC_NETWORK_SERVER_CONNECTION_GetSocket(void* self, long index) {
+    return (*(unsigned int**)((char*)self + 0x1c))[index];
+}
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_Release(void* self) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    *(long*)((char*)self + 0x10) = 0;
+    const long count = *(long*)((char*)self + 0xc);
+    char* records = *(char**)((char*)self + 0x18);
+    unsigned int* sockets = *(unsigned int**)((char*)self + 0x1c);
+    for (long index = 0; index < count; ++index) {
+        if (records && *(HANDLE*)(records + index * 0x14 + 4)) {
+            TerminateThread(*(HANDLE*)(records + index * 0x14 + 4), 0);
+            CloseHandle(*(HANDLE*)(records + index * 0x14 + 4));
+            *(HANDLE*)(records + index * 0x14 + 4) = nullptr;
+        }
+        if (sockets && sockets[index] != INVALID_SOCKET) {
+            shutdown(sockets[index], SD_BOTH);
+            closesocket(sockets[index]);
+            sockets[index] = INVALID_SOCKET;
+        }
+    }
+    if (*(void**)((char*)self + 0x20))
+        RKC_NETWORK_PACKETBLOCK_Release(*(void**)((char*)self + 0x20));
+    if (*(void**)((char*)self + 0x24))
+        RKC_NETWORK_PACKETBLOCK_Release(*(void**)((char*)self + 0x24));
+    *(long*)self = -1;
+    *(long*)((char*)self + 4) = -1;
+    ReleaseMutex(NetworkMutex());
+}
 void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetID(void* self, long id) { *(long*)((char*)self) = id; }
-void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetIP(void* self, void* ip) { }
-void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetSocket(void* self, long index, unsigned int socket) { }
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetIP(void* self, void* ip) {
+    if (ip)
+        std::memcpy((char*)self + 0x14, ip, 4);
+}
+long __thiscall RKC_NETWORK_SERVER_CONNECTION_SetSendPacket(
+    void* self, long line, long size, long infoId, void* data, long disc,
+    int replace, int atFront) {
+    char* server = *(char**)((char*)self + 8);
+    long& sequence = *(long*)(server + 0x1c8);
+    return QueueSendPacket(
+        *(void**)((char*)self + 0x20), sequence, line, size, infoId,
+        data, disc, replace, atFront);
+}
+void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetSocket(
+    void* self, long index, unsigned int socket) {
+    (*(unsigned int**)((char*)self + 0x1c))[index] = socket;
+}
 void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetStatus(void* self, long status) { *(long*)((char*)self + 0x10) = status; }
 void __thiscall RKC_NETWORK_SERVER_CONNECTION_SetUserID(void* self, long userId) { *(long*)((char*)self + 0x04) = userId; }
 
-// --- RKC_NETWORK_SERVER stubs ---
+// --- RKC_NETWORK_SERVER ---
 
 void* __thiscall RKC_NETWORK_SERVER_constructor(void* self) {
-    memset(self, 0, 0x20);
+    std::memset(self, 0, 0x1dc);
+    *(long*)((char*)self + 8) = 0x3168;
+    *(SOCKET*)((char*)self + 0x1c0) = INVALID_SOCKET;
+    void* socketComp = ::operator new(8, std::nothrow);
+    *(void**)((char*)self + 0x14) = socketComp
+        ? RKC_NETWORK_SERVER_SOCKETCOMP_constructor(socketComp)
+        : nullptr;
+    if (socketComp)
+        *(void**)socketComp = self;
     return self;
 }
-void __thiscall RKC_NETWORK_SERVER_destructor(void* self) { }
-void* __thiscall RKC_NETWORK_SERVER_operatorAssign(void* self, const void* other) { return self; }
-void __thiscall RKC_NETWORK_SERVER_AcceptThreadFunction(void* self) { }
-long __thiscall RKC_NETWORK_SERVER_GetActiveConnectionCount(void* self) { return 0; }
-void* __thiscall RKC_NETWORK_SERVER_GetEmptyConnection(void* self) { return nullptr; }
-long __thiscall RKC_NETWORK_SERVER_GetSocketCount(void* self) { return 0; }
-void* __thiscall RKC_NETWORK_SERVER_GetUseConnection(void* self, long id, void* ip, long port) { return nullptr; }
-void* __thiscall RKC_NETWORK_SERVER_GetUserInfoBlock(void* self) { return nullptr; }
-int __thiscall RKC_NETWORK_SERVER_Stop(void* self) { return 0; }
+void __thiscall RKC_NETWORK_SERVER_destructor(void* self) {
+    RKC_NETWORK_SERVER_Release(self);
+    void* socketComp = *(void**)((char*)self + 0x14);
+    if (socketComp) {
+        RKC_NETWORK_SERVER_SOCKETCOMP_destructor(socketComp);
+        ::operator delete(socketComp);
+        *(void**)((char*)self + 0x14) = nullptr;
+    }
+}
+void* __thiscall RKC_NETWORK_SERVER_operatorAssign(void* self, const void* other) {
+    std::memcpy(self, other, 0x1dc);
+    return self;
+}
+void __thiscall RKC_NETWORK_SERVER_AcceptThreadFunction(void* self) {
+    sockaddr_in address{};
+    int length = sizeof(address);
+    while (*(long*)self) {
+        SOCKET accepted = accept(
+            *(SOCKET*)((char*)self + 0x1c0),
+            reinterpret_cast<sockaddr*>(&address), &length);
+        if (accepted == INVALID_SOCKET)
+            break;
+        RKC_NETWORK_SERVER_SOCKETCOMP_InsertComparisionSocket(
+            *(void**)((char*)self + 0x14), accepted);
+    }
+}
+long __thiscall RKC_NETWORK_SERVER_GetActiveConnectionCount(void* self) {
+    long count = 0;
+    void** entries = *(void***)((char*)self + 0x10);
+    for (long index = 0; entries && index < *(long*)((char*)self + 0xc); ++index)
+        if (*(long*)((char*)entries[index] + 0x10) != 0)
+            ++count;
+    return count;
+}
+void* __thiscall RKC_NETWORK_SERVER_GetConnection_index(void* self, long index) {
+    return (*(void***)((char*)self + 0x10))[index];
+}
+void* __thiscall RKC_NETWORK_SERVER_GetConnection_search(
+    void* self, long id, void* ip, long userId) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    void* result = nullptr;
+    void** entries = *(void***)((char*)self + 0x10);
+    for (long index = 0; entries && index < *(long*)((char*)self + 0xc); ++index) {
+        char* connection = static_cast<char*>(entries[index]);
+        if (*(long*)(connection + 0x10) != 2)
+            continue;
+        if ((ip && std::memcmp(connection + 0x14, ip, 4) == 0) ||
+            (!ip && ((id >= 0 && *(long*)connection == id) ||
+                     (id < 0 && userId >= 0 &&
+                      *(long*)(connection + 4) == userId)))) {
+            result = connection;
+            break;
+        }
+    }
+    ReleaseMutex(NetworkMutex());
+    return result;
+}
+long __thiscall RKC_NETWORK_SERVER_GetConnectionCount(void* self) {
+    return *(long*)((char*)self + 0xc);
+}
+void* __thiscall RKC_NETWORK_SERVER_GetEmptyConnection(void* self) {
+    void** entries = *(void***)((char*)self + 0x10);
+    for (long index = 0; entries && index < *(long*)((char*)self + 0xc); ++index)
+        if (*(long*)((char*)entries[index] + 0x10) == 0)
+            return entries[index];
+    return nullptr;
+}
+void __thiscall RKC_NETWORK_SERVER_GetIP(void*, void* output) {
+    if (!output)
+        return;
+    std::memset(output, 0, 4);
+    char host[256]{};
+    if (gethostname(host, sizeof(host) - 1) == 0) {
+        hostent* entry = gethostbyname(host);
+        if (entry && entry->h_addr_list && entry->h_addr_list[0])
+            std::memcpy(output, entry->h_addr_list[0], 4);
+    }
+}
+long __thiscall RKC_NETWORK_SERVER_GetSocketCount(void* self) {
+    return *(long*)((char*)self + 0x1c);
+}
+void* __thiscall RKC_NETWORK_SERVER_GetUseConnection(
+    void* self, long id, void* ip, long userId) {
+    void** entries = *(void***)((char*)self + 0x10);
+    for (long index = 0; entries && index < *(long*)((char*)self + 0xc); ++index) {
+        char* connection = static_cast<char*>(entries[index]);
+        if (*(long*)(connection + 0x10) == 0)
+            continue;
+        if ((ip && std::memcmp(connection + 0x14, ip, 4) == 0) ||
+            (!ip && ((id >= 0 && *(long*)connection == id) ||
+                     (id < 0 && userId >= 0 &&
+                      *(long*)(connection + 4) == userId))))
+            return connection;
+    }
+    return nullptr;
+}
+void* __thiscall RKC_NETWORK_SERVER_GetUserInfoBlock(void* self) {
+    return *(void**)((char*)self + 0x1d4);
+}
+int __thiscall RKC_NETWORK_SERVER_Initialize(
+    void* self, long maxConnections, long socketPairs, void* users,
+    long packetSize, long authentication, long userNameSize) {
+    RKC_NETWORK_SERVER_Release(self);
+    WSADATA* data = reinterpret_cast<WSADATA*>((char*)self + 0x20);
+    if (WSAStartup(MAKEWORD(1, 1), data) != 0)
+        return 0;
+    *(long*)((char*)self + 4) = 1;
+    SOCKET listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listener == INVALID_SOCKET) {
+        RKC_NETWORK_SERVER_Release(self);
+        return 0;
+    }
+    sockaddr_in* address =
+        reinterpret_cast<sockaddr_in*>((char*)self + 0x1b0);
+    std::memset(address, 0, sizeof(*address));
+    address->sin_family = AF_INET;
+    address->sin_port = htons(*(u_short*)((char*)self + 8));
+    address->sin_addr.s_addr = htonl(INADDR_ANY);
+    if (bind(listener, reinterpret_cast<sockaddr*>(address), sizeof(*address)) ==
+        SOCKET_ERROR) {
+        closesocket(listener);
+        RKC_NETWORK_SERVER_Release(self);
+        return 0;
+    }
+    *(SOCKET*)((char*)self + 0x1c0) = listener;
+    *(long*)((char*)self + 0xc) = maxConnections;
+    *(long*)((char*)self + 0x1c) = socketPairs * 2;
+    void** entries = static_cast<void**>(
+        GlobalAlloc(GPTR, static_cast<SIZE_T>(maxConnections) * sizeof(void*)));
+    *(void***)((char*)self + 0x10) = entries;
+    for (long index = 0; entries && index < maxConnections; ++index) {
+        char* connection = static_cast<char*>(
+            ::operator new(0x28, std::nothrow));
+        entries[index] = connection
+            ? RKC_NETWORK_SERVER_CONNECTION_constructor(connection)
+            : nullptr;
+        if (!connection)
+            continue;
+        *(void**)(connection + 8) = self;
+        *(long*)(connection + 0xc) = socketPairs * 2;
+        *(unsigned int**)(connection + 0x1c) =
+            static_cast<unsigned int*>(GlobalAlloc(
+                GPTR, static_cast<SIZE_T>(socketPairs * 2) * sizeof(unsigned int)));
+        *(char**)(connection + 0x18) = static_cast<char*>(GlobalAlloc(
+            GPTR, static_cast<SIZE_T>(socketPairs * 2) * 0x14));
+        unsigned int* sockets = *(unsigned int**)(connection + 0x1c);
+        char* records = *(char**)(connection + 0x18);
+        for (long socketIndex = 0;
+             sockets && records && socketIndex < socketPairs * 2;
+             ++socketIndex) {
+            sockets[socketIndex] = INVALID_SOCKET;
+            char* record = records + socketIndex * 0x14;
+            *(void**)record = connection;
+            *(HANDLE*)(record + 4) = nullptr;
+            *(long*)(record + 8) = socketIndex;
+            *(long*)(record + 0xc) = socketIndex & 1;
+            *(long*)(record + 0x10) = socketIndex / 2;
+        }
+    }
+    *(void**)((char*)self + 0x1d4) = users;
+    *(long*)((char*)self + 0x1d8) = authentication;
+    *(long*)((char*)self + 0x1cc) = packetSize;
+    *(long*)((char*)self + 0x1d0) = userNameSize;
+    return entries || maxConnections == 0;
+}
+void __thiscall RKC_NETWORK_SERVER_Release(void* self) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    HANDLE thread = *(HANDLE*)((char*)self + 0x1c4);
+    if (thread) {
+        TerminateThread(thread, 0);
+        CloseHandle(thread);
+        *(HANDLE*)((char*)self + 0x1c4) = nullptr;
+    }
+    SOCKET& listener = *(SOCKET*)((char*)self + 0x1c0);
+    if (listener != INVALID_SOCKET) {
+        shutdown(listener, SD_BOTH);
+        closesocket(listener);
+        listener = INVALID_SOCKET;
+    }
+    void** entries = *(void***)((char*)self + 0x10);
+    for (long index = 0; entries && index < *(long*)((char*)self + 0xc); ++index)
+        if (entries[index]) {
+            RKC_NETWORK_SERVER_CONNECTION_destructor(entries[index]);
+            ::operator delete(entries[index]);
+        }
+    if (entries)
+        GlobalFree(entries);
+    *(void**)((char*)self + 0x10) = nullptr;
+    *(long*)((char*)self + 0xc) = 0;
+    *(long*)self = 0;
+    *(void**)((char*)self + 0x1d4) = nullptr;
+    if (*(long*)((char*)self + 4)) {
+        WSACleanup();
+        *(long*)((char*)self + 4) = 0;
+    }
+    ReleaseMutex(NetworkMutex());
+}
+int __thiscall RKC_NETWORK_SERVER_Start(void* self) {
+    if (*(long*)((char*)self + 4) == 0)
+        return 0;
+    if (listen(*(SOCKET*)((char*)self + 0x1c0), SOMAXCONN) == SOCKET_ERROR) {
+        RKC_NETWORK_SERVER_Release(self);
+        return 0;
+    }
+    *(long*)self = 1;
+    DWORD threadId = 0;
+    HANDLE thread = CreateThread(
+        nullptr, 0,
+        reinterpret_cast<LPTHREAD_START_ROUTINE>(
+            +[](LPVOID context) -> DWORD {
+                RKC_NETWORK_SERVER_AcceptThreadFunction(context);
+                return 0;
+            }),
+        self, 0, &threadId);
+    *(HANDLE*)((char*)self + 0x1c4) = thread;
+    if (!thread) {
+        RKC_NETWORK_SERVER_Release(self);
+        return 0;
+    }
+    return 1;
+}
+int __thiscall RKC_NETWORK_SERVER_Stop(void* self) {
+    RKC_NETWORK_SERVER_Release(self);
+    return 1;
+}
 
-// --- RKC_NETWORK_CLIENT stubs ---
+void __thiscall RKC_NETWORK_SERVER_SOCKET_SocketComparisionThread(void* self) {
+    char* item = static_cast<char*>(self);
+    char* server = *(char**)item;
+    SOCKET socketValue = *(SOCKET*)(item + 8);
+    unsigned char transferObject = 0;
+    long socketIndex = -1;
+    long connectionId = -1;
+    bool success =
+        server && socketValue != INVALID_SOCKET
+        && RKC_NETWORK_TRANSFER_Recv(
+            &transferObject, socketValue,
+            reinterpret_cast<unsigned char*>(&socketIndex), 4)
+        && socketIndex >= 0
+        && socketIndex < *(long*)(server + 0x1c)
+        && RKC_NETWORK_TRANSFER_Recv(
+            &transferObject, socketValue,
+            reinterpret_cast<unsigned char*>(&connectionId), 4);
+
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    char* connection = nullptr;
+    if (success && connectionId >= 0)
+        connection = static_cast<char*>(RKC_NETWORK_SERVER_GetUseConnection(
+            server, connectionId, nullptr, -1));
+    if (success && !connection) {
+        connection = static_cast<char*>(
+            RKC_NETWORK_SERVER_GetEmptyConnection(server));
+        if (connection) {
+            *(long*)(connection + 0x10) = 1;
+            connectionId = *(long*)(server + 0x18);
+            *(long*)(server + 0x18) = connectionId + 1;
+            *(long*)connection = connectionId;
+            sockaddr_in remote{};
+            int remoteSize = sizeof(remote);
+            if (getpeername(
+                    socketValue, reinterpret_cast<sockaddr*>(&remote),
+                    &remoteSize) == 0)
+                std::memcpy(connection + 0x14, &remote.sin_addr, 4);
+        }
+    }
+    if (success && connection &&
+        (*(SOCKET**)(connection + 0x1c))[socketIndex] == INVALID_SOCKET) {
+        if (!RKC_NETWORK_TRANSFER_Send(
+                &transferObject, socketValue,
+                reinterpret_cast<unsigned char*>(&connectionId), 4))
+            success = false;
+        else {
+            (*(SOCKET**)(connection + 0x1c))[socketIndex] = socketValue;
+            *(SOCKET*)(item + 8) = INVALID_SOCKET;
+            long populated = 0;
+            for (; populated < *(long*)(connection + 0xc); ++populated)
+                if ((*(SOCKET**)(connection + 0x1c))[populated] ==
+                    INVALID_SOCKET)
+                    break;
+            if (populated == *(long*)(connection + 0xc)) {
+                for (long index = 0; index < populated; ++index)
+                    if (!RKC_NETWORK_SERVER_CONNECTION_CreateConnectionThread(
+                            connection, index)) {
+                        success = false;
+                        break;
+                    }
+                if (success)
+                    *(long*)(connection + 0x10) = 2;
+            }
+        }
+    } else {
+        success = false;
+    }
+    ReleaseMutex(NetworkMutex());
+
+    if (!success && socketValue != INVALID_SOCKET) {
+        shutdown(socketValue, SD_BOTH);
+        closesocket(socketValue);
+        *(SOCKET*)(item + 8) = INVALID_SOCKET;
+    }
+    *(HANDLE*)(item + 4) = nullptr;
+}
+
+// --- RKC_NETWORK_CLIENT ---
 
 void* __thiscall RKC_NETWORK_CLIENT_constructor(void* self) {
-    memset(self, 0, 0x20);
+    std::memset(self, 0, 0x1d0);
+    *(short*)((char*)self + 0x1a8) = 0x3168;
+    void* send = ::operator new(4, std::nothrow);
+    void* recv = ::operator new(4, std::nothrow);
+    *(void**)((char*)self + 0x1b0) =
+        send ? RKC_NETWORK_PACKETBLOCK_constructor(send) : nullptr;
+    *(void**)((char*)self + 0x1b4) =
+        recv ? RKC_NETWORK_PACKETBLOCK_constructor(recv) : nullptr;
+    *(long*)((char*)self + 0x1bc) = -1;
     return self;
 }
-void __thiscall RKC_NETWORK_CLIENT_destructor(void* self) { }
-void* __thiscall RKC_NETWORK_CLIENT_operatorAssign(void* self, const void* other) { return self; }
-void __thiscall RKC_NETWORK_CLIENT_ConnectionThread(void* self, long param) { }
-void __thiscall RKC_NETWORK_CLIENT_ConnectThread(void* self) { }
-int __thiscall RKC_NETWORK_CLIENT_CreateConnectionThread(void* self, long param) { return 0; }
-long __thiscall RKC_NETWORK_CLIENT_GetConnectionID(void* self) { return 0; }
-void* __thiscall RKC_NETWORK_CLIENT_GetIP(void* self) { return nullptr; }
-void* __thiscall RKC_NETWORK_CLIENT_GetSendPacketBlock(void* self) { return nullptr; }
-void* __thiscall RKC_NETWORK_CLIENT_GetUserInfo(void* self) { return nullptr; }
+void __thiscall RKC_NETWORK_CLIENT_destructor(void* self) {
+    RKC_NETWORK_CLIENT_Release(self);
+    for (int offset : {0x1b0, 0x1b4}) {
+        void* block = *(void**)((char*)self + offset);
+        if (block) {
+            RKC_NETWORK_PACKETBLOCK_destructor(block);
+            ::operator delete(block);
+            *(void**)((char*)self + offset) = nullptr;
+        }
+    }
+}
+void* __thiscall RKC_NETWORK_CLIENT_operatorAssign(void* self, const void* other) {
+    std::memcpy(self, other, 0x1d0);
+    return self;
+}
+void __thiscall RKC_NETWORK_CLIENT_ConnectionThread(void* self, long param) {
+    char* client = static_cast<char*>(self);
+    if (param < 0 || param >= *(long*)(client + 0x19c))
+        return;
+    char* record = *(char**)(client + 0x1a0) + param * 0x14;
+    SOCKET socketValue = (*(SOCKET**)(client + 0x1a4))[param];
+    RunPacketConnection(
+        self, record, socketValue,
+        *(void**)(client + 0x1b0), *(void**)(client + 0x1b4));
+    RKC_NETWORK_CLIENT_Release(self);
+}
+void __thiscall RKC_NETWORK_CLIENT_ConnectThread(void* self) {
+    RKC_NETWORK_CLIENT_Connect(self, 0x7fffffff);
+}
+int __thiscall RKC_NETWORK_CLIENT_CreateConnectionThread(
+    void* self, long param) {
+    char* client = static_cast<char*>(self);
+    if (param < 0 || param >= *(long*)(client + 0x19c) ||
+        !*(char**)(client + 0x1a0))
+        return 0;
+    char* record = *(char**)(client + 0x1a0) + param * 0x14;
+    DWORD threadId = 0;
+    HANDLE thread = CreateThread(
+        nullptr, 0, ClientConnectionThreadEntry, record, 0, &threadId);
+    *(HANDLE*)(record + 4) = thread;
+    return thread != nullptr;
+}
+int __thiscall RKC_NETWORK_CLIENT_Connect(void* self, long timeout) {
+    char* client = static_cast<char*>(self);
+    if (!*(unsigned int**)(client + 0x1a4))
+        return 0;
+    const DWORD started = GetTickCount();
+    sockaddr_in target{};
+    target.sin_family = AF_INET;
+    target.sin_port = htons(*(u_short*)(client + 0x1a8));
+    std::memcpy(&target.sin_addr, client + 0x198, 4);
+    unsigned char transferObject = 0;
+    *(long*)(client + 0x1bc) = -1;
+    for (long index = 0; index < *(long*)(client + 0x19c); ++index) {
+        SOCKET socketValue = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (socketValue == INVALID_SOCKET ||
+            connect(socketValue, reinterpret_cast<sockaddr*>(&target),
+                    sizeof(target)) == SOCKET_ERROR ||
+            !RKC_NETWORK_TRANSFER_Send(
+                &transferObject, socketValue,
+                reinterpret_cast<unsigned char*>(&index), 4) ||
+            !RKC_NETWORK_TRANSFER_Send(
+                &transferObject, socketValue,
+                reinterpret_cast<unsigned char*>(client + 0x1bc), 4)) {
+            if (socketValue != INVALID_SOCKET)
+                closesocket(socketValue);
+            RKC_NETWORK_CLIENT_Release(self);
+            return 0;
+        }
+        long assignedId = -1;
+        if (!RKC_NETWORK_TRANSFER_Recv(
+                &transferObject, socketValue,
+                reinterpret_cast<unsigned char*>(&assignedId), 4)) {
+            closesocket(socketValue);
+            RKC_NETWORK_CLIENT_Release(self);
+            return 0;
+        }
+        if (*(long*)(client + 0x1bc) == -1)
+            *(long*)(client + 0x1bc) = assignedId;
+        else if (*(long*)(client + 0x1bc) != assignedId) {
+            closesocket(socketValue);
+            RKC_NETWORK_CLIENT_Release(self);
+            return 0;
+        }
+        (*(unsigned int**)(client + 0x1a4))[index] = socketValue;
+        if (timeout >= 0 && GetTickCount() - started >= static_cast<DWORD>(timeout)) {
+            RKC_NETWORK_CLIENT_Release(self);
+            return 0;
+        }
+    }
+    for (long index = 0; index < *(long*)(client + 0x19c); ++index)
+        if (!RKC_NETWORK_CLIENT_CreateConnectionThread(self, index)) {
+            RKC_NETWORK_CLIENT_Release(self);
+            return 0;
+        }
+    if (*(long*)(client + 0x19c) > 0) {
+        sockaddr_in local{};
+        int size = sizeof(local);
+        if (getsockname(
+                (*(unsigned int**)(client + 0x1a4))[0],
+                reinterpret_cast<sockaddr*>(&local), &size) == 0)
+            std::memcpy(client + 0x198, &local.sin_addr, 4);
+    }
+    *(long*)(client + 4) = 1;
+    *(long*)(client + 0x1ac) = 1;
+    return 1;
+}
+int __thiscall RKC_NETWORK_CLIENT_DeleteRecvPacket(void* self, void* packet) {
+    return RKC_NETWORK_PACKETBLOCK_Delete_packet(
+        *(void**)((char*)self + 0x1b4), packet);
+}
+long __thiscall RKC_NETWORK_CLIENT_GetConnectionID(void* self) {
+    return *(long*)((char*)self + 0x1bc);
+}
+void* __thiscall RKC_NETWORK_CLIENT_GetIP(void* self) {
+    return (char*)self + 0x198;
+}
+void __thiscall RKC_NETWORK_CLIENT_GetMyIP(void*, void* output) {
+    RKC_NETWORK_SERVER_GetIP(nullptr, output);
+}
+void* __thiscall RKC_NETWORK_CLIENT_GetRecvPacket(
+    void* self, long line, long infoId) {
+    return FindRecvPacket(*(void**)((char*)self + 0x1b4), line, infoId);
+}
+void* __thiscall RKC_NETWORK_CLIENT_GetRecvPacketBlock(void* self) {
+    return *(void**)((char*)self + 0x1b4);
+}
+void* __thiscall RKC_NETWORK_CLIENT_GetSendPacketBlock(void* self) {
+    return *(void**)((char*)self + 0x1b0);
+}
+void* __thiscall RKC_NETWORK_CLIENT_GetUserInfo(void* self) {
+    return *(void**)((char*)self + 0x1c8);
+}
+int __thiscall RKC_NETWORK_CLIENT_Initialize(
+    void* self, void* ip, long socketPairs, void* user,
+    long packetSize, long extra, long userNameSize) {
+    RKC_NETWORK_CLIENT_Release(self);
+    WSADATA* data = reinterpret_cast<WSADATA*>((char*)self + 8);
+    if (WSAStartup(MAKEWORD(1, 1), data) != 0)
+        return 0;
+    char* client = static_cast<char*>(self);
+    *(long*)client = 1;
+    *(long*)(client + 0x19c) = socketPairs * 2;
+    *(unsigned int**)(client + 0x1a4) =
+        static_cast<unsigned int*>(GlobalAlloc(
+            GPTR, static_cast<SIZE_T>(socketPairs * 2) * sizeof(unsigned int)));
+    *(char**)(client + 0x1a0) = static_cast<char*>(GlobalAlloc(
+        GPTR, static_cast<SIZE_T>(socketPairs * 2) * 0x14));
+    unsigned int* sockets = *(unsigned int**)(client + 0x1a4);
+    char* records = *(char**)(client + 0x1a0);
+    for (long index = 0;
+         sockets && records && index < socketPairs * 2; ++index) {
+        sockets[index] = INVALID_SOCKET;
+        char* record = records + index * 0x14;
+        *(void**)record = client;
+        *(HANDLE*)(record + 4) = nullptr;
+        *(long*)(record + 8) = index;
+        *(long*)(record + 0xc) = (index & 1) ? 0 : 1;
+        *(long*)(record + 0x10) = index / 2;
+    }
+    if (ip) {
+        std::memcpy(client + 0x198, ip, 4);
+    }
+    if (user) {
+        *(void**)(client + 0x1c8) = GlobalAlloc(GPTR, 0x14);
+        if (*(void**)(client + 0x1c8))
+            std::memcpy(*(void**)(client + 0x1c8), user, 0x14);
+    }
+    *(long*)(client + 0x1c0) = userNameSize;
+    *(long*)(client + 0x1c4) = packetSize;
+    *(long*)(client + 0x1cc) = extra;
+    return (*(unsigned int**)(client + 0x1a4) &&
+            *(char**)(client + 0x1a0)) || socketPairs == 0;
+}
+void __thiscall RKC_NETWORK_CLIENT_Release(void* self) {
+    WaitForSingleObject(NetworkMutex(), INFINITE);
+    char* client = static_cast<char*>(self);
+    const long count = *(long*)(client + 0x19c);
+    char* records = *(char**)(client + 0x1a0);
+    unsigned int* sockets = *(unsigned int**)(client + 0x1a4);
+    for (long index = 0; index < count; ++index) {
+        if (records && *(HANDLE*)(records + index * 0x14 + 4)) {
+            TerminateThread(*(HANDLE*)(records + index * 0x14 + 4), 0);
+            CloseHandle(*(HANDLE*)(records + index * 0x14 + 4));
+        }
+        if (sockets && sockets[index] != INVALID_SOCKET) {
+            shutdown(sockets[index], SD_BOTH);
+            closesocket(sockets[index]);
+        }
+    }
+    if (records) GlobalFree(records);
+    if (sockets) GlobalFree(sockets);
+    *(void**)(client + 0x1a0) = nullptr;
+    *(void**)(client + 0x1a4) = nullptr;
+    *(long*)(client + 0x19c) = 0;
+    if (*(void**)(client + 0x1b0))
+        RKC_NETWORK_PACKETBLOCK_Release(*(void**)(client + 0x1b0));
+    if (*(void**)(client + 0x1b4))
+        RKC_NETWORK_PACKETBLOCK_Release(*(void**)(client + 0x1b4));
+    if (*(void**)(client + 0x1c8)) {
+        GlobalFree(*(void**)(client + 0x1c8));
+        *(void**)(client + 0x1c8) = nullptr;
+    }
+    *(long*)(client + 0x1c4) = 0;
+    *(long*)(client + 4) = 0;
+    if (*(long*)client) {
+        WSACleanup();
+        *(long*)client = 0;
+    }
+    ReleaseMutex(NetworkMutex());
+}
+long __thiscall RKC_NETWORK_CLIENT_SetSendPacket(
+    void* self, long line, long size, long infoId, void* data, long disc,
+    int replace, int atFront) {
+    long& sequence = *(long*)((char*)self + 0x1b8);
+    return QueueSendPacket(
+        *(void**)((char*)self + 0x1b0), sequence, line, size, infoId,
+        data, disc, replace, atFront);
+}
 
 } // extern "C"

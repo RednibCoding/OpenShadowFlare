@@ -1,3 +1,4 @@
+#include <winsock2.h>
 #include <windows.h>
 
 #include <cstdint>
@@ -395,7 +396,7 @@ static int ProbeTable(HMODULE module, const char* tablePath)
     return 0;
 }
 
-static int ProbeUpdIb(HMODULE module)
+static int ProbeUpdIb(HMODULE module, const char* updPath)
 {
     using Constructor = void* (__thiscall*)(void*);
     using Destructor = void (__thiscall*)(void*);
@@ -407,6 +408,18 @@ static int ProbeUpdIb(HMODULE module)
         long, long, long, long, long, long, long,
         short, short, short, RECT*, void*);
     using PacketConstructor = void* (__thiscall*)(void*);
+    using UpdConstructor = void* (__thiscall*)(void*);
+    using UpdDestructor = void (__thiscall*)(void*);
+    using UpdRead = int (__thiscall*)(void*, char*, long);
+    using ReadManagedUpd = int (__thiscall*)(
+        void*, long, char*, long, long, long, int);
+    using GetManagedUpd = void* (__thiscall*)(void*, long);
+    using SetSpritePacket = void* (__thiscall*)(
+        void*, void*, long, long, long, long, long, long, long, long,
+        long, long, long, short, short, short, RECT*, void*);
+    using RenderSpritePacket = int (__thiscall*)(void*, void*, RECT*);
+    using DibCreate = int (__thiscall*)(void*, long, long, long, int);
+    using DibFill = int (__thiscall*)(void*, unsigned char);
 
     const auto construct = LoadFunction<Constructor>(
         module, "??0RKC_UPDIB@@QAE@XZ");
@@ -433,6 +446,22 @@ static int ProbeUpdIb(HMODULE module)
         "?SetPacket@RKC_UPDIB@@QAEHJJJJJJJJJJJJJFFFPAUtagRECT@@PAVRKC_DIB@@@Z");
     const auto constructPacket = LoadFunction<PacketConstructor>(
         module, "??0RKC_UPDIB_VSPACKET@@QAE@XZ");
+    const auto constructUpd = LoadFunction<UpdConstructor>(
+        module, "??0RKC_UPDIB_UPD@@QAE@XZ");
+    const auto destructUpd = LoadFunction<UpdDestructor>(
+        module, "??1RKC_UPDIB_UPD@@QAE@XZ");
+    const auto readUpd = LoadFunction<UpdRead>(
+        module, "?Read@RKC_UPDIB_UPD@@QAEHPADJ@Z");
+    const auto readManagedUpd = LoadFunction<ReadManagedUpd>(
+        module, "?ReadUpd@RKC_UPDIB@@QAEHJPADJJJH@Z");
+    const auto getManagedUpd = LoadFunction<GetManagedUpd>(
+        module, "?GetUpd@RKC_UPDIB@@QAEPAVRKC_UPDIB_UPD@@J@Z");
+    const auto setSpritePacket = LoadFunction<SetSpritePacket>(
+        module,
+        "?SetPacket@RKC_UPDIB_VSPACKET@@QAEPAV1@PAVRKC_UPDIB@@JJJJJJJJJJJFFFPAUtagRECT@@PAVRKC_DIB@@@Z");
+    const auto renderSpritePacket = LoadFunction<RenderSpritePacket>(
+        module,
+        "?Render@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z");
 
     std::uint8_t packetConstructorBytes[0x54];
     std::memset(packetConstructorBytes, 0xa5, sizeof(packetConstructorBytes));
@@ -469,10 +498,143 @@ static int ProbeUpdIb(HMODULE module)
     const std::uint32_t packetHash =
         Fnv1a(canonicalPacket, sizeof(canonicalPacket));
 
+    std::uint8_t upd[0x30]{};
+    constructUpd(upd);
+    char updFilename[MAX_PATH * 4]{};
+    std::strncpy(updFilename, updPath, sizeof(updFilename) - 1);
+    const int updReadResult = readUpd(upd, updFilename, 0);
+    const long updType = *reinterpret_cast<long*>(upd + 0x00);
+    const long partCount = *reinterpret_cast<long*>(upd + 0x0c);
+    const long patternCount = *reinterpret_cast<long*>(upd + 0x14);
+    const long paletteCount = *reinterpret_cast<long*>(upd + 0x1c);
+    const long version = *reinterpret_cast<long*>(upd + 0x24);
+    std::uint32_t updHash = 2166136261u;
+    const long headerValues[5] = {
+        updType, partCount, patternCount, paletteCount, version
+    };
+    updHash = Fnv1a(headerValues, sizeof(headerValues), updHash);
+    auto* parts = *reinterpret_cast<std::uint8_t**>(upd + 0x10);
+    for (long partIndex = 0; partIndex < partCount; ++partIndex) {
+        auto* part = parts + partIndex * 0x10;
+        const long bits = *reinterpret_cast<long*>(part + 0x00);
+        const long width = *reinterpret_cast<long*>(part + 0x04);
+        const long height = *reinterpret_cast<long*>(part + 0x08);
+        const long values[3] = {bits, width, height};
+        updHash = Fnv1a(values, sizeof(values), updHash);
+        size_t stride = 0;
+        if (updType == 4)
+            stride = (static_cast<size_t>((width + 7) / 8) + 3) & ~3u;
+        else if (bits == 4)
+            stride = (static_cast<size_t>((width + 1) / 2) + 3) & ~3u;
+        else
+            stride = (static_cast<size_t>(width) + 3) & ~3u;
+        auto* bitmap = *reinterpret_cast<std::uint8_t**>(part + 0x0c);
+        if (bitmap && stride && height > 0)
+            updHash = Fnv1a(bitmap, stride * height, updHash);
+    }
+    auto* patterns = *reinterpret_cast<std::uint8_t**>(upd + 0x18);
+    long totalLists = 0;
+    for (long patternIndex = 0; patternIndex < patternCount; ++patternIndex) {
+        auto* pattern = patterns + patternIndex * 0x28;
+        const long listCount = *reinterpret_cast<long*>(pattern + 0x00);
+        totalLists += listCount;
+        updHash = Fnv1a(&listCount, sizeof(listCount), updHash);
+        updHash = Fnv1a(pattern + 0x0c, 0x10, updHash);
+        updHash = Fnv1a(pattern + 0x1c, 4, updHash);
+        auto* judgement = *reinterpret_cast<std::uint8_t**>(pattern + 0x08);
+        const unsigned char hasJudgement = judgement != nullptr;
+        updHash = Fnv1a(&hasJudgement, sizeof(hasJudgement), updHash);
+        if (judgement)
+            updHash = Fnv1a(judgement, 0xa8, updHash);
+        const char* name = *reinterpret_cast<char**>(pattern + 0x20);
+        if (name)
+            updHash = Fnv1a(name, std::strlen(name) + 1, updHash);
+        auto* lists = *reinterpret_cast<std::uint8_t**>(pattern + 0x04);
+        for (long listIndex = 0; listIndex < listCount; ++listIndex) {
+            auto* item = lists + listIndex * 0x1c;
+            updHash = Fnv1a(item, 4, updHash);
+            updHash = Fnv1a(item + 4, 0x14, updHash);
+            auto* linkedPart = *reinterpret_cast<std::uint8_t**>(item + 0x18);
+            const long linkedIndex =
+                linkedPart && parts
+                ? static_cast<long>((linkedPart - parts) / 0x10)
+                : -1;
+            updHash = Fnv1a(&linkedIndex, sizeof(linkedIndex), updHash);
+        }
+    }
+    auto* palettes = *reinterpret_cast<std::uint8_t**>(upd + 0x20);
+    for (long paletteIndex = 0; paletteIndex < paletteCount; ++paletteIndex) {
+        auto* palette =
+            *reinterpret_cast<std::uint8_t**>(
+                palettes + paletteIndex * 0x0c + 4);
+        if (palette)
+            updHash = Fnv1a(palette, 0x400, updHash);
+    }
+
+    const int managedRead =
+        readManagedUpd(object, 0, updFilename, 0, 0, 0, 1);
+    auto* managedUpd =
+        static_cast<std::uint8_t*>(getManagedUpd(object, 0));
+    auto* managedPatterns = managedUpd
+        ? *reinterpret_cast<std::uint8_t**>(managedUpd + 0x18)
+        : nullptr;
+    long renderWidth = 0;
+    long renderHeight = 0;
+    long renderX = 0;
+    long renderY = 0;
+    if (managedPatterns) {
+        renderX = -*reinterpret_cast<long*>(managedPatterns + 0x0c);
+        renderY = -*reinterpret_cast<long*>(managedPatterns + 0x10);
+        renderWidth = *reinterpret_cast<long*>(managedPatterns + 0x14);
+        renderHeight = *reinterpret_cast<long*>(managedPatterns + 0x18);
+    }
+    if (renderWidth < 1)
+        renderWidth = 1;
+    if (renderHeight < 1)
+        renderHeight = 1;
+
+    HMODULE dibModule = LoadLibraryA("RKC_DIB.dll");
+    const auto dibConstruct = LoadFunction<Constructor>(
+        dibModule, "??0RKC_DIB@@QAE@XZ");
+    const auto dibDestruct = LoadFunction<Destructor>(
+        dibModule, "??1RKC_DIB@@QAE@XZ");
+    const auto dibCreate = LoadFunction<DibCreate>(
+        dibModule, "?Create@RKC_DIB@@QAEHJJJH@Z");
+    const auto dibFill = LoadFunction<DibFill>(
+        dibModule, "?FillByte@RKC_DIB@@QAEHE@Z");
+    std::uint8_t renderDib[0x0c]{};
+    dibConstruct(renderDib);
+    const int renderCreated =
+        dibCreate(renderDib, renderWidth, renderHeight, 24, 1);
+    dibFill(renderDib, 0x35);
+    std::uint8_t spritePacket[0x54]{};
+    constructPacket(spritePacket);
+    setSpritePacket(
+        spritePacket, object, 0, 0, -1, 1, renderX, renderY,
+        1000, 1000, 1000, 1000, 0, 1000, 1000, 1000, nullptr, nullptr);
+    const int renderResult =
+        renderSpritePacket(spritePacket, renderDib, nullptr);
+    auto* renderInfo =
+        *reinterpret_cast<BITMAPINFOHEADER**>(renderDib);
+    auto* renderBitmap =
+        *reinterpret_cast<std::uint8_t**>(renderDib + 8);
+    const long renderStride =
+        renderInfo
+        ? ((renderInfo->biWidth * renderInfo->biBitCount + 31) / 32) * 4
+        : 0;
+    const std::uint32_t renderHash =
+        renderBitmap && renderInfo
+        ? Fnv1a(renderBitmap, renderStride * renderInfo->biHeight)
+        : 0;
+    dibDestruct(renderDib);
+    FreeLibrary(dibModule);
+
     std::printf(
         "updib packet_ctor_return=%d packet_ctor_hash=%08lx initialize=%d "
         "upds=%ld blocks=%ld vs=%ld packet_before=%ld set=%d "
-        "packet_after=%ld packet_hash=%08lx packet_bytes=",
+        "packet_after=%ld packet_hash=%08lx upd_read=%d upd_counts=%ld,%ld,%ld "
+        "upd_version=%ld upd_lists=%ld upd_hash=%08lx "
+        "render=%d,%d,%ldx%ld,%08lx packet_bytes=",
         packetConstructorResult == packetConstructorBytes,
         static_cast<unsigned long>(packetConstructorHash),
         initializeResult,
@@ -482,10 +644,15 @@ static int ProbeUpdIb(HMODULE module)
         packetCountBefore,
         setResult,
         packetCountAfter,
-        static_cast<unsigned long>(packetHash));
+        static_cast<unsigned long>(packetHash),
+        updReadResult, partCount, patternCount, paletteCount, version,
+        totalLists, static_cast<unsigned long>(updHash),
+        managedRead, renderCreated, renderWidth, renderHeight,
+        static_cast<unsigned long>(renderResult ? renderHash : 0));
     for (std::size_t index = 0; index < sizeof(canonicalPacket); ++index)
         std::printf("%02x", canonicalPacket[index]);
     std::printf("\n");
+    destructUpd(upd);
     destruct(object);
     return 0;
 }
@@ -1423,6 +1590,15 @@ static int ProbeNetwork(HMODULE module)
     using BlockGetCountLine = long (__thiscall*)(void*, long);
     using BlockRelease = void (__thiscall*)(void*);
     using UserFindName = void* (__thiscall*)(void*, char*);
+    using SendPacket = long (__thiscall*)(
+        void*, long, long, long, void*, long, int, int);
+    using FindRecvPacket = void* (__thiscall*)(void*, long, long);
+    using ServerInitialize = int (__thiscall*)(
+        void*, long, long, void*, long, long, long);
+    using ClientInitialize = int (__thiscall*)(
+        void*, void*, long, void*, long, long, long);
+    using StartOrConnect = int (__thiscall*)(void*, long);
+    using StartServer = int (__thiscall*)(void*);
 
     const auto packetConstruct = LoadFunction<Constructor>(
         module, "??0RKC_NETWORK_PACKET@@QAE@XZ");
@@ -1492,6 +1668,60 @@ static int ProbeNetwork(HMODULE module)
         module, "?GetUserNameA@RKC_NETWORK_USERINFO@@QAEPADXZ");
     const auto userGetPassword = LoadFunction<GetPointer>(
         module, "?GetPassword@RKC_NETWORK_USERINFO@@QAEPADXZ");
+    const auto managerConstruct = LoadFunction<Constructor>(
+        module, "??0RKC_NETWORK@@QAE@XZ");
+    const auto managerDestruct = LoadFunction<Destructor>(
+        module, "??1RKC_NETWORK@@QAE@XZ");
+    const auto getClient = LoadFunction<GetPointer>(
+        module, "?GetClient@RKC_NETWORK@@QAEPAVRKC_NETWORK_CLIENT@@XZ");
+    const auto getServer = LoadFunction<GetPointer>(
+        module, "?GetServer@RKC_NETWORK@@QAEPAVRKC_NETWORK_SERVER@@XZ");
+    const auto clientGetActive = LoadFunction<GetLong>(
+        module, "?GetActiveFlag@RKC_NETWORK_CLIENT@@QAEHXZ");
+    const auto clientGetSendBlock = LoadFunction<GetPointer>(
+        module, "?GetSendPacketBlock@RKC_NETWORK_CLIENT@@QAEPAVRKC_NETWORK_PACKETBLOCK@@XZ");
+    const auto clientGetRecvBlock = LoadFunction<GetPointer>(
+        module, "?GetRecvPacketBlock@RKC_NETWORK_CLIENT@@QAEPAVRKC_NETWORK_PACKETBLOCK@@XZ");
+    const auto clientSetSend = LoadFunction<SendPacket>(
+        module, "?SetSendPacket@RKC_NETWORK_CLIENT@@QAEJJJJPAXJHH@Z");
+    const auto clientGetRecv = LoadFunction<FindRecvPacket>(
+        module, "?GetRecvPacket@RKC_NETWORK_CLIENT@@QAEPAVRKC_NETWORK_PACKET@@JJ@Z");
+    const auto clientDeleteRecv = LoadFunction<BlockDeletePointer>(
+        module, "?DeleteRecvPacket@RKC_NETWORK_CLIENT@@QAEHPAVRKC_NETWORK_PACKET@@@Z");
+    const auto serverInitialize = LoadFunction<ServerInitialize>(
+        module, "?Initialize@RKC_NETWORK_SERVER@@QAEHJJPAVRKC_NETWORK_USERINFOBLOCK@@JJJ@Z");
+    const auto serverRelease = LoadFunction<Destructor>(
+        module, "?Release@RKC_NETWORK_SERVER@@QAEXXZ");
+    const auto serverStart = LoadFunction<StartServer>(
+        module, "?Start@RKC_NETWORK_SERVER@@QAEHXZ");
+    const auto serverGetCount = LoadFunction<GetLong>(
+        module, "?GetConnectionCount@RKC_NETWORK_SERVER@@QAEJXZ");
+    const auto serverGetSocketCount = LoadFunction<GetLong>(
+        module, "?GetSocketCount@RKC_NETWORK_SERVER@@QAEJXZ");
+    const auto serverGetConnection = LoadFunction<BlockGet>(
+        module, "?GetConnection@RKC_NETWORK_SERVER@@QAEPAVRKC_NETWORK_SERVER_CONNECTION@@J@Z");
+    const auto connectionGetId = LoadFunction<GetLong>(
+        module, "?GetID@RKC_NETWORK_SERVER_CONNECTION@@QAEJXZ");
+    const auto connectionGetUserId = LoadFunction<GetLong>(
+        module, "?GetUserID@RKC_NETWORK_SERVER_CONNECTION@@QAEJXZ");
+    const auto connectionGetStatus = LoadFunction<GetLong>(
+        module, "?GetStatus@RKC_NETWORK_SERVER_CONNECTION@@QAEJXZ");
+    const auto connectionGetSendBlock = LoadFunction<GetPointer>(
+        module, "?GetSendPacketBlock@RKC_NETWORK_SERVER_CONNECTION@@QAEPAVRKC_NETWORK_PACKETBLOCK@@XZ");
+    const auto connectionGetRecvBlock = LoadFunction<GetPointer>(
+        module, "?GetRecvPacketBlock@RKC_NETWORK_SERVER_CONNECTION@@QAEPAVRKC_NETWORK_PACKETBLOCK@@XZ");
+    const auto connectionSetSend = LoadFunction<SendPacket>(
+        module, "?SetSendPacket@RKC_NETWORK_SERVER_CONNECTION@@QAEJJJJPAXJHH@Z");
+    const auto connectionGetRecv = LoadFunction<FindRecvPacket>(
+        module, "?GetRecvPacket@RKC_NETWORK_SERVER_CONNECTION@@QAEPAVRKC_NETWORK_PACKET@@JJ@Z");
+    const auto connectionDeleteRecv = LoadFunction<BlockDeletePointer>(
+        module, "?DeleteRecvPacket@RKC_NETWORK_SERVER_CONNECTION@@QAEHPAVRKC_NETWORK_PACKET@@@Z");
+    const auto clientInitialize = LoadFunction<ClientInitialize>(
+        module, "?Initialize@RKC_NETWORK_CLIENT@@QAEHPAURKC_NETWORK_IP@@JPAVRKC_NETWORK_USERINFO@@JJJ@Z");
+    const auto clientConnect = LoadFunction<StartOrConnect>(
+        module, "?Connect@RKC_NETWORK_CLIENT@@QAEHJ@Z");
+    const auto clientRelease = LoadFunction<Destructor>(
+        module, "?Release@RKC_NETWORK_CLIENT@@QAEXXZ");
 
     std::uint8_t packet[0x1c];
     std::memset(packet, 0xa5, sizeof(packet));
@@ -1558,22 +1788,162 @@ static int ProbeNetwork(HMODULE module)
     userBlockDestruct(&userBlock);
     const int userBlockReleased = userBlock == nullptr;
 
+    std::uint8_t manager[8];
+    std::memset(manager, 0xa5, sizeof(manager));
+    const int managerReturn = managerConstruct(manager) == manager;
+    void* client = getClient(manager);
+    void* server = getServer(manager);
+    void* clientSendBlock = clientGetSendBlock(client);
+    void* clientRecvBlock = clientGetRecvBlock(client);
+    const int managerObjects =
+        client && server && clientGetActive(client) == 0
+        && clientSendBlock && clientRecvBlock;
+
+    char firstPayload[] = {2, 4, 6};
+    char replacementPayload[] = {8, 10, 12, 14};
+    const long firstSendId = clientSetSend(
+        client, 7, sizeof(firstPayload), 31, firstPayload, 2, 0, 0);
+    const long replacementSendId = clientSetSend(
+        client, 7, sizeof(replacementPayload), 32,
+        replacementPayload, 2, 1, 0);
+    void* queued = blockGet(clientSendBlock, 0);
+    const int clientQueue =
+        firstSendId == 0 && replacementSendId == 1
+        && blockGetCount(clientSendBlock) == 1
+        && queued && packetGetLine(queued) == 7
+        && packetGetId(queued) == 1
+        && packetGetInfoId(queued) == 32
+        && packetGetSize(queued) == sizeof(replacementPayload)
+        && std::memcmp(
+            packetGetData(queued), replacementPayload,
+            sizeof(replacementPayload)) == 0;
+
+    void* received = blockInsert(clientRecvBlock, 0);
+    packetSetParam(
+        received, 9, 77, sizeof(firstPayload), 41, firstPayload, -1);
+    const int clientReceive =
+        clientGetRecv(client, 9, 41) == received
+        && clientGetRecv(client, 9, -1) == received
+        && clientDeleteRecv(client, received) == 1
+        && blockGetCount(clientRecvBlock) == 0;
+
+    const int serverInitialized =
+        serverInitialize(server, 2, 1, nullptr, 64, 0, 16);
+    int serverShape = 0;
+    int connectionQueue = 0;
+    if (serverInitialized) {
+        void* connection = serverGetConnection(server, 0);
+        serverShape =
+            serverGetCount(server) == 2
+            && serverGetSocketCount(server) == 2
+            && connection
+            && connectionGetId(connection) == -1
+            && connectionGetUserId(connection) == -1
+            && connectionGetStatus(connection) == 0
+            && connectionGetSendBlock(connection)
+            && connectionGetRecvBlock(connection);
+        if (connection) {
+            const long connectionSendId = connectionSetSend(
+                connection, 5, sizeof(firstPayload), 51,
+                firstPayload, 0, 0, 0);
+            connectionQueue =
+                connectionSendId == 0
+                && blockGetCount(connectionGetSendBlock(connection)) == 1;
+        }
+    }
+    serverRelease(server);
+
+    int transport = 0;
+    int liveStatus = -1;
+    int liveRequest = 0;
+    int liveResponse = 0;
+    std::uint8_t loopbackIp[0x14]{};
+    const unsigned long loopback = inet_addr("127.0.0.1");
+    std::memcpy(loopbackIp, &loopback, 4);
+    const int liveServer =
+        serverInitialize(server, 1, 1, nullptr, 64, 0, 16)
+        && serverStart(server);
+    const int liveClient =
+        liveServer
+        && clientInitialize(client, loopbackIp, 1, nullptr, 64, 0, 16)
+        && clientConnect(client, 5000);
+    void* liveConnection =
+        liveServer ? serverGetConnection(server, 0) : nullptr;
+    if (liveClient && liveConnection) {
+        const DWORD readyStart = GetTickCount();
+        while (connectionGetStatus(liveConnection) != 2
+               && GetTickCount() - readyStart < 5000)
+            Sleep(5);
+        char requestPayload[] = {21, 22, 23, 24};
+        char responsePayload[] = {31, 32, 33};
+        clientSetSend(
+            client, 0, sizeof(requestPayload), 71,
+            requestPayload, 0, 0, 0);
+        void* request = nullptr;
+        const DWORD requestStart = GetTickCount();
+        while (!request && GetTickCount() - requestStart < 5000) {
+            request = connectionGetRecv(liveConnection, 0, 71);
+            if (!request)
+                Sleep(5);
+        }
+        const int requestOk =
+            request && packetGetSize(request) == sizeof(requestPayload)
+            && std::memcmp(
+                packetGetData(request), requestPayload,
+                sizeof(requestPayload)) == 0;
+        liveRequest = requestOk;
+        if (request)
+            connectionDeleteRecv(liveConnection, request);
+        connectionSetSend(
+            liveConnection, 0, sizeof(responsePayload), 72,
+            responsePayload, 0, 0, 0);
+        void* response = nullptr;
+        const DWORD responseStart = GetTickCount();
+        while (!response && GetTickCount() - responseStart < 5000) {
+            response = clientGetRecv(client, 0, 72);
+            if (!response)
+                Sleep(5);
+        }
+        const int responseOk =
+            response && packetGetSize(response) == sizeof(responsePayload)
+            && std::memcmp(
+                packetGetData(response), responsePayload,
+                sizeof(responsePayload)) == 0;
+        liveResponse = responseOk;
+        if (response)
+            clientDeleteRecv(client, response);
+        transport =
+            connectionGetStatus(liveConnection) == 2
+            && requestOk && responseOk;
+        liveStatus = connectionGetStatus(liveConnection);
+    }
+    clientRelease(client);
+    serverRelease(server);
+    managerDestruct(manager);
+
     std::printf(
         "network packet_ctor_return=%d packet_ctor_hash=%08lx "
         "packet_fields=%d packet_copy=%d packets=%ld line4=%ld middle_no=%ld "
         "order=%d delete=%d,%d packets_after=%ld released=%d "
         "users=%ld user_values=%d user_lookup=%d user_delete=%d "
-        "users_after=%ld user_released=%d\n",
+        "users_after=%ld user_released=%d manager=%d,%d "
+        "client_queue=%d client_recv=%d server=%d,%d connection_queue=%d "
+        "transport=%d:%d,%d,%d,%d,%d\n",
         packetConstructorResult == packet,
         static_cast<unsigned long>(packetConstructorHash),
         packetFields, packetCopy, packetCount, lineCount, middleNo, order,
         deletePointer, deleteIndex, packetCountAfter, packetBlockReleased,
         userCount, userValues, userLookup, userDeleteResult, userCountAfter,
-        userBlockReleased);
+        userBlockReleased, managerReturn, managerObjects,
+        clientQueue, clientReceive, serverInitialized, serverShape,
+        connectionQueue, transport, liveServer, liveClient,
+        liveStatus, liveRequest, liveResponse);
     return 0;
 }
 
-static int ProbeRpgScreen(HMODULE module)
+static int ProbeRpgScreen(
+    HMODULE module, const char* cafPath, const char* objectPath,
+    const char* groundPath)
 {
     using Constructor = void* (__thiscall*)(void*);
     using GetLong = long (__thiscall*)(void*);
@@ -1753,16 +2123,234 @@ static int ProbeRpgScreen(HMODULE module)
     calcReal(screen, -123, 45, &realX, &realY);
     calcWorld(screen, realX, realY, &worldX, &worldY);
 
+    using Destructor = void (__thiscall*)(void*);
+    using Insert = void* (__thiscall*)(void*, long);
+    using Delete = int (__thiscall*)(void*, long);
+    using GetAt = void* (__thiscall*)(void*, long);
+    using GetNo = long (__thiscall*)(void*, void*);
+    using ReadCaf = int (__thiscall*)(void*, char*, long);
+
+    const auto screenConstruct = LoadFunction<Constructor>(
+        module, "??0RKC_RPGSCRN@@QAE@XZ");
+    const auto screenDestruct = LoadFunction<Destructor>(
+        module, "??1RKC_RPGSCRN@@QAE@XZ");
+    const auto insertObjectBlock = LoadFunction<Insert>(
+        module, "?InsertObjectBlock@RKC_RPGSCRN@@QAEPAVRKC_RPGSCRN_OBJECTBLOCK@@J@Z");
+    const auto insertGroundBlock = LoadFunction<Insert>(
+        module, "?InsertGroundBlock@RKC_RPGSCRN@@QAEPAVRKC_RPGSCRN_GROUNDBLOCK@@J@Z");
+    const auto deleteObjectBlock = LoadFunction<Delete>(
+        module, "?DeleteObjectBlock@RKC_RPGSCRN@@QAEHJ@Z");
+    const auto deleteGroundBlock = LoadFunction<Delete>(
+        module, "?DeleteGroundBlock@RKC_RPGSCRN@@QAEHJ@Z");
+    const auto getObjectBlockCount = LoadFunction<GetLong>(
+        module, "?GetObjectBlockCount@RKC_RPGSCRN@@QAEJXZ");
+    const auto getGroundBlockCount = LoadFunction<GetLong>(
+        module, "?GetGroundBlockCount@RKC_RPGSCRN@@QAEJXZ");
+    const auto getObjectBlockAt = LoadFunction<GetAt>(
+        module, "?GetObjectBlock@RKC_RPGSCRN@@QAEPAVRKC_RPGSCRN_OBJECTBLOCK@@J@Z");
+    const auto getGroundBlockAt = LoadFunction<GetAt>(
+        module, "?GetGroundBlock@RKC_RPGSCRN@@QAEPAVRKC_RPGSCRN_GROUNDBLOCK@@J@Z");
+    const auto getObjectBlockNo = LoadFunction<GetNo>(
+        module, "?GetObjectBlockNo@RKC_RPGSCRN@@QAEJPAVRKC_RPGSCRN_OBJECTBLOCK@@@Z");
+    const auto getGroundBlockNo = LoadFunction<GetNo>(
+        module, "?GetGroundBlockNo@RKC_RPGSCRN@@QAEJPAVRKC_RPGSCRN_GROUNDBLOCK@@@Z");
+    std::uint8_t ownedScreen[0x2c];
+    std::memset(ownedScreen, 0xa5, sizeof(ownedScreen));
+    screenConstruct(ownedScreen);
+    const std::uint32_t screenHash = Fnv1a(ownedScreen, sizeof(ownedScreen));
+    void* objectBlock0 = insertObjectBlock(ownedScreen, 0);
+    void* objectBlock1 = insertObjectBlock(ownedScreen, 1);
+    void* groundBlock0 = insertGroundBlock(ownedScreen, 0);
+    void* groundBlock1 = insertGroundBlock(ownedScreen, 1);
+    const int screenLists =
+        objectBlock0 && objectBlock1 && groundBlock0 && groundBlock1
+        && getObjectBlockCount(ownedScreen) == 2
+        && getGroundBlockCount(ownedScreen) == 2
+        && getObjectBlockAt(ownedScreen, 1) == objectBlock1
+        && getGroundBlockAt(ownedScreen, 1) == groundBlock1
+        && getObjectBlockNo(ownedScreen, objectBlock1) == 1
+        && getGroundBlockNo(ownedScreen, groundBlock1) == 1
+        && deleteObjectBlock(ownedScreen, 0) == 1
+        && deleteGroundBlock(ownedScreen, 1) == 1
+        && getObjectBlockCount(ownedScreen) == 1
+        && getGroundBlockCount(ownedScreen) == 1;
+    screenDestruct(ownedScreen);
+    const int screenReleased =
+        *reinterpret_cast<void**>(ownedScreen + 4) == nullptr
+        && *reinterpret_cast<void**>(ownedScreen + 8) == nullptr;
+
+    const auto objectBlockInsert = LoadFunction<Insert>(
+        module, "?Insert@RKC_RPGSCRN_OBJECTBLOCK@@QAEPAVRKC_RPGSCRN_OBJECT@@J@Z");
+    const auto objectBlockDelete = LoadFunction<Delete>(
+        module, "?Delete@RKC_RPGSCRN_OBJECTBLOCK@@QAEHJ@Z");
+    const auto objectBlockGet = LoadFunction<GetAt>(
+        module, "?Get@RKC_RPGSCRN_OBJECTBLOCK@@QAEPAVRKC_RPGSCRN_OBJECT@@J@Z");
+    const auto objectBlockGetNo = LoadFunction<GetNo>(
+        module, "?GetNo@RKC_RPGSCRN_OBJECTBLOCK@@QAEJPAVRKC_RPGSCRN_OBJECT@@@Z");
+    const auto objectBlockCount = LoadFunction<GetLong>(
+        module, "?GetCount@RKC_RPGSCRN_OBJECTBLOCK@@QAEJXZ");
+    std::uint8_t block[0x10]{};
+    *reinterpret_cast<void**>(block) = screen;
+    void* object0 = objectBlockInsert(block, 0);
+    void* object1 = objectBlockInsert(block, 1);
+    const int objectList =
+        object0 && object1 && objectBlockCount(block) == 2
+        && objectBlockGet(block, 1) == object1
+        && objectBlockGetNo(block, object1) == 1
+        && objectBlockDelete(block, 0) == 1
+        && objectBlockCount(block) == 1;
+    const auto objectBlockRelease = LoadFunction<Destructor>(
+        module, "?Release@RKC_RPGSCRN_OBJECTBLOCK@@QAEXXZ");
+    objectBlockRelease(block);
+
+    const auto displayListConstruct = LoadFunction<Constructor>(
+        module, "??0RKC_RPGSCRN_OBJECTDISP@@QAE@XZ");
+    const auto displayListDestruct = LoadFunction<Destructor>(
+        module, "??1RKC_RPGSCRN_OBJECTDISP@@QAE@XZ");
+    const auto displayListInsert = LoadFunction<Insert>(
+        module, "?Insert@RKC_RPGSCRN_OBJECTDISP@@QAEPAVRKC_RPGSCRN_OBJECTDISPCELL@@J@Z");
+    const auto displayListDelete = LoadFunction<Delete>(
+        module, "?Delete@RKC_RPGSCRN_OBJECTDISP@@QAEHJ@Z");
+    const auto displayListGet = LoadFunction<GetAt>(
+        module, "?Get@RKC_RPGSCRN_OBJECTDISP@@QAEPAVRKC_RPGSCRN_OBJECTDISPCELL@@J@Z");
+    const auto displayListCount = LoadFunction<GetLong>(
+        module, "?GetCount@RKC_RPGSCRN_OBJECTDISP@@QAEJXZ");
+    std::uint8_t displayList[8]{};
+    displayListConstruct(displayList);
+    void* display0 = displayListInsert(displayList, 0);
+    void* display1 = displayListInsert(displayList, 1);
+    const int displayLists =
+        display0 && display1 && displayListCount(displayList) == 2
+        && displayListGet(displayList, 1) == display1
+        && displayListDelete(displayList, 0) == 1
+        && displayListCount(displayList) == 1;
+    displayListDestruct(displayList);
+
+    const auto animationConstruct = LoadFunction<Constructor>(
+        module, "??0RKC_RPGSCRN_CHARANIM@@QAE@XZ");
+    const auto animationDestruct = LoadFunction<Destructor>(
+        module, "??1RKC_RPGSCRN_CHARANIM@@QAE@XZ");
+    const auto animationRead = LoadFunction<ReadCaf>(
+        module, "?ReadCafFile@RKC_RPGSCRN_CHARANIM@@QAEHPADJ@Z");
+    const auto animationCount = LoadFunction<GetLong>(
+        module, "?GetCount@RKC_RPGSCRN_CHARANIM@@QAEJXZ");
+    const auto animationGet = LoadFunction<GetAt>(
+        module, "?Get@RKC_RPGSCRN_CHARANIM@@QAEPAVRKC_RPGSCRN_CHARANIMCHART@@J@Z");
+    std::uint8_t animation[0x18]{};
+    animationConstruct(animation);
+    char caf[MAX_PATH]{};
+    std::strncpy(caf, cafPath, sizeof(caf) - 1);
+    const int cafRead = animationRead(animation, caf, 77);
+    std::uint32_t cafHash = 2166136261u;
+    const long charts = animationCount(animation);
+    for (long chartIndex = 0; chartIndex < charts; ++chartIndex) {
+        const auto* chart = static_cast<const std::uint8_t*>(
+            animationGet(animation, chartIndex));
+        cafHash = Fnv1a(chart, 2, cafHash);
+        for (long direction = 0; direction < 9; ++direction) {
+            const long blocks = *reinterpret_cast<const long*>(
+                chart + 4 + direction * 4);
+            cafHash = Fnv1a(&blocks, sizeof(blocks), cafHash);
+            cafHash = Fnv1a(chart + 0x4c + direction * 2, 2, cafHash);
+            const auto* blockData = *reinterpret_cast<const std::uint8_t* const*>(
+                chart + 0x28 + direction * 4);
+            for (long blockIndex = 0; blockIndex < blocks; ++blockIndex) {
+                const auto* cellBlock = blockData + blockIndex * 8;
+                const long cells = *reinterpret_cast<const long*>(cellBlock);
+                cafHash = Fnv1a(&cells, sizeof(cells), cafHash);
+                const void* cellData =
+                    *reinterpret_cast<const void* const*>(cellBlock + 4);
+                const auto* cellBytes = static_cast<const std::uint8_t*>(cellData);
+                for (long cellIndex = 0; cellIndex < cells; ++cellIndex) {
+                    cafHash = Fnv1a(cellBytes + cellIndex * 0xc, 6, cafHash);
+                    cafHash = Fnv1a(cellBytes + cellIndex * 0xc + 8, 4, cafHash);
+                }
+            }
+        }
+    }
+    const long cafMaxParts = LoadFunction<GetLong>(
+        module, "?GetMaxPartsCount@RKC_RPGSCRN_CHARANIM@@QAEJXZ")(animation);
+    const long cafNo = *reinterpret_cast<long*>(animation + 8);
+    const long cafExtraA = *reinterpret_cast<long*>(animation + 4);
+    const long cafExtraB = *reinterpret_cast<long*>(animation + 0xc);
+    animationDestruct(animation);
+
+    using ReadObjects = int (__thiscall*)(void*, char*, void*, int, long);
+    const auto objectBlockConstruct = LoadFunction<Constructor>(
+        module, "??0RKC_RPGSCRN_OBJECTBLOCK@@QAE@XZ");
+    const auto objectBlockDestruct = LoadFunction<Destructor>(
+        module, "??1RKC_RPGSCRN_OBJECTBLOCK@@QAE@XZ");
+    const auto objectBlockRead = LoadFunction<ReadObjects>(
+        module, "?ReadFile@RKC_RPGSCRN_OBJECTBLOCK@@QAEHPADPAVRKC_RPGSCRN_OBJECTDISP@@HJ@Z");
+    std::uint8_t fileObjectBlock[0x10]{};
+    objectBlockConstruct(fileObjectBlock);
+    *reinterpret_cast<void**>(fileObjectBlock) = screen;
+    char objectFile[MAX_PATH]{};
+    std::strncpy(objectFile, objectPath, sizeof(objectFile) - 1);
+    const int objectRead = objectBlockRead(
+        fileObjectBlock, objectFile, nullptr, 0, 3);
+    const long objectFileCount = objectBlockCount(fileObjectBlock);
+    std::uint32_t objectFileHash = 2166136261u;
+    for (long index = 0; index < objectFileCount; ++index) {
+        const auto* value = static_cast<const std::uint8_t*>(
+            objectBlockGet(fileObjectBlock, index));
+        objectFileHash = Fnv1a(value + 4, 8, objectFileHash);
+        objectFileHash = Fnv1a(value + 0x10, 2, objectFileHash);
+        objectFileHash = Fnv1a(value + 0x14, 2, objectFileHash);
+        objectFileHash = Fnv1a(value + 0x18, 14, objectFileHash);
+        objectFileHash = Fnv1a(value + 0x28, 0x10, objectFileHash);
+    }
+    objectBlockDestruct(fileObjectBlock);
+
+    using ReadGround = int (__thiscall*)(void*, char*, long);
+    const auto groundRead = LoadFunction<ReadGround>(
+        module, "?ReadFile@RKC_RPGSCRN_GROUNDBLOCK@@QAEHPADJ@Z");
+    const auto groundDestruct = LoadFunction<Destructor>(
+        module, "??1RKC_RPGSCRN_GROUNDBLOCK@@QAE@XZ");
+    std::uint8_t fileGround[0x3c]{};
+    groundConstruct(fileGround);
+    *reinterpret_cast<void**>(fileGround) = screen;
+    char groundFile[MAX_PATH]{};
+    std::strncpy(groundFile, groundPath, sizeof(groundFile) - 1);
+    const int groundReadResult = groundRead(fileGround, groundFile, 3);
+    std::uint32_t groundFileHash = 2166136261u;
+    groundFileHash = Fnv1a(fileGround + 4, 0x10, groundFileHash);
+    groundFileHash = Fnv1a(fileGround + 0x18, 0x18, groundFileHash);
+    const long groundWidth = *reinterpret_cast<long*>(fileGround + 4);
+    const long groundHeight = *reinterpret_cast<long*>(fileGround + 8);
+    auto** groundRows = *reinterpret_cast<std::uint8_t***>(fileGround + 0x14);
+    for (long y = 0; y < groundHeight; ++y)
+        groundFileHash = Fnv1a(
+            groundRows[y], static_cast<std::size_t>(groundWidth) * 6,
+            groundFileHash);
+    const long judgeWidth = *reinterpret_cast<long*>(fileGround + 0x20);
+    const long judgeHeight = *reinterpret_cast<long*>(fileGround + 0x24);
+    auto** judgeRows = *reinterpret_cast<std::uint8_t***>(fileGround + 0x30);
+    for (long y = 0; y < judgeHeight; ++y)
+        groundFileHash = Fnv1a(
+            judgeRows[y], static_cast<std::size_t>(judgeWidth) * 2,
+            groundFileHash);
+    groundDestruct(fileGround);
+
     std::printf(
         "rpgscrn object_return=%d object_hash=%08lx object_values=%d "
         "display_hash=%08lx display_values=%d cell_hash=%08lx cell_values=%d "
         "ground_hash=%08lx base_mag=%d judge_offset=%d "
-        "base=%ld,%ld,%ld positions=%ld,%ld:%ld,%ld\n",
+        "base=%ld,%ld,%ld positions=%ld,%ld:%ld,%ld "
+        "screen=%08lx,%d,%d object_list=%d display_list=%d "
+        "caf=%d,%ld,%ld,%ld,%ld,%ld,%08lx "
+        "objects=%d,%ld,%08lx ground_file=%d,%ld,%ld,%ld,%ld,%08lx\n",
         objectResult == object, static_cast<unsigned long>(objectHash),
         objectValues, static_cast<unsigned long>(displayHash), displayValues,
         static_cast<unsigned long>(cellHash), cellValues,
         static_cast<unsigned long>(groundHash), baseMag, judgeOffset,
-        baseA, baseB, baseC, realX, realY, worldX, worldY);
+        baseA, baseB, baseC, realX, realY, worldX, worldY,
+        static_cast<unsigned long>(screenHash), screenLists, screenReleased,
+        objectList, displayLists, cafRead, charts, cafMaxParts, cafNo,
+        cafExtraA, cafExtraB, static_cast<unsigned long>(cafHash),
+        objectRead, objectFileCount, static_cast<unsigned long>(objectFileHash),
+        groundReadResult, groundWidth, groundHeight, judgeWidth, judgeHeight,
+        static_cast<unsigned long>(groundFileHash));
     return 0;
 }
 
@@ -1794,8 +2382,8 @@ int main(int argc, char** argv)
         result = ProbeDibHighSpeed(module);
     else if (std::strcmp(argv[2], "table") == 0 && argc == 4)
         result = ProbeTable(module, argv[3]);
-    else if (std::strcmp(argv[2], "updib") == 0)
-        result = ProbeUpdIb(module);
+    else if (std::strcmp(argv[2], "updib") == 0 && argc == 4)
+        result = ProbeUpdIb(module, argv[3]);
     else if (std::strcmp(argv[2], "dbf") == 0)
         result = ProbeDbf(module);
     else if (std::strcmp(argv[2], "rk_lz") == 0 && argc == 5)
@@ -1810,8 +2398,8 @@ int main(int argc, char** argv)
         result = ProbeScript(module, argv[3], argv[4]);
     else if (std::strcmp(argv[2], "network") == 0)
         result = ProbeNetwork(module);
-    else if (std::strcmp(argv[2], "rpgscrn") == 0)
-        result = ProbeRpgScreen(module);
+    else if (std::strcmp(argv[2], "rpgscrn") == 0 && argc == 6)
+        result = ProbeRpgScreen(module, argv[3], argv[4], argv[5]);
     else
         std::fprintf(stderr, "invalid probe arguments\n");
 

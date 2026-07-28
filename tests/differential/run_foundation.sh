@@ -31,7 +31,8 @@ i686-w64-mingw32-g++ \
     -static-libstdc++ \
     -o "$PROBE_EXE" \
     "$PROBE_SOURCE" \
-    -lgdi32
+    -lgdi32 \
+    -lws2_32
 
 TEST_ROOT="$(mktemp -d /tmp/openshadowflare-differential.XXXXXX)"
 cleanup() {
@@ -56,6 +57,13 @@ AI_SCRATCH_WINDOWS="$(winepath -w "$TEST_ROOT/control.aid")"
 SCRIPT_WINDOWS="$(winepath -w "$ORIGINAL_DIR/Scenario/00000001/Scenario.Scs")"
 SCRIPT_SCRATCH_WINDOWS="$(winepath -w "$TEST_ROOT/scenario.scs")"
 FONT_SCRATCH_WINDOWS="$(winepath -w "$TEST_ROOT/font.njp")"
+UPD_WINDOWS="$(winepath -w "$ORIGINAL_DIR/System/Title/Pattern/Title.njp")"
+UPD_V2_WINDOWS="$(winepath -w "$ORIGINAL_DIR/Map/Pattern/system.njp")"
+SHADOW_WINDOWS="$(winepath -w "$ORIGINAL_DIR/Character/OBJECT/00000024/Pattern.sdw")"
+SHADOW_V2_WINDOWS="$(winepath -w "$ORIGINAL_DIR/System/Game/Pattern/Hukidasi.Sdw")"
+CAF_WINDOWS="$(winepath -w "$ORIGINAL_DIR/Character/ENEMY/00000011/Animation.Caf")"
+OBJECT_WINDOWS="$(winepath -w "$ORIGINAL_DIR/Map/Object/3rdLast04.Obl")"
+GROUND_WINDOWS="$(winepath -w "$ORIGINAL_DIR/Map/Ground/3rdLast04.Gnd")"
 
 run_probe() {
     local label="$1"
@@ -116,7 +124,26 @@ run_probe \
     updib \
     "$ORIGINAL_DIR/${ORIGINAL_PREFIX}RKC_UPDIB.dll" \
     "$REBUILT_DIR/RKC_UPDIB.dll" \
-    updib
+    updib \
+    "$UPD_WINDOWS"
+run_probe \
+    updib_v2 \
+    "$ORIGINAL_DIR/${ORIGINAL_PREFIX}RKC_UPDIB.dll" \
+    "$REBUILT_DIR/RKC_UPDIB.dll" \
+    updib \
+    "$UPD_V2_WINDOWS"
+run_probe \
+    updib_shadow \
+    "$ORIGINAL_DIR/${ORIGINAL_PREFIX}RKC_UPDIB.dll" \
+    "$REBUILT_DIR/RKC_UPDIB.dll" \
+    updib \
+    "$SHADOW_WINDOWS"
+run_probe \
+    updib_shadow_v2 \
+    "$ORIGINAL_DIR/${ORIGINAL_PREFIX}RKC_UPDIB.dll" \
+    "$REBUILT_DIR/RKC_UPDIB.dll" \
+    updib \
+    "$SHADOW_V2_WINDOWS"
 run_probe \
     dbf \
     "$ORIGINAL_DIR/${ORIGINAL_PREFIX}RKC_DBFCONTROL.dll" \
@@ -163,6 +190,9 @@ run_probe \
     rpgscrn \
     "$ORIGINAL_DIR/${ORIGINAL_PREFIX}RKC_RPGSCRN.dll" \
     "$REBUILT_DIR/RKC_RPGSCRN.dll" \
-    rpgscrn
+    rpgscrn \
+    "$CAF_WINDOWS" \
+    "$OBJECT_WINDOWS" \
+    "$GROUND_WINDOWS"
 
 echo "Foundation differential tests passed."

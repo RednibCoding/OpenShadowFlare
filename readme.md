@@ -65,8 +65,7 @@ Here's where things stand today:
 
 - All 763 exported DLL names and ordinals are reproduced and checked
   automatically.
-- Eleven of the fourteen DLLs can run without directly loading an original
-  ShadowFlare DLL.
+- All fourteen DLLs can now run without loading an original ShadowFlare DLL.
 - The table, AI, scenario, and generated-font formats are tested with real game
   data, including byte-for-byte writeback checks where possible.
 - Original and reconstructed DLLs can be run side by side through differential
@@ -74,10 +73,11 @@ Here's where things stand today:
 - An isolated smoke test confirms that the reconstructed DLL set starts the
   game and reaches its render loop.
 
-The three remaining hybrid areas are UPD sprite decoding/compositing,
-RPG screen and map handling, and multiplayer networking. Some other DLLs are
-standalone but still need broader behavioral coverage, so “standalone” should
-not be read as “finished.”
+That completes the first big reconstruction milestone: the whole support-DLL
+layer is ours. It does not mean every obscure code path is proven perfect yet.
+Audio timing, uncommon drawing modes, authenticated multiplayer, and some
+in-game map/rendering combinations still need broader testing. The next major
+piece is `ShadowFlare.exe` itself.
 
 For the nitty-gritty, see the [fidelity inventory](fidelity/README.md). The
 [roadmap](roadmap.md) shows what we're planning to tackle next.

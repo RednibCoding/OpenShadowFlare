@@ -74,10 +74,10 @@
     "RKC_UPDIB": {
       "exports": 81,
       "external_forwards": 0,
-      "internal_original_calls": 2,
-      "standalone": false,
-      "fidelity": "partial",
-      "notes": "Initialization, list traversal, packet construction, text packets, and primitive rendering are local and differentially covered. UPD decoding and general sprite compositing still use the original as an oracle."
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "All paths are local. NJP and SDW versions 2 and 3, compressed and uncompressed parts, palettes, patterns, lists, names, judgement data, direct DIB rendering, and sprite rendering match retail probes on real game assets."
     },
     "RKC_DBFCONTROL": {
       "exports": 41,
@@ -89,11 +89,11 @@
     },
     "RKC_RPGSCRN": {
       "exports": 185,
-      "external_forwards": 54,
+      "external_forwards": 0,
       "internal_original_calls": 0,
-      "standalone": false,
+      "standalone": true,
       "fidelity": "partial",
-      "notes": "Core screen coordinate transforms plus object, display-cell, animation-cell, and ground-block layouts/accessors are local and differentially verified. Map/CAF parsing, display sorting, and complex rendering paths remain original forwards."
+      "notes": "All exports are local. Object/display/animation/ground ownership and accessors, sorting, packet routing, CAF parsing, real 79-object OBL parsing, and real compressed 85x80 GND parsing match retail probes. Broader in-game map and rendering combinations still need coverage."
     },
     "RKC_RPG_SCRIPT": {
       "exports": 82,
@@ -113,11 +113,11 @@
     },
     "RKC_NETWORK": {
       "exports": 131,
-      "external_forwards": 25,
+      "external_forwards": 0,
       "internal_original_calls": 0,
-      "standalone": false,
+      "standalone": true,
       "fidelity": "partial",
-      "notes": "Packet ownership, packet/user-info list operations, string ownership, and transfer framing are local and differentially verified. Manager, client/server lifecycle, and live multiplayer transport still use original forwards."
+      "notes": "All exports are local. Packet and user containers, manager/client/server lifecycle, connection queues, transfer framing, socket threads, and a live localhost request/response exchange match the retail DLL. Authenticated multiplayer and failure timing still need broader validation."
     }
   }
 }
