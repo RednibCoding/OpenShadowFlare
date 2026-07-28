@@ -39,8 +39,12 @@ The first game-core slice covers:
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
 - the initial `00000000` scenario's fixed MCT header and entry-point table
+- its leading ID lists, common variable entity record, and seven-record
+  `PEOPLE` block
 - its data-selected ground and object maps, NJP/SDW pattern list, new-player
   spawn, facing direction, title, music, and player CAF/NJP/SDW drawing
+- Ostare's retail people resource, placement, part mask, shadow, idle pause,
+  and bounded walk
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -99,8 +103,11 @@ part of this initial transition.
 `ScenarioData` follows the fixed part of `0x00427b50`: it validates
 `MCED DATA v0000\x1a`, reads the two 260-byte paths, music index, and 256-byte
 area title, then decodes the trailing 16-byte entry records in their file order
-of key, world X, world Y, and direction. The entity blocks between those two
-parts are still opaque. For scenario `00000000`, entry key zero supplies
+of key, world X, world Y, and direction. At `0x324`, the first three counted ID
+lists lead into a shared variable entity record. The portable slice skips the
+understood-size object tail and decodes the following `PEOPLE` records,
+including variable names and custom part/color arrays. Later entity groups
+remain opaque. For scenario `00000000`, entry key zero supplies
 (`89898`, `2811`, direction `3`) and the MCT map path selects `f00_01`.
 
 The first scenario then draws the decoded `f00_01.Gnd` cells at that entry and
@@ -112,6 +119,21 @@ provide retail depth keys, and the player is inserted into the default scenery
 pass at foot depth. Paired `ShadowLowPat` SDW assets render first with the
 configured opaque or 50-percent shadow mode through GAPI's general opacity
 support.
+
+The first decoded person is Ostare: local ID `0`, people resource `13`, name
+color `0x00e0e0e0`, position (`91467`, `1532`), judgement
+`[-80, -80, 79, 79]`, and direction `7`. The custom 256-entry part table leaves
+CAF parts 0, 1, 2, 3, and 6 enabled while disabling 4 and 5. Portable loading
+resolves that resource to `Character/PEOPLE/00000013`, loads its NJP, SDW, and
+CAF, and runs it at the 30 Hz game cadence. The people tail supplies speed 10,
+a 30-update walk limit, a 30-update idle pause, and a spawn-relative rectangle
+from (`-437`, `-223`) to (`269`, `231`). The type-one update at `0x0045d150`
+starts movement after that pause; movement-controller mode three chooses an
+inclusive random point in the rectangle, and `0x0045d9f0` selects CAF chart
+one until arrival or the walk limit. The first tested draw uses shadow pattern
+280 and visible patterns 1744 and 1784 at the retail starting camera anchor.
+Actor shadows and visible cells share the depth-sorted world passes with the
+player and static OBL scenery.
 
 The player CAF path now follows `0x00434ef0` and the appearance refresh at
 `0x00444ca0`: the MCT direction is preserved, and the per-part enable table
@@ -156,6 +178,6 @@ walking directly from player state, rebuilds the depth key from the moving
 position, and follows the player's projected position with the retail camera
 offset.
 
-This is still not complete gameplay. NPCs, dynamic actor collision, the HUD,
-scripts, darkness, equipment state, and saved-game scenario restoration are
-the next executable layers.
+This is still not complete gameplay. The other people records, AI, dynamic
+actor collision, interaction, the HUD, scripts, darkness, equipment state, and
+saved-game scenario restoration are the next executable layers.

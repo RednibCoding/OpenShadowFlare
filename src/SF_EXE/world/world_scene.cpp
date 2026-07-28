@@ -159,6 +159,25 @@ bool WorldScene::loadInitialScenario(
         player_parts_enabled_[1] = 1;
     }
 
+    // This first people slice deliberately brings up one proven record before
+    // generalizing actor AI and interaction to the complete group.
+    if (!scenario_.people().empty()) {
+        NpcActor npc;
+        std::string npc_error;
+        if (!npc.load(
+                data_root,
+                scenario_.people().front(),
+                &npc_error)) {
+            setError(
+                error,
+                "The first scenario NPC could not be loaded: " +
+                    npc_error);
+            clear();
+            return false;
+        }
+        npcs_.push_back(std::move(npc));
+    }
+
     // The initial values come from scenario 00000000 and the new-character
     // table path. FUN_00450d40 turns both gender tables' agility value 128
     // into tier five; FUN_00450080 then converts that to 20 world units per
@@ -181,6 +200,7 @@ void WorldScene::clear() {
     player_shadow_patterns_.clear();
     player_animation_.clear();
     player_parts_enabled_.clear();
+    npcs_.clear();
     player_.clear();
     has_player_ = false;
     music_track_ = -1;
@@ -209,6 +229,10 @@ const gapi::NjpImage& WorldScene::playerShadowPatterns() const {
 
 const gapi::CafAnimation& WorldScene::playerAnimation() const {
     return player_animation_;
+}
+
+const std::vector<NpcActor>& WorldScene::npcs() const {
+    return npcs_;
 }
 
 bool WorldScene::playerPartEnabled(std::size_t part) const {
@@ -242,6 +266,9 @@ void WorldScene::togglePlayerRun() {
 void WorldScene::update() {
     if (has_player_) {
         player_.update(ground_, object_map_);
+    }
+    for (NpcActor& npc : npcs_) {
+        npc.update(ground_, object_map_);
     }
 }
 

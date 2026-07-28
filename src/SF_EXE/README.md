@@ -74,20 +74,28 @@ scenario `00000000`'s MCT header and entry table, uses its map path to decode
 Remote Town's compressed `f00_01.Gnd` and 279-record `f00_01.Obl`, loads their
 NJP/SDW pattern list, centers the camera on entry key zero, and draws the
 chosen player animation among the original gates, walls, trees, and rocks.
-The player uses the entry's facing direction, a separate SDW shadow, and the same
-part-visibility table that keeps unequipped armor and weapons hidden.
+The player uses the entry's facing direction, a separate SDW shadow, and the
+same part-visibility table that keeps unequipped armor and weapons hidden.
 Configured semi-transparent shadows apply to both scenery and the player.
 Remote Town's MCT music index also starts the looping `BGM00.Voc` through LAL
 at the configured BGM volume.
+
+The first dynamic `PEOPLE` record is live as well. Ostare is read from the MCT
+rather than placed by hand, loads `Character/PEOPLE/00000013`, and uses his
+original position, direction, custom CAF layer mask, idle animation, and SDW
+shadow. His MCT tail also drives the original one-second idle pause followed
+by a short chart-one walk inside his scenario-defined rectangle. For now this
+slice deliberately stops at one NPC; the other six Remote Town people, names,
+interaction, and more involved behavior still need to be connected.
 
 The first world interaction is in place too. Clicking the ground moves the
 player at the original gameplay cadence, follows the cursor with all eight
 directions, and moves the camera with the player. `R` switches between the
 retail walking and running speeds, using CAF charts one and two respectively.
 Remote Town's GND judgement layer and OBL rectangles stop the player at walls
-and scenery while the renderer keeps sorting nearby objects in front of or
-behind the moving sprite. NPCs, the HUD, scripts, darkness, and the rest of
-gameplay simulation are still in progress.
+and scenery while the renderer keeps sorting nearby objects and Ostare in
+front of or behind the moving sprite. The remaining NPCs, HUD, scripts,
+darkness, and the rest of gameplay simulation are still in progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.

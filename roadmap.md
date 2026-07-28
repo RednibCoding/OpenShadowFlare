@@ -31,8 +31,9 @@ The portable executable already has a solid front half:
   collision, and camera following
 
 In other words, the game can reach the world and the player can now walk
-around it. There are still no NPCs or scripts, and the HUD and most gameplay
-systems are missing.
+around it. Ostare is the first NPC reconstructed from scenario data, though he
+does not have AI or interaction yet. Scripts, the HUD, and most gameplay
+systems are still missing.
 
 The current reverse-engineering notes live in:
 
@@ -156,14 +157,28 @@ its map name, entry position, facing direction, title, and music index in the
 code. The loader understands the fixed MCED header and the trailing entry-point
 table, and tests those fields against the retail file.
 
-That is a useful start, but it is not a complete MCT decoder. The large
-variable entity section between the header and entry table still needs to be
-mapped before we can populate a scenario or claim support for arbitrary maps.
+The next slice identified the leading ID lists, the variable common entity
+record, and the complete `PEOPLE` group shape. Remote Town's seven people
+records now decode, and Ostare is loaded as the first portable NPC with his
+retail resource ID, name, position, judgement box, direction, custom CAF part
+mask, shadow, and idle animation. We are intentionally loading one person
+until that path is solid instead of switching on all seven at once.
+
+Ostare's first type-one behavior is covered too. The people tail gives him a
+30-update idle pause, a 30-update walking limit, speed 10, and a small
+spawn-relative movement rectangle. He now alternates chart-zero idling with a
+short chart-one walk to a random point inside those bounds, as the original
+update path does.
+
+This is still not a complete MCT decoder. Later object, enemy, item, partner,
+and option groups remain to be named and mapped, as do the last two
+people-specific fields and the more involved AI paths.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:
 
-- identify and decode the variable entity blocks in the MCT;
+- identify and decode the remaining variable entity groups in the MCT;
+- connect the remaining people fields to portable AI and interaction state;
 - select arbitrary scenario IDs and entry keys during transitions;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
@@ -223,14 +238,18 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - create actors from the scenario entity records;
 - load their animation, palette, and judgement data;
 - reproduce idle animation and facing;
+- reproduce each actor's bounded idle/walk behavior where its MCT tail enables
+  it;
 - place actors in the same shadow and visible-object passes as the player;
 - add actor-to-world and actor-to-actor collision;
 - reproduce the original update order and off-screen behavior;
 - add pointer hover, selection, names, and interaction range;
 - verify the town population and positions against the retail game.
 
-Start with one well-understood NPC, then generalize. Loading every record at
-once before one actor behaves correctly will only make mistakes harder to see.
+That first checkpoint is now Ostare: his record, resource, part mask, idle
+pause, bounded walk, shadow, position, and depth pass are covered by a
+retail-data test. The next town slice can generalize the same path to the other
+six people and map the behavior that differs between human NPCs and animals.
 
 ### 4. Bring up scripts, conversations, and town interaction
 

@@ -3,6 +3,7 @@
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "npc_actor.hpp"
 #include "player_actor.hpp"
 #include "scenario_data.hpp"
 
@@ -29,6 +30,7 @@ public:
     const gapi::NjpImage& playerPatterns() const;
     const gapi::NjpImage& playerShadowPatterns() const;
     const gapi::CafAnimation& playerAnimation() const;
+    const std::vector<NpcActor>& npcs() const;
     bool playerPartEnabled(std::size_t part) const;
     bool hasPlayer() const;
     void commandPlayerMovement(
@@ -56,6 +58,7 @@ private:
     gapi::NjpImage player_shadow_patterns_;
     gapi::CafAnimation player_animation_;
     std::vector<std::uint8_t> player_parts_enabled_;
+    std::vector<NpcActor> npcs_;
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t music_track_ = -1;

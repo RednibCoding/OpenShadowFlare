@@ -96,6 +96,33 @@ The executable loader at `0x00427b50` starts with this fixed section:
 | `0x224` | 256 | Area title |
 | `0x324` | variable | Entity and scenario records, not fully mapped yet |
 
+The variable section begins with three `count + int32[count]` ID lists. A
+counted scenario-object group follows, then a counted `PEOPLE` group. Both use
+a shared variable-length prefix:
+
+- local ID and character resource ID;
+- byte length, name bytes, and a name color when the length is nonzero;
+- an unknown 32-bit field;
+- world X/Y, four judgement bounds, and eight-way direction;
+- a counted list of initial CAF part overrides;
+- an optional custom-part table containing a count, 32-bit visibility values,
+  and signed 16-bit red, green, and blue strengths;
+- one more unknown 32-bit field.
+
+Object records then carry another `0x34` bytes. A person's `0x2c`-byte tail
+starts with walk speed, maximum walk updates, idle updates, and a flag choosing
+relative or absolute bounds, followed by the left, top, right, and bottom of
+its movement rectangle. Of the final three values, the middle one disables
+wandering when nonzero; the other two are not named yet. Later entity groups
+use other tails and remain to be decoded.
+
+Remote Town has seven people. The first is Ostare: local ID 0, resource ID 13,
+position (`91467`, `1532`), judgement `[-80, -80, 79, 79]`, and direction 7.
+His custom table enables CAF parts 0, 1, 2, 3, and 6. Resource 13 resolves to
+`Character\PEOPLE\00000013\Animation.{Caf,Njp,Sdw}`. His tail stores speed 10,
+30 walk updates, 30 idle updates, and a spawn-relative rectangle from
+(`-437`, `-223`) to (`269`, `231`).
+
 Near the end of the file is a 32-bit entry count followed by 16-byte entry
 records. Each record stores a signed 32-bit key, world X, world Y, and
 eight-way direction, in that order. Three more 32-bit scenario fields close
@@ -411,9 +438,9 @@ Via RKC_RPG_TABLE DLL:
 ## Scenario Data
 
 ### Scenario.Mct
-The known fixed header and trailing entry-point layout are documented in
-[Scenario Files](#scenario-files). The variable entity blocks are still being
-mapped from `0x00427b50`.
+The known fixed header, first object/people groups, and trailing entry-point
+layout are documented in [Scenario Files](#scenario-files). The later variable
+entity groups are still being mapped from `0x00427b50`.
 
 ### Scenario.Scs
 Scenario Script - loaded via `RKC_RPG_SCRIPT::ReadBinary()`

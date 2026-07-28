@@ -119,7 +119,27 @@ followed near EOF by a count and 16-byte entry records in key, world X, world
 Y, direction order. `0x00427930` searches those records by key. The portable
 loader now uses scenario `00000000`'s map path and entry key zero rather than
 embedding `f00_01`, (`89898`, `2811`), direction 3, and music index 0 in
-`WorldScene`; the entity section remains to be decoded.
+`WorldScene`.
+
+The variable section at `0x324` begins with three counted ID lists, followed
+by counted runtime entity groups. The object and `PEOPLE` groups share IDs,
+optional names and colors, position, judgement, direction, initial CAF part
+overrides, and optional fixed-capacity part/color arrays before their
+type-specific tails. The portable decoder now reads all seven Remote Town
+people records and the bounded-wander fields at the start of their tails.
+Later entity groups and the final two unnamed people fields are still open.
+
+The first people record creates Ostare through the type-one path constructed
+at `0x0045d020`. Resource lookup at `0x00455ee0` resolves people resource 13
+to `Character\PEOPLE\00000013`; its CAF, NJP, and SDW are loaded as one asset
+set. `0x0045d620` draws idle chart zero using MCT direction 7 and advances its
+frame counter once per game update. After the tail's 30-update pause,
+`0x0045d150` starts movement-controller mode three. That mode chooses an
+inclusive random point inside the spawn-relative rectangle, while
+`0x0045d9f0` draws chart one and moves at 10 world units per update until
+arrival or the tail's 30-update limit. The MCT's custom mask disables parts 4
+and 5, leaving the shadow and two visible frame-zero cells rather than drawing
+every CAF layer.
 
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
