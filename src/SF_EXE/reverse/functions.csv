@@ -14,11 +14,11 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00402b30,WndProc,,analyzed,static,Behavior maps to LWL events rather than native messages
 0x0041d3f0,EnterGameplayState,,identified,static,Called when top-level state changes to 2
 0x0041d880,LeaveGameplayState,,identified,static,Called when leaving top-level state 2 and unconditionally during shutdown
-0x00420b50,LoadTitleAssets,osf::TitleState::enter,implemented,static,Exact title and ten smoke resource paths and IDs with retail failure behavior
+0x00420b50,LoadTitleAssets,osf::TitleState::enter,implemented,static,Exact title and ten smoke NJP and CAF resource paths and IDs with retail failure behavior plus portable CAF decoding
 0x00420c10,TitleStateConstructor,osf::TitleStateData::TitleStateData,implemented,static,Includes retail version 2.4.0 defaults
 0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and menu-music load covered by tests
 0x00420df0,LeaveTitleState,osf::TitleState::leave,implemented,static,Exact pattern and animation release sequence covered by tests
-0x00420e60,UpdateTitleState,osf::TitleState::update,partial,static,Fades exact availability skipping hover rectangles audio cues transition timers smoke scheduling and visible background/menu pattern draws covered; smoke version and message drawing remain
+0x00420e60,UpdateTitleState,osf::TitleState::update / osf::renderTitle,partial,static,Fades exact availability skipping hover rectangles audio cues transition timers background menus and ten CAF-driven smoke layers covered; version and message drawing remain
 0x00421920,LoadCharacterSelectAssets,osf::CharacterSelectState::enter,implemented,static,Select pattern path and unchecked failure behavior preserved
 0x00421950,CharacterSelectConstructor,osf::CharacterSelectStateData::CharacterSelectStateData,implemented,static,Portable ownership replaces two retail heap objects
 0x004219c0,CharacterSelectDestructor,,analyzed,static,Save catalog and persistent new-character data ownership understood

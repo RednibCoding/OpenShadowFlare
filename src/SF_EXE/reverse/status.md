@@ -23,7 +23,7 @@ The first game-core slice covers:
 - the title, character-selection, and gameplay transition dispatcher
 - the title enter/leave lifecycle and its exact resource manifest
 - the title fade, menu navigation, hover regions, delayed actions, audio cues,
-  and smoke-animation scheduling
+  smoke-animation scheduling, CAF decoding, and steam drawing
 - new-character and saved-game selection enter/leave behavior
 - the character-selection fade and top-level per-frame screen dispatcher
 - saved-game list navigation, slot hit regions, double-click timing, and the
@@ -46,8 +46,9 @@ not how a particular operating system provides it.
 
 The title screen's game decisions from `0x00420e60` are now reconstructed.
 Its original background, menu entries, selection brightness, and fades are
-drawn by the portable runtime. Smoke animation layers, version/copyright text,
-and network messages are the remaining title presentation work.
+drawn by the portable runtime. All ten smoke animations use their original CAF
+frames, random delays, pipe positions, and scene brightness. Version/copyright
+text and network messages are the remaining title presentation work.
 
 The top-level character-selection dispatcher at `0x00421c50` is reconstructed
 through its fade, mode dispatch, sub-screen dispatch, and delayed gameplay

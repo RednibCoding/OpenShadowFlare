@@ -4,10 +4,12 @@ add_library(
   core/game_config.cpp
   core/retail_random.cpp
   gapi/bitmap.cpp
+  gapi/caf.cpp
   gapi/gapi.cpp
   gapi/njp.cpp
   gapi/software_backend.cpp
   render/character_select_renderer.cpp
+  render/title_renderer.cpp
   states/game_state.cpp
   states/menu_states.cpp
   states/save_catalog.cpp

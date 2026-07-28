@@ -1,11 +1,15 @@
 #include "gapi/bitmap.hpp"
+#include "gapi/caf.hpp"
 #include "gapi/gapi.hpp"
 #include "gapi/njp.hpp"
 #include "gapi/software_backend.hpp"
+#include "render/title_renderer.hpp"
 
+#include <array>
 #include <cstdint>
 #include <cstdio>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -18,6 +22,14 @@ void appendI32(
     bytes.push_back(static_cast<std::uint8_t>(raw >> 8u));
     bytes.push_back(static_cast<std::uint8_t>(raw >> 16u));
     bytes.push_back(static_cast<std::uint8_t>(raw >> 24u));
+}
+
+void appendI16(
+    std::vector<std::uint8_t>& bytes,
+    std::int16_t value) {
+    const std::uint16_t raw = static_cast<std::uint16_t>(value);
+    bytes.push_back(static_cast<std::uint8_t>(raw));
+    bytes.push_back(static_cast<std::uint8_t>(raw >> 8u));
 }
 
 void appendBytes(
@@ -155,6 +167,72 @@ std::vector<std::uint8_t> makeBitmapFixture() {
     return bytes;
 }
 
+std::vector<std::uint8_t> makeCafFixture() {
+    std::vector<std::uint8_t> bytes;
+    const char header[16] = "CHRAnimation002";
+    appendBytes(bytes, header, sizeof(header));
+    appendI32(bytes, 1);
+    appendI16(bytes, 1);
+    for (std::int32_t direction = 0; direction < 8; ++direction) {
+        appendI32(bytes, 0);
+        appendI16(bytes, 0);
+    }
+    appendI32(bytes, 1);
+    appendI16(bytes, 2);
+    appendI32(bytes, 2);
+    appendI16(bytes, 16);
+    appendI16(bytes, 1000);
+    appendI32(bytes, 4);
+    appendI16(bytes, 0);
+    appendI16(bytes, 16);
+    appendI16(bytes, 750);
+    appendI32(bytes, 7);
+    appendI16(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    return bytes;
+}
+
+struct PatternCall {
+    std::size_t index = 0;
+    osf::gapi::PatternDraw draw;
+};
+
+class RecordingBackend final : public osf::gapi::Backend {
+public:
+    void beginFrame(osf::gapi::Color) override {}
+
+    bool drawPattern(
+        const osf::gapi::NjpImage&,
+        std::size_t pattern_index,
+        const osf::gapi::PatternDraw& draw) override {
+        patterns.push_back({pattern_index, draw});
+        return true;
+    }
+
+    bool drawBitmap(
+        const osf::gapi::BitmapImage&,
+        const osf::gapi::BitmapDraw&) override {
+        return true;
+    }
+
+    bool drawText(
+        const osf::gapi::NjpImage&,
+        std::string_view,
+        const osf::gapi::TextDraw&) override {
+        return true;
+    }
+
+    bool drawRectangle(
+        const osf::gapi::RectangleDraw&) override {
+        return true;
+    }
+
+    void endFrame() override {}
+
+    std::vector<PatternCall> patterns;
+};
+
 bool check(bool condition, const char* message) {
     if (!condition) {
         std::fprintf(stderr, "%s\n", message);
@@ -284,13 +362,57 @@ bool testBitmapAndTextDrawing() {
         "BMP orientation, BGR conversion, or font tinting differs.");
 }
 
+bool testCafAndTitleAnimation() {
+    osf::gapi::CafAnimation animation;
+    std::string error;
+    if (!check(
+            animation.decode(makeCafFixture(), &error),
+            error.c_str())) {
+        return false;
+    }
+    if (!check(
+            animation.version() == 2 &&
+                animation.charts().size() == 1 &&
+                animation.charts()[0].status == 1 &&
+                animation.charts()[0].directions[8].frame_count == 2 &&
+                animation.charts()[0].directions[8].parts.size() == 1 &&
+                animation.charts()[0]
+                        .directions[8]
+                        .parts[0][1]
+                        .pattern_index == 7,
+            "The portable CAF decoder produced the wrong structure.")) {
+        return false;
+    }
+
+    osf::gapi::NjpImage title;
+    osf::gapi::NjpImage smokeImage;
+    std::array<osf::TitleSmokeAsset, 10> smoke{};
+    smoke[3] = {&smokeImage, &animation};
+    osf::TitleFrameResult frame;
+    frame.scene_brightness = 800;
+    frame.smoke_frames[3] = 1;
+
+    RecordingBackend backend;
+    osf::renderTitle(backend, title, smoke, frame);
+    return check(
+        backend.patterns.size() == 5 &&
+            backend.patterns[0].index == 0 &&
+            backend.patterns[3].index == 3 &&
+            backend.patterns[4].index == 7 &&
+            backend.patterns[4].draw.x == 562 &&
+            backend.patterns[4].draw.y == 60 &&
+            backend.patterns[4].draw.brightness == 600,
+        "The title steam CAF frame or retail draw packet differs.");
+}
+
 }  // namespace
 
 int main() {
     if (!testViewport() ||
         !testNjpAndSoftwareBackend() ||
         !testTruncatedNjp() ||
-        !testBitmapAndTextDrawing()) {
+        !testBitmapAndTextDrawing() ||
+        !testCafAndTitleAnimation()) {
         return 1;
     }
     return 0;

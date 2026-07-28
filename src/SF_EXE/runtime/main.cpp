@@ -5,9 +5,11 @@
 #include "core/game_config.hpp"
 #include "core/retail_random.hpp"
 #include "gapi/bitmap.hpp"
+#include "gapi/caf.hpp"
 #include "gapi/njp.hpp"
 #include "gapi/software_backend.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/title_renderer.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
 #include "states/menu_states.hpp"
@@ -481,6 +483,16 @@ private:
     void updateGame(bool& running) {
         switch (gameState_.currentState()) {
         case osf::GameState::title: {
+            for (std::size_t index = 0;
+                 index < titleAnimations_.size();
+                 ++index) {
+                const auto& charts =
+                    titleAnimations_[index].charts();
+                menuInput_.smoke_frame_counts[index] =
+                    charts.empty()
+                        ? 0
+                        : charts.front().directions[8].frame_count;
+            }
             titleFrame_ =
                 titleState_.update(menuInput_);
             if (titleFrame_.action ==
@@ -554,20 +566,25 @@ private:
         if (gameState_.currentState() == osf::GameState::title) {
             const auto pattern = patterns_.find(4);
             if (pattern != patterns_.end()) {
-                renderer_.drawPattern(
-                    pattern->second,
-                    0,
-                    {0, 0, 1000, 1000,
-                     titleFrame_.scene_brightness});
-                for (std::size_t item = 0; item < 3; ++item) {
-                    if (titleFrame_.menu_visible[item]) {
-                        renderer_.drawPattern(
-                            pattern->second,
-                            item + 1,
-                            {0, 0, 1000, 1000,
-                             titleFrame_.menu_brightness[item]});
+                std::array<osf::TitleSmokeAsset, 10> smoke{};
+                for (std::size_t index = 0;
+                     index < smoke.size();
+                     ++index) {
+                    const auto smokePattern =
+                        patterns_.find(
+                            5 + static_cast<std::int32_t>(index) * 2);
+                    if (smokePattern != patterns_.end()) {
+                        smoke[index] = {
+                            &smokePattern->second,
+                            &titleAnimations_[index],
+                        };
                     }
                 }
+                osf::renderTitle(
+                    renderer_,
+                    pattern->second,
+                    smoke,
+                    titleFrame_);
             }
         } else if (
             gameState_.currentState() ==
@@ -604,8 +621,35 @@ private:
                 std::string_view path) {
                 return loadPattern(id, path);
             };
+        hooks.load_animation =
+            [this](
+                std::size_t index,
+                std::int32_t,
+                std::string_view path) {
+                if (index >= titleAnimations_.size()) {
+                    return false;
+                }
+                std::string error;
+                const std::filesystem::path resolved =
+                    resolveRetailPath(dataRoot_, path);
+                if (!titleAnimations_[index].load(
+                        resolved, &error)) {
+                    std::fprintf(
+                        stderr,
+                        "Could not load %s: %s\n",
+                        resolved.string().c_str(),
+                        error.c_str());
+                    return false;
+                }
+                return true;
+            };
         hooks.release_pattern = [this](std::int32_t id) {
             patterns_.erase(id);
+        };
+        hooks.release_animation = [this](std::size_t index) {
+            if (index < titleAnimations_.size()) {
+                titleAnimations_[index].clear();
+            }
         };
         hooks.files_exist = [this](std::string_view pattern) {
             return pattern == "Save\\*.Ssv" &&
@@ -695,6 +739,7 @@ private:
     std::int32_t savedGameCount_ = 0;
     std::filesystem::path dataRoot_;
     std::unordered_map<std::int32_t, osf::gapi::NjpImage> patterns_;
+    std::array<osf::gapi::CafAnimation, 10> titleAnimations_;
     std::vector<osf::RetailSaveSummary> savedGames_;
     std::vector<osf::gapi::BitmapImage> savedPreviews_;
     LglSurfacePresenter surfacePresenter_;

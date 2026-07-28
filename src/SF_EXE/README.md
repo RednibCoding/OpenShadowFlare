@@ -45,8 +45,9 @@ navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
 cues, smoke timing, and delayed New Game, Continue, and Exit actions all
 follow the retail function. The original `Title.njp` is now decoded by portable
 code and the title background, availability-aware menu entries, fades, and
-selection highlights are visible. Smoke layers, version text, and network
-messages still need their drawing paths.
+selection highlights are visible. The ten original CAF-driven steam layers
+also play at their retail pipe positions. Version text and network messages
+still need their drawing paths.
 
 Character selection has its outer fade and screen/transition dispatcher as
 well. New Game now shows the original male/female artwork, accepts a portable
