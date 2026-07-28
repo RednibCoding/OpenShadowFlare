@@ -1,6 +1,9 @@
 #include "lal.h"
 #include "lgl.h"
 #include "lwl.h"
+#include "openshadowflare/command_line.hpp"
+#include "openshadowflare/game_config.hpp"
+#include "openshadowflare/game_state.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -37,7 +40,7 @@ public:
         }
     }
 
-    bool initialize() {
+    bool initialize(const openshadowflare::GameConfig& gameConfig) {
         if (!lwl_init()) {
             std::fprintf(stderr, "Could not initialize LWL.\n");
             return false;
@@ -50,6 +53,11 @@ public:
             std::fprintf(stderr, "Could not create the game window.\n");
             return false;
         }
+        lwl_window_set_mode(
+            window_,
+            gameConfig.windowed_at_start
+                ? LWL_WINDOW_NORMAL
+                : LWL_WINDOW_FULLSCREEN);
         lwl_window_show(window_);
 
         const LwlGlConfig config = lwl_gl_config_default();
@@ -82,6 +90,7 @@ public:
         }
 
         lglViewport(0, 0, kVirtualWidth, kVirtualHeight);
+        gameState_.transition(openshadowflare::GameState::title);
         return true;
     }
 
@@ -124,13 +133,22 @@ private:
     LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
     bool audioInitialized_ = false;
+    openshadowflare::GameStateDispatcher gameState_;
 };
 
 }  // namespace
 
 int main(int argc, char** argv) {
+    openshadowflare::GameConfig gameConfig;
+
+    // Retail ignores config-load failure and retains its constructor defaults.
+    openshadowflare::loadGameConfigFile("SFlare.Cfg", gameConfig);
+    for (int index = 1; index < argc; ++index) {
+        openshadowflare::applyRetailCommandLine(argv[index], gameConfig);
+    }
+
     Runtime runtime;
-    if (!runtime.initialize()) {
+    if (!runtime.initialize(gameConfig)) {
         return 1;
     }
     return runtime.run(isSmokeTest(argc, argv));

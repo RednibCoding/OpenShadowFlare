@@ -6,6 +6,18 @@ address,name,portable_owner,status,notes
 0x00482d18,g_pDbfControl,,identified,Rendering subsystem
 0x00482d28,g_pDsound,,identified,Audio subsystem
 0x00482db0,g_gameMode,,identified,0 single player 1 client 2 server
+0x0048d528,g_unknownConfig48d528,GameConfig::unknown_48d528,implemented,Meaning not yet proven
+0x0048d530,g_semiTransparentShadow,GameConfig::semi_transparent_shadow,implemented,
+0x0048d534,g_semiTransparentObjects,GameConfig::semi_transparent_objects,implemented,
+0x0048d538,g_displayDarkness,GameConfig::display_darkness,implemented,
+0x0048d540,g_unknownConfig48d540,GameConfig::unknown_48d540,implemented,Loader always forces this field to one
+0x0048d544,g_saveImageAtGameEnd,GameConfig::save_image_at_game_end,implemented,
 0x0048d71c,g_screenshotRequested,,identified,
+0x0048d734,g_clickRange,GameConfig::click_range,implemented,Validated to range zero through four
+0x0048d738,g_clickRangeEnabled,GameConfig::click_range_enabled,implemented,
+0x0048d73c,g_clickPriority,GameConfig::click_priority,implemented,Five-value permutation spanning 0x0048d73c through 0x0048d74c
+0x0048d8b8,g_windowedAtStart,GameConfig::windowed_at_start,implemented,Zero fullscreen nonzero normalized to windowed
 0x0048d8cc,g_imeEnabled,,identified,
 0x0048d8d4,g_cursorVisible,,identified,
+0x0048d8e4,g_effectVolume,GameConfig::effect_volume,implemented,Clamped to -10000 through zero
+0x0048d8e8,g_bgmVolume,GameConfig::bgm_volume,implemented,Clamped to -10000 through zero

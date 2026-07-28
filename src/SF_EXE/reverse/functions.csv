@@ -1,14 +1,19 @@
 address,name,reconstructed_symbol,status,evidence,notes
-0x004014a0,ProcessCommandLine,,analyzed,static,
+0x00401000,ApplicationConstructor,GameConfig::GameConfig / GameStateDispatcher::GameStateDispatcher,implemented,static,Config defaults and initial state reconstructed; native object layout intentionally differs
+0x004014a0,ProcessCommandLine,applyRetailCommandLine,implemented,static,Shift-JIS byte skipping and case-insensitive /w and /f switches covered by native tests
 0x00401550,CheckSingleInstance,,analyzed,static,Portable equivalent must not use a Win32 mutex
 0x004016b0,InitGame,,analyzed,static,
 0x00401b90,ShutdownGame,,analyzed,static,
-0x00401eb0,LoadConfig,,analyzed,static,SFlare.Cfg
+0x00401d10,SaveConfig,saveGameConfig / saveGameConfigFile,implemented,static,Exact 64-byte little-endian SFlare.Cfg layout
+0x00401eb0,LoadConfig,loadGameConfig / loadGameConfigFile,implemented,static,Validation clamping forced field and partial mutation behavior covered by native tests
 0x004022e0,WinMain,main,partial,static,Original entry behavior maps to the portable application lifecycle
-0x004023d0,UpdateGameState,,analyzed,static,Dispatches states 0 through 2
+0x004023d0,UpdateGameState,GameStateDispatcher::transition,implemented,static,Renderer synchronization teardown initialization and raw state storage covered by native tests
 0x004026d0,OnKeyUp,,analyzed,static,Retail function is effectively empty
 0x00402840,OnKeyDown,,analyzed,static,Enter and PrintScreen behavior identified
 0x00402b30,WndProc,,analyzed,static,Behavior maps to LWL events rather than native messages
-0x0041d880,GameplayState,,identified,static,
-0x00420df0,TitleState,,identified,static,
-0x00421bf0,LoadingState,,identified,static,
+0x0041d3f0,EnterGameplayState,,identified,static,Called when top-level state changes to 2
+0x0041d880,LeaveGameplayState,,identified,static,Called when leaving top-level state 2 and unconditionally during shutdown
+0x00420c40,EnterTitleState,,identified,static,Called when top-level state changes to 0
+0x00420df0,LeaveTitleState,,identified,static,Called when leaving top-level state 0 and unconditionally during shutdown
+0x00421a00,EnterLoadingState,,identified,static,Receives the transition argument when top-level state changes to 1
+0x00421bf0,LeaveLoadingState,,identified,static,Called when leaving top-level state 1 and unconditionally during shutdown

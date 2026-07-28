@@ -22,9 +22,13 @@ cmake -S . -B cmake-build-debug
 cmake --build cmake-build-debug
 ```
 
-The current executable is only a platform and render-loop foundation. It opens
-a 640x480 OpenGL window and initializes audio; it does not load game data yet.
-Run it with `--smoke-test` to close automatically after three frames.
+The executable can now read the original `SFlare.Cfg`, handle the retail `/w`
+and `/f` switches, and run the original top-level title/loading/gameplay state
+transitions. The actual title and gameplay handlers are still empty, so what
+you see for now is the 640x480 render-loop foundation.
+
+Run it with `--smoke-test` to close automatically after three frames. You can
+also pass `/w` to keep a smoke-test window out of fullscreen mode.
 
 ## Reverse-engineering records
 
@@ -35,3 +39,8 @@ labels used by those maps.
 
 Raw decompiler output stays in `/ghidra`. Only understood, readable behavior
 belongs in the portable implementation.
+
+The portable game code lives in the `OpenShadowFlare::GameCore` CMake target.
+It only uses the C++ standard library. Windowing, rendering, and audio stay in
+the thin executable runtime and the LWL, LGL, and LAL libraries, which keeps
+the reconstructed rules testable without starting a window.
