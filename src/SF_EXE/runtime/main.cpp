@@ -58,6 +58,35 @@ std::int32_t countRetailSaves() {
     return count;
 }
 
+bool deleteRetailSave(std::int32_t logicalIndex) {
+    if (logicalIndex < 0) {
+        return false;
+    }
+
+    for (std::int32_t slot = 0; slot < 6; ++slot) {
+        char savePath[32]{};
+        std::snprintf(
+            savePath, sizeof(savePath), "Save\\%04d.Ssv", slot);
+        if (!fileExists(savePath)) {
+            continue;
+        }
+        if (logicalIndex-- != 0) {
+            continue;
+        }
+
+        std::error_code error;
+        std::filesystem::remove(nativePath(savePath), error);
+
+        char previewPath[32]{};
+        std::snprintf(
+            previewPath, sizeof(previewPath), "Save\\%04d.Bmp", slot);
+        error.clear();
+        std::filesystem::remove(nativePath(previewPath), error);
+        return true;
+    }
+    return false;
+}
+
 class Runtime {
 public:
     Runtime()
@@ -329,6 +358,10 @@ private:
         osf::CharacterSelectStateHooks hooks;
         hooks.file_exists = fileExists;
         hooks.load_saved_characters = [this] {
+            savedGameCount_ = countRetailSaves();
+        };
+        hooks.delete_saved_character = [this](std::int32_t index) {
+            deleteRetailSave(index);
             savedGameCount_ = countRetailSaves();
         };
         return hooks;

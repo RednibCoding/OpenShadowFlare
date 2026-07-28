@@ -25,8 +25,8 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00421a00,EnterCharacterSelectState,osf::CharacterSelectState::enter,implemented,static,New-character argument 0 and saved-game nonzero modes plus input audio cursor and field resets covered by tests
 0x00421bf0,LeaveCharacterSelectState,osf::CharacterSelectState::leave,implemented,static,Temporary buffer menu music and select pattern release covered by tests
 0x00421c50,UpdateCharacterSelectState,osf::CharacterSelectState::update,partial,static,Fade mode dispatch screen dispatch shared counters and gameplay transition at 0x13a0 covered by native tests; child screen logic remains
-0x004228b0,UpdateDeleteSavedGameDialog,,identified,static,Called by the saved-game renderer while screen is 1; completion returns to screen 0
-0x00422e30,UpdateSavedGameSelection,updateSavedGameMode,partial,static,Mode 1 navigation six slot hit regions double-click timing Continue Delete Back Exit and transition brightness covered by native tests; drawing and Delete dialog remain
+0x004228b0,UpdateDeleteSavedGameDialog,updateSavedGameDeleteDialog,implemented,static,Exact Yes and No navigation pointer arming strict hit regions confirm cancel sounds and deletion behavior covered by native tests
+0x00422e30,UpdateSavedGameSelection,updateSavedGameMode,partial,static,Mode 1 navigation six slot hit regions double-click timing Continue Delete Back Exit confirmation dialog and transition brightness covered by native tests; drawing remains
 0x00423ca0,UpdateNewCharacterSelection,,analyzed,static,Mode 0 renderer; shared return and exit counters recovered but interaction and drawing remain
 0x00424d80,UpdateCharacterScreen10,,identified,static,Dispatched by UpdateCharacterSelectState when screen is 10
 0x004253c0,UpdateCharacterScreen11,,identified,static,May change screen to 12 and trigger 0x00425d40 in the same frame

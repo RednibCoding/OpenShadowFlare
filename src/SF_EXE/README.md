@@ -34,9 +34,11 @@ cues, smoke timing, and delayed New Game, Continue, and Exit actions all
 follow the retail function. Character selection has its outer fade and
 screen/transition dispatcher as well. The saved-game list now has its original
 two-column navigation, six pointer regions, double-click timing, and
-Continue/Delete/Back/Exit decisions. New-character interaction, the saved-game
-confirmation dialogs, and all menu drawing are still to come, so the current
-window shows the render-loop foundation rather than the original menu.
+Continue/Delete/Back/Exit decisions. Its Delete confirmation also has the
+original Yes/No keyboard and pointer behavior, and removes both the selected
+save and its preview bitmap. New-character interaction, the other saved-game
+screens, and all menu drawing are still to come, so the current window shows
+the render-loop foundation rather than the original menu.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.

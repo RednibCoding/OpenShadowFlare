@@ -537,7 +537,7 @@ bool testSavedGameSelectionFrames() {
     input.down_pressed = false;
     if (!check(
             state.data().saved_game_selection == 2 &&
-                result.play_selection_sound_count == 1,
+                result.play_move_sound_count == 1,
             "Saved-game Down navigation does not use the retail two-column stride.")) {
         return false;
     }
@@ -547,7 +547,7 @@ bool testSavedGameSelectionFrames() {
     input.right_pressed = false;
     if (!check(
             state.data().saved_game_selection == 3 &&
-                result.play_selection_sound_count == 1,
+                result.play_move_sound_count == 1,
             "Saved-game Right navigation differs from retail.")) {
         return false;
     }
@@ -557,7 +557,7 @@ bool testSavedGameSelectionFrames() {
     input.up_pressed = false;
     if (!check(
             state.data().saved_game_selection == 1 &&
-                result.play_selection_sound_count == 1,
+                result.play_move_sound_count == 1,
             "Saved-game Up navigation differs from retail.")) {
         return false;
     }
@@ -567,7 +567,7 @@ bool testSavedGameSelectionFrames() {
     input.left_pressed = false;
     if (!check(
             state.data().saved_game_selection == 0 &&
-                result.play_selection_sound_count == 1,
+                result.play_move_sound_count == 1,
             "Saved-game Left navigation differs from retail.")) {
         return false;
     }
@@ -577,7 +577,7 @@ bool testSavedGameSelectionFrames() {
     input.left_pressed = false;
     if (!check(
             state.data().saved_game_selection == 0 &&
-                result.play_selection_sound_count == 0,
+                result.play_move_sound_count == 0,
             "Saved-game navigation played a sound at a clamped boundary.")) {
         return false;
     }
@@ -633,7 +633,8 @@ bool testSavedGameSelectionFrames() {
     input.delete_pressed = false;
     if (!check(
             result.mode_action ==
-                osf::CharacterSelectModeAction::delete_saved_game &&
+                osf::CharacterSelectModeAction::
+                    open_delete_saved_game_dialog &&
                 state.data().screen == 1 &&
                 state.data().dialog_selection == 1 &&
                 state.data().dialog_input_armed == 1,
@@ -693,6 +694,143 @@ bool testSavedGameSelectionFrames() {
         "The saved-game transition brightness differs from retail.");
 }
 
+bool testSavedGameDeleteDialog() {
+    std::vector<std::int32_t> deletedCharacters;
+    osf::CharacterSelectStateHooks hooks;
+    hooks.delete_saved_character =
+        [&deletedCharacters](std::int32_t index) {
+            deletedCharacters.push_back(index);
+        };
+    osf::CharacterSelectState state(std::move(hooks));
+    osf::CharacterSelectFrameInput input;
+    input.saved_game_count = 4;
+
+    const auto makeReady =
+        [&state](std::int32_t selected = 2) {
+            state.enter(1);
+            state.data().fade_value = 1000;
+            state.data().fade_target = 1000;
+            state.data().fade_steps_remaining = 0;
+            state.data().brightness_increasing = 0;
+            state.data().launch_counter = 0;
+            state.data().screen = 1;
+            state.data().saved_game_selection = selected;
+            state.data().dialog_selection = 1;
+            state.data().dialog_input_armed = 1;
+            state.data().dialog_previous_pointer_x = 0;
+            state.data().dialog_previous_pointer_y = 0;
+            state.data().input_latch = 0;
+        };
+
+    makeReady();
+    input.up_pressed = true;
+    osf::CharacterSelectFrameResult result = state.update(input);
+    input.up_pressed = false;
+    if (!check(
+            state.data().dialog_selection == 0 &&
+                state.data().dialog_input_armed == 1 &&
+                state.data().screen == 1 &&
+                result.play_move_sound_count == 1,
+            "Delete confirmation Up did not select the retail Yes choice.")) {
+        return false;
+    }
+
+    input.right_pressed = true;
+    result = state.update(input);
+    input.right_pressed = false;
+    if (!check(
+            state.data().dialog_selection == 1 &&
+                result.play_move_sound_count == 1,
+            "Delete confirmation Right did not select the retail No choice.")) {
+        return false;
+    }
+
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::
+                    cancel_saved_game_delete &&
+                result.play_selection_sound_count == 1 &&
+                state.data().screen == 0 &&
+                state.data().brightness_increasing == 1 &&
+                deletedCharacters.empty(),
+            "Confirming No did not close the deletion dialog without deleting.")) {
+        return false;
+    }
+
+    makeReady(3);
+    input.left_pressed = true;
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.left_pressed = false;
+    input.confirm_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::
+                    confirm_saved_game_delete &&
+                result.play_move_sound_count == 1 &&
+                result.play_selection_sound_count == 1 &&
+                state.data().saved_game_selection == 0 &&
+                state.data().screen == 0 &&
+                deletedCharacters ==
+                    std::vector<std::int32_t>{3},
+            "Confirming Yes did not delete and reset the retail selection.")) {
+        return false;
+    }
+
+    makeReady();
+    input.back_pressed = true;
+    result = state.update(input);
+    input.back_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::
+                    cancel_saved_game_delete &&
+                state.data().screen == 0 &&
+                deletedCharacters.size() == 1,
+            "Back did not cancel the saved-game deletion dialog.")) {
+        return false;
+    }
+
+    makeReady(1);
+    state.data().dialog_previous_pointer_x = 260;
+    state.data().dialog_previous_pointer_y = 280;
+    input.pointer_x = 260;
+    input.pointer_y = 280;
+    input.pointer_primary_pressed = true;
+    result = state.update(input);
+    input.pointer_primary_pressed = false;
+    if (!check(
+            state.data().screen == 1 &&
+                state.data().dialog_input_armed == 1 &&
+                deletedCharacters.size() == 1,
+            "An unmoved pointer bypassed the retail dialog input arm.")) {
+        return false;
+    }
+
+    input.pointer_x = 261;
+    result = state.update(input);
+    if (!check(
+            state.data().dialog_input_armed == 0 &&
+                state.data().dialog_selection == 0,
+            "Pointer motion over Yes did not arm its retail hover choice.")) {
+        return false;
+    }
+
+    input.pointer_primary_pressed = true;
+    result = state.update(input);
+    input.pointer_primary_pressed = false;
+    return check(
+        result.mode_action ==
+            osf::CharacterSelectModeAction::
+                confirm_saved_game_delete &&
+            deletedCharacters ==
+                std::vector<std::int32_t>({3, 1}),
+        "Clicking an armed Yes choice did not delete the selected save.");
+}
+
 }  // namespace
 
 int main() {
@@ -704,7 +842,8 @@ int main() {
         !testTitleSmokeSchedule() ||
         !testCharacterSelectLifecycle() ||
         !testCharacterSelectFrames() ||
-        !testSavedGameSelectionFrames()) {
+        !testSavedGameSelectionFrames() ||
+        !testSavedGameDeleteDialog()) {
         return 1;
     }
     return 0;

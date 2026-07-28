@@ -42,6 +42,10 @@ constexpr MenuRectangle kSavedContinueRectangle{
     0x236, 0x25c, 0x1c2, 0x1cf};
 constexpr MenuRectangle kSavedDeleteRectangle{
     0x3d, 0xa9, 0x1c2, 0x1cf};
+constexpr MenuRectangle kDeleteDialogYesRectangle{
+    0xf7, 0x129, 0x113, 0x120};
+constexpr MenuRectangle kDeleteDialogNoRectangle{
+    0x15c, 0x183, 0x113, 0x120};
 
 constexpr std::array<std::int32_t, 57> kTitleInputBindings{{
     1, 2, 16, 17, 38, 40, 37, 39, 9, 27, 13,
@@ -129,8 +133,109 @@ void beginSavedGameDelete(
     data.brightness_increasing = 0;
     data.dialog_selection = 1;
     data.dialog_input_armed = 1;
-    result.mode_action = CharacterSelectModeAction::delete_saved_game;
+    result.mode_action =
+        CharacterSelectModeAction::open_delete_saved_game_dialog;
     ++result.play_selection_sound_count;
+}
+
+bool updateSavedGameDeleteDialog(
+    CharacterSelectStateData& data,
+    const CharacterSelectFrameInput& input,
+    CharacterSelectFrameResult& result,
+    const std::function<void(std::int32_t)>& delete_saved_character) {
+    if (input.up_pressed || input.left_pressed) {
+        data.dialog_input_armed = 1;
+        if (data.dialog_selection != 0) {
+            data.dialog_selection = 0;
+            ++result.play_move_sound_count;
+        }
+    }
+    if (input.down_pressed || input.right_pressed) {
+        data.dialog_input_armed = 1;
+        if (data.dialog_selection != 1) {
+            data.dialog_selection = 1;
+            ++result.play_move_sound_count;
+        }
+    }
+
+    const bool pointer_moved =
+        input.pointer_x != data.dialog_previous_pointer_x ||
+        input.pointer_y != data.dialog_previous_pointer_y;
+
+    if (isInside(
+            kDeleteDialogYesRectangle,
+            input.pointer_x,
+            input.pointer_y) &&
+        data.dialog_input_armed == 1 &&
+        pointer_moved) {
+        data.dialog_input_armed = 0;
+    }
+    if (isInside(
+            kDeleteDialogYesRectangle,
+            input.pointer_x,
+            input.pointer_y) &&
+        data.dialog_input_armed == 0) {
+        data.dialog_selection = 0;
+        if (input.pointer_primary_pressed) {
+            const std::int32_t deleted_index =
+                data.saved_game_selection;
+            if (delete_saved_character) {
+                delete_saved_character(deleted_index);
+            }
+            data.saved_game_selection = 0;
+            result.mode_action =
+                CharacterSelectModeAction::confirm_saved_game_delete;
+            ++result.play_selection_sound_count;
+            return false;
+        }
+    }
+
+    if (input.confirm_pressed && data.dialog_selection == 0) {
+        const std::int32_t deleted_index =
+            data.saved_game_selection;
+        if (delete_saved_character) {
+            delete_saved_character(deleted_index);
+        }
+        data.saved_game_selection = 0;
+        result.mode_action =
+            CharacterSelectModeAction::confirm_saved_game_delete;
+        ++result.play_selection_sound_count;
+        return false;
+    }
+
+    if (isInside(
+            kDeleteDialogNoRectangle,
+            input.pointer_x,
+            input.pointer_y) &&
+        data.dialog_input_armed == 1 &&
+        pointer_moved) {
+        data.dialog_input_armed = 0;
+    }
+    if (isInside(
+            kDeleteDialogNoRectangle,
+            input.pointer_x,
+            input.pointer_y) &&
+        data.dialog_input_armed == 0) {
+        data.dialog_selection = 1;
+        if (input.pointer_primary_pressed) {
+            result.mode_action =
+                CharacterSelectModeAction::cancel_saved_game_delete;
+            ++result.play_selection_sound_count;
+            return false;
+        }
+    }
+
+    if (input.back_pressed ||
+        (input.confirm_pressed && data.dialog_selection == 1)) {
+        result.mode_action =
+            CharacterSelectModeAction::cancel_saved_game_delete;
+        ++result.play_selection_sound_count;
+        return false;
+    }
+
+    data.dialog_previous_pointer_x = input.pointer_x;
+    data.dialog_previous_pointer_y = input.pointer_y;
+    return true;
 }
 
 void updateSavedGameMode(
@@ -199,7 +304,7 @@ void updateSavedGameMode(
             }
         }
         if (data.saved_game_selection != previous_selection) {
-            ++result.play_selection_sound_count;
+            ++result.play_move_sound_count;
         }
 
         if (data.pointer_click_cooldown != 0) {
@@ -721,6 +826,20 @@ CharacterSelectFrameResult CharacterSelectState::update(
         data_.mode == CharacterSelectMode::saved_game;
     if (valid_mode) {
         data_.rendered_mode = data_.mode;
+
+        if (data_.mode == CharacterSelectMode::saved_game &&
+            data_.screen == 1) {
+            data_.input_latch = 1;
+            if (!updateSavedGameDeleteDialog(
+                    data_,
+                    input,
+                    result,
+                    hooks_.delete_saved_character)) {
+                data_.brightness_increasing = 1;
+                data_.screen = 0;
+                data_.input_latch = 1;
+            }
+        }
 
         // Both retail mode renderers contain this same transition-counter
         // prelude before their mode-specific interaction and drawing.

@@ -138,6 +138,8 @@ struct CharacterSelectStateData {
     std::int32_t pointer_click_cooldown = 0;       // retail +0x44
     std::int32_t dialog_selection = 0;             // retail +0x48
     std::int32_t dialog_input_armed = 0;           // retail +0x4c
+    std::int32_t dialog_previous_pointer_x = 0;    // retail +0x50
+    std::int32_t dialog_previous_pointer_y = 0;    // retail +0x54
     std::int32_t previous_pointer_x = 0;           // retail +0x58
     std::int32_t previous_pointer_y = 0;           // retail +0x5c
     std::int32_t input_latch = 1;                 // retail +0x60
@@ -167,7 +169,9 @@ enum class CharacterSelectModeAction {
     start_back_transition,
     start_exit_transition,
     choose_saved_game,
-    delete_saved_game,
+    open_delete_saved_game_dialog,
+    confirm_saved_game_delete,
+    cancel_saved_game_delete,
 };
 
 struct CharacterSelectFrameInput {
@@ -195,6 +199,7 @@ struct CharacterSelectFrameResult {
     CharacterSelectModeAction mode_action =
         CharacterSelectModeAction::none;
     CharacterSelectAction action = CharacterSelectAction::none;
+    std::int32_t play_move_sound_count = 0;
     std::int32_t play_selection_sound_count = 0;
     bool pointer_double_click = false;
 };
@@ -209,6 +214,7 @@ struct CharacterSelectStateHooks {
     std::function<void(std::string_view)> prepare_new_character;
     std::function<void()> release_new_character;
     std::function<void()> load_saved_characters;
+    std::function<void(std::int32_t)> delete_saved_character;
     std::function<void(std::int32_t)> set_cursor_state;
     std::function<bool(std::int32_t)> voice_is_playing;
     std::function<void(std::int32_t, bool)> play_voice;
