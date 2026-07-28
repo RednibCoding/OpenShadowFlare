@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<!-- SPDX-FileCopyrightText: 2023-2026 Michael Binder and OpenShadowFlare contributors -->
+
 # OpenShadowFlare
 
 ![Project Logo](readme/sf-logo-lg.png)
@@ -158,10 +161,27 @@ If you would like to join in, have a look at the
 
 ## License
 
-The reconstruction code is available under the [MIT License](LICENSE).
-ShadowFlare itself, its assets, and its original binaries are not part of that
-license and are not distributed by this project.
+OpenShadowFlare is a share-alike project:
 
-OpenShadowFlare is an independent fan and preservation project. It is not
-affiliated with or endorsed by ShadowFlare's original developers or
-publishers.
+- Code is licensed under the
+  [GNU General Public License v3 or later](LICENSE). If you distribute a
+  modified build or derivative, its recipients must get the corresponding
+  source code under the GPL too.
+- Written documentation and reverse-engineering research are licensed
+  under
+  [Creative Commons Attribution-ShareAlike 4.0](LICENSES/CC-BY-SA-4.0.txt).
+  Shared adaptations must credit OpenShadowFlare and stay under the same
+  license.
+
+There is an unavoidable legal limit: copyright does not cover bare facts,
+ideas, or knowledge. Someone independently using a file-format fact from our
+research may not be creating a licensed derivative. We still ask everyone who
+benefits from this work to credit the project and share what they learn — that
+is the community this project is here to build.
+
+The full scope, attribution guidance, exclusions, and earlier MIT history are
+explained in [LICENSING.md](LICENSING.md).
+
+ShadowFlare, its original binaries, assets, names, and trademarks are not
+licensed by this project. OpenShadowFlare is an independent preservation
+project and is not affiliated or endorsed by the original developers or publishers.
