@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
+#include <vector>
 
 // Debug/tracing system - set to 1 to enable function call tracing
 #define OSF_DEBUG 1
@@ -15,6 +16,78 @@
 #include "../../debug.h"
 
 extern "C" {
+
+struct RkCompressionHeader {
+    char magic[8];
+    int uncompressedSize;
+    int compressedSize;
+};
+
+static_assert(sizeof(RkCompressionHeader) == 16, "RCLIB header ABI");
+
+int __cdecl RK_LzDecodeMemoryToMemory(
+    const void* srcData, int srcSize, void** outData, void* outHeader);
+int __cdecl RK_LzEncodeMemoryToMemory(
+    const void* srcData, int srcSize, void* destData, int destSize,
+    void* outHeader);
+int __cdecl RK_LzDecodeFileToMemory(
+    const char* srcFile, void** outData, void* outHeader);
+int __cdecl RK_LzEncodeFileToMemory(
+    const char* srcFile, void* destData, int destSize, void* outHeader);
+
+static int ReadCompressionFile(
+    const char* filename, void** outData, int* outSize)
+{
+    if (!filename || !outData)
+        return 0;
+    *outData = nullptr;
+    if (outSize)
+        *outSize = 0;
+    HANDLE file = CreateFileA(
+        filename, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE)
+        return 0;
+    const DWORD size = GetFileSize(file, nullptr);
+    if (size == INVALID_FILE_SIZE || size > 0x7fffffff) {
+        CloseHandle(file);
+        return 0;
+    }
+    void* data = GlobalAlloc(0, size == 0 ? 1 : size);
+    DWORD read = 0;
+    const bool success = data
+        && (size == 0 || (ReadFile(file, data, size, &read, nullptr)
+            && read == size));
+    CloseHandle(file);
+    if (!success) {
+        if (data)
+            GlobalFree(data);
+        return 0;
+    }
+    *outData = data;
+    if (outSize)
+        *outSize = static_cast<int>(size);
+    return 1;
+}
+
+static int WriteCompressionFile(
+    const char* filename, const void* data, int size)
+{
+    if (!filename || !data || size < 0)
+        return 0;
+    HANDLE file = CreateFileA(
+        filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE)
+        return 0;
+    DWORD written = 0;
+    const bool success = size == 0
+        || (WriteFile(
+                file, data, static_cast<DWORD>(size), &written, nullptr)
+            && written == static_cast<DWORD>(size));
+    CloseHandle(file);
+    return success ? 1 : 0;
+}
 
 /**
  * Check if a byte is a SJIS lead byte (first byte of 2-byte character)
@@ -31,19 +104,24 @@ int __cdecl RK_CheckSJIS(int ch)
 }
 
 /**
- * Check if string contains SJIS characters
+ * Check whether the byte at an index starts an SJIS character.
  * USED BY: ShadowFlare.exe
  */
-int __cdecl RK_CheckStringSJIS(const char* str)
+int __cdecl RK_CheckStringSJIS(const char* str, int index)
 {
-    OSF_FUNC_TRACE("str='%s'", str ? str : "(null)");
-    if (!str) return 0;
-    
-    while (*str)
-    {
-        if (RK_CheckSJIS((unsigned char)*str))
-            return 1;
-        str++;
+    OSF_FUNC_TRACE("str='%s', index=%d", str ? str : "(null)", index);
+    if (!str || index < 0)
+        return 0;
+    int position = 0;
+    while (position <= index) {
+        if (RK_CheckSJIS(static_cast<unsigned char>(*str))) {
+            if (position == index)
+                return 1;
+            ++position;
+            ++str;
+        }
+        ++position;
+        ++str;
     }
     return 0;
 }
@@ -119,7 +197,7 @@ int __cdecl RK_StringsCompare(const char* str1, const char* str2, int caseInsens
         }
     }
     
-    return 1;  // Strings are equal
+    return 0;
 }
 
 /**
@@ -161,7 +239,7 @@ void __cdecl RK_DeleteTabSpaceString(char* str, int mode)
     OSF_FUNC_TRACE("str='%s', mode=%d", str ? str : "(null)", mode);
     if (!str) return;
     
-    if (mode == 0)
+    if (mode == 0 || mode == 2)
     {
         // Strip leading spaces/tabs
         char* src = str;
@@ -181,40 +259,17 @@ void __cdecl RK_DeleteTabSpaceString(char* str, int mode)
             *dst = '\0';
         }
     }
-    else if (mode == 1)
+    if (mode == 1 || mode == 2)
     {
-        // Strip all spaces/tabs
-        char* src = str;
-        char* dst = str;
-        while (*src)
-        {
-            if (RK_CheckSJIS((unsigned char)*src))
-            {
-                // Copy both bytes of SJIS char
-                *dst++ = *src++;
-                if (*src) *dst++ = *src++;
-            }
-            else if (*src != ' ' && *src != '\t')
-            {
-                *dst++ = *src++;
-            }
-            else
-            {
-                src++;
-            }
-        }
-        *dst = '\0';
-    }
-    else if (mode == 2)
-    {
-        // Strip trailing spaces/tabs
+        // The original truncates at the byte immediately before one trailing
+        // space/tab. This removes a two-byte CR-style padding pair in one
+        // operation and is intentionally not a conventional trim loop.
         size_t len = strlen(str);
-        if (len == 0) return;
-        
-        char* end = str + len - 1;
-        while (end >= str && (*end == ' ' || *end == '\t'))
-            end--;
-        end[1] = '\0';
+        if (len != 0) {
+            char* end = str + len - 1;
+            if ((*end == ' ' || *end == '\t') && end != str)
+                end[-1] = '\0';
+        }
     }
 }
 
@@ -258,9 +313,7 @@ void __cdecl RK_SetLastRoot(char* path)
     if (!path) return;
     
     size_t len = strlen(path);
-    if (len == 0) return;
-    
-    if (path[len - 1] != '\\')
+    if (len == 0 || path[len - 1] != '\\')
     {
         path[len] = '\\';
         path[len + 1] = '\0';
@@ -293,7 +346,7 @@ void __cdecl RK_CutFilenameFromFullPath(char* fullPath)
     }
     
     if (lastSlash >= 0)
-        fullPath[lastSlash + 1] = '\0';
+        fullPath[lastSlash] = '\0';
 }
 
 /**
@@ -839,7 +892,7 @@ void __cdecl RK_MesDefineSet(char* str)
         return;
     }
     
-    // Not quoted - shift right and add quotes
+    // Not quoted - shift right and add the opening quote.
     size_t len = strlen(str);
     
     // Shift all chars right by 1
@@ -851,9 +904,14 @@ void __cdecl RK_MesDefineSet(char* str)
     // Add opening quote
     str[0] = '"';
     
-    // Add closing quote
-    str[len + 1] = '"';
-    str[len + 2] = '\0';
+    // The original rechecks the resulting string. For an empty input the
+    // opening quote is also the last byte, so it does not append a second one.
+    len = strlen(str);
+    if (len > 0 && str[len - 1] != '"')
+    {
+        str[len] = '"';
+        str[len + 1] = '\0';
+    }
 }
 
 /**
@@ -986,30 +1044,33 @@ int __cdecl RK_SystemTimeCompare(const SYSTEMTIME* time1, const SYSTEMTIME* time
  * 
  * Args: srcData = compressed data, srcSize = compressed size, 
  *       outData = receives pointer to allocated decompressed data,
- *       outSize = receives decompressed size
+ *       outHeader = receives the 16-byte RCLIB header
  * Returns: 1 on success, 0 on failure
  * USED BY: ShadowFlare.exe, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll, o_RKC_UPDIB.dll
  */
-int __cdecl RK_LzDecodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
+int __cdecl RK_LzDecodeMemoryToMemory(
+    const void* srcData, int srcSize, void** outData, void* outHeader)
 {
     OSF_FUNC_TRACE("srcSize=%d", srcSize);
     
     // Minimum size: 16 bytes header (8 magic + 4 size + 4 padding/reserved)
-    if (!srcData || !outData || srcSize <= 16) return -1;
+    if (!srcData || !outData || !outHeader || srcSize <= 16) return -1;
     
     const unsigned char* src = (const unsigned char*)srcData;
+    auto* header = static_cast<RkCompressionHeader*>(outHeader);
+    std::memcpy(header, src, sizeof(*header));
+    header->magic[7] = '\0';
     
-    // Check header: "RCLIB-L" (only compare 7 bytes - byte 8 can vary)
-    if (memcmp(src, "RCLIB-L", 7) != 0)
+    if (std::strcmp(header->magic, "RCLIB-L") != 0)
         return 0;
     
-    // Get decompressed size (little-endian 32-bit at offset 8)
-    int decompSize = *(const int*)(src + 8);
-    if (outSize)
-        *outSize = decompSize;
+    const int decompSize = header->uncompressedSize;
+    if (decompSize < 0)
+        return 0;
     
     // Allocate output buffer using GlobalAlloc(GMEM_FIXED, size)
-    unsigned char* dest = (unsigned char*)GlobalAlloc(0, decompSize);
+    unsigned char* dest = (unsigned char*)GlobalAlloc(
+        0, decompSize == 0 ? 1 : static_cast<SIZE_T>(decompSize));
     if (!dest) return 0;
     
     *outData = dest;
@@ -1165,66 +1226,125 @@ int __cdecl RK_HuffmanEncodeMemoryToMemory(const void* srcData, int srcSize, voi
  * LZ decode from file to file
  * NOT REFERENCED - stub only, not imported by any module
  */
-int __cdecl RK_LzDecodeFileToFile(const char* srcFile, const char* destFile)
+int __cdecl RK_LzDecodeFileToFile(
+    const char* srcFile, const char* destFile, void* outHeader)
 {
-    OSF_FUNC_TRACE("STUB: srcFile='%s', destFile='%s'", 
+    OSF_FUNC_TRACE("srcFile='%s', destFile='%s'",
                    srcFile ? srcFile : "(null)", destFile ? destFile : "(null)");
-    return 0;
+    void* decoded = nullptr;
+    const int result = RK_LzDecodeFileToMemory(
+        srcFile, &decoded, outHeader);
+    if (result != 1)
+        return result;
+    const auto* header = static_cast<const RkCompressionHeader*>(outHeader);
+    const int written = WriteCompressionFile(
+        destFile, decoded, header->uncompressedSize);
+    GlobalFree(decoded);
+    return written;
 }
 
 /**
  * LZ decode from file to memory
  * NOT REFERENCED - stub only, not imported by any module
  */
-int __cdecl RK_LzDecodeFileToMemory(const char* srcFile, void** outData, int* outSize)
+int __cdecl RK_LzDecodeFileToMemory(
+    const char* srcFile, void** outData, void* outHeader)
 {
-    OSF_FUNC_TRACE("STUB: srcFile='%s'", srcFile ? srcFile : "(null)");
-    if (outData) *outData = NULL;
-    if (outSize) *outSize = 0;
-    return 0;
+    OSF_FUNC_TRACE("srcFile='%s'", srcFile ? srcFile : "(null)");
+    void* encoded = nullptr;
+    int encodedSize = 0;
+    if (!ReadCompressionFile(srcFile, &encoded, &encodedSize))
+        return -1;
+    const int result = RK_LzDecodeMemoryToMemory(
+        encoded, encodedSize, outData, outHeader);
+    GlobalFree(encoded);
+    return result;
 }
 
 /**
  * LZ decode from memory to file
  * NOT REFERENCED - stub only, not imported by any module
  */
-int __cdecl RK_LzDecodeMemoryToFile(const void* srcData, int srcSize, const char* destFile)
+int __cdecl RK_LzDecodeMemoryToFile(
+    const void* srcData, int srcSize, const char* destFile, void* outHeader)
 {
-    OSF_FUNC_TRACE("STUB: srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
-    return 0;
+    OSF_FUNC_TRACE("srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
+    void* decoded = nullptr;
+    const int decodedResult = RK_LzDecodeMemoryToMemory(
+        srcData, srcSize, &decoded, outHeader);
+    if (decodedResult != 1)
+        return decodedResult;
+    const auto* header = static_cast<const RkCompressionHeader*>(outHeader);
+    const int result = WriteCompressionFile(
+        destFile, decoded, header->uncompressedSize);
+    GlobalFree(decoded);
+    return result;
 }
 
 /**
  * LZ encode from file to file
  * NOT REFERENCED - stub only, not imported by any module
  */
-int __cdecl RK_LzEncodeFileToFile(const char* srcFile, const char* destFile)
+int __cdecl RK_LzEncodeFileToFile(
+    const char* srcFile, const char* destFile, void* outHeader)
 {
-    OSF_FUNC_TRACE("STUB: srcFile='%s', destFile='%s'", 
+    OSF_FUNC_TRACE("srcFile='%s', destFile='%s'",
                    srcFile ? srcFile : "(null)", destFile ? destFile : "(null)");
-    return 0;
+    void* source = nullptr;
+    int sourceSize = 0;
+    if (!ReadCompressionFile(srcFile, &source, &sourceSize))
+        return -1;
+    const int capacity = 32 + sourceSize + (sourceSize + 7) / 8;
+    std::vector<unsigned char> encoded(static_cast<std::size_t>(capacity));
+    const int encodedResult = RK_LzEncodeMemoryToMemory(
+        source, sourceSize, encoded.data(), capacity, outHeader);
+    GlobalFree(source);
+    if (encodedResult != 1)
+        return encodedResult;
+    const auto* header = static_cast<const RkCompressionHeader*>(outHeader);
+    const int result = WriteCompressionFile(
+        destFile, encoded.data(), 16 + header->compressedSize);
+    return result;
 }
 
 /**
  * LZ encode from file to memory
  * NOT REFERENCED - stub only, not imported by any module
  */
-int __cdecl RK_LzEncodeFileToMemory(const char* srcFile, void** outData, int* outSize)
+int __cdecl RK_LzEncodeFileToMemory(
+    const char* srcFile, void* destData, int destSize, void* outHeader)
 {
-    OSF_FUNC_TRACE("STUB: srcFile='%s'", srcFile ? srcFile : "(null)");
-    if (outData) *outData = NULL;
-    if (outSize) *outSize = 0;
-    return 0;
+    OSF_FUNC_TRACE("srcFile='%s'", srcFile ? srcFile : "(null)");
+    void* source = nullptr;
+    int sourceSize = 0;
+    if (!ReadCompressionFile(srcFile, &source, &sourceSize))
+        return -1;
+    const int result = RK_LzEncodeMemoryToMemory(
+        source, sourceSize, destData, destSize, outHeader);
+    GlobalFree(source);
+    return result;
 }
 
 /**
  * LZ encode from memory to file
  * NOT REFERENCED - stub only, not imported by any module
  */
-int __cdecl RK_LzEncodeMemoryToFile(const void* srcData, int srcSize, const char* destFile)
+int __cdecl RK_LzEncodeMemoryToFile(
+    const void* srcData, int srcSize, const char* destFile, void* outHeader)
 {
-    OSF_FUNC_TRACE("STUB: srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
-    return 0;
+    OSF_FUNC_TRACE("srcSize=%d, destFile='%s'", srcSize, destFile ? destFile : "(null)");
+    if (!srcData || srcSize < 0)
+        return 0;
+    const int capacity = 32 + srcSize + (srcSize + 7) / 8;
+    std::vector<unsigned char> encoded(static_cast<std::size_t>(capacity));
+    const int encodedResult = RK_LzEncodeMemoryToMemory(
+        srcData, srcSize, encoded.data(), capacity, outHeader);
+    if (encodedResult != 1)
+        return encodedResult;
+    const auto* header = static_cast<const RkCompressionHeader*>(outHeader);
+    const int result = WriteCompressionFile(
+        destFile, encoded.data(), 16 + header->compressedSize);
+    return result;
 }
 
 /**
@@ -1243,147 +1363,178 @@ int __cdecl RK_LzEncodeMemoryToFile(const void* srcData, int srcSize, const char
  * 
  * USED BY: o_RKC_FONTMAKER.dll, o_RKC_RPGSCRN.dll, o_RKC_RPG_TABLE.dll
  */
-int __cdecl RK_LzEncodeMemoryToMemory(const void* srcData, int srcSize, void** outData, int* outSize)
+int __cdecl RK_LzEncodeMemoryToMemory(
+    const void* srcData, int srcSize, void* destData, int destSize,
+    void* outHeader)
 {
     OSF_FUNC_TRACE("srcSize=%d", srcSize);
     
-    if (!srcData || !outData || srcSize < 0) return 0;
-    if (outSize) *outSize = 0;
-    *outData = NULL;
-    
-    // Handle empty input
-    if (srcSize == 0)
-    {
-        // Allocate just the header
-        unsigned char* dest = (unsigned char*)GlobalAlloc(0, 16);
-        if (!dest) return 0;
-        
-        memcpy(dest, "RCLIB-L", 7);
-        dest[7] = 0x1A;
-        *(int*)(dest + 8) = 0;   // decompressed size
-        *(int*)(dest + 12) = 0;  // compressed size (data portion)
-        
-        *outData = dest;
-        if (outSize) *outSize = 16;
-        return 1;
-    }
+    if (!srcData || !destData || !outHeader || srcSize <= 0 || destSize < 16)
+        return 0;
     
     const unsigned char* src = (const unsigned char*)srcData;
-    
-    // Worst case: header + every byte as literal with flag bytes
-    // Each flag byte covers 8 items, worst case each item is 1 literal byte
-    // So worst case is: 16 + srcSize + (srcSize + 7) / 8 flag bytes
-    int maxOutSize = 16 + srcSize + (srcSize + 7) / 8 + 16;  // extra padding for safety
-    
-    unsigned char* dest = (unsigned char*)GlobalAlloc(0, maxOutSize);
-    if (!dest) return 0;
-    
-    // Initialize sliding window (4KB, filled with zeros)
-    unsigned char window[4096];
-    memset(window, 0x00, sizeof(window));
-    
-    int srcPos = 0;
-    int destPos = 16;  // Skip header for now
-    int winPos = 0xFEE;  // Initial window position
-    
-    // Temporary buffer for current chunk (1 flag byte + up to 8 items)
-    unsigned char chunkBuf[1 + 8 * 2];  // flag + max 8 items * 2 bytes each
-    int chunkLen = 1;  // Start after flag byte position
-    unsigned char flagByte = 0;
-    unsigned char flagMask = 0x80;
-    
-    while (srcPos < srcSize)
-    {
-        // Search for best match in the sliding window
-        int bestLen = 0;
-        int bestOffset = 0;
-        
-        // Only search if we have at least 3 bytes left (minimum match length)
-        if (srcPos + 2 < srcSize)
-        {
-            // Search backwards through the window for matches
-            for (int searchOffset = 1; searchOffset <= 4096; searchOffset++)
-            {
-                int windowOffset = (winPos - searchOffset) & 0xFFF;
-                
-                // Count matching bytes
-                int matchLen = 0;
-                while (matchLen < 18 && srcPos + matchLen < srcSize)
-                {
-                    int winIdx = (windowOffset + matchLen) & 0xFFF;
-                    if (window[winIdx] != src[srcPos + matchLen])
-                        break;
-                    matchLen++;
+    unsigned char* dest = static_cast<unsigned char*>(destData);
+    constexpr int windowSize = 4096;
+    constexpr int lookAhead = 18;
+    constexpr int threshold = 2;
+    constexpr int nil = windowSize;
+    unsigned char textBuffer[windowSize + lookAhead - 1]{};
+    int left[windowSize + 1]{};
+    int right[windowSize + 257]{};
+    int parent[windowSize + 1]{};
+    for (int index = windowSize + 1; index <= windowSize + 256; ++index)
+        right[index] = nil;
+    for (int index = 0; index < windowSize; ++index)
+        parent[index] = nil;
+
+    int matchPosition = 0;
+    int matchLength = 0;
+    auto insertNode = [&](int node) {
+        const unsigned char* key = textBuffer + node;
+        int comparison = 1;
+        int current = windowSize + 1 + key[0];
+        right[node] = nil;
+        left[node] = nil;
+        matchLength = 0;
+        for (;;) {
+            if (comparison >= 0) {
+                if (right[current] != nil)
+                    current = right[current];
+                else {
+                    right[current] = node;
+                    parent[node] = current;
+                    return;
                 }
-                
-                // Keep best match (>= 3 bytes)
-                if (matchLen >= 3 && matchLen > bestLen)
-                {
-                    bestLen = matchLen;
-                    bestOffset = windowOffset;
-                    
-                    // Can't do better than 18 bytes
-                    if (bestLen == 18)
-                        break;
+            } else {
+                if (left[current] != nil)
+                    current = left[current];
+                else {
+                    left[current] = node;
+                    parent[node] = current;
+                    return;
                 }
             }
-        }
-        
-        if (bestLen >= 3)
-        {
-            // Encode match reference (bit = 1)
-            flagByte |= flagMask;
-            
-            // Encode: offset in b1 and high nibble of b2, length-3 in low nibble of b2
-            unsigned char b1 = bestOffset & 0xFF;
-            unsigned char b2 = ((bestOffset >> 4) & 0xF0) | ((bestLen - 3) & 0x0F);
-            
-            chunkBuf[chunkLen++] = b1;
-            chunkBuf[chunkLen++] = b2;
-            
-            // Update window with matched bytes
-            for (int i = 0; i < bestLen; i++)
-            {
-                window[winPos] = src[srcPos + i];
-                winPos = (winPos + 1) & 0xFFF;
+            int length = 1;
+            for (; length < lookAhead; ++length) {
+                comparison = key[length] - textBuffer[current + length];
+                if (comparison != 0)
+                    break;
             }
-            srcPos += bestLen;
+            if (length > matchLength) {
+                matchPosition = current;
+                matchLength = length;
+                if (length >= lookAhead)
+                    break;
+            }
         }
+        parent[node] = parent[current];
+        left[node] = left[current];
+        right[node] = right[current];
+        parent[left[current]] = node;
+        parent[right[current]] = node;
+        if (right[parent[current]] == current)
+            right[parent[current]] = node;
         else
-        {
-            // Encode literal byte (bit = 0)
-            // flagByte bit is already 0
-            chunkBuf[chunkLen++] = src[srcPos];
-            
-            // Update window
-            window[winPos] = src[srcPos];
-            winPos = (winPos + 1) & 0xFFF;
-            srcPos++;
+            left[parent[current]] = node;
+        parent[current] = nil;
+    };
+    auto deleteNode = [&](int node) {
+        if (parent[node] == nil)
+            return;
+        int replacement = 0;
+        if (right[node] == nil)
+            replacement = left[node];
+        else if (left[node] == nil)
+            replacement = right[node];
+        else {
+            replacement = left[node];
+            if (right[replacement] != nil) {
+                do {
+                    replacement = right[replacement];
+                } while (right[replacement] != nil);
+                right[parent[replacement]] = left[replacement];
+                parent[left[replacement]] = parent[replacement];
+                left[replacement] = left[node];
+                parent[left[node]] = replacement;
+            }
+            right[replacement] = right[node];
+            parent[right[node]] = replacement;
         }
-        
-        // Move to next flag bit
-        flagMask >>= 1;
-        
-        // If we've filled 8 items, flush the chunk
-        if (flagMask == 0)
-        {
-            chunkBuf[0] = flagByte;
-            memcpy(dest + destPos, chunkBuf, chunkLen);
-            destPos += chunkLen;
-            
-            // Reset for next chunk
-            flagByte = 0;
-            flagMask = 0x80;
-            chunkLen = 1;
+        parent[replacement] = parent[node];
+        if (right[parent[node]] == node)
+            right[parent[node]] = replacement;
+        else
+            left[parent[node]] = replacement;
+        parent[node] = nil;
+    };
+
+    int sourcePosition = 0;
+    int ringStart = 0;
+    int ringCurrent = windowSize - lookAhead;
+    int buffered = 0;
+    while (buffered < lookAhead && sourcePosition < srcSize)
+        textBuffer[ringCurrent + buffered++] = src[sourcePosition++];
+    if (buffered == 0)
+        return 0;
+    for (int index = 1; index <= lookAhead; ++index)
+        insertNode(ringCurrent - index);
+    insertNode(ringCurrent);
+
+    unsigned char codeBuffer[1 + lookAhead]{};
+    int codeLength = 1;
+    unsigned char codeMask = 0x80;
+    int destPos = 16;
+    do {
+        if (matchLength > buffered)
+            matchLength = buffered;
+        if (matchLength <= threshold) {
+            matchLength = 1;
+            codeBuffer[codeLength++] = textBuffer[ringCurrent];
+        } else {
+            codeBuffer[0] |= codeMask;
+            codeBuffer[codeLength++] =
+                static_cast<unsigned char>(matchPosition);
+            codeBuffer[codeLength++] = static_cast<unsigned char>(
+                ((matchPosition >> 4) & 0xf0)
+                | (matchLength - (threshold + 1)));
         }
-    }
-    
-    // Flush any remaining partial chunk
-    if (flagMask != 0x80)  // We have pending items
-    {
-        chunkBuf[0] = flagByte;
-        memcpy(dest + destPos, chunkBuf, chunkLen);
-        destPos += chunkLen;
+        codeMask >>= 1;
+        if (codeMask == 0) {
+            if (codeLength > destSize - destPos)
+                return 0;
+            std::memcpy(dest + destPos, codeBuffer, codeLength);
+            destPos += codeLength;
+            codeBuffer[0] = 0;
+            codeLength = 1;
+            codeMask = 0x80;
+        }
+
+        const int previousMatchLength = matchLength;
+        int advanced = 0;
+        for (; advanced < previousMatchLength && sourcePosition < srcSize;
+             ++advanced) {
+            const unsigned char value = src[sourcePosition++];
+            deleteNode(ringStart);
+            textBuffer[ringStart] = value;
+            if (ringStart < lookAhead - 1)
+                textBuffer[ringStart + windowSize] = value;
+            ringStart = (ringStart + 1) & (windowSize - 1);
+            ringCurrent = (ringCurrent + 1) & (windowSize - 1);
+            insertNode(ringCurrent);
+        }
+        while (advanced++ < previousMatchLength) {
+            deleteNode(ringStart);
+            ringStart = (ringStart + 1) & (windowSize - 1);
+            ringCurrent = (ringCurrent + 1) & (windowSize - 1);
+            if (--buffered != 0)
+                insertNode(ringCurrent);
+        }
+    } while (buffered > 0);
+    if (codeLength > 1) {
+        if (codeLength > destSize - destPos)
+            return 0;
+        std::memcpy(dest + destPos, codeBuffer, codeLength);
+        destPos += codeLength;
     }
     
     // Write header
@@ -1392,8 +1543,7 @@ int __cdecl RK_LzEncodeMemoryToMemory(const void* srcData, int srcSize, void** o
     *(int*)(dest + 8) = srcSize;       // Decompressed size
     *(int*)(dest + 12) = destPos - 16; // Compressed data size (without header)
     
-    *outData = dest;
-    if (outSize) *outSize = destPos;
+    std::memcpy(outHeader, dest, sizeof(RkCompressionHeader));
     
     return 1;
 }

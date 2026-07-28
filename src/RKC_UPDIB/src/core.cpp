@@ -35,9 +35,16 @@ extern "C" void __thiscall RKC_UPDIB_VSBLOCK_Release(void* self);
 extern "C" int __thiscall RKC_UPDIB_VSBLOCK_CreateVS(void* self, long count);
 extern "C" int __thiscall RKC_UPDIB_VSBLOCK_Render(void* self, RKC_DIB* dib, long vsIndex, long reverseVsOrder, long reversePacketOrder, RECT* clip);
 extern "C" void* __thiscall RKC_UPDIB_VS_GetVSPacket(void* self, long index);
+extern "C" void* __thiscall RKC_UPDIB_VSBLOCK_GetVScreen(void* self, long index);
+extern "C" int __thiscall RKC_UPDIB_VS_Render(void* self, RKC_DIB* dib, long packetIndex, long reverseOrder, RECT* clip);
+extern "C" void* __thiscall RKC_UPDIB_VS_InsertVSPacket(void* self, long index);
 extern "C" void __thiscall RKC_UPDIB_Release(void* self);
 extern "C" void __thiscall RKC_UPDIB_UPD_Release(void* self);
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip);
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip);
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip);
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip);
+extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip);
 extern "C" void* __thiscall RKC_UPDIB_VSPACKET_constructor(void* self);
 extern "C" void __thiscall RKC_UPDIB_VSPACKET_destructor(void* self);
 extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket(void* self, long index, void* packet);
@@ -176,73 +183,6 @@ static int Original_UPD_Read(void* self, char* filename, long flags) {
 
 static int Original_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) {
     return CallOriginalUPDIB<int>("?Render@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
-}
-
-static int Original_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) {
-    return CallOriginalUPDIB<int>("?RenderBox@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
-}
-
-static int Original_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip) {
-    return CallOriginalUPDIB<int>("?RenderFill@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
-}
-
-static int Original_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip) {
-    return CallOriginalUPDIB<int>("?RenderLine@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
-}
-
-static int Original_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip) {
-    return CallOriginalUPDIB<int>("?RenderPoint@RKC_UPDIB_VSPACKET@@QAEHPAVRKC_DIB@@PAUtagRECT@@@Z", self, dib, clip);
-}
-
-static int Original_UPDIB_Render(void* self, RKC_DIB* dib, long a, long b, long c, long d, RECT* clip) {
-    return CallOriginalUPDIB<int>("?Render@RKC_UPDIB@@QAEHPAVRKC_DIB@@JJJJPAUtagRECT@@@Z", self, dib, a, b, c, d, clip);
-}
-
-static int Original_UPDIB_Initialize(void* self, long vsBlockCount, long vsCount, long updCount, int createHispeedMode) {
-    return CallOriginalUPDIB<int>("?Initialize@RKC_UPDIB@@QAEHJJJH@Z", self, vsBlockCount, vsCount, updCount, createHispeedMode);
-}
-
-static int Original_VSBLOCK_Render(void* self, RKC_DIB* dib, long a, long b, long c, RECT* clip) {
-    return CallOriginalUPDIB<int>("?Render@RKC_UPDIB_VSBLOCK@@QAEHPAVRKC_DIB@@JJJPAUtagRECT@@@Z", self, dib, a, b, c, clip);
-}
-
-static int Original_UPDIB_SetPacket(
-    void* self,
-    long a1, long a2, long a3, long a4, long a5, long a6, long a7, long a8, long a9, long a10, long a11, long a12, long a13,
-    short s1, short s2, short s3,
-    RECT* clip,
-    RKC_DIB* dib
-) {
-    return CallOriginalUPDIB<int>(
-        "?SetPacket@RKC_UPDIB@@QAEHJJJJJJJJJJJJJFFFPAUtagRECT@@PAVRKC_DIB@@@Z",
-        self, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, s1, s2, s3, clip, dib
-    );
-}
-
-static void* Original_VS_SetPacket_full(
-    void* self,
-    long a1, long a2, long a3, long a4, long a5, long a6, long a7, long a8, long a9, long a10, long a11, long a12,
-    short s1, short s2, short s3,
-    RECT* clip,
-    RKC_DIB* dib
-) {
-    return CallOriginalUPDIB<void*>(
-        "?SetPacket@RKC_UPDIB_VS@@QAEPAVRKC_UPDIB_VSPACKET@@JJJJJJJJJJJJFFFPAUtagRECT@@PAVRKC_DIB@@@Z",
-        self, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, s1, s2, s3, clip, dib
-    );
-}
-
-static int Original_UPDIB_SetStringsPacket(
-    void* self,
-    long a1, long a2, long a3, long a4, long a5,
-    char* text,
-    unsigned char c1, unsigned char c2, unsigned char c3,
-    long a6, long a7, long a8, long a9, long a10
-) {
-    return CallOriginalUPDIB<int>(
-        "?SetStringsPacket@RKC_UPDIB@@QAEHJJJJJPADEEEJJJJJ@Z",
-        self, a1, a2, a3, a4, a5, text, c1, c2, c3, a6, a7, a8, a9, a10
-    );
 }
 
 // ============================================================================
@@ -564,7 +504,27 @@ extern "C" int __thiscall RKC_UPDIB_GetFontParam(void* self, long updIndex, long
 extern "C" int __thiscall RKC_UPDIB_Initialize(void* self, long vsBlockCount, long vsCount, long updCount, int createHispeedMode) {
     OSF_FUNC_TRACE("self=%p, vsBlockCount=%ld, vsCount=%ld, updCount=%ld, createHispeedMode=%d",
         self, vsBlockCount, vsCount, updCount, createHispeedMode);
-    return Original_UPDIB_Initialize(self, vsBlockCount, vsCount, updCount, createHispeedMode);
+    RKC_UPDIB_Release(self);
+    for (long index = 0; index < vsBlockCount; ++index) {
+        void* block = RKC_UPDIB_InsertVSBlock(self, 0);
+        if (!block || RKC_UPDIB_VSBLOCK_CreateVS(block, vsCount) != 1) {
+            RKC_UPDIB_Release(self);
+            return 0;
+        }
+    }
+    if (updCount > 0 && RKC_UPDIB_CreateUpdBlock(self, updCount) != 1) {
+        RKC_UPDIB_Release(self);
+        return 0;
+    }
+    if (createHispeedMode == 1) {
+        void* mode = std::malloc(0x11a300);
+        if (!mode) {
+            RKC_UPDIB_Release(self);
+            return 0;
+        }
+        *(void**)((char*)self + 0x28) = DIBHISPEEDMODE_Construct(mode);
+    }
+    return 1;
 }
 
 extern "C" int __thiscall RKC_UPDIB_ReadUpd(
@@ -1308,7 +1268,31 @@ extern "C" int __thiscall RKC_UPDIB_Render(
 ) {
     OSF_FUNC_TRACE("self=%p, dib=%p, vsBlockIndex=%ld, reverseBlockOrder=%ld, reversePacketOrder=%ld, unusedY=%ld, clip=%p",
         self, dib, vsBlockIndex, reverseBlockOrder, reversePacketOrder, unusedY, clip);
-    return Original_UPDIB_Render(self, dib, vsBlockIndex, reverseBlockOrder, reversePacketOrder, unusedY, clip);
+    if (vsBlockIndex == -1) {
+        char* block = *(char**)self;
+        if (reverseBlockOrder == 0) {
+            if (block) {
+                while (*(char**)(block + 0x10))
+                    block = *(char**)(block + 0x10);
+                while (block) {
+                    RKC_UPDIB_VSBLOCK_Render(
+                        block, dib, -1, reversePacketOrder, unusedY, clip);
+                    block = *(char**)(block + 0x0c);
+                }
+            }
+        } else {
+            while (block) {
+                RKC_UPDIB_VSBLOCK_Render(
+                    block, dib, -1, reversePacketOrder, unusedY, clip);
+                block = *(char**)(block + 0x10);
+            }
+        }
+    } else {
+        void* block = RKC_UPDIB_GetVSBlock(self, vsBlockIndex);
+        if (block)
+            RKC_UPDIB_VSBLOCK_Render(block, dib, -1, 0, 0, clip);
+    }
+    return 1;
 }
 
 // RKC_UPDIB_VS stubs
@@ -1488,9 +1472,28 @@ extern "C" void* __thiscall RKC_UPDIB_VS_SetPacket_full(
 ) {
     OSF_FUNC_TRACE("self=%p, index=%ld, updIndex=%ld, patternIndex=%ld, paletteIndex=%ld, flags=%ld, x=%ld, y=%ld, scaleX=%ld, scaleY=%ld, alpha=%ld, blendMode=%ld, userValue=%ld, red=%d, green=%d, blue=%d, clip=%p, dib=%p",
         self, index, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib);
-    return Original_VS_SetPacket_full(
-        self, index, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib
-    );
+    void* packet = RKC_UPDIB_VS_InsertVSPacket(self, index);
+    if (!packet)
+        return nullptr;
+    return RKC_UPDIB_VSPACKET_SetPacket_full(
+        packet,
+        *(void**)self,
+        updIndex,
+        patternIndex,
+        paletteIndex,
+        flags,
+        x,
+        y,
+        scaleX,
+        scaleY,
+        alpha,
+        blendMode,
+        userValue,
+        red,
+        green,
+        blue,
+        clip,
+        dib);
 }
 
 // RKC_UPDIB_VSBLOCK stubs
@@ -1588,30 +1591,116 @@ extern "C" int __thiscall RKC_UPDIB_VSBLOCK_Render(
 ) {
     OSF_FUNC_TRACE("self=%p, dib=%p, vsIndex=%ld, reverseVsOrder=%ld, reversePacketOrder=%ld, clip=%p",
         self, dib, vsIndex, reverseVsOrder, reversePacketOrder, clip);
-    return Original_VSBLOCK_Render(self, dib, vsIndex, reverseVsOrder, reversePacketOrder, clip);
+    char* p = static_cast<char*>(self);
+    const long count = *(long*)(p + 0x04);
+    char* screens = *(char**)(p + 0x08);
+    if (vsIndex == -1) {
+        if (reverseVsOrder == 0) {
+            for (long index = count - 1; index >= 0; --index)
+                RKC_UPDIB_VS_Render(
+                    screens + index * 8, dib, -1, reversePacketOrder, clip);
+        } else {
+            for (long index = 0; index < count; ++index)
+                RKC_UPDIB_VS_Render(
+                    screens + index * 8, dib, -1, reversePacketOrder, clip);
+        }
+    } else if (vsIndex >= 0 && vsIndex < count) {
+        RKC_UPDIB_VS_Render(screens + vsIndex * 8, dib, -1, 0, clip);
+    }
+    return 1;
 }
 
 // RKC_UPDIB_VSPACKET stubs
 extern "C" void* __thiscall RKC_UPDIB_VSPACKET_operatorAssign(void* self, const void* src) { return self; }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_Render(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
+    const unsigned long flags = *(unsigned long*)((char*)self + 0x04);
+    if (flags & 0x100)
+        return RKC_UPDIB_VSPACKET_RenderPoint(self, dib, clip);
+    if (flags & 0x200)
+        return RKC_UPDIB_VSPACKET_RenderLine(self, dib, clip);
+    if (flags & 0x400)
+        return RKC_UPDIB_VSPACKET_RenderBox(self, dib, clip);
+    if (flags & 0x800)
+        return RKC_UPDIB_VSPACKET_RenderFill(self, dib, clip);
     return Original_VSPACKET_Render(self, dib, clip);
 }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderBox(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
-    return Original_VSPACKET_RenderBox(self, dib, clip);
+    char* p = static_cast<char*>(self);
+    unsigned long drawFlags = (*(unsigned long*)(p + 4) & 2) ? 4 : 0;
+    if (*(unsigned long*)(p + 4) & 0x40)
+        drawFlags |= 8;
+    if (*(unsigned long*)(p + 4) & 4)
+        clip = nullptr;
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?DrawBox@RKC_DIB@@QAEHJJJJEEEJJPAUtagRECT@@@Z",
+        dib,
+        *(long*)(p + 0x0c), *(long*)(p + 0x10),
+        *(long*)(p + 0x14), *(long*)(p + 0x18),
+        (unsigned char)*(short*)(p + 0x30),
+        (unsigned char)*(short*)(p + 0x32),
+        (unsigned char)*(short*)(p + 0x34),
+        *(long*)(p + 0x1c), (long)drawFlags, clip);
 }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderFill(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
-    return Original_VSPACKET_RenderFill(self, dib, clip);
+    char* p = static_cast<char*>(self);
+    unsigned long drawFlags = (*(unsigned long*)(p + 4) & 2) ? 4 : 0;
+    if (*(unsigned long*)(p + 4) & 0x40)
+        drawFlags |= 8;
+    if (*(unsigned long*)(p + 4) & 4)
+        clip = nullptr;
+    void* updib = *(void**)p;
+    void* highSpeed = updib ? *(void**)((char*)updib + 0x28) : nullptr;
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?DrawFill@RKC_DIB@@QAEHJJJJEEEJJPAUtagRECT@@PAVRKC_DIBHISPEEDMODE@@@Z",
+        dib,
+        *(long*)(p + 0x0c), *(long*)(p + 0x10),
+        *(long*)(p + 0x14), *(long*)(p + 0x18),
+        (unsigned char)*(short*)(p + 0x30),
+        (unsigned char)*(short*)(p + 0x32),
+        (unsigned char)*(short*)(p + 0x34),
+        *(long*)(p + 0x1c), (long)drawFlags, clip, highSpeed);
 }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderLine(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
-    return Original_VSPACKET_RenderLine(self, dib, clip);
+    char* p = static_cast<char*>(self);
+    unsigned long drawFlags = (*(unsigned long*)(p + 4) & 2) ? 4 : 0;
+    if (*(unsigned long*)(p + 4) & 0x40)
+        drawFlags |= 8;
+    if (*(unsigned long*)(p + 4) & 4)
+        clip = nullptr;
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?DrawLine@RKC_DIB@@QAEHJJJJEEEJJPAUtagRECT@@@Z",
+        dib,
+        *(long*)(p + 0x0c), *(long*)(p + 0x10),
+        *(long*)(p + 0x14), *(long*)(p + 0x18),
+        (unsigned char)*(short*)(p + 0x30),
+        (unsigned char)*(short*)(p + 0x32),
+        (unsigned char)*(short*)(p + 0x34),
+        *(long*)(p + 0x1c), (long)drawFlags, clip);
 }
 extern "C" int __thiscall RKC_UPDIB_VSPACKET_RenderPoint(void* self, RKC_DIB* dib, RECT* clip) {
     OSF_FUNC_TRACE("self=%p, dib=%p, clip=%p", self, dib, clip);
-    return Original_VSPACKET_RenderPoint(self, dib, clip);
+    char* p = static_cast<char*>(self);
+    unsigned long drawFlags = (*(unsigned long*)(p + 4) & 2) ? 4 : 0;
+    if (*(unsigned long*)(p + 4) & 0x40)
+        drawFlags |= 8;
+    if (*(unsigned long*)(p + 4) & 4)
+        clip = nullptr;
+    return CallFunctionInDLL<int>(
+        "RKC_DIB.dll",
+        "?DrawPoint@RKC_DIB@@QAEHJJEEEJJPAUtagRECT@@@Z",
+        dib,
+        *(long*)(p + 0x0c), *(long*)(p + 0x10),
+        (unsigned char)*(short*)(p + 0x30),
+        (unsigned char)*(short*)(p + 0x32),
+        (unsigned char)*(short*)(p + 0x34),
+        *(long*)(p + 0x1c), (long)drawFlags, clip);
 }
 extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_copy(void* self, void* packet) {
     OSF_FUNC_TRACE("self=%p, packet=%p", self, packet);
@@ -1668,12 +1757,12 @@ extern "C" void* __thiscall RKC_UPDIB_VSPACKET_SetPacket_full(
     *(long*)(p + 0x08) = userValue;
     *(long*)(p + 0x10) = y;
     *(long*)(p + 0x04) = flags;
-    *(long*)(p + 0x18) = alpha;
+    *(long*)(p + 0x18) = scaleY;
     *(long*)(p + 0x0c) = x;
     *(long*)(p + 0x20) = blendMode;
     *(long*)(p + 0x14) = scaleX;
     *(long*)(p + 0x28) = patternIndex;
-    *(long*)(p + 0x1c) = scaleY;
+    *(long*)(p + 0x1c) = alpha;
     *(short*)(p + 0x30) = red;
     *(long*)(p + 0x24) = updIndex;
     *(short*)(p + 0x34) = blue;
@@ -1714,9 +1803,21 @@ extern "C" int __thiscall RKC_UPDIB_SetPacket(
 ) {
     OSF_FUNC_TRACE("self=%p, vsBlockIndex=%ld, vsIndex=%ld, updIndex=%ld, patternIndex=%ld, paletteIndex=%ld, flags=%ld, x=%ld, y=%ld, scaleX=%ld, scaleY=%ld, alpha=%ld, blendMode=%ld, userValue=%ld, red=%d, green=%d, blue=%d, clip=%p, dib=%p",
         self, vsBlockIndex, vsIndex, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib);
-    return Original_UPDIB_SetPacket(
-        self, vsBlockIndex, vsIndex, updIndex, patternIndex, paletteIndex, flags, x, y, scaleX, scaleY, alpha, blendMode, userValue, red, green, blue, clip, dib
-    );
+    void* block = RKC_UPDIB_GetVSBlock(self, vsBlockIndex);
+    if (!block)
+        return 0;
+    void* screen = RKC_UPDIB_VSBLOCK_GetVScreen(block, vsIndex);
+    if (!screen)
+        return 0;
+    char packet[0x54];
+    RKC_UPDIB_VSPACKET_constructor(packet);
+    RKC_UPDIB_VSPACKET_SetPacket_full(
+        packet, self, updIndex, patternIndex, paletteIndex, flags,
+        x, y, scaleX, scaleY, alpha, blendMode, userValue,
+        red, green, blue, clip, dib);
+    const int result = RKC_UPDIB_VS_SetPacket(screen, 0, packet) != nullptr;
+    RKC_UPDIB_VSPACKET_destructor(packet);
+    return result;
 }
 
 extern "C" int __thiscall RKC_UPDIB_SetStringsPacket(
@@ -1738,7 +1839,103 @@ extern "C" int __thiscall RKC_UPDIB_SetStringsPacket(
 ) {
     OSF_FUNC_TRACE("self=%p, vsBlockIndex=%ld, vsIndex=%ld, updIndex=%ld, x=%ld, y=%ld, text=%s, red=%u, green=%u, blue=%u, flags=%ld, limit=%ld, letterSpacing=%ld, lineSpacing=%ld, userValue=%ld",
         self, vsBlockIndex, vsIndex, updIndex, x, y, text ? text : "(null)", red, green, blue, flags, limit, letterSpacing, lineSpacing, userValue);
-    return Original_UPDIB_SetStringsPacket(
-        self, vsBlockIndex, vsIndex, updIndex, x, y, text, red, green, blue, flags, limit, letterSpacing, lineSpacing, userValue
-    );
+    void* block = RKC_UPDIB_GetVSBlock(self, vsBlockIndex);
+    void* screen = block
+        ? RKC_UPDIB_VSBLOCK_GetVScreen(block, vsIndex) : nullptr;
+    void* upd = RKC_UPDIB_GetUpd(self, updIndex);
+    char* basePattern = upd
+        ? static_cast<char*>(RKC_UPDIB_UPD_GetPattern(upd, 0)) : nullptr;
+    if (!screen || !basePattern || !text)
+        return 0;
+
+    const long cellWidth = *(long*)(basePattern + 0x14) / 16;
+    const long cellHeight = *(long*)(basePattern + 0x18) / 16;
+    if (limit == 0)
+        limit = 2000000;
+    long cursorX = x;
+    long logicalCount = 1;
+    long byteCount = 2;
+
+    for (const unsigned char* cursor =
+             reinterpret_cast<const unsigned char*>(text);
+         *cursor;
+         ++cursor) {
+        const unsigned char first = *cursor;
+        const bool shiftJisLead =
+            (first >= 0x80 && first <= 0x9f) || first >= 0xe0;
+        if (!shiftJisLead) {
+            if (logicalCount > limit)
+                return 1;
+            if (first == '\n') {
+                y += cellHeight + lineSpacing;
+                cursorX = x;
+            } else if (first == ' ') {
+                cursorX += cellWidth + letterSpacing;
+            } else {
+                char* pattern = static_cast<char*>(
+                    RKC_UPDIB_UPD_GetPattern(upd, 0));
+                void* packet = pattern
+                    ? RKC_UPDIB_VS_InsertVSPacket(screen, 0) : nullptr;
+                if (packet) {
+                    char* p = static_cast<char*>(packet);
+                    *(long*)(p + 0x0c) =
+                        cursorX - (first & 0x0f) * cellWidth;
+                    *(long*)(p + 0x10) =
+                        y - (first >> 4) * cellHeight;
+                    *(long*)(p + 0x24) = updIndex;
+                    *(long*)(p + 0x28) = 0;
+                    *(long*)(p + 0x2c) = *(long*)(pattern + 0x1c);
+                    *(unsigned short*)(p + 0x30) = red;
+                    *(unsigned short*)(p + 0x32) = green;
+                    *(unsigned short*)(p + 0x34) = blue;
+                    *(unsigned long*)(p + 0x04) =
+                        static_cast<unsigned long>(flags) | 0xa0;
+                    *(long*)(p + 0x1c) = userValue;
+                    *(long*)(p + 0x40) = cursorX;
+                    *(long*)(p + 0x44) = y;
+                    *(long*)(p + 0x48) = cursorX + cellWidth - 1;
+                    *(long*)(p + 0x4c) = y + cellHeight - 1;
+                }
+                cursorX += cellWidth + letterSpacing;
+            }
+            ++logicalCount;
+            ++byteCount;
+            continue;
+        }
+
+        if (byteCount > limit || cursor[1] == 0)
+            return 1;
+        const long patternIndex =
+            first >= 0xe0 ? first - 0xbf : first - 0x7f;
+        const unsigned char second = cursor[1];
+        char* pattern = static_cast<char*>(
+            RKC_UPDIB_UPD_GetPattern(upd, patternIndex));
+        void* packet = pattern
+            ? RKC_UPDIB_VS_InsertVSPacket(screen, 0) : nullptr;
+        if (packet) {
+            char* p = static_cast<char*>(packet);
+            *(long*)(p + 0x0c) =
+                cursorX - (second & 0x0f) * cellWidth * 2;
+            *(long*)(p + 0x10) =
+                y - (second >> 4) * cellHeight;
+            *(long*)(p + 0x24) = updIndex;
+            *(long*)(p + 0x28) = patternIndex;
+            *(long*)(p + 0x2c) = -1;
+            *(unsigned short*)(p + 0x30) = red;
+            *(unsigned short*)(p + 0x32) = green;
+            *(unsigned short*)(p + 0x34) = blue;
+            *(unsigned long*)(p + 0x04) =
+                static_cast<unsigned long>(flags) | 0xa0;
+            *(long*)(p + 0x1c) = userValue;
+            *(long*)(p + 0x40) = cursorX;
+            *(long*)(p + 0x44) = y;
+            *(long*)(p + 0x48) = cursorX + cellWidth * 2 - 1;
+            *(long*)(p + 0x4c) = y + cellHeight - 1;
+        }
+        cursorX += cellWidth * 2 + letterSpacing;
+        ++cursor;
+        logicalCount += 2;
+        byteCount += 2;
+    }
+    return 1;
 }

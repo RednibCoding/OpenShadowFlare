@@ -16,7 +16,10 @@ if [ ! -f "$GAME_EXE" ]; then
     exit 1
 fi
 
-export WINEPREFIX="${WINEPREFIX:-$GAME_DIR}"
+DEFAULT_WINE_PREFIX="${XDG_DATA_HOME:-${HOME}/.local/share}/openshadowflare/wineprefix"
+export WINEPREFIX="${WINEPREFIX:-$DEFAULT_WINE_PREFIX}"
+export WINEARCH="${WINEARCH:-win32}"
+mkdir -p "$WINEPREFIX"
 
 cd "$GAME_DIR"
 exec wine "$GAME_EXE" "$@"

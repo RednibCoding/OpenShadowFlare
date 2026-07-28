@@ -3,7 +3,7 @@
 # OpenShadowFlare DLL Build Script
 # Cross-compiles Windows DLLs on Linux using MinGW
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build-win32"
@@ -50,9 +50,10 @@ if ! command -v $CXX &> /dev/null; then
     exit 1
 fi
 
-# Create build directory
-rm -rf "$BUILD_DIR"
+# Create a clean build directory without touching anything outside the
+# repository-owned output folder.
 mkdir -p "$BUILD_DIR"
+find "$BUILD_DIR" -mindepth 1 -maxdepth 1 -type f -delete
 
 echo "Building Windows DLLs with MinGW..."
 echo "========================================"
@@ -64,26 +65,23 @@ for dir in "${dirs[@]}"; do
     # Extra libs for specific DLLs
     EXTRA_LIBS=""
     if [ "$dir" = "RKC_DBFCONTROL" ]; then
-        EXTRA_LIBS="-lopengl32"
+        EXTRA_LIBS="-lopengl32 -lwinmm -lddraw"
     fi
     if [ "$dir" = "RKC_DSOUND" ]; then
         EXTRA_LIBS="-lwinmm"
     fi
+    if [ "$dir" = "RKC_NETWORK" ]; then
+        EXTRA_LIBS="-lws2_32"
+    fi
     
-    $CXX -shared -static-libgcc -static-libstdc++ \
+    "$CXX" -shared -static-libgcc -static-libstdc++ \
         -std=c++17 \
         -o "$BUILD_DIR/$dir.dll" \
         "$SCRIPT_DIR/$dir/src/core.cpp" \
         "$SCRIPT_DIR/$dir/dll.def" \
         -lgdi32 -lcomdlg32 $EXTRA_LIBS \
         2>&1
-    
-    if [ $? -eq 0 ]; then
-        echo "OK"
-    else
-        echo "FAILED"
-        exit 1
-    fi
+    echo "OK"
 done
 
 echo "========================================"
@@ -95,14 +93,20 @@ if [ "$DEPLOY" = true ]; then
     echo ""
     echo "Deploying to game folder..."
     
-    # Backup original DLLs if not already done
+    if [ ! -d "$GAME_DIR" ]; then
+        echo "Error: game folder not found at $GAME_DIR" >&2
+        exit 1
+    fi
+
+    # Move each pristine original aside once. Existing o_* backups are never
+    # replaced, so repeated deployments remain recoverable.
     for dir in "${dirs[@]}"; do
         ORIG="$GAME_DIR/$dir.dll"
         BACKUP="$GAME_DIR/o_$dir.dll"
         
         if [ -f "$ORIG" ] && [ ! -f "$BACKUP" ]; then
             echo "  Backing up $dir.dll -> o_$dir.dll"
-            cp "$ORIG" "$BACKUP"
+            mv "$ORIG" "$BACKUP"
         fi
     done
     

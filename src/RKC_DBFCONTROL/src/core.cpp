@@ -10,10 +10,12 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <mmsystem.h>
 #include <ddraw.h>
 #include <GL/gl.h>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include "../../utils.h"
 
 // GL_BGRA_EXT constant (not always defined in MinGW headers)
@@ -41,6 +43,11 @@ static int g_virtualH = 480;
 static FILE* g_logFile = nullptr;
 
 static void DBF_LOG_INIT() {
+    char enabledValue[8]{};
+    DWORD enabledLength = GetEnvironmentVariableA(
+        "OSF_DBF_LOG", enabledValue, static_cast<DWORD>(sizeof(enabledValue)));
+    if (enabledLength == 0 || enabledValue[0] == '0')
+        return;
     g_logFile = fopen("dbfcontrol_log.txt", "w");
     if (g_logFile) {
         fprintf(g_logFile, "=== RKC_DBFCONTROL log started ===\n");
@@ -379,7 +386,14 @@ int __thiscall RKC_DBFCONTROL_GetThreadDrawFlag(void* self) {
  * USED BY: ShadowFlare.exe
  */
 int __thiscall RKC_DBFCONTROL_GetDrawingFlag(void* self) {
-    return *(int*)((char*)self + 0x04);
+    char* p = static_cast<char*>(self);
+    HANDLE mutex = *(HANDLE*)(p + 0x13c);
+    if (mutex)
+        WaitForSingleObject(mutex, INFINITE);
+    const int value = *(int*)(p + 0x04);
+    if (mutex)
+        ReleaseMutex(mutex);
+    return value;
 }
 
 /**
@@ -398,11 +412,10 @@ long __thiscall RKC_DBFCONTROL_GetStyle(void* self, long arg) {
     if (arg == -1) {
         arg = *(long*)(p + 0x6c);
     }
-    if (arg == 0) {
-        return (long)0x80000000L;  // WS_POPUP
-    } else {
+    if (arg == 1) {
         return (long)0xca0000;  // WS_CAPTION | WS_SYSMENU
     }
+    return (long)0x80000000L;  // WS_POPUP
 }
 
 /**
@@ -431,7 +444,7 @@ long __thiscall RKC_DBFCONTROL_GetExStyle(void* self, long arg) {
     } else {
         result = -1;
     }
-    result = result & 0xf8;
+    result = result & static_cast<long>(0xfffffff8UL);
     result = result + 0x10;
     return result;
 }
@@ -478,51 +491,14 @@ void* __thiscall RKC_DBFCONTROL_GetSurface(void* self, int arg) {
 // ============================================================================
 
 // Forward declaration for DrawEnd (we'll call original)
-typedef void (__thiscall *DrawEnd_t)(void* self);
-static DrawEnd_t g_origDrawEnd = nullptr;
-
-// Forward declaration for RKC_DIB::TransferToDDB
-// The original function copies DIB pixels to a device context.
-// Signature: int __thiscall TransferToDDB(RKC_DIB* this, HDC hdc, long x, long y)
-// Returns nonzero on success
-typedef int (__thiscall *TransferToDDB_t)(void* self, HDC hdc, long x, long y);
-static TransferToDDB_t g_origTransferToDDB = nullptr;
-
-// Forward declaration for RKC_DBF::GetDIBitmap  
-typedef void* (__thiscall *GetDIBitmap_t)(void* self);
-static GetDIBitmap_t g_origGetDIBitmap = nullptr;
-
-// Helper to load function from original DLL
-static void* LoadOrigFunc(const char* dll, const char* name) {
-    HMODULE mod = GetModuleHandleA(dll);
-    if (!mod) mod = LoadLibraryA(dll);
-    if (!mod) return nullptr;
-    return (void*)GetProcAddress(mod, name);
-}
+void __thiscall RKC_DBFCONTROL_DrawEnd(void* self);
+void __thiscall RKC_DBFCONTROL_SetClipRect(void* self, void* rect);
+int __thiscall RKC_DBFCONTROL_Redraw(void* self);
+void __thiscall RKC_DBFCONTROL_DrawFunction(void* self);
+void __thiscall RKC_DBFCONTROL_EnableDraw(void* self);
+void __thiscall RKC_DBFCONTROL_DisableDraw(void* self);
 
 // Initialize function pointers from original DLLs
-static void InitOriginalFunctions() {
-    static bool initialized = false;
-    if (initialized) return;
-    
-    // Load DrawEnd from original RKC_DBFCONTROL
-    g_origDrawEnd = (DrawEnd_t)LoadOrigFunc("o_RKC_DBFCONTROL.dll", 
-        "?DrawEnd@RKC_DBFCONTROL@@QAEXXZ");
-    
-    // Load TransferToDDB from original RKC_DIB
-    // Note: return type is int (H in mangling), not void
-    g_origTransferToDDB = (TransferToDDB_t)LoadOrigFunc("o_RKC_DIB.dll",
-        "?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z");
-    
-    // Load GetDIBitmap from original RKC_DBFCONTROL (it's in our dll but we can use ours)
-    // Actually we have our own implementation above
-    
-    DBF_LOG("InitOriginalFunctions: DrawEnd=%p, TransferToDDB=%p", 
-            g_origDrawEnd, g_origTransferToDDB);
-    
-    initialized = true;
-}
-
 /**
  * RKC_DBFCONTROL::Paint - Paint the current frame
  * 
@@ -537,11 +513,9 @@ static void InitOriginalFunctions() {
 void __thiscall RKC_DBFCONTROL_Paint(void* self, HDC param_1, int param_2) {
     char* p = (char*)self;
     
-    InitOriginalFunctions();
-    
     // Check state flag at offset 0x00
     if (*(int*)p != 1) {
-        if (g_origDrawEnd) g_origDrawEnd(self);
+        RKC_DBFCONTROL_DrawEnd(self);
         return;
     }
     
@@ -558,7 +532,7 @@ void __thiscall RKC_DBFCONTROL_Paint(void* self, HDC param_1, int param_2) {
     // Get the DIB bitmap from the DBF (offset 0x08 in DBF)
     void* dib = (char*)dbf + 0x08;
     if (!dib) {
-        if (g_origDrawEnd) g_origDrawEnd(self);
+        RKC_DBFCONTROL_DrawEnd(self);
         return;
     }
     
@@ -588,9 +562,10 @@ void __thiscall RKC_DBFCONTROL_Paint(void* self, HDC param_1, int param_2) {
                 HGDIOBJ oldBmp = SelectObject(memDC, hBitmap);
                 
                 // Call original TransferToDDB to render into our bitmap
-                if (g_origTransferToDDB) {
-                    g_origTransferToDDB(dib, memDC, 0, 0);
-                }
+                CallFunctionInDLL<int>(
+                    "RKC_DIB.dll",
+                    "?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z",
+                    dib, memDC, 0L, 0L);
                 
                 // Call optional paint callback at this+0x138
                 void (*paintCallback)(HDC) = *(void (**)(HDC))(p + 0x138);
@@ -631,9 +606,10 @@ void __thiscall RKC_DBFCONTROL_Paint(void* self, HDC param_1, int param_2) {
             HBITMAP hBitmap = *(HBITMAP*)(p + 0x140);
             if (hBitmap) {
                 SelectObject(memDC, hBitmap);
-                if (g_origTransferToDDB) {
-                    g_origTransferToDDB(dib, memDC, 0, 0);
-                }
+                CallFunctionInDLL<int>(
+                    "RKC_DIB.dll",
+                    "?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z",
+                    dib, memDC, 0L, 0L);
                 void (*paintCallback)(HDC) = *(void (**)(HDC))(p + 0x138);
                 if (paintCallback) {
                     paintCallback(memDC);
@@ -643,21 +619,49 @@ void __thiscall RKC_DBFCONTROL_Paint(void* self, HDC param_1, int param_2) {
             DeleteDC(memDC);
         }
     } else {
-        // Fullscreen mode - forward to original implementation
-        // This uses DirectDraw which our ddraw_wrapper handles
-        typedef void (__thiscall *Paint_t)(void*, HDC, int);
-        static Paint_t origPaint = nullptr;
-        if (!origPaint) {
-            origPaint = (Paint_t)LoadOrigFunc("o_RKC_DBFCONTROL.dll",
-                "?Paint@RKC_DBFCONTROL@@QAEXPAUHDC__@@H@Z");
-        }
-        if (origPaint) {
-            origPaint(self, param_1, param_2);
-            return;  // Original calls DrawEnd itself
+        IDirectDrawSurface* primary =
+            *(IDirectDrawSurface**)(p + 0x12c);
+        IDirectDrawSurface* back =
+            *(IDirectDrawSurface**)(p + 0x130);
+        if (primary && back) {
+            if (param_2 == 0) {
+                HDC surfaceDc = nullptr;
+                HRESULT result = back->GetDC(&surfaceDc);
+                if (result == DDERR_SURFACELOST) {
+                    back->Restore();
+                    result = back->GetDC(&surfaceDc);
+                }
+                if (SUCCEEDED(result) && surfaceDc) {
+                    CallFunctionInDLL<int>(
+                        "RKC_DIB.dll",
+                        "?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z",
+                        dib, surfaceDc, 0L, 0L);
+                    void (*paintCallback)(HDC) =
+                        *(void (**)(HDC))(p + 0x138);
+                    if (paintCallback)
+                        paintCallback(surfaceDc);
+                    back->ReleaseDC(surfaceDc);
+                    result = primary->Flip(nullptr, DDFLIP_WAIT);
+                    if (result == DDERR_SURFACELOST)
+                        primary->Restore();
+                }
+            } else {
+                IDirectDraw* directDraw = *(IDirectDraw**)(p + 0x128);
+                if (directDraw)
+                    directDraw->FlipToGDISurface();
+                CallFunctionInDLL<int>(
+                    "RKC_DIB.dll",
+                    "?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z",
+                    dib, param_1, 0L, 0L);
+                void (*paintCallback)(HDC) =
+                    *(void (**)(HDC))(p + 0x138);
+                if (paintCallback)
+                    paintCallback(param_1);
+            }
         }
     }
     
-    if (g_origDrawEnd) g_origDrawEnd(self);
+    RKC_DBFCONTROL_DrawEnd(self);
 }
 
 // DLL entry point for cleanup
@@ -680,14 +684,44 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
 // STUBS FOR UNUSED FUNCTIONS - NOT IMPORTED BY EXE OR OTHER DLLS
 // ============================================================================
 
-// RKC_DBF - NOT USED BY EXE
-void* __thiscall RKC_DBF_constructor(void* self) { return self; }
-void __thiscall RKC_DBF_destructor(void* self) {}
-void* __thiscall RKC_DBF_operatorAssign(void* self, const void* src) { return self; }
-void __thiscall RKC_DBF_Draw(void* self) {}
-void __thiscall RKC_DBF_Flush(void* self) {}
-void __thiscall RKC_DBF_GetClipRect(void* self, void* rect) {}
-void __thiscall RKC_DBF_Release(void* self) {}
+void* __thiscall RKC_DBF_constructor(void* self) {
+    CallFunctionInDLL<void*>(
+        "RKC_DIB.dll", "??0RKC_DIB@@QAE@XZ", (char*)self + 8);
+    *(long*)((char*)self + 0) = 0;
+    *(long*)((char*)self + 4) = 0;
+    return self;
+}
+void __thiscall RKC_DBF_Release(void* self) {
+    CallFunctionInDLL<void>(
+        "RKC_DIB.dll", "?Release@RKC_DIB@@QAEXXZ", (char*)self + 8);
+    *(long*)((char*)self + 0) = 0;
+    *(long*)((char*)self + 4) = 0;
+}
+void __thiscall RKC_DBF_destructor(void* self) {
+    RKC_DBF_Release(self);
+    CallFunctionInDLL<void>(
+        "RKC_DIB.dll", "??1RKC_DIB@@QAE@XZ", (char*)self + 8);
+}
+void* __thiscall RKC_DBF_operatorAssign(void* self, const void* src) {
+    std::memcpy(self, src, 0x24);
+    return self;
+}
+void __thiscall RKC_DBF_Draw(void* self) {
+    CallFunctionInDLL<int>(
+        "RKC_UPDIB.dll",
+        "?Render@RKC_UPDIB@@QAEHPAVRKC_DIB@@JJJJPAUtagRECT@@@Z",
+        *(void**)self, (char*)self + 8, *(long*)((char*)self + 4),
+        0L, 0L, 0L, (char*)self + 0x14);
+}
+void __thiscall RKC_DBF_Flush(void* self) {
+    CallFunctionInDLL<void>(
+        "RKC_UPDIB.dll",
+        "?FlushVSBlock@RKC_UPDIB@@QAEXJ@Z",
+        *(void**)self, *(long*)((char*)self + 4));
+}
+void __thiscall RKC_DBF_GetClipRect(void* self, void* rect) {
+    std::memcpy(rect, (char*)self + 0x14, sizeof(RECT));
+}
 
 // ============================================================================
 // IMPLEMENTED FUNCTIONS - USED BY EXE
@@ -701,12 +735,15 @@ void __thiscall RKC_DBF_Release(void* self) {}
  */
 void __thiscall RKC_DBFCONTROL_DrawEnd(void* self) {
     char* p = (char*)self;
-    // Increment draw count at offset 0x68
+    HANDLE mutex = *(HANDLE*)(p + 0x13c);
+    if (mutex)
+        WaitForSingleObject(mutex, INFINITE);
     *(int*)(p + 0x68) = *(int*)(p + 0x68) + 1;
-    // Clear drawing flag at offset 0x04 if it was 1
     if (*(int*)(p + 0x04) == 1) {
         *(int*)(p + 0x04) = 0;
     }
+    if (mutex)
+        ReleaseMutex(mutex);
 }
 
 /**
@@ -781,15 +818,290 @@ int __thiscall RKC_DBFCONTROL_Clear(void* self, void* rgbquad) {
 // STUBS - NOT USED BY EXE OR OTHER DLLS
 // ============================================================================
 
-// RKC_DBFCONTROL - NOT USED
-void* __thiscall RKC_DBFCONTROL_operatorAssign(void* self, const void* src) { return self; }
-void __thiscall RKC_DBFCONTROL_DisableDraw(void* self) { *(int*)((char*)self) = 0; }
-void __thiscall RKC_DBFCONTROL_DrawFunction(void* self) {}
-void* __thiscall RKC_DBFCONTROL_Draw(void* self) { return nullptr; }
+void* __thiscall RKC_DBFCONTROL_constructor(void* self) {
+    char* p = static_cast<char*>(self);
+    RKC_DBF_constructor(p + 0x20);
+    RKC_DBF_constructor(p + 0x44);
+    *(long*)(p + 0x0c) = 0;
+    *(long*)(p + 0x04) = 0;
+    *(void**)(p + 0x128) = nullptr;
+    *(void**)(p + 0x12c) = nullptr;
+    *(void**)(p + 0x130) = nullptr;
+    *(long*)(p + 0x00) = 0;
+    *(long*)(p + 0x08) = 0;
+    *(long*)(p + 0x10) = 0;
+    *(long*)(p + 0x78) = 0;
+    *(long*)(p + 0x120) = 640;
+    *(long*)(p + 0x124) = 480;
+    *(void**)(p + 0x138) = nullptr;
+    *(long*)(p + 0x88) = 0;
+    *(void**)(p + 0x140) = nullptr;
+    *(void**)(p + 0x84) = nullptr;
+    *(void**)(p + 0x74) = nullptr;
+    *(long*)(p + 0x14) = 0;
+    *(HANDLE*)(p + 0x13c) = CreateMutexA(nullptr, FALSE, nullptr);
+    return self;
+}
+
+void* __thiscall RKC_DBFCONTROL_operatorAssign(void* self, const void* src) {
+    std::memcpy(self, src, 0x144);
+    return self;
+}
+
+int __thiscall RKC_DBFCONTROL_Initialize(
+    void* self,
+    HWND window,
+    void* updib,
+    long firstVsBlock,
+    long secondVsBlock,
+    long mode,
+    int (__cdecl *frameFunction)(),
+    long width,
+    long height,
+    RECT* clip,
+    int screenClear,
+    RGBQUAD* clearColor,
+    long)
+{
+    char* p = static_cast<char*>(self);
+    *(HWND*)(p + 0x1c) = window;
+    *(void**)(p + 0x20) = updib;
+    *(void**)(p + 0x44) = updib;
+    *(void**)(p + 0x134) =
+        reinterpret_cast<void*>(frameFunction);
+    *(long*)(p + 0x24) = firstVsBlock;
+    *(long*)(p + 0x48) = secondVsBlock;
+    CallFunctionInDLL<int>(
+        "RKC_DIB.dll", "?Create@RKC_DIB@@QAEHJJJH@Z",
+        p + 0x28, width, height, 24L, 1);
+    CallFunctionInDLL<int>(
+        "RKC_DIB.dll", "?Create@RKC_DIB@@QAEHJJJH@Z",
+        p + 0x4c, width, height, 24L, 1);
+    *(long*)(p + 0x120) = width;
+    *(long*)(p + 0x124) = height;
+    if (clip)
+        RKC_DBFCONTROL_SetClipRect(self, clip);
+    *(long*)(p + 0x7c) = screenClear;
+    *(RGBQUAD*)(p + 0x80) = clearColor ? *clearColor : RGBQUAD{};
+    *(long*)(p + 0x6c) = mode;
+
+    if (mode == 0) {
+        IDirectDraw* directDraw = nullptr;
+        if (FAILED(DirectDrawCreate(nullptr, &directDraw, nullptr)))
+            return 0;
+        *(IDirectDraw**)(p + 0x128) = directDraw;
+        if (FAILED(directDraw->SetCooperativeLevel(
+                window, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN))
+            || FAILED(directDraw->SetDisplayMode(width, height, 16)))
+            return 0;
+        DDSURFACEDESC description{};
+        description.dwSize = sizeof(description);
+        description.dwFlags = DDSD_CAPS | DDSD_BACKBUFFERCOUNT;
+        description.ddsCaps.dwCaps =
+            DDSCAPS_PRIMARYSURFACE | DDSCAPS_FLIP | DDSCAPS_COMPLEX;
+        description.dwBackBufferCount = 1;
+        IDirectDrawSurface* primary = nullptr;
+        if (FAILED(directDraw->CreateSurface(
+                &description, &primary, nullptr)))
+            return 0;
+        *(IDirectDrawSurface**)(p + 0x12c) = primary;
+        DDSCAPS capabilities{};
+        capabilities.dwCaps = DDSCAPS_BACKBUFFER;
+        IDirectDrawSurface* back = nullptr;
+        if (FAILED(primary->GetAttachedSurface(&capabilities, &back)))
+            return 0;
+        *(IDirectDrawSurface**)(p + 0x130) = back;
+    } else {
+        HDC dc = GetDC(window);
+        *(HBITMAP*)(p + 0x140) =
+            CreateCompatibleBitmap(dc, width, height);
+        ReleaseDC(window, dc);
+    }
+    return 1;
+}
+
+static void CALLBACK DBF_TimerCallback(
+    UINT, UINT, DWORD_PTR user, DWORD_PTR, DWORD_PTR)
+{
+    ++*reinterpret_cast<volatile long*>(
+        static_cast<char*>(reinterpret_cast<void*>(user)) + 0x10);
+}
+
+static DWORD WINAPI DBF_FrameThread(void* parameter)
+{
+    char* p = static_cast<char*>(parameter);
+    long previousTick = *(volatile long*)(p + 0x10);
+    long fpsTick = previousTick;
+    while (*(volatile long*)(p + 0x08) == 1) {
+        auto frameFunction =
+            reinterpret_cast<int (__cdecl*)()>(*(void**)(p + 0x134));
+        if (!frameFunction || frameFunction() == 1) {
+            const long currentTick = *(volatile long*)(p + 0x10);
+            if (currentTick - fpsTick >= 1000) {
+                fpsTick = currentTick;
+                *(long*)(p + 0x70) = *(long*)(p + 0x68);
+                *(long*)(p + 0x68) = 0;
+            }
+            RKC_DBFCONTROL_Redraw(parameter);
+        }
+        while (*(volatile long*)(p + 0x08) == 1
+            && *(volatile long*)(p + 0x10) - previousTick < 33)
+            Sleep(1);
+        previousTick = *(volatile long*)(p + 0x10);
+    }
+    *(long*)(p + 0x18) = 1;
+    return 0;
+}
+
+static DWORD WINAPI DBF_DrawThread(void* parameter)
+{
+    char* p = static_cast<char*>(parameter);
+    while (*(volatile long*)(p + 0x08) == 1) {
+        if (*(volatile long*)(p + 0x14) == 1) {
+            RKC_DBFCONTROL_DrawFunction(parameter);
+            PostMessageA(*(HWND*)(p + 0x1c), WM_USER, 0, 0);
+        } else {
+            Sleep(1);
+        }
+    }
+    return 0;
+}
+
+void __thiscall RKC_DBFCONTROL_StartAll(void* self)
+{
+    char* p = static_cast<char*>(self);
+    if (*(long*)(p + 0x08) != 0)
+        return;
+    *(long*)(p + 0x08) = 1;
+    *(long*)(p + 0x18) = 0;
+    if (!*(HANDLE*)(p + 0x74)) {
+        *(HANDLE*)(p + 0x74) = CreateThread(
+            nullptr, 0, DBF_FrameThread, self, 0, nullptr);
+        if (*(HANDLE*)(p + 0x74))
+            SetThreadPriority(
+                *(HANDLE*)(p + 0x74), THREAD_PRIORITY_HIGHEST);
+    }
+    if (!*(HANDLE*)(p + 0x84))
+        *(HANDLE*)(p + 0x84) = CreateThread(
+            nullptr, 0, DBF_DrawThread, self, 0, nullptr);
+    if (*(UINT*)(p + 0x78) == 0)
+        *(UINT*)(p + 0x78) = timeSetEvent(
+            1, 1, DBF_TimerCallback,
+            reinterpret_cast<DWORD_PTR>(self), TIME_PERIODIC);
+    RKC_DBFCONTROL_EnableDraw(self);
+}
+
+void __thiscall RKC_DBFCONTROL_StopAll(void* self)
+{
+    char* p = static_cast<char*>(self);
+    if (*(long*)(p + 0x08) != 1)
+        return;
+    *(long*)(p + 0x08) = 0;
+    if (*(UINT*)(p + 0x78)) {
+        timeKillEvent(*(UINT*)(p + 0x78));
+        *(UINT*)(p + 0x78) = 0;
+    }
+    HANDLE threads[2] = {
+        *(HANDLE*)(p + 0x74), *(HANDLE*)(p + 0x84)
+    };
+    for (HANDLE& thread : threads) {
+        if (thread) {
+            WaitForSingleObject(thread, 2000);
+            CloseHandle(thread);
+            thread = nullptr;
+        }
+    }
+    *(HANDLE*)(p + 0x74) = threads[0];
+    *(HANDLE*)(p + 0x84) = threads[1];
+    RKC_DBFCONTROL_DisableDraw(self);
+}
+
+void __thiscall RKC_DBFCONTROL_DisableDraw(void* self) {
+    *(int*)self = 0;
+    while (RKC_DBFCONTROL_GetDrawingFlag(self) == 1)
+        Sleep(1);
+}
+
+void* __thiscall RKC_DBFCONTROL_Draw(void* self) {
+    char* p = static_cast<char*>(self);
+    const long current = *(long*)(p + 0x0c);
+    void* drawDib = p + 0x4c - current * 0x24;
+    void* drawDbf = p + 0x44 - current * 0x24;
+    if (*(long*)(p + 0x7c) == 1) {
+        const unsigned long color =
+            (unsigned char)p[0x80]
+            | ((unsigned long)(unsigned char)p[0x81] << 8)
+            | ((unsigned long)(unsigned char)p[0x82] << 16);
+        CallFunctionInDLL<int>(
+            "RKC_DIB.dll", "?Fill@RKC_DIB@@QAEHJ@Z",
+            drawDib, (long)color);
+    }
+    RKC_DBF_Draw(drawDbf);
+    return drawDib;
+}
+
+void __thiscall RKC_DBFCONTROL_DrawFunction(void* self) {
+    if (*(long*)self == 1)
+        RKC_DBFCONTROL_Draw(self);
+    *(long*)((char*)self + 0x14) = 0;
+}
+
 void __thiscall RKC_DBFCONTROL_EnableDraw(void* self) { *(int*)((char*)self) = 1; }
 void __thiscall RKC_DBFCONTROL_FlushDrawCount(void* self) { *(int*)((char*)self + 0x68) = 0; }
-void __thiscall RKC_DBFCONTROL_GetClipRect(void* self, void* rect, long arg) {}
-int __thiscall RKC_DBFCONTROL_Redraw(void* self) { return 0; }
-void __thiscall RKC_DBFCONTROL_Release(void* self) {}
+void __thiscall RKC_DBFCONTROL_GetClipRect(void* self, void* rect, long arg) {
+    std::memcpy(
+        rect, (char*)self + 0x34 + arg * 0x24, sizeof(RECT));
+}
+int __thiscall RKC_DBFCONTROL_Redraw(void* self) {
+    char* p = static_cast<char*>(self);
+    if (RKC_DBFCONTROL_GetDrawingFlag(self) != 1
+        && *(long*)(p + 0x14) == 0) {
+        *(long*)(p + 0x0c) = 1 - *(long*)(p + 0x0c);
+        HANDLE mutex = *(HANDLE*)(p + 0x13c);
+        WaitForSingleObject(mutex, INFINITE);
+        *(long*)(p + 0x04) = 1;
+        ReleaseMutex(mutex);
+        *(long*)(p + 0x14) = 1;
+    }
+    RKC_DBF_Flush(p + 0x20 + *(long*)(p + 0x0c) * 0x24);
+    return 1;
+}
+void __thiscall RKC_DBFCONTROL_Release(void* self) {
+    char* p = static_cast<char*>(self);
+    if (*(HANDLE*)(p + 0x74)) {
+        CloseHandle(*(HANDLE*)(p + 0x74));
+        *(HANDLE*)(p + 0x74) = nullptr;
+    }
+    if (*(HANDLE*)(p + 0x84)) {
+        CloseHandle(*(HANDLE*)(p + 0x84));
+        *(HANDLE*)(p + 0x84) = nullptr;
+    }
+    if (*(UINT*)(p + 0x78))
+        timeKillEvent(*(UINT*)(p + 0x78));
+    *(UINT*)(p + 0x78) = 0;
+    if (*(IDirectDrawSurface**)(p + 0x12c)) {
+        (*(IDirectDrawSurface**)(p + 0x12c))->Release();
+        *(IDirectDrawSurface**)(p + 0x12c) = nullptr;
+    }
+    if (*(IDirectDraw**)(p + 0x128)) {
+        (*(IDirectDraw**)(p + 0x128))->Release();
+        *(IDirectDraw**)(p + 0x128) = nullptr;
+    }
+    *(IDirectDrawSurface**)(p + 0x130) = nullptr;
+    if (*(HGDIOBJ*)(p + 0x140)) {
+        DeleteObject(*(HGDIOBJ*)(p + 0x140));
+        *(HGDIOBJ*)(p + 0x140) = nullptr;
+    }
+}
+void __thiscall RKC_DBFCONTROL_destructor(void* self) {
+    char* p = static_cast<char*>(self);
+    RKC_DBFCONTROL_Release(self);
+    if (*(HANDLE*)(p + 0x13c)) {
+        CloseHandle(*(HANDLE*)(p + 0x13c));
+        *(HANDLE*)(p + 0x13c) = nullptr;
+    }
+    RKC_DBF_destructor(p + 0x44);
+    RKC_DBF_destructor(p + 0x20);
+}
 
 } // extern "C"

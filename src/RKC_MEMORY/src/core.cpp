@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <cstdint>
+#include <cstring>
 
 class RKC_MEMORY
 {
@@ -71,7 +72,12 @@ extern "C"
     char* __thiscall Allocation(RKC_MEMORY* _this, long bytesToAllocate, int zeroInit)
     {
         RKC_MEMORY_Release(_this);
-        _this->allocated = (char*)GlobalAlloc(zeroInit ? GMEM_ZEROINIT : GMEM_FIXED, bytesToAllocate);
+        if (bytesToAllocate < 1)
+            return nullptr;
+
+        _this->allocated = (char*)GlobalAlloc(
+            zeroInit == 1 ? GMEM_ZEROINIT : GMEM_FIXED,
+            bytesToAllocate);
 
         if (_this->allocated)
             _this->size = bytesToAllocate;
@@ -114,25 +120,18 @@ extern "C"
     /**
      * Clear allocated memory
      * NOT REFERENCED - not imported by any module
-     * TODO: Implementation incomplete
      */
-    int __thiscall Clear(RKC_MEMORY* _this, char* data, long sz, long start)
+    int __thiscall Clear(RKC_MEMORY* _this, char value, long sizeToClear, long start)
     {
-        // auto size = sz;
-        // if(size == 0)
-        //     return 0;
+        if (sizeToClear == 0)
+            return 0;
+        if (sizeToClear < 0)
+            sizeToClear = _this->size;
+        if (_this->size - start < sizeToClear)
+            return 0;
 
-        // if(size < 0)
-        //     size = _this->size;
-
-        // if(_this->size - start < size)
-        //     return 0;
-
-        // char* src = (char*)(start + _this->allocated);
-
-
-        // implement memset operations
-        return 0;
+        std::memset(_this->allocated + start, static_cast<unsigned char>(value), sizeToClear);
+        return 1;
     }
 }
 

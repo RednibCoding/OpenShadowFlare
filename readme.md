@@ -2,66 +2,166 @@
 
 ![Project Logo](readme/sf-logo-lg.png)
 
-OpenShadowFlare is a project aimed at reviving the classic game ShadowFlare by rewriting its core engine to make it compatible with modern systems and resolutions. The goal is to provide a way for both nostalgic gamers and new players to enjoy this beloved title without the limitations of outdated hardware and software.
+OpenShadowFlare is a community effort to preserve and rebuild ShadowFlare, a
+great little action RPG from the early 2000s that deserves to be playable for
+a long time yet.
 
-[![name](readme/discord.png)](https://discord.gg/4F2dMu5qwQ)
+Right now, we are carefully reconstructing the support DLLs used by the
+original game. The goal is to match their original behavior as closely as we
+can before moving on to `ShadowFlare.exe` itself. Modern features such as
+widescreen support and native builds can come later, first we want a solid,
+faithful foundation.
+
+[![Join us on Discord](readme/discord.png)](https://discord.gg/4F2dMu5qwQ)
 
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Features](#features)
-- [Prebuilt Binaries](#prebuilt-binaries)
+- [ShadowFlare game files](#shadowflare-game-files)
+- [Current state](#current-state)
+- [Prebuilt binaries](#prebuilt-binaries)
 - [Building from source](#building-from-source)
+- [Running the tests](#running-the-tests)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Introduction
 
-ShadowFlare, a unique episodic action RPG developed by Denyusha and presented by Emurasoft for Windows, comprises four distinct episodes. Its debut in Japan was in October 2001, and by October 2002, it had reached audiences worldwide. The story unfolded through releases between December 2002 and February 2003. Starting January 21, 2003, the game adopted a shareware approach, making the first episode free for download. However, with the official website going offline in October 2013, it has become impossible to obtain a legal copy of the game. Even though the site was revived in 2020, acquiring the game legally remains out of reach.
+ShadowFlare was developed by Denyusha and released in Japan in 2001, followed
+by an international release in 2002. It grew into a four-episode action RPG,
+with the first episode later offered as shareware.
 
-With technological progression, the classic game faces compatibility issues on contemporary systems. It's restricted to a 640 by 480 resolution and is exclusively designed for Windows. OpenShadowFlare seeks to rectify these limitations by revamping the game engine. Our goal is to support modern widescreen resolutions and expand its accessibility across various platforms, all while maintaining the essence of the original gameplay experience.
+The official site eventually disappeared, the game never made its way to
+stores such as Steam or GOG, and running it on a modern system has become
+increasingly awkward. That's why we're here.
 
-## ShadowFlare Game
-OpenShadowFlare operates with the authentic game assets from ShadowFlare. Consequently, possessing a copy of ShadowFlare is essential for functionality. Please note that we are unable to provide this copy due to legal constraints.
+OpenShadowFlare is not a remake with different rules or a reimagining of the
+game. We are studying how the original worked and rebuilding it piece by piece.
+For now, that means reproducing all fourteen DLLs while keeping their exported
+functions, data formats, and behavior compatible with the original game.
 
-## Features
+This is a work in progress, and there is still plenty left to understand. If
+you enjoy old games, reverse engineering, graphics, audio, networking, or
+simply careful detective work, you are very welcome here.
 
-- **Contemporary System Support:** OpenShadowFlare adapts the beloved ShadowFlare to function seamlessly on modern-day systems, eliminating compatibility hitches.
+## ShadowFlare game files
 
-- **Resolution Upgrade:** While maintaining the original game's distinctive art style, OpenShadowFlare restructures the engine to accommodate modern widescreen resolutions.
+OpenShadowFlare uses the original ShadowFlare assets. We cannot include or
+distribute those files, so you will need your own copy of the game.
 
-- **Optimized Performance:** The project seeks to refine the game's engine, ensuring a fluid and consistent gaming experience across platforms.
+For local development, the game is expected in:
 
-- **Bug Rectifications:** OpenShadowFlare is dedicated to ironing out glitches and issues that existed in the classic version, paving the way for a refined and enjoyable gameplay journey.
+```text
+tmp/ShadowFlare/
+```
 
-## Prebuilt Binaries
+When reconstructed DLLs are deployed, the build script keeps each original DLL
+as `o_<name>.dll`. The test suite uses those copies to compare our work with
+the real thing.
 
-TODO: We offer pre-constructed binaries tailored for Windows, Linux and Mac.
+## Current state
 
-## Building from Source
+Here's where things stand today:
 
-### Building for Windows
-Opt for `msys2` and `build.sh`.
+- All 763 exported DLL names and ordinals are reproduced and checked
+  automatically.
+- Eleven of the fourteen DLLs can run without directly loading an original
+  ShadowFlare DLL.
+- The table, AI, scenario, and generated-font formats are tested with real game
+  data, including byte-for-byte writeback checks where possible.
+- Original and reconstructed DLLs can be run side by side through differential
+  probes under Wine.
+- An isolated smoke test confirms that the reconstructed DLL set starts the
+  game and reaches its render loop.
 
-### Building for Linux/Mac
-Simply utilize `build.sh`.
+The three remaining hybrid areas are UPD sprite decoding/compositing,
+RPG screen and map handling, and multiplayer networking. Some other DLLs are
+standalone but still need broader behavioral coverage, so “standalone” should
+not be read as “finished.”
 
-### Building on all Platforms
-`cmake` is universally compatible.
+For the nitty-gritty, see the [fidelity inventory](fidelity/README.md). The
+[roadmap](roadmap.md) shows what we're planning to tackle next.
 
-### Incorporating Build Artifacts
+## Prebuilt binaries
 
-Post-compilation, shift the generated artifacts, such as the DLL files, to the ShadowFlare game folder. But ensure to prefix the original game's DLLs with "o_", safeguarding them from being overwritten.
+We do not publish official prebuilt releases yet. The reconstruction is moving
+quickly, and building locally makes it much easier to know exactly which source
+and DLL versions are being tested together.
 
+For now, use the build instructions below.
+
+## Building from source
+
+The supported build currently runs on Linux and cross-compiles 32-bit Windows
+DLLs with MinGW-w64.
+
+On Debian or Ubuntu, install the compiler with:
+
+```bash
+sudo apt install mingw-w64
+```
+
+Then build all fourteen DLLs:
+
+```bash
+./src/build.sh
+```
+
+The resulting files are placed in `src/build-win32/`.
+
+To copy them into the local game directory:
+
+```bash
+./src/build.sh --deploy
+```
+
+The first deployment renames the original DLLs to `o_<name>.dll`. Existing
+backups are never overwritten by later deployments.
+
+You can then start the game through Wine:
+
+```bash
+./run-shadowflare.sh
+```
+
+Native Linux and macOS builds are not available yet, and the project does not
+currently use CMake.
+
+## Running the tests
+
+Run the build and static ABI/fidelity checks with:
+
+```bash
+./tests/run.sh
+```
+
+If Wine is installed, you can also run the original-vs-reconstructed
+differential probes and the game smoke test:
+
+```bash
+./tests/run.sh --wine
+```
+
+The Wine smoke test works in a temporary copy of the game directory. It does
+not replace files in your local installation.
 
 ## Contributing
 
-Contributions are welcome and greatly appreciated! If you're interested in contributing to OpenShadowFlare, please review our [Contribution Guidelines](readme/CONTRIBUTING.md) for details on how to get involved.
+OpenShadowFlare is a community project made by people who care about the game.
+You do not need to be a reverse-engineering expert to help: testing, code
+cleanup, documentation, data-format research, and careful bug reports are all
+valuable.
+
+If you would like to join in, have a look at the
+[contribution guidelines](readme/CONTRIBUTING.md) or come chat with us on
+[Discord](https://discord.gg/4F2dMu5qwQ).
 
 ## License
 
-This project is licensed under the [MIT](LICENSE), which means you are free to use, modify, and distribute the project as long as you provide appropriate attribution and include the original license text.
+The reconstruction code is available under the [MIT License](LICENSE).
+ShadowFlare itself, its assets, and its original binaries are not part of that
+license and are not distributed by this project.
 
----
-
-_Disclaimer: OpenShadowFlare is an independent project and is not affiliated with or endorsed by the creators of the original ShadowFlare game._
+OpenShadowFlare is an independent fan and preservation project. It is not
+affiliated with or endorsed by ShadowFlare's original developers or
+publishers.

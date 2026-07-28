@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "definition": {
+    "external_forward": "An exported PE forwarder whose target is an o_*.dll.",
+    "internal_original_call": "A locally exported function that still loads or calls an o_*.dll at runtime.",
+    "standalone": "The DLL has no known direct or internal dependency on an original ShadowFlare DLL.",
+    "fidelity": "Status is conservative: unverified and partial code is never counted as faithful."
+  },
+  "dlls": {
+    "RK_FUNCTION": {
+      "exports": 43,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "partial",
+      "notes": "The real table payload has exact decode and byte-for-byte encode parity. String, path, SJIS-index, message, time, and LZ file/memory APIs are differentially covered; unused Huffman, picker, and bit-writer exports remain."
+    },
+    "RKC_FILE": {
+      "exports": 10,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "Constructor, I/O, seeking, size, close, and destructor handle ownership match the original probe."
+    },
+    "RKC_MEMORY": {
+      "exports": 9,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "Allocation, initialization, copy, ranged clear, release, and zero-size behavior match the original probe."
+    },
+    "RKC_WINDOW": {
+      "exports": 7,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "Object layout, constructor initialization, and full assignment match the original probe; window operations were reconstructed from decompilation."
+    },
+    "RKC_DIB": {
+      "exports": 42,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "partial",
+      "notes": "Core bitmap operations, odd-width conversion behavior, and the complete 1.15 MB high-speed table match differential probes; the broader drawing matrix still needs coverage."
+    },
+    "RKC_DSOUND": {
+      "exports": 43,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "behavioral-validation-required",
+      "notes": "Uses the replacement haudio backend; timing, looping, volume, and VOC behavior require differential validation."
+    },
+    "RKC_FONTMAKER": {
+      "exports": 13,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "Construction, assignment, DIB palette setup, glyph rasterization, and the complete 65-atlas NJP writer have exact differential hashes and byte-for-byte file parity."
+    },
+    "RKC_RPG_TABLE": {
+      "exports": 25,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "The real compressed Table.Tbd produces the same 138 tables, 55,550 cells, 530 string cells, and canonical content hash as the original."
+    },
+    "RKC_UPDIB": {
+      "exports": 81,
+      "external_forwards": 0,
+      "internal_original_calls": 2,
+      "standalone": false,
+      "fidelity": "partial",
+      "notes": "Initialization, list traversal, packet construction, text packets, and primitive rendering are local and differentially covered. UPD decoding and general sprite compositing still use the original as an oracle."
+    },
+    "RKC_DBFCONTROL": {
+      "exports": 41,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "integration-verified",
+      "notes": "Object behavior is differentially covered. Initialization, windowed/OpenGL and fullscreen/DirectDraw presentation, timing, and draw threads are local; the game reaches and sustains its render loop under Wine."
+    },
+    "RKC_RPGSCRN": {
+      "exports": 185,
+      "external_forwards": 54,
+      "internal_original_calls": 0,
+      "standalone": false,
+      "fidelity": "partial",
+      "notes": "Core screen coordinate transforms plus object, display-cell, animation-cell, and ground-block layouts/accessors are local and differentially verified. Map/CAF parsing, display sorting, and complex rendering paths remain original forwards."
+    },
+    "RKC_RPG_SCRIPT": {
+      "exports": 82,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "partial",
+      "notes": "The retail binary codec, object layouts, list operations, and runtime getters are local. A real Scenario.Scs has exact semantic and byte-for-byte writeback parity; the unused text-script compiler remains unimplemented."
+    },
+    "RKC_RPG_AICONTROL": {
+      "exports": 51,
+      "external_forwards": 0,
+      "internal_original_calls": 0,
+      "standalone": true,
+      "fidelity": "differential-verified",
+      "notes": "All list, event, and action operations are local. The real 91,936-byte Control.aid produces exact list/action semantics and an exact byte-for-byte writeback."
+    },
+    "RKC_NETWORK": {
+      "exports": 131,
+      "external_forwards": 25,
+      "internal_original_calls": 0,
+      "standalone": false,
+      "fidelity": "partial",
+      "notes": "Packet ownership, packet/user-info list operations, string ownership, and transfer framing are local and differentially verified. Manager, client/server lifecycle, and live multiplayer transport still use original forwards."
+    }
+  }
+}

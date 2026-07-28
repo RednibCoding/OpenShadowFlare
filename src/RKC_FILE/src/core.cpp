@@ -27,10 +27,12 @@ extern "C"
     }
 
     /**
-     * Destructor - reset file handle (does NOT close it)
+     * Destructor - close an open handle and reset it.
      */
     void __thiscall RKC_FILE_deconstructor(RKC_FILE* self)
     {
+        if (self->m_handle)
+            CloseHandle(self->m_handle);
         self->m_handle = 0;
     }
 
@@ -137,7 +139,7 @@ extern "C"
         if (moveMethod < 0 || moveMethod > 2)
             return false;
 
-        return SetFilePointer(self->m_handle, distanceToMove, 0, moveMethod);
+        return SetFilePointer(self->m_handle, distanceToMove, 0, moveMethod) != INVALID_SET_FILE_POINTER;
     }
 
     /**

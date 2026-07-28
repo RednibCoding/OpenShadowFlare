@@ -18,9 +18,10 @@
  * +0x28: m_strideDouble (int32_t)
  */
 
-#include <iostream>
 #include <windows.h>
 #include <cstdint>
+#include <cstring>
+#include <vector>
 #include "../../utils.h"
 
 class RKC_FONTMAKER
@@ -47,17 +48,13 @@ extern "C"
      */
     void __thiscall RKC_FONTMAKER_constructor(RKC_FONTMAKER* self)
     {
-        self->m_fontWidth = 0;
-        self->m_fontHeight = 0;
         self->m_font = nullptr;
         self->m_bitmapInfoNormal = nullptr;
         self->m_normalDIBitmap = nullptr;
         self->m_normalDDBitmap = nullptr;
-        self->m_strideNormal = 0;
         self->m_bitmapInfoDouble = nullptr;
         self->m_doubleDIBitmap = nullptr;
         self->m_doubleDDBitmap = nullptr;
-        self->m_strideDouble = 0;
     }
 
     /**
@@ -210,20 +207,12 @@ extern "C"
         RGBQUAD palette[256];
         memset(palette, 0, sizeof(palette));
 
-        // Entry 0: black (0,0,0) - already zero from memset
-        // Entry 1: dark gray (64,64,64) 
-        palette[1].rgbRed = 64;
-        palette[1].rgbGreen = 64;
-        palette[1].rgbBlue = 64;
-        // Entry 2: medium gray (128,128,128)
-        palette[2].rgbRed = 128;
-        palette[2].rgbGreen = 128;
-        palette[2].rgbBlue = 128;
-        // Entry 255: white (255,255,255)
-        palette[255].rgbRed = 255;
-        palette[255].rgbGreen = 255;
-        palette[255].rgbBlue = 255;
-        // Other entries remain black (0,0,0)
+        palette[0].rgbRed = 64;
+        palette[0].rgbGreen = 128;
+        palette[0].rgbBlue = 64;
+        palette[1].rgbRed = 255;
+        palette[1].rgbGreen = 255;
+        palette[1].rgbBlue = 255;
 
         // Apply palette to both DIBs via a compatible DC
         HDC memDC = CreateCompatibleDC(hdc);
@@ -249,13 +238,45 @@ extern "C"
      * Renders a single character to m_doubleDIBitmap using GDI TextOut.
      * Will be implemented when SaveNJPFile is implemented.
      */
-    bool __thiscall DrawDoubleFont(RKC_FONTMAKER* self, HDC* hdc, unsigned char* charCode)
+    bool __thiscall DrawDoubleFont(
+        RKC_FONTMAKER* self, HDC hdc, unsigned char* charCode)
     {
-        bool result = CallFunctionInDLL<bool>(
-            "o_RKC_FONTMAKER.dll",
-            "?DrawDoubleFont@RKC_FONTMAKER@@QAEHPAUHDC__@@PAE@Z",
-            self, hdc, charCode);
-        return result;
+        if (!charCode)
+            return false;
+        const unsigned char lead = charCode[0];
+        const unsigned char trail = charCode[1];
+        const bool validLead =
+            (lead > 0x80 && lead < 0xa0)
+            || (lead > 0xdf && lead < 0xfd);
+        const bool validTrail =
+            (trail > 0x3f && trail < 0x7f)
+            || (trail > 0x7f && trail < 0xfd);
+        if (!validLead || !validTrail)
+            return false;
+
+        HDC memory = CreateCompatibleDC(hdc);
+        if (!memory)
+            return false;
+        SelectObject(memory, self->m_doubleDDBitmap);
+        SelectObject(memory, self->m_font);
+        SetBkMode(memory, TRANSPARENT);
+        std::memset(
+            self->m_doubleDIBitmap, 0,
+            static_cast<std::size_t>(self->m_strideDouble)
+                * self->m_fontHeight);
+        GdiFlush();
+        TextOutA(
+            memory, 0, 0, reinterpret_cast<const char*>(charCode), 2);
+        GdiFlush();
+        for (int y = 0; y < self->m_fontHeight; ++y) {
+            unsigned char* row =
+                self->m_doubleDIBitmap + self->m_strideDouble * y;
+            for (int x = 0; x < self->m_fontWidth * 2; ++x)
+                if (row[x] != 0 && row[x] != 0x7b)
+                    row[x] = 1;
+        }
+        DeleteDC(memory);
+        return true;
     }
 
     /**
@@ -266,13 +287,32 @@ extern "C"
      * Renders a single character to m_normalDIBitmap using GDI TextOut.
      * Will be implemented when SaveNJPFile is implemented.
      */
-    bool __thiscall DrawNormalFont(RKC_FONTMAKER* self, HDC* hdc, unsigned char* charCode)
+    bool __thiscall DrawNormalFont(
+        RKC_FONTMAKER* self, HDC hdc, unsigned char charCode)
     {
-        bool result = CallFunctionInDLL<bool>(
-            "o_RKC_FONTMAKER.dll",
-            "?DrawNormalFont@RKC_FONTMAKER@@QAEHPAUHDC__@@E@Z",
-            self, hdc, charCode);
-        return result;
+        HDC memory = CreateCompatibleDC(hdc);
+        if (!memory)
+            return false;
+        SelectObject(memory, self->m_normalDDBitmap);
+        SelectObject(memory, self->m_font);
+        SetBkMode(memory, TRANSPARENT);
+        std::memset(
+            self->m_normalDIBitmap, 0,
+            static_cast<std::size_t>(self->m_strideNormal)
+                * self->m_fontHeight);
+        GdiFlush();
+        const char character = static_cast<char>(charCode);
+        TextOutA(memory, 0, 0, &character, 1);
+        GdiFlush();
+        for (int y = 0; y < self->m_fontHeight; ++y) {
+            unsigned char* row =
+                self->m_normalDIBitmap + self->m_strideNormal * y;
+            for (int x = 0; x < self->m_fontWidth; ++x)
+                if (row[x] != 0 && row[x] != 0x7b)
+                    row[x] = 1;
+        }
+        DeleteDC(memory);
+        return true;
     }
 
     /**
@@ -367,44 +407,158 @@ extern "C"
      */
     RKC_FONTMAKER* __thiscall EqualsOperator(RKC_FONTMAKER* self, const RKC_FONTMAKER& other)
     {
-        RKC_FONTMAKER* result = CallFunctionInDLL<RKC_FONTMAKER*>(
-            "o_RKC_FONTMAKER.dll",
-            "??4RKC_FONTMAKER@@QAEAAV0@ABV0@@Z",
-            self, other);
-        return result;
+        std::memcpy(self, &other, sizeof(*self));
+        return self;
     }
 
-    /**
-     * Save font bitmap to NJP file
-     * Args: hdc = device context, filename = output file path
-     * USED BY: ShadowFlare.exe
-     * 
-     * DEFERRED IMPLEMENTATION:
-     * This function is too complex to implement now. From decompilation (0x100014e0),
-     * it has dependencies on:
-     * - RKC_FILE (Create, Write, Close) - already implemented
-     * - RKC_DIB (constructor, destructor, Create, TransferToDIB, GetAlignWidth) - NOT implemented
-     * - DrawNormalFont() - renders each character to the normal DIB
-     * - DrawDoubleFont() - renders each character to the double-size DIB  
-     * - RK_LzEncodeMemoryToMemory() - already implemented
-     * 
-     * The function generates NJP font sprite files by:
-     * 1. Creating RKC_DIB instances for normal (16x width) and double (32x width) fonts
-     * 2. Looping through character ranges (0x00-0x0F for ASCII, 0x20-0x9F for extended)
-     * 3. Drawing each character using DrawNormalFont/DrawDoubleFont
-     * 4. Compressing the bitmap data with LZSS
-     * 5. Writing NJP format with "NJudgeUniPat002" header
-     * 
-     * To implement this, we need to first implement RKC_DIB or at minimum the subset
-     * of functions used here. For now, forward to original DLL.
-     */
-    int32_t __thiscall SaveNJPFile(RKC_FONTMAKER* self, HDC* hdc, char* filename)
+    int32_t __thiscall SaveNJPFile(
+        RKC_FONTMAKER* self, HDC hdc, char* filename)
     {
-        int32_t result = CallFunctionInDLL<int32_t>(
-            "o_RKC_FONTMAKER.dll",
-            "?SaveNJPFile@RKC_FONTMAKER@@QAEHPAUHDC__@@PAD@Z",
-            self, hdc, filename);
-        return result;
+        if (!self || !hdc || !filename || self->m_fontWidth <= 0
+            || self->m_fontHeight <= 0 || !self->m_normalDIBitmap
+            || !self->m_doubleDIBitmap)
+            return 0;
+
+        HANDLE file = CreateFileA(
+            filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE)
+            return 0;
+        auto write = [&](const void* memory, DWORD size) {
+            DWORD amount = 0;
+            return WriteFile(file, memory, size, &amount, nullptr)
+                && amount == size;
+        };
+        auto writeLong = [&](LONG value) {
+            return write(&value, sizeof(value));
+        };
+        auto copyGlyph = [](
+            std::vector<unsigned char>& atlas, int atlasWidth,
+            int atlasHeight, const unsigned char* glyph, int glyphStride,
+            int glyphWidth, int glyphHeight, int destinationX,
+            int destinationY) {
+            for (int y = 0; y < glyphHeight; ++y) {
+                unsigned char* destination =
+                    atlas.data()
+                    + (atlasHeight - destinationY - y - 1) * atlasWidth
+                    + destinationX;
+                const unsigned char* source =
+                    glyph + (glyphHeight - y - 1) * glyphStride;
+                std::memcpy(destination, source, glyphWidth);
+            }
+        };
+
+        const char header[16] = "NJudgeUniPat002";
+        bool valid = write(header, sizeof(header)) && writeLong(65);
+
+        const int normalWidth = self->m_fontWidth * 16;
+        const int atlasHeight = self->m_fontHeight * 16;
+        std::vector<unsigned char> atlas(
+            static_cast<std::size_t>(normalWidth) * atlasHeight);
+        for (int row = 0; valid && row < 16; ++row) {
+            for (int column = 0; valid && column < 16; ++column) {
+                const unsigned char character =
+                    static_cast<unsigned char>(row * 16 + column);
+                if (DrawNormalFont(self, hdc, character)) {
+                    copyGlyph(
+                        atlas, normalWidth, atlasHeight,
+                        self->m_normalDIBitmap, self->m_strideNormal,
+                        self->m_fontWidth, self->m_fontHeight,
+                        column * self->m_fontWidth,
+                        row * self->m_fontHeight);
+                }
+            }
+        }
+        valid = valid && writeLong(8) && writeLong(normalWidth)
+            && writeLong(atlasHeight) && writeLong(0)
+            && write(atlas.data(), static_cast<DWORD>(atlas.size()));
+
+        using Encode = int (__cdecl*)(
+            const void*, int, void*, int, void*);
+        HMODULE rkModule = LoadLibraryA("RK_FUNCTION.dll");
+        Encode encode = rkModule
+            ? reinterpret_cast<Encode>(
+                GetProcAddress(rkModule, "RK_LzEncodeMemoryToMemory"))
+            : nullptr;
+
+        const int doubleWidth = self->m_fontWidth * 32;
+        atlas.assign(
+            static_cast<std::size_t>(doubleWidth) * atlasHeight, 0);
+        for (int rangeEnd = 0x9f; valid && rangeEnd < 0x15f;
+            rangeEnd += 0x60) {
+            for (int lead = rangeEnd - 0x1f; valid && lead <= rangeEnd;
+                 ++lead) {
+                for (int row = 0; row < 16; ++row) {
+                    for (int column = 0; column < 16; ++column) {
+                        unsigned char character[2] = {
+                            static_cast<unsigned char>(lead),
+                            static_cast<unsigned char>(row * 16 + column)
+                        };
+                        if (DrawDoubleFont(self, hdc, character)) {
+                            copyGlyph(
+                                atlas, doubleWidth, atlasHeight,
+                                self->m_doubleDIBitmap, self->m_strideDouble,
+                                self->m_fontWidth * 2, self->m_fontHeight,
+                                column * self->m_fontWidth * 2,
+                                row * self->m_fontHeight);
+                        }
+                    }
+                }
+
+                valid = writeLong(8) && writeLong(doubleWidth)
+                    && writeLong(atlasHeight);
+                std::vector<unsigned char> encoded(
+                    atlas.size() + (atlas.size() + 7) / 8 + 32);
+                unsigned char compressionHeader[16]{};
+                const int encodedResult = encode
+                    ? encode(
+                        atlas.data(), static_cast<int>(atlas.size()),
+                        encoded.data(), static_cast<int>(encoded.size()),
+                        compressionHeader)
+                    : 0;
+                if (encodedResult == 1) {
+                    const LONG compressedSize =
+                        *reinterpret_cast<LONG*>(compressionHeader + 12);
+                    valid = valid && writeLong(1)
+                        && write(
+                            encoded.data(),
+                            static_cast<DWORD>(compressedSize + 16));
+                } else {
+                    valid = valid && writeLong(0)
+                        && write(
+                            atlas.data(),
+                            static_cast<DWORD>(atlas.size()));
+                }
+            }
+        }
+        if (rkModule)
+            FreeLibrary(rkModule);
+
+        valid = valid && writeLong(65);
+        for (LONG index = 0; valid && index < 65; ++index) {
+            RECT rectangle{
+                0, 0, index == 0 ? normalWidth : doubleWidth, atlasHeight
+            };
+            const LONG one = 1;
+            const LONG zero = 0;
+            const LONG duration = 1000;
+            POINT position{0, 0};
+            valid = writeLong(one)
+                && write(&rectangle, sizeof(rectangle))
+                && writeLong(zero) && writeLong(zero) && writeLong(index)
+                && write(&position, sizeof(position))
+                && writeLong(zero)
+                && writeLong(duration) && writeLong(duration);
+        }
+
+        valid = valid && writeLong(1);
+        RGBQUAD palette[256]{};
+        palette[1].rgbBlue = 255;
+        palette[1].rgbGreen = 255;
+        palette[1].rgbRed = 255;
+        valid = valid && write(palette, sizeof(palette));
+        CloseHandle(file);
+        return valid ? 1 : 0;
     }
 
 }

@@ -31,6 +31,8 @@
 *.exe
 *.out
 *.app
+__pycache__/
+*.py[cod]
 
 .idea
 .vs

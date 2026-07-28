@@ -44,12 +44,20 @@ namespace OsfDebug {
     static int g_traceIndex = 0;
     static CRITICAL_SECTION g_traceLock;
     static bool g_initialized = false;
+    static bool g_enabled = false;
     static FILE* g_logFile = nullptr;
     static bool g_logToFile = true;
     static bool g_logToConsole = false;
     
     inline void Initialize() {
         if (g_initialized) return;
+        char enabledValue[8]{};
+        DWORD enabledLength = GetEnvironmentVariableA(
+            "OSF_TRACE", enabledValue, static_cast<DWORD>(sizeof(enabledValue)));
+        g_enabled = enabledLength > 0 && enabledValue[0] != '0';
+        g_initialized = true;
+        if (!g_enabled) return;
+
         InitializeCriticalSection(&g_traceLock);
         
         // Open log file (append mode)
@@ -61,11 +69,14 @@ namespace OsfDebug {
             }
         }
         
-        g_initialized = true;
     }
     
     inline void Shutdown() {
         if (!g_initialized) return;
+        if (!g_enabled) {
+            g_initialized = false;
+            return;
+        }
         if (g_logFile) {
             fprintf(g_logFile, "=== Session Ended ===\n");
             fclose(g_logFile);
@@ -73,10 +84,12 @@ namespace OsfDebug {
         }
         DeleteCriticalSection(&g_traceLock);
         g_initialized = false;
+        g_enabled = false;
     }
     
     inline void Trace(const char* dllName, const char* funcName, const char* fmt, ...) {
         if (!g_initialized) Initialize();
+        if (!g_enabled) return;
         
         EnterCriticalSection(&g_traceLock);
         
@@ -118,7 +131,7 @@ namespace OsfDebug {
     }
     
     inline void DumpRecentCalls(const char* reason) {
-        if (!g_initialized) return;
+        if (!g_initialized || !g_enabled) return;
         
         FILE* crashLog = fopen("osf_crash.log", "a");
         if (!crashLog) return;
@@ -188,7 +201,8 @@ namespace OsfDebug {
     }
     
     inline void InstallCrashHandler() {
-        SetUnhandledExceptionFilter(CrashHandler);
+        if (!g_initialized) Initialize();
+        if (g_enabled) SetUnhandledExceptionFilter(CrashHandler);
     }
     
     // RAII class for automatic ENTER/EXIT tracing
@@ -196,9 +210,13 @@ namespace OsfDebug {
     public:
         const char* m_dll;
         const char* m_func;
+        bool m_enabled;
         
         ScopedTrace(const char* dll, const char* func, const char* fmt, ...) 
-            : m_dll(dll), m_func(func) {
+            : m_dll(dll), m_func(func), m_enabled(false) {
+            if (!g_initialized) Initialize();
+            m_enabled = g_enabled;
+            if (!m_enabled) return;
             char argBuf[128] = "";
             if (fmt && fmt[0]) {
                 va_list args;
@@ -210,7 +228,7 @@ namespace OsfDebug {
         }
         
         ~ScopedTrace() {
-            Trace(m_dll, m_func, "EXIT");
+            if (m_enabled) Trace(m_dll, m_func, "EXIT");
         }
     };
 }

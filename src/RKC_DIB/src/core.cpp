@@ -10,8 +10,10 @@
  */
 
 #include <windows.h>
+#include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <vector>
 #include "../../utils.h"
 
 /**
@@ -25,15 +27,20 @@ public:
 };
 
 /**
- * RKC_DIBHISPEEDMODE class - 289,984 bytes (0x46C00 = 0x468C0 * 4)
+ * RKC_DIBHISPEEDMODE class - 1,155,840 bytes (0x468C0 DWORDs)
  * Contains pre-calculated lookup tables for fast blending operations.
  * The constructor builds complex tables, but destructor is empty.
  */
-#define DIBHISPEEDMODE_SIZE 0x46C00
+#define DIBHISPEEDMODE_DWORD_COUNT 0x468C0
+#define DIBHISPEEDMODE_SIZE (DIBHISPEEDMODE_DWORD_COUNT * sizeof(DWORD))
 
 // Forward declarations
 extern "C" long __thiscall RKC_DIB_GetAlignWidth(RKC_DIB* self);
 extern "C" void __thiscall RKC_DIB_Release(RKC_DIB* self);
+extern "C" int __thiscall RKC_DIB_DrawPoint(
+    RKC_DIB* self, long x, long y,
+    unsigned char r, unsigned char g, unsigned char b,
+    long blend, long flags, RECT* clipRect);
 
 // ============================================================================
 // RKC_DIBHISPEEDMODE FUNCTIONS
@@ -57,7 +64,7 @@ extern "C" void __thiscall RKC_DIBHISPEEDMODE_destructor(void* self) {
  * Copies 0x468C0 DWORDs (289,984 bytes) from source to this.
  */
 extern "C" void* __thiscall RKC_DIBHISPEEDMODE_operatorAssign(void* self, const void* source) {
-    memcpy(self, source, 0x468C0 * sizeof(DWORD));
+    memcpy(self, source, DIBHISPEEDMODE_SIZE);
     return self;
 }
 
@@ -1044,7 +1051,18 @@ extern "C" int __thiscall RKC_DIB_TransferToDIB_4args(
  * NOT REFERENCED - stub
  */
 extern "C" int __thiscall RKC_DIB_AddOffset(RKC_DIB* self, RGBQUAD offset, int flag) {
-    return 0;
+    if (!self->bitmap || !self->bitmapInfo || self->bitmapInfo->biBitCount != 8)
+        return 0;
+
+    const long stride = RKC_DIB_GetAlignWidth(self);
+    for (long y = 0; y < self->bitmapInfo->biHeight; ++y) {
+        unsigned char* row = self->bitmap + y * stride;
+        for (long x = 0; x < self->bitmapInfo->biWidth; ++x) {
+            if (flag == 0 || row[x] != 0)
+                row[x] = static_cast<unsigned char>(row[x] + offset.rgbReserved);
+        }
+    }
+    return 1;
 }
 
 /**
@@ -1052,7 +1070,32 @@ extern "C" int __thiscall RKC_DIB_AddOffset(RKC_DIB* self, RGBQUAD offset, int f
  * NOT REFERENCED - stub
  */
 extern "C" int __thiscall RKC_DIB_ClearUnusedArea(RKC_DIB* self) {
-    return 0;
+    if (!self->bitmapInfo || !self->bitmap)
+        return 1;
+    const long stride = RKC_DIB_GetAlignWidth(self);
+    if (stride < 0)
+        return 1;
+
+    const long usedBits =
+        static_cast<long>(self->bitmapInfo->biBitCount) * self->bitmapInfo->biWidth;
+    const long unusedBits = stride * 8 - usedBits;
+    if (unusedBits == 0)
+        return 1;
+    const long wholeBytes = unusedBits / 8;
+    const int partialBits = static_cast<int>(unusedBits % 8);
+
+    for (long y = 0; y < self->bitmapInfo->biHeight; ++y) {
+        unsigned char* row = self->bitmap + y * stride;
+        if (wholeBytes > 0)
+            std::memset(row + stride - wholeBytes, 0, wholeBytes);
+        if (partialBits > 0) {
+            const unsigned char mask =
+                static_cast<unsigned char>((1u << partialBits) - 1u);
+            row[stride - wholeBytes - 1] &=
+                static_cast<unsigned char>(~mask);
+        }
+    }
+    return 1;
 }
 
 /**
@@ -1060,7 +1103,15 @@ extern "C" int __thiscall RKC_DIB_ClearUnusedArea(RKC_DIB* self) {
  * NOT REFERENCED - stub
  */
 extern "C" int __thiscall RKC_DIB_CompareBitmapColor(RKC_DIB* self, long x, long y, RGBQUAD* color) {
-    return 0;
+    const long stride = RKC_DIB_GetAlignWidth(self);
+    const long row = self->bitmapInfo->biHeight - y - 1;
+    if (self->bitmapInfo->biBitCount == 8)
+        return self->bitmap[row * stride + x] == color->rgbRed;
+
+    const unsigned char* pixel = self->bitmap + row * stride + x * 3;
+    return pixel[0] == color->rgbBlue
+        && pixel[1] == color->rgbGreen
+        && pixel[2] == color->rgbRed;
 }
 
 /**
@@ -1068,7 +1119,21 @@ extern "C" int __thiscall RKC_DIB_CompareBitmapColor(RKC_DIB* self, long x, long
  * NOT REFERENCED - stub
  */
 extern "C" int __thiscall RKC_DIB_Copy(RKC_DIB* self, RKC_DIB* source) {
-    return 0;
+    if (!source || !source->bitmapInfo)
+        return 0;
+    if (!RKC_DIB_Create(
+            self,
+            source->bitmapInfo->biWidth,
+            source->bitmapInfo->biHeight,
+            source->bitmapInfo->biBitCount,
+            1))
+        return 0;
+
+    const long byteCount =
+        RKC_DIB_GetAlignWidth(source) * source->bitmapInfo->biHeight;
+    std::memcpy(self->bitmap, source->bitmap, byteCount);
+    RKC_DIB_CopyPalette(self, source);
+    return 1;
 }
 
 /**
@@ -1076,14 +1141,119 @@ extern "C" int __thiscall RKC_DIB_Copy(RKC_DIB* self, RKC_DIB* source) {
  * NOT REFERENCED - stub
  */
 extern "C" int __thiscall RKC_DIB_PaintArea(RKC_DIB* self, long x, long y, RGBQUAD* color) {
-    return 0;
+    if (!self->bitmap || !self->bitmapInfo || !color
+        || x < 0 || y < 0
+        || x >= self->bitmapInfo->biWidth
+        || y >= self->bitmapInfo->biHeight)
+        return 0;
+    if (self->bitmapInfo->biBitCount != 8
+        && self->bitmapInfo->biBitCount != 24)
+        return 0;
+
+    RGBQUAD target{};
+    const long stride = RKC_DIB_GetAlignWidth(self);
+    const long row = self->bitmapInfo->biHeight - y - 1;
+    if (self->bitmapInfo->biBitCount == 8) {
+        target.rgbRed = self->bitmap[row * stride + x];
+        if (target.rgbRed == color->rgbRed)
+            return 1;
+    } else {
+        const unsigned char* pixel = self->bitmap + row * stride + x * 3;
+        target.rgbBlue = pixel[0];
+        target.rgbGreen = pixel[1];
+        target.rgbRed = pixel[2];
+        if (target.rgbBlue == color->rgbBlue
+            && target.rgbGreen == color->rgbGreen
+            && target.rgbRed == color->rgbRed)
+            return 1;
+    }
+
+    std::vector<POINT> pending;
+    pending.push_back(POINT{x, y});
+    while (!pending.empty()) {
+        const POINT point = pending.back();
+        pending.pop_back();
+        if (point.x < 0 || point.y < 0
+            || point.x >= self->bitmapInfo->biWidth
+            || point.y >= self->bitmapInfo->biHeight
+            || !RKC_DIB_CompareBitmapColor(
+                self, point.x, point.y, &target))
+            continue;
+
+        RKC_DIB_DrawPoint(
+            self,
+            point.x,
+            point.y,
+            color->rgbRed,
+            color->rgbGreen,
+            color->rgbBlue,
+            1000,
+            0,
+            nullptr);
+        pending.push_back(POINT{point.x - 1, point.y});
+        pending.push_back(POINT{point.x + 1, point.y});
+        pending.push_back(POINT{point.x, point.y - 1});
+        pending.push_back(POINT{point.x, point.y + 1});
+    }
+    return 1;
 }
 
 /**
  * RKC_DIB::ScreenPaintLineScan - Scanline paint operation
  * NOT REFERENCED - stub
  */
-extern "C" void __thiscall RKC_DIB_ScreenPaintLineScan(RKC_DIB* self, POINT* p1, long* a, POINT* p2, RGBQUAD* c1, RGBQUAD* c2) {
+extern "C" void __thiscall RKC_DIB_ScreenPaintLineScan(
+    RKC_DIB* self,
+    POINT* points,
+    long* readIndex,
+    long* writeIndex,
+    RGBQUAD* target,
+    RGBQUAD* replacement) {
+    const long capacity = self->bitmapInfo->biWidth + 2;
+    const POINT seed = points[*readIndex];
+    long left = seed.x;
+    while (left > 0
+        && RKC_DIB_CompareBitmapColor(self, left - 1, seed.y, target))
+        --left;
+    long right = seed.x;
+    while (right < self->bitmapInfo->biWidth - 1
+        && RKC_DIB_CompareBitmapColor(self, right + 1, seed.y, target))
+        ++right;
+
+    for (long drawX = left; drawX <= right; ++drawX) {
+        RKC_DIB_DrawPoint(
+            self, drawX, seed.y,
+            replacement->rgbRed,
+            replacement->rgbGreen,
+            replacement->rgbBlue,
+            1000, 0, nullptr);
+    }
+
+    auto queueRuns = [&](long adjacentY) {
+        bool inRun = false;
+        for (long adjacentX = left; adjacentX <= right; ++adjacentX) {
+            const bool matches =
+                RKC_DIB_CompareBitmapColor(
+                    self, adjacentX, adjacentY, target) == 1;
+            if (matches) {
+                inRun = true;
+            } else if (inRun) {
+                points[*writeIndex] = POINT{adjacentX - 1, adjacentY};
+                *writeIndex = (*writeIndex + 1) % capacity;
+                inRun = false;
+            }
+        }
+        if (inRun) {
+            points[*writeIndex] = POINT{right, adjacentY};
+            *writeIndex = (*writeIndex + 1) % capacity;
+        }
+    };
+
+    if (seed.y != 0)
+        queueRuns(seed.y - 1);
+    if (seed.y != self->bitmapInfo->biHeight - 1)
+        queueRuns(seed.y + 1);
+    *readIndex = (*readIndex + 1) % capacity;
 }
 
 /**
@@ -1091,7 +1261,64 @@ extern "C" void __thiscall RKC_DIB_ScreenPaintLineScan(RKC_DIB* self, POINT* p1,
  * NOT REFERENCED - stub
  */
 extern "C" int __thiscall RKC_DIB_TransferToDDB_6args(RKC_DIB* self, HDC hdc, long x, long y, long w, long h, long flags) {
-    return 0;
+    const long scale = w;
+    const long clipWidth = h;
+    const long clipHeight = flags;
+    if (!self->bitmap || !self->bitmapInfo)
+        return 0;
+    switch (scale) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 6:
+    case 8:
+    case 12:
+    case 16:
+        break;
+    default:
+        return 0;
+    }
+
+    long sourceX = 0;
+    long sourceY = 0;
+    if (x < 0) {
+        sourceX = -(x / scale);
+        x += sourceX * scale;
+    }
+    if (y < 0) {
+        sourceY = -(y / scale);
+        y += sourceY * scale;
+    }
+
+    long sourceWidth = self->bitmapInfo->biWidth - sourceX;
+    long sourceHeight = self->bitmapInfo->biHeight - sourceY;
+    if (sourceWidth <= 0 || sourceHeight <= 0)
+        return 0;
+    if (clipWidth < x + sourceWidth * scale)
+        sourceWidth = (scale - x - 1 + clipWidth) / scale;
+    if (clipHeight < y + sourceHeight * scale)
+        sourceHeight = (scale - y - 1 + clipHeight) / scale;
+    sourceWidth = std::min(sourceWidth, self->bitmapInfo->biWidth);
+    sourceHeight = std::min(sourceHeight, self->bitmapInfo->biHeight);
+    if (sourceWidth <= 0 || sourceHeight <= 0)
+        return 0;
+
+    StretchDIBits(
+        hdc,
+        x,
+        y,
+        sourceWidth * scale,
+        sourceHeight * scale,
+        sourceX,
+        self->bitmapInfo->biHeight - sourceY - sourceHeight,
+        sourceWidth,
+        sourceHeight,
+        self->bitmap,
+        reinterpret_cast<BITMAPINFO*>(self->bitmapInfo),
+        DIB_RGB_COLORS,
+        SRCCOPY);
+    return 1;
 }
 
 // ============================================================================
@@ -1727,7 +1954,9 @@ extern "C" int __thiscall RKC_DIB_Convert(RKC_DIB* self, RKC_DIB* src, long mode
         unsigned char* destRow = self->bitmap;
         for (int y = 0; y < destHeight; y++) {
             long width = self->bitmapInfo->biWidth;
-            for (int x = 0; x + 2 <= width; x += 2) {
+            // The original always consumes pairs. For an odd width, the low
+            // nibble comes from the first padding byte of the source row.
+            for (int x = 0; x < width; x += 2) {
                 unsigned char hi = src->bitmap[srcOffset + x] & 0x0F;
                 unsigned char lo = src->bitmap[srcOffset + x + 1] & 0x0F;
                 destRow[x / 2] = (hi << 4) | lo;
@@ -2493,18 +2722,105 @@ extern "C" int __thiscall RKC_DIB_TransferToDIBEx_8args(
  * NOT REFERENCED - stub only, not imported by any module
  */
 extern "C" int __thiscall RKC_DIB_WriteFile(RKC_DIB* self, const char* filename) {
-    return 0;
+    if (!self->bitmapInfo || !self->bitmap || !filename)
+        return 0;
+    const WORD bpp = self->bitmapInfo->biBitCount;
+    if (bpp != 1 && bpp != 4 && bpp != 8 && bpp != 16 && bpp != 24)
+        return 0;
+
+    HANDLE file = CreateFileA(
+        filename,
+        GENERIC_WRITE,
+        0,
+        nullptr,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+    if (file == INVALID_HANDLE_VALUE)
+        return 0;
+
+    const long paletteCount = RKC_DIB_GetPaletteCount(self);
+    const DWORD paletteBytes = paletteCount > 0
+        ? static_cast<DWORD>(paletteCount * sizeof(RGBQUAD))
+        : 0;
+    const DWORD bitmapBytes = static_cast<DWORD>(
+        RKC_DIB_GetAlignWidth(self) * self->bitmapInfo->biHeight);
+    BITMAPFILEHEADER header{};
+    header.bfType = 0x4d42;
+    header.bfOffBits =
+        sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + paletteBytes;
+    header.bfSize = header.bfOffBits + bitmapBytes;
+
+    DWORD written = 0;
+    bool success =
+        WriteFile(file, &header, sizeof(header), &written, nullptr)
+        && written == sizeof(header)
+        && WriteFile(
+            file,
+            self->bitmapInfo,
+            sizeof(BITMAPINFOHEADER),
+            &written,
+            nullptr)
+        && written == sizeof(BITMAPINFOHEADER);
+    if (success && paletteBytes != 0) {
+        success = WriteFile(
+            file, self->palette, paletteBytes, &written, nullptr)
+            && written == paletteBytes;
+    }
+    if (success) {
+        success = WriteFile(
+            file, self->bitmap, bitmapBytes, &written, nullptr)
+            && written == bitmapBytes;
+    }
+    CloseHandle(file);
+    return success ? 1 : 0;
 }
 
 /**
  * RKC_DIBHISPEEDMODE::constructor - Build blending lookup tables
  * NOT REFERENCED - stub only, not imported by any module
  *
- * The full constructor builds ~290KB of pre-calculated tables.
- * Since nobody imports this, we just zero-init.
+ * Builds the four original byte lookup-table regions.
  */
 extern "C" void* __thiscall RKC_DIBHISPEEDMODE_constructor(void* self) {
-    memset(self, 0, DIBHISPEEDMODE_SIZE);
+    auto* bytes = static_cast<unsigned char*>(self);
+
+    for (int value = 0; value < 256; ++value) {
+        for (int alpha = 0; alpha <= 1000; ++alpha) {
+            int foreground = value * alpha / 1000;
+            int background = value * (1000 - alpha) / 1000;
+            if (foreground + background > 255) {
+                if (background < foreground)
+                    --foreground;
+                else
+                    --background;
+            }
+            bytes[value * 1001 + alpha] =
+                static_cast<unsigned char>(foreground);
+            bytes[0x3e900 + value * 1001 + alpha] =
+                static_cast<unsigned char>(background);
+        }
+    }
+
+    for (int value = 0; value < 256; ++value) {
+        for (int amount = 0; amount <= 2000; ++amount) {
+            int result = amount <= 1000
+                ? value * amount / 1000
+                : value + (amount - 1000) * (255 - value) / 1000;
+            result = std::max(0, std::min(result, 255));
+            bytes[0x7d200 + value * 2001 + amount] =
+                static_cast<unsigned char>(result);
+        }
+    }
+
+    for (int left = 0; left < 256; ++left) {
+        for (int right = 0; right < 256; ++right) {
+            bytes[0xfa300 + left * 256 + right] =
+                static_cast<unsigned char>(std::min(left + right, 255));
+            bytes[0x10a300 + left * 256 + right] =
+                static_cast<unsigned char>(left * right / 255);
+        }
+    }
     return self;
 }
 
