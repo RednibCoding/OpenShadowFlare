@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Michael Binder and contributors
+ * Copyright (C) 2026 Michael Binder
  *
  * This file is part of LAL.
  *

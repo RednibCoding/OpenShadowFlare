@@ -9,11 +9,11 @@ OpenShadowFlare is a community effort to preserve and rebuild ShadowFlare, a
 great little action RPG from the early 2000s that deserves to be playable for
 a long time yet.
 
-Right now, we are carefully reconstructing the support DLLs used by the
-original game. The goal is to match their original behavior as closely as we
-can before moving on to `ShadowFlare.exe` itself. Modern features such as
-widescreen support and native builds can come later, first we want a solid,
-faithful foundation.
+We started by reconstructing all fourteen support DLLs used by the original
+game. With that foundation in place, the main work is now a faithful,
+cross-platform reconstruction of `ShadowFlare.exe`. Modern extras such as
+widescreen support can come later; first we want the original game working
+properly.
 
 [![Join us on Discord](readme/discord.png)](https://discord.gg/4F2dMu5qwQ)
 
@@ -22,6 +22,7 @@ faithful foundation.
 - [Introduction](#introduction)
 - [ShadowFlare game files](#shadowflare-game-files)
 - [Current state](#current-state)
+- [Roadmap](#roadmap)
 - [Prebuilt binaries](#prebuilt-binaries)
 - [Building from source](#building-from-source)
 - [Running the tests](#running-the-tests)
@@ -40,8 +41,8 @@ increasingly awkward. That's why we're here.
 
 OpenShadowFlare is not a remake with different rules or a reimagining of the
 game. We are studying how the original worked and rebuilding it piece by piece.
-For now, that means reproducing all fourteen DLLs while keeping their exported
-functions, data formats, and behavior compatible with the original game.
+The fourteen compatibility DLLs came first; now their tested behavior is being
+brought into a clean portable reconstruction of the main executable.
 
 This is a work in progress, and there is still plenty left to understand. If
 you enjoy old games, reverse engineering, graphics, audio, networking, or
@@ -88,11 +89,20 @@ Here's where things stand today:
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.
 Audio timing, uncommon drawing modes, authenticated multiplayer, and some
-in-game map/rendering combinations still need broader testing. The next major
-piece is `ShadowFlare.exe` itself.
+in-game map/rendering combinations still need broader testing. The current
+major task is reconstructing the rest of `ShadowFlare.exe`.
 
-For the nitty-gritty, see the [fidelity inventory](fidelity/README.md). The
-[roadmap](roadmap.md) shows what we're planning to tackle next.
+For the DLL details, see the [fidelity inventory](fidelity/README.md).
+
+## Roadmap
+
+The [project roadmap](roadmap.md) is our working guide for the executable
+reconstruction. It explains what is already finished, why player movement is
+the next slice, and how the later work builds toward NPCs, scripts, combat,
+save compatibility, all four episodes, and multiplayer.
+
+It is a living plan rather than a promised schedule. We update it as the retail
+game teaches us more.
 
 ## Prebuilt binaries
 
