@@ -53,7 +53,7 @@
       "internal_original_calls": 0,
       "standalone": true,
       "fidelity": "behavioral-validation-required",
-      "notes": "Uses the replacement haudio backend; timing, looping, volume, and VOC behavior require differential validation."
+      "notes": "Uses the replacement LAL backend; timing, looping, volume, and VOC behavior require differential validation."
     },
     "RKC_FONTMAKER": {
       "exports": 13,

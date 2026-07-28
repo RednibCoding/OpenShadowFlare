@@ -1,8 +1,8 @@
 /**
- * RKC_DSOUND - DirectSound audio handling (reimplemented with haudio)
+ * RKC_DSOUND - DirectSound audio handling (reimplemented with LAL)
  * 
  * This DLL provides audio playback functions for ShadowFlare.
- * We use the haudio library for cross-platform audio output.
+ * We use LAL for cross-platform audio output.
  * 
  * VOC File Format (VoiceData V003):
  *   Header (16 bytes): "VoiceData  V003\0"
@@ -23,13 +23,13 @@
  *
  * Class layouts:
  *   RKC_DSOUND (0x10 bytes):
- *     +0x00: void* mixer       - haudio::Mixer* (was IDirectSound*)
+ *     +0x00: void* audio       - non-null while LAL is initialized
  *     +0x04: long vocCount     - Number of VOC slots
  *     +0x08: void* vocs        - Array of RKC_DSOUND_VOC_IMPL*
  *     +0x0c: int initialized   - Initialization flag
  * 
  *   Original RKC_DSOUND_VOC (0x114 bytes) - we use our own internal struct
- *   Original RKC_DSOUND_VOICE (0x124 bytes) - we use haudio::Sound internally
+ *   Original RKC_DSOUND_VOICE (0x124 bytes) - we use LalSound internally
  */
 
 #include <windows.h>
@@ -41,8 +41,7 @@
 #include <algorithm>
 #include <cmath>
 
-#define HAUDIO_IMPLEMENTATION
-#include "../../happy/haudio.hpp"
+#include "../../../thirdparty/lal/lal.h"
 
 // Forward declarations for original structs (for ABI compatibility)
 struct IDirectSound;
@@ -67,11 +66,11 @@ typedef struct tWAVEFORMATEX {
 // Internal representation of a single voice (sound sample)
 struct VoiceData {
     char name[256];
-    haudio::Sound sound;
-    haudio::AudioFormat format;
+    LalSound* sound = nullptr;
+    LalPcmFormat format{};
     int refIndex;           // -1 if not a reference, otherwise index of source voice
     long volume;            // Current volume in DirectSound dB units (-10000 to 0)
-    haudio::Voice* playing; // Currently playing voice (if any)
+    LalVoice playing;       // Currently playing voice (if any)
 };
 
 // Internal representation of a VOC container
@@ -82,10 +81,24 @@ struct VocContainer {
     std::vector<VoiceData> voices;
     
     VocContainer() : loaded(false), voiceCount(0), variantCount(0) {}
+    ~VocContainer() { clear(); }
+
+    void clear() {
+        for (auto& voice : voices) {
+            lal_sound_destroy(voice.sound);
+            voice.sound = nullptr;
+            voice.playing = LAL_INVALID_VOICE;
+        }
+        voices.clear();
+        loaded = false;
+        voiceCount = 0;
+        variantCount = 0;
+    }
 };
 
-// Global mixer (single instance for the DLL)
-static haudio::Mixer* g_mixer = nullptr;
+// RKC_DSOUND exposes a pointer-shaped initialized marker in its old object
+// layout. Audio ownership itself remains inside LAL.
+static bool g_audioInitialized = false;
 
 // Helper: Convert DirectSound dB volume (-10000 to 0) to linear (0.0 to 1.0)
 static float dsVolumeToLinear(long dsVolume) {
@@ -93,6 +106,12 @@ static float dsVolumeToLinear(long dsVolume) {
     if (dsVolume >= 0) return 1.0f;
     // dB to linear: 10^(dB/2000) for DirectSound's hundredths of dB
     return powf(10.0f, dsVolume / 2000.0f);
+}
+
+static float dsPanToLinear(long dsPan) {
+    if (dsPan <= -10000) return -1.0f;
+    if (dsPan >= 10000) return 1.0f;
+    return dsPan / 10000.0f;
 }
 
 // ============================================================================
@@ -151,7 +170,7 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
         VoiceData& voice = voc.voices[i];
         voice.refIndex = -1;
         voice.volume = 0;
-        voice.playing = nullptr;
+        voice.playing = LAL_INVALID_VOICE;
         
         // V003 has flags field
         uint32_t flags = 0;
@@ -186,9 +205,10 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
                 return false;
             }
             
-            voice.format.sampleRate = wfx.nSamplesPerSec;
+            voice.format.sample_rate = wfx.nSamplesPerSec;
             voice.format.channels = wfx.nChannels;
-            voice.format.bitsPerSample = wfx.wBitsPerSample;
+            voice.format.bits_per_sample = wfx.wBitsPerSample;
+            voice.format.frame_stride_bytes = wfx.nBlockAlign;
             
             // Read size
             uint32_t size;
@@ -206,7 +226,17 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
                     return false;
                 }
                 
-                voice.sound.loadRaw(pcmData.data(), size, voice.format);
+                voice.sound = lal_sound_create_pcm(
+                    pcmData.data(), pcmData.size(), &voice.format);
+                if (!voice.sound) {
+                    fprintf(
+                        stderr,
+                        "[RKC_DSOUND] Voice %u: %s\n",
+                        i,
+                        lal_last_error());
+                    fclose(f);
+                    return false;
+                }
             }
         }
     }
@@ -234,7 +264,7 @@ static bool loadVocFile(const char* filename, VocContainer& voc) {
             voc.voices[dstIdx].refIndex = srcIdx; // Point to base voice
             voc.voices[dstIdx].format = voc.voices[srcIdx].format;
             voc.voices[dstIdx].volume = 0;
-            voc.voices[dstIdx].playing = nullptr;
+            voc.voices[dstIdx].playing = LAL_INVALID_VOICE;
             strncpy(voc.voices[dstIdx].name, voc.voices[srcIdx].name, 255);
         }
     }
@@ -280,11 +310,9 @@ extern "C" void __thiscall RKC_DSOUND_destructor(void* self) {
         *(void**)(p + 0x08) = nullptr;
     }
     
-    // Shutdown mixer
-    if (g_mixer) {
-        g_mixer->shutdown();
-        delete g_mixer;
-        g_mixer = nullptr;
+    if (g_audioInitialized) {
+        lal_shutdown();
+        g_audioInitialized = false;
     }
     
     *(void**)(p + 0x00) = nullptr;
@@ -297,25 +325,21 @@ extern "C" void __thiscall RKC_DSOUND_destructor(void* self) {
  */
 extern "C" int __thiscall RKC_DSOUND_Initialize(void* self, void* hwnd, long vocCount) {
     char* p = (char*)self;
-    
-    // Create and init mixer
-    if (!g_mixer) {
-        g_mixer = new haudio::Mixer();
-        // ShadowFlare uses 22050 Hz mono/stereo 16-bit audio typically
-        haudio::AudioFormat fmt;
-        fmt.sampleRate = 22050;
-        fmt.channels = 2;
-        fmt.bitsPerSample = 16;
-        
-        if (!g_mixer->init(fmt, 100)) {
-            fprintf(stderr, "[RKC_DSOUND] Failed to initialize audio mixer\n");
-            delete g_mixer;
-            g_mixer = nullptr;
+    (void)hwnd;
+    if (vocCount < 1) return 0;
+
+    if (!g_audioInitialized) {
+        if (!lal_init()) {
+            fprintf(
+                stderr,
+                "[RKC_DSOUND] Failed to initialize audio: %s\n",
+                lal_last_error());
             return 0;
         }
+        g_audioInitialized = true;
     }
     
-    *(void**)(p + 0x00) = (void*)g_mixer; // Store mixer pointer where IDirectSound* was
+    *(void**)(p + 0x00) = (void*)&g_audioInitialized;
     *(long*)(p + 0x04) = vocCount;
     
     // Allocate VOC container array
@@ -336,11 +360,7 @@ extern "C" int __thiscall RKC_DSOUND_Initialize(void* self, void* hwnd, long voc
 extern "C" void __thiscall RKC_DSOUND_Release(void* self) {
     char* p = (char*)self;
     
-    // IMPORTANT: Reset mixer FIRST - this stops all pending callbacks
-    // before we delete the VOC data they might be accessing
-    if (g_mixer) {
-        g_mixer->reset();
-    }
+    lal_stop_all();
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
     long vocCount = *(long*)(p + 0x04);
@@ -367,14 +387,14 @@ extern "C" int __thiscall RKC_DSOUND_ReadVocFile(void* self, const char* filenam
     if (!*(void**)(p + 0x00)) return 0;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs || vocIndex < 0) return 0;
+    long vocCount = *(long*)(p + 0x04);
+    if (!vocs || vocIndex < 0 || vocIndex >= vocCount) return 0;
     
     VocContainer* voc = vocs[vocIndex];
     if (!voc) return 0;
     
     // Release existing data
-    voc->voices.clear();
-    voc->loaded = false;
+    voc->clear();
     
     // Load new file
     if (!loadVocFile(filename, *voc)) {
@@ -398,36 +418,18 @@ extern "C" void __thiscall RKC_DSOUND_ReleaseVoc(void* self, long vocIndex) {
     
     if (!vocs) return;
     
-    // CRITICAL: Reset mixer to stop all callbacks before touching sound data
-    // This ensures no callback is accessing sound data while we delete it
-    if (g_mixer) {
-        g_mixer->reset();
-    }
-    
-    // Helper lambda to stop all playing sounds in a VOC
-    auto stopVocSounds = [](VocContainer* voc) {
-        if (!voc) return;
-        for (auto& voice : voc->voices) {
-            if (voice.playing) {
-                voice.playing = nullptr;  // haudio Voice already stopped by reset()
-            }
-        }
-    };
+    lal_stop_all();
     
     if (vocIndex == -1) {
         // Release all
         for (long i = 0; i < vocCount; i++) {
             if (vocs[i]) {
-                stopVocSounds(vocs[i]);
-                vocs[i]->voices.clear();
-                vocs[i]->loaded = false;
+                vocs[i]->clear();
             }
         }
     } else if (vocIndex >= 0 && vocIndex < vocCount) {
         if (vocs[vocIndex]) {
-            stopVocSounds(vocs[vocIndex]);
-            vocs[vocIndex]->voices.clear();
-            vocs[vocIndex]->loaded = false;
+            vocs[vocIndex]->clear();
         }
     }
 }
@@ -443,19 +445,19 @@ extern "C" long __thiscall RKC_DSOUND_Play(void* self, long vocIndex, long voice
                                             int loop, long pan, long volume) {
     char* p = (char*)self;
     
-    if (!*(void**)(p + 0x00)) return -1;
-    if (!g_mixer) return -1;
+    if (!g_audioInitialized) return -1;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs) return -1;
+    long vocCount = *(long*)(p + 0x04);
+    if (!vocs || vocIndex < 0 || vocIndex >= vocCount) return -1;
     
     VocContainer* voc = vocs[vocIndex];
     if (!voc) return -1;
     if (!voc->loaded) return -1;
+    if (voiceIndex < 0 || voiceIndex >= voc->voiceCount) return -1;
     
-    // For looping sounds (BGM), stop all audio first using reset()
     if (loop) {
-        g_mixer->reset();
+        lal_stop_all();
     }
     
     // Find a free variant slot
@@ -469,23 +471,28 @@ extern "C" long __thiscall RKC_DSOUND_Play(void* self, long vocIndex, long voice
         VoiceData& voice = voc->voices[idx];
         
         // Check if this slot is free (not playing)
-        if (voice.playing && voice.playing->active()) {
+        if (lal_is_playing(voice.playing)) {
             continue; // This variant is busy
         }
         
         // Get the actual sound (may be a reference)
-        haudio::Sound* sound = &voice.sound;
+        LalSound* sound = voice.sound;
         if (voice.refIndex >= 0 && voice.refIndex < (int)voc->voices.size()) {
-            sound = &voc->voices[voice.refIndex].sound;
+            sound = voc->voices[voice.refIndex].sound;
         }
         
-        if (!sound->valid()) {
+        if (!sound) {
             continue; // No sound data
         }
         
-        // Play the sound
-        float vol = dsVolumeToLinear(volume);
-        voice.playing = g_mixer->play(*sound, vol, loop != 0);
+        LalPlayOptions options = lal_play_options_default();
+        options.volume = dsVolumeToLinear(volume);
+        options.pan = dsPanToLinear(pan);
+        options.loop = loop != 0;
+        voice.playing = lal_play_ex(sound, &options);
+        if (voice.playing == LAL_INVALID_VOICE) {
+            continue;
+        }
         voice.volume = volume;
         variantUsed = variant;
         
@@ -505,10 +512,12 @@ extern "C" void __thiscall RKC_DSOUND_Stop(void* self, long vocIndex, long voice
     if (!*(void**)(p + 0x00)) return;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs) return;
+    long vocCount = *(long*)(p + 0x04);
+    if (!vocs || vocIndex < 0 || vocIndex >= vocCount) return;
     
     VocContainer* voc = vocs[vocIndex];
     if (!voc || !voc->loaded) return;
+    if (voiceIndex < 0 || voiceIndex >= voc->voiceCount) return;
     
     // Stop all variants of this voice
     for (int variant = 0; variant <= voc->variantCount; variant++) {
@@ -516,9 +525,9 @@ extern "C" void __thiscall RKC_DSOUND_Stop(void* self, long vocIndex, long voice
         if (idx >= (int)voc->voices.size()) break;
         
         VoiceData& voice = voc->voices[idx];
-        if (voice.playing) {
-            voice.playing->stop();
-            voice.playing = nullptr;
+        if (voice.playing != LAL_INVALID_VOICE) {
+            lal_stop(voice.playing);
+            voice.playing = LAL_INVALID_VOICE;
         }
     }
 }
@@ -533,10 +542,12 @@ extern "C" int __thiscall RKC_DSOUND_GetPlayStatus(void* self, long vocIndex, lo
     if (!*(void**)(p + 0x00)) return 0;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs) return 0;
+    long vocCount = *(long*)(p + 0x04);
+    if (!vocs || vocIndex < 0 || vocIndex >= vocCount) return 0;
     
     VocContainer* voc = vocs[vocIndex];
     if (!voc || !voc->loaded) return 0;
+    if (voiceIndex < 0 || voiceIndex >= voc->voiceCount) return 0;
     
     // Check if any variant is playing
     for (int variant = 0; variant <= voc->variantCount; variant++) {
@@ -544,7 +555,7 @@ extern "C" int __thiscall RKC_DSOUND_GetPlayStatus(void* self, long vocIndex, lo
         if (idx >= (int)voc->voices.size()) break;
         
         VoiceData& voice = voc->voices[idx];
-        if (voice.playing && voice.playing->active()) {
+        if (lal_is_playing(voice.playing)) {
             return 1;
         }
     }
@@ -562,10 +573,12 @@ extern "C" void __thiscall RKC_DSOUND_SetVolume(void* self, long vocIndex, long 
     if (!*(void**)(p + 0x00)) return;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs) return;
+    long vocCount = *(long*)(p + 0x04);
+    if (!vocs || vocIndex < 0 || vocIndex >= vocCount) return;
     
     VocContainer* voc = vocs[vocIndex];
     if (!voc || !voc->loaded) return;
+    if (voiceIndex < 0 || voiceIndex >= voc->voiceCount) return;
     
     // Set volume on all variants
     float vol = dsVolumeToLinear(volume);
@@ -576,8 +589,8 @@ extern "C" void __thiscall RKC_DSOUND_SetVolume(void* self, long vocIndex, long 
         
         VoiceData& voice = voc->voices[idx];
         voice.volume = volume;
-        if (voice.playing) {
-            voice.playing->setVolume(vol);
+        if (voice.playing != LAL_INVALID_VOICE) {
+            lal_set_voice_volume(voice.playing, vol);
         }
     }
 }
@@ -591,12 +604,13 @@ extern "C" long __thiscall RKC_DSOUND_GetVolume(void* self, long vocIndex, long 
     if (!*(void**)(p + 0x00)) return -1;
     
     VocContainer** vocs = *(VocContainer***)(p + 0x08);
-    if (!vocs) return -1;
+    long vocCount = *(long*)(p + 0x04);
+    if (!vocs || vocIndex < 0 || vocIndex >= vocCount) return -1;
     
     VocContainer* voc = vocs[vocIndex];
     if (!voc || !voc->loaded) return -1;
     
-    if (voiceIndex >= 0 && voiceIndex < (int)voc->voices.size()) {
+    if (voiceIndex >= 0 && voiceIndex < voc->voiceCount) {
         return voc->voices[voiceIndex].volume;
     }
     

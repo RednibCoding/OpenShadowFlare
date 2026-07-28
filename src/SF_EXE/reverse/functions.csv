@@ -1,0 +1,14 @@
+address,name,reconstructed_symbol,status,evidence,notes
+0x004014a0,ProcessCommandLine,,analyzed,static,
+0x00401550,CheckSingleInstance,,analyzed,static,Portable equivalent must not use a Win32 mutex
+0x004016b0,InitGame,,analyzed,static,
+0x00401b90,ShutdownGame,,analyzed,static,
+0x00401eb0,LoadConfig,,analyzed,static,SFlare.Cfg
+0x004022e0,WinMain,main,partial,static,Original entry behavior maps to the portable application lifecycle
+0x004023d0,UpdateGameState,,analyzed,static,Dispatches states 0 through 2
+0x004026d0,OnKeyUp,,analyzed,static,Retail function is effectively empty
+0x00402840,OnKeyDown,,analyzed,static,Enter and PrintScreen behavior identified
+0x00402b30,WndProc,,analyzed,static,Behavior maps to LWL events rather than native messages
+0x0041d880,GameplayState,,identified,static,
+0x00420df0,TitleState,,identified,static,
+0x00421bf0,LoadingState,,identified,static,

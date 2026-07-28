@@ -38,8 +38,9 @@ Current external forwarders: 0. All fourteen DLLs are standalone.
    RPGSCRN, and authenticated NETWORK paths.
 3. Extend DBFCONTROL validation to its fullscreen DirectDraw path.
 4. Finish SCRIPT's unused developer text compiler.
-5. Begin reconstructing `ShadowFlare.exe`, using the retail executable as a
-   behavioral oracle and keeping the completed DLL layer stable.
+5. Continue reconstructing `ShadowFlare.exe` on the portable LWL/LGL/LAL
+   foundation, using the retail executable as a behavioral oracle and keeping
+   the completed DLL layer stable.
 
 ## Required checks
 

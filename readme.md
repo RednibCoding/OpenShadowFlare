@@ -75,6 +75,9 @@ Here's where things stand today:
   probes under Wine.
 - An isolated smoke test confirms that the reconstructed DLL set starts the
   game and reaches its render loop.
+- The portable executable now has a small native foundation built on LWL, LGL,
+  and LAL. It creates a cross-platform OpenGL 3.3 window and audio runtime, but
+  does not load the game itself yet.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.
@@ -95,8 +98,13 @@ For now, use the build instructions below.
 
 ## Building from source
 
-The supported build currently runs on Linux and cross-compiles 32-bit Windows
-DLLs with MinGW-w64.
+There are two builds at the moment: the compatibility DLLs used by the retail
+game, and the new portable executable foundation.
+
+### Compatibility DLLs
+
+The DLL build runs on Linux and cross-compiles 32-bit Windows DLLs with
+MinGW-w64.
 
 On Debian or Ubuntu, install the compiler with:
 
@@ -127,8 +135,20 @@ You can then start the game through Wine:
 ./run-shadowflare.sh
 ```
 
-Native Linux and macOS builds are not available yet, and the project does not
-currently use CMake.
+### Portable executable
+
+The new executable uses CMake:
+
+```bash
+cmake -S . -B cmake-build-debug
+cmake --build cmake-build-debug
+./cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt
+```
+
+Linux and Windows builds are established. LWL and LAL also include macOS
+backends, though the new executable still needs to be built and exercised on
+real macOS hardware. This target is only the platform foundation for now; it
+does not run the game yet.
 
 ## Running the tests
 
@@ -136,6 +156,15 @@ Run the build and static ABI/fidelity checks with:
 
 ```bash
 ./tests/run.sh
+```
+
+For the portable libraries and executable:
+
+```bash
+cmake -S . -B cmake-build-debug
+cmake --build cmake-build-debug
+ctest --test-dir cmake-build-debug --output-on-failure
+./cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt --smoke-test
 ```
 
 If Wine is installed, you can also run the original-vs-reconstructed
@@ -179,7 +208,7 @@ research may not be creating a licensed derivative. We still ask everyone who
 benefits from this work to credit the project and share what they learn — that
 is the community this project is here to build.
 
-The full scope, attribution guidance, exclusions, and earlier MIT history are
+The full scope, attribution guidance and exclusions are
 explained in [LICENSING.md](LICENSING.md).
 
 ShadowFlare, its original binaries, assets, names, and trademarks are not

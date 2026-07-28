@@ -1,6 +1,6 @@
 LIBRARY RKC_DSOUND
 EXPORTS
-; RKC_DSOUND - Main sound manager (all implemented locally with haudio)
+; RKC_DSOUND - Main sound manager (all implemented locally with LAL)
 ??0RKC_DSOUND@@QAE@XZ=RKC_DSOUND_constructor @1
 ??1RKC_DSOUND@@QAE@XZ=RKC_DSOUND_destructor @4
 ??4RKC_DSOUND@@QAEAAV0@ABV0@@Z=RKC_DSOUND_operatorAssign @7

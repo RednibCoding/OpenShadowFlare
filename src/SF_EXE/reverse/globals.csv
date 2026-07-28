@@ -1,0 +1,11 @@
+address,name,portable_owner,status,notes
+0x00482770,g_hInstance,Runtime,analyzed,Native instance handle is not reproduced
+0x00482774,g_lastLParam,,analyzed,Native message detail is not part of the portable model
+0x00482778,g_Window,Runtime,analyzed,Window and application state
+0x00482d10,g_pUpdib,,identified,Sprite subsystem
+0x00482d18,g_pDbfControl,,identified,Rendering subsystem
+0x00482d28,g_pDsound,,identified,Audio subsystem
+0x00482db0,g_gameMode,,identified,0 single player 1 client 2 server
+0x0048d71c,g_screenshotRequested,,identified,
+0x0048d8cc,g_imeEnabled,,identified,
+0x0048d8d4,g_cursorVisible,,identified,
