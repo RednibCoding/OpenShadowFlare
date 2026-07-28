@@ -32,9 +32,11 @@ The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
 cues, smoke timing, and delayed New Game, Continue, and Exit actions all
 follow the retail function. Character selection has its outer fade and
-screen/transition dispatcher as well. Its individual character and save-list
-screens, plus all menu drawing, are the next pieces to recover, so the current
-window still shows the render-loop foundation rather than the original menu.
+screen/transition dispatcher as well. The saved-game list now has its original
+two-column navigation, six pointer regions, double-click timing, and
+Continue/Delete/Back/Exit decisions. New-character interaction, the saved-game
+confirmation dialogs, and all menu drawing are still to come, so the current
+window shows the render-loop foundation rather than the original menu.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.

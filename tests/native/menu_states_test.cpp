@@ -396,7 +396,7 @@ bool testCharacterSelectLifecycle() {
                 newCharacter.fade_steps_remaining == 20 &&
                 newCharacter.launch_counter == 0 &&
                 newCharacter.brightness_increasing == 1 &&
-                newCharacter.selected_save == -1 &&
+                newCharacter.selection_result == -1 &&
                 newCharacter.screen == 0 &&
                 newCharacter.input_latch == 1 &&
                 newCharacter.new_character_data_loaded &&
@@ -513,6 +513,186 @@ bool testCharacterSelectFrames() {
         "The character-selection exit timer differs.");
 }
 
+bool testSavedGameSelectionFrames() {
+    osf::CharacterSelectState state;
+    osf::CharacterSelectFrameInput input;
+    input.saved_game_count = 6;
+
+    const auto makeReady = [&state] {
+        state.enter(1);
+        state.data().fade_value = 1000;
+        state.data().fade_target = 1000;
+        state.data().fade_steps_remaining = 0;
+        state.data().brightness_increasing = 1;
+        state.data().screen = 0;
+        state.data().launch_counter = 0;
+        state.data().save_hover_animation = 64;
+        state.data().saved_game_selection = 0;
+        state.data().input_latch = 0;
+    };
+
+    makeReady();
+    input.down_pressed = true;
+    osf::CharacterSelectFrameResult result = state.update(input);
+    input.down_pressed = false;
+    if (!check(
+            state.data().saved_game_selection == 2 &&
+                result.play_selection_sound_count == 1,
+            "Saved-game Down navigation does not use the retail two-column stride.")) {
+        return false;
+    }
+
+    input.right_pressed = true;
+    result = state.update(input);
+    input.right_pressed = false;
+    if (!check(
+            state.data().saved_game_selection == 3 &&
+                result.play_selection_sound_count == 1,
+            "Saved-game Right navigation differs from retail.")) {
+        return false;
+    }
+
+    input.up_pressed = true;
+    result = state.update(input);
+    input.up_pressed = false;
+    if (!check(
+            state.data().saved_game_selection == 1 &&
+                result.play_selection_sound_count == 1,
+            "Saved-game Up navigation differs from retail.")) {
+        return false;
+    }
+
+    input.left_pressed = true;
+    result = state.update(input);
+    input.left_pressed = false;
+    if (!check(
+            state.data().saved_game_selection == 0 &&
+                result.play_selection_sound_count == 1,
+            "Saved-game Left navigation differs from retail.")) {
+        return false;
+    }
+
+    input.left_pressed = true;
+    result = state.update(input);
+    input.left_pressed = false;
+    if (!check(
+            state.data().saved_game_selection == 0 &&
+                result.play_selection_sound_count == 0,
+            "Saved-game navigation played a sound at a clamped boundary.")) {
+        return false;
+    }
+
+    input.pointer_x = 400;
+    input.pointer_y = 300;
+    input.pointer_primary_pressed = true;
+    result = state.update(input);
+    if (!check(
+            state.data().saved_game_selection == 3 &&
+                state.data().pointer_click_cooldown == 10 &&
+                result.mode_action ==
+                    osf::CharacterSelectModeAction::none &&
+                result.play_selection_sound_count == 1,
+            "A single click did not select the retail save-list cell.")) {
+        return false;
+    }
+
+    result = state.update(input);
+    input.pointer_primary_pressed = false;
+    if (!check(
+            result.pointer_double_click &&
+                result.mode_action ==
+                    osf::CharacterSelectModeAction::choose_saved_game &&
+                result.screen_update ==
+                    osf::CharacterSelectScreenUpdate::screen_10 &&
+                result.play_selection_sound_count == 2 &&
+                state.data().screen == 10 &&
+                state.data().selected_saved_game == 3 &&
+                state.data().brightness_increasing == 0,
+            "Saved-game double-click timing or selection differs from retail.")) {
+        return false;
+    }
+
+    makeReady();
+    input.pointer_x = 0;
+    input.pointer_y = 0;
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::choose_saved_game &&
+                state.data().screen == 10 &&
+                state.data().selected_saved_game == 0,
+            "Enter did not open the saved-game confirmation screen.")) {
+        return false;
+    }
+
+    makeReady();
+    input.delete_pressed = true;
+    result = state.update(input);
+    input.delete_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::delete_saved_game &&
+                state.data().screen == 1 &&
+                state.data().dialog_selection == 1 &&
+                state.data().dialog_input_armed == 1,
+            "Delete did not open the retail saved-game deletion screen.")) {
+        return false;
+    }
+
+    makeReady();
+    input.back_pressed = true;
+    result = state.update(input);
+    input.back_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::start_back_transition &&
+                state.data().launch_counter == 1000,
+            "Saved-game Back did not start retail transition 1000.")) {
+        return false;
+    }
+
+    makeReady();
+    input.pointer_x = 600;
+    input.pointer_y = 10;
+    input.pointer_primary_pressed = true;
+    result = state.update(input);
+    input.pointer_primary_pressed = false;
+    if (!check(
+            result.mode_action ==
+                osf::CharacterSelectModeAction::start_exit_transition &&
+                state.data().launch_counter == 2000,
+            "The saved-game Exit button did not start retail transition 2000.")) {
+        return false;
+    }
+
+    makeReady();
+    state.data().save_hover_animation = 27;
+    input.pointer_x = 100;
+    input.pointer_y = 200;
+    result = state.update(input);
+    if (!check(
+            state.data().save_hover_animation == 64,
+            "The saved-game hover animation did not enter its retail idle frame.")) {
+        return false;
+    }
+    result = state.update(input);
+    if (!check(
+            state.data().save_hover_animation == 65,
+            "The saved-game hover animation did not advance inside a save cell.")) {
+        return false;
+    }
+
+    makeReady();
+    state.data().launch_counter = 1000;
+    result = state.update(input);
+    return check(
+        state.data().launch_counter == 1001 &&
+            result.mode_brightness == 900,
+        "The saved-game transition brightness differs from retail.");
+}
+
 }  // namespace
 
 int main() {
@@ -523,7 +703,8 @@ int main() {
         !testTitleFrames() ||
         !testTitleSmokeSchedule() ||
         !testCharacterSelectLifecycle() ||
-        !testCharacterSelectFrames()) {
+        !testCharacterSelectFrames() ||
+        !testSavedGameSelectionFrames()) {
         return 1;
     }
     return 0;

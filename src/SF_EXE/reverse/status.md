@@ -26,6 +26,8 @@ The first game-core slice covers:
   and smoke-animation scheduling
 - new-character and saved-game selection enter/leave behavior
 - the character-selection fade and top-level per-frame screen dispatcher
+- saved-game list navigation, slot hit regions, double-click timing, and the
+  Continue, Delete, Back, and Exit decisions
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
 - the statically linked Visual C++ random-number generator
@@ -44,6 +46,9 @@ into the original selection rules and follows the resulting state changes.
 
 The top-level character-selection dispatcher at `0x00421c50` is reconstructed
 through its fade, mode dispatch, sub-screen dispatch, and delayed gameplay
-transition. The next layer is the mode-specific interaction inside
-`0x00422e30` and `0x00423ca0`, followed by the sub-screens at `0x00424d80`,
-`0x004253c0`, `0x00425830`, and `0x00425d40`.
+transition. The saved-game list decisions inside `0x00422e30` are now
+implemented too. Its drawing and Delete confirmation at `0x004228b0` remain.
+
+The next large menu layer is new-character interaction at `0x00423ca0`,
+followed by the shared sub-screens at `0x00424d80`, `0x004253c0`,
+`0x00425830`, and `0x00425d40`.

@@ -125,18 +125,24 @@ struct CharacterSelectStateData {
     std::int32_t fade_target = 0;                 // retail +0x04
     std::int32_t fade_steps_remaining = 0;        // retail +0x08
     std::int32_t launch_counter = 0;              // retail +0x0c
-    std::int32_t raw_14 = 0;
+    std::int32_t save_hover_animation = 0;        // retail +0x14
     std::int32_t brightness_increasing = 0;       // retail +0x18
-    std::int32_t raw_1c = 0;
-    std::int32_t selected_save = -1;              // retail +0x20
+    std::int32_t saved_game_selection = 0;        // retail +0x1c
+    std::int32_t selection_result = -1;           // retail +0x20
     CharacterSelectMode mode = CharacterSelectMode::new_character;
     std::int32_t screen = 0;                      // retail +0x28
     std::int32_t raw_30 = 0;
     std::int32_t raw_34 = 0;
     CharacterSelectMode rendered_mode =
         CharacterSelectMode::new_character;       // retail +0x40
+    std::int32_t pointer_click_cooldown = 0;       // retail +0x44
+    std::int32_t dialog_selection = 0;             // retail +0x48
+    std::int32_t dialog_input_armed = 0;           // retail +0x4c
+    std::int32_t previous_pointer_x = 0;           // retail +0x58
+    std::int32_t previous_pointer_y = 0;           // retail +0x5c
     std::int32_t input_latch = 1;                 // retail +0x60
     bool new_character_data_loaded = false;
+    std::int32_t selected_saved_game = -1;
     std::string next_save_path;
     std::vector<std::uint8_t> temporary_buffer;
     bool active = false;
@@ -156,17 +162,41 @@ enum class CharacterSelectScreenUpdate {
     screen_12,
 };
 
+enum class CharacterSelectModeAction {
+    none,
+    start_back_transition,
+    start_exit_transition,
+    choose_saved_game,
+    delete_saved_game,
+};
+
 struct CharacterSelectFrameInput {
     bool input_suspended = false;
+    bool pointer_primary_pressed = false;
+    bool confirm_pressed = false;
+    bool back_pressed = false;
+    bool delete_pressed = false;
+    bool up_pressed = false;
+    bool down_pressed = false;
+    bool left_pressed = false;
+    bool right_pressed = false;
+    std::int32_t pointer_x = 0;
+    std::int32_t pointer_y = 0;
+    std::int32_t saved_game_count = 0;
 };
 
 struct CharacterSelectFrameResult {
     bool processed = true;
     std::int32_t background_brightness = 0;
+    std::int32_t mode_brightness = 1000;
     CharacterSelectMode mode = CharacterSelectMode::new_character;
     CharacterSelectScreenUpdate screen_update =
         CharacterSelectScreenUpdate::none;
+    CharacterSelectModeAction mode_action =
+        CharacterSelectModeAction::none;
     CharacterSelectAction action = CharacterSelectAction::none;
+    std::int32_t play_selection_sound_count = 0;
+    bool pointer_double_click = false;
 };
 
 struct CharacterSelectStateHooks {
