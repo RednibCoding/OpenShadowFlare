@@ -174,7 +174,8 @@ void renderNewCharacter(
     const CharacterSelectStateData& data,
     const CharacterSelectFrameResult& frame,
     const CharacterSelectFrameInput& input,
-    std::int32_t brightness) {
+    std::int32_t brightness,
+    std::int32_t overlayBrightness) {
     renderer.drawPattern(
         select, 41, {0, 0, 1000, 1000, brightness});
     renderer.drawPattern(
@@ -296,7 +297,7 @@ void renderNewCharacter(
             font,
             data,
             input,
-            brightness);
+            overlayBrightness);
     }
 }
 
@@ -308,7 +309,8 @@ void renderSavedGames(
     const CharacterSelectFrameInput& input,
     const std::vector<RetailSaveSummary>& savedGames,
     const std::vector<gapi::BitmapImage>& savedPreviews,
-    std::int32_t brightness) {
+    std::int32_t brightness,
+    std::int32_t overlayBrightness) {
     renderer.drawPattern(
         select, 41, {0, 0, 1000, 1000, brightness});
     renderer.drawPattern(
@@ -396,7 +398,9 @@ void renderSavedGames(
 
     if (data.screen == 1) {
         renderer.drawPattern(
-            select, 38, {0, 0, 1000, 1000, brightness});
+            select,
+            38,
+            {0, 0, 1000, 1000, overlayBrightness});
         const std::string name =
             selected >= 0 &&
                     static_cast<std::size_t>(selected) <
@@ -410,29 +414,29 @@ void renderSavedGames(
                 "  " + name,
             240,
             190,
-            brightness);
+            overlayBrightness);
         drawText(
             renderer,
             font,
             "Are you sure you want to delete",
             215,
             210,
-            brightness);
+            overlayBrightness);
         drawText(
             renderer,
             font,
             "this saved data?",
             268,
             230,
-            brightness);
+            overlayBrightness);
         renderer.drawPattern(
             select,
             data.dialog_selection == 0 ? 15 : 14,
-            {0, 0, 1000, 1000, brightness});
+            {0, 0, 1000, 1000, overlayBrightness});
         renderer.drawPattern(
             select,
             data.dialog_selection == 1 ? 17 : 16,
-            {0, 0, 1000, 1000, brightness});
+            {0, 0, 1000, 1000, overlayBrightness});
     } else if (data.screen >= 10 && data.screen <= 12) {
         renderCharacterModeScreen(
             renderer,
@@ -440,7 +444,7 @@ void renderSavedGames(
             font,
             data,
             input,
-            brightness);
+            overlayBrightness);
     }
 }
 
@@ -459,6 +463,7 @@ void renderCharacterSelect(
         std::min(
             frame.background_brightness,
             frame.mode_brightness);
+    constexpr std::int32_t overlayBrightness = 1000;
     if (data.mode == CharacterSelectMode::new_character) {
         renderNewCharacter(
             renderer,
@@ -467,7 +472,8 @@ void renderCharacterSelect(
             data,
             frame,
             input,
-            brightness);
+            brightness,
+            overlayBrightness);
     } else {
         renderSavedGames(
             renderer,
@@ -477,7 +483,8 @@ void renderCharacterSelect(
             input,
             saved_games,
             saved_previews,
-            brightness);
+            brightness,
+            overlayBrightness);
     }
 }
 

@@ -672,6 +672,24 @@ bool testSavedGameSelectionFrames() {
         return false;
     }
 
+    input.back_pressed = true;
+    result = state.update(input);
+    input.back_pressed = false;
+    if (!check(
+            state.data().screen == 0 &&
+                state.data().brightness_increasing == 1,
+            "Saved-game popup Back did not restore the list brightness.")) {
+        return false;
+    }
+    input.right_pressed = true;
+    result = state.update(input);
+    input.right_pressed = false;
+    if (!check(
+            state.data().saved_game_selection == 1,
+            "Saved-game input stayed locked after closing the popup.")) {
+        return false;
+    }
+
     makeReady();
     input.delete_pressed = true;
     result = state.update(input);
@@ -1156,14 +1174,39 @@ bool testNewCharacterRetailDrawing() {
         input,
         {},
         {});
-    return check(
+    if (!check(
         backend.patterns.size() == 10 &&
             backend.patterns[6].index == 8 &&
             backend.patterns[6].draw.x == 97 &&
             backend.patterns[9].index == 4 &&
             backend.rectangles[1].x == 218 &&
             backend.text_draws == 1,
-        "The centered portrait, normal OK button, or caret position differs.");
+        "The centered portrait, normal OK button, or caret position differs.")) {
+        return false;
+    }
+
+    data.mode = osf::CharacterSelectMode::saved_game;
+    data.screen = 10;
+    data.dialog_selection = 0;
+    frame.mode_brightness = 500;
+    backend = {};
+    osf::renderCharacterSelect(
+        backend,
+        select,
+        &font,
+        data,
+        frame,
+        input,
+        {},
+        {});
+    const std::size_t popupStart = backend.patterns.size() - 4;
+    return check(
+        backend.patterns.front().index == 41 &&
+            backend.patterns.front().draw.brightness == 500 &&
+            backend.patterns[popupStart].index == 38 &&
+            backend.patterns[popupStart].draw.brightness == 1000 &&
+            backend.patterns.back().draw.brightness == 1000,
+        "The shared popup inherited the saved-game backdrop fade.");
 }
 
 }  // namespace

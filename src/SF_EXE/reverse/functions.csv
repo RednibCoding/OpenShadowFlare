@@ -30,7 +30,7 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00422e30,UpdateSavedGameSelection,updateSavedGameMode / osf::renderCharacterSelect,implemented,static,Navigation six slot hit regions preview cards Continue Delete Back Exit drawing and transition brightness covered by tests and live runs
 0x004239b0,LoadSavedGameCatalog,osf::loadRetailSaveCatalog,implemented,static,Reads six retail paths plus 0x160-byte menu summaries and paired BMP previews
 0x00423ca0,UpdateNewCharacterSelection,updateNewCharacterMode / osf::renderCharacterSelect,implemented,static,Exact 20-frame 97-pixel portrait slides opposing fades reverse transition 130x20 editor 6x12 block caret and pattern packets covered by native tests
-0x00424d80,UpdateCharacterScreen10,updateThreeChoiceScreen / osf::renderCharacterSelect,implemented,static,Online Single and Back choices use retail hit regions navigation and pattern indices
+0x00424d80,UpdateCharacterScreen10,updateThreeChoiceScreen / osf::renderCharacterSelect,implemented,static,Online Single and Back use retail hit regions full-bright overlay packets and restore saved-list brightness and input when closing
 0x004253c0,UpdateCharacterScreen11,updateThreeChoiceScreen / osf::renderCharacterSelect,implemented,static,New Game Join Game and Back choices preserve retail screen results
 0x00425830,UpdateCharacterScreen12,updateHostScreen / osf::renderCharacterSelect,implemented,static,Portable host address entry clipboard paste Connect and Back behavior use the retail 15-byte limit and pattern indices
 0x00425d40,FinishCharacterScreen11,updateHostScreen,implemented,static,Portable host editor is prepared directly when Join Game opens

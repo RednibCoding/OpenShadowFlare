@@ -688,6 +688,22 @@ void updateThreeChoiceScreen(
     CharacterSelectFrameResult& result,
     const std::array<MenuRectangle, 3>& rectangles,
     bool network_screen) {
+    const auto returnToParent = [&data, network_screen] {
+        data.dialog_selection = 0;
+        if (network_screen) {
+            data.screen = 10;
+            return;
+        }
+
+        data.brightness_increasing = 1;
+        if (data.mode == CharacterSelectMode::new_character) {
+            data.name_entry_active = true;
+            data.screen = 1;
+        } else {
+            data.screen = 0;
+        }
+    };
+
     const std::int32_t previous = data.dialog_selection;
     bool pointerConfirm = false;
     if (data.input_latch == 0) {
@@ -723,8 +739,7 @@ void updateThreeChoiceScreen(
         return;
     }
     if (input.back_pressed) {
-        data.dialog_selection = 0;
-        data.screen = network_screen ? 10 : 0;
+        returnToParent();
     } else if (!network_screen) {
         if (data.dialog_selection == 0) {
             data.dialog_selection = 0;
@@ -733,12 +748,7 @@ void updateThreeChoiceScreen(
             data.selection_result = 0;
             data.screen = 20;
         } else {
-            data.dialog_selection = 0;
-            data.screen = 0;
-            if (data.mode == CharacterSelectMode::new_character) {
-                data.name_entry_active = true;
-                data.screen = 1;
-            }
+            returnToParent();
         }
     } else {
         if (data.dialog_selection == 0) {

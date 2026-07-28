@@ -58,6 +58,8 @@ keeps the retail 15-byte field limit and does not depend on a native edit
 control. Selecting a new character now follows the executable's exact
 20-frame, 97-pixel center slide while the opposite portrait fades. The reverse
 animation, 130-by-20 name field, and 6-by-12 block caret mirror the retail draw
-packets as well.
+packets as well. Shared mode dialogs are drawn as full-bright overlays after
+their dimmed backdrop, and returning from the saved-game dialog restores both
+the list brightness and its interaction state.
 
 The next executable layer begins at gameplay entry `0x0041d3f0`.
