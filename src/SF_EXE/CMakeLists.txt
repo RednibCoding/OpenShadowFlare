@@ -3,6 +3,7 @@ add_subdirectory(libs/RKC_DIB)
 add_subdirectory(libs/RKC_DSOUND)
 add_subdirectory(libs/RKC_UPDIB)
 add_subdirectory(libs/RKC_RPGSCRN)
+add_subdirectory(libs/RKC_RPG_SCRIPT)
 add_subdirectory(libs/RKC_DBFCONTROL)
 
 add_library(
@@ -37,6 +38,7 @@ target_link_libraries(
     OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_UPDIB
     OpenShadowFlare::RKC_RPGSCRN
+    OpenShadowFlare::RKC_RPG_SCRIPT
 )
 set_target_properties(
   sf_game_core

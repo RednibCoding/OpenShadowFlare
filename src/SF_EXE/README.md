@@ -85,8 +85,17 @@ rather than placed by hand, loads `Character/PEOPLE/00000013`, and uses his
 original position, direction, custom CAF layer mask, idle animation, and SDW
 shadow. His MCT tail also drives the original one-second idle pause followed
 by a short chart-one walk inside his scenario-defined rectangle. For now this
-slice deliberately stops at one NPC; the other six Remote Town people, names,
-interaction, and more involved behavior still need to be connected.
+slice deliberately stops at one NPC; the other six Remote Town people and
+their more involved behavior still need to be connected.
+
+Remote Town's `Scenario.Scs` is now decoded through the portable
+`RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
+from the MCT people record, resolves the retail status trigger and sentence,
+executes the initial comparisons, assignments, and actor commands, then shows
+message `1000000` from the original script data. Return or another click
+resumes the waiting sentence and restores world control. The format and
+interpreter architecture are documented in
+[`documentation/script-engine.md`](../../documentation/script-engine.md).
 
 The first world interaction is in place too. Clicking the ground moves the
 player at the original gameplay cadence, follows the cursor with all eight
@@ -94,8 +103,8 @@ directions, and moves the camera with the player. `R` switches between the
 retail walking and running speeds, using CAF charts one and two respectively.
 Remote Town's GND judgement layer and OBL rectangles stop the player at walls
 and scenery while the renderer keeps sorting nearby objects and Ostare in
-front of or behind the moving sprite. The remaining NPCs, HUD, scripts,
-darkness, and the rest of gameplay simulation are still in progress.
+front of or behind the moving sprite. The remaining NPCs, script commands,
+HUD, darkness, and the rest of gameplay simulation are still in progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
@@ -118,7 +127,7 @@ with one public API header. The working Win32 reconstruction under
 portable version keeps the behavior but does not preserve its ABI, object
 layout, or platform-specific plumbing.
 
-The first six static counterparts are:
+The first seven static counterparts are:
 
 - `OpenShadowFlare::RK_FUNCTION` for RCLIB-L decompression
 - `OpenShadowFlare::RKC_DBFCONTROL` for the software framebuffer backend
@@ -126,6 +135,7 @@ The first six static counterparts are:
 - `OpenShadowFlare::RKC_DSOUND` for VOC decoding and LAL playback
 - `OpenShadowFlare::RKC_UPDIB` for NJP/SDW patterns
 - `OpenShadowFlare::RKC_RPGSCRN` for CAF, GND, and OBL data
+- `OpenShadowFlare::RKC_RPG_SCRIPT` for compiled scenario data and execution
 
 Windowing and final presentation stay in the thin executable runtime and the
 LWL and LGL libraries. This keeps the reconstructed rules independently

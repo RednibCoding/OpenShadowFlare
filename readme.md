@@ -84,7 +84,10 @@ Here's where things stand today:
   screen and enters Remote Town with the player on the decoded retail ground
   map. Remote Town's original gates, walls, trees, rocks, and semi-transparent
   shadows are decoded from its object map and depth-sorted around the player.
-  The HUD, NPCs, scripts, movement, and gameplay simulation come next.
+  Player walking and running, collision, the first wandering NPC, and the first
+  real `Scenario.Scs`-driven conversation are working too. The rest of the town
+  population, script commands, HUD, combat, and broader gameplay simulation
+  come next.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.
@@ -103,6 +106,10 @@ save compatibility, all four episodes, and multiplayer.
 
 It is a living plan rather than a promised schedule. We update it as the retail
 game teaches us more.
+
+The [script-engine notes](documentation/script-engine.md) document how compiled
+scenario scripts are structured, how the portable interpreter is split from
+the game world, and which commands have been recovered so far.
 
 ## Prebuilt binaries
 

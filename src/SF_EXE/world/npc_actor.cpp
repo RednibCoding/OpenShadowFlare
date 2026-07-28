@@ -113,6 +113,8 @@ bool NpcActor::load(
     id_ = person.id;
     resource_id_ = person.resource_id;
     name_ = person.name;
+    name_color_ = person.name_color;
+    label_height_ = person.label_height;
     position_ = {person.world_x, person.world_y};
     destination_ = position_;
     judgement_ = {
@@ -174,6 +176,8 @@ void NpcActor::clear() {
     id_ = -1;
     resource_id_ = -1;
     name_.clear();
+    name_color_ = 0;
+    label_height_ = 0;
     position_ = {};
     destination_ = {};
     judgement_ = {};
@@ -188,6 +192,7 @@ void NpcActor::clear() {
     wander_max_ = {};
     wandering_enabled_ = false;
     walking_ = false;
+    interaction_active_ = false;
     random_.seed(1);
     part_visibility_.clear();
     red_strength_.clear();
@@ -201,6 +206,11 @@ void NpcActor::clear() {
 void NpcActor::update(
     const GroundMap& ground,
     const ObjectMap& objects) {
+    if (interaction_active_) {
+        animation_chart_ = 0;
+        animation_frame_ = action_counter_++;
+        return;
+    }
     const auto retailRandom = [this]() {
         return random_.next();
     };
@@ -259,6 +269,24 @@ void NpcActor::update(
     }
 }
 
+void NpcActor::beginInteraction(
+    WorldPosition player_position) {
+    walking_ = false;
+    destination_ = position_;
+    action_counter_ = 0;
+    animation_chart_ = 0;
+    animation_frame_ = 0;
+    interaction_active_ = true;
+    direction_ = retailDirectionForVector(
+        player_position.x - position_.x,
+        player_position.y - position_.y);
+}
+
+void NpcActor::endInteraction() {
+    interaction_active_ = false;
+    action_counter_ = 0;
+}
+
 std::int32_t NpcActor::id() const {
     return id_;
 }
@@ -269,6 +297,14 @@ std::int32_t NpcActor::resourceId() const {
 
 const std::string& NpcActor::name() const {
     return name_;
+}
+
+std::uint32_t NpcActor::nameColor() const {
+    return name_color_;
+}
+
+std::int32_t NpcActor::labelHeight() const {
+    return label_height_;
 }
 
 WorldPosition NpcActor::position() const {
@@ -296,19 +332,25 @@ bool NpcActor::partEnabled(std::size_t part) const {
            part_visibility_[part] != 0;
 }
 
-std::int32_t NpcActor::partBrightness(std::size_t part) const {
-    if (part >= red_strength_.size() ||
-        part >= green_strength_.size() ||
-        part >= blue_strength_.size()) {
-        return 1000;
-    }
-    return std::clamp(
-        (static_cast<std::int32_t>(red_strength_[part]) +
-         static_cast<std::int32_t>(green_strength_[part]) +
-         static_cast<std::int32_t>(blue_strength_[part])) /
-            3,
-        0,
-        1000);
+std::int32_t NpcActor::partRedStrength(
+    std::size_t part) const {
+    return part < red_strength_.size()
+        ? red_strength_[part]
+        : 1000;
+}
+
+std::int32_t NpcActor::partGreenStrength(
+    std::size_t part) const {
+    return part < green_strength_.size()
+        ? green_strength_[part]
+        : 1000;
+}
+
+std::int32_t NpcActor::partBlueStrength(
+    std::size_t part) const {
+    return part < blue_strength_.size()
+        ? blue_strength_[part]
+        : 1000;
 }
 
 const gapi::NjpImage& NpcActor::patterns() const {

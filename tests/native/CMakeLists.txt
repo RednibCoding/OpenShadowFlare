@@ -88,6 +88,32 @@ if(TARGET sf_game_core)
 
   add_test(NAME scenario_data COMMAND scenario_data_test)
 
+  add_executable(script_engine_test script_engine_test.cpp)
+  target_link_libraries(
+    script_engine_test
+    PRIVATE
+      OpenShadowFlare::RKC_RPG_SCRIPT
+  )
+  target_compile_features(
+    script_engine_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    script_engine_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    script_engine_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      script_engine_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      script_engine_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME script_engine COMMAND script_engine_test)
+
   add_executable(gapi_test gapi_test.cpp)
   target_link_libraries(
     gapi_test

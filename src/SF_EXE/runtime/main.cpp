@@ -338,6 +338,8 @@ public:
         if (!loadPattern(
                 0, "System\\Common\\Pattern\\Font00.njp") ||
             !loadPattern(
+                1, "System\\Common\\Pattern\\Font01.njp") ||
+            !loadPattern(
                 2,
                 "System\\Common\\Pattern\\Waiting.njp")) {
             return false;
@@ -673,10 +675,14 @@ private:
                         gameplayFrame_.ready_to_continue);
                 }
             } else {
+                const auto font = patterns_.find(1);
                 osf::renderWorld(
                     renderer_,
                     world_,
-                    shadowOpacity_);
+                    shadowOpacity_,
+                    font == patterns_.end()
+                        ? nullptr
+                        : &font->second);
             }
         }
         renderer_.endFrame();
@@ -921,6 +927,20 @@ private:
             [this](std::int32_t x, std::int32_t y) {
                 world_.commandPlayerMovement(x, y);
             };
+        hooks.update_pointer_hover =
+            [this](std::int32_t x, std::int32_t y) {
+                world_.updatePointerHover(x, y);
+            };
+        hooks.command_world_interaction =
+            [this](std::int32_t x, std::int32_t y) {
+                return world_.commandWorldInteraction(x, y);
+            };
+        hooks.conversation_active = [this] {
+            return world_.conversationActive();
+        };
+        hooks.advance_conversation = [this] {
+            world_.advanceConversation();
+        };
         hooks.toggle_player_run = [this] {
             world_.togglePlayerRun();
         };

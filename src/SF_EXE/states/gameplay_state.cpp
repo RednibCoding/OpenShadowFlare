@@ -44,19 +44,48 @@ GameplayFrameResult GameplayState::update(
             phase_ = GameplayPhase::world;
         }
     } else {
-        if (input.run_toggle_pressed &&
-            hooks_.toggle_player_run) {
-            hooks_.toggle_player_run();
-        }
-        if ((input.pointer_primary_pressed ||
-             input.pointer_primary_down) &&
-            input.pointer_x >= 0 &&
-            input.pointer_x < 640 &&
-            input.pointer_y >= 0 &&
-            input.pointer_y < 480 &&
-            hooks_.command_player_movement) {
-            hooks_.command_player_movement(
+        if (hooks_.update_pointer_hover) {
+            hooks_.update_pointer_hover(
                 input.pointer_x, input.pointer_y);
+        }
+        const bool conversation_active =
+            hooks_.conversation_active &&
+            hooks_.conversation_active();
+        if (conversation_active) {
+            if ((input.confirm_pressed ||
+                 input.pointer_primary_pressed) &&
+                hooks_.advance_conversation) {
+                hooks_.advance_conversation();
+            }
+            // Conversation display owns gameplay input until its current
+            // message has been acknowledged.
+        } else {
+            if (input.run_toggle_pressed &&
+                hooks_.toggle_player_run) {
+                hooks_.toggle_player_run();
+            }
+            bool interaction_handled = false;
+            if (input.pointer_primary_pressed &&
+                input.pointer_x >= 0 &&
+                input.pointer_x < 640 &&
+                input.pointer_y >= 0 &&
+                input.pointer_y < 480 &&
+                hooks_.command_world_interaction) {
+                interaction_handled =
+                    hooks_.command_world_interaction(
+                        input.pointer_x, input.pointer_y);
+            }
+            if ((input.pointer_primary_pressed ||
+                 input.pointer_primary_down) &&
+                !interaction_handled &&
+                input.pointer_x >= 0 &&
+                input.pointer_x < 640 &&
+                input.pointer_y >= 0 &&
+                input.pointer_y < 480 &&
+                hooks_.command_player_movement) {
+                hooks_.command_player_movement(
+                    input.pointer_x, input.pointer_y);
+            }
         }
         if (hooks_.update_world) {
             hooks_.update_world();

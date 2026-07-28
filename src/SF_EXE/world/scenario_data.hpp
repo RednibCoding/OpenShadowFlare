@@ -20,6 +20,7 @@ struct ScenarioPerson {
     std::int32_t resource_id = 0;
     std::string name;
     std::uint32_t name_color = 0;
+    std::int32_t label_height = 0;
     std::int32_t world_x = 0;
     std::int32_t world_y = 0;
     std::int32_t judgement_left = 0;

@@ -45,6 +45,10 @@ The first game-core slice covers:
   spawn, facing direction, title, music, and player CAF/NJP/SDW drawing
 - Ostare's retail people resource, placement, part mask, shadow, idle pause,
   and bounded walk
+- the complete Remote Town SCS container and the first status-triggered
+  conversation, including interpreter waits and native actor hooks
+- Ostare's pointer hover, pale selection tint, nameplate, and actor-anchored
+  `Hukidasi.njp` speech bubble
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -52,11 +56,11 @@ the config before creating its LWL window, just as the retail entry point does.
 
 Portable behavior originating in the DLLs is kept under `SF_EXE/libs`, with a
 directory for each of the fourteen original boundaries. `RK_FUNCTION`,
-`RKC_DBFCONTROL`, `RKC_DIB`, `RKC_DSOUND`, `RKC_UPDIB`, and `RKC_RPGSCRN`
-currently build as separate static libraries. Each has one public API header
-and small implementation files; future executable slices should port proven
-behavior from the corresponding Win32 reconstruction into the matching
-library instead of adding it directly to `GameCore`.
+`RKC_DBFCONTROL`, `RKC_DIB`, `RKC_DSOUND`, `RKC_UPDIB`, `RKC_RPGSCRN`, and
+`RKC_RPG_SCRIPT` currently build as separate static libraries. Each has one
+public API header and small implementation files; future executable slices
+should port proven behavior from the corresponding Win32 reconstruction into
+the matching library instead of adding it directly to `GameCore`.
 
 The menu lifecycle code emits resource, input, cursor, and audio work through
 portable callbacks. Those callbacks deliberately describe what the game needs,
@@ -121,7 +125,7 @@ configured opaque or 50-percent shadow mode through GAPI's general opacity
 support.
 
 The first decoded person is Ostare: local ID `0`, people resource `13`, name
-color `0x00e0e0e0`, position (`91467`, `1532`), judgement
+color `0x00e0e0e0`, label height `80`, position (`91467`, `1532`), judgement
 `[-80, -80, 79, 79]`, and direction `7`. The custom 256-entry part table leaves
 CAF parts 0, 1, 2, 3, and 6 enabled while disabling 4 and 5. Portable loading
 resolves that resource to `Character/PEOPLE/00000013`, loads its NJP, SDW, and
@@ -134,6 +138,27 @@ one until arrival or the walk limit. The first tested draw uses shadow pattern
 280 and visible patterns 1744 and 1784 at the retail starting camera anchor.
 Actor shadows and visible cells share the depth-sorted world passes with the
 player and static OBL scenery.
+
+The same scenario's `Scenario.Scs` is now decoded in full: version `000`, 66
+temporary flags, no network flags, 61 bitwise-inverted messages, 23 status
+triggers, 220 sentences, and 608 commands. The interpreter entry at
+`0x00430f80` is reconstructed for the commands exercised by Ostare's first
+interaction: conditional sentence calls, assignments, messages, and two
+native actor actions. Clicking local person zero derives character number
+`12000000`, resolves status kind zero to sentence four, and waits on retail
+message `1000000`. The actor is held in an interaction idle and faces the
+player until Return or another click resumes and completes the sentence.
+Unknown opcodes stop with an explicit unsupported result.
+
+Pointing at Ostare follows `0x0040ee70`: his projected actor bounds select the
+person, his MCT label height places the half-transparent black nameplate, and
+the renderer adds 300 to each visible part's color strength. RKC_UPDIB
+strengths above 1000 move palette channels toward white, so this produces the
+retail pale tint rather than merely making dark pixels brighter. His opening
+message is measured as Shift-JIS-aware 6-by-12 text by the rules at
+`0x00456550`; `0x00456bb0` builds the actor-relative frame and tail from
+`Hukidasi.njp`. A retail-data render test covers the nameplate, tint, frame
+pieces, dimensions, and anchor coordinates.
 
 The player CAF path now follows `0x00434ef0` and the appearance refresh at
 `0x00444ca0`: the MCT direction is preserved, and the per-part enable table
@@ -178,6 +203,7 @@ walking directly from player state, rebuilds the depth key from the moving
 position, and follows the player's projected position with the retail camera
 offset.
 
-This is still not complete gameplay. The other people records, AI, dynamic
-actor collision, interaction, the HUD, scripts, darkness, equipment state, and
-saved-game scenario restoration are the next executable layers.
+This is still not complete gameplay. The other people records, broader AI,
+dynamic actor collision, remaining script commands and operand domains,
+alternate conversation modes, HUD, darkness, equipment state, and saved-game
+scenario restoration are the next executable layers.

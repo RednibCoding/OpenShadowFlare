@@ -18,6 +18,22 @@ std::uint8_t applyBrightness(
         static_cast<std::int32_t>(value) * brightness / 1000);
 }
 
+std::uint8_t applyColorStrength(
+    std::uint8_t value,
+    std::int32_t strength) {
+    const std::int32_t amount =
+        std::clamp(strength, 0, 2000) - 1000;
+    if (amount < 0) {
+        return static_cast<std::uint8_t>(
+            static_cast<std::int32_t>(value) +
+            static_cast<std::int32_t>(value) * amount / 1000);
+    }
+    return static_cast<std::uint8_t>(
+        static_cast<std::int32_t>(value) +
+        (255 - static_cast<std::int32_t>(value)) *
+            amount / 1000);
+}
+
 std::uint8_t blendChannel(
     std::uint8_t destination,
     std::uint8_t source,
@@ -162,6 +178,12 @@ bool SoftwareBackend::drawPattern(
                     applyBrightness(color.green, draw.brightness);
                 color.blue =
                     applyBrightness(color.blue, draw.brightness);
+                color.red = applyColorStrength(
+                    color.red, draw.red_strength);
+                color.green = applyColorStrength(
+                    color.green, draw.green_strength);
+                color.blue = applyColorStrength(
+                    color.blue, draw.blue_strength);
                 Color& destination =
                     pixels_[
                         static_cast<std::size_t>(target_y) *
@@ -377,12 +399,21 @@ bool SoftwareBackend::drawRectangle(
         return true;
     }
     for (std::int32_t y = top; y < bottom; ++y) {
-        std::fill(
-            pixels_.begin() +
-                static_cast<std::size_t>(y) * width_ + left,
-            pixels_.begin() +
-                static_cast<std::size_t>(y) * width_ + right,
-            color);
+        for (std::int32_t x = left; x < right; ++x) {
+            Color& destination =
+                pixels_[static_cast<std::size_t>(y) * width_ + x];
+            if (draw.opacity >= 1000) {
+                destination = color;
+            } else if (draw.opacity > 0) {
+                destination.red = blendChannel(
+                    destination.red, color.red, draw.opacity);
+                destination.green = blendChannel(
+                    destination.green, color.green, draw.opacity);
+                destination.blue = blendChannel(
+                    destination.blue, color.blue, draw.opacity);
+                destination.alpha = 255;
+            }
+        }
     }
     return true;
 }

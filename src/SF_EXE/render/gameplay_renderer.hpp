@@ -21,7 +21,8 @@ void renderInitialLoadingScreen(
 void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t shadow_opacity = 500);
+    std::int32_t shadow_opacity = 500,
+    const gapi::NjpImage* font = nullptr);
 
 }  // namespace osf
 

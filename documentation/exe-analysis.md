@@ -121,10 +121,27 @@ loader now uses scenario `00000000`'s map path and entry key zero rather than
 embedding `f00_01`, (`89898`, `2811`), direction 3, and music index 0 in
 `WorldScene`.
 
+Gameplay pointer selection is handled by `0x0040ee70`. For an ordinary person
+it projects the actor's feet, subtracts the MCT label height, draws a
+half-transparent black plate around the centered 6-by-12 name, then draws a
+black one-pixel shadow and the actor's configured name color. The selected
+actor's visible RGB strengths each receive `+300`. Values above 1000 do not
+multiply the palette color: RKC_UPDIB moves each channel toward white, which
+produces the pale hover tint seen in the retail game.
+
+Message layout at `0x00456550` counts ASCII and Shift-JIS glyph widths, adds
+an eight-pixel text-box inset, and positions actor messages above the same MCT
+label anchor. `0x00456bb0` surrounds that box with the nine-pixel
+`Hukidasi.njp` frame and draws its tail from
+`System\Game\Pattern\Hukidasi.njp`, then places the 6-by-12 `Font01.njp` text
+at a four-pixel inset. The tail overlaps the bottom four frame pixels before
+extending into the world. The portable renderer follows this path for Ostare's
+first scripted message instead of using a fixed screen-bottom dialogue box.
+
 The variable section at `0x324` begins with three counted ID lists, followed
 by counted runtime entity groups. The object and `PEOPLE` groups share IDs,
-optional names and colors, position, judgement, direction, initial CAF part
-overrides, and optional fixed-capacity part/color arrays before their
+optional names and colors, label height, position, judgement, direction,
+initial CAF part overrides, and optional fixed-capacity part/color arrays before their
 type-specific tails. The portable decoder now reads all seven Remote Town
 people records and the bounded-wander fields at the start of their tails.
 Later entity groups and the final two unnamed people fields are still open.
@@ -230,7 +247,7 @@ zero looping on the following gameplay update with the configured BGM volume.
 | Address    | Size (bytes) | Description |
 |------------|--------------|-------------|
 | 0x00429ec0 | 20119 | CommandDispatcher - Command/Event dispatcher (huge switch) |
-| 0x00430f80 | 13677 | ScriptInterpreter - 75 opcodes |
+| 0x00430f80 | 13677 | ScriptInterpreter - opcode values 0x00 through 0x4b |
 | 0x00462f80 | 9247  | LoadItemData - magic SFItemDataV0000 |
 | 0x004103c0 | 7773  | OptionsMenu - Settings menu |
 | 0x0044cac0 | 7527  | LoadGame - load save file, XOR decrypt |

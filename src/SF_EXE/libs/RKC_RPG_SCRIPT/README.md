@@ -1,6 +1,10 @@
 # RKC_RPG_SCRIPT
 
-No portable behavior from this DLL is needed yet. Its first SF_EXE port will
-add a static target and `rkc_rpg_script.hpp`, using
-`src/reconstructed/RKC_RPG_SCRIPT` as
-the behavioral reference.
+This is the portable scenario-script boundary. It decodes the retail
+`ScenaScriptV000` binary format and owns the small, gradually growing
+interpreter used by `SF_EXE`.
+
+The Win32 ABI reconstruction in `src/reconstructed/RKC_RPG_SCRIPT` remains the
+reference for the original container and accessor behavior. Executable-owned
+opcode behavior is added here only after it has been traced and exercised by
+a retail scenario.

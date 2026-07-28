@@ -4,6 +4,7 @@
 #include <cctype>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <utility>
 
 namespace osf {
@@ -53,7 +54,37 @@ std::string mapStem(const std::string& map_path) {
     return std::filesystem::path(normalized).stem().string();
 }
 
+std::uint64_t scriptValueKey(
+    const script::Operand& operand) {
+    return
+        (static_cast<std::uint64_t>(
+             static_cast<std::uint32_t>(operand.type))
+         << 32u) |
+        static_cast<std::uint32_t>(operand.value);
+}
+
 }  // namespace
+
+WorldScene::WorldScene()
+    : script_interpreter_({
+          [this](const script::Operand& operand) {
+              return readScriptOperand(operand);
+          },
+          [this](
+              const script::Operand& operand,
+              std::int32_t value) {
+              return writeScriptOperand(operand, value);
+          },
+          [this](const script::MessageEvent& message) {
+              showScriptMessage(message);
+          },
+          [this](
+              std::int32_t opcode,
+              const std::vector<std::int32_t>& arguments) {
+              return executeScriptNativeCommand(
+                  opcode, arguments);
+          },
+      }) {}
 
 bool WorldScene::loadInitialScenario(
     const std::filesystem::path& data_root,
@@ -66,6 +97,13 @@ bool WorldScene::loadInitialScenario(
             error)) {
         return false;
     }
+    if (!scenario_script_.load(
+            data_root / "Scenario" / "00000000" / "Scenario.Scs",
+            error)) {
+        clear();
+        return false;
+    }
+    script_interpreter_.bind(&scenario_script_);
     const std::string map_name = mapStem(scenario_.mapPath());
     if (map_name.empty()) {
         setError(error, "The scenario does not name a map.");
@@ -89,6 +127,13 @@ bool WorldScene::loadInitialScenario(
     }
     if (!object_map_.load(
             map_root / "Object" / (map_name + ".Obl"), error)) {
+        clear();
+        return false;
+    }
+    if (!speech_patterns_.load(
+            data_root / "System" / "Game" / "Pattern" /
+                "Hukidasi.njp",
+            error)) {
         clear();
         return false;
     }
@@ -193,12 +238,20 @@ bool WorldScene::loadInitialScenario(
 
 void WorldScene::clear() {
     scenario_.clear();
+    script_interpreter_.bind(nullptr);
+    scenario_script_.clear();
+    script_values_.clear();
+    conversation_ = {};
+    conversation_active_ = false;
+    conversation_actor_id_ = -1;
+    hovered_npc_id_ = -1;
     ground_.clear();
     object_map_.clear();
     map_patterns_.clear();
     player_patterns_.clear();
     player_shadow_patterns_.clear();
     player_animation_.clear();
+    speech_patterns_.clear();
     player_parts_enabled_.clear();
     npcs_.clear();
     player_.clear();
@@ -255,6 +308,89 @@ void WorldScene::commandPlayerMovement(
             cameraScreenX() + screen_x,
             cameraScreenY() + screen_y,
         }));
+}
+
+void WorldScene::updatePointerHover(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_ || conversation_active_) {
+        hovered_npc_id_ = -1;
+        return;
+    }
+    const std::int32_t index =
+        npcIndexAtScreenPosition(screen_x, screen_y);
+    hovered_npc_id_ = index < 0
+        ? -1
+        : npcs_[static_cast<std::size_t>(index)].id();
+}
+
+bool WorldScene::commandWorldInteraction(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_ || conversation_active_) {
+        return false;
+    }
+    const std::int32_t index =
+        npcIndexAtScreenPosition(screen_x, screen_y);
+    if (index < 0) {
+        return false;
+    }
+    NpcActor& selected =
+        npcs_[static_cast<std::size_t>(index)];
+
+    player_.cancelMovement();
+    const std::int32_t script_character_number =
+        12000000 + selected.id();
+    const script::StepResult result =
+        script_interpreter_.startStatus(
+            0, script_character_number);
+    if (result == script::StepResult::waiting_for_message ||
+        result == script::StepResult::complete) {
+        hovered_npc_id_ = -1;
+    }
+    return result == script::StepResult::waiting_for_message ||
+           result == script::StepResult::complete;
+}
+
+std::int32_t WorldScene::hoveredNpcId() const {
+    return hovered_npc_id_;
+}
+
+bool WorldScene::conversationActive() const {
+    return conversation_active_;
+}
+
+std::int32_t WorldScene::conversationActorId() const {
+    return conversation_actor_id_;
+}
+
+std::int32_t WorldScene::conversationMessageId() const {
+    return conversation_.id;
+}
+
+const std::string& WorldScene::conversationText() const {
+    return conversation_.text;
+}
+
+const gapi::NjpImage& WorldScene::speechPatterns() const {
+    return speech_patterns_;
+}
+
+void WorldScene::advanceConversation() {
+    if (!conversation_active_) {
+        return;
+    }
+    conversation_active_ = false;
+    conversation_ = {};
+    const script::StepResult result =
+        script_interpreter_.resume();
+    if (result != script::StepResult::waiting_for_message) {
+        conversation_active_ = false;
+        conversation_actor_id_ = -1;
+        for (NpcActor& npc : npcs_) {
+            npc.endInteraction();
+        }
+    }
 }
 
 void WorldScene::togglePlayerRun() {
@@ -314,6 +450,88 @@ std::int32_t WorldScene::musicTrack() const {
 
 const ScenarioData& WorldScene::scenario() const {
     return scenario_;
+}
+
+const script::ScriptData& WorldScene::scenarioScript() const {
+    return scenario_script_;
+}
+
+std::int32_t WorldScene::readScriptOperand(
+    const script::Operand& operand) const {
+    const auto found =
+        script_values_.find(scriptValueKey(operand));
+    return found == script_values_.end() ? 0 : found->second;
+}
+
+bool WorldScene::writeScriptOperand(
+    const script::Operand& operand,
+    std::int32_t value) {
+    script_values_.insert_or_assign(
+        scriptValueKey(operand), value);
+    return true;
+}
+
+bool WorldScene::executeScriptNativeCommand(
+    std::int32_t opcode,
+    const std::vector<std::int32_t>& arguments) {
+    if ((opcode != 18 && opcode != 21) ||
+        arguments.empty()) {
+        return false;
+    }
+    const std::int32_t character_number =
+        arguments.front();
+    const auto found = std::find_if(
+        npcs_.begin(),
+        npcs_.end(),
+        [character_number](const NpcActor& npc) {
+            return 12000000 + npc.id() ==
+                   character_number;
+        });
+    if (found == npcs_.end()) {
+        return false;
+    }
+    found->beginInteraction(player_.position());
+    conversation_actor_id_ = found->id();
+    hovered_npc_id_ = -1;
+    return true;
+}
+
+void WorldScene::showScriptMessage(
+    const script::MessageEvent& message) {
+    conversation_ = message;
+    conversation_active_ = true;
+}
+
+std::int32_t WorldScene::npcIndexAtScreenPosition(
+    std::int32_t screen_x,
+    std::int32_t screen_y) const {
+    const std::int32_t camera_x = cameraScreenX();
+    const std::int32_t camera_y = cameraScreenY();
+    std::int32_t selected = -1;
+    std::int32_t selected_distance =
+        std::numeric_limits<std::int32_t>::max();
+    for (std::size_t index = 0; index < npcs_.size(); ++index) {
+        const NpcActor& npc = npcs_[index];
+        const ScreenPosition anchor =
+            calculateRealPosition(npc.position());
+        const std::int32_t relative_x =
+            screen_x - (anchor.x - camera_x);
+        const std::int32_t relative_y =
+            screen_y - (anchor.y - camera_y);
+        if (relative_x < -32 || relative_x > 32 ||
+            relative_y < -npc.labelHeight() ||
+            relative_y > 12) {
+            continue;
+        }
+        const std::int32_t distance =
+            relative_x * relative_x +
+            relative_y * relative_y;
+        if (distance < selected_distance) {
+            selected = static_cast<std::int32_t>(index);
+            selected_distance = distance;
+        }
+    }
+    return selected;
 }
 
 }  // namespace osf

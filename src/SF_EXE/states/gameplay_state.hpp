@@ -34,6 +34,12 @@ struct GameplayStateHooks {
     std::function<void()> stop_world_music;
     std::function<void(std::int32_t, std::int32_t)>
         command_player_movement;
+    std::function<void(std::int32_t, std::int32_t)>
+        update_pointer_hover;
+    std::function<bool(std::int32_t, std::int32_t)>
+        command_world_interaction;
+    std::function<bool()> conversation_active;
+    std::function<void()> advance_conversation;
     std::function<void()> toggle_player_run;
     std::function<void()> update_world;
 };

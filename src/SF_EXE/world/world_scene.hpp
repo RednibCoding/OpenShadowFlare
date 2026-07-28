@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_WORLD_SCENE_HPP
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
@@ -11,12 +12,15 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace osf {
 
 class WorldScene {
 public:
+    WorldScene();
+
     bool loadInitialScenario(
         const std::filesystem::path& data_root,
         std::int32_t character_gender,
@@ -36,6 +40,19 @@ public:
     void commandPlayerMovement(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    void updatePointerHover(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    bool commandWorldInteraction(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    std::int32_t hoveredNpcId() const;
+    bool conversationActive() const;
+    std::int32_t conversationActorId() const;
+    std::int32_t conversationMessageId() const;
+    const std::string& conversationText() const;
+    const gapi::NjpImage& speechPatterns() const;
+    void advanceConversation();
     void togglePlayerRun();
     void update();
     std::int32_t playerWorldX() const;
@@ -48,15 +65,39 @@ public:
     std::int32_t cameraScreenY() const;
     std::int32_t musicTrack() const;
     const ScenarioData& scenario() const;
+    const script::ScriptData& scenarioScript() const;
 
 private:
+    std::int32_t readScriptOperand(
+        const script::Operand& operand) const;
+    bool writeScriptOperand(
+        const script::Operand& operand,
+        std::int32_t value);
+    bool executeScriptNativeCommand(
+        std::int32_t opcode,
+        const std::vector<std::int32_t>& arguments);
+    void showScriptMessage(
+        const script::MessageEvent& message);
+    std::int32_t npcIndexAtScreenPosition(
+        std::int32_t screen_x,
+        std::int32_t screen_y) const;
+
     ScenarioData scenario_;
+    script::ScriptData scenario_script_;
+    script::Interpreter script_interpreter_;
+    std::unordered_map<std::uint64_t, std::int32_t>
+        script_values_;
+    script::MessageEvent conversation_;
+    bool conversation_active_ = false;
+    std::int32_t conversation_actor_id_ = -1;
+    std::int32_t hovered_npc_id_ = -1;
     GroundMap ground_;
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;
     gapi::NjpImage player_patterns_;
     gapi::NjpImage player_shadow_patterns_;
     gapi::CafAnimation player_animation_;
+    gapi::NjpImage speech_patterns_;
     std::vector<std::uint8_t> player_parts_enabled_;
     std::vector<NpcActor> npcs_;
     PlayerActor player_;

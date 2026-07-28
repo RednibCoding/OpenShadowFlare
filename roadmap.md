@@ -243,13 +243,16 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - place actors in the same shadow and visible-object passes as the player;
 - add actor-to-world and actor-to-actor collision;
 - reproduce the original update order and off-screen behavior;
-- add pointer hover, selection, names, and interaction range;
+- extend the reconstructed pointer hover, pale actor tint, nameplates, and
+  selection path from Ostare to every dynamic actor and the retail interaction
+  range;
 - verify the town population and positions against the retail game.
 
 That first checkpoint is now Ostare: his record, resource, part mask, idle
-pause, bounded walk, shadow, position, and depth pass are covered by a
-retail-data test. The next town slice can generalize the same path to the other
-six people and map the behavior that differs between human NPCs and animals.
+pause, bounded walk, shadow, position, depth pass, hover tint, nameplate, and
+actor-anchored speech bubble are covered by a retail-data test. The next town
+slice can generalize the same path to the other six people and map the behavior
+that differs between human NPCs and animals.
 
 ### 4. Bring up scripts, conversations, and town interaction
 
@@ -263,15 +266,27 @@ The script work should grow from real Remote Town interactions:
 - recreate script variables, temporary flags, and persistent flags;
 - implement the interpreter loop at `0x00430f80` one exercised opcode at a
   time;
-- map the large command dispatcher at `0x00429ec0` into smaller named actions;
+- split the native game actions reached by the opcode switch into small,
+  named engine hooks;
 - support conversations, choices, messages, gates, warps, and quest flags;
 - add shops and services when their scripts first require them;
 - preserve wait states and update ordering instead of running a whole script
   in one frame;
 - save unknown opcodes and data instead of silently discarding them.
 
-The first target should be one complete conversation or town service that can
-be followed from click to visible result.
+The first checkpoint is now live. Remote Town's SCS decoder reads all 66
+temporary flags, 61 messages, 23 status triggers, 220 sentences, and 608
+commands. Clicking Ostare derives his script character number from the MCT
+record, resolves status kind zero to sentence four, and runs the retail script
+until message `1000000` waits for Return or another click. The initial
+interpreter covers comparisons, assignments, messages, nested sentence calls,
+and the two native actor commands reached by that path.
+
+The next script slice should continue through Ostare's opening quest rather
+than adding an unrelated hardcoded interaction. It will grow the same
+interpreter as new commands and operand domains are encountered. The recovered
+format, architecture, and extension rules are kept in
+[the script-engine notes](documentation/script-engine.md).
 
 ### 5. Items, inventory, and equipment
 

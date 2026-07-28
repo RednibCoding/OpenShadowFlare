@@ -149,6 +149,7 @@ struct CommonEntity {
     std::int32_t resource_id = 0;
     std::string name;
     std::uint32_t name_color = 0;
+    std::int32_t label_height = 0;
     std::int32_t world_x = 0;
     std::int32_t world_y = 0;
     std::array<std::int32_t, 4> judgement{};
@@ -228,7 +229,7 @@ bool readCommonEntity(Reader& input, CommonEntity& entity) {
     }
 
     std::int32_t unknown = 0;
-    if (!input.readI32(unknown) ||
+    if (!input.readI32(entity.label_height) ||
         !input.readI32(entity.world_x) ||
         !input.readI32(entity.world_y)) {
         return false;
@@ -323,6 +324,7 @@ bool readPeople(
             common.resource_id,
             std::move(common.name),
             common.name_color,
+            common.label_height,
             common.world_x,
             common.world_y,
             common.judgement[0],

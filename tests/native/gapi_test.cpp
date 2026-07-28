@@ -313,11 +313,42 @@ bool testNjpAndSoftwareBackend() {
         image, 0, {0, 0, 1000, 1000, 1000, 500});
     const osf::gapi::Color blended =
         opacityBackend.surface().pixels[0];
-    return check(
-        blended.red == 60 &&
+    if (!check(
+            blended.red == 60 &&
             blended.green == 20 &&
             blended.blue == 30,
-        "GAPI pattern opacity did not blend portably.");
+            "GAPI pattern opacity did not blend portably.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend tintBackend(1, 1);
+    tintBackend.beginFrame({20, 40, 60, 255});
+    tintBackend.drawPattern(
+        image,
+        0,
+        {0, 0, 1000, 1000, 1000, 1000, 1300, 1300, 1300});
+    const osf::gapi::Color tinted =
+        tintBackend.surface().pixels[0];
+    if (!check(
+            tinted.red == 146 &&
+                tinted.green == 76 &&
+                tinted.blue == 76,
+            "GAPI color strength did not reproduce retail pale tinting.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend rectangleBackend(1, 1);
+    rectangleBackend.beginFrame({20, 40, 60, 255});
+    rectangleBackend.drawRectangle({
+        0, 0, 1, 1, {100, 80, 60, 255}, 1000, 500,
+    });
+    const osf::gapi::Color rectangle =
+        rectangleBackend.surface().pixels[0];
+    return check(
+        rectangle.red == 60 &&
+            rectangle.green == 60 &&
+            rectangle.blue == 60,
+        "GAPI rectangle opacity did not blend portably.");
 }
 
 bool testTruncatedNjp() {

@@ -133,10 +133,14 @@ music index 0. Entry key 0 starts a new character at world position
 (`89898`, `2811`) facing direction 3.
 
 ### Scenario.Scs
-Scenario Script - loaded via `RKC_RPG_SCRIPT::ReadBinary()`
+Compiled scenario script, loaded by `RKC_RPG_SCRIPT::ReadBinary()`. It begins
+with `ScenaScriptV000\0` and contains counted temporary flags, network flags,
+bitwise-inverted message strings, status triggers, sentences, commands, and
+typed operands. Remote Town has 66 temporary flags, 61 messages, 23 triggers,
+220 sentences, and 608 commands.
 
-Script components:
-- StatusBlock - Character statuses
+The full known layout and the gradually reconstructed interpreter are
+documented in [ShadowFlare's script engine](script-engine.md).
 
 ### Map Object Lists (`Map\Object\*.Obl`)
 
@@ -149,9 +153,6 @@ rectangle. Records are 36 bytes in version 0 and 42 bytes in version 1.
 The pattern-list index refers to the matching map `.Lst`. Visible NJP entries
 are commonly followed by a `ShadowLowPat` SDW entry used by objects whose
 status includes the shadow bit.
-- SentenceBlock - Script sentences
-- Commands with operands (75 opcodes)
-- TempFlag / NetFlag - Script flags
 
 ## NJP Sprite Format (NJudgeUniPat)
 
@@ -443,13 +444,10 @@ layout are documented in [Scenario Files](#scenario-files). The later variable
 entity groups are still being mapped from `0x00427b50`.
 
 ### Scenario.Scs
-Scenario Script - loaded via `RKC_RPG_SCRIPT::ReadBinary()`
-
-Script components:
-- StatusBlock - Character statuses
-- SentenceBlock - Script sentences
-- Commands with operands (75 opcodes)
-- TempFlag / NetFlag - Script flags
+Compiled scenario script containing flags, messages, status triggers,
+sentences, commands, and typed operands. See
+[ShadowFlare's script engine](script-engine.md) for the known binary layout,
+Remote Town inventory, and portable interpreter architecture.
 
 ## Audio Files
 

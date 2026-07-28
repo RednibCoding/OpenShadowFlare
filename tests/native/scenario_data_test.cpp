@@ -26,11 +26,20 @@ struct NpcPatternCall {
     osf::gapi::PatternDraw draw;
 };
 
+struct TextCall {
+    std::string text;
+    osf::gapi::TextDraw draw;
+};
+
 class NpcRecordingBackend final : public osf::gapi::Backend {
 public:
     const osf::gapi::NjpImage* patterns = nullptr;
     const osf::gapi::NjpImage* shadows = nullptr;
+    const osf::gapi::NjpImage* speech = nullptr;
     std::vector<NpcPatternCall> calls;
+    std::vector<NpcPatternCall> speech_calls;
+    std::vector<TextCall> text_calls;
+    std::vector<osf::gapi::RectangleDraw> rectangles;
 
     void beginFrame(osf::gapi::Color) override {}
 
@@ -42,6 +51,8 @@ public:
             calls.push_back({false, pattern, draw});
         } else if (&image == shadows) {
             calls.push_back({true, pattern, draw});
+        } else if (&image == speech) {
+            speech_calls.push_back({false, pattern, draw});
         }
         return true;
     }
@@ -54,13 +65,15 @@ public:
 
     bool drawText(
         const osf::gapi::NjpImage&,
-        std::string_view,
-        const osf::gapi::TextDraw&) override {
+        std::string_view text,
+        const osf::gapi::TextDraw& draw) override {
+        text_calls.push_back({std::string(text), draw});
         return true;
     }
 
     bool drawRectangle(
-        const osf::gapi::RectangleDraw&) override {
+        const osf::gapi::RectangleDraw& draw) override {
+        rectangles.push_back(draw);
         return true;
     }
 
@@ -232,6 +245,7 @@ bool testFixture() {
             person->resource_id == 13 &&
             person->name == "Test NPC" &&
             person->name_color == 0x00e0e0e0 &&
+            person->label_height == 80 &&
             person->world_x == 300 &&
             person->world_y == 400 &&
             person->direction == 7 &&
@@ -314,6 +328,7 @@ bool testRetailRemoteTown() {
                 ostare->resource_id == 13 &&
                 ostare->name == "Ostare" &&
                 ostare->name_color == 0x00e0e0e0 &&
+                ostare->label_height == 80 &&
                 ostare->world_x == 91467 &&
                 ostare->world_y == 1532 &&
                 ostare->direction == 7 &&
@@ -357,6 +372,8 @@ bool testRetailRemoteTown() {
             world.npcs()[0].id() == 0 &&
             world.npcs()[0].resourceId() == 13 &&
             world.npcs()[0].name() == "Ostare" &&
+            world.npcs()[0].nameColor() == 0x00e0e0e0 &&
+            world.npcs()[0].labelHeight() == 80 &&
             world.npcs()[0].position().x == 91467 &&
             world.npcs()[0].position().y == 1532 &&
             world.npcs()[0].direction() == 7 &&
@@ -383,9 +400,124 @@ bool testRetailRemoteTown() {
                 renderer.calls[0].draw.opacity == 500 &&
                 !renderer.calls[1].shadow &&
                 renderer.calls[1].pattern == 1744 &&
+                renderer.calls[1].draw.red_strength == 1000 &&
                 !renderer.calls[2].shadow &&
                 renderer.calls[2].pattern == 1784,
             "Ostare's idle frame, part mask, shadow, or placement differs.")) {
+        return false;
+    }
+
+    osf::gapi::NjpImage font;
+    if (!check(
+            font.load(
+                data_root / "System" / "Common" / "Pattern" /
+                    "Font01.njp",
+                &error),
+            "The retail gameplay font could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    renderer.speech = &world.speechPatterns();
+    renderer.calls.clear();
+    world.updatePointerHover(747, 269);
+    osf::renderWorld(renderer, world, 500, &font);
+    if (!check(
+            world.hoveredNpcId() == 0 &&
+                renderer.calls.size() == 3 &&
+                renderer.calls[1].draw.red_strength == 1300 &&
+                renderer.calls[1].draw.green_strength == 1300 &&
+                renderer.calls[1].draw.blue_strength == 1300 &&
+                renderer.rectangles.size() == 1 &&
+                renderer.rectangles[0].x == 725 &&
+                renderer.rectangles[0].y == 187 &&
+                renderer.rectangles[0].width == 41 &&
+                renderer.rectangles[0].height == 15 &&
+                renderer.rectangles[0].opacity == 500 &&
+                renderer.text_calls.size() == 2 &&
+                renderer.text_calls[0].text == "Ostare" &&
+                renderer.text_calls[0].draw.x == 730 &&
+                renderer.text_calls[0].draw.y == 190 &&
+                renderer.text_calls[1].draw.x == 729 &&
+                renderer.text_calls[1].draw.y == 189 &&
+                renderer.text_calls[1].draw.color.red == 224,
+            "Ostare's retail hover tint or nameplate differs.")) {
+        return false;
+    }
+
+    renderer.calls.clear();
+    renderer.speech_calls.clear();
+    renderer.text_calls.clear();
+    renderer.rectangles.clear();
+    if (!check(
+            world.scenarioScript().messages().size() == 61 &&
+                world.commandWorldInteraction(747, 269) &&
+                world.conversationActive() &&
+                world.conversationMessageId() == 1000000 &&
+                world.conversationText().rfind(
+                    "Thank you for coming. I am Ostare", 0) == 0,
+            "Ostare's click did not enter the retail status-zero script.")) {
+        return false;
+    }
+    osf::renderWorld(renderer, world, 500, &font);
+    if (!check(
+            world.hoveredNpcId() == -1 &&
+                world.conversationActorId() == 0 &&
+                renderer.speech_calls.size() == 5 &&
+                renderer.speech_calls[0].pattern == 0 &&
+                renderer.speech_calls[0].draw.x == 566 &&
+                renderer.speech_calls[0].draw.y == 96 &&
+                renderer.speech_calls[1].pattern == 2 &&
+                renderer.speech_calls[1].draw.x == 943 &&
+                renderer.speech_calls[1].draw.y == 96 &&
+                renderer.speech_calls[2].pattern == 1 &&
+                renderer.speech_calls[2].draw.x == 566 &&
+                renderer.speech_calls[2].draw.y == 173 &&
+                renderer.speech_calls[3].pattern == 3 &&
+                renderer.speech_calls[3].draw.x == 943 &&
+                renderer.speech_calls[3].draw.y == 173 &&
+                renderer.speech_calls[4].pattern == 4 &&
+                renderer.speech_calls[4].draw.x == 754 &&
+                renderer.speech_calls[4].draw.y == 178 &&
+                renderer.rectangles.size() == 13 &&
+                renderer.rectangles[0].x == 570 &&
+                renderer.rectangles[0].y == 100 &&
+                renderer.rectangles[0].width == 378 &&
+                renderer.rectangles[0].height == 78 &&
+                renderer.rectangles[0].color.red == 255 &&
+                renderer.rectangles[1].x == 575 &&
+                renderer.rectangles[1].y == 96 &&
+                renderer.rectangles[1].width == 368 &&
+                renderer.rectangles[1].height == 2 &&
+                renderer.rectangles[2].color.red == 160 &&
+                renderer.rectangles[3].color.red == 224 &&
+                renderer.rectangles[7].x == 566 &&
+                renderer.rectangles[7].y == 105 &&
+                renderer.rectangles[10].x == 950 &&
+                renderer.text_calls.size() == 1 &&
+                renderer.text_calls[0].draw.x == 579 &&
+                renderer.text_calls[0].draw.y == 109 &&
+                renderer.text_calls[0].draw.color.red == 0,
+            "Ostare's first message did not use the retail actor bubble.")) {
+        return false;
+    }
+    const osf::WorldPosition interaction_position =
+        world.npcs()[0].position();
+    for (std::int32_t update = 0; update < 40; ++update) {
+        world.update();
+    }
+    if (!check(
+            world.npcs()[0].position().x ==
+                    interaction_position.x &&
+                world.npcs()[0].position().y ==
+                    interaction_position.y &&
+                world.npcs()[0].animationChart() == 0,
+            "Ostare kept wandering while his script message was open.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive(),
+            "Ostare's first scripted message did not close.")) {
         return false;
     }
 

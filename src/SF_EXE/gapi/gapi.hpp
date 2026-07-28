@@ -30,6 +30,9 @@ struct PatternDraw {
     std::int32_t scale_y = 1000;
     std::int32_t brightness = 1000;
     std::int32_t opacity = 1000;
+    std::int32_t red_strength = 1000;
+    std::int32_t green_strength = 1000;
+    std::int32_t blue_strength = 1000;
 };
 
 struct BitmapDraw {
@@ -56,6 +59,7 @@ struct RectangleDraw {
     std::int32_t height = 0;
     Color color{255, 255, 255, 255};
     std::int32_t brightness = 1000;
+    std::int32_t opacity = 1000;
 };
 
 struct Viewport {
