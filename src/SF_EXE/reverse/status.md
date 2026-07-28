@@ -45,6 +45,14 @@ These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
 the config before creating its LWL window, just as the retail entry point does.
 
+Portable behavior originating in the DLLs is kept under `SF_EXE/libs`, with a
+directory for each of the fourteen original boundaries. `RK_FUNCTION`,
+`RKC_DBFCONTROL`, `RKC_DIB`, `RKC_DSOUND`, `RKC_UPDIB`, and `RKC_RPGSCRN`
+currently build as separate static libraries. Each has one public API header
+and small implementation files; future executable slices should port proven
+behavior from the corresponding Win32 reconstruction into the matching
+library instead of adding it directly to `GameCore`.
+
 The menu lifecycle code emits resource, input, cursor, and audio work through
 portable callbacks. Those callbacks deliberately describe what the game needs,
 not how a particular operating system provides it.

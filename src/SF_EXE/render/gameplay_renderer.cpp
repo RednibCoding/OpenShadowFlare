@@ -1,8 +1,8 @@
 #include "gameplay_renderer.hpp"
 
-#include "gapi/caf.hpp"
 #include "gapi/gapi.hpp"
-#include "gapi/njp.hpp"
+#include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>

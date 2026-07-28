@@ -1,7 +1,8 @@
 # ShadowFlare executable reconstruction
 
 This is the portable reconstruction of `ShadowFlare.exe`. It is intentionally
-separate from the fourteen compatibility DLLs.
+separate from the fourteen Win32 compatibility DLL binaries, while using their
+tested reconstructions as the behavioral reference.
 
 The executable uses the project-owned platform libraries:
 
@@ -92,16 +93,33 @@ Raw decompiler output stays in `/ghidra`. Only understood, readable behavior
 belongs in the portable implementation.
 
 The portable game code lives in the `OpenShadowFlare::GameCore` CMake target.
-It only uses the C++ standard library. Windowing, rendering, and audio stay in
-the thin executable runtime and the LWL, LGL, and LAL libraries, which keeps
-the reconstructed rules testable without starting a window.
+DLL-derived behavior lives under `libs/`, with one directory per original DLL.
+Each implemented counterpart is a statically linked, cross-platform library
+with one public API header. The working Win32 reconstruction under
+`src/reconstructed/<DLL name>` remains the strong behavioral reference; the
+portable version keeps the behavior but does not preserve its ABI, object
+layout, or platform-specific plumbing.
+
+The first six static counterparts are:
+
+- `OpenShadowFlare::RK_FUNCTION` for RCLIB-L decompression
+- `OpenShadowFlare::RKC_DBFCONTROL` for the software framebuffer backend
+- `OpenShadowFlare::RKC_DIB` for portable BMP images
+- `OpenShadowFlare::RKC_DSOUND` for VOC decoding and LAL playback
+- `OpenShadowFlare::RKC_UPDIB` for NJP/SDW patterns
+- `OpenShadowFlare::RKC_RPGSCRN` for CAF, GND, and OBL data
+
+Windowing and final presentation stay in the thin executable runtime and the
+LWL and LGL libraries. This keeps the reconstructed rules independently
+testable without starting a window.
 
 Source files are grouped by responsibility while keeping headers beside their
 implementations:
 
-- `core/` contains config, command-line, compression, and retail utility code
-- `gapi/` contains the graphics interface, NJP decoder, and software backend
+- `core/` contains executable config, command-line, and retail utility code
+- `gapi/` contains the backend-neutral graphics interface
+- `libs/` contains the fourteen portable DLL boundaries
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
 - `states/` contains the top-level dispatcher and reconstructed game states
-- `world/` contains portable scenario, ground-map, and object-map data
+- `world/` contains executable-owned scenario orchestration
 - `runtime/` contains the executable shell and fixed-surface LGL presenter

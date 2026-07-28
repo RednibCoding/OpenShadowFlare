@@ -17,6 +17,14 @@ target_include_directories(
 
 add_test(NAME portable_libraries COMMAND portable_libraries_test)
 
+add_test(
+  NAME source_boundaries
+  COMMAND
+    "${CMAKE_COMMAND}"
+    "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/check_source_boundaries.cmake"
+)
+
 if(TARGET sf_game_core)
   add_executable(game_core_test game_core_test.cpp)
   target_link_libraries(game_core_test PRIVATE OpenShadowFlare::GameCore)
@@ -32,7 +40,12 @@ if(TARGET sf_game_core)
   add_test(NAME game_core COMMAND game_core_test)
 
   add_executable(gapi_test gapi_test.cpp)
-  target_link_libraries(gapi_test PRIVATE OpenShadowFlare::GameCore)
+  target_link_libraries(
+    gapi_test
+    PRIVATE
+      OpenShadowFlare::GameCore
+      OpenShadowFlare::RKC_DBFCONTROL
+  )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
   set_target_properties(gapi_test PROPERTIES CXX_EXTENSIONS OFF)
 
@@ -58,7 +71,11 @@ if(TARGET sf_game_core)
   add_test(NAME menu_states COMMAND menu_states_test)
 
   add_executable(voc_test voc_test.cpp)
-  target_link_libraries(voc_test PRIVATE OpenShadowFlare::GameCore)
+  target_link_libraries(
+    voc_test
+    PRIVATE
+      OpenShadowFlare::RKC_DSOUND
+  )
   target_compile_features(voc_test PRIVATE cxx_std_17)
   set_target_properties(voc_test PROPERTIES CXX_EXTENSIONS OFF)
 

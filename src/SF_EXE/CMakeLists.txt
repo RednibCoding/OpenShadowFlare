@@ -1,15 +1,16 @@
+add_subdirectory(libs/RK_FUNCTION)
+add_subdirectory(libs/RKC_DIB)
+add_subdirectory(libs/RKC_DSOUND)
+add_subdirectory(libs/RKC_UPDIB)
+add_subdirectory(libs/RKC_RPGSCRN)
+add_subdirectory(libs/RKC_DBFCONTROL)
+
 add_library(
   sf_game_core
-  audio/voc.cpp
   core/command_line.cpp
   core/game_config.cpp
-  core/rclib_lz.cpp
   core/retail_random.cpp
-  gapi/bitmap.cpp
-  gapi/caf.cpp
   gapi/gapi.cpp
-  gapi/njp.cpp
-  gapi/software_backend.cpp
   render/character_select_renderer.cpp
   render/gameplay_renderer.cpp
   render/title_renderer.cpp
@@ -17,8 +18,6 @@ add_library(
   states/gameplay_state.cpp
   states/menu_states.cpp
   states/save_catalog.cpp
-  world/ground_map.cpp
-  world/object_map.cpp
   world/world_scene.cpp
 )
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
@@ -28,6 +27,13 @@ target_include_directories(
   sf_game_core
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_link_libraries(
+  sf_game_core
+  PUBLIC
+    OpenShadowFlare::RKC_DIB
+    OpenShadowFlare::RKC_UPDIB
+    OpenShadowFlare::RKC_RPGSCRN
 )
 set_target_properties(
   sf_game_core
@@ -45,7 +51,6 @@ add_executable(
   ShadowFlare_rebuilt
   runtime/lgl_surface_presenter.cpp
   runtime/main.cpp
-  runtime/voc_player.cpp
 )
 
 target_compile_features(ShadowFlare_rebuilt PRIVATE cxx_std_17)
@@ -55,6 +60,8 @@ target_link_libraries(
   ShadowFlare_rebuilt
   PRIVATE
     OpenShadowFlare::GameCore
+    OpenShadowFlare::RKC_DBFCONTROL
+    OpenShadowFlare::RKC_DSOUND
     Lwl::Lwl
     Lal::Lal
     Lgl::Lgl

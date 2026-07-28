@@ -157,6 +157,12 @@ real macOS hardware. The executable finds the original data under
 `tmp/ShadowFlare` relative to its own location, so it can also be started
 directly from a file manager without relying on the current working directory.
 
+Portable versions of DLL behavior live in `src/SF_EXE/libs`, one directory per
+original DLL. They are clean static libraries rather than dependencies on the
+Win32 DLL binaries. The tested compatibility reconstructions live separately
+in `src/reconstructed` and remain the reference as their behavior is brought
+into the portable executable piece by piece.
+
 ## Running the tests
 
 Run the build and static ABI/fidelity checks with:

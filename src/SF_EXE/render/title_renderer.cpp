@@ -1,7 +1,7 @@
 #include "title_renderer.hpp"
 
-#include "gapi/caf.hpp"
-#include "gapi/njp.hpp"
+#include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_UPDIB/rkc_updib.hpp"
 
 #include <algorithm>
 #include <array>

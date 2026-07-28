@@ -1,10 +1,8 @@
 #ifndef OPENSHADOWFLARE_WORLD_SCENE_HPP
 #define OPENSHADOWFLARE_WORLD_SCENE_HPP
 
-#include "gapi/caf.hpp"
-#include "gapi/njp.hpp"
-#include "ground_map.hpp"
-#include "object_map.hpp"
+#include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_UPDIB/rkc_updib.hpp"
 
 #include <cstdint>
 #include <filesystem>

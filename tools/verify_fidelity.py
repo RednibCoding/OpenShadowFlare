@@ -34,7 +34,9 @@ def main() -> int:
         if preserved_original.is_file():
             original_path = preserved_original
         rebuilt_path = BUILD_DIR / filename
-        source_path = ROOT / "src" / dll_name / "src" / "core.cpp"
+        source_path = (
+            ROOT / "src" / "reconstructed" / dll_name / "src" / "core.cpp"
+        )
 
         if not original_path.is_file():
             fail(f"{filename}: original DLL is missing", failures)

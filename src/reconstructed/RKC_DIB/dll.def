@@ -1,0 +1,54 @@
+LIBRARY RKC_DIB
+EXPORTS
+; ============================================================================
+; RKC_DIB - Main bitmap class
+; ============================================================================
+; USED BY EXE/OTHER DLLS
+??0RKC_DIB@@QAE@XZ=RKC_DIB_constructor @1
+??1RKC_DIB@@QAE@XZ=RKC_DIB_destructor @3
+?Convert@RKC_DIB@@QAEHPAV1@J@Z=RKC_DIB_Convert @10
+?Create@RKC_DIB@@QAEHJJJH@Z=RKC_DIB_Create @13
+?DrawBox@RKC_DIB@@QAEHJJJJEEEJJPAUtagRECT@@@Z=RKC_DIB_DrawBox @14
+?DrawFill@RKC_DIB@@QAEHJJJJEEEJJPAUtagRECT@@PAVRKC_DIBHISPEEDMODE@@@Z=RKC_DIB_DrawFill @15
+?DrawLine@RKC_DIB@@QAEHJJJJEEEJJPAUtagRECT@@@Z=RKC_DIB_DrawLine @16
+?DrawPoint@RKC_DIB@@QAEHJJEEEJJPAUtagRECT@@@Z=RKC_DIB_DrawPoint @17
+?Fill@RKC_DIB@@QAEHJ@Z=RKC_DIB_Fill @18
+?FillByte@RKC_DIB@@QAEHE@Z=RKC_DIB_FillByte @19
+?GetAlignWidth@RKC_DIB@@QAEJXZ=RKC_DIB_GetAlignWidth @20
+?ReadFile@RKC_DIB@@QAEHPADF@Z=RKC_DIB_ReadFile @27
+?Release@RKC_DIB@@QAEXXZ=RKC_DIB_Release @28
+?SetBitmap@RKC_DIB@@QAEPAEPAE@Z=RKC_DIB_SetBitmap @30
+?SetPalette@RKC_DIB@@QAEHPAUtagRGBQUAD@@@Z=RKC_DIB_SetPalette @31
+?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJ@Z=RKC_DIB_TransferToDDB @32
+?TransferToDIB@RKC_DIB@@QAEHJJJJPAV1@JJJ@Z=RKC_DIB_TransferToDIB_8args @34
+?TransferToDIB@RKC_DIB@@QAEHJJPAV1@J@Z=RKC_DIB_TransferToDIB_4args @35
+?TransferToDIBEx@RKC_DIB@@QAEHJJJJPAV1@JJJJJJPAVRKC_DIBHISPEEDMODE@@@Z=RKC_DIB_TransferToDIBEx_11args @36
+?TransferToDIBEx@RKC_DIB@@QAEHJJPAV1@JJJJPAVRKC_DIBHISPEEDMODE@@@Z=RKC_DIB_TransferToDIBEx_8args @37
+?TransferToDIBFast@RKC_DIB@@QAEHJJJJPAV1@JJ@Z=RKC_DIB_TransferToDIBFast_7args @38
+?TransferToDIBFast@RKC_DIB@@QAEHJJPAV1@@Z=RKC_DIB_TransferToDIBFast_4args @39
+?WriteFile@RKC_DIB@@QAEHPAD@Z=RKC_DIB_WriteFile @40
+?ZoomToDIB@RKC_DIB@@QAEHPAUtagRECT@@PAV1@0J@Z=RKC_DIB_ZoomToDIB @41
+?ZoomToDIBEx@RKC_DIB@@QAEHPAUtagRECT@@PAV1@0JJJJ@Z=RKC_DIB_ZoomToDIBEx @42
+
+; NOT USED - STUBS
+??4RKC_DIB@@QAEAAV0@ABV0@@Z=RKC_DIB_operatorAssign @5
+?AddOffset@RKC_DIB@@QAEHUtagRGBQUAD@@H@Z=RKC_DIB_AddOffset @7
+?ClearUnusedArea@RKC_DIB@@QAEHXZ=RKC_DIB_ClearUnusedArea @8
+?CompareBitmapColor@RKC_DIB@@QAEHJJPAUtagRGBQUAD@@@Z=RKC_DIB_CompareBitmapColor @9
+?Copy@RKC_DIB@@QAEHPAV1@@Z=RKC_DIB_Copy @11
+?CopyPalette@RKC_DIB@@QAEHPAV1@@Z=RKC_DIB_CopyPalette @12
+?GetBitmap@RKC_DIB@@QAEPAEXZ=RKC_DIB_GetBitmap @21
+?GetBitmapInfo@RKC_DIB@@QAEPAUtagBITMAPINFOHEADER@@XZ=RKC_DIB_GetBitmapInfo @22
+?GetPalette@RKC_DIB@@QAEPAUtagRGBQUAD@@XZ=RKC_DIB_GetPalette @23
+?GetPaletteCount@RKC_DIB@@QAEJXZ=RKC_DIB_GetPaletteCount @24
+?GetRect@RKC_DIB@@QAEPAUtagRECT@@PAU2@@Z=RKC_DIB_GetRect @25
+?PaintArea@RKC_DIB@@QAEHJJPAUtagRGBQUAD@@@Z=RKC_DIB_PaintArea @26
+?ScreenPaintLineScan@RKC_DIB@@QAEXPAUtagPOINT@@PAJ1PAUtagRGBQUAD@@2@Z=RKC_DIB_ScreenPaintLineScan @29
+?TransferToDDB@RKC_DIB@@QAEHPAUHDC__@@JJJJJ@Z=RKC_DIB_TransferToDDB_6args @33
+
+; ============================================================================
+; RKC_DIBHISPEEDMODE - Hi-speed mode lookup tables
+; ============================================================================
+??0RKC_DIBHISPEEDMODE@@QAE@XZ=RKC_DIBHISPEEDMODE_constructor @2
+??1RKC_DIBHISPEEDMODE@@QAE@XZ=RKC_DIBHISPEEDMODE_destructor @4
+??4RKC_DIBHISPEEDMODE@@QAEAAV0@ABV0@@Z=RKC_DIBHISPEEDMODE_operatorAssign @6

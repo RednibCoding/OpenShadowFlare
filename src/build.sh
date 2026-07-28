@@ -6,6 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SOURCE_DIR="$SCRIPT_DIR/reconstructed"
 BUILD_DIR="$SCRIPT_DIR/build-win32"
 GAME_DIR="$SCRIPT_DIR/../tmp/ShadowFlare"
 
@@ -100,8 +101,8 @@ for dir in "${dirs[@]}"; do
     "$CXX" -shared -static-libgcc -static-libstdc++ \
         -std=c++17 \
         -o "$BUILD_DIR/$dir.dll" \
-        "$SCRIPT_DIR/$dir/src/core.cpp" \
-        "$SCRIPT_DIR/$dir/dll.def" \
+        "$SOURCE_DIR/$dir/src/core.cpp" \
+        "$SOURCE_DIR/$dir/dll.def" \
         "${EXTRA_OBJECTS[@]}" \
         -lgdi32 -lcomdlg32 "${EXTRA_LIBS[@]}" \
         2>&1

@@ -1,9 +1,8 @@
 #include "core/command_line.hpp"
 #include "core/game_config.hpp"
+#include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
-#include "world/ground_map.hpp"
-#include "world/object_map.hpp"
 
 #include <array>
 #include <cstdint>

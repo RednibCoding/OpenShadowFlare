@@ -1,8 +1,8 @@
-#include "gapi/bitmap.hpp"
-#include "gapi/caf.hpp"
 #include "gapi/gapi.hpp"
-#include "gapi/njp.hpp"
-#include "gapi/software_backend.hpp"
+#include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
+#include "libs/RKC_DIB/rkc_dib.hpp"
+#include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/title_renderer.hpp"
 

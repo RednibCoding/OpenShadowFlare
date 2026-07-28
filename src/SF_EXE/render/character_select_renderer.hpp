@@ -1,9 +1,9 @@
 #ifndef OPENSHADOWFLARE_CHARACTER_SELECT_RENDERER_HPP
 #define OPENSHADOWFLARE_CHARACTER_SELECT_RENDERER_HPP
 
-#include "gapi/bitmap.hpp"
 #include "gapi/gapi.hpp"
-#include "gapi/njp.hpp"
+#include "libs/RKC_DIB/rkc_dib.hpp"
+#include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "states/menu_states.hpp"
 #include "states/save_catalog.hpp"
 

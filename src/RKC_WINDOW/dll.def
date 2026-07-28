@@ -1,9 +1,0 @@
-LIBRARY RKC_WINDOW
-EXPORTS
-	??0RKC_WINDOW@@QAE@XZ=RKC_Window_constructor @1
-	??1RKC_WINDOW@@QAE@XZ=RKC_Window_deconstructor @2
-	??4RKC_WINDOW@@QAEAAV0@ABV0@@Z=EqualsOperator @3
-	?HScroll@RKC_WINDOW@@QAEXIJ@Z=HScroll @4
-	?Resize@RKC_WINDOW@@QAEXXZ=Resize @5
-	?Show@RKC_WINDOW@@QAEXH@Z=Show @6
-	?VScroll@RKC_WINDOW@@QAEXIJ@Z=VScroll @7
