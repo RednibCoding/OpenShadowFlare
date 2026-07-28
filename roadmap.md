@@ -27,10 +27,12 @@ The portable executable already has a solid front half:
 - new-character creation and the complete saved-game selection flow
 - the original initial loading screen
 - Remote Town's ground, static objects, shadows, player sprite, and music
+- click-to-move movement, walk/run switching, matching animation, static
+  collision, and camera following
 
-In other words, the game can reach the world, but the world is not alive yet.
-The player cannot walk, there are no NPCs or scripts, and the HUD and gameplay
-systems are still missing.
+In other words, the game can reach the world and the player can now walk
+around it. There are still no NPCs or scripts, and the HUD and most gameplay
+systems are missing.
 
 The current reverse-engineering notes live in:
 
@@ -65,48 +67,52 @@ order, timing, coordinates, sounds, and odd edge cases should come from
 evidence. A reasonable-looking replacement is not automatically a faithful
 one.
 
-Finally, timing-sensitive game logic should stay based on the original 60 Hz
-update. Rendering and window presentation must not decide how quickly the
+Finally, timing-sensitive game logic should preserve its original cadence.
+Retail game state is driven by the DBF thread's roughly 30 Hz update, while
+the portable shell presents at 60 Hz. The runtime uses separate fixed-step
+clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Up next: make the player walk
+## Current milestone: make the player walk
 
 This is the best next slice. It is small enough to finish and compare, but it
 touches nearly every piece the rest of gameplay will need: input, world
 coordinates, actor state, animation, collision, camera movement, and
 depth-sorted rendering.
 
-The first goal is deliberately narrow: walk the new character around Remote
-Town as the original game does. No combat, NPCs, HUD, inventory, or scenario
-changes yet.
+The deliberately narrow goal was to walk the new character around Remote Town
+as the original game does. No combat, NPCs, HUD, inventory, or scenario
+changes are part of this milestone.
 
-### First, study the retail path
+### What the retail path taught us
 
-Before writing the movement code, trace one complete movement command through
-the original executable:
+The first implementation pass traced a complete movement command through the
+original executable:
 
-- how a screen click becomes a world-space destination
-- which mouse buttons and modifier keys create or cancel movement
-- how the click-range settings affect the command
-- how the player chooses one of the movement directions
-- the exact movement speed and whether it changes by direction
-- when the idle CAF chart switches to walking and back
-- how frame advancement behaves at 60 Hz
-- how ground and object judgement data stop movement
-- whether blocked movement slides along an obstacle or stops outright
-- how the camera follows the player and clamps at map edges
-- when the player's depth key is rebuilt during movement
+- `0x00441c00` converts the primary-button screen point with
+  `RKC_RPGSCRN::CalcWorldPos`;
+- `0x00413ec0` divides the result into eight 45-degree directions;
+- both new-character tables produce speed tier five, which the retail factor
+  table turns into a 20-unit walk step and a 40-unit run step per 30 Hz
+  gameplay update;
+- chart zero is idle, chart one is walking, and chart two is running;
+- the `R` binding switches the persistent walk/run movement mode;
+- the starting player judgement rectangle is `[-80, -80, 79, 79]`;
+- GND judgement bit zero and status-one OBL rectangles block the player;
+- `0x00454930` keeps contact position and tries axis slides;
+- the camera uses the projected player position minus the 320-by-240 screen
+  center, without another map-edge clamp.
 
-This work should add names and notes to the reverse maps instead of living only
-in somebody's scratchpad.
+Those findings are recorded in the reverse maps rather than being left in a
+scratchpad.
 
-### Then build the smallest useful actor loop
+### The portable actor loop
 
 The portable side needs a player actor with clear, ordinary state: current
 position, destination, direction, motion state, animation chart, animation
 frame, and the few counters the retail loop actually uses.
 
-The gameplay update should:
+The gameplay update now:
 
 1. accept a movement command from portable input;
 2. turn the screen position into the same world position as the retail game;
@@ -120,25 +126,25 @@ Input handling belongs in the runtime adapter, game decisions belong in the
 gameplay/world code, and any reused DLL behavior belongs in its matching
 library. The renderer should only draw the state it receives.
 
-### How we will know it is done
+### What is covered now
 
 The slice is finished when all of these are true:
 
-- clicking several places in Remote Town produces the same destination and
-  direction as the retail game;
-- movement distance over a fixed number of 60 Hz updates matches;
-- idle and walking frame sequences match in every direction;
-- walls, gates, scenery, and map edges block the player correctly;
-- the camera follows and clamps without visible jumps;
-- scenery continues to sort in front of and behind the moving player;
-- releasing, replacing, and issuing an unreachable movement command behaves
-  like the original;
-- the behavior has deterministic native tests and a short side-by-side Wine
-  comparison;
-- the executable smoke test still reaches the world.
+- screen/world conversion and all eight directions have deterministic tests;
+- five retail-cadence movement steps move a walking player exactly 100 world
+  units, while running covers 200;
+- idle, walking, arrival, and return-to-idle chart timing is covered;
+- the complete retail Remote Town GND judgement plane is decoded and tested;
+- static ground and object collision stop at the last walkable integer point;
+- camera and depth keys are rebuilt from the live player position;
+- held input replaces the destination and out-of-window input is rejected;
+- a native live run reaches Remote Town and moves the camera and player from a
+  ground click.
 
-Completing this gives us the first genuinely interactive gameplay milestone:
-we can walk around Remote Town.
+This gives us the first genuinely interactive gameplay milestone: we can walk
+around Remote Town. Any collision corner that looks different in a
+side-by-side retail check should be kept as a small movement follow-up rather
+than worked around in later actor code.
 
 ## What comes after movement
 
@@ -384,7 +390,8 @@ drifting:
 - use original assets in focused parser and rendering tests;
 - make short side-by-side recordings or screenshots for visual work;
 - keep malformed-data behavior deliberate and tested;
-- keep the 60 Hz simulation independent from presentation speed;
+- keep each reconstructed simulation cadence independent from presentation
+  speed;
 - run the boundary test so DLL-derived code stays in `SF_EXE/libs/`;
 - keep Linux and Windows builds green and regularly test real macOS hardware.
 

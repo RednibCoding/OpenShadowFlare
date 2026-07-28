@@ -73,7 +73,9 @@ endforeach()
 set(dll_implementation_names
   bitmap.cpp
   caf.cpp
+  coordinates.cpp
   ground_map.cpp
+  judgement.cpp
   njp.cpp
   object_map.cpp
   rclib_lz.cpp

@@ -119,6 +119,35 @@ at `0x004275a0` starts sample zero looping in voice slot 500. Gameplay now
 starts the same track once the world is prepared, applies the configured BGM
 volume through LAL, and releases it with the gameplay state.
 
-This is still not complete gameplay rendering. The HUD, movement, NPCs, world
-simulation, scripting, darkness, equipment state, and saved-game scenario
-restoration are the next executable layers.
+The first interactive world loop follows the retail movement path through
+`0x00441c00`, `0x00454210`, `0x00454930`, `0x004351f0`, and `0x00434ef0`.
+LWL button state becomes a 640-by-480 ground command, the RKC_RPGSCRN inverse
+projection turns it into a world destination, and the unequipped new player
+gets speed tier five. `0x00450080` indexes the retail factor table, multiplies
+its `1.0` result by the base speed `20.0`, and stores a 20-unit walk step plus
+the doubled 40-unit run step. Retail's DBF thread advances movement roughly
+every 33 ms. The portable shell now uses an elapsed-time accumulator to update
+all game state at the same 30 Hz cadence while continuing to present at 60 Hz.
+This keeps movement and CAF frame counters on one clock and preserves their
+real-time speeds. Held input replaces the destination without restarting the
+current movement action.
+
+Walk is executable action 2 and CAF chart 1 at `0x004351f0`; run is action 3
+and CAF chart 2 at `0x00435530`. The `R` binding now toggles the persistent
+movement mode on its key-down edge. Switching while already moving resets the
+animation counter and immediately changes both the chart and the movement
+step, as the retail action transition does.
+
+GND loading now includes the second, 852-by-852 Remote Town judgement plane.
+The portable RKC_RPGSCRN boundary checks its bit-zero blockers and the
+status-one OBL judgement rectangles against the retail player box
+`[-80, -80, 79, 79]`. The movement controller performs integer swept checks,
+keeps the last walkable point, and tries the two axis slides when a diagonal
+step meets scenery. The renderer reads chart zero for idle and chart one for
+walking directly from player state, rebuilds the depth key from the moving
+position, and follows the player's projected position with the retail camera
+offset.
+
+This is still not complete gameplay. NPCs, dynamic actor collision, the HUD,
+scripts, darkness, equipment state, and saved-game scenario restoration are
+the next executable layers.

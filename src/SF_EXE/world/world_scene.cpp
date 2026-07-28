@@ -134,9 +134,11 @@ bool WorldScene::loadInitialScenario(
         player_parts_enabled_[1] = 1;
     }
 
-    player_world_x_ = 89898;
-    player_world_y_ = 2811;
-    player_direction_ = 3;
+    // The initial values come from scenario 00000000 and the new-character
+    // table path. FUN_00450d40 turns both gender tables' agility value 128
+    // into tier five; FUN_00450080 then converts that to 20 world units per
+    // update.
+    player_.reset({89898, 2811}, 3, 5);
     music_track_ = 0;
     has_player_ = true;
     return true;
@@ -150,10 +152,8 @@ void WorldScene::clear() {
     player_shadow_patterns_.clear();
     player_animation_.clear();
     player_parts_enabled_.clear();
+    player_.clear();
     has_player_ = false;
-    player_world_x_ = 0;
-    player_world_y_ = 0;
-    player_direction_ = 0;
     music_track_ = -1;
 }
 
@@ -191,16 +191,65 @@ bool WorldScene::hasPlayer() const {
     return has_player_;
 }
 
+void WorldScene::commandPlayerMovement(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_) {
+        return;
+    }
+    player_.moveTo(
+        calculateWorldPosition({
+            cameraScreenX() + screen_x,
+            cameraScreenY() + screen_y,
+        }));
+}
+
+void WorldScene::togglePlayerRun() {
+    if (has_player_) {
+        player_.toggleMovementPace();
+    }
+}
+
+void WorldScene::update() {
+    if (has_player_) {
+        player_.update(ground_, object_map_);
+    }
+}
+
 std::int32_t WorldScene::playerWorldX() const {
-    return player_world_x_;
+    return player_.position().x;
 }
 
 std::int32_t WorldScene::playerWorldY() const {
-    return player_world_y_;
+    return player_.position().y;
 }
 
 std::int32_t WorldScene::playerDirection() const {
-    return player_direction_;
+    return player_.direction();
+}
+
+PlayerMotion WorldScene::playerMotion() const {
+    return player_.motion();
+}
+
+std::int32_t WorldScene::playerAnimationChart() const {
+    return player_.animationChart();
+}
+
+std::int32_t WorldScene::playerAnimationFrame() const {
+    return player_.animationFrame();
+}
+
+std::int32_t WorldScene::cameraScreenX() const {
+    const ScreenPosition position =
+        calculateRealPosition(player_.position());
+    return position.x - 320;
+}
+
+std::int32_t WorldScene::cameraScreenY() const {
+    const ScreenPosition position =
+        calculateRealPosition(player_.position());
+    return position.y - 240;
 }
 
 std::int32_t WorldScene::musicTrack() const {

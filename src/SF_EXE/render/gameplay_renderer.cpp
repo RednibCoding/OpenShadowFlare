@@ -15,8 +15,6 @@ namespace {
 
 constexpr std::int32_t kScreenWidth = 640;
 constexpr std::int32_t kScreenHeight = 480;
-constexpr std::int32_t kRetailBaseX = 15;
-constexpr std::int32_t kRetailBaseY = 10;
 constexpr std::int32_t kRetailHeightScale = 20;
 
 struct ObjectDrawEntry {
@@ -25,28 +23,17 @@ struct ObjectDrawEntry {
     std::int32_t display_class = 0;
 };
 
-std::int32_t toScreenX(
+ScreenPosition toScreen(
     std::int32_t world_x,
     std::int32_t world_y) {
-    return static_cast<std::int32_t>(
-        (static_cast<std::int64_t>(world_x - world_y) *
-         kRetailBaseX) /
-        100);
-}
-
-std::int32_t toScreenY(
-    std::int32_t world_x,
-    std::int32_t world_y) {
-    return static_cast<std::int32_t>(
-        (static_cast<std::int64_t>(world_x + world_y) *
-         kRetailBaseY) /
-        100);
+    return calculateRealPosition({world_x, world_y});
 }
 
 void renderPlayerPass(
     gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t animation_frame,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
     bool shadow,
     std::int32_t shadow_opacity) {
     if (!world.hasPlayer() ||
@@ -54,7 +41,13 @@ void renderPlayerPass(
         return;
     }
     const gapi::CafChart& chart =
-        world.playerAnimation().charts().front();
+        world.playerAnimation().charts()[
+            static_cast<std::size_t>(
+                std::clamp(
+                    world.playerAnimationChart(),
+                    0,
+                    static_cast<std::int32_t>(
+                        world.playerAnimation().charts().size() - 1)))];
     const std::int32_t direction_index =
         world.playerDirection();
     if (direction_index < 0 ||
@@ -69,6 +62,8 @@ void renderPlayerPass(
         direction.parts.empty()) {
         return;
     }
+    std::int32_t animation_frame =
+        world.playerAnimationFrame();
     if ((chart.status & 1) != 0) {
         animation_frame %= direction.frame_count;
     }
@@ -109,13 +104,17 @@ void renderPlayerPass(
             (((cell->status & 8) != 0) != shadow)) {
             continue;
         }
+        const ScreenPosition player_position =
+            toScreen(
+                world.playerWorldX(),
+                world.playerWorldY());
         renderer.drawPattern(
             shadow
                 ? world.playerShadowPatterns()
                 : world.playerPatterns(),
             static_cast<std::size_t>(cell->pattern_index),
-            {kScreenWidth / 2,
-             kScreenHeight / 2,
+            {player_position.x - camera_x,
+             player_position.y - camera_y,
              1000,
              1000,
              1000,
@@ -129,20 +128,28 @@ void renderPlayerPass(
 void renderPlayer(
     gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t animation_frame) {
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
     renderPlayerPass(
-        renderer, world, animation_frame, false, 1000);
+        renderer,
+        world,
+        camera_x,
+        camera_y,
+        false,
+        1000);
 }
 
 void renderPlayerShadow(
     gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t animation_frame,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
     std::int32_t shadow_opacity) {
     renderPlayerPass(
         renderer,
         world,
-        animation_frame,
+        camera_x,
+        camera_y,
         true,
         shadow_opacity);
 }
@@ -194,11 +201,11 @@ bool objectVisible(
     const gapi::NjpPattern& pattern =
         image.patterns()[
             static_cast<std::size_t>(object.pattern)];
-    const std::int32_t anchorX =
-        toScreenX(object.world_x, object.world_y) -
-        camera_x;
+    const ScreenPosition anchor =
+        toScreen(object.world_x, object.world_y);
+    const std::int32_t anchorX = anchor.x - camera_x;
     const std::int32_t anchorY =
-        toScreenY(object.world_x, object.world_y) -
+        anchor.y -
         camera_y -
         (shadow ? 0 : object.height * kRetailHeightScale / 100);
     return anchorX + pattern.x < kScreenWidth &&
@@ -229,12 +236,13 @@ void drawMapObject(
             3,
         0,
         1000);
+    const ScreenPosition position =
+        toScreen(object.world_x, object.world_y);
     renderer.drawPattern(
         *image,
         static_cast<std::size_t>(object.pattern),
-        {toScreenX(object.world_x, object.world_y) -
-             camera_x,
-         toScreenY(object.world_x, object.world_y) -
+        {position.x - camera_x,
+         position.y -
              camera_y -
              (shadow
                   ? 0
@@ -282,9 +290,9 @@ std::vector<ObjectDrawEntry> collectObjects(
         }
         result.push_back({
             &object,
-            toScreenY(
+            toScreen(
                 object.world_x + object.judgement.left,
-                object.world_y + object.judgement.top),
+                object.world_y + object.judgement.top).y,
             displayClass(object.status),
         });
     }
@@ -353,7 +361,6 @@ void renderInitialLoadingScreen(
 void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t animation_frame,
     std::int32_t shadow_opacity) {
     const GroundMap& ground = world.ground();
     if (ground.width() <= 0 || ground.height() <= 0) {
@@ -361,15 +368,9 @@ void renderWorld(
     }
 
     const std::int32_t camera_x =
-        toScreenX(
-            world.playerWorldX(),
-            world.playerWorldY()) -
-        kScreenWidth / 2;
+        world.cameraScreenX();
     const std::int32_t camera_y =
-        toScreenY(
-            world.playerWorldX(),
-            world.playerWorldY()) -
-        kScreenHeight / 2;
+        world.cameraScreenY();
     const std::int32_t start_x =
         std::max(camera_x / ground.chipWidth(), 0);
     const std::int32_t start_y =
@@ -437,17 +438,19 @@ void renderWorld(
     renderPlayerShadow(
         renderer,
         world,
-        animation_frame,
+        camera_x,
+        camera_y,
         shadow_opacity);
     const std::int32_t playerDepth =
-        toScreenY(
+        toScreen(
             world.playerWorldX(),
-            world.playerWorldY());
+            world.playerWorldY()).y;
     bool playerDrawn = false;
     for (const ObjectDrawEntry& entry : defaultObjects) {
         if (!playerDrawn && world.hasPlayer() &&
             playerDepth < entry.depth) {
-            renderPlayer(renderer, world, animation_frame);
+            renderPlayer(
+                renderer, world, camera_x, camera_y);
             playerDrawn = true;
         }
         drawMapObject(
@@ -460,7 +463,8 @@ void renderWorld(
             shadow_opacity);
     }
     if (!playerDrawn) {
-        renderPlayer(renderer, world, animation_frame);
+        renderPlayer(
+            renderer, world, camera_x, camera_y);
     }
 }
 

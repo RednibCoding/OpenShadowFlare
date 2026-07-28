@@ -19,6 +19,7 @@
 #include "states/save_catalog.hpp"
 #include "world/world_scene.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -346,11 +347,24 @@ public:
     }
 
     int run(bool smokeTest) {
+        constexpr double renderStep = 1.0 / 60.0;
+        constexpr double gameStep = 1.0 / 30.0;
+        constexpr double maximumElapsed = 0.25;
+
         bool running = true;
         int renderedFrames = 0;
-        double nextFrame = lwl_time_seconds();
+        double previousTime = lwl_time_seconds();
+        double nextFrame = previousTime;
+        double gameAccumulator = gameStep;
 
         while (running) {
+            const double currentTime = lwl_time_seconds();
+            gameAccumulator += std::clamp(
+                currentTime - previousTime,
+                0.0,
+                maximumElapsed);
+            previousTime = currentTime;
+
             LwlEvent event{};
             while (lwl_poll_event(window_, &event)) {
                 if (event.type == LWL_EVENT_QUIT) {
@@ -360,8 +374,9 @@ public:
                 }
             }
 
-            if (running) {
+            while (running && gameAccumulator >= gameStep) {
                 updateGame(running);
+                gameAccumulator -= gameStep;
             }
 
             renderGame();
@@ -371,7 +386,10 @@ public:
                 running = false;
             }
 
-            nextFrame += 1.0 / 60.0;
+            nextFrame += renderStep;
+            if (nextFrame < currentTime - maximumElapsed) {
+                nextFrame = currentTime;
+            }
             lwl_sleep_until_seconds(nextFrame);
         }
         return 0;
@@ -418,6 +436,12 @@ private:
             setPointerPosition(event.x, event.y);
             menuInput_.pointer_primary_pressed = true;
             characterInput_.pointer_primary_pressed = true;
+            pointerPrimaryDown_ = true;
+            return;
+        }
+        if (event.type == LWL_EVENT_MOUSE_UP && event.button == 1) {
+            setPointerPosition(event.x, event.y);
+            pointerPrimaryDown_ = false;
             return;
         }
         if (event.type == LWL_EVENT_TEXT_INPUT) {
@@ -443,6 +467,8 @@ private:
                 deleteHeld_ = false;
             } else if (std::strcmp(event.key, "backspace") == 0) {
                 backspaceHeld_ = false;
+            } else if (std::strcmp(event.key, "r") == 0) {
+                runHeld_ = false;
             }
             return;
         }
@@ -500,6 +526,11 @@ private:
                 characterInput_.backspace_pressed = true;
             }
             backspaceHeld_ = true;
+        } else if (std::strcmp(event.key, "r") == 0) {
+            if (!runHeld_) {
+                runTogglePressed_ = true;
+            }
+            runHeld_ = true;
         }
     }
 
@@ -557,6 +588,8 @@ private:
                 menuInput_.pointer_primary_pressed,
                 menuInput_.pointer_x,
                 menuInput_.pointer_y,
+                pointerPrimaryDown_,
+                runTogglePressed_,
             });
             break;
         default:
@@ -577,6 +610,7 @@ private:
         characterInput_.right_pressed = false;
         characterInput_.backspace_pressed = false;
         characterInput_.text_input.clear();
+        runTogglePressed_ = false;
     }
 
     void renderCharacterSelect() {
@@ -642,7 +676,6 @@ private:
                 osf::renderWorld(
                     renderer_,
                     world_,
-                    gameplayFrame_.animation_frame,
                     shadowOpacity_);
             }
         }
@@ -884,6 +917,16 @@ private:
         hooks.stop_world_music = [this] {
             worldMusicAudio_.clear();
         };
+        hooks.command_player_movement =
+            [this](std::int32_t x, std::int32_t y) {
+                world_.commandPlayerMovement(x, y);
+            };
+        hooks.toggle_player_run = [this] {
+            world_.togglePlayerRun();
+        };
+        hooks.update_world = [this] {
+            world_.update();
+        };
         return hooks;
     }
 
@@ -913,6 +956,9 @@ private:
     bool backHeld_ = false;
     bool deleteHeld_ = false;
     bool backspaceHeld_ = false;
+    bool pointerPrimaryDown_ = false;
+    bool runHeld_ = false;
+    bool runTogglePressed_ = false;
     std::int32_t effectVolume_ = 0;
     std::int32_t bgmVolume_ = 0;
     std::int32_t shadowOpacity_ = 500;

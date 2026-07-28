@@ -85,6 +85,16 @@ std::int16_t readI16(
         (static_cast<std::uint16_t>(bytes[offset + 1]) << 8u));
 }
 
+std::int64_t floorDivide(
+    std::int64_t numerator,
+    std::int64_t denominator) {
+    std::int64_t result = numerator / denominator;
+    if (numerator < 0 && numerator % denominator != 0) {
+        --result;
+    }
+    return result;
+}
+
 void setError(std::string* error, std::string message) {
     if (error) {
         *error = std::move(message);
@@ -162,6 +172,100 @@ bool GroundMap::decode(
         cells_[index].pattern =
             readI16(map_data, (count * 2u + index) * 2u);
     }
+
+    // GROUNDBLOCK::SetAreaSize derives the judgement dimensions from the
+    // 15:10 screen projection before ReadFile decodes the second GND block.
+    const std::int64_t real_base_x =
+        static_cast<std::int64_t>(
+            base_magnification_x_) *
+        15 / 100;
+    const std::int64_t real_base_y =
+        static_cast<std::int64_t>(
+            base_magnification_y_) *
+        10 / 100;
+    const std::int64_t divisor =
+        real_base_x * real_base_y * 2;
+    if (real_base_x <= 0 || real_base_y <= 0 ||
+        divisor <= 0) {
+        setError(error, "The ground judgement scale is invalid.");
+        clear();
+        return false;
+    }
+    const std::int64_t map_pixel_width =
+        static_cast<std::int64_t>(width_) *
+        chip_width_;
+    const std::int64_t map_pixel_height =
+        static_cast<std::int64_t>(height_) *
+        chip_height_;
+    const auto groundPosition =
+        [real_base_x, real_base_y, divisor](
+            std::int64_t x,
+            std::int64_t y) {
+            return std::array<std::int64_t, 2>{
+                floorDivide(
+                    real_base_x * y + real_base_y * x,
+                    divisor),
+                floorDivide(
+                    real_base_x * y - real_base_y * x,
+                    divisor),
+            };
+        };
+    const auto top = groundPosition(0, 0);
+    const auto right =
+        groundPosition(map_pixel_width, 0);
+    const auto left =
+        groundPosition(0, map_pixel_height);
+    const auto bottom =
+        groundPosition(map_pixel_width, map_pixel_height);
+    const std::int64_t judge_width =
+        bottom[0] - top[0] + 2;
+    const std::int64_t judge_height =
+        left[1] - right[1] + 2;
+    if (judge_width < 0 || judge_height < 0 ||
+        judge_width >
+            std::numeric_limits<std::int32_t>::max() ||
+        judge_height >
+            std::numeric_limits<std::int32_t>::max() ||
+        (judge_width != 0 &&
+         judge_height >
+             static_cast<std::int64_t>(
+                 std::numeric_limits<std::size_t>::max() /
+                 static_cast<std::size_t>(judge_width)))) {
+        setError(error, "The ground judgement area is too large.");
+        clear();
+        return false;
+    }
+    judge_width_ = static_cast<std::int32_t>(judge_width);
+    judge_height_ = static_cast<std::int32_t>(judge_height);
+    judge_offset_x_ =
+        static_cast<std::int32_t>(top[0] - 1);
+    judge_offset_y_ =
+        static_cast<std::int32_t>(right[1] - 1);
+    const std::size_t judge_count =
+        static_cast<std::size_t>(judge_width_) *
+        static_cast<std::size_t>(judge_height_);
+    if (judge_count >
+        std::numeric_limits<std::size_t>::max() / 2u) {
+        setError(error, "The ground judgement data is too large.");
+        clear();
+        return false;
+    }
+    std::vector<std::uint8_t> judge_data;
+    if (!input.readEncoded(judge_count * 2u, judge_data)) {
+        setError(error, "The ground judgement data could not be decoded.");
+        clear();
+        return false;
+    }
+    judgement_.resize(judge_count);
+    for (std::size_t index = 0;
+         index < judge_count;
+         ++index) {
+        judgement_[index] =
+            readI16(judge_data, index * 2u);
+    }
+    if (error) {
+        error->clear();
+    }
     return true;
 }
 
@@ -172,7 +276,12 @@ void GroundMap::clear() {
     chip_height_ = 0;
     base_magnification_x_ = 0;
     base_magnification_y_ = 0;
+    judge_width_ = 0;
+    judge_height_ = 0;
+    judge_offset_x_ = 0;
+    judge_offset_y_ = 0;
     cells_.clear();
+    judgement_.clear();
 }
 
 std::int32_t GroundMap::width() const {
@@ -199,6 +308,22 @@ std::int32_t GroundMap::baseMagnificationY() const {
     return base_magnification_y_;
 }
 
+std::int32_t GroundMap::judgeWidth() const {
+    return judge_width_;
+}
+
+std::int32_t GroundMap::judgeHeight() const {
+    return judge_height_;
+}
+
+std::int32_t GroundMap::judgeOffsetX() const {
+    return judge_offset_x_;
+}
+
+std::int32_t GroundMap::judgeOffsetY() const {
+    return judge_offset_y_;
+}
+
 const GroundCell* GroundMap::cell(
     std::int32_t x,
     std::int32_t y) const {
@@ -209,6 +334,22 @@ const GroundCell* GroundMap::cell(
         static_cast<std::size_t>(y) *
             static_cast<std::size_t>(width_) +
         static_cast<std::size_t>(x)];
+}
+
+const std::int16_t* GroundMap::judge(
+    std::int32_t x,
+    std::int32_t y) const {
+    const std::int32_t local_x = x - judge_offset_x_;
+    const std::int32_t local_y = y - judge_offset_y_;
+    if (local_x < 0 || local_y < 0 ||
+        local_x >= judge_width_ ||
+        local_y >= judge_height_) {
+        return nullptr;
+    }
+    return &judgement_[
+        static_cast<std::size_t>(local_y) *
+            static_cast<std::size_t>(judge_width_) +
+        static_cast<std::size_t>(local_x)];
 }
 
 }  // namespace osf

@@ -54,6 +54,25 @@ private:
 
 namespace osf {
 
+struct WorldPosition {
+    std::int32_t x = 0;
+    std::int32_t y = 0;
+};
+
+struct ScreenPosition {
+    std::int32_t x = 0;
+    std::int32_t y = 0;
+};
+
+ScreenPosition calculateRealPosition(
+    WorldPosition position,
+    std::int32_t base_x = 15,
+    std::int32_t base_y = 10);
+WorldPosition calculateWorldPosition(
+    ScreenPosition position,
+    std::int32_t base_x = 15,
+    std::int32_t base_y = 10);
+
 struct GroundCell {
     std::int16_t status = 0;
     std::int16_t pattern_set = -1;
@@ -76,7 +95,14 @@ public:
     std::int32_t chipHeight() const;
     std::int32_t baseMagnificationX() const;
     std::int32_t baseMagnificationY() const;
+    std::int32_t judgeWidth() const;
+    std::int32_t judgeHeight() const;
+    std::int32_t judgeOffsetX() const;
+    std::int32_t judgeOffsetY() const;
     const GroundCell* cell(
+        std::int32_t x,
+        std::int32_t y) const;
+    const std::int16_t* judge(
         std::int32_t x,
         std::int32_t y) const;
 
@@ -87,7 +113,12 @@ private:
     std::int32_t chip_height_ = 0;
     std::int32_t base_magnification_x_ = 0;
     std::int32_t base_magnification_y_ = 0;
+    std::int32_t judge_width_ = 0;
+    std::int32_t judge_height_ = 0;
+    std::int32_t judge_offset_x_ = 0;
+    std::int32_t judge_offset_y_ = 0;
     std::vector<GroundCell> cells_;
+    std::vector<std::int16_t> judgement_;
 };
 
 struct ObjectBounds {
@@ -129,6 +160,13 @@ private:
     std::int32_t version_ = 0;
     std::vector<MapObject> objects_;
 };
+
+bool positionIsWalkable(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    WorldPosition position,
+    const ObjectBounds& bounds,
+    bool exclude_special_objects = false);
 
 }  // namespace osf
 

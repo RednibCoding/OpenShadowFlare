@@ -76,7 +76,15 @@ uses the MCT entry direction, a separate SDW shadow, and the same
 part-visibility table that keeps unequipped armor and weapons hidden.
 Configured semi-transparent shadows apply to both scenery and the player.
 Remote Town's MCT music index also starts the looping `BGM00.Voc` through LAL
-at the configured BGM volume. NPCs, the HUD, movement, scripts, darkness, and
+at the configured BGM volume.
+
+The first world interaction is in place too. Clicking the ground moves the
+player at the original gameplay cadence, follows the cursor with all eight
+directions, and moves the camera with the player. `R` switches between the
+retail walking and running speeds, using CAF charts one and two respectively.
+Remote Town's GND judgement layer and OBL rectangles stop the player at walls
+and scenery while the renderer keeps sorting nearby objects in front of or
+behind the moving sprite. NPCs, the HUD, scripts, darkness, and the rest of
 gameplay simulation are still in progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can

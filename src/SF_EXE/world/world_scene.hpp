@@ -3,6 +3,7 @@
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "player_actor.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -29,9 +30,19 @@ public:
     const gapi::CafAnimation& playerAnimation() const;
     bool playerPartEnabled(std::size_t part) const;
     bool hasPlayer() const;
+    void commandPlayerMovement(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    void togglePlayerRun();
+    void update();
     std::int32_t playerWorldX() const;
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
+    PlayerMotion playerMotion() const;
+    std::int32_t playerAnimationChart() const;
+    std::int32_t playerAnimationFrame() const;
+    std::int32_t cameraScreenX() const;
+    std::int32_t cameraScreenY() const;
     std::int32_t musicTrack() const;
 
 private:
@@ -42,10 +53,8 @@ private:
     gapi::NjpImage player_shadow_patterns_;
     gapi::CafAnimation player_animation_;
     std::vector<std::uint8_t> player_parts_enabled_;
+    PlayerActor player_;
     bool has_player_ = false;
-    std::int32_t player_world_x_ = 0;
-    std::int32_t player_world_y_ = 0;
-    std::int32_t player_direction_ = 0;
     std::int32_t music_track_ = -1;
 };
 

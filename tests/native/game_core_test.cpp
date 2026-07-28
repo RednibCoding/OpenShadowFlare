@@ -261,6 +261,10 @@ bool testGroundMapDecode() {
     appendI16(bytes, 3);
     appendI16(bytes, 4);
     appendI16(bytes, 5);
+    bytes.push_back(0);
+    for (std::int32_t index = 0; index < 36; ++index) {
+        appendI16(bytes, index == 25 ? 1 : 0);
+    }
 
     osf::GroundMap map;
     if (!check(
@@ -270,7 +274,11 @@ bool testGroundMapDecode() {
                 map.chipWidth() == 64 &&
                 map.chipHeight() == 48 &&
                 map.baseMagnificationX() == 160 &&
-                map.baseMagnificationY() == 160,
+                map.baseMagnificationY() == 160 &&
+                map.judgeWidth() == 6 &&
+                map.judgeHeight() == 6 &&
+                map.judgeOffsetX() == -1 &&
+                map.judgeOffsetY() == -4,
             "A valid retail GND fixture was rejected.")) {
         return false;
     }
@@ -284,8 +292,10 @@ bool testGroundMapDecode() {
             second->status == 2 &&
             second->pattern_set == 3 &&
             second->pattern == 5 &&
+            map.judge(0, 0) &&
+            *map.judge(0, 0) == 1 &&
             map.cell(2, 0) == nullptr,
-        "The retail GND cell planes were decoded incorrectly.");
+        "The retail GND cell or judgement planes were decoded incorrectly.");
 }
 
 bool testObjectMapDecode() {
@@ -349,15 +359,32 @@ bool testGameplayLoadingTransition() {
     std::int32_t releases = 0;
     std::int32_t musicStarts = 0;
     std::int32_t musicStops = 0;
-    osf::GameplayState state({
-        [&prepares] {
+    std::int32_t movementCommands = 0;
+    std::int32_t worldUpdates = 0;
+    std::int32_t runToggles = 0;
+    std::int32_t movementX = 0;
+    std::int32_t movementY = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [&prepares] {
             ++prepares;
             return true;
-        },
-        [&releases] { ++releases; },
-        [&musicStarts] { ++musicStarts; },
-        [&musicStops] { ++musicStops; },
-    });
+        };
+    hooks.release_world = [&releases] { ++releases; };
+    hooks.start_world_music =
+        [&musicStarts] { ++musicStarts; };
+    hooks.stop_world_music =
+        [&musicStops] { ++musicStops; };
+    hooks.command_player_movement =
+        [&](std::int32_t x, std::int32_t y) {
+            ++movementCommands;
+            movementX = x;
+            movementY = y;
+        };
+    hooks.toggle_player_run =
+        [&runToggles] { ++runToggles; };
+    hooks.update_world =
+        [&worldUpdates] { ++worldUpdates; };
+    osf::GameplayState state(std::move(hooks));
     state.enter();
     osf::GameplayFrameResult frame = state.update();
     if (!check(
@@ -376,13 +403,21 @@ bool testGameplayLoadingTransition() {
         return false;
     }
     frame = state.update({false, true, 600, 460});
+    state.update({false, true, 200, 210});
+    state.update({false, true, -1, 210});
+    state.update({false, false, 0, 0, false, true});
     state.leave();
     return check(
             frame.phase == osf::GameplayPhase::world &&
             frame.world_ready &&
             releases == 1 &&
             musicStarts == 1 &&
-            musicStops == 1,
+            musicStops == 1 &&
+            movementCommands == 1 &&
+            movementX == 200 &&
+            movementY == 210 &&
+            worldUpdates == 3 &&
+            runToggles == 1,
         "Gameplay did not hand loading off to the world cleanly.");
 }
 

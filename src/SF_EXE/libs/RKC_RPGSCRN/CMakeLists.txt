@@ -1,7 +1,9 @@
 add_library(
   osf_rkc_rpgscrn STATIC
   caf.cpp
+  coordinates.cpp
   ground_map.cpp
+  judgement.cpp
   object_map.cpp
 )
 add_library(OpenShadowFlare::RKC_RPGSCRN ALIAS osf_rkc_rpgscrn)

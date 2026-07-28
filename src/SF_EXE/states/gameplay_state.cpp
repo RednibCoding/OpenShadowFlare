@@ -9,7 +9,6 @@ GameplayState::GameplayState(GameplayStateHooks hooks)
 void GameplayState::enter() {
     phase_ = GameplayPhase::loading;
     loading_counter_ = 0;
-    animation_frame_ = 0;
     world_ready_ =
         !hooks_.prepare_world || hooks_.prepare_world();
     if (world_ready_ && hooks_.start_world_music) {
@@ -45,12 +44,27 @@ GameplayFrameResult GameplayState::update(
             phase_ = GameplayPhase::world;
         }
     } else {
-        ++animation_frame_;
+        if (input.run_toggle_pressed &&
+            hooks_.toggle_player_run) {
+            hooks_.toggle_player_run();
+        }
+        if ((input.pointer_primary_pressed ||
+             input.pointer_primary_down) &&
+            input.pointer_x >= 0 &&
+            input.pointer_x < 640 &&
+            input.pointer_y >= 0 &&
+            input.pointer_y < 480 &&
+            hooks_.command_player_movement) {
+            hooks_.command_player_movement(
+                input.pointer_x, input.pointer_y);
+        }
+        if (hooks_.update_world) {
+            hooks_.update_world();
+        }
     }
     return {
         phase_,
         loading_counter_,
-        animation_frame_,
         world_ready_,
         world_ready_,
     };
