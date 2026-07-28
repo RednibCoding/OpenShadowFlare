@@ -73,11 +73,10 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: make the player walk
+## Last completed milestone: make the player walk
 
-This is the best next slice. It is small enough to finish and compare, but it
-touches nearly every piece the rest of gameplay will need: input, world
-coordinates, actor state, animation, collision, camera movement, and
+This slice touched nearly every piece the rest of gameplay will need: input,
+world coordinates, actor state, animation, collision, camera movement, and
 depth-sorted rendering.
 
 The deliberately narrow goal was to walk the new character around Remote Town
@@ -146,22 +145,26 @@ around Remote Town. Any collision corner that looks different in a
 side-by-side retail check should be kept as a small movement follow-up rather
 than worked around in later actor code.
 
-## What comes after movement
+## Current milestone: turn the first map into a real scenario loader
 
 The order below follows dependencies. Each heading is still meant to become
 several small commits rather than one giant implementation.
 
-### 1. Turn the initial map loader into a real scenario loader
+Remote Town began as a carefully reconstructed first case. The first loader
+slice now reads `Scenario/00000000/Scenario.Mct` itself instead of embedding
+its map name, entry position, facing direction, title, and music index in the
+code. The loader understands the fixed MCED header and the trailing entry-point
+table, and tests those fields against the retail file.
 
-Remote Town currently works as a carefully reconstructed first case. The next
-step is to remove the assumptions that only scenario `00000000` and map
-`f00_01` exist.
+That is a useful start, but it is not a complete MCT decoder. The large
+variable entity section between the header and entry table still needs to be
+mapped before we can populate a scenario or claim support for arbitrary maps.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:
 
-- decode the complete MCED/MCT header and entry tables;
-- select maps, entry points, direction, music, and resource lists from data;
+- identify and decode the variable entity blocks in the MCT;
+- select arbitrary scenario IDs and entry keys during transitions;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
 - represent dynamic entities separately from static OBL scenery;
@@ -173,7 +176,9 @@ transition path around `0x00426200`:
 Remote Town should then be one input to the loader, not a special hard-coded
 world.
 
-### 2. Reconstruct the player data used during gameplay
+## What follows the scenario loader
+
+### 1. Reconstruct the player data used during gameplay
 
 The menu currently carries only enough character information to enter the
 world. Gameplay needs the real character record:
@@ -190,7 +195,7 @@ This is where we should start mapping the large save/load routines at
 the real stored model early will keep us from inventing a temporary player
 structure that has to be thrown away later.
 
-### 3. Draw the gameplay HUD and cursor
+### 2. Draw the gameplay HUD and cursor
 
 Once the player has real values, the main interface can display something
 meaningful. Reconstruct it in layers:
@@ -207,7 +212,7 @@ HUD coordinates and visibility rules should come from the retail draw packets.
 The HUD must remain separate from the world camera and must not be baked into
 the world renderer.
 
-### 4. Populate the town
+### 3. Populate the town
 
 The next visible milestone is a Remote Town with its original NPCs and other
 dynamic objects.
@@ -227,7 +232,7 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 Start with one well-understood NPC, then generalize. Loading every record at
 once before one actor behaves correctly will only make mistakes harder to see.
 
-### 5. Bring up scripts, conversations, and town interaction
+### 4. Bring up scripts, conversations, and town interaction
 
 NPCs become useful when the scenario script can drive them. The reconstructed
 `RKC_RPG_SCRIPT` DLL is the reference here; the portable version belongs in
@@ -249,7 +254,7 @@ The script work should grow from real Remote Town interactions:
 The first target should be one complete conversation or town service that can
 be followed from click to visible result.
 
-### 6. Items, inventory, and equipment
+### 5. Items, inventory, and equipment
 
 Item support should use the real table data rather than a hand-written list.
 The work around `0x00462f80` and the proven `RKC_RPG_TABLE` reconstruction
@@ -269,7 +274,7 @@ This slice includes:
 A good first checkpoint is equipping one real item and seeing both the correct
 stat change and the correct player artwork.
 
-### 7. Combat and death
+### 6. Combat and death
 
 Combat should be built on the same command, actor, animation, and collision
 systems used for movement. Avoid creating a separate shortcut just to make an
@@ -290,7 +295,7 @@ Work through it in this order:
 One player class fighting one known enemy is enough for the first combat
 slice. Other classes and special attacks come after the basic loop matches.
 
-### 8. Skills, magic, status, and the remaining game screens
+### 7. Skills, magic, status, and the remaining game screens
 
 Once the ordinary combat loop is reliable, add the systems that modify it:
 
@@ -305,7 +310,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 The large UI functions should be split by screen and concern in the portable
 code even when the original compiler emitted one enormous function.
 
-### 9. Finish save and load
+### 8. Finish save and load
 
 Save support should preserve the retail format so original characters remain
 usable and saves written by OpenShadowFlare can be opened by the original
@@ -326,7 +331,7 @@ That means:
 Save parsing can grow alongside earlier slices, but writing should only be
 declared complete once all persistent gameplay systems have a real owner.
 
-### 10. Play through Episode 1
+### 9. Play through Episode 1
 
 At this point the work changes from building the engine's backbone to finding
 all the assumptions that only worked in Remote Town.
@@ -345,7 +350,7 @@ The goal is not merely reaching the final map. A normal playthrough should be
 possible without developer shortcuts, hard-coded quest flags, or falling back
 to the retail executable.
 
-### 11. Cover the remaining episodes
+### 10. Cover the remaining episodes
 
 Once Episode 1 is solid, run the same process through Episodes 2–4. Most of the
 engine should already exist by then, but later content will expose less common
@@ -354,7 +359,7 @@ script commands, AI actions, effects, items, and map combinations.
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
 
-### 12. Multiplayer
+### 11. Multiplayer
 
 Networking comes after single-player simulation is deterministic and complete
 enough to synchronize. The reconstructed `RKC_NETWORK` DLL gives us a strong

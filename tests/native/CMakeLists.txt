@@ -62,6 +62,32 @@ if(TARGET sf_game_core)
 
   add_test(NAME movement COMMAND movement_test)
 
+  add_executable(scenario_data_test scenario_data_test.cpp)
+  target_link_libraries(
+    scenario_data_test
+    PRIVATE
+      OpenShadowFlare::GameCore
+  )
+  target_compile_features(
+    scenario_data_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    scenario_data_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    scenario_data_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      scenario_data_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      scenario_data_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME scenario_data COMMAND scenario_data_test)
+
   add_executable(gapi_test gapi_test.cpp)
   target_link_libraries(
     gapi_test

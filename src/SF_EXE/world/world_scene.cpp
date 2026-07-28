@@ -47,6 +47,12 @@ std::vector<std::string> readPatternList(
     return result;
 }
 
+std::string mapStem(const std::string& map_path) {
+    std::string normalized = map_path;
+    std::replace(normalized.begin(), normalized.end(), '\\', '/');
+    return std::filesystem::path(normalized).stem().string();
+}
+
 }  // namespace
 
 bool WorldScene::loadInitialScenario(
@@ -55,22 +61,41 @@ bool WorldScene::loadInitialScenario(
     std::string* error) {
     clear();
 
-    // Scenario 00000000 names Map\f00_01.map in its MCT header. Its entry
-    // record for the new-player key (0) provides the position and direction.
+    if (!scenario_.load(
+            data_root / "Scenario" / "00000000" / "Scenario.Mct",
+            error)) {
+        return false;
+    }
+    const std::string map_name = mapStem(scenario_.mapPath());
+    if (map_name.empty()) {
+        setError(error, "The scenario does not name a map.");
+        clear();
+        return false;
+    }
+    const ScenarioEntry* entry = scenario_.findEntry(0);
+    if (!entry) {
+        setError(
+            error,
+            "The scenario does not contain entry point 0.");
+        clear();
+        return false;
+    }
+
     const std::filesystem::path map_root = data_root / "Map";
     if (!ground_.load(
-            map_root / "Ground" / "f00_01.Gnd", error)) {
+            map_root / "Ground" / (map_name + ".Gnd"), error)) {
+        clear();
         return false;
     }
     if (!object_map_.load(
-            map_root / "Object" / "f00_01.Obl", error)) {
+            map_root / "Object" / (map_name + ".Obl"), error)) {
         clear();
         return false;
     }
 
     const std::vector<std::string> pattern_names =
         readPatternList(
-            map_root / "Pattern" / "f00_01.Lst");
+            map_root / "Pattern" / (map_name + ".Lst"));
     if (pattern_names.empty()) {
         setError(error, "The map pattern list could not be read.");
         clear();
@@ -138,13 +163,17 @@ bool WorldScene::loadInitialScenario(
     // table path. FUN_00450d40 turns both gender tables' agility value 128
     // into tier five; FUN_00450080 then converts that to 20 world units per
     // update.
-    player_.reset({89898, 2811}, 3, 5);
-    music_track_ = 0;
+    player_.reset(
+        {entry->world_x, entry->world_y},
+        entry->direction,
+        5);
+    music_track_ = scenario_.musicTrack();
     has_player_ = true;
     return true;
 }
 
 void WorldScene::clear() {
+    scenario_.clear();
     ground_.clear();
     object_map_.clear();
     map_patterns_.clear();
@@ -254,6 +283,10 @@ std::int32_t WorldScene::cameraScreenY() const {
 
 std::int32_t WorldScene::musicTrack() const {
     return music_track_;
+}
+
+const ScenarioData& WorldScene::scenario() const {
+    return scenario_;
 }
 
 }  // namespace osf

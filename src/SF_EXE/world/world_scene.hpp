@@ -4,6 +4,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "player_actor.hpp"
+#include "scenario_data.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -44,8 +45,10 @@ public:
     std::int32_t cameraScreenX() const;
     std::int32_t cameraScreenY() const;
     std::int32_t musicTrack() const;
+    const ScenarioData& scenario() const;
 
 private:
+    ScenarioData scenario_;
     GroundMap ground_;
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;

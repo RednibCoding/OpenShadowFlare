@@ -19,6 +19,7 @@ add_library(
   states/menu_states.cpp
   states/save_catalog.cpp
   world/player_actor.cpp
+  world/scenario_data.cpp
   world/world_scene.cpp
 )
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)

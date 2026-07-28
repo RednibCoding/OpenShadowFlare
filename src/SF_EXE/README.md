@@ -41,7 +41,9 @@ title/character-selection/gameplay transitions. The title and character-select
 enter/leave lifecycles are reconstructed too, including their asset manifests,
 save-slot behavior, input tables, random smoke delays, and shared menu music.
 The original VOC containers are decoded portably and played through LAL, with
-the configured effect and BGM volumes.
+the configured effect and BGM volumes. The broader reconstruction order and
+the current slice are tracked in the repository's
+[`roadmap.md`](../../roadmap.md).
 
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
@@ -67,12 +69,12 @@ Those character and mode menus are drawn by the software backend using
 `Select.njp` and `Font00.njp`. Entering a single-player game now shows the
 original Episode 1 loading artwork, swaps its loading label for the moving
 confirmation arrow when setup is complete, and accepts Return or a click on
-that arrow before handing off to the first world layer. The runtime decodes
-Remote Town's compressed
-`f00_01.Gnd` and 279-record `f00_01.Obl`, loads their NJP/SDW pattern list,
-centers the camera on the retail new-character spawn, and draws the chosen
-player animation among the original gates, walls, trees, and rocks. The player
-uses the MCT entry direction, a separate SDW shadow, and the same
+that arrow before handing off to the first world layer. The runtime reads
+scenario `00000000`'s MCT header and entry table, uses its map path to decode
+Remote Town's compressed `f00_01.Gnd` and 279-record `f00_01.Obl`, loads their
+NJP/SDW pattern list, centers the camera on entry key zero, and draws the
+chosen player animation among the original gates, walls, trees, and rocks.
+The player uses the entry's facing direction, a separate SDW shadow, and the same
 part-visibility table that keeps unequipped armor and weapons hidden.
 Configured semi-transparent shadows apply to both scenery and the player.
 Remote Town's MCT music index also starts the looping `BGM00.Voc` through LAL

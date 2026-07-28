@@ -83,11 +83,27 @@ IDs appear to follow a structured format:
 - `99XXXXXX` - Special/bonus scenarios (99000000-99000037)
 
 ### Scenario.Mct
-Map Character/Entity Table format:
-```
-Header:
-  0x00: char[16] magic = "MCED DATA v0000"
-```
+The executable loader at `0x00427b50` starts with this fixed section:
+
+| Offset | Size | Meaning |
+|--------|------|---------|
+| `0x000` | 16 | `MCED DATA v0000`, followed by byte `0x1a` |
+| `0x010` | 260 | Controller/AI path |
+| `0x114` | 260 | Map path, such as `Map\f00_01.map` |
+| `0x218` | 4 | Unknown 32-bit field |
+| `0x21c` | 4 | Unknown 32-bit field |
+| `0x220` | 4 | Zero-based music index |
+| `0x224` | 256 | Area title |
+| `0x324` | variable | Entity and scenario records, not fully mapped yet |
+
+Near the end of the file is a 32-bit entry count followed by 16-byte entry
+records. Each record stores a signed 32-bit key, world X, world Y, and
+eight-way direction, in that order. Three more 32-bit scenario fields close
+the file; their meanings are not known yet.
+
+The initial `00000000` file names `Map\f00_01.map`, title `Remote Town`, and
+music index 0. Entry key 0 starts a new character at world position
+(`89898`, `2811`) facing direction 3.
 
 ### Scenario.Scs
 Scenario Script - loaded via `RKC_RPG_SCRIPT::ReadBinary()`
@@ -395,11 +411,9 @@ Via RKC_RPG_TABLE DLL:
 ## Scenario Data
 
 ### Scenario.Mct
-Map Character/Entity Table format:
-```
-Header:
-  0x00: char[16] magic = "MCED DATA v0000"
-```
+The known fixed header and trailing entry-point layout are documented in
+[Scenario Files](#scenario-files). The variable entity blocks are still being
+mapped from `0x00427b50`.
 
 ### Scenario.Scs
 Scenario Script - loaded via `RKC_RPG_SCRIPT::ReadBinary()`

@@ -38,8 +38,9 @@ The first game-core slice covers:
 - the statically linked Visual C++ random-number generator
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
-- the initial `00000000` scenario's `f00_01` ground and object maps, NJP/SDW
-  pattern list, new-player spawn, and player CAF/NJP/SDW drawing
+- the initial `00000000` scenario's fixed MCT header and entry-point table
+- its data-selected ground and object maps, NJP/SDW pattern list, new-player
+  spawn, facing direction, title, music, and player CAF/NJP/SDW drawing
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -95,9 +96,16 @@ retail arrow rectangle enters the world. The 120-frame `VisualNN.njp` fade in
 `0x00417bd0` is a separate loading presenter used later in gameplay and is not
 part of this initial transition.
 
-The first scenario then draws the decoded `f00_01.Gnd` cells at the new-player
-entry record (`89898`, `2811`, direction `3`) and places the selected male or
-female animation at the camera center. Its 279 `f00_01.Obl` records now supply
+`ScenarioData` follows the fixed part of `0x00427b50`: it validates
+`MCED DATA v0000\x1a`, reads the two 260-byte paths, music index, and 256-byte
+area title, then decodes the trailing 16-byte entry records in their file order
+of key, world X, world Y, and direction. The entity blocks between those two
+parts are still opaque. For scenario `00000000`, entry key zero supplies
+(`89898`, `2811`, direction `3`) and the MCT map path selects `f00_01`.
+
+The first scenario then draws the decoded `f00_01.Gnd` cells at that entry and
+places the selected male or female animation at the camera center. Its 279
+`f00_01.Obl` records now supply
 Remote Town's gates, walls, trees, rocks, and other static scenery. Pattern
 bounds provide view culling, the OBL status classes and judgement rectangles
 provide retail depth keys, and the player is inserted into the default scenery

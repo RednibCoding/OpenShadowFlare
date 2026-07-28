@@ -112,6 +112,15 @@ sorts them using status classes and judgement rectangles, and inserts dynamic
 actors into the visible depth order. The portable first-world slice now
 reconstructs that pipeline for static OBL scenery and the player.
 
+The MCT loader at `0x00427b50` first reads a 16-byte
+`MCED DATA v0000\x1a` signature, two 260-byte paths, two unknown 32-bit
+values, the music index, and a 256-byte title. Its variable entity section is
+followed near EOF by a count and 16-byte entry records in key, world X, world
+Y, direction order. `0x00427930` searches those records by key. The portable
+loader now uses scenario `00000000`'s map path and entry key zero rather than
+embedding `f00_01`, (`89898`, `2811`), direction 3, and music index 0 in
+`WorldScene`; the entity section remains to be decoded.
+
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
 and 1 are the base body and shadow, while equipped items select additional
