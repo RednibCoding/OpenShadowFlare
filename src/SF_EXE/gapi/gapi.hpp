@@ -29,6 +29,7 @@ struct PatternDraw {
     std::int32_t scale_x = 1000;
     std::int32_t scale_y = 1000;
     std::int32_t brightness = 1000;
+    std::int32_t opacity = 1000;
 };
 
 struct BitmapDraw {

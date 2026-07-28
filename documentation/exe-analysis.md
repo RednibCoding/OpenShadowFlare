@@ -47,6 +47,7 @@ Total: 258 RKC DLL imports
 | 0x004028a0 | LeftClickHandler - Left mouse button |
 | 0x00402900 | RightClickHandler - Right/middle mouse |
 | 0x00402920 | PaintInitialLoadingScreen - cached loading page and overlay |
+| 0x004030F0 | RenderWorld - ground, shadow, and depth-sorted object passes |
 | 0x004023d0 | UpdateGameState - Game state machine (switches on state 0/1/2) |
 | 0x00401b90 | Shutdown - Cleanup all subsystems |
 | 0x0041d970 | BootstrapGameplay - first-frame scenario setup (2936 bytes) |
@@ -102,6 +103,25 @@ world.
 `0x00417bd0` is a different loading presenter used later in gameplay. It draws
 `Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
 frames, and uses `WaitIcon.njp`.
+
+The initial scenario map is loaded by the large transition routine at
+`0x00426200`. The `f00_01.Lst` indices are preserved across ground and object
+records: NJP entries hold visible patterns and their following SDW entries hold
+one-bit shadows. `0x004030f0` builds separate shadow and visible-object lists,
+sorts them using status classes and judgement rectangles, and inserts dynamic
+actors into the visible depth order. The portable first-world slice now
+reconstructs that pipeline for static OBL scenery and the player.
+
+Player CAF parts are not independent actors that should all be drawn.
+`0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
+and 1 are the base body and shadow, while equipped items select additional
+armor and weapon entries. The new-player MCT record starts at direction 3, and
+`Animation00.Sdw` supplies the corresponding one-bit player shadow.
+
+The same MCT stores music index 0 for Remote Town. `0x004275e0` maps scenario
+music indices to `System\Game\Music\BGM%02d.Voc`, loads the selected container
+into voice slot 500, and resets its start counter. `0x004275a0` starts sample
+zero looping on the following gameplay update with the configured BGM volume.
 
 ## SFWindow Object Layout (at 0x00482778)
 

@@ -1,5 +1,6 @@
 #include "caf.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 #include <limits>
@@ -251,6 +252,16 @@ std::int32_t CafAnimation::palette_mode() const {
 
 std::int32_t CafAnimation::chart_priority_stride() const {
     return chart_priority_stride_;
+}
+
+std::size_t CafAnimation::maxPartCount() const {
+    std::size_t maximum = 0;
+    for (const CafChart& chart : charts_) {
+        for (const CafDirection& direction : chart.directions) {
+            maximum = std::max(maximum, direction.parts.size());
+        }
+    }
+    return maximum;
 }
 
 const std::vector<CafChart>& CafAnimation::charts() const {

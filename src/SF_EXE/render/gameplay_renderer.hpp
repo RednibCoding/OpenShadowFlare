@@ -21,7 +21,8 @@ void renderInitialLoadingScreen(
 void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t animation_frame);
+    std::int32_t animation_frame,
+    std::int32_t shadow_opacity = 500);
 
 }  // namespace osf
 

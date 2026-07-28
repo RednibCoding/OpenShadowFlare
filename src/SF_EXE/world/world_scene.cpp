@@ -56,10 +56,15 @@ bool WorldScene::loadInitialScenario(
     clear();
 
     // Scenario 00000000 names Map\f00_01.map in its MCT header. Its entry
-    // record for the new-player key (0) places the player at this position.
+    // record for the new-player key (0) provides the position and direction.
     const std::filesystem::path map_root = data_root / "Map";
     if (!ground_.load(
             map_root / "Ground" / "f00_01.Gnd", error)) {
+        return false;
+    }
+    if (!object_map_.load(
+            map_root / "Object" / "f00_01.Obl", error)) {
+        clear();
         return false;
     }
 
@@ -71,11 +76,12 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
-    ground_patterns_.resize(pattern_names.size());
+    map_patterns_.resize(pattern_names.size());
     for (std::size_t index = 0;
          index < pattern_names.size();
          ++index) {
-        if (!endsWithIgnoreCase(pattern_names[index], ".njp")) {
+        if (!endsWithIgnoreCase(pattern_names[index], ".njp") &&
+            !endsWithIgnoreCase(pattern_names[index], ".sdw")) {
             continue;
         }
         auto image = std::make_unique<gapi::NjpImage>();
@@ -91,7 +97,7 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
-        ground_patterns_[index] = std::move(image);
+        map_patterns_[index] = std::move(image);
     }
 
     const char* player_directory =
@@ -101,6 +107,9 @@ bool WorldScene::loadInitialScenario(
     std::string player_error;
     if (!player_patterns_.load(
             player_root / "Animation00.Njp",
+            &player_error) ||
+        !player_shadow_patterns_.load(
+            player_root / "Animation00.Sdw",
             &player_error) ||
         !player_animation_.load(
             player_root / "Animation00.Caf",
@@ -113,37 +122,69 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    // The retail appearance refresh at 0x00444ca0 clears this table,
+    // enables the base body and shadow, then enables only parts supplied by
+    // equipped items. A newly created character has no equipped item parts.
+    player_parts_enabled_.assign(
+        player_animation_.maxPartCount(), 0);
+    if (!player_parts_enabled_.empty()) {
+        player_parts_enabled_[0] = 1;
+    }
+    if (player_parts_enabled_.size() > 1) {
+        player_parts_enabled_[1] = 1;
+    }
+
     player_world_x_ = 89898;
     player_world_y_ = 2811;
+    player_direction_ = 3;
+    music_track_ = 0;
     has_player_ = true;
     return true;
 }
 
 void WorldScene::clear() {
     ground_.clear();
-    ground_patterns_.clear();
+    object_map_.clear();
+    map_patterns_.clear();
     player_patterns_.clear();
+    player_shadow_patterns_.clear();
     player_animation_.clear();
+    player_parts_enabled_.clear();
     has_player_ = false;
     player_world_x_ = 0;
     player_world_y_ = 0;
+    player_direction_ = 0;
+    music_track_ = -1;
 }
 
 const GroundMap& WorldScene::ground() const {
     return ground_;
 }
 
+const ObjectMap& WorldScene::objectMap() const {
+    return object_map_;
+}
+
 const std::vector<std::unique_ptr<gapi::NjpImage>>&
-WorldScene::groundPatterns() const {
-    return ground_patterns_;
+WorldScene::mapPatterns() const {
+    return map_patterns_;
 }
 
 const gapi::NjpImage& WorldScene::playerPatterns() const {
     return player_patterns_;
 }
 
+const gapi::NjpImage& WorldScene::playerShadowPatterns() const {
+    return player_shadow_patterns_;
+}
+
 const gapi::CafAnimation& WorldScene::playerAnimation() const {
     return player_animation_;
+}
+
+bool WorldScene::playerPartEnabled(std::size_t part) const {
+    return part < player_parts_enabled_.size() &&
+           player_parts_enabled_[part] != 0;
 }
 
 bool WorldScene::hasPlayer() const {
@@ -156,6 +197,14 @@ std::int32_t WorldScene::playerWorldX() const {
 
 std::int32_t WorldScene::playerWorldY() const {
     return player_world_y_;
+}
+
+std::int32_t WorldScene::playerDirection() const {
+    return player_direction_;
+}
+
+std::int32_t WorldScene::musicTrack() const {
+    return music_track_;
 }
 
 }  // namespace osf

@@ -3,6 +3,7 @@
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
 #include "world/ground_map.hpp"
+#include "world/object_map.hpp"
 
 #include <array>
 #include <cstdint>
@@ -288,20 +289,81 @@ bool testGroundMapDecode() {
         "The retail GND cell planes were decoded incorrectly.");
 }
 
+bool testObjectMapDecode() {
+    std::vector<std::uint8_t> bytes;
+    const char header[] = "RPGSCRN_OBJv001\x1a";
+    bytes.insert(bytes.end(), header, header + 16);
+    appendI32(bytes, 1);
+    appendI32(bytes, 100);
+    appendI32(bytes, 200);
+    appendI16(bytes, 2);
+    appendI16(bytes, 3);
+    appendI16(bytes, -1);
+    appendI16(bytes, 750);
+    appendI16(bytes, 8);
+    appendI16(bytes, 10);
+    appendI16(bytes, 900);
+    appendI16(bytes, 800);
+    appendI16(bytes, 700);
+    appendI32(bytes, -10);
+    appendI32(bytes, -20);
+    appendI32(bytes, 30);
+    appendI32(bytes, 40);
+
+    osf::ObjectMap map;
+    if (!check(
+            map.decode(bytes) &&
+                map.version() == 1 &&
+                map.objects().size() == 1,
+            "A valid retail OBL fixture was rejected.")) {
+        return false;
+    }
+    const osf::MapObject& object = map.objects().front();
+    if (!check(
+            object.world_x == 100 &&
+                object.world_y == 200 &&
+                object.pattern_set == 2 &&
+                object.pattern == 3 &&
+                object.palette == -1 &&
+                object.opacity == 750 &&
+                object.status == 8 &&
+                object.height == 10 &&
+                object.red_strength == 900 &&
+                object.green_strength == 800 &&
+                object.blue_strength == 700 &&
+                object.judgement.left == -10 &&
+                object.judgement.top == -20 &&
+                object.judgement.right == 30 &&
+                object.judgement.bottom == 40,
+            "The retail OBL record fields were decoded incorrectly.")) {
+        return false;
+    }
+
+    bytes.pop_back();
+    return check(
+        !map.decode(bytes),
+        "A truncated retail OBL record was accepted.");
+}
+
 bool testGameplayLoadingTransition() {
     std::int32_t prepares = 0;
     std::int32_t releases = 0;
+    std::int32_t musicStarts = 0;
+    std::int32_t musicStops = 0;
     osf::GameplayState state({
         [&prepares] {
             ++prepares;
             return true;
         },
         [&releases] { ++releases; },
+        [&musicStarts] { ++musicStarts; },
+        [&musicStops] { ++musicStops; },
     });
     state.enter();
     osf::GameplayFrameResult frame = state.update();
     if (!check(
             prepares == 1 &&
+                musicStarts == 1 &&
                 frame.phase == osf::GameplayPhase::loading &&
                 frame.loading_counter == 1 &&
                 frame.ready_to_continue,
@@ -317,9 +379,11 @@ bool testGameplayLoadingTransition() {
     frame = state.update({false, true, 600, 460});
     state.leave();
     return check(
-        frame.phase == osf::GameplayPhase::world &&
+            frame.phase == osf::GameplayPhase::world &&
             frame.world_ready &&
-            releases == 1,
+            releases == 1 &&
+            musicStarts == 1 &&
+            musicStops == 1,
         "Gameplay did not hand loading off to the world cleanly.");
 }
 
@@ -332,6 +396,7 @@ int main() {
         !testCommandLine() ||
         !testStateDispatcher() ||
         !testGroundMapDecode() ||
+        !testObjectMapDecode() ||
         !testGameplayLoadingTransition()) {
         return 1;
     }

@@ -292,7 +292,7 @@ bool testNjpAndSoftwareBackend() {
     backend.endFrame();
 
     const osf::gapi::SurfaceView surface = backend.surface();
-    return check(
+    if (!check(
         sizeof(osf::gapi::Color) == 4 &&
             presented == 1 &&
             surface.pixels[0].red == 50 &&
@@ -303,7 +303,21 @@ bool testNjpAndSoftwareBackend() {
             surface.pixels[3].red == 100 &&
             surface.pixels[3].green == 90 &&
             surface.pixels[3].blue == 80,
-        "NJP orientation, palette conversion, or brightness differs.");
+        "NJP orientation, palette conversion, or brightness differs.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend opacityBackend(1, 1);
+    opacityBackend.beginFrame({20, 40, 60, 255});
+    opacityBackend.drawPattern(
+        image, 0, {0, 0, 1000, 1000, 1000, 500});
+    const osf::gapi::Color blended =
+        opacityBackend.surface().pixels[0];
+    return check(
+        blended.red == 60 &&
+            blended.green == 20 &&
+            blended.blue == 30,
+        "GAPI pattern opacity did not blend portably.");
 }
 
 bool testTruncatedNjp() {
@@ -374,6 +388,7 @@ bool testCafAndTitleAnimation() {
     if (!check(
             animation.version() == 2 &&
                 animation.charts().size() == 1 &&
+                animation.maxPartCount() == 1 &&
                 animation.charts()[0].status == 1 &&
                 animation.charts()[0].directions[8].frame_count == 2 &&
                 animation.charts()[0].directions[8].parts.size() == 1 &&

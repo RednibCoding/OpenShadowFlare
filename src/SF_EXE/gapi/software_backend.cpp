@@ -18,6 +18,18 @@ std::uint8_t applyBrightness(
         static_cast<std::int32_t>(value) * brightness / 1000);
 }
 
+std::uint8_t blendChannel(
+    std::uint8_t destination,
+    std::uint8_t source,
+    std::int32_t opacity) {
+    opacity = std::clamp(opacity, 0, 1000);
+    return static_cast<std::uint8_t>(
+        (static_cast<std::int32_t>(source) * opacity +
+         static_cast<std::int32_t>(destination) *
+             (1000 - opacity)) /
+        1000);
+}
+
 std::uint8_t readPixelIndex(
     const NjpPart& part,
     std::int32_t x,
@@ -150,9 +162,24 @@ bool SoftwareBackend::drawPattern(
                     applyBrightness(color.green, draw.brightness);
                 color.blue =
                     applyBrightness(color.blue, draw.brightness);
-                pixels_[
-                    static_cast<std::size_t>(target_y) * width_ +
-                    static_cast<std::size_t>(target_x)] = color;
+                Color& destination =
+                    pixels_[
+                        static_cast<std::size_t>(target_y) *
+                            width_ +
+                        static_cast<std::size_t>(target_x)];
+                if (draw.opacity >= 1000) {
+                    destination = color;
+                } else if (draw.opacity > 0) {
+                    destination.red = blendChannel(
+                        destination.red, color.red, draw.opacity);
+                    destination.green = blendChannel(
+                        destination.green,
+                        color.green,
+                        draw.opacity);
+                    destination.blue = blendChannel(
+                        destination.blue, color.blue, draw.opacity);
+                    destination.alpha = 255;
+                }
             }
         }
     }

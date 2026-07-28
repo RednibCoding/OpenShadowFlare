@@ -18,6 +18,7 @@ add_library(
   states/menu_states.cpp
   states/save_catalog.cpp
   world/ground_map.cpp
+  world/object_map.cpp
   world/world_scene.cpp
 )
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)

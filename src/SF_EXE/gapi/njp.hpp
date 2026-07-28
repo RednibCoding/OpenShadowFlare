@@ -51,12 +51,14 @@ public:
 
     void clear();
     std::int32_t version() const;
+    bool isShadow() const;
     const std::vector<NjpPart>& parts() const;
     const std::vector<NjpPattern>& patterns() const;
     const std::vector<NjpPalette>& palettes() const;
 
 private:
     std::int32_t version_ = 0;
+    bool shadow_ = false;
     std::vector<NjpPart> parts_;
     std::vector<NjpPattern> patterns_;
     std::vector<NjpPalette> palettes_;

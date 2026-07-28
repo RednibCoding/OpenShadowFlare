@@ -68,9 +68,15 @@ original Episode 1 loading artwork, swaps its loading label for the moving
 confirmation arrow when setup is complete, and accepts Return or a click on
 that arrow before handing off to the first world layer. The runtime decodes
 Remote Town's compressed
-`f00_01.Gnd`, loads its NJP pattern list, centers the camera on the retail
-new-character spawn, and draws the chosen player animation. Map objects, NPCs,
-the HUD, scripts, and gameplay simulation are still in progress.
+`f00_01.Gnd` and 279-record `f00_01.Obl`, loads their NJP/SDW pattern list,
+centers the camera on the retail new-character spawn, and draws the chosen
+player animation among the original gates, walls, trees, and rocks. The player
+uses the MCT entry direction, a separate SDW shadow, and the same
+part-visibility table that keeps unequipped armor and weapons hidden.
+Configured semi-transparent shadows apply to both scenery and the player.
+Remote Town's MCT music index also starts the looping `BGM00.Voc` through LAL
+at the configured BGM volume. NPCs, the HUD, movement, scripts, darkness, and
+gameplay simulation are still in progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
@@ -97,5 +103,5 @@ implementations:
 - `gapi/` contains the graphics interface, NJP decoder, and software backend
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
 - `states/` contains the top-level dispatcher and reconstructed game states
-- `world/` contains portable scenario and ground-map data
+- `world/` contains portable scenario, ground-map, and object-map data
 - `runtime/` contains the executable shell and fixed-surface LGL presenter

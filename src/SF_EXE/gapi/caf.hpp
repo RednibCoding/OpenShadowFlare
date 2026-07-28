@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_CAF_HPP
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -39,6 +40,7 @@ public:
     std::int32_t version() const;
     std::int32_t palette_mode() const;
     std::int32_t chart_priority_stride() const;
+    std::size_t maxPartCount() const;
     const std::vector<CafChart>& charts() const;
 
 private:

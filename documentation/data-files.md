@@ -7,6 +7,7 @@
 | `.njp`    | NJudgeUniPat - Sprite/pattern data (RCLIB-L compressed) |
 | `.sdw`    | Shadow data for sprites |
 | `.caf`    | Character animation frames |
+| `.Obl`    | Map object placement and collision records |
 | `.Ssv`    | Save game data |
 | `.Bmp`    | Save slot thumbnail (Windows Bitmap) |
 | `.Voc`    | Voice/sound data |
@@ -45,6 +46,11 @@
 - `Player\Common\UnlockSW.caf/sdw/njp` - Unlock animations
 - `Player\Common\Compasses.caf/sdw/njp` - Compass graphics
 - `Player\Common\Powerup.caf/sdw/njp` - Powerup effects
+
+The CAF directions contain several parallel visual parts. Part 0 is the base
+body and part 1 selects the matching SDW shadow. The remaining parts are
+equipment variants, not layers that are all meant to be visible at once. The
+executable rebuilds a per-part enable table from the currently equipped items.
 
 ## Save Files
 
@@ -88,6 +94,18 @@ Scenario Script - loaded via `RKC_RPG_SCRIPT::ReadBinary()`
 
 Script components:
 - StatusBlock - Character statuses
+
+### Map Object Lists (`Map\Object\*.Obl`)
+
+Object lists begin with `RPGSCRN_OBJv000` or `RPGSCRN_OBJv001`, followed by a
+32-bit record count. Each record stores world X/Y, a 16-bit pattern-list index
+and pattern number, palette, opacity, status, height, and four 32-bit judgement
+bounds. Version 1 adds three 16-bit color-strength fields before the judgement
+rectangle. Records are 36 bytes in version 0 and 42 bytes in version 1.
+
+The pattern-list index refers to the matching map `.Lst`. Visible NJP entries
+are commonly followed by a `ShadowLowPat` SDW entry used by objects whose
+status includes the shadow bit.
 - SentenceBlock - Script sentences
 - Commands with operands (75 opcodes)
 - TempFlag / NetFlag - Script flags
@@ -395,7 +413,8 @@ Script components:
 ## Audio Files
 
 ### Background Music (.Voc)
-Game music tracks (11 total):
+The executable contains an 11-entry path table. The preserved Episode 1 data
+set ships seven of those tracks:
 - `System\Game\Music\BGM00.Voc` - BGM 1
 - `System\Game\Music\BGM01.Voc` - BGM 2
 - `System\Game\Music\BGM02.Voc` - BGM 3
@@ -403,11 +422,10 @@ Game music tracks (11 total):
 - `System\Game\Music\BGM04.Voc` - BGM 5
 - `System\Game\Music\BGM05.Voc` - BGM 6
 - `System\Game\Music\BGM06.Voc` - BGM 7
-- `System\Game\Music\BGM07.Voc` - BGM 8
-- `System\Game\Music\BGM08.Voc` - BGM 9
-- `System\Game\Music\BGM09.Voc` - BGM 10
-- `System\Game\Music\BGM10.Voc` - BGM 11
 - `System\Title\Music\BGM00.Voc` - Title screen music
+
+Scenario MCT records select these tracks by zero-based index. Remote Town uses
+index 0, so its looping track is `System\Game\Music\BGM00.Voc`.
 
 ### Voice/Sound Effects
 - `System\Game\Voice\Voice00.Voc` - Voice/SFX

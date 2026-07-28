@@ -38,8 +38,8 @@ The first game-core slice covers:
 - the statically linked Visual C++ random-number generator
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
-- the initial `00000000` scenario's `f00_01` ground grid, pattern list,
-  new-player spawn, and player CAF/NJP drawing
+- the initial `00000000` scenario's `f00_01` ground and object maps, NJP/SDW
+  pattern list, new-player spawn, and player CAF/NJP/SDW drawing
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -88,9 +88,29 @@ retail arrow rectangle enters the world. The 120-frame `VisualNN.njp` fade in
 part of this initial transition.
 
 The first scenario then draws the decoded `f00_01.Gnd` cells at the new-player
-entry record (`89898`, `2811`) and places the selected male or female CAF/NJP
-animation at the camera center.
+entry record (`89898`, `2811`, direction `3`) and places the selected male or
+female animation at the camera center. Its 279 `f00_01.Obl` records now supply
+Remote Town's gates, walls, trees, rocks, and other static scenery. Pattern
+bounds provide view culling, the OBL status classes and judgement rectangles
+provide retail depth keys, and the player is inserted into the default scenery
+pass at foot depth. Paired `ShadowLowPat` SDW assets render first with the
+configured opaque or 50-percent shadow mode through GAPI's general opacity
+support.
 
-This is the first world layer, not complete gameplay rendering. Map objects
-from `f00_01.Obl`, the HUD, NPCs, world simulation, scripting, and saved-game
-scenario restoration are the next executable layers.
+The player CAF path now follows `0x00434ef0` and the appearance refresh at
+`0x00444ca0`: the MCT direction is preserved, and the per-part enable table
+starts with only the base body and shadow. Equipment layers remain disabled
+until the future inventory slice has an equipped item to select them. The
+player shadow comes from
+`Animation00.Sdw`; palette index zero remains the NJP cutout rather than being
+drawn as a black pixel.
+
+The initial scenario's MCT music field is `0`. The transition helper at
+`0x004275e0` maps that to `System\Game\Music\BGM00.Voc`, and the update helper
+at `0x004275a0` starts sample zero looping in voice slot 500. Gameplay now
+starts the same track once the world is prepared, applies the configured BGM
+volume through LAL, and releases it with the gameplay state.
+
+This is still not complete gameplay rendering. The HUD, movement, NPCs, world
+simulation, scripting, darkness, equipment state, and saved-game scenario
+restoration are the next executable layers.

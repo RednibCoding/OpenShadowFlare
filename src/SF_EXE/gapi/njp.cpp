@@ -155,6 +155,7 @@ bool NjpImage::decode(
         setError(error, "The NJP version is unsupported.");
         return false;
     }
+    shadow_ = shadow;
 
     std::int32_t part_count = 0;
     if (!input.readI32(part_count) || part_count < 0) {
@@ -356,6 +357,7 @@ bool NjpImage::load(
 
 void NjpImage::clear() {
     version_ = 0;
+    shadow_ = false;
     parts_.clear();
     patterns_.clear();
     palettes_.clear();
@@ -363,6 +365,10 @@ void NjpImage::clear() {
 
 std::int32_t NjpImage::version() const {
     return version_;
+}
+
+bool NjpImage::isShadow() const {
+    return shadow_;
 }
 
 const std::vector<NjpPart>& NjpImage::parts() const {

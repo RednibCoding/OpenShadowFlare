@@ -12,10 +12,16 @@ void GameplayState::enter() {
     animation_frame_ = 0;
     world_ready_ =
         !hooks_.prepare_world || hooks_.prepare_world();
+    if (world_ready_ && hooks_.start_world_music) {
+        hooks_.start_world_music();
+    }
     active_ = true;
 }
 
 void GameplayState::leave() {
+    if (active_ && hooks_.stop_world_music) {
+        hooks_.stop_world_music();
+    }
     if (active_ && hooks_.release_world) {
         hooks_.release_world();
     }

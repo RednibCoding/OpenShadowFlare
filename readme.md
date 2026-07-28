@@ -81,8 +81,9 @@ Here's where things stand today:
   including creation, save previews, deletion, and the original online/single
   mode menus. Starting a single-player game now brings up the original loading
   screen and enters Remote Town with the player on the decoded retail ground
-  map. Buildings and other map objects, the HUD, NPCs, scripts, and gameplay
-  simulation come next.
+  map. Remote Town's original gates, walls, trees, rocks, and semi-transparent
+  shadows are decoded from its object map and depth-sorted around the player.
+  The HUD, NPCs, scripts, movement, and gameplay simulation come next.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.

@@ -259,6 +259,7 @@ public:
         if (audioInitialized_) {
             effectAudio_.clear();
             menuMusicAudio_.clear();
+            worldMusicAudio_.clear();
             lal_shutdown();
         }
         if (windowingInitialized_) {
@@ -330,6 +331,8 @@ public:
                 effectAudio_,
                 "System\\Game\\Voice\\Voice00.Voc");
         }
+        shadowOpacity_ =
+            gameConfig.semi_transparent_shadow ? 500 : 1000;
 
         if (!loadPattern(
                 0, "System\\Common\\Pattern\\Font00.njp") ||
@@ -639,7 +642,8 @@ private:
                 osf::renderWorld(
                     renderer_,
                     world_,
-                    gameplayFrame_.animation_frame);
+                    gameplayFrame_.animation_frame,
+                    shadowOpacity_);
             }
         }
         renderer_.endFrame();
@@ -862,6 +866,24 @@ private:
         hooks.release_world = [this] {
             world_.clear();
         };
+        hooks.start_world_music = [this] {
+            const std::int32_t track = world_.musicTrack();
+            if (!audioInitialized_ || track < 0 || track > 99) {
+                return;
+            }
+            char path[48]{};
+            std::snprintf(
+                path,
+                sizeof(path),
+                "System\\Game\\Music\\BGM%02d.Voc",
+                track);
+            if (loadVoc(worldMusicAudio_, path)) {
+                worldMusicAudio_.play(0, true, bgmVolume_);
+            }
+        };
+        hooks.stop_world_music = [this] {
+            worldMusicAudio_.clear();
+        };
         return hooks;
     }
 
@@ -893,6 +915,7 @@ private:
     bool backspaceHeld_ = false;
     std::int32_t effectVolume_ = 0;
     std::int32_t bgmVolume_ = 0;
+    std::int32_t shadowOpacity_ = 500;
     std::int32_t savedGameCount_ = 0;
     std::int32_t gameplayGender_ = 0;
     std::filesystem::path dataRoot_;
@@ -902,6 +925,7 @@ private:
     std::vector<osf::gapi::BitmapImage> savedPreviews_;
     osf::VocPlayer effectAudio_;
     osf::VocPlayer menuMusicAudio_;
+    osf::VocPlayer worldMusicAudio_;
     LglSurfacePresenter surfacePresenter_;
     osf::gapi::SoftwareBackend renderer_;
     osf::TitleFrameResult titleFrame_;

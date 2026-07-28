@@ -29,6 +29,8 @@ struct GameplayFrameInput {
 struct GameplayStateHooks {
     std::function<bool()> prepare_world;
     std::function<void()> release_world;
+    std::function<void()> start_world_music;
+    std::function<void()> stop_world_music;
 };
 
 class GameplayState {
