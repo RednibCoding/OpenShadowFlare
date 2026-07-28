@@ -56,4 +56,17 @@ if(TARGET sf_game_core)
   endif()
 
   add_test(NAME menu_states COMMAND menu_states_test)
+
+  add_executable(voc_test voc_test.cpp)
+  target_link_libraries(voc_test PRIVATE OpenShadowFlare::GameCore)
+  target_compile_features(voc_test PRIVATE cxx_std_17)
+  set_target_properties(voc_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(voc_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(voc_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME voc COMMAND voc_test)
 endif()

@@ -1,5 +1,6 @@
 add_library(
   sf_game_core
+  audio/voc.cpp
   core/command_line.cpp
   core/game_config.cpp
   core/retail_random.cpp
@@ -38,6 +39,7 @@ add_executable(
   ShadowFlare_rebuilt
   runtime/lgl_surface_presenter.cpp
   runtime/main.cpp
+  runtime/voc_player.cpp
 )
 
 target_compile_features(ShadowFlare_rebuilt PRIVATE cxx_std_17)

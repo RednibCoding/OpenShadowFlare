@@ -4,7 +4,7 @@ address,name,portable_owner,status,notes
 0x00482778,g_Window,Runtime,analyzed,Window and application state
 0x00482d10,g_pUpdib,,identified,Sprite subsystem
 0x00482d18,g_pDbfControl,,identified,Rendering subsystem
-0x00482d28,g_pDsound,,identified,Audio subsystem
+0x00482d28,g_pDsound,osf::VocPlayer / LAL,implemented,Portable V001 and V003 VOC decoding plus cross-platform playback replace DirectSound
 0x00482db0,g_gameMode,,identified,0 single player 1 client 2 server
 0x0048d528,g_unknownConfig48d528,GameConfig::unknown_48d528,implemented,Meaning not yet proven
 0x0048d530,g_semiTransparentShadow,GameConfig::semi_transparent_shadow,implemented,
@@ -19,8 +19,8 @@ address,name,portable_owner,status,notes
 0x0048d8b8,g_windowedAtStart,GameConfig::windowed_at_start,implemented,Zero fullscreen nonzero normalized to windowed
 0x0048d8cc,g_imeEnabled,,identified,
 0x0048d8d4,g_cursorVisible,,identified,
-0x0048d8e4,g_effectVolume,GameConfig::effect_volume,implemented,Clamped to -10000 through zero
-0x0048d8e8,g_bgmVolume,GameConfig::bgm_volume,implemented,Clamped to -10000 through zero
+0x0048d8e4,g_effectVolume,GameConfig::effect_volume,implemented,Clamped to -10000 through zero and applied to common voice playback
+0x0048d8e8,g_bgmVolume,GameConfig::bgm_volume,implemented,Clamped to -10000 through zero and applied to looping menu music
 0x0048e2b8,g_versionPatch,GameVersion::patch,implemented,Initialized to zero by the title-state constructor
 0x0048e2bc,g_versionMinor,GameVersion::minor,implemented,Initialized to four by the title-state constructor
 0x0048e2c0,g_versionMajor,GameVersion::major,implemented,Initialized to two by the title-state constructor

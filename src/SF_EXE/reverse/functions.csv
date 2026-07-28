@@ -16,15 +16,15 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x0041d880,LeaveGameplayState,,identified,static,Called when leaving top-level state 2 and unconditionally during shutdown
 0x00420b50,LoadTitleAssets,osf::TitleState::enter,implemented,static,Exact title and ten smoke NJP and CAF resource paths and IDs with retail failure behavior plus portable CAF decoding
 0x00420c10,TitleStateConstructor,osf::TitleStateData::TitleStateData,implemented,static,Includes retail version 2.4.0 defaults
-0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and menu-music load covered by tests
+0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and portable title-music VOC load covered by tests and real-asset runs
 0x00420df0,LeaveTitleState,osf::TitleState::leave,implemented,static,Exact pattern and animation release sequence covered by tests
-0x00420e60,UpdateTitleState,osf::TitleState::update / osf::renderTitle,partial,static,Fades exact availability skipping hover rectangles audio cues transition timers background menus and ten CAF-driven smoke layers covered; version and message drawing remain
+0x00420e60,UpdateTitleState,osf::TitleState::update / osf::renderTitle,partial,static,Fades exact availability skipping hover rectangles transition timers background menus smoke layers title cue voice 62 move voice 58 confirm voice 56 and delayed looping BGM covered; version and message drawing remain
 0x00421920,LoadCharacterSelectAssets,osf::CharacterSelectState::enter,implemented,static,Select pattern path and unchecked failure behavior preserved
 0x00421950,CharacterSelectConstructor,osf::CharacterSelectStateData::CharacterSelectStateData,implemented,static,Portable ownership replaces two retail heap objects
 0x004219c0,CharacterSelectDestructor,,analyzed,static,Save catalog and persistent new-character data ownership understood
-0x00421a00,EnterCharacterSelectState,osf::CharacterSelectState::enter,implemented,static,New-character argument 0 and saved-game nonzero modes plus input audio cursor and field resets covered by tests
-0x00421bf0,LeaveCharacterSelectState,osf::CharacterSelectState::leave,implemented,static,Temporary buffer menu music and select pattern release covered by tests
-0x00421c50,UpdateCharacterSelectState,osf::CharacterSelectState::update,implemented,static,Fade mode dispatch child screens shared counters and delayed gameplay transition covered by native tests and live menu runs
+0x00421a00,EnterCharacterSelectState,osf::CharacterSelectState::enter,implemented,static,New-character argument 0 and saved-game nonzero modes plus input cursor field resets and continuing or starting menu music covered by tests
+0x00421bf0,LeaveCharacterSelectState,osf::CharacterSelectState::leave,implemented,static,Temporary buffer looping menu music and select pattern release covered by tests
+0x00421c50,UpdateCharacterSelectState,osf::CharacterSelectState::update,implemented,static,Fade mode dispatch child screens shared counters move voice 58 selection voice 55 and delayed gameplay transition covered by native tests and live menu runs
 0x00421e10,DrawSavedGameCell,osf::renderCharacterSelect,implemented,static,Six retail cells use original pattern groups; selected numbers use frame 0 idle numbers use frame 3 and only the hovered number pulses through frames 3 2 1 0 0 1 2 3
 0x004228b0,UpdateDeleteSavedGameDialog,updateSavedGameDeleteDialog,implemented,static,Exact Yes and No navigation pointer arming strict hit regions confirm cancel sounds and deletion behavior covered by native tests
 0x00422e30,UpdateSavedGameSelection,updateSavedGameMode / osf::renderCharacterSelect,implemented,static,Navigation six slot hit regions preview cards Continue Delete Back Exit drawing and transition brightness covered by tests and live runs

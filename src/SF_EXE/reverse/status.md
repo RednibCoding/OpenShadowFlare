@@ -24,6 +24,7 @@ The first game-core slice covers:
 - the title enter/leave lifecycle and its exact resource manifest
 - the title fade, menu navigation, hover regions, delayed actions, audio cues,
   smoke-animation scheduling, CAF decoding, and steam drawing
+- portable V001/V003 VOC decoding and LAL playback for title and menu audio
 - new-character and saved-game selection enter/leave behavior
 - the character-selection fade and top-level per-frame screen dispatcher
 - saved-game list navigation, slot hit regions, double-click timing, and the
@@ -48,7 +49,10 @@ The title screen's game decisions from `0x00420e60` are now reconstructed.
 Its original background, menu entries, selection brightness, and fades are
 drawn by the portable runtime. All ten smoke animations use their original CAF
 frames, random delays, pipe positions, and scene brightness. Version/copyright
-text and network messages are the remaining title presentation work.
+text and network messages are the remaining title presentation work. The
+runtime also loads the retail common-effects and title-music VOC containers,
+plays voice 62 for the title cue, voice 58 for navigation, voice 56 for title
+confirmation, and starts the looping BGM after the original 60-frame delay.
 
 The top-level character-selection dispatcher at `0x00421c50` is reconstructed
 through its fade, mode dispatch, sub-screen dispatch, and delayed gameplay
@@ -64,5 +68,10 @@ their dimmed backdrop, and returning from the saved-game dialog restores both
 the list brightness and its interaction state. Save-slot numerals now remain
 static unless pointed at; only the hovered numeral follows the retail
 3-2-1-0-0-1-2-3 pulse.
+
+Character selection keeps the title BGM playing when it is already active,
+starts it on entry when necessary, uses common voice 55 for its selection
+actions, and releases the music when the menu flow ends. All playback uses the
+retail effect and BGM volume values through LAL.
 
 The next executable layer begins at gameplay entry `0x0041d3f0`.

@@ -39,6 +39,8 @@ and `/f` switches, and run the original top-level
 title/character-selection/gameplay transitions. The title and character-select
 enter/leave lifecycles are reconstructed too, including their asset manifests,
 save-slot behavior, input tables, random smoke delays, and shared menu music.
+The original VOC containers are decoded portably and played through LAL, with
+the configured effect and BGM volumes.
 
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
@@ -46,8 +48,9 @@ cues, smoke timing, and delayed New Game, Continue, and Exit actions all
 follow the retail function. The original `Title.njp` is now decoded by portable
 code and the title background, availability-aware menu entries, fades, and
 selection highlights are visible. The ten original CAF-driven steam layers
-also play at their retail pipe positions. Version text and network messages
-still need their drawing paths.
+also play at their retail pipe positions. The title cue, delayed looping music,
+navigation sound, and confirmation sound use their original samples and timing.
+Version text and network messages still need their drawing paths.
 
 Character selection has its outer fade and screen/transition dispatcher as
 well. New Game now shows the original male/female artwork, accepts a portable

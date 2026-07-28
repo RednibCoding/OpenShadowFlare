@@ -11,6 +11,7 @@
 #include "render/character_select_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
+#include "runtime/voc_player.hpp"
 #include "states/game_state.hpp"
 #include "states/menu_states.hpp"
 #include "states/save_catalog.hpp"
@@ -28,6 +29,10 @@ namespace {
 
 constexpr int kVirtualWidth = 640;
 constexpr int kVirtualHeight = 480;
+constexpr std::size_t kMenuConfirmSound = 55;
+constexpr std::size_t kTitleConfirmSound = 56;
+constexpr std::size_t kMenuMoveSound = 58;
+constexpr std::size_t kTitleCueSound = 62;
 
 void* loadOpenGlFunction(const char* name, void*) {
     return lwl_gl_get_proc_address(name);
@@ -248,6 +253,8 @@ public:
         lwl_gl_context_destroy(context_);
         lwl_window_destroy(window_);
         if (audioInitialized_) {
+            effectAudio_.clear();
+            menuMusicAudio_.clear();
             lal_shutdown();
         }
         if (windowingInitialized_) {
@@ -312,6 +319,12 @@ public:
                 stderr,
                 "Warning: audio is unavailable: %s\n",
                 lal_last_error());
+        } else {
+            effectVolume_ = gameConfig.effect_volume;
+            bgmVolume_ = gameConfig.bgm_volume;
+            loadVoc(
+                effectAudio_,
+                "System\\Game\\Voice\\Voice00.Voc");
         }
 
         if (!loadPattern(
@@ -495,6 +508,7 @@ private:
             }
             titleFrame_ =
                 titleState_.update(menuInput_);
+            playTitleAudio(titleFrame_);
             if (titleFrame_.action ==
                 osf::TitleAction::open_character_select) {
                 gameState_.transition(
@@ -510,6 +524,7 @@ private:
             characterInput_.saved_game_count = savedGameCount_;
             characterFrame_ =
                 characterSelectState_.update(characterInput_);
+            playCharacterSelectAudio(characterFrame_);
             if (characterFrame_.action ==
                 osf::CharacterSelectAction::return_to_title) {
                 gameState_.transition(osf::GameState::title);
@@ -613,6 +628,59 @@ private:
         return true;
     }
 
+    bool loadVoc(
+        osf::VocPlayer& player,
+        std::string_view retailPath) {
+        if (!audioInitialized_) {
+            return false;
+        }
+        std::string error;
+        const std::filesystem::path path =
+            resolveRetailPath(dataRoot_, retailPath);
+        if (!player.load(path, &error)) {
+            std::fprintf(
+                stderr,
+                "Could not load %s: %s\n",
+                path.string().c_str(),
+                error.c_str());
+            return false;
+        }
+        return true;
+    }
+
+    void playRepeatedEffect(
+        std::size_t sample,
+        std::int32_t count) {
+        for (std::int32_t index = 0; index < count; ++index) {
+            effectAudio_.play(sample, false, effectVolume_);
+        }
+    }
+
+    void playTitleAudio(const osf::TitleFrameResult& frame) {
+        if (frame.play_title_sound) {
+            effectAudio_.play(
+                kTitleCueSound, false, effectVolume_);
+        }
+        playRepeatedEffect(
+            kMenuMoveSound, frame.play_move_sound_count);
+        if (frame.play_confirm_sound) {
+            effectAudio_.play(
+                kTitleConfirmSound, false, effectVolume_);
+        }
+        if (frame.start_menu_music) {
+            menuMusicAudio_.play(0, true, bgmVolume_);
+        }
+    }
+
+    void playCharacterSelectAudio(
+        const osf::CharacterSelectFrameResult& frame) {
+        playRepeatedEffect(
+            kMenuMoveSound, frame.play_move_sound_count);
+        playRepeatedEffect(
+            kMenuConfirmSound,
+            frame.play_selection_sound_count);
+    }
+
     osf::TitleStateHooks makeTitleStateHooks() {
         osf::TitleStateHooks hooks;
         hooks.load_pattern =
@@ -651,6 +719,14 @@ private:
                 titleAnimations_[index].clear();
             }
         };
+        hooks.load_voice =
+            [this](
+                std::string_view path,
+                std::int32_t slot) {
+                if (slot == 500) {
+                    loadVoc(menuMusicAudio_, path);
+                }
+            };
         hooks.files_exist = [this](std::string_view pattern) {
             return pattern == "Save\\*.Ssv" &&
                    countRetailSaves(dataRoot_) != 0;
@@ -689,6 +765,21 @@ private:
             std::string result = text ? text : "";
             lwl_free(text);
             return result;
+        };
+        hooks.voice_is_playing = [this](std::int32_t slot) {
+            return slot == 500 &&
+                   menuMusicAudio_.isPlaying(0);
+        };
+        hooks.play_voice =
+            [this](std::int32_t slot, bool loop) {
+                if (slot == 500) {
+                    menuMusicAudio_.play(0, loop, bgmVolume_);
+                }
+            };
+        hooks.release_voice = [this](std::int32_t slot) {
+            if (slot == 500) {
+                menuMusicAudio_.clear();
+            }
         };
         return hooks;
     }
@@ -736,12 +827,16 @@ private:
     bool backHeld_ = false;
     bool deleteHeld_ = false;
     bool backspaceHeld_ = false;
+    std::int32_t effectVolume_ = 0;
+    std::int32_t bgmVolume_ = 0;
     std::int32_t savedGameCount_ = 0;
     std::filesystem::path dataRoot_;
     std::unordered_map<std::int32_t, osf::gapi::NjpImage> patterns_;
     std::array<osf::gapi::CafAnimation, 10> titleAnimations_;
     std::vector<osf::RetailSaveSummary> savedGames_;
     std::vector<osf::gapi::BitmapImage> savedPreviews_;
+    osf::VocPlayer effectAudio_;
+    osf::VocPlayer menuMusicAudio_;
     LglSurfacePresenter surfacePresenter_;
     osf::gapi::SoftwareBackend renderer_;
     osf::TitleFrameResult titleFrame_;
