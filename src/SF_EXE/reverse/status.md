@@ -22,7 +22,10 @@ The first game-core slice covers:
 - Shift-JIS-aware `/w` and `/f` command-line handling
 - the title, character-selection, and gameplay transition dispatcher
 - the title enter/leave lifecycle and its exact resource manifest
-- saved-game and new-character selection enter/leave behavior
+- the title fade, menu navigation, hover regions, delayed actions, audio cues,
+  and smoke-animation scheduling
+- new-character and saved-game selection enter/leave behavior
+- the character-selection fade and top-level per-frame screen dispatcher
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
 - the statically linked Visual C++ random-number generator
@@ -35,7 +38,12 @@ The menu lifecycle code emits resource, input, cursor, and audio work through
 portable callbacks. Those callbacks deliberately describe what the game needs,
 not how a particular operating system provides it.
 
-The next menu layer is the per-frame title logic at `0x00420e60` and the
-character-selection dispatcher at `0x00421c50`. These functions contain menu
-interaction, fades, animation timing, and the transitions into selection and
-gameplay.
+The title screen's game decisions from `0x00420e60` are now reconstructed.
+Drawing is still pending, but the portable runtime already feeds LWL input
+into the original selection rules and follows the resulting state changes.
+
+The top-level character-selection dispatcher at `0x00421c50` is reconstructed
+through its fade, mode dispatch, sub-screen dispatch, and delayed gameplay
+transition. The next layer is the mode-specific interaction inside
+`0x00422e30` and `0x00423ca0`, followed by the sub-screens at `0x00424d80`,
+`0x004253c0`, `0x00425830`, and `0x00425d40`.

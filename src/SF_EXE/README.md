@@ -27,8 +27,14 @@ and `/f` switches, and run the original top-level
 title/character-selection/gameplay transitions. The title and character-select
 enter/leave lifecycles are reconstructed too, including their asset manifests,
 save-slot behavior, input tables, random smoke delays, and shared menu music.
-Their drawing and per-frame interaction callbacks are not connected yet, so
-what you see for now is still the 640x480 render-loop foundation.
+
+The title screen's per-frame rules are connected to LWL input: keyboard
+navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
+cues, smoke timing, and delayed New Game, Continue, and Exit actions all
+follow the retail function. Character selection has its outer fade and
+screen/transition dispatcher as well. Its individual character and save-list
+screens, plus all menu drawing, are the next pieces to recover, so the current
+window still shows the render-loop foundation rather than the original menu.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.

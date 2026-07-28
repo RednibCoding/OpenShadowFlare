@@ -18,11 +18,17 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00420c10,TitleStateConstructor,osf::TitleStateData::TitleStateData,implemented,static,Includes retail version 2.4.0 defaults
 0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and menu-music load covered by tests
 0x00420df0,LeaveTitleState,osf::TitleState::leave,implemented,static,Exact pattern and animation release sequence covered by tests
-0x00420e60,UpdateTitleState,,analyzed,static,Frame rendering menu interaction music start and timed transitions remain to be reconstructed
+0x00420e60,UpdateTitleState,osf::TitleState::update,partial,static,Fades exact availability skipping hover rectangles audio cues transition timers and smoke scheduling covered by native tests; drawing remains
 0x00421920,LoadCharacterSelectAssets,osf::CharacterSelectState::enter,implemented,static,Select pattern path and unchecked failure behavior preserved
 0x00421950,CharacterSelectConstructor,osf::CharacterSelectStateData::CharacterSelectStateData,implemented,static,Portable ownership replaces two retail heap objects
 0x004219c0,CharacterSelectDestructor,,analyzed,static,Save catalog and persistent new-character data ownership understood
-0x00421a00,EnterCharacterSelectState,osf::CharacterSelectState::enter,implemented,static,Saved-game and new-character modes plus input audio cursor and field resets covered by tests
+0x00421a00,EnterCharacterSelectState,osf::CharacterSelectState::enter,implemented,static,New-character argument 0 and saved-game nonzero modes plus input audio cursor and field resets covered by tests
 0x00421bf0,LeaveCharacterSelectState,osf::CharacterSelectState::leave,implemented,static,Temporary buffer menu music and select pattern release covered by tests
-0x00421c50,UpdateCharacterSelectState,,analyzed,static,Frame dispatcher and gameplay transition at counter 0x13a0 remain to be reconstructed
+0x00421c50,UpdateCharacterSelectState,osf::CharacterSelectState::update,partial,static,Fade mode dispatch screen dispatch shared counters and gameplay transition at 0x13a0 covered by native tests; child screen logic remains
+0x00422e30,UpdateSavedGameSelection,,analyzed,static,Mode 1 renderer; shared return and exit counters recovered but interaction and drawing remain
+0x00423ca0,UpdateNewCharacterSelection,,analyzed,static,Mode 0 renderer; shared return and exit counters recovered but interaction and drawing remain
+0x00424d80,UpdateCharacterScreen10,,identified,static,Dispatched by UpdateCharacterSelectState when screen is 10
+0x004253c0,UpdateCharacterScreen11,,identified,static,May change screen to 12 and trigger 0x00425d40 in the same frame
+0x00425830,UpdateCharacterScreen12,,identified,static,Dispatched by UpdateCharacterSelectState when screen is 12
+0x00425d40,FinishCharacterScreen11,,identified,static,Called after screen 11 changes the screen field to 12
 0x00467c6e,VisualCppRand,osf::RetailRandom::next,implemented,static,Exact unsigned 32-bit Visual C++ linear congruential generator covered by sequence test

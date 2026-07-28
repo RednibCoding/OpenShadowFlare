@@ -10,6 +10,20 @@ namespace osf {
 namespace {
 
 constexpr std::int32_t kMenuMusicSlot = 500;
+constexpr std::int32_t kFullBrightness = 1000;
+
+struct MenuRectangle {
+    std::int32_t left;
+    std::int32_t right;
+    std::int32_t top;
+    std::int32_t bottom;
+};
+
+constexpr std::array<MenuRectangle, 3> kTitleMenuRectangles{{
+    {0xd6, 0x1a3, 0x16d, 0x184},
+    {0xd7, 0x1a3, 0x186, 0x19c},
+    {0x10e, 0x172, 0x19b, 0x1b9},
+}};
 
 constexpr std::array<std::int32_t, 57> kTitleInputBindings{{
     1, 2, 16, 17, 38, 40, 37, 39, 9, 27, 13,
@@ -51,6 +65,23 @@ std::string numberedTitlePath(std::string_view extension, int index) {
          << std::setfill('0') << std::setw(2) << index
          << extension;
     return path.str();
+}
+
+bool isInside(
+    const MenuRectangle& rectangle,
+    std::int32_t x,
+    std::int32_t y) {
+    // Retail uses strict comparisons at every edge.
+    return x > rectangle.left && x < rectangle.right &&
+           y > rectangle.top && y < rectangle.bottom;
+}
+
+std::int32_t titleTransitionBrightness(std::int32_t timer) {
+    const std::int32_t phase = timer % 1000;
+    if (phase <= 5) {
+        return kFullBrightness;
+    }
+    return kFullBrightness + ((5 - phase) * 1000) / 15;
 }
 
 }  // namespace
@@ -96,7 +127,7 @@ bool TitleState::enter() {
     }
 
     data_.fade_steps_remaining = 0x14;
-    data_.elapsed_frames = 0;
+    data_.transition_timer = 0;
     data_.saved_game_exists =
         hooks_.files_exist && hooks_.files_exist("Save\\*.Ssv");
 
@@ -108,7 +139,8 @@ bool TitleState::enter() {
         findNextRetailSavePath(hooks_.file_exists);
     data_.next_save_path = next_save.path;
     data_.next_save_path_available = next_save.available;
-    data_.overlay_index = 0;
+    data_.animation_frame = 0;
+    data_.network_error_kind = 0;
     for (std::int32_t& delay : data_.smoke_delays) {
         delay = random_.next() % 0x5a;
     }
@@ -120,10 +152,10 @@ bool TitleState::enter() {
 
     data_.sound_started = 0;
     data_.music_started = 0;
-    data_.sound_delay = 0;
+    data_.music_delay_frames = 0;
     data_.menu_selection = 0;
     data_.selection_armed = 1;
-    data_.input_accepted = 0;
+    data_.transition_started = 0;
     data_.active = true;
     return true;
 }
@@ -144,6 +176,189 @@ void TitleState::leave() {
         }
     }
     data_.active = false;
+}
+
+TitleFrameResult TitleState::update(const MenuFrameInput& input) {
+    TitleFrameResult result;
+    result.menu_visible[0] = data_.next_save_path_available;
+    result.menu_visible[1] = data_.saved_game_exists;
+
+    if (input.input_suspended) {
+        result.processed = false;
+        return result;
+    }
+
+    if (data_.network_error_kind != 0) {
+        result.network_error_visible = true;
+        result.network_error_kind = data_.network_error_kind;
+        --data_.network_error_frames;
+        if (data_.network_error_frames == 0) {
+            data_.network_error_kind = 0;
+        }
+        return result;
+    }
+
+    if (data_.transition_timer == 1020) {
+        result.action = TitleAction::open_character_select;
+        result.character_select_argument = 0;
+        return result;
+    }
+    if (data_.transition_timer == 2020) {
+        result.action = TitleAction::open_character_select;
+        result.character_select_argument = 1;
+        return result;
+    }
+    if (data_.transition_timer == 3020) {
+        // Retail posts its close request and still completes this frame.
+        result.action = TitleAction::exit_game;
+    }
+    if (data_.transition_timer > 0) {
+        ++data_.transition_timer;
+    }
+
+    if (data_.fade_steps_remaining > 0) {
+        result.scene_brightness =
+            (20 - data_.fade_steps_remaining) * 50;
+        --data_.fade_steps_remaining;
+    } else {
+        result.scene_brightness =
+            titleTransitionBrightness(data_.transition_timer);
+
+        if (data_.sound_started == 0) {
+            result.play_title_sound = true;
+            data_.sound_started = 1;
+        }
+        if (data_.sound_started == 1) {
+            ++data_.music_delay_frames;
+            if (data_.music_delay_frames == 60 &&
+                data_.music_started == 0) {
+                result.start_menu_music = true;
+                data_.music_started = 1;
+            }
+        }
+    }
+
+    if (data_.transition_started == 0) {
+        if (input.up_pressed && data_.menu_selection != 0) {
+            --data_.menu_selection;
+            ++result.play_move_sound_count;
+            data_.selection_armed = 1;
+            if (!data_.saved_game_exists &&
+                data_.menu_selection == 1) {
+                data_.menu_selection = 0;
+            }
+        }
+
+        if (input.down_pressed && data_.menu_selection != 2) {
+            ++data_.menu_selection;
+            ++result.play_move_sound_count;
+            data_.selection_armed = 1;
+            if (!data_.saved_game_exists &&
+                data_.menu_selection == 1) {
+                data_.menu_selection = 2;
+            }
+        }
+
+        if (!data_.next_save_path_available &&
+            data_.menu_selection == 0) {
+            data_.menu_selection = 1;
+        }
+        if (!data_.saved_game_exists &&
+            data_.menu_selection == 1) {
+            data_.menu_selection = 2;
+        }
+    }
+
+    const bool pointer_moved =
+        input.pointer_x != data_.previous_pointer_x ||
+        input.pointer_y != data_.previous_pointer_y;
+
+    for (std::int32_t item = 0; item < 3; ++item) {
+        if (!result.menu_visible[static_cast<std::size_t>(item)]) {
+            continue;
+        }
+
+        const MenuRectangle& rectangle =
+            kTitleMenuRectangles[static_cast<std::size_t>(item)];
+        const bool pointer_inside =
+            isInside(rectangle, input.pointer_x, input.pointer_y);
+        if (pointer_moved &&
+            data_.transition_timer == 0 &&
+            pointer_inside) {
+            data_.selection_armed = 0;
+        }
+
+        const std::int32_t transition_start = (item + 1) * 1000;
+        const bool transition_highlighted =
+            data_.transition_timer >= transition_start &&
+            data_.transition_timer < transition_start + 1000;
+        const bool pointer_highlighted =
+            data_.transition_timer == 0 &&
+            pointer_inside &&
+            data_.selection_armed == 0;
+        if (!transition_highlighted && !pointer_highlighted) {
+            continue;
+        }
+
+        result.menu_brightness[static_cast<std::size_t>(item)] =
+            kFullBrightness;
+        data_.menu_selection = item;
+        if (data_.transition_started == 0 &&
+            data_.transition_timer == 0 &&
+            input.pointer_primary_pressed) {
+            data_.transition_started = 1;
+            data_.transition_timer = transition_start;
+            result.play_confirm_sound = true;
+        }
+    }
+
+    const bool any_item_highlighted =
+        result.menu_brightness[0] == kFullBrightness ||
+        result.menu_brightness[1] == kFullBrightness ||
+        result.menu_brightness[2] == kFullBrightness;
+    if (!any_item_highlighted &&
+        data_.selection_armed == 1 &&
+        data_.menu_selection >= 0 &&
+        data_.menu_selection < 3) {
+        result.menu_brightness[
+            static_cast<std::size_t>(data_.menu_selection)] =
+            kFullBrightness;
+    }
+
+    if (data_.transition_started == 0 && input.confirm_pressed) {
+        data_.transition_started = 1;
+        data_.transition_timer =
+            (data_.menu_selection + 1) * 1000;
+        result.play_confirm_sound = true;
+    }
+
+    for (std::size_t index = 0;
+         index < data_.smoke_delays.size();
+         ++index) {
+        const std::int32_t frame_count =
+            input.smoke_frame_counts[index];
+        if (frame_count <= 0) {
+            continue;
+        }
+
+        const std::int32_t first_frame = data_.smoke_delays[index];
+        const std::int32_t end_frame = first_frame + frame_count;
+        if (data_.animation_frame >= first_frame &&
+            data_.animation_frame < end_frame) {
+            result.smoke_frames[index] =
+                data_.animation_frame - first_frame;
+        }
+        if (data_.animation_frame == end_frame - 1) {
+            data_.smoke_delays[index] =
+                data_.animation_frame + frame_count + 30 +
+                random_.next() % 100;
+        }
+    }
+
+    ++data_.animation_frame;
+    data_.previous_pointer_x = input.pointer_x;
+    data_.previous_pointer_y = input.pointer_y;
+    return result;
 }
 
 const TitleStateData& TitleState::data() const {
@@ -172,31 +387,31 @@ void CharacterSelectState::enter(std::int32_t retail_argument) {
             kCharacterSelectInputBindings.size());
     }
 
-    if (data_.mode == CharacterSelectMode::saved_game &&
-        data_.save_catalog_loaded) {
-        if (hooks_.release_save_catalog) {
-            hooks_.release_save_catalog();
+    if (data_.mode == CharacterSelectMode::new_character &&
+        data_.new_character_data_loaded) {
+        if (hooks_.release_new_character) {
+            hooks_.release_new_character();
         }
-        data_.save_catalog_loaded = false;
+        data_.new_character_data_loaded = false;
     }
 
     data_.screen = 0;
-    data_.input_accepted = 1;
+    data_.input_latch = 1;
     if (retail_argument == 0) {
-        data_.mode = CharacterSelectMode::saved_game;
-        data_.save_catalog_loaded = true;
+        data_.mode = CharacterSelectMode::new_character;
+        data_.new_character_data_loaded = true;
         data_.next_save_path =
             findNextRetailSavePath(hooks_.file_exists).path;
-        if (hooks_.load_save_catalog) {
-            hooks_.load_save_catalog(data_.next_save_path);
+        if (hooks_.prepare_new_character) {
+            hooks_.prepare_new_character(data_.next_save_path);
         }
         data_.raw_30 = 0;
         data_.raw_34 = 0;
     } else {
-        data_.mode = CharacterSelectMode::new_character;
+        data_.mode = CharacterSelectMode::saved_game;
         data_.next_save_path.clear();
-        if (hooks_.reset_new_character_data) {
-            hooks_.reset_new_character_data();
+        if (hooks_.load_saved_characters) {
+            hooks_.load_saved_characters();
         }
         data_.raw_14 = 0;
         data_.raw_1c = 0;
@@ -204,7 +419,7 @@ void CharacterSelectState::enter(std::int32_t retail_argument) {
 
     data_.fade_steps_remaining = 0x14;
     data_.launch_counter = 0;
-    data_.first_frame = 1;
+    data_.brightness_increasing = 1;
     data_.selected_save = -1;
     if (hooks_.set_cursor_state) {
         hooks_.set_cursor_state(-1);
@@ -214,7 +429,7 @@ void CharacterSelectState::enter(std::int32_t retail_argument) {
         hooks_.play_voice) {
         hooks_.play_voice(kMenuMusicSlot, true);
     }
-    data_.input_accepted = 1;
+    data_.input_latch = 1;
     data_.active = true;
 }
 
@@ -230,6 +445,84 @@ void CharacterSelectState::leave() {
         hooks_.release_pattern(4);
     }
     data_.active = false;
+}
+
+CharacterSelectFrameResult CharacterSelectState::update(
+    const CharacterSelectFrameInput& input) {
+    CharacterSelectFrameResult result;
+    result.mode = data_.mode;
+    if (input.input_suspended) {
+        result.processed = false;
+        return result;
+    }
+
+    if (data_.fade_steps_remaining > 0) {
+        const std::int32_t brightness =
+            (21 - data_.fade_steps_remaining) * 50;
+        data_.fade_value = brightness;
+        data_.fade_target = brightness;
+        --data_.fade_steps_remaining;
+    }
+    result.background_brightness = data_.fade_value;
+
+    if (data_.brightness_increasing == 0) {
+        if (data_.fade_target > 500) {
+            data_.fade_target -= 80;
+        }
+    } else if (
+        data_.fade_steps_remaining == 0 &&
+        data_.fade_target < 1000) {
+        data_.fade_target += 80;
+    }
+
+    const bool valid_mode =
+        data_.mode == CharacterSelectMode::new_character ||
+        data_.mode == CharacterSelectMode::saved_game;
+    if (valid_mode) {
+        data_.rendered_mode = data_.mode;
+
+        // Both retail mode renderers contain this same transition-counter
+        // prelude before their mode-specific interaction and drawing.
+        if (data_.launch_counter == 1022) {
+            result.action = CharacterSelectAction::return_to_title;
+        } else if (data_.launch_counter == 2022) {
+            result.action = CharacterSelectAction::exit_game;
+        } else if (data_.launch_counter > 0) {
+            ++data_.launch_counter;
+        }
+
+        switch (data_.screen) {
+        case 10:
+            result.screen_update =
+                CharacterSelectScreenUpdate::screen_10;
+            break;
+        case 11:
+            result.screen_update =
+                CharacterSelectScreenUpdate::screen_11;
+            break;
+        case 12:
+            result.screen_update =
+                CharacterSelectScreenUpdate::screen_12;
+            break;
+        case 20:
+            if (data_.launch_counter == 0) {
+                data_.launch_counter = 5010;
+            }
+            if (data_.launch_counter == 5024) {
+                result.action =
+                    CharacterSelectAction::enter_gameplay;
+                return result;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    if (data_.input_latch == 1) {
+        data_.input_latch = 0;
+    }
+    return result;
 }
 
 const CharacterSelectStateData& CharacterSelectState::data() const {
