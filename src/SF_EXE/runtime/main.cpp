@@ -4,13 +4,20 @@
 #include "core/command_line.hpp"
 #include "core/game_config.hpp"
 #include "core/retail_random.hpp"
+#include "gapi/njp.hpp"
+#include "gapi/software_backend.hpp"
+#include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
 #include "states/menu_states.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <string>
+#include <unordered_map>
+#include <utility>
 
 namespace {
 
@@ -40,25 +47,152 @@ std::filesystem::path nativePath(std::string_view retailPath) {
     return std::filesystem::path(path);
 }
 
-bool fileExists(std::string_view retailPath) {
-    std::error_code error;
-    return std::filesystem::is_regular_file(
-        nativePath(retailPath), error);
+bool equalsIgnoreCase(
+    std::string_view first,
+    std::string_view second) {
+    if (first.size() != second.size()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < first.size(); ++index) {
+        const auto left = static_cast<unsigned char>(first[index]);
+        const auto right = static_cast<unsigned char>(second[index]);
+        if (std::tolower(left) != std::tolower(right)) {
+            return false;
+        }
+    }
+    return true;
 }
 
-std::int32_t countRetailSaves() {
+std::filesystem::path resolveRetailPath(
+    const std::filesystem::path& root,
+    std::string_view retailPath) {
+    const std::filesystem::path requested = nativePath(retailPath);
+    std::filesystem::path resolved = root;
+    for (const std::filesystem::path& component : requested) {
+        const std::filesystem::path exact = resolved / component;
+        std::error_code error;
+        if (std::filesystem::exists(exact, error)) {
+            resolved = exact;
+            continue;
+        }
+
+        const std::filesystem::path directory =
+            resolved.empty() ? std::filesystem::path(".") : resolved;
+        bool matched = false;
+        for (std::filesystem::directory_iterator iterator(
+                 directory, error);
+             !error &&
+             iterator != std::filesystem::directory_iterator();
+             iterator.increment(error)) {
+            if (equalsIgnoreCase(
+                    iterator->path().filename().string(),
+                    component.string())) {
+                resolved /= iterator->path().filename();
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            return root / requested;
+        }
+    }
+    return resolved;
+}
+
+std::filesystem::path findDataRoot() {
+    const auto isDataRoot =
+        [](const std::filesystem::path& candidate) {
+            std::error_code error;
+            const bool hasConfig = std::filesystem::is_regular_file(
+                candidate / "SFlare.Cfg", error);
+            error.clear();
+            const bool hasTitle = std::filesystem::is_regular_file(
+                candidate / "System" / "Title" / "Pattern" /
+                    "Title.njp",
+                error);
+            return hasConfig && hasTitle;
+        };
+    const auto searchParents =
+        [&isDataRoot](std::filesystem::path directory) {
+            for (;;) {
+                const std::filesystem::path candidates[] = {
+                    directory,
+                    directory / "ShadowFlare",
+                    directory / "tmp" / "ShadowFlare",
+                };
+                for (const std::filesystem::path& candidate :
+                     candidates) {
+                    if (isDataRoot(candidate)) {
+                        return candidate;
+                    }
+                }
+
+                const std::filesystem::path parent =
+                    directory.parent_path();
+                if (parent.empty() || parent == directory) {
+                    break;
+                }
+                directory = parent;
+            }
+            return std::filesystem::path{};
+        };
+
+    std::error_code error;
+    const std::filesystem::path fromWorkingDirectory =
+        searchParents(std::filesystem::current_path(error));
+    if (!fromWorkingDirectory.empty()) {
+        return fromWorkingDirectory;
+    }
+
+    char executablePath[4096]{};
+    if (lwl_exe_path(
+            executablePath,
+            static_cast<int>(sizeof(executablePath)))) {
+        const std::filesystem::path fromExecutable =
+            searchParents(
+                std::filesystem::absolute(
+                    executablePath, error).parent_path());
+        if (!fromExecutable.empty()) {
+            return fromExecutable;
+        }
+    }
+
+    const std::filesystem::path fallbacks[] = {
+        ".",
+        std::filesystem::path("tmp") / "ShadowFlare",
+    };
+    for (const std::filesystem::path& candidate : fallbacks) {
+        if (isDataRoot(candidate)) {
+            return candidate;
+        }
+    }
+    return ".";
+}
+
+bool fileExists(
+    const std::filesystem::path& root,
+    std::string_view retailPath) {
+    std::error_code error;
+    return std::filesystem::is_regular_file(
+        resolveRetailPath(root, retailPath), error);
+}
+
+std::int32_t countRetailSaves(
+    const std::filesystem::path& root) {
     std::int32_t count = 0;
     for (std::int32_t index = 0; index < 6; ++index) {
         char path[32]{};
         std::snprintf(path, sizeof(path), "Save\\%04d.Ssv", index);
-        if (fileExists(path)) {
+        if (fileExists(root, path)) {
             ++count;
         }
     }
     return count;
 }
 
-bool deleteRetailSave(std::int32_t logicalIndex) {
+bool deleteRetailSave(
+    const std::filesystem::path& root,
+    std::int32_t logicalIndex) {
     if (logicalIndex < 0) {
         return false;
     }
@@ -67,7 +201,7 @@ bool deleteRetailSave(std::int32_t logicalIndex) {
         char savePath[32]{};
         std::snprintf(
             savePath, sizeof(savePath), "Save\\%04d.Ssv", slot);
-        if (!fileExists(savePath)) {
+        if (!fileExists(root, savePath)) {
             continue;
         }
         if (logicalIndex-- != 0) {
@@ -75,13 +209,15 @@ bool deleteRetailSave(std::int32_t logicalIndex) {
         }
 
         std::error_code error;
-        std::filesystem::remove(nativePath(savePath), error);
+        std::filesystem::remove(
+            resolveRetailPath(root, savePath), error);
 
         char previewPath[32]{};
         std::snprintf(
             previewPath, sizeof(previewPath), "Save\\%04d.Bmp", slot);
         error.clear();
-        std::filesystem::remove(nativePath(previewPath), error);
+        std::filesystem::remove(
+            resolveRetailPath(root, previewPath), error);
         return true;
     }
     return false;
@@ -89,12 +225,20 @@ bool deleteRetailSave(std::int32_t logicalIndex) {
 
 class Runtime {
 public:
-    Runtime()
-        : titleState_(random_, makeTitleStateHooks()),
+    explicit Runtime(std::filesystem::path dataRoot)
+        : dataRoot_(std::move(dataRoot)),
+          renderer_(
+              kVirtualWidth,
+              kVirtualHeight,
+              [this](osf::gapi::SurfaceView surface) {
+                  presentSurface(surface);
+              }),
+          titleState_(random_, makeTitleStateHooks()),
           characterSelectState_(makeCharacterSelectStateHooks()),
           gameState_(makeGameStateCallbacks()) {}
 
     ~Runtime() {
+        surfacePresenter_.shutdown();
         lgl_reset();
         lwl_gl_context_destroy(context_);
         lwl_window_destroy(window_);
@@ -137,10 +281,20 @@ public:
             return false;
         }
         if (!lgl_load(loadOpenGlFunction, nullptr)) {
-            std::fprintf(stderr, "Could not load OpenGL: %s\n", lgl_last_error());
+            std::fprintf(
+                stderr,
+                "Could not load OpenGL: %s\n",
+                lgl_last_error());
             return false;
         }
-
+        std::string presenterError;
+        if (!surfacePresenter_.initialize(&presenterError)) {
+            std::fprintf(
+                stderr,
+                "Could not initialize surface presentation: %s\n",
+                presenterError.c_str());
+            return false;
+        }
         if (!lwl_gl_context_set_swap_interval(context_, 1)) {
             std::fprintf(
                 stderr,
@@ -155,7 +309,6 @@ public:
                 lal_last_error());
         }
 
-        lglViewport(0, 0, kVirtualWidth, kVirtualHeight);
         gameState_.transition(osf::GameState::title);
         return true;
     }
@@ -179,9 +332,7 @@ public:
                 updateGame(running);
             }
 
-            lglClearColor(0.025f, 0.025f, 0.04f, 1.0f);
-            lglClear(LGL_COLOR_BUFFER_BIT);
-            lwl_gl_context_swap_buffers(context_);
+            renderGame();
 
             ++renderedFrames;
             if (smokeTest && renderedFrames >= 3) {
@@ -195,13 +346,29 @@ public:
     }
 
 private:
+    void presentSurface(osf::gapi::SurfaceView source) {
+        int width = 0;
+        int height = 0;
+        lwl_window_get_size(window_, &width, &height);
+        surfacePresenter_.present(source, width, height);
+        lwl_gl_context_swap_buffers(context_);
+    }
+
     void setPointerPosition(std::int32_t x, std::int32_t y) {
         int width = kVirtualWidth;
         int height = kVirtualHeight;
         lwl_window_get_size(window_, &width, &height);
         if (width > 0 && height > 0) {
-            menuInput_.pointer_x = x * kVirtualWidth / width;
-            menuInput_.pointer_y = y * kVirtualHeight / height;
+            const osf::gapi::Viewport viewport =
+                osf::gapi::fitViewport(
+                    kVirtualWidth,
+                    kVirtualHeight,
+                    width,
+                    height);
+            menuInput_.pointer_x =
+                (x - viewport.x) * kVirtualWidth / viewport.width;
+            menuInput_.pointer_y =
+                (y - viewport.y) * kVirtualHeight / viewport.height;
             characterInput_.pointer_x = menuInput_.pointer_x;
             characterInput_.pointer_y = menuInput_.pointer_y;
         }
@@ -209,7 +376,6 @@ private:
 
     void handleEvent(const LwlEvent& event, bool& running) {
         if (event.type == LWL_EVENT_RESIZED) {
-            lglViewport(0, 0, event.x, event.y);
             return;
         }
         if (event.type == LWL_EVENT_MOUSE_MOVE) {
@@ -297,13 +463,15 @@ private:
     void updateGame(bool& running) {
         switch (gameState_.currentState()) {
         case osf::GameState::title: {
-            const osf::TitleFrameResult result =
+            titleFrame_ =
                 titleState_.update(menuInput_);
-            if (result.action == osf::TitleAction::open_character_select) {
+            if (titleFrame_.action ==
+                osf::TitleAction::open_character_select) {
                 gameState_.transition(
                     osf::GameState::character_select,
-                    result.character_select_argument);
-            } else if (result.action == osf::TitleAction::exit_game) {
+                    titleFrame_.character_select_argument);
+            } else if (
+                titleFrame_.action == osf::TitleAction::exit_game) {
                 running = false;
             }
             break;
@@ -344,25 +512,92 @@ private:
         characterInput_.right_pressed = false;
     }
 
+    void renderGame() {
+        renderer_.beginFrame({0, 0, 0, 255});
+        if (gameState_.currentState() == osf::GameState::title) {
+            const auto pattern = patterns_.find(4);
+            if (pattern != patterns_.end()) {
+                renderer_.drawPattern(
+                    pattern->second,
+                    0,
+                    {0, 0, 1000, 1000,
+                     titleFrame_.scene_brightness});
+                for (std::size_t item = 0; item < 3; ++item) {
+                    if (titleFrame_.menu_visible[item]) {
+                        renderer_.drawPattern(
+                            pattern->second,
+                            item + 1,
+                            {0, 0, 1000, 1000,
+                             titleFrame_.menu_brightness[item]});
+                    }
+                }
+            }
+        }
+        renderer_.endFrame();
+    }
+
+    bool loadPattern(
+        std::int32_t id,
+        std::string_view retailPath) {
+        osf::gapi::NjpImage image;
+        std::string error;
+        const std::filesystem::path path =
+            resolveRetailPath(dataRoot_, retailPath);
+        if (!image.load(path, &error)) {
+            std::fprintf(
+                stderr,
+                "Could not load %s: %s\n",
+                path.string().c_str(),
+                error.c_str());
+            return false;
+        }
+        patterns_.insert_or_assign(id, std::move(image));
+        return true;
+    }
+
     osf::TitleStateHooks makeTitleStateHooks() {
         osf::TitleStateHooks hooks;
-        hooks.files_exist = [](std::string_view pattern) {
-            return pattern == "Save\\*.Ssv" &&
-                   countRetailSaves() != 0;
+        hooks.load_pattern =
+            [this](
+                std::int32_t id,
+                std::string_view path) {
+                return loadPattern(id, path);
+            };
+        hooks.release_pattern = [this](std::int32_t id) {
+            patterns_.erase(id);
         };
-        hooks.file_exists = fileExists;
+        hooks.files_exist = [this](std::string_view pattern) {
+            return pattern == "Save\\*.Ssv" &&
+                   countRetailSaves(dataRoot_) != 0;
+        };
+        hooks.file_exists =
+            [this](std::string_view path) {
+                return fileExists(dataRoot_, path);
+            };
         return hooks;
     }
 
     osf::CharacterSelectStateHooks makeCharacterSelectStateHooks() {
         osf::CharacterSelectStateHooks hooks;
-        hooks.file_exists = fileExists;
+        hooks.load_pattern =
+            [this](
+                std::int32_t id,
+                std::string_view path) {
+                return loadPattern(id, path);
+            };
+        hooks.release_pattern = [this](std::int32_t id) {
+            patterns_.erase(id);
+        };
+        hooks.file_exists =
+            [this](std::string_view path) {
+                return fileExists(dataRoot_, path);
+            };
         hooks.load_saved_characters = [this] {
-            savedGameCount_ = countRetailSaves();
+            savedGameCount_ = countRetailSaves(dataRoot_);
         };
         hooks.delete_saved_character = [this](std::int32_t index) {
-            deleteRetailSave(index);
-            savedGameCount_ = countRetailSaves();
+            deleteRetailSave(dataRoot_, index);
+            savedGameCount_ = countRetailSaves(dataRoot_);
         };
         return hooks;
     }
@@ -396,6 +631,11 @@ private:
     bool backHeld_ = false;
     bool deleteHeld_ = false;
     std::int32_t savedGameCount_ = 0;
+    std::filesystem::path dataRoot_;
+    std::unordered_map<std::int32_t, osf::gapi::NjpImage> patterns_;
+    LglSurfacePresenter surfacePresenter_;
+    osf::gapi::SoftwareBackend renderer_;
+    osf::TitleFrameResult titleFrame_;
     osf::MenuFrameInput menuInput_;
     osf::CharacterSelectFrameInput characterInput_;
     osf::RetailRandom random_;
@@ -407,15 +647,17 @@ private:
 }  // namespace
 
 int main(int argc, char** argv) {
+    const std::filesystem::path dataRoot = findDataRoot();
     osf::GameConfig gameConfig;
 
     // Retail ignores config-load failure and retains its constructor defaults.
-    osf::loadGameConfigFile("SFlare.Cfg", gameConfig);
+    osf::loadGameConfigFile(
+        (dataRoot / "SFlare.Cfg").string(), gameConfig);
     for (int index = 1; index < argc; ++index) {
         osf::applyRetailCommandLine(argv[index], gameConfig);
     }
 
-    Runtime runtime;
+    Runtime runtime(dataRoot);
     if (!runtime.initialize(gameConfig)) {
         return 1;
     }

@@ -18,9 +18,10 @@ LGL. If not, see <https://www.gnu.org/licenses/>.
 # LGL
 
 LGL is a small C99 OpenGL 3.3 core loader. It exposes only functions that have
-real callers in the project. The initial surface contains context-version
-queries, viewport setup, and framebuffer clearing; rendering functions will be
-added as the renderer begins using them.
+real callers in the project. Alongside context-version queries, viewport setup,
+and framebuffer clearing, it now includes the small shader, texture, and
+vertex-array subset used to present GAPI's fixed-resolution software surface.
+It does not contain game rendering code.
 
 The library does not create windows or contexts and has no platform-specific
 dependencies. Call `lgl_load()` with a function-address callback after making

@@ -75,9 +75,10 @@ Here's where things stand today:
   probes under Wine.
 - An isolated smoke test confirms that the reconstructed DLL set starts the
   game and reaches its render loop.
-- The portable executable now has a small native foundation built on LWL, LGL,
-  and LAL. It creates a cross-platform OpenGL 3.3 window and audio runtime, but
-  does not load the game itself yet.
+- The portable executable now has a backend-neutral `gapi` graphics layer with
+  a fast software renderer, plus LWL, LGL, and LAL for the window, presentation,
+  and audio. It decodes the original title graphics and shows a working title
+  screen; character-selection rendering is the next visible step.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.
@@ -147,8 +148,9 @@ cmake --build cmake-build-debug
 
 Linux and Windows builds are established. LWL and LAL also include macOS
 backends, though the new executable still needs to be built and exercised on
-real macOS hardware. This target is only the platform foundation for now; it
-does not run the game yet.
+real macOS hardware. The executable finds the original data under
+`tmp/ShadowFlare` relative to its own location, so it can also be started
+directly from a file manager without relying on the current working directory.
 
 ## Running the tests
 

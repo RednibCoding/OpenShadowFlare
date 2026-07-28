@@ -31,6 +31,19 @@ if(TARGET sf_game_core)
 
   add_test(NAME game_core COMMAND game_core_test)
 
+  add_executable(gapi_test gapi_test.cpp)
+  target_link_libraries(gapi_test PRIVATE OpenShadowFlare::GameCore)
+  target_compile_features(gapi_test PRIVATE cxx_std_17)
+  set_target_properties(gapi_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(gapi_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(gapi_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME gapi COMMAND gapi_test)
+
   add_executable(menu_states_test menu_states_test.cpp)
   target_link_libraries(menu_states_test PRIVATE OpenShadowFlare::GameCore)
   target_compile_features(menu_states_test PRIVATE cxx_std_17)

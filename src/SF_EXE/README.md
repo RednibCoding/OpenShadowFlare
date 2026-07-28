@@ -5,9 +5,16 @@ separate from the fourteen compatibility DLLs.
 
 The executable uses the project-owned platform libraries:
 
-- LWL for windows, input, timing, and an optional RGBA software framebuffer
-- LGL for the small OpenGL 3.3 function set used by the renderer
+- LWL for windows, input, and timing
+- LGL for the small OpenGL 3.3 function set used to present a finished frame
 - LAL for WAV/PCM playback
+
+Game drawing goes through `gapi`, the backend-neutral graphics interface. Its
+first backend is a software renderer working on a fixed 640×480 RGBA surface,
+like the original game's software DIB renderer. A tiny LGL presenter uploads
+that surface once per frame and lets the GPU scale it to the window. Maximizing
+the window therefore does not turn presentation into a large CPU scaling loop.
+Other render backends can implement the same `gapi::Backend` interface later.
 
 Code in this directory must use those portable APIs and the C++ standard
 library. Native window handles, operating-system messages, platform headers,
@@ -22,6 +29,11 @@ cmake -S . -B cmake-build-debug
 cmake --build cmake-build-debug
 ```
 
+The development executable can be launched directly from the build folder. It
+looks for `tmp/ShadowFlare` relative to its own location, so starting it from a
+file manager works even when that file manager chooses a different working
+directory.
+
 The executable can now read the original `SFlare.Cfg`, handle the retail `/w`
 and `/f` switches, and run the original top-level
 title/character-selection/gameplay transitions. The title and character-select
@@ -31,14 +43,18 @@ save-slot behavior, input tables, random smoke delays, and shared menu music.
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
 cues, smoke timing, and delayed New Game, Continue, and Exit actions all
-follow the retail function. Character selection has its outer fade and
-screen/transition dispatcher as well. The saved-game list now has its original
-two-column navigation, six pointer regions, double-click timing, and
-Continue/Delete/Back/Exit decisions. Its Delete confirmation also has the
-original Yes/No keyboard and pointer behavior, and removes both the selected
-save and its preview bitmap. New-character interaction, the other saved-game
-screens, and all menu drawing are still to come, so the current window shows
-the render-loop foundation rather than the original menu.
+follow the retail function. The original `Title.njp` is now decoded by portable
+code and the title background, availability-aware menu entries, fades, and
+selection highlights are visible. Smoke layers, version text, and network
+messages still need their drawing paths.
+
+Character selection has its outer fade and screen/transition dispatcher as
+well. The saved-game list has its original two-column navigation, six pointer
+regions, double-click timing, and Continue/Delete/Back/Exit decisions. Its
+Delete confirmation also has the original Yes/No keyboard and pointer behavior
+and removes both the selected save and its preview bitmap. Character-selection
+drawing is the next visible piece, so selecting New Game or Load Game currently
+leads to a black character-selection screen.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
@@ -62,5 +78,6 @@ Source files are grouped by responsibility while keeping headers beside their
 implementations:
 
 - `core/` contains config, command-line, and retail utility code
+- `gapi/` contains the graphics interface, NJP decoder, and software backend
 - `states/` contains the top-level dispatcher and reconstructed game states
-- `runtime/` contains the small executable shell using LWL, LGL, and LAL
+- `runtime/` contains the executable shell and fixed-surface LGL presenter

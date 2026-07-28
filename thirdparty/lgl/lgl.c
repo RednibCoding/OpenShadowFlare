@@ -25,6 +25,30 @@ LglGetIntegervProc lglGetIntegerv;
 LglViewportProc lglViewport;
 LglClearColorProc lglClearColor;
 LglClearProc lglClear;
+LglGenTexturesProc lglGenTextures;
+LglDeleteTexturesProc lglDeleteTextures;
+LglBindTextureProc lglBindTexture;
+LglTexParameteriProc lglTexParameteri;
+LglPixelStoreiProc lglPixelStorei;
+LglTexImage2DProc lglTexImage2D;
+LglTexSubImage2DProc lglTexSubImage2D;
+LglCreateShaderProc lglCreateShader;
+LglShaderSourceProc lglShaderSource;
+LglCompileShaderProc lglCompileShader;
+LglGetShaderivProc lglGetShaderiv;
+LglGetShaderInfoLogProc lglGetShaderInfoLog;
+LglDeleteShaderProc lglDeleteShader;
+LglCreateProgramProc lglCreateProgram;
+LglAttachShaderProc lglAttachShader;
+LglLinkProgramProc lglLinkProgram;
+LglGetProgramivProc lglGetProgramiv;
+LglGetProgramInfoLogProc lglGetProgramInfoLog;
+LglDeleteProgramProc lglDeleteProgram;
+LglUseProgramProc lglUseProgram;
+LglGenVertexArraysProc lglGenVertexArrays;
+LglDeleteVertexArraysProc lglDeleteVertexArrays;
+LglBindVertexArrayProc lglBindVertexArray;
+LglDrawArraysProc lglDrawArrays;
 
 static bool g_loaded;
 static int g_major_version;
@@ -36,6 +60,30 @@ void lgl_reset(void) {
   lglViewport = NULL;
   lglClearColor = NULL;
   lglClear = NULL;
+  lglGenTextures = NULL;
+  lglDeleteTextures = NULL;
+  lglBindTexture = NULL;
+  lglTexParameteri = NULL;
+  lglPixelStorei = NULL;
+  lglTexImage2D = NULL;
+  lglTexSubImage2D = NULL;
+  lglCreateShader = NULL;
+  lglShaderSource = NULL;
+  lglCompileShader = NULL;
+  lglGetShaderiv = NULL;
+  lglGetShaderInfoLog = NULL;
+  lglDeleteShader = NULL;
+  lglCreateProgram = NULL;
+  lglAttachShader = NULL;
+  lglLinkProgram = NULL;
+  lglGetProgramiv = NULL;
+  lglGetProgramInfoLog = NULL;
+  lglDeleteProgram = NULL;
+  lglUseProgram = NULL;
+  lglGenVertexArrays = NULL;
+  lglDeleteVertexArrays = NULL;
+  lglBindVertexArray = NULL;
+  lglDrawArrays = NULL;
   g_loaded = false;
   g_major_version = 0;
   g_minor_version = 0;
@@ -84,7 +132,79 @@ bool lgl_load(LglLoadProc load, void *user_data) {
         load, user_data, "glClearColor") ||
       !load_function(
         &lglClear, sizeof(lglClear),
-        load, user_data, "glClear")) {
+        load, user_data, "glClear") ||
+      !load_function(
+        &lglGenTextures, sizeof(lglGenTextures),
+        load, user_data, "glGenTextures") ||
+      !load_function(
+        &lglDeleteTextures, sizeof(lglDeleteTextures),
+        load, user_data, "glDeleteTextures") ||
+      !load_function(
+        &lglBindTexture, sizeof(lglBindTexture),
+        load, user_data, "glBindTexture") ||
+      !load_function(
+        &lglTexParameteri, sizeof(lglTexParameteri),
+        load, user_data, "glTexParameteri") ||
+      !load_function(
+        &lglPixelStorei, sizeof(lglPixelStorei),
+        load, user_data, "glPixelStorei") ||
+      !load_function(
+        &lglTexImage2D, sizeof(lglTexImage2D),
+        load, user_data, "glTexImage2D") ||
+      !load_function(
+        &lglTexSubImage2D, sizeof(lglTexSubImage2D),
+        load, user_data, "glTexSubImage2D") ||
+      !load_function(
+        &lglCreateShader, sizeof(lglCreateShader),
+        load, user_data, "glCreateShader") ||
+      !load_function(
+        &lglShaderSource, sizeof(lglShaderSource),
+        load, user_data, "glShaderSource") ||
+      !load_function(
+        &lglCompileShader, sizeof(lglCompileShader),
+        load, user_data, "glCompileShader") ||
+      !load_function(
+        &lglGetShaderiv, sizeof(lglGetShaderiv),
+        load, user_data, "glGetShaderiv") ||
+      !load_function(
+        &lglGetShaderInfoLog, sizeof(lglGetShaderInfoLog),
+        load, user_data, "glGetShaderInfoLog") ||
+      !load_function(
+        &lglDeleteShader, sizeof(lglDeleteShader),
+        load, user_data, "glDeleteShader") ||
+      !load_function(
+        &lglCreateProgram, sizeof(lglCreateProgram),
+        load, user_data, "glCreateProgram") ||
+      !load_function(
+        &lglAttachShader, sizeof(lglAttachShader),
+        load, user_data, "glAttachShader") ||
+      !load_function(
+        &lglLinkProgram, sizeof(lglLinkProgram),
+        load, user_data, "glLinkProgram") ||
+      !load_function(
+        &lglGetProgramiv, sizeof(lglGetProgramiv),
+        load, user_data, "glGetProgramiv") ||
+      !load_function(
+        &lglGetProgramInfoLog, sizeof(lglGetProgramInfoLog),
+        load, user_data, "glGetProgramInfoLog") ||
+      !load_function(
+        &lglDeleteProgram, sizeof(lglDeleteProgram),
+        load, user_data, "glDeleteProgram") ||
+      !load_function(
+        &lglUseProgram, sizeof(lglUseProgram),
+        load, user_data, "glUseProgram") ||
+      !load_function(
+        &lglGenVertexArrays, sizeof(lglGenVertexArrays),
+        load, user_data, "glGenVertexArrays") ||
+      !load_function(
+        &lglDeleteVertexArrays, sizeof(lglDeleteVertexArrays),
+        load, user_data, "glDeleteVertexArrays") ||
+      !load_function(
+        &lglBindVertexArray, sizeof(lglBindVertexArray),
+        load, user_data, "glBindVertexArray") ||
+      !load_function(
+        &lglDrawArrays, sizeof(lglDrawArrays),
+        load, user_data, "glDrawArrays")) {
     snprintf(error, sizeof(error), "%s", g_error);
     lgl_reset();
     snprintf(g_error, sizeof(g_error), "%s", error);

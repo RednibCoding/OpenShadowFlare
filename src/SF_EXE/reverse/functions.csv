@@ -18,7 +18,7 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x00420c10,TitleStateConstructor,osf::TitleStateData::TitleStateData,implemented,static,Includes retail version 2.4.0 defaults
 0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and menu-music load covered by tests
 0x00420df0,LeaveTitleState,osf::TitleState::leave,implemented,static,Exact pattern and animation release sequence covered by tests
-0x00420e60,UpdateTitleState,osf::TitleState::update,partial,static,Fades exact availability skipping hover rectangles audio cues transition timers and smoke scheduling covered by native tests; drawing remains
+0x00420e60,UpdateTitleState,osf::TitleState::update,partial,static,Fades exact availability skipping hover rectangles audio cues transition timers smoke scheduling and visible background/menu pattern draws covered; smoke version and message drawing remain
 0x00421920,LoadCharacterSelectAssets,osf::CharacterSelectState::enter,implemented,static,Select pattern path and unchecked failure behavior preserved
 0x00421950,CharacterSelectConstructor,osf::CharacterSelectStateData::CharacterSelectStateData,implemented,static,Portable ownership replaces two retail heap objects
 0x004219c0,CharacterSelectDestructor,,analyzed,static,Save catalog and persistent new-character data ownership understood
