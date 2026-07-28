@@ -63,8 +63,14 @@ Back, and Exit. Delete confirmation preserves the original Yes/No keyboard and
 pointer behavior and removes both the save and its preview bitmap.
 
 Those character and mode menus are drawn by the software backend using
-`Select.njp` and `Font00.njp`. The transition into gameplay is connected;
-gameplay rendering itself is the next visible executable slice.
+`Select.njp` and `Font00.njp`. Entering a single-player game now shows the
+original Episode 1 loading artwork, swaps its loading label for the moving
+confirmation arrow when setup is complete, and accepts Return or a click on
+that arrow before handing off to the first world layer. The runtime decodes
+Remote Town's compressed
+`f00_01.Gnd`, loads its NJP pattern list, centers the camera on the retail
+new-character spawn, and draws the chosen player animation. Map objects, NPCs,
+the HUD, scripts, and gameplay simulation are still in progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
@@ -87,8 +93,9 @@ the reconstructed rules testable without starting a window.
 Source files are grouped by responsibility while keeping headers beside their
 implementations:
 
-- `core/` contains config, command-line, and retail utility code
+- `core/` contains config, command-line, compression, and retail utility code
 - `gapi/` contains the graphics interface, NJP decoder, and software backend
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
 - `states/` contains the top-level dispatcher and reconstructed game states
+- `world/` contains portable scenario and ground-map data
 - `runtime/` contains the executable shell and fixed-surface LGL presenter

@@ -46,12 +46,14 @@ Total: 258 RKC DLL imports
 | 0x004026d0 | KeyUpHandler - Key release (stub) |
 | 0x004028a0 | LeftClickHandler - Left mouse button |
 | 0x00402900 | RightClickHandler - Right/middle mouse |
+| 0x00402920 | PaintInitialLoadingScreen - cached loading page and overlay |
 | 0x004023d0 | UpdateGameState - Game state machine (switches on state 0/1/2) |
 | 0x00401b90 | Shutdown - Cleanup all subsystems |
-| 0x0041d970 | State2Handler_Main - Main gameplay update (2936 bytes) |
-| 0x00420df0 | State0Handler - Title/menu state |
-| 0x00421bf0 | State1Handler - Loading/transition state |
-| 0x0041d880 | State2Handler - Main gameplay dispatch |
+| 0x0041d970 | BootstrapGameplay - first-frame scenario setup (2936 bytes) |
+| 0x00420df0 | LeaveTitleState |
+| 0x00421bf0 | LeaveCharacterSelectState |
+| 0x0041d880 | LeaveGameplayState |
+| 0x00417bd0 | RenderLoadingScreen - gameplay loading presentation |
 | 0x0046863c | CRT Entry - Runtime startup |
 
 ## Global Variables
@@ -72,7 +74,7 @@ The game uses separate globals, not one monolithic struct:
 | 0x0048D71C | int | Screenshot requested flag |
 | 0x0048D8B8 | int | Window style index |
 | 0x0048D8CC | int | IME enabled flag |
-| 0x0048D8D4 | int | Cursor visibility flag |
+| 0x0048D8D4 | int | Initial loading state (-1 hidden, 0/1 loading, 2 confirm, 3 accepted) |
 
 ## Game State Machine (0x004023d0)
 
@@ -81,13 +83,25 @@ The game uses a state machine with 3 states stored at SFWindow+0x59C:
 | State | Handler   | Description |
 |-------|-----------|-------------|
 | 0     | 0x420df0  | Title screen / Main menu |
-| 1     | 0x421bf0  | Loading / Transition |
+| 1     | 0x421bf0  | Character selection / save selection |
 | 2     | 0x41d880  | Main gameplay |
 
 State transitions:
-- State 0→1: Start new game or continue
-- State 1→2: Finished loading scenario
+- State 0→1: Open new-character or saved-game selection
+- State 1→2: Confirm a single-player or network mode
 - State 2→0: Return to menu
+
+The visible loading screen is a sub-state of gameplay rather than top-level
+state 1. At application startup, the game decodes `Waiting.njp` patterns 0, 1,
+3, and 2 into cached DIBs. Initial single-player entry paints the Episode 1
+background and loading label through `0x00402920`. Once scenario setup marks
+the world ready, the label is replaced by a 16-pixel horizontally moving
+arrow; Return or a click in its bottom-right rectangle continues into the
+world.
+
+`0x00417bd0` is a different loading presenter used later in gameplay. It draws
+`Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
+frames, and uses `WaitIcon.njp`.
 
 ## SFWindow Object Layout (at 0x00482778)
 

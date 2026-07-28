@@ -9,12 +9,15 @@
 #include "gapi/njp.hpp"
 #include "gapi/software_backend.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "runtime/voc_player.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_state.hpp"
 #include "states/menu_states.hpp"
 #include "states/save_catalog.hpp"
+#include "world/world_scene.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -245,6 +248,7 @@ public:
               }),
           titleState_(random_, makeTitleStateHooks()),
           characterSelectState_(makeCharacterSelectStateHooks()),
+          gameplayState_(makeGameplayStateHooks()),
           gameState_(makeGameStateCallbacks()) {}
 
     ~Runtime() {
@@ -328,7 +332,10 @@ public:
         }
 
         if (!loadPattern(
-                0, "System\\Common\\Pattern\\Font00.njp")) {
+                0, "System\\Common\\Pattern\\Font00.njp") ||
+            !loadPattern(
+                2,
+                "System\\Common\\Pattern\\Waiting.njp")) {
             return false;
         }
         gameState_.transition(osf::GameState::title);
@@ -531,6 +538,8 @@ private:
             } else if (
                 characterFrame_.action ==
                 osf::CharacterSelectAction::enter_gameplay) {
+                gameplayGender_ =
+                    characterSelectState_.data().character_gender;
                 gameState_.transition(osf::GameState::gameplay);
             } else if (
                 characterFrame_.action ==
@@ -539,6 +548,14 @@ private:
             }
             break;
         }
+        case osf::GameState::gameplay:
+            gameplayFrame_ = gameplayState_.update({
+                menuInput_.confirm_pressed,
+                menuInput_.pointer_primary_pressed,
+                menuInput_.pointer_x,
+                menuInput_.pointer_y,
+            });
+            break;
         default:
             break;
         }
@@ -605,6 +622,25 @@ private:
             gameState_.currentState() ==
             osf::GameState::character_select) {
             renderCharacterSelect();
+        } else if (
+            gameState_.currentState() ==
+            osf::GameState::gameplay) {
+            if (gameplayFrame_.phase ==
+                osf::GameplayPhase::loading) {
+                const auto waiting = patterns_.find(2);
+                if (waiting != patterns_.end()) {
+                    osf::renderInitialLoadingScreen(
+                        renderer_,
+                        waiting->second,
+                        gameplayFrame_.loading_counter,
+                        gameplayFrame_.ready_to_continue);
+                }
+            } else {
+                osf::renderWorld(
+                    renderer_,
+                    world_,
+                    gameplayFrame_.animation_frame);
+            }
         }
         renderer_.endFrame();
     }
@@ -798,7 +834,35 @@ private:
         callbacks.character_select.leave = [this] {
             characterSelectState_.leave();
         };
+        callbacks.gameplay.enter = [this](std::int32_t) {
+            gameplayFrame_ = {};
+            gameplayState_.enter();
+        };
+        callbacks.gameplay.leave = [this] {
+            gameplayState_.leave();
+        };
         return callbacks;
+    }
+
+    osf::GameplayStateHooks makeGameplayStateHooks() {
+        osf::GameplayStateHooks hooks;
+        hooks.prepare_world = [this] {
+            std::string error;
+            const bool worldReady =
+                world_.loadInitialScenario(
+                    dataRoot_, gameplayGender_, &error);
+            if (!worldReady) {
+                std::fprintf(
+                    stderr,
+                    "Could not load the initial world: %s\n",
+                    error.c_str());
+            }
+            return worldReady;
+        };
+        hooks.release_world = [this] {
+            world_.clear();
+        };
+        return hooks;
     }
 
     void loadSavedCharacters() {
@@ -830,6 +894,7 @@ private:
     std::int32_t effectVolume_ = 0;
     std::int32_t bgmVolume_ = 0;
     std::int32_t savedGameCount_ = 0;
+    std::int32_t gameplayGender_ = 0;
     std::filesystem::path dataRoot_;
     std::unordered_map<std::int32_t, osf::gapi::NjpImage> patterns_;
     std::array<osf::gapi::CafAnimation, 10> titleAnimations_;
@@ -841,11 +906,14 @@ private:
     osf::gapi::SoftwareBackend renderer_;
     osf::TitleFrameResult titleFrame_;
     osf::CharacterSelectFrameResult characterFrame_;
+    osf::GameplayFrameResult gameplayFrame_;
     osf::MenuFrameInput menuInput_;
     osf::CharacterSelectFrameInput characterInput_;
     osf::RetailRandom random_;
     osf::TitleState titleState_;
     osf::CharacterSelectState characterSelectState_;
+    osf::WorldScene world_;
+    osf::GameplayState gameplayState_;
     osf::GameStateDispatcher gameState_;
 };
 

@@ -11,9 +11,12 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x004023d0,UpdateGameState,GameStateDispatcher::transition,implemented,static,Renderer synchronization teardown initialization and raw state storage covered by native tests
 0x004026d0,OnKeyUp,,analyzed,static,Retail function is effectively empty
 0x00402840,OnKeyDown,,analyzed,static,Enter and PrintScreen behavior identified
+0x00402920,PaintInitialLoadingScreen,osf::renderInitialLoadingScreen,partial,static,Waiting pattern 0 Episode 1 background pattern 3 loading label pattern 2 moving confirmation arrow and exact overlay coordinates reconstructed; alternate crossed-swords background remains
 0x00402b30,WndProc,,analyzed,static,Behavior maps to LWL events rather than native messages
-0x0041d3f0,EnterGameplayState,,identified,static,Called when top-level state changes to 2
-0x0041d880,LeaveGameplayState,,identified,static,Called when leaving top-level state 2 and unconditionally during shutdown
+0x00417bd0,RenderScenarioLoadingScreen,,analyzed,static,Separate later gameplay loader uses Waiting pattern 4 or VisualNN artwork a 120-frame fade and WaitIcon; not used by initial world entry
+0x0041d3f0,EnterGameplayState,osf::GameplayState::enter / osf::WorldScene::loadInitialScenario,partial,static,Initial loading lifecycle scenario 00000000 ground patterns player assets and spawn are reconstructed; remaining gameplay subsystems are pending
+0x0041d880,LeaveGameplayState,osf::GameplayState::leave,partial,static,Portable world loading patterns and scene resources are released; remaining gameplay subsystem teardown is pending
+0x0041d970,BootstrapGameplay,osf::WorldScene::loadInitialScenario,partial,static,Initial single-player scenario map and entry record are reconstructed; save loading network modes scripts and objects remain
 0x00420b50,LoadTitleAssets,osf::TitleState::enter,implemented,static,Exact title and ten smoke NJP and CAF resource paths and IDs with retail failure behavior plus portable CAF decoding
 0x00420c10,TitleStateConstructor,osf::TitleStateData::TitleStateData,implemented,static,Includes retail version 2.4.0 defaults
 0x00420c40,EnterTitleState,osf::TitleState::enter,implemented,static,State reset save detection input table random delays cursor and portable title-music VOC load covered by tests and real-asset runs
@@ -34,4 +37,6 @@ address,name,reconstructed_symbol,status,evidence,notes
 0x004253c0,UpdateCharacterScreen11,updateThreeChoiceScreen / osf::renderCharacterSelect,implemented,static,New Game Join Game and Back choices preserve retail screen results
 0x00425830,UpdateCharacterScreen12,updateHostScreen / osf::renderCharacterSelect,implemented,static,Portable host address entry clipboard paste Connect and Back behavior use the retail 15-byte limit and pattern indices
 0x00425d40,FinishCharacterScreen11,updateHostScreen,implemented,static,Portable host editor is prepared directly when Join Game opens
+0x00426200,LoadScenario,osf::WorldScene::loadInitialScenario / osf::GroundMap::load,partial,static,Scenario 00000000 map selection pattern list compressed GND decoding and entry position covered; general scenario objects scripts and transitions remain
+0x00427b50,LoadScenarioMct,osf::WorldScene::loadInitialScenario,partial,static,Initial MCT map path and new-player entry record identified; general MCED entity table decoding remains
 0x00467c6e,VisualCppRand,osf::RetailRandom::next,implemented,static,Exact unsigned 32-bit Visual C++ linear congruential generator covered by sequence test

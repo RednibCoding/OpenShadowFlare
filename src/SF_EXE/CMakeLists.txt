@@ -3,6 +3,7 @@ add_library(
   audio/voc.cpp
   core/command_line.cpp
   core/game_config.cpp
+  core/rclib_lz.cpp
   core/retail_random.cpp
   gapi/bitmap.cpp
   gapi/caf.cpp
@@ -10,10 +11,14 @@ add_library(
   gapi/njp.cpp
   gapi/software_backend.cpp
   render/character_select_renderer.cpp
+  render/gameplay_renderer.cpp
   render/title_renderer.cpp
   states/game_state.cpp
+  states/gameplay_state.cpp
   states/menu_states.cpp
   states/save_catalog.cpp
+  world/ground_map.cpp
+  world/world_scene.cpp
 )
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
 

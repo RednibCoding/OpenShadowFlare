@@ -1,6 +1,8 @@
 #include "core/command_line.hpp"
 #include "core/game_config.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_state.hpp"
+#include "world/ground_map.hpp"
 
 #include <array>
 #include <cstdint>
@@ -26,6 +28,24 @@ std::string encode(const std::array<std::int32_t, 16>& values) {
         bytes.push_back(static_cast<char>((raw >> 24U) & 0xffU));
     }
     return bytes;
+}
+
+void appendI32(
+    std::vector<std::uint8_t>& bytes,
+    std::int32_t value) {
+    const std::uint32_t raw = static_cast<std::uint32_t>(value);
+    bytes.push_back(static_cast<std::uint8_t>(raw));
+    bytes.push_back(static_cast<std::uint8_t>(raw >> 8u));
+    bytes.push_back(static_cast<std::uint8_t>(raw >> 16u));
+    bytes.push_back(static_cast<std::uint8_t>(raw >> 24u));
+}
+
+void appendI16(
+    std::vector<std::uint8_t>& bytes,
+    std::int16_t value) {
+    const std::uint16_t raw = static_cast<std::uint16_t>(value);
+    bytes.push_back(static_cast<std::uint8_t>(raw));
+    bytes.push_back(static_cast<std::uint8_t>(raw >> 8u));
 }
 
 bool check(bool condition, const char* message) {
@@ -224,6 +244,85 @@ bool testStateDispatcher() {
         "State transition call order differs from 0x004023d0.");
 }
 
+bool testGroundMapDecode() {
+    std::vector<std::uint8_t> bytes;
+    const char header[16] = "RPGSCRN_GNDv000";
+    bytes.insert(bytes.end(), header, header + sizeof(header));
+    appendI32(bytes, 2);
+    appendI32(bytes, 1);
+    appendI32(bytes, 64);
+    appendI32(bytes, 48);
+    appendI32(bytes, 160);
+    appendI32(bytes, 160);
+    bytes.push_back(0);
+    appendI16(bytes, 1);
+    appendI16(bytes, 2);
+    appendI16(bytes, 0);
+    appendI16(bytes, 3);
+    appendI16(bytes, 4);
+    appendI16(bytes, 5);
+
+    osf::GroundMap map;
+    if (!check(
+            map.decode(bytes) &&
+                map.width() == 2 &&
+                map.height() == 1 &&
+                map.chipWidth() == 64 &&
+                map.chipHeight() == 48 &&
+                map.baseMagnificationX() == 160 &&
+                map.baseMagnificationY() == 160,
+            "A valid retail GND fixture was rejected.")) {
+        return false;
+    }
+    const osf::GroundCell* first = map.cell(0, 0);
+    const osf::GroundCell* second = map.cell(1, 0);
+    return check(
+        first && second &&
+            first->status == 1 &&
+            first->pattern_set == 0 &&
+            first->pattern == 4 &&
+            second->status == 2 &&
+            second->pattern_set == 3 &&
+            second->pattern == 5 &&
+            map.cell(2, 0) == nullptr,
+        "The retail GND cell planes were decoded incorrectly.");
+}
+
+bool testGameplayLoadingTransition() {
+    std::int32_t prepares = 0;
+    std::int32_t releases = 0;
+    osf::GameplayState state({
+        [&prepares] {
+            ++prepares;
+            return true;
+        },
+        [&releases] { ++releases; },
+    });
+    state.enter();
+    osf::GameplayFrameResult frame = state.update();
+    if (!check(
+            prepares == 1 &&
+                frame.phase == osf::GameplayPhase::loading &&
+                frame.loading_counter == 1 &&
+                frame.ready_to_continue,
+            "Gameplay did not expose the loaded world confirmation.")) {
+        return false;
+    }
+    frame = state.update({false, true, 100, 100});
+    if (!check(
+            frame.phase == osf::GameplayPhase::loading,
+            "Gameplay accepted a click outside the retail arrow region.")) {
+        return false;
+    }
+    frame = state.update({false, true, 600, 460});
+    state.leave();
+    return check(
+        frame.phase == osf::GameplayPhase::world &&
+            frame.world_ready &&
+            releases == 1,
+        "Gameplay did not hand loading off to the world cleanly.");
+}
+
 }  // namespace
 
 int main() {
@@ -231,7 +330,9 @@ int main() {
         !testConfigValidationAndWriting() ||
         !testConfigFailureSideEffects() ||
         !testCommandLine() ||
-        !testStateDispatcher()) {
+        !testStateDispatcher() ||
+        !testGroundMapDecode() ||
+        !testGameplayLoadingTransition()) {
         return 1;
     }
     return 0;

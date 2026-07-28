@@ -36,6 +36,10 @@ The first game-core slice covers:
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
 - the statically linked Visual C++ random-number generator
+- gameplay entry and its retail loading-screen sub-state
+- portable RCLIB-L decoding shared by NJP and ground-map data
+- the initial `00000000` scenario's `f00_01` ground grid, pattern list,
+  new-player spawn, and player CAF/NJP drawing
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -74,4 +78,19 @@ starts it on entry when necessary, uses common voice 55 for its selection
 actions, and releases the music when the menu flow ends. All playback uses the
 retail effect and BGM volume values through LAL.
 
-The next executable layer begins at gameplay entry `0x0041d3f0`.
+Gameplay entry at `0x0041d3f0` now prepares the initial single-player world.
+The initial loading presentation follows the cached `Waiting.njp` path in
+`0x00402920`: pattern 0 is the Episode 1 background, pattern 3 is the
+bottom-right loading label, and pattern 2 becomes the horizontally moving
+confirmation arrow after world setup completes. Return or a click inside the
+retail arrow rectangle enters the world. The 120-frame `VisualNN.njp` fade in
+`0x00417bd0` is a separate loading presenter used later in gameplay and is not
+part of this initial transition.
+
+The first scenario then draws the decoded `f00_01.Gnd` cells at the new-player
+entry record (`89898`, `2811`) and places the selected male or female CAF/NJP
+animation at the camera center.
+
+This is the first world layer, not complete gameplay rendering. Map objects
+from `f00_01.Obl`, the HUD, NPCs, world simulation, scripting, and saved-game
+scenario restoration are the next executable layers.

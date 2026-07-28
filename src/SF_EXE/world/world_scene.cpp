@@ -1,0 +1,161 @@
+#include "world_scene.hpp"
+
+#include <algorithm>
+#include <cctype>
+#include <fstream>
+#include <iterator>
+#include <utility>
+
+namespace osf {
+namespace {
+
+void setError(std::string* error, std::string message) {
+    if (error) {
+        *error = std::move(message);
+    }
+}
+
+bool endsWithIgnoreCase(
+    const std::string& value,
+    const std::string& suffix) {
+    if (value.size() < suffix.size()) {
+        return false;
+    }
+    return std::equal(
+        suffix.rbegin(),
+        suffix.rend(),
+        value.rbegin(),
+        [](char left, char right) {
+            return std::tolower(
+                       static_cast<unsigned char>(left)) ==
+                   std::tolower(
+                       static_cast<unsigned char>(right));
+        });
+}
+
+std::vector<std::string> readPatternList(
+    const std::filesystem::path& path) {
+    std::ifstream file(path);
+    std::vector<std::string> result;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        result.push_back(std::move(line));
+    }
+    return result;
+}
+
+}  // namespace
+
+bool WorldScene::loadInitialScenario(
+    const std::filesystem::path& data_root,
+    std::int32_t character_gender,
+    std::string* error) {
+    clear();
+
+    // Scenario 00000000 names Map\f00_01.map in its MCT header. Its entry
+    // record for the new-player key (0) places the player at this position.
+    const std::filesystem::path map_root = data_root / "Map";
+    if (!ground_.load(
+            map_root / "Ground" / "f00_01.Gnd", error)) {
+        return false;
+    }
+
+    const std::vector<std::string> pattern_names =
+        readPatternList(
+            map_root / "Pattern" / "f00_01.Lst");
+    if (pattern_names.empty()) {
+        setError(error, "The map pattern list could not be read.");
+        clear();
+        return false;
+    }
+    ground_patterns_.resize(pattern_names.size());
+    for (std::size_t index = 0;
+         index < pattern_names.size();
+         ++index) {
+        if (!endsWithIgnoreCase(pattern_names[index], ".njp")) {
+            continue;
+        }
+        auto image = std::make_unique<gapi::NjpImage>();
+        std::string image_error;
+        if (!image->load(
+                map_root / "Pattern" / pattern_names[index],
+                &image_error)) {
+            setError(
+                error,
+                "A map pattern could not be loaded: " +
+                    pattern_names[index] + " (" +
+                    image_error + ")");
+            clear();
+            return false;
+        }
+        ground_patterns_[index] = std::move(image);
+    }
+
+    const char* player_directory =
+        character_gender == 0 ? "Male" : "Female";
+    const std::filesystem::path player_root =
+        data_root / "Player" / player_directory;
+    std::string player_error;
+    if (!player_patterns_.load(
+            player_root / "Animation00.Njp",
+            &player_error) ||
+        !player_animation_.load(
+            player_root / "Animation00.Caf",
+            &player_error)) {
+        setError(
+            error,
+            "The player animation could not be loaded: " +
+                player_error);
+        clear();
+        return false;
+    }
+
+    player_world_x_ = 89898;
+    player_world_y_ = 2811;
+    has_player_ = true;
+    return true;
+}
+
+void WorldScene::clear() {
+    ground_.clear();
+    ground_patterns_.clear();
+    player_patterns_.clear();
+    player_animation_.clear();
+    has_player_ = false;
+    player_world_x_ = 0;
+    player_world_y_ = 0;
+}
+
+const GroundMap& WorldScene::ground() const {
+    return ground_;
+}
+
+const std::vector<std::unique_ptr<gapi::NjpImage>>&
+WorldScene::groundPatterns() const {
+    return ground_patterns_;
+}
+
+const gapi::NjpImage& WorldScene::playerPatterns() const {
+    return player_patterns_;
+}
+
+const gapi::CafAnimation& WorldScene::playerAnimation() const {
+    return player_animation_;
+}
+
+bool WorldScene::hasPlayer() const {
+    return has_player_;
+}
+
+std::int32_t WorldScene::playerWorldX() const {
+    return player_world_x_;
+}
+
+std::int32_t WorldScene::playerWorldY() const {
+    return player_world_y_;
+}
+
+}  // namespace osf

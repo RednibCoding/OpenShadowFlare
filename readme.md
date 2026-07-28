@@ -79,7 +79,10 @@ Here's where things stand today:
   a fast software renderer, plus LWL, LGL, and LAL for the window, presentation,
   and audio. It shows the working title and complete character pre-game flow,
   including creation, save previews, deletion, and the original online/single
-  mode menus. Gameplay rendering is the next visible step.
+  mode menus. Starting a single-player game now brings up the original loading
+  screen and enters Remote Town with the player on the decoded retail ground
+  map. Buildings and other map objects, the HUD, NPCs, scripts, and gameplay
+  simulation come next.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.

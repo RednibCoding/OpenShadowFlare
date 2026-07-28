@@ -3,6 +3,7 @@
 #include "gapi/gapi.hpp"
 #include "gapi/njp.hpp"
 #include "gapi/software_backend.hpp"
+#include "render/gameplay_renderer.hpp"
 #include "render/title_renderer.hpp"
 
 #include <array>
@@ -405,6 +406,34 @@ bool testCafAndTitleAnimation() {
         "The title steam CAF frame or retail draw packet differs.");
 }
 
+bool testInitialLoadingPackets() {
+    osf::gapi::NjpImage waiting;
+    RecordingBackend backend;
+    osf::renderInitialLoadingScreen(
+        backend, waiting, 0, false);
+    osf::renderInitialLoadingScreen(
+        backend, waiting, 0, true);
+    osf::renderInitialLoadingScreen(
+        backend, waiting, 7, true);
+    osf::renderInitialLoadingScreen(
+        backend, waiting, 15, true);
+
+    return check(
+        backend.patterns.size() == 8 &&
+            backend.patterns[0].index == 0 &&
+            backend.patterns[0].draw.x == 0 &&
+            backend.patterns[0].draw.y == 0 &&
+            backend.patterns[1].index == 3 &&
+            backend.patterns[1].draw.x == 572 &&
+            backend.patterns[1].draw.y == 443 &&
+            backend.patterns[3].index == 2 &&
+            backend.patterns[3].draw.x == 592 &&
+            backend.patterns[3].draw.y == 450 &&
+            backend.patterns[5].draw.x == 599 &&
+            backend.patterns[7].draw.x == 607,
+        "The initial loading artwork or confirmation arrow differs.");
+}
+
 }  // namespace
 
 int main() {
@@ -412,7 +441,8 @@ int main() {
         !testNjpAndSoftwareBackend() ||
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
-        !testCafAndTitleAnimation()) {
+        !testCafAndTitleAnimation() ||
+        !testInitialLoadingPackets()) {
         return 1;
     }
     return 0;
