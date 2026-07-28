@@ -327,6 +327,9 @@ void renderSavedGames(
     renderer.drawPattern(
         select, 39, {0, 0, 1000, 1000, brightness});
 
+    constexpr std::int32_t hoverFrames[] = {
+        3, 2, 1, 0, 0, 1, 2, 3,
+    };
     for (std::size_t index = 0; index < 6; ++index) {
         const std::int32_t x =
             32 + static_cast<std::int32_t>(index % 2) * 304;
@@ -342,10 +345,25 @@ void renderSavedGames(
             select,
             40,
             {x, y, 1000, 1000, itemBrightness});
+        const bool hovered =
+            data.brightness_increasing != 0 &&
+            data.launch_counter == 0 &&
+            data.save_hover_animation > 28 &&
+            input.pointer_x > x &&
+            input.pointer_x < x + 287 &&
+            input.pointer_y > y &&
+            input.pointer_y < y + 76;
+        std::int32_t numberFrame =
+            static_cast<std::int32_t>(index) == selected ? 0 : 3;
+        if (hovered) {
+            const std::int32_t renderedCounter =
+                std::max(data.save_hover_animation - 1, 0);
+            numberFrame =
+                hoverFrames[(renderedCounter / 4) & 7];
+        }
         const std::size_t animation =
             42 + index * 4 +
-            static_cast<std::size_t>(
-                (data.save_hover_animation / 4) & 3);
+            static_cast<std::size_t>(numberFrame);
         renderer.drawPattern(
             select,
             animation,

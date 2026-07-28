@@ -60,6 +60,8 @@ control. Selecting a new character now follows the executable's exact
 animation, 130-by-20 name field, and 6-by-12 block caret mirror the retail draw
 packets as well. Shared mode dialogs are drawn as full-bright overlays after
 their dimmed backdrop, and returning from the saved-game dialog restores both
-the list brightness and its interaction state.
+the list brightness and its interaction state. Save-slot numerals now remain
+static unless pointed at; only the hovered numeral follows the retail
+3-2-1-0-0-1-2-3 pulse.
 
 The next executable layer begins at gameplay entry `0x0041d3f0`.

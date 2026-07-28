@@ -1200,13 +1200,37 @@ bool testNewCharacterRetailDrawing() {
         {},
         {});
     const std::size_t popupStart = backend.patterns.size() - 4;
-    return check(
+    if (!check(
         backend.patterns.front().index == 41 &&
             backend.patterns.front().draw.brightness == 500 &&
+            backend.patterns[4].index == 42 &&
+            backend.patterns[6].index == 49 &&
             backend.patterns[popupStart].index == 38 &&
             backend.patterns[popupStart].draw.brightness == 1000 &&
             backend.patterns.back().draw.brightness == 1000,
-        "The shared popup inherited the saved-game backdrop fade.");
+        "The saved-game static numbers or popup layering differ.")) {
+        return false;
+    }
+
+    data.screen = 0;
+    data.brightness_increasing = 1;
+    data.save_hover_animation = 65;
+    input.pointer_x = 100;
+    input.pointer_y = 200;
+    backend = {};
+    osf::renderCharacterSelect(
+        backend,
+        select,
+        &font,
+        data,
+        frame,
+        input,
+        {},
+        {});
+    return check(
+        backend.patterns[4].index == 45 &&
+            backend.patterns[6].index == 49,
+        "The retail hover pulse affected more than one save number.");
 }
 
 }  // namespace
