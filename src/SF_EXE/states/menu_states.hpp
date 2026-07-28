@@ -125,14 +125,13 @@ struct CharacterSelectStateData {
     std::int32_t fade_target = 0;                 // retail +0x04
     std::int32_t fade_steps_remaining = 0;        // retail +0x08
     std::int32_t launch_counter = 0;              // retail +0x0c
+    std::int32_t character_transition_counter = 0; // retail +0x10
     std::int32_t save_hover_animation = 0;        // retail +0x14
     std::int32_t brightness_increasing = 0;       // retail +0x18
     std::int32_t saved_game_selection = 0;        // retail +0x1c
     std::int32_t selection_result = -1;           // retail +0x20
     CharacterSelectMode mode = CharacterSelectMode::new_character;
     std::int32_t screen = 0;                      // retail +0x28
-    std::int32_t raw_30 = 0;
-    std::int32_t raw_34 = 0;
     CharacterSelectMode rendered_mode =
         CharacterSelectMode::new_character;       // retail +0x40
     std::int32_t pointer_click_cooldown = 0;       // retail +0x44
@@ -144,6 +143,11 @@ struct CharacterSelectStateData {
     std::int32_t previous_pointer_y = 0;           // retail +0x5c
     std::int32_t input_latch = 1;                 // retail +0x60
     bool new_character_data_loaded = false;
+    std::int32_t character_gender = 0;
+    std::string character_name;
+    bool name_entry_active = false;
+    std::string host_address;
+    bool host_entry_active = false;
     std::int32_t selected_saved_game = -1;
     std::string next_save_path;
     std::vector<std::uint8_t> temporary_buffer;
@@ -172,6 +176,10 @@ enum class CharacterSelectModeAction {
     open_delete_saved_game_dialog,
     confirm_saved_game_delete,
     cancel_saved_game_delete,
+    begin_name_entry,
+    accept_character_name,
+    cancel_name_entry,
+    open_mode_menu,
 };
 
 struct CharacterSelectFrameInput {
@@ -184,6 +192,8 @@ struct CharacterSelectFrameInput {
     bool down_pressed = false;
     bool left_pressed = false;
     bool right_pressed = false;
+    bool backspace_pressed = false;
+    std::string text_input;
     std::int32_t pointer_x = 0;
     std::int32_t pointer_y = 0;
     std::int32_t saved_game_count = 0;
@@ -193,6 +203,7 @@ struct CharacterSelectFrameResult {
     bool processed = true;
     std::int32_t background_brightness = 0;
     std::int32_t mode_brightness = 1000;
+    std::int32_t character_transition_counter = 0;
     CharacterSelectMode mode = CharacterSelectMode::new_character;
     CharacterSelectScreenUpdate screen_update =
         CharacterSelectScreenUpdate::none;
@@ -215,6 +226,7 @@ struct CharacterSelectStateHooks {
     std::function<void()> release_new_character;
     std::function<void()> load_saved_characters;
     std::function<void(std::int32_t)> delete_saved_character;
+    std::function<std::string()> read_clipboard;
     std::function<void(std::int32_t)> set_cursor_state;
     std::function<bool(std::int32_t)> voice_is_playing;
     std::function<void(std::int32_t, bool)> play_voice;

@@ -2,6 +2,7 @@
 
 #include "core/retail_random.hpp"
 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -46,6 +47,28 @@ constexpr MenuRectangle kDeleteDialogYesRectangle{
     0xf7, 0x129, 0x113, 0x120};
 constexpr MenuRectangle kDeleteDialogNoRectangle{
     0x15c, 0x183, 0x113, 0x120};
+constexpr MenuRectangle kNewCharacterMaleRectangle{
+    0xa7, 0x12f, 0x6a, 0x17b};
+constexpr MenuRectangle kNewCharacterFemaleRectangle{
+    0x185, 0x1ea, 0x6a, 0x177};
+constexpr MenuRectangle kNewCharacterNameConfirmRectangle{
+    0x237, 0x25b, 0x1c3, 0x1ce};
+constexpr std::array<MenuRectangle, 3> kCharacterModeRectangles{{
+    {0xdb, 0x1a5, 0xcf, 0xdc},
+    {0xdd, 0x1a2, 0xf1, 0xfe},
+    {0x11b, 0x165, 0x116, 0x123},
+}};
+constexpr std::array<MenuRectangle, 3> kNetworkModeRectangles{{
+    {0xf0, 0x18f, 0xcf, 0xdc},
+    {0xee, 0x191, 0xf1, 0xfe},
+    {0x11b, 0x165, 0x116, 0x123},
+}};
+constexpr MenuRectangle kHostConnectRectangle{
+    0x171, 0x196, 0x114, 0x120};
+constexpr MenuRectangle kHostBackRectangle{
+    0xe9, 0x132, 0x114, 0x120};
+constexpr MenuRectangle kHostPasteRectangle{
+    0x175, 0x189, 0xe3, 0xf5};
 
 constexpr std::array<std::int32_t, 57> kTitleInputBindings{{
     1, 2, 16, 17, 38, 40, 37, 39, 9, 27, 13,
@@ -429,6 +452,359 @@ void updateSavedGameMode(
     }
 }
 
+void appendTextLimited(
+    std::string& destination,
+    std::string_view input,
+    std::size_t maximum_bytes) {
+    for (std::size_t index = 0; index < input.size();) {
+        const std::uint8_t first =
+            static_cast<std::uint8_t>(input[index]);
+        std::size_t length = 1;
+        if ((first & 0xe0u) == 0xc0u) {
+            length = 2;
+        } else if ((first & 0xf0u) == 0xe0u) {
+            length = 3;
+        } else if ((first & 0xf8u) == 0xf0u) {
+            length = 4;
+        }
+        if (index + length > input.size() ||
+            destination.size() + length > maximum_bytes) {
+            break;
+        }
+        destination.append(input.substr(index, length));
+        index += length;
+    }
+}
+
+void eraseLastTextCharacter(std::string& text) {
+    if (text.empty()) {
+        return;
+    }
+    std::size_t index = text.size() - 1;
+    while (index > 0 &&
+           (static_cast<std::uint8_t>(text[index]) & 0xc0u) ==
+               0x80u) {
+        --index;
+    }
+    text.erase(index);
+}
+
+void beginNameEntry(
+    CharacterSelectStateData& data,
+    CharacterSelectFrameResult& result) {
+    data.character_gender = data.dialog_selection == 0 ? 0 : 1;
+    data.character_transition_counter = 1000;
+    data.screen = 1;
+    data.name_entry_active = true;
+    data.input_latch = 1;
+    data.brightness_increasing = 1;
+    result.character_transition_counter = 1000;
+    result.mode_action =
+        CharacterSelectModeAction::begin_name_entry;
+    ++result.play_selection_sound_count;
+}
+
+void updateTextEntry(
+    std::string& text,
+    const CharacterSelectFrameInput& input) {
+    if (input.backspace_pressed) {
+        eraseLastTextCharacter(text);
+    }
+    appendTextLimited(text, input.text_input, 15);
+}
+
+void updateNewCharacterMode(
+    CharacterSelectStateData& data,
+    const CharacterSelectFrameInput& input,
+    CharacterSelectFrameResult& result) {
+    if (data.fade_target > data.fade_value) {
+        data.fade_target = data.fade_value;
+    }
+    if (data.fade_steps_remaining == 0) {
+        const std::int32_t phase = data.launch_counter % 1000;
+        result.mode_brightness =
+            data.launch_counter == 0
+                ? kFullBrightness
+                : std::max(
+                      0,
+                      kFullBrightness - phase * 50);
+        if (phase > 5) {
+            data.fade_value =
+                kFullBrightness + ((5 - phase) * 1000) / 15;
+            if (data.fade_value < 0) {
+                data.fade_value = 0;
+            }
+        }
+        if (data.fade_target > data.fade_value) {
+            data.fade_target = data.fade_value;
+        }
+        if (result.mode_brightness > data.fade_target) {
+            result.mode_brightness = data.fade_target;
+        }
+    } else {
+        result.mode_brightness = data.fade_target;
+    }
+
+    result.character_transition_counter =
+        data.character_transition_counter;
+    if (data.character_transition_counter >= 1000 &&
+        data.character_transition_counter < 1020) {
+        ++data.character_transition_counter;
+    } else if (data.character_transition_counter == 1020) {
+        data.character_transition_counter = 0;
+    } else if (
+        data.character_transition_counter >= 2000 &&
+        data.character_transition_counter < 2020) {
+        ++data.character_transition_counter;
+    } else if (data.character_transition_counter == 2020) {
+        data.character_transition_counter = 0;
+    }
+
+    if (data.screen == 1 && data.name_entry_active) {
+        updateTextEntry(data.character_name, input);
+        if (input.back_pressed ||
+            (input.pointer_primary_pressed &&
+             isInside(
+                 kSavedBackRectangle,
+                 input.pointer_x,
+                 input.pointer_y))) {
+            data.name_entry_active = false;
+            data.screen = 0;
+            data.input_latch = 1;
+            data.character_transition_counter = 2000;
+            result.character_transition_counter = 2000;
+            result.mode_action =
+                CharacterSelectModeAction::cancel_name_entry;
+            ++result.play_selection_sound_count;
+            return;
+        }
+        const bool confirmByPointer =
+            input.pointer_primary_pressed &&
+            isInside(
+                kNewCharacterNameConfirmRectangle,
+                input.pointer_x,
+                input.pointer_y);
+        if ((input.confirm_pressed || confirmByPointer) &&
+            !data.character_name.empty()) {
+            data.name_entry_active = false;
+            data.screen = 10;
+            data.dialog_selection = 0;
+            data.dialog_input_armed = 1;
+            data.input_latch = 1;
+            result.mode_action =
+                CharacterSelectModeAction::accept_character_name;
+            ++result.play_selection_sound_count;
+        }
+        return;
+    }
+
+    if (data.screen != 0) {
+        return;
+    }
+    if (data.input_latch == 0 &&
+        data.fade_steps_remaining == 0) {
+        const std::int32_t previous = data.dialog_selection;
+        if (input.up_pressed || input.left_pressed) {
+            data.dialog_selection = 0;
+            data.dialog_input_armed = 1;
+        }
+        if (input.down_pressed || input.right_pressed) {
+            data.dialog_selection = 1;
+            data.dialog_input_armed = 1;
+        }
+        if (data.dialog_selection != previous) {
+            ++result.play_move_sound_count;
+        }
+    }
+
+    const bool pointerMoved =
+        input.pointer_x != data.previous_pointer_x ||
+        input.pointer_y != data.previous_pointer_y;
+    for (std::int32_t gender = 0; gender < 2; ++gender) {
+        const MenuRectangle& rectangle =
+            gender == 0
+                ? kNewCharacterMaleRectangle
+                : kNewCharacterFemaleRectangle;
+        if (pointerMoved &&
+            isInside(
+                rectangle,
+                input.pointer_x,
+                input.pointer_y)) {
+            data.dialog_input_armed = 0;
+            if (data.dialog_selection != gender) {
+                data.dialog_selection = gender;
+                ++result.play_move_sound_count;
+            }
+        }
+        if (data.input_latch == 0 &&
+            input.pointer_primary_pressed &&
+            isInside(
+                rectangle,
+                input.pointer_x,
+                input.pointer_y)) {
+            data.dialog_selection = gender;
+            beginNameEntry(data, result);
+            break;
+        }
+    }
+    if (data.screen == 0 &&
+        data.input_latch == 0 &&
+        input.confirm_pressed) {
+        beginNameEntry(data, result);
+    }
+
+    if (data.launch_counter == 0 &&
+        data.input_latch == 0 &&
+        (input.back_pressed ||
+         (input.pointer_primary_pressed &&
+          isInside(
+              kSavedBackRectangle,
+              input.pointer_x,
+              input.pointer_y)))) {
+        data.launch_counter = 1000;
+        result.mode_action =
+            CharacterSelectModeAction::start_back_transition;
+        ++result.play_selection_sound_count;
+    }
+    if (data.launch_counter == 0 &&
+        data.input_latch == 0 &&
+        input.pointer_primary_pressed &&
+        isInside(
+            kSavedExitRectangle,
+            input.pointer_x,
+            input.pointer_y)) {
+        data.launch_counter = 2000;
+        result.mode_action =
+            CharacterSelectModeAction::start_exit_transition;
+        ++result.play_selection_sound_count;
+    }
+    data.previous_pointer_x = input.pointer_x;
+    data.previous_pointer_y = input.pointer_y;
+}
+
+void updateThreeChoiceScreen(
+    CharacterSelectStateData& data,
+    const CharacterSelectFrameInput& input,
+    CharacterSelectFrameResult& result,
+    const std::array<MenuRectangle, 3>& rectangles,
+    bool network_screen) {
+    const std::int32_t previous = data.dialog_selection;
+    bool pointerConfirm = false;
+    if (data.input_latch == 0) {
+        if ((input.up_pressed || input.left_pressed) &&
+            data.dialog_selection > 0) {
+            --data.dialog_selection;
+        }
+        if ((input.down_pressed || input.right_pressed) &&
+            data.dialog_selection < 2) {
+            ++data.dialog_selection;
+        }
+    }
+    for (std::int32_t item = 0; item < 3; ++item) {
+        if (isInside(
+                rectangles[static_cast<std::size_t>(item)],
+                input.pointer_x,
+                input.pointer_y)) {
+            data.dialog_selection = item;
+            if (input.pointer_primary_pressed &&
+                data.input_latch == 0) {
+                pointerConfirm = true;
+            }
+        }
+    }
+    if (data.dialog_selection != previous) {
+        ++result.play_move_sound_count;
+    }
+
+    const bool confirm =
+        data.input_latch == 0 &&
+        (input.confirm_pressed || pointerConfirm);
+    if (!confirm && !(input.back_pressed && data.input_latch == 0)) {
+        return;
+    }
+    if (input.back_pressed) {
+        data.dialog_selection = 0;
+        data.screen = network_screen ? 10 : 0;
+    } else if (!network_screen) {
+        if (data.dialog_selection == 0) {
+            data.dialog_selection = 0;
+            data.screen = 11;
+        } else if (data.dialog_selection == 1) {
+            data.selection_result = 0;
+            data.screen = 20;
+        } else {
+            data.dialog_selection = 0;
+            data.screen = 0;
+            if (data.mode == CharacterSelectMode::new_character) {
+                data.name_entry_active = true;
+                data.screen = 1;
+            }
+        }
+    } else {
+        if (data.dialog_selection == 0) {
+            data.selection_result = 1;
+            data.screen = 20;
+        } else if (data.dialog_selection == 1) {
+            data.selection_result = 2;
+            data.host_entry_active = true;
+            data.dialog_selection = 0;
+            data.screen = 12;
+        } else {
+            data.dialog_selection = 0;
+            data.screen = 10;
+        }
+    }
+    data.input_latch = 1;
+    ++result.play_selection_sound_count;
+}
+
+void updateHostScreen(
+    CharacterSelectStateData& data,
+    const CharacterSelectFrameInput& input,
+    CharacterSelectFrameResult& result,
+    const std::function<std::string()>& read_clipboard) {
+    updateTextEntry(data.host_address, input);
+    if (input.pointer_primary_pressed &&
+        isInside(
+            kHostPasteRectangle,
+            input.pointer_x,
+            input.pointer_y) &&
+        read_clipboard) {
+        appendTextLimited(
+            data.host_address,
+            read_clipboard(),
+            15);
+    }
+    const bool connect =
+        (input.confirm_pressed ||
+         (input.pointer_primary_pressed &&
+          isInside(
+              kHostConnectRectangle,
+              input.pointer_x,
+              input.pointer_y))) &&
+        !data.host_address.empty();
+    const bool back =
+        input.back_pressed ||
+        (input.pointer_primary_pressed &&
+         isInside(
+             kHostBackRectangle,
+             input.pointer_x,
+             input.pointer_y));
+    if (connect) {
+        data.selection_result = 2;
+        data.host_entry_active = false;
+        data.screen = 20;
+        data.input_latch = 1;
+        ++result.play_selection_sound_count;
+    } else if (back) {
+        data.host_entry_active = false;
+        data.dialog_selection = 1;
+        data.screen = 11;
+        data.input_latch = 1;
+        ++result.play_selection_sound_count;
+    }
+}
+
 }  // namespace
 
 TitleState::TitleState(RetailRandom& random, TitleStateHooks hooks)
@@ -750,8 +1126,13 @@ void CharacterSelectState::enter(std::int32_t retail_argument) {
         if (hooks_.prepare_new_character) {
             hooks_.prepare_new_character(data_.next_save_path);
         }
-        data_.raw_30 = 0;
-        data_.raw_34 = 0;
+        data_.character_gender = 0;
+        data_.character_name.clear();
+        data_.name_entry_active = false;
+        data_.host_address.clear();
+        data_.host_entry_active = false;
+        data_.dialog_selection = 0;
+        data_.dialog_input_armed = 1;
     } else {
         data_.mode = CharacterSelectMode::saved_game;
         data_.next_save_path.clear();
@@ -760,10 +1141,13 @@ void CharacterSelectState::enter(std::int32_t retail_argument) {
         }
         data_.save_hover_animation = 0;
         data_.saved_game_selection = 0;
+        data_.dialog_selection = 0;
+        data_.dialog_input_armed = 1;
     }
 
     data_.fade_steps_remaining = 0x14;
     data_.launch_counter = 0;
+    data_.character_transition_counter = 0;
     data_.brightness_increasing = 1;
     data_.selection_result = -1;
     data_.selected_saved_game = -1;
@@ -855,6 +1239,10 @@ CharacterSelectFrameResult CharacterSelectState::update(
         }
 
         if (!mode_returned_early &&
+            data_.mode == CharacterSelectMode::new_character) {
+            updateNewCharacterMode(data_, input, result);
+        } else if (
+            !mode_returned_early &&
             data_.mode == CharacterSelectMode::saved_game) {
             updateSavedGameMode(data_, input, result);
         }
@@ -863,14 +1251,28 @@ CharacterSelectFrameResult CharacterSelectState::update(
         case 10:
             result.screen_update =
                 CharacterSelectScreenUpdate::screen_10;
+            updateThreeChoiceScreen(
+                data_,
+                input,
+                result,
+                kCharacterModeRectangles,
+                false);
             break;
         case 11:
             result.screen_update =
                 CharacterSelectScreenUpdate::screen_11;
+            updateThreeChoiceScreen(
+                data_,
+                input,
+                result,
+                kNetworkModeRectangles,
+                true);
             break;
         case 12:
             result.screen_update =
                 CharacterSelectScreenUpdate::screen_12;
+            updateHostScreen(
+                data_, input, result, hooks_.read_clipboard);
             break;
         case 20:
             if (data_.launch_counter == 0) {

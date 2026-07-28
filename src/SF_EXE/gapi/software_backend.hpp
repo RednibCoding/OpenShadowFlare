@@ -22,6 +22,15 @@ public:
         const NjpImage& image,
         std::size_t pattern_index,
         const PatternDraw& draw = {}) override;
+    bool drawBitmap(
+        const BitmapImage& image,
+        const BitmapDraw& draw = {}) override;
+    bool drawText(
+        const NjpImage& font,
+        std::string_view text,
+        const TextDraw& draw = {}) override;
+    bool drawRectangle(
+        const RectangleDraw& draw) override;
     void endFrame() override;
 
     SurfaceView surface() const;

@@ -77,8 +77,9 @@ Here's where things stand today:
   game and reaches its render loop.
 - The portable executable now has a backend-neutral `gapi` graphics layer with
   a fast software renderer, plus LWL, LGL, and LAL for the window, presentation,
-  and audio. It decodes the original title graphics and shows a working title
-  screen; character-selection rendering is the next visible step.
+  and audio. It shows the working title and complete character pre-game flow,
+  including creation, save previews, deletion, and the original online/single
+  mode menus. Gameplay rendering is the next visible step.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.

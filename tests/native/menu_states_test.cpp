@@ -1,4 +1,5 @@
 #include "core/retail_random.hpp"
+#include "render/character_select_renderer.hpp"
 #include "states/menu_states.hpp"
 
 #include <array>
@@ -9,6 +10,50 @@
 #include <vector>
 
 namespace {
+
+struct PatternCall {
+    std::size_t index = 0;
+    osf::gapi::PatternDraw draw;
+};
+
+class RecordingBackend final : public osf::gapi::Backend {
+public:
+    void beginFrame(osf::gapi::Color) override {}
+
+    bool drawPattern(
+        const osf::gapi::NjpImage&,
+        std::size_t pattern_index,
+        const osf::gapi::PatternDraw& draw) override {
+        patterns.push_back({pattern_index, draw});
+        return true;
+    }
+
+    bool drawBitmap(
+        const osf::gapi::BitmapImage&,
+        const osf::gapi::BitmapDraw&) override {
+        return true;
+    }
+
+    bool drawText(
+        const osf::gapi::NjpImage&,
+        std::string_view,
+        const osf::gapi::TextDraw&) override {
+        ++text_draws;
+        return true;
+    }
+
+    bool drawRectangle(
+        const osf::gapi::RectangleDraw& draw) override {
+        rectangles.push_back(draw);
+        return true;
+    }
+
+    void endFrame() override {}
+
+    std::vector<PatternCall> patterns;
+    std::vector<osf::gapi::RectangleDraw> rectangles;
+    std::int32_t text_draws = 0;
+};
 
 bool check(bool condition, const char* message) {
     if (!condition) {
@@ -831,6 +876,296 @@ bool testSavedGameDeleteDialog() {
         "Clicking an armed Yes choice did not delete the selected save.");
 }
 
+bool testNewCharacterCreationAndModeScreens() {
+    osf::CharacterSelectStateHooks hooks;
+    hooks.read_clipboard = [] {
+        return std::string("127.0.0.1");
+    };
+    osf::CharacterSelectState state(std::move(hooks));
+    state.enter(0);
+    state.data().fade_value = 1000;
+    state.data().fade_target = 1000;
+    state.data().fade_steps_remaining = 0;
+    state.data().brightness_increasing = 1;
+    state.data().screen = 0;
+    state.data().launch_counter = 0;
+    state.data().input_latch = 0;
+
+    osf::CharacterSelectFrameInput input;
+    input.right_pressed = true;
+    osf::CharacterSelectFrameResult result = state.update(input);
+    input.right_pressed = false;
+    if (!check(
+            state.data().dialog_selection == 1 &&
+                result.play_move_sound_count == 1,
+            "New-character Right did not select the female character.")) {
+        return false;
+    }
+
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+                state.data().screen == 1 &&
+                state.data().character_gender == 1 &&
+                state.data().name_entry_active &&
+                state.data().character_transition_counter == 1000 &&
+                result.mode_action ==
+                    osf::CharacterSelectModeAction::begin_name_entry,
+            "Confirm did not begin retail new-character name entry.")) {
+        return false;
+    }
+
+    result = state.update(input);
+    if (!check(
+            result.character_transition_counter == 1000 &&
+                state.data().character_transition_counter == 1001,
+            "The portrait slide did not begin at retail phase 1000.")) {
+        return false;
+    }
+    for (std::int32_t phase = 1001; phase < 1020; ++phase) {
+        result = state.update(input);
+        if (!check(
+                result.character_transition_counter == phase,
+                "The portrait slide skipped a retail animation phase.")) {
+            return false;
+        }
+    }
+    result = state.update(input);
+    if (!check(
+            result.character_transition_counter == 1020 &&
+                state.data().character_transition_counter == 0,
+            "The portrait slide did not finish at the centered position.")) {
+        return false;
+    }
+
+    input.back_pressed = true;
+    result = state.update(input);
+    input.back_pressed = false;
+    if (!check(
+            state.data().screen == 0 &&
+                result.character_transition_counter == 2000 &&
+                state.data().character_transition_counter == 2000,
+            "Cancel did not begin the retail reverse portrait slide.")) {
+        return false;
+    }
+    result = state.update(input);
+    if (!check(
+            result.character_transition_counter == 2000 &&
+                state.data().character_transition_counter == 2001,
+            "The reverse portrait slide did not begin at phase 2000.")) {
+        return false;
+    }
+    for (std::int32_t phase = 2001; phase < 2020; ++phase) {
+        result = state.update(input);
+        if (!check(
+                result.character_transition_counter == phase,
+                "The reverse portrait slide skipped a retail phase.")) {
+            return false;
+        }
+    }
+    result = state.update(input);
+    if (!check(
+            result.character_transition_counter == 2020 &&
+                state.data().character_transition_counter == 0,
+            "The reverse portrait slide did not restore both portraits.")) {
+        return false;
+    }
+
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+            state.data().screen == 1 &&
+                result.character_transition_counter == 1000,
+            "Character selection did not restart after name-entry cancel.")) {
+        return false;
+    }
+
+    input.text_input = "Mina";
+    input.backspace_pressed = true;
+    result = state.update(input);
+    input.text_input.clear();
+    input.backspace_pressed = false;
+    if (!check(
+            state.data().character_name == "Mina",
+            "Portable character name input did not preserve frame order.")) {
+        return false;
+    }
+
+    input.backspace_pressed = true;
+    result = state.update(input);
+    input.backspace_pressed = false;
+    if (!check(
+            state.data().character_name == "Min",
+            "Backspace did not remove one UTF-8 character.")) {
+        return false;
+    }
+
+    input.text_input = "a";
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.text_input.clear();
+    input.confirm_pressed = false;
+    if (!check(
+            state.data().character_name == "Mina" &&
+                state.data().screen == 10 &&
+                !state.data().name_entry_active &&
+                result.mode_action ==
+                    osf::CharacterSelectModeAction::
+                        accept_character_name &&
+                result.screen_update ==
+                    osf::CharacterSelectScreenUpdate::screen_10,
+            "A valid character name did not open the mode menu.")) {
+        return false;
+    }
+
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+            state.data().screen == 11 &&
+                result.screen_update ==
+                    osf::CharacterSelectScreenUpdate::screen_10,
+            "Online Mode did not open the online-game menu.")) {
+        return false;
+    }
+
+    input.down_pressed = true;
+    result = state.update(input);
+    input.down_pressed = false;
+    if (!check(
+            state.data().dialog_selection == 1,
+            "Online-game Down did not select Join Game.")) {
+        return false;
+    }
+
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+            state.data().screen == 12 &&
+                state.data().host_entry_active &&
+                state.data().selection_result == 2,
+            "Join Game did not open host-address entry.")) {
+        return false;
+    }
+
+    input.pointer_x = 380;
+    input.pointer_y = 235;
+    input.pointer_primary_pressed = true;
+    result = state.update(input);
+    input.pointer_primary_pressed = false;
+    input.pointer_x = 0;
+    input.pointer_y = 0;
+    if (!check(
+            state.data().host_address == "127.0.0.1",
+            "The host-address Paste button did not use the clipboard hook.")) {
+        return false;
+    }
+
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    if (!check(
+            state.data().host_address == "127.0.0.1" &&
+                state.data().screen == 20 &&
+                !state.data().host_entry_active,
+            "A host address did not begin the gameplay transition.")) {
+        return false;
+    }
+
+    state.enter(0);
+    state.data().fade_value = 1000;
+    state.data().fade_target = 1000;
+    state.data().fade_steps_remaining = 0;
+    state.data().screen = 10;
+    state.data().dialog_selection = 1;
+    state.data().input_latch = 0;
+    input.confirm_pressed = true;
+    result = state.update(input);
+    input.confirm_pressed = false;
+    return check(
+        state.data().screen == 20 &&
+            state.data().selection_result == 0,
+        "Single Mode did not begin the offline gameplay transition.");
+}
+
+bool testNewCharacterRetailDrawing() {
+    osf::gapi::NjpImage select;
+    osf::gapi::NjpImage font;
+    osf::CharacterSelectStateData data;
+    data.mode = osf::CharacterSelectMode::new_character;
+    data.screen = 1;
+    data.character_gender = 0;
+    data.name_entry_active = true;
+
+    osf::CharacterSelectFrameResult frame;
+    frame.background_brightness = 1000;
+    frame.mode_brightness = 1000;
+    frame.character_transition_counter = 1010;
+    osf::CharacterSelectFrameInput input;
+
+    RecordingBackend backend;
+    osf::renderCharacterSelect(
+        backend,
+        select,
+        &font,
+        data,
+        frame,
+        input,
+        {},
+        {});
+    if (!check(
+            backend.patterns.size() == 9 &&
+                backend.patterns[4].index == 9 &&
+                backend.patterns[4].draw.x == 0 &&
+                backend.patterns[4].draw.brightness == 500 &&
+                backend.patterns[6].index == 8 &&
+                backend.patterns[6].draw.x == 48 &&
+                backend.patterns[6].draw.brightness == 1000 &&
+                backend.patterns[8].index == 35,
+            "The half-way portrait slide differs from retail packets.")) {
+        return false;
+    }
+    if (!check(
+            backend.rectangles.size() == 2 &&
+                backend.rectangles[0].x == 190 &&
+                backend.rectangles[0].y == 407 &&
+                backend.rectangles[0].width == 130 &&
+                backend.rectangles[0].height == 20 &&
+                backend.rectangles[0].color.red == 64 &&
+                backend.rectangles[1].x == 194 &&
+                backend.rectangles[1].y == 411 &&
+                backend.rectangles[1].width == 6 &&
+                backend.rectangles[1].height == 12 &&
+                backend.rectangles[1].color.red == 128,
+            "The retail name field or block caret geometry differs.")) {
+        return false;
+    }
+
+    data.character_name = "Mina";
+    frame.character_transition_counter = 1020;
+    backend = {};
+    osf::renderCharacterSelect(
+        backend,
+        select,
+        &font,
+        data,
+        frame,
+        input,
+        {},
+        {});
+    return check(
+        backend.patterns.size() == 10 &&
+            backend.patterns[6].index == 8 &&
+            backend.patterns[6].draw.x == 97 &&
+            backend.patterns[9].index == 4 &&
+            backend.rectangles[1].x == 218 &&
+            backend.text_draws == 1,
+        "The centered portrait, normal OK button, or caret position differs.");
+}
+
 }  // namespace
 
 int main() {
@@ -843,7 +1178,9 @@ int main() {
         !testCharacterSelectLifecycle() ||
         !testCharacterSelectFrames() ||
         !testSavedGameSelectionFrames() ||
-        !testSavedGameDeleteDialog()) {
+        !testSavedGameDeleteDialog() ||
+        !testNewCharacterCreationAndModeScreens() ||
+        !testNewCharacterRetailDrawing()) {
         return 1;
     }
     return 0;

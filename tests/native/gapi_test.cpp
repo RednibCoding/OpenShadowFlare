@@ -1,3 +1,4 @@
+#include "gapi/bitmap.hpp"
 #include "gapi/gapi.hpp"
 #include "gapi/njp.hpp"
 #include "gapi/software_backend.hpp"
@@ -93,6 +94,67 @@ std::vector<std::uint8_t> makeCompressedNjpFixture() {
     return bytes;
 }
 
+std::vector<std::uint8_t> makeFontNjpFixture() {
+    std::vector<std::uint8_t> bytes;
+    const char header[16] = "NJudgeUniPat002";
+    appendBytes(bytes, header, sizeof(header));
+
+    appendI32(bytes, 1);
+    appendI32(bytes, 8);
+    appendI32(bytes, 16);
+    appendI32(bytes, 16);
+    appendI32(bytes, 0);
+    std::vector<std::uint8_t> pixels(16 * 16, 0);
+    pixels[11 * 16 + 1] = 1;
+    bytes.insert(bytes.end(), pixels.begin(), pixels.end());
+
+    appendI32(bytes, 1);
+    appendI32(bytes, 1);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 16);
+    appendI32(bytes, 16);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1000);
+    appendI32(bytes, 1000);
+
+    appendI32(bytes, 1);
+    for (std::int32_t index = 0; index < 256; ++index) {
+        const std::uint8_t value = index == 1 ? 255 : 0;
+        bytes.push_back(value);
+        bytes.push_back(value);
+        bytes.push_back(value);
+        bytes.push_back(0);
+    }
+    return bytes;
+}
+
+std::vector<std::uint8_t> makeBitmapFixture() {
+    std::vector<std::uint8_t> bytes(62, 0);
+    bytes[0] = 'B';
+    bytes[1] = 'M';
+    bytes[2] = 62;
+    bytes[10] = 54;
+    bytes[14] = 40;
+    bytes[18] = 2;
+    bytes[22] = 1;
+    bytes[26] = 1;
+    bytes[28] = 24;
+    bytes[34] = 8;
+    bytes[54] = 30;
+    bytes[55] = 20;
+    bytes[56] = 10;
+    bytes[57] = 60;
+    bytes[58] = 50;
+    bytes[59] = 40;
+    return bytes;
+}
+
 bool check(bool condition, const char* message) {
     if (!condition) {
         std::fprintf(stderr, "%s\n", message);
@@ -175,12 +237,60 @@ bool testTruncatedNjp() {
         "The NJP decoder accepted a truncated compressed bitmap.");
 }
 
+bool testBitmapAndTextDrawing() {
+    osf::gapi::BitmapImage bitmap;
+    std::string error;
+    if (!check(
+            bitmap.decode(makeBitmapFixture(), &error),
+            error.c_str())) {
+        return false;
+    }
+
+    osf::gapi::NjpImage font;
+    if (!check(
+            font.decode(makeFontNjpFixture(), &error),
+            error.c_str())) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend backend(5, 5);
+    backend.beginFrame({0, 0, 0, 255});
+    if (!check(
+            backend.drawRectangle(
+                {1, 1, 3, 2, {80, 40, 20, 255}, 500}) &&
+                backend.drawBitmap(bitmap, {0, 0}) &&
+                backend.drawText(
+                    font,
+                    "A",
+                    {2, 3, {200, 100, 50, 255}, 500}),
+            "The software backend rejected bitmap or text drawing.")) {
+        return false;
+    }
+    const osf::gapi::SurfaceView surface = backend.surface();
+    return check(
+        bitmap.width() == 2 && bitmap.height() == 1 &&
+            surface.pixels[0].red == 10 &&
+            surface.pixels[0].green == 20 &&
+            surface.pixels[0].blue == 30 &&
+            surface.pixels[1].red == 40 &&
+            surface.pixels[1].green == 50 &&
+            surface.pixels[1].blue == 60 &&
+            surface.pixels[1 * 5 + 1].red == 40 &&
+            surface.pixels[1 * 5 + 1].green == 20 &&
+            surface.pixels[1 * 5 + 1].blue == 10 &&
+            surface.pixels[3 * 5 + 2].red == 100 &&
+            surface.pixels[3 * 5 + 2].green == 50 &&
+            surface.pixels[3 * 5 + 2].blue == 25,
+        "BMP orientation, BGR conversion, or font tinting differs.");
+}
+
 }  // namespace
 
 int main() {
     if (!testViewport() ||
         !testNjpAndSoftwareBackend() ||
-        !testTruncatedNjp()) {
+        !testTruncatedNjp() ||
+        !testBitmapAndTextDrawing()) {
         return 1;
     }
     return 0;

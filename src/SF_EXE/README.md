@@ -49,12 +49,18 @@ selection highlights are visible. Smoke layers, version text, and network
 messages still need their drawing paths.
 
 Character selection has its outer fade and screen/transition dispatcher as
-well. The saved-game list has its original two-column navigation, six pointer
-regions, double-click timing, and Continue/Delete/Back/Exit decisions. Its
-Delete confirmation also has the original Yes/No keyboard and pointer behavior
-and removes both the selected save and its preview bitmap. Character-selection
-drawing is the next visible piece, so selecting New Game or Load Game currently
-leads to a black character-selection screen.
+well. New Game now shows the original male/female artwork, accepts a portable
+15-byte character name, and reproduces the retail 20-frame portrait slide,
+opposite-character fade, reverse animation, name field, and block caret. It
+continues through the original Online/Single and New/Join/host-address screens.
+Load Game reads the real save summaries and BMP previews, keeps the retail
+two-column navigation and double-click timing, and supports Continue, Delete,
+Back, and Exit. Delete confirmation preserves the original Yes/No keyboard and
+pointer behavior and removes both the save and its preview bitmap.
+
+Those character and mode menus are drawn by the software backend using
+`Select.njp` and `Font00.njp`. The transition into gameplay is connected;
+gameplay rendering itself is the next visible executable slice.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
@@ -79,5 +85,6 @@ implementations:
 
 - `core/` contains config, command-line, and retail utility code
 - `gapi/` contains the graphics interface, NJP decoder, and software backend
+- `render/` translates reconstructed draw rules into backend-neutral GAPI work
 - `states/` contains the top-level dispatcher and reconstructed game states
 - `runtime/` contains the executable shell and fixed-surface LGL presenter

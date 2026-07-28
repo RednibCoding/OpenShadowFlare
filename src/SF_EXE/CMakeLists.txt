@@ -3,11 +3,14 @@ add_library(
   core/command_line.cpp
   core/game_config.cpp
   core/retail_random.cpp
+  gapi/bitmap.cpp
   gapi/gapi.cpp
   gapi/njp.cpp
   gapi/software_backend.cpp
+  render/character_select_renderer.cpp
   states/game_state.cpp
   states/menu_states.cpp
+  states/save_catalog.cpp
 )
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
 

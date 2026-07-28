@@ -28,6 +28,10 @@ The first game-core slice covers:
 - the character-selection fade and top-level per-frame screen dispatcher
 - saved-game list navigation, slot hit regions, double-click timing, and the
   Continue, Delete, Back, and Exit decisions
+- new-character gender selection and portable 15-byte name entry
+- Online/Single and New/Join mode menus plus portable host-address entry
+- saved-game summary parsing, BMP previews, and Delete confirmation
+- software drawing with the original Select and bitmap-font pattern sheets
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
 - the statically linked Visual C++ random-number generator
@@ -41,14 +45,19 @@ portable callbacks. Those callbacks deliberately describe what the game needs,
 not how a particular operating system provides it.
 
 The title screen's game decisions from `0x00420e60` are now reconstructed.
-Drawing is still pending, but the portable runtime already feeds LWL input
-into the original selection rules and follows the resulting state changes.
+Its original background, menu entries, selection brightness, and fades are
+drawn by the portable runtime. Smoke animation layers, version/copyright text,
+and network messages are the remaining title presentation work.
 
 The top-level character-selection dispatcher at `0x00421c50` is reconstructed
 through its fade, mode dispatch, sub-screen dispatch, and delayed gameplay
-transition. The saved-game list decisions inside `0x00422e30` are now
-implemented too. Its drawing and Delete confirmation at `0x004228b0` remain.
+transition. New-character creation, the saved-game list, Delete confirmation,
+and all shared mode/host screens are implemented and drawn with the original
+assets. LWL supplies portable UTF-8 text and clipboard input; the game state
+keeps the retail 15-byte field limit and does not depend on a native edit
+control. Selecting a new character now follows the executable's exact
+20-frame, 97-pixel center slide while the opposite portrait fades. The reverse
+animation, 130-by-20 name field, and 6-by-12 block caret mirror the retail draw
+packets as well.
 
-The next large menu layer is new-character interaction at `0x00423ca0`,
-followed by the shared sub-screens at `0x00424d80`, `0x004253c0`,
-`0x00425830`, and `0x00425d40`.
+The next executable layer begins at gameplay entry `0x0041d3f0`.

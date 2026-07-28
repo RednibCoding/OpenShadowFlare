@@ -4,13 +4,15 @@
 #include "core/command_line.hpp"
 #include "core/game_config.hpp"
 #include "core/retail_random.hpp"
+#include "gapi/bitmap.hpp"
 #include "gapi/njp.hpp"
 #include "gapi/software_backend.hpp"
+#include "render/character_select_renderer.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
 #include "states/menu_states.hpp"
+#include "states/save_catalog.hpp"
 
-#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -18,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -309,6 +312,10 @@ public:
                 lal_last_error());
         }
 
+        if (!loadPattern(
+                0, "System\\Common\\Pattern\\Font00.njp")) {
+            return false;
+        }
         gameState_.transition(osf::GameState::title);
         return true;
     }
@@ -388,6 +395,10 @@ private:
             characterInput_.pointer_primary_pressed = true;
             return;
         }
+        if (event.type == LWL_EVENT_TEXT_INPUT) {
+            characterInput_.text_input += event.text;
+            return;
+        }
         if (event.type == LWL_EVENT_KEY_UP) {
             if (std::strcmp(event.key, "up") == 0) {
                 upHeld_ = false;
@@ -405,6 +416,8 @@ private:
                 backHeld_ = false;
             } else if (std::strcmp(event.key, "delete") == 0) {
                 deleteHeld_ = false;
+            } else if (std::strcmp(event.key, "backspace") == 0) {
+                backspaceHeld_ = false;
             }
             return;
         }
@@ -457,6 +470,11 @@ private:
                 characterInput_.delete_pressed = true;
             }
             deleteHeld_ = true;
+        } else if (std::strcmp(event.key, "backspace") == 0) {
+            if (!backspaceHeld_) {
+                characterInput_.backspace_pressed = true;
+            }
+            backspaceHeld_ = true;
         }
     }
 
@@ -478,17 +496,17 @@ private:
         }
         case osf::GameState::character_select: {
             characterInput_.saved_game_count = savedGameCount_;
-            const osf::CharacterSelectFrameResult result =
+            characterFrame_ =
                 characterSelectState_.update(characterInput_);
-            if (result.action ==
+            if (characterFrame_.action ==
                 osf::CharacterSelectAction::return_to_title) {
                 gameState_.transition(osf::GameState::title);
             } else if (
-                result.action ==
+                characterFrame_.action ==
                 osf::CharacterSelectAction::enter_gameplay) {
                 gameState_.transition(osf::GameState::gameplay);
             } else if (
-                result.action ==
+                characterFrame_.action ==
                 osf::CharacterSelectAction::exit_game) {
                 running = false;
             }
@@ -510,6 +528,25 @@ private:
         characterInput_.down_pressed = false;
         characterInput_.left_pressed = false;
         characterInput_.right_pressed = false;
+        characterInput_.backspace_pressed = false;
+        characterInput_.text_input.clear();
+    }
+
+    void renderCharacterSelect() {
+        const auto pattern = patterns_.find(4);
+        if (pattern == patterns_.end()) {
+            return;
+        }
+        const auto font = patterns_.find(0);
+        osf::renderCharacterSelect(
+            renderer_,
+            pattern->second,
+            font == patterns_.end() ? nullptr : &font->second,
+            characterSelectState_.data(),
+            characterFrame_,
+            characterInput_,
+            savedGames_,
+            savedPreviews_);
     }
 
     void renderGame() {
@@ -532,6 +569,10 @@ private:
                     }
                 }
             }
+        } else if (
+            gameState_.currentState() ==
+            osf::GameState::character_select) {
+            renderCharacterSelect();
         }
         renderer_.endFrame();
     }
@@ -593,11 +634,17 @@ private:
                 return fileExists(dataRoot_, path);
             };
         hooks.load_saved_characters = [this] {
-            savedGameCount_ = countRetailSaves(dataRoot_);
+            loadSavedCharacters();
         };
         hooks.delete_saved_character = [this](std::int32_t index) {
             deleteRetailSave(dataRoot_, index);
-            savedGameCount_ = countRetailSaves(dataRoot_);
+            loadSavedCharacters();
+        };
+        hooks.read_clipboard = [this] {
+            char* text = lwl_clipboard_get(window_);
+            std::string result = text ? text : "";
+            lwl_free(text);
+            return result;
         };
         return hooks;
     }
@@ -619,6 +666,20 @@ private:
         return callbacks;
     }
 
+    void loadSavedCharacters() {
+        savedGames_ = osf::loadRetailSaveCatalog(dataRoot_);
+        savedPreviews_.clear();
+        savedPreviews_.reserve(savedGames_.size());
+        for (const osf::RetailSaveSummary& save : savedGames_) {
+            osf::gapi::BitmapImage preview;
+            std::string error;
+            preview.load(save.preview_path, &error);
+            savedPreviews_.push_back(std::move(preview));
+        }
+        savedGameCount_ =
+            static_cast<std::int32_t>(savedGames_.size());
+    }
+
     LwlWindow* window_ = nullptr;
     LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
@@ -630,12 +691,16 @@ private:
     bool confirmHeld_ = false;
     bool backHeld_ = false;
     bool deleteHeld_ = false;
+    bool backspaceHeld_ = false;
     std::int32_t savedGameCount_ = 0;
     std::filesystem::path dataRoot_;
     std::unordered_map<std::int32_t, osf::gapi::NjpImage> patterns_;
+    std::vector<osf::RetailSaveSummary> savedGames_;
+    std::vector<osf::gapi::BitmapImage> savedPreviews_;
     LglSurfacePresenter surfacePresenter_;
     osf::gapi::SoftwareBackend renderer_;
     osf::TitleFrameResult titleFrame_;
+    osf::CharacterSelectFrameResult characterFrame_;
     osf::MenuFrameInput menuInput_;
     osf::CharacterSelectFrameInput characterInput_;
     osf::RetailRandom random_;
