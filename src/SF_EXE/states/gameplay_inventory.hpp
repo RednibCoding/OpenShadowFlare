@@ -8,6 +8,9 @@
 
 namespace osf {
 
+class ItemDatabase;
+class PlayerEquipment;
+
 struct GameplayInventoryInput {
     bool toggle_pressed = false;
     bool close_pressed = false;
@@ -19,6 +22,7 @@ struct GameplayInventoryInput {
 struct GameplayInventoryResult {
     bool pointer_consumed = false;
     bool world_drop_requested = false;
+    bool equipment_changed = false;
     std::int32_t world_drop_screen_x = 0;
     std::int32_t world_drop_screen_y = 0;
 };
@@ -29,12 +33,19 @@ public:
     static constexpr std::int32_t backpack_left = 336;
     static constexpr std::int32_t backpack_top = 264;
     static constexpr std::int32_t cell_size = 32;
+    static constexpr std::int32_t main_hand_left = 480;
+    static constexpr std::int32_t main_hand_top = 16;
+    static constexpr std::int32_t main_hand_right = 544;
+    static constexpr std::int32_t main_hand_bottom = 144;
 
     void open();
     void close();
     GameplayInventoryResult update(
         const GameplayInventoryInput& input,
-        PlayerInventory& inventory);
+        PlayerInventory& inventory,
+        PlayerEquipment& equipment,
+        const ItemDatabase& item_database,
+        std::int32_t player_level);
     void completeWorldDrop(bool succeeded);
 
     bool active() const;

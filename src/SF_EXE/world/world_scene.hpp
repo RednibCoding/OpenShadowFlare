@@ -6,6 +6,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
 #include "items/item_world_resource.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
@@ -50,6 +51,8 @@ public:
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
     const ItemDatabase& itemDatabase() const;
+    PlayerEquipment& playerEquipment();
+    const PlayerEquipment& playerEquipment() const;
     PlayerInventory& playerInventory();
     const PlayerInventory& playerInventory() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
@@ -57,6 +60,13 @@ public:
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
+    std::int32_t playerPartRedStrength(
+        std::size_t part) const;
+    std::int32_t playerPartGreenStrength(
+        std::size_t part) const;
+    std::int32_t playerPartBlueStrength(
+        std::size_t part) const;
+    void refreshPlayerAppearance();
     bool hasPlayer() const;
     void commandPlayerMovement(
         std::int32_t screen_x,
@@ -162,11 +172,15 @@ private:
     gapi::NjpImage map_overview_patterns_;
     MapExploration map_exploration_;
     std::vector<std::uint8_t> player_parts_enabled_;
+    std::vector<std::int32_t> player_part_red_strengths_;
+    std::vector<std::int32_t> player_part_green_strengths_;
+    std::vector<std::int32_t> player_part_blue_strengths_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
     QuestState quests_;
     MissionCatalog missions_;
     ItemDatabase item_database_;
+    PlayerEquipment player_equipment_;
     PlayerInventory player_inventory_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;

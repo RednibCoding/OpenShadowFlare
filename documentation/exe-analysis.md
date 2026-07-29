@@ -301,6 +301,23 @@ maximum and current life, while `+0x48/+0x4c` are base maximum and current
 mana. Both current values start at their maximum. `0x0044ea60` later builds
 the separate derived values which include equipment and status modifiers.
 
+The item panel keeps equipment separate from the backpack. Pointer classifier
+`0x00447290` returns main hand for x=480 through 543 and y=16 through 143.
+`0x00446320` accepts category-zero items there, compares the definition's
+required-level field with player offset `+0x34`, and stores the equipped
+instance at player offset `+0x4f4`. Clicking an occupied main hand with an
+empty pointer unequips it; carrying another valid weapon swaps the two.
+
+The decoded weapon record maps requirement level from field-block offset
+`0x94`, player CAF part from `0xa8`, and that part's RGB strengths from
+`0xac` through `0xb4`. Short Sword requires level one and selects part 12.
+Its first two entries in the ten-value derived contribution block are 20 and
+100. Retail runs both the derived-value refresh at `0x00450080` and appearance
+refresh at `0x00444ca0` after changing equipment. The portable equipment owner
+keeps those contributions available for combat, updates the visible 30 weight
+immediately, and rebuilds the player part mask without making the item panel
+own world rendering state.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`

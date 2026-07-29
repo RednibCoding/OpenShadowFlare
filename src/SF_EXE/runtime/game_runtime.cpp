@@ -770,7 +770,13 @@ private:
                         input_.menu().pointer_x,
                         input_.menu().pointer_y,
                     },
-                    world_.playerInventory());
+                    world_.playerInventory(),
+                    world_.playerEquipment(),
+                    world_.itemDatabase(),
+                    world_.playerData().level());
+            if (result.equipment_changed) {
+                world_.refreshPlayerAppearance();
+            }
             if (result.world_drop_requested) {
                 const osf::InventoryItem* held_item =
                     gameplayInventory_.heldItem();

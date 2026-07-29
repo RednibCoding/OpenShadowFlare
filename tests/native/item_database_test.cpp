@@ -1,4 +1,5 @@
 #include "items/item_database.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 
 #include <cstdint>
@@ -87,8 +88,30 @@ bool testRetailDatabase() {
             short_sword &&
                 short_sword->inventory_width == 1 &&
                 short_sword->inventory_height == 4 &&
-                short_sword->weight == 30,
-            "The Short Sword inventory footprint or weight differs.")) {
+                short_sword->weight == 30 &&
+                short_sword->required_level == 1 &&
+                short_sword->derived_parameter_bonuses[0] == 20 &&
+                short_sword->derived_parameter_bonuses[1] == 100 &&
+                short_sword->appearance_part == 12 &&
+                short_sword->appearance_red_strength == 1000 &&
+                short_sword->appearance_green_strength == 1000 &&
+                short_sword->appearance_blue_strength == 1000,
+            "The Short Sword equipment fields differ.")) {
+        return false;
+    }
+    osf::InventoryItem sword_item;
+    sword_item.category = short_sword->category;
+    sword_item.definition_id = short_sword->id;
+    sword_item.width = short_sword->inventory_width;
+    sword_item.height = short_sword->inventory_height;
+    osf::PlayerEquipment equipment;
+    if (!check(
+            !equipment.placeMainHand(
+                 sword_item, *short_sword, 0).accepted &&
+                equipment.placeMainHand(
+                    sword_item, *short_sword, 1).accepted &&
+                equipment.mainHand(),
+            "The Short Sword level requirement was not enforced.")) {
         return false;
     }
     if (!checkDefinition(

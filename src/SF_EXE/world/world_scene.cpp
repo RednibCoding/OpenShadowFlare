@@ -216,17 +216,7 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
-    // The retail appearance refresh at 0x00444ca0 clears this table,
-    // enables the base body and shadow, then enables only parts supplied by
-    // equipped items. A newly created character has no equipped item parts.
-    player_parts_enabled_.assign(
-        player_visual_.animation().maxPartCount(), 0);
-    if (!player_parts_enabled_.empty()) {
-        player_parts_enabled_[0] = 1;
-    }
-    if (player_parts_enabled_.size() > 1) {
-        player_parts_enabled_[1] = 1;
-    }
+    refreshPlayerAppearance();
 
     npcs_.reserve(scenario_.people().size());
     for (const ScenarioPerson& person : scenario_.people()) {
@@ -278,11 +268,15 @@ void WorldScene::clear() {
     map_overview_patterns_.clear();
     map_exploration_.clear();
     player_parts_enabled_.clear();
+    player_part_red_strengths_.clear();
+    player_part_green_strengths_.clear();
+    player_part_blue_strengths_.clear();
     npcs_.clear();
     ground_items_.clear();
     quests_.clear();
     missions_.clear();
     item_database_.clear();
+    player_equipment_.clear();
     player_inventory_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
@@ -343,6 +337,14 @@ const ItemDatabase& WorldScene::itemDatabase() const {
     return item_database_;
 }
 
+PlayerEquipment& WorldScene::playerEquipment() {
+    return player_equipment_;
+}
+
+const PlayerEquipment& WorldScene::playerEquipment() const {
+    return player_equipment_;
+}
+
 PlayerInventory& WorldScene::playerInventory() {
     return player_inventory_;
 }
@@ -374,6 +376,68 @@ const ItemWorldResource* WorldScene::itemWorldResource(
 bool WorldScene::playerPartEnabled(std::size_t part) const {
     return part < player_parts_enabled_.size() &&
            player_parts_enabled_[part] != 0;
+}
+
+std::int32_t WorldScene::playerPartRedStrength(
+    std::size_t part) const {
+    return part < player_part_red_strengths_.size()
+        ? player_part_red_strengths_[part]
+        : 1000;
+}
+
+std::int32_t WorldScene::playerPartGreenStrength(
+    std::size_t part) const {
+    return part < player_part_green_strengths_.size()
+        ? player_part_green_strengths_[part]
+        : 1000;
+}
+
+std::int32_t WorldScene::playerPartBlueStrength(
+    std::size_t part) const {
+    return part < player_part_blue_strengths_.size()
+        ? player_part_blue_strengths_[part]
+        : 1000;
+}
+
+void WorldScene::refreshPlayerAppearance() {
+    const std::size_t part_count =
+        player_visual_.animation().maxPartCount();
+    player_parts_enabled_.assign(part_count, 0);
+    player_part_red_strengths_.assign(part_count, 1000);
+    player_part_green_strengths_.assign(part_count, 1000);
+    player_part_blue_strengths_.assign(part_count, 1000);
+    if (!player_parts_enabled_.empty()) {
+        player_parts_enabled_[0] = 1;
+    }
+    if (player_parts_enabled_.size() > 1) {
+        player_parts_enabled_[1] = 1;
+    }
+
+    const InventoryItem* main_hand =
+        player_equipment_.mainHand();
+    if (!main_hand) {
+        return;
+    }
+    const ItemDefinition* definition =
+        item_database_.find(
+            main_hand->category,
+            main_hand->definition_id);
+    if (!definition ||
+        definition->appearance_part < 0 ||
+        static_cast<std::size_t>(
+            definition->appearance_part) >= part_count) {
+        return;
+    }
+    const std::size_t part =
+        static_cast<std::size_t>(
+            definition->appearance_part);
+    player_parts_enabled_[part] = 1;
+    player_part_red_strengths_[part] =
+        definition->appearance_red_strength;
+    player_part_green_strengths_[part] =
+        definition->appearance_green_strength;
+    player_part_blue_strengths_[part] =
+        definition->appearance_blue_strength;
 }
 
 bool WorldScene::hasPlayer() const {

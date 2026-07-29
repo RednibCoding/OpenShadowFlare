@@ -105,13 +105,16 @@ The first inventory screen follows `0x00404760`, `0x00407170`, and
 move the camera anchor to x=160, and restrict world picking to x=0..319.
 `Status.njp` patterns 2, 3, 0/1, and 74/75 supply the original frame, gender
 silhouette, and Close tab. Gold is summed from the owned stacks; equipped
-weight remains zero until equipment ownership is reconstructed. Backpack
+weight comes from the equipment owner. Backpack
 items draw from the separate `Item0000.njp` through `Item0013.njp` groups at
 `(336 + grid_x*32, 264 + grid_y*32)`. The inventory and lower HUD regions are
 cleared before their transparent authored layers are composed, matching
 retail's reserved UI surfaces instead of exposing world pixels through slots.
-Moving, dropping, equipping, condition overlays, detailed hover text, special
-consumable placement, and network replication remain.
+Moving and dropping use the retail held-item path. The main-hand box now
+accepts the Short Sword at level one, displays its 30 weight, retains its
+20/100 derived contributions, and swaps it back to the pointer on another
+click. Helmet, body, boots, off-hand, condition overlays, detailed hover text,
+special consumable placement, and network replication remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the

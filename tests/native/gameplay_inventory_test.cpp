@@ -1,5 +1,6 @@
 #include "gapi/gapi.hpp"
 #include "items/item_database.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/gameplay_inventory_renderer.hpp"
@@ -74,6 +75,8 @@ bool check(bool condition, const char* message) {
 
 bool testInventoryState() {
     osf::PlayerInventory owned;
+    osf::PlayerEquipment equipment;
+    osf::ItemDatabase database;
     osf::ItemDefinition sword;
     sword.category = 0;
     sword.id = 0;
@@ -86,10 +89,10 @@ bool testInventoryState() {
     osf::GameplayInventory inventory;
     inventory.update(
         {true, false, false, 0, 0},
-        owned);
+        owned, equipment, database, 1);
     inventory.update(
         {false, false, false, 350, 350},
-        owned);
+        owned, equipment, database, 1);
     if (!check(
             inventory.active() &&
                 inventory.hoveredItemIndex() == 0,
@@ -99,7 +102,7 @@ bool testInventoryState() {
     const osf::GameplayInventoryResult pickup =
         inventory.update(
             {false, false, true, 350, 350},
-            owned);
+            owned, equipment, database, 1);
     if (!check(
             pickup.pointer_consumed &&
                 inventory.holdingItem() &&
@@ -110,7 +113,7 @@ bool testInventoryState() {
     }
     inventory.update(
         {false, false, true, 620, 380},
-        owned);
+        owned, equipment, database, 1);
     if (!check(
             inventory.holdingItem() &&
                 inventory.heldItem()->grid_x == 0 &&
@@ -121,7 +124,7 @@ bool testInventoryState() {
     }
     inventory.update(
         {false, false, true, 480, 328},
-        owned);
+        owned, equipment, database, 1);
     if (!check(
             !inventory.holdingItem() &&
                 owned.items().size() == 1 &&
@@ -132,14 +135,14 @@ bool testInventoryState() {
     }
     inventory.update(
         {false, false, true, 480, 300},
-        owned);
+        owned, equipment, database, 1);
     inventory.update(
         {true, false, false, 480, 300},
-        owned);
+        owned, equipment, database, 1);
     const osf::GameplayInventoryResult drop =
         inventory.update(
             {false, false, true, 100, 200},
-            owned);
+            owned, equipment, database, 1);
     if (!check(
             !inventory.active() &&
                 inventory.holdingItem() &&
@@ -154,10 +157,10 @@ bool testInventoryState() {
     inventory.completeWorldDrop(false);
     inventory.update(
         {true, false, false, 480, 328},
-        owned);
+        owned, equipment, database, 1);
     inventory.update(
         {false, false, true, 480, 328},
-        owned);
+        owned, equipment, database, 1);
     if (!check(
             inventory.active() &&
                 !inventory.holdingItem() &&
@@ -168,7 +171,7 @@ bool testInventoryState() {
     }
     inventory.update(
         {false, false, false, 400, 398},
-        owned);
+        owned, equipment, database, 1);
     if (!check(
             inventory.closeHovered(),
             "The authored inventory Close tab did not hover.")) {
@@ -177,7 +180,7 @@ bool testInventoryState() {
     const osf::GameplayInventoryResult result =
         inventory.update(
             {false, false, true, 400, 398},
-            owned);
+            owned, equipment, database, 1);
     return check(
         !inventory.active() && result.pointer_consumed,
         "Clicking the inventory Close tab did not consume the click.");
@@ -277,7 +280,79 @@ bool testInventoryResourcesAndRendering() {
     }
     inventory.update(
         {false, false, true, 350, 300},
-        world.playerInventory());
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    const osf::GameplayInventoryResult equipped =
+        inventory.update(
+            {false, false, true, 510, 80},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.playerData().level());
+    world.refreshPlayerAppearance();
+    RecordingBackend equipped_renderer;
+    osf::renderGameplayInventory(
+        equipped_renderer,
+        status,
+        font,
+        inventory,
+        world);
+    if (!check(
+            equipped.equipment_changed &&
+                equipped.pointer_consumed &&
+                !inventory.holdingItem() &&
+                world.playerEquipment().mainHand() &&
+                world.playerEquipment().totalWeight(
+                    world.itemDatabase()) == 30 &&
+                world.playerEquipment().derivedParameterBonus(
+                    0, world.itemDatabase()) == 20 &&
+                world.playerEquipment().derivedParameterBonus(
+                    1, world.itemDatabase()) == 100 &&
+                world.playerPartEnabled(12) &&
+                equipped_renderer.patterns.size() == 5 &&
+                equipped_renderer.patterns[3].index == 0 &&
+                equipped_renderer.patterns[3].draw.x == 496 &&
+                equipped_renderer.patterns[3].draw.y == 16 &&
+                equipped_renderer.texts[4].text == "30",
+            "Equipping the Short Sword did not update ownership, "
+            "derived values, artwork, and the CAF mask together.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult unequipped =
+        inventory.update(
+            {false, false, true, 510, 80},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.playerData().level());
+    world.refreshPlayerAppearance();
+    inventory.update(
+        {false, false, true, 350, 328},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            unequipped.equipment_changed &&
+                inventory.active() &&
+                !inventory.holdingItem() &&
+                !world.playerEquipment().mainHand() &&
+                world.playerInventory().items().size() == 1 &&
+                !world.playerPartEnabled(12),
+            "The Short Sword did not return from the main hand to "
+            "the backpack.")) {
+        return false;
+    }
+
+    inventory.update(
+        {false, false, true, 350, 300},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
     RecordingBackend held_renderer;
     osf::renderGameplayInventory(
         held_renderer,

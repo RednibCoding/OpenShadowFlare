@@ -446,9 +446,17 @@ and placing it over one other item swaps which item is being carried. The held
 item survives closing the panel and can be dropped into the live world in the
 same eight directions and at the same 200-unit distance used by retail.
 
-The next checkpoint is equipping the Short Sword. That should cover the real
-equipment owner, requirements, the resulting stat change, unequipping back into
-the backpack, and the matching player CAF weapon layer.
+The Short Sword now makes the first full equipment round trip. The main-hand
+box uses its retail `480..543, 16..143` hit region, accepts category-zero items
+only when the player's level meets the item requirement, and swaps cleanly
+between the pointer and its own equipment owner. Its weight changes the panel
+from 0 to 30, its two base derived contributions remain available to the later
+combat calculator, and appearance refresh enables only CAF part 12 with the
+item's own color strengths. Clicking it again carries it back to the backpack.
+
+The next checkpoint is extending the same path to the Round Shield and the
+helmet, body, and boots slots. That should reuse the owner and requirement
+rules rather than growing another panel-only item path.
 
 ### 4. Combat and death
 

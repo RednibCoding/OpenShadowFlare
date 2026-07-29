@@ -59,8 +59,12 @@ void renderPlayerPass(
         [&world](std::size_t part) {
             return world.playerPartEnabled(part);
         },
-        [](std::size_t) {
-            return CharacterColorStrength{};
+        [&world](std::size_t part) {
+            return CharacterColorStrength{
+                world.playerPartRedStrength(part),
+                world.playerPartGreenStrength(part),
+                world.playerPartBlueStrength(part),
+            };
         },
         camera_x,
         camera_y,

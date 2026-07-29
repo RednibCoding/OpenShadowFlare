@@ -2,6 +2,7 @@
 
 #include "gapi/gapi.hpp"
 #include "items/item_database.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "resources/item_inventory_resource.hpp"
@@ -138,11 +139,27 @@ void renderGameplayInventory(
     drawRightAlignedNumber(
         renderer,
         font,
-        // Retail weight is the sum of equipped and belt-pocket items, not
-        // backpack contents. Those stores are still empty in this slice.
-        0,
+        world.playerEquipment().totalWeight(
+            world.itemDatabase()),
         471,
         224);
+
+    const InventoryItem* main_hand =
+        world.playerEquipment().mainHand();
+    if (main_hand) {
+        // The authored main-hand region is two cells wide by four high.
+        // FUN_00407170 centers the item's complete inventory footprint in it.
+        drawInventoryItem(
+            renderer,
+            world,
+            *main_hand,
+            GameplayInventory::main_hand_left +
+                (2 - main_hand->width) *
+                    GameplayInventory::cell_size / 2,
+            GameplayInventory::main_hand_top +
+                (4 - main_hand->height) *
+                    GameplayInventory::cell_size / 2);
+    }
 
     const auto& items = owned.items();
     for (std::size_t index = 0;

@@ -1,8 +1,11 @@
 #include "gameplay_inventory.hpp"
 
+#include "items/item_database.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 
 #include <cstddef>
+#include <utility>
 
 namespace osf {
 namespace {
@@ -47,7 +50,10 @@ void GameplayInventory::close() {
 
 GameplayInventoryResult GameplayInventory::update(
     const GameplayInventoryInput& input,
-    PlayerInventory& inventory) {
+    PlayerInventory& inventory,
+    PlayerEquipment& equipment,
+    const ItemDatabase& item_database,
+    std::int32_t player_level) {
     GameplayInventoryResult result;
     pointer_x_ = input.pointer_x;
     pointer_y_ = input.pointer_y;
@@ -95,6 +101,37 @@ GameplayInventoryResult GameplayInventory::update(
             result.world_drop_requested = true;
             result.world_drop_screen_x = input.pointer_x;
             result.world_drop_screen_y = input.pointer_y;
+        } else if (
+            inside(
+                input.pointer_x,
+                input.pointer_y,
+                main_hand_left,
+                main_hand_top,
+                main_hand_right,
+                main_hand_bottom)) {
+            if (held_item_) {
+                const ItemDefinition* definition =
+                    item_database.find(
+                        held_item_->category,
+                        held_item_->definition_id);
+                if (definition) {
+                    EquipmentPlacementResult placement =
+                        equipment.placeMainHand(
+                            *held_item_,
+                            *definition,
+                            player_level);
+                    if (placement.accepted) {
+                        held_item_ =
+                            std::move(placement.held_item);
+                        result.equipment_changed = true;
+                    }
+                }
+            } else {
+                held_item_ = equipment.takeMainHand();
+                result.equipment_changed =
+                    held_item_.has_value();
+            }
+            result.pointer_consumed = true;
         } else if (
             holdingItem() &&
             inside(

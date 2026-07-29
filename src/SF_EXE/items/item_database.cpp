@@ -271,6 +271,21 @@ bool ItemDatabase::decode(
             definition.ground_red_strength = field(60);
             definition.ground_green_strength = field(64);
             definition.ground_blue_strength = field(68);
+            if (category == 0 &&
+                definition.raw_fields.size() >= 184) {
+                for (std::size_t parameter = 0;
+                     parameter <
+                         definition.derived_parameter_bonuses.size();
+                     ++parameter) {
+                    definition.derived_parameter_bonuses[parameter] =
+                        field(104 + parameter * 4);
+                }
+                definition.required_level = field(148);
+                definition.appearance_part = field(168);
+                definition.appearance_red_strength = field(172);
+                definition.appearance_green_strength = field(176);
+                definition.appearance_blue_strength = field(180);
+            }
             definitions.push_back(std::move(definition));
         }
     }
