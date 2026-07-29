@@ -129,10 +129,15 @@ labels used by those maps.
 Raw decompiler output stays in `/ghidra`. Only understood, readable behavior
 belongs in the portable implementation.
 
-The portable game code lives in the `OpenShadowFlare::GameCore` CMake target.
-DLL-derived behavior lives under `libs/`, with one directory per original DLL.
-Each implemented counterpart is a statically linked, cross-platform library
-with one public API header. The working Win32 reconstruction under
+`OpenShadowFlare::GameCore` is the convenient build target for the whole
+portable game. Underneath it, core utilities, items, resources, states, world
+simulation, rendering, and GAPI are separate static libraries. That makes
+their dependencies real build rules instead of relying on folder names and
+good intentions.
+
+DLL-derived behavior lives under `libs/`, with one directory per original
+DLL. Each implemented counterpart is a statically linked, cross-platform
+library with one public API header. The working Win32 reconstruction under
 `src/reconstructed/<DLL name>` remains the strong behavioral reference; the
 portable version keeps the behavior but does not preserve its ABI, object
 layout, or platform-specific plumbing.
@@ -159,6 +164,8 @@ implementations:
 - `items/` contains the executable-owned item database and item rules
 - `libs/` contains the fourteen portable DLL boundaries
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
+- `resources/` owns shared decoded assets and retail filesystem lookup
 - `states/` contains the top-level dispatcher and reconstructed game states
-- `world/` contains executable-owned scenario orchestration
-- `runtime/` contains the executable shell and fixed-surface LGL presenter
+- `world/` contains actors, scenario orchestration, and script-to-world glue
+- `runtime/` contains startup, input/audio adapters, frontend assets, and the
+  fixed-surface LGL presenter

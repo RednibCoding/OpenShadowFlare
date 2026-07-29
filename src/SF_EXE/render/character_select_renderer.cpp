@@ -94,7 +94,7 @@ void renderCharacterModeScreen(
     const gapi::NjpImage& select,
     const gapi::NjpImage* font,
     const CharacterSelectStateData& data,
-    const CharacterSelectFrameInput& input,
+    const CharacterSelectFrameResult& frame,
     std::int32_t brightness) {
     renderer.drawPattern(
         select, 38, {0, 0, 1000, 1000, brightness});
@@ -123,32 +123,17 @@ void renderCharacterModeScreen(
                 {0, 0, 1000, 1000, brightness});
         }
     } else if (data.screen == 12) {
-        const bool connectHighlighted =
-            input.pointer_x > 0x171 &&
-            input.pointer_x < 0x196 &&
-            input.pointer_y > 0x114 &&
-            input.pointer_y < 0x120;
-        const bool backHighlighted =
-            input.pointer_x > 0xe9 &&
-            input.pointer_x < 0x132 &&
-            input.pointer_y > 0x114 &&
-            input.pointer_y < 0x120;
-        const bool pasteHighlighted =
-            input.pointer_x > 0x175 &&
-            input.pointer_x < 0x189 &&
-            input.pointer_y > 0xe3 &&
-            input.pointer_y < 0xf5;
         renderer.drawPattern(
             select,
-            connectHighlighted ? 19 : 18,
+            frame.host_connect_hovered ? 19 : 18,
             {0, 0, 1000, 1000, brightness});
         renderer.drawPattern(
             select,
-            backHighlighted ? 21 : 20,
+            frame.host_back_hovered ? 21 : 20,
             {-51, -3, 1000, 1000, brightness});
         renderer.drawPattern(
             select,
-            pasteHighlighted ? 33 : 32,
+            frame.host_paste_hovered ? 33 : 32,
             {0, 0, 1000, 1000, brightness});
         drawText(
             renderer,
@@ -173,7 +158,6 @@ void renderNewCharacter(
     const gapi::NjpImage* font,
     const CharacterSelectStateData& data,
     const CharacterSelectFrameResult& frame,
-    const CharacterSelectFrameInput& input,
     std::int32_t brightness,
     std::int32_t overlayBrightness) {
     renderer.drawPattern(
@@ -279,10 +263,7 @@ void renderNewCharacter(
         if (!data.character_name.empty()) {
             const bool confirmHighlighted =
                 data.launch_counter == 0 &&
-                input.pointer_x > 0x237 &&
-                input.pointer_x < 0x25b &&
-                input.pointer_y > 0x1c3 &&
-                input.pointer_y < 0x1ce;
+                frame.name_confirm_hovered;
             renderer.drawPattern(
                 select,
                 confirmHighlighted ? 5 : 4,
@@ -296,7 +277,7 @@ void renderNewCharacter(
             select,
             font,
             data,
-            input,
+            frame,
             overlayBrightness);
     }
 }
@@ -306,7 +287,7 @@ void renderSavedGames(
     const gapi::NjpImage& select,
     const gapi::NjpImage* font,
     const CharacterSelectStateData& data,
-    const CharacterSelectFrameInput& input,
+    const CharacterSelectFrameResult& frame,
     const std::vector<RetailSaveSummary>& savedGames,
     const std::vector<gapi::BitmapImage>& savedPreviews,
     std::int32_t brightness,
@@ -349,10 +330,7 @@ void renderSavedGames(
             data.brightness_increasing != 0 &&
             data.launch_counter == 0 &&
             data.save_hover_animation > 28 &&
-            input.pointer_x > x &&
-            input.pointer_x < x + 287 &&
-            input.pointer_y > y &&
-            input.pointer_y < y + 76;
+            frame.save_slot_hovered[index];
         std::int32_t numberFrame =
             static_cast<std::int32_t>(index) == selected ? 0 : 3;
         if (hovered) {
@@ -461,7 +439,7 @@ void renderSavedGames(
             select,
             font,
             data,
-            input,
+            frame,
             overlayBrightness);
     }
 }
@@ -474,7 +452,6 @@ void renderCharacterSelect(
     const gapi::NjpImage* font,
     const CharacterSelectStateData& data,
     const CharacterSelectFrameResult& frame,
-    const CharacterSelectFrameInput& input,
     const std::vector<RetailSaveSummary>& saved_games,
     const std::vector<gapi::BitmapImage>& saved_previews) {
     const std::int32_t brightness =
@@ -489,7 +466,6 @@ void renderCharacterSelect(
             font,
             data,
             frame,
-            input,
             brightness,
             overlayBrightness);
     } else {
@@ -498,7 +474,7 @@ void renderCharacterSelect(
             select,
             font,
             data,
-            input,
+            frame,
             saved_games,
             saved_previews,
             brightness,

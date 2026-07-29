@@ -27,7 +27,12 @@ add_test(
 
 if(TARGET sf_game_core)
   add_executable(game_core_test game_core_test.cpp)
-  target_link_libraries(game_core_test PRIVATE OpenShadowFlare::GameCore)
+  target_link_libraries(
+    game_core_test
+    PRIVATE
+      OpenShadowFlare::States
+      OpenShadowFlare::RKC_RPGSCRN
+  )
   target_compile_features(game_core_test PRIVATE cxx_std_17)
   set_target_properties(game_core_test PROPERTIES CXX_EXTENSIONS OFF)
 
@@ -43,7 +48,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     movement_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::World
   )
   target_compile_features(movement_test PRIVATE cxx_std_17)
   target_compile_definitions(
@@ -66,7 +71,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     scenario_data_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::Render
   )
   target_compile_features(
     scenario_data_test PRIVATE cxx_std_17)
@@ -92,7 +97,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     item_database_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::Items
   )
   target_compile_features(
     item_database_test PRIVATE cxx_std_17)
@@ -144,7 +149,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     gapi_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::Render
       OpenShadowFlare::RKC_DBFCONTROL
   )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
@@ -159,7 +164,8 @@ if(TARGET sf_game_core)
   add_test(NAME gapi COMMAND gapi_test)
 
   add_executable(menu_states_test menu_states_test.cpp)
-  target_link_libraries(menu_states_test PRIVATE OpenShadowFlare::GameCore)
+  target_link_libraries(
+    menu_states_test PRIVATE OpenShadowFlare::Render)
   target_compile_features(menu_states_test PRIVATE cxx_std_17)
   set_target_properties(menu_states_test PROPERTIES CXX_EXTENSIONS OFF)
 

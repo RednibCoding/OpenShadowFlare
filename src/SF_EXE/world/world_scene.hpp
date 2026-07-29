@@ -6,16 +6,17 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
 #include "items/item_world_resource.hpp"
+#include "resources/character_visual_resource.hpp"
 #include "ground_item.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
 #include "scenario_data.hpp"
+#include "script/scenario_script_runtime.hpp"
 
 #include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace osf {
@@ -75,11 +76,9 @@ public:
     const script::ScriptData& scenarioScript() const;
 
 private:
-    std::int32_t readScriptOperand(
-        const script::Operand& operand) const;
-    bool writeScriptOperand(
+    bool readScriptWorldOperand(
         const script::Operand& operand,
-        std::int32_t value);
+        std::int32_t& value) const;
     bool executeScriptNativeCommand(
         std::int32_t opcode,
         const std::vector<std::int32_t>& arguments);
@@ -97,10 +96,7 @@ private:
     bool ensureItemWorldResource(std::int32_t resource_id);
 
     ScenarioData scenario_;
-    script::ScriptData scenario_script_;
-    script::Interpreter script_interpreter_;
-    std::unordered_map<std::uint64_t, std::int32_t>
-        script_values_;
+    ScenarioScriptRuntime scenario_script_;
     script::MessageEvent conversation_;
     bool conversation_active_ = false;
     std::int32_t conversation_actor_id_ = -1;
@@ -108,9 +104,8 @@ private:
     GroundMap ground_;
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;
-    gapi::NjpImage player_patterns_;
-    gapi::NjpImage player_shadow_patterns_;
-    gapi::CafAnimation player_animation_;
+    CharacterVisualResource player_visual_;
+    PeopleVisualResources people_visuals_;
     gapi::NjpImage speech_patterns_;
     std::vector<std::uint8_t> player_parts_enabled_;
     std::vector<NpcActor> npcs_;

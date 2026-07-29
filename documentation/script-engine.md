@@ -21,6 +21,89 @@ file. The portable executable should decode and interpret it, not copy it into
 This document records what we currently know. It will grow along with the
 interpreter.
 
+## The other behavior systems
+
+`Scenario.Scs` is the game's only known general-purpose scenario bytecode, but
+it is not the only data that controls behavior. The retail files divide that
+work into four layers:
+
+| Layer | Retail data/code | Responsibility |
+|---|---|---|
+| Scenario script | One `Scenario.Scs` in each of the 209 scenario directories | Dialogue, quest branches, flags, messages, rewards, services, spawning, and scenario events |
+| AI action data | `System\Game\Parameter\Control.aid` | Reusable actor and enemy behavior choices, grouped by event and guarded by conditions |
+| Scenario setup | The matching `Scenario.Mct` | Map, music, entities, positions, movement areas, entry points, appearance, and initial actor settings |
+| Native game logic | `ShadowFlare.exe` and the gameplay DLLs | Evaluating conditions, executing script opcodes and AI actions, movement, combat, rendering, audio, and other engine services |
+
+The distinction is important. MCT values and AID records are data-driven, but
+they are not SCS sentences and do not run through the scenario interpreter.
+Conversely, an NPC conversation or quest branch found in SCS should not be
+recreated as an AI action or hardcoded state machine.
+
+### `Control.aid`
+
+The game ships one global AI database at
+`System\Game\Parameter\Control.aid`. Scenario MCT headers name that controller
+file, and actors select one of its behavior lists. The reconstructed
+`RKC_RPG_AICONTROL` DLL proves the following binary organization:
+
+```text
+RKC_AIDATA v001 + 0x1a
+64 behavior lists
+18 event buckets per list
+```
+
+Each behavior list contains:
+
+- a variable-length name;
+- a walk-point speed in version 1;
+- eighteen event buckets;
+- zero or more action candidates in each event bucket.
+
+Each action candidate stores an action number, a 36-byte parameter block, and
+a 24-byte condition block. The file therefore describes *which* native action
+may be selected and supplies its tuning values. It does not contain SCS-style
+messages, sentences, typed operands, nested calls, or arbitrary opcodes.
+Recognizable embedded names include behavior families such as `HITandAWAY`,
+`GUARD`, and `MAGIC`.
+
+The executable contains the evaluator and the action implementations. The
+currently traced evaluator:
+
+1. selects an event bucket from the actor's behavior list;
+2. rejects candidates whose condition block does not match current actor or
+   world state;
+3. keeps candidates at the highest eligible priority;
+4. performs a weighted random selection among those candidates;
+5. copies the selected action number and parameter block into the actor;
+6. dispatches that number to native movement, attack, guard, spell, or other
+   action code.
+
+Some condition and parameter fields are visible in the decompiler, including
+health-based tests, priority, selection weight, timing, distance, and movement
+values. Their complete names and units still need retail traces, so unknown
+fields should remain raw rather than receiving speculative meanings.
+
+For the portable executable, this should eventually become a separate
+`RKC_RPG_AICONTROL` static library which owns AID decoding and lookup. The
+executable-owned actor system should evaluate the records and implement the
+native actions. AI lists, probabilities, and condition values must come from
+`Control.aid`, not from NPC-specific C++ branches.
+
+### What is not a script
+
+Several other binary files are essential to gameplay but should not be routed
+through either interpreter:
+
+- `Scenario.Mct` is declarative scenario and entity setup.
+- `Table.Tbd` is a general parameter-table database.
+- `Item.Ibn` contains item definitions and resource selections.
+- `.Map`, `.Gnd`, and `.Obl` hold map, terrain, placement, and collision data.
+- `.Lst` files are map-pattern asset lists.
+
+These formats can drive a large amount of behavior without being executable
+scripts. The reconstruction should preserve that data ownership instead of
+turning the values into constants.
+
 ## Scenario.Scs
 
 An SCS file starts with the 16-byte signature:
@@ -246,6 +329,11 @@ Script-owned dialogue, quest branches, rewards, actor IDs, and service behavior
 must not be copied into `WorldScene`, a renderer, or a state class. Native game
 services should be small general hooks, and reusable behavior derived from a
 DLL must remain under its matching `SF_EXE/libs/` directory.
+
+The same rule applies to AI: actor decision tables belong to the future
+portable `RKC_RPG_AICONTROL` boundary, while their native action handlers
+belong to the relevant executable-owned actor or combat system. MCT-owned
+placement and movement bounds should remain scenario data.
 
 ## Still to map
 

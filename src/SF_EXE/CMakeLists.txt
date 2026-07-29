@@ -1,3 +1,24 @@
+function(osf_configure_game_library target)
+  target_compile_features(${target} PUBLIC cxx_std_17)
+  target_include_directories(
+    ${target}
+    PUBLIC
+      "${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+  set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      ${target} PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+endfunction()
+
+add_library(osf_gapi STATIC gapi/gapi.cpp)
+add_library(OpenShadowFlare::Gapi ALIAS osf_gapi)
+osf_configure_game_library(osf_gapi)
+
 add_subdirectory(libs/RK_FUNCTION)
 add_subdirectory(libs/RKC_DIB)
 add_subdirectory(libs/RKC_DSOUND)
@@ -7,57 +28,126 @@ add_subdirectory(libs/RKC_RPG_SCRIPT)
 add_subdirectory(libs/RKC_DBFCONTROL)
 
 add_library(
-  sf_game_core
+  osf_core STATIC
   core/command_line.cpp
   core/game_config.cpp
   core/retail_random.cpp
-  gapi/gapi.cpp
+)
+add_library(OpenShadowFlare::Core ALIAS osf_core)
+osf_configure_game_library(osf_core)
+
+add_library(
+  osf_items STATIC
   items/item_database.cpp
   items/item_world_resource.cpp
-  render/character_select_renderer.cpp
-  render/gameplay_renderer.cpp
-  render/title_renderer.cpp
+)
+add_library(OpenShadowFlare::Items ALIAS osf_items)
+osf_configure_game_library(osf_items)
+target_link_libraries(
+  osf_items
+  PUBLIC
+    OpenShadowFlare::RKC_RPGSCRN
+    OpenShadowFlare::RKC_UPDIB
+  PRIVATE
+    OpenShadowFlare::RK_FUNCTION
+)
+
+add_library(
+  osf_resources STATIC
+  resources/character_visual_resource.cpp
+  resources/retail_filesystem.cpp
+)
+add_library(OpenShadowFlare::Resources ALIAS osf_resources)
+osf_configure_game_library(osf_resources)
+target_link_libraries(
+  osf_resources
+  PUBLIC
+    OpenShadowFlare::RKC_RPGSCRN
+    OpenShadowFlare::RKC_UPDIB
+)
+
+add_library(
+  osf_states STATIC
   states/game_state.cpp
   states/gameplay_state.cpp
-  states/menu_states.cpp
+  states/character_select_state.cpp
+  states/character_select/network_flow.cpp
+  states/character_select/new_character_flow.cpp
+  states/character_select/saved_game_flow.cpp
   states/save_catalog.cpp
+  states/title_state.cpp
+)
+add_library(OpenShadowFlare::States ALIAS osf_states)
+osf_configure_game_library(osf_states)
+target_link_libraries(
+  osf_states
+  PUBLIC
+    OpenShadowFlare::Core
+)
+
+add_library(
+  osf_world STATIC
   world/ground_item.cpp
   world/npc_actor.cpp
   world/player_actor.cpp
   world/scenario_data.cpp
+  world/script/scenario_script_runtime.cpp
   world/world_scene.cpp
 )
-add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
-
-target_compile_features(sf_game_core PUBLIC cxx_std_17)
-target_include_directories(
-  sf_game_core
-  PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-)
+add_library(OpenShadowFlare::World ALIAS osf_world)
+osf_configure_game_library(osf_world)
 target_link_libraries(
-  sf_game_core
+  osf_world
   PUBLIC
-    OpenShadowFlare::RK_FUNCTION
-    OpenShadowFlare::RKC_DIB
-    OpenShadowFlare::RKC_UPDIB
+    OpenShadowFlare::Core
+    OpenShadowFlare::Items
+    OpenShadowFlare::Resources
     OpenShadowFlare::RKC_RPGSCRN
     OpenShadowFlare::RKC_RPG_SCRIPT
-)
-set_target_properties(
-  sf_game_core
-  PROPERTIES
-    CXX_EXTENSIONS OFF
+    OpenShadowFlare::RKC_UPDIB
 )
 
-if(MSVC)
-  target_compile_options(sf_game_core PRIVATE /W4 /permissive-)
-else()
-  target_compile_options(sf_game_core PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+add_library(
+  osf_render STATIC
+  render/character_renderer.cpp
+  render/character_select_renderer.cpp
+  render/gameplay_overlay_renderer.cpp
+  render/gameplay_renderer.cpp
+  render/loading_renderer.cpp
+  render/title_renderer.cpp
+)
+add_library(OpenShadowFlare::Render ALIAS osf_render)
+osf_configure_game_library(osf_render)
+target_link_libraries(
+  osf_render
+  PUBLIC
+    OpenShadowFlare::Gapi
+    OpenShadowFlare::States
+    OpenShadowFlare::World
+    OpenShadowFlare::RKC_DIB
+    OpenShadowFlare::RKC_RPGSCRN
+    OpenShadowFlare::RKC_UPDIB
+)
+
+add_library(sf_game_core INTERFACE)
+add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
+target_link_libraries(
+  sf_game_core
+  INTERFACE
+    OpenShadowFlare::Core
+    OpenShadowFlare::Items
+    OpenShadowFlare::Resources
+    OpenShadowFlare::States
+    OpenShadowFlare::World
+    OpenShadowFlare::Render
+)
 
 add_executable(
   ShadowFlare_rebuilt
+  runtime/audio_system.cpp
+  runtime/frontend_assets.cpp
+  runtime/game_runtime.cpp
+  runtime/input_adapter.cpp
   runtime/lgl_surface_presenter.cpp
   runtime/main.cpp
 )

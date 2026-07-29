@@ -12,12 +12,6 @@ class Backend;
 class NjpImage;
 }
 
-void renderInitialLoadingScreen(
-    gapi::Backend& renderer,
-    const gapi::NjpImage& waiting,
-    std::int32_t counter,
-    bool ready_to_continue);
-
 void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,

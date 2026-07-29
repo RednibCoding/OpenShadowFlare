@@ -1,6 +1,8 @@
 #include "core/retail_random.hpp"
 #include "render/character_select_renderer.hpp"
-#include "states/menu_states.hpp"
+#include "states/character_select_state.hpp"
+#include "states/save_catalog.hpp"
+#include "states/title_state.hpp"
 
 #include <array>
 #include <cstdint>
@@ -1131,7 +1133,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     if (!check(
@@ -1171,7 +1172,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     if (!check(
@@ -1196,7 +1196,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     const std::size_t popupStart = backend.patterns.size() - 4;
@@ -1217,6 +1216,7 @@ bool testNewCharacterRetailDrawing() {
     data.save_hover_animation = 65;
     input.pointer_x = 100;
     input.pointer_y = 200;
+    frame.save_slot_hovered[0] = true;
     backend = {};
     osf::renderCharacterSelect(
         backend,
@@ -1224,7 +1224,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     return check(

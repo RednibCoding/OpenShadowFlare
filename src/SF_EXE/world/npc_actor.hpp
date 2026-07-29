@@ -3,22 +3,26 @@
 
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
-#include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "scenario_data.hpp"
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <string>
 #include <vector>
 
 namespace osf {
 
+class CharacterVisualResource;
+
+namespace gapi {
+class NjpImage;
+}
+
 class NpcActor {
 public:
-    bool load(
-        const std::filesystem::path& data_root,
+    bool initialize(
         const ScenarioPerson& person,
+        const CharacterVisualResource& visual,
         std::string* error = nullptr);
     void clear();
     void update(
@@ -71,9 +75,7 @@ private:
     std::vector<std::int16_t> red_strength_;
     std::vector<std::int16_t> green_strength_;
     std::vector<std::int16_t> blue_strength_;
-    gapi::NjpImage patterns_;
-    gapi::NjpImage shadow_patterns_;
-    gapi::CafAnimation animation_;
+    const CharacterVisualResource* visual_ = nullptr;
 };
 
 }  // namespace osf

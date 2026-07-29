@@ -4,6 +4,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
 
 #include <array>

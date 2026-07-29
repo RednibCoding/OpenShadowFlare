@@ -12,6 +12,8 @@ target_include_directories(
 )
 target_link_libraries(
   osf_rkc_dbfcontrol
+  PUBLIC
+    OpenShadowFlare::Gapi
   PRIVATE
     OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_UPDIB

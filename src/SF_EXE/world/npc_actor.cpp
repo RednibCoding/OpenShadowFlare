@@ -1,10 +1,9 @@
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
+#include "resources/character_visual_resource.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <iomanip>
-#include <sstream>
 #include <utility>
 
 namespace osf {
@@ -14,12 +13,6 @@ void setError(std::string* error, std::string message) {
     if (error) {
         *error = std::move(message);
     }
-}
-
-std::string resourceDirectory(std::int32_t resource_id) {
-    std::ostringstream name;
-    name << std::setfill('0') << std::setw(8) << resource_id;
-    return name.str();
 }
 
 template <typename Value>
@@ -84,9 +77,9 @@ WorldPosition furthestWalkablePosition(
 
 }  // namespace
 
-bool NpcActor::load(
-    const std::filesystem::path& data_root,
+bool NpcActor::initialize(
     const ScenarioPerson& person,
+    const CharacterVisualResource& visual,
     std::string* error) {
     clear();
     if (person.resource_id < 0) {
@@ -94,22 +87,7 @@ bool NpcActor::load(
         return false;
     }
 
-    const std::filesystem::path root =
-        data_root / "Character" / "PEOPLE" /
-        resourceDirectory(person.resource_id);
-    std::string asset_error;
-    if (!patterns_.load(root / "Animation.Njp", &asset_error) ||
-        !shadow_patterns_.load(
-            root / "Animation.Sdw", &asset_error) ||
-        !animation_.load(root / "Animation.Caf", &asset_error)) {
-        setError(
-            error,
-            "The NPC animation could not be loaded: " +
-                asset_error);
-        clear();
-        return false;
-    }
-
+    visual_ = &visual;
     id_ = person.id;
     resource_id_ = person.resource_id;
     name_ = person.name;
@@ -153,7 +131,8 @@ bool NpcActor::load(
         walk_duration_ > 0;
     random_.seed(static_cast<std::uint32_t>(person.id + 1));
 
-    const std::size_t part_count = animation_.maxPartCount();
+    const std::size_t part_count =
+        visual_->animation().maxPartCount();
     part_visibility_.assign(part_count, 1);
     red_strength_.assign(part_count, 1000);
     green_strength_.assign(part_count, 1000);
@@ -198,9 +177,7 @@ void NpcActor::clear() {
     red_strength_.clear();
     green_strength_.clear();
     blue_strength_.clear();
-    patterns_.clear();
-    shadow_patterns_.clear();
-    animation_.clear();
+    visual_ = nullptr;
 }
 
 void NpcActor::update(
@@ -354,15 +331,15 @@ std::int32_t NpcActor::partBlueStrength(
 }
 
 const gapi::NjpImage& NpcActor::patterns() const {
-    return patterns_;
+    return visual_->patterns();
 }
 
 const gapi::NjpImage& NpcActor::shadowPatterns() const {
-    return shadow_patterns_;
+    return visual_->shadowPatterns();
 }
 
 const gapi::CafAnimation& NpcActor::animation() const {
-    return animation_;
+    return visual_->animation();
 }
 
 }  // namespace osf

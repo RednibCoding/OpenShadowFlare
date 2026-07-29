@@ -13,6 +13,9 @@
 | `.Voc`    | Voice/sound data |
 | `.Scs`    | Scenario script |
 | `.Mct`    | Map/scenario data |
+| `.Aid`    | Global actor/enemy AI action database |
+| `.Tbd`    | General gameplay parameter tables |
+| `.Ibn`    | Item definition database |
 | `.Cfg`    | Configuration file |
 
 ## System Files
@@ -26,6 +29,32 @@
 ### Audio
 - `System\Game\Voice\Voice00.Voc` - Voice/sound effects
 - `System\Title\Music\BGM00.Voc` - Title screen music
+
+### AI behavior data
+
+`System\Game\Parameter\Control.aid` is the global actor and enemy behavior
+database loaded through `RKC_RPG_AICONTROL`. Its header is
+`RKC_AIDATA v001`, followed by byte `0x1a`. The preserved file declares 64
+behavior lists and 18 event buckets per list.
+
+A version-1 behavior list stores a variable-length name and walk-point speed,
+then its event buckets. Every action candidate within an event stores:
+
+| Field | Size | Purpose |
+|---|---:|---|
+| Action number | 4 bytes | Selects native executable behavior |
+| Parameter block | 36 bytes | Priority, weight, timing, range, movement, and other action inputs |
+| Condition block | 24 bytes | Eligibility tests against actor/world state |
+
+The reconstructed DLL handles the binary container, list/event lookup, and
+copying. The executable evaluates conditions, chooses an eligible action, and
+executes the selected native behavior. This makes AID script-like data, but it
+is not another `Scenario.Scs` format and does not use the scenario opcode
+interpreter.
+
+The known division of responsibility and the requirements for its future
+portable implementation are covered in
+[ShadowFlare's script engine](script-engine.md#the-other-behavior-systems).
 
 ### Item Sprites
 
@@ -93,7 +122,7 @@ The executable loader at `0x00427b50` starts with this fixed section:
 | Offset | Size | Meaning |
 |--------|------|---------|
 | `0x000` | 16 | `MCED DATA v0000`, followed by byte `0x1a` |
-| `0x010` | 260 | Controller/AI path |
+| `0x010` | 260 | Controller/AI path, normally `System\Game\Parameter\Control.aid` |
 | `0x114` | 260 | Map path, such as `Map\f00_01.map` |
 | `0x218` | 4 | Unknown 32-bit field |
 | `0x21c` | 4 | Unknown 32-bit field |

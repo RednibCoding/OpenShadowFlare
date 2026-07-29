@@ -54,26 +54,14 @@ std::string mapStem(const std::string& map_path) {
     return std::filesystem::path(normalized).stem().string();
 }
 
-std::uint64_t scriptValueKey(
-    const script::Operand& operand) {
-    return
-        (static_cast<std::uint64_t>(
-             static_cast<std::uint32_t>(operand.type))
-         << 32u) |
-        static_cast<std::uint32_t>(operand.value);
-}
-
 }  // namespace
 
 WorldScene::WorldScene()
-    : script_interpreter_({
-          [this](const script::Operand& operand) {
-              return readScriptOperand(operand);
-          },
+    : scenario_script_({
           [this](
               const script::Operand& operand,
-              std::int32_t value) {
-              return writeScriptOperand(operand, value);
+              std::int32_t& value) {
+              return readScriptWorldOperand(operand, value);
           },
           [this](const script::MessageEvent& message) {
               showScriptMessage(message);
@@ -116,7 +104,6 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
     data_root_ = data_root;
-    script_interpreter_.bind(&scenario_script_);
     const std::string map_name = mapStem(scenario_.mapPath());
     if (map_name.empty()) {
         setError(error, "The scenario does not name a map.");
@@ -188,15 +175,8 @@ bool WorldScene::loadInitialScenario(
     const std::filesystem::path player_root =
         data_root / "Player" / player_directory;
     std::string player_error;
-    if (!player_patterns_.load(
-            player_root / "Animation00.Njp",
-            &player_error) ||
-        !player_shadow_patterns_.load(
-            player_root / "Animation00.Sdw",
-            &player_error) ||
-        !player_animation_.load(
-            player_root / "Animation00.Caf",
-            &player_error)) {
+    if (!player_visual_.load(
+            player_root, "Animation00", &player_error)) {
         setError(
             error,
             "The player animation could not be loaded: " +
@@ -209,7 +189,7 @@ bool WorldScene::loadInitialScenario(
     // enables the base body and shadow, then enables only parts supplied by
     // equipped items. A newly created character has no equipped item parts.
     player_parts_enabled_.assign(
-        player_animation_.maxPartCount(), 0);
+        player_visual_.animation().maxPartCount(), 0);
     if (!player_parts_enabled_.empty()) {
         player_parts_enabled_[0] = 1;
     }
@@ -222,10 +202,14 @@ bool WorldScene::loadInitialScenario(
     if (!scenario_.people().empty()) {
         NpcActor npc;
         std::string npc_error;
-        if (!npc.load(
+        const CharacterVisualResource* visual =
+            people_visuals_.load(
                 data_root,
-                scenario_.people().front(),
-                &npc_error)) {
+                scenario_.people().front().resource_id,
+                &npc_error);
+        if (!visual ||
+            !npc.initialize(
+                scenario_.people().front(), *visual, &npc_error)) {
             setError(
                 error,
                 "The first scenario NPC could not be loaded: " +
@@ -251,9 +235,7 @@ bool WorldScene::loadInitialScenario(
 
 void WorldScene::clear() {
     scenario_.clear();
-    script_interpreter_.bind(nullptr);
     scenario_script_.clear();
-    script_values_.clear();
     conversation_ = {};
     conversation_active_ = false;
     conversation_actor_id_ = -1;
@@ -261,9 +243,8 @@ void WorldScene::clear() {
     ground_.clear();
     object_map_.clear();
     map_patterns_.clear();
-    player_patterns_.clear();
-    player_shadow_patterns_.clear();
-    player_animation_.clear();
+    player_visual_.clear();
+    people_visuals_.clear();
     speech_patterns_.clear();
     player_parts_enabled_.clear();
     npcs_.clear();
@@ -291,15 +272,15 @@ WorldScene::mapPatterns() const {
 }
 
 const gapi::NjpImage& WorldScene::playerPatterns() const {
-    return player_patterns_;
+    return player_visual_.patterns();
 }
 
 const gapi::NjpImage& WorldScene::playerShadowPatterns() const {
-    return player_shadow_patterns_;
+    return player_visual_.shadowPatterns();
 }
 
 const gapi::CafAnimation& WorldScene::playerAnimation() const {
-    return player_animation_;
+    return player_visual_.animation();
 }
 
 const std::vector<NpcActor>& WorldScene::npcs() const {
@@ -379,7 +360,7 @@ bool WorldScene::commandWorldInteraction(
     const std::int32_t script_character_number =
         12000000 + selected.id();
     const script::StepResult result =
-        script_interpreter_.startStatus(
+        scenario_script_.startStatus(
             0, script_character_number);
     if (result == script::StepResult::waiting_for_message ||
         result == script::StepResult::complete) {
@@ -420,7 +401,7 @@ void WorldScene::advanceConversation() {
     conversation_active_ = false;
     conversation_ = {};
     const script::StepResult result =
-        script_interpreter_.resume();
+        scenario_script_.resume();
     if (result != script::StepResult::waiting_for_message) {
         conversation_active_ = false;
         conversation_actor_id_ = -1;
@@ -493,31 +474,21 @@ const ScenarioData& WorldScene::scenario() const {
 }
 
 const script::ScriptData& WorldScene::scenarioScript() const {
-    return scenario_script_;
+    return scenario_script_.data();
 }
 
-std::int32_t WorldScene::readScriptOperand(
-    const script::Operand& operand) const {
-    if (operand.type == 6 || operand.type == 7) {
-        const NpcActor* npc =
-            findScriptNpc(operand.value);
-        if (!npc) {
-            return 0;
-        }
-        return operand.type == 6
-                   ? npc->position().x
-                   : npc->position().y;
-    }
-    const auto found =
-        script_values_.find(scriptValueKey(operand));
-    return found == script_values_.end() ? 0 : found->second;
-}
-
-bool WorldScene::writeScriptOperand(
+bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
-    std::int32_t value) {
-    script_values_.insert_or_assign(
-        scriptValueKey(operand), value);
+    std::int32_t& value) const {
+    if (operand.type != 6 && operand.type != 7) {
+        return false;
+    }
+    const NpcActor* npc = findScriptNpc(operand.value);
+    value = !npc
+                ? 0
+                : (operand.type == 6
+                       ? npc->position().x
+                       : npc->position().y);
     return true;
 }
 

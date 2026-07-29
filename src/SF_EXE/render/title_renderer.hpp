@@ -2,7 +2,7 @@
 #define OPENSHADOWFLARE_TITLE_RENDERER_HPP
 
 #include "gapi/gapi.hpp"
-#include "states/menu_states.hpp"
+#include "states/title_state.hpp"
 
 #include <array>
 
