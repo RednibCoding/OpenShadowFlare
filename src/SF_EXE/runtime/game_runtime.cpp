@@ -42,6 +42,10 @@
 #include <string>
 #include <utility>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 namespace {
 
 constexpr int kVirtualWidth = 640;
@@ -159,66 +163,92 @@ public:
     }
 
     int run(bool smokeTest) {
-        constexpr double renderStep = 1.0 / 60.0;
-        constexpr double gameStep = 1.0 / 30.0;
-        constexpr double maximumElapsed = 0.25;
+        smokeTest_ = smokeTest;
+        running_ = true;
+        renderedFrames_ = 0;
+        previousTime_ = lwl_time_seconds();
+        nextFrame_ = previousTime_;
+        gameAccumulator_ = kGameStep;
 
-        bool running = true;
-        int renderedFrames = 0;
-        double previousTime = lwl_time_seconds();
-        double nextFrame = previousTime;
-        double gameAccumulator = gameStep;
-
-        while (running) {
-            const double currentTime = lwl_time_seconds();
-            gameAccumulator += std::clamp(
-                currentTime - previousTime,
-                0.0,
-                maximumElapsed);
-            previousTime = currentTime;
-
-            LwlEvent event{};
-            while (lwl_poll_event(window_, &event)) {
-                if (!input_.handleEvent(
-                        window_,
-                        event,
-                        gameState_.currentState())) {
-                    running = false;
-                }
-            }
-
-            while (running && gameAccumulator >= gameStep) {
-                updateGame(running);
-                gameAccumulator -= gameStep;
-            }
-
-            const double interpolation =
-                std::clamp(
-                    gameAccumulator / gameStep,
-                    0.0,
-                    1.0);
-            renderGame(interpolation);
-
-            ++renderedFrames;
-            if (smokeTest && renderedFrames >= 3) {
-                running = false;
-            }
-
-            nextFrame += renderStep;
-            if (nextFrame < currentTime - maximumElapsed) {
-                nextFrame = currentTime;
-            }
-            lwl_sleep_until_seconds(nextFrame);
+#ifdef __EMSCRIPTEN__
+        emscripten_set_main_loop_arg(&Runtime::mainLoopThunk, this, 0, 1);
+        return 0;
+#else
+        while (running_) {
+            tickOnce();
         }
+        saveConfigIfDirty();
+        return 0;
+#endif
+    }
+
+private:
+    static constexpr double kRenderStep = 1.0 / 60.0;
+    static constexpr double kGameStep = 1.0 / 30.0;
+    static constexpr double kMaximumElapsed = 0.25;
+
+    void tickOnce() {
+        const double currentTime = lwl_time_seconds();
+        gameAccumulator_ += std::clamp(
+            currentTime - previousTime_,
+            0.0,
+            kMaximumElapsed);
+        previousTime_ = currentTime;
+
+        LwlEvent event{};
+        while (lwl_poll_event(window_, &event)) {
+            if (!input_.handleEvent(
+                    window_,
+                    event,
+                    gameState_.currentState())) {
+                running_ = false;
+            }
+        }
+
+        while (running_ && gameAccumulator_ >= kGameStep) {
+            updateGame(running_);
+            gameAccumulator_ -= kGameStep;
+        }
+
+        const double interpolation =
+            std::clamp(
+                gameAccumulator_ / kGameStep,
+                0.0,
+                1.0);
+        renderGame(interpolation);
+
+        ++renderedFrames_;
+        if (smokeTest_ && renderedFrames_ >= 3) {
+            running_ = false;
+        }
+
+        nextFrame_ += kRenderStep;
+        if (nextFrame_ < currentTime - kMaximumElapsed) {
+            nextFrame_ = currentTime;
+        }
+        lwl_sleep_until_seconds(nextFrame_);
+    }
+
+    void saveConfigIfDirty() {
         if (configDirty_) {
             osf::saveGameConfigFile(
                 (dataRoot_ / "SFlare.Cfg").string(),
                 gameConfig_);
+            configDirty_ = false;
         }
-        return 0;
     }
 
-private:
+#ifdef __EMSCRIPTEN__
+    static void mainLoopThunk(void* self) {
+        Runtime* runtime = static_cast<Runtime*>(self);
+        runtime->tickOnce();
+        if (!runtime->running_) {
+            runtime->saveConfigIfDirty();
+            emscripten_cancel_main_loop();
+        }
+    }
+#endif
+
     void presentSurface(osf::gapi::SurfaceView source) {
         int width = 0;
         int height = 0;
@@ -965,6 +995,12 @@ private:
     LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
     bool configDirty_ = false;
+    bool running_ = false;
+    bool smokeTest_ = false;
+    int renderedFrames_ = 0;
+    double previousTime_ = 0.0;
+    double nextFrame_ = 0.0;
+    double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;

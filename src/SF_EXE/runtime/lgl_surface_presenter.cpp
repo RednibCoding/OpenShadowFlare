@@ -7,9 +7,15 @@
 
 namespace {
 
-constexpr const char* kVertexShader = R"(
-#version 330 core
+#if defined(__EMSCRIPTEN__)
+#define OSF_GLSL_VERSION "#version 300 es\n"
+#define OSF_GLSL_FRAGMENT_PRECISION "precision highp float;\n"
+#else
+#define OSF_GLSL_VERSION "#version 330 core\n"
+#define OSF_GLSL_FRAGMENT_PRECISION ""
+#endif
 
+constexpr const char* kVertexShader = OSF_GLSL_VERSION R"(
 out vec2 texture_coordinate;
 
 void main() {
@@ -28,9 +34,8 @@ void main() {
 }
 )";
 
-constexpr const char* kFragmentShader = R"(
-#version 330 core
-
+constexpr const char* kFragmentShader =
+    OSF_GLSL_VERSION OSF_GLSL_FRAGMENT_PRECISION R"(
 in vec2 texture_coordinate;
 out vec4 fragment_color;
 uniform sampler2D surface_texture;

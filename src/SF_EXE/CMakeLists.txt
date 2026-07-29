@@ -212,3 +212,30 @@ else()
       -Wpedantic
   )
 endif()
+
+if(EMSCRIPTEN)
+  target_link_options(
+    ShadowFlare_rebuilt
+    PRIVATE
+      "-sMODULARIZE=1"
+      "-sEXPORT_NAME=ShadowFlareModule"
+      "-sEXPORTED_RUNTIME_METHODS=[FS,callMain]"
+      "-sEXPORTED_FUNCTIONS=[_main,_lal_web_mix]"
+      "-sFORCE_FILESYSTEM=1"
+      "-sALLOW_MEMORY_GROWTH=1"
+      "-sINITIAL_MEMORY=268435456"
+      "-sSTACK_SIZE=1048576"
+      "-sEXIT_RUNTIME=0"
+      "-sENVIRONMENT=web"
+  )
+
+  set(OSF_WEB_SHELL "${CMAKE_CURRENT_SOURCE_DIR}/web/index.html")
+  set(OSF_WEB_SHELL_OUT "${CMAKE_CURRENT_BINARY_DIR}/index.html")
+  add_custom_command(
+    OUTPUT "${OSF_WEB_SHELL_OUT}"
+    COMMAND ${CMAKE_COMMAND} -E copy "${OSF_WEB_SHELL}" "${OSF_WEB_SHELL_OUT}"
+    DEPENDS "${OSF_WEB_SHELL}"
+    COMMENT "Copying OpenShadowFlare web shell")
+  add_custom_target(shadowflare_web_shell ALL DEPENDS "${OSF_WEB_SHELL_OUT}")
+  add_dependencies(shadowflare_web_shell ShadowFlare_rebuilt)
+endif()
