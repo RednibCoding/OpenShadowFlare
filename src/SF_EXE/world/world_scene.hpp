@@ -10,6 +10,7 @@
 #include "resources/character_visual_resource.hpp"
 #include "ground_item.hpp"
 #include "mission_catalog.hpp"
+#include "map_exploration.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
 #include "player_data.hpp"
@@ -61,6 +62,7 @@ public:
     void updatePointerHover(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    void clearPointerHover();
     void configurePointer(
         const WorldPointerConfiguration& configuration);
     bool commandWorldInteraction(
@@ -82,6 +84,8 @@ public:
     std::int32_t conversationSelectedOption() const;
     void selectConversationOption(std::int32_t option);
     const gapi::NjpImage& speechPatterns() const;
+    const gapi::NjpImage& mapOverviewPatterns() const;
+    const MapExploration& mapExploration() const;
     void advanceConversation();
     void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
@@ -97,6 +101,9 @@ public:
     std::int32_t cameraScreenY() const;
     std::int32_t renderCameraScreenX(double alpha) const;
     std::int32_t renderCameraScreenY(double alpha) const;
+    void setCameraAnchor(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
     WorldPosition playerRenderPosition(double alpha) const;
     const ObjectBounds& playerJudgement() const;
     std::int32_t musicTrack() const;
@@ -144,6 +151,8 @@ private:
     CharacterVisualResource player_visual_;
     PeopleVisualResources people_visuals_;
     gapi::NjpImage speech_patterns_;
+    gapi::NjpImage map_overview_patterns_;
+    MapExploration map_exploration_;
     std::vector<std::uint8_t> player_parts_enabled_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
@@ -161,6 +170,8 @@ private:
     bool has_player_ = false;
     std::int32_t music_track_ = -1;
     std::int32_t next_ground_item_id_ = 0;
+    std::int32_t camera_anchor_x_ = 320;
+    std::int32_t camera_anchor_y_ = 240;
 };
 
 }  // namespace osf

@@ -151,6 +151,17 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
+    if (!map_overview_patterns_.load(
+            data_root / "Scenario" / "00000000" /
+                "Scenario.Njp",
+            error) ||
+        !map_exploration_.initialize(ground_)) {
+        setError(
+            error,
+            "The scenario map could not be prepared.");
+        clear();
+        return false;
+    }
 
     const std::vector<std::string> pattern_names =
         readPatternList(
@@ -237,6 +248,7 @@ bool WorldScene::loadInitialScenario(
         {entry->world_x, entry->world_y},
         entry->direction,
         player_data_.walkingSpeedTier());
+    map_exploration_.reveal(player_.position());
     music_track_ = scenario_.musicTrack();
     has_player_ = true;
     return true;
@@ -257,6 +269,8 @@ void WorldScene::clear() {
     player_visual_.clear();
     people_visuals_.clear();
     speech_patterns_.clear();
+    map_overview_patterns_.clear();
+    map_exploration_.clear();
     player_parts_enabled_.clear();
     npcs_.clear();
     ground_items_.clear();
@@ -273,6 +287,8 @@ void WorldScene::clear() {
     has_player_ = false;
     music_track_ = -1;
     next_ground_item_id_ = 0;
+    camera_anchor_x_ = 320;
+    camera_anchor_y_ = 240;
 }
 
 const GroundMap& WorldScene::ground() const {
@@ -379,6 +395,10 @@ void WorldScene::updatePointerHover(
         screen_y,
         pointerCandidatesAtScreenPosition(
             screen_x, screen_y));
+}
+
+void WorldScene::clearPointerHover() {
+    pointer_.clearSelection();
 }
 
 void WorldScene::configurePointer(
@@ -527,6 +547,15 @@ const gapi::NjpImage& WorldScene::speechPatterns() const {
     return speech_patterns_;
 }
 
+const gapi::NjpImage&
+WorldScene::mapOverviewPatterns() const {
+    return map_overview_patterns_;
+}
+
+const MapExploration& WorldScene::mapExploration() const {
+    return map_exploration_;
+}
+
 void WorldScene::advanceConversation() {
     if (!conversation_active_) {
         return;
@@ -608,6 +637,7 @@ void WorldScene::update() {
     if (has_player_) {
         player_.update(
             ground_, object_map_, &actor_blockers);
+        map_exploration_.reveal(player_.position());
     }
     for (NpcActor& npc : npcs_) {
         npc.update(ground_, object_map_);
@@ -676,27 +706,34 @@ std::int32_t WorldScene::playerAnimationFrame() const {
 std::int32_t WorldScene::cameraScreenX() const {
     const ScreenPosition position =
         calculateRealPosition(player_.position());
-    return position.x - 320;
+    return position.x - camera_anchor_x_;
 }
 
 std::int32_t WorldScene::cameraScreenY() const {
     const ScreenPosition position =
         calculateRealPosition(player_.position());
-    return position.y - 240;
+    return position.y - camera_anchor_y_;
 }
 
 std::int32_t WorldScene::renderCameraScreenX(
     double alpha) const {
     const ScreenPosition position =
         calculateRealPosition(player_.renderPosition(alpha));
-    return position.x - 320;
+    return position.x - camera_anchor_x_;
 }
 
 std::int32_t WorldScene::renderCameraScreenY(
     double alpha) const {
     const ScreenPosition position =
         calculateRealPosition(player_.renderPosition(alpha));
-    return position.y - 240;
+    return position.y - camera_anchor_y_;
+}
+
+void WorldScene::setCameraAnchor(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    camera_anchor_x_ = screen_x;
+    camera_anchor_y_ = screen_y;
 }
 
 WorldPosition WorldScene::playerRenderPosition(

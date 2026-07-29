@@ -1,5 +1,6 @@
 #include "libs/RKC_DIB/rkc_dib.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <limits>
 #include <utility>
@@ -64,6 +65,26 @@ void writeU32(
 }
 
 }  // namespace
+
+bool BitmapImage::create(
+    std::int32_t width,
+    std::int32_t height,
+    Color fill) {
+    clear();
+    if (width <= 0 || height <= 0) {
+        return false;
+    }
+    const std::uint64_t count =
+        static_cast<std::uint64_t>(width) *
+        static_cast<std::uint64_t>(height);
+    if (count > std::numeric_limits<std::size_t>::max()) {
+        return false;
+    }
+    width_ = width;
+    height_ = height;
+    pixels_.assign(static_cast<std::size_t>(count), fill);
+    return true;
+}
 
 bool BitmapImage::decode(
     const std::vector<std::uint8_t>& bytes,
@@ -191,6 +212,39 @@ void BitmapImage::clear() {
     width_ = 0;
     height_ = 0;
     pixels_.clear();
+}
+
+void BitmapImage::fillRectangle(
+    std::int32_t x,
+    std::int32_t y,
+    std::int32_t width,
+    std::int32_t height,
+    Color color) {
+    if (width <= 0 || height <= 0 ||
+        width_ <= 0 || height_ <= 0) {
+        return;
+    }
+    const std::int32_t left = std::clamp(x, 0, width_);
+    const std::int32_t top = std::clamp(y, 0, height_);
+    const std::int64_t raw_right =
+        static_cast<std::int64_t>(x) + width;
+    const std::int64_t raw_bottom =
+        static_cast<std::int64_t>(y) + height;
+    const std::int32_t right = static_cast<std::int32_t>(
+        std::clamp<std::int64_t>(raw_right, 0, width_));
+    const std::int32_t bottom = static_cast<std::int32_t>(
+        std::clamp<std::int64_t>(raw_bottom, 0, height_));
+    for (std::int32_t row = top; row < bottom; ++row) {
+        auto first =
+            pixels_.begin() +
+            static_cast<std::size_t>(row) *
+                static_cast<std::size_t>(width_) +
+            static_cast<std::size_t>(left);
+        std::fill(
+            first,
+            first + (right - left),
+            color);
+    }
 }
 
 std::int32_t BitmapImage::width() const {

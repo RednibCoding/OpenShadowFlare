@@ -225,6 +225,8 @@ class to the right-hand end and shifts the lower-priority classes left.
 - Open Magic Window
 - Open Special Item Window
 - Open Mission List Window (`Q`; two pages of 24 table-backed missions)
+- Open Navigation Window/Map (`N`; the world remains live in the right half,
+  arrow keys scroll the Map, and Enter recenters it)
 - Open Settings Menu
 
 ### Other Actions

@@ -12,6 +12,10 @@ namespace osf::gapi {
 
 class BitmapImage {
 public:
+    bool create(
+        std::int32_t width,
+        std::int32_t height,
+        Color fill = {});
     bool decode(
         const std::vector<std::uint8_t>& bytes,
         std::string* error = nullptr);
@@ -20,6 +24,12 @@ public:
         std::string* error = nullptr);
 
     void clear();
+    void fillRectangle(
+        std::int32_t x,
+        std::int32_t y,
+        std::int32_t width,
+        std::int32_t height,
+        Color color);
     std::int32_t width() const;
     std::int32_t height() const;
     const std::vector<Color>& pixels() const;

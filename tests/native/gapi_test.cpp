@@ -417,6 +417,22 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
+    osf::gapi::SoftwareBackend farClippedBackend(1, 1);
+    farClippedBackend.beginFrame({7, 8, 9, 255});
+    farClippedBackend.drawPattern(
+        image,
+        0,
+        {-1999, -1999, 1000000, 1000000});
+    const osf::gapi::Color farClipped =
+        farClippedBackend.surface().pixels[0];
+    if (!check(
+            farClipped.red == 200 &&
+                farClipped.green == 180 &&
+                farClipped.blue == 160,
+            "A large clipped pattern sampled the wrong visible pixel.")) {
+        return false;
+    }
+
     osf::gapi::SoftwareBackend rectangleBackend(1, 1);
     rectangleBackend.beginFrame({20, 40, 60, 255});
     rectangleBackend.drawRectangle({
@@ -529,6 +545,34 @@ bool testBitmapAndTextDrawing() {
         "BMP orientation, BGR conversion, or font tinting differs.");
 }
 
+bool testMutableBitmapMask() {
+    osf::gapi::BitmapImage bitmap;
+    if (!check(
+            bitmap.create(4, 4, {0, 0, 0, 0}),
+            "A mutable bitmap mask could not be created.")) {
+        return false;
+    }
+    bitmap.fillRectangle(
+        1, 1, 2, 2, {255, 0, 0, 128});
+
+    osf::gapi::SoftwareBackend backend(4, 4);
+    backend.beginFrame({0, 255, 0, 255});
+    backend.drawBitmap(
+        bitmap,
+        {0, 0, 1000, 1000, 1000, {2, 1, 1, 2}});
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const osf::gapi::Color untouched = surface.pixels[1 * 4 + 1];
+    const osf::gapi::Color blended = surface.pixels[1 * 4 + 2];
+    return check(
+        untouched.red == 0 &&
+            untouched.green == 255 &&
+            blended.red == 128 &&
+            blended.green == 127 &&
+            surface.pixels[2 * 4 + 2].red == 128 &&
+            surface.pixels[3 * 4 + 2].green == 255,
+        "Bitmap alpha or destination clipping differs.");
+}
+
 bool testCafAndTitleAnimation() {
     osf::gapi::CafAnimation animation;
     std::string error;
@@ -608,6 +652,7 @@ int main() {
         !testNjpAndSoftwareBackend() ||
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
+        !testMutableBitmapMask() ||
         !testCafAndTitleAnimation() ||
         !testInitialLoadingPackets() ||
         !testGameplayHudPackets()) {

@@ -25,6 +25,10 @@ struct GameplayFrameInput {
     std::int32_t pointer_y = 0;
     bool pointer_primary_down = false;
     bool run_toggle_pressed = false;
+    std::int32_t world_view_left = 0;
+    std::int32_t world_view_top = 0;
+    std::int32_t world_view_right = 640;
+    std::int32_t world_view_bottom = 400;
 };
 
 struct GameplayStateHooks {
@@ -39,6 +43,7 @@ struct GameplayStateHooks {
     std::function<void()> cancel_player_movement;
     std::function<void(std::int32_t, std::int32_t)>
         update_pointer_hover;
+    std::function<void()> clear_pointer_hover;
     std::function<bool(std::int32_t, std::int32_t)>
         command_world_interaction;
     std::function<bool()> world_interaction_pending;

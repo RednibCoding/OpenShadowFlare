@@ -29,7 +29,7 @@ The portable executable already has a solid front half:
 - Remote Town's ground, static objects, shadows, player sprite, and music
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
-- the in-game Settings, Help, and Mission List screens
+- the in-game Settings, Help, Mission List, and Map screens
 
 In other words, the game can reach the world and the player can now walk
 around it. Remote Town now loads all seven PEOPLE records, their movement and
@@ -116,8 +116,9 @@ original executable:
   PEOPLE actors, and enemies. It uses direct collision sweeps plus stateful
   obstacle-edge steering rather than A*; enemy intent still comes from
   `RKC_RPG_AICONTROL`;
-- the camera uses the projected player position minus the 320-by-240 screen
-  center, without another map-edge clamp.
+- the normal camera uses the projected player position minus the 320-by-240
+  screen center, without another map-edge clamp. Live half-width panels move
+  that anchor to 480-by-240 and restrict world input to the visible half.
 
 The interaction path is traced too. `0x00449240` uses the judgement-rectangle
 distance from `0x004143c0` and the player's 159-unit interaction range. A
@@ -291,12 +292,16 @@ menu row or `H`, including the animated player preview and the menu-owned
 `CLOSE` tab. The Mission List is live from both its menu row and `Q`. It reads
 all 48 titles and their description tables from `Table.Tbd`, shows only
 script-started missions, keeps the original two-page layout and lock states,
-and opens the retail detail panel when a title is clicked. Map is the last
-visible placeholder in this menu.
+and opens the retail detail panel when a title is clicked. The Settings Map
+row and `N` now open the original half-width map too. It uses each scenario's
+authored overview, keeps unexplored ground black, reveals the same 68-by-46
+area while walking, and retains the original marker blink, scrolling,
+recentering, frame, and dismissal behavior.
 
 The remaining layers are:
 
-- map the experience field and table calculation, then draw its clipped fill;
+- identify the experience field and table calculation, then draw its clipped
+  fill;
 - reconstruct quick-slot ownership and values instead of painting placeholders;
 - finish the remaining message-window variants;
 - darkness and other final world overlays;

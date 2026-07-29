@@ -107,8 +107,9 @@ zero scale. Pointer, shadow, occluding-object, effect-volume, and BGM-volume
 changes apply live; all changed configuration fields are written back through
 the reconstructed 64-byte `SFlare.Cfg` writer when the game exits. The
 screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
-empty so every later row keeps its retail coordinate. Mission now opens its
-own modal state; map remains the only placeholder row.
+empty so every later row keeps its retail coordinate. Mission and Map now
+open their own screens from the original rows: Mission is modal, while Map
+leaves the right-hand world viewport live.
 
 The Help row and `H` shortcut now open the screen drawn by `0x0040e710`.
 Status patterns 10 and 66 provide the authored 640-by-415 frame and the
@@ -131,6 +132,21 @@ entry. Page-tab selection uses retail sample 58. Clicking a row opens the same
 tinted patterns 59 and 58 detail panel with the bracketed title and 16-pixel
 description lines. A click on the detail returns to the list, while Escape,
 `Q`, or a click outside the list but above the HUD closes it.
+
+The live half-width Map follows `0x0040d4d0`. It loads the current scenario's
+`Scenario.Njp`, clips it to x=32..318 and y=40..374, and covers unexplored
+territory with the same map-sized mask used by retail. Movement reveals the
+retail 68-by-46 rectangle around each visited position. The player stays at
+the original 160,210 map anchor while arrow keys scroll by 16 horizontal or
+10 vertical pixels, Enter recenters, and the marker from `MapIcon.njp` uses
+the 15-of-20 blink. Status patterns 71 and 118 provide the authored frame and
+pulse. Its `0x11` UI mode leaves simulation and world input running in the
+right half, moves the camera anchor from x=320 to x=480, and prevents Map-panel
+clicks from leaking into the world. `N`, the Settings row, Escape, and a
+secondary click above the HUD open or close it through the matching retail
+paths. Loading and writing the per-save `Save/M%08d%02d.msk` history,
+other online-player markers, and later scenario transitions remain with their
+future owners.
 
 The two save rows now use the same secondary states as `0x004103c0`. Their
 prompts replace the settings text without replacing or re-fading the panel;

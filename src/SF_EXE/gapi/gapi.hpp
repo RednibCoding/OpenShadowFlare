@@ -69,11 +69,26 @@ struct PatternDraw {
 };
 
 struct BitmapDraw {
+    constexpr BitmapDraw(
+        std::int32_t draw_x = 0,
+        std::int32_t draw_y = 0,
+        std::int32_t draw_scale_x = 1000,
+        std::int32_t draw_scale_y = 1000,
+        std::int32_t draw_brightness = 1000,
+        Viewport draw_clip = {})
+        : x(draw_x),
+          y(draw_y),
+          scale_x(draw_scale_x),
+          scale_y(draw_scale_y),
+          brightness(draw_brightness),
+          clip(draw_clip) {}
+
     std::int32_t x = 0;
     std::int32_t y = 0;
     std::int32_t scale_x = 1000;
     std::int32_t scale_y = 1000;
     std::int32_t brightness = 1000;
+    Viewport clip;
 };
 
 struct TextDraw {

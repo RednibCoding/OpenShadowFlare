@@ -71,6 +71,7 @@ target_link_libraries(
 add_library(
   osf_states STATIC
   states/game_state.cpp
+  states/gameplay_map.cpp
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
   states/gameplay_state.cpp
@@ -92,6 +93,7 @@ target_link_libraries(
 add_library(
   osf_world STATIC
   world/ground_item.cpp
+  world/map_exploration.cpp
   world/mission_catalog.cpp
   world/movement_controller.cpp
   world/npc_actor.cpp
@@ -127,6 +129,7 @@ add_library(
   render/conversation_layout.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
+  render/gameplay_map_renderer.cpp
   render/gameplay_mission_list_renderer.cpp
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp

@@ -10,6 +10,7 @@
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
+#include "render/gameplay_map_renderer.hpp"
 #include "render/gameplay_mission_list_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
@@ -22,6 +23,7 @@
 #include "runtime/input_adapter.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_map.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
@@ -305,15 +307,22 @@ private:
             break;
         }
         case osf::GameState::gameplay: {
-            if (!updateGameplayModals(running)) {
+            if (!updateGameplayScreens(running)) {
+                const bool map_active =
+                    gameplayMap_.active();
                 gameplayFrame_ = gameplayState_.update({
-                    input_.menu().confirm_pressed,
+                    input_.menu().confirm_pressed &&
+                        !map_active,
                     input_.menu()
                         .pointer_primary_pressed,
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
                     input_.pointerPrimaryDown(),
                     input_.runTogglePressed(),
+                    map_active ? 320 : 0,
+                    0,
+                    640,
+                    400,
                 });
             }
             break;
@@ -416,7 +425,17 @@ private:
                 const auto* status =
                     frontendAssets_.pattern(6);
                 if (status && font) {
-                    if (gameplayMissionList_.active()) {
+                    const auto* map_icons =
+                        frontendAssets_.pattern(7);
+                    if (gameplayMap_.active() && map_icons) {
+                        osf::renderGameplayMap(
+                            renderer_,
+                            *status,
+                            *font,
+                            *map_icons,
+                            gameplayMap_,
+                            world_);
+                    } else if (gameplayMissionList_.active()) {
                         osf::renderGameplayMissionList(
                             renderer_,
                             *status,
@@ -556,6 +575,7 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayOptions_.close();
+            gameplayMap_.close();
             gameplayMissionList_.close();
             savePreview_.clear();
             pendingGameplayOptionsAction_ =
@@ -564,6 +584,7 @@ private:
         };
         callbacks.gameplay.leave = [this] {
             gameplayOptions_.close();
+            gameplayMap_.close();
             gameplayMissionList_.close();
             gameplayState_.leave();
         };
@@ -584,11 +605,19 @@ private:
                 frontendAssets_.releasePattern(5);
                 return false;
             }
+            if (!frontendAssets_.loadPattern(
+                    7,
+                    "System\\Game\\Pattern\\MapIcon.njp")) {
+                frontendAssets_.releasePattern(5);
+                frontendAssets_.releasePattern(6);
+                return false;
+            }
             return true;
         };
         hooks.release_interface = [this] {
             frontendAssets_.releasePattern(5);
             frontendAssets_.releasePattern(6);
+            frontendAssets_.releasePattern(7);
         };
         hooks.prepare_world = [this] {
             std::string error;
@@ -639,6 +668,9 @@ private:
                     world_.selectConversationOption(option);
                 }
             };
+        hooks.clear_pointer_hover = [this] {
+            world_.clearPointerHover();
+        };
         hooks.command_world_interaction =
             [this](std::int32_t x, std::int32_t y) {
                 return world_.commandWorldInteraction(x, y);
@@ -684,9 +716,33 @@ private:
         return hooks;
     }
 
-    bool updateGameplayModals(bool& running) {
+    bool updateGameplayScreens(bool& running) {
         if (gameplayFrame_.phase !=
             osf::GameplayPhase::world) {
+            return false;
+        }
+        const bool map_was_active = gameplayMap_.active();
+        const bool map_toggle =
+            input_.gameplayMapPressed() &&
+            (!world_.conversationActive() ||
+             map_was_active) &&
+            !gameplayOptions_.active() &&
+            !gameplayMissionList_.active();
+        if (map_was_active || map_toggle) {
+            gameplayMap_.update({
+                map_toggle,
+                input_.gameplayOptionsPressed() ||
+                    (input_.pointerSecondaryPressed() &&
+                     input_.menu().pointer_y < 412),
+                input_.leftHeld(),
+                input_.upHeld(),
+                input_.rightHeld(),
+                input_.downHeld(),
+                input_.menu().confirm_pressed,
+            });
+            world_.setCameraAnchor(
+                gameplayMap_.active() ? 480 : 320,
+                240);
             return false;
         }
         const bool mission_was_active =
@@ -765,6 +821,13 @@ private:
             osf::GameplayOptionsAction::open_mission_list) {
             gameplayOptions_.close();
             gameplayMissionList_.open();
+            return true;
+        }
+        if (result.action ==
+            osf::GameplayOptionsAction::open_map) {
+            gameplayOptions_.close();
+            gameplayMap_.open();
+            world_.setCameraAnchor(480, 240);
             return true;
         }
         if (result.action !=
@@ -847,6 +910,7 @@ private:
     osf::WorldScene world_;
     osf::RetailSavePreview savePreview_;
     osf::GameplayOptionsMenu gameplayOptions_;
+    osf::GameplayMap gameplayMap_;
     osf::GameplayMissionList gameplayMissionList_;
     osf::GameplayOptionsAction
         pendingGameplayOptionsAction_ =

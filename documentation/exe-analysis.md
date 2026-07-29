@@ -443,6 +443,33 @@ click above y=412 closes Help. The `H` shortcut opens the same reference page
 directly. The companion preview is conditional in retail; the portable
 renderer will add it when the player-owned companion system exists.
 
+The Map row at y=270 and the `N` shortcut switch to `0x0040d4d0`. The screen
+keeps the right half of the world visible and clips its own content to
+`(32, 40)` through `(318, 374)`. Pattern 0 from the current scenario's
+`Scenario.Njp` is positioned in one-tenth real-screen coordinates, with the
+local player held at `(160, 210)`. A separate map-sized mask begins black.
+Gameplay clears a 68-by-46 rectangle in that mask around every visited
+position, which reveals the overview without exposing unexplored territory.
+
+`MapIcon.njp` patterns 0 and 1 form the local `PLAYER.` marker. It is visible
+for 15 updates and hidden for five. Arrow keys change the map origin by 16
+pixels horizontally or 10 vertically; Enter clears both offsets. Status
+pattern 71 supplies the authored half-screen frame and pattern 118 pulses over
+60 updates. The scenario title is drawn at `(72, 50)` over its half-opacity
+label backing.
+
+Unlike Help and the Mission List, the Map is not a pausing modal. Its active
+UI flags are `0x11`: the left 320 pixels belong to the Map while the world
+keeps updating in the right 320-pixel viewport. The camera anchor moves from
+`(320, 240)` to `(480, 240)`, so the local player stays centered in the visible
+half, and mouse picking uses the shifted projection. Clicks in the Map panel
+do not become world commands. Escape or `N` closes it and restores the normal
+camera anchor; the secondary-click handler at `0x0044ad80` also closes it for
+clicks above the HUD. Retail loads and saves the exploration masks as
+`Save/M%08d%02d.msk`; portable
+per-save mask persistence and the three other online-player markers remain
+to be connected.
+
 The Save and Return row occupies y=302 through 313, and Save and Exit occupies
 y=318 through 329. They enter confirmation states two and three. Both dialogs
 draw their prompt at y=170, with YES at `(336, 202)` and NO at `(384, 202)`.
