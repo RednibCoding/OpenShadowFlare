@@ -658,6 +658,51 @@ bool testGameplayOptionsMenu() {
         return false;
     }
 
+    result = menu.update(
+        {false, true, true, 300, 302}, config);
+    if (!check(
+            menu.page() ==
+                    osf::GameplayOptionsPage::
+                        return_to_title_confirmation &&
+                result.play_confirm_sound &&
+                result.action ==
+                    osf::GameplayOptionsAction::none,
+            "Save and Return did not open the retail confirmation "
+            "state.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, true, true, 390, 202}, config);
+    if (!check(
+            menu.page() ==
+                    osf::GameplayOptionsPage::settings &&
+                result.play_click_sound,
+            "NO did not return from the confirmation state.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, true, true, 300, 318}, config);
+    result = menu.update(
+        {false, true, true, 340, 202}, config);
+    if (!check(
+            result.play_confirm_sound &&
+                result.action ==
+                    osf::GameplayOptionsAction::save_and_exit &&
+                menu.page() ==
+                    osf::GameplayOptionsPage::saving,
+            "YES did not dispatch the Save and Exit action.")) {
+        return false;
+    }
+
+    menu.restoreConfirmation(result.action);
+    if (!check(
+            menu.page() ==
+                osf::GameplayOptionsPage::
+                    exit_game_confirmation,
+            "A failed save did not restore its confirmation state.")) {
+        return false;
+    }
+
     menu.update({true}, config);
     return check(
         !menu.active(),

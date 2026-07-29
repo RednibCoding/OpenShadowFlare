@@ -281,8 +281,12 @@ reordering, and the original effect/BGM slider scale. Pointer, shadow,
 occluding-object, and audio changes apply while the panel is open, and changed
 settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
 intentionally blank, but its space remains so none of the following rows move.
-Mission List, Map, Help, and the two save actions stay visible for now; their
-clicks belong with those still-missing screens and the save writer.
+Save and Return and Save and Exit now open their original confirmation states,
+write the retail save envelope, and only leave gameplay after a successful
+write. With `Save Image at Game End` enabled, they also write the paired
+391-by-114 BMP from the player-centered world view before any HUD or menu is
+drawn. Mission List, Map, and Help stay visible for now; their clicks belong
+with those still-missing screens.
 
 The remaining layers are:
 
@@ -467,14 +471,18 @@ That means:
 - reproduce the XOR encryption and the retail validation behavior;
 - restore scenario, position, player stats, inventory, equipment, skills,
   quest flags, and other persistent state;
-- write the paired preview bitmap at the correct moment;
 - preserve unknown bytes when the original does;
 - handle truncated or corrupt saves without losing another slot;
 - compare round trips byte for byte where the original format permits it;
 - test original → OpenShadowFlare and OpenShadowFlare → original.
 
-Save parsing can grow alongside earlier slices, but writing should only be
-declared complete once all persistent gameplay systems have a real owner.
+The envelope writer is now in place, including the random XOR byte,
+signed-byte checksum, substitution pass, and safe preservation of an existing
+unknown payload. New saves carry the player record we currently own. Writing
+also captures the retail-sized paired preview from the world-only render when
+the option is enabled. Saving is not complete yet: each persistent gameplay
+owner still has to contribute its real payload fields, and loading must restore
+those fields before OpenShadowFlare can claim full round-trip compatibility.
 
 ### 7. Play through Episode 1
 

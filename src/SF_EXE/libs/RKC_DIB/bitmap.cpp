@@ -41,6 +41,28 @@ bool readU32(
     return true;
 }
 
+void writeU16(
+    std::vector<std::uint8_t>& bytes,
+    std::size_t offset,
+    std::uint16_t value) {
+    bytes[offset] = static_cast<std::uint8_t>(value);
+    bytes[offset + 1] =
+        static_cast<std::uint8_t>(value >> 8u);
+}
+
+void writeU32(
+    std::vector<std::uint8_t>& bytes,
+    std::size_t offset,
+    std::uint32_t value) {
+    bytes[offset] = static_cast<std::uint8_t>(value);
+    bytes[offset + 1] =
+        static_cast<std::uint8_t>(value >> 8u);
+    bytes[offset + 2] =
+        static_cast<std::uint8_t>(value >> 16u);
+    bytes[offset + 3] =
+        static_cast<std::uint8_t>(value >> 24u);
+}
+
 }  // namespace
 
 bool BitmapImage::decode(
@@ -181,6 +203,93 @@ std::int32_t BitmapImage::height() const {
 
 const std::vector<Color>& BitmapImage::pixels() const {
     return pixels_;
+}
+
+bool writeBitmapFile(
+    const std::filesystem::path& path,
+    SurfaceView surface,
+    std::string* error) {
+    if (!surface.pixels ||
+        surface.width <= 0 ||
+        surface.height <= 0) {
+        setError(error, "The bitmap surface is empty.");
+        return false;
+    }
+
+    constexpr std::uint32_t header_size = 54;
+    const std::uint64_t row_size =
+        (static_cast<std::uint64_t>(surface.width) * 3u + 3u) &
+        ~std::uint64_t{3};
+    const std::uint64_t pixel_size =
+        row_size * static_cast<std::uint64_t>(surface.height);
+    const std::uint64_t file_size = header_size + pixel_size;
+    if (file_size >
+        std::numeric_limits<std::uint32_t>::max()) {
+        setError(error, "The bitmap is too large to write.");
+        return false;
+    }
+
+    std::vector<std::uint8_t> bytes(
+        static_cast<std::size_t>(file_size));
+    bytes[0] = 'B';
+    bytes[1] = 'M';
+    writeU32(
+        bytes, 2, static_cast<std::uint32_t>(file_size));
+    writeU32(bytes, 10, header_size);
+    writeU32(bytes, 14, 40);
+    writeU32(
+        bytes,
+        18,
+        static_cast<std::uint32_t>(surface.width));
+    writeU32(
+        bytes,
+        22,
+        static_cast<std::uint32_t>(surface.height));
+    writeU16(bytes, 26, 1);
+    writeU16(bytes, 28, 24);
+    writeU32(
+        bytes,
+        34,
+        static_cast<std::uint32_t>(pixel_size));
+
+    for (std::int32_t y = 0; y < surface.height; ++y) {
+        const std::int32_t source_y =
+            surface.height - y - 1;
+        const std::size_t destination_row =
+            header_size +
+            static_cast<std::size_t>(y) *
+                static_cast<std::size_t>(row_size);
+        const std::size_t source_row =
+            static_cast<std::size_t>(source_y) *
+            static_cast<std::size_t>(surface.width);
+        for (std::int32_t x = 0; x < surface.width; ++x) {
+            const Color& color =
+                surface.pixels[
+                    source_row +
+                    static_cast<std::size_t>(x)];
+            const std::size_t destination =
+                destination_row +
+                static_cast<std::size_t>(x) * 3u;
+            bytes[destination] = color.blue;
+            bytes[destination + 1] = color.green;
+            bytes[destination + 2] = color.red;
+        }
+    }
+
+    std::ofstream stream(
+        path, std::ios::binary | std::ios::trunc);
+    if (!stream ||
+        !stream.write(
+            reinterpret_cast<const char*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size())) ||
+        !stream.flush()) {
+        setError(error, "Could not write the BMP file.");
+        return false;
+    }
+    if (error) {
+        error->clear();
+    }
+    return true;
 }
 
 }  // namespace osf::gapi

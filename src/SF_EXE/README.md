@@ -135,8 +135,12 @@ movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
 new male and female characters receive the thirteen values from retail tables
 901 and 900. A selected save contributes its complete plain 0x160-byte player
 record, including unknown bytes that later inventory, equipment, and
-progression slices will need. Full decoding of the save's obfuscated dynamic
-payload is still pending.
+progression slices will need. The in-game save actions now write the retail
+envelope and preserve the unknown dynamic payload of an existing save while
+updating its repeated player record. When the matching option is enabled, the
+same action captures the world without the HUD or menu and writes the retail
+391×114 preview bitmap used by Load Game. Full dynamic-state decoding and
+serialization are still pending.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

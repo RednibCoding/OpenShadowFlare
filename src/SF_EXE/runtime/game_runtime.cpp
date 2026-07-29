@@ -25,6 +25,8 @@
 #include "states/character_select_state.hpp"
 #include "states/save_catalog.hpp"
 #include "states/title_state.hpp"
+#include "world/retail_save_file.hpp"
+#include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>
@@ -286,6 +288,10 @@ private:
                         selection.character_name;
                     gameplayPlayer_.gender =
                         selection.character_gender;
+                    gameplayPlayer_.save_path =
+                        osf::resolveRetailPath(
+                            dataRoot_,
+                            selection.next_save_path);
                 }
                 gameState_.transition(osf::GameState::gameplay);
             } else if (
@@ -296,7 +302,7 @@ private:
             break;
         }
         case osf::GameState::gameplay: {
-            if (!updateGameplayOptions()) {
+            if (!updateGameplayOptions(running)) {
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed,
                     input_.menu()
@@ -382,6 +388,7 @@ private:
                     shadowOpacity_,
                     interpolation,
                     gameConfig_.semi_transparent_objects);
+                savePreview_.capture(renderer_.surface());
                 const auto* bar = frontendAssets_.pattern(5);
                 if (bar) {
                     osf::renderGameplayHud(
@@ -521,6 +528,9 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayOptions_.close();
+            savePreview_.clear();
+            pendingGameplayOptionsAction_ =
+                osf::GameplayOptionsAction::none;
             gameplayState_.enter();
         };
         callbacks.gameplay.leave = [this] {
@@ -644,10 +654,25 @@ private:
         return hooks;
     }
 
-    bool updateGameplayOptions() {
+    bool updateGameplayOptions(bool& running) {
         if (gameplayFrame_.phase !=
             osf::GameplayPhase::world) {
             return false;
+        }
+        if (pendingGameplayOptionsAction_ !=
+            osf::GameplayOptionsAction::none) {
+            const osf::GameplayOptionsAction action =
+                pendingGameplayOptionsAction_;
+            pendingGameplayOptionsAction_ =
+                osf::GameplayOptionsAction::none;
+            if (action ==
+                osf::GameplayOptionsAction::
+                    save_and_return_to_title) {
+                gameState_.transition(osf::GameState::title);
+            } else {
+                running = false;
+            }
+            return true;
         }
         const bool was_active =
             gameplayOptions_.active();
@@ -673,6 +698,47 @@ private:
         }
         if (result.play_click_sound) {
             audio_.playOptionsClick();
+        }
+        if (result.play_confirm_sound) {
+            audio_.playOptionsConfirm();
+        }
+        if (result.action !=
+            osf::GameplayOptionsAction::none) {
+            std::string error;
+            const bool saved =
+                !gameplayPlayer_.save_path.empty() &&
+                osf::writeRetailSave(
+                    gameplayPlayer_.save_path,
+                    world_.playerData(),
+                    static_cast<std::uint8_t>(
+                        random_.next() & 0xff),
+                    &error);
+            if (!saved) {
+                gameplayOptions_.restoreConfirmation(
+                    result.action);
+                std::fprintf(
+                    stderr,
+                    "Could not save the current game: %s\n",
+                    error.empty()
+                        ? "no save slot is assigned"
+                        : error.c_str());
+            } else {
+                gameplayPlayer_.source =
+                    osf::PlayerDataSource::retail_save;
+                if (gameConfig_.save_image_at_game_end) {
+                    std::string preview_error;
+                    if (!savePreview_.writeForSave(
+                            gameplayPlayer_.save_path,
+                            &preview_error)) {
+                        std::fprintf(
+                            stderr,
+                            "Could not save the character preview: %s\n",
+                            preview_error.c_str());
+                    }
+                }
+                pendingGameplayOptionsAction_ =
+                    result.action;
+            }
         }
         return was_active ||
                gameplayOptions_.active() ||
@@ -714,7 +780,11 @@ private:
     osf::TitleState titleState_;
     osf::CharacterSelectState characterSelectState_;
     osf::WorldScene world_;
+    osf::RetailSavePreview savePreview_;
     osf::GameplayOptionsMenu gameplayOptions_;
+    osf::GameplayOptionsAction
+        pendingGameplayOptionsAction_ =
+            osf::GameplayOptionsAction::none;
     osf::GameplayState gameplayState_;
     osf::GameStateDispatcher gameState_;
 };

@@ -1284,7 +1284,7 @@ bool testGameplayOptionsDrawing() {
         priority[static_cast<std::size_t>(
             (call.draw.x - 316) / 30)] = call.text;
     }
-    return check(
+    if (!check(
         backend.patterns.size() == 6 &&
             backend.patterns[0].index == 59 &&
             backend.patterns[0].draw.opacity == 500 &&
@@ -1298,7 +1298,71 @@ bool testGameplayOptionsDrawing() {
             has_first_live_row &&
             priority == expected_priority,
         "The gameplay options panel differs from retail layout "
-        "or ordering.");
+        "or ordering.")) {
+        return false;
+    }
+
+    menu.update(
+        {false, true, true, 300, 302}, config);
+    backend = {};
+    osf::renderGameplayOptions(
+        backend, status, font, menu, config);
+    const auto prompt = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "Return to the Title Screen?         " &&
+                   call.draw.x == 212 &&
+                   call.draw.y == 170;
+        });
+    const auto yes = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "YES" &&
+                   call.draw.x == 336 &&
+                   call.draw.y == 202;
+        });
+    const bool has_settings_text =
+        std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [](const TextCall& call) {
+                return call.text ==
+                    "Semi-transparent Objects";
+            });
+    if (!check(
+        backend.patterns.size() == 2 &&
+            prompt != backend.texts.end() &&
+            yes != backend.texts.end() &&
+            !has_settings_text,
+        "The Save and Return confirmation differs from retail "
+        "layout or retained settings text.")) {
+        return false;
+    }
+
+    menu.update(
+        {false, true, true, 340, 202}, config);
+    backend = {};
+    osf::renderGameplayOptions(
+        backend, status, font, menu, config);
+    const auto saving = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "Now saving the data " &&
+                   call.draw.x == 260 &&
+                   call.draw.y == 170 &&
+                   call.draw.color.red == 128 &&
+                   call.draw.color.green == 128 &&
+                   call.draw.color.blue == 224;
+        });
+    return check(
+        backend.patterns.size() == 2 &&
+            saving != backend.texts.end(),
+        "The retail saving stage text differs in position or "
+        "color.");
 }
 
 }  // namespace

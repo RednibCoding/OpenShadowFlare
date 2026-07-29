@@ -28,6 +28,9 @@ constexpr gapi::Color kHoverColor{
 constexpr gapi::Color kPriorityHoverColor{
     64, 64, 255, 255,
 };
+constexpr gapi::Color kSavingColor{
+    128, 128, 224, 255,
+};
 
 bool hovered(
     const GameplayOptionsMenu& menu,
@@ -103,6 +106,55 @@ void drawCenteredAction(
     drawText(renderer, font, text, x, y, color);
 }
 
+void drawConfirmation(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& font,
+    const GameplayOptionsMenu& menu) {
+    const std::string_view prompt =
+        menu.page() ==
+                GameplayOptionsPage::return_to_title_confirmation
+            ? "Return to the Title Screen?         "
+            : "Is it O.K. to exit the game?        ";
+    const std::int32_t prompt_x =
+        176 +
+        (288 -
+         static_cast<std::int32_t>(prompt.size()) * 6) /
+            2;
+    drawText(
+        renderer, font, prompt, prompt_x, 170, kLabelColor);
+    drawText(
+        renderer,
+        font,
+        "YES",
+        336,
+        202,
+        hovered(menu, 336, 202, 360, 214)
+            ? kHoverColor
+            : kLabelColor);
+    drawText(
+        renderer,
+        font,
+        "NO",
+        384,
+        202,
+        hovered(menu, 384, 202, 420, 214)
+            ? kHoverColor
+            : kLabelColor);
+}
+
+void drawSaving(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& font) {
+    constexpr std::string_view text =
+        "Now saving the data ";
+    constexpr std::int32_t x =
+        176 +
+        (288 -
+         static_cast<std::int32_t>(text.size()) * 6) /
+            2;
+    drawText(renderer, font, text, x, 170, kSavingColor);
+}
+
 std::int32_t knobOpacity(std::int32_t counter) {
     const std::int32_t phase = counter % 100;
     return phase * 10 < 500
@@ -130,6 +182,15 @@ void renderGameplayOptions(
         59,
         {0, 0, 1000, 1000, 1000, 500});
     renderer.drawPattern(status_patterns, 58);
+
+    if (menu.page() == GameplayOptionsPage::saving) {
+        drawSaving(renderer, font);
+        return;
+    }
+    if (menu.page() != GameplayOptionsPage::settings) {
+        drawConfirmation(renderer, font, menu);
+        return;
+    }
 
     // The retail screen-mode row occupies y=86. It is deliberately omitted
     // in the portable game, but all following rows retain their retail y.

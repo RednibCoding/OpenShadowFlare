@@ -133,6 +133,7 @@ GameplayOptionsResult GameplayOptionsMenu::update(
 
     if (input.toggle_pressed) {
         active_ = !active_;
+        page_ = GameplayOptionsPage::settings;
         return {};
     }
     if (!active_) {
@@ -140,6 +141,68 @@ GameplayOptionsResult GameplayOptionsMenu::update(
     }
 
     GameplayOptionsResult result;
+    if (page_ == GameplayOptionsPage::saving) {
+        return result;
+    }
+    if (page_ != GameplayOptionsPage::settings) {
+        if (!input.pointer_primary_pressed) {
+            return result;
+        }
+        if (inside(
+                input.pointer_x,
+                input.pointer_y,
+                336,
+                202,
+                360,
+                214)) {
+            result.play_confirm_sound = true;
+            result.action =
+                page_ ==
+                        GameplayOptionsPage::
+                            return_to_title_confirmation
+                    ? GameplayOptionsAction::
+                          save_and_return_to_title
+                    : GameplayOptionsAction::save_and_exit;
+            page_ = GameplayOptionsPage::saving;
+        } else if (inside(
+                       input.pointer_x,
+                       input.pointer_y,
+                       384,
+                       202,
+                       420,
+                       214)) {
+            page_ = GameplayOptionsPage::settings;
+            result.play_click_sound = true;
+        }
+        return result;
+    }
+
+    if (input.pointer_primary_pressed &&
+        inside(
+            input.pointer_x,
+            input.pointer_y,
+            176,
+            302,
+            464,
+            314)) {
+        page_ =
+            GameplayOptionsPage::return_to_title_confirmation;
+        result.play_confirm_sound = true;
+        return result;
+    }
+    if (input.pointer_primary_pressed &&
+        inside(
+            input.pointer_x,
+            input.pointer_y,
+            176,
+            318,
+            464,
+            330)) {
+        page_ = GameplayOptionsPage::exit_game_confirmation;
+        result.play_confirm_sound = true;
+        return result;
+    }
+
     const bool clicked_setting =
         setBooleanRow(
             input, 102, config.semi_transparent_objects) ||
@@ -162,12 +225,30 @@ GameplayOptionsResult GameplayOptionsMenu::update(
     return result;
 }
 
+void GameplayOptionsMenu::restoreConfirmation(
+    GameplayOptionsAction action) {
+    if (page_ != GameplayOptionsPage::saving) {
+        return;
+    }
+    page_ =
+        action ==
+                GameplayOptionsAction::save_and_return_to_title
+            ? GameplayOptionsPage::
+                  return_to_title_confirmation
+            : GameplayOptionsPage::exit_game_confirmation;
+}
+
 void GameplayOptionsMenu::close() {
     active_ = false;
+    page_ = GameplayOptionsPage::settings;
 }
 
 bool GameplayOptionsMenu::active() const {
     return active_;
+}
+
+GameplayOptionsPage GameplayOptionsMenu::page() const {
+    return page_;
 }
 
 std::int32_t GameplayOptionsMenu::pointerX() const {

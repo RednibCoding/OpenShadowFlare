@@ -134,6 +134,13 @@ void AudioSystem::playOptionsClick() {
     }
 }
 
+void AudioSystem::playOptionsConfirm() {
+    if (initialized_) {
+        effect_audio_.play(
+            kTitleConfirmSound, false, effect_volume_);
+    }
+}
+
 bool AudioSystem::loadVoc(
     VocPlayer& player,
     std::string_view retail_path) {

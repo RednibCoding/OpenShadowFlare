@@ -107,9 +107,34 @@ zero scale. Pointer, shadow, occluding-object, effect-volume, and BGM-volume
 changes apply live; all changed configuration fields are written back through
 the reconstructed 64-byte `SFlare.Cfg` writer when the game exits. The
 screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
-empty so every later row keeps its retail coordinate. Mission, map, help, and
-save actions remain visible at their original positions and will become active
-with those systems.
+empty so every later row keeps its retail coordinate. Mission, map, and help
+remain placeholders.
+
+The two save rows now use the same secondary states as `0x004103c0`. Their
+prompts replace the settings text without replacing or re-fading the panel;
+YES and NO retain their retail coordinates, hitboxes, hover color, and samples
+56 and 55. YES calls the portable `0x0044b580` path before either returning to
+the title or ending the process. A successful write shows the retail
+`Now saving the data ` stage for one update; a failed write leaves the
+confirmation open.
+
+The writer reproduces the `ShadowFlare0005` envelope: plain 0x160-byte menu
+record, payload size, one-byte Visual C++ `rand()` XOR key, signed-byte
+checksum, and the inverse of the executable's 256-byte substitution table.
+When rewriting an original save, it validates and decodes the payload, updates
+its repeated player record, and preserves every still-unmapped byte before
+encoding it again. New characters currently write the owned player record as
+their first payload slice. Scenario, position, inventory, equipment, and quest
+serialization still need to be added as their corresponding load paths are
+reconstructed. Writes go through a sibling temporary file and protected
+replacement so a corrupt source or failed write does not silently destroy the
+slot.
+
+With `Save Image at Game End` enabled, the world-only software surface is also
+captured before the HUD, conversation overlay, or Escape panel is drawn.
+Portable `RKC_DIB` writes the retail 391-by-114, 24-bit `Save\%04d.Bmp` partner
+from the player-centered crop. The saved-game screen reads that file through
+the same portable BMP boundary and displays it at the original coordinates.
 
 Portable behavior originating in the DLLs is kept under `SF_EXE/libs`, with a
 directory for each of the fourteen original boundaries. `RK_FUNCTION`,

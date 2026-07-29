@@ -95,6 +95,8 @@ add_library(
   world/npc_actor.cpp
   world/player_actor.cpp
   world/player_data.cpp
+  world/retail_save_file.cpp
+  world/retail_save_preview.cpp
   world/quest_state.cpp
   world/scenario_data.cpp
   world/script/scenario_script_runtime.cpp
@@ -109,6 +111,7 @@ target_link_libraries(
     OpenShadowFlare::Core
     OpenShadowFlare::Items
     OpenShadowFlare::Resources
+    OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_RPGSCRN
     OpenShadowFlare::RKC_RPG_SCRIPT
     OpenShadowFlare::RKC_RPG_TABLE

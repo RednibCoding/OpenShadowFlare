@@ -43,6 +43,7 @@ public:
     void setEffectVolume(std::int32_t volume);
     void setBgmVolume(std::int32_t volume);
     void playOptionsClick();
+    void playOptionsConfirm();
 
 private:
     bool loadVoc(VocPlayer& player, std::string_view retail_path);

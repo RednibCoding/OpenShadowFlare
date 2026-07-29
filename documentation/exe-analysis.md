@@ -309,8 +309,16 @@ character data.
 Retail saves begin with `ShadowFlare0005` and the same plain 0x160-byte record.
 The load menu reads this copy directly. The complete record is repeated inside
 the obfuscated payload and restored by `0x0044cac0` along with dynamic objects
-and world state. OpenShadowFlare currently preserves and uses the plain record
-but does not yet claim full payload loading.
+and world state.
+
+`0x0044b580` writes the payload size first, followed by one byte from the
+Visual C++ `rand()` sequence and a four-byte signed-byte checksum. It XORs
+each plain payload byte with that random byte, then replaces the result with
+its index in the same 256-byte permutation used by the retail data path.
+OpenShadowFlare now writes that envelope and performs the inverse operation
+when preserving an existing save. The repeated player record is updated while
+unknown trailing payload bytes remain untouched. Full dynamic payload loading
+and serialization are still pending.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
@@ -419,6 +427,20 @@ The first 200 slider positions cover DirectSound values `-3000` through zero;
 the far-left position is the separate mute value `-10000`. BGM changes update
 the playing world voice immediately. Escape closes the panel and ordinary
 world input remains suspended for every frame owned by it.
+
+The Save and Return row occupies y=302 through 313, and Save and Exit occupies
+y=318 through 329. They enter confirmation states two and three. Both dialogs
+draw their prompt at y=170, with YES at `(336, 202)` and NO at `(384, 202)`.
+Opening a dialog and accepting it use sample 56; NO uses sample 55 and returns
+to the ordinary settings state. After YES, states one and four draw
+`Now saving the data ` for one update. A successful state-one save then
+transitions to the title, while state four ends the game.
+
+When `Save Image at Game End` is enabled, the render loop first draws world
+layers 20, 19, and 18 into a separate preview surface. `0x0044e830` writes the
+centered player view beside the save as `Save\%04d.Bmp`. The bitmap is 391 by
+114 pixels, uncompressed 24-bit BGR, and does not include the HUD or Escape
+menu. The load screen places it at `(224, 60)` without scaling.
 
 ## SFWindow Object Layout (at 0x00482778)
 
