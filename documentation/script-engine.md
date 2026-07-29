@@ -222,9 +222,13 @@ continuation of the same script state rather than a hand-written interaction.
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from
 the Shift-JIS-aware 6-by-12 `Font01.njp` text layout, and the tail follows
-Ostare's live screen position. Ground-item state is created faithfully, but
-decoding `Item.Ibn`, drawing the matching item icons, and picking them up are
-separate item-system work.
+Ostare's live screen position. Ground-item state is created faithfully. The
+executable-owned `Item.Ibn` loader keeps the inventory icon fields separate
+from the ground resource and CAF chart fields. The four drops load their real
+`Character/ITEM` animation and SDW shadow and share the normal depth-sorted
+world pass with actors and scenery. Their CAF-selected palettes and
+`Item.Ibn` RGB strengths also reproduce the default ground colors. Pointer
+selection and pickup are the next item-system work.
 
 ## How to extend it
 

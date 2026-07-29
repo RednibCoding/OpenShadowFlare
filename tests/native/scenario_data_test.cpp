@@ -54,6 +54,24 @@ bool testGroundItemCreation() {
             "Retail money splitting or radial placement differs.")) {
         return false;
     }
+    osf::GroundItem bouncing = items.front();
+    osf::updateGroundItem(bouncing);
+    if (!check(
+            bouncing.height == 160 &&
+                bouncing.vertical_velocity == 1320 &&
+                bouncing.bounce_state == 0,
+            "A new ground item did not begin its retail drop arc.")) {
+        return false;
+    }
+    for (std::int32_t update = 1; update < 19; ++update) {
+        osf::updateGroundItem(bouncing);
+    }
+    if (!check(
+            bouncing.height == 0 &&
+                bouncing.bounce_state == 2,
+            "A ground item did not settle after its two retail bounces.")) {
+        return false;
+    }
     return check(
         !osf::createGroundItems(
             items, random, 4, 0, {}, 10, 9) &&
@@ -77,8 +95,11 @@ public:
     const osf::gapi::NjpImage* patterns = nullptr;
     const osf::gapi::NjpImage* shadows = nullptr;
     const osf::gapi::NjpImage* speech = nullptr;
+    const osf::gapi::NjpImage* item_patterns = nullptr;
+    const osf::gapi::NjpImage* item_shadows = nullptr;
     std::vector<NpcPatternCall> calls;
     std::vector<NpcPatternCall> speech_calls;
+    std::vector<NpcPatternCall> item_calls;
     std::vector<TextCall> text_calls;
     std::vector<osf::gapi::RectangleDraw> rectangles;
 
@@ -94,6 +115,10 @@ public:
             calls.push_back({true, pattern, draw});
         } else if (&image == speech) {
             speech_calls.push_back({false, pattern, draw});
+        } else if (&image == item_patterns) {
+            item_calls.push_back({false, pattern, draw});
+        } else if (&image == item_shadows) {
+            item_calls.push_back({true, pattern, draw});
         }
         return true;
     }
@@ -582,26 +607,98 @@ bool testRetailRemoteTown() {
                     interaction_position.x + 200 &&
                 world.groundItems()[0].position.y ==
                     interaction_position.y &&
+                world.groundItems()[0].resource_id == 0 &&
+                world.groundItems()[0].animation_chart == 0 &&
+                world.groundItems()[0].red_strength == 1000 &&
+                world.groundItems()[0].green_strength == 1000 &&
+                world.groundItems()[0].blue_strength == 1000 &&
                 world.groundItems()[1].category == 1 &&
                 world.groundItems()[1].definition_id == 1000000 &&
                 world.groundItems()[1].position.x ==
                     interaction_position.x &&
                 world.groundItems()[1].position.y ==
                     interaction_position.y + 200 &&
+                world.groundItems()[1].resource_id == 0 &&
+                world.groundItems()[1].animation_chart == 5 &&
+                world.groundItems()[1].red_strength == 900 &&
+                world.groundItems()[1].green_strength == 800 &&
+                world.groundItems()[1].blue_strength == 500 &&
                 world.groundItems()[2].category == 0 &&
                 world.groundItems()[2].definition_id == 100 &&
                 world.groundItems()[2].position.x ==
                     interaction_position.x + 200 &&
                 world.groundItems()[2].position.y ==
                     interaction_position.y - 200 &&
+                world.groundItems()[2].resource_id == 0 &&
+                world.groundItems()[2].animation_chart == 36 &&
+                world.groundItems()[2].red_strength == 1000 &&
+                world.groundItems()[2].green_strength == 1000 &&
+                world.groundItems()[2].blue_strength == 1000 &&
                 world.groundItems()[3].category == 4 &&
                 world.groundItems()[3].definition_id == 0 &&
                 world.groundItems()[3].quantity == 200 &&
                 world.groundItems()[3].position.x ==
                     interaction_position.x + 200 &&
                 world.groundItems()[3].position.y ==
-                    interaction_position.y,
+                    interaction_position.y &&
+                world.groundItems()[3].resource_id == 0 &&
+                world.groundItems()[3].animation_chart == 30 &&
+                world.groundItems()[3].red_strength == 1000 &&
+                world.groundItems()[3].green_strength == 1000 &&
+                world.groundItems()[3].blue_strength == 1000,
             "Ostare's opening quest did not create its retail ground items.")) {
+        return false;
+    }
+    const osf::ItemWorldResource* item_resource =
+        world.itemWorldResource(0);
+    renderer.item_patterns =
+        item_resource ? &item_resource->patterns() : nullptr;
+    renderer.item_shadows =
+        item_resource
+            ? &item_resource->shadowPatterns()
+            : nullptr;
+    renderer.item_calls.clear();
+    osf::renderWorld(renderer, world, 500, &font);
+    if (!check(
+            item_resource &&
+                item_resource->patterns().palettes().size() > 72 &&
+                item_resource->shadowPatterns().palettes().size() == 1 &&
+                renderer.item_calls.size() == 8 &&
+                renderer.item_calls[0].shadow &&
+                renderer.item_calls[0].pattern == 36 &&
+                renderer.item_calls[0].draw.palette == -1 &&
+                renderer.item_calls[0].draw.x == 807 &&
+                renderer.item_calls[0].draw.y == 269 &&
+                renderer.item_calls[1].shadow &&
+                renderer.item_calls[1].pattern == 0 &&
+                renderer.item_calls[1].draw.palette == -1 &&
+                renderer.item_calls[2].shadow &&
+                renderer.item_calls[2].pattern == 5 &&
+                renderer.item_calls[2].draw.palette == -1 &&
+                renderer.item_calls[3].shadow &&
+                renderer.item_calls[3].pattern == 30 &&
+                renderer.item_calls[3].draw.palette == -1 &&
+                !renderer.item_calls[4].shadow &&
+                renderer.item_calls[4].pattern == 113 &&
+                renderer.item_calls[4].draw.palette == 72 &&
+                renderer.item_calls[4].draw.x == 807 &&
+                renderer.item_calls[4].draw.y == 269 &&
+                renderer.item_calls[5].pattern == 77 &&
+                renderer.item_calls[5].draw.palette == 0 &&
+                renderer.item_calls[5].draw.x == 777 &&
+                renderer.item_calls[5].draw.y == 289 &&
+                renderer.item_calls[6].pattern == 82 &&
+                renderer.item_calls[6].draw.palette == 10 &&
+                renderer.item_calls[6].draw.red_strength == 900 &&
+                renderer.item_calls[6].draw.green_strength == 800 &&
+                renderer.item_calls[6].draw.blue_strength == 500 &&
+                renderer.item_calls[6].draw.x == 717 &&
+                renderer.item_calls[6].draw.y == 289 &&
+                renderer.item_calls[7].pattern == 107 &&
+                renderer.item_calls[7].draw.palette == 60 &&
+                renderer.item_calls[7].draw.x == 777 &&
+                renderer.item_calls[7].draw.y == 289,
+            "Ostare's drops do not use the retail ground CAF or depth order.")) {
         return false;
     }
     world.advanceConversation();

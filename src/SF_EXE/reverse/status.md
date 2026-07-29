@@ -157,8 +157,21 @@ actor through opcode 19.
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
 calls create three ordinary ground-item records plus 200 money. The portable
-records preserve category, definition ID, quantity, and retail position;
-`Item.Ibn` visual lookup and rendering remain for the item slice.
+records preserve category, definition ID, quantity, and retail position.
+`0x00462f80` is reconstructed as an executable-owned item database loader:
+the 256-byte substitution table, RCLIB-L block, signed-byte checksum, five
+category counts, inverted names and descriptions, and category-specific
+record sizes are all checked against the retail file. The `Item0000` group
+and patterns 0, 45, 279, and 270 are inventory artwork only. The ground-item
+path at `0x00458930` instead reads definition offsets `0x30` and `0x34`,
+loading Character/ITEM resource zero and CAF charts 0, 5, 36, and 30. Those
+charts produce NJP patterns 77, 82, 113, and 107 with their SDW shadows. The
+CAF's mode-one palette rule selects `chart * 2 + cell priority`, and
+definition offsets `0x3c`, `0x40`, and `0x44` provide the visible part's
+default red, green, and blue strengths. The
+portable entities also reproduce the 1600 initial vertical velocity, 280
+gravity, 700 rebound, and two-bounce settle state before joining the shared
+dynamic depth pass. Unnamed definition fields remain preserved as raw bytes.
 
 On the next click, the retained type-11 flag enters sentence six. Opcode 61 at
 `0x00433f16` reads offset `0x34` from the local player, writes level one to the

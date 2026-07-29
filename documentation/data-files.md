@@ -28,7 +28,12 @@
 - `System\Title\Music\BGM00.Voc` - Title screen music
 
 ### Item Sprites
-- `System\Game\Pattern\Item0000.njp` through `Item0013.njp` (14 item patterns)
+
+- `System\Game\Pattern\Item0000.njp` through `Item0013.njp` contain the
+  inventory and equipment-panel artwork.
+- `Character\ITEM\%08d\Animation.Caf/Njp/Sdw` contain animated dropped-item
+  graphics and their shadows. Some later resources use `Pattern.njp/sdw`
+  instead.
 
 ## Player Character Files
 
@@ -416,13 +421,63 @@ AA 5E 9D FF EA A0 0D 4B 75 F6 61 85 5D BB DC FB
 `System\Game\Parameter\Item.Ibn`
 
 ### Format
-```
-Header:
-  0x00: char[16] magic = "SFItemDataV0000"
-  
-Encryption:
-  Same 64-byte XOR key as save files
-```
+
+The executable loader at `0x00462f80` reads this outer container:
+
+| Offset | Size | Meaning |
+|--------|------|---------|
+| `0x00` | 16 | `SFItemDataV0000` followed by `0x1a` |
+| `0x10` | 4 | Signed checksum of the decoded payload |
+| `0x14` | 4 | Compression flag |
+| `0x18` | 16 | RCLIB-L header when the flag is one |
+| `0x28` | variable | Encrypted compressed bytes |
+
+Item data does **not** use the save-file XOR stream. It uses a 256-byte
+substitution table: every encrypted byte selects one decoded byte from that
+table. Substitution starts after the RCLIB-L header, then the normal RCLIB-L
+decoder expands the result. The checksum is the sum of every decoded payload
+byte treated as a signed 8-bit value. The Episode 1 file expands from 332,566
+bytes to 2,271,347 payload bytes and has checksum `-6010708`.
+
+The decoded payload contains five item categories. Each category starts with
+a signed 32-bit record count. A record then contains:
+
+1. a 32-bit name length and bitwise-inverted Shift-JIS name bytes;
+2. a 32-bit description length and bitwise-inverted Shift-JIS description;
+3. a fixed binary field block.
+
+The field-block sizes are 804, 764, 672, 140, and 100 bytes for categories
+zero through four. Their retail counts are 1264, 1281, 239, 31, and 45. These
+known offsets are shared by all five field blocks:
+
+| Field offset | Meaning |
+|--------------|---------|
+| `0x04` | Definition ID |
+| `0x08` | Item subtype |
+| `0x28` | Inventory `ItemNNNN.njp` group |
+| `0x2c` | Inventory pattern number |
+| `0x30` | Ground `Character/ITEM` resource ID |
+| `0x34` | Ground CAF chart or pattern selection |
+| `0x38` | Inventory shadow/overlay pattern, or `-1` |
+| `0x3c` | Ground sprite red strength (`1000` is unchanged) |
+| `0x40` | Ground sprite green strength (`1000` is unchanged) |
+| `0x44` | Ground sprite blue strength (`1000` is unchanged) |
+
+The portable loader retains the complete unnamed field block instead of
+throwing it away. Ostare's four opening drops have inventory patterns 0, 45,
+279, and 270, but those are not used on the map. All four select ground
+resource `Character/ITEM/00000000`; Short Sword, Round Shield, Dagger, and
+Gold use CAF charts 0, 5, 36, and 30 respectively. Those charts resolve to
+visible NJP patterns 77, 82, 113, and 107 plus matching SDW shadows.
+
+The item CAF has palette mode 1 and a chart-priority stride of 2. The
+executable therefore selects palette `chart * 2 + cell priority`, rather than
+using each NJP pattern's default palette. This gives the visible sword,
+shield, dagger, and gold palettes 0, 10, 72, and 60. The separate SDW file
+contains one shared shadow palette, so shadows keep their pattern default.
+The three strength fields are applied after palette lookup. The opening Round
+Shield uses `900, 800, 500`, while the other three drops use
+`1000, 1000, 1000`.
 
 ## Table Data (Table.Tbd)
 

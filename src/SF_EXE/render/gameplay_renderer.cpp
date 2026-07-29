@@ -24,8 +24,9 @@ struct ObjectDrawEntry {
     std::int32_t display_class = 0;
 };
 
-struct ActorDrawEntry {
+struct WorldDrawEntry {
     const NpcActor* npc = nullptr;
+    const GroundItem* item = nullptr;
     bool player = false;
     std::int32_t depth = 0;
 };
@@ -57,18 +58,20 @@ void renderCharacterPass(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    std::int32_t screen_height = 0) {
     if (animation.charts().empty()) {
         return;
     }
+    const std::int32_t selected_chart_index =
+        std::clamp(
+            chart_index,
+            0,
+            static_cast<std::int32_t>(
+                animation.charts().size() - 1));
     const gapi::CafChart& chart =
         animation.charts()[
-            static_cast<std::size_t>(
-                std::clamp(
-                    chart_index,
-                    0,
-                    static_cast<std::int32_t>(
-                        animation.charts().size() - 1)))];
+            static_cast<std::size_t>(selected_chart_index)];
     if (direction_index < 0 ||
         static_cast<std::size_t>(direction_index) >=
             chart.directions.size()) {
@@ -133,13 +136,19 @@ void renderCharacterPass(
             part_color_strength(ordered_cell.part);
         const ScreenPosition screen_position =
             toScreen(position.x, position.y);
+        const std::int32_t palette =
+            shadow || animation.palette_mode() == 0
+                ? -1
+                : animation.chart_priority_stride() *
+                          selected_chart_index +
+                      cell->priority;
         renderer.drawPattern(
             shadow
                 ? shadow_patterns
                 : patterns,
             static_cast<std::size_t>(cell->pattern_index),
             {screen_position.x - camera_x,
-             screen_position.y - camera_y,
+             screen_position.y - camera_y - screen_height,
              1000,
              1000,
              1000,
@@ -149,7 +158,8 @@ void renderCharacterPass(
                        cell->transparency, 0, 1000),
              shadow ? 1000 : strength.red,
              shadow ? 1000 : strength.green,
-             shadow ? 1000 : strength.blue});
+             shadow ? 1000 : strength.blue,
+             palette});
     }
 }
 
@@ -392,11 +402,12 @@ void drawObjectShadows(
     }
 }
 
-std::vector<ActorDrawEntry> collectActors(
+std::vector<WorldDrawEntry> collectWorldEntries(
     const WorldScene& world) {
-    std::vector<ActorDrawEntry> result;
+    std::vector<WorldDrawEntry> result;
     if (world.hasPlayer()) {
         result.push_back({
+            nullptr,
             nullptr,
             true,
             toScreen(
@@ -407,31 +418,83 @@ std::vector<ActorDrawEntry> collectActors(
     for (const NpcActor& npc : world.npcs()) {
         result.push_back({
             &npc,
+            nullptr,
             false,
             toScreen(
                 npc.position().x,
                 npc.position().y).y,
         });
     }
+    for (const GroundItem& item : world.groundItems()) {
+        result.push_back({
+            nullptr,
+            &item,
+            false,
+            toScreen(item.position.x, item.position.y).y,
+        });
+    }
     std::stable_sort(
         result.begin(),
         result.end(),
-        [](const ActorDrawEntry& left,
-           const ActorDrawEntry& right) {
+        [](const WorldDrawEntry& left,
+           const WorldDrawEntry& right) {
             return left.depth < right.depth;
         });
     return result;
 }
 
-void drawActor(
+void drawGroundItem(
     gapi::Backend& renderer,
     const WorldScene& world,
-    const ActorDrawEntry& actor,
+    const GroundItem& item,
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
     std::int32_t shadow_opacity) {
-    if (actor.player) {
+    const ItemWorldResource* resource =
+        world.itemWorldResource(item.resource_id);
+    if (!resource) {
+        return;
+    }
+    renderCharacterPass(
+        renderer,
+        resource->animation(),
+        resource->patterns(),
+        resource->shadowPatterns(),
+        item.position,
+        item.animation_chart,
+        8,
+        0,
+        [](std::size_t) {
+            return true;
+        },
+        [&item](std::size_t part) {
+            return part == 0
+                       ? ColorStrength{
+                             item.red_strength,
+                             item.green_strength,
+                             item.blue_strength,
+                         }
+                       : ColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity,
+        shadow
+            ? 0
+            : item.height * kRetailHeightScale / 100);
+}
+
+void drawWorldEntry(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const WorldDrawEntry& entry,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity) {
+    if (entry.player) {
         renderPlayerPass(
             renderer,
             world,
@@ -439,15 +502,24 @@ void drawActor(
             camera_y,
             shadow,
             shadow_opacity);
-    } else if (actor.npc) {
+    } else if (entry.npc) {
         renderNpcPass(
             renderer,
-            *actor.npc,
+            *entry.npc,
             camera_x,
             camera_y,
             shadow,
             shadow_opacity,
-            world.hoveredNpcId() == actor.npc->id());
+            world.hoveredNpcId() == entry.npc->id());
+    } else if (entry.item) {
+        drawGroundItem(
+            renderer,
+            world,
+            *entry.item,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity);
     }
 }
 
@@ -838,8 +910,8 @@ void renderWorld(
         collectObjects(world, false, camera_x, camera_y);
     const std::vector<ObjectDrawEntry> defaultObjects =
         collectObjects(world, true, camera_x, camera_y);
-    const std::vector<ActorDrawEntry> actors =
-        collectActors(world);
+    const std::vector<WorldDrawEntry> worldEntries =
+        collectWorldEntries(world);
 
     drawObjectShadows(
         renderer,
@@ -867,30 +939,30 @@ void renderWorld(
         camera_y,
         shadow_opacity);
 
-    for (const ActorDrawEntry& actor : actors) {
-        drawActor(
+    for (const WorldDrawEntry& entry : worldEntries) {
+        drawWorldEntry(
             renderer,
             world,
-            actor,
+            entry,
             camera_x,
             camera_y,
             true,
             shadow_opacity);
     }
 
-    std::size_t actor_index = 0;
+    std::size_t world_entry_index = 0;
     for (const ObjectDrawEntry& entry : defaultObjects) {
-        while (actor_index < actors.size() &&
-               actors[actor_index].depth < entry.depth) {
-            drawActor(
+        while (world_entry_index < worldEntries.size() &&
+               worldEntries[world_entry_index].depth < entry.depth) {
+            drawWorldEntry(
                 renderer,
                 world,
-                actors[actor_index],
+                worldEntries[world_entry_index],
                 camera_x,
                 camera_y,
                 false,
                 shadow_opacity);
-            ++actor_index;
+            ++world_entry_index;
         }
         drawMapObject(
             renderer,
@@ -901,16 +973,16 @@ void renderWorld(
             false,
             shadow_opacity);
     }
-    while (actor_index < actors.size()) {
-        drawActor(
+    while (world_entry_index < worldEntries.size()) {
+        drawWorldEntry(
             renderer,
             world,
-            actors[actor_index],
+            worldEntries[world_entry_index],
             camera_x,
             camera_y,
             false,
             shadow_opacity);
-        ++actor_index;
+        ++world_entry_index;
     }
     drawHoveredNpcLabel(
         renderer, world, font, camera_x, camera_y);

@@ -12,6 +12,8 @@ add_library(
   core/game_config.cpp
   core/retail_random.cpp
   gapi/gapi.cpp
+  items/item_database.cpp
+  items/item_world_resource.cpp
   render/character_select_renderer.cpp
   render/gameplay_renderer.cpp
   render/title_renderer.cpp
@@ -36,6 +38,7 @@ target_include_directories(
 target_link_libraries(
   sf_game_core
   PUBLIC
+    OpenShadowFlare::RK_FUNCTION
     OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_UPDIB
     OpenShadowFlare::RKC_RPGSCRN

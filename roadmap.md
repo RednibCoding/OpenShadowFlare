@@ -293,12 +293,16 @@ actor-relative positions. The repeat interaction also follows its second
 callback message and releases Ostare through the script instead of a world
 shortcut.
 
-The dropped items are not drawn yet. The next useful item slice is to decode
-the executable-owned `Item.Ibn` records used by the item factory, map their
-icon group and pattern fields to `Item0000.njp` through `Item0013.njp`, and
-put those four records into the normal depth-sorted render pass. That gives us
-a visible, data-backed checkpoint before pickup and inventory ownership are
-added. The recovered format, architecture, and extension rules are kept in
+That visible checkpoint is done too. The executable-owned `Item.Ibn` loader
+now applies the retail substitution table and RCLIB-L path and keeps the
+unknown record fields intact. Its inventory icon fields remain assigned to
+`Item0000.njp` through `Item0013.njp`, while separate fields select the
+`Character/ITEM` resource and CAF chart used on the map. Ostare's Short Sword,
+Round Shield, Dagger, and Gold now use those smaller ground animations,
+matching chart palettes, default `Item.Ibn` color strengths, shadows, and the
+original two-bounce drop arc in the same depth-sorted pass as actors and map
+objects. The recovered format,
+architecture, and extension rules are kept in
 [the script-engine notes](documentation/script-engine.md).
 
 ### 5. Items, inventory, and equipment
@@ -318,10 +322,10 @@ This slice includes:
 - item names, descriptions, rarity colors, and comparison text;
 - shops, prices, and money once the script layer requests them.
 
-The opening quest now supplies a smaller first checkpoint: load and draw its
-four real ground items from `Item.Ibn`, then reconstruct pointer selection and
-pickup for one of them. Equipping one real item and seeing both the correct
-stat change and player artwork is the next checkpoint after that.
+The opening quest's four real ground items are now loaded and drawn from
+`Item.Ibn`. The next checkpoint is retail pointer selection and pickup for one
+of them. Equipping that item and seeing both the correct stat change and
+player artwork comes after that.
 
 ### 6. Combat and death
 

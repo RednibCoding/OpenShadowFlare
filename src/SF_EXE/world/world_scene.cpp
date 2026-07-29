@@ -108,6 +108,14 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
+    if (!item_database_.load(
+            data_root / "System" / "Game" / "Parameter" /
+                "Item.Ibn",
+            error)) {
+        clear();
+        return false;
+    }
+    data_root_ = data_root;
     script_interpreter_.bind(&scenario_script_);
     const std::string map_name = mapStem(scenario_.mapPath());
     if (map_name.empty()) {
@@ -260,6 +268,9 @@ void WorldScene::clear() {
     player_parts_enabled_.clear();
     npcs_.clear();
     ground_items_.clear();
+    item_database_.clear();
+    data_root_.clear();
+    item_world_resources_.clear();
     item_random_.seed(1);
     player_.clear();
     has_player_ = false;
@@ -297,6 +308,21 @@ const std::vector<NpcActor>& WorldScene::npcs() const {
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
     return ground_items_;
+}
+
+const ItemDatabase& WorldScene::itemDatabase() const {
+    return item_database_;
+}
+
+const ItemWorldResource* WorldScene::itemWorldResource(
+    std::int32_t resource_id) const {
+    if (resource_id < 0 ||
+        static_cast<std::size_t>(resource_id) >=
+            item_world_resources_.size()) {
+        return nullptr;
+    }
+    return item_world_resources_[
+        static_cast<std::size_t>(resource_id)].get();
 }
 
 bool WorldScene::playerPartEnabled(std::size_t part) const {
@@ -417,6 +443,9 @@ void WorldScene::update() {
     for (NpcActor& npc : npcs_) {
         npc.update(ground_, object_map_);
     }
+    for (GroundItem& item : ground_items_) {
+        updateGroundItem(item);
+    }
 }
 
 std::int32_t WorldScene::playerWorldX() const {
@@ -499,14 +528,42 @@ bool WorldScene::executeScriptNativeCommand(
         if (arguments.size() < 6) {
             return false;
         }
-        return createGroundItems(
-            ground_items_,
-            item_random_,
-            arguments[0],
-            arguments[1],
-            {arguments[2], arguments[3]},
-            arguments[4],
-            arguments[5]);
+        const std::size_t first_item = ground_items_.size();
+        if (!createGroundItems(
+                ground_items_,
+                item_random_,
+                arguments[0],
+                arguments[1],
+                {arguments[2], arguments[3]},
+                arguments[4],
+                arguments[5])) {
+            return false;
+        }
+        for (std::size_t index = first_item;
+             index < ground_items_.size();
+             ++index) {
+            GroundItem& item = ground_items_[index];
+            const ItemDefinition* definition =
+                item_database_.find(
+                    item.category, item.definition_id);
+            if (!definition ||
+                !ensureItemWorldResource(
+                    definition->ground_resource_id)) {
+                ground_items_.resize(first_item);
+                return false;
+            }
+            item.resource_id =
+                definition->ground_resource_id;
+            item.animation_chart =
+                definition->ground_animation_chart;
+            item.red_strength =
+                definition->ground_red_strength;
+            item.green_strength =
+                definition->ground_green_strength;
+            item.blue_strength =
+                definition->ground_blue_strength;
+        }
+        return true;
     }
 
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
@@ -601,6 +658,28 @@ const NpcActor* WorldScene::findScriptNpc(
                    character_number;
         });
     return found == npcs_.end() ? nullptr : &*found;
+}
+
+bool WorldScene::ensureItemWorldResource(
+    std::int32_t resource_id) {
+    if (resource_id < 0 || resource_id > 99999999) {
+        return false;
+    }
+    const std::size_t index =
+        static_cast<std::size_t>(resource_id);
+    if (index < item_world_resources_.size() &&
+        item_world_resources_[index]) {
+        return true;
+    }
+    auto resource = std::make_unique<ItemWorldResource>();
+    if (!resource->load(data_root_, resource_id)) {
+        return false;
+    }
+    if (item_world_resources_.size() <= index) {
+        item_world_resources_.resize(index + 1u);
+    }
+    item_world_resources_[index] = std::move(resource);
+    return true;
 }
 
 }  // namespace osf

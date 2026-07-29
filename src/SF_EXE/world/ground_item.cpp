@@ -31,6 +31,12 @@ bool createGroundItems(
             definition_id,
             1,
             position,
+            -1,
+            -1,
+            0,
+            1600,
+            280,
+            0,
         });
         return true;
     }
@@ -65,11 +71,36 @@ bool createGroundItems(
             definition_id,
             quantity,
             drop_position,
+            -1,
+            -1,
+            0,
+            1600,
+            280,
+            0,
         });
         remaining -= quantity;
         angle += kGoldDropAngleStep;
     }
     return true;
+}
+
+void updateGroundItem(GroundItem& item) {
+    if (item.bounce_state >= 2) {
+        return;
+    }
+    item.height += item.vertical_velocity / 10;
+    item.vertical_velocity -= item.vertical_gravity;
+    if (item.height > 0) {
+        return;
+    }
+
+    item.height = 0;
+    if (item.bounce_state == 0) {
+        item.bounce_state = 1;
+        item.vertical_velocity = 700;
+    } else {
+        item.bounce_state = 2;
+    }
 }
 
 }  // namespace osf

@@ -99,8 +99,12 @@ and creates the four original ground-item records; closing the last one
 releases him and restores world control. Clicking Ostare again keeps that
 script state, reads the level-one player through retail opcode 61, and follows
 both messages in the original no-new-information response. The item records
-are not drawn until their `Item.Ibn` visual fields are decoded. The format and
-interpreter architecture are documented in
+are resolved through the retail `Item.Ibn` database and drawn from the
+separate `Character/ITEM` CAF, NJP, and SDW ground resources—not their larger
+inventory icons. They also follow the original two-bounce drop arc before
+settling into the world depth pass. CAF chart palettes and the default RGB
+strengths stored in `Item.Ibn` supply their original ground colors. The
+format and interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
 
 The first world interaction is in place too. Clicking the ground moves the
@@ -152,6 +156,7 @@ implementations:
 
 - `core/` contains executable config, command-line, and retail utility code
 - `gapi/` contains the backend-neutral graphics interface
+- `items/` contains the executable-owned item database and item rules
 - `libs/` contains the fourteen portable DLL boundaries
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
 - `states/` contains the top-level dispatcher and reconstructed game states

@@ -88,6 +88,32 @@ if(TARGET sf_game_core)
 
   add_test(NAME scenario_data COMMAND scenario_data_test)
 
+  add_executable(item_database_test item_database_test.cpp)
+  target_link_libraries(
+    item_database_test
+    PRIVATE
+      OpenShadowFlare::GameCore
+  )
+  target_compile_features(
+    item_database_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    item_database_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    item_database_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      item_database_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      item_database_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME item_database COMMAND item_database_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test

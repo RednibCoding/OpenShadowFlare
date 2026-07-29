@@ -14,6 +14,15 @@ struct GroundItem {
     std::int32_t definition_id = 0;
     std::int32_t quantity = 1;
     WorldPosition position;
+    std::int32_t resource_id = -1;
+    std::int32_t animation_chart = -1;
+    std::int32_t height = 0;
+    std::int32_t vertical_velocity = 1600;
+    std::int32_t vertical_gravity = 280;
+    std::int32_t bounce_state = 0;
+    std::int32_t red_strength = 1000;
+    std::int32_t green_strength = 1000;
+    std::int32_t blue_strength = 1000;
 };
 
 bool createGroundItems(
@@ -24,6 +33,7 @@ bool createGroundItems(
     WorldPosition position,
     std::int32_t minimum_quantity,
     std::int32_t maximum_quantity);
+void updateGroundItem(GroundItem& item);
 
 }  // namespace osf
 

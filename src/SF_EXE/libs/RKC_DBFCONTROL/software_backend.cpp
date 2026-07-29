@@ -93,14 +93,18 @@ bool SoftwareBackend::drawPattern(
         return false;
     }
     const NjpPattern& pattern = image.patterns()[pattern_index];
-    if (pattern.default_palette < 0 ||
-        static_cast<std::size_t>(pattern.default_palette) >=
+    const std::int32_t palette_index =
+        draw.palette >= 0
+            ? draw.palette
+            : pattern.default_palette;
+    if (palette_index < 0 ||
+        static_cast<std::size_t>(palette_index) >=
             image.palettes().size()) {
         return false;
     }
     const NjpPalette& palette =
         image.palettes()[static_cast<std::size_t>(
-            pattern.default_palette)];
+            palette_index)];
 
     for (const NjpPatternPart& item : pattern.parts) {
         if (item.part_index < 0 ||

@@ -83,26 +83,30 @@ std::vector<std::uint8_t> makeCompressedNjpFixture() {
     appendI32(bytes, 1000);
     appendI32(bytes, 1000);
 
-    appendI32(bytes, 1);
-    for (std::int32_t index = 0; index < 256; ++index) {
-        std::uint8_t red = 0;
-        std::uint8_t green = 0;
-        std::uint8_t blue = 0;
-        if (index == 1) {
-            red = 100;
-        } else if (index == 2) {
-            green = 120;
-        } else if (index == 3) {
-            blue = 140;
-        } else if (index == 4) {
-            red = 200;
-            green = 180;
-            blue = 160;
+    appendI32(bytes, 2);
+    for (std::int32_t palette = 0; palette < 2; ++palette) {
+        for (std::int32_t index = 0; index < 256; ++index) {
+            std::uint8_t red = 0;
+            std::uint8_t green = 0;
+            std::uint8_t blue = 0;
+            if (palette == 1 && index == 1) {
+                green = 200;
+            } else if (index == 1) {
+                red = 100;
+            } else if (index == 2) {
+                green = 120;
+            } else if (index == 3) {
+                blue = 140;
+            } else if (index == 4) {
+                red = 200;
+                green = 180;
+                blue = 160;
+            }
+            bytes.push_back(red);
+            bytes.push_back(green);
+            bytes.push_back(blue);
+            bytes.push_back(0);
         }
-        bytes.push_back(red);
-        bytes.push_back(green);
-        bytes.push_back(blue);
-        bytes.push_back(0);
     }
     return bytes;
 }
@@ -268,7 +272,7 @@ bool testNjpAndSoftwareBackend() {
                 image.parts()[0].stride == 4 &&
                 image.patterns().size() == 1 &&
                 image.patterns()[0].parts.size() == 1 &&
-                image.palettes().size() == 1,
+                image.palettes().size() == 2,
             "The portable NJP decoder produced the wrong structure.")) {
         return false;
     }
@@ -334,6 +338,29 @@ bool testNjpAndSoftwareBackend() {
                 tinted.green == 76 &&
                 tinted.blue == 76,
             "GAPI color strength did not reproduce retail pale tinting.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend paletteBackend(1, 1);
+    paletteBackend.beginFrame({20, 40, 60, 255});
+    if (!check(
+            paletteBackend.drawPattern(
+                image,
+                0,
+                {0,
+                 0,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1}) &&
+                paletteBackend.surface().pixels[0].red == 0 &&
+                paletteBackend.surface().pixels[0].green == 200 &&
+                paletteBackend.surface().pixels[0].blue == 0,
+            "GAPI ignored an explicit NJP palette selection.")) {
         return false;
     }
 

@@ -4,6 +4,8 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "items/item_database.hpp"
+#include "items/item_world_resource.hpp"
 #include "ground_item.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
@@ -37,6 +39,9 @@ public:
     const gapi::CafAnimation& playerAnimation() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<GroundItem>& groundItems() const;
+    const ItemDatabase& itemDatabase() const;
+    const ItemWorldResource* itemWorldResource(
+        std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
     bool hasPlayer() const;
     void commandPlayerMovement(
@@ -89,6 +94,7 @@ private:
     NpcActor* findScriptNpc(std::int32_t character_number);
     const NpcActor* findScriptNpc(
         std::int32_t character_number) const;
+    bool ensureItemWorldResource(std::int32_t resource_id);
 
     ScenarioData scenario_;
     script::ScriptData scenario_script_;
@@ -109,6 +115,10 @@ private:
     std::vector<std::uint8_t> player_parts_enabled_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
+    ItemDatabase item_database_;
+    std::filesystem::path data_root_;
+    std::vector<std::unique_ptr<ItemWorldResource>>
+        item_world_resources_;
     RetailRandom item_random_;
     PlayerActor player_;
     bool has_player_ = false;
