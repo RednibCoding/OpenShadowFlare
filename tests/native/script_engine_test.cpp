@@ -81,6 +81,14 @@ bool testRetailRemoteTown() {
     std::int32_t player_level_queries = 0;
     osf::script::Interpreter interpreter({
         [&external_values](const osf::script::Operand& operand) {
+            if (operand.type == 6 &&
+                operand.value == 12000000) {
+                return std::int32_t{91467};
+            }
+            if (operand.type == 7 &&
+                operand.value == 12000000) {
+                return std::int32_t{1532};
+            }
             const auto found =
                 external_values.find(operandKey(operand));
             return found == external_values.end()
@@ -138,27 +146,109 @@ bool testRetailRemoteTown() {
     }
     if (!check(
             interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.waitingForMessage() &&
+                messages.size() == 2 &&
+                messages.back().id == 1000001 &&
+                interpreter.readTemporaryFlag(1000002) == 2,
+            "Ostare's first message did not enter its status-one callback.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 3 &&
+                messages.back().id == 1000002 &&
+                interpreter.readTemporaryFlag(1000002) == 3,
+            "Ostare's second opening message did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 4 &&
+                messages.back().id == 1000003 &&
+                interpreter.readTemporaryFlag(1000002) == 4 &&
+                native_commands.size() == 6 &&
+                native_commands[2] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            0, 0, 91667, 1532, -1, -1}) &&
+                native_commands[3] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            1, 1000000, 91467, 1732, -1, -1}) &&
+                native_commands[4] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            0, 100, 91667, 1332, -1, -1}) &&
+                native_commands[5] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            4, 0, 91467, 1532, 200, 200}),
+            "Ostare's third opening message did not place its retail items.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 5 &&
+                messages.back().id == 1000004 &&
+                interpreter.readTemporaryFlag(1000002) == 0,
+            "Ostare's final opening message did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
                     osf::script::StepResult::complete &&
-                !interpreter.waitingForMessage(),
-            "The first Remote Town conversation did not resume cleanly.")) {
+                !interpreter.waitingForMessage() &&
+                native_commands.size() == 7 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000000}),
+            "Ostare's opening conversation did not release the actor.")) {
         return false;
     }
 
     const osf::script::Message* repeated_message =
         script.findMessage(1000005);
-    return check(
+    if (!check(
         repeated_message &&
             interpreter.startStatus(0, 12000000) ==
                 osf::script::StepResult::waiting_for_message &&
             interpreter.waitingForMessage() &&
             player_level_queries == 1 &&
-            messages.size() == 2 &&
+            messages.size() == 6 &&
             messages.back().id == 1000005 &&
             messages.back().text == repeated_message->text &&
             interpreter.readTemporaryFlag(1000000) ==
                 1000005 &&
             interpreter.readTemporaryFlag(1000002) == 30,
-        "Ostare's level-one repeat interaction did not follow retail.");
+        "Ostare's level-one repeat interaction did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 7 &&
+                messages.back().id == 1000006 &&
+                interpreter.readTemporaryFlag(1000002) == 0,
+            "Ostare's repeat callback did not show its second message.")) {
+        return false;
+    }
+    return check(
+        interpreter.resume() == osf::script::StepResult::complete &&
+            !interpreter.waitingForMessage() &&
+            native_commands.back() ==
+                std::make_pair(
+                    std::int32_t{19},
+                    std::vector<std::int32_t>{12000000}),
+        "Ostare's repeat conversation did not release the actor.");
 #else
     return true;
 #endif

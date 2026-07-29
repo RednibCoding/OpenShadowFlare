@@ -9,4 +9,6 @@ reference for the original container and accessor behavior. Executable-owned
 opcode behavior is added here only after it has been traced and exercised by
 a retail scenario. Game-owned values, such as the local player's level, cross
 the boundary through typed queries instead of being stored inside the script
-library.
+library. Message-close callbacks stay in the interpreter, while executable
+services such as actor actions and world-item creation remain small host
+hooks.

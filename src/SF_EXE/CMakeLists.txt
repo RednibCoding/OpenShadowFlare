@@ -19,6 +19,7 @@ add_library(
   states/gameplay_state.cpp
   states/menu_states.cpp
   states/save_catalog.cpp
+  world/ground_item.cpp
   world/npc_actor.cpp
   world/player_actor.cpp
   world/scenario_data.cpp

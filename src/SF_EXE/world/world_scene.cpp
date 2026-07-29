@@ -259,6 +259,8 @@ void WorldScene::clear() {
     speech_patterns_.clear();
     player_parts_enabled_.clear();
     npcs_.clear();
+    ground_items_.clear();
+    item_random_.seed(1);
     player_.clear();
     has_player_ = false;
     music_track_ = -1;
@@ -291,6 +293,10 @@ const gapi::CafAnimation& WorldScene::playerAnimation() const {
 
 const std::vector<NpcActor>& WorldScene::npcs() const {
     return npcs_;
+}
+
+const std::vector<GroundItem>& WorldScene::groundItems() const {
+    return ground_items_;
 }
 
 bool WorldScene::playerPartEnabled(std::size_t part) const {
@@ -463,6 +469,16 @@ const script::ScriptData& WorldScene::scenarioScript() const {
 
 std::int32_t WorldScene::readScriptOperand(
     const script::Operand& operand) const {
+    if (operand.type == 6 || operand.type == 7) {
+        const NpcActor* npc =
+            findScriptNpc(operand.value);
+        if (!npc) {
+            return 0;
+        }
+        return operand.type == 6
+                   ? npc->position().x
+                   : npc->position().y;
+    }
     const auto found =
         script_values_.find(scriptValueKey(operand));
     return found == script_values_.end() ? 0 : found->second;
@@ -479,24 +495,34 @@ bool WorldScene::writeScriptOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
-    if ((opcode != 18 && opcode != 21) ||
+    if (opcode == 10) {
+        if (arguments.size() < 6) {
+            return false;
+        }
+        return createGroundItems(
+            ground_items_,
+            item_random_,
+            arguments[0],
+            arguments[1],
+            {arguments[2], arguments[3]},
+            arguments[4],
+            arguments[5]);
+    }
+
+    if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;
     }
-    const std::int32_t character_number =
-        arguments.front();
-    const auto found = std::find_if(
-        npcs_.begin(),
-        npcs_.end(),
-        [character_number](const NpcActor& npc) {
-            return 12000000 + npc.id() ==
-                   character_number;
-        });
-    if (found == npcs_.end()) {
+    NpcActor* npc = findScriptNpc(arguments.front());
+    if (!npc) {
         return false;
     }
-    found->beginInteraction(player_.position());
-    conversation_actor_id_ = found->id();
+    if (opcode == 19) {
+        npc->endInteraction();
+        return true;
+    }
+    npc->beginInteraction(player_.position());
+    conversation_actor_id_ = npc->id();
     hovered_npc_id_ = -1;
     return true;
 }
@@ -551,6 +577,30 @@ std::int32_t WorldScene::npcIndexAtScreenPosition(
         }
     }
     return selected;
+}
+
+NpcActor* WorldScene::findScriptNpc(
+    std::int32_t character_number) {
+    const auto found = std::find_if(
+        npcs_.begin(),
+        npcs_.end(),
+        [character_number](const NpcActor& npc) {
+            return 12000000 + npc.id() ==
+                   character_number;
+        });
+    return found == npcs_.end() ? nullptr : &*found;
+}
+
+const NpcActor* WorldScene::findScriptNpc(
+    std::int32_t character_number) const {
+    const auto found = std::find_if(
+        npcs_.begin(),
+        npcs_.end(),
+        [character_number](const NpcActor& npc) {
+            return 12000000 + npc.id() ==
+                   character_number;
+        });
+    return found == npcs_.end() ? nullptr : &*found;
 }
 
 }  // namespace osf

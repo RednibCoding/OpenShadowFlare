@@ -46,8 +46,9 @@ The first game-core slice covers:
 - Ostare's retail people resource, placement, part mask, shadow, idle pause,
   and bounded walk
 - the complete Remote Town SCS container and the first status-triggered
-  conversation, including interpreter waits, native actor hooks, and the
-  player-level branch used on a repeat interaction
+  conversation, including asynchronous message-close callbacks, native actor
+  hooks, four script-created ground items, and the two-message player-level
+  branch used on a repeat interaction
 - Ostare's pointer hover, pale selection tint, nameplate, and actor-anchored
   `Hukidasi.njp` speech bubble
 
@@ -143,16 +144,27 @@ player and static OBL scenery.
 The same scenario's `Scenario.Scs` is now decoded in full: version `000`, 66
 temporary flags, no network flags, 61 bitwise-inverted messages, 23 status
 triggers, 220 sentences, and 608 commands. The interpreter entry at
-`0x00430f80` is reconstructed for the commands exercised by Ostare's first
-interaction: conditional sentence calls, assignments, messages, and two
-native actor actions. Clicking local person zero derives character number
-`12000000`, resolves status kind zero to sentence four, and waits on retail
-message `1000000`. The actor is held in an interaction idle and faces the
-player until Return or another click resumes and completes the sentence.
+`0x00430f80` is reconstructed for the commands exercised by Ostare's complete
+opening interaction: conditional sentence calls, assignments, messages,
+addition, subtraction, item creation, and three native actor actions. Clicking
+local person zero derives character number `12000000`, resolves status kind
+zero to sentence four, and shows retail message `1000000`. Opcode 2 finishes
+the rest of its sentence before returning a message wait. Closing the actor
+bubble follows `0x00453220` into status kind one at `0x00430940`; repeated
+callbacks show messages `1000001` through `1000004` and finally release the
+actor through opcode 19.
+
+The callback for message `1000003` reads Ostare's live position through
+operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
+calls create three ordinary ground-item records plus 200 money. The portable
+records preserve category, definition ID, quantity, and retail position;
+`Item.Ibn` visual lookup and rendering remain for the item slice.
+
 On the next click, the retained type-11 flag enters sentence six. Opcode 61 at
 `0x00433f16` reads offset `0x34` from the local player, writes level one to the
-script destination, and selects the under-level-five message `1000005`.
-Unknown opcodes stop with an explicit unsupported result.
+script destination, and selects the under-level-five message `1000005`. Its
+callback shows `1000006` before releasing Ostare. Unknown opcodes stop with an
+explicit unsupported result.
 
 Pointing at Ostare follows `0x0040ee70`: his projected actor bounds select the
 person, his MCT label height places the half-transparent black nameplate, and

@@ -4,6 +4,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "ground_item.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
 #include "scenario_data.hpp"
@@ -35,6 +36,7 @@ public:
     const gapi::NjpImage& playerShadowPatterns() const;
     const gapi::CafAnimation& playerAnimation() const;
     const std::vector<NpcActor>& npcs() const;
+    const std::vector<GroundItem>& groundItems() const;
     bool playerPartEnabled(std::size_t part) const;
     bool hasPlayer() const;
     void commandPlayerMovement(
@@ -84,6 +86,9 @@ private:
     std::int32_t npcIndexAtScreenPosition(
         std::int32_t screen_x,
         std::int32_t screen_y) const;
+    NpcActor* findScriptNpc(std::int32_t character_number);
+    const NpcActor* findScriptNpc(
+        std::int32_t character_number) const;
 
     ScenarioData scenario_;
     script::ScriptData scenario_script_;
@@ -103,6 +108,8 @@ private:
     gapi::NjpImage speech_patterns_;
     std::vector<std::uint8_t> player_parts_enabled_;
     std::vector<NpcActor> npcs_;
+    std::vector<GroundItem> ground_items_;
+    RetailRandom item_random_;
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t music_track_ = -1;

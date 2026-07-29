@@ -31,8 +31,9 @@ The portable executable already has a solid front half:
   collision, and camera following
 
 In other words, the game can reach the world and the player can now walk
-around it. Ostare is the first NPC reconstructed from scenario data, though he
-does not have AI or interaction yet. Scripts, the HUD, and most gameplay
+around it. Ostare is the first NPC reconstructed from scenario data, including
+his idle wandering, hover state, speech bubbles, and complete opening
+conversation. The script engine is still small, and the HUD and most gameplay
 systems are still missing.
 
 The current reverse-engineering notes live in:
@@ -282,14 +283,22 @@ until message `1000000` waits for Return or another click. The initial
 interpreter covers comparisons, assignments, messages, nested sentence calls,
 and the two native actor commands reached by that path.
 
-The first follow-up branch is covered as well. A later click keeps the
-persistent conversation flag, executes retail opcode 61 to query the new
-character's level, and selects message `1000005` directly from the SCS. The
-next script slice should reconstruct the status-kind-one callback fired when a
-speech bubble closes. That callback advances Ostare's opening quest and soon
-reaches the original item-placement commands, so those should be traced
-together instead of faked as dialogue-only state. The recovered format,
-architecture, and extension rules are kept in
+The message-close path is covered now too. Retail message commands finish
+their immediate sentence work before waiting for input; closing the bubble
+then invokes status kind one for the same actor. Following those callbacks
+runs all five opening messages, advances the scenario flags, and reaches the
+four original item-placement commands. Those commands now create ground-item
+records with the retail categories, definition IDs, quantities, and
+actor-relative positions. The repeat interaction also follows its second
+callback message and releases Ostare through the script instead of a world
+shortcut.
+
+The dropped items are not drawn yet. The next useful item slice is to decode
+the executable-owned `Item.Ibn` records used by the item factory, map their
+icon group and pattern fields to `Item0000.njp` through `Item0013.njp`, and
+put those four records into the normal depth-sorted render pass. That gives us
+a visible, data-backed checkpoint before pickup and inventory ownership are
+added. The recovered format, architecture, and extension rules are kept in
 [the script-engine notes](documentation/script-engine.md).
 
 ### 5. Items, inventory, and equipment
@@ -309,8 +318,10 @@ This slice includes:
 - item names, descriptions, rarity colors, and comparison text;
 - shops, prices, and money once the script layer requests them.
 
-A good first checkpoint is equipping one real item and seeing both the correct
-stat change and the correct player artwork.
+The opening quest now supplies a smaller first checkpoint: load and draw its
+four real ground items from `Item.Ibn`, then reconstruct pointer selection and
+pickup for one of them. Equipping one real item and seeing both the correct
+stat change and player artwork is the next checkpoint after that.
 
 ### 6. Combat and death
 

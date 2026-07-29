@@ -83,7 +83,7 @@ parts:
 
 - `ScriptData` owns the decoded, immutable SCS data and its lookup helpers;
 - `Interpreter` owns execution state, temporary flags, nested sentence frames,
-  and message waits.
+  message waits, and the actor callback attached to an open message.
 
 The interpreter deliberately does not include world, renderer, audio, UI, or
 save-game headers. It asks the executable for those services through small
@@ -98,11 +98,14 @@ This keeps the old DLL boundary visible without pretending that the original
 DLL contained the whole game. It also means the interpreter can be tested with
 the retail SCS file without creating a window.
 
-Sentence calls use an explicit frame stack. A message command yields execution
-and returns a wait state. Confirming the message resumes at the following
-command rather than running the entire interaction in one frame. Unknown
-opcodes return an error with their opcode and sentence context; they are never
-treated as successful no-ops.
+Sentence calls use an explicit frame stack. Opcode 2 presents its message but
+does not stop the current sentence: the remaining immediate assignments and
+native actions run first, matching the executable. Once that work has
+finished, the interpreter reports a message wait. Confirming an actor message
+starts status kind `1` for the message's character, which may present another
+message and attach the next callback. Unknown opcodes return an error with
+their opcode and sentence context; they are never treated as successful
+no-ops.
 
 ## Commands implemented so far
 
@@ -114,8 +117,12 @@ portable so far.
 |---:|---:|---|
 | 0 | `0x00431005` | Compare two evaluated operands and call a sentence when true |
 | 1 | `0x004310a2` | Evaluate an operand and assign it to another operand |
-| 2 | `0x00431294` | Resolve a message, present it, and wait for confirmation |
+| 2 | `0x00431294` | Present a message, finish immediate sentence work, then wait |
+| 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
+| 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
+| 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
 | 18 | `0x00431efa` | Native actor action used by the opening interaction |
+| 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Native actor action with an evaluated value |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 
@@ -134,6 +141,20 @@ conversation proves that they address an actor and put it into the interaction
 state. Both evaluate their actor operand through the retail operand reader;
 opcode 21 evaluates its additional value as well. Their hook remains generic
 until more scripts reveal the complete behavior.
+
+Opcode 10 evaluates six operands: category, definition ID, world X, world Y,
+minimum quantity, and maximum quantity. Ordinary items create one record at
+the requested point. Category `4`, definition `0` is the executable's money
+case: it chooses an inclusive quantity, splits values larger than 10,000 into
+stacks, and places them around the point at radius 200 with an angle step of
+roughly π/10. Ostare supplies the fixed range 200–200, so his opening quest
+creates one stack at the first point on that circle.
+
+Opcodes 11 and 12 use operand zero as both the first input and the destination.
+They are what turn Ostare's live actor coordinates into the four drop
+positions. Opcode 19 addresses the actor again and ends the interaction after
+the final bubble closes. Its behavior for other actor types still needs more
+examples before the command gets a narrower name.
 
 Opcode 61 is much narrower. The retail handler gets the local player, reads
 the level field at offset `0x34`, and passes it to the common operand writer.
@@ -154,6 +175,8 @@ The currently understood domains are:
 | 3 | Runtime-state domain |
 | 4 | Scenario temporary flag |
 | 5 | Network/state domain |
+| 6 | Script character's current world X |
+| 7 | Script character's current world Y |
 | 10, 11, 12 | Persistent global arrays |
 | 13 | Local-player array |
 
@@ -179,8 +202,11 @@ The first end-to-end slice is Ostare's opening Remote Town interaction:
 5. Native actor commands stop Ostare's wandering and turn him toward the
    player.
 6. Message `1000000` is decoded from the retail SCS and shown.
-7. Return or another click dismisses the message and resumes the sentence.
-8. When execution completes, normal movement and Ostare's actor update resume.
+7. Return or another click invokes Ostare's status-kind-one sentence.
+8. Four more callbacks show messages `1000001` through `1000004`.
+9. The third callback reads Ostare's live X/Y position and creates four ground
+   items through opcode 10.
+10. Closing the final bubble runs opcode 19 and restores world control.
 
 The visible text begins with Ostare introducing himself as commander of the
 area. That text is read at runtime from the original data; it is not present in
@@ -188,15 +214,17 @@ the OpenShadowFlare source.
 
 Clicking Ostare again follows the next real SCS branch. Sentence six uses
 opcode 61 to read the new character's level, selects the under-level-five
-path, and shows message `1000005`. The interpreter retains the earlier
-persistent assignment, so this is a continuation of the same script state
-rather than a second hand-written interaction.
+path, and shows message `1000005`. Its status-kind-one callback then shows
+message `1000006`, resets the temporary dialogue state, and releases the actor.
+The interpreter retains the earlier persistent assignment, so this is a
+continuation of the same script state rather than a hand-written interaction.
 
-This is intentionally a narrow vertical slice. The message now uses the
+This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from
 the Shift-JIS-aware 6-by-12 `Font01.njp` text layout, and the tail follows
-Ostare while he moves. The rest of the opening quest chain will exercise more
-commands and operand domains.
+Ostare's live screen position. Ground-item state is created faithfully, but
+decoding `Item.Ibn`, drawing the matching item icons, and picking them up are
+separate item-system work.
 
 ## How to extend it
 
@@ -217,8 +245,9 @@ DLL must remain under its matching `SF_EXE/libs/` directory.
 
 ## Still to map
 
-The next useful work is the rest of Ostare's opening conversation and quest
-setup. That should naturally reveal more of:
+The next useful script work is another real Remote Town actor or service,
+chosen after the opening items have a visible data-backed path. That should
+naturally reveal more of:
 
 - persistent flag initialization and save-game restoration;
 - message control bytes, portraits, speaker metadata, and alternate message

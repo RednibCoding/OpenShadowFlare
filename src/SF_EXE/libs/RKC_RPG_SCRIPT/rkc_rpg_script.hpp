@@ -119,6 +119,10 @@ private:
     };
 
     StepResult run();
+    StepResult enterStatus(
+        std::int32_t kind,
+        std::int32_t character_number,
+        bool missing_is_complete);
     StepResult execute(const Command& command);
     std::int32_t readOperand(const Operand& operand) const;
     bool writeOperand(
@@ -132,6 +136,9 @@ private:
         temporary_flags_;
     std::vector<Frame> frames_;
     bool waiting_for_message_ = false;
+    bool message_callback_pending_ = false;
+    std::int32_t current_character_number_ = -1;
+    std::int32_t message_callback_character_number_ = -1;
     std::int32_t unsupported_opcode_ = -1;
 };
 

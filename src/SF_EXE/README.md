@@ -92,10 +92,14 @@ Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
 executes the initial comparisons, assignments, and actor commands, then shows
-message `1000000` from the original script data. Return or another click
-resumes the waiting sentence and restores world control. Clicking Ostare
-again keeps that script state, reads the level-one player through retail
-opcode 61, and shows the original no-new-information response. The format and
+message `1000000` from the original script data. Closing each bubble fires
+the actor's status-kind-one callback, taking the opening conversation through
+all five retail messages. The third callback reads Ostare's current position
+and creates the four original ground-item records; closing the last one
+releases him and restores world control. Clicking Ostare again keeps that
+script state, reads the level-one player through retail opcode 61, and follows
+both messages in the original no-new-information response. The item records
+are not drawn until their `Item.Ibn` visual fields are decoded. The format and
 interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
 

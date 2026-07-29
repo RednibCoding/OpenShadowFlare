@@ -1,5 +1,6 @@
 #include "gapi/gapi.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "world/ground_item.hpp"
 #include "world/scenario_data.hpp"
 #include "world/world_scene.hpp"
 
@@ -18,6 +19,46 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool testGroundItemCreation() {
+    osf::RetailRandom random;
+    std::vector<osf::GroundItem> items;
+    if (!check(
+            osf::createGroundItems(
+                items, random, 2, 45, {100, 200}, -1, -1) &&
+                items.size() == 1 &&
+                items[0].category == 2 &&
+                items[0].definition_id == 45 &&
+                items[0].quantity == 1 &&
+                items[0].position.x == 100 &&
+                items[0].position.y == 200,
+            "Ordinary script items were not created at their exact point.")) {
+        return false;
+    }
+    if (!check(
+            osf::createGroundItems(
+                items,
+                random,
+                4,
+                0,
+                {100, 200},
+                25000,
+                25000) &&
+                items.size() == 4 &&
+                items[1].quantity == 10000 &&
+                items[2].quantity == 10000 &&
+                items[3].quantity == 5000 &&
+                items[1].position.x == 300 &&
+                items[1].position.y == 200,
+            "Retail money splitting or radial placement differs.")) {
+        return false;
+    }
+    return check(
+        !osf::createGroundItems(
+            items, random, 4, 0, {}, 10, 9) &&
+            items.size() == 4,
+        "An invalid script money range created a ground item.");
 }
 
 struct NpcPatternCall {
@@ -516,8 +557,65 @@ bool testRetailRemoteTown() {
     }
     world.advanceConversation();
     if (!check(
-            !world.conversationActive(),
-            "Ostare's first scripted message did not close.")) {
+            world.conversationActive() &&
+                world.conversationActorId() == 0 &&
+                world.conversationMessageId() == 1000001,
+            "Ostare's first message did not enter its retail callback.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000002,
+            "Ostare's second opening message did not follow retail.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000003 &&
+                world.groundItems().size() == 4 &&
+                world.groundItems()[0].category == 0 &&
+                world.groundItems()[0].definition_id == 0 &&
+                world.groundItems()[0].quantity == 1 &&
+                world.groundItems()[0].position.x ==
+                    interaction_position.x + 200 &&
+                world.groundItems()[0].position.y ==
+                    interaction_position.y &&
+                world.groundItems()[1].category == 1 &&
+                world.groundItems()[1].definition_id == 1000000 &&
+                world.groundItems()[1].position.x ==
+                    interaction_position.x &&
+                world.groundItems()[1].position.y ==
+                    interaction_position.y + 200 &&
+                world.groundItems()[2].category == 0 &&
+                world.groundItems()[2].definition_id == 100 &&
+                world.groundItems()[2].position.x ==
+                    interaction_position.x + 200 &&
+                world.groundItems()[2].position.y ==
+                    interaction_position.y - 200 &&
+                world.groundItems()[3].category == 4 &&
+                world.groundItems()[3].definition_id == 0 &&
+                world.groundItems()[3].quantity == 200 &&
+                world.groundItems()[3].position.x ==
+                    interaction_position.x + 200 &&
+                world.groundItems()[3].position.y ==
+                    interaction_position.y,
+            "Ostare's opening quest did not create its retail ground items.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000004,
+            "Ostare's last opening message did not follow retail.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Ostare's opening conversation did not release world control.")) {
         return false;
     }
 
@@ -533,8 +631,16 @@ bool testRetailRemoteTown() {
     }
     world.advanceConversation();
     if (!check(
-            !world.conversationActive(),
-            "Ostare's repeat message did not close cleanly.")) {
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000006,
+            "Ostare's repeat callback did not show its second message.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Ostare's repeat conversation did not close cleanly.")) {
         return false;
     }
 
@@ -581,7 +687,8 @@ bool testRetailRemoteTown() {
 }  // namespace
 
 int main() {
-    return testFixture() &&
+    return testGroundItemCreation() &&
+                   testFixture() &&
                    testMalformedData() &&
                    testRetailRemoteTown()
                ? 0
