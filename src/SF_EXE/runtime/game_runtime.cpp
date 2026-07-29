@@ -2,38 +2,19 @@
 
 #include "lwl.h"
 #include "core/retail_random.hpp"
-#include "libs/RKC_DIB/rkc_dib.hpp"
-#include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
-#include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
-#include "libs/RKC_UPDIB/rkc_updib.hpp"
-#include "render/character_select_renderer.hpp"
-#include "render/gameplay_hud_renderer.hpp"
-#include "render/gameplay_help_renderer.hpp"
-#include "render/gameplay_inventory_renderer.hpp"
-#include "render/gameplay_map_renderer.hpp"
-#include "render/gameplay_mission_list_renderer.hpp"
-#include "render/gameplay_options_renderer.hpp"
-#include "render/gameplay_renderer.hpp"
-#include "render/gameplay_overlay_renderer.hpp"
-#include "render/item_information_renderer.hpp"
-#include "render/loading_renderer.hpp"
-#include "render/title_renderer.hpp"
 #include "resources/retail_filesystem.hpp"
 #include "runtime/application_loop.hpp"
 #include "runtime/audio_system.hpp"
 #include "runtime/frontend_assets.hpp"
+#include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
 #include "runtime/presentation/surface_presenter.hpp"
+#include "runtime/runtime_renderer.hpp"
+#include "runtime/state_bindings.hpp"
 #include "states/game_state.hpp"
-#include "states/gameplay_inventory.hpp"
-#include "states/gameplay_map.hpp"
-#include "states/gameplay_mission_list.hpp"
-#include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
-#include "states/save_catalog.hpp"
 #include "states/title_state.hpp"
-#include "world/retail_save_file.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
@@ -63,9 +44,23 @@ public:
                   presentSurface(surface);
               }),
           input_(kVirtualWidth, kVirtualHeight),
-          titleState_(random_, makeTitleStateHooks()),
-          characterSelectState_(makeCharacterSelectStateHooks()),
-          gameplayState_(makeGameplayStateHooks()),
+          titleState_(
+              random_,
+              osf::runtime::makeTitleStateHooks(
+                  dataRoot_, frontendAssets_, audio_)),
+          characterSelectState_(
+              osf::runtime::makeCharacterSelectStateHooks(
+                  dataRoot_,
+                  frontendAssets_,
+                  audio_,
+                  window_)),
+          gameplayState_(
+              osf::runtime::makeGameplayStateHooks(
+                  dataRoot_,
+                  gameplayPlayer_,
+                  frontendAssets_,
+                  audio_,
+                  world_)),
           gameState_(makeGameStateCallbacks()) {}
 
     ~Runtime() {
@@ -186,7 +181,24 @@ private:
                 gameAccumulator_ / kGameStep,
                 0.0,
                 1.0);
-        renderGame(interpolation);
+        renderer_.render(
+            {
+                gameState_.currentState(),
+                titleFrame_,
+                characterFrame_,
+                gameplayFrame_,
+                characterSelectState_,
+                world_,
+                frontendAssets_,
+                savePreview_,
+                gameplayUi_.options(),
+                gameplayUi_.inventory(),
+                gameplayUi_.map(),
+                gameplayUi_.missionList(),
+                gameConfig_,
+                shadowOpacity_,
+            },
+            interpolation);
 
         ++renderedFrames_;
         if (smokeTest_ && renderedFrames_ >= 3) {
@@ -295,11 +307,23 @@ private:
             break;
         }
         case osf::GameState::gameplay: {
-            if (!updateGameplayScreens(running)) {
+            if (!gameplayUi_.update(
+                    gameplayFrame_,
+                    input_,
+                    world_,
+                    audio_,
+                    gameConfig_,
+                    configDirty_,
+                    random_,
+                    gameplayPlayer_,
+                    savePreview_,
+                    gameState_,
+                    running,
+                    shadowOpacity_)) {
                 const bool map_active =
-                    gameplayMap_.active();
+                    gameplayUi_.map().active();
                 const bool inventory_active =
-                    gameplayInventory_.active();
+                    gameplayUi_.inventory().active();
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed &&
                         !map_active,
@@ -324,248 +348,6 @@ private:
         input_.clearTransientInput();
     }
 
-    void renderCharacterSelect() {
-        const auto* pattern = frontendAssets_.pattern(4);
-        if (!pattern) {
-            return;
-        }
-        const auto* font = frontendAssets_.pattern(0);
-        osf::renderCharacterSelect(
-            renderer_,
-            *pattern,
-            font,
-            characterSelectState_.data(),
-            characterFrame_,
-            frontendAssets_.savedGames(),
-            frontendAssets_.savedPreviews());
-    }
-
-    void renderGame(double interpolation) {
-        renderer_.beginFrame({0, 0, 0, 255});
-        if (gameState_.currentState() == osf::GameState::title) {
-            const auto* pattern = frontendAssets_.pattern(4);
-            if (pattern) {
-                std::array<osf::TitleSmokeAsset, 10> smoke{};
-                for (std::size_t index = 0;
-                     index < smoke.size();
-                     ++index) {
-                    const auto* smokePattern =
-                        frontendAssets_.pattern(
-                            5 + static_cast<std::int32_t>(index) * 2);
-                    if (smokePattern) {
-                        smoke[index] = {
-                            smokePattern,
-                            frontendAssets_.titleAnimation(index),
-                        };
-                    }
-                }
-                osf::renderTitle(
-                    renderer_,
-                    *pattern,
-                    smoke,
-                    titleFrame_);
-            }
-        } else if (
-            gameState_.currentState() ==
-            osf::GameState::character_select) {
-            renderCharacterSelect();
-        } else if (
-            gameState_.currentState() ==
-            osf::GameState::gameplay) {
-            if (gameplayFrame_.phase ==
-                osf::GameplayPhase::loading) {
-                const auto* waiting = frontendAssets_.pattern(2);
-                if (waiting) {
-                    osf::renderInitialLoadingScreen(
-                        renderer_,
-                        *waiting,
-                        gameplayFrame_.loading_counter,
-                        gameplayFrame_.ready_to_continue);
-                }
-            } else {
-                const auto* font = frontendAssets_.pattern(1);
-                osf::renderWorldGeometry(
-                    renderer_,
-                    world_,
-                    shadowOpacity_,
-                    interpolation,
-                    gameConfig_.semi_transparent_objects);
-                savePreview_.capture(renderer_.surface());
-                const auto* bar = frontendAssets_.pattern(5);
-                if (bar) {
-                    osf::renderGameplayHud(
-                        renderer_,
-                        *bar,
-                        osf::gameplayHudValues(
-                            world_.playerData(),
-                            world_.playerMovementPace()));
-                }
-                if (!gameplayOptions_.active() &&
-                    !gameplayMissionList_.active()) {
-                    osf::renderGameplayOverlay(
-                        renderer_,
-                        world_,
-                        font,
-                        world_.renderCameraScreenX(
-                            interpolation),
-                        world_.renderCameraScreenY(
-                            interpolation),
-                        interpolation);
-                }
-                const auto* status =
-                    frontendAssets_.pattern(6);
-                if (status && font) {
-                    const auto* map_icons =
-                        frontendAssets_.pattern(7);
-                    if (gameplayInventory_.active()) {
-                        osf::renderGameplayInventory(
-                            renderer_,
-                            *status,
-                            *font,
-                            gameplayInventory_,
-                            world_);
-                    } else if (
-                        gameplayMap_.active() &&
-                        map_icons) {
-                        osf::renderGameplayMap(
-                            renderer_,
-                            *status,
-                            *font,
-                            *map_icons,
-                            gameplayMap_,
-                            world_);
-                    } else if (gameplayMissionList_.active()) {
-                        osf::renderGameplayMissionList(
-                            renderer_,
-                            *status,
-                            *font,
-                            gameplayMissionList_,
-                            world_.missions(),
-                            world_.quests());
-                    } else if (
-                        gameplayOptions_.page() ==
-                        osf::GameplayOptionsPage::help) {
-                        osf::renderGameplayHelp(
-                            renderer_,
-                            *status,
-                            *font,
-                            world_,
-                            gameplayOptions_
-                                .animationCounter(),
-                            gameplayOptions_
-                                .helpCloseVisible(),
-                            gameplayOptions_
-                                .helpCloseAnimationCounter());
-                    } else {
-                        osf::renderGameplayOptions(
-                            renderer_,
-                            *status,
-                            *font,
-                            gameplayOptions_,
-                            gameConfig_);
-                    }
-                    osf::renderHeldInventoryItem(
-                        renderer_,
-                        gameplayInventory_,
-                        world_);
-                    osf::renderItemInformation(
-                        renderer_,
-                        *font,
-                        gameplayInventory_,
-                        world_);
-                }
-            }
-        }
-        renderer_.endFrame();
-    }
-
-    osf::TitleStateHooks makeTitleStateHooks() {
-        osf::TitleStateHooks hooks;
-        hooks.load_pattern =
-            [this](
-                std::int32_t id,
-                std::string_view path) {
-                return frontendAssets_.loadPattern(id, path);
-            };
-        hooks.load_animation =
-            [this](
-                std::size_t index,
-                std::int32_t,
-                std::string_view path) {
-                return frontendAssets_.loadTitleAnimation(
-                    index, path);
-            };
-        hooks.release_pattern = [this](std::int32_t id) {
-            frontendAssets_.releasePattern(id);
-        };
-        hooks.release_animation = [this](std::size_t index) {
-            frontendAssets_.releaseTitleAnimation(index);
-        };
-        hooks.load_voice =
-            [this](
-                std::string_view path,
-                std::int32_t slot) {
-                if (slot == 500) {
-                    audio_.loadMenuMusic(path);
-                }
-            };
-        hooks.files_exist = [this](std::string_view pattern) {
-            return pattern == "Save\\*.Ssv" &&
-                   osf::countRetailSaves(dataRoot_) != 0;
-        };
-        hooks.file_exists =
-            [this](std::string_view path) {
-                return osf::retailFileExists(dataRoot_, path);
-            };
-        return hooks;
-    }
-
-    osf::CharacterSelectStateHooks makeCharacterSelectStateHooks() {
-        osf::CharacterSelectStateHooks hooks;
-        hooks.load_pattern =
-            [this](
-                std::int32_t id,
-                std::string_view path) {
-                return frontendAssets_.loadPattern(id, path);
-            };
-        hooks.release_pattern = [this](std::int32_t id) {
-            frontendAssets_.releasePattern(id);
-        };
-        hooks.file_exists =
-            [this](std::string_view path) {
-                return osf::retailFileExists(dataRoot_, path);
-            };
-        hooks.load_saved_characters = [this] {
-            frontendAssets_.loadSavedCharacters();
-        };
-        hooks.delete_saved_character = [this](std::int32_t index) {
-            osf::deleteRetailSave(dataRoot_, index);
-            frontendAssets_.loadSavedCharacters();
-        };
-        hooks.read_clipboard = [this] {
-            char* text = lwl_clipboard_get(window_);
-            std::string result = text ? text : "";
-            lwl_free(text);
-            return result;
-        };
-        hooks.voice_is_playing = [this](std::int32_t slot) {
-            return slot == 500 &&
-                   audio_.menuMusicIsPlaying();
-        };
-        hooks.play_voice =
-            [this](std::int32_t slot, bool loop) {
-                if (slot == 500) {
-                    audio_.playMenuMusic(loop);
-                }
-            };
-        hooks.release_voice = [this](std::int32_t slot) {
-            if (slot == 500) {
-                audio_.releaseMenuMusic();
-            }
-        };
-        return hooks;
-    }
-
     osf::GameStateDispatcherCallbacks makeGameStateCallbacks() {
         osf::GameStateDispatcherCallbacks callbacks;
         callbacks.title.enter = [this](std::int32_t) {
@@ -582,374 +364,15 @@ private:
         };
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
-            gameplayOptions_.close();
-            gameplayInventory_.close();
-            gameplayMap_.close();
-            gameplayMissionList_.close();
+            gameplayUi_.reset();
             savePreview_.clear();
-            pendingGameplayOptionsAction_ =
-                osf::GameplayOptionsAction::none;
             gameplayState_.enter();
         };
         callbacks.gameplay.leave = [this] {
-            gameplayOptions_.close();
-            gameplayInventory_.close();
-            gameplayMap_.close();
-            gameplayMissionList_.close();
+            gameplayUi_.reset();
             gameplayState_.leave();
         };
         return callbacks;
-    }
-
-    osf::GameplayStateHooks makeGameplayStateHooks() {
-        osf::GameplayStateHooks hooks;
-        hooks.prepare_interface = [this] {
-            if (!frontendAssets_.loadPattern(
-                    5,
-                    "System\\Game\\Pattern\\Bar.njp")) {
-                return false;
-            }
-            if (!frontendAssets_.loadPattern(
-                    6,
-                    "System\\Game\\Pattern\\Status.njp")) {
-                frontendAssets_.releasePattern(5);
-                return false;
-            }
-            if (!frontendAssets_.loadPattern(
-                    7,
-                    "System\\Game\\Pattern\\MapIcon.njp")) {
-                frontendAssets_.releasePattern(5);
-                frontendAssets_.releasePattern(6);
-                return false;
-            }
-            return true;
-        };
-        hooks.release_interface = [this] {
-            frontendAssets_.releasePattern(5);
-            frontendAssets_.releasePattern(6);
-            frontendAssets_.releasePattern(7);
-        };
-        hooks.prepare_world = [this] {
-            std::string error;
-            const bool worldReady =
-                world_.loadInitialScenario(
-                    dataRoot_, gameplayPlayer_, &error);
-            if (!worldReady) {
-                std::fprintf(
-                    stderr,
-                    "Could not load the initial world: %s\n",
-                    error.c_str());
-            }
-            return worldReady;
-        };
-        hooks.release_world = [this] {
-            world_.clear();
-        };
-        hooks.start_world_music = [this] {
-            audio_.startWorldMusic(world_.musicTrack());
-        };
-        hooks.stop_world_music = [this] {
-            audio_.stopWorldMusic();
-        };
-        hooks.command_player_movement =
-            [this](std::int32_t x, std::int32_t y) {
-                world_.commandPlayerMovement(x, y);
-            };
-        hooks.cancel_player_movement = [this] {
-            world_.cancelPlayerMovement();
-        };
-        hooks.update_pointer_hover =
-            [this](std::int32_t x, std::int32_t y) {
-                world_.updatePointerHover(x, y);
-                const auto* font = frontendAssets_.pattern(1);
-                if (!font ||
-                    !world_.conversationRequiresSelection()) {
-                    return;
-                }
-                const std::int32_t option =
-                    osf::conversationChoiceAtScreenPosition(
-                        world_,
-                        *font,
-                        world_.cameraScreenX(),
-                        world_.cameraScreenY(),
-                        x,
-                        y);
-                if (option >= 0) {
-                    world_.selectConversationOption(option);
-                }
-            };
-        hooks.clear_pointer_hover = [this] {
-            world_.clearPointerHover();
-        };
-        hooks.command_world_interaction =
-            [this](std::int32_t x, std::int32_t y) {
-                return world_.commandWorldInteraction(x, y);
-            };
-        hooks.world_interaction_pending = [this] {
-            return world_.interactionPending();
-        };
-        hooks.conversation_active = [this] {
-            return world_.conversationActive();
-        };
-        hooks.conversation_requires_selection = [this] {
-            return world_.conversationRequiresSelection();
-        };
-        hooks.choose_conversation_option =
-            [this](std::int32_t x, std::int32_t y) {
-                const auto* font = frontendAssets_.pattern(1);
-                if (!font) {
-                    return false;
-                }
-                const std::int32_t option =
-                    osf::conversationChoiceAtScreenPosition(
-                        world_,
-                        *font,
-                        world_.cameraScreenX(),
-                        world_.cameraScreenY(),
-                        x,
-                        y);
-                if (option < 0) {
-                    return false;
-                }
-                world_.chooseConversationOption(option);
-                return true;
-            };
-        hooks.advance_conversation = [this] {
-            world_.advanceConversation();
-        };
-        hooks.toggle_player_run = [this] {
-            world_.togglePlayerRun();
-        };
-        hooks.update_world = [this] {
-            world_.update();
-        };
-        return hooks;
-    }
-
-    bool updateGameplayScreens(bool& running) {
-        if (gameplayFrame_.phase !=
-            osf::GameplayPhase::world) {
-            return false;
-        }
-        const bool inventory_was_active =
-            gameplayInventory_.active();
-        const bool inventory_hud_toggle =
-            input_.menu().pointer_primary_pressed &&
-            input_.menu().pointer_x >= 584 &&
-            input_.menu().pointer_x < 640 &&
-            input_.menu().pointer_y >= 440 &&
-            input_.menu().pointer_y < 464;
-        const bool inventory_toggle =
-            (input_.gameplayInventoryPressed() ||
-             inventory_hud_toggle) &&
-            (!world_.conversationActive() ||
-             inventory_was_active) &&
-            !gameplayOptions_.active() &&
-            !gameplayMap_.active() &&
-            !gameplayMissionList_.active();
-        if (inventory_was_active ||
-            inventory_toggle ||
-            gameplayInventory_.holdingItem()) {
-            const osf::GameplayInventoryResult result =
-                gameplayInventory_.update(
-                    {
-                        inventory_toggle,
-                        input_.gameplayOptionsPressed() ||
-                            (input_.pointerSecondaryPressed() &&
-                             input_.menu().pointer_y < 412),
-                        input_.menu().pointer_primary_pressed,
-                        input_.menu().pointer_x,
-                        input_.menu().pointer_y,
-                    },
-                    world_.playerInventory(),
-                    world_.playerEquipment(),
-                    world_.itemDatabase(),
-                    world_.playerData().level());
-            if (result.equipment_changed) {
-                world_.refreshPlayerAppearance();
-            }
-            if (result.world_drop_requested) {
-                const osf::InventoryItem* held_item =
-                    gameplayInventory_.heldItem();
-                gameplayInventory_.completeWorldDrop(
-                    held_item &&
-                    world_.dropInventoryItem(
-                        *held_item,
-                        result.world_drop_screen_x,
-                        result.world_drop_screen_y));
-            }
-            world_.setCameraAnchor(
-                gameplayInventory_.active() ? 160 : 320,
-                240);
-            return result.pointer_consumed ||
-                   inventory_hud_toggle;
-        }
-
-        const bool map_was_active = gameplayMap_.active();
-        const bool map_toggle =
-            input_.gameplayMapPressed() &&
-            (!world_.conversationActive() ||
-             map_was_active) &&
-            !gameplayOptions_.active() &&
-            !gameplayMissionList_.active();
-        if (map_was_active || map_toggle) {
-            gameplayMap_.update({
-                map_toggle,
-                input_.gameplayOptionsPressed() ||
-                    (input_.pointerSecondaryPressed() &&
-                     input_.menu().pointer_y < 412),
-                input_.leftHeld(),
-                input_.upHeld(),
-                input_.rightHeld(),
-                input_.downHeld(),
-                input_.menu().confirm_pressed,
-            });
-            world_.setCameraAnchor(
-                gameplayMap_.active() ? 480 : 320,
-                240);
-            return false;
-        }
-        const bool mission_was_active =
-            gameplayMissionList_.active();
-        const bool mission_toggle =
-            input_.gameplayMissionListPressed() &&
-            (!world_.conversationActive() ||
-             mission_was_active) &&
-            !gameplayOptions_.active();
-        if (mission_was_active || mission_toggle) {
-            const osf::GameplayMissionListResult result =
-                gameplayMissionList_.update(
-                    {
-                        mission_toggle,
-                        input_.gameplayOptionsPressed(),
-                        input_.menu().pointer_primary_pressed,
-                        input_.menu().pointer_x,
-                        input_.menu().pointer_y,
-                    },
-                    world_.quests());
-            if (!mission_was_active &&
-                gameplayMissionList_.active()) {
-                world_.cancelPlayerMovement();
-            }
-            if (result.play_move_sound) {
-                audio_.playGameplayMenuMove();
-            }
-            return true;
-        }
-
-        if (pendingGameplayOptionsAction_ !=
-            osf::GameplayOptionsAction::none) {
-            const osf::GameplayOptionsAction action =
-                pendingGameplayOptionsAction_;
-            pendingGameplayOptionsAction_ =
-                osf::GameplayOptionsAction::none;
-            if (action ==
-                osf::GameplayOptionsAction::
-                    save_and_return_to_title) {
-                gameState_.transition(osf::GameState::title);
-            } else {
-                running = false;
-            }
-            return true;
-        }
-        const bool was_active =
-            gameplayOptions_.active();
-        const bool toggle =
-            input_.gameplayOptionsPressed() &&
-            (!world_.conversationActive() || was_active);
-        const osf::GameplayOptionsResult result =
-            gameplayOptions_.update(
-                {
-                    toggle,
-                    input_.menu().pointer_primary_pressed,
-                    input_.pointerPrimaryDown(),
-                    input_.menu().pointer_x,
-                    input_.menu().pointer_y,
-                    input_.gameplayHelpPressed(),
-                },
-                gameConfig_);
-        if (!was_active && gameplayOptions_.active()) {
-            world_.cancelPlayerMovement();
-        }
-        if (result.config_changed) {
-            configDirty_ = true;
-            applyGameplayConfig();
-        }
-        if (result.play_click_sound) {
-            audio_.playOptionsClick();
-        }
-        if (result.play_confirm_sound) {
-            audio_.playOptionsConfirm();
-        }
-        if (result.action ==
-            osf::GameplayOptionsAction::open_mission_list) {
-            gameplayOptions_.close();
-            gameplayMissionList_.open();
-            return true;
-        }
-        if (result.action ==
-            osf::GameplayOptionsAction::open_map) {
-            gameplayOptions_.close();
-            gameplayMap_.open();
-            world_.setCameraAnchor(480, 240);
-            return true;
-        }
-        if (result.action !=
-            osf::GameplayOptionsAction::none) {
-            std::string error;
-            const bool saved =
-                !gameplayPlayer_.save_path.empty() &&
-                osf::writeRetailSave(
-                    gameplayPlayer_.save_path,
-                    world_.playerData(),
-                    static_cast<std::uint8_t>(
-                        random_.next() & 0xff),
-                    &error);
-            if (!saved) {
-                gameplayOptions_.restoreConfirmation(
-                    result.action);
-                std::fprintf(
-                    stderr,
-                    "Could not save the current game: %s\n",
-                    error.empty()
-                        ? "no save slot is assigned"
-                        : error.c_str());
-            } else {
-                gameplayPlayer_.source =
-                    osf::PlayerDataSource::retail_save;
-                if (gameConfig_.save_image_at_game_end) {
-                    std::string preview_error;
-                    if (!savePreview_.writeForSave(
-                            gameplayPlayer_.save_path,
-                            &preview_error)) {
-                        std::fprintf(
-                            stderr,
-                            "Could not save the character preview: %s\n",
-                            preview_error.c_str());
-                    }
-                }
-                pendingGameplayOptionsAction_ =
-                    result.action;
-            }
-        }
-        return was_active ||
-               gameplayOptions_.active() ||
-               (input_.gameplayOptionsPressed() &&
-                !world_.conversationActive());
-    }
-
-    void applyGameplayConfig() {
-        shadowOpacity_ =
-            gameConfig_.semi_transparent_shadow
-                ? 500
-                : 1000;
-        world_.configurePointer({
-            gameConfig_.click_range,
-            gameConfig_.click_range_enabled,
-            gameConfig_.click_priority,
-        });
-        audio_.setEffectVolume(gameConfig_.effect_volume);
-        audio_.setBgmVolume(gameConfig_.bgm_volume);
     }
 
     LwlWindow* window_ = nullptr;
@@ -968,7 +391,7 @@ private:
     osf::runtime::FrontendAssets frontendAssets_;
     std::unique_ptr<osf::runtime::SurfacePresenter>
         surfacePresenter_;
-    osf::gapi::SoftwareBackend renderer_;
+    osf::runtime::RuntimeRenderer renderer_;
     osf::TitleFrameResult titleFrame_;
     osf::CharacterSelectFrameResult characterFrame_;
     osf::GameplayFrameResult gameplayFrame_;
@@ -979,13 +402,7 @@ private:
     osf::CharacterSelectState characterSelectState_;
     osf::WorldScene world_;
     osf::RetailSavePreview savePreview_;
-    osf::GameplayOptionsMenu gameplayOptions_;
-    osf::GameplayInventory gameplayInventory_;
-    osf::GameplayMap gameplayMap_;
-    osf::GameplayMissionList gameplayMissionList_;
-    osf::GameplayOptionsAction
-        pendingGameplayOptionsAction_ =
-            osf::GameplayOptionsAction::none;
+    osf::runtime::GameplayUiController gameplayUi_;
     osf::GameplayState gameplayState_;
     osf::GameStateDispatcher gameState_;
 };

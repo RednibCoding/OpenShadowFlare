@@ -4,7 +4,7 @@
 #include "render/gameplay_options_renderer.hpp"
 #include "states/character_select_state.hpp"
 #include "states/gameplay_options_menu.hpp"
-#include "states/save_catalog.hpp"
+#include "states/save_slot.hpp"
 #include "states/title_state.hpp"
 #include "world/world_scene.hpp"
 

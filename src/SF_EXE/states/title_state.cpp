@@ -1,7 +1,7 @@
 #include "title_state.hpp"
 
 #include "core/retail_random.hpp"
-#include "save_catalog.hpp"
+#include "states/save_slot.hpp"
 
 #include <algorithm>
 #include <iomanip>
@@ -366,4 +366,3 @@ const std::array<std::int32_t, 57>& retailTitleInputBindings() {
 }
 
 }  // namespace osf
-

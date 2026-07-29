@@ -115,6 +115,10 @@ bool testMissionListState() {
     osf::QuestState quests;
     quests.applyScriptUpdate(0, 1);
     quests.applyScriptUpdate(24, 1);
+    const auto mission_visible =
+        [&quests](std::int32_t mission_id) {
+            return quests.state(mission_id) != 0;
+        };
 
     osf::GameplayMissionList list;
     list.open();
@@ -127,14 +131,18 @@ bool testMissionListState() {
     }
 
     osf::GameplayMissionListResult result =
-        list.update({false, false, true, 60, 50}, quests);
+        list.update(
+            {false, false, true, 60, 50},
+            mission_visible);
     if (!check(
             !result.play_move_sound &&
                 list.selectedMission() == 0,
             "An active mission row could not open its details.")) {
         return false;
     }
-    list.update({false, false, true, 320, 200}, quests);
+    list.update(
+        {false, false, true, 320, 200},
+        mission_visible);
     if (!check(
             list.active() && list.selectedMission() == -1,
             "A detail click did not return to the Mission List.")) {
@@ -142,33 +150,44 @@ bool testMissionListState() {
     }
 
     result = list.update(
-        {false, false, true, 350, 20}, quests);
+        {false, false, true, 350, 20},
+        mission_visible);
     if (!check(
             result.play_move_sound && list.page() == 1,
             "The second retail mission page could not be selected.")) {
         return false;
     }
-    list.update({false, false, true, 60, 50}, quests);
+    list.update(
+        {false, false, true, 60, 50},
+        mission_visible);
     if (!check(
             list.selectedMission() == 24,
             "The second page did not map its first row to mission 24.")) {
         return false;
     }
-    list.update({false, true, false, 0, 0}, quests);
+    list.update(
+        {false, true, false, 0, 0},
+        mission_visible);
     if (!check(
             !list.active(),
             "Escape did not close the Mission List.")) {
         return false;
     }
 
-    list.update({true, false, false, 0, 0}, quests);
-    list.update({false, false, true, 20, 450}, quests);
+    list.update(
+        {true, false, false, 0, 0},
+        mission_visible);
+    list.update(
+        {false, false, true, 20, 450},
+        mission_visible);
     if (!check(
             list.active(),
             "A lower-HUD click incorrectly dismissed the Mission List.")) {
         return false;
     }
-    list.update({false, false, true, 20, 200}, quests);
+    list.update(
+        {false, false, true, 20, 200},
+        mission_visible);
     return check(
         !list.active(),
         "A click outside the retail list controls was not dismissed.");
@@ -186,6 +205,10 @@ bool testMissionListRendering() {
 
     osf::GameplayMissionList list;
     list.open();
+    const auto mission_visible =
+        [&quests](std::int32_t mission_id) {
+            return quests.state(mission_id) != 0;
+        };
     osf::gapi::NjpImage status;
     osf::gapi::NjpImage font;
     RecordingBackend backend;
@@ -234,7 +257,9 @@ bool testMissionListRendering() {
         return false;
     }
 
-    list.update({false, false, true, 60, 50}, quests);
+    list.update(
+        {false, false, true, 60, 50},
+        mission_visible);
     backend = {};
     osf::renderGameplayMissionList(
         backend,

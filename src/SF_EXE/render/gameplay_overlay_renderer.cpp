@@ -1,6 +1,6 @@
 #include "gameplay_overlay_renderer.hpp"
 
-#include "conversation_layout.hpp"
+#include "ui/conversation_layout.hpp"
 #include "gapi/gapi.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
@@ -13,16 +13,6 @@
 
 namespace osf {
 namespace {
-
-struct ConversationLayout {
-    ConversationTextLayout text;
-    std::int32_t cell_width = 0;
-    std::int32_t cell_height = 0;
-    std::int32_t width = 0;
-    std::int32_t height = 0;
-    std::int32_t x = 0;
-    std::int32_t y = 0;
-};
 
 const NpcActor* findNpc(
     const WorldScene& world,
@@ -232,54 +222,6 @@ void drawPointerRange(
     });
 }
 
-bool buildConversationLayout(
-    const WorldScene& world,
-    const gapi::NjpImage& font,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    double interpolation,
-    ConversationLayout& layout) {
-    if (!world.conversationActive() ||
-        font.patterns().empty()) {
-        return false;
-    }
-    const NpcActor* actor =
-        findNpc(world, world.conversationActorId());
-    if (!actor) {
-        return false;
-    }
-    const gapi::NjpPattern& font_pattern =
-        font.patterns().front();
-    layout.cell_width =
-        font_pattern.width / 16;
-    layout.cell_height =
-        font_pattern.height / 16;
-    if (layout.cell_width <= 0 || layout.cell_height <= 0) {
-        return false;
-    }
-    layout.text = layoutConversationText(
-        world.conversationText(),
-        world.conversationRequiresSelection());
-    layout.width =
-        bitmapTextPixelWidth(
-            layout.text.text, layout.cell_width) + 8;
-    layout.height =
-        bitmapTextLineCount(layout.text.text) *
-            layout.cell_height +
-        8;
-    const ScreenPosition projected =
-        calculateRealPosition(actor->renderPosition(interpolation));
-    const std::int32_t anchor_x =
-        projected.x - camera_x;
-    const std::int32_t anchor_y =
-        projected.y - camera_y - actor->labelHeight();
-    layout.x =
-        anchor_x + 12 - layout.width / 2;
-    layout.y =
-        anchor_y - 16 - layout.height;
-    return true;
-}
-
 void drawConversation(
     gapi::Backend& renderer,
     const WorldScene& world,
@@ -481,42 +423,6 @@ void renderGameplayOverlay(
         camera_y,
         interpolation);
     drawPointerRange(renderer, world);
-}
-
-std::int32_t conversationChoiceAtScreenPosition(
-    const WorldScene& world,
-    const gapi::NjpImage& font,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    std::int32_t screen_x,
-    std::int32_t screen_y) {
-    ConversationLayout layout;
-    if (!world.conversationRequiresSelection() ||
-        !buildConversationLayout(
-            world,
-            font,
-            camera_x,
-            camera_y,
-            1.0,
-            layout)) {
-        return -1;
-    }
-    const std::int32_t text_x = layout.x + 4;
-    const std::int32_t text_y = layout.y + 4;
-    for (const ConversationChoiceSpan& choice :
-         layout.text.choices) {
-        const std::int32_t left =
-            text_x + choice.column * layout.cell_width;
-        const std::int32_t top =
-            text_y + choice.line * layout.cell_height;
-        if (screen_x >= left &&
-            screen_x < left + choice.length * layout.cell_width &&
-            screen_y >= top &&
-            screen_y < top + layout.cell_height) {
-            return choice.index;
-        }
-    }
-    return -1;
 }
 
 }  // namespace osf

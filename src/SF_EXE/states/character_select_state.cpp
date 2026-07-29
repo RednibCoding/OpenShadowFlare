@@ -1,7 +1,7 @@
 #include "character_select_state.hpp"
 
 #include "character_select/character_select_flow.hpp"
-#include "save_catalog.hpp"
+#include "states/save_slot.hpp"
 
 #include <utility>
 

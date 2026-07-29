@@ -1,7 +1,5 @@
 #include "gameplay_mission_list.hpp"
 
-#include "world/quest_state.hpp"
-
 namespace osf {
 namespace {
 
@@ -33,7 +31,7 @@ void GameplayMissionList::close() {
 
 GameplayMissionListResult GameplayMissionList::update(
     const GameplayMissionListInput& input,
-    const QuestState& quests) {
+    const MissionVisible& mission_visible) {
     if (input.toggle_pressed) {
         if (active_) {
             close();
@@ -89,7 +87,7 @@ GameplayMissionListResult GameplayMissionList::update(
         missionAt(
             input.pointer_x,
             input.pointer_y,
-            quests);
+            mission_visible);
     if (mission_id >= 0) {
         selected_mission_ = mission_id;
         return result;
@@ -116,7 +114,7 @@ std::int32_t GameplayMissionList::selectedMission() const {
 std::int32_t GameplayMissionList::missionAt(
     std::int32_t pointer_x,
     std::int32_t pointer_y,
-    const QuestState& quests) const {
+    const MissionVisible& mission_visible) const {
     if (pointer_x < 52 || pointer_x >= 640 ||
         pointer_y < 48 || pointer_y >= 372) {
         return -1;
@@ -132,7 +130,7 @@ std::int32_t GameplayMissionList::missionAt(
         page_ * kMissionsPerPage +
         column * kMissionsPerColumn +
         row;
-    return quests.state(mission_id) != 0
+    return mission_visible && mission_visible(mission_id)
         ? mission_id
         : -1;
 }

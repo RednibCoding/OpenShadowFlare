@@ -3,7 +3,7 @@
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
-#include "states/save_catalog.hpp"
+#include "resources/save_catalog.hpp"
 
 #include <array>
 #include <cstdint>

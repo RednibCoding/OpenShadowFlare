@@ -5,15 +5,16 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
-#include "items/item_world_resource.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
+#include "resources/item_world_resource.hpp"
 #include "ground_item.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
 #include "npc_actor.hpp"
+#include "player_appearance.hpp"
 #include "player_actor.hpp"
 #include "player_data.hpp"
 #include "quest_state.hpp"
@@ -137,8 +138,6 @@ private:
     bool queryScriptValue(
         script::ValueQuery query,
         std::int32_t& value) const;
-    void showScriptMessage(
-        const script::MessageEvent& message);
     WorldPointerTarget pointerTargetAtScreenPosition(
         std::int32_t screen_x,
         std::int32_t screen_y) const;
@@ -157,10 +156,6 @@ private:
 
     ScenarioData scenario_;
     ScenarioScriptRuntime scenario_script_;
-    script::MessageEvent conversation_;
-    bool conversation_active_ = false;
-    std::int32_t conversation_actor_id_ = -1;
-    std::int32_t conversation_selected_option_ = -1;
     WorldPointer pointer_;
     WorldPointerTarget pending_interaction_;
     GroundMap ground_;
@@ -171,10 +166,7 @@ private:
     gapi::NjpImage speech_patterns_;
     gapi::NjpImage map_overview_patterns_;
     MapExploration map_exploration_;
-    std::vector<std::uint8_t> player_parts_enabled_;
-    std::vector<std::int32_t> player_part_red_strengths_;
-    std::vector<std::int32_t> player_part_green_strengths_;
-    std::vector<std::int32_t> player_part_blue_strengths_;
+    PlayerAppearance player_appearance_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
     QuestState quests_;

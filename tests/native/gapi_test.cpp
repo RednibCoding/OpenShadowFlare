@@ -1,5 +1,4 @@
 #include "gapi/gapi.hpp"
-#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"

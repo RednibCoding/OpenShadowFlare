@@ -70,12 +70,25 @@ foreach(public_api IN LISTS implemented_public_apis)
     message(FATAL_ERROR
       "Portable DLL API must remain under src/SF_EXE/libs: ${public_api}")
   endif()
+
+  get_filename_component(api_directory "${public_api}" DIRECTORY)
+  file(
+    GLOB api_headers
+    LIST_DIRECTORIES false
+    "${portable_libraries_root}/${api_directory}/*.hpp"
+  )
+  list(LENGTH api_headers api_header_count)
+  if(NOT api_header_count EQUAL 1)
+    message(FATAL_ERROR
+      "${api_directory} must expose exactly one top-level public API header")
+  endif()
 endforeach()
 
 set(dll_implementation_names
   bitmap.cpp
   caf.cpp
   coordinates.cpp
+  display_hit_test.cpp
   display_order.cpp
   ground_map.cpp
   judgement.cpp
@@ -114,6 +127,7 @@ set(portable_game_directories
   render
   resources
   states
+  ui
   world
 )
 
@@ -145,6 +159,46 @@ foreach(source_file IN LISTS portable_game_sources)
       "Portable code must not include reconstructed Win32 sources: ${source_file}")
   endif()
 endforeach()
+
+function(osf_reject_layer_includes directory)
+  set(forbidden_layers ${ARGN})
+  file(
+    GLOB_RECURSE layer_sources
+    LIST_DIRECTORIES false
+    "${portable_root}/${directory}/*.cpp"
+    "${portable_root}/${directory}/*.hpp"
+  )
+  foreach(source_file IN LISTS layer_sources)
+    file(READ "${source_file}" source_text)
+    foreach(forbidden_layer IN LISTS forbidden_layers)
+      if(source_text MATCHES
+          "#[ \t]*include[ \t]*\"${forbidden_layer}/")
+        message(FATAL_ERROR
+          "${directory} must not depend on ${forbidden_layer}: ${source_file}")
+      endif()
+    endforeach()
+  endforeach()
+endfunction()
+
+# These are source-level rules as well as CMake target rules. Keeping them here
+# catches a direct include even when a broad transitive link would otherwise let
+# the build succeed.
+osf_reject_layer_includes(
+  core gapi items resources states ui world render runtime libs)
+osf_reject_layer_includes(
+  gapi core items resources states ui world render runtime libs)
+osf_reject_layer_includes(
+  items core gapi resources states ui world render runtime)
+osf_reject_layer_includes(
+  resources core gapi items states ui world render runtime)
+osf_reject_layer_includes(
+  states gapi resources ui world render runtime libs)
+osf_reject_layer_includes(
+  world states ui render runtime)
+osf_reject_layer_includes(
+  ui render runtime)
+osf_reject_layer_includes(
+  render runtime)
 
 file(
   GLOB_RECURSE runtime_sources

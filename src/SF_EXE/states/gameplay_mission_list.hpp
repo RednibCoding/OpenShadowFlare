@@ -2,10 +2,12 @@
 #define OPENSHADOWFLARE_GAMEPLAY_MISSION_LIST_HPP
 
 #include <cstdint>
+#include <functional>
 
 namespace osf {
 
-class QuestState;
+using MissionVisible =
+    std::function<bool(std::int32_t)>;
 
 struct GameplayMissionListInput {
     bool toggle_pressed = false;
@@ -25,7 +27,7 @@ public:
     void close();
     GameplayMissionListResult update(
         const GameplayMissionListInput& input,
-        const QuestState& quests);
+        const MissionVisible& mission_visible);
 
     bool active() const;
     std::int32_t page() const;
@@ -35,7 +37,7 @@ private:
     std::int32_t missionAt(
         std::int32_t pointer_x,
         std::int32_t pointer_y,
-        const QuestState& quests) const;
+        const MissionVisible& mission_visible) const;
 
     bool active_ = false;
     std::int32_t page_ = 0;

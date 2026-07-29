@@ -179,9 +179,10 @@ belongs in the portable implementation.
 
 `OpenShadowFlare::GameCore` is the convenient build target for the whole
 portable game. Underneath it, core utilities, items, resources, states, world
-simulation, rendering, and GAPI are separate static libraries. That makes
-their dependencies real build rules instead of relying on folder names and
-good intentions.
+simulation, rendering, and GAPI are separate static libraries. The dependency
+direction is checked by the `source_boundaries` test, so a lower layer cannot
+quietly start including world, rendering, or runtime code just because another
+target happened to make it link.
 
 DLL-derived behavior lives under `libs/`, with one directory per original
 DLL. Each implemented counterpart is a statically linked, cross-platform
@@ -215,11 +216,21 @@ implementations:
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
 - `resources/` owns shared decoded assets and retail filesystem lookup
 - `states/` contains the top-level dispatcher and reconstructed game states
+- `ui/` contains layout shared by input handling and drawing
 - `world/` contains actors, scenario orchestration, and script-to-world glue
 - `runtime/` contains startup, input/audio adapters, and frontend assets
 - `runtime/platform/` owns application-loop and lifecycle adapters
 - `runtime/presentation/` owns the final-surface presentation interface and
   concrete graphics backends
+
+`WorldScene` is the public facade used by gameplay and rendering, but the work
+behind it is kept in focused pieces: loading, interaction, item preparation,
+script bridging, player appearance, actors, pointer selection, quests, and
+movement all have their own implementation units or objects. The executable
+runtime follows the same rule. Frame composition lives in `RuntimeRenderer`,
+gameplay panels in `GameplayUiController`, and state hook wiring in
+`state_bindings`; the main runtime is only responsible for lifecycle and the
+fixed-step loop.
 
 The steps and boundary rules for bringing up another operating system or
 console are in

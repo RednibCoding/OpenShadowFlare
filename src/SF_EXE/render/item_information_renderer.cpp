@@ -1,6 +1,6 @@
 #include "item_information_renderer.hpp"
 
-#include "conversation_layout.hpp"
+#include "ui/conversation_layout.hpp"
 #include "gapi/gapi.hpp"
 #include "items/item_database.hpp"
 #include "items/item_information.hpp"

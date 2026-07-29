@@ -44,7 +44,6 @@ add_library(
   osf_items STATIC
   items/item_database.cpp
   items/item_information.cpp
-  items/item_world_resource.cpp
   items/player_equipment.cpp
   items/player_inventory.cpp
 )
@@ -52,9 +51,6 @@ add_library(OpenShadowFlare::Items ALIAS osf_items)
 osf_configure_game_library(osf_items)
 target_link_libraries(
   osf_items
-  PUBLIC
-    OpenShadowFlare::RKC_RPGSCRN
-    OpenShadowFlare::RKC_UPDIB
   PRIVATE
     OpenShadowFlare::RK_FUNCTION
 )
@@ -63,7 +59,9 @@ add_library(
   osf_resources STATIC
   resources/character_visual_resource.cpp
   resources/item_inventory_resource.cpp
+  resources/item_world_resource.cpp
   resources/retail_filesystem.cpp
+  resources/save_catalog.cpp
 )
 add_library(OpenShadowFlare::Resources ALIAS osf_resources)
 osf_configure_game_library(osf_resources)
@@ -82,11 +80,11 @@ add_library(
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
   states/gameplay_state.cpp
+  states/save_slot.cpp
   states/character_select_state.cpp
   states/character_select/network_flow.cpp
   states/character_select/new_character_flow.cpp
   states/character_select/saved_game_flow.cpp
-  states/save_catalog.cpp
   states/title_state.cpp
 )
 add_library(OpenShadowFlare::States ALIAS osf_states)
@@ -105,6 +103,7 @@ add_library(
   world/mission_catalog.cpp
   world/movement_controller.cpp
   world/npc_actor.cpp
+  world/player_appearance.cpp
   world/player_actor.cpp
   world/player_data.cpp
   world/retail_save_file.cpp
@@ -114,6 +113,10 @@ add_library(
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
+  world/world_scene_interaction.cpp
+  world/world_scene_items.cpp
+  world/world_scene_loading.cpp
+  world/world_scene_script.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)
 osf_configure_game_library(osf_world)
@@ -121,6 +124,7 @@ target_link_libraries(
   osf_world
   PUBLIC
     OpenShadowFlare::Core
+    OpenShadowFlare::Gapi
     OpenShadowFlare::Items
     OpenShadowFlare::Resources
     OpenShadowFlare::RKC_DIB
@@ -131,10 +135,22 @@ target_link_libraries(
 )
 
 add_library(
+  osf_ui STATIC
+  ui/conversation_layout.cpp
+)
+add_library(OpenShadowFlare::Ui ALIAS osf_ui)
+osf_configure_game_library(osf_ui)
+target_link_libraries(
+  osf_ui
+  PUBLIC
+    OpenShadowFlare::World
+    OpenShadowFlare::RKC_RPGSCRN
+)
+
+add_library(
   osf_render STATIC
   render/character_renderer.cpp
   render/character_select_renderer.cpp
-  render/conversation_layout.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp
@@ -154,6 +170,7 @@ target_link_libraries(
   PUBLIC
     OpenShadowFlare::Gapi
     OpenShadowFlare::States
+    OpenShadowFlare::Ui
     OpenShadowFlare::World
     OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_RPGSCRN
@@ -169,6 +186,7 @@ target_link_libraries(
     OpenShadowFlare::Items
     OpenShadowFlare::Resources
     OpenShadowFlare::States
+    OpenShadowFlare::Ui
     OpenShadowFlare::World
     OpenShadowFlare::Render
 )
@@ -178,8 +196,11 @@ add_executable(
   runtime/audio_system.cpp
   runtime/frontend_assets.cpp
   runtime/game_runtime.cpp
+  runtime/gameplay_ui_controller.cpp
   runtime/input_adapter.cpp
   runtime/main.cpp
+  runtime/runtime_renderer.cpp
+  runtime/state_bindings.cpp
 )
 
 target_compile_features(ShadowFlare_rebuilt PRIVATE cxx_std_17)

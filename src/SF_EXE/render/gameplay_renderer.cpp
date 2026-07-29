@@ -3,7 +3,6 @@
 #include "character_renderer.hpp"
 #include "gapi/gapi.hpp"
 #include "gameplay_overlay_renderer.hpp"
-#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "world/world_scene.hpp"
