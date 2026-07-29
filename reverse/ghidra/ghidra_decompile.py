@@ -5,12 +5,15 @@ from ghidra.app.decompiler import DecompInterface
 from ghidra.util.task import ConsoleTaskMonitor
 import os
 
-OUTPUT_DIR = "/home/micha/DEV/projects/OpenShadowFlare/ghidra/"
+OUTPUT_DIR = os.environ.get(
+    "OSF_GHIDRA_OUTPUT_DIR",
+    os.path.dirname(os.path.abspath(__file__))
+)
 
 def run():
     # Use program name for output file
     prog_name = currentProgram.getName().replace(".dll", "").replace(".exe", "")
-    output_file = OUTPUT_DIR + prog_name + "_decompiled.c"
+    output_file = os.path.join(OUTPUT_DIR, prog_name + "_decompiled.c")
     
     decomp = DecompInterface()
     decomp.openProgram(currentProgram)

@@ -1,3 +1,10 @@
+# Ghidra decompiler output
+
+These files are raw decompiler output from the retail executable and its
+fourteen DLLs. They are useful for finding code, but names, inferred types, and
+generated control flow still need to be verified before they become portable
+source.
+
 ## Overview
 
 | File | Functions | Lines |
@@ -17,3 +24,7 @@
 | o_RKC_UPDIB | 206 | 8,897 |
 | o_RKC_WINDOW | 71 | 3,833 |
 | **Total** | **3,368** | **194,290** |
+
+`ghidra_decompile.py` can be used as a Ghidra post-script. It writes beside
+the script by default; set `OSF_GHIDRA_OUTPUT_DIR` to choose another output
+folder.

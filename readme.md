@@ -23,6 +23,7 @@ properly.
 - [ShadowFlare game files](#shadowflare-game-files)
 - [Current state](#current-state)
 - [Roadmap](#roadmap)
+- [Reverse-engineering material](#reverse-engineering-material)
 - [Prebuilt binaries](#prebuilt-binaries)
 - [Building from source](#building-from-source)
 - [Running the tests](#running-the-tests)
@@ -114,6 +115,18 @@ the game world, and which commands have been recovered so far.
 If you are working on a new desktop, mobile, web, or console target, read the
 [platform porting guide](documentation/adding-platforms.md) before adding SDK
 code or build settings.
+
+## Reverse-engineering material
+
+Ghidra output, radare2 and Remina projects, executable address maps, and older
+research now live together in [`reverse/`](reverse/README.md). The folder's
+index explains what each project is for and how much confidence to place in
+it.
+
+The older SDL2/C reconstruction under `reverse/references/` has useful work on
+map transitions, combat, teleporting, and other systems. It is incomplete and
+not always faithful, so we use it to find leads and then verify those leads
+against the retail game before bringing them into the current code.
 
 ## Prebuilt binaries
 

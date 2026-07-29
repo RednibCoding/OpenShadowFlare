@@ -1,6 +1,6 @@
 # OpenShadowFlare - Radare2 Analysis Script
 # Run with: r2 -i shadowflare-init.r2 ShadowFlare.exe
-# Then save project: Ps /path/to/OpenShadowFlare/radare2/shadowflare
+# Then save project: Ps /path/to/OpenShadowFlare/reverse/radare2/shadowflare
 
 # Analyze all
 aaa

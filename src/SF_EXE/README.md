@@ -166,12 +166,15 @@ Run it with `--smoke-test` to close automatically after three frames.
 
 ## Reverse-engineering records
 
-`reverse/functions.csv` and `reverse/globals.csv` connect readable
+[`functions.csv`](../../reverse/shadowflare-exe/functions.csv) and
+[`globals.csv`](../../reverse/shadowflare-exe/globals.csv) connect readable
 reconstructed code to retail addresses without forcing the new executable to
-copy the original process layout. `reverse/status.md` describes the confidence
-labels used by those maps.
+copy the original process layout.
+[`status.md`](../../reverse/shadowflare-exe/status.md) describes the
+confidence labels used by those maps.
 
-Raw decompiler output stays in `/ghidra`. Only understood, readable behavior
+Raw decompiler output and analysis projects stay under
+[`reverse/`](../../reverse/README.md). Only understood, readable behavior
 belongs in the portable implementation.
 
 `OpenShadowFlare::GameCore` is the convenient build target for the whole

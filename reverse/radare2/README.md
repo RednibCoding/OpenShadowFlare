@@ -20,7 +20,7 @@ cd /path/to/ShadowFlare/game/folder
 r2 -e bin.relocs.apply=true ShadowFlare.exe
 
 # Inside r2:
-. /path/to/OpenShadowFlare/radare2/shadowflare.r2
+. /path/to/OpenShadowFlare/reverse/radare2/shadowflare.r2
 ```
 
 Or copy to the default project location:
@@ -39,7 +39,7 @@ The init script has human-readable comments. Use if the project file is corrupte
 
 ```bash
 cd /path/to/ShadowFlare
-r2 -e bin.relocs.apply=true -i /path/to/OpenShadowFlare/radare2/shadowflare-init.r2 ShadowFlare.exe
+r2 -e bin.relocs.apply=true -i /path/to/OpenShadowFlare/reverse/radare2/shadowflare-init.r2 ShadowFlare.exe
 ```
 
 ### Saving Updates
@@ -51,7 +51,7 @@ After renaming more functions or adding comments:
 Ps shadowflare
 
 # Then copy updated project to repo:
-cp ~/.local/share/radare2/projects/shadowflare/rc.r2 /path/to/OpenShadowFlare/radare2/shadowflare.r2
+cp ~/.local/share/radare2/projects/shadowflare/rc.r2 /path/to/OpenShadowFlare/reverse/radare2/shadowflare.r2
 
 # Also update the init script with new function names!
 ```

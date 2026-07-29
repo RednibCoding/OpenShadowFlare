@@ -49,14 +49,16 @@ and combat can build on those owners rather than temporary values.
 
 The current reverse-engineering notes live in:
 
-- `src/SF_EXE/reverse/functions.csv`
-- `src/SF_EXE/reverse/globals.csv`
-- `src/SF_EXE/reverse/status.md`
+- `reverse/shadowflare-exe/functions.csv`
+- `reverse/shadowflare-exe/globals.csv`
+- `reverse/shadowflare-exe/status.md`
 - `documentation/exe-analysis.md`
 
 Those files should be updated whenever a slice teaches us something new. Raw
-decompiler output can stay in `ghidra/`; only understood behavior belongs in
-the portable source.
+decompiler output and tool projects stay under `reverse/`; only understood
+behavior belongs in the portable source. The older work in
+`reverse/references/` is handy for finding leads, but it must be checked against
+the retail game before we treat it as faithful.
 
 ## A few ground rules
 

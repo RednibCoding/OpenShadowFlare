@@ -10,7 +10,7 @@ This folder contains the Remina reverse engineering project for ShadowFlare.
 
 ```bash
 cd tmp/ShadowFlare
-remina ../../remina/shadowflare.rmn
+remina ../../reverse/remina/shadowflare.rmn
 aa    # Run full analysis on all modules
 ```
 
