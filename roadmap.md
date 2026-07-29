@@ -275,6 +275,15 @@ plus `Gold`), and the original yellow target square. Empty ground and people
 use the original white square at their different strengths. Conversations
 suppress it.
 
+Escape now opens the original in-game settings panel as well. It uses the
+authored `Status.njp` frame, retail text and hit coordinates, priority
+reordering, and the original effect/BGM slider scale. Pointer, shadow,
+occluding-object, and audio changes apply while the panel is open, and changed
+settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
+intentionally blank, but its space remains so none of the following rows move.
+Mission List, Map, Help, and the two save actions stay visible for now; their
+clicks belong with those still-missing screens and the save writer.
+
 The remaining layers are:
 
 - map the experience field and table calculation, then draw its clipped fill;

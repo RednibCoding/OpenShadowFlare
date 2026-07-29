@@ -399,6 +399,27 @@ shipped default is the 16-pixel choice. Empty ground uses white at strength
 `(224, 224, 0)`. The square is not submitted below y=407 and disappears while
 a modal gameplay message owns input.
 
+## In-game settings
+
+`0x004103c0` draws the Escape menu with patterns 59 and 58 from `Status.njp`;
+the first is the half-transparent fill and the second is the opaque frame.
+Its six original boolean rows begin at y=86 and advance by 16 pixels. The
+portable game deliberately leaves the screen-mode row at y=86 blank and always
+uses an LWL window, so the first visible setting remains at the retail y=102.
+ON occupies x=376 through 425 and OFF occupies x=426 through 463.
+
+The five click-range values occupy 24-pixel cells beginning at x=317 and y=182.
+The priority row below them displays classes from priority four down to zero.
+Clicking a class shifts every lower class up by one and moves the selected
+class to priority zero, which is why it moves to the right-hand end rather
+than simply swapping with its neighbor.
+
+The effect and BGM tracks use Status patterns 120 and 68 at y=223 and y=243.
+The first 200 slider positions cover DirectSound values `-3000` through zero;
+the far-left position is the separate mute value `-10000`. BGM changes update
+the playing world voice immediately. Escape closes the panel and ordinary
+world input remains suspended for every frame owned by it.
+
 ## SFWindow Object Layout (at 0x00482778)
 
 ```

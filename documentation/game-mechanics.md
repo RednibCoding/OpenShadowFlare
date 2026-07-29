@@ -166,7 +166,16 @@ Found in the options menu (0x004103c0):
 | Semi-transparent Shadow | ON / OFF |
 | Display Darkness | ON / OFF |
 | Save Image at Game End | ON / OFF |
+| Click Range | ON / OFF |
 | Click Range | MINI / SMAL / NORM / LARG / MAX. |
+| Click Priority | ENEM / OBJ. / ITEM / PEOP / COMP |
+| EFF.VOLUME | Mute, then -3000 through 0 |
+| BGM VOLUME | Mute, then -3000 through 0 |
+
+The portable build intentionally keeps the original screen-mode row empty and
+always opens in a window. The gap remains, so every later setting keeps its
+retail screen coordinate. Clicking one of the five priority labels moves that
+class to the right-hand end and shifts the lower-priority classes left.
 
 ### Target Types
 - ENEM (Enemy)

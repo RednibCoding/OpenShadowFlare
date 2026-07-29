@@ -116,6 +116,24 @@ void AudioSystem::stopWorldMusic() {
     world_music_.clear();
 }
 
+void AudioSystem::setEffectVolume(std::int32_t volume) {
+    effect_volume_ = volume;
+    effect_audio_.setVolume(effect_volume_);
+}
+
+void AudioSystem::setBgmVolume(std::int32_t volume) {
+    bgm_volume_ = volume;
+    menu_music_.setVolume(bgm_volume_);
+    world_music_.setVolume(bgm_volume_);
+}
+
+void AudioSystem::playOptionsClick() {
+    if (initialized_) {
+        effect_audio_.play(
+            kMenuConfirmSound, false, effect_volume_);
+    }
+}
+
 bool AudioSystem::loadVoc(
     VocPlayer& player,
     std::string_view retail_path) {

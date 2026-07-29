@@ -29,6 +29,7 @@ public:
     const CharacterSelectFrameInput& characterSelect() const;
     bool pointerPrimaryDown() const;
     bool runTogglePressed() const;
+    bool gameplayOptionsPressed() const;
 
 private:
     void setPointerPosition(
@@ -51,6 +52,7 @@ private:
     bool pointer_primary_down_ = false;
     bool run_held_ = false;
     bool run_toggle_pressed_ = false;
+    bool gameplay_options_pressed_ = false;
 };
 
 }  // namespace osf::runtime

@@ -98,6 +98,19 @@ the stable ground entity only after acceptance. Gold stacking to 10,000 is
 covered; grid placement, item footprints, full-inventory handling, panel
 drawing, and network replication remain.
 
+The in-game settings panel now follows `0x004103c0`. Escape opens the original
+two-layer `Status.njp` panel and suspends world input. Boolean options use the
+retail ON/OFF cells, click range uses its five 24-pixel cells, clicking a
+priority class moves it to the right-hand end exactly as the executable does,
+and both volume sliders use the original mute sentinel and `-3000` through
+zero scale. Pointer, shadow, occluding-object, effect-volume, and BGM-volume
+changes apply live; all changed configuration fields are written back through
+the reconstructed 64-byte `SFlare.Cfg` writer when the game exits. The
+screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
+empty so every later row keeps its retail coordinate. Mission, map, help, and
+save actions remain visible at their original positions and will become active
+with those systems.
+
 Portable behavior originating in the DLLs is kept under `SF_EXE/libs`, with a
 directory for each of the fourteen original boundaries. `RK_FUNCTION`,
 `RKC_DBFCONTROL`, `RKC_DIB`, `RKC_DSOUND`, `RKC_UPDIB`, `RKC_RPGSCRN`, and

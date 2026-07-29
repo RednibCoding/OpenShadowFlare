@@ -9,6 +9,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
+#include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
 #include "render/loading_renderer.hpp"
@@ -19,6 +20,7 @@
 #include "runtime/input_adapter.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
 #include "states/save_catalog.hpp"
@@ -68,6 +70,7 @@ public:
     }
 
     bool initialize(const osf::GameConfig& gameConfig) {
+        gameConfig_ = gameConfig;
         if (!lwl_init()) {
             std::fprintf(stderr, "Could not initialize LWL.\n");
             return false;
@@ -80,11 +83,7 @@ public:
             std::fprintf(stderr, "Could not create the game window.\n");
             return false;
         }
-        lwl_window_set_mode(
-            window_,
-            gameConfig.windowed_at_start
-                ? LWL_WINDOW_NORMAL
-                : LWL_WINDOW_FULLSCREEN);
+        lwl_window_set_mode(window_, LWL_WINDOW_NORMAL);
         lwl_window_show(window_);
 
         const LwlGlConfig config = lwl_gl_config_default();
@@ -121,8 +120,8 @@ public:
         std::string audioError;
         if (!audio_.initialize(
                 dataRoot_,
-                gameConfig.effect_volume,
-                gameConfig.bgm_volume,
+                gameConfig_.effect_volume,
+                gameConfig_.bgm_volume,
                 &audioError)) {
             std::fprintf(
                 stderr,
@@ -130,11 +129,11 @@ public:
                 audioError.c_str());
         }
         shadowOpacity_ =
-            gameConfig.semi_transparent_shadow ? 500 : 1000;
+            gameConfig_.semi_transparent_shadow ? 500 : 1000;
         world_.configurePointer({
-            gameConfig.click_range,
-            gameConfig.click_range_enabled,
-            gameConfig.click_priority,
+            gameConfig_.click_range,
+            gameConfig_.click_range_enabled,
+            gameConfig_.click_priority,
         });
 
         if (!frontendAssets_.loadPattern(
@@ -201,6 +200,11 @@ public:
                 nextFrame = currentTime;
             }
             lwl_sleep_until_seconds(nextFrame);
+        }
+        if (configDirty_) {
+            osf::saveGameConfigFile(
+                (dataRoot_ / "SFlare.Cfg").string(),
+                gameConfig_);
         }
         return 0;
     }
@@ -291,16 +295,20 @@ private:
             }
             break;
         }
-        case osf::GameState::gameplay:
-            gameplayFrame_ = gameplayState_.update({
-                input_.menu().confirm_pressed,
-                input_.menu().pointer_primary_pressed,
-                input_.menu().pointer_x,
-                input_.menu().pointer_y,
-                input_.pointerPrimaryDown(),
-                input_.runTogglePressed(),
-            });
+        case osf::GameState::gameplay: {
+            if (!updateGameplayOptions()) {
+                gameplayFrame_ = gameplayState_.update({
+                    input_.menu().confirm_pressed,
+                    input_.menu()
+                        .pointer_primary_pressed,
+                    input_.menu().pointer_x,
+                    input_.menu().pointer_y,
+                    input_.pointerPrimaryDown(),
+                    input_.runTogglePressed(),
+                });
+            }
             break;
+        }
         default:
             break;
         }
@@ -372,7 +380,8 @@ private:
                     renderer_,
                     world_,
                     shadowOpacity_,
-                    interpolation);
+                    interpolation,
+                    gameConfig_.semi_transparent_objects);
                 const auto* bar = frontendAssets_.pattern(5);
                 if (bar) {
                     osf::renderGameplayHud(
@@ -382,13 +391,27 @@ private:
                             world_.playerData(),
                             world_.playerMovementPace()));
                 }
-                osf::renderGameplayOverlay(
-                    renderer_,
-                    world_,
-                    font,
-                    world_.renderCameraScreenX(interpolation),
-                    world_.renderCameraScreenY(interpolation),
-                    interpolation);
+                if (!gameplayOptions_.active()) {
+                    osf::renderGameplayOverlay(
+                        renderer_,
+                        world_,
+                        font,
+                        world_.renderCameraScreenX(
+                            interpolation),
+                        world_.renderCameraScreenY(
+                            interpolation),
+                        interpolation);
+                }
+                const auto* status =
+                    frontendAssets_.pattern(6);
+                if (status && font) {
+                    osf::renderGameplayOptions(
+                        renderer_,
+                        *status,
+                        *font,
+                        gameplayOptions_,
+                        gameConfig_);
+                }
             }
         }
         renderer_.endFrame();
@@ -497,9 +520,11 @@ private:
         };
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
+            gameplayOptions_.close();
             gameplayState_.enter();
         };
         callbacks.gameplay.leave = [this] {
+            gameplayOptions_.close();
             gameplayState_.leave();
         };
         return callbacks;
@@ -508,11 +533,22 @@ private:
     osf::GameplayStateHooks makeGameplayStateHooks() {
         osf::GameplayStateHooks hooks;
         hooks.prepare_interface = [this] {
-            return frontendAssets_.loadPattern(
-                5, "System\\Game\\Pattern\\Bar.njp");
+            if (!frontendAssets_.loadPattern(
+                    5,
+                    "System\\Game\\Pattern\\Bar.njp")) {
+                return false;
+            }
+            if (!frontendAssets_.loadPattern(
+                    6,
+                    "System\\Game\\Pattern\\Status.njp")) {
+                frontendAssets_.releasePattern(5);
+                return false;
+            }
+            return true;
         };
         hooks.release_interface = [this] {
             frontendAssets_.releasePattern(5);
+            frontendAssets_.releasePattern(6);
         };
         hooks.prepare_world = [this] {
             std::string error;
@@ -608,10 +644,62 @@ private:
         return hooks;
     }
 
+    bool updateGameplayOptions() {
+        if (gameplayFrame_.phase !=
+            osf::GameplayPhase::world) {
+            return false;
+        }
+        const bool was_active =
+            gameplayOptions_.active();
+        const bool toggle =
+            input_.gameplayOptionsPressed() &&
+            (!world_.conversationActive() || was_active);
+        const osf::GameplayOptionsResult result =
+            gameplayOptions_.update(
+                {
+                    toggle,
+                    input_.menu().pointer_primary_pressed,
+                    input_.pointerPrimaryDown(),
+                    input_.menu().pointer_x,
+                    input_.menu().pointer_y,
+                },
+                gameConfig_);
+        if (!was_active && gameplayOptions_.active()) {
+            world_.cancelPlayerMovement();
+        }
+        if (result.config_changed) {
+            configDirty_ = true;
+            applyGameplayConfig();
+        }
+        if (result.play_click_sound) {
+            audio_.playOptionsClick();
+        }
+        return was_active ||
+               gameplayOptions_.active() ||
+               (input_.gameplayOptionsPressed() &&
+                !world_.conversationActive());
+    }
+
+    void applyGameplayConfig() {
+        shadowOpacity_ =
+            gameConfig_.semi_transparent_shadow
+                ? 500
+                : 1000;
+        world_.configurePointer({
+            gameConfig_.click_range,
+            gameConfig_.click_range_enabled,
+            gameConfig_.click_priority,
+        });
+        audio_.setEffectVolume(gameConfig_.effect_volume);
+        audio_.setBgmVolume(gameConfig_.bgm_volume);
+    }
+
     LwlWindow* window_ = nullptr;
     LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
+    bool configDirty_ = false;
     std::int32_t shadowOpacity_ = 500;
+    osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;
     osf::runtime::FrontendAssets frontendAssets_;
@@ -626,6 +714,7 @@ private:
     osf::TitleState titleState_;
     osf::CharacterSelectState characterSelectState_;
     osf::WorldScene world_;
+    osf::GameplayOptionsMenu gameplayOptions_;
     osf::GameplayState gameplayState_;
     osf::GameStateDispatcher gameState_;
 };

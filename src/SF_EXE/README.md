@@ -39,15 +39,18 @@ looks for `tmp/ShadowFlare` relative to its own location, so starting it from a
 file manager works even when that file manager chooses a different working
 directory.
 
-The executable can now read the original `SFlare.Cfg`, handle the retail `/w`
-and `/f` switches, and run the original top-level
-title/character-selection/gameplay transitions. The title and character-select
-enter/leave lifecycles are reconstructed too, including their asset manifests,
-save-slot behavior, input tables, random smoke delays, and shared menu music.
+The executable can now read the original `SFlare.Cfg` and run the original
+top-level title/character-selection/gameplay transitions. The title and
+character-select enter/leave lifecycles are reconstructed too, including their
+asset manifests, save-slot behavior, input tables, random smoke delays, and
+shared menu music.
 The original VOC containers are decoded portably and played through LAL, with
-the configured effect and BGM volumes. The broader reconstruction order and
-the current slice are tracked in the repository's
-[`roadmap.md`](../../roadmap.md).
+the configured effect and BGM volumes. Gameplay's Escape menu can change those
+volumes, pointer range and priority, and the other reconstructed config fields
+using the retail panel and coordinates. The portable executable always opens
+in a window; the old fullscreen setting is intentionally not exposed. The
+broader reconstruction order and the current slice are tracked in the
+repository's [`roadmap.md`](../../roadmap.md).
 
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
@@ -135,8 +138,7 @@ record, including unknown bytes that later inventory, equipment, and
 progression slices will need. Full decoding of the save's obfuscated dynamic
 payload is still pending.
 
-Run it with `--smoke-test` to close automatically after three frames. You can
-also pass `/w` to keep a smoke-test window out of fullscreen mode.
+Run it with `--smoke-test` to close automatically after three frames.
 
 ## Reverse-engineering records
 

@@ -16,14 +16,16 @@ void renderWorldGeometry(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity = 500,
-    double interpolation = 1.0);
+    double interpolation = 1.0,
+    bool semi_transparent_objects = true);
 
 void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity = 500,
     const gapi::NjpImage* font = nullptr,
-    double interpolation = 1.0);
+    double interpolation = 1.0,
+    bool semi_transparent_objects = true);
 
 }  // namespace osf
 

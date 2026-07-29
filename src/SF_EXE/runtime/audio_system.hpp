@@ -40,6 +40,9 @@ public:
 
     void startWorldMusic(std::int32_t track);
     void stopWorldMusic();
+    void setEffectVolume(std::int32_t volume);
+    void setBgmVolume(std::int32_t volume);
+    void playOptionsClick();
 
 private:
     bool loadVoc(VocPlayer& player, std::string_view retail_path);

@@ -131,6 +131,21 @@ bool VocPlayer::play(
     return false;
 }
 
+void VocPlayer::setVolume(
+    std::int32_t direct_sound_volume) {
+    const float volume =
+        directSoundVolume(direct_sound_volume);
+    for (const std::vector<LalVoice>& sample_voices :
+         voices_) {
+        for (const LalVoice voice : sample_voices) {
+            if (voice != LAL_INVALID_VOICE &&
+                lal_is_playing(voice)) {
+                lal_set_voice_volume(voice, volume);
+            }
+        }
+    }
+}
+
 bool VocPlayer::isPlaying(std::size_t sample_index) const {
     if (sample_index >= voices_.size()) {
         return false;

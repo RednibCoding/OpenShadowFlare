@@ -78,6 +78,13 @@ bool InputAdapter::handleEvent(
             back_held_ = true;
             return true;
         }
+        if (current_state == GameState::gameplay) {
+            if (!back_held_) {
+                gameplay_options_pressed_ = true;
+            }
+            back_held_ = true;
+            return true;
+        }
         return false;
     }
     if (std::strcmp(event.key, "up") == 0) {
@@ -145,6 +152,7 @@ void InputAdapter::clearTransientInput() {
     character_select_.backspace_pressed = false;
     character_select_.text_input.clear();
     run_toggle_pressed_ = false;
+    gameplay_options_pressed_ = false;
 }
 
 MenuFrameInput& InputAdapter::menu() {
@@ -171,6 +179,10 @@ bool InputAdapter::pointerPrimaryDown() const {
 
 bool InputAdapter::runTogglePressed() const {
     return run_toggle_pressed_;
+}
+
+bool InputAdapter::gameplayOptionsPressed() const {
+    return gameplay_options_pressed_;
 }
 
 void InputAdapter::setPointerPosition(

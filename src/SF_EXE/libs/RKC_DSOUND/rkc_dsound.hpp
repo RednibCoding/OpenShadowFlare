@@ -67,6 +67,7 @@ public:
         std::size_t sample_index,
         bool loop,
         std::int32_t direct_sound_volume);
+    void setVolume(std::int32_t direct_sound_volume);
     bool isPlaying(std::size_t sample_index) const;
     bool loaded() const;
 

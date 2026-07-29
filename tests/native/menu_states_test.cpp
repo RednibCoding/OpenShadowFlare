@@ -1,9 +1,12 @@
 #include "core/retail_random.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_options_renderer.hpp"
 #include "states/character_select_state.hpp"
+#include "states/gameplay_options_menu.hpp"
 #include "states/save_catalog.hpp"
 #include "states/title_state.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <iostream>
@@ -16,6 +19,11 @@ namespace {
 struct PatternCall {
     std::size_t index = 0;
     osf::gapi::PatternDraw draw;
+};
+
+struct TextCall {
+    std::string text;
+    osf::gapi::TextDraw draw;
 };
 
 class RecordingBackend final : public osf::gapi::Backend {
@@ -38,9 +46,10 @@ public:
 
     bool drawText(
         const osf::gapi::NjpImage&,
-        std::string_view,
-        const osf::gapi::TextDraw&) override {
+        std::string_view text,
+        const osf::gapi::TextDraw& draw) override {
         ++text_draws;
+        texts.push_back({std::string(text), draw});
         return true;
     }
 
@@ -53,6 +62,7 @@ public:
     void endFrame() override {}
 
     std::vector<PatternCall> patterns;
+    std::vector<TextCall> texts;
     std::vector<osf::gapi::RectangleDraw> rectangles;
     std::int32_t text_draws = 0;
 };
@@ -1232,6 +1242,65 @@ bool testNewCharacterRetailDrawing() {
         "The retail hover pulse affected more than one save number.");
 }
 
+bool testGameplayOptionsDrawing() {
+    osf::GameplayOptionsMenu menu;
+    osf::GameConfig config;
+    menu.update({true, false, false, 0, 0}, config);
+
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    RecordingBackend backend;
+    osf::renderGameplayOptions(
+        backend, status, font, menu, config);
+    const bool has_screen_mode =
+        std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [](const TextCall& call) {
+                return call.text ==
+                    "Screen Mode at Start";
+            });
+    const bool has_first_live_row =
+        std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [](const TextCall& call) {
+                return call.text ==
+                           "Semi-transparent Objects" &&
+                       call.draw.x == 184 &&
+                       call.draw.y == 102;
+            });
+    const std::array<std::string, 5> expected_priority{{
+        "ENEM", "ITEM", "OBJ.", "PEOP", "COMP",
+    }};
+    std::array<std::string, 5> priority{};
+    for (const TextCall& call : backend.texts) {
+        if (call.draw.y != 198 ||
+            call.draw.x < 316 ||
+            call.draw.x > 436 ||
+            (call.draw.x - 316) % 30 != 0) {
+            continue;
+        }
+        priority[static_cast<std::size_t>(
+            (call.draw.x - 316) / 30)] = call.text;
+    }
+    return check(
+        backend.patterns.size() == 6 &&
+            backend.patterns[0].index == 59 &&
+            backend.patterns[0].draw.opacity == 500 &&
+            backend.patterns[1].index == 58 &&
+            backend.patterns[2].index == 120 &&
+            backend.patterns[2].draw.x == 246 &&
+            backend.patterns[2].draw.y == 223 &&
+            backend.patterns[4].index == 68 &&
+            backend.patterns[4].draw.x == 446 &&
+            !has_screen_mode &&
+            has_first_live_row &&
+            priority == expected_priority,
+        "The gameplay options panel differs from retail layout "
+        "or ordering.");
+}
+
 }  // namespace
 
 int main() {
@@ -1246,7 +1315,8 @@ int main() {
         !testSavedGameSelectionFrames() ||
         !testSavedGameDeleteDialog() ||
         !testNewCharacterCreationAndModeScreens() ||
-        !testNewCharacterRetailDrawing()) {
+        !testNewCharacterRetailDrawing() ||
+        !testGameplayOptionsDrawing()) {
         return 1;
     }
     return 0;

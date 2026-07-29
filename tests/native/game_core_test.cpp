@@ -2,6 +2,7 @@
 #include "core/game_config.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 
 #include <array>
@@ -580,6 +581,89 @@ bool testGameplayClickAndHoldMovement() {
         "A retail-length held command did not stop on release.");
 }
 
+bool testGameplayOptionsMenu() {
+    osf::GameConfig config;
+    osf::GameplayOptionsMenu menu;
+    menu.update({true}, config);
+    if (!check(
+            menu.active(),
+            "Escape did not open the gameplay options menu.")) {
+        return false;
+    }
+
+    const bool original_window_mode =
+        config.windowed_at_start;
+    osf::GameplayOptionsResult result =
+        menu.update({false, true, true, 430, 86}, config);
+    if (!check(
+            !result.config_changed &&
+                !result.play_click_sound &&
+                config.windowed_at_start ==
+                    original_window_mode,
+            "The intentionally hidden screen-mode row remained "
+            "interactive.")) {
+        return false;
+    }
+
+    result = menu.update(
+        {false, true, true, 430, 102}, config);
+    if (!check(
+            result.config_changed &&
+                result.play_click_sound &&
+                !config.semi_transparent_objects,
+            "The retail object-transparency OFF cell was not "
+            "applied.")) {
+        return false;
+    }
+    menu.update({false, true, true, 430, 166}, config);
+    menu.update({false, true, true, 440, 182}, config);
+    if (!check(
+            !config.click_range_enabled &&
+                config.click_range == 4,
+            "The two retail click-range rows used the wrong hit "
+            "boxes.")) {
+        return false;
+    }
+
+    menu.update({false, true, true, 320, 198}, config);
+    if (!check(
+            config.click_priority ==
+                std::array<std::int32_t, 5>{{
+                    0, 3, 4, 2, 1,
+                }},
+            "Clicking a priority label did not move that class "
+            "to the retail end position.")) {
+        return false;
+    }
+
+    menu.update({false, false, true, 252, 220}, config);
+    if (!check(
+            config.effect_volume == -10000,
+            "The left edge of the retail effect slider was not "
+            "mute.")) {
+        return false;
+    }
+    menu.update({false, false, true, 253, 220}, config);
+    if (!check(
+            config.effect_volume == -2985,
+            "The retail effect-volume slider scale differs.")) {
+        return false;
+    }
+    menu.update({false, false, true, 452, 240}, config);
+    if (!check(
+            config.bgm_volume == 0 &&
+                osf::gameplayOptionsVolumeSliderOffset(
+                    config.bgm_volume) == 200,
+            "The retail BGM slider maximum differs.")) {
+        return false;
+    }
+
+    menu.update({true}, config);
+    return check(
+        !menu.active(),
+        "Escape did not close the gameplay options menu.");
+}
+
 }  // namespace
 
 int main() {
@@ -592,7 +676,8 @@ int main() {
         !testObjectMapDecode() ||
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
-        !testGameplayClickAndHoldMovement()) {
+        !testGameplayClickAndHoldMovement() ||
+        !testGameplayOptionsMenu()) {
         return 1;
     }
     return 0;

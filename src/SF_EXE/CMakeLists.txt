@@ -71,6 +71,7 @@ target_link_libraries(
 add_library(
   osf_states STATIC
   states/game_state.cpp
+  states/gameplay_options_menu.cpp
   states/gameplay_state.cpp
   states/character_select_state.cpp
   states/character_select/network_flow.cpp
@@ -120,6 +121,7 @@ add_library(
   render/character_select_renderer.cpp
   render/conversation_layout.cpp
   render/gameplay_hud_renderer.cpp
+  render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp
   render/loading_renderer.cpp

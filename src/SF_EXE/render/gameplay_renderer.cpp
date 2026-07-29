@@ -3,6 +3,7 @@
 #include "character_renderer.hpp"
 #include "gapi/gapi.hpp"
 #include "gameplay_overlay_renderer.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "world/world_scene.hpp"
@@ -25,6 +26,7 @@ struct WorldDrawEntry {
     const NpcActor* npc = nullptr;
     const GroundItem* item = nullptr;
     bool player = false;
+    bool semi_transparent = false;
     DisplayOrderEntry order;
 };
 
@@ -154,7 +156,8 @@ void drawMapObject(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    bool semi_transparent) {
     const gapi::NjpImage* image =
         objectImage(world, object, shadow);
     if (!image ||
@@ -179,7 +182,12 @@ void drawMapObject(
          shadow
              ? std::clamp(shadow_opacity, 0, 1000)
              : std::clamp<std::int32_t>(
-                   object.opacity, 0, 1000),
+                   semi_transparent
+                       ? std::min<std::int32_t>(
+                             object.opacity, 500)
+                       : object.opacity,
+                   0,
+                   1000),
          shadow ? 1000 : object.red_strength,
          shadow ? 1000 : object.green_strength,
          shadow ? 1000 : object.blue_strength});
@@ -213,6 +221,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
             nullptr,
             false,
+            false,
             {
                 entries.size(),
                 {object.world_x, object.world_y},
@@ -228,6 +237,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
             nullptr,
             true,
+            false,
             {
                 entries.size(),
                 world.playerRenderPosition(interpolation),
@@ -242,6 +252,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             &npc,
             nullptr,
             false,
+            false,
             {
                 entries.size(),
                 npc.renderPosition(interpolation),
@@ -255,6 +266,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
             nullptr,
             &item,
+            false,
             false,
             {
                 entries.size(),
@@ -350,7 +362,8 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
+            shadow_opacity,
+            entry.semi_transparent);
     } else if (entry.player) {
         renderPlayerPass(
             renderer,
@@ -411,6 +424,65 @@ void drawWorldEntries(
     }
 }
 
+void markSemiTransparentObjects(
+    const WorldScene& world,
+    std::vector<WorldDrawEntry>& entries,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    if (!world.hasPlayer()) {
+        return;
+    }
+    const auto player = std::find_if(
+        entries.begin(),
+        entries.end(),
+        [](const WorldDrawEntry& entry) {
+            return entry.player;
+        });
+    if (player == entries.end()) {
+        return;
+    }
+    const ScreenPosition player_screen =
+        calculateRealPosition(
+            world.playerRenderPosition(interpolation));
+    const DisplayHitRectangle player_rectangle{
+        player_screen.x - camera_x - 25,
+        player_screen.y - camera_y - 60,
+        player_screen.x - camera_x + 25,
+        player_screen.y - camera_y,
+    };
+    for (auto entry = player;
+         entry != entries.end();
+         ++entry) {
+        if (!entry->object ||
+            (entry->object->status & 0x2000) != 0) {
+            continue;
+        }
+        const gapi::NjpImage* image =
+            objectImage(world, *entry->object, false);
+        if (!image) {
+            continue;
+        }
+        const ScreenPosition anchor =
+            calculateRealPosition({
+                entry->object->world_x,
+                entry->object->world_y,
+            });
+        entry->semi_transparent =
+            displayPatternIntersectsRectangle(
+                *image,
+                static_cast<std::size_t>(
+                    entry->object->pattern),
+                {
+                    anchor.x - camera_x,
+                    anchor.y - camera_y,
+                },
+                player_rectangle,
+                entry->object->height *
+                    kRetailHeightScale / 100);
+    }
+}
+
 
 }  // namespace
 
@@ -418,7 +490,8 @@ void renderWorldGeometry(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity,
-    double interpolation) {
+    double interpolation,
+    bool semi_transparent_objects) {
     const GroundMap& ground = world.ground();
     if (ground.width() <= 0 || ground.height() <= 0) {
         return;
@@ -469,13 +542,21 @@ void renderWorldGeometry(
             camera_x,
             camera_y,
             interpolation);
-    const std::vector<WorldDrawEntry> visible_entries =
+    std::vector<WorldDrawEntry> visible_entries =
         collectWorldEntries(
             world,
             false,
             camera_x,
             camera_y,
             interpolation);
+    if (semi_transparent_objects) {
+        markSemiTransparentObjects(
+            world,
+            visible_entries,
+            camera_x,
+            camera_y,
+            interpolation);
+    }
 
     // FUN_004030f0 emits the non-default status classes first, then the
     // default class, with a shadow and visible pass for each group.
@@ -526,12 +607,14 @@ void renderWorld(
     const WorldScene& world,
     std::int32_t shadow_opacity,
     const gapi::NjpImage* font,
-    double interpolation) {
+    double interpolation,
+    bool semi_transparent_objects) {
     renderWorldGeometry(
         renderer,
         world,
         shadow_opacity,
-        interpolation);
+        interpolation,
+        semi_transparent_objects);
     const std::int32_t camera_x =
         world.renderCameraScreenX(interpolation);
     const std::int32_t camera_y =
