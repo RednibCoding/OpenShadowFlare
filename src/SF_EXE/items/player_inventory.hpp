@@ -18,6 +18,8 @@ struct InventoryItem {
     std::int32_t grid_y = 0;
     std::int32_t width = 1;
     std::int32_t height = 1;
+    std::int32_t durability = -1;
+    std::int32_t quality = 0;
 };
 
 struct InventoryPlacementResult {
@@ -55,7 +57,8 @@ private:
         std::int32_t definition_id,
         std::int32_t quantity,
         std::int32_t width,
-        std::int32_t height);
+        std::int32_t height,
+        std::int32_t durability);
 
     std::vector<InventoryItem> items_;
 };

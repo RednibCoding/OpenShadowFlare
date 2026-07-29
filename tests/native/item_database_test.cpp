@@ -92,8 +92,12 @@ bool testRetailDatabase() {
         database.find(1, 2000000);
     const osf::ItemDefinition* boots =
         database.find(1, 3000000);
+    const osf::ItemDefinition* dagger =
+        database.find(0, 100);
     if (!check(
             short_sword &&
+                short_sword->base_price == 400 &&
+                short_sword->maximum_durability == 300 &&
                 short_sword->inventory_width == 1 &&
                 short_sword->inventory_height == 4 &&
                 short_sword->weight == 30 &&
@@ -105,7 +109,15 @@ bool testRetailDatabase() {
                 short_sword->appearance_green_strength == 1000 &&
                 short_sword->appearance_blue_strength == 1000 &&
                 short_sword->secondary_appearance_part == -1 &&
-                !short_sword->suppresses_off_hand_appearance,
+                !short_sword->suppresses_off_hand_appearance &&
+            dagger &&
+                dagger->base_price == 400 &&
+                dagger->maximum_durability == 300 &&
+                dagger->derived_parameter_bonuses[0] == 10 &&
+                dagger->derived_parameter_bonuses[1] == 120 &&
+                dagger->derived_parameter_bonuses[8] == 50 &&
+                dagger->element_strengths[0] == 0 &&
+                dagger->element_strengths[7] == 0,
             "The Short Sword equipment fields differ.")) {
         return false;
     }
@@ -305,6 +317,7 @@ bool testPlayerInventory() {
                 inventory.items()[0].grid_y == 0 &&
                 inventory.items()[0].width == 1 &&
                 inventory.items()[0].height == 4 &&
+                inventory.items()[0].durability == 0 &&
                 inventory.items()[1].grid_x == 1 &&
                 inventory.items()[1].grid_y == 0 &&
                 inventory.items()[1].width == 2 &&

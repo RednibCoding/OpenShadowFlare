@@ -40,6 +40,7 @@ osf_configure_game_library(osf_core)
 add_library(
   osf_items STATIC
   items/item_database.cpp
+  items/item_information.cpp
   items/item_world_resource.cpp
   items/player_equipment.cpp
   items/player_inventory.cpp
@@ -139,6 +140,7 @@ add_library(
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp
+  render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/title_renderer.cpp
 )

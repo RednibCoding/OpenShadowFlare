@@ -136,6 +136,13 @@ or behind the moving sprite, including the large town houses and walls.
 NPC-specific behavior, most script commands, the HUD, darkness, and the rest
 of gameplay simulation are still in progress.
 
+The inventory is a live panel rather than a mock-up. Items keep their original
+multi-cell sizes, can be picked up, moved, swapped, dropped, and equipped in
+the five ordinary slots. Hovering a backpack or equipped item also opens the
+small retail information overlay after its original short delay. The text is
+built from `Item.Ibn`, including combat values, durability, weight, level,
+condition-adjusted sale price, and the eight elemental values.
+
 Gameplay now owns a real `PlayerData` record rather than storing level on the
 movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
 new male and female characters receive the thirteen values from retail tables

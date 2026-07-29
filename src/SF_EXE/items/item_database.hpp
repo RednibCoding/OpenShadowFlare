@@ -12,11 +12,13 @@ namespace osf {
 
 struct ItemDefinition {
     static constexpr std::size_t derived_parameter_count = 10;
+    static constexpr std::size_t element_count = 8;
 
     std::int32_t category = -1;
     std::int32_t id = -1;
     std::int32_t subtype = -1;
     std::int32_t variant = -1;
+    std::int32_t base_price = 0;
     std::int32_t inventory_width = 1;
     std::int32_t inventory_height = 1;
     std::int32_t weight = 0;
@@ -31,6 +33,10 @@ struct ItemDefinition {
     std::array<
         std::int32_t,
         derived_parameter_count> derived_parameter_bonuses{};
+    std::int32_t maximum_durability = 0;
+    std::array<
+        std::int32_t,
+        element_count> element_strengths{};
     std::int32_t required_level = 1;
     std::int32_t appearance_part = -1;
     std::int32_t appearance_red_strength = 1000;

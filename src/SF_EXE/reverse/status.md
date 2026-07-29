@@ -126,8 +126,28 @@ therefore enables part 12, the Round Shield enables part 9 with strengths
 `0x00444ca0` only adds the body, main-hand, and off-hand objects to the CAF
 mask; helmet and boots remain stat-bearing slots without their own enabled
 layer. A weapon's optional second part and the retail off-hand suppression
-rule are decoded too. Condition overlays, detailed hover text, special
-consumable placement, dynamic dyed colors, and network replication remain.
+rule are decoded too.
+
+The shared item information path at `0x00409160` and `0x00409a60` is now used
+by backpack and equipment hovers. The pointer must remain on the item for three
+updates. Font01 uses its native 6-by-12 cells with no extra letter spacing;
+the widest elemental row controls the centered x position. Retail flag `0x20`
+adds four pixels of padding around the text, fills that rectangle with the
+600/1000 black fade, and the four `0x204` packets draw its 500/1000 white
+one-pixel frame. The padded rectangle starts eight pixels below the pointer,
+and both axes clamp to the 640-by-480 frame. Ordinary items list only non-zero
+values from the ten-field contribution vector, then
+durability, weight, required level, the condition-adjusted quarter-price, and
+the two four-element rows. Serialized offset 20 supplies the base price,
+offset 100 supplies maximum durability, and category-zero/category-one
+element arrays begin at offsets 208 and 168. Quality zero through three uses
+the retail gray, muted red, pale blue, and blue text colors. Category-four
+definition zero takes the executable's shorter branch: Gold shows its stack
+amount in the exact `Price                     :%9d` row, producing the wide
+three-line panel instead of a name-only box.
+
+Condition artwork, special consumable placement, dynamic dyed colors, and
+network replication remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the

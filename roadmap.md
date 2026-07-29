@@ -457,10 +457,20 @@ Weapons marked by the original classifier suppress the off-hand layer. As in
 the retail refresh, helmets and boots affect equipment values but do not
 independently enable a player CAF layer.
 
-The next useful checkpoint here is the information side of the panel:
-condition overlays and the detailed item text shown while hovering or carrying
-an item. After that, the special-item and belt-pocket regions can join the
-same ownership model without being mistaken for ordinary equipment.
+The ordinary item information display is live now. Resting the pointer over a
+backpack or equipment item for the same short delay as retail draws its name,
+non-zero combat values, durability, weight, required level, condition-adjusted
+sale price, and all eight elemental values. It uses the original six-pixel
+text grid, stat order, quality colors, pointer-relative position, and screen
+edge clamping, including the padded translucent black backing and faint white
+frame. The values come from `Item.Ibn`; the Dagger, for example, shows the same
+10 attack, 120 hit rate, 50 attack speed, 300 durability, and 100 sale price as
+retail. Gold follows its separate retail branch and shows the stack amount in
+the wide Price row rather than collapsing to a name-only tooltip.
+
+Condition artwork is the next useful checkpoint here. After that, the
+special-item and belt-pocket regions can join the same ownership model without
+being mistaken for ordinary equipment.
 
 ### 4. Combat and death
 

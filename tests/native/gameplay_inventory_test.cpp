@@ -1,9 +1,11 @@
 #include "gapi/gapi.hpp"
 #include "items/item_database.hpp"
+#include "items/item_information.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/gameplay_inventory_renderer.hpp"
+#include "render/item_information_renderer.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "world/world_scene.hpp"
 
@@ -436,7 +438,7 @@ bool testInventoryResourcesAndRendering() {
         font,
         inventory,
         world);
-    return check(
+    if (!check(
         shield_equipped.equipment_changed &&
             !inventory.holdingItem() &&
             world.playerEquipment().item(
@@ -453,7 +455,208 @@ bool testInventoryResourcesAndRendering() {
             shield_renderer.patterns[3].draw.y == 176 &&
             shield_renderer.texts[4].text == "40",
         "The Round Shield did not use its retail off-hand region, "
-        "weight, icon placement, and CAF colors.");
+        "weight, icon placement, and CAF colors.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 3; ++update) {
+        inventory.update(
+            {false, false, false, 510, 200},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.playerData().level());
+    }
+    if (!check(
+            inventory.hoveredEquipmentSlot() ==
+                osf::EquipmentSlot::off_hand &&
+                inventory.informationItem(
+                    world.playerInventory(),
+                    world.playerEquipment()) ==
+                    world.playerEquipment().item(
+                        osf::EquipmentSlot::off_hand),
+            "The equipped-item region did not share the retail "
+            "information path.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* gold =
+        world.itemDatabase().find(4, 0);
+    if (!check(
+            gold &&
+                world.playerInventory().add(*gold, 200),
+            "The Gold information fixture could not be prepared.")) {
+        return false;
+    }
+    const osf::InventoryItem& gold_item =
+        world.playerInventory().items().back();
+    const std::int32_t gold_pointer_x =
+        osf::GameplayInventory::backpack_left +
+        gold_item.grid_x *
+            osf::GameplayInventory::cell_size + 8;
+    const std::int32_t gold_pointer_y =
+        osf::GameplayInventory::backpack_top +
+        gold_item.grid_y *
+            osf::GameplayInventory::cell_size + 8;
+    for (std::int32_t update = 0; update < 3; ++update) {
+        inventory.update(
+            {
+                false,
+                false,
+                false,
+                gold_pointer_x,
+                gold_pointer_y,
+            },
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.playerData().level());
+    }
+    RecordingBackend gold_information_renderer;
+    osf::renderItemInformation(
+        gold_information_renderer,
+        font,
+        inventory,
+        world);
+    constexpr std::string_view expected_gold_information =
+        "[Gold]\n"
+        "\n"
+        "Price                     :      200\n";
+    if (!check(
+            osf::itemInformationText(
+                gold_item, *gold) ==
+                expected_gold_information &&
+            gold_information_renderer.texts.size() == 2 &&
+            gold_information_renderer.texts[1].text ==
+                expected_gold_information &&
+            gold_information_renderer.rectangles.size() == 5 &&
+            gold_information_renderer.rectangles[0].x ==
+                gold_pointer_x - 112 &&
+            gold_information_renderer.rectangles[0].y ==
+                gold_pointer_y + 8 &&
+            gold_information_renderer.rectangles[0].width == 224 &&
+            gold_information_renderer.rectangles[0].height == 44,
+            "The Gold information price, faded backing, or "
+            "retail dimensions differ.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* dagger =
+        world.itemDatabase().find(0, 100);
+    if (!check(
+            dagger &&
+                world.playerInventory().add(*dagger),
+            "The Dagger information fixture could not be prepared.")) {
+        return false;
+    }
+    const osf::InventoryItem& dagger_item =
+        world.playerInventory().items().back();
+    const std::int32_t pointer_x =
+        osf::GameplayInventory::backpack_left +
+        dagger_item.grid_x *
+            osf::GameplayInventory::cell_size + 8;
+    const std::int32_t pointer_y =
+        osf::GameplayInventory::backpack_top +
+        dagger_item.grid_y *
+            osf::GameplayInventory::cell_size + 8;
+    inventory.update(
+        {false, false, false, pointer_x, pointer_y},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, false, pointer_x, pointer_y},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            !inventory.informationItem(
+                world.playerInventory(),
+                world.playerEquipment()),
+            "The item information appeared before retail's hover delay.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, false, pointer_x, pointer_y},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    RecordingBackend information_renderer;
+    osf::renderItemInformation(
+        information_renderer,
+        font,
+        inventory,
+        world);
+    osf::InventoryItem damaged_dagger = dagger_item;
+    damaged_dagger.durability = 150;
+    constexpr std::string_view expected_information =
+        "[Dagger]\n"
+        "\n"
+        "Attack                    :       10\n"
+        "Hit Rate                  :      120\n"
+        "Speed of Attack           :       50\n"
+        "Durability                :      300\n"
+        "Weight                    :       10\n"
+        "Required Level            :        1\n"
+        "Sale Price                :      100\n"
+        "\n"
+        "Fire   :  0 Water  :  0 Earth  :  0 Thunder:  0\n"
+        "Holy   :  0 Dark   :  0 Gel    :  0 Metal  :  0\n";
+    return check(
+        dagger_item.durability == 300 &&
+            osf::itemSalePrice(
+                dagger_item, *dagger) == 100 &&
+            osf::itemSalePrice(
+                damaged_dagger, *dagger) == 50 &&
+            osf::itemInformationText(
+                dagger_item, *dagger) ==
+                expected_information &&
+            inventory.informationItem(
+                world.playerInventory(),
+                world.playerEquipment()) ==
+                &dagger_item &&
+            information_renderer.texts.size() == 2 &&
+            information_renderer.texts[0].text ==
+                expected_information &&
+            information_renderer.texts[0].draw.color.red == 0 &&
+            information_renderer.texts[1].draw.x ==
+                pointer_x - 141 &&
+            information_renderer.texts[1].draw.y ==
+                pointer_y + 12 &&
+            information_renderer.texts[1].draw.letter_spacing == 0 &&
+            information_renderer.texts[1].draw.color.red == 224 &&
+            information_renderer.texts[1].draw.color.green == 224 &&
+            information_renderer.texts[1].draw.color.blue == 224 &&
+            information_renderer.rectangles.size() == 5 &&
+            information_renderer.rectangles[0].x ==
+                pointer_x - 145 &&
+            information_renderer.rectangles[0].y ==
+                pointer_y + 8 &&
+            information_renderer.rectangles[0].width == 290 &&
+            information_renderer.rectangles[0].height == 152 &&
+            information_renderer.rectangles[0].color.red == 0 &&
+            information_renderer.rectangles[0].opacity == 600 &&
+            information_renderer.rectangles[1].x ==
+                pointer_x - 146 &&
+            information_renderer.rectangles[1].y ==
+                pointer_y + 7 &&
+            information_renderer.rectangles[1].width == 291 &&
+            information_renderer.rectangles[1].height == 1 &&
+            information_renderer.rectangles[1].color.red == 255 &&
+            information_renderer.rectangles[1].opacity == 500 &&
+            information_renderer.rectangles[2].width == 1 &&
+            information_renderer.rectangles[2].height == 153 &&
+            information_renderer.rectangles[3].x ==
+                pointer_x + 144 &&
+            information_renderer.rectangles[3].height == 152 &&
+            information_renderer.rectangles[4].y ==
+                pointer_y + 159 &&
+            information_renderer.rectangles[4].width == 290,
+        "The Dagger information text, delay, color, faded "
+        "backing, frame, or pointer placement differs from "
+        "retail.");
 }
 
 }  // namespace

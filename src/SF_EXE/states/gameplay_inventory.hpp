@@ -54,6 +54,10 @@ public:
     bool active() const;
     bool closeHovered() const;
     std::int32_t hoveredItemIndex() const;
+    std::optional<EquipmentSlot> hoveredEquipmentSlot() const;
+    const InventoryItem* informationItem(
+        const PlayerInventory& inventory,
+        const PlayerEquipment& equipment) const;
     bool holdingItem() const;
     const InventoryItem* heldItem() const;
     std::int32_t pointerX() const;
@@ -63,11 +67,15 @@ private:
     void updateHover(
         std::int32_t pointer_x,
         std::int32_t pointer_y,
-        const PlayerInventory& inventory);
+        const PlayerInventory& inventory,
+        const PlayerEquipment& equipment);
+    void clearItemHover();
 
     bool active_ = false;
     bool close_hovered_ = false;
     std::int32_t hovered_item_index_ = -1;
+    std::int32_t hovered_equipment_slot_ = -1;
+    std::int32_t item_hover_updates_ = 0;
     std::optional<InventoryItem> held_item_;
     std::int32_t pointer_x_ = 0;
     std::int32_t pointer_y_ = 0;

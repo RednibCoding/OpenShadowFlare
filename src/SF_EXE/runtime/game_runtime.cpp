@@ -16,6 +16,7 @@
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
+#include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "resources/retail_filesystem.hpp"
@@ -480,6 +481,11 @@ private:
                     }
                     osf::renderHeldInventoryItem(
                         renderer_,
+                        gameplayInventory_,
+                        world_);
+                    osf::renderItemInformation(
+                        renderer_,
+                        *font,
                         gameplayInventory_,
                         world_);
                 }

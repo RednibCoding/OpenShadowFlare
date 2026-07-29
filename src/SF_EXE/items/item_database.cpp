@@ -261,6 +261,7 @@ bool ItemDatabase::decode(
             definition.id = field(4);
             definition.subtype = field(0);
             definition.variant = field(8);
+            definition.base_price = field(20);
             definition.inventory_width = field(28);
             definition.inventory_height = field(32);
             definition.weight = field(36);
@@ -278,6 +279,7 @@ bool ItemDatabase::decode(
                 (category == 1 &&
                  definition.raw_fields.size() >= 168);
             if (has_equipment_fields) {
+                definition.maximum_durability = field(100);
                 for (std::size_t parameter = 0;
                      parameter <
                          definition.derived_parameter_bonuses.size();
@@ -286,6 +288,14 @@ bool ItemDatabase::decode(
                         field(104 + parameter * 4);
                 }
                 definition.required_level = field(148);
+                const std::size_t element_offset =
+                    category == 0 ? 208u : 168u;
+                for (std::size_t element = 0;
+                     element < definition.element_strengths.size();
+                     ++element) {
+                    definition.element_strengths[element] =
+                        field(element_offset + element * 4u);
+                }
                 definition.secondary_appearance_part = field(72);
                 definition.secondary_appearance_red_strength = field(76);
                 definition.secondary_appearance_green_strength = field(80);

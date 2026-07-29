@@ -107,7 +107,8 @@ bool PlayerInventory::add(
         definition_id,
         quantity,
         1,
-        1);
+        1,
+        -1);
 }
 
 bool PlayerInventory::add(
@@ -118,7 +119,8 @@ bool PlayerInventory::add(
         definition.id,
         quantity,
         definition.inventory_width,
-        definition.inventory_height);
+        definition.inventory_height,
+        definition.maximum_durability);
 }
 
 bool PlayerInventory::add(
@@ -126,7 +128,8 @@ bool PlayerInventory::add(
     std::int32_t definition_id,
     std::int32_t quantity,
     std::int32_t width,
-    std::int32_t height) {
+    std::int32_t height,
+    std::int32_t durability) {
     if (quantity <= 0) {
         return false;
     }
@@ -179,6 +182,7 @@ bool PlayerInventory::add(
             grid_y,
             width,
             height,
+            durability,
         });
         remaining -= stack_quantity;
     }
