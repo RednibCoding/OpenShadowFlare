@@ -405,6 +405,21 @@ reads chart zero for idle and chart one for walking directly from player state,
 rebuilds the depth key from the moving position, and follows the player's
 projected position with the retail camera offset.
 
+Owned inventory interaction now follows `0x00446320`, `0x00447290`, and
+`0x004087b0`. Backpack clicks address the visible 9-by-4 grid. An owned item is
+removed from its container and carried by the shared item pointer, while its
+inventory artwork is centered under the cursor using the complete multi-cell
+footprint. Placement rounds that centered top-left corner to a grid cell,
+rejects out-of-bounds and multi-item overlaps without losing the held item, and
+leaves a single displaced item on the pointer. Closing the panel does not
+discard the held item.
+
+Clicking the live world with an item follows the branch at `0x00441d96`.
+`0x00413ec0` chooses one of eight directions from the hero to the pointer and
+the drop is placed exactly 200 world units away on that direction's axes. It
+then re-enters the same ground-item resource, CAF, color, bounce, depth, hover,
+and pickup path as scenario-created items.
+
 This is still not complete gameplay. The other people records, broader AI,
 dynamic collision for NPC and enemy movement, remaining script commands and
 operand domains,

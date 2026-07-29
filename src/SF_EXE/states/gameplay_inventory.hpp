@@ -1,11 +1,12 @@
 #ifndef OPENSHADOWFLARE_GAMEPLAY_INVENTORY_HPP
 #define OPENSHADOWFLARE_GAMEPLAY_INVENTORY_HPP
 
+#include "items/player_inventory.hpp"
+
 #include <cstdint>
+#include <optional>
 
 namespace osf {
-
-class PlayerInventory;
 
 struct GameplayInventoryInput {
     bool toggle_pressed = false;
@@ -17,6 +18,9 @@ struct GameplayInventoryInput {
 
 struct GameplayInventoryResult {
     bool pointer_consumed = false;
+    bool world_drop_requested = false;
+    std::int32_t world_drop_screen_x = 0;
+    std::int32_t world_drop_screen_y = 0;
 };
 
 class GameplayInventory {
@@ -30,11 +34,16 @@ public:
     void close();
     GameplayInventoryResult update(
         const GameplayInventoryInput& input,
-        const PlayerInventory& inventory);
+        PlayerInventory& inventory);
+    void completeWorldDrop(bool succeeded);
 
     bool active() const;
     bool closeHovered() const;
     std::int32_t hoveredItemIndex() const;
+    bool holdingItem() const;
+    const InventoryItem* heldItem() const;
+    std::int32_t pointerX() const;
+    std::int32_t pointerY() const;
 
 private:
     void updateHover(
@@ -45,6 +54,9 @@ private:
     bool active_ = false;
     bool close_hovered_ = false;
     std::int32_t hovered_item_index_ = -1;
+    std::optional<InventoryItem> held_item_;
+    std::int32_t pointer_x_ = 0;
+    std::int32_t pointer_y_ = 0;
 };
 
 }  // namespace osf

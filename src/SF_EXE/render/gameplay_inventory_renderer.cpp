@@ -50,6 +50,47 @@ void drawRightAlignedNumber(
         y);
 }
 
+bool drawInventoryItem(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const InventoryItem& item,
+    std::int32_t x,
+    std::int32_t y) {
+    const ItemDefinition* definition =
+        world.itemDatabase().find(
+            item.category,
+            item.definition_id);
+    if (!definition ||
+        definition->inventory_pattern < 0) {
+        return false;
+    }
+    const gapi::NjpImage* patterns =
+        world.itemInventoryPatterns().group(
+            definition->inventory_pattern_group);
+    if (!patterns ||
+        static_cast<std::size_t>(
+            definition->inventory_pattern) >=
+            patterns->patterns().size()) {
+        return false;
+    }
+    return renderer.drawPattern(
+        *patterns,
+        static_cast<std::size_t>(
+            definition->inventory_pattern),
+        {
+            x,
+            y,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            definition->inventory_palette,
+        });
+}
+
 }  // namespace
 
 void renderGameplayInventory(
@@ -103,49 +144,47 @@ void renderGameplayInventory(
         471,
         224);
 
-    for (const InventoryItem& item : owned.items()) {
-        const ItemDefinition* definition =
-            world.itemDatabase().find(
-                item.category,
-                item.definition_id);
-        if (!definition ||
-            definition->inventory_pattern < 0) {
-            continue;
-        }
-        const gapi::NjpImage* patterns =
-            world.itemInventoryPatterns().group(
-                definition->inventory_pattern_group);
-        if (!patterns ||
-            static_cast<std::size_t>(
-                definition->inventory_pattern) >=
-                patterns->patterns().size()) {
-            continue;
-        }
-        renderer.drawPattern(
-            *patterns,
-            static_cast<std::size_t>(
-                definition->inventory_pattern),
-            {
-                GameplayInventory::backpack_left +
-                    item.grid_x *
-                        GameplayInventory::cell_size,
-                GameplayInventory::backpack_top +
-                    item.grid_y *
-                        GameplayInventory::cell_size,
-                1000,
-                1000,
-                1000,
-                1000,
-                1000,
-                1000,
-                1000,
-                definition->inventory_palette,
-            });
+    const auto& items = owned.items();
+    for (std::size_t index = 0;
+         index < items.size();
+         ++index) {
+        const InventoryItem& item = items[index];
+        drawInventoryItem(
+            renderer,
+            world,
+            item,
+            GameplayInventory::backpack_left +
+                item.grid_x *
+                    GameplayInventory::cell_size,
+            GameplayInventory::backpack_top +
+                item.grid_y *
+                    GameplayInventory::cell_size);
     }
 
     renderer.drawPattern(
         status_patterns,
         inventory.closeHovered() ? 75 : 74);
+}
+
+void renderHeldInventoryItem(
+    gapi::Backend& renderer,
+    const GameplayInventory& inventory,
+    const WorldScene& world) {
+    const InventoryItem* item =
+        inventory.heldItem();
+    if (!item) {
+        return;
+    }
+    drawInventoryItem(
+        renderer,
+        world,
+        *item,
+        inventory.pointerX() -
+            item->width *
+                GameplayInventory::cell_size / 2,
+        inventory.pointerY() -
+            item->height *
+                GameplayInventory::cell_size / 2);
 }
 
 }  // namespace osf

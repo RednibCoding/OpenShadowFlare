@@ -90,6 +90,7 @@ target_link_libraries(
   osf_states
   PUBLIC
     OpenShadowFlare::Core
+    OpenShadowFlare::Items
 )
 
 add_library(

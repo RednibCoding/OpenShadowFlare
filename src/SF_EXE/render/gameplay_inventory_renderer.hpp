@@ -17,6 +17,10 @@ void renderGameplayInventory(
     const gapi::NjpImage& font,
     const GameplayInventory& inventory,
     const WorldScene& world);
+void renderHeldInventoryItem(
+    gapi::Backend& renderer,
+    const GameplayInventory& inventory,
+    const WorldScene& world);
 
 }  // namespace osf
 

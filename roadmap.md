@@ -439,10 +439,16 @@ anchor, input boundary, gender silhouette, gold and equipped-weight values,
 Close tab, and `Item0000.njp` through `Item0013.njp` artwork. `I` and the HUD
 ITEM button both control it.
 
-The next checkpoint is owned-item interaction: pick up an item with the mouse,
-move it only onto a valid footprint, return it to its old cells on failure,
-and drop it back into the world through the same ground-item path. After that,
-equip the Short Sword and verify its stat change and matching player CAF layer.
+Owned-item interaction is live now. A click removes the item from its backpack
+container and carries the full icon under the pointer. Another click places its
+centered footprint into free cells; invalid placements leave it on the pointer,
+and placing it over one other item swaps which item is being carried. The held
+item survives closing the panel and can be dropped into the live world in the
+same eight directions and at the same 200-unit distance used by retail.
+
+The next checkpoint is equipping the Short Sword. That should cover the real
+equipment owner, requirements, the resulting stat change, unequipping back into
+the backpack, and the matching player CAF weapon layer.
 
 ### 4. Combat and death
 

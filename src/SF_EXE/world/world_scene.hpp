@@ -50,6 +50,7 @@ public:
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
     const ItemDatabase& itemDatabase() const;
+    PlayerInventory& playerInventory();
     const PlayerInventory& playerInventory() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
@@ -68,6 +69,10 @@ public:
     void configurePointer(
         const WorldPointerConfiguration& configuration);
     bool commandWorldInteraction(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    bool dropInventoryItem(
+        const InventoryItem& item,
         std::int32_t screen_x,
         std::int32_t screen_y);
     bool interactionPending() const;
@@ -134,6 +139,7 @@ private:
     const NpcActor* findScriptNpc(
         std::int32_t character_number) const;
     bool ensureItemWorldResource(std::int32_t resource_id);
+    bool prepareGroundItems(std::size_t first_item);
     bool startNpcInteraction(NpcActor& npc);
     bool startGroundItemInteraction(std::int32_t item_id);
     NpcActor* findNpc(std::int32_t id);

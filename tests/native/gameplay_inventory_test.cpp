@@ -96,6 +96,76 @@ bool testInventoryState() {
             "The inventory did not use the item's full grid footprint.")) {
         return false;
     }
+    const osf::GameplayInventoryResult pickup =
+        inventory.update(
+            {false, false, true, 350, 350},
+            owned);
+    if (!check(
+            pickup.pointer_consumed &&
+                inventory.holdingItem() &&
+                inventory.heldItem() &&
+                owned.items().empty(),
+            "Clicking an owned item did not put it on the pointer.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, true, 620, 380},
+        owned);
+    if (!check(
+            inventory.holdingItem() &&
+                inventory.heldItem()->grid_x == 0 &&
+                inventory.heldItem()->grid_y == 0 &&
+                owned.items().empty(),
+            "An invalid pointer placement moved the item.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, true, 480, 328},
+        owned);
+    if (!check(
+            !inventory.holdingItem() &&
+                owned.items().size() == 1 &&
+                owned.items()[0].grid_x == 4 &&
+                owned.items()[0].grid_y == 0,
+            "The centered pointer footprint was not placed.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, true, 480, 300},
+        owned);
+    inventory.update(
+        {true, false, false, 480, 300},
+        owned);
+    const osf::GameplayInventoryResult drop =
+        inventory.update(
+            {false, false, true, 100, 200},
+            owned);
+    if (!check(
+            !inventory.active() &&
+                inventory.holdingItem() &&
+                drop.pointer_consumed &&
+                drop.world_drop_requested &&
+                drop.world_drop_screen_x == 100 &&
+                drop.world_drop_screen_y == 200,
+            "A held item did not survive closing the panel or request "
+            "a world drop.")) {
+        return false;
+    }
+    inventory.completeWorldDrop(false);
+    inventory.update(
+        {true, false, false, 480, 328},
+        owned);
+    inventory.update(
+        {false, false, true, 480, 328},
+        owned);
+    if (!check(
+            inventory.active() &&
+                !inventory.holdingItem() &&
+                owned.items().size() == 1,
+            "A rejected world drop did not return to inventory "
+            "placement cleanly.")) {
+        return false;
+    }
     inventory.update(
         {false, false, false, 400, 398},
         owned);
@@ -176,7 +246,7 @@ bool testInventoryResourcesAndRendering() {
         font,
         inventory,
         world);
-    return check(
+    if (!check(
         renderer.patterns.size() == 4 &&
             renderer.rectangles.size() == 1 &&
             renderer.rectangles[0].x == 320 &&
@@ -192,7 +262,40 @@ bool testInventoryResourcesAndRendering() {
             renderer.texts[2].text == "0" &&
             renderer.texts[2].draw.x == 464 &&
             renderer.texts[4].text == "0",
-        "The authored inventory frame or live values differ.");
+        "The authored inventory frame or live values differ.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* short_sword =
+        world.itemDatabase().find(0, 0);
+    if (!check(
+            short_sword &&
+                world.playerInventory().add(
+                    *short_sword),
+            "The held-item rendering fixture could not be prepared.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, true, 350, 300},
+        world.playerInventory());
+    RecordingBackend held_renderer;
+    osf::renderGameplayInventory(
+        held_renderer,
+        status,
+        font,
+        inventory,
+        world);
+    osf::renderHeldInventoryItem(
+        held_renderer,
+        inventory,
+        world);
+    return check(
+        inventory.holdingItem() &&
+            held_renderer.patterns.size() == 5 &&
+            held_renderer.patterns.back().index == 0 &&
+            held_renderer.patterns.back().draw.x == 334 &&
+            held_renderer.patterns.back().draw.y == 236,
+        "The held icon was not centered above the pointer.");
 }
 
 }  // namespace

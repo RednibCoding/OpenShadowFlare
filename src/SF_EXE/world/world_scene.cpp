@@ -343,6 +343,10 @@ const ItemDatabase& WorldScene::itemDatabase() const {
     return item_database_;
 }
 
+PlayerInventory& WorldScene::playerInventory() {
+    return player_inventory_;
+}
+
 const PlayerInventory& WorldScene::playerInventory() const {
     return player_inventory_;
 }
@@ -463,6 +467,91 @@ bool WorldScene::commandWorldInteraction(
         return true;
     }
     return startNpcInteraction(*selected);
+}
+
+bool WorldScene::dropInventoryItem(
+    const InventoryItem& item,
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_) {
+        return false;
+    }
+
+    const ItemDefinition* definition =
+        item_database_.find(
+            item.category, item.definition_id);
+    if (!definition ||
+        !ensureItemWorldResource(
+            definition->ground_resource_id)) {
+        return false;
+    }
+
+    const WorldPosition pointer_world =
+        calculateWorldPosition({
+            cameraScreenX() + screen_x,
+            cameraScreenY() + screen_y,
+        });
+    const WorldPosition player_position =
+        player_.position();
+    const std::int32_t direction =
+        retailDirectionForVector(
+            pointer_world.x - player_position.x,
+            pointer_world.y - player_position.y);
+
+    WorldPosition drop_position = player_position;
+    constexpr std::int32_t kRetailDropDistance = 200;
+    switch (direction) {
+    case 0:
+        drop_position.x += kRetailDropDistance;
+        drop_position.y += kRetailDropDistance;
+        break;
+    case 1:
+        drop_position.x += kRetailDropDistance;
+        break;
+    case 2:
+        drop_position.x += kRetailDropDistance;
+        drop_position.y -= kRetailDropDistance;
+        break;
+    case 3:
+        drop_position.y -= kRetailDropDistance;
+        break;
+    case 4:
+        drop_position.x -= kRetailDropDistance;
+        drop_position.y -= kRetailDropDistance;
+        break;
+    case 5:
+        drop_position.x -= kRetailDropDistance;
+        break;
+    case 6:
+        drop_position.x -= kRetailDropDistance;
+        drop_position.y += kRetailDropDistance;
+        break;
+    case 7:
+        drop_position.y += kRetailDropDistance;
+        break;
+    default:
+        return false;
+    }
+
+    const std::size_t first_item =
+        ground_items_.size();
+    const std::int32_t first_id =
+        next_ground_item_id_;
+    if (!createGroundItem(
+            ground_items_,
+            item.category,
+            item.definition_id,
+            drop_position,
+            item.quantity) ||
+        !prepareGroundItems(first_item)) {
+        ground_items_.resize(first_item);
+        next_ground_item_id_ = first_id;
+        return false;
+    }
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    pointer_.clearSelection();
+    return true;
 }
 
 bool WorldScene::interactionPending() const {
@@ -802,32 +891,7 @@ bool WorldScene::executeScriptNativeCommand(
                 arguments[5])) {
             return false;
         }
-        for (std::size_t index = first_item;
-             index < ground_items_.size();
-             ++index) {
-            GroundItem& item = ground_items_[index];
-            const ItemDefinition* definition =
-                item_database_.find(
-                    item.category, item.definition_id);
-            if (!definition ||
-                !ensureItemWorldResource(
-                    definition->ground_resource_id)) {
-                ground_items_.resize(first_item);
-                return false;
-            }
-            item.resource_id =
-                definition->ground_resource_id;
-            item.animation_chart =
-                definition->ground_animation_chart;
-            item.red_strength =
-                definition->ground_red_strength;
-            item.green_strength =
-                definition->ground_green_strength;
-            item.blue_strength =
-                definition->ground_blue_strength;
-            item.id = next_ground_item_id_++;
-        }
-        return true;
+        return prepareGroundItems(first_item);
     }
 
     if (opcode == 48) {
@@ -1130,6 +1194,42 @@ bool WorldScene::ensureItemWorldResource(
         item_world_resources_.resize(index + 1u);
     }
     item_world_resources_[index] = std::move(resource);
+    return true;
+}
+
+bool WorldScene::prepareGroundItems(
+    std::size_t first_item) {
+    if (first_item > ground_items_.size()) {
+        return false;
+    }
+    const std::int32_t first_id =
+        next_ground_item_id_;
+    for (std::size_t index = first_item;
+         index < ground_items_.size();
+         ++index) {
+        GroundItem& item = ground_items_[index];
+        const ItemDefinition* definition =
+            item_database_.find(
+                item.category, item.definition_id);
+        if (!definition ||
+            !ensureItemWorldResource(
+                definition->ground_resource_id)) {
+            ground_items_.resize(first_item);
+            next_ground_item_id_ = first_id;
+            return false;
+        }
+        item.resource_id =
+            definition->ground_resource_id;
+        item.animation_chart =
+            definition->ground_animation_chart;
+        item.red_strength =
+            definition->ground_red_strength;
+        item.green_strength =
+            definition->ground_green_strength;
+        item.blue_strength =
+            definition->ground_blue_strength;
+        item.id = next_ground_item_id_++;
+    }
     return true;
 }
 

@@ -478,6 +478,10 @@ private:
                             gameplayOptions_,
                             gameConfig_);
                     }
+                    osf::renderHeldInventoryItem(
+                        renderer_,
+                        gameplayInventory_,
+                        world_);
                 }
             }
         }
@@ -752,7 +756,9 @@ private:
             !gameplayOptions_.active() &&
             !gameplayMap_.active() &&
             !gameplayMissionList_.active();
-        if (inventory_was_active || inventory_toggle) {
+        if (inventory_was_active ||
+            inventory_toggle ||
+            gameplayInventory_.holdingItem()) {
             const osf::GameplayInventoryResult result =
                 gameplayInventory_.update(
                     {
@@ -765,6 +771,16 @@ private:
                         input_.menu().pointer_y,
                     },
                     world_.playerInventory());
+            if (result.world_drop_requested) {
+                const osf::InventoryItem* held_item =
+                    gameplayInventory_.heldItem();
+                gameplayInventory_.completeWorldDrop(
+                    held_item &&
+                    world_.dropInventoryItem(
+                        *held_item,
+                        result.world_drop_screen_x,
+                        result.world_drop_screen_y));
+            }
             world_.setCameraAnchor(
                 gameplayInventory_.active() ? 160 : 320,
                 240);

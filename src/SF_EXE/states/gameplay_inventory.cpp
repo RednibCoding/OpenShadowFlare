@@ -11,6 +11,14 @@ constexpr std::int32_t kCloseLeft = 375;
 constexpr std::int32_t kCloseTop = 393;
 constexpr std::int32_t kCloseRight = 443;
 constexpr std::int32_t kCloseBottom = 404;
+constexpr std::int32_t kBackpackRight =
+    GameplayInventory::backpack_left +
+    PlayerInventory::grid_width *
+        GameplayInventory::cell_size;
+constexpr std::int32_t kBackpackBottom =
+    GameplayInventory::backpack_top +
+    PlayerInventory::grid_height *
+        GameplayInventory::cell_size;
 
 bool inside(
     std::int32_t x,
@@ -39,8 +47,10 @@ void GameplayInventory::close() {
 
 GameplayInventoryResult GameplayInventory::update(
     const GameplayInventoryInput& input,
-    const PlayerInventory& inventory) {
+    PlayerInventory& inventory) {
     GameplayInventoryResult result;
+    pointer_x_ = input.pointer_x;
+    pointer_y_ = input.pointer_y;
     if (input.toggle_pressed) {
         if (active_) {
             close();
@@ -54,6 +64,14 @@ GameplayInventoryResult GameplayInventory::update(
         return result;
     }
     if (!active_) {
+        if (holdingItem() &&
+            input.pointer_primary_pressed &&
+            input.pointer_y < 412) {
+            result.pointer_consumed = true;
+            result.world_drop_requested = true;
+            result.world_drop_screen_x = input.pointer_x;
+            result.world_drop_screen_y = input.pointer_y;
+        }
         return result;
     }
 
@@ -61,19 +79,79 @@ GameplayInventoryResult GameplayInventory::update(
         input.pointer_x,
         input.pointer_y,
         inventory);
-    if (input.close_pressed ||
-        (input.pointer_primary_pressed &&
-         close_hovered_)) {
-        result.pointer_consumed =
-            input.pointer_primary_pressed;
+    if (input.close_pressed) {
         close();
     } else if (
         input.pointer_primary_pressed &&
-        input.pointer_x >= panel_left &&
-        input.pointer_y < 412) {
-        result.pointer_consumed = true;
+        close_hovered_) {
+        result.pointer_consumed =
+            true;
+        close();
+    } else if (input.pointer_primary_pressed) {
+        if (holdingItem() &&
+            input.pointer_x < panel_left &&
+            input.pointer_y < 412) {
+            result.pointer_consumed = true;
+            result.world_drop_requested = true;
+            result.world_drop_screen_x = input.pointer_x;
+            result.world_drop_screen_y = input.pointer_y;
+        } else if (
+            holdingItem() &&
+            inside(
+                input.pointer_x,
+                input.pointer_y,
+                backpack_left,
+                backpack_top,
+                kBackpackRight,
+                kBackpackBottom)) {
+            if (held_item_) {
+                const InventoryItem& item = *held_item_;
+                // FUN_00446320 centers the full icon on the
+                // pointer, then rounds its top-left corner to
+                // the nearest backpack cell.
+                const std::int32_t grid_x =
+                    (input.pointer_x -
+                     item.width * cell_size / 2 -
+                     (backpack_left - cell_size / 2)) /
+                    cell_size;
+                const std::int32_t grid_y =
+                    (input.pointer_y -
+                     item.height * cell_size / 2 -
+                     (backpack_top - cell_size / 2)) /
+                    cell_size;
+                const InventoryPlacementResult placement =
+                    inventory.place(
+                        item,
+                        grid_x,
+                        grid_y);
+                if (placement.accepted) {
+                    held_item_ =
+                        placement.held_item;
+                }
+            }
+            result.pointer_consumed = true;
+        } else if (
+            !holdingItem() &&
+            hovered_item_index_ >= 0) {
+            held_item_ = inventory.take(
+                static_cast<std::size_t>(
+                    hovered_item_index_));
+            hovered_item_index_ = -1;
+            result.pointer_consumed = true;
+        } else if (
+            input.pointer_x >= panel_left &&
+            input.pointer_y < 412) {
+            result.pointer_consumed = true;
+        }
     }
     return result;
+}
+
+void GameplayInventory::completeWorldDrop(
+    bool succeeded) {
+    if (succeeded) {
+        held_item_.reset();
+    }
 }
 
 bool GameplayInventory::active() const {
@@ -86,6 +164,22 @@ bool GameplayInventory::closeHovered() const {
 
 std::int32_t GameplayInventory::hoveredItemIndex() const {
     return hovered_item_index_;
+}
+
+bool GameplayInventory::holdingItem() const {
+    return held_item_.has_value();
+}
+
+const InventoryItem* GameplayInventory::heldItem() const {
+    return held_item_ ? &*held_item_ : nullptr;
+}
+
+std::int32_t GameplayInventory::pointerX() const {
+    return pointer_x_;
+}
+
+std::int32_t GameplayInventory::pointerY() const {
+    return pointer_y_;
 }
 
 void GameplayInventory::updateHover(

@@ -14,6 +14,15 @@ namespace {
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
 
+bool footprintsOverlap(
+    const InventoryItem& first,
+    const InventoryItem& second) {
+    return first.grid_x < second.grid_x + second.width &&
+           first.grid_x + first.width > second.grid_x &&
+           first.grid_y < second.grid_y + second.height &&
+           first.grid_y + first.height > second.grid_y;
+}
+
 bool findPlacement(
     const std::vector<InventoryItem>& items,
     std::int32_t width,
@@ -175,6 +184,83 @@ bool PlayerInventory::add(
     }
     items_ = std::move(updated);
     return true;
+}
+
+std::optional<InventoryItem> PlayerInventory::take(
+    std::size_t item_index) {
+    if (item_index >= items_.size()) {
+        return std::nullopt;
+    }
+    InventoryItem item = items_[item_index];
+    items_.erase(
+        items_.begin() +
+        static_cast<std::ptrdiff_t>(item_index));
+    return item;
+}
+
+InventoryPlacementResult PlayerInventory::place(
+    InventoryItem item,
+    std::int32_t grid_x,
+    std::int32_t grid_y) {
+    item.grid_x = grid_x;
+    item.grid_y = grid_y;
+    if (grid_x < 0 || grid_y < 0 ||
+        grid_x + item.width > grid_width ||
+        grid_y + item.height > grid_height) {
+        return {};
+    }
+
+    std::int32_t overlapping_index = -1;
+    for (std::size_t index = 0;
+         index < items_.size();
+         ++index) {
+        if (!footprintsOverlap(
+                item, items_[index])) {
+            continue;
+        }
+        if (overlapping_index >= 0) {
+            return {};
+        }
+        overlapping_index =
+            static_cast<std::int32_t>(index);
+    }
+
+    if (overlapping_index < 0) {
+        items_.push_back(std::move(item));
+        return {true, std::nullopt};
+    }
+
+    InventoryItem& overlapping =
+        items_[static_cast<std::size_t>(
+            overlapping_index)];
+    if (item.category == kGoldCategory &&
+        item.definition_id == kGoldDefinition &&
+        overlapping.category == kGoldCategory &&
+        overlapping.definition_id == kGoldDefinition) {
+        const std::int32_t moved = std::min(
+            item.quantity,
+            maximum_gold_stack -
+            overlapping.quantity);
+        if (moved <= 0) {
+            return {};
+        }
+        overlapping.quantity += moved;
+        item.quantity -= moved;
+        if (item.quantity == 0) {
+            return {true, std::nullopt};
+        }
+        return {true, std::move(item)};
+    }
+
+    // Retail leaves the displaced item on the pointer. Its old grid
+    // coordinates remain attached to the item until it is placed again.
+    InventoryItem displaced = overlapping;
+    items_.erase(
+        items_.begin() +
+        static_cast<std::ptrdiff_t>(
+            overlapping_index));
+    items_.push_back(std::move(item));
+    return {true, std::move(displaced)};
 }
 
 const std::vector<InventoryItem>&

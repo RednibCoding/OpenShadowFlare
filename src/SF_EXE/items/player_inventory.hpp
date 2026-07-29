@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace osf {
@@ -19,6 +20,11 @@ struct InventoryItem {
     std::int32_t height = 1;
 };
 
+struct InventoryPlacementResult {
+    bool accepted = false;
+    std::optional<InventoryItem> held_item;
+};
+
 class PlayerInventory {
 public:
     static constexpr std::int32_t maximum_gold_stack = 10000;
@@ -33,6 +39,12 @@ public:
     bool add(
         const ItemDefinition& definition,
         std::int32_t quantity = 1);
+    std::optional<InventoryItem> take(
+        std::size_t item_index);
+    InventoryPlacementResult place(
+        InventoryItem item,
+        std::int32_t grid_x,
+        std::int32_t grid_y);
 
     const std::vector<InventoryItem>& items() const;
     std::int32_t gold() const;

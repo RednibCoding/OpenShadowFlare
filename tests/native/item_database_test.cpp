@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -210,6 +211,43 @@ bool testPlayerInventory() {
                 inventory.items()[1].width == 2 &&
                 inventory.items()[1].height == 3,
             "Retail-sized items were not placed in the 9-by-4 grid.")) {
+        return false;
+    }
+    const std::optional<osf::InventoryItem> held_sword =
+        inventory.take(0);
+    const osf::InventoryPlacementResult invalid =
+        held_sword
+            ? inventory.place(*held_sword, 4, 1)
+            : osf::InventoryPlacementResult{};
+    if (!check(
+            held_sword &&
+                !invalid.accepted &&
+                inventory.items().size() == 1 &&
+                inventory.items()[0].category == 1,
+            "An invalid owned-item move changed the inventory.")) {
+        return false;
+    }
+    const osf::InventoryPlacementResult displaced =
+        inventory.place(*held_sword, 1, 0);
+    if (!check(
+            displaced.accepted &&
+                displaced.held_item &&
+                displaced.held_item->category == 1 &&
+                inventory.items().size() == 1 &&
+                inventory.items()[0].grid_x == 1 &&
+                inventory.items()[0].grid_y == 0,
+            "Placing onto one item did not leave that item held.")) {
+        return false;
+    }
+    const osf::InventoryPlacementResult placed =
+        inventory.place(*displaced.held_item, 4, 0);
+    if (!check(
+            placed.accepted &&
+                !placed.held_item &&
+                inventory.items().size() == 2 &&
+                inventory.items()[1].grid_x == 4 &&
+                inventory.items()[1].grid_y == 0,
+            "A displaced item could not be placed in free cells.")) {
         return false;
     }
 
