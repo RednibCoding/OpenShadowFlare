@@ -259,7 +259,8 @@ bool ItemDatabase::decode(
                     definition.raw_fields.data() + offset);
             };
             definition.id = field(4);
-            definition.subtype = field(8);
+            definition.subtype = field(0);
+            definition.variant = field(8);
             definition.inventory_width = field(28);
             definition.inventory_height = field(32);
             definition.weight = field(36);
@@ -271,8 +272,12 @@ bool ItemDatabase::decode(
             definition.ground_red_strength = field(60);
             definition.ground_green_strength = field(64);
             definition.ground_blue_strength = field(68);
-            if (category == 0 &&
-                definition.raw_fields.size() >= 184) {
+            const bool has_equipment_fields =
+                (category == 0 &&
+                 definition.raw_fields.size() >= 224) ||
+                (category == 1 &&
+                 definition.raw_fields.size() >= 168);
+            if (has_equipment_fields) {
                 for (std::size_t parameter = 0;
                      parameter <
                          definition.derived_parameter_bonuses.size();
@@ -281,10 +286,25 @@ bool ItemDatabase::decode(
                         field(104 + parameter * 4);
                 }
                 definition.required_level = field(148);
-                definition.appearance_part = field(168);
-                definition.appearance_red_strength = field(172);
-                definition.appearance_green_strength = field(176);
-                definition.appearance_blue_strength = field(180);
+                definition.secondary_appearance_part = field(72);
+                definition.secondary_appearance_red_strength = field(76);
+                definition.secondary_appearance_green_strength = field(80);
+                definition.secondary_appearance_blue_strength = field(84);
+                if (category == 0) {
+                    definition.appearance_part = field(168);
+                    definition.appearance_red_strength = field(172);
+                    definition.appearance_green_strength = field(176);
+                    definition.appearance_blue_strength = field(180);
+                    definition.suppresses_off_hand_appearance =
+                        definition.subtype == 1 ||
+                        definition.subtype == 3 ||
+                        field(220) != 0;
+                } else {
+                    definition.appearance_part = field(152);
+                    definition.appearance_red_strength = field(156);
+                    definition.appearance_green_strength = field(160);
+                    definition.appearance_blue_strength = field(164);
+                }
             }
             definitions.push_back(std::move(definition));
         }

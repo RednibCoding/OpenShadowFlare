@@ -303,7 +303,8 @@ bool testInventoryResourcesAndRendering() {
             equipped.equipment_changed &&
                 equipped.pointer_consumed &&
                 !inventory.holdingItem() &&
-                world.playerEquipment().mainHand() &&
+                world.playerEquipment().item(
+                    osf::EquipmentSlot::main_hand) &&
                 world.playerEquipment().totalWeight(
                     world.itemDatabase()) == 30 &&
                 world.playerEquipment().derivedParameterBonus(
@@ -339,7 +340,8 @@ bool testInventoryResourcesAndRendering() {
             unequipped.equipment_changed &&
                 inventory.active() &&
                 !inventory.holdingItem() &&
-                !world.playerEquipment().mainHand() &&
+                !world.playerEquipment().item(
+                    osf::EquipmentSlot::main_hand) &&
                 world.playerInventory().items().size() == 1 &&
                 !world.playerPartEnabled(12),
             "The Short Sword did not return from the main hand to "
@@ -364,13 +366,94 @@ bool testInventoryResourcesAndRendering() {
         held_renderer,
         inventory,
         world);
+    if (!check(
+            inventory.holdingItem() &&
+                held_renderer.patterns.size() == 5 &&
+                held_renderer.patterns.back().index == 0 &&
+                held_renderer.patterns.back().draw.x == 334 &&
+                held_renderer.patterns.back().draw.y == 236,
+            "The held icon was not centered above the pointer.")) {
+        return false;
+    }
+
+    inventory.update(
+        {false, false, true, 350, 328},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    const osf::ItemDefinition* round_shield =
+        world.itemDatabase().find(1, 1000000);
+    if (!check(
+            round_shield &&
+                world.playerInventory().add(*round_shield),
+            "The Round Shield equipment fixture could not be prepared.")) {
+        return false;
+    }
+    const osf::InventoryItem shield =
+        world.playerInventory().items().back();
+    inventory.update(
+        {
+            false,
+            false,
+            true,
+            osf::GameplayInventory::backpack_left +
+                shield.grid_x *
+                    osf::GameplayInventory::cell_size + 8,
+            osf::GameplayInventory::backpack_top +
+                shield.grid_y *
+                    osf::GameplayInventory::cell_size + 8,
+        },
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, true, 590, 40},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            inventory.holdingItem() &&
+                !world.playerEquipment().item(
+                    osf::EquipmentSlot::helmet),
+            "The helmet region accepted an off-hand item.")) {
+        return false;
+    }
+    const osf::GameplayInventoryResult shield_equipped =
+        inventory.update(
+            {false, false, true, 510, 200},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.playerData().level());
+    world.refreshPlayerAppearance();
+    RecordingBackend shield_renderer;
+    osf::renderGameplayInventory(
+        shield_renderer,
+        status,
+        font,
+        inventory,
+        world);
     return check(
-        inventory.holdingItem() &&
-            held_renderer.patterns.size() == 5 &&
-            held_renderer.patterns.back().index == 0 &&
-            held_renderer.patterns.back().draw.x == 334 &&
-            held_renderer.patterns.back().draw.y == 236,
-        "The held icon was not centered above the pointer.");
+        shield_equipped.equipment_changed &&
+            !inventory.holdingItem() &&
+            world.playerEquipment().item(
+                osf::EquipmentSlot::off_hand) &&
+            world.playerEquipment().totalWeight(
+                world.itemDatabase()) == 40 &&
+            world.playerPartEnabled(9) &&
+            world.playerPartRedStrength(9) == 900 &&
+            world.playerPartGreenStrength(9) == 800 &&
+            world.playerPartBlueStrength(9) == 500 &&
+            shield_renderer.patterns.size() == 6 &&
+            shield_renderer.patterns[3].index == 45 &&
+            shield_renderer.patterns[3].draw.x == 480 &&
+            shield_renderer.patterns[3].draw.y == 176 &&
+            shield_renderer.texts[4].text == "40",
+        "The Round Shield did not use its retail off-hand region, "
+        "weight, icon placement, and CAF colors.");
 }
 
 }  // namespace

@@ -144,20 +144,29 @@ void renderGameplayInventory(
         471,
         224);
 
-    const InventoryItem* main_hand =
-        world.playerEquipment().mainHand();
-    if (main_hand) {
-        // The authored main-hand region is two cells wide by four high.
-        // FUN_00407170 centers the item's complete inventory footprint in it.
+    for (std::size_t index = 0;
+         index < PlayerEquipment::slot_count;
+         ++index) {
+        const EquipmentSlot slot =
+            static_cast<EquipmentSlot>(index);
+        const InventoryItem* equipped =
+            world.playerEquipment().item(slot);
+        if (!equipped) {
+            continue;
+        }
+        // FUN_00407170 centers the complete inventory footprint within each
+        // authored equipment region.
+        const EquipmentRegion region =
+            GameplayInventory::equipmentRegion(slot);
         drawInventoryItem(
             renderer,
             world,
-            *main_hand,
-            GameplayInventory::main_hand_left +
-                (2 - main_hand->width) *
+            *equipped,
+            region.left +
+                (region.width_in_cells - equipped->width) *
                     GameplayInventory::cell_size / 2,
-            GameplayInventory::main_hand_top +
-                (4 - main_hand->height) *
+            region.top +
+                (region.height_in_cells - equipped->height) *
                     GameplayInventory::cell_size / 2);
     }
 

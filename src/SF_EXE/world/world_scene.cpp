@@ -413,31 +413,64 @@ void WorldScene::refreshPlayerAppearance() {
         player_parts_enabled_[1] = 1;
     }
 
-    const InventoryItem* main_hand =
-        player_equipment_.mainHand();
-    if (!main_hand) {
-        return;
+    const auto definitionForSlot =
+        [this](EquipmentSlot slot) -> const ItemDefinition* {
+        const InventoryItem* equipped =
+            player_equipment_.item(slot);
+        if (!equipped) {
+            return nullptr;
+        }
+        return item_database_.find(
+            equipped->category,
+            equipped->definition_id);
+    };
+    const auto enablePart =
+        [this, part_count](
+            std::int32_t part_value,
+            std::int32_t red,
+            std::int32_t green,
+            std::int32_t blue) {
+        if (part_value < 0 ||
+            static_cast<std::size_t>(part_value) >=
+                part_count) {
+            return;
+        }
+        const std::size_t part =
+            static_cast<std::size_t>(part_value);
+        player_parts_enabled_[part] = 1;
+        player_part_red_strengths_[part] = red;
+        player_part_green_strengths_[part] = green;
+        player_part_blue_strengths_[part] = blue;
+    };
+    const auto enablePrimary =
+        [&enablePart](const ItemDefinition* definition) {
+        if (definition) {
+            enablePart(
+                definition->appearance_part,
+                definition->appearance_red_strength,
+                definition->appearance_green_strength,
+                definition->appearance_blue_strength);
+        }
+    };
+
+    // FUN_00444ca0 contributes body, weapon, and off-hand objects to the
+    // player CAF mask. Helmets and boots remain stat-bearing only.
+    enablePrimary(definitionForSlot(EquipmentSlot::body));
+    const ItemDefinition* main_hand =
+        definitionForSlot(EquipmentSlot::main_hand);
+    enablePrimary(main_hand);
+    if (main_hand) {
+        enablePart(
+            main_hand->secondary_appearance_part,
+            main_hand->secondary_appearance_red_strength,
+            main_hand->secondary_appearance_green_strength,
+            main_hand->secondary_appearance_blue_strength);
     }
-    const ItemDefinition* definition =
-        item_database_.find(
-            main_hand->category,
-            main_hand->definition_id);
-    if (!definition ||
-        definition->appearance_part < 0 ||
-        static_cast<std::size_t>(
-            definition->appearance_part) >= part_count) {
-        return;
+    if (!main_hand ||
+        !main_hand->suppresses_off_hand_appearance) {
+        enablePrimary(
+            definitionForSlot(EquipmentSlot::off_hand));
     }
-    const std::size_t part =
-        static_cast<std::size_t>(
-            definition->appearance_part);
-    player_parts_enabled_[part] = 1;
-    player_part_red_strengths_[part] =
-        definition->appearance_red_strength;
-    player_part_green_strengths_[part] =
-        definition->appearance_green_strength;
-    player_part_blue_strengths_[part] =
-        definition->appearance_blue_strength;
 }
 
 bool WorldScene::hasPlayer() const {

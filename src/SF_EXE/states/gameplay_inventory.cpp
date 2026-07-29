@@ -34,7 +34,53 @@ bool inside(
            y >= top && y < bottom;
 }
 
+std::optional<EquipmentSlot> equipmentSlotAt(
+    std::int32_t x,
+    std::int32_t y) {
+    for (std::size_t index = 0;
+         index < PlayerEquipment::slot_count;
+         ++index) {
+        const EquipmentSlot slot =
+            static_cast<EquipmentSlot>(index);
+        const EquipmentRegion region =
+            GameplayInventory::equipmentRegion(slot);
+        if (inside(
+                x,
+                y,
+                region.left,
+                region.top,
+                region.left +
+                    region.width_in_cells *
+                        GameplayInventory::cell_size,
+                region.top +
+                    region.height_in_cells *
+                        GameplayInventory::cell_size)) {
+            return slot;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
+
+EquipmentRegion GameplayInventory::equipmentRegion(
+    EquipmentSlot slot) {
+    switch (slot) {
+    case EquipmentSlot::helmet:
+        return {560, 16, 2, 2};
+    case EquipmentSlot::body:
+        return {560, 88, 2, 3};
+    case EquipmentSlot::boots:
+        return {560, 192, 2, 2};
+    case EquipmentSlot::main_hand:
+        return {480, 16, 2, 4};
+    case EquipmentSlot::off_hand:
+        return {480, 160, 2, 3};
+    case EquipmentSlot::count:
+        return {};
+    }
+    return {};
+}
 
 void GameplayInventory::open() {
     active_ = true;
@@ -101,14 +147,10 @@ GameplayInventoryResult GameplayInventory::update(
             result.world_drop_requested = true;
             result.world_drop_screen_x = input.pointer_x;
             result.world_drop_screen_y = input.pointer_y;
-        } else if (
-            inside(
-                input.pointer_x,
-                input.pointer_y,
-                main_hand_left,
-                main_hand_top,
-                main_hand_right,
-                main_hand_bottom)) {
+        } else if (const std::optional<EquipmentSlot> slot =
+                       equipmentSlotAt(
+                           input.pointer_x,
+                           input.pointer_y)) {
             if (held_item_) {
                 const ItemDefinition* definition =
                     item_database.find(
@@ -116,7 +158,8 @@ GameplayInventoryResult GameplayInventory::update(
                         held_item_->definition_id);
                 if (definition) {
                     EquipmentPlacementResult placement =
-                        equipment.placeMainHand(
+                        equipment.place(
+                            *slot,
                             *held_item_,
                             *definition,
                             player_level);
@@ -127,7 +170,7 @@ GameplayInventoryResult GameplayInventory::update(
                     }
                 }
             } else {
-                held_item_ = equipment.takeMainHand();
+                held_item_ = equipment.take(*slot);
                 result.equipment_changed =
                     held_item_.has_value();
             }

@@ -16,6 +16,7 @@ struct ItemDefinition {
     std::int32_t category = -1;
     std::int32_t id = -1;
     std::int32_t subtype = -1;
+    std::int32_t variant = -1;
     std::int32_t inventory_width = 1;
     std::int32_t inventory_height = 1;
     std::int32_t weight = 0;
@@ -35,6 +36,11 @@ struct ItemDefinition {
     std::int32_t appearance_red_strength = 1000;
     std::int32_t appearance_green_strength = 1000;
     std::int32_t appearance_blue_strength = 1000;
+    std::int32_t secondary_appearance_part = -1;
+    std::int32_t secondary_appearance_red_strength = 1000;
+    std::int32_t secondary_appearance_green_strength = 1000;
+    std::int32_t secondary_appearance_blue_strength = 1000;
+    bool suppresses_off_hand_appearance = false;
     std::string name;
     std::string description;
 

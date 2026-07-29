@@ -1,7 +1,7 @@
 #ifndef OPENSHADOWFLARE_GAMEPLAY_INVENTORY_HPP
 #define OPENSHADOWFLARE_GAMEPLAY_INVENTORY_HPP
 
-#include "items/player_inventory.hpp"
+#include "items/player_equipment.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -9,8 +9,6 @@
 namespace osf {
 
 class ItemDatabase;
-class PlayerEquipment;
-
 struct GameplayInventoryInput {
     bool toggle_pressed = false;
     bool close_pressed = false;
@@ -27,16 +25,21 @@ struct GameplayInventoryResult {
     std::int32_t world_drop_screen_y = 0;
 };
 
+struct EquipmentRegion {
+    std::int32_t left = 0;
+    std::int32_t top = 0;
+    std::int32_t width_in_cells = 0;
+    std::int32_t height_in_cells = 0;
+};
+
 class GameplayInventory {
 public:
     static constexpr std::int32_t panel_left = 320;
     static constexpr std::int32_t backpack_left = 336;
     static constexpr std::int32_t backpack_top = 264;
     static constexpr std::int32_t cell_size = 32;
-    static constexpr std::int32_t main_hand_left = 480;
-    static constexpr std::int32_t main_hand_top = 16;
-    static constexpr std::int32_t main_hand_right = 544;
-    static constexpr std::int32_t main_hand_bottom = 144;
+    static EquipmentRegion equipmentRegion(
+        EquipmentSlot slot);
 
     void open();
     void close();

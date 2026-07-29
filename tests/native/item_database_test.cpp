@@ -84,6 +84,14 @@ bool testRetailDatabase() {
     }
     const osf::ItemDefinition* short_sword =
         database.find(0, 0);
+    const osf::ItemDefinition* leather_cloth =
+        database.find(1, 0);
+    const osf::ItemDefinition* round_shield =
+        database.find(1, 1000000);
+    const osf::ItemDefinition* leather_hat =
+        database.find(1, 2000000);
+    const osf::ItemDefinition* boots =
+        database.find(1, 3000000);
     if (!check(
             short_sword &&
                 short_sword->inventory_width == 1 &&
@@ -95,8 +103,34 @@ bool testRetailDatabase() {
                 short_sword->appearance_part == 12 &&
                 short_sword->appearance_red_strength == 1000 &&
                 short_sword->appearance_green_strength == 1000 &&
-                short_sword->appearance_blue_strength == 1000,
+                short_sword->appearance_blue_strength == 1000 &&
+                short_sword->secondary_appearance_part == -1 &&
+                !short_sword->suppresses_off_hand_appearance,
             "The Short Sword equipment fields differ.")) {
+        return false;
+    }
+    if (!check(
+            leather_cloth &&
+                leather_cloth->subtype == 1 &&
+                leather_cloth->variant == 0 &&
+                leather_cloth->required_level == 1 &&
+                leather_cloth->appearance_part == 5 &&
+                leather_cloth->derived_parameter_bonuses[2] == 20 &&
+            round_shield &&
+                round_shield->subtype == 2 &&
+                round_shield->required_level == 1 &&
+                round_shield->appearance_part == 9 &&
+                round_shield->appearance_red_strength == 900 &&
+                round_shield->appearance_green_strength == 800 &&
+                round_shield->appearance_blue_strength == 500 &&
+                round_shield->derived_parameter_bonuses[2] == 8 &&
+            leather_hat &&
+                leather_hat->subtype == 0 &&
+                leather_hat->appearance_part == 5 &&
+            boots &&
+                boots->subtype == 3 &&
+                boots->appearance_part == 5,
+            "Known armor equipment fields differ from Item.Ibn.")) {
         return false;
     }
     osf::InventoryItem sword_item;
@@ -106,12 +140,54 @@ bool testRetailDatabase() {
     sword_item.height = short_sword->inventory_height;
     osf::PlayerEquipment equipment;
     if (!check(
-            !equipment.placeMainHand(
+            !equipment.place(
+                 osf::EquipmentSlot::main_hand,
                  sword_item, *short_sword, 0).accepted &&
-                equipment.placeMainHand(
+                equipment.place(
+                    osf::EquipmentSlot::main_hand,
                     sword_item, *short_sword, 1).accepted &&
-                equipment.mainHand(),
+                equipment.item(
+                    osf::EquipmentSlot::main_hand),
             "The Short Sword level requirement was not enforced.")) {
+        return false;
+    }
+    const auto makeItem = [](const osf::ItemDefinition& definition) {
+        osf::InventoryItem item;
+        item.category = definition.category;
+        item.definition_id = definition.id;
+        item.width = definition.inventory_width;
+        item.height = definition.inventory_height;
+        return item;
+    };
+    if (!check(
+            !equipment.place(
+                 osf::EquipmentSlot::helmet,
+                 makeItem(*round_shield),
+                 *round_shield,
+                 1).accepted &&
+                equipment.place(
+                    osf::EquipmentSlot::helmet,
+                    makeItem(*leather_hat),
+                    *leather_hat,
+                    1).accepted &&
+                equipment.place(
+                    osf::EquipmentSlot::body,
+                    makeItem(*leather_cloth),
+                    *leather_cloth,
+                    1).accepted &&
+                equipment.place(
+                    osf::EquipmentSlot::boots,
+                    makeItem(*boots),
+                    *boots,
+                    1).accepted &&
+                equipment.place(
+                    osf::EquipmentSlot::off_hand,
+                    makeItem(*round_shield),
+                    *round_shield,
+                    1).accepted &&
+                equipment.totalWeight(database) == 180 &&
+                equipment.derivedParameterBonus(2, database) == 39,
+            "The five ordinary retail equipment slots differ.")) {
         return false;
     }
     if (!checkDefinition(

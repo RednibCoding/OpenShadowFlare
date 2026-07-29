@@ -446,17 +446,21 @@ and placing it over one other item swaps which item is being carried. The held
 item survives closing the panel and can be dropped into the live world in the
 same eight directions and at the same 200-unit distance used by retail.
 
-The Short Sword now makes the first full equipment round trip. The main-hand
-box uses its retail `480..543, 16..143` hit region, accepts category-zero items
-only when the player's level meets the item requirement, and swaps cleanly
-between the pointer and its own equipment owner. Its weight changes the panel
-from 0 to 30, its two base derived contributions remain available to the later
-combat calculator, and appearance refresh enables only CAF part 12 with the
-item's own color strengths. Clicking it again carries it back to the backpack.
+The five ordinary equipment boxes now share one complete ownership path.
+Helmet, body, boots, main hand, and off hand use their original hit regions
+and category/subtype rules, enforce the item's level requirement, and swap
+cleanly with the pointer. Equipped weight and all ten decoded base
+contributions are summed across the owner. The Short Sword enables CAF part 12
+and the Round Shield enables part 9 with its original color strengths; body
+armor and secondary weapon parts use the same table-backed appearance path.
+Weapons marked by the original classifier suppress the off-hand layer. As in
+the retail refresh, helmets and boots affect equipment values but do not
+independently enable a player CAF layer.
 
-The next checkpoint is extending the same path to the Round Shield and the
-helmet, body, and boots slots. That should reuse the owner and requirement
-rules rather than growing another panel-only item path.
+The next useful checkpoint here is the information side of the panel:
+condition overlays and the detailed item text shown while hovering or carrying
+an item. After that, the special-item and belt-pocket regions can join the
+same ownership model without being mistaken for ordinary equipment.
 
 ### 4. Combat and death
 

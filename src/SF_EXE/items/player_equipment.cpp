@@ -7,16 +7,19 @@
 namespace osf {
 
 void PlayerEquipment::clear() {
-    main_hand_.reset();
+    for (auto& slot : slots_) {
+        slot.reset();
+    }
 }
 
-EquipmentPlacementResult PlayerEquipment::placeMainHand(
+EquipmentPlacementResult PlayerEquipment::place(
+    EquipmentSlot slot,
     InventoryItem item,
     const ItemDefinition& definition,
     std::int32_t player_level) {
-    // FUN_00446320 accepts category zero in the main-hand region and
-    // compares the item's required level with the player's current level.
-    if (definition.category != 0 ||
+    // FUN_00446320 classifies the five ordinary regions by category and
+    // armor subtype, then applies the same required-level gate to each.
+    if (!accepts(slot, definition) ||
         definition.id != item.definition_id ||
         item.category != definition.category ||
         item.quantity != 1 ||
@@ -26,53 +29,107 @@ EquipmentPlacementResult PlayerEquipment::placeMainHand(
 
     EquipmentPlacementResult result;
     result.accepted = true;
-    result.held_item = std::move(main_hand_);
+    std::optional<InventoryItem>& destination =
+        slots_[static_cast<std::size_t>(slot)];
+    result.held_item = std::move(destination);
     item.grid_x = 0;
     item.grid_y = 0;
-    main_hand_ = std::move(item);
+    destination = std::move(item);
     return result;
 }
 
-std::optional<InventoryItem>
-PlayerEquipment::takeMainHand() {
+std::optional<InventoryItem> PlayerEquipment::take(
+    EquipmentSlot slot) {
+    const std::size_t index =
+        static_cast<std::size_t>(slot);
+    if (index >= slot_count) {
+        return std::nullopt;
+    }
+    std::optional<InventoryItem>& source =
+        slots_[index];
     std::optional<InventoryItem> item =
-        std::move(main_hand_);
-    main_hand_.reset();
+        std::move(source);
+    source.reset();
     return item;
 }
 
-const InventoryItem* PlayerEquipment::mainHand() const {
-    return main_hand_ ? &*main_hand_ : nullptr;
+const InventoryItem* PlayerEquipment::item(
+    EquipmentSlot slot) const {
+    const std::size_t index =
+        static_cast<std::size_t>(slot);
+    if (index >= slot_count) {
+        return nullptr;
+    }
+    const std::optional<InventoryItem>& equipped =
+        slots_[index];
+    return equipped ? &*equipped : nullptr;
 }
 
 std::int32_t PlayerEquipment::totalWeight(
     const ItemDatabase& database) const {
-    if (!main_hand_) {
-        return 0;
+    std::int32_t weight = 0;
+    for (const auto& equipped : slots_) {
+        if (!equipped) {
+            continue;
+        }
+        const ItemDefinition* definition =
+            database.find(
+                equipped->category,
+                equipped->definition_id);
+        if (definition) {
+            weight +=
+                definition->weight * equipped->quantity;
+        }
     }
-    const ItemDefinition* definition =
-        database.find(
-            main_hand_->category,
-            main_hand_->definition_id);
-    return definition
-        ? definition->weight * main_hand_->quantity
-        : 0;
+    return weight;
 }
 
 std::int32_t PlayerEquipment::derivedParameterBonus(
     std::size_t parameter,
     const ItemDatabase& database) const {
-    if (!main_hand_ ||
-        parameter >= ItemDefinition::derived_parameter_count) {
+    if (parameter >= ItemDefinition::derived_parameter_count) {
         return 0;
     }
-    const ItemDefinition* definition =
-        database.find(
-            main_hand_->category,
-            main_hand_->definition_id);
-    return definition
-        ? definition->derived_parameter_bonuses[parameter]
-        : 0;
+    std::int32_t bonus = 0;
+    for (const auto& equipped : slots_) {
+        if (!equipped) {
+            continue;
+        }
+        const ItemDefinition* definition =
+            database.find(
+                equipped->category,
+                equipped->definition_id);
+        if (definition) {
+            bonus +=
+                definition->derived_parameter_bonuses[parameter];
+        }
+    }
+    return bonus;
+}
+
+bool PlayerEquipment::accepts(
+    EquipmentSlot slot,
+    const ItemDefinition& definition) {
+    if (slot == EquipmentSlot::main_hand) {
+        return definition.category == 0;
+    }
+    if (definition.category != 1) {
+        return false;
+    }
+    switch (slot) {
+    case EquipmentSlot::helmet:
+        return definition.subtype == 0;
+    case EquipmentSlot::body:
+        return definition.subtype == 1;
+    case EquipmentSlot::boots:
+        return definition.subtype == 3;
+    case EquipmentSlot::off_hand:
+        return definition.subtype == 2;
+    case EquipmentSlot::main_hand:
+    case EquipmentSlot::count:
+        return false;
+    }
+    return false;
 }
 
 }  // namespace osf

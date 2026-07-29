@@ -110,11 +110,24 @@ items draw from the separate `Item0000.njp` through `Item0013.njp` groups at
 `(336 + grid_x*32, 264 + grid_y*32)`. The inventory and lower HUD regions are
 cleared before their transparent authored layers are composed, matching
 retail's reserved UI surfaces instead of exposing world pixels through slots.
-Moving and dropping use the retail held-item path. The main-hand box now
-accepts the Short Sword at level one, displays its 30 weight, retains its
-20/100 derived contributions, and swaps it back to the pointer on another
-click. Helmet, body, boots, off-hand, condition overlays, detailed hover text,
-special consumable placement, and network replication remain.
+Moving and dropping use the retail held-item path. The five ordinary equipment
+boxes now follow the `0x00447290` regions: helmet `560..623,16..79`, body
+`560..623,88..183`, boots `560..623,192..255`, main hand
+`480..543,16..143`, and off hand `480..543,160..255`. Category zero belongs in
+the main hand. Category one's first serialized field classifies helmet, body,
+off hand, and boots as subtypes zero through three. Every box applies the
+required-level check and performs the same pointer swap. Equipped weight and
+the ten base contribution fields are summed over all five objects.
+
+Category-one records place the requirement at serialized offset 148, CAF part
+at 152, and default RGB strengths at 156, 160, and 164. The Short Sword
+therefore enables part 12, the Round Shield enables part 9 with strengths
+900/800/500, and body armor follows the same decoded path. Retail
+`0x00444ca0` only adds the body, main-hand, and off-hand objects to the CAF
+mask; helmet and boots remain stat-bearing slots without their own enabled
+layer. A weapon's optional second part and the retail off-hand suppression
+rule are decoded too. Condition overlays, detailed hover text, special
+consumable placement, dynamic dyed colors, and network replication remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the
