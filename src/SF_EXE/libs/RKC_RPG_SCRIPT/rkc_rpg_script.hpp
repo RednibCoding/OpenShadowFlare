@@ -82,6 +82,13 @@ enum class StepResult {
 struct MessageEvent {
     std::int32_t id = -1;
     std::string text;
+    std::int32_t character_number = -1;
+    bool selection_required = false;
+    std::int32_t initial_selection = -1;
+};
+
+enum class ValueQuery {
+    local_player_level,
 };
 
 struct InterpreterHooks {
@@ -91,6 +98,7 @@ struct InterpreterHooks {
     std::function<bool(
         std::int32_t,
         const std::vector<std::int32_t>&)> native_command;
+    std::function<bool(ValueQuery, std::int32_t&)> query_value;
 };
 
 class Interpreter {
@@ -102,7 +110,7 @@ public:
     StepResult startStatus(
         std::int32_t kind,
         std::int32_t character_number);
-    StepResult resume();
+    StepResult resume(std::int32_t selection = -1);
     bool waitingForMessage() const;
     std::int32_t unsupportedOpcode() const;
     std::int32_t readTemporaryFlag(std::int32_t id) const;
@@ -114,6 +122,10 @@ private:
     };
 
     StepResult run();
+    StepResult enterStatus(
+        std::int32_t kind,
+        std::int32_t character_number,
+        bool missing_is_complete);
     StepResult execute(const Command& command);
     std::int32_t readOperand(const Operand& operand) const;
     bool writeOperand(
@@ -127,6 +139,12 @@ private:
         temporary_flags_;
     std::vector<Frame> frames_;
     bool waiting_for_message_ = false;
+    bool message_callback_pending_ = false;
+    bool message_selection_pending_ = false;
+    Operand message_selection_operand_;
+    std::int32_t message_initial_selection_ = -1;
+    std::int32_t current_character_number_ = -1;
+    std::int32_t message_callback_character_number_ = -1;
     std::int32_t unsupported_opcode_ = -1;
 };
 

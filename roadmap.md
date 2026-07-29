@@ -31,9 +31,20 @@ The portable executable already has a solid front half:
   collision, and camera following
 
 In other words, the game can reach the world and the player can now walk
-around it. Ostare is the first NPC reconstructed from scenario data, though he
-does not have AI or interaction yet. Scripts, the HUD, and most gameplay
-systems are still missing.
+around it. Remote Town now loads all seven PEOPLE records, their movement and
+collision, the first human and companion conversations, and Ostare's four
+opening item drops. The world renderer also uses the retail display lists and
+full judgement rectangles, so large scenery such as walls and houses occludes
+actors correctly.
+
+Gameplay now receives a proper player-data handoff too. New characters are
+initialized from the retail parameter tables, while selected saves contribute
+their complete plain 0x160-byte character record. The first gameplay HUD layer
+now reads that owner directly: the original bottom bar, level, life, mana, and
+walk/run state are visible in the world. World pointing now uses opaque sprite
+pixels, the retail click priorities and range square, and the opening quest's
+items can be approached and picked up into a real inventory owner. Equipment
+and combat can build on those owners rather than temporary values.
 
 The current reverse-engineering notes live in:
 
@@ -74,15 +85,16 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Last completed milestone: make the player walk
+## Last completed milestone: make Remote Town feel like a game
 
 This slice touched nearly every piece the rest of gameplay will need: input,
 world coordinates, actor state, animation, collision, camera movement, and
 depth-sorted rendering.
 
-The deliberately narrow goal was to walk the new character around Remote Town
-as the original game does. No combat, NPCs, HUD, inventory, or scenario
-changes are part of this milestone.
+The first goal was simply to make a new character walk around Remote Town as
+the original game does. That work has since grown into the common movement,
+interaction, and display-order foundation used by the player, PEOPLE actors,
+ground items, and scenery. The HUD, inventory, and combat are still waiting.
 
 ### What the retail path taught us
 
@@ -99,9 +111,17 @@ original executable:
 - the `R` binding switches the persistent walk/run movement mode;
 - the starting player judgement rectangle is `[-80, -80, 79, 79]`;
 - GND judgement bit zero and status-one OBL rectangles block the player;
-- `0x00454930` keeps contact position and tries axis slides;
+- `0x00454210`/`0x00454930` form one shared movement controller for players,
+  PEOPLE actors, and enemies. It uses direct collision sweeps plus stateful
+  obstacle-edge steering rather than A*; enemy intent still comes from
+  `RKC_RPG_AICONTROL`;
 - the camera uses the projected player position minus the 320-by-240 screen
   center, without another map-edge clamp.
+
+The interaction path is traced too. `0x00449240` uses the judgement-rectangle
+distance from `0x004143c0` and the player's 159-unit interaction range. A
+distant click starts controller mode one, follows the actor, and opens status
+zero only after the two bounds are close enough.
 
 Those findings are recorded in the reverse maps rather than being left in a
 scratchpad.
@@ -122,6 +142,10 @@ The gameplay update now:
 6. update the camera;
 7. pass the resulting state to the existing world renderer.
 
+The game state remains at 30 Hz, but the 60 Hz presentation now interpolates
+the previous and current actor snapshots. This removes the regular camera
+judder without changing movement distance, collision, CAF timing, or scripts.
+
 Input handling belongs in the runtime adapter, game decisions belong in the
 gameplay/world code, and any reused DLL behavior belongs in its matching
 library. The renderer should only draw the state it receives.
@@ -135,18 +159,34 @@ The slice is finished when all of these are true:
   units, while running covers 200;
 - idle, walking, arrival, and return-to-idle chart timing is covered;
 - the complete retail Remote Town GND judgement plane is decoded and tested;
-- static ground and object collision stop at the last walkable integer point;
-- camera and depth keys are rebuilt from the live player position;
-- held input replaces the destination and out-of-window input is rejected;
+- static ground and object collision uses the retail dominant-axis integer
+  sweep and keeps the last walkable contact point;
+- the controller uses the original quadrant table, one-pixel probes,
+  movement/wall direction pairs, and corner transitions to follow an obstacle
+  edge. There is no added A* fallback;
+- live town actors use their decoded judgement rectangles as movement
+  blockers. The actor being approached stays solid too; interaction finishes
+  at the retail 159-unit rectangle distance before the two actors collide;
+- camera placement is rebuilt from the live player position. Static scenery,
+  people, ground items, and the player share the retail combined display
+  lists; the final full-judgement-rectangle sort correctly puts actors behind
+  Remote Town's houses and long wall segments;
+- held input replaces the destination, releasing after the retail ten-update
+  hold threshold stops the hero immediately, and an ordinary click remains
+  latched;
 - a native live run reaches Remote Town and moves the camera and player from a
-  ground click.
+  ground click;
+- the retail Remote Town fixture crosses the full sacks footprint, covers the
+  exact Ostare-to-Malse approach with live actor blockers, walks longer trips
+  as successive click-sized legs, and completes rendered companion choices
+  plus Harley's two-message explanation branch.
 
 This gives us the first genuinely interactive gameplay milestone: we can walk
 around Remote Town. Any collision corner that looks different in a
 side-by-side retail check should be kept as a small movement follow-up rather
 than worked around in later actor code.
 
-## Current milestone: turn the first map into a real scenario loader
+## Completed foundation: load and run Remote Town from its data
 
 The order below follows dependencies. Each heading is still meant to become
 several small commits rather than one giant implementation.
@@ -159,10 +199,8 @@ table, and tests those fields against the retail file.
 
 The next slice identified the leading ID lists, the variable common entity
 record, and the complete `PEOPLE` group shape. Remote Town's seven people
-records now decode, and Ostare is loaded as the first portable NPC with his
-retail resource ID, name, position, judgement box, direction, custom CAF part
-mask, shadow, and idle animation. We are intentionally loading one person
-until that path is solid instead of switching on all seven at once.
+records now decode with their retail resource IDs, names, positions, judgement
+boxes, directions, custom CAF part masks, shadows, and idle animations.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
@@ -171,8 +209,8 @@ short chart-one walk to a random point inside those bounds, as the original
 update path does.
 
 This is still not a complete MCT decoder. Later object, enemy, item, partner,
-and option groups remain to be named and mapped, as do the last two
-people-specific fields and the more involved AI paths.
+and option groups remain to be named and mapped, as do the last people-specific
+fields and the more involved AI paths.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:
@@ -191,43 +229,86 @@ transition path around `0x00426200`:
 Remote Town should then be one input to the loader, not a special hard-coded
 world.
 
-## What follows the scenario loader
+## Completed foundation: give gameplay a real player record
 
-### 1. Reconstruct the player data used during gameplay
+The menu used to carry only enough character information to enter the world.
+The first player-data slice established the real handoff without pretending
+that the complete save format is already understood. It now:
 
-The menu currently carries only enough character information to enter the
-world. Gameplay needs the real character record:
+- decodes `Table.Tbd` through the first portable `RKC_RPG_TABLE` library;
+- preserves the retail 0x160-byte character record, including fields which
+  are not named yet;
+- exposes the confirmed name, gender, job, level, life, mana, and initial
+  parameter fields through one `PlayerData` owner;
+- creates new characters from tables 900 and 901 as `0x00440f70` does;
+- reads the same 0x160-byte record from a selected `.Ssv`;
+- passes the selected name, gender, and save path from the front end into the
+  world instead of keeping a separate runtime gender variable;
+- sends script level queries to `PlayerData`;
+- keeps `PlayerActor` responsible for movement and animation only.
 
-- class, gender, level, experience, life, and mana;
-- base and derived attributes;
-- current equipment and appearance selections;
-- action, target, and status flags;
-- the initial values used for a newly created character;
-- the matching fields in an existing `.Ssv` save.
+The encrypted payload after the character record holds inventory, scenario
+state, equipment objects, flags, and other dynamic data. It can be mapped a
+piece at a time as those systems gain real owners. This milestone does not
+claim full save loading or writing.
 
-This is where we should start mapping the large save/load routines at
-`0x0044b580` and `0x0044cac0`, even though full save writing can wait. Knowing
-the real stored model early will keep us from inventing a temporary player
-structure that has to be thrown away later.
+## Current milestone: draw the gameplay HUD and world-pointer feedback
 
-### 2. Draw the gameplay HUD and cursor
+The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
+screen coordinates, digit placement, and 206-pixel life and mana calculations.
+The renderer draws those packets after the camera-driven world and before
+actor speech. The HUD owns y=400 through y=479, so clicks there no longer pass
+through as movement commands.
 
-Once the player has real values, the main interface can display something
-meaningful. Reconstruct it in layers:
+The retail window class loads the ordinary system arrow and never replaces it
+with another cursor. LWL already supplies that native arrow on every desktop
+platform. What changes during play is the feedback drawn into the world, not
+the pointer shape.
 
-- fixed HUD artwork and screen-space layout;
-- life, mana, experience, level, and quick-slot values;
-- the gameplay cursor and its different interaction states;
-- clicked-ground and selected-target feedback;
-- message and help text;
+That feedback is live now too. The configured range square is tested against
+opaque NJP pixels in the current CAF frame. An exact cursor-tip hit wins
+inside a priority group, then the nearest candidate, while the five
+configurable retail priorities choose between target types. Disabling the
+range restores exact-tip picking. People keep their pale tint and nameplate.
+Ground items now receive the same tint, their `Item.Ibn` name (or quantity
+plus `Gold`), and the original yellow target square. Empty ground and people
+use the original white square at their different strengths. Conversations
+suppress it.
+
+Escape now opens the original in-game settings panel as well. It uses the
+authored `Status.njp` frame, retail text and hit coordinates, priority
+reordering, and the original effect/BGM slider scale. Pointer, shadow,
+occluding-object, and audio changes apply while the panel is open, and changed
+settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
+intentionally blank, but its space remains so none of the following rows move.
+Save and Return and Save and Exit now open their original confirmation states,
+write the retail save envelope, and only leave gameplay after a successful
+write. With `Save Image at Game End` enabled, they also write the paired
+391-by-114 BMP from the player-centered world view before any HUD or menu is
+drawn. Help now opens its original full-width reference screen from either the
+menu row or `H`, including the animated player preview and the menu-owned
+`CLOSE` tab. Mission List and Map stay visible for now; their clicks belong
+with those still-missing screens.
+
+The remaining layers are:
+
+- map the experience field and table calculation, then draw its clipped fill;
+- reconstruct quick-slot ownership and values instead of painting placeholders;
+- finish the remaining message-window variants;
 - darkness and other final world overlays;
 - resizing behavior through the fixed 640×480 GAPI surface.
 
-HUD coordinates and visibility rules should come from the retail draw packets.
-The HUD must remain separate from the world camera and must not be baked into
-the world renderer.
+The bar currently shows full new-character life and mana from `PlayerData`,
+the centered one-to-three-digit level display, and the persistent walk/run
+indicator. Damage/healing lag colors, bar particles, condition icons, a
+companion bar, and the level-up pulse can be added when the corresponding
+gameplay state exists. HUD coordinates and visibility rules must continue to
+come from retail draw packets; the interface stays separate from the world
+camera.
 
-### 3. Populate the town
+## What follows the HUD slice
+
+### 1. Finish the remaining town actor behavior
 
 The next visible milestone is a Remote Town with its original NPCs and other
 dynamic objects.
@@ -241,20 +322,23 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - reproduce each actor's bounded idle/walk behavior where its MCT tail enables
   it;
 - place actors in the same shadow and visible-object passes as the player;
-- add actor-to-world and actor-to-actor collision;
+- finish actor-to-actor collision for NPC and enemy movement (the player
+  already treats live town actors as blockers);
 - reproduce the original update order and off-screen behavior;
-- extend the reconstructed pointer hover, pale actor tint, nameplates, and
-  selection path from Ostare to every dynamic actor and the retail interaction
-  range;
+- extend pointer hover, pale tint, nameplates, and selection from people and
+  ground items to the remaining dynamic actor classes;
 - verify the town population and positions against the retail game.
 
-That first checkpoint is now Ostare: his record, resource, part mask, idle
-pause, bounded walk, shadow, position, depth pass, hover tint, nameplate, and
-actor-anchored speech bubble are covered by a retail-data test. The next town
-slice can generalize the same path to the other six people and map the behavior
-that differs between human NPCs and animals.
+That path now builds all seven Remote Town people records and resolves their
+shared or individual `Character/PEOPLE` resources from the MCT table. Ostare's
+part mask, idle pause, bounded walk, shadow, depth pass, hover tint, nameplate,
+and actor-anchored speech bubble remain the detailed reference case. Malse and
+Syria are selectable and run their real first conversations. The next town
+work should map the behavior that differs between the three human NPCs and the
+four animals, then extend dynamic collision beyond player movement and add
+the remaining pointer selection rules.
 
-### 4. Bring up scripts, conversations, and town interaction
+### 2. Grow scripts, conversations, and town interaction
 
 NPCs become useful when the scenario script can drive them. The reconstructed
 `RKC_RPG_SCRIPT` DLL is the reference here; the portable version belongs in
@@ -282,13 +366,38 @@ until message `1000000` waits for Return or another click. The initial
 interpreter covers comparisons, assignments, messages, nested sentence calls,
 and the two native actor commands reached by that path.
 
-The next script slice should continue through Ostare's opening quest rather
-than adding an unrelated hardcoded interaction. It will grow the same
-interpreter as new commands and operand domains are encountered. The recovered
-format, architecture, and extension rules are kept in
+The message-close path is covered now too. Retail message commands finish
+their immediate sentence work before waiting for input; closing the bubble
+then invokes status kind one for the same actor. Following those callbacks
+runs all five opening messages, advances the scenario flags, and reaches the
+four original item-placement commands. Those commands now create ground-item
+records with the retail categories, definition IDs, quantities, and
+actor-relative positions. The repeat interaction also follows its second
+callback message and releases Ostare through the script instead of a world
+shortcut.
+
+That visible checkpoint is done too. The executable-owned `Item.Ibn` loader
+now applies the retail substitution table and RCLIB-L path and keeps the
+unknown record fields intact. Its inventory icon fields remain assigned to
+`Item0000.njp` through `Item0013.njp`, while separate fields select the
+`Character/ITEM` resource and CAF chart used on the map. Ostare's Short Sword,
+Round Shield, Dagger, and Gold now use those smaller ground animations,
+matching chart palettes, default `Item.Ibn` color strengths, shadows, and the
+original two-bounce drop arc in the same depth-sorted pass as actors and map
+objects. The recovered format,
+architecture, and extension rules are kept in
 [the script-engine notes](documentation/script-engine.md).
 
-### 5. Items, inventory, and equipment
+The next interpreter checkpoint is live as well. Malse follows the short
+two-message branch used by a new game; his later quest dialogue remains gated
+by the retail Red Goblin progression value. Syria follows her two-message
+new-game branch and reaches opcodes 62 and 48, which now update world-owned
+quest state and select the retail 600-count quest notice. Message events retain
+their script character number, so actor bubbles stay anchored even on branches
+which do not run an explicit facing command. The notice consumer and cue audio
+are still pending; neither has been guessed.
+
+### 3. Items, inventory, and equipment
 
 Item support should use the real table data rather than a hand-written list.
 The work around `0x00462f80` and the proven `RKC_RPG_TABLE` reconstruction
@@ -305,10 +414,18 @@ This slice includes:
 - item names, descriptions, rarity colors, and comparison text;
 - shops, prices, and money once the script layer requests them.
 
-A good first checkpoint is equipping one real item and seeing both the correct
-stat change and the correct player artwork.
+The opening quest's four real ground items are now loaded and drawn from
+`Item.Ibn`. Pointer selection and the first complete pickup path are live:
+distant clicks approach through the shared movement controller, then ownership
+moves into `PlayerInventory` before the world entity is erased. Gold fills
+existing stacks up to the retail 10,000 limit.
 
-### 6. Combat and death
+The next checkpoint is the actual 9-by-4 inventory grid. It needs the decoded
+item footprint fields, placement and full-inventory failure, the original
+panel artwork, and moving or dropping an owned item. After that, equip the
+Short Sword and verify both its stat change and the matching player CAF layer.
+
+### 4. Combat and death
 
 Combat should be built on the same command, actor, animation, and collision
 systems used for movement. Avoid creating a separate shortcut just to make an
@@ -329,7 +446,7 @@ Work through it in this order:
 One player class fighting one known enemy is enough for the first combat
 slice. Other classes and special attacks come after the basic loop matches.
 
-### 7. Skills, magic, status, and the remaining game screens
+### 5. Skills, magic, status, and the remaining game screens
 
 Once the ordinary combat loop is reliable, add the systems that modify it:
 
@@ -344,7 +461,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 The large UI functions should be split by screen and concern in the portable
 code even when the original compiler emitted one enormous function.
 
-### 8. Finish save and load
+### 6. Finish save and load
 
 Save support should preserve the retail format so original characters remain
 usable and saves written by OpenShadowFlare can be opened by the original
@@ -356,16 +473,20 @@ That means:
 - reproduce the XOR encryption and the retail validation behavior;
 - restore scenario, position, player stats, inventory, equipment, skills,
   quest flags, and other persistent state;
-- write the paired preview bitmap at the correct moment;
 - preserve unknown bytes when the original does;
 - handle truncated or corrupt saves without losing another slot;
 - compare round trips byte for byte where the original format permits it;
 - test original → OpenShadowFlare and OpenShadowFlare → original.
 
-Save parsing can grow alongside earlier slices, but writing should only be
-declared complete once all persistent gameplay systems have a real owner.
+The envelope writer is now in place, including the random XOR byte,
+signed-byte checksum, substitution pass, and safe preservation of an existing
+unknown payload. New saves carry the player record we currently own. Writing
+also captures the retail-sized paired preview from the world-only render when
+the option is enabled. Saving is not complete yet: each persistent gameplay
+owner still has to contribute its real payload fields, and loading must restore
+those fields before OpenShadowFlare can claim full round-trip compatibility.
 
-### 9. Play through Episode 1
+### 7. Play through Episode 1
 
 At this point the work changes from building the engine's backbone to finding
 all the assumptions that only worked in Remote Town.
@@ -384,7 +505,7 @@ The goal is not merely reaching the final map. A normal playthrough should be
 possible without developer shortcuts, hard-coded quest flags, or falling back
 to the retail executable.
 
-### 10. Cover the remaining episodes
+### 8. Cover the remaining episodes
 
 Once Episode 1 is solid, run the same process through Episodes 2–4. Most of the
 engine should already exist by then, but later content will expose less common
@@ -393,7 +514,7 @@ script commands, AI actions, effects, items, and map combinations.
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
 
-### 11. Multiplayer
+### 9. Multiplayer
 
 Networking comes after single-player simulation is deterministic and complete
 enough to synchronize. The reconstructed `RKC_NETWORK` DLL gives us a strong

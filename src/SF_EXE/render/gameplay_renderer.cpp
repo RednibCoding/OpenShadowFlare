@@ -1,6 +1,9 @@
 #include "gameplay_renderer.hpp"
 
+#include "character_renderer.hpp"
 #include "gapi/gapi.hpp"
+#include "gameplay_overlay_renderer.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "world/world_scene.hpp"
@@ -18,22 +21,13 @@ constexpr std::int32_t kScreenWidth = 640;
 constexpr std::int32_t kScreenHeight = 480;
 constexpr std::int32_t kRetailHeightScale = 20;
 
-struct ObjectDrawEntry {
+struct WorldDrawEntry {
     const MapObject* object = nullptr;
-    std::int32_t depth = 0;
-    std::int32_t display_class = 0;
-};
-
-struct ActorDrawEntry {
     const NpcActor* npc = nullptr;
+    const GroundItem* item = nullptr;
     bool player = false;
-    std::int32_t depth = 0;
-};
-
-struct ColorStrength {
-    std::int32_t red = 1000;
-    std::int32_t green = 1000;
-    std::int32_t blue = 1000;
+    bool semi_transparent = false;
+    DisplayOrderEntry order;
 };
 
 ScreenPosition toScreen(
@@ -42,133 +36,23 @@ ScreenPosition toScreen(
     return calculateRealPosition({world_x, world_y});
 }
 
-template <typename PartEnabled, typename PartColorStrength>
-void renderCharacterPass(
-    gapi::Backend& renderer,
-    const gapi::CafAnimation& animation,
-    const gapi::NjpImage& patterns,
-    const gapi::NjpImage& shadow_patterns,
-    WorldPosition position,
-    std::int32_t chart_index,
-    std::int32_t direction_index,
-    std::int32_t animation_frame,
-    PartEnabled part_enabled,
-    PartColorStrength part_color_strength,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    bool shadow,
-    std::int32_t shadow_opacity) {
-    if (animation.charts().empty()) {
-        return;
-    }
-    const gapi::CafChart& chart =
-        animation.charts()[
-            static_cast<std::size_t>(
-                std::clamp(
-                    chart_index,
-                    0,
-                    static_cast<std::int32_t>(
-                        animation.charts().size() - 1)))];
-    if (direction_index < 0 ||
-        static_cast<std::size_t>(direction_index) >=
-            chart.directions.size()) {
-        return;
-    }
-    const gapi::CafDirection& direction =
-        chart.directions[
-            static_cast<std::size_t>(direction_index)];
-    if (direction.frame_count <= 0 ||
-        direction.parts.empty()) {
-        return;
-    }
-    if ((chart.status & 1) != 0) {
-        animation_frame %= direction.frame_count;
-    }
-    if (animation_frame < 0 ||
-        animation_frame >= direction.frame_count) {
-        animation_frame = 0;
-    }
-
-    struct OrderedCell {
-        const gapi::CafCell* cell = nullptr;
-        std::size_t part = 0;
-    };
-    std::vector<OrderedCell> ordered(direction.parts.size());
-    for (std::size_t part_index = 0;
-         part_index < direction.parts.size();
-         ++part_index) {
-        if (!part_enabled(part_index)) {
-            continue;
-        }
-        const std::vector<gapi::CafCell>& part =
-            direction.parts[part_index];
-        if (static_cast<std::size_t>(animation_frame) >=
-            part.size()) {
-            continue;
-        }
-        const gapi::CafCell& cell =
-            part[static_cast<std::size_t>(animation_frame)];
-        if (cell.priority >= 0 &&
-            static_cast<std::size_t>(cell.priority) <
-                ordered.size()) {
-            ordered[
-                static_cast<std::size_t>(cell.priority)] = {
-                    &cell,
-                    part_index,
-                };
-        }
-    }
-
-    for (std::size_t priority = ordered.size();
-         priority != 0;
-         --priority) {
-        const OrderedCell& ordered_cell =
-            ordered[priority - 1];
-        const gapi::CafCell* cell = ordered_cell.cell;
-        if (!cell || cell->pattern_index < 0 ||
-            (((cell->status & 8) != 0) != shadow)) {
-            continue;
-        }
-        const ColorStrength strength =
-            part_color_strength(ordered_cell.part);
-        const ScreenPosition screen_position =
-            toScreen(position.x, position.y);
-        renderer.drawPattern(
-            shadow
-                ? shadow_patterns
-                : patterns,
-            static_cast<std::size_t>(cell->pattern_index),
-            {screen_position.x - camera_x,
-             screen_position.y - camera_y,
-             1000,
-             1000,
-             1000,
-             shadow
-                 ? std::clamp(shadow_opacity, 0, 1000)
-                 : std::clamp<std::int32_t>(
-                       cell->transparency, 0, 1000),
-             shadow ? 1000 : strength.red,
-             shadow ? 1000 : strength.green,
-             shadow ? 1000 : strength.blue});
-    }
-}
-
 void renderPlayerPass(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    double interpolation) {
     if (!world.hasPlayer()) {
         return;
     }
-    renderCharacterPass(
+    renderCharacterAnimationPass(
         renderer,
         world.playerAnimation(),
         world.playerPatterns(),
         world.playerShadowPatterns(),
-        {world.playerWorldX(), world.playerWorldY()},
+        world.playerRenderPosition(interpolation),
         world.playerAnimationChart(),
         world.playerDirection(),
         world.playerAnimationFrame(),
@@ -176,7 +60,7 @@ void renderPlayerPass(
             return world.playerPartEnabled(part);
         },
         [](std::size_t) {
-            return ColorStrength{};
+            return CharacterColorStrength{};
         },
         camera_x,
         camera_y,
@@ -191,13 +75,14 @@ void renderNpcPass(
     std::int32_t camera_y,
     bool shadow,
     std::int32_t shadow_opacity,
-    bool hovered) {
-    renderCharacterPass(
+    bool hovered,
+    double interpolation) {
+    renderCharacterAnimationPass(
         renderer,
         npc.animation(),
         npc.patterns(),
         npc.shadowPatterns(),
-        npc.position(),
+        npc.renderPosition(interpolation),
         npc.animationChart(),
         npc.direction(),
         npc.animationFrame(),
@@ -207,7 +92,7 @@ void renderNpcPass(
         [&npc, hovered](std::size_t part) {
             const std::int32_t hover_strength =
                 hovered ? 300 : 0;
-            return ColorStrength{
+            return CharacterColorStrength{
                 npc.partRedStrength(part) + hover_strength,
                 npc.partGreenStrength(part) + hover_strength,
                 npc.partBlueStrength(part) + hover_strength,
@@ -217,21 +102,6 @@ void renderNpcPass(
         camera_y,
         shadow,
         shadow_opacity);
-}
-
-std::int32_t displayClass(std::int16_t status) {
-    std::int32_t result = (status & 0x100) != 0 ? 1 : 0;
-    if ((status & 0x80) != 0) {
-        result = 2;
-    }
-    if ((status & 0x20) != 0) {
-        result = 3;
-    }
-    return result;
-}
-
-bool isDefaultDisplayClass(std::int16_t status) {
-    return (status & 0x1a0) == 0;
 }
 
 const gapi::NjpImage* objectImage(
@@ -286,7 +156,8 @@ void drawMapObject(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    bool semi_transparent) {
     const gapi::NjpImage* image =
         objectImage(world, object, shadow);
     if (!image ||
@@ -311,495 +182,325 @@ void drawMapObject(
          shadow
              ? std::clamp(shadow_opacity, 0, 1000)
              : std::clamp<std::int32_t>(
-                   object.opacity, 0, 1000),
+                   semi_transparent
+                       ? std::min<std::int32_t>(
+                             object.opacity, 500)
+                       : object.opacity,
+                   0,
+                   1000),
          shadow ? 1000 : object.red_strength,
          shadow ? 1000 : object.green_strength,
          shadow ? 1000 : object.blue_strength});
 }
 
-std::vector<ObjectDrawEntry> collectObjects(
+std::vector<WorldDrawEntry> collectWorldEntries(
     const WorldScene& world,
-    bool default_class,
+    bool shadow,
     std::int32_t camera_x,
-    std::int32_t camera_y) {
-    std::vector<ObjectDrawEntry> result;
+    std::int32_t camera_y,
+    double interpolation) {
+    std::vector<WorldDrawEntry> entries;
     for (const MapObject& object :
          world.objectMap().objects()) {
-        const gapi::NjpImage* image =
-            objectImage(world, object, false);
-        const gapi::NjpImage* shadow =
-            (object.status & 8) != 0
-                ? objectImage(world, object, true)
-                : nullptr;
-        const bool visible =
-            image && objectVisible(
-                         *image,
-                         object,
-                         camera_x,
-                         camera_y,
-                         false);
-        const bool shadowVisible =
-            shadow && objectVisible(
-                          *shadow,
-                          object,
-                          camera_x,
-                          camera_y,
-                          true);
-        if ((!visible && !shadowVisible) ||
-            isDefaultDisplayClass(object.status) != default_class) {
+        if (shadow && (object.status & 8) == 0) {
             continue;
         }
-        result.push_back({
+        const gapi::NjpImage* image =
+            objectImage(world, object, shadow);
+        if (!image ||
+            !objectVisible(
+                *image,
+                object,
+                camera_x,
+                camera_y,
+                shadow)) {
+            continue;
+        }
+        entries.push_back({
             &object,
-            toScreen(
-                object.world_x + object.judgement.left,
-                object.world_y + object.judgement.top).y,
-            displayClass(object.status),
+            nullptr,
+            nullptr,
+            false,
+            false,
+            {
+                entries.size(),
+                {object.world_x, object.world_y},
+                object.judgement,
+                object.status,
+            },
         });
     }
-    std::stable_sort(
-        result.begin(),
-        result.end(),
-        [](const ObjectDrawEntry& left,
-           const ObjectDrawEntry& right) {
-            if (left.display_class != right.display_class) {
-                return left.display_class < right.display_class;
-            }
-            return left.depth < right.depth;
+
+    if (world.hasPlayer()) {
+        entries.push_back({
+            nullptr,
+            nullptr,
+            nullptr,
+            true,
+            false,
+            {
+                entries.size(),
+                world.playerRenderPosition(interpolation),
+                world.playerJudgement(),
+                0,
+            },
         });
+    }
+    for (const NpcActor& npc : world.npcs()) {
+        entries.push_back({
+            nullptr,
+            &npc,
+            nullptr,
+            false,
+            false,
+            {
+                entries.size(),
+                npc.renderPosition(interpolation),
+                npc.judgement(),
+                0,
+            },
+        });
+    }
+    for (const GroundItem& item : world.groundItems()) {
+        entries.push_back({
+            nullptr,
+            nullptr,
+            &item,
+            false,
+            false,
+            {
+                entries.size(),
+                item.position,
+                {},
+                0,
+            },
+        });
+    }
+
+    std::vector<DisplayOrderEntry> order;
+    order.reserve(entries.size());
+    for (std::size_t index = 0;
+         index < entries.size();
+         ++index) {
+        entries[index].order.source_index = index;
+        order.push_back(entries[index].order);
+    }
+    sortDisplayObjects(order);
+
+    std::vector<WorldDrawEntry> result;
+    result.reserve(entries.size());
+    for (const DisplayOrderEntry& ordered : order) {
+        result.push_back(
+            std::move(entries[ordered.source_index]));
+    }
     return result;
 }
 
-void drawObjectShadows(
+void drawGroundItem(
     gapi::Backend& renderer,
     const WorldScene& world,
-    const std::vector<ObjectDrawEntry>& objects,
+    const GroundItem& item,
     std::int32_t camera_x,
     std::int32_t camera_y,
-    std::int32_t shadow_opacity) {
-    for (const ObjectDrawEntry& entry : objects) {
-        if ((entry.object->status & 8) == 0) {
-            continue;
-        }
+    bool shadow,
+    std::int32_t shadow_opacity,
+    bool hovered) {
+    const ItemWorldResource* resource =
+        world.itemWorldResource(item.resource_id);
+    if (!resource) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        resource->animation(),
+        resource->patterns(),
+        resource->shadowPatterns(),
+        item.position,
+        item.animation_chart,
+        8,
+        0,
+        [](std::size_t) {
+            return true;
+        },
+        [&item, hovered](std::size_t part) {
+            const std::int32_t hover_strength =
+                hovered ? 300 : 0;
+            return part == 0
+                       ? CharacterColorStrength{
+                             item.red_strength +
+                                 hover_strength,
+                             item.green_strength +
+                                 hover_strength,
+                             item.blue_strength +
+                                 hover_strength,
+                         }
+                       : CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity,
+        shadow
+            ? 0
+            : item.height * kRetailHeightScale / 100);
+}
+
+void drawWorldEntry(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const WorldDrawEntry& entry,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity,
+    double interpolation) {
+    if (entry.object) {
         drawMapObject(
             renderer,
             world,
             *entry.object,
             camera_x,
             camera_y,
-            true,
-            shadow_opacity);
-    }
-}
-
-std::vector<ActorDrawEntry> collectActors(
-    const WorldScene& world) {
-    std::vector<ActorDrawEntry> result;
-    if (world.hasPlayer()) {
-        result.push_back({
-            nullptr,
-            true,
-            toScreen(
-                world.playerWorldX(),
-                world.playerWorldY()).y,
-        });
-    }
-    for (const NpcActor& npc : world.npcs()) {
-        result.push_back({
-            &npc,
-            false,
-            toScreen(
-                npc.position().x,
-                npc.position().y).y,
-        });
-    }
-    std::stable_sort(
-        result.begin(),
-        result.end(),
-        [](const ActorDrawEntry& left,
-           const ActorDrawEntry& right) {
-            return left.depth < right.depth;
-        });
-    return result;
-}
-
-void drawActor(
-    gapi::Backend& renderer,
-    const WorldScene& world,
-    const ActorDrawEntry& actor,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    bool shadow,
-    std::int32_t shadow_opacity) {
-    if (actor.player) {
+            shadow,
+            shadow_opacity,
+            entry.semi_transparent);
+    } else if (entry.player) {
         renderPlayerPass(
             renderer,
             world,
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
-    } else if (actor.npc) {
+            shadow_opacity,
+            interpolation);
+    } else if (entry.npc) {
         renderNpcPass(
             renderer,
-            *actor.npc,
+            *entry.npc,
             camera_x,
             camera_y,
             shadow,
             shadow_opacity,
-            world.hoveredNpcId() == actor.npc->id());
+            world.hoveredNpcId() == entry.npc->id(),
+            interpolation);
+    } else if (entry.item) {
+        drawGroundItem(
+            renderer,
+            world,
+            *entry.item,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity,
+            world.hoveredGroundItemId() ==
+                entry.item->id);
     }
 }
 
-std::string conversationDisplayText(
-    const std::string& source) {
-    std::string result;
-    result.reserve(source.size());
-    for (std::size_t index = 0; index < source.size(); ++index) {
-        const unsigned char byte =
-            static_cast<unsigned char>(source[index]);
-        if (byte == '\r') {
-            continue;
-        }
-        result.push_back(static_cast<char>(byte));
-    }
-    return result;
-}
-
-bool shiftJisLead(std::uint8_t value) {
-    return (value >= 0x80u && value <= 0x9fu) ||
-           value >= 0xe0u;
-}
-
-std::int32_t textPixelWidth(
-    std::string_view text,
-    std::int32_t cell_width) {
-    std::int32_t width = 0;
-    std::int32_t maximum = 0;
-    for (std::size_t index = 0; index < text.size(); ++index) {
-        const std::uint8_t byte =
-            static_cast<std::uint8_t>(text[index]);
-        if (byte == '\r') {
-            continue;
-        }
-        if (byte == '\n') {
-            maximum = std::max(maximum, width);
-            width = 0;
-            continue;
-        }
-        if (shiftJisLead(byte) && index + 1 < text.size()) {
-            ++index;
-            width += cell_width * 2;
-        } else {
-            width += cell_width;
-        }
-    }
-    return std::max(maximum, width);
-}
-
-std::int32_t textLineCount(std::string_view text) {
-    std::int32_t lines = 0;
-    bool content_after_break = false;
-    for (char character : text) {
-        if (character == '\r') {
-            continue;
-        }
-        if (character == '\n') {
-            ++lines;
-            content_after_break = false;
-        } else {
-            content_after_break = true;
-        }
-    }
-    if (content_after_break || lines == 0) {
-        ++lines;
-    }
-    return lines;
-}
-
-const NpcActor* findNpc(
+void drawWorldEntries(
+    gapi::Backend& renderer,
     const WorldScene& world,
-    std::int32_t id) {
-    const auto found = std::find_if(
-        world.npcs().begin(),
-        world.npcs().end(),
-        [id](const NpcActor& npc) {
-            return npc.id() == id;
-        });
-    return found == world.npcs().end() ? nullptr : &*found;
+    const std::vector<WorldDrawEntry>& entries,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    bool default_class,
+    std::int32_t shadow_opacity,
+    double interpolation) {
+    for (const WorldDrawEntry& entry : entries) {
+        if ((displayClassForStatus(entry.order.status) == 0) !=
+            default_class) {
+            continue;
+        }
+        drawWorldEntry(
+            renderer,
+            world,
+            entry,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity,
+            interpolation);
+    }
 }
 
-gapi::Color npcNameColor(const NpcActor& npc) {
-    const std::uint32_t color = npc.nameColor();
-    return {
-        static_cast<std::uint8_t>(color),
-        static_cast<std::uint8_t>(color >> 8u),
-        static_cast<std::uint8_t>(color >> 16u),
-        255,
+void markSemiTransparentObjects(
+    const WorldScene& world,
+    std::vector<WorldDrawEntry>& entries,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    if (!world.hasPlayer()) {
+        return;
+    }
+    const auto player = std::find_if(
+        entries.begin(),
+        entries.end(),
+        [](const WorldDrawEntry& entry) {
+            return entry.player;
+        });
+    if (player == entries.end()) {
+        return;
+    }
+    const ScreenPosition player_screen =
+        calculateRealPosition(
+            world.playerRenderPosition(interpolation));
+    const DisplayHitRectangle player_rectangle{
+        player_screen.x - camera_x - 25,
+        player_screen.y - camera_y - 60,
+        player_screen.x - camera_x + 25,
+        player_screen.y - camera_y,
     };
+    for (auto entry = player;
+         entry != entries.end();
+         ++entry) {
+        if (!entry->object ||
+            (entry->object->status & 0x2000) != 0) {
+            continue;
+        }
+        const gapi::NjpImage* image =
+            objectImage(world, *entry->object, false);
+        if (!image) {
+            continue;
+        }
+        const ScreenPosition anchor =
+            calculateRealPosition({
+                entry->object->world_x,
+                entry->object->world_y,
+            });
+        entry->semi_transparent =
+            displayPatternIntersectsRectangle(
+                *image,
+                static_cast<std::size_t>(
+                    entry->object->pattern),
+                {
+                    anchor.x - camera_x,
+                    anchor.y - camera_y,
+                },
+                player_rectangle,
+                entry->object->height *
+                    kRetailHeightScale / 100);
+    }
 }
 
-void drawHoveredNpcLabel(
-    gapi::Backend& renderer,
-    const WorldScene& world,
-    const gapi::NjpImage* font,
-    std::int32_t camera_x,
-    std::int32_t camera_y) {
-    if (!font) {
-        return;
-    }
-    const NpcActor* npc =
-        findNpc(world, world.hoveredNpcId());
-    if (!npc || npc->name().empty()) {
-        return;
-    }
-    const ScreenPosition anchor =
-        toScreen(npc->position().x, npc->position().y);
-    const std::int32_t center_x = anchor.x - camera_x;
-    const std::int32_t label_y =
-        anchor.y - camera_y - npc->labelHeight();
-    const std::int32_t half_width =
-        textPixelWidth(npc->name(), 6) / 2;
-    renderer.drawRectangle({
-        center_x - half_width - 4,
-        label_y - 2,
-        half_width * 2 + 5,
-        15,
-        {0, 0, 0, 255},
-        1000,
-        500,
-    });
-    renderer.drawText(
-        *font,
-        npc->name(),
-        {
-            center_x - half_width + 1,
-            label_y + 1,
-            {0, 0, 0, 255},
-        });
-    renderer.drawText(
-        *font,
-        npc->name(),
-        {
-            center_x - half_width,
-            label_y,
-            npcNameColor(*npc),
-        });
-}
-
-void drawConversation(
-    gapi::Backend& renderer,
-    const WorldScene& world,
-    const gapi::NjpImage* font,
-    std::int32_t camera_x,
-    std::int32_t camera_y) {
-    if (!world.conversationActive() || !font ||
-        font->patterns().empty()) {
-        return;
-    }
-    const NpcActor* actor =
-        findNpc(world, world.conversationActorId());
-    if (!actor) {
-        return;
-    }
-    const gapi::NjpPattern& font_pattern =
-        font->patterns().front();
-    const std::int32_t cell_width =
-        font_pattern.width / 16;
-    const std::int32_t cell_height =
-        font_pattern.height / 16;
-    if (cell_width <= 0 || cell_height <= 0) {
-        return;
-    }
-    const std::string text =
-        conversationDisplayText(world.conversationText());
-    const std::int32_t width =
-        textPixelWidth(text, cell_width) + 8;
-    const std::int32_t height =
-        textLineCount(text) * cell_height + 8;
-    const ScreenPosition projected =
-        toScreen(actor->position().x, actor->position().y);
-    const std::int32_t anchor_x =
-        projected.x - camera_x;
-    const std::int32_t anchor_y =
-        projected.y - camera_y - actor->labelHeight();
-    const std::int32_t x =
-        anchor_x + 12 - width / 2;
-    const std::int32_t y =
-        anchor_y - 16 - height;
-    const std::int32_t frame_x = x - 9;
-    const std::int32_t frame_y = y - 9;
-    const std::int32_t frame_width = width + 18;
-    const std::int32_t frame_height = height + 18;
-
-    // Hukidasi patterns 0-3 are the four 9x9 rounded corners. Their edge
-    // pixels continue as black, black, 160, 224, then the 248 interior.
-    // Keep the fills out of each transparent outer corner so the world
-    // remains visible around the curve.
-    renderer.drawRectangle({
-        frame_x + 4,
-        frame_y + 4,
-        frame_width - 8,
-        frame_height - 8,
-        {255, 255, 255, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 9,
-        frame_y,
-        frame_width - 18,
-        2,
-        {0, 0, 0, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 9,
-        frame_y + 2,
-        frame_width - 18,
-        1,
-        {160, 160, 160, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 9,
-        frame_y + 3,
-        frame_width - 18,
-        1,
-        {224, 224, 224, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 9,
-        frame_y + frame_height - 2,
-        frame_width - 18,
-        2,
-        {0, 0, 0, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 9,
-        frame_y + frame_height - 3,
-        frame_width - 18,
-        1,
-        {160, 160, 160, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 9,
-        frame_y + frame_height - 4,
-        frame_width - 18,
-        1,
-        {224, 224, 224, 255},
-    });
-    renderer.drawRectangle({
-        frame_x,
-        frame_y + 9,
-        2,
-        frame_height - 18,
-        {0, 0, 0, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 2,
-        frame_y + 9,
-        1,
-        frame_height - 18,
-        {160, 160, 160, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + 3,
-        frame_y + 9,
-        1,
-        frame_height - 18,
-        {224, 224, 224, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + frame_width - 2,
-        frame_y + 9,
-        2,
-        frame_height - 18,
-        {0, 0, 0, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + frame_width - 3,
-        frame_y + 9,
-        1,
-        frame_height - 18,
-        {160, 160, 160, 255},
-    });
-    renderer.drawRectangle({
-        frame_x + frame_width - 4,
-        frame_y + 9,
-        1,
-        frame_height - 18,
-        {224, 224, 224, 255},
-    });
-    const gapi::NjpImage& frame = world.speechPatterns();
-    if (frame.patterns().size() >= 5) {
-        renderer.drawPattern(
-            frame, 0, {frame_x, frame_y});
-        renderer.drawPattern(
-            frame,
-            2,
-            {frame_x + frame_width - 9, frame_y});
-        renderer.drawPattern(
-            frame,
-            1,
-            {frame_x, frame_y + frame_height - 9});
-        renderer.drawPattern(
-            frame,
-            3,
-            {frame_x + frame_width - 9,
-             frame_y + frame_height - 9});
-        renderer.drawPattern(
-            frame,
-            4,
-            {x + width / 2 - 5, y + height + 5});
-    }
-    renderer.drawText(
-        *font,
-        text,
-        {
-            x + 4,
-            y + 4,
-            {0, 0, 0, 255},
-        });
-}
 
 }  // namespace
 
-void renderInitialLoadingScreen(
-    gapi::Backend& renderer,
-    const gapi::NjpImage& waiting,
-    std::int32_t counter,
-    bool ready_to_continue) {
-    renderer.drawPattern(
-        waiting,
-        0,
-        {0, 0});
-    if (!ready_to_continue) {
-        renderer.drawPattern(
-            waiting,
-            3,
-            {572, 443});
-        return;
-    }
-
-    const std::int32_t arrow_offset =
-        std::max(counter, 0) % 16;
-    renderer.drawPattern(
-        waiting,
-        2,
-        {592 + arrow_offset, 450});
-}
-
-void renderWorld(
+void renderWorldGeometry(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity,
-    const gapi::NjpImage* font) {
+    double interpolation,
+    bool semi_transparent_objects) {
     const GroundMap& ground = world.ground();
     if (ground.width() <= 0 || ground.height() <= 0) {
         return;
     }
 
     const std::int32_t camera_x =
-        world.cameraScreenX();
+        world.renderCameraScreenX(interpolation);
     const std::int32_t camera_y =
-        world.cameraScreenY();
+        world.renderCameraScreenY(interpolation);
     const std::int32_t start_x =
         std::max(camera_x / ground.chipWidth(), 0);
     const std::int32_t start_y =
@@ -834,88 +535,97 @@ void renderWorld(
         }
     }
 
-    const std::vector<ObjectDrawEntry> specialObjects =
-        collectObjects(world, false, camera_x, camera_y);
-    const std::vector<ObjectDrawEntry> defaultObjects =
-        collectObjects(world, true, camera_x, camera_y);
-    const std::vector<ActorDrawEntry> actors =
-        collectActors(world);
-
-    drawObjectShadows(
-        renderer,
-        world,
-        specialObjects,
-        camera_x,
-        camera_y,
-        shadow_opacity);
-    for (const ObjectDrawEntry& entry : specialObjects) {
-        drawMapObject(
-            renderer,
+    const std::vector<WorldDrawEntry> shadow_entries =
+        collectWorldEntries(
             world,
-            *entry.object,
-            camera_x,
-            camera_y,
-            false,
-            shadow_opacity);
-    }
-
-    drawObjectShadows(
-        renderer,
-        world,
-        defaultObjects,
-        camera_x,
-        camera_y,
-        shadow_opacity);
-
-    for (const ActorDrawEntry& actor : actors) {
-        drawActor(
-            renderer,
-            world,
-            actor,
-            camera_x,
-            camera_y,
             true,
-            shadow_opacity);
+            camera_x,
+            camera_y,
+            interpolation);
+    std::vector<WorldDrawEntry> visible_entries =
+        collectWorldEntries(
+            world,
+            false,
+            camera_x,
+            camera_y,
+            interpolation);
+    if (semi_transparent_objects) {
+        markSemiTransparentObjects(
+            world,
+            visible_entries,
+            camera_x,
+            camera_y,
+            interpolation);
     }
 
-    std::size_t actor_index = 0;
-    for (const ObjectDrawEntry& entry : defaultObjects) {
-        while (actor_index < actors.size() &&
-               actors[actor_index].depth < entry.depth) {
-            drawActor(
-                renderer,
-                world,
-                actors[actor_index],
-                camera_x,
-                camera_y,
-                false,
-                shadow_opacity);
-            ++actor_index;
-        }
-        drawMapObject(
-            renderer,
-            world,
-            *entry.object,
-            camera_x,
-            camera_y,
-            false,
-            shadow_opacity);
-    }
-    while (actor_index < actors.size()) {
-        drawActor(
-            renderer,
-            world,
-            actors[actor_index],
-            camera_x,
-            camera_y,
-            false,
-            shadow_opacity);
-        ++actor_index;
-    }
-    drawHoveredNpcLabel(
-        renderer, world, font, camera_x, camera_y);
-    drawConversation(
-        renderer, world, font, camera_x, camera_y);
+    // FUN_004030f0 emits the non-default status classes first, then the
+    // default class, with a shadow and visible pass for each group.
+    drawWorldEntries(
+        renderer,
+        world,
+        shadow_entries,
+        camera_x,
+        camera_y,
+        true,
+        false,
+        shadow_opacity,
+        interpolation);
+    drawWorldEntries(
+        renderer,
+        world,
+        visible_entries,
+        camera_x,
+        camera_y,
+        false,
+        false,
+        shadow_opacity,
+        interpolation);
+    drawWorldEntries(
+        renderer,
+        world,
+        shadow_entries,
+        camera_x,
+        camera_y,
+        true,
+        true,
+        shadow_opacity,
+        interpolation);
+    drawWorldEntries(
+        renderer,
+        world,
+        visible_entries,
+        camera_x,
+        camera_y,
+        false,
+        true,
+        shadow_opacity,
+        interpolation);
+}
+
+void renderWorld(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t shadow_opacity,
+    const gapi::NjpImage* font,
+    double interpolation,
+    bool semi_transparent_objects) {
+    renderWorldGeometry(
+        renderer,
+        world,
+        shadow_opacity,
+        interpolation,
+        semi_transparent_objects);
+    const std::int32_t camera_x =
+        world.renderCameraScreenX(interpolation);
+    const std::int32_t camera_y =
+        world.renderCameraScreenY(interpolation);
+    renderGameplayOverlay(
+        renderer,
+        world,
+        font,
+        camera_x,
+        camera_y,
+        interpolation);
 }
 
 }  // namespace osf

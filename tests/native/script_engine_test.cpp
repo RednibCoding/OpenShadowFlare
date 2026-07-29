@@ -5,6 +5,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -15,6 +16,14 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+std::uint64_t operandKey(const osf::script::Operand& operand) {
+    return
+        (static_cast<std::uint64_t>(
+             static_cast<std::uint32_t>(operand.type))
+         << 32u) |
+        static_cast<std::uint32_t>(operand.value);
 }
 
 bool testRetailRemoteTown() {
@@ -67,11 +76,30 @@ bool testRetailRemoteTown() {
     std::vector<std::pair<
         std::int32_t,
         std::vector<std::int32_t>>> native_commands;
+    std::unordered_map<std::uint64_t, std::int32_t>
+        external_values;
+    std::int32_t player_level_queries = 0;
     osf::script::Interpreter interpreter({
-        [](const osf::script::Operand&) {
-            return 0;
+        [&external_values](const osf::script::Operand& operand) {
+            if (operand.type == 6 &&
+                operand.value == 12000000) {
+                return std::int32_t{91467};
+            }
+            if (operand.type == 7 &&
+                operand.value == 12000000) {
+                return std::int32_t{1532};
+            }
+            const auto found =
+                external_values.find(operandKey(operand));
+            return found == external_values.end()
+                       ? 0
+                       : found->second;
         },
-        [](const osf::script::Operand&, std::int32_t) {
+        [&external_values](
+            const osf::script::Operand& operand,
+            std::int32_t value) {
+            external_values.insert_or_assign(
+                operandKey(operand), value);
             return true;
         },
         [&messages](const osf::script::MessageEvent& message) {
@@ -81,6 +109,17 @@ bool testRetailRemoteTown() {
             std::int32_t opcode,
             const std::vector<std::int32_t>& arguments) {
             native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [&player_level_queries](
+            osf::script::ValueQuery query,
+            std::int32_t& value) {
+            if (query !=
+                osf::script::ValueQuery::local_player_level) {
+                return false;
+            }
+            ++player_level_queries;
+            value = 1;
             return true;
         },
     });
@@ -105,10 +144,254 @@ bool testRetailRemoteTown() {
             "Ostare's status-zero sentence did not emit its retail message.")) {
         return false;
     }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.waitingForMessage() &&
+                messages.size() == 2 &&
+                messages.back().id == 1000001 &&
+                interpreter.readTemporaryFlag(1000002) == 2,
+            "Ostare's first message did not enter its status-one callback.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 3 &&
+                messages.back().id == 1000002 &&
+                interpreter.readTemporaryFlag(1000002) == 3,
+            "Ostare's second opening message did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 4 &&
+                messages.back().id == 1000003 &&
+                interpreter.readTemporaryFlag(1000002) == 4 &&
+                native_commands.size() == 6 &&
+                native_commands[2] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            0, 0, 91667, 1532, -1, -1}) &&
+                native_commands[3] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            1, 1000000, 91467, 1732, -1, -1}) &&
+                native_commands[4] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            0, 100, 91667, 1332, -1, -1}) &&
+                native_commands[5] ==
+                    std::make_pair(
+                        std::int32_t{10},
+                        std::vector<std::int32_t>{
+                            4, 0, 91467, 1532, 200, 200}),
+            "Ostare's third opening message did not place its retail items.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 5 &&
+                messages.back().id == 1000004 &&
+                interpreter.readTemporaryFlag(1000002) == 0,
+            "Ostare's final opening message did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                native_commands.size() == 7 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000000}),
+            "Ostare's opening conversation did not release the actor.")) {
+        return false;
+    }
+
+    const osf::script::Message* repeated_message =
+        script.findMessage(1000005);
+    if (!check(
+        repeated_message &&
+            interpreter.startStatus(0, 12000000) ==
+                osf::script::StepResult::waiting_for_message &&
+            interpreter.waitingForMessage() &&
+            player_level_queries == 1 &&
+            messages.size() == 6 &&
+            messages.back().id == 1000005 &&
+            messages.back().text == repeated_message->text &&
+            interpreter.readTemporaryFlag(1000000) ==
+                1000005 &&
+            interpreter.readTemporaryFlag(1000002) == 30,
+        "Ostare's level-one repeat interaction did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.size() == 7 &&
+                messages.back().id == 1000006 &&
+                interpreter.readTemporaryFlag(1000002) == 0,
+            "Ostare's repeat callback did not show its second message.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() == osf::script::StepResult::complete &&
+            !interpreter.waitingForMessage() &&
+            native_commands.back() ==
+                std::make_pair(
+                    std::int32_t{19},
+                    std::vector<std::int32_t>{12000000}),
+            "Ostare's repeat conversation did not release the actor.")) {
+        return false;
+    }
+
+    const std::size_t malse_first_command =
+        native_commands.size();
+    const osf::script::StepResult malse_start =
+        interpreter.startStatus(0, 12000001);
+    if (!check(
+            malse_start ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000019 &&
+                messages.back().character_number == 12000001 &&
+                interpreter.readTemporaryFlag(1000002) == 20 &&
+                native_commands.size() ==
+                    malse_first_command + 2 &&
+                native_commands[malse_first_command] ==
+                    std::make_pair(
+                        std::int32_t{18},
+                        std::vector<std::int32_t>{12000001}) &&
+                native_commands[malse_first_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{21},
+                        std::vector<std::int32_t>{
+                            12000001, 0}),
+            "Malse's first interaction did not enter its retail script.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000020 &&
+                interpreter.readTemporaryFlag(1000002) == 0,
+            "Malse's first callback did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's opening conversation did not release the actor.")) {
+        return false;
+    }
+
+    const std::size_t syria_first_command =
+        native_commands.size();
+    if (!check(
+            interpreter.startStatus(0, 12000002) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000040 &&
+                messages.back().character_number == 12000002 &&
+                interpreter.readTemporaryFlag(1000002) == 40 &&
+                native_commands.size() ==
+                    syria_first_command,
+            "Syria's first interaction did not enter its retail script.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000041 &&
+                interpreter.readTemporaryFlag(1000002) == 0 &&
+                native_commands.size() ==
+                    syria_first_command + 2 &&
+                native_commands[syria_first_command] ==
+                    std::make_pair(
+                        std::int32_t{62},
+                        std::vector<std::int32_t>{0, 1, 0}) &&
+                native_commands[syria_first_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{48},
+                        std::vector<std::int32_t>{0}),
+            "Syria's callback did not start the retail quest.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000002}),
+            "Syria's opening conversation did not release the actor.")) {
+        return false;
+    }
+
+    if (!check(
+            interpreter.startStatus(0, 12010000) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000047 &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 3 &&
+                messages.back().text.find("~Check Status~") !=
+                    std::string::npos,
+            "Dune's status did not open the retail choice message.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(3) ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                interpreter.readTemporaryFlag(1000001) == 3,
+            "Dune's QUIT choice was not written back to the script.")) {
+        return false;
+    }
+
+    if (!check(
+            interpreter.startStatus(0, 12010003) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000056 &&
+                messages.back().selection_required,
+            "Harley's status did not open its retail choice message.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000057 &&
+                !messages.back().selection_required,
+            "Harley's first explanation line remained a choice message.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000058 &&
+                !messages.back().selection_required,
+            "Harley's explanation did not advance to its second line.")) {
+        return false;
+    }
     return check(
-        interpreter.resume() == osf::script::StepResult::complete &&
-            !interpreter.waitingForMessage(),
-        "The first Remote Town conversation did not resume cleanly.");
+        interpreter.resume() ==
+                osf::script::StepResult::complete &&
+            !interpreter.waitingForMessage() &&
+            native_commands.back() ==
+                std::make_pair(
+                    std::int32_t{19},
+                    std::vector<std::int32_t>{12010003}),
+        "Harley's completed explanation did not release him.");
 #else
     return true;
 #endif

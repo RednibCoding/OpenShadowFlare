@@ -9,12 +9,21 @@ GameplayState::GameplayState(GameplayStateHooks hooks)
 void GameplayState::enter() {
     phase_ = GameplayPhase::loading;
     loading_counter_ = 0;
+    interface_ready_ =
+        !hooks_.prepare_interface ||
+        hooks_.prepare_interface();
     world_ready_ =
-        !hooks_.prepare_world || hooks_.prepare_world();
+        interface_ready_ &&
+        (!hooks_.prepare_world || hooks_.prepare_world());
     if (world_ready_ && hooks_.start_world_music) {
         hooks_.start_world_music();
     }
     active_ = true;
+    pointer_ground_command_active_ = false;
+    continuous_pointer_movement_ = false;
+    pointer_hold_updates_ = 0;
+    previous_pointer_down_ = false;
+    pointer_consumed_until_release_ = false;
 }
 
 void GameplayState::leave() {
@@ -24,8 +33,17 @@ void GameplayState::leave() {
     if (active_ && hooks_.release_world) {
         hooks_.release_world();
     }
+    if (interface_ready_ && hooks_.release_interface) {
+        hooks_.release_interface();
+    }
     active_ = false;
     world_ready_ = false;
+    interface_ready_ = false;
+    pointer_ground_command_active_ = false;
+    continuous_pointer_movement_ = false;
+    pointer_hold_updates_ = 0;
+    previous_pointer_down_ = false;
+    pointer_consumed_until_release_ = false;
 }
 
 GameplayFrameResult GameplayState::update(
@@ -52,7 +70,33 @@ GameplayFrameResult GameplayState::update(
             hooks_.conversation_active &&
             hooks_.conversation_active();
         if (conversation_active) {
-            if ((input.confirm_pressed ||
+            pointer_ground_command_active_ = false;
+            continuous_pointer_movement_ = false;
+            pointer_hold_updates_ = 0;
+            if (input.pointer_primary_pressed ||
+                input.pointer_primary_down) {
+                pointer_consumed_until_release_ = true;
+            } else {
+                pointer_consumed_until_release_ = false;
+            }
+            const bool selection_required =
+                hooks_.conversation_requires_selection &&
+                hooks_.conversation_requires_selection();
+            if (selection_required) {
+                bool option_selected = false;
+                if (input.pointer_primary_pressed &&
+                    hooks_.choose_conversation_option) {
+                    option_selected =
+                        hooks_.choose_conversation_option(
+                            input.pointer_x, input.pointer_y);
+                }
+                if (!option_selected &&
+                    input.confirm_pressed &&
+                    hooks_.advance_conversation) {
+                    hooks_.advance_conversation();
+                }
+            } else if (
+                (input.confirm_pressed ||
                  input.pointer_primary_pressed) &&
                 hooks_.advance_conversation) {
                 hooks_.advance_conversation();
@@ -60,36 +104,89 @@ GameplayFrameResult GameplayState::update(
             // Conversation display owns gameplay input until its current
             // message has been acknowledged.
         } else {
+            const bool pointer_consumed =
+                pointer_consumed_until_release_;
+            if (pointer_consumed &&
+                !input.pointer_primary_down) {
+                pointer_consumed_until_release_ = false;
+            }
             if (input.run_toggle_pressed &&
                 hooks_.toggle_player_run) {
                 hooks_.toggle_player_run();
             }
             bool interaction_handled = false;
-            if (input.pointer_primary_pressed &&
+            if (!pointer_consumed &&
+                input.pointer_primary_pressed &&
                 input.pointer_x >= 0 &&
                 input.pointer_x < 640 &&
                 input.pointer_y >= 0 &&
-                input.pointer_y < 480 &&
+                input.pointer_y < 400 &&
                 hooks_.command_world_interaction) {
                 interaction_handled =
                     hooks_.command_world_interaction(
                         input.pointer_x, input.pointer_y);
             }
-            if ((input.pointer_primary_pressed ||
+            if (interaction_handled) {
+                pointer_ground_command_active_ = false;
+                continuous_pointer_movement_ = false;
+                pointer_hold_updates_ = 0;
+            }
+            if (!pointer_consumed &&
+                input.pointer_primary_down &&
+                pointer_ground_command_active_) {
+                if (input.pointer_primary_pressed) {
+                    pointer_hold_updates_ = 1;
+                } else {
+                    ++pointer_hold_updates_;
+                }
+                // The retail input record increments its hold counter while
+                // the button is down. Release stops movement only after that
+                // counter has passed nine updates.
+                continuous_pointer_movement_ =
+                    pointer_hold_updates_ > 9;
+            }
+            if (!pointer_consumed &&
+                (input.pointer_primary_pressed ||
                  input.pointer_primary_down) &&
                 !interaction_handled &&
+                (!hooks_.world_interaction_pending ||
+                 !hooks_.world_interaction_pending()) &&
                 input.pointer_x >= 0 &&
                 input.pointer_x < 640 &&
                 input.pointer_y >= 0 &&
-                input.pointer_y < 480 &&
+                input.pointer_y < 400 &&
                 hooks_.command_player_movement) {
                 hooks_.command_player_movement(
                     input.pointer_x, input.pointer_y);
+                if (input.pointer_primary_pressed) {
+                    pointer_ground_command_active_ = true;
+                    continuous_pointer_movement_ = false;
+                    pointer_hold_updates_ =
+                        input.pointer_primary_down ? 1 : 0;
+                }
+            }
+            if (previous_pointer_down_ &&
+                !input.pointer_primary_down) {
+                if (pointer_ground_command_active_ &&
+                    continuous_pointer_movement_ &&
+                    hooks_.cancel_player_movement) {
+                    hooks_.cancel_player_movement();
+                }
+                pointer_ground_command_active_ = false;
+                continuous_pointer_movement_ = false;
+                pointer_hold_updates_ = 0;
+            } else if (
+                input.pointer_primary_pressed &&
+                !input.pointer_primary_down) {
+                pointer_ground_command_active_ = false;
+                pointer_hold_updates_ = 0;
             }
         }
         if (hooks_.update_world) {
             hooks_.update_world();
         }
+        previous_pointer_down_ =
+            input.pointer_primary_down;
     }
     return {
         phase_,

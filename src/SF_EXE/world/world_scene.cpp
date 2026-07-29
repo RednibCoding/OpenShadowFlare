@@ -1,14 +1,18 @@
 #include "world_scene.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
+#include "movement_controller.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <iterator>
-#include <limits>
 #include <utility>
 
 namespace osf {
 namespace {
+
+constexpr std::int32_t kRetailInteractionDistance = 0x9f;
+constexpr std::int32_t kRetailHeightScale = 20;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -54,26 +58,14 @@ std::string mapStem(const std::string& map_path) {
     return std::filesystem::path(normalized).stem().string();
 }
 
-std::uint64_t scriptValueKey(
-    const script::Operand& operand) {
-    return
-        (static_cast<std::uint64_t>(
-             static_cast<std::uint32_t>(operand.type))
-         << 32u) |
-        static_cast<std::uint32_t>(operand.value);
-}
-
 }  // namespace
 
 WorldScene::WorldScene()
-    : script_interpreter_({
-          [this](const script::Operand& operand) {
-              return readScriptOperand(operand);
-          },
+    : scenario_script_({
           [this](
               const script::Operand& operand,
-              std::int32_t value) {
-              return writeScriptOperand(operand, value);
+              std::int32_t& value) {
+              return readScriptWorldOperand(operand, value);
           },
           [this](const script::MessageEvent& message) {
               showScriptMessage(message);
@@ -84,14 +76,28 @@ WorldScene::WorldScene()
               return executeScriptNativeCommand(
                   opcode, arguments);
           },
+          [this](
+              script::ValueQuery query,
+              std::int32_t& value) {
+              return queryScriptValue(query, value);
+          },
       }) {}
 
 bool WorldScene::loadInitialScenario(
     const std::filesystem::path& data_root,
-    std::int32_t character_gender,
+    const PlayerLoadRequest& player_request,
     std::string* error) {
     clear();
 
+    if (!parameter_tables_.load(
+            data_root / "System" / "Game" / "Parameter" /
+                "Table.Tbd",
+            error) ||
+        !player_data_.load(
+            player_request, parameter_tables_, error)) {
+        clear();
+        return false;
+    }
     if (!scenario_.load(
             data_root / "Scenario" / "00000000" / "Scenario.Mct",
             error)) {
@@ -103,7 +109,14 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
-    script_interpreter_.bind(&scenario_script_);
+    if (!item_database_.load(
+            data_root / "System" / "Game" / "Parameter" /
+                "Item.Ibn",
+            error)) {
+        clear();
+        return false;
+    }
+    data_root_ = data_root;
     const std::string map_name = mapStem(scenario_.mapPath());
     if (map_name.empty()) {
         setError(error, "The scenario does not name a map.");
@@ -171,19 +184,12 @@ bool WorldScene::loadInitialScenario(
     }
 
     const char* player_directory =
-        character_gender == 0 ? "Male" : "Female";
+        player_data_.gender() == 1 ? "Female" : "Male";
     const std::filesystem::path player_root =
         data_root / "Player" / player_directory;
     std::string player_error;
-    if (!player_patterns_.load(
-            player_root / "Animation00.Njp",
-            &player_error) ||
-        !player_shadow_patterns_.load(
-            player_root / "Animation00.Sdw",
-            &player_error) ||
-        !player_animation_.load(
-            player_root / "Animation00.Caf",
-            &player_error)) {
+    if (!player_visual_.load(
+            player_root, "Animation00", &player_error)) {
         setError(
             error,
             "The player animation could not be loaded: " +
@@ -196,7 +202,7 @@ bool WorldScene::loadInitialScenario(
     // enables the base body and shadow, then enables only parts supplied by
     // equipped items. A newly created character has no equipped item parts.
     player_parts_enabled_.assign(
-        player_animation_.maxPartCount(), 0);
+        player_visual_.animation().maxPartCount(), 0);
     if (!player_parts_enabled_.empty()) {
         player_parts_enabled_[0] = 1;
     }
@@ -204,33 +210,32 @@ bool WorldScene::loadInitialScenario(
         player_parts_enabled_[1] = 1;
     }
 
-    // This first people slice deliberately brings up one proven record before
-    // generalizing actor AI and interaction to the complete group.
-    if (!scenario_.people().empty()) {
+    npcs_.reserve(scenario_.people().size());
+    for (const ScenarioPerson& person : scenario_.people()) {
         NpcActor npc;
         std::string npc_error;
-        if (!npc.load(
+        const CharacterVisualResource* visual =
+            people_visuals_.load(
                 data_root,
-                scenario_.people().front(),
-                &npc_error)) {
+                person.resource_id,
+                &npc_error);
+        if (!visual ||
+            !npc.initialize(
+                person, *visual, &npc_error)) {
             setError(
                 error,
-                "The first scenario NPC could not be loaded: " +
-                    npc_error);
+                "Scenario person " + std::to_string(person.id) +
+                    " could not be loaded: " + npc_error);
             clear();
             return false;
         }
         npcs_.push_back(std::move(npc));
     }
 
-    // The initial values come from scenario 00000000 and the new-character
-    // table path. FUN_00450d40 turns both gender tables' agility value 128
-    // into tier five; FUN_00450080 then converts that to 20 world units per
-    // update.
     player_.reset(
         {entry->world_x, entry->world_y},
         entry->direction,
-        5);
+        player_data_.walkingSpeedTier());
     music_track_ = scenario_.musicTrack();
     has_player_ = true;
     return true;
@@ -238,25 +243,34 @@ bool WorldScene::loadInitialScenario(
 
 void WorldScene::clear() {
     scenario_.clear();
-    script_interpreter_.bind(nullptr);
     scenario_script_.clear();
-    script_values_.clear();
     conversation_ = {};
     conversation_active_ = false;
     conversation_actor_id_ = -1;
-    hovered_npc_id_ = -1;
+    conversation_selected_option_ = -1;
+    pointer_.reset();
+    pending_interaction_ = {};
     ground_.clear();
     object_map_.clear();
     map_patterns_.clear();
-    player_patterns_.clear();
-    player_shadow_patterns_.clear();
-    player_animation_.clear();
+    player_visual_.clear();
+    people_visuals_.clear();
     speech_patterns_.clear();
     player_parts_enabled_.clear();
     npcs_.clear();
+    ground_items_.clear();
+    quests_.clear();
+    item_database_.clear();
+    player_inventory_.clear();
+    parameter_tables_.clear();
+    data_root_.clear();
+    item_world_resources_.clear();
+    item_random_.seed(1);
+    player_data_.clear();
     player_.clear();
     has_player_ = false;
     music_track_ = -1;
+    next_ground_item_id_ = 0;
 }
 
 const GroundMap& WorldScene::ground() const {
@@ -273,19 +287,50 @@ WorldScene::mapPatterns() const {
 }
 
 const gapi::NjpImage& WorldScene::playerPatterns() const {
-    return player_patterns_;
+    return player_visual_.patterns();
 }
 
 const gapi::NjpImage& WorldScene::playerShadowPatterns() const {
-    return player_shadow_patterns_;
+    return player_visual_.shadowPatterns();
 }
 
 const gapi::CafAnimation& WorldScene::playerAnimation() const {
-    return player_animation_;
+    return player_visual_.animation();
 }
 
 const std::vector<NpcActor>& WorldScene::npcs() const {
     return npcs_;
+}
+
+const std::vector<GroundItem>& WorldScene::groundItems() const {
+    return ground_items_;
+}
+
+const QuestState& WorldScene::quests() const {
+    return quests_;
+}
+
+const ItemDatabase& WorldScene::itemDatabase() const {
+    return item_database_;
+}
+
+const PlayerInventory& WorldScene::playerInventory() const {
+    return player_inventory_;
+}
+
+const PlayerData& WorldScene::playerData() const {
+    return player_data_;
+}
+
+const ItemWorldResource* WorldScene::itemWorldResource(
+    std::int32_t resource_id) const {
+    if (resource_id < 0 ||
+        static_cast<std::size_t>(resource_id) >=
+            item_world_resources_.size()) {
+        return nullptr;
+    }
+    return item_world_resources_[
+        static_cast<std::size_t>(resource_id)].get();
 }
 
 bool WorldScene::playerPartEnabled(std::size_t part) const {
@@ -303,6 +348,7 @@ void WorldScene::commandPlayerMovement(
     if (!has_player_) {
         return;
     }
+    pending_interaction_ = {};
     player_.moveTo(
         calculateWorldPosition({
             cameraScreenX() + screen_x,
@@ -310,18 +356,28 @@ void WorldScene::commandPlayerMovement(
         }));
 }
 
+void WorldScene::cancelPlayerMovement() {
+    pending_interaction_ = {};
+    player_.cancelMovement();
+}
+
 void WorldScene::updatePointerHover(
     std::int32_t screen_x,
     std::int32_t screen_y) {
     if (!has_player_ || conversation_active_) {
-        hovered_npc_id_ = -1;
+        pointer_.clearSelection();
         return;
     }
-    const std::int32_t index =
-        npcIndexAtScreenPosition(screen_x, screen_y);
-    hovered_npc_id_ = index < 0
-        ? -1
-        : npcs_[static_cast<std::size_t>(index)].id();
+    pointer_.update(
+        screen_x,
+        screen_y,
+        pointerCandidatesAtScreenPosition(
+            screen_x, screen_y));
+}
+
+void WorldScene::configurePointer(
+    const WorldPointerConfiguration& configuration) {
+    pointer_.configure(configuration);
 }
 
 bool WorldScene::commandWorldInteraction(
@@ -330,30 +386,98 @@ bool WorldScene::commandWorldInteraction(
     if (!has_player_ || conversation_active_) {
         return false;
     }
-    const std::int32_t index =
-        npcIndexAtScreenPosition(screen_x, screen_y);
-    if (index < 0) {
+    const WorldPointerTarget target =
+        pointerTargetAtScreenPosition(screen_x, screen_y);
+    if (target.kind == WorldPointerTargetKind::none) {
         return false;
     }
-    NpcActor& selected =
-        npcs_[static_cast<std::size_t>(index)];
+    if (target.kind ==
+        WorldPointerTargetKind::ground_item) {
+        pending_interaction_ = target;
+        GroundItem* item = findGroundItem(target.id);
+        if (!item) {
+            pending_interaction_ = {};
+            return false;
+        }
+        if (distanceBetweenBounds(
+                player_.position(),
+                player_.judgement(),
+                item->position,
+                {}) > kRetailInteractionDistance) {
+            player_.followTo(item->position);
+            return true;
+        }
+        return startGroundItemInteraction(item->id);
+    }
 
+    NpcActor* selected = findNpc(target.id);
+    if (!selected) {
+        return false;
+    }
+    pending_interaction_ = target;
+    if (distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            selected->position(),
+            selected->judgement()) >
+            kRetailInteractionDistance) {
+        player_.followTo(selected->position());
+        return true;
+    }
+    return startNpcInteraction(*selected);
+}
+
+bool WorldScene::interactionPending() const {
+    return pending_interaction_.kind !=
+        WorldPointerTargetKind::none;
+}
+
+bool WorldScene::startNpcInteraction(NpcActor& selected) {
+    pending_interaction_ = {};
     player_.cancelMovement();
+    player_.faceToward(selected.position());
     const std::int32_t script_character_number =
         12000000 + selected.id();
     const script::StepResult result =
-        script_interpreter_.startStatus(
+        scenario_script_.startStatus(
             0, script_character_number);
     if (result == script::StepResult::waiting_for_message ||
         result == script::StepResult::complete) {
-        hovered_npc_id_ = -1;
+        pointer_.clearSelection();
     }
     return result == script::StepResult::waiting_for_message ||
            result == script::StepResult::complete;
 }
 
 std::int32_t WorldScene::hoveredNpcId() const {
-    return hovered_npc_id_;
+    return pointer_.target().kind ==
+                   WorldPointerTargetKind::npc
+               ? pointer_.target().id
+               : -1;
+}
+
+std::int32_t WorldScene::hoveredGroundItemId() const {
+    return pointer_.target().kind ==
+                   WorldPointerTargetKind::ground_item
+               ? pointer_.target().id
+               : -1;
+}
+
+std::int32_t WorldScene::pointerScreenX() const {
+    return pointer_.screenX();
+}
+
+std::int32_t WorldScene::pointerScreenY() const {
+    return pointer_.screenY();
+}
+
+bool WorldScene::pointerActive() const {
+    return pointer_.active();
+}
+
+const WorldPointerConfiguration&
+WorldScene::pointerConfiguration() const {
+    return pointer_.configuration();
 }
 
 bool WorldScene::conversationActive() const {
@@ -372,6 +496,27 @@ const std::string& WorldScene::conversationText() const {
     return conversation_.text;
 }
 
+bool WorldScene::conversationRequiresSelection() const {
+    return conversation_.selection_required;
+}
+
+std::int32_t WorldScene::conversationInitialSelection() const {
+    return conversation_.initial_selection;
+}
+
+std::int32_t WorldScene::conversationSelectedOption() const {
+    return conversation_selected_option_;
+}
+
+void WorldScene::selectConversationOption(
+    std::int32_t option) {
+    if (conversation_active_ &&
+        conversation_.selection_required &&
+        option >= 0) {
+        conversation_selected_option_ = option;
+    }
+}
+
 const gapi::NjpImage& WorldScene::speechPatterns() const {
     return speech_patterns_;
 }
@@ -382,8 +527,30 @@ void WorldScene::advanceConversation() {
     }
     conversation_active_ = false;
     conversation_ = {};
+    conversation_selected_option_ = -1;
     const script::StepResult result =
-        script_interpreter_.resume();
+        scenario_script_.resume();
+    if (result != script::StepResult::waiting_for_message) {
+        conversation_active_ = false;
+        conversation_actor_id_ = -1;
+        for (NpcActor& npc : npcs_) {
+            npc.endInteraction();
+        }
+    }
+}
+
+void WorldScene::chooseConversationOption(
+    std::int32_t option) {
+    if (!conversation_active_ ||
+        !conversation_.selection_required ||
+        option < 0) {
+        return;
+    }
+    conversation_active_ = false;
+    conversation_ = {};
+    conversation_selected_option_ = -1;
+    const script::StepResult result =
+        scenario_script_.resume(option);
     if (result != script::StepResult::waiting_for_message) {
         conversation_active_ = false;
         conversation_actor_id_ = -1;
@@ -400,11 +567,75 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    NpcActor* interaction_npc = nullptr;
+    GroundItem* interaction_item = nullptr;
+    if (pending_interaction_.kind ==
+        WorldPointerTargetKind::npc) {
+        interaction_npc =
+            findNpc(pending_interaction_.id);
+        if (interaction_npc) {
+            player_.followTo(interaction_npc->position());
+        }
+    } else if (
+        pending_interaction_.kind ==
+        WorldPointerTargetKind::ground_item) {
+        interaction_item =
+            findGroundItem(pending_interaction_.id);
+        if (interaction_item) {
+            player_.followTo(interaction_item->position);
+        }
+    }
+    if (pending_interaction_.kind !=
+            WorldPointerTargetKind::none &&
+        !interaction_npc && !interaction_item) {
+        pending_interaction_ = {};
+    }
+    std::vector<MovementBlocker> actor_blockers;
+    actor_blockers.reserve(npcs_.size());
+    for (const NpcActor& npc : npcs_) {
+        actor_blockers.push_back({
+            npc.id(),
+            npc.position(),
+            npc.judgement(),
+        });
+    }
     if (has_player_) {
-        player_.update(ground_, object_map_);
+        player_.update(
+            ground_, object_map_, &actor_blockers);
     }
     for (NpcActor& npc : npcs_) {
         npc.update(ground_, object_map_);
+    }
+    for (GroundItem& item : ground_items_) {
+        updateGroundItem(item);
+    }
+    interaction_npc =
+        pending_interaction_.kind ==
+                WorldPointerTargetKind::npc
+            ? findNpc(pending_interaction_.id)
+            : nullptr;
+    if (interaction_npc &&
+        distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            interaction_npc->position(),
+            interaction_npc->judgement()) <=
+            kRetailInteractionDistance) {
+        startNpcInteraction(*interaction_npc);
+        return;
+    }
+    interaction_item =
+        pending_interaction_.kind ==
+                WorldPointerTargetKind::ground_item
+            ? findGroundItem(pending_interaction_.id)
+            : nullptr;
+    if (interaction_item &&
+        distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            interaction_item->position,
+            {}) <= kRetailInteractionDistance) {
+        startGroundItemInteraction(interaction_item->id);
     }
 }
 
@@ -422,6 +653,10 @@ std::int32_t WorldScene::playerDirection() const {
 
 PlayerMotion WorldScene::playerMotion() const {
     return player_.motion();
+}
+
+MovementPace WorldScene::playerMovementPace() const {
+    return player_.movementPace();
 }
 
 std::int32_t WorldScene::playerAnimationChart() const {
@@ -444,6 +679,29 @@ std::int32_t WorldScene::cameraScreenY() const {
     return position.y - 240;
 }
 
+std::int32_t WorldScene::renderCameraScreenX(
+    double alpha) const {
+    const ScreenPosition position =
+        calculateRealPosition(player_.renderPosition(alpha));
+    return position.x - 320;
+}
+
+std::int32_t WorldScene::renderCameraScreenY(
+    double alpha) const {
+    const ScreenPosition position =
+        calculateRealPosition(player_.renderPosition(alpha));
+    return position.y - 240;
+}
+
+WorldPosition WorldScene::playerRenderPosition(
+    double alpha) const {
+    return player_.renderPosition(alpha);
+}
+
+const ObjectBounds& WorldScene::playerJudgement() const {
+    return player_.judgement();
+}
+
 std::int32_t WorldScene::musicTrack() const {
     return music_track_;
 }
@@ -453,33 +711,274 @@ const ScenarioData& WorldScene::scenario() const {
 }
 
 const script::ScriptData& WorldScene::scenarioScript() const {
-    return scenario_script_;
+    return scenario_script_.data();
 }
 
-std::int32_t WorldScene::readScriptOperand(
-    const script::Operand& operand) const {
-    const auto found =
-        script_values_.find(scriptValueKey(operand));
-    return found == script_values_.end() ? 0 : found->second;
-}
-
-bool WorldScene::writeScriptOperand(
+bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
-    std::int32_t value) {
-    script_values_.insert_or_assign(
-        scriptValueKey(operand), value);
+    std::int32_t& value) const {
+    if (operand.type != 6 && operand.type != 7) {
+        return false;
+    }
+    const NpcActor* npc = findScriptNpc(operand.value);
+    value = !npc
+                ? 0
+                : (operand.type == 6
+                       ? npc->position().x
+                       : npc->position().y);
     return true;
 }
 
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
-    if ((opcode != 18 && opcode != 21) ||
+    if (opcode == 10) {
+        if (arguments.size() < 6) {
+            return false;
+        }
+        const std::size_t first_item = ground_items_.size();
+        if (!createGroundItems(
+                ground_items_,
+                item_random_,
+                arguments[0],
+                arguments[1],
+                {arguments[2], arguments[3]},
+                arguments[4],
+                arguments[5])) {
+            return false;
+        }
+        for (std::size_t index = first_item;
+             index < ground_items_.size();
+             ++index) {
+            GroundItem& item = ground_items_[index];
+            const ItemDefinition* definition =
+                item_database_.find(
+                    item.category, item.definition_id);
+            if (!definition ||
+                !ensureItemWorldResource(
+                    definition->ground_resource_id)) {
+                ground_items_.resize(first_item);
+                return false;
+            }
+            item.resource_id =
+                definition->ground_resource_id;
+            item.animation_chart =
+                definition->ground_animation_chart;
+            item.red_strength =
+                definition->ground_red_strength;
+            item.green_strength =
+                definition->ground_green_strength;
+            item.blue_strength =
+                definition->ground_blue_strength;
+            item.id = next_ground_item_id_++;
+        }
+        return true;
+    }
+
+    if (opcode == 48) {
+        if (arguments.empty()) {
+            return false;
+        }
+        quests_.selectNotice(arguments[0]);
+        return true;
+    }
+
+    if (opcode == 62) {
+        if (arguments.size() < 3) {
+            return false;
+        }
+        // Argument two requests the retail server broadcast when a quest is
+        // completed. The initial scenario is strictly single-player, but the
+        // interpreter still evaluates and preserves that argument.
+        return quests_.applyScriptUpdate(
+            arguments[0], arguments[1]);
+    }
+
+    if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;
     }
-    const std::int32_t character_number =
-        arguments.front();
+    NpcActor* npc = findScriptNpc(arguments.front());
+    if (!npc) {
+        return false;
+    }
+    if (opcode == 19) {
+        npc->endInteraction();
+        return true;
+    }
+    npc->beginInteraction(player_.position());
+    conversation_actor_id_ = npc->id();
+    pointer_.clearSelection();
+    return true;
+}
+
+bool WorldScene::queryScriptValue(
+    script::ValueQuery query,
+    std::int32_t& value) const {
+    if (!has_player_) {
+        return false;
+    }
+    switch (query) {
+    case script::ValueQuery::local_player_level:
+        value = player_data_.level();
+        return true;
+    }
+    return false;
+}
+
+void WorldScene::showScriptMessage(
+    const script::MessageEvent& message) {
+    conversation_ = message;
+    conversation_active_ = true;
+    conversation_selected_option_ =
+        message.selection_required
+            ? message.initial_selection
+            : -1;
+    const NpcActor* speaker =
+        findScriptNpc(message.character_number);
+    if (speaker) {
+        conversation_actor_id_ = speaker->id();
+    }
+}
+
+WorldPointerTarget WorldScene::pointerTargetAtScreenPosition(
+    std::int32_t screen_x,
+    std::int32_t screen_y) const {
+    WorldPointer resolver;
+    resolver.configure(pointer_.configuration());
+    resolver.update(
+        screen_x,
+        screen_y,
+        pointerCandidatesAtScreenPosition(
+            screen_x, screen_y));
+    return resolver.target();
+}
+
+std::vector<WorldPointerCandidate>
+WorldScene::pointerCandidatesAtScreenPosition(
+    std::int32_t screen_x,
+    std::int32_t screen_y) const {
+    const std::int32_t camera_x = cameraScreenX();
+    const std::int32_t camera_y = cameraScreenY();
+    const ScreenPosition point{screen_x, screen_y};
+    const std::int32_t half_size =
+        worldPointerHalfSize(pointer_.configuration());
+    const DisplayHitRectangle hit_rectangle{
+        screen_x - half_size,
+        screen_y - half_size,
+        screen_x + half_size,
+        screen_y + half_size,
+    };
+    const WorldPosition pointer_world =
+        calculateWorldPosition({
+            camera_x + screen_x,
+            camera_y + screen_y,
+        });
+    const auto pointerDistanceSquared =
+        [pointer_world](WorldPosition position) {
+            const std::int64_t delta_x =
+                static_cast<std::int64_t>(position.x) -
+                pointer_world.x;
+            const std::int64_t delta_y =
+                static_cast<std::int64_t>(position.y) -
+                pointer_world.y;
+            return delta_x * delta_x + delta_y * delta_y;
+        };
+    std::vector<WorldPointerCandidate> candidates;
+    candidates.reserve(npcs_.size() + ground_items_.size());
+    for (const NpcActor& npc : npcs_) {
+        const auto part_enabled =
+            [&npc](std::size_t part) {
+                return npc.partEnabled(part);
+            };
+        if (!displayAnimationIntersectsRectangle(
+                npc.animation(),
+                npc.patterns(),
+                npc.position(),
+                npc.animationChart(),
+                npc.direction(),
+                npc.animationFrame(),
+                part_enabled,
+                camera_x,
+                camera_y,
+                hit_rectangle)) {
+            continue;
+        }
+        candidates.push_back({
+            {WorldPointerTargetKind::npc, npc.id()},
+            {
+                0,
+                npc.position(),
+                npc.judgement(),
+                0,
+            },
+            0,
+            displayAnimationContainsPoint(
+                npc.animation(),
+                npc.patterns(),
+                npc.position(),
+                npc.animationChart(),
+                npc.direction(),
+                npc.animationFrame(),
+                part_enabled,
+                camera_x,
+                camera_y,
+                point),
+            pointerDistanceSquared(npc.position()),
+        });
+    }
+    for (const GroundItem& item : ground_items_) {
+        const ItemWorldResource* resource =
+            itemWorldResource(item.resource_id);
+        const auto part_enabled = [](std::size_t) {
+            return true;
+        };
+        const std::int32_t display_height =
+            item.height * kRetailHeightScale / 100;
+        if (!resource ||
+            !displayAnimationIntersectsRectangle(
+                resource->animation(),
+                resource->patterns(),
+                item.position,
+                item.animation_chart,
+                8,
+                0,
+                part_enabled,
+                camera_x,
+                camera_y,
+                hit_rectangle,
+                display_height)) {
+            continue;
+        }
+        candidates.push_back({
+            {WorldPointerTargetKind::ground_item, item.id},
+            {
+                0,
+                item.position,
+                {},
+                0,
+            },
+            3,
+            displayAnimationContainsPoint(
+                resource->animation(),
+                resource->patterns(),
+                item.position,
+                item.animation_chart,
+                8,
+                0,
+                part_enabled,
+                camera_x,
+                camera_y,
+                point,
+                display_height),
+            pointerDistanceSquared(item.position),
+        });
+    }
+    return candidates;
+}
+
+NpcActor* WorldScene::findScriptNpc(
+    std::int32_t character_number) {
     const auto found = std::find_if(
         npcs_.begin(),
         npcs_.end(),
@@ -487,51 +986,92 @@ bool WorldScene::executeScriptNativeCommand(
             return 12000000 + npc.id() ==
                    character_number;
         });
-    if (found == npcs_.end()) {
+    return found == npcs_.end() ? nullptr : &*found;
+}
+
+const NpcActor* WorldScene::findScriptNpc(
+    std::int32_t character_number) const {
+    const auto found = std::find_if(
+        npcs_.begin(),
+        npcs_.end(),
+        [character_number](const NpcActor& npc) {
+            return 12000000 + npc.id() ==
+                   character_number;
+        });
+    return found == npcs_.end() ? nullptr : &*found;
+}
+
+NpcActor* WorldScene::findNpc(std::int32_t id) {
+    const auto found = std::find_if(
+        npcs_.begin(),
+        npcs_.end(),
+        [id](const NpcActor& npc) {
+            return npc.id() == id;
+        });
+    return found == npcs_.end() ? nullptr : &*found;
+}
+
+GroundItem* WorldScene::findGroundItem(std::int32_t id) {
+    const auto found = std::find_if(
+        ground_items_.begin(),
+        ground_items_.end(),
+        [id](const GroundItem& item) {
+            return item.id == id;
+        });
+    return found == ground_items_.end()
+        ? nullptr
+        : &*found;
+}
+
+bool WorldScene::startGroundItemInteraction(
+    std::int32_t item_id) {
+    const auto found = std::find_if(
+        ground_items_.begin(),
+        ground_items_.end(),
+        [item_id](const GroundItem& item) {
+            return item.id == item_id;
+        });
+    if (found == ground_items_.end()) {
+        pending_interaction_ = {};
         return false;
     }
-    found->beginInteraction(player_.position());
-    conversation_actor_id_ = found->id();
-    hovered_npc_id_ = -1;
+
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    if (player_inventory_.add(
+            found->category,
+            found->definition_id,
+            found->quantity)) {
+        if (pointer_.target().kind ==
+                WorldPointerTargetKind::ground_item &&
+            pointer_.target().id == item_id) {
+            pointer_.clearSelection();
+        }
+        ground_items_.erase(found);
+    }
     return true;
 }
 
-void WorldScene::showScriptMessage(
-    const script::MessageEvent& message) {
-    conversation_ = message;
-    conversation_active_ = true;
-}
-
-std::int32_t WorldScene::npcIndexAtScreenPosition(
-    std::int32_t screen_x,
-    std::int32_t screen_y) const {
-    const std::int32_t camera_x = cameraScreenX();
-    const std::int32_t camera_y = cameraScreenY();
-    std::int32_t selected = -1;
-    std::int32_t selected_distance =
-        std::numeric_limits<std::int32_t>::max();
-    for (std::size_t index = 0; index < npcs_.size(); ++index) {
-        const NpcActor& npc = npcs_[index];
-        const ScreenPosition anchor =
-            calculateRealPosition(npc.position());
-        const std::int32_t relative_x =
-            screen_x - (anchor.x - camera_x);
-        const std::int32_t relative_y =
-            screen_y - (anchor.y - camera_y);
-        if (relative_x < -32 || relative_x > 32 ||
-            relative_y < -npc.labelHeight() ||
-            relative_y > 12) {
-            continue;
-        }
-        const std::int32_t distance =
-            relative_x * relative_x +
-            relative_y * relative_y;
-        if (distance < selected_distance) {
-            selected = static_cast<std::int32_t>(index);
-            selected_distance = distance;
-        }
+bool WorldScene::ensureItemWorldResource(
+    std::int32_t resource_id) {
+    if (resource_id < 0 || resource_id > 99999999) {
+        return false;
     }
-    return selected;
+    const std::size_t index =
+        static_cast<std::size_t>(resource_id);
+    if (index < item_world_resources_.size() &&
+        item_world_resources_[index]) {
+        return true;
+    }
+    auto resource = std::make_unique<ItemWorldResource>();
+    if (!resource->load(data_root_, resource_id)) {
+        return false;
+    }
+    if (item_world_resources_.size() <= index) {
+        item_world_resources_.resize(index + 1u);
+    }
+    item_world_resources_[index] = std::move(resource);
+    return true;
 }
 
 }  // namespace osf

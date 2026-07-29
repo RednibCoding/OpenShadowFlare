@@ -9,7 +9,7 @@ This folder contains reverse-engineering documentation for ShadowFlare (2003).
 | [exe-analysis.md](exe-analysis.md) | ShadowFlare.exe reverse engineering - functions, addresses, structures |
 | [data-files.md](data-files.md) | Game file formats - NJP, RCLIB-L, save files, etc. |
 | [game-mechanics.md](game-mechanics.md) | Game mechanics - classes, spells, stats, controls |
-| [script-engine.md](script-engine.md) | Scenario.Scs format, triggers, operands, interpreter, and reconstructed commands |
+| [script-engine.md](script-engine.md) | Scenario scripting, AI behavior data, interpreter boundaries, operands, and reconstructed commands |
 
 ## Quick Reference
 
@@ -32,3 +32,4 @@ This folder contains reverse-engineering documentation for ShadowFlare (2003).
 - `.Ssv` - Save data
 - `.Voc` - Audio
 - `.Scs` - Scripts
+- `.Aid` - Actor and enemy AI behavior data

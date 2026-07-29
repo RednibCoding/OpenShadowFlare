@@ -1,5 +1,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "world/movement_controller.hpp"
 #include "world/player_actor.hpp"
+#include "world/world_pointer.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -68,7 +70,7 @@ osf::ObjectMap oneBlockingObject(
     return result;
 }
 
-osf::GroundMap oneBlockingGround() {
+osf::GroundMap oneBlockingGround(bool blocked = true) {
     std::vector<std::uint8_t> bytes;
     const char header[16] = "RPGSCRN_GNDv000";
     bytes.insert(bytes.end(), header, header + sizeof(header));
@@ -84,7 +86,9 @@ osf::GroundMap oneBlockingGround() {
     }
     bytes.push_back(0);
     for (std::int32_t index = 0; index < 36; ++index) {
-        appendI16(bytes, index == 25 ? 1 : 0);
+        appendI16(
+            bytes,
+            blocked && index == 25 ? 1 : 0);
     }
     osf::GroundMap result;
     result.decode(bytes);
@@ -127,6 +131,38 @@ bool testDirections() {
         }
     }
     return true;
+}
+
+bool testRetailRectangleDistance() {
+    const osf::ObjectBounds point{};
+    return check(
+        osf::distanceBetweenBounds(
+            {0, 0}, point, {0, 0}, point) == 0 &&
+            osf::distanceBetweenBounds(
+                {0, 0}, point, {10, 0}, point) == 9 &&
+            osf::distanceBetweenBounds(
+                {0, 0}, point, {3, 4}, point) == 4 &&
+            osf::distanceBetweenBounds(
+                {0, 0},
+                {-80, -80, 79, 79},
+                {319, 0},
+                {-80, -80, 79, 79}) == 159,
+        "Executable rectangle distance differs from FUN_004143c0.");
+}
+
+bool testRenderInterpolation() {
+    osf::GroundMap ground;
+    osf::ObjectMap objects;
+    osf::PlayerActor player;
+    player.reset({0, 0}, 1, 5);
+    player.moveTo({100, 0});
+    player.update(ground, objects);
+    return check(
+        player.position().x == 20 &&
+            player.renderPosition(0.0).x == 0 &&
+            player.renderPosition(0.5).x == 10 &&
+            player.renderPosition(1.0).x == 20,
+        "The 60 Hz render snapshot does not interpolate a 30 Hz step.");
 }
 
 bool testMovementAndAnimation() {
@@ -218,18 +254,48 @@ bool testObjectJudgement() {
         return false;
     }
 
+    osf::PlayerActor blocked_target;
+    blocked_target.reset({0, 0}, 1, 5);
+    blocked_target.moveTo({90, 0});
+    blocked_target.update(ground, objects);
+    if (!check(
+            blocked_target.position().x == 10 &&
+                blocked_target.position().y == 0 &&
+                blocked_target.motion() ==
+                    osf::PlayerMotion::walking,
+            "The swept resolver did not return the last free point "
+            "before an object contact.")) {
+        return false;
+    }
+
     osf::PlayerActor player;
     player.reset({0, 0}, 1, 5);
-    player.moveTo({100, 0});
-    player.update(ground, objects);
-    player.update(ground, objects);
+    player.moveTo({250, 0});
+    std::int32_t greatest_y = 0;
+    for (std::int32_t update = 0;
+         update < 100 &&
+         player.position().x != 250;
+        ++update) {
+        player.update(ground, objects);
+        greatest_y =
+            std::max(greatest_y, std::abs(player.position().y));
+    }
+    const bool followed =
+        player.position().x == 250 &&
+        player.position().y == 0 &&
+        greatest_y > 79;
+    if (!followed) {
+        std::cerr
+            << "Position: " << player.position().x
+            << ", " << player.position().y
+            << "; maximum detour: " << greatest_y << '\n';
+    }
     return check(
-        player.position().x == 10 &&
-            player.motion() == osf::PlayerMotion::idle,
-        "Blocked movement did not stop at the last walkable point.");
+        followed,
+        "The retail movement controller did not follow the obstacle edge.");
 }
 
-bool testAxisSlide() {
+bool testDiagonalContact() {
     osf::GroundMap ground;
     osf::ObjectMap objects = oneBlockingObject(82, 0);
     osf::PlayerActor player;
@@ -238,9 +304,9 @@ bool testAxisSlide() {
     player.update(ground, objects);
     return check(
         player.position().x == 2 &&
-            player.position().y == 9 &&
+            player.position().y == 2 &&
             player.motion() == osf::PlayerMotion::walking,
-        "Diagonal collision did not keep contact and try an axis slide.");
+        "Diagonal collision did not stop at the retail swept contact.");
 }
 
 bool testGroundJudgement() {
@@ -253,6 +319,131 @@ bool testGroundJudgement() {
             !osf::positionIsWalkable(
                 ground, objects, {0, 0}, point),
         "The decoded GND judgement plane does not block movement.");
+}
+
+bool testDynamicActorJudgement() {
+    const osf::GroundMap ground = oneBlockingGround(false);
+    const osf::ObjectMap objects;
+    const std::vector<osf::MovementBlocker> actors{{
+        7,
+        {250, 0},
+        {-40, -40, 39, 39},
+    }};
+    osf::PlayerActor player;
+    player.reset({0, 0}, 1, 5);
+    player.moveTo({500, 0});
+    std::int32_t greatest_detour = 0;
+    for (std::int32_t update = 0;
+         update < 200 &&
+         player.position().x != 500;
+         ++update) {
+        player.update(ground, objects, &actors);
+        greatest_detour = std::max(
+            greatest_detour,
+            std::abs(player.position().y));
+    }
+    return check(
+        player.position().x == 500 &&
+            player.position().y == 0 &&
+            greatest_detour >= 120,
+        "The player did not route around a live actor's judgement "
+        "rectangle.");
+}
+
+bool testWorldPointerPriority() {
+    const std::vector<osf::WorldPointerCandidate> candidates{
+        {
+            {osf::WorldPointerTargetKind::npc, 10},
+            {0, {100, 100}, {-10, -10, 10, 10}, 0},
+            0,
+        },
+        {
+            {osf::WorldPointerTargetKind::ground_item, 20},
+            {0, {100, 100}, {}, 0},
+            3,
+        },
+    };
+    osf::WorldPointer pointer;
+    pointer.update(30, 40, candidates);
+    if (!check(
+            pointer.active() &&
+                pointer.screenX() == 30 &&
+                pointer.screenY() == 40 &&
+                pointer.target().kind ==
+                    osf::WorldPointerTargetKind::ground_item &&
+                pointer.target().id == 20,
+            "The default retail click priority did not prefer "
+            "an item over an actor.")) {
+        return false;
+    }
+
+    osf::WorldPointerConfiguration configuration;
+    configuration.click_priority[1] = 4;
+    configuration.click_priority[2] = 0;
+    configuration.range = 99;
+    pointer.configure(configuration);
+    pointer.update(30, 40, candidates);
+    if (!check(
+        pointer.target().kind ==
+                osf::WorldPointerTargetKind::npc &&
+            pointer.target().id == 10 &&
+            pointer.configuration().range == 4,
+        "The configured retail click priority was not applied.")) {
+        return false;
+    }
+
+    std::vector<osf::WorldPointerCandidate>
+        ranged_candidates{
+            {
+                {osf::WorldPointerTargetKind::npc, 30},
+                {0, {100, 100}, {}, 0},
+                0,
+                false,
+                100,
+            },
+            {
+                {osf::WorldPointerTargetKind::npc, 31},
+                {0, {100, 100}, {}, 0},
+                0,
+                false,
+                25,
+            },
+        };
+    osf::WorldPointer ranged_pointer;
+    ranged_pointer.update(30, 40, ranged_candidates);
+    if (!check(
+            ranged_pointer.target().id == 31,
+            "The nearest range-only pointer candidate did not "
+            "win its priority group.")) {
+        return false;
+    }
+    ranged_candidates.push_back({
+        {osf::WorldPointerTargetKind::npc, 32},
+        {0, {100, 100}, {}, 0},
+        0,
+        true,
+        400,
+    });
+    ranged_pointer.update(30, 40, ranged_candidates);
+    if (!check(
+            ranged_pointer.target().id == 32,
+            "An exact cursor hit did not win over nearer "
+            "range-only candidates.")) {
+        return false;
+    }
+
+    osf::WorldPointerConfiguration range_configuration;
+    if (!check(
+            osf::worldPointerHalfSize(
+                range_configuration) == 16,
+            "The default retail click range has the wrong size.")) {
+        return false;
+    }
+    range_configuration.range_enabled = false;
+    return check(
+        osf::worldPointerHalfSize(range_configuration) == 0,
+        "Disabling the click range did not restore exact-tip "
+        "picking.");
 }
 
 bool testRemoteTownFixture() {
@@ -307,11 +498,15 @@ bool testRemoteTownFixture() {
 int main() {
     if (!testProjection() ||
         !testDirections() ||
+        !testRetailRectangleDistance() ||
+        !testRenderInterpolation() ||
         !testMovementAndAnimation() ||
         !testWalkRunToggle() ||
         !testObjectJudgement() ||
-        !testAxisSlide() ||
+        !testDiagonalContact() ||
         !testGroundJudgement() ||
+        !testDynamicActorJudgement() ||
+        !testWorldPointerPriority() ||
         !testRemoteTownFixture()) {
         return 1;
     }

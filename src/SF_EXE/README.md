@@ -30,20 +30,29 @@ cmake -S . -B cmake-build-debug
 cmake --build cmake-build-debug
 ```
 
+Use `cmake-build-debug` as the single local CMake build directory. The
+executable is always written to
+`cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt`.
+
 The development executable can be launched directly from the build folder. It
 looks for `tmp/ShadowFlare` relative to its own location, so starting it from a
 file manager works even when that file manager chooses a different working
 directory.
 
-The executable can now read the original `SFlare.Cfg`, handle the retail `/w`
-and `/f` switches, and run the original top-level
-title/character-selection/gameplay transitions. The title and character-select
-enter/leave lifecycles are reconstructed too, including their asset manifests,
-save-slot behavior, input tables, random smoke delays, and shared menu music.
+The executable can now read the original `SFlare.Cfg` and run the original
+top-level title/character-selection/gameplay transitions. The title and
+character-select enter/leave lifecycles are reconstructed too, including their
+asset manifests, save-slot behavior, input tables, random smoke delays, and
+shared menu music.
 The original VOC containers are decoded portably and played through LAL, with
-the configured effect and BGM volumes. The broader reconstruction order and
-the current slice are tracked in the repository's
-[`roadmap.md`](../../roadmap.md).
+the configured effect and BGM volumes. Gameplay's Escape menu can change those
+volumes, pointer range and priority, and the other reconstructed config fields
+using the retail panel and coordinates. The portable executable always opens
+in a window; the old fullscreen setting is intentionally not exposed. Its
+Help row and the `H` shortcut open the original mouse/keyboard reference page,
+with the authored preview, text layout, and animated close tab. The
+broader reconstruction order and the current slice are tracked in the
+repository's [`roadmap.md`](../../roadmap.md).
 
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
@@ -80,34 +89,62 @@ Configured semi-transparent shadows apply to both scenery and the player.
 Remote Town's MCT music index also starts the looping `BGM00.Voc` through LAL
 at the configured BGM volume.
 
-The first dynamic `PEOPLE` record is live as well. Ostare is read from the MCT
-rather than placed by hand, loads `Character/PEOPLE/00000013`, and uses his
-original position, direction, custom CAF layer mask, idle animation, and SDW
-shadow. His MCT tail also drives the original one-second idle pause followed
-by a short chart-one walk inside his scenario-defined rectangle. For now this
-slice deliberately stops at one NPC; the other six Remote Town people and
-their more involved behavior still need to be connected.
+All seven dynamic `PEOPLE` records are read from the MCT rather than placed by
+hand. They load their original `Character/PEOPLE` resources, positions,
+directions, CAF layer masks, animations, judgement rectangles, and SDW
+shadows. Their live bounds block player movement. Type-one MCT tails also drive
+the original idle pause and short walks inside each actor's scenario-defined
+rectangle.
 
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
 executes the initial comparisons, assignments, and actor commands, then shows
-message `1000000` from the original script data. Return or another click
-resumes the waiting sentence and restores world control. The format and
-interpreter architecture are documented in
+message `1000000` from the original script data. Closing each bubble fires
+the actor's status-kind-one callback, taking the opening conversation through
+all five retail messages. The third callback reads Ostare's current position
+and creates the four original ground-item records; closing the last one
+releases him and restores world control. Clicking Ostare again keeps that
+script state, reads the level-one player through retail opcode 61, and follows
+both messages in the original no-new-information response. The item records
+are resolved through the retail `Item.Ibn` database and drawn from the
+separate `Character/ITEM` CAF, NJP, and SDW ground resources—not their larger
+inventory icons. They also follow the original two-bounce drop arc before
+settling into the world depth pass. CAF chart palettes and the default RGB
+strengths stored in `Item.Ibn` supply their original ground colors. The
+format and interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
+
+All seven people records in Remote Town are loaded from `Scenario.Mct` now.
+Malse and Syria can be selected just like Ostare and run their actual
+new-game dialogue branches from `Scenario.Scs`. Syria's callback also reaches
+the first quest-state commands: it starts quest zero and selects the matching
+retail quest notice without putting quest IDs or dialogue into `WorldScene`.
 
 The first world interaction is in place too. Clicking the ground moves the
 player at the original gameplay cadence, follows the cursor with all eight
 directions, and moves the camera with the player. `R` switches between the
 retail walking and running speeds, using CAF charts one and two respectively.
 Remote Town's GND judgement layer and OBL rectangles stop the player at walls
-and scenery while the renderer keeps sorting nearby objects and Ostare in
-front of or behind the moving sprite. The remaining NPCs, script commands,
-HUD, darkness, and the rest of gameplay simulation are still in progress.
+and scenery. The renderer uses the retail status classes and full judgement
+rectangles—not a single Y anchor—to sort nearby objects and people in front of
+or behind the moving sprite, including the large town houses and walls.
+NPC-specific behavior, most script commands, the HUD, darkness, and the rest
+of gameplay simulation are still in progress.
 
-Run it with `--smoke-test` to close automatically after three frames. You can
-also pass `/w` to keep a smoke-test window out of fullscreen mode.
+Gameplay now owns a real `PlayerData` record rather than storing level on the
+movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
+new male and female characters receive the thirteen values from retail tables
+901 and 900. A selected save contributes its complete plain 0x160-byte player
+record, including unknown bytes that later inventory, equipment, and
+progression slices will need. The in-game save actions now write the retail
+envelope and preserve the unknown dynamic payload of an existing save while
+updating its repeated player record. When the matching option is enabled, the
+same action captures the world without the HUD or menu and writes the retail
+391×114 preview bitmap used by Load Game. Full dynamic-state decoding and
+serialization are still pending.
+
+Run it with `--smoke-test` to close automatically after three frames.
 
 ## Reverse-engineering records
 
@@ -119,15 +156,20 @@ labels used by those maps.
 Raw decompiler output stays in `/ghidra`. Only understood, readable behavior
 belongs in the portable implementation.
 
-The portable game code lives in the `OpenShadowFlare::GameCore` CMake target.
-DLL-derived behavior lives under `libs/`, with one directory per original DLL.
-Each implemented counterpart is a statically linked, cross-platform library
-with one public API header. The working Win32 reconstruction under
+`OpenShadowFlare::GameCore` is the convenient build target for the whole
+portable game. Underneath it, core utilities, items, resources, states, world
+simulation, rendering, and GAPI are separate static libraries. That makes
+their dependencies real build rules instead of relying on folder names and
+good intentions.
+
+DLL-derived behavior lives under `libs/`, with one directory per original
+DLL. Each implemented counterpart is a statically linked, cross-platform
+library with one public API header. The working Win32 reconstruction under
 `src/reconstructed/<DLL name>` remains the strong behavioral reference; the
 portable version keeps the behavior but does not preserve its ABI, object
 layout, or platform-specific plumbing.
 
-The first seven static counterparts are:
+The first eight static counterparts are:
 
 - `OpenShadowFlare::RK_FUNCTION` for RCLIB-L decompression
 - `OpenShadowFlare::RKC_DBFCONTROL` for the software framebuffer backend
@@ -136,6 +178,7 @@ The first seven static counterparts are:
 - `OpenShadowFlare::RKC_UPDIB` for NJP/SDW patterns
 - `OpenShadowFlare::RKC_RPGSCRN` for CAF, GND, and OBL data
 - `OpenShadowFlare::RKC_RPG_SCRIPT` for compiled scenario data and execution
+- `OpenShadowFlare::RKC_RPG_TABLE` for general parameter-table databases
 
 Windowing and final presentation stay in the thin executable runtime and the
 LWL and LGL libraries. This keeps the reconstructed rules independently
@@ -146,8 +189,11 @@ implementations:
 
 - `core/` contains executable config, command-line, and retail utility code
 - `gapi/` contains the backend-neutral graphics interface
+- `items/` contains the executable-owned item database and item rules
 - `libs/` contains the fourteen portable DLL boundaries
 - `render/` translates reconstructed draw rules into backend-neutral GAPI work
+- `resources/` owns shared decoded assets and retail filesystem lookup
 - `states/` contains the top-level dispatcher and reconstructed game states
-- `world/` contains executable-owned scenario orchestration
-- `runtime/` contains the executable shell and fixed-surface LGL presenter
+- `world/` contains actors, scenario orchestration, and script-to-world glue
+- `runtime/` contains startup, input/audio adapters, frontend assets, and the
+  fixed-surface LGL presenter

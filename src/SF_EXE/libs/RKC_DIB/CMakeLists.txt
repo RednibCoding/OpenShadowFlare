@@ -10,6 +10,8 @@ target_include_directories(
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../.."
 )
+target_link_libraries(
+  osf_rkc_dib PUBLIC OpenShadowFlare::Gapi)
 set_target_properties(osf_rkc_dib PROPERTIES CXX_EXTENSIONS OFF)
 
 if(MSVC)

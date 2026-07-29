@@ -1,5 +1,10 @@
 #include "gapi/gapi.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
+#include "render/conversation_layout.hpp"
+#include "render/gameplay_overlay_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "world/ground_item.hpp"
+#include "world/movement_controller.hpp"
 #include "world/scenario_data.hpp"
 #include "world/world_scene.hpp"
 
@@ -20,6 +25,184 @@ bool check(bool condition, const char* message) {
     return condition;
 }
 
+bool updateUntilConversation(
+    osf::WorldScene& world,
+    std::int32_t maximum_updates = 2000) {
+    for (std::int32_t update = 0;
+         update < maximum_updates &&
+         !world.conversationActive();
+         ++update) {
+        world.update();
+    }
+    return world.conversationActive();
+}
+
+bool findNpcPointerPoint(
+    osf::WorldScene& world,
+    std::int32_t npc_id,
+    osf::ScreenPosition& point) {
+    const auto found = std::find_if(
+        world.npcs().begin(),
+        world.npcs().end(),
+        [npc_id](const osf::NpcActor& npc) {
+            return npc.id() == npc_id;
+        });
+    if (found == world.npcs().end()) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(found->position());
+    for (std::int32_t y = -found->labelHeight();
+         y <= 16;
+         ++y) {
+        for (std::int32_t x = -48; x <= 48; ++x) {
+            point = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            world.updatePointerHover(point.x, point.y);
+            if (world.hoveredNpcId() == npc_id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool findGroundItemRangeOnlyPoint(
+    osf::WorldScene& world,
+    std::int32_t item_id,
+    osf::ScreenPosition& point) {
+    const auto found = std::find_if(
+        world.groundItems().begin(),
+        world.groundItems().end(),
+        [item_id](const osf::GroundItem& item) {
+            return item.id == item_id;
+        });
+    if (found == world.groundItems().end()) {
+        return false;
+    }
+    const osf::ItemWorldResource* resource =
+        world.itemWorldResource(found->resource_id);
+    if (!resource) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(found->position);
+    for (std::int32_t y = -96; y <= 64; ++y) {
+        for (std::int32_t x = -96; x <= 96; ++x) {
+            point = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            const bool exact_hit =
+                osf::displayAnimationContainsPoint(
+                    resource->animation(),
+                    resource->patterns(),
+                    found->position,
+                    found->animation_chart,
+                    8,
+                    0,
+                    [](std::size_t) {
+                        return true;
+                    },
+                    world.cameraScreenX(),
+                    world.cameraScreenY(),
+                    point,
+                    found->height * 20 / 100);
+            if (exact_hit) {
+                continue;
+            }
+            world.updatePointerHover(point.x, point.y);
+            if (world.hoveredGroundItemId() == item_id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool testGroundItemCreation() {
+    osf::RetailRandom random;
+    std::vector<osf::GroundItem> items;
+    if (!check(
+            osf::createGroundItems(
+                items, random, 2, 45, {100, 200}, -1, -1) &&
+                items.size() == 1 &&
+                items[0].category == 2 &&
+                items[0].definition_id == 45 &&
+                items[0].quantity == 1 &&
+                items[0].position.x == 100 &&
+                items[0].position.y == 200,
+            "Ordinary script items were not created at their exact point.")) {
+        return false;
+    }
+    if (!check(
+            osf::createGroundItems(
+                items,
+                random,
+                4,
+                0,
+                {100, 200},
+                25000,
+                25000) &&
+                items.size() == 4 &&
+                items[1].quantity == 10000 &&
+                items[2].quantity == 10000 &&
+                items[3].quantity == 5000 &&
+                items[1].position.x == 300 &&
+                items[1].position.y == 200,
+            "Retail money splitting or radial placement differs.")) {
+        return false;
+    }
+    osf::GroundItem bouncing = items.front();
+    osf::updateGroundItem(bouncing);
+    if (!check(
+            bouncing.height == 160 &&
+                bouncing.vertical_velocity == 1320 &&
+                bouncing.bounce_state == 0,
+            "A new ground item did not begin its retail drop arc.")) {
+        return false;
+    }
+    for (std::int32_t update = 1; update < 19; ++update) {
+        osf::updateGroundItem(bouncing);
+    }
+    if (!check(
+            bouncing.height == 0 &&
+                bouncing.bounce_state == 2,
+            "A ground item did not settle after its two retail bounces.")) {
+        return false;
+    }
+    return check(
+        !osf::createGroundItems(
+            items, random, 4, 0, {}, 10, 9) &&
+            items.size() == 4,
+        "An invalid script money range created a ground item.");
+}
+
+bool testConversationChoiceMarkup() {
+    const osf::ConversationTextLayout layout =
+        osf::layoutConversationText(
+            "Dune\r\n~Check Status~\n  ~QUIT~",
+            true);
+    return check(
+        layout.text == "Dune\nCheck Status\n  QUIT" &&
+            layout.choices.size() == 2 &&
+            layout.choices[0].index == 0 &&
+            layout.choices[0].line == 1 &&
+            layout.choices[0].column == 0 &&
+            layout.choices[0].length == 12 &&
+            layout.choices[0].byte_offset == 5 &&
+            layout.choices[0].byte_length == 12 &&
+            layout.choices[1].index == 1 &&
+            layout.choices[1].line == 2 &&
+            layout.choices[1].column == 2 &&
+            layout.choices[1].length == 4 &&
+            layout.choices[1].byte_offset == 20 &&
+            layout.choices[1].byte_length == 4,
+        "Retail companion choice markup was not removed and ranged.");
+}
+
 struct NpcPatternCall {
     bool shadow = false;
     std::size_t pattern = 0;
@@ -36,8 +219,11 @@ public:
     const osf::gapi::NjpImage* patterns = nullptr;
     const osf::gapi::NjpImage* shadows = nullptr;
     const osf::gapi::NjpImage* speech = nullptr;
+    const osf::gapi::NjpImage* item_patterns = nullptr;
+    const osf::gapi::NjpImage* item_shadows = nullptr;
     std::vector<NpcPatternCall> calls;
     std::vector<NpcPatternCall> speech_calls;
+    std::vector<NpcPatternCall> item_calls;
     std::vector<TextCall> text_calls;
     std::vector<osf::gapi::RectangleDraw> rectangles;
 
@@ -53,6 +239,10 @@ public:
             calls.push_back({true, pattern, draw});
         } else if (&image == speech) {
             speech_calls.push_back({false, pattern, draw});
+        } else if (&image == item_patterns) {
+            item_calls.push_back({false, pattern, draw});
+        } else if (&image == item_shadows) {
+            item_calls.push_back({true, pattern, draw});
         }
         return true;
     }
@@ -356,8 +546,11 @@ bool testRetailRemoteTown() {
     }
 
     osf::WorldScene world;
+    osf::PlayerLoadRequest player_request;
+    player_request.name = "Mina";
     if (!check(
-            world.loadInitialScenario(data_root, 0, &error),
+            world.loadInitialScenario(
+                data_root, player_request, &error),
             "Remote Town could not be loaded through Scenario.Mct.")) {
         std::cerr << error << '\n';
         return false;
@@ -367,8 +560,12 @@ bool testRetailRemoteTown() {
             world.playerWorldX() == 89898 &&
             world.playerWorldY() == 2811 &&
             world.playerDirection() == 3 &&
+            world.playerData().name() == "Mina" &&
+            world.playerData().level() == 1 &&
+            world.playerData().baseMaximumLife() == 140 &&
+            world.playerData().baseMaximumMana() == 160 &&
             world.musicTrack() == 0 &&
-            world.npcs().size() == 1 &&
+            world.npcs().size() == scenario.people().size() &&
             world.npcs()[0].id() == 0 &&
             world.npcs()[0].resourceId() == 13 &&
             world.npcs()[0].name() == "Ostare" &&
@@ -382,8 +579,62 @@ bool testRetailRemoteTown() {
             world.npcs()[0].partEnabled(3) &&
             !world.npcs()[0].partEnabled(4) &&
             !world.npcs()[0].partEnabled(5) &&
-            world.npcs()[0].partEnabled(6),
-        "WorldScene did not build Ostare from the decoded MCT record.")) {
+            world.npcs()[0].partEnabled(6) &&
+            world.npcs()[1].id() == 1 &&
+            world.npcs()[1].resourceId() == 8 &&
+            world.npcs()[1].name() == "Malse" &&
+            world.npcs()[2].id() == 2 &&
+            world.npcs()[2].resourceId() == 9 &&
+            world.npcs()[2].name() == "Syria" &&
+            world.npcs()[3].id() == 10000 &&
+            world.npcs()[3].resourceId() == 1000000 &&
+            world.npcs()[3].name() == "Kerberos" &&
+            world.npcs()[6].id() == 10003 &&
+            world.npcs()[6].resourceId() == 1000001 &&
+            world.npcs()[6].name() == "Harley",
+        "WorldScene did not build the Remote Town people table.")) {
+        return false;
+    }
+
+    const auto& remote_objects = world.objectMap().objects();
+    if (!check(
+            remote_objects.size() == 279 &&
+                remote_objects[138].pattern_set == 5 &&
+                remote_objects[138].pattern == 1 &&
+                remote_objects[206].pattern_set == 14 &&
+                remote_objects[206].pattern == 4,
+            "The Remote Town house or west-wall fixture changed.")) {
+        return false;
+    }
+    const auto actorDrawsBefore =
+        [](const osf::MapObject& object,
+           osf::WorldPosition actor_position) {
+            std::vector<osf::DisplayOrderEntry> entries{
+                {
+                    0,
+                    {object.world_x, object.world_y},
+                    object.judgement,
+                    object.status,
+                },
+                {
+                    1,
+                    actor_position,
+                    {-80, -80, 79, 79},
+                    0,
+                },
+            };
+            osf::sortDisplayObjects(entries);
+            return entries.size() == 2 &&
+                   entries[0].source_index == 1 &&
+                   entries[1].source_index == 0;
+        };
+    if (!check(
+            actorDrawsBefore(
+                remote_objects[138], {88500, -1500}) &&
+                actorDrawsBefore(
+                    remote_objects[206], {86880, 3700}),
+            "Remote Town's house or wall did not occlude the player "
+            "through its retail judgement rectangle.")) {
         return false;
     }
 
@@ -419,7 +670,13 @@ bool testRetailRemoteTown() {
     }
     renderer.speech = &world.speechPatterns();
     renderer.calls.clear();
-    world.updatePointerHover(747, 269);
+    osf::ScreenPosition ostare_pointer;
+    if (!check(
+            findNpcPointerPoint(
+                world, 0, ostare_pointer),
+            "Ostare has no opaque retail pointer cell.")) {
+        return false;
+    }
     osf::renderWorld(renderer, world, 500, &font);
     if (!check(
             world.hoveredNpcId() == 0 &&
@@ -427,12 +684,19 @@ bool testRetailRemoteTown() {
                 renderer.calls[1].draw.red_strength == 1300 &&
                 renderer.calls[1].draw.green_strength == 1300 &&
                 renderer.calls[1].draw.blue_strength == 1300 &&
-                renderer.rectangles.size() == 1 &&
+                renderer.rectangles.size() == 5 &&
                 renderer.rectangles[0].x == 725 &&
                 renderer.rectangles[0].y == 187 &&
                 renderer.rectangles[0].width == 41 &&
                 renderer.rectangles[0].height == 15 &&
                 renderer.rectangles[0].opacity == 500 &&
+                renderer.rectangles[1].opacity == 300 &&
+                renderer.rectangles[1].color.red == 255 &&
+                renderer.rectangles[1].x ==
+                    ostare_pointer.x - 16 &&
+                renderer.rectangles[1].y ==
+                    ostare_pointer.y - 16 &&
+                renderer.rectangles[1].width == 33 &&
                 renderer.text_calls.size() == 2 &&
                 renderer.text_calls[0].text == "Ostare" &&
                 renderer.text_calls[0].draw.x == 730 &&
@@ -448,9 +712,17 @@ bool testRetailRemoteTown() {
     renderer.speech_calls.clear();
     renderer.text_calls.clear();
     renderer.rectangles.clear();
+    const bool ostare_click =
+        world.commandWorldInteraction(
+            ostare_pointer.x, ostare_pointer.y);
+    const bool ostare_approached =
+        world.interactionPending() &&
+        !world.conversationActive();
+    updateUntilConversation(world);
     if (!check(
             world.scenarioScript().messages().size() == 61 &&
-                world.commandWorldInteraction(747, 269) &&
+                ostare_click &&
+                ostare_approached &&
                 world.conversationActive() &&
                 world.conversationMessageId() == 1000000 &&
                 world.conversationText().rfind(
@@ -464,38 +736,47 @@ bool testRetailRemoteTown() {
                 world.conversationActorId() == 0 &&
                 renderer.speech_calls.size() == 5 &&
                 renderer.speech_calls[0].pattern == 0 &&
-                renderer.speech_calls[0].draw.x == 566 &&
-                renderer.speech_calls[0].draw.y == 96 &&
                 renderer.speech_calls[1].pattern == 2 &&
-                renderer.speech_calls[1].draw.x == 943 &&
-                renderer.speech_calls[1].draw.y == 96 &&
                 renderer.speech_calls[2].pattern == 1 &&
-                renderer.speech_calls[2].draw.x == 566 &&
-                renderer.speech_calls[2].draw.y == 173 &&
                 renderer.speech_calls[3].pattern == 3 &&
-                renderer.speech_calls[3].draw.x == 943 &&
-                renderer.speech_calls[3].draw.y == 173 &&
                 renderer.speech_calls[4].pattern == 4 &&
-                renderer.speech_calls[4].draw.x == 754 &&
-                renderer.speech_calls[4].draw.y == 178 &&
+                renderer.speech_calls[1].draw.y ==
+                    renderer.speech_calls[0].draw.y &&
+                renderer.speech_calls[2].draw.x ==
+                    renderer.speech_calls[0].draw.x &&
+                renderer.speech_calls[3].draw.x ==
+                    renderer.speech_calls[1].draw.x &&
+                renderer.speech_calls[3].draw.y ==
+                    renderer.speech_calls[2].draw.y &&
+                renderer.speech_calls[4].draw.y ==
+                    renderer.speech_calls[2].draw.y + 5 &&
                 renderer.rectangles.size() == 13 &&
-                renderer.rectangles[0].x == 570 &&
-                renderer.rectangles[0].y == 100 &&
+                renderer.rectangles[0].x ==
+                    renderer.speech_calls[0].draw.x + 4 &&
+                renderer.rectangles[0].y ==
+                    renderer.speech_calls[0].draw.y + 4 &&
                 renderer.rectangles[0].width == 378 &&
                 renderer.rectangles[0].height == 78 &&
                 renderer.rectangles[0].color.red == 255 &&
-                renderer.rectangles[1].x == 575 &&
-                renderer.rectangles[1].y == 96 &&
+                renderer.rectangles[1].x ==
+                    renderer.speech_calls[0].draw.x + 9 &&
+                renderer.rectangles[1].y ==
+                    renderer.speech_calls[0].draw.y &&
                 renderer.rectangles[1].width == 368 &&
                 renderer.rectangles[1].height == 2 &&
                 renderer.rectangles[2].color.red == 160 &&
                 renderer.rectangles[3].color.red == 224 &&
-                renderer.rectangles[7].x == 566 &&
-                renderer.rectangles[7].y == 105 &&
-                renderer.rectangles[10].x == 950 &&
+                renderer.rectangles[7].x ==
+                    renderer.speech_calls[0].draw.x &&
+                renderer.rectangles[7].y ==
+                    renderer.speech_calls[0].draw.y + 9 &&
+                renderer.rectangles[10].x ==
+                    renderer.speech_calls[1].draw.x + 7 &&
                 renderer.text_calls.size() == 1 &&
-                renderer.text_calls[0].draw.x == 579 &&
-                renderer.text_calls[0].draw.y == 109 &&
+                renderer.text_calls[0].draw.x ==
+                    renderer.speech_calls[0].draw.x + 13 &&
+                renderer.text_calls[0].draw.y ==
+                    renderer.speech_calls[0].draw.y + 13 &&
                 renderer.text_calls[0].draw.color.red == 0,
             "Ostare's first message did not use the retail actor bubble.")) {
         return false;
@@ -516,39 +797,764 @@ bool testRetailRemoteTown() {
     }
     world.advanceConversation();
     if (!check(
-            !world.conversationActive(),
-            "Ostare's first scripted message did not close.")) {
+            world.conversationActive() &&
+                world.conversationActorId() == 0 &&
+                world.conversationMessageId() == 1000001,
+            "Ostare's first message did not enter its retail callback.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000002,
+            "Ostare's second opening message did not follow retail.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000003 &&
+                world.groundItems().size() == 4 &&
+                world.groundItems()[0].category == 0 &&
+                world.groundItems()[0].definition_id == 0 &&
+                world.groundItems()[0].quantity == 1 &&
+                world.groundItems()[0].position.x ==
+                    interaction_position.x + 200 &&
+                world.groundItems()[0].position.y ==
+                    interaction_position.y &&
+                world.groundItems()[0].resource_id == 0 &&
+                world.groundItems()[0].animation_chart == 0 &&
+                world.groundItems()[0].red_strength == 1000 &&
+                world.groundItems()[0].green_strength == 1000 &&
+                world.groundItems()[0].blue_strength == 1000 &&
+                world.groundItems()[1].category == 1 &&
+                world.groundItems()[1].definition_id == 1000000 &&
+                world.groundItems()[1].position.x ==
+                    interaction_position.x &&
+                world.groundItems()[1].position.y ==
+                    interaction_position.y + 200 &&
+                world.groundItems()[1].resource_id == 0 &&
+                world.groundItems()[1].animation_chart == 5 &&
+                world.groundItems()[1].red_strength == 900 &&
+                world.groundItems()[1].green_strength == 800 &&
+                world.groundItems()[1].blue_strength == 500 &&
+                world.groundItems()[2].category == 0 &&
+                world.groundItems()[2].definition_id == 100 &&
+                world.groundItems()[2].position.x ==
+                    interaction_position.x + 200 &&
+                world.groundItems()[2].position.y ==
+                    interaction_position.y - 200 &&
+                world.groundItems()[2].resource_id == 0 &&
+                world.groundItems()[2].animation_chart == 36 &&
+                world.groundItems()[2].red_strength == 1000 &&
+                world.groundItems()[2].green_strength == 1000 &&
+                world.groundItems()[2].blue_strength == 1000 &&
+                world.groundItems()[3].category == 4 &&
+                world.groundItems()[3].definition_id == 0 &&
+                world.groundItems()[3].quantity == 200 &&
+                world.groundItems()[3].position.x ==
+                    interaction_position.x + 200 &&
+                world.groundItems()[3].position.y ==
+                    interaction_position.y &&
+                world.groundItems()[3].resource_id == 0 &&
+                world.groundItems()[3].animation_chart == 30 &&
+                world.groundItems()[3].red_strength == 1000 &&
+                world.groundItems()[3].green_strength == 1000 &&
+                world.groundItems()[3].blue_strength == 1000,
+            "Ostare's opening quest did not create its retail ground items.")) {
+        return false;
+    }
+    const osf::ItemWorldResource* item_resource =
+        world.itemWorldResource(0);
+    renderer.item_patterns =
+        item_resource ? &item_resource->patterns() : nullptr;
+    renderer.item_shadows =
+        item_resource
+            ? &item_resource->shadowPatterns()
+            : nullptr;
+    renderer.item_calls.clear();
+    osf::renderWorld(renderer, world, 500, &font);
+    if (!check(
+            item_resource &&
+                item_resource->patterns().palettes().size() > 72 &&
+                item_resource->shadowPatterns().palettes().size() == 1 &&
+                renderer.item_calls.size() == 8 &&
+                renderer.item_calls[0].shadow &&
+                renderer.item_calls[0].pattern == 36 &&
+                renderer.item_calls[0].draw.palette == -1 &&
+                renderer.item_calls[1].shadow &&
+                renderer.item_calls[1].pattern == 0 &&
+                renderer.item_calls[1].draw.palette == -1 &&
+                renderer.item_calls[2].shadow &&
+                renderer.item_calls[2].pattern == 5 &&
+                renderer.item_calls[2].draw.palette == -1 &&
+                renderer.item_calls[3].shadow &&
+                renderer.item_calls[3].pattern == 30 &&
+                renderer.item_calls[3].draw.palette == -1 &&
+                !renderer.item_calls[4].shadow &&
+                renderer.item_calls[4].pattern == 113 &&
+                renderer.item_calls[4].draw.palette == 72 &&
+                renderer.item_calls[4].draw.x ==
+                    renderer.item_calls[0].draw.x &&
+                renderer.item_calls[4].draw.y ==
+                    renderer.item_calls[0].draw.y &&
+                renderer.item_calls[5].pattern == 77 &&
+                renderer.item_calls[5].draw.palette == 0 &&
+                renderer.item_calls[5].draw.x ==
+                    renderer.item_calls[1].draw.x &&
+                renderer.item_calls[5].draw.y ==
+                    renderer.item_calls[1].draw.y &&
+                renderer.item_calls[6].pattern == 82 &&
+                renderer.item_calls[6].draw.palette == 10 &&
+                renderer.item_calls[6].draw.red_strength == 900 &&
+                renderer.item_calls[6].draw.green_strength == 800 &&
+                renderer.item_calls[6].draw.blue_strength == 500 &&
+                renderer.item_calls[6].draw.x ==
+                    renderer.item_calls[2].draw.x &&
+                renderer.item_calls[6].draw.y ==
+                    renderer.item_calls[2].draw.y &&
+                renderer.item_calls[7].pattern == 107 &&
+                renderer.item_calls[7].draw.palette == 60 &&
+                renderer.item_calls[7].draw.x ==
+                    renderer.item_calls[3].draw.x &&
+                renderer.item_calls[7].draw.y ==
+                    renderer.item_calls[3].draw.y,
+            "Ostare's drops do not use the retail ground CAF or depth order.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000004,
+            "Ostare's last opening message did not follow retail.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Ostare's opening conversation did not release world control.")) {
         return false;
     }
 
-    world.update();
     if (!check(
-            world.npcs()[0].animationFrame() == 0,
+            findNpcPointerPoint(
+                world, 0, ostare_pointer),
+            "Ostare lost his opaque pointer cells.")) {
+        return false;
+    }
+    if (!check(
+            world.commandWorldInteraction(
+                ostare_pointer.x, ostare_pointer.y) &&
+                world.conversationActive() &&
+                world.conversationActorId() == 0 &&
+                world.conversationMessageId() == 1000005 &&
+                world.conversationText().rfind(
+                    "There is no new information so far", 0) == 0,
+            "Ostare's repeat interaction did not query the player level.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000006,
+            "Ostare's repeat callback did not show its second message.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Ostare's repeat conversation did not close cleanly.")) {
+        return false;
+    }
+
+    const std::int32_t short_sword_id =
+        world.groundItems().front().id;
+    osf::ScreenPosition short_sword_pointer;
+    if (!check(
+            findGroundItemRangeOnlyPoint(
+                world,
+                short_sword_id,
+                short_sword_pointer),
+            "The Short Sword was not selectable through the "
+            "configured click-range square.")) {
+        return false;
+    }
+    osf::WorldPointerConfiguration pointer_configuration =
+        world.pointerConfiguration();
+    pointer_configuration.range_enabled = false;
+    world.configurePointer(pointer_configuration);
+    world.updatePointerHover(
+        short_sword_pointer.x, short_sword_pointer.y);
+    if (!check(
+            world.hoveredGroundItemId() != short_sword_id,
+            "Disabling the click range did not restore exact-tip "
+            "ground-item picking.")) {
+        return false;
+    }
+    pointer_configuration.range_enabled = true;
+    world.configurePointer(pointer_configuration);
+    world.updatePointerHover(
+        short_sword_pointer.x, short_sword_pointer.y);
+    renderer.item_calls.clear();
+    renderer.text_calls.clear();
+    renderer.rectangles.clear();
+    osf::renderWorld(renderer, world, 500, &font);
+    const bool item_tinted = std::any_of(
+        renderer.item_calls.begin(),
+        renderer.item_calls.end(),
+        [](const NpcPatternCall& call) {
+            return !call.shadow &&
+                   call.draw.red_strength == 1300 &&
+                   call.draw.green_strength == 1300 &&
+                   call.draw.blue_strength == 1300;
+        });
+    if (!check(
+            world.hoveredGroundItemId() ==
+                    short_sword_id &&
+                item_tinted &&
+                renderer.text_calls.size() == 2 &&
+                renderer.text_calls[0].text ==
+                    "Short Sword" &&
+                renderer.rectangles.size() == 5 &&
+                renderer.rectangles[1].color.red == 224 &&
+                renderer.rectangles[1].color.green == 224 &&
+                renderer.rectangles[1].color.blue == 0 &&
+                renderer.rectangles[1].opacity == 300,
+            "Ground-item hover feedback differs from retail.")) {
+        return false;
+    }
+    const bool short_sword_click =
+        world.commandWorldInteraction(
+            short_sword_pointer.x,
+            short_sword_pointer.y);
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         world.groundItems().size() == 4;
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            short_sword_click &&
+                world.groundItems().size() == 3 &&
+                world.playerInventory().items().size() == 1 &&
+                world.playerInventory().items()[0].category == 0 &&
+                world.playerInventory()
+                        .items()[0]
+                        .definition_id == 0 &&
+                world.playerInventory().items()[0].quantity == 1,
+            "The retail approach-and-pickup path did not transfer "
+            "the Short Sword into player inventory.")) {
+        return false;
+    }
+
+    const osf::NpcActor& malse = world.npcs()[1];
+    osf::ScreenPosition malse_pointer;
+    if (!check(
+            findNpcPointerPoint(
+                world, malse.id(), malse_pointer),
+            "Malse has no opaque retail pointer cell.")) {
+        return false;
+    }
+    const bool malse_click =
+        world.commandWorldInteraction(
+            malse_pointer.x, malse_pointer.y);
+    updateUntilConversation(world);
+    if (!check(
+            malse_click &&
+                world.conversationActive() &&
+                world.conversationActorId() == 1 &&
+                world.conversationMessageId() == 1000019,
+            "Malse's actor did not enter its retail status-zero script.")) {
+        std::cerr
+            << "Player: "
+            << world.playerWorldX() << ", "
+            << world.playerWorldY()
+            << "; Malse: "
+            << malse.position().x << ", "
+            << malse.position().y
+            << "; pending: "
+            << world.interactionPending() << '\n';
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000020,
+            "Malse's first message callback did not follow retail.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Malse's opening conversation did not release world control.")) {
+        return false;
+    }
+
+    const osf::NpcActor& syria = world.npcs()[2];
+    const osf::ScreenPosition syria_anchor =
+        osf::calculateRealPosition(syria.position());
+    const std::int32_t syria_screen_x =
+        syria_anchor.x - world.cameraScreenX();
+    const std::int32_t syria_screen_y =
+        syria_anchor.y - world.cameraScreenY();
+    const bool syria_click =
+        world.commandWorldInteraction(
+            syria_screen_x, syria_screen_y);
+    updateUntilConversation(world);
+    if (!check(
+            syria_click &&
+                world.conversationActive() &&
+                world.conversationActorId() == 2 &&
+                world.conversationMessageId() == 1000040,
+            "Syria's actor did not enter its retail status-zero script.")) {
+        std::cerr
+            << "Player: "
+            << world.playerWorldX() << ", "
+            << world.playerWorldY()
+            << "; Syria: "
+            << syria.position().x << ", "
+            << syria.position().y
+            << "; pending: "
+            << world.interactionPending() << '\n';
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationActorId() == 2 &&
+                world.conversationMessageId() == 1000041 &&
+                world.quests().state(0) == 1 &&
+                world.quests().lastCue() ==
+                    osf::QuestCue::updated &&
+                world.quests().notice().quest_id == 0 &&
+                world.quests().notice().counter == 600,
+            "Syria's callback did not apply its retail quest update.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Syria's opening conversation did not release world control.")) {
+        return false;
+    }
+
+    osf::WorldScene companion_world;
+    if (!check(
+            companion_world.loadInitialScenario(
+                data_root, osf::PlayerLoadRequest{}, &error),
+            "Remote Town could not be reloaded for the companion check.")) {
+        return false;
+    }
+    constexpr osf::ObjectBounds player_bounds{
+        -80, -80, 79, 79};
+    const osf::NpcActor& malse_route_target =
+        companion_world.npcs()[1];
+    std::vector<osf::MovementBlocker> town_actor_blockers;
+    for (const osf::NpcActor& npc : companion_world.npcs()) {
+        town_actor_blockers.push_back({
+            npc.id(),
+            npc.position(),
+            npc.judgement(),
+        });
+    }
+    osf::MovementController actor_route_controller;
+    osf::WorldPosition actor_route_position{90933, 1842};
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         osf::distanceBetweenBounds(
+             actor_route_position,
+             player_bounds,
+             malse_route_target.position(),
+             malse_route_target.judgement()) > 159;
+         ++update) {
+        actor_route_position =
+            actor_route_controller.advance(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                player_bounds,
+                actor_route_position,
+                malse_route_target.position(),
+                20,
+                &town_actor_blockers).position;
+    }
+    if (!check(
+            osf::distanceBetweenBounds(
+                actor_route_position,
+                player_bounds,
+                malse_route_target.position(),
+                malse_route_target.judgement()) <= 159,
+            "The Remote Town sacks route did not clear scenery and "
+            "live actor judgement.")) {
+        return false;
+    }
+
+    const osf::NpcActor& kerberos = companion_world.npcs()[3];
+    constexpr osf::WorldPosition sacks_route_start{
+        89800, 1450};
+    constexpr osf::WorldPosition sacks_route_destination{
+        91800, 1450};
+    if (!check(
+            !osf::positionIsWalkable(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                {90700, 1450},
+                player_bounds),
+            "The Remote Town sacks regression no longer crosses their "
+            "blocked ground footprint.")) {
+        return false;
+    }
+    osf::MovementController sacks_controller;
+    osf::WorldPosition sacks_position = sacks_route_start;
+    std::int32_t greatest_sacks_detour = 0;
+    for (std::int32_t update = 0;
+         update < 500 &&
+         (sacks_position.x != sacks_route_destination.x ||
+          sacks_position.y != sacks_route_destination.y);
+         ++update) {
+        const osf::MovementStepResult step =
+            sacks_controller.advance(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                player_bounds,
+                sacks_position,
+                sacks_route_destination,
+                20);
+        sacks_position = step.position;
+        greatest_sacks_detour = std::max(
+            greatest_sacks_detour,
+            std::abs(
+                sacks_position.y -
+                sacks_route_start.y));
+    }
+    if (!check(
+            sacks_position.x == sacks_route_destination.x &&
+                sacks_position.y ==
+                    sacks_route_destination.y &&
+                greatest_sacks_detour > 100,
+            "Player navigation did not follow the full edge of the "
+            "Remote Town sacks.")) {
+        return false;
+    }
+    constexpr osf::WorldPosition town_routes[] = {
+        {92500, 500},
+        {91200, 500},
+        {93000, 3000},
+        {88700, 500},
+    };
+    for (const osf::WorldPosition destination : town_routes) {
+        osf::MovementController controller;
+        osf::WorldPosition position{89898, 2811};
+        for (std::int32_t update = 0;
+             update < 1000 &&
+             (position.x != destination.x ||
+              position.y != destination.y);
+             ++update) {
+            position = controller.advance(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                player_bounds,
+                position,
+                destination,
+                20).position;
+        }
+        if (!check(
+                position.x == destination.x &&
+                    position.y == destination.y,
+                "The movement controller did not retry direct movement "
+                "between separate Remote Town obstacles.")) {
+            std::cerr << "Destination: "
+                      << destination.x << ", "
+                      << destination.y << "; position: "
+                      << position.x << ", "
+                      << position.y << '\n';
+            return false;
+        }
+    }
+    // The retail controller follows nearby obstacle edges; it is not a
+    // whole-map route planner. Keep this interaction test to camera-sized
+    // movement legs, like actual play does.
+    constexpr osf::WorldPosition kerberos_approach[] = {
+        {92000, 500},
+        {92000, -1000},
+        {93200, -3200},
+        {89900, -3200},
+    };
+    for (const osf::WorldPosition waypoint : kerberos_approach) {
+        const osf::ScreenPosition anchor =
+            osf::calculateRealPosition(waypoint);
+        companion_world.commandPlayerMovement(
+            anchor.x - companion_world.cameraScreenX(),
+            anchor.y - companion_world.cameraScreenY());
+        for (std::int32_t update = 0;
+             update < 2000 &&
+             companion_world.playerMotion() !=
+                 osf::PlayerMotion::idle;
+             ++update) {
+            companion_world.update();
+        }
+    }
+    const osf::ScreenPosition kerberos_anchor =
+        osf::calculateRealPosition(kerberos.position());
+    const bool kerberos_click =
+        companion_world.commandWorldInteraction(
+            kerberos_anchor.x -
+                companion_world.cameraScreenX(),
+            kerberos_anchor.y -
+                companion_world.cameraScreenY());
+    const bool kerberos_approached =
+        companion_world.interactionPending();
+    if (!check(
+            kerberos_click &&
+                kerberos_approached &&
+                updateUntilConversation(companion_world, 5000) &&
+                companion_world.conversationActorId() == 10000 &&
+                companion_world.conversationRequiresSelection() &&
+                companion_world.conversationInitialSelection() == 3,
+            "The retail movement controller did not approach Kerberos "
+            "and open his choice message.")) {
+        std::cerr
+            << "Player: "
+            << companion_world.playerWorldX() << ", "
+            << companion_world.playerWorldY()
+            << "; Kerberos: "
+            << kerberos.position().x << ", "
+            << kerberos.position().y << '\n';
+        return false;
+    }
+
+    NpcRecordingBackend choice_renderer;
+    choice_renderer.speech =
+        &companion_world.speechPatterns();
+    osf::renderWorld(
+        choice_renderer, companion_world, 500, &font);
+    const osf::ConversationTextLayout choice_layout =
+        osf::layoutConversationText(
+            companion_world.conversationText(), true);
+    const auto quit = std::find_if(
+        choice_layout.choices.begin(),
+        choice_layout.choices.end(),
+        [](const osf::ConversationChoiceSpan& choice) {
+            return choice.index == 3;
+        });
+    const auto status = std::find_if(
+        choice_layout.choices.begin(),
+        choice_layout.choices.end(),
+        [](const osf::ConversationChoiceSpan& choice) {
+            return choice.index == 0;
+        });
+    if (!check(
+            !choice_renderer.text_calls.empty() &&
+                quit != choice_layout.choices.end() &&
+                status != choice_layout.choices.end(),
+            "Kerberos's rendered choice message is missing a range.")) {
+        return false;
+    }
+    const auto choice_text = std::find_if(
+        choice_renderer.text_calls.begin(),
+        choice_renderer.text_calls.end(),
+        [&choice_layout](const TextCall& call) {
+            return call.text == choice_layout.text;
+        });
+    const auto selected_quit = std::find_if(
+        choice_renderer.text_calls.begin(),
+        choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "QUIT" &&
+                   call.draw.color.red == 255 &&
+                   call.draw.color.green == 0 &&
+                   call.draw.color.blue == 0;
+        });
+    const auto unselected_status = std::find_if(
+        choice_renderer.text_calls.begin(),
+        choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "Check Status" &&
+                   call.draw.color.red == 96 &&
+                   call.draw.color.green == 96 &&
+                   call.draw.color.blue == 96;
+        });
+    if (!check(
+            choice_text != choice_renderer.text_calls.end() &&
+                selected_quit != choice_renderer.text_calls.end() &&
+                unselected_status !=
+                    choice_renderer.text_calls.end() &&
+                companion_world.conversationSelectedOption() == 3,
+            "The script-selected companion choice did not use the "
+            "retail red and gray colors.")) {
+        return false;
+    }
+    const osf::gapi::NjpPattern& font_pattern =
+        font.patterns().front();
+    const std::int32_t cell_width =
+        font_pattern.width / 16;
+    const std::int32_t cell_height =
+        font_pattern.height / 16;
+    const std::int32_t status_x =
+        choice_text->draw.x +
+        status->column * cell_width +
+        cell_width / 2;
+    const std::int32_t status_y =
+        choice_text->draw.y +
+        status->line * cell_height +
+        cell_height / 2;
+    companion_world.selectConversationOption(
+        osf::conversationChoiceAtScreenPosition(
+            companion_world,
+            font,
+            companion_world.cameraScreenX(),
+            companion_world.cameraScreenY(),
+            status_x,
+            status_y));
+    companion_world.selectConversationOption(-1);
+    NpcRecordingBackend hovered_choice_renderer;
+    hovered_choice_renderer.speech =
+        &companion_world.speechPatterns();
+    osf::renderWorld(
+        hovered_choice_renderer,
+        companion_world,
+        500,
+        &font);
+    const auto hovered_status = std::find_if(
+        hovered_choice_renderer.text_calls.begin(),
+        hovered_choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "Check Status" &&
+                   call.draw.color.red == 255 &&
+                   call.draw.color.green == 0 &&
+                   call.draw.color.blue == 0;
+        });
+    const auto unselected_quit = std::find_if(
+        hovered_choice_renderer.text_calls.begin(),
+        hovered_choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "QUIT" &&
+                   call.draw.color.red == 96 &&
+                   call.draw.color.green == 96 &&
+                   call.draw.color.blue == 96;
+        });
+    if (!check(
+            companion_world.conversationSelectedOption() == 0 &&
+                hovered_status !=
+                    hovered_choice_renderer.text_calls.end() &&
+                unselected_quit !=
+                    hovered_choice_renderer.text_calls.end(),
+            "Pointer selection did not move the retail red highlight "
+            "between companion choices.")) {
+        return false;
+    }
+    const std::int32_t quit_x =
+        choice_text->draw.x +
+        quit->column * cell_width +
+        cell_width / 2;
+    const std::int32_t quit_y =
+        choice_text->draw.y +
+        quit->line * cell_height +
+        cell_height / 2;
+    const std::int32_t selected =
+        osf::conversationChoiceAtScreenPosition(
+            companion_world,
+            font,
+            companion_world.cameraScreenX(),
+            companion_world.cameraScreenY(),
+            quit_x,
+            quit_y);
+    companion_world.selectConversationOption(selected);
+    companion_world.chooseConversationOption(selected);
+    if (!check(
+            selected == 3 &&
+                !companion_world.conversationActive() &&
+                companion_world.conversationActorId() == -1,
+            "Kerberos's rendered QUIT choice was not clickable.")) {
+        return false;
+    }
+
+    osf::WorldScene harley_world;
+    if (!check(
+            harley_world.loadInitialScenario(
+                data_root, osf::PlayerLoadRequest{}, &error),
+            "Remote Town could not be reloaded for Harley's dialogue.")) {
+        return false;
+    }
+    const osf::NpcActor& harley = harley_world.npcs()[6];
+    const osf::ScreenPosition harley_anchor =
+        osf::calculateRealPosition(harley.position());
+    if (!check(
+            harley_world.commandWorldInteraction(
+                harley_anchor.x -
+                    harley_world.cameraScreenX(),
+                harley_anchor.y -
+                    harley_world.cameraScreenY()) &&
+                updateUntilConversation(harley_world, 5000) &&
+                harley_world.conversationMessageId() == 1000056 &&
+                harley_world.conversationRequiresSelection(),
+            "Harley's choice menu did not open through live world "
+            "interaction.")) {
+        return false;
+    }
+    harley_world.chooseConversationOption(1);
+    if (!check(
+            harley_world.conversationActive() &&
+                harley_world.conversationMessageId() == 1000057 &&
+                !harley_world.conversationRequiresSelection(),
+            "Harley's first explanation line remained stuck in choice "
+            "mode.")) {
+        return false;
+    }
+    harley_world.advanceConversation();
+    if (!check(
+            harley_world.conversationActive() &&
+                harley_world.conversationMessageId() == 1000058 &&
+                !harley_world.conversationRequiresSelection(),
+            "Harley's explanation did not advance to its second line.")) {
+        return false;
+    }
+    harley_world.advanceConversation();
+    if (!check(
+            !harley_world.conversationActive() &&
+                harley_world.conversationActorId() == -1,
+            "Harley was not released after his explanation.")) {
+        return false;
+    }
+
+    osf::WorldScene wander_world;
+    if (!check(
+            wander_world.loadInitialScenario(
+                data_root, osf::PlayerLoadRequest{}, &error),
+            "Remote Town could not be reloaded for the wander check.")) {
+        return false;
+    }
+    wander_world.update();
+    if (!check(
+            wander_world.npcs()[0].animationFrame() == 0,
             "Ostare skipped the first retail idle frame.")) {
         return false;
     }
-    world.update();
+    wander_world.update();
     if (!check(
-            world.npcs()[0].animationFrame() == 1,
+            wander_world.npcs()[0].animationFrame() == 1,
             "Ostare's idle animation does not advance at game-update cadence.")) {
         return false;
     }
 
     for (std::int32_t update = 2; update < 30; ++update) {
-        world.update();
+        wander_world.update();
     }
     if (!check(
-            world.npcs()[0].position().x == 91467 &&
-                world.npcs()[0].position().y == 1532 &&
-                world.npcs()[0].animationChart() == 0,
+            wander_world.npcs()[0].position().x == 91467 &&
+                wander_world.npcs()[0].position().y == 1532 &&
+                wander_world.npcs()[0].animationChart() == 0,
             "Ostare did not keep the retail 30-update idle pause.")) {
         return false;
     }
-    world.update();
+    wander_world.update();
     const osf::WorldPosition walking_position =
-        world.npcs()[0].position();
+        wander_world.npcs()[0].position();
     return check(
-        world.npcs()[0].animationChart() == 1 &&
+        wander_world.npcs()[0].animationChart() == 1 &&
             (walking_position.x != 91467 ||
              walking_position.y != 1532) &&
             walking_position.x >= 91030 &&
@@ -564,7 +1570,9 @@ bool testRetailRemoteTown() {
 }  // namespace
 
 int main() {
-    return testFixture() &&
+    return testGroundItemCreation() &&
+                   testConversationChoiceMarkup() &&
+                   testFixture() &&
                    testMalformedData() &&
                    testRetailRemoteTown()
                ? 0

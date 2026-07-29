@@ -59,7 +59,9 @@ set(implemented_public_apis
   RKC_DBFCONTROL/rkc_dbfcontrol.hpp
   RKC_DIB/rkc_dib.hpp
   RKC_DSOUND/rkc_dsound.hpp
+  RKC_RPG_TABLE/rkc_rpg_table.hpp
   RKC_RPGSCRN/rkc_rpgscrn.hpp
+  RKC_RPG_SCRIPT/rkc_rpg_script.hpp
   RKC_UPDIB/rkc_updib.hpp
 )
 
@@ -74,12 +76,16 @@ set(dll_implementation_names
   bitmap.cpp
   caf.cpp
   coordinates.cpp
+  display_order.cpp
   ground_map.cpp
   judgement.cpp
   njp.cpp
   object_map.cpp
   rclib_lz.cpp
   software_backend.cpp
+  script_data.cpp
+  script_engine.cpp
+  table_database.cpp
   voc.cpp
   voc_player.cpp
 )
@@ -100,3 +106,48 @@ foreach(source_file IN LISTS portable_sources)
     endif()
   endif()
 endforeach()
+
+set(portable_game_directories
+  core
+  gapi
+  items
+  render
+  resources
+  states
+  world
+)
+
+set(portable_game_sources)
+foreach(directory IN LISTS portable_game_directories)
+  file(
+    GLOB_RECURSE directory_sources
+    LIST_DIRECTORIES false
+    "${portable_root}/${directory}/*.cpp"
+    "${portable_root}/${directory}/*.hpp"
+  )
+  list(APPEND portable_game_sources ${directory_sources})
+endforeach()
+
+foreach(source_file IN LISTS portable_game_sources)
+  file(READ "${source_file}" source_text)
+  if(source_text MATCHES
+      "#[ \t]*include[ \t]*[<\"](windows\\.h|lwl\\.h|lal\\.h|lgl\\.h)[>\"]")
+    message(FATAL_ERROR
+      "Platform integration escaped src/SF_EXE/runtime or libs: ${source_file}")
+  endif()
+  if(source_text MATCHES
+      "(^|[^A-Za-z0-9_])(_WIN32|WINAPI|HWND|lwl_|lal_|lgl_)")
+    message(FATAL_ERROR
+      "Platform-specific code escaped src/SF_EXE/runtime or libs: ${source_file}")
+  endif()
+  if(source_text MATCHES "src/reconstructed")
+    message(FATAL_ERROR
+      "Portable code must not include reconstructed Win32 sources: ${source_file}")
+  endif()
+endforeach()
+
+file(READ "${portable_root}/runtime/main.cpp" main_source)
+if(main_source MATCHES "class[ \t\r\n]+Runtime")
+  message(FATAL_ERROR
+    "runtime/main.cpp must remain a thin startup entry point")
+endif()

@@ -3,22 +3,27 @@
 
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
-#include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "movement_controller.hpp"
 #include "scenario_data.hpp"
 
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <string>
 #include <vector>
 
 namespace osf {
 
+class CharacterVisualResource;
+
+namespace gapi {
+class NjpImage;
+}
+
 class NpcActor {
 public:
-    bool load(
-        const std::filesystem::path& data_root,
+    bool initialize(
         const ScenarioPerson& person,
+        const CharacterVisualResource& visual,
         std::string* error = nullptr);
     void clear();
     void update(
@@ -33,6 +38,7 @@ public:
     std::uint32_t nameColor() const;
     std::int32_t labelHeight() const;
     WorldPosition position() const;
+    WorldPosition renderPosition(double alpha) const;
     const ObjectBounds& judgement() const;
     std::int32_t direction() const;
     std::int32_t animationChart() const;
@@ -52,6 +58,7 @@ private:
     std::uint32_t name_color_ = 0;
     std::int32_t label_height_ = 0;
     WorldPosition position_;
+    WorldPosition previous_position_;
     ObjectBounds judgement_;
     std::int32_t direction_ = 0;
     std::int32_t animation_chart_ = 0;
@@ -67,13 +74,12 @@ private:
     bool walking_ = false;
     bool interaction_active_ = false;
     RetailRandom random_;
+    MovementController movement_controller_;
     std::vector<std::int32_t> part_visibility_;
     std::vector<std::int16_t> red_strength_;
     std::vector<std::int16_t> green_strength_;
     std::vector<std::int16_t> blue_strength_;
-    gapi::NjpImage patterns_;
-    gapi::NjpImage shadow_patterns_;
-    gapi::CafAnimation animation_;
+    const CharacterVisualResource* visual_ = nullptr;
 };
 
 }  // namespace osf

@@ -12,6 +12,8 @@ target_include_directories(
 )
 target_link_libraries(
   osf_rkc_updib
+  PUBLIC
+    OpenShadowFlare::Gapi
   PRIVATE
     OpenShadowFlare::RK_FUNCTION
 )

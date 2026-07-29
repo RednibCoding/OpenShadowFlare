@@ -27,7 +27,12 @@ add_test(
 
 if(TARGET sf_game_core)
   add_executable(game_core_test game_core_test.cpp)
-  target_link_libraries(game_core_test PRIVATE OpenShadowFlare::GameCore)
+  target_link_libraries(
+    game_core_test
+    PRIVATE
+      OpenShadowFlare::States
+      OpenShadowFlare::RKC_RPGSCRN
+  )
   target_compile_features(game_core_test PRIVATE cxx_std_17)
   set_target_properties(game_core_test PROPERTIES CXX_EXTENSIONS OFF)
 
@@ -43,7 +48,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     movement_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::World
   )
   target_compile_features(movement_test PRIVATE cxx_std_17)
   target_compile_definitions(
@@ -66,7 +71,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     scenario_data_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::Render
   )
   target_compile_features(
     scenario_data_test PRIVATE cxx_std_17)
@@ -87,6 +92,105 @@ if(TARGET sf_game_core)
   endif()
 
   add_test(NAME scenario_data COMMAND scenario_data_test)
+
+  add_executable(quest_state_test quest_state_test.cpp)
+  target_link_libraries(
+    quest_state_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    quest_state_test PRIVATE cxx_std_17)
+  set_target_properties(
+    quest_state_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      quest_state_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      quest_state_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME quest_state COMMAND quest_state_test)
+
+  add_executable(item_database_test item_database_test.cpp)
+  target_link_libraries(
+    item_database_test
+    PRIVATE
+      OpenShadowFlare::Items
+  )
+  target_compile_features(
+    item_database_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    item_database_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    item_database_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      item_database_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      item_database_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME item_database COMMAND item_database_test)
+
+  add_executable(table_database_test table_database_test.cpp)
+  target_link_libraries(
+    table_database_test
+    PRIVATE
+      OpenShadowFlare::RKC_RPG_TABLE
+  )
+  target_compile_features(
+    table_database_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    table_database_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    table_database_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      table_database_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      table_database_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME table_database COMMAND table_database_test)
+
+  add_executable(player_data_test player_data_test.cpp)
+  target_link_libraries(
+    player_data_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_data_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_data_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_data_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_data_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_data_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME player_data COMMAND player_data_test)
 
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
@@ -118,7 +222,7 @@ if(TARGET sf_game_core)
   target_link_libraries(
     gapi_test
     PRIVATE
-      OpenShadowFlare::GameCore
+      OpenShadowFlare::Render
       OpenShadowFlare::RKC_DBFCONTROL
   )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
@@ -133,7 +237,8 @@ if(TARGET sf_game_core)
   add_test(NAME gapi COMMAND gapi_test)
 
   add_executable(menu_states_test menu_states_test.cpp)
-  target_link_libraries(menu_states_test PRIVATE OpenShadowFlare::GameCore)
+  target_link_libraries(
+    menu_states_test PRIVATE OpenShadowFlare::Render)
   target_compile_features(menu_states_test PRIVATE cxx_std_17)
   set_target_properties(menu_states_test PROPERTIES CXX_EXTENSIONS OFF)
 

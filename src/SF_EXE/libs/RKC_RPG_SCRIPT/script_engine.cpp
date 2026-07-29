@@ -1,8 +1,31 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
+#include <cstdint>
+#include <limits>
 #include <utility>
 
 namespace osf::script {
+namespace {
+
+std::int32_t wrappedArithmetic(
+    std::int32_t left,
+    std::int32_t right,
+    bool subtract) {
+    std::int64_t result = subtract
+        ? static_cast<std::int64_t>(left) - right
+        : static_cast<std::int64_t>(left) + right;
+    constexpr std::int64_t range =
+        std::int64_t{1} << 32;
+    if (result > std::numeric_limits<std::int32_t>::max()) {
+        result -= range;
+    } else if (
+        result < std::numeric_limits<std::int32_t>::min()) {
+        result += range;
+    }
+    return static_cast<std::int32_t>(result);
+}
+
+}  // namespace
 
 Interpreter::Interpreter(InterpreterHooks hooks)
     : hooks_(std::move(hooks)) {}
@@ -24,6 +47,12 @@ void Interpreter::reset() {
     temporary_flags_.clear();
     frames_.clear();
     waiting_for_message_ = false;
+    message_callback_pending_ = false;
+    message_selection_pending_ = false;
+    message_selection_operand_ = {};
+    message_initial_selection_ = -1;
+    current_character_number_ = -1;
+    message_callback_character_number_ = -1;
     unsupported_opcode_ = -1;
 }
 
@@ -32,26 +61,72 @@ StepResult Interpreter::startStatus(
     std::int32_t character_number) {
     frames_.clear();
     waiting_for_message_ = false;
+    message_callback_pending_ = false;
+    message_selection_pending_ = false;
+    message_selection_operand_ = {};
+    message_initial_selection_ = -1;
+    message_callback_character_number_ = -1;
+    current_character_number_ = -1;
     unsupported_opcode_ = -1;
+    return enterStatus(kind, character_number, false);
+}
+
+StepResult Interpreter::enterStatus(
+    std::int32_t kind,
+    std::int32_t character_number,
+    bool missing_is_complete) {
     if (!script_) {
         return StepResult::invalid_script;
     }
     const Status* status =
         script_->findStatus(kind, character_number);
-    if (!status || !pushSentence(status->sentence)) {
+    if (!status) {
+        return missing_is_complete
+                   ? StepResult::complete
+                   : StepResult::invalid_script;
+    }
+    if (!pushSentence(status->sentence)) {
         return StepResult::invalid_script;
     }
+    current_character_number_ = character_number;
     return run();
 }
 
-StepResult Interpreter::resume() {
+StepResult Interpreter::resume(std::int32_t selection) {
     if (!waiting_for_message_) {
         return frames_.empty()
                    ? StepResult::complete
                    : run();
     }
     waiting_for_message_ = false;
-    return run();
+    if (message_selection_pending_) {
+        const std::int32_t selected =
+            selection >= 0
+                ? selection
+                : message_initial_selection_;
+        if (selected < 0 ||
+            !writeOperand(
+                message_selection_operand_, selected)) {
+            waiting_for_message_ = true;
+            return StepResult::waiting_for_message;
+        }
+        message_selection_pending_ = false;
+        message_selection_operand_ = {};
+        message_initial_selection_ = -1;
+    }
+    if (!message_callback_pending_) {
+        return frames_.empty()
+                   ? StepResult::complete
+                   : run();
+    }
+
+    const std::int32_t character_number =
+        message_callback_character_number_;
+    message_callback_pending_ = false;
+    message_callback_character_number_ = -1;
+    frames_.clear();
+    unsupported_opcode_ = -1;
+    return enterStatus(1, character_number, true);
 }
 
 bool Interpreter::waitingForMessage() const {
@@ -93,10 +168,34 @@ StepResult Interpreter::run() {
             return result;
         }
     }
-    return StepResult::complete;
+    return waiting_for_message_
+               ? StepResult::waiting_for_message
+               : StepResult::complete;
 }
 
 StepResult Interpreter::execute(const Command& command) {
+    const auto executeNative =
+        [this, &command](std::size_t argument_count) {
+            if (command.operands.size() < argument_count) {
+                return StepResult::invalid_script;
+            }
+            std::vector<std::int32_t> arguments;
+            arguments.reserve(argument_count);
+            for (std::size_t index = 0;
+                 index < argument_count;
+                 ++index) {
+                arguments.push_back(
+                    readOperand(command.operands[index]));
+            }
+            if (!hooks_.native_command ||
+                !hooks_.native_command(
+                    command.opcode, arguments)) {
+                unsupported_opcode_ = command.opcode;
+                return StepResult::unsupported_command;
+            }
+            return StepResult::complete;
+        };
+
     switch (command.opcode) {
     case 0: {
         if (command.operands.size() < 4) {
@@ -138,7 +237,7 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     case 2: {
-        if (command.operands.empty() || !script_) {
+        if (command.operands.size() < 5 || !script_) {
             return StepResult::invalid_script;
         }
         const std::int32_t id =
@@ -147,41 +246,86 @@ StepResult Interpreter::execute(const Command& command) {
         if (!message) {
             return StepResult::invalid_script;
         }
+        const std::int32_t mode =
+            readOperand(command.operands[2]);
+        const bool mode_one = mode == 1;
+        const std::int32_t initial_selection =
+            mode_one
+                ? readOperand(command.operands[3])
+                : -1;
+        // Mode one also carries the chained informational messages used by
+        // companion explanations. A non-negative initial range distinguishes
+        // the actual choice menus from those ordinary acknowledgement steps.
+        const bool selection_required =
+            mode_one && initial_selection >= 0;
         if (hooks_.show_message) {
-            hooks_.show_message({message->id, message->text});
+            hooks_.show_message({
+                message->id,
+                message->text,
+                current_character_number_,
+                selection_required,
+                initial_selection,
+            });
         }
         waiting_for_message_ = true;
-        return StepResult::waiting_for_message;
-    }
-    case 18: {
-        if (command.operands.empty()) {
-            return StepResult::invalid_script;
+        if (mode == 0 || mode_one) {
+            const std::int32_t target =
+                readOperand(command.operands[4]);
+            message_callback_pending_ = true;
+            message_callback_character_number_ =
+                target == -1
+                    ? current_character_number_
+                    : target;
         }
-        if (!hooks_.native_command ||
-            !hooks_.native_command(
-                command.opcode,
-                {readOperand(command.operands[0])})) {
-            unsupported_opcode_ = command.opcode;
-            return StepResult::unsupported_command;
+        if (selection_required) {
+            message_selection_pending_ = true;
+            message_selection_operand_ = command.operands[1];
+            message_initial_selection_ = initial_selection;
         }
         return StepResult::complete;
     }
-    case 21: {
+    case 10:
+        return executeNative(6);
+    case 11:
+    case 12: {
         if (command.operands.size() < 2) {
             return StepResult::invalid_script;
         }
-        if (!hooks_.native_command ||
-            !hooks_.native_command(
-                command.opcode,
-                {
-                    readOperand(command.operands[0]),
-                    readOperand(command.operands[1]),
-                })) {
-            unsupported_opcode_ = command.opcode;
-            return StepResult::unsupported_command;
+        const std::int32_t left =
+            readOperand(command.operands[0]);
+        const std::int32_t right =
+            readOperand(command.operands[1]);
+        const std::int32_t result = wrappedArithmetic(
+            left, right, command.opcode == 12);
+        if (!writeOperand(command.operands[0], result)) {
+            return StepResult::invalid_script;
         }
         return StepResult::complete;
     }
+    case 18:
+    case 19:
+    case 48:
+        return executeNative(1);
+    case 21:
+        return executeNative(2);
+    case 61: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::local_player_level, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 62:
+        return executeNative(3);
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;

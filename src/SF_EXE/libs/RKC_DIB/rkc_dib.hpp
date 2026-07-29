@@ -30,6 +30,11 @@ private:
     std::vector<Color> pixels_;
 };
 
+bool writeBitmapFile(
+    const std::filesystem::path& path,
+    SurfaceView surface,
+    std::string* error = nullptr);
+
 }  // namespace osf::gapi
 
 #endif

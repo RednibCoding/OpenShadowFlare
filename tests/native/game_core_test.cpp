@@ -2,6 +2,7 @@
 #include "core/game_config.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 
 #include <array>
@@ -354,21 +355,80 @@ bool testObjectMapDecode() {
         "A truncated retail OBL record was accepted.");
 }
 
+bool testDisplayObjectOrdering() {
+    std::vector<osf::DisplayOrderEntry> entries{
+        {
+            0,
+            {0, 0},
+            {0, 0, 1000, 100},
+            0,
+        },
+        {
+            1,
+            {580, -20},
+            {-80, -80, 79, 79},
+            0,
+        },
+        {
+            2,
+            {},
+            {},
+            0x20,
+        },
+    };
+    osf::sortDisplayObjects(entries);
+    if (!check(
+            entries.size() == 3 &&
+                entries[0].source_index == 2 &&
+                entries[1].source_index == 1 &&
+                entries[2].source_index == 0,
+            "Full judgement rectangles did not place an actor behind "
+            "large scenery.")) {
+        return false;
+    }
+
+    std::vector<osf::DisplayOrderEntry> touching{
+        {0, {}, {0, 0, 100, 100}, 0},
+        {1, {}, {100, 0, 200, 100}, 0},
+    };
+    osf::sortDisplayObjects(touching);
+    return check(
+        touching[0].source_index == 0 &&
+            touching[1].source_index == 1 &&
+            osf::displayClassForStatus(0x100) == 1 &&
+            osf::displayClassForStatus(0x80) == 2 &&
+            osf::displayClassForStatus(0x20) == 3,
+        "Display ordering changed the retail strict-edge or status rules.");
+}
+
 bool testGameplayLoadingTransition() {
+    std::int32_t interfacePrepares = 0;
+    std::int32_t interfaceReleases = 0;
     std::int32_t prepares = 0;
     std::int32_t releases = 0;
     std::int32_t musicStarts = 0;
     std::int32_t musicStops = 0;
     std::int32_t movementCommands = 0;
+    std::int32_t movementCancels = 0;
     std::int32_t interactionCommands = 0;
     std::int32_t pointerUpdates = 0;
     std::int32_t conversationAdvances = 0;
+    std::int32_t conversationChoices = 0;
     std::int32_t worldUpdates = 0;
     std::int32_t runToggles = 0;
     std::int32_t movementX = 0;
     std::int32_t movementY = 0;
     bool conversationActive = false;
+    bool conversationSelectionRequired = false;
     osf::GameplayStateHooks hooks;
+    hooks.prepare_interface = [&interfacePrepares] {
+            ++interfacePrepares;
+            return true;
+        };
+    hooks.release_interface =
+        [&interfaceReleases] {
+            ++interfaceReleases;
+        };
     hooks.prepare_world = [&prepares] {
             ++prepares;
             return true;
@@ -384,6 +444,10 @@ bool testGameplayLoadingTransition() {
             movementX = x;
             movementY = y;
         };
+    hooks.cancel_player_movement =
+        [&movementCancels] {
+            ++movementCancels;
+        };
     hooks.update_pointer_hover =
         [&](std::int32_t, std::int32_t) {
             ++pointerUpdates;
@@ -397,6 +461,19 @@ bool testGameplayLoadingTransition() {
     hooks.conversation_active =
         [&conversationActive] {
             return conversationActive;
+        };
+    hooks.conversation_requires_selection =
+        [&conversationSelectionRequired] {
+            return conversationSelectionRequired;
+        };
+    hooks.choose_conversation_option =
+        [&](std::int32_t x, std::int32_t y) {
+            if (x != 330 || y != 240) {
+                return false;
+            }
+            ++conversationChoices;
+            conversationActive = false;
+            return true;
         };
     hooks.advance_conversation =
         [&] {
@@ -412,6 +489,7 @@ bool testGameplayLoadingTransition() {
     osf::GameplayFrameResult frame = state.update();
     if (!check(
             prepares == 1 &&
+                interfacePrepares == 1 &&
                 musicStarts == 1 &&
                 frame.phase == osf::GameplayPhase::loading &&
                 frame.loading_counter == 1 &&
@@ -426,28 +504,249 @@ bool testGameplayLoadingTransition() {
         return false;
     }
     frame = state.update({false, true, 600, 460});
+    state.update({false, true, 200, 450});
     state.update({false, true, 200, 210});
     state.update({false, true, -1, 210});
     state.update({false, false, 0, 0, false, true});
     state.update({false, true, 300, 220});
     state.update({false, false, 310, 220, true, true});
     state.update({true});
+    state.update({false, true, 220, 230, true});
+    state.update({false, false, 230, 240, true});
+    state.update({false, false, 230, 240, false});
+    conversationActive = true;
+    conversationSelectionRequired = true;
+    state.update({false, true, 330, 240, true});
+    state.update({false, false, 330, 240, true});
+    state.update({false, false, 330, 240, false});
+    state.update({false, true, 240, 250});
     state.leave();
     return check(
             frame.phase == osf::GameplayPhase::world &&
             frame.world_ready &&
             releases == 1 &&
+            interfaceReleases == 1 &&
             musicStarts == 1 &&
             musicStops == 1 &&
-            movementCommands == 1 &&
-            movementX == 200 &&
-            movementY == 210 &&
-            interactionCommands == 2 &&
-            pointerUpdates == 6 &&
+            movementCommands == 4 &&
+            movementCancels == 0 &&
+            movementX == 240 &&
+            movementY == 250 &&
+            interactionCommands == 4 &&
+            pointerUpdates == 14 &&
             conversationAdvances == 1 &&
-            worldUpdates == 6 &&
+            conversationChoices == 1 &&
+            worldUpdates == 14 &&
             runToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
+}
+
+bool testGameplayClickAndHoldMovement() {
+    std::int32_t movement_commands = 0;
+    std::int32_t movement_cancels = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [] { return true; };
+    hooks.command_player_movement =
+        [&](std::int32_t, std::int32_t) {
+            ++movement_commands;
+        };
+    hooks.cancel_player_movement =
+        [&] { ++movement_cancels; };
+
+    osf::GameplayState state(std::move(hooks));
+    state.enter();
+    state.update();
+    state.update({false, true, 600, 460});
+
+    state.update({false, true, 200, 200, true});
+    for (std::int32_t update = 0; update < 4; ++update) {
+        state.update({false, false, 200, 200, true});
+    }
+    state.update({false, false, 200, 200, false});
+    if (!check(
+            movement_commands == 5 &&
+                movement_cancels == 0,
+            "A normal-duration click was mistaken for held movement.")) {
+        return false;
+    }
+
+    state.update({false, true, 300, 200, true});
+    for (std::int32_t update = 0; update < 9; ++update) {
+        state.update({false, false, 300, 200, true});
+    }
+    state.update({false, false, 300, 200, false});
+    return check(
+        movement_commands == 15 &&
+            movement_cancels == 1,
+        "A retail-length held command did not stop on release.");
+}
+
+bool testGameplayOptionsMenu() {
+    osf::GameConfig config;
+    osf::GameplayOptionsMenu menu;
+    menu.update({true}, config);
+    if (!check(
+            menu.active(),
+            "Escape did not open the gameplay options menu.")) {
+        return false;
+    }
+
+    const bool original_window_mode =
+        config.windowed_at_start;
+    osf::GameplayOptionsResult result =
+        menu.update({false, true, true, 430, 86}, config);
+    if (!check(
+            !result.config_changed &&
+                !result.play_click_sound &&
+                config.windowed_at_start ==
+                    original_window_mode,
+            "The intentionally hidden screen-mode row remained "
+            "interactive.")) {
+        return false;
+    }
+
+    result = menu.update(
+        {false, true, true, 430, 102}, config);
+    if (!check(
+            result.config_changed &&
+                result.play_click_sound &&
+                !config.semi_transparent_objects,
+            "The retail object-transparency OFF cell was not "
+            "applied.")) {
+        return false;
+    }
+    menu.update({false, true, true, 430, 166}, config);
+    menu.update({false, true, true, 440, 182}, config);
+    if (!check(
+            !config.click_range_enabled &&
+                config.click_range == 4,
+            "The two retail click-range rows used the wrong hit "
+            "boxes.")) {
+        return false;
+    }
+
+    menu.update({false, true, true, 320, 198}, config);
+    if (!check(
+            config.click_priority ==
+                std::array<std::int32_t, 5>{{
+                    0, 3, 4, 2, 1,
+                }},
+            "Clicking a priority label did not move that class "
+            "to the retail end position.")) {
+        return false;
+    }
+
+    menu.update({false, false, true, 252, 220}, config);
+    if (!check(
+            config.effect_volume == -10000,
+            "The left edge of the retail effect slider was not "
+            "mute.")) {
+        return false;
+    }
+    menu.update({false, false, true, 253, 220}, config);
+    if (!check(
+            config.effect_volume == -2985,
+            "The retail effect-volume slider scale differs.")) {
+        return false;
+    }
+    menu.update({false, false, true, 452, 240}, config);
+    if (!check(
+            config.bgm_volume == 0 &&
+                osf::gameplayOptionsVolumeSliderOffset(
+                    config.bgm_volume) == 200,
+            "The retail BGM slider maximum differs.")) {
+        return false;
+    }
+
+    result = menu.update(
+        {false, true, true, 300, 286}, config);
+    if (!check(
+            menu.active() &&
+                menu.page() ==
+                    osf::GameplayOptionsPage::help &&
+                result.play_confirm_sound,
+            "The HELP row did not open the gameplay help screen.")) {
+        return false;
+    }
+    menu.update({true}, config);
+    if (!check(
+            !menu.active() &&
+                menu.page() ==
+                    osf::GameplayOptionsPage::settings,
+            "Escape did not close the gameplay help screen.")) {
+        return false;
+    }
+    menu.update({true}, config);
+    menu.update(
+        {false, true, true, 300, 286}, config);
+    menu.update(
+        {false, true, true, 500, 100}, config);
+    if (!check(
+            !menu.active(),
+            "A retail help-screen click did not dismiss the page.")) {
+        return false;
+    }
+    menu.update({true}, config);
+    menu.update(
+        {false, false, false, 0, 0, true}, config);
+    menu.update(
+        {false, false, false, 0, 0, true}, config);
+    if (!check(
+            !menu.active(),
+            "The retail H shortcut did not toggle the help screen.")) {
+        return false;
+    }
+    menu.update({true}, config);
+
+    result = menu.update(
+        {false, true, true, 300, 302}, config);
+    if (!check(
+            menu.page() ==
+                    osf::GameplayOptionsPage::
+                        return_to_title_confirmation &&
+                result.play_confirm_sound &&
+                result.action ==
+                    osf::GameplayOptionsAction::none,
+            "Save and Return did not open the retail confirmation "
+            "state.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, true, true, 390, 202}, config);
+    if (!check(
+            menu.page() ==
+                    osf::GameplayOptionsPage::settings &&
+                result.play_click_sound,
+            "NO did not return from the confirmation state.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, true, true, 300, 318}, config);
+    result = menu.update(
+        {false, true, true, 340, 202}, config);
+    if (!check(
+            result.play_confirm_sound &&
+                result.action ==
+                    osf::GameplayOptionsAction::save_and_exit &&
+                menu.page() ==
+                    osf::GameplayOptionsPage::saving,
+            "YES did not dispatch the Save and Exit action.")) {
+        return false;
+    }
+
+    menu.restoreConfirmation(result.action);
+    if (!check(
+            menu.page() ==
+                osf::GameplayOptionsPage::
+                    exit_game_confirmation,
+            "A failed save did not restore its confirmation state.")) {
+        return false;
+    }
+
+    menu.update({true}, config);
+    return check(
+        !menu.active(),
+        "Escape did not close the gameplay options menu.");
 }
 
 }  // namespace
@@ -460,7 +759,10 @@ int main() {
         !testStateDispatcher() ||
         !testGroundMapDecode() ||
         !testObjectMapDecode() ||
-        !testGameplayLoadingTransition()) {
+        !testDisplayObjectOrdering() ||
+        !testGameplayLoadingTransition() ||
+        !testGameplayClickAndHoldMovement() ||
+        !testGameplayOptionsMenu()) {
         return 1;
     }
     return 0;

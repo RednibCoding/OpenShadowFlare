@@ -1,9 +1,12 @@
 #include "gapi/gapi.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
 
 #include <array>
@@ -83,26 +86,30 @@ std::vector<std::uint8_t> makeCompressedNjpFixture() {
     appendI32(bytes, 1000);
     appendI32(bytes, 1000);
 
-    appendI32(bytes, 1);
-    for (std::int32_t index = 0; index < 256; ++index) {
-        std::uint8_t red = 0;
-        std::uint8_t green = 0;
-        std::uint8_t blue = 0;
-        if (index == 1) {
-            red = 100;
-        } else if (index == 2) {
-            green = 120;
-        } else if (index == 3) {
-            blue = 140;
-        } else if (index == 4) {
-            red = 200;
-            green = 180;
-            blue = 160;
+    appendI32(bytes, 2);
+    for (std::int32_t palette = 0; palette < 2; ++palette) {
+        for (std::int32_t index = 0; index < 256; ++index) {
+            std::uint8_t red = 0;
+            std::uint8_t green = 0;
+            std::uint8_t blue = 0;
+            if (palette == 1 && index == 1) {
+                green = 200;
+            } else if (index == 1) {
+                red = 100;
+            } else if (index == 2) {
+                green = 120;
+            } else if (index == 3) {
+                blue = 140;
+            } else if (index == 4) {
+                red = 200;
+                green = 180;
+                blue = 160;
+            }
+            bytes.push_back(red);
+            bytes.push_back(green);
+            bytes.push_back(blue);
+            bytes.push_back(0);
         }
-        bytes.push_back(red);
-        bytes.push_back(green);
-        bytes.push_back(blue);
-        bytes.push_back(0);
     }
     return bytes;
 }
@@ -268,8 +275,29 @@ bool testNjpAndSoftwareBackend() {
                 image.parts()[0].stride == 4 &&
                 image.patterns().size() == 1 &&
                 image.patterns()[0].parts.size() == 1 &&
-                image.palettes().size() == 1,
+                image.palettes().size() == 2,
             "The portable NJP decoder produced the wrong structure.")) {
+        return false;
+    }
+    if (!check(
+            osf::displayPatternContainsPoint(
+                image, 0, {10, 20}, {10, 20}) &&
+                osf::displayPatternContainsPoint(
+                    image, 0, {10, 20}, {11, 21}) &&
+                !osf::displayPatternContainsPoint(
+                    image, 0, {10, 20}, {12, 21}) &&
+                osf::displayPatternIntersectsRectangle(
+                    image,
+                    0,
+                    {10, 20},
+                    {9, 19, 10, 20}) &&
+                !osf::displayPatternIntersectsRectangle(
+                    image,
+                    0,
+                    {10, 20},
+                    {8, 18, 9, 19}),
+            "RKC_RPGSCRN display-object pixel hit testing "
+            "differs from the rendered NJP cells.")) {
         return false;
     }
 
@@ -337,6 +365,58 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
+    osf::gapi::SoftwareBackend paletteBackend(1, 1);
+    paletteBackend.beginFrame({20, 40, 60, 255});
+    if (!check(
+            paletteBackend.drawPattern(
+                image,
+                0,
+                {0,
+                 0,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1000,
+                 1}) &&
+                paletteBackend.surface().pixels[0].red == 0 &&
+                paletteBackend.surface().pixels[0].green == 200 &&
+                paletteBackend.surface().pixels[0].blue == 0,
+            "GAPI ignored an explicit NJP palette selection.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend clippedBackend(2, 2);
+    clippedBackend.beginFrame({7, 8, 9, 255});
+    clippedBackend.drawPattern(
+        image,
+        0,
+        {0,
+         0,
+         1000,
+         1000,
+         1000,
+         1000,
+         1000,
+         1000,
+         1000,
+         -1,
+         {1, 0, 1, 2}});
+    const osf::gapi::SurfaceView clippedSurface =
+        clippedBackend.surface();
+    if (!check(
+            clippedSurface.pixels[0].red == 7 &&
+                clippedSurface.pixels[0].green == 8 &&
+                clippedSurface.pixels[2].red == 7 &&
+                clippedSurface.pixels[2].green == 8 &&
+                clippedSurface.pixels[1].green == 120 &&
+                clippedSurface.pixels[3].red == 200,
+            "GAPI pattern clipping did not preserve the destination bounds.")) {
+        return false;
+    }
+
     osf::gapi::SoftwareBackend rectangleBackend(1, 1);
     rectangleBackend.beginFrame({20, 40, 60, 255});
     rectangleBackend.drawRectangle({
@@ -349,6 +429,47 @@ bool testNjpAndSoftwareBackend() {
             rectangle.green == 60 &&
             rectangle.blue == 60,
         "GAPI rectangle opacity did not blend portably.");
+}
+
+bool testGameplayHudPackets() {
+    osf::gapi::NjpImage bar;
+    RecordingBackend backend;
+    osf::renderGameplayHud(
+        backend,
+        bar,
+        {
+            123,
+            50,
+            100,
+            200,
+            160,
+            true,
+        });
+    return check(
+        osf::gameplayHudBarWidth(0, 100) == 0 &&
+            osf::gameplayHudBarWidth(1, 1000) == 1 &&
+            osf::gameplayHudBarWidth(50, 100) == 103 &&
+            osf::gameplayHudBarWidth(200, 100) == 206 &&
+            backend.patterns.size() == 9 &&
+            backend.patterns[0].index == 7 &&
+            backend.patterns[1].index == 8 &&
+            backend.patterns[2].index == 10 &&
+            backend.patterns[3].index == 22 &&
+            backend.patterns[3].draw.x == 69 &&
+            backend.patterns[4].index == 21 &&
+            backend.patterns[4].draw.x == 60 &&
+            backend.patterns[5].index == 20 &&
+            backend.patterns[5].draw.x == 51 &&
+            backend.patterns[6].index == 0 &&
+            backend.patterns[6].draw.clip.x == 81 &&
+            backend.patterns[6].draw.clip.y == 425 &&
+            backend.patterns[6].draw.clip.width == 103 &&
+            backend.patterns[7].index == 3 &&
+            backend.patterns[7].draw.clip.x == 106 &&
+            backend.patterns[7].draw.clip.y == 452 &&
+            backend.patterns[7].draw.clip.width == 206 &&
+            backend.patterns[8].index == 15,
+        "The gameplay HUD packets differ from FUN_004039f0.");
 }
 
 bool testTruncatedNjp() {
@@ -488,7 +609,8 @@ int main() {
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
         !testCafAndTitleAnimation() ||
-        !testInitialLoadingPackets()) {
+        !testInitialLoadingPackets() ||
+        !testGameplayHudPackets()) {
         return 1;
     }
     return 0;

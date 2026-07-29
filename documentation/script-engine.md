@@ -1,6 +1,3 @@
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Michael Binder and OpenShadowFlare contributors -->
-
 # ShadowFlare's script engine
 
 ShadowFlare does not hardcode every conversation, quest, and town event in the
@@ -20,6 +17,89 @@ file. The portable executable should decode and interpret it, not copy it into
 
 This document records what we currently know. It will grow along with the
 interpreter.
+
+## The other behavior systems
+
+`Scenario.Scs` is the game's only known general-purpose scenario bytecode, but
+it is not the only data that controls behavior. The retail files divide that
+work into four layers:
+
+| Layer | Retail data/code | Responsibility |
+|---|---|---|
+| Scenario script | One `Scenario.Scs` in each of the 209 scenario directories | Dialogue, quest branches, flags, messages, rewards, services, spawning, and scenario events |
+| AI action data | `System\Game\Parameter\Control.aid` | Reusable actor and enemy behavior choices, grouped by event and guarded by conditions |
+| Scenario setup | The matching `Scenario.Mct` | Map, music, entities, positions, movement areas, entry points, appearance, and initial actor settings |
+| Native game logic | `ShadowFlare.exe` and the gameplay DLLs | Evaluating conditions, executing script opcodes and AI actions, movement, combat, rendering, audio, and other engine services |
+
+The distinction is important. MCT values and AID records are data-driven, but
+they are not SCS sentences and do not run through the scenario interpreter.
+Conversely, an NPC conversation or quest branch found in SCS should not be
+recreated as an AI action or hardcoded state machine.
+
+### `Control.aid`
+
+The game ships one global AI database at
+`System\Game\Parameter\Control.aid`. Scenario MCT headers name that controller
+file, and actors select one of its behavior lists. The reconstructed
+`RKC_RPG_AICONTROL` DLL proves the following binary organization:
+
+```text
+RKC_AIDATA v001 + 0x1a
+64 behavior lists
+18 event buckets per list
+```
+
+Each behavior list contains:
+
+- a variable-length name;
+- a walk-point speed in version 1;
+- eighteen event buckets;
+- zero or more action candidates in each event bucket.
+
+Each action candidate stores an action number, a 36-byte parameter block, and
+a 24-byte condition block. The file therefore describes *which* native action
+may be selected and supplies its tuning values. It does not contain SCS-style
+messages, sentences, typed operands, nested calls, or arbitrary opcodes.
+Recognizable embedded names include behavior families such as `HITandAWAY`,
+`GUARD`, and `MAGIC`.
+
+The executable contains the evaluator and the action implementations. The
+currently traced evaluator:
+
+1. selects an event bucket from the actor's behavior list;
+2. rejects candidates whose condition block does not match current actor or
+   world state;
+3. keeps candidates at the highest eligible priority;
+4. performs a weighted random selection among those candidates;
+5. copies the selected action number and parameter block into the actor;
+6. dispatches that number to native movement, attack, guard, spell, or other
+   action code.
+
+Some condition and parameter fields are visible in the decompiler, including
+health-based tests, priority, selection weight, timing, distance, and movement
+values. Their complete names and units still need retail traces, so unknown
+fields should remain raw rather than receiving speculative meanings.
+
+For the portable executable, this should eventually become a separate
+`RKC_RPG_AICONTROL` static library which owns AID decoding and lookup. The
+executable-owned actor system should evaluate the records and implement the
+native actions. AI lists, probabilities, and condition values must come from
+`Control.aid`, not from NPC-specific C++ branches.
+
+### What is not a script
+
+Several other binary files are essential to gameplay but should not be routed
+through either interpreter:
+
+- `Scenario.Mct` is declarative scenario and entity setup.
+- `Table.Tbd` is a general parameter-table database.
+- `Item.Ibn` contains item definitions and resource selections.
+- `.Map`, `.Gnd`, and `.Obl` hold map, terrain, placement, and collision data.
+- `.Lst` files are map-pattern asset lists.
+
+These formats can drive a large amount of behavior without being executable
+scripts. The reconstruction should preserve that data ownership instead of
+turning the values into constants.
 
 ## Scenario.Scs
 
@@ -83,7 +163,7 @@ parts:
 
 - `ScriptData` owns the decoded, immutable SCS data and its lookup helpers;
 - `Interpreter` owns execution state, temporary flags, nested sentence frames,
-  and message waits.
+  message waits, and the actor callback attached to an open message.
 
 The interpreter deliberately does not include world, renderer, audio, UI, or
 save-game headers. It asks the executable for those services through small
@@ -91,31 +171,42 @@ hooks:
 
 - read or write an external operand domain;
 - perform a native actor/game command;
+- answer a typed query about game-owned state;
 - present a decoded message.
 
 This keeps the old DLL boundary visible without pretending that the original
 DLL contained the whole game. It also means the interpreter can be tested with
 the retail SCS file without creating a window.
 
-Sentence calls use an explicit frame stack. A message command yields execution
-and returns a wait state. Confirming the message resumes at the following
-command rather than running the entire interaction in one frame. Unknown
-opcodes return an error with their opcode and sentence context; they are never
-treated as successful no-ops.
+Sentence calls use an explicit frame stack. Opcode 2 presents its message but
+does not stop the current sentence: the remaining immediate assignments and
+native actions run first, matching the executable. Once that work has
+finished, the interpreter reports a message wait. Confirming an actor message
+starts status kind `1` for the message's character, which may present another
+message and attach the next callback. Unknown opcodes return an error with
+their opcode and sentence context; they are never treated as successful
+no-ops.
 
 ## Commands implemented so far
 
 The retail opcode switch begins at `0x00430f80` and covers opcode values
-`0x00` through `0x4b`. Only commands reached by the first vertical slice are
-portable so far.
+`0x00` through `0x4b`. Only commands reached by the working Remote Town
+interactions are portable so far.
 
 | Opcode | Retail address | Current meaning |
 |---:|---:|---|
 | 0 | `0x00431005` | Compare two evaluated operands and call a sentence when true |
 | 1 | `0x004310a2` | Evaluate an operand and assign it to another operand |
-| 2 | `0x00431294` | Resolve a message, present it, and wait for confirmation |
+| 2 | `0x00431294` | Present a message, finish immediate sentence work, then wait |
+| 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
+| 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
+| 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
 | 18 | `0x00431efa` | Native actor action used by the opening interaction |
+| 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Native actor action with an evaluated value |
+| 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
+| 61 | `0x00433f16` | Write the local player's level to an operand |
+| 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
 in the executable are:
@@ -133,6 +224,64 @@ state. Both evaluate their actor operand through the retail operand reader;
 opcode 21 evaluates its additional value as well. Their hook remains generic
 until more scripts reveal the complete behavior.
 
+Opcode 10 evaluates six operands: category, definition ID, world X, world Y,
+minimum quantity, and maximum quantity. Ordinary items create one record at
+the requested point. Category `4`, definition `0` is the executable's money
+case: it chooses an inclusive quantity, splits values larger than 10,000 into
+stacks, and places them around the point at radius 200 with an angle step of
+roughly π/10. Ostare supplies the fixed range 200–200, so his opening quest
+creates one stack at the first point on that circle.
+
+Opcodes 11 and 12 use operand zero as both the first input and the destination.
+They are what turn Ostare's live actor coordinates into the four drop
+positions. Opcode 19 addresses the actor again and ends the interaction after
+the final bubble closes. Its behavior for other actor types still needs more
+examples before the command gets a narrower name.
+
+Opcode 61 is much narrower. The retail handler gets the local player, reads
+the level field at offset `0x34`, and passes it to the common operand writer.
+The portable interpreter asks its host for
+`ValueQuery::local_player_level`, so player data stays game-owned rather than
+being copied into the script library.
+
+Opcode 62 evaluates a quest ID, a new state, and a network-notification flag.
+Ordinary updates write the new state and issue cue `0x41`. State `2` is the
+completion path: the executable latches completion once, requires the old
+state to be `1`, writes state `2`, and issues cue `0x42`. Its optional server
+broadcast is deliberately left at the world hook because the current scenario
+is single-player. The portable `QuestState` owns these executable-level
+values; they do not live in the DLL-derived interpreter.
+
+Opcode 48 evaluates one quest ID, stores it as the selected quest notice, and
+sets the adjacent counter to `600`. Syria's first new-game conversation
+executes opcode 62 with `{0, 1, 0}` and then opcode 48 with `{0}`. The
+consumer of that counter still needs to be traced before it is decremented or
+rendered.
+
+Opcode-2 mode one is the selectable-message path used by the four Remote Town
+companions. In this mode operand one is the writable selection result and
+operand three is the initially selected zero-based option. A non-negative
+initial option and paired `~` runs identify the actual choice step. The
+executable's message layout removes those markers, records the enclosed line
+and columns for hit testing, and writes the chosen range number before
+entering the actor's status-kind-one callback. Mode-one messages with initial
+option `-1` are chained informational speech instead: they have no selectable
+ranges and close without writing operand one. The portable interpreter and
+speech-bubble layout preserve that split.
+The native Remote Town fixture walks to Kerberos, opens his retail message,
+checks the initial red `QUIT` selection, moves the red highlight to
+`Check Status`, then hits the rendered `QUIT` range, writes option three, and
+verifies that the conversation releases the actor. Unselected ranges use the
+retail gray, and leaving all ranges keeps the most recent selection. This
+covers the actual world-to-render-to-interpreter path rather than only testing
+the marker parser by itself.
+
+Harley's `Explanation` choice exercises the other mode-one path. Choosing
+option one shows `1000057` (“You found me finally.”), ordinary acknowledgement
+advances to `1000058`, and acknowledging that second bubble reaches native
+actor command 19 and releases Harley. Both the interpreter fixture and the
+live `WorldScene` fixture cover this complete chain.
+
 ## Operands and variables
 
 Each command operand has a type and a value. The executable's operand reader
@@ -146,6 +295,8 @@ The currently understood domains are:
 | 3 | Runtime-state domain |
 | 4 | Scenario temporary flag |
 | 5 | Network/state domain |
+| 6 | Script character's current world X |
+| 7 | Script character's current world Y |
 | 10, 11, 12 | Persistent global arrays |
 | 13 | Local-player array |
 
@@ -160,7 +311,7 @@ in a generic keyed map. That is sufficient to preserve assignments while the
 proper save and quest-state owners are reconstructed, but it is not the final
 persistence model.
 
-## First working conversation
+## Working conversations
 
 The first end-to-end slice is Ostare's opening Remote Town interaction:
 
@@ -171,18 +322,50 @@ The first end-to-end slice is Ostare's opening Remote Town interaction:
 5. Native actor commands stop Ostare's wandering and turn him toward the
    player.
 6. Message `1000000` is decoded from the retail SCS and shown.
-7. Return or another click dismisses the message and resumes the sentence.
-8. When execution completes, normal movement and Ostare's actor update resume.
+7. Return or another click invokes Ostare's status-kind-one sentence.
+8. Four more callbacks show messages `1000001` through `1000004`.
+9. The third callback reads Ostare's live X/Y position and creates four ground
+   items through opcode 10.
+10. Closing the final bubble runs opcode 19 and restores world control.
 
 The visible text begins with Ostare introducing himself as commander of the
 area. That text is read at runtime from the original data; it is not present in
 the OpenShadowFlare source.
 
-This is intentionally a narrow vertical slice. The message now uses the
+Clicking Ostare again follows the next real SCS branch. Sentence six uses
+opcode 61 to read the new character's level, selects the under-level-five
+path, and shows message `1000005`. Its status-kind-one callback then shows
+message `1000006`, resets the temporary dialogue state, and releases the actor.
+The interpreter retains the earlier persistent assignment, so this is a
+continuation of the same script state rather than a hand-written interaction.
+
+The same table-driven actor path now loads all seven Remote Town people
+records rather than stopping after Ostare. Malse's new-game status runs its
+real two-message branch (`1000019` and `1000020`) and releases him through
+opcode 19. The longer Malse quest dialogue is not forced: the retail SCS only
+selects it after the Red Goblin progression state reaches the required value.
+
+Syria's new-game status follows messages `1000040` and `1000041`. Its callback
+starts quest zero with opcode 62 and selects that quest's notice with opcode
+48 before waiting for the second bubble to close. Message events carry the
+script character number, so the renderer can anchor Syria's bubble even
+though this particular branch does not run the explicit actor-facing command
+used by Ostare and Malse. Dialogue text, actor IDs, branches, and quest IDs
+continue to come from the retail SCS.
+
+This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from
 the Shift-JIS-aware 6-by-12 `Font01.njp` text layout, and the tail follows
-Ostare while he moves. The rest of the opening quest chain will exercise more
-commands and operand domains.
+Ostare's live screen position. Ground-item state is created faithfully. The
+executable-owned `Item.Ibn` loader keeps the inventory icon fields separate
+from the ground resource and CAF chart fields. The four drops load their real
+`Character/ITEM` animation and SDW shadow and share the normal depth-sorted
+world pass with actors and scenery. Their CAF-selected palettes and
+`Item.Ibn` RGB strengths also reproduce the default ground colors. They now
+participate in opaque-pixel pointer selection and the common interaction-range
+approach too. A successful pickup moves the concrete category, definition,
+and quantity into `PlayerInventory`; the 9-by-4 grid and inventory panel are
+the next item-system work.
 
 ## How to extend it
 
@@ -201,17 +384,22 @@ must not be copied into `WorldScene`, a renderer, or a state class. Native game
 services should be small general hooks, and reusable behavior derived from a
 DLL must remain under its matching `SF_EXE/libs/` directory.
 
+The same rule applies to AI: actor decision tables belong to the future
+portable `RKC_RPG_AICONTROL` boundary, while their native action handlers
+belong to the relevant executable-owned actor or combat system. MCT-owned
+placement and movement bounds should remain scenario data.
+
 ## Still to map
 
-The next useful work is the rest of Ostare's opening conversation and quest
-setup. That should naturally reveal more of:
+The next useful script work is another real Remote Town actor or service,
+chosen after the opening items have a visible data-backed path. That should
+naturally reveal more of:
 
 - persistent flag initialization and save-game restoration;
 - message control bytes, portraits, speaker metadata, and alternate message
   frame modes;
-- choices and branching;
+- keyboard movement between message choices;
 - waits for movement and animation completion;
-- interaction range and the retail auto-approach behavior;
 - gates, warps, shops, inventory, rewards, and quest-log actions;
 - remaining operand domains and the rest of the opcode switch;
 - multiplayer and network flag behavior.

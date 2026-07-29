@@ -1,10 +1,9 @@
 #include "npc_actor.hpp"
+#include "movement_controller.hpp"
 #include "player_actor.hpp"
+#include "resources/character_visual_resource.hpp"
 
 #include <algorithm>
-#include <cmath>
-#include <iomanip>
-#include <sstream>
 #include <utility>
 
 namespace osf {
@@ -14,12 +13,6 @@ void setError(std::string* error, std::string message) {
     if (error) {
         *error = std::move(message);
     }
-}
-
-std::string resourceDirectory(std::int32_t resource_id) {
-    std::ostringstream name;
-    name << std::setfill('0') << std::setw(8) << resource_id;
-    return name.str();
 }
 
 template <typename Value>
@@ -32,61 +25,11 @@ void copyParts(
         destination.begin());
 }
 
-WorldPosition movementStep(
-    WorldPosition current,
-    WorldPosition destination,
-    std::int32_t speed) {
-    const std::int64_t delta_x =
-        static_cast<std::int64_t>(destination.x) - current.x;
-    const std::int64_t delta_y =
-        static_cast<std::int64_t>(destination.y) - current.y;
-    const double distance = std::hypot(
-        static_cast<double>(delta_x),
-        static_cast<double>(delta_y));
-    if (distance <= static_cast<double>(speed)) {
-        return destination;
-    }
-    return {
-        current.x + static_cast<std::int32_t>(
-            static_cast<double>(delta_x) / distance * speed),
-        current.y + static_cast<std::int32_t>(
-            static_cast<double>(delta_y) / distance * speed),
-    };
-}
-
-WorldPosition furthestWalkablePosition(
-    const GroundMap& ground,
-    const ObjectMap& objects,
-    const ObjectBounds& bounds,
-    WorldPosition start,
-    WorldPosition end,
-    bool* reached) {
-    const std::int32_t delta_x = end.x - start.x;
-    const std::int32_t delta_y = end.y - start.y;
-    const std::int32_t steps = std::max(
-        std::abs(delta_x), std::abs(delta_y));
-    WorldPosition result = start;
-    *reached = true;
-    for (std::int32_t step = 1; step <= steps; ++step) {
-        const WorldPosition position{
-            start.x + delta_x * step / steps,
-            start.y + delta_y * step / steps,
-        };
-        if (!positionIsWalkable(
-                ground, objects, position, bounds)) {
-            *reached = false;
-            break;
-        }
-        result = position;
-    }
-    return result;
-}
-
 }  // namespace
 
-bool NpcActor::load(
-    const std::filesystem::path& data_root,
+bool NpcActor::initialize(
     const ScenarioPerson& person,
+    const CharacterVisualResource& visual,
     std::string* error) {
     clear();
     if (person.resource_id < 0) {
@@ -94,28 +37,14 @@ bool NpcActor::load(
         return false;
     }
 
-    const std::filesystem::path root =
-        data_root / "Character" / "PEOPLE" /
-        resourceDirectory(person.resource_id);
-    std::string asset_error;
-    if (!patterns_.load(root / "Animation.Njp", &asset_error) ||
-        !shadow_patterns_.load(
-            root / "Animation.Sdw", &asset_error) ||
-        !animation_.load(root / "Animation.Caf", &asset_error)) {
-        setError(
-            error,
-            "The NPC animation could not be loaded: " +
-                asset_error);
-        clear();
-        return false;
-    }
-
+    visual_ = &visual;
     id_ = person.id;
     resource_id_ = person.resource_id;
     name_ = person.name;
     name_color_ = person.name_color;
     label_height_ = person.label_height;
     position_ = {person.world_x, person.world_y};
+    previous_position_ = position_;
     destination_ = position_;
     judgement_ = {
         person.judgement_left,
@@ -153,7 +82,8 @@ bool NpcActor::load(
         walk_duration_ > 0;
     random_.seed(static_cast<std::uint32_t>(person.id + 1));
 
-    const std::size_t part_count = animation_.maxPartCount();
+    const std::size_t part_count =
+        visual_->animation().maxPartCount();
     part_visibility_.assign(part_count, 1);
     red_strength_.assign(part_count, 1000);
     green_strength_.assign(part_count, 1000);
@@ -179,6 +109,7 @@ void NpcActor::clear() {
     name_color_ = 0;
     label_height_ = 0;
     position_ = {};
+    previous_position_ = {};
     destination_ = {};
     judgement_ = {};
     direction_ = 0;
@@ -194,18 +125,18 @@ void NpcActor::clear() {
     walking_ = false;
     interaction_active_ = false;
     random_.seed(1);
+    movement_controller_.reset();
     part_visibility_.clear();
     red_strength_.clear();
     green_strength_.clear();
     blue_strength_.clear();
-    patterns_.clear();
-    shadow_patterns_.clear();
-    animation_.clear();
+    visual_ = nullptr;
 }
 
 void NpcActor::update(
     const GroundMap& ground,
     const ObjectMap& objects) {
+    previous_position_ = position_;
     if (interaction_active_) {
         animation_chart_ = 0;
         animation_frame_ = action_counter_++;
@@ -236,6 +167,7 @@ void NpcActor::update(
         };
         walking_ = destination_.x != position_.x ||
                    destination_.y != position_.y;
+        movement_controller_.reset();
         action_counter_ = 0;
         if (!walking_) {
             return;
@@ -248,18 +180,22 @@ void NpcActor::update(
         destination_.x - position_.x,
         destination_.y - position_.y);
 
-    const WorldPosition candidate =
-        movementStep(position_, destination_, walk_speed_);
-    bool reached = false;
-    position_ = furthestWalkablePosition(
-        ground,
-        objects,
-        judgement_,
-        position_,
-        candidate,
-        &reached);
+    const MovementStepResult movement =
+        movement_controller_.advance(
+            ground,
+            objects,
+            judgement_,
+            position_,
+            destination_,
+            walk_speed_);
+    if (movement.moved) {
+        direction_ = retailDirectionForVector(
+            movement.position.x - position_.x,
+            movement.position.y - position_.y);
+    }
+    position_ = movement.position;
     ++action_counter_;
-    if (!reached ||
+    if ((!movement.moved && !movement.controller_active) ||
         (position_.x == destination_.x &&
          position_.y == destination_.y) ||
         action_counter_ >= walk_duration_) {
@@ -311,6 +247,11 @@ WorldPosition NpcActor::position() const {
     return position_;
 }
 
+WorldPosition NpcActor::renderPosition(double alpha) const {
+    return interpolateWorldPosition(
+        previous_position_, position_, alpha);
+}
+
 const ObjectBounds& NpcActor::judgement() const {
     return judgement_;
 }
@@ -354,15 +295,15 @@ std::int32_t NpcActor::partBlueStrength(
 }
 
 const gapi::NjpImage& NpcActor::patterns() const {
-    return patterns_;
+    return visual_->patterns();
 }
 
 const gapi::NjpImage& NpcActor::shadowPatterns() const {
-    return shadow_patterns_;
+    return visual_->shadowPatterns();
 }
 
 const gapi::CafAnimation& NpcActor::animation() const {
-    return animation_;
+    return visual_->animation();
 }
 
 }  // namespace osf

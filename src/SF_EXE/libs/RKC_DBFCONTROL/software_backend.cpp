@@ -93,14 +93,18 @@ bool SoftwareBackend::drawPattern(
         return false;
     }
     const NjpPattern& pattern = image.patterns()[pattern_index];
-    if (pattern.default_palette < 0 ||
-        static_cast<std::size_t>(pattern.default_palette) >=
+    const std::int32_t palette_index =
+        draw.palette >= 0
+            ? draw.palette
+            : pattern.default_palette;
+    if (palette_index < 0 ||
+        static_cast<std::size_t>(palette_index) >=
             image.palettes().size()) {
         return false;
     }
     const NjpPalette& palette =
         image.palettes()[static_cast<std::size_t>(
-            pattern.default_palette)];
+            palette_index)];
 
     for (const NjpPatternPart& item : pattern.parts) {
         if (item.part_index < 0 ||
@@ -151,6 +155,13 @@ bool SoftwareBackend::drawPattern(
             if (target_y < 0 || target_y >= height_) {
                 continue;
             }
+            if (draw.clip.width > 0 &&
+                draw.clip.height > 0 &&
+                (target_y < draw.clip.y ||
+                 target_y >=
+                     draw.clip.y + draw.clip.height)) {
+                continue;
+            }
             const std::int32_t source_y =
                 static_cast<std::int32_t>(
                     static_cast<std::int64_t>(y) *
@@ -158,6 +169,13 @@ bool SoftwareBackend::drawPattern(
             for (std::int32_t x = 0; x < destination_width; ++x) {
                 const std::int32_t target_x = destination_x + x;
                 if (target_x < 0 || target_x >= width_) {
+                    continue;
+                }
+                if (draw.clip.width > 0 &&
+                    draw.clip.height > 0 &&
+                    (target_x < draw.clip.x ||
+                     target_x >=
+                         draw.clip.x + draw.clip.width)) {
                     continue;
                 }
                 const std::int32_t source_x =

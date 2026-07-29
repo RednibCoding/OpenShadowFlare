@@ -1,7 +1,14 @@
 #include "core/retail_random.hpp"
 #include "render/character_select_renderer.hpp"
-#include "states/menu_states.hpp"
+#include "render/gameplay_help_renderer.hpp"
+#include "render/gameplay_options_renderer.hpp"
+#include "states/character_select_state.hpp"
+#include "states/gameplay_options_menu.hpp"
+#include "states/save_catalog.hpp"
+#include "states/title_state.hpp"
+#include "world/world_scene.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <iostream>
@@ -14,6 +21,11 @@ namespace {
 struct PatternCall {
     std::size_t index = 0;
     osf::gapi::PatternDraw draw;
+};
+
+struct TextCall {
+    std::string text;
+    osf::gapi::TextDraw draw;
 };
 
 class RecordingBackend final : public osf::gapi::Backend {
@@ -36,9 +48,10 @@ public:
 
     bool drawText(
         const osf::gapi::NjpImage&,
-        std::string_view,
-        const osf::gapi::TextDraw&) override {
+        std::string_view text,
+        const osf::gapi::TextDraw& draw) override {
         ++text_draws;
+        texts.push_back({std::string(text), draw});
         return true;
     }
 
@@ -51,6 +64,7 @@ public:
     void endFrame() override {}
 
     std::vector<PatternCall> patterns;
+    std::vector<TextCall> texts;
     std::vector<osf::gapi::RectangleDraw> rectangles;
     std::int32_t text_draws = 0;
 };
@@ -1131,7 +1145,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     if (!check(
@@ -1171,7 +1184,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     if (!check(
@@ -1196,7 +1208,6 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     const std::size_t popupStart = backend.patterns.size() - 4;
@@ -1217,6 +1228,7 @@ bool testNewCharacterRetailDrawing() {
     data.save_hover_animation = 65;
     input.pointer_x = 100;
     input.pointer_y = 200;
+    frame.save_slot_hovered[0] = true;
     backend = {};
     osf::renderCharacterSelect(
         backend,
@@ -1224,13 +1236,196 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        input,
         {},
         {});
     return check(
         backend.patterns[4].index == 45 &&
             backend.patterns[6].index == 49,
         "The retail hover pulse affected more than one save number.");
+}
+
+bool testGameplayOptionsDrawing() {
+    osf::GameplayOptionsMenu menu;
+    osf::GameConfig config;
+    menu.update({true, false, false, 0, 0}, config);
+
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    RecordingBackend backend;
+    osf::renderGameplayOptions(
+        backend, status, font, menu, config);
+    const bool has_screen_mode =
+        std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [](const TextCall& call) {
+                return call.text ==
+                    "Screen Mode at Start";
+            });
+    const bool has_first_live_row =
+        std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [](const TextCall& call) {
+                return call.text ==
+                           "Semi-transparent Objects" &&
+                       call.draw.x == 184 &&
+                       call.draw.y == 102;
+            });
+    const std::array<std::string, 5> expected_priority{{
+        "ENEM", "ITEM", "OBJ.", "PEOP", "COMP",
+    }};
+    std::array<std::string, 5> priority{};
+    for (const TextCall& call : backend.texts) {
+        if (call.draw.y != 198 ||
+            call.draw.x < 316 ||
+            call.draw.x > 436 ||
+            (call.draw.x - 316) % 30 != 0) {
+            continue;
+        }
+        priority[static_cast<std::size_t>(
+            (call.draw.x - 316) / 30)] = call.text;
+    }
+    if (!check(
+        backend.patterns.size() == 6 &&
+            backend.patterns[0].index == 59 &&
+            backend.patterns[0].draw.opacity == 500 &&
+            backend.patterns[1].index == 58 &&
+            backend.patterns[2].index == 120 &&
+            backend.patterns[2].draw.x == 246 &&
+            backend.patterns[2].draw.y == 223 &&
+            backend.patterns[4].index == 68 &&
+            backend.patterns[4].draw.x == 446 &&
+            !has_screen_mode &&
+            has_first_live_row &&
+            priority == expected_priority,
+        "The gameplay options panel differs from retail layout "
+        "or ordering.")) {
+        return false;
+    }
+
+    menu.update(
+        {false, true, true, 300, 302}, config);
+    backend = {};
+    osf::renderGameplayOptions(
+        backend, status, font, menu, config);
+    const auto prompt = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "Return to the Title Screen?         " &&
+                   call.draw.x == 212 &&
+                   call.draw.y == 170;
+        });
+    const auto yes = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "YES" &&
+                   call.draw.x == 336 &&
+                   call.draw.y == 202;
+        });
+    const bool has_settings_text =
+        std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [](const TextCall& call) {
+                return call.text ==
+                    "Semi-transparent Objects";
+            });
+    if (!check(
+        backend.patterns.size() == 2 &&
+            prompt != backend.texts.end() &&
+            yes != backend.texts.end() &&
+            !has_settings_text,
+        "The Save and Return confirmation differs from retail "
+        "layout or retained settings text.")) {
+        return false;
+    }
+
+    menu.update(
+        {false, true, true, 340, 202}, config);
+    backend = {};
+    osf::renderGameplayOptions(
+        backend, status, font, menu, config);
+    const auto saving = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "Now saving the data " &&
+                   call.draw.x == 260 &&
+                   call.draw.y == 170 &&
+                   call.draw.color.red == 128 &&
+                   call.draw.color.green == 128 &&
+                   call.draw.color.blue == 224;
+        });
+    return check(
+        backend.patterns.size() == 2 &&
+            saving != backend.texts.end(),
+        "The retail saving stage text differs in position or "
+        "color.");
+}
+
+bool testGameplayHelpDrawing() {
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    osf::WorldScene world;
+    RecordingBackend backend;
+    osf::renderGameplayHelp(
+        backend, status, font, world, 17, true, 24);
+
+    const auto heading = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "SHADOW FLARE  \" MOUSE ACTION HELP \"" &&
+                   call.draw.x == 42 &&
+                   call.draw.y == 48 &&
+                   call.draw.color.red == 224 &&
+                   call.draw.color.green == 224 &&
+                   call.draw.color.blue == 64;
+        });
+    const auto mouse_action = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "Companions's Attack" &&
+                   call.draw.x == 310 &&
+                   call.draw.y == 148 &&
+                   call.draw.color.red == 139;
+        });
+    const auto escape_action = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "Open the Settings Menu" &&
+                   call.draw.x == 406 &&
+                   call.draw.y == 358 &&
+                   call.draw.color.red == 192;
+        });
+    return check(
+        backend.patterns.size() == 3 &&
+            backend.patterns[0].index == 10 &&
+            backend.patterns[1].index == 66 &&
+            backend.patterns[1].draw.x == 64 &&
+            backend.patterns[1].draw.y == 70 &&
+            backend.patterns[2].index == 28 &&
+            backend.patterns[2].draw.x == 301 &&
+            backend.patterns[2].draw.y == 393 &&
+            backend.rectangles.size() == 4 &&
+            backend.rectangles[0].x == 63 &&
+            backend.rectangles[0].y == 69 &&
+            backend.rectangles[0].width == 232 &&
+            backend.rectangles[0].opacity == 500 &&
+            heading != backend.texts.end() &&
+            mouse_action != backend.texts.end() &&
+            escape_action != backend.texts.end(),
+        "The gameplay help frame, preview, or retail text "
+        "layout differs.");
 }
 
 }  // namespace
@@ -1247,7 +1442,9 @@ int main() {
         !testSavedGameSelectionFrames() ||
         !testSavedGameDeleteDialog() ||
         !testNewCharacterCreationAndModeScreens() ||
-        !testNewCharacterRetailDrawing()) {
+        !testNewCharacterRetailDrawing() ||
+        !testGameplayOptionsDrawing() ||
+        !testGameplayHelpDrawing()) {
         return 1;
     }
     return 0;
