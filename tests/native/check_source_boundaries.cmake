@@ -75,6 +75,7 @@ set(dll_implementation_names
   bitmap.cpp
   caf.cpp
   coordinates.cpp
+  display_order.cpp
   ground_map.cpp
   judgement.cpp
   njp.cpp

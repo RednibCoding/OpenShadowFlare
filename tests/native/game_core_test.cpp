@@ -354,6 +354,52 @@ bool testObjectMapDecode() {
         "A truncated retail OBL record was accepted.");
 }
 
+bool testDisplayObjectOrdering() {
+    std::vector<osf::DisplayOrderEntry> entries{
+        {
+            0,
+            {0, 0},
+            {0, 0, 1000, 100},
+            0,
+        },
+        {
+            1,
+            {580, -20},
+            {-80, -80, 79, 79},
+            0,
+        },
+        {
+            2,
+            {},
+            {},
+            0x20,
+        },
+    };
+    osf::sortDisplayObjects(entries);
+    if (!check(
+            entries.size() == 3 &&
+                entries[0].source_index == 2 &&
+                entries[1].source_index == 1 &&
+                entries[2].source_index == 0,
+            "Full judgement rectangles did not place an actor behind "
+            "large scenery.")) {
+        return false;
+    }
+
+    std::vector<osf::DisplayOrderEntry> touching{
+        {0, {}, {0, 0, 100, 100}, 0},
+        {1, {}, {100, 0, 200, 100}, 0},
+    };
+    osf::sortDisplayObjects(touching);
+    return check(
+        touching[0].source_index == 0 &&
+            touching[1].source_index == 1 &&
+            osf::displayClassForStatus(0x100) == 1 &&
+            osf::displayClassForStatus(0x80) == 2 &&
+            osf::displayClassForStatus(0x20) == 3,
+        "Display ordering changed the retail strict-edge or status rules.");
+}
+
 bool testGameplayLoadingTransition() {
     std::int32_t prepares = 0;
     std::int32_t releases = 0;
@@ -531,6 +577,7 @@ int main() {
         !testStateDispatcher() ||
         !testGroundMapDecode() ||
         !testObjectMapDecode() ||
+        !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
         !testGameplayClickAndHoldMovement()) {
         return 1;

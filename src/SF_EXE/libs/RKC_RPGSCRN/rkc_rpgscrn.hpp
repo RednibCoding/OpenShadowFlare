@@ -128,6 +128,17 @@ struct ObjectBounds {
     std::int32_t bottom = 0;
 };
 
+struct DisplayOrderEntry {
+    std::size_t source_index = 0;
+    WorldPosition position;
+    ObjectBounds judgement;
+    std::int16_t status = 0;
+};
+
+std::int32_t displayClassForStatus(std::int16_t status);
+void sortDisplayObjects(
+    std::vector<DisplayOrderEntry>& entries);
+
 struct MapObject {
     std::int32_t world_x = 0;
     std::int32_t world_y = 0;

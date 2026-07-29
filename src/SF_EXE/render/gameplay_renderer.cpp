@@ -20,17 +20,12 @@ constexpr std::int32_t kScreenWidth = 640;
 constexpr std::int32_t kScreenHeight = 480;
 constexpr std::int32_t kRetailHeightScale = 20;
 
-struct ObjectDrawEntry {
-    const MapObject* object = nullptr;
-    std::int32_t depth = 0;
-    std::int32_t display_class = 0;
-};
-
 struct WorldDrawEntry {
+    const MapObject* object = nullptr;
     const NpcActor* npc = nullptr;
     const GroundItem* item = nullptr;
     bool player = false;
-    std::int32_t depth = 0;
+    DisplayOrderEntry order;
 };
 
 ScreenPosition toScreen(
@@ -105,21 +100,6 @@ void renderNpcPass(
         camera_y,
         shadow,
         shadow_opacity);
-}
-
-std::int32_t displayClass(std::int16_t status) {
-    std::int32_t result = (status & 0x100) != 0 ? 1 : 0;
-    if ((status & 0x80) != 0) {
-        result = 2;
-    }
-    if ((status & 0x20) != 0) {
-        result = 3;
-    }
-    return result;
-}
-
-bool isDefaultDisplayClass(std::int16_t status) {
-    return (status & 0x1a0) == 0;
 }
 
 const gapi::NjpImage* objectImage(
@@ -205,118 +185,102 @@ void drawMapObject(
          shadow ? 1000 : object.blue_strength});
 }
 
-std::vector<ObjectDrawEntry> collectObjects(
-    const WorldScene& world,
-    bool default_class,
-    std::int32_t camera_x,
-    std::int32_t camera_y) {
-    std::vector<ObjectDrawEntry> result;
-    for (const MapObject& object :
-         world.objectMap().objects()) {
-        const gapi::NjpImage* image =
-            objectImage(world, object, false);
-        const gapi::NjpImage* shadow =
-            (object.status & 8) != 0
-                ? objectImage(world, object, true)
-                : nullptr;
-        const bool visible =
-            image && objectVisible(
-                         *image,
-                         object,
-                         camera_x,
-                         camera_y,
-                         false);
-        const bool shadowVisible =
-            shadow && objectVisible(
-                          *shadow,
-                          object,
-                          camera_x,
-                          camera_y,
-                          true);
-        if ((!visible && !shadowVisible) ||
-            isDefaultDisplayClass(object.status) != default_class) {
-            continue;
-        }
-        result.push_back({
-            &object,
-            toScreen(
-                object.world_x + object.judgement.left,
-                object.world_y + object.judgement.top).y,
-            displayClass(object.status),
-        });
-    }
-    std::stable_sort(
-        result.begin(),
-        result.end(),
-        [](const ObjectDrawEntry& left,
-           const ObjectDrawEntry& right) {
-            if (left.display_class != right.display_class) {
-                return left.display_class < right.display_class;
-            }
-            return left.depth < right.depth;
-        });
-    return result;
-}
-
-void drawObjectShadows(
-    gapi::Backend& renderer,
-    const WorldScene& world,
-    const std::vector<ObjectDrawEntry>& objects,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    std::int32_t shadow_opacity) {
-    for (const ObjectDrawEntry& entry : objects) {
-        if ((entry.object->status & 8) == 0) {
-            continue;
-        }
-        drawMapObject(
-            renderer,
-            world,
-            *entry.object,
-            camera_x,
-            camera_y,
-            true,
-            shadow_opacity);
-    }
-}
-
 std::vector<WorldDrawEntry> collectWorldEntries(
     const WorldScene& world,
+    bool shadow,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
     double interpolation) {
-    std::vector<WorldDrawEntry> result;
+    std::vector<WorldDrawEntry> entries;
+    for (const MapObject& object :
+         world.objectMap().objects()) {
+        if (shadow && (object.status & 8) == 0) {
+            continue;
+        }
+        const gapi::NjpImage* image =
+            objectImage(world, object, shadow);
+        if (!image ||
+            !objectVisible(
+                *image,
+                object,
+                camera_x,
+                camera_y,
+                shadow)) {
+            continue;
+        }
+        entries.push_back({
+            &object,
+            nullptr,
+            nullptr,
+            false,
+            {
+                entries.size(),
+                {object.world_x, object.world_y},
+                object.judgement,
+                object.status,
+            },
+        });
+    }
+
     if (world.hasPlayer()) {
-        result.push_back({
+        entries.push_back({
+            nullptr,
             nullptr,
             nullptr,
             true,
-            calculateRealPosition(
-                world.playerRenderPosition(interpolation)).y,
+            {
+                entries.size(),
+                world.playerRenderPosition(interpolation),
+                world.playerJudgement(),
+                0,
+            },
         });
     }
     for (const NpcActor& npc : world.npcs()) {
-        result.push_back({
+        entries.push_back({
+            nullptr,
             &npc,
             nullptr,
             false,
-            calculateRealPosition(
-                npc.renderPosition(interpolation)).y,
+            {
+                entries.size(),
+                npc.renderPosition(interpolation),
+                npc.judgement(),
+                0,
+            },
         });
     }
     for (const GroundItem& item : world.groundItems()) {
-        result.push_back({
+        entries.push_back({
+            nullptr,
             nullptr,
             &item,
             false,
-            toScreen(item.position.x, item.position.y).y,
+            {
+                entries.size(),
+                item.position,
+                {},
+                0,
+            },
         });
     }
-    std::stable_sort(
-        result.begin(),
-        result.end(),
-        [](const WorldDrawEntry& left,
-           const WorldDrawEntry& right) {
-            return left.depth < right.depth;
-        });
+
+    std::vector<DisplayOrderEntry> order;
+    order.reserve(entries.size());
+    for (std::size_t index = 0;
+         index < entries.size();
+         ++index) {
+        entries[index].order.source_index = index;
+        order.push_back(entries[index].order);
+    }
+    sortDisplayObjects(order);
+
+    std::vector<WorldDrawEntry> result;
+    result.reserve(entries.size());
+    for (const DisplayOrderEntry& ordered : order) {
+        result.push_back(
+            std::move(entries[ordered.source_index]));
+    }
     return result;
 }
 
@@ -372,7 +336,16 @@ void drawWorldEntry(
     bool shadow,
     std::int32_t shadow_opacity,
     double interpolation) {
-    if (entry.player) {
+    if (entry.object) {
+        drawMapObject(
+            renderer,
+            world,
+            *entry.object,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity);
+    } else if (entry.player) {
         renderPlayerPass(
             renderer,
             world,
@@ -400,6 +373,33 @@ void drawWorldEntry(
             camera_y,
             shadow,
             shadow_opacity);
+    }
+}
+
+void drawWorldEntries(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const std::vector<WorldDrawEntry>& entries,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    bool default_class,
+    std::int32_t shadow_opacity,
+    double interpolation) {
+    for (const WorldDrawEntry& entry : entries) {
+        if ((displayClassForStatus(entry.order.status) == 0) !=
+            default_class) {
+            continue;
+        }
+        drawWorldEntry(
+            renderer,
+            world,
+            entry,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity,
+            interpolation);
     }
 }
 
@@ -455,87 +455,63 @@ void renderWorld(
         }
     }
 
-    const std::vector<ObjectDrawEntry> specialObjects =
-        collectObjects(world, false, camera_x, camera_y);
-    const std::vector<ObjectDrawEntry> defaultObjects =
-        collectObjects(world, true, camera_x, camera_y);
-    const std::vector<WorldDrawEntry> worldEntries =
-        collectWorldEntries(world, interpolation);
-
-    drawObjectShadows(
-        renderer,
-        world,
-        specialObjects,
-        camera_x,
-        camera_y,
-        shadow_opacity);
-    for (const ObjectDrawEntry& entry : specialObjects) {
-        drawMapObject(
-            renderer,
+    const std::vector<WorldDrawEntry> shadow_entries =
+        collectWorldEntries(
             world,
-            *entry.object,
-            camera_x,
-            camera_y,
-            false,
-            shadow_opacity);
-    }
-
-    drawObjectShadows(
-        renderer,
-        world,
-        defaultObjects,
-        camera_x,
-        camera_y,
-        shadow_opacity);
-
-    for (const WorldDrawEntry& entry : worldEntries) {
-        drawWorldEntry(
-            renderer,
-            world,
-            entry,
-            camera_x,
-            camera_y,
             true,
-            shadow_opacity,
+            camera_x,
+            camera_y,
             interpolation);
-    }
+    const std::vector<WorldDrawEntry> visible_entries =
+        collectWorldEntries(
+            world,
+            false,
+            camera_x,
+            camera_y,
+            interpolation);
 
-    std::size_t world_entry_index = 0;
-    for (const ObjectDrawEntry& entry : defaultObjects) {
-        while (world_entry_index < worldEntries.size() &&
-               worldEntries[world_entry_index].depth < entry.depth) {
-            drawWorldEntry(
-                renderer,
-                world,
-                worldEntries[world_entry_index],
-                camera_x,
-                camera_y,
-                false,
-                shadow_opacity,
-                interpolation);
-            ++world_entry_index;
-        }
-        drawMapObject(
-            renderer,
-            world,
-            *entry.object,
-            camera_x,
-            camera_y,
-            false,
-            shadow_opacity);
-    }
-    while (world_entry_index < worldEntries.size()) {
-        drawWorldEntry(
-            renderer,
-            world,
-            worldEntries[world_entry_index],
-            camera_x,
-            camera_y,
-            false,
-            shadow_opacity,
-            interpolation);
-        ++world_entry_index;
-    }
+    // FUN_004030f0 emits the non-default status classes first, then the
+    // default class, with a shadow and visible pass for each group.
+    drawWorldEntries(
+        renderer,
+        world,
+        shadow_entries,
+        camera_x,
+        camera_y,
+        true,
+        false,
+        shadow_opacity,
+        interpolation);
+    drawWorldEntries(
+        renderer,
+        world,
+        visible_entries,
+        camera_x,
+        camera_y,
+        false,
+        false,
+        shadow_opacity,
+        interpolation);
+    drawWorldEntries(
+        renderer,
+        world,
+        shadow_entries,
+        camera_x,
+        camera_y,
+        true,
+        true,
+        shadow_opacity,
+        interpolation);
+    drawWorldEntries(
+        renderer,
+        world,
+        visible_entries,
+        camera_x,
+        camera_y,
+        false,
+        true,
+        shadow_opacity,
+        interpolation);
     renderGameplayOverlay(
         renderer,
         world,

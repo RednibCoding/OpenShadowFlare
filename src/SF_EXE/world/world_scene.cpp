@@ -590,6 +590,10 @@ WorldPosition WorldScene::playerRenderPosition(
     return player_.renderPosition(alpha);
 }
 
+const ObjectBounds& WorldScene::playerJudgement() const {
+    return player_.judgement();
+}
+
 std::int32_t WorldScene::musicTrack() const {
     return music_track_;
 }

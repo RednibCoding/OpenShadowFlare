@@ -132,11 +132,14 @@ The first scenario then draws the decoded `f00_01.Gnd` cells at that entry and
 places the selected male or female animation at the camera center. Its 279
 `f00_01.Obl` records now supply
 Remote Town's gates, walls, trees, rocks, and other static scenery. Pattern
-bounds provide view culling, the OBL status classes and judgement rectangles
-provide retail depth keys, and the player is inserted into the default scenery
-pass at foot depth. Paired `ShadowLowPat` SDW assets render first with the
-configured opaque or 50-percent shadow mode through GAPI's general opacity
-support.
+bounds provide view culling. Static scenery, people, ground items, and the
+player now enter combined shadow and visible lists. The initial
+`InsertSort` order uses status class and the projected left/top judgement
+corner; `SortDisplayObject` then reproduces the retail strict comparison of
+all four absolute rectangle edges. This full pass fixes long Remote Town wall
+segments and both city houses occluding an actor behind them. Paired
+`ShadowLowPat` SDW assets use the same ordering and the configured opaque or
+50-percent shadow mode through GAPI's general opacity support.
 
 The first decoded person is Ostare: local ID `0`, people resource `13`, name
 color `0x00e0e0e0`, label height `80`, position (`91467`, `1532`), judgement

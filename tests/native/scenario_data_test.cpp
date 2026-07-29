@@ -503,6 +503,48 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    const auto& remote_objects = world.objectMap().objects();
+    if (!check(
+            remote_objects.size() == 279 &&
+                remote_objects[138].pattern_set == 5 &&
+                remote_objects[138].pattern == 1 &&
+                remote_objects[206].pattern_set == 14 &&
+                remote_objects[206].pattern == 4,
+            "The Remote Town house or west-wall fixture changed.")) {
+        return false;
+    }
+    const auto actorDrawsBefore =
+        [](const osf::MapObject& object,
+           osf::WorldPosition actor_position) {
+            std::vector<osf::DisplayOrderEntry> entries{
+                {
+                    0,
+                    {object.world_x, object.world_y},
+                    object.judgement,
+                    object.status,
+                },
+                {
+                    1,
+                    actor_position,
+                    {-80, -80, 79, 79},
+                    0,
+                },
+            };
+            osf::sortDisplayObjects(entries);
+            return entries.size() == 2 &&
+                   entries[0].source_index == 1 &&
+                   entries[1].source_index == 0;
+        };
+    if (!check(
+            actorDrawsBefore(
+                remote_objects[138], {88500, -1500}) &&
+                actorDrawsBefore(
+                    remote_objects[206], {86880, 3700}),
+            "Remote Town's house or wall did not occlude the player "
+            "through its retail judgement rectangle.")) {
+        return false;
+    }
+
     NpcRecordingBackend renderer;
     renderer.patterns = &world.npcs()[0].patterns();
     renderer.shadows = &world.npcs()[0].shadowPatterns();

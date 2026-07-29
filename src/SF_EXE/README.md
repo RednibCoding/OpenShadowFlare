@@ -122,10 +122,11 @@ player at the original gameplay cadence, follows the cursor with all eight
 directions, and moves the camera with the player. `R` switches between the
 retail walking and running speeds, using CAF charts one and two respectively.
 Remote Town's GND judgement layer and OBL rectangles stop the player at walls
-and scenery while the renderer keeps sorting nearby objects and people in
-front of or behind the moving sprite. NPC-specific behavior, most script
-commands, the HUD, darkness, and the rest of gameplay simulation are still in
-progress.
+and scenery. The renderer uses the retail status classes and full judgement
+rectangles—not a single Y anchor—to sort nearby objects and people in front of
+or behind the moving sprite, including the large town houses and walls.
+NPC-specific behavior, most script commands, the HUD, darkness, and the rest
+of gameplay simulation are still in progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.

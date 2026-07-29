@@ -108,9 +108,25 @@ The initial scenario map is loaded by the large transition routine at
 `0x00426200`. The `f00_01.Lst` indices are preserved across ground and object
 records: NJP entries hold visible patterns and their following SDW entries hold
 one-bit shadows. `0x004030f0` builds separate shadow and visible-object lists,
-sorts them using status classes and judgement rectangles, and inserts dynamic
-actors into the visible depth order. The portable first-world slice now
-reconstructs that pipeline for static OBL scenery and the player.
+inserts both static scenery and the current dynamic actor block, then calls
+`RKC_RPGSCRN_OBJECTDISP::SortDisplayObject` on each combined list.
+
+Insertion first groups status classes and compares the projected
+`position + (judgement.left, judgement.top)` point. The final sort cannot be
+replaced by one Y key: it compares the absolute left, top, right, and bottom
+edges of every remaining judgement rectangle. A candidate is held back when
+another rectangle begins before its right and bottom edges and ends before at
+least one of them; that other entry must be drawn first. All comparisons are
+strict, so merely touching edges do not create a dependency. This is what puts
+a character behind Remote Town's long walls and houses even when the visible
+sprite covers a large screen area.
+Status bits `0x100`, `0x80`, and `0x20` select classes one, two, and three;
+class zero is the default. The packet sequence draws non-default shadows and
+objects first, followed by default shadows and objects.
+
+The portable `RKC_RPGSCRN` library now owns that exact ordering rule. The
+renderer supplies decoded OBL bounds and the player/NPC judgement rectangles,
+keeping DLL-derived behavior out of the executable-owned render code.
 
 The MCT loader at `0x00427b50` first reads a 16-byte
 `MCED DATA v0000\x1a` signature, two 260-byte paths, two unknown 32-bit

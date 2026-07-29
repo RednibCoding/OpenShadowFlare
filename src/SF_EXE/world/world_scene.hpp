@@ -83,6 +83,7 @@ public:
     std::int32_t renderCameraScreenX(double alpha) const;
     std::int32_t renderCameraScreenY(double alpha) const;
     WorldPosition playerRenderPosition(double alpha) const;
+    const ObjectBounds& playerJudgement() const;
     std::int32_t musicTrack() const;
     const ScenarioData& scenario() const;
     const script::ScriptData& scenarioScript() const;

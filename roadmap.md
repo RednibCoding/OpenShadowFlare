@@ -156,7 +156,10 @@ The slice is finished when all of these are true:
 - live town actors use their decoded judgement rectangles as movement
   blockers. The actor being approached stays solid too; interaction finishes
   at the retail 159-unit rectangle distance before the two actors collide;
-- camera and depth keys are rebuilt from the live player position;
+- camera placement is rebuilt from the live player position. Static scenery,
+  people, ground items, and the player share the retail combined display
+  lists; the final full-judgement-rectangle sort correctly puts actors behind
+  Remote Town's houses and long wall segments;
 - held input replaces the destination, releasing after the retail ten-update
   hold threshold stops the hero immediately, and an ordinary click remains
   latched;

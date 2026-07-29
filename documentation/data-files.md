@@ -188,6 +188,12 @@ The pattern-list index refers to the matching map `.Lst`. Visible NJP entries
 are commonly followed by a `ShadowLowPat` SDW entry used by objects whose
 status includes the shadow bit.
 
+The judgement rectangle is also the object's depth footprint. Retail rendering
+first orders objects by the projected position of its left/top corner, then
+runs a second pass over all four absolute rectangle edges. It is therefore not
+safe to reduce an OBL record to a single anchor or Y value: large house and
+wall rectangles deliberately decide when actors pass behind their artwork.
+
 ## NJP Sprite Format (NJudgeUniPat)
 
 NJP files contain paletted sprite/pattern data with embedded color palettes. 524 of 545 NJP files
