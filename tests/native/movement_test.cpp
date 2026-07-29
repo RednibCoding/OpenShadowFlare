@@ -1,4 +1,5 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "world/movement_controller.hpp"
 #include "world/player_actor.hpp"
 
 #include <cstdint>
@@ -127,6 +128,38 @@ bool testDirections() {
         }
     }
     return true;
+}
+
+bool testRetailRectangleDistance() {
+    const osf::ObjectBounds point{};
+    return check(
+        osf::distanceBetweenBounds(
+            {0, 0}, point, {0, 0}, point) == 0 &&
+            osf::distanceBetweenBounds(
+                {0, 0}, point, {10, 0}, point) == 9 &&
+            osf::distanceBetweenBounds(
+                {0, 0}, point, {3, 4}, point) == 4 &&
+            osf::distanceBetweenBounds(
+                {0, 0},
+                {-80, -80, 79, 79},
+                {319, 0},
+                {-80, -80, 79, 79}) == 159,
+        "Executable rectangle distance differs from FUN_004143c0.");
+}
+
+bool testRenderInterpolation() {
+    osf::GroundMap ground;
+    osf::ObjectMap objects;
+    osf::PlayerActor player;
+    player.reset({0, 0}, 1, 5);
+    player.moveTo({100, 0});
+    player.update(ground, objects);
+    return check(
+        player.position().x == 20 &&
+            player.renderPosition(0.0).x == 0 &&
+            player.renderPosition(0.5).x == 10 &&
+            player.renderPosition(1.0).x == 20,
+        "The 60 Hz render snapshot does not interpolate a 30 Hz step.");
 }
 
 bool testMovementAndAnimation() {
@@ -307,6 +340,8 @@ bool testRemoteTownFixture() {
 int main() {
     if (!testProjection() ||
         !testDirections() ||
+        !testRetailRectangleDistance() ||
+        !testRenderInterpolation() ||
         !testMovementAndAnimation() ||
         !testWalkRunToggle() ||
         !testObjectJudgement() ||

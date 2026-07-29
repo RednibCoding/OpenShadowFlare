@@ -3,6 +3,7 @@
 
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "movement_controller.hpp"
 #include "scenario_data.hpp"
 
 #include <cstddef>
@@ -37,6 +38,7 @@ public:
     std::uint32_t nameColor() const;
     std::int32_t labelHeight() const;
     WorldPosition position() const;
+    WorldPosition renderPosition(double alpha) const;
     const ObjectBounds& judgement() const;
     std::int32_t direction() const;
     std::int32_t animationChart() const;
@@ -56,6 +58,7 @@ private:
     std::uint32_t name_color_ = 0;
     std::int32_t label_height_ = 0;
     WorldPosition position_;
+    WorldPosition previous_position_;
     ObjectBounds judgement_;
     std::int32_t direction_ = 0;
     std::int32_t animation_chart_ = 0;

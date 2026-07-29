@@ -1,4 +1,5 @@
 #include "world_scene.hpp"
+#include "movement_controller.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -9,6 +10,8 @@
 
 namespace osf {
 namespace {
+
+constexpr std::int32_t kRetailInteractionDistance = 0x9f;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -239,6 +242,7 @@ void WorldScene::clear() {
     conversation_active_ = false;
     conversation_actor_id_ = -1;
     hovered_npc_id_ = -1;
+    pending_interaction_npc_id_ = -1;
     ground_.clear();
     object_map_.clear();
     map_patterns_.clear();
@@ -325,6 +329,7 @@ void WorldScene::commandPlayerMovement(
     if (!has_player_) {
         return;
     }
+    pending_interaction_npc_id_ = -1;
     player_.moveTo(
         calculateWorldPosition({
             cameraScreenX() + screen_x,
@@ -360,7 +365,27 @@ bool WorldScene::commandWorldInteraction(
     NpcActor& selected =
         npcs_[static_cast<std::size_t>(index)];
 
+    pending_interaction_npc_id_ = selected.id();
+    if (distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            selected.position(),
+            selected.judgement()) >
+        kRetailInteractionDistance) {
+        player_.moveTo(selected.position());
+        return true;
+    }
+    return startNpcInteraction(selected);
+}
+
+bool WorldScene::interactionPending() const {
+    return pending_interaction_npc_id_ >= 0;
+}
+
+bool WorldScene::startNpcInteraction(NpcActor& selected) {
+    pending_interaction_npc_id_ = -1;
     player_.cancelMovement();
+    player_.faceToward(selected.position());
     const std::int32_t script_character_number =
         12000000 + selected.id();
     const script::StepResult result =
@@ -394,6 +419,14 @@ const std::string& WorldScene::conversationText() const {
     return conversation_.text;
 }
 
+bool WorldScene::conversationRequiresSelection() const {
+    return conversation_.selection_required;
+}
+
+std::int32_t WorldScene::conversationInitialSelection() const {
+    return conversation_.initial_selection;
+}
+
 const gapi::NjpImage& WorldScene::speechPatterns() const {
     return speech_patterns_;
 }
@@ -415,6 +448,26 @@ void WorldScene::advanceConversation() {
     }
 }
 
+void WorldScene::chooseConversationOption(
+    std::int32_t option) {
+    if (!conversation_active_ ||
+        !conversation_.selection_required ||
+        option < 0) {
+        return;
+    }
+    conversation_active_ = false;
+    conversation_ = {};
+    const script::StepResult result =
+        scenario_script_.resume(option);
+    if (result != script::StepResult::waiting_for_message) {
+        conversation_active_ = false;
+        conversation_actor_id_ = -1;
+        for (NpcActor& npc : npcs_) {
+            npc.endInteraction();
+        }
+    }
+}
+
 void WorldScene::togglePlayerRun() {
     if (has_player_) {
         player_.toggleMovementPace();
@@ -422,6 +475,13 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    NpcActor* interaction_target =
+        findNpc(pending_interaction_npc_id_);
+    if (interaction_target) {
+        player_.moveTo(interaction_target->position());
+    } else {
+        pending_interaction_npc_id_ = -1;
+    }
     if (has_player_) {
         player_.update(ground_, object_map_);
     }
@@ -430,6 +490,17 @@ void WorldScene::update() {
     }
     for (GroundItem& item : ground_items_) {
         updateGroundItem(item);
+    }
+    interaction_target =
+        findNpc(pending_interaction_npc_id_);
+    if (interaction_target &&
+        distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            interaction_target->position(),
+            interaction_target->judgement()) <=
+            kRetailInteractionDistance) {
+        startNpcInteraction(*interaction_target);
     }
 }
 
@@ -467,6 +538,25 @@ std::int32_t WorldScene::cameraScreenY() const {
     const ScreenPosition position =
         calculateRealPosition(player_.position());
     return position.y - 240;
+}
+
+std::int32_t WorldScene::renderCameraScreenX(
+    double alpha) const {
+    const ScreenPosition position =
+        calculateRealPosition(player_.renderPosition(alpha));
+    return position.x - 320;
+}
+
+std::int32_t WorldScene::renderCameraScreenY(
+    double alpha) const {
+    const ScreenPosition position =
+        calculateRealPosition(player_.renderPosition(alpha));
+    return position.y - 240;
+}
+
+WorldPosition WorldScene::playerRenderPosition(
+    double alpha) const {
+    return player_.renderPosition(alpha);
 }
 
 std::int32_t WorldScene::musicTrack() const {
@@ -655,6 +745,16 @@ const NpcActor* WorldScene::findScriptNpc(
         [character_number](const NpcActor& npc) {
             return 12000000 + npc.id() ==
                    character_number;
+        });
+    return found == npcs_.end() ? nullptr : &*found;
+}
+
+NpcActor* WorldScene::findNpc(std::int32_t id) {
+    const auto found = std::find_if(
+        npcs_.begin(),
+        npcs_.end(),
+        [id](const NpcActor& npc) {
+            return npc.id() == id;
         });
     return found == npcs_.end() ? nullptr : &*found;
 }

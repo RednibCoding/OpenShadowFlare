@@ -52,7 +52,24 @@ GameplayFrameResult GameplayState::update(
             hooks_.conversation_active &&
             hooks_.conversation_active();
         if (conversation_active) {
-            if ((input.confirm_pressed ||
+            const bool selection_required =
+                hooks_.conversation_requires_selection &&
+                hooks_.conversation_requires_selection();
+            if (selection_required) {
+                bool option_selected = false;
+                if (input.pointer_primary_pressed &&
+                    hooks_.choose_conversation_option) {
+                    option_selected =
+                        hooks_.choose_conversation_option(
+                            input.pointer_x, input.pointer_y);
+                }
+                if (!option_selected &&
+                    input.confirm_pressed &&
+                    hooks_.advance_conversation) {
+                    hooks_.advance_conversation();
+                }
+            } else if (
+                (input.confirm_pressed ||
                  input.pointer_primary_pressed) &&
                 hooks_.advance_conversation) {
                 hooks_.advance_conversation();
@@ -78,6 +95,8 @@ GameplayFrameResult GameplayState::update(
             if ((input.pointer_primary_pressed ||
                  input.pointer_primary_down) &&
                 !interaction_handled &&
+                (!hooks_.world_interaction_pending ||
+                 !hooks_.world_interaction_pending()) &&
                 input.pointer_x >= 0 &&
                 input.pointer_x < 640 &&
                 input.pointer_y >= 0 &&

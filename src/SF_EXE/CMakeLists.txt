@@ -88,6 +88,7 @@ target_link_libraries(
 add_library(
   osf_world STATIC
   world/ground_item.cpp
+  world/movement_controller.cpp
   world/npc_actor.cpp
   world/player_actor.cpp
   world/quest_state.cpp
@@ -112,6 +113,7 @@ add_library(
   osf_render STATIC
   render/character_renderer.cpp
   render/character_select_renderer.cpp
+  render/conversation_layout.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp
   render/loading_renderer.cpp

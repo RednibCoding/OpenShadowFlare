@@ -48,6 +48,9 @@ void Interpreter::reset() {
     frames_.clear();
     waiting_for_message_ = false;
     message_callback_pending_ = false;
+    message_selection_pending_ = false;
+    message_selection_operand_ = {};
+    message_initial_selection_ = -1;
     current_character_number_ = -1;
     message_callback_character_number_ = -1;
     unsupported_opcode_ = -1;
@@ -59,6 +62,9 @@ StepResult Interpreter::startStatus(
     frames_.clear();
     waiting_for_message_ = false;
     message_callback_pending_ = false;
+    message_selection_pending_ = false;
+    message_selection_operand_ = {};
+    message_initial_selection_ = -1;
     message_callback_character_number_ = -1;
     current_character_number_ = -1;
     unsupported_opcode_ = -1;
@@ -86,13 +92,28 @@ StepResult Interpreter::enterStatus(
     return run();
 }
 
-StepResult Interpreter::resume() {
+StepResult Interpreter::resume(std::int32_t selection) {
     if (!waiting_for_message_) {
         return frames_.empty()
                    ? StepResult::complete
                    : run();
     }
     waiting_for_message_ = false;
+    if (message_selection_pending_) {
+        const std::int32_t selected =
+            selection >= 0
+                ? selection
+                : message_initial_selection_;
+        if (selected < 0 ||
+            !writeOperand(
+                message_selection_operand_, selected)) {
+            waiting_for_message_ = true;
+            return StepResult::waiting_for_message;
+        }
+        message_selection_pending_ = false;
+        message_selection_operand_ = {};
+        message_initial_selection_ = -1;
+    }
     if (!message_callback_pending_) {
         return frames_.empty()
                    ? StepResult::complete
@@ -225,17 +246,24 @@ StepResult Interpreter::execute(const Command& command) {
         if (!message) {
             return StepResult::invalid_script;
         }
+        const std::int32_t mode =
+            readOperand(command.operands[2]);
+        const bool selection_required = mode == 1;
+        const std::int32_t initial_selection =
+            selection_required
+                ? readOperand(command.operands[3])
+                : -1;
         if (hooks_.show_message) {
             hooks_.show_message({
                 message->id,
                 message->text,
                 current_character_number_,
+                selection_required,
+                initial_selection,
             });
         }
         waiting_for_message_ = true;
-        const std::int32_t mode =
-            readOperand(command.operands[2]);
-        if (mode == 0) {
+        if (mode == 0 || selection_required) {
             const std::int32_t target =
                 readOperand(command.operands[4]);
             message_callback_pending_ = true;
@@ -243,6 +271,11 @@ StepResult Interpreter::execute(const Command& command) {
                 target == -1
                     ? current_character_number_
                     : target;
+        }
+        if (selection_required) {
+            message_selection_pending_ = true;
+            message_selection_operand_ = command.operands[1];
+            message_initial_selection_ = initial_selection;
         }
         return StepResult::complete;
     }

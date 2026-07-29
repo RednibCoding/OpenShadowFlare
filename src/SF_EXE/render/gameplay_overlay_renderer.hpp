@@ -17,7 +17,16 @@ void renderGameplayOverlay(
     const WorldScene& world,
     const gapi::NjpImage* font,
     std::int32_t camera_x,
-    std::int32_t camera_y);
+    std::int32_t camera_y,
+    double interpolation = 1.0);
+
+std::int32_t conversationChoiceAtScreenPosition(
+    const WorldScene& world,
+    const gapi::NjpImage& font,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    std::int32_t screen_x,
+    std::int32_t screen_y);
 
 }  // namespace osf
 

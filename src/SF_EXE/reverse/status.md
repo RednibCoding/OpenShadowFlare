@@ -51,6 +51,14 @@ The first game-core slice covers:
   branch used on a repeat interaction
 - Ostare's pointer hover, pale selection tint, nameplate, and actor-anchored
   `Hukidasi.njp` speech bubble
+- judgement-rectangle interaction range and retail-style auto-approach before
+  an NPC status starts
+- one shared executable-owned movement boundary for the player and PEOPLE
+  actors, matching the retail ownership later enemies will also use
+- smooth 60 Hz camera and actor presentation interpolated from unchanged
+  30 Hz gameplay updates
+- companion choice messages with hidden `~` range markup, pointer hit testing,
+  initial selection, script result write-back, and status-one callbacks
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads

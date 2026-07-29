@@ -69,8 +69,9 @@ script::StepResult ScenarioScriptRuntime::startStatus(
     return interpreter_.startStatus(kind, character_number);
 }
 
-script::StepResult ScenarioScriptRuntime::resume() {
-    return interpreter_.resume();
+script::StepResult ScenarioScriptRuntime::resume(
+    std::int32_t selection) {
+    return interpreter_.resume(selection);
 }
 
 const script::ScriptData& ScenarioScriptRuntime::data() const {

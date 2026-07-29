@@ -16,7 +16,8 @@ void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity = 500,
-    const gapi::NjpImage* font = nullptr);
+    const gapi::NjpImage* font = nullptr,
+    double interpolation = 1.0);
 
 }  // namespace osf
 

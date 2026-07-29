@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_PLAYER_ACTOR_HPP
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "movement_controller.hpp"
 
 #include <cstdint>
 
@@ -32,13 +33,16 @@ public:
 
     void moveTo(WorldPosition destination);
     void cancelMovement();
+    void faceToward(WorldPosition position);
     void toggleMovementPace();
     void update(
         const GroundMap& ground,
         const ObjectMap& objects);
 
     WorldPosition position() const;
+    WorldPosition renderPosition(double alpha) const;
     WorldPosition destination() const;
+    const ObjectBounds& judgement() const;
     std::int32_t direction() const;
     std::int32_t walkingSpeedTier() const;
     std::int32_t walkingSpeed() const;
@@ -51,6 +55,7 @@ public:
 
 private:
     WorldPosition position_;
+    WorldPosition previous_position_;
     WorldPosition destination_;
     ObjectBounds judgement_{-80, -80, 79, 79};
     std::int32_t direction_ = 0;

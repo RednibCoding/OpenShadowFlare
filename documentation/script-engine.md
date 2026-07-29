@@ -258,6 +258,16 @@ executes opcode 62 with `{0, 1, 0}` and then opcode 48 with `{0}`. The
 consumer of that counter still needs to be traced before it is decremented or
 rendered.
 
+Opcode-2 mode one is the selectable-message path used by the four Remote Town
+companions. In this mode operand one is the writable selection result and
+operand three is the initially selected zero-based option. A pair of `~`
+characters surrounds each clickable text run. The executable's message layout
+removes those markers, records the enclosed line and columns for hit testing,
+and writes the chosen range number before entering the actor's status-kind-one
+callback. The portable interpreter and speech-bubble layout now preserve that
+same split: the interpreter owns the result operand and callback, while the
+executable-owned UI owns marker layout and pointer hit testing.
+
 ## Operands and variables
 
 Each command operand has a type and a value. The executable's operand reader
@@ -371,9 +381,8 @@ naturally reveal more of:
 - persistent flag initialization and save-game restoration;
 - message control bytes, portraits, speaker metadata, and alternate message
   frame modes;
-- choices and branching;
+- keyboard movement and hover feedback between message choices;
 - waits for movement and animation completion;
-- interaction range and the retail auto-approach behavior;
 - gates, warps, shops, inventory, rewards, and quest-log actions;
 - remaining operand domains and the rest of the opcode switch;
 - multiplayer and network flag behavior.

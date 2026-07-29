@@ -45,7 +45,8 @@ void renderPlayerPass(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    double interpolation) {
     if (!world.hasPlayer()) {
         return;
     }
@@ -54,7 +55,7 @@ void renderPlayerPass(
         world.playerAnimation(),
         world.playerPatterns(),
         world.playerShadowPatterns(),
-        {world.playerWorldX(), world.playerWorldY()},
+        world.playerRenderPosition(interpolation),
         world.playerAnimationChart(),
         world.playerDirection(),
         world.playerAnimationFrame(),
@@ -77,13 +78,14 @@ void renderNpcPass(
     std::int32_t camera_y,
     bool shadow,
     std::int32_t shadow_opacity,
-    bool hovered) {
+    bool hovered,
+    double interpolation) {
     renderCharacterAnimationPass(
         renderer,
         npc.animation(),
         npc.patterns(),
         npc.shadowPatterns(),
-        npc.position(),
+        npc.renderPosition(interpolation),
         npc.animationChart(),
         npc.direction(),
         npc.animationFrame(),
@@ -279,16 +281,16 @@ void drawObjectShadows(
 }
 
 std::vector<WorldDrawEntry> collectWorldEntries(
-    const WorldScene& world) {
+    const WorldScene& world,
+    double interpolation) {
     std::vector<WorldDrawEntry> result;
     if (world.hasPlayer()) {
         result.push_back({
             nullptr,
             nullptr,
             true,
-            toScreen(
-                world.playerWorldX(),
-                world.playerWorldY()).y,
+            calculateRealPosition(
+                world.playerRenderPosition(interpolation)).y,
         });
     }
     for (const NpcActor& npc : world.npcs()) {
@@ -296,9 +298,8 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             &npc,
             nullptr,
             false,
-            toScreen(
-                npc.position().x,
-                npc.position().y).y,
+            calculateRealPosition(
+                npc.renderPosition(interpolation)).y,
         });
     }
     for (const GroundItem& item : world.groundItems()) {
@@ -369,7 +370,8 @@ void drawWorldEntry(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    double interpolation) {
     if (entry.player) {
         renderPlayerPass(
             renderer,
@@ -377,7 +379,8 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
+            shadow_opacity,
+            interpolation);
     } else if (entry.npc) {
         renderNpcPass(
             renderer,
@@ -386,7 +389,8 @@ void drawWorldEntry(
             camera_y,
             shadow,
             shadow_opacity,
-            world.hoveredNpcId() == entry.npc->id());
+            world.hoveredNpcId() == entry.npc->id(),
+            interpolation);
     } else if (entry.item) {
         drawGroundItem(
             renderer,
@@ -406,16 +410,17 @@ void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity,
-    const gapi::NjpImage* font) {
+    const gapi::NjpImage* font,
+    double interpolation) {
     const GroundMap& ground = world.ground();
     if (ground.width() <= 0 || ground.height() <= 0) {
         return;
     }
 
     const std::int32_t camera_x =
-        world.cameraScreenX();
+        world.renderCameraScreenX(interpolation);
     const std::int32_t camera_y =
-        world.cameraScreenY();
+        world.renderCameraScreenY(interpolation);
     const std::int32_t start_x =
         std::max(camera_x / ground.chipWidth(), 0);
     const std::int32_t start_y =
@@ -455,7 +460,7 @@ void renderWorld(
     const std::vector<ObjectDrawEntry> defaultObjects =
         collectObjects(world, true, camera_x, camera_y);
     const std::vector<WorldDrawEntry> worldEntries =
-        collectWorldEntries(world);
+        collectWorldEntries(world, interpolation);
 
     drawObjectShadows(
         renderer,
@@ -491,7 +496,8 @@ void renderWorld(
             camera_x,
             camera_y,
             true,
-            shadow_opacity);
+            shadow_opacity,
+            interpolation);
     }
 
     std::size_t world_entry_index = 0;
@@ -505,7 +511,8 @@ void renderWorld(
                 camera_x,
                 camera_y,
                 false,
-                shadow_opacity);
+                shadow_opacity,
+                interpolation);
             ++world_entry_index;
         }
         drawMapObject(
@@ -525,11 +532,17 @@ void renderWorld(
             camera_x,
             camera_y,
             false,
-            shadow_opacity);
+            shadow_opacity,
+            interpolation);
         ++world_entry_index;
     }
     renderGameplayOverlay(
-        renderer, world, font, camera_x, camera_y);
+        renderer,
+        world,
+        font,
+        camera_x,
+        camera_y,
+        interpolation);
 }
 
 }  // namespace osf

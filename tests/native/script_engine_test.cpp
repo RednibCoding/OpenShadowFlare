@@ -327,14 +327,35 @@ bool testRetailRemoteTown() {
             "Syria's callback did not start the retail quest.")) {
         return false;
     }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000002}),
+            "Syria's opening conversation did not release the actor.")) {
+        return false;
+    }
+
+    if (!check(
+            interpreter.startStatus(0, 12010000) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000047 &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 3 &&
+                messages.back().text.find("~Check Status~") !=
+                    std::string::npos,
+            "Dune's status did not open the retail choice message.")) {
+        return false;
+    }
     return check(
-        interpreter.resume() == osf::script::StepResult::complete &&
+        interpreter.resume(3) ==
+                osf::script::StepResult::complete &&
             !interpreter.waitingForMessage() &&
-            native_commands.back() ==
-                std::make_pair(
-                    std::int32_t{19},
-                    std::vector<std::int32_t>{12000002}),
-        "Syria's opening conversation did not release the actor.");
+            interpreter.readTemporaryFlag(1000001) == 3,
+        "Dune's QUIT choice was not written back to the script.");
 #else
     return true;
 #endif

@@ -1,4 +1,5 @@
 #include "player_actor.hpp"
+#include "movement_controller.hpp"
 
 #include <algorithm>
 #include <array>
@@ -43,76 +44,6 @@ std::int32_t animationFrameForSpeed(
     return static_cast<std::int32_t>(
         static_cast<double>(counter) *
         speedFactor(tier));
-}
-
-WorldPosition movementStep(
-    WorldPosition current,
-    WorldPosition destination,
-    std::int32_t speed) {
-    const std::int64_t delta_x =
-        static_cast<std::int64_t>(destination.x) - current.x;
-    const std::int64_t delta_y =
-        static_cast<std::int64_t>(destination.y) - current.y;
-    const double distance = std::hypot(
-        static_cast<double>(delta_x),
-        static_cast<double>(delta_y));
-    if (distance < 1.0) {
-        return destination;
-    }
-
-    WorldPosition result{
-        current.x + static_cast<std::int32_t>(
-            static_cast<double>(delta_x) /
-            distance * speed),
-        current.y + static_cast<std::int32_t>(
-            static_cast<double>(delta_y) /
-            distance * speed),
-    };
-    if ((delta_x > 0 && result.x > destination.x) ||
-        (delta_x < 0 && result.x < destination.x)) {
-        result.x = destination.x;
-    }
-    if ((delta_y > 0 && result.y > destination.y) ||
-        (delta_y < 0 && result.y < destination.y)) {
-        result.y = destination.y;
-    }
-    return result;
-}
-
-WorldPosition furthestWalkablePosition(
-    const GroundMap& ground,
-    const ObjectMap& objects,
-    const ObjectBounds& bounds,
-    WorldPosition start,
-    WorldPosition end,
-    bool* reached) {
-    const std::int32_t delta_x = end.x - start.x;
-    const std::int32_t delta_y = end.y - start.y;
-    const std::int32_t steps = std::max(
-        std::abs(delta_x), std::abs(delta_y));
-    WorldPosition result = start;
-    *reached = true;
-    for (std::int32_t step = 1; step <= steps; ++step) {
-        const WorldPosition position{
-            start.x + delta_x * step / steps,
-            start.y + delta_y * step / steps,
-        };
-        if (!positionIsWalkable(
-                ground, objects, position, bounds)) {
-            *reached = false;
-            break;
-        }
-        result = position;
-    }
-    return result;
-}
-
-std::int32_t squaredDistance(
-    WorldPosition first,
-    WorldPosition second) {
-    const std::int32_t x = first.x - second.x;
-    const std::int32_t y = first.y - second.y;
-    return x * x + y * y;
 }
 
 }  // namespace
@@ -164,6 +95,7 @@ void PlayerActor::reset(
     std::int32_t direction,
     std::int32_t walking_speed_tier) {
     position_ = position;
+    previous_position_ = position;
     destination_ = position;
     direction_ = direction;
     walking_speed_tier_ =
@@ -196,6 +128,16 @@ void PlayerActor::cancelMovement() {
     motion_ = PlayerMotion::idle;
 }
 
+void PlayerActor::faceToward(WorldPosition position) {
+    if (position.x == position_.x &&
+        position.y == position_.y) {
+        return;
+    }
+    direction_ = retailDirectionForVector(
+        position.x - position_.x,
+        position.y - position_.y);
+}
+
 void PlayerActor::toggleMovementPace() {
     movement_pace_ =
         movement_pace_ == MovementPace::walk
@@ -212,6 +154,7 @@ void PlayerActor::toggleMovementPace() {
 void PlayerActor::update(
     const GroundMap& ground,
     const ObjectMap& objects) {
+    previous_position_ = position_;
     if (motion_ == PlayerMotion::idle) {
         if (previous_action_ != PlayerMotion::idle) {
             action_counter_ = 0;
@@ -244,52 +187,18 @@ void PlayerActor::update(
     direction_ = retailDirectionForVector(
         destination_.x - position_.x,
         destination_.y - position_.y);
-    const WorldPosition start = position_;
-    const WorldPosition candidate =
-        movementStep(
+    const MovementStepResult movement =
+        advanceMovement(
+            ground,
+            objects,
+            judgement_,
             position_,
             destination_,
             moving_action == PlayerMotion::running
                 ? running_speed_
                 : walking_speed_);
-    bool reached = false;
-    const WorldPosition direct =
-        furthestWalkablePosition(
-            ground,
-            objects,
-            judgement_,
-            position_,
-            candidate,
-            &reached);
-    if (reached) {
-        position_ = direct;
-        return;
-    }
-
-    bool ignored = false;
-    const WorldPosition x_slide =
-        furthestWalkablePosition(
-            ground,
-            objects,
-            judgement_,
-            direct,
-            {candidate.x, direct.y},
-            &ignored);
-    const WorldPosition y_slide =
-        furthestWalkablePosition(
-            ground,
-            objects,
-            judgement_,
-            direct,
-            {direct.x, candidate.y},
-            &ignored);
-    position_ =
-        squaredDistance(start, x_slide) >=
-                squaredDistance(start, y_slide)
-            ? x_slide
-            : y_slide;
-    if (position_.x != start.x ||
-        position_.y != start.y) {
+    position_ = movement.position;
+    if (movement.moved) {
         return;
     }
     motion_ = PlayerMotion::idle;
@@ -299,8 +208,17 @@ WorldPosition PlayerActor::position() const {
     return position_;
 }
 
+WorldPosition PlayerActor::renderPosition(double alpha) const {
+    return interpolateWorldPosition(
+        previous_position_, position_, alpha);
+}
+
 WorldPosition PlayerActor::destination() const {
     return destination_;
+}
+
+const ObjectBounds& PlayerActor::judgement() const {
+    return judgement_;
 }
 
 std::int32_t PlayerActor::direction() const {

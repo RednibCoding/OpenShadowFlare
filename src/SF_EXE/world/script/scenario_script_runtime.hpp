@@ -38,7 +38,7 @@ public:
     script::StepResult startStatus(
         std::int32_t kind,
         std::int32_t character_number);
-    script::StepResult resume();
+    script::StepResult resume(std::int32_t selection = -1);
     const script::ScriptData& data() const;
 
 private:

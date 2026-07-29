@@ -140,6 +140,39 @@ messages instead of using a fixed screen-bottom dialogue box. Message events
 retain their current script character, which also anchors Syria's initial
 branch even though it does not run an explicit facing command.
 
+The same layout function gives `~` a special meaning when message flag
+`0x40000000` is set. The tildes are removed from the displayed text and each
+enclosed run is stored as a clickable character range with its line and
+columns. The companion messages use opcode-2 mode one, pass a writable script
+operand for the selected zero-based range, and supply an initial selection.
+Dune's first menu starts on range three, `QUIT`. These bytes are UI control
+markup, not part of the English message.
+
+World interaction goes through `0x00449240`. It measures the shortest gap
+between the player and target judgement rectangles with `0x004143c0`, rather
+than comparing their center points. The player's initial interaction distance
+at offset `0x3f4` is `0x9f` (159 world units). A target outside that distance
+starts movement-controller mode one and is followed as it moves. Once the
+rectangle gap reaches 159, the player faces the actor and starts that actor's
+status-zero script. This is why clicking a distant person in retail walks
+toward them instead of opening a remote conversation or simply rejecting the
+click.
+
+`0x00454210` initializes the executable's shared movement controller and
+`0x00454930` advances it. It is not an A* route search. A direct collision
+sweep is followed by stateful cardinal obstacle-edge steering. Controller
+modes cover fixed points, scenario actors, other players, bounded wandering,
+and related approach behavior. Calls from the player, PEOPLE actors, and enemy
+actors all reach this controller. `RKC_RPG_AICONTROL` chooses enemy intent and
+parameters; it does not contain a second enemy pathfinder.
+
+Portable gameplay still updates at the retail 30 Hz cadence, while the window
+is presented at 60 Hz. Rendering the current simulation snapshot twice made
+camera scrolling visibly step at a constant rate. The runtime now keeps the
+previous and current actor positions and interpolates only their render
+positions and the camera between updates. Collision, scripts, animation
+counters, and all other game state remain on the fixed 30 Hz clock.
+
 The variable section at `0x324` begins with three counted ID lists, followed
 by counted runtime entity groups. The object and `PEOPLE` groups share IDs,
 optional names and colors, label height, position, judgement, direction,

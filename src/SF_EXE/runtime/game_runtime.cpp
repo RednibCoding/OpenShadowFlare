@@ -9,6 +9,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/gameplay_overlay_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "resources/retail_filesystem.hpp"
@@ -177,7 +178,12 @@ public:
                 gameAccumulator -= gameStep;
             }
 
-            renderGame();
+            const double interpolation =
+                std::clamp(
+                    gameAccumulator / gameStep,
+                    0.0,
+                    1.0);
+            renderGame(interpolation);
 
             ++renderedFrames;
             if (smokeTest && renderedFrames >= 3) {
@@ -287,7 +293,7 @@ private:
             frontendAssets_.savedPreviews());
     }
 
-    void renderGame() {
+    void renderGame(double interpolation) {
         renderer_.beginFrame({0, 0, 0, 255});
         if (gameState_.currentState() == osf::GameState::title) {
             const auto* pattern = frontendAssets_.pattern(4);
@@ -335,7 +341,8 @@ private:
                     renderer_,
                     world_,
                     shadowOpacity_,
-                    font);
+                    font,
+                    interpolation);
             }
         }
         renderer_.endFrame();
@@ -488,9 +495,35 @@ private:
             [this](std::int32_t x, std::int32_t y) {
                 return world_.commandWorldInteraction(x, y);
             };
+        hooks.world_interaction_pending = [this] {
+            return world_.interactionPending();
+        };
         hooks.conversation_active = [this] {
             return world_.conversationActive();
         };
+        hooks.conversation_requires_selection = [this] {
+            return world_.conversationRequiresSelection();
+        };
+        hooks.choose_conversation_option =
+            [this](std::int32_t x, std::int32_t y) {
+                const auto* font = frontendAssets_.pattern(1);
+                if (!font) {
+                    return false;
+                }
+                const std::int32_t option =
+                    osf::conversationChoiceAtScreenPosition(
+                        world_,
+                        *font,
+                        world_.cameraScreenX(),
+                        world_.cameraScreenY(),
+                        x,
+                        y);
+                if (option < 0) {
+                    return false;
+                }
+                world_.chooseConversationOption(option);
+                return true;
+            };
         hooks.advance_conversation = [this] {
             world_.advanceConversation();
         };

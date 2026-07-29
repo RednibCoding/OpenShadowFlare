@@ -38,7 +38,11 @@ struct GameplayStateHooks {
         update_pointer_hover;
     std::function<bool(std::int32_t, std::int32_t)>
         command_world_interaction;
+    std::function<bool()> world_interaction_pending;
     std::function<bool()> conversation_active;
+    std::function<bool()> conversation_requires_selection;
+    std::function<bool(std::int32_t, std::int32_t)>
+        choose_conversation_option;
     std::function<void()> advance_conversation;
     std::function<void()> toggle_player_run;
     std::function<void()> update_world;

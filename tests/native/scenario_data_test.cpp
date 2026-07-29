@@ -1,4 +1,5 @@
 #include "gapi/gapi.hpp"
+#include "render/conversation_layout.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "world/ground_item.hpp"
 #include "world/scenario_data.hpp"
@@ -19,6 +20,18 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool updateUntilConversation(
+    osf::WorldScene& world,
+    std::int32_t maximum_updates = 2000) {
+    for (std::int32_t update = 0;
+         update < maximum_updates &&
+         !world.conversationActive();
+         ++update) {
+        world.update();
+    }
+    return world.conversationActive();
 }
 
 bool testGroundItemCreation() {
@@ -77,6 +90,25 @@ bool testGroundItemCreation() {
             items, random, 4, 0, {}, 10, 9) &&
             items.size() == 4,
         "An invalid script money range created a ground item.");
+}
+
+bool testConversationChoiceMarkup() {
+    const osf::ConversationTextLayout layout =
+        osf::layoutConversationText(
+            "Dune\r\n~Check Status~\n  ~QUIT~",
+            true);
+    return check(
+        layout.text == "Dune\nCheck Status\n  QUIT" &&
+            layout.choices.size() == 2 &&
+            layout.choices[0].index == 0 &&
+            layout.choices[0].line == 1 &&
+            layout.choices[0].column == 0 &&
+            layout.choices[0].length == 12 &&
+            layout.choices[1].index == 1 &&
+            layout.choices[1].line == 2 &&
+            layout.choices[1].column == 2 &&
+            layout.choices[1].length == 4,
+        "Retail companion choice markup was not removed and ranged.");
 }
 
 struct NpcPatternCall {
@@ -526,9 +558,16 @@ bool testRetailRemoteTown() {
     renderer.speech_calls.clear();
     renderer.text_calls.clear();
     renderer.rectangles.clear();
+    const bool ostare_click =
+        world.commandWorldInteraction(747, 269);
+    const bool ostare_approached =
+        world.interactionPending() &&
+        !world.conversationActive();
+    updateUntilConversation(world);
     if (!check(
             world.scenarioScript().messages().size() == 61 &&
-                world.commandWorldInteraction(747, 269) &&
+                ostare_click &&
+                ostare_approached &&
                 world.conversationActive() &&
                 world.conversationMessageId() == 1000000 &&
                 world.conversationText().rfind(
@@ -542,38 +581,47 @@ bool testRetailRemoteTown() {
                 world.conversationActorId() == 0 &&
                 renderer.speech_calls.size() == 5 &&
                 renderer.speech_calls[0].pattern == 0 &&
-                renderer.speech_calls[0].draw.x == 566 &&
-                renderer.speech_calls[0].draw.y == 96 &&
                 renderer.speech_calls[1].pattern == 2 &&
-                renderer.speech_calls[1].draw.x == 943 &&
-                renderer.speech_calls[1].draw.y == 96 &&
                 renderer.speech_calls[2].pattern == 1 &&
-                renderer.speech_calls[2].draw.x == 566 &&
-                renderer.speech_calls[2].draw.y == 173 &&
                 renderer.speech_calls[3].pattern == 3 &&
-                renderer.speech_calls[3].draw.x == 943 &&
-                renderer.speech_calls[3].draw.y == 173 &&
                 renderer.speech_calls[4].pattern == 4 &&
-                renderer.speech_calls[4].draw.x == 754 &&
-                renderer.speech_calls[4].draw.y == 178 &&
+                renderer.speech_calls[1].draw.y ==
+                    renderer.speech_calls[0].draw.y &&
+                renderer.speech_calls[2].draw.x ==
+                    renderer.speech_calls[0].draw.x &&
+                renderer.speech_calls[3].draw.x ==
+                    renderer.speech_calls[1].draw.x &&
+                renderer.speech_calls[3].draw.y ==
+                    renderer.speech_calls[2].draw.y &&
+                renderer.speech_calls[4].draw.y ==
+                    renderer.speech_calls[2].draw.y + 5 &&
                 renderer.rectangles.size() == 13 &&
-                renderer.rectangles[0].x == 570 &&
-                renderer.rectangles[0].y == 100 &&
+                renderer.rectangles[0].x ==
+                    renderer.speech_calls[0].draw.x + 4 &&
+                renderer.rectangles[0].y ==
+                    renderer.speech_calls[0].draw.y + 4 &&
                 renderer.rectangles[0].width == 378 &&
                 renderer.rectangles[0].height == 78 &&
                 renderer.rectangles[0].color.red == 255 &&
-                renderer.rectangles[1].x == 575 &&
-                renderer.rectangles[1].y == 96 &&
+                renderer.rectangles[1].x ==
+                    renderer.speech_calls[0].draw.x + 9 &&
+                renderer.rectangles[1].y ==
+                    renderer.speech_calls[0].draw.y &&
                 renderer.rectangles[1].width == 368 &&
                 renderer.rectangles[1].height == 2 &&
                 renderer.rectangles[2].color.red == 160 &&
                 renderer.rectangles[3].color.red == 224 &&
-                renderer.rectangles[7].x == 566 &&
-                renderer.rectangles[7].y == 105 &&
-                renderer.rectangles[10].x == 950 &&
+                renderer.rectangles[7].x ==
+                    renderer.speech_calls[0].draw.x &&
+                renderer.rectangles[7].y ==
+                    renderer.speech_calls[0].draw.y + 9 &&
+                renderer.rectangles[10].x ==
+                    renderer.speech_calls[1].draw.x + 7 &&
                 renderer.text_calls.size() == 1 &&
-                renderer.text_calls[0].draw.x == 579 &&
-                renderer.text_calls[0].draw.y == 109 &&
+                renderer.text_calls[0].draw.x ==
+                    renderer.speech_calls[0].draw.x + 13 &&
+                renderer.text_calls[0].draw.y ==
+                    renderer.speech_calls[0].draw.y + 13 &&
                 renderer.text_calls[0].draw.color.red == 0,
             "Ostare's first message did not use the retail actor bubble.")) {
         return false;
@@ -679,8 +727,6 @@ bool testRetailRemoteTown() {
                 renderer.item_calls[0].shadow &&
                 renderer.item_calls[0].pattern == 36 &&
                 renderer.item_calls[0].draw.palette == -1 &&
-                renderer.item_calls[0].draw.x == 807 &&
-                renderer.item_calls[0].draw.y == 269 &&
                 renderer.item_calls[1].shadow &&
                 renderer.item_calls[1].pattern == 0 &&
                 renderer.item_calls[1].draw.palette == -1 &&
@@ -693,23 +739,31 @@ bool testRetailRemoteTown() {
                 !renderer.item_calls[4].shadow &&
                 renderer.item_calls[4].pattern == 113 &&
                 renderer.item_calls[4].draw.palette == 72 &&
-                renderer.item_calls[4].draw.x == 807 &&
-                renderer.item_calls[4].draw.y == 269 &&
+                renderer.item_calls[4].draw.x ==
+                    renderer.item_calls[0].draw.x &&
+                renderer.item_calls[4].draw.y ==
+                    renderer.item_calls[0].draw.y &&
                 renderer.item_calls[5].pattern == 77 &&
                 renderer.item_calls[5].draw.palette == 0 &&
-                renderer.item_calls[5].draw.x == 777 &&
-                renderer.item_calls[5].draw.y == 289 &&
+                renderer.item_calls[5].draw.x ==
+                    renderer.item_calls[1].draw.x &&
+                renderer.item_calls[5].draw.y ==
+                    renderer.item_calls[1].draw.y &&
                 renderer.item_calls[6].pattern == 82 &&
                 renderer.item_calls[6].draw.palette == 10 &&
                 renderer.item_calls[6].draw.red_strength == 900 &&
                 renderer.item_calls[6].draw.green_strength == 800 &&
                 renderer.item_calls[6].draw.blue_strength == 500 &&
-                renderer.item_calls[6].draw.x == 717 &&
-                renderer.item_calls[6].draw.y == 289 &&
+                renderer.item_calls[6].draw.x ==
+                    renderer.item_calls[2].draw.x &&
+                renderer.item_calls[6].draw.y ==
+                    renderer.item_calls[2].draw.y &&
                 renderer.item_calls[7].pattern == 107 &&
                 renderer.item_calls[7].draw.palette == 60 &&
-                renderer.item_calls[7].draw.x == 777 &&
-                renderer.item_calls[7].draw.y == 289,
+                renderer.item_calls[7].draw.x ==
+                    renderer.item_calls[3].draw.x &&
+                renderer.item_calls[7].draw.y ==
+                    renderer.item_calls[3].draw.y,
             "Ostare's drops do not use the retail ground CAF or depth order.")) {
         return false;
     }
@@ -728,8 +782,12 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    const osf::ScreenPosition repeat_ostare_anchor =
+        osf::calculateRealPosition(world.npcs()[0].position());
     if (!check(
-            world.commandWorldInteraction(747, 269) &&
+            world.commandWorldInteraction(
+                repeat_ostare_anchor.x - world.cameraScreenX(),
+                repeat_ostare_anchor.y - world.cameraScreenY()) &&
                 world.conversationActive() &&
                 world.conversationActorId() == 0 &&
                 world.conversationMessageId() == 1000005 &&
@@ -760,9 +818,12 @@ bool testRetailRemoteTown() {
         malse_anchor.x - world.cameraScreenX();
     const std::int32_t malse_screen_y =
         malse_anchor.y - world.cameraScreenY();
+    const bool malse_click =
+        world.commandWorldInteraction(
+            malse_screen_x, malse_screen_y);
+    updateUntilConversation(world);
     if (!check(
-            world.commandWorldInteraction(
-                malse_screen_x, malse_screen_y) &&
+            malse_click &&
                 world.conversationActive() &&
                 world.conversationActorId() == 1 &&
                 world.conversationMessageId() == 1000019,
@@ -791,9 +852,12 @@ bool testRetailRemoteTown() {
         syria_anchor.x - world.cameraScreenX();
     const std::int32_t syria_screen_y =
         syria_anchor.y - world.cameraScreenY();
+    const bool syria_click =
+        world.commandWorldInteraction(
+            syria_screen_x, syria_screen_y);
+    updateUntilConversation(world);
     if (!check(
-            world.commandWorldInteraction(
-                syria_screen_x, syria_screen_y) &&
+            syria_click &&
                 world.conversationActive() &&
                 world.conversationActorId() == 2 &&
                 world.conversationMessageId() == 1000040,
@@ -821,34 +885,41 @@ bool testRetailRemoteTown() {
         return false;
     }
 
-    world.update();
+    osf::WorldScene wander_world;
     if (!check(
-            world.npcs()[0].animationFrame() == 0,
+            wander_world.loadInitialScenario(
+                data_root, 0, &error),
+            "Remote Town could not be reloaded for the wander check.")) {
+        return false;
+    }
+    wander_world.update();
+    if (!check(
+            wander_world.npcs()[0].animationFrame() == 0,
             "Ostare skipped the first retail idle frame.")) {
         return false;
     }
-    world.update();
+    wander_world.update();
     if (!check(
-            world.npcs()[0].animationFrame() == 1,
+            wander_world.npcs()[0].animationFrame() == 1,
             "Ostare's idle animation does not advance at game-update cadence.")) {
         return false;
     }
 
     for (std::int32_t update = 2; update < 30; ++update) {
-        world.update();
+        wander_world.update();
     }
     if (!check(
-            world.npcs()[0].position().x == 91467 &&
-                world.npcs()[0].position().y == 1532 &&
-                world.npcs()[0].animationChart() == 0,
+            wander_world.npcs()[0].position().x == 91467 &&
+                wander_world.npcs()[0].position().y == 1532 &&
+                wander_world.npcs()[0].animationChart() == 0,
             "Ostare did not keep the retail 30-update idle pause.")) {
         return false;
     }
-    world.update();
+    wander_world.update();
     const osf::WorldPosition walking_position =
-        world.npcs()[0].position();
+        wander_world.npcs()[0].position();
     return check(
-        world.npcs()[0].animationChart() == 1 &&
+        wander_world.npcs()[0].animationChart() == 1 &&
             (walking_position.x != 91467 ||
              walking_position.y != 1532) &&
             walking_position.x >= 91030 &&
@@ -865,6 +936,7 @@ bool testRetailRemoteTown() {
 
 int main() {
     return testGroundItemCreation() &&
+                   testConversationChoiceMarkup() &&
                    testFixture() &&
                    testMalformedData() &&
                    testRetailRemoteTown()

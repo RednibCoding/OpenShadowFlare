@@ -56,13 +56,17 @@ public:
     bool commandWorldInteraction(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    bool interactionPending() const;
     std::int32_t hoveredNpcId() const;
     bool conversationActive() const;
     std::int32_t conversationActorId() const;
     std::int32_t conversationMessageId() const;
     const std::string& conversationText() const;
+    bool conversationRequiresSelection() const;
+    std::int32_t conversationInitialSelection() const;
     const gapi::NjpImage& speechPatterns() const;
     void advanceConversation();
+    void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
     void update();
     std::int32_t playerWorldX() const;
@@ -73,6 +77,9 @@ public:
     std::int32_t playerAnimationFrame() const;
     std::int32_t cameraScreenX() const;
     std::int32_t cameraScreenY() const;
+    std::int32_t renderCameraScreenX(double alpha) const;
+    std::int32_t renderCameraScreenY(double alpha) const;
+    WorldPosition playerRenderPosition(double alpha) const;
     std::int32_t musicTrack() const;
     const ScenarioData& scenario() const;
     const script::ScriptData& scenarioScript() const;
@@ -96,6 +103,8 @@ private:
     const NpcActor* findScriptNpc(
         std::int32_t character_number) const;
     bool ensureItemWorldResource(std::int32_t resource_id);
+    bool startNpcInteraction(NpcActor& npc);
+    NpcActor* findNpc(std::int32_t id);
 
     ScenarioData scenario_;
     ScenarioScriptRuntime scenario_script_;
@@ -103,6 +112,7 @@ private:
     bool conversation_active_ = false;
     std::int32_t conversation_actor_id_ = -1;
     std::int32_t hovered_npc_id_ = -1;
+    std::int32_t pending_interaction_npc_id_ = -1;
     GroundMap ground_;
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;

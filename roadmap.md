@@ -100,9 +100,17 @@ original executable:
 - the `R` binding switches the persistent walk/run movement mode;
 - the starting player judgement rectangle is `[-80, -80, 79, 79]`;
 - GND judgement bit zero and status-one OBL rectangles block the player;
-- `0x00454930` keeps contact position and tries axis slides;
+- `0x00454210`/`0x00454930` form one shared movement controller for players,
+  PEOPLE actors, and enemies. It uses direct collision sweeps plus stateful
+  obstacle-edge steering rather than A*; enemy intent still comes from
+  `RKC_RPG_AICONTROL`;
 - the camera uses the projected player position minus the 320-by-240 screen
   center, without another map-edge clamp.
+
+The interaction path is traced too. `0x00449240` uses the judgement-rectangle
+distance from `0x004143c0` and the player's 159-unit interaction range. A
+distant click starts controller mode one, follows the actor, and opens status
+zero only after the two bounds are close enough.
 
 Those findings are recorded in the reverse maps rather than being left in a
 scratchpad.
@@ -122,6 +130,10 @@ The gameplay update now:
 5. select the matching idle or walk animation;
 6. update the camera;
 7. pass the resulting state to the existing world renderer.
+
+The game state remains at 30 Hz, but the 60 Hz presentation now interpolates
+the previous and current actor snapshots. This removes the regular camera
+judder without changing movement distance, collision, CAF timing, or scripts.
 
 Input handling belongs in the runtime adapter, game decisions belong in the
 gameplay/world code, and any reused DLL behavior belongs in its matching
