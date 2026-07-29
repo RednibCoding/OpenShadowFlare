@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="29">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>198</ID>
+      <Description>"------Game State------"</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>008000</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>173</ID>
+      <Description>"isLoadScreen"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CE10</Address>
+      <Offsets>
+        <Offset>43C</Offset>
+        <Offset>0</Offset>
+        <Offset>54</Offset>
+        <Offset>1C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>165</ID>
+      <Description>"isProlog"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+00002980</Address>
+      <Offsets>
+        <Offset>0</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>182</ID>
+      <Description>"isTitle-Menu-Game-Freeze"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+000029AC</Address>
+      <Offsets>
+        <Offset>18</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>129</ID>
+      <Description>"Dialog"</Description>
+      <VariableType>String</VariableType>
+      <Length>60</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>"ShadowFlare.exe"+00080540</Address>
+      <Offsets>
+        <Offset>0</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>96</ID>
+      <Description>"Location Name"</Description>
+      <VariableType>String</VariableType>
+      <Length>50</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>"ShadowFlare.exe"+000338FC</Address>
+      <Offsets>
+        <Offset>0</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>197</ID>
+      <Description>""</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>FFFFFF</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>199</ID>
+      <Description>"------Character------"</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>008000</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>189</ID>
+      <Description>"Attack"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CE0C</Address>
+      <Offsets>
+        <Offset>1B4</Offset>
+        <Offset>0</Offset>
+        <Offset>4</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>185</ID>
+      <Description>"Hit Points"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CE0C</Address>
+      <Offsets>
+        <Offset>1A4</Offset>
+        <Offset>0</Offset>
+        <Offset>4</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>89</ID>
+      <Description>"Experience Points"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CE10</Address>
+      <Offsets>
+        <Offset>E8</Offset>
+        <Offset>0</Offset>
+        <Offset>34</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>94</ID>
+      <Description>"Level (read only)"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0005CA58</Address>
+      <Offsets>
+        <Offset>14</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>46</ID>
+      <Description>"Position (read only)"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+000202EC</Address>
+      <Offsets>
+        <Offset>4</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>196</ID>
+      <Description>""</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>FFFFFF</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>191</ID>
+      <Description>"------EP1 Quests------"</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>008000</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>5</ID>
+      <Description>"Red Goblin"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>0</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>7</ID>
+      <Description>"Malse's Gem"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>4</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>9</ID>
+      <Description>"Syria's Spirit Stone"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>8</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>18</ID>
+      <Description>"Dusty Ruins"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>15</ID>
+      <Description>"Rosanna's Ruby"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>10</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>36</ID>
+      <Description>"Errand for Gedo"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>14</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>34</ID>
+      <Description>"Cold Ruins"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>18</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>28</ID>
+      <Description>"Purgatory of Judgments"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>1C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>29</ID>
+      <Description>"Remains of Reincarnation"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>20</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>30</ID>
+      <Description>"Continuing land"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>24</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>31</ID>
+      <Description>"Immortal Remains"</Description>
+      <Color>000000</Color>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>28</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>195</ID>
+      <Description>""</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>FFFFFF</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>193</ID>
+      <Description>"------EP1 Waypoints------"</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>008000</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>83</ID>
+      <Description>"Wasteland of Pillars"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>4</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>72</ID>
+      <Description>"Cold Svalt"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>10</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>116</ID>
+      <Description>"Hanged Man's Forest"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>18</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>117</ID>
+      <Description>"Vaporous Forest"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>14</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>118</ID>
+      <Description>"Forest Divided Like a Cross"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>1C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>119</ID>
+      <Description>"The Ruins of Fire, Sea of Trees"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>20</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>120</ID>
+      <Description>"Cold Ruins, B3F"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>24</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>121</ID>
+      <Description>"Purgatory of Judgments, B1F"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>28</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>122</ID>
+      <Description>"Immortal Remains, B2F"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>2C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>127</ID>
+      <Description>"Dusty Ruins, B5F"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>123</ID>
+      <Description>"Tower of Ordeal, 1F"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>30</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>124</ID>
+      <Description>"Kanfore, Mining Town"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>34</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>125</ID>
+      <Description>"Forest of Claws"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>38</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>126</ID>
+      <Description>"Cross Agora"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB0</Address>
+      <Offsets>
+        <Offset>3C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>194</ID>
+      <Description>""</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>FFFFFF</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>192</ID>
+      <Description>"------EP2 Quests------"</Description>
+      <LastState RealAddress="00000000"/>
+      <Color>008000</Color>
+      <VariableType>String</VariableType>
+      <Length>0</Length>
+      <Unicode>0</Unicode>
+      <CodePage>0</CodePage>
+      <ZeroTerminate>1</ZeroTerminate>
+      <Address>0</Address>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>32</ID>
+      <Description>"Thieves (SE of Kanfore)"</Description>
+      <VariableType>4 Bytes</VariableType>
+      <Address>"ShadowFlare.exe"+0008CEB8</Address>
+      <Offsets>
+        <Offset>2C</Offset>
+      </Offsets>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+  <Comments>Info about this table:
+Quests where you have to fetch an item (e.g. Malse's Gem or Syria's Spirit Stone) can't be completed using these values. Instead, they require you to bring the item to the NPC while the value is "1".
+</Comments>
+</CheatTable>

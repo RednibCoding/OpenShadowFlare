@@ -246,17 +246,17 @@ static LalSound *create_converted_pcm(
     lal_set_error("PCM data contains no complete sample frames.");
     return NULL;
   }
-  if (input_frames >
-      (SIZE_MAX - sample_rate / 2u) / LAL_OUTPUT_SAMPLE_RATE) {
-    lal_set_error("PCM sample count is too large.");
-    return NULL;
-  }
-  output_frames =
-    (input_frames * LAL_OUTPUT_SAMPLE_RATE + sample_rate / 2) / sample_rate;
-  if (output_frames == 0 ||
-      output_frames > SIZE_MAX / (2 * sizeof(int16_t))) {
-    lal_set_error("Converted PCM sample count is invalid.");
-    return NULL;
+  {
+    uint64_t computed_output_frames =
+      ((uint64_t) input_frames * LAL_OUTPUT_SAMPLE_RATE + sample_rate / 2) /
+      sample_rate;
+    if (computed_output_frames == 0 ||
+        computed_output_frames >
+          (uint64_t) (SIZE_MAX / (2 * sizeof(int16_t)))) {
+      lal_set_error("Converted PCM sample count is invalid.");
+      return NULL;
+    }
+    output_frames = (size_t) computed_output_frames;
   }
 
   sound = (LalSound *) calloc(1, sizeof(*sound));

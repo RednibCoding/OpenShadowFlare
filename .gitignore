@@ -42,4 +42,5 @@ cmake-build-release
 cmake-build-debug32
 cmake-build-release32
 /build/
+/build-wasm/
 tmp/
