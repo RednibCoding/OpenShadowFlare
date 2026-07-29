@@ -401,6 +401,8 @@ bool testDisplayObjectOrdering() {
 }
 
 bool testGameplayLoadingTransition() {
+    std::int32_t interfacePrepares = 0;
+    std::int32_t interfaceReleases = 0;
     std::int32_t prepares = 0;
     std::int32_t releases = 0;
     std::int32_t musicStarts = 0;
@@ -418,6 +420,14 @@ bool testGameplayLoadingTransition() {
     bool conversationActive = false;
     bool conversationSelectionRequired = false;
     osf::GameplayStateHooks hooks;
+    hooks.prepare_interface = [&interfacePrepares] {
+            ++interfacePrepares;
+            return true;
+        };
+    hooks.release_interface =
+        [&interfaceReleases] {
+            ++interfaceReleases;
+        };
     hooks.prepare_world = [&prepares] {
             ++prepares;
             return true;
@@ -478,6 +488,7 @@ bool testGameplayLoadingTransition() {
     osf::GameplayFrameResult frame = state.update();
     if (!check(
             prepares == 1 &&
+                interfacePrepares == 1 &&
                 musicStarts == 1 &&
                 frame.phase == osf::GameplayPhase::loading &&
                 frame.loading_counter == 1 &&
@@ -492,6 +503,7 @@ bool testGameplayLoadingTransition() {
         return false;
     }
     frame = state.update({false, true, 600, 460});
+    state.update({false, true, 200, 450});
     state.update({false, true, 200, 210});
     state.update({false, true, -1, 210});
     state.update({false, false, 0, 0, false, true});
@@ -512,6 +524,7 @@ bool testGameplayLoadingTransition() {
             frame.phase == osf::GameplayPhase::world &&
             frame.world_ready &&
             releases == 1 &&
+            interfaceReleases == 1 &&
             musicStarts == 1 &&
             musicStops == 1 &&
             movementCommands == 4 &&
@@ -519,10 +532,10 @@ bool testGameplayLoadingTransition() {
             movementX == 240 &&
             movementY == 250 &&
             interactionCommands == 4 &&
-            pointerUpdates == 13 &&
+            pointerUpdates == 14 &&
             conversationAdvances == 1 &&
             conversationChoices == 1 &&
-            worldUpdates == 13 &&
+            worldUpdates == 14 &&
             runToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
 }

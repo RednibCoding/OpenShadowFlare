@@ -155,6 +155,13 @@ bool SoftwareBackend::drawPattern(
             if (target_y < 0 || target_y >= height_) {
                 continue;
             }
+            if (draw.clip.width > 0 &&
+                draw.clip.height > 0 &&
+                (target_y < draw.clip.y ||
+                 target_y >=
+                     draw.clip.y + draw.clip.height)) {
+                continue;
+            }
             const std::int32_t source_y =
                 static_cast<std::int32_t>(
                     static_cast<std::int64_t>(y) *
@@ -162,6 +169,13 @@ bool SoftwareBackend::drawPattern(
             for (std::int32_t x = 0; x < destination_width; ++x) {
                 const std::int32_t target_x = destination_x + x;
                 if (target_x < 0 || target_x >= width_) {
+                    continue;
+                }
+                if (draw.clip.width > 0 &&
+                    draw.clip.height > 0 &&
+                    (target_x < draw.clip.x ||
+                     target_x >=
+                         draw.clip.x + draw.clip.width)) {
                     continue;
                 }
                 const std::int32_t source_x =

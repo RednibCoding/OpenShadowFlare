@@ -23,7 +23,38 @@ struct SurfaceView {
     std::int32_t height = 0;
 };
 
+struct Viewport {
+    std::int32_t x = 0;
+    std::int32_t y = 0;
+    std::int32_t width = 0;
+    std::int32_t height = 0;
+};
+
 struct PatternDraw {
+    constexpr PatternDraw(
+        std::int32_t draw_x = 0,
+        std::int32_t draw_y = 0,
+        std::int32_t draw_scale_x = 1000,
+        std::int32_t draw_scale_y = 1000,
+        std::int32_t draw_brightness = 1000,
+        std::int32_t draw_opacity = 1000,
+        std::int32_t draw_red_strength = 1000,
+        std::int32_t draw_green_strength = 1000,
+        std::int32_t draw_blue_strength = 1000,
+        std::int32_t draw_palette = -1,
+        Viewport draw_clip = {})
+        : x(draw_x),
+          y(draw_y),
+          scale_x(draw_scale_x),
+          scale_y(draw_scale_y),
+          brightness(draw_brightness),
+          opacity(draw_opacity),
+          red_strength(draw_red_strength),
+          green_strength(draw_green_strength),
+          blue_strength(draw_blue_strength),
+          palette(draw_palette),
+          clip(draw_clip) {}
+
     std::int32_t x = 0;
     std::int32_t y = 0;
     std::int32_t scale_x = 1000;
@@ -34,6 +65,7 @@ struct PatternDraw {
     std::int32_t green_strength = 1000;
     std::int32_t blue_strength = 1000;
     std::int32_t palette = -1;
+    Viewport clip;
 };
 
 struct BitmapDraw {
@@ -61,13 +93,6 @@ struct RectangleDraw {
     Color color{255, 255, 255, 255};
     std::int32_t brightness = 1000;
     std::int32_t opacity = 1000;
-};
-
-struct Viewport {
-    std::int32_t x = 0;
-    std::int32_t y = 0;
-    std::int32_t width = 0;
-    std::int32_t height = 0;
 };
 
 Viewport fitViewport(

@@ -28,6 +28,8 @@ struct GameplayFrameInput {
 };
 
 struct GameplayStateHooks {
+    std::function<bool()> prepare_interface;
+    std::function<void()> release_interface;
     std::function<bool()> prepare_world;
     std::function<void()> release_world;
     std::function<void()> start_world_music;
@@ -67,6 +69,7 @@ private:
     std::int32_t loading_counter_ = 0;
     bool world_ready_ = false;
     bool active_ = false;
+    bool interface_ready_ = false;
     bool pointer_ground_command_active_ = false;
     bool continuous_pointer_movement_ = false;
     std::int32_t pointer_hold_updates_ = 0;

@@ -68,6 +68,14 @@ These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
 the config before creating its LWL window, just as the retail entry point does.
 
+The first gameplay HUD layer now follows `0x004039f0`. `Bar.njp` supplies the
+fixed lower interface, walk/run marker, level digits, life and mana fills, and
+experience frame. GAPI has a general destination clip for the two live fills,
+so the original 206-pixel artwork is revealed rather than stretched. The HUD
+is a screen-space renderer outside the world camera and owns the lower input
+band. Retail registers the standard Windows arrow once and never calls
+`SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
+
 Portable behavior originating in the DLLs is kept under `SF_EXE/libs`, with a
 directory for each of the fourteen original boundaries. `RK_FUNCTION`,
 `RKC_DBFCONTROL`, `RKC_DIB`, `RKC_DSOUND`, `RKC_UPDIB`, `RKC_RPGSCRN`, and

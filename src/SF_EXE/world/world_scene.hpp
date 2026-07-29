@@ -78,6 +78,7 @@ public:
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
     PlayerMotion playerMotion() const;
+    MovementPace playerMovementPace() const;
     std::int32_t playerAnimationChart() const;
     std::int32_t playerAnimationFrame() const;
     std::int32_t cameraScreenX() const;

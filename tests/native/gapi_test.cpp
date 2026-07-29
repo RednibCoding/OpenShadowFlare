@@ -3,6 +3,7 @@
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
@@ -365,6 +366,35 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
+    osf::gapi::SoftwareBackend clippedBackend(2, 2);
+    clippedBackend.beginFrame({7, 8, 9, 255});
+    clippedBackend.drawPattern(
+        image,
+        0,
+        {0,
+         0,
+         1000,
+         1000,
+         1000,
+         1000,
+         1000,
+         1000,
+         1000,
+         -1,
+         {1, 0, 1, 2}});
+    const osf::gapi::SurfaceView clippedSurface =
+        clippedBackend.surface();
+    if (!check(
+            clippedSurface.pixels[0].red == 7 &&
+                clippedSurface.pixels[0].green == 8 &&
+                clippedSurface.pixels[2].red == 7 &&
+                clippedSurface.pixels[2].green == 8 &&
+                clippedSurface.pixels[1].green == 120 &&
+                clippedSurface.pixels[3].red == 200,
+            "GAPI pattern clipping did not preserve the destination bounds.")) {
+        return false;
+    }
+
     osf::gapi::SoftwareBackend rectangleBackend(1, 1);
     rectangleBackend.beginFrame({20, 40, 60, 255});
     rectangleBackend.drawRectangle({
@@ -377,6 +407,47 @@ bool testNjpAndSoftwareBackend() {
             rectangle.green == 60 &&
             rectangle.blue == 60,
         "GAPI rectangle opacity did not blend portably.");
+}
+
+bool testGameplayHudPackets() {
+    osf::gapi::NjpImage bar;
+    RecordingBackend backend;
+    osf::renderGameplayHud(
+        backend,
+        bar,
+        {
+            123,
+            50,
+            100,
+            200,
+            160,
+            true,
+        });
+    return check(
+        osf::gameplayHudBarWidth(0, 100) == 0 &&
+            osf::gameplayHudBarWidth(1, 1000) == 1 &&
+            osf::gameplayHudBarWidth(50, 100) == 103 &&
+            osf::gameplayHudBarWidth(200, 100) == 206 &&
+            backend.patterns.size() == 9 &&
+            backend.patterns[0].index == 7 &&
+            backend.patterns[1].index == 8 &&
+            backend.patterns[2].index == 10 &&
+            backend.patterns[3].index == 22 &&
+            backend.patterns[3].draw.x == 69 &&
+            backend.patterns[4].index == 21 &&
+            backend.patterns[4].draw.x == 60 &&
+            backend.patterns[5].index == 20 &&
+            backend.patterns[5].draw.x == 51 &&
+            backend.patterns[6].index == 0 &&
+            backend.patterns[6].draw.clip.x == 81 &&
+            backend.patterns[6].draw.clip.y == 425 &&
+            backend.patterns[6].draw.clip.width == 103 &&
+            backend.patterns[7].index == 3 &&
+            backend.patterns[7].draw.clip.x == 106 &&
+            backend.patterns[7].draw.clip.y == 452 &&
+            backend.patterns[7].draw.clip.width == 206 &&
+            backend.patterns[8].index == 15,
+        "The gameplay HUD packets differ from FUN_004039f0.");
 }
 
 bool testTruncatedNjp() {
@@ -516,7 +587,8 @@ int main() {
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
         !testCafAndTitleAnimation() ||
-        !testInitialLoadingPackets()) {
+        !testInitialLoadingPackets() ||
+        !testGameplayHudPackets()) {
         return 1;
     }
     return 0;

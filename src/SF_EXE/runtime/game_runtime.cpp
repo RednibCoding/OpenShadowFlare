@@ -8,6 +8,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
 #include "render/loading_renderer.hpp"
@@ -362,11 +363,26 @@ private:
                 }
             } else {
                 const auto* font = frontendAssets_.pattern(1);
-                osf::renderWorld(
+                osf::renderWorldGeometry(
                     renderer_,
                     world_,
                     shadowOpacity_,
+                    interpolation);
+                const auto* bar = frontendAssets_.pattern(5);
+                if (bar) {
+                    osf::renderGameplayHud(
+                        renderer_,
+                        *bar,
+                        osf::gameplayHudValues(
+                            world_.playerData(),
+                            world_.playerMovementPace()));
+                }
+                osf::renderGameplayOverlay(
+                    renderer_,
+                    world_,
                     font,
+                    world_.renderCameraScreenX(interpolation),
+                    world_.renderCameraScreenY(interpolation),
                     interpolation);
             }
         }
@@ -486,6 +502,13 @@ private:
 
     osf::GameplayStateHooks makeGameplayStateHooks() {
         osf::GameplayStateHooks hooks;
+        hooks.prepare_interface = [this] {
+            return frontendAssets_.loadPattern(
+                5, "System\\Game\\Pattern\\Bar.njp");
+        };
+        hooks.release_interface = [this] {
+            frontendAssets_.releasePattern(5);
+        };
         hooks.prepare_world = [this] {
             std::string error;
             const bool worldReady =

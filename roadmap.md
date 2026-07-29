@@ -39,9 +39,10 @@ actors correctly.
 
 Gameplay now receives a proper player-data handoff too. New characters are
 initialized from the retail parameter tables, while selected saves contribute
-their complete plain 0x160-byte character record. The next visible job is the
-gameplay HUD and cursor; pickup, equipment, and combat can then build on the
-same player owner rather than temporary values.
+their complete plain 0x160-byte character record. The first gameplay HUD layer
+now reads that owner directly: the original bottom bar, level, life, mana, and
+walk/run state are visible in the world. Pickup, equipment, and combat can
+build on the same record rather than temporary values.
 
 The current reverse-engineering notes live in:
 
@@ -251,20 +252,33 @@ claim full save loading or writing.
 
 ## Current milestone: draw the gameplay HUD and cursor
 
-The player now has real values, so the main interface can display something
-meaningful. Reconstruct it in layers:
+The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
+screen coordinates, digit placement, and 206-pixel life and mana calculations.
+The renderer draws those packets after the camera-driven world and before
+actor speech. The HUD owns y=400 through y=479, so clicks there no longer pass
+through as movement commands.
 
-- fixed HUD artwork and screen-space layout;
-- life, mana, experience, level, and quick-slot values;
-- the gameplay cursor and its different interaction states;
+The retail window class loads the ordinary system arrow and never replaces it
+with another cursor. LWL already supplies that native arrow on every desktop
+platform. What changes during play is the feedback drawn into the world, not
+the pointer shape.
+
+The remaining layers are:
+
+- map the experience field and table calculation, then draw its clipped fill;
+- reconstruct quick-slot ownership and values instead of painting placeholders;
 - clicked-ground and selected-target feedback;
 - message and help text;
 - darkness and other final world overlays;
 - resizing behavior through the fixed 640×480 GAPI surface.
 
-HUD coordinates and visibility rules should come from the retail draw packets.
-The HUD must remain separate from the world camera and must not be baked into
-the world renderer.
+The bar currently shows full new-character life and mana from `PlayerData`,
+the centered one-to-three-digit level display, and the persistent walk/run
+indicator. Damage/healing lag colors, bar particles, condition icons, a
+companion bar, and the level-up pulse can be added when the corresponding
+gameplay state exists. HUD coordinates and visibility rules must continue to
+come from retail draw packets; the interface stays separate from the world
+camera.
 
 ## What follows the HUD slice
 

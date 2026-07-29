@@ -562,6 +562,10 @@ PlayerMotion WorldScene::playerMotion() const {
     return player_.motion();
 }
 
+MovementPace WorldScene::playerMovementPace() const {
+    return player_.movementPace();
+}
+
 std::int32_t WorldScene::playerAnimationChart() const {
     return player_.animationChart();
 }

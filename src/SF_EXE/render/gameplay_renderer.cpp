@@ -406,11 +406,10 @@ void drawWorldEntries(
 
 }  // namespace
 
-void renderWorld(
+void renderWorldGeometry(
     gapi::Backend& renderer,
     const WorldScene& world,
     std::int32_t shadow_opacity,
-    const gapi::NjpImage* font,
     double interpolation) {
     const GroundMap& ground = world.ground();
     if (ground.width() <= 0 || ground.height() <= 0) {
@@ -512,6 +511,23 @@ void renderWorld(
         true,
         shadow_opacity,
         interpolation);
+}
+
+void renderWorld(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t shadow_opacity,
+    const gapi::NjpImage* font,
+    double interpolation) {
+    renderWorldGeometry(
+        renderer,
+        world,
+        shadow_opacity,
+        interpolation);
+    const std::int32_t camera_x =
+        world.renderCameraScreenX(interpolation);
+    const std::int32_t camera_y =
+        world.renderCameraScreenY(interpolation);
     renderGameplayOverlay(
         renderer,
         world,

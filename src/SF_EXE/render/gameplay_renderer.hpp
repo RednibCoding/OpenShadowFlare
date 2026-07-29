@@ -12,6 +12,12 @@ class Backend;
 class NjpImage;
 }
 
+void renderWorldGeometry(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t shadow_opacity = 500,
+    double interpolation = 1.0);
+
 void renderWorld(
     gapi::Backend& renderer,
     const WorldScene& world,

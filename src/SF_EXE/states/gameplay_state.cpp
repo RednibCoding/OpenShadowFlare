@@ -9,8 +9,12 @@ GameplayState::GameplayState(GameplayStateHooks hooks)
 void GameplayState::enter() {
     phase_ = GameplayPhase::loading;
     loading_counter_ = 0;
+    interface_ready_ =
+        !hooks_.prepare_interface ||
+        hooks_.prepare_interface();
     world_ready_ =
-        !hooks_.prepare_world || hooks_.prepare_world();
+        interface_ready_ &&
+        (!hooks_.prepare_world || hooks_.prepare_world());
     if (world_ready_ && hooks_.start_world_music) {
         hooks_.start_world_music();
     }
@@ -29,8 +33,12 @@ void GameplayState::leave() {
     if (active_ && hooks_.release_world) {
         hooks_.release_world();
     }
+    if (interface_ready_ && hooks_.release_interface) {
+        hooks_.release_interface();
+    }
     active_ = false;
     world_ready_ = false;
+    interface_ready_ = false;
     pointer_ground_command_active_ = false;
     continuous_pointer_movement_ = false;
     pointer_hold_updates_ = 0;
@@ -112,7 +120,7 @@ GameplayFrameResult GameplayState::update(
                 input.pointer_x >= 0 &&
                 input.pointer_x < 640 &&
                 input.pointer_y >= 0 &&
-                input.pointer_y < 480 &&
+                input.pointer_y < 400 &&
                 hooks_.command_world_interaction) {
                 interaction_handled =
                     hooks_.command_world_interaction(
@@ -146,7 +154,7 @@ GameplayFrameResult GameplayState::update(
                 input.pointer_x >= 0 &&
                 input.pointer_x < 640 &&
                 input.pointer_y >= 0 &&
-                input.pointer_y < 480 &&
+                input.pointer_y < 400 &&
                 hooks_.command_player_movement) {
                 hooks_.command_player_movement(
                     input.pointer_x, input.pointer_y);

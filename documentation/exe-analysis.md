@@ -351,6 +351,27 @@ music indices to `System\Game\Music\BGM%02d.Voc`, loads the selected container
 into voice slot 500, and resets its start counter. `0x004275a0` starts sample
 zero looping on the following gameplay update with the configured BGM volume.
 
+## Gameplay HUD and pointer
+
+The fixed gameplay interface is drawn by `0x004039f0`, after
+`0x004030f0` has submitted the camera-driven world. Gameplay resource loading
+at `0x004127d0` assigns `System\Game\Pattern\Bar.njp` to UPD slot 5.
+Patterns 7 and 8 form the fixed y=400 through y=479 bar, pattern 10 marks run
+mode, pattern 11 marks walk mode, and pattern 15 frames the experience bar.
+Patterns 19 through 28 are the level digits.
+
+Life uses patterns 0 through 2 at x=81, y=426. Mana uses patterns 3 through 5
+at x=106, y=453. Both live fills are 206 pixels wide and use
+`current * 206 / maximum`, preserving one pixel for a positive value which
+would otherwise truncate to zero. Packet clip rectangles reveal the live
+portion without scaling the artwork. The other patterns provide delayed
+damage/healing colors, particles, conditions, companion state, and later
+values which still need their gameplay owners.
+
+The executable registers `IDC_ARROW` once in the window class and contains no
+later `SetCursor` call. Hover, selection, and click state are therefore drawn
+as world feedback; the pointer itself remains the normal platform arrow.
+
 ## SFWindow Object Layout (at 0x00482778)
 
 ```
@@ -444,7 +465,7 @@ zero looping on the following gameplay update with the configured BGM volume.
 | 0x00446320 | 3898  | (UI/input related - needs analysis) |
 | 0x0041afc0 | 3680  | NetworkServerHandler - RKC_NETWORK packets |
 | 0x00441c00 | 3462  | (needs analysis) |
-| 0x004039f0 | 3437  | SpritePacketSetup - RKC_UPDIB::SetPacket |
+| 0x004039f0 | 3437  | Gameplay HUD, bars, level, and status packets |
 | 0x0041d970 | 2936  | State2Handler_Main - main gameplay update |
 | 0x00421e10 | 2710  | CharacterCreation - class/gender select |
 | 0x004239b0 | ~500  | LoadSaveSlotInfo - read save headers |
