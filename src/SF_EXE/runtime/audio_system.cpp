@@ -141,6 +141,13 @@ void AudioSystem::playOptionsConfirm() {
     }
 }
 
+void AudioSystem::playGameplayMenuMove() {
+    if (initialized_) {
+        effect_audio_.play(
+            kMenuMoveSound, false, effect_volume_);
+    }
+}
+
 bool AudioSystem::loadVoc(
     VocPlayer& player,
     std::string_view retail_path) {

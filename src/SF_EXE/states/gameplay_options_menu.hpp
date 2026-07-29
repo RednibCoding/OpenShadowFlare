@@ -17,6 +17,7 @@ enum class GameplayOptionsPage {
 
 enum class GameplayOptionsAction {
     none,
+    open_mission_list,
     save_and_return_to_title,
     save_and_exit,
 };

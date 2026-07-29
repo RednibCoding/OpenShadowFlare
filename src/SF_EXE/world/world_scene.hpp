@@ -9,6 +9,7 @@
 #include "items/player_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "ground_item.hpp"
+#include "mission_catalog.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
 #include "player_data.hpp"
@@ -45,6 +46,7 @@ public:
     const std::vector<NpcActor>& npcs() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
+    const MissionCatalog& missions() const;
     const ItemDatabase& itemDatabase() const;
     const PlayerInventory& playerInventory() const;
     const PlayerData& playerData() const;
@@ -146,6 +148,7 @@ private:
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
     QuestState quests_;
+    MissionCatalog missions_;
     ItemDatabase item_database_;
     PlayerInventory player_inventory_;
     TableDatabase parameter_tables_;

@@ -114,6 +114,32 @@ if(TARGET sf_game_core)
 
   add_test(NAME quest_state COMMAND quest_state_test)
 
+  add_executable(mission_list_test mission_list_test.cpp)
+  target_link_libraries(
+    mission_list_test
+    PRIVATE
+      OpenShadowFlare::Render
+  )
+  target_compile_features(
+    mission_list_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    mission_list_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    mission_list_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      mission_list_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      mission_list_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME mission_list COMMAND mission_list_test)
+
   add_executable(item_database_test item_database_test.cpp)
   target_link_libraries(
     item_database_test

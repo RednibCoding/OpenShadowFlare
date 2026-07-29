@@ -44,6 +44,7 @@ public:
     void setBgmVolume(std::int32_t volume);
     void playOptionsClick();
     void playOptionsConfirm();
+    void playGameplayMenuMove();
 
 private:
     bool loadVoc(VocPlayer& player, std::string_view retail_path);

@@ -224,7 +224,7 @@ class to the right-hand end and shifts the lower-priority classes left.
 - Open Item Window
 - Open Magic Window
 - Open Special Item Window
-- Open Mission List Window
+- Open Mission List Window (`Q`; two pages of 24 table-backed missions)
 - Open Settings Menu
 
 ### Other Actions

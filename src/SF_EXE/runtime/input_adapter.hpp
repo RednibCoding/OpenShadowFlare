@@ -31,6 +31,7 @@ public:
     bool runTogglePressed() const;
     bool gameplayOptionsPressed() const;
     bool gameplayHelpPressed() const;
+    bool gameplayMissionListPressed() const;
 
 private:
     void setPointerPosition(
@@ -53,9 +54,11 @@ private:
     bool pointer_primary_down_ = false;
     bool run_held_ = false;
     bool help_held_ = false;
+    bool mission_list_held_ = false;
     bool run_toggle_pressed_ = false;
     bool gameplay_options_pressed_ = false;
     bool gameplay_help_pressed_ = false;
+    bool gameplay_mission_list_pressed_ = false;
 };
 
 }  // namespace osf::runtime

@@ -10,6 +10,7 @@
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
+#include "render/gameplay_mission_list_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
@@ -21,6 +22,7 @@
 #include "runtime/input_adapter.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
@@ -303,7 +305,7 @@ private:
             break;
         }
         case osf::GameState::gameplay: {
-            if (!updateGameplayOptions(running)) {
+            if (!updateGameplayModals(running)) {
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed,
                     input_.menu()
@@ -399,7 +401,8 @@ private:
                             world_.playerData(),
                             world_.playerMovementPace()));
                 }
-                if (!gameplayOptions_.active()) {
+                if (!gameplayOptions_.active() &&
+                    !gameplayMissionList_.active()) {
                     osf::renderGameplayOverlay(
                         renderer_,
                         world_,
@@ -413,7 +416,16 @@ private:
                 const auto* status =
                     frontendAssets_.pattern(6);
                 if (status && font) {
-                    if (gameplayOptions_.page() ==
+                    if (gameplayMissionList_.active()) {
+                        osf::renderGameplayMissionList(
+                            renderer_,
+                            *status,
+                            *font,
+                            gameplayMissionList_,
+                            world_.missions(),
+                            world_.quests());
+                    } else if (
+                        gameplayOptions_.page() ==
                         osf::GameplayOptionsPage::help) {
                         osf::renderGameplayHelp(
                             renderer_,
@@ -544,6 +556,7 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayOptions_.close();
+            gameplayMissionList_.close();
             savePreview_.clear();
             pendingGameplayOptionsAction_ =
                 osf::GameplayOptionsAction::none;
@@ -551,6 +564,7 @@ private:
         };
         callbacks.gameplay.leave = [this] {
             gameplayOptions_.close();
+            gameplayMissionList_.close();
             gameplayState_.leave();
         };
         return callbacks;
@@ -670,11 +684,39 @@ private:
         return hooks;
     }
 
-    bool updateGameplayOptions(bool& running) {
+    bool updateGameplayModals(bool& running) {
         if (gameplayFrame_.phase !=
             osf::GameplayPhase::world) {
             return false;
         }
+        const bool mission_was_active =
+            gameplayMissionList_.active();
+        const bool mission_toggle =
+            input_.gameplayMissionListPressed() &&
+            (!world_.conversationActive() ||
+             mission_was_active) &&
+            !gameplayOptions_.active();
+        if (mission_was_active || mission_toggle) {
+            const osf::GameplayMissionListResult result =
+                gameplayMissionList_.update(
+                    {
+                        mission_toggle,
+                        input_.gameplayOptionsPressed(),
+                        input_.menu().pointer_primary_pressed,
+                        input_.menu().pointer_x,
+                        input_.menu().pointer_y,
+                    },
+                    world_.quests());
+            if (!mission_was_active &&
+                gameplayMissionList_.active()) {
+                world_.cancelPlayerMovement();
+            }
+            if (result.play_move_sound) {
+                audio_.playGameplayMenuMove();
+            }
+            return true;
+        }
+
         if (pendingGameplayOptionsAction_ !=
             osf::GameplayOptionsAction::none) {
             const osf::GameplayOptionsAction action =
@@ -718,6 +760,12 @@ private:
         }
         if (result.play_confirm_sound) {
             audio_.playOptionsConfirm();
+        }
+        if (result.action ==
+            osf::GameplayOptionsAction::open_mission_list) {
+            gameplayOptions_.close();
+            gameplayMissionList_.open();
+            return true;
         }
         if (result.action !=
             osf::GameplayOptionsAction::none) {
@@ -799,6 +847,7 @@ private:
     osf::WorldScene world_;
     osf::RetailSavePreview savePreview_;
     osf::GameplayOptionsMenu gameplayOptions_;
+    osf::GameplayMissionList gameplayMissionList_;
     osf::GameplayOptionsAction
         pendingGameplayOptionsAction_ =
             osf::GameplayOptionsAction::none;

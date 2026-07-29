@@ -93,6 +93,7 @@ bool WorldScene::loadInitialScenario(
             data_root / "System" / "Game" / "Parameter" /
                 "Table.Tbd",
             error) ||
+        !missions_.load(parameter_tables_, error) ||
         !player_data_.load(
             player_request, parameter_tables_, error)) {
         clear();
@@ -260,6 +261,7 @@ void WorldScene::clear() {
     npcs_.clear();
     ground_items_.clear();
     quests_.clear();
+    missions_.clear();
     item_database_.clear();
     player_inventory_.clear();
     parameter_tables_.clear();
@@ -308,6 +310,10 @@ const std::vector<GroundItem>& WorldScene::groundItems() const {
 
 const QuestState& WorldScene::quests() const {
     return quests_;
+}
+
+const MissionCatalog& WorldScene::missions() const {
+    return missions_;
 }
 
 const ItemDatabase& WorldScene::itemDatabase() const {

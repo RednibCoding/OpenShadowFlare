@@ -29,6 +29,7 @@ The portable executable already has a solid front half:
 - Remote Town's ground, static objects, shadows, player sprite, and music
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
+- the in-game Settings, Help, and Mission List screens
 
 In other words, the game can reach the world and the player can now walk
 around it. Remote Town now loads all seven PEOPLE records, their movement and
@@ -287,8 +288,11 @@ write. With `Save Image at Game End` enabled, they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
 drawn. Help now opens its original full-width reference screen from either the
 menu row or `H`, including the animated player preview and the menu-owned
-`CLOSE` tab. Mission List and Map stay visible for now; their clicks belong
-with those still-missing screens.
+`CLOSE` tab. The Mission List is live from both its menu row and `Q`. It reads
+all 48 titles and their description tables from `Table.Tbd`, shows only
+script-started missions, keeps the original two-page layout and lock states,
+and opens the retail detail panel when a title is clicked. Map is the last
+visible placeholder in this menu.
 
 The remaining layers are:
 
@@ -394,8 +398,10 @@ by the retail Red Goblin progression value. Syria follows her two-message
 new-game branch and reaches opcodes 62 and 48, which now update world-owned
 quest state and select the retail 600-count quest notice. Message events retain
 their script character number, so actor bubbles stay anchored even on branches
-which do not run an explicit facing command. The notice consumer and cue audio
-are still pending; neither has been guessed.
+which do not run an explicit facing command. The Mission List consumes those
+quest states directly and gets its text from the retail parameter tables.
+The short-lived 600-count notice and cue audio are still pending; neither has
+been guessed.
 
 ### 3. Items, inventory, and equipment
 
@@ -455,7 +461,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - buffs, debuffs, resistances, reflection, and absorption;
 - character status and detailed stat panels;
 - skill assignment and quick slots;
-- journal, map, options, and the remaining modal screens;
+- map and the remaining modal screens;
 - the in-game sound, display, input, and gameplay settings.
 
 The large UI functions should be split by screen and concern in the portable

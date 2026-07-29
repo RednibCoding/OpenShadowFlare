@@ -107,8 +107,8 @@ zero scale. Pointer, shadow, occluding-object, effect-volume, and BGM-volume
 changes apply live; all changed configuration fields are written back through
 the reconstructed 64-byte `SFlare.Cfg` writer when the game exits. The
 screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
-empty so every later row keeps its retail coordinate. Mission and map remain
-placeholders.
+empty so every later row keeps its retail coordinate. Mission now opens its
+own modal state; map remains the only placeholder row.
 
 The Help row and `H` shortcut now open the screen drawn by `0x0040e710`.
 Status patterns 10 and 66 provide the authored 640-by-415 frame and the
@@ -119,6 +119,18 @@ preview anchor. Help entered through Settings also runs the shared
 any click above the HUD dismisses it. Drawing the current owned companion in
 the preview waits on the companion-ownership slice rather than borrowing a
 town NPC.
+
+The Mission List follows `0x0040cea0`. Status pattern 10 supplies the authored
+640-by-415 frame, patterns 110 through 113 select either 24-entry page, and
+patterns 25 and 26 provide the unfinished and cleared locks. Titles come from
+`Table.Tbd` table 41; mission `n` gets its description lines from table
+`700+n`. Script state zero hides a row, one draws the bright unfinished row,
+and two draws the gray cleared row. The list keeps the retail 12 rows per
+column, 27-pixel row cells, page-tab hit boxes, `Q` shortcut, and Settings
+entry. Page-tab selection uses retail sample 58. Clicking a row opens the same
+tinted patterns 59 and 58 detail panel with the bracketed title and 16-pixel
+description lines. A click on the detail returns to the list, while Escape,
+`Q`, or a click outside the list but above the HUD closes it.
 
 The two save rows now use the same secondary states as `0x004103c0`. Their
 prompts replace the settings text without replacing or re-fading the panel;
