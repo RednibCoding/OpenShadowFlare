@@ -10,6 +10,7 @@
 #include "ground_item.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
+#include "quest_state.hpp"
 #include "scenario_data.hpp"
 #include "script/scenario_script_runtime.hpp"
 
@@ -40,6 +41,7 @@ public:
     const gapi::CafAnimation& playerAnimation() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<GroundItem>& groundItems() const;
+    const QuestState& quests() const;
     const ItemDatabase& itemDatabase() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
@@ -110,6 +112,7 @@ private:
     std::vector<std::uint8_t> player_parts_enabled_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
+    QuestState quests_;
     ItemDatabase item_database_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>

@@ -135,23 +135,27 @@ label anchor. `0x00456bb0` surrounds that box with the nine-pixel
 `Hukidasi.njp` frame and draws its tail from
 `System\Game\Pattern\Hukidasi.njp`, then places the 6-by-12 `Font01.njp` text
 at a four-pixel inset. The tail overlaps the bottom four frame pixels before
-extending into the world. The portable renderer follows this path for Ostare's
-first scripted message instead of using a fixed screen-bottom dialogue box.
+extending into the world. The portable renderer follows this path for actor
+messages instead of using a fixed screen-bottom dialogue box. Message events
+retain their current script character, which also anchors Syria's initial
+branch even though it does not run an explicit facing command.
 
 The variable section at `0x324` begins with three counted ID lists, followed
 by counted runtime entity groups. The object and `PEOPLE` groups share IDs,
 optional names and colors, label height, position, judgement, direction,
-initial CAF part overrides, and optional fixed-capacity part/color arrays before their
-type-specific tails. The portable decoder now reads all seven Remote Town
-people records and the bounded-wander fields at the start of their tails.
+initial CAF part overrides, and optional fixed-capacity part/color arrays
+before their type-specific tails. The portable decoder now reads all seven
+Remote Town people records and the bounded-wander fields at the start of their
+tails.
 Later entity groups and the final two unnamed people fields are still open.
 
-The first people record creates Ostare through the type-one path constructed
-at `0x0045d020`. Resource lookup at `0x00455ee0` resolves people resource 13
-to `Character\PEOPLE\00000013`; its CAF, NJP, and SDW are loaded as one asset
-set. `0x0045d620` draws idle chart zero using MCT direction 7 and advances its
-frame counter once per game update. After the tail's 30-update pause,
-`0x0045d150` starts movement-controller mode three. That mode chooses an
+All seven people records are instantiated from that table. Resource lookup at
+`0x00455ee0` resolves each ID to its zero-padded `Character\PEOPLE` directory;
+the four animals share resources `01000000` and `01000001` exactly as named by
+the MCT. The first record creates Ostare through the type-one path constructed
+at `0x0045d020`. `0x0045d620` draws idle chart zero using MCT direction 7 and
+advances its frame counter once per game update. After the tail's 30-update
+pause, `0x0045d150` starts movement-controller mode three. That mode chooses an
 inclusive random point inside the spawn-relative rectangle, while
 `0x0045d9f0` draws chart one and moves at 10 world units per update until
 arrival or the tail's 30-update limit. The MCT's custom mask disables parts 4

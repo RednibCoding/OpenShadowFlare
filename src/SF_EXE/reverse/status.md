@@ -154,6 +154,25 @@ bubble follows `0x00453220` into status kind one at `0x00430940`; repeated
 callbacks show messages `1000001` through `1000004` and finally release the
 actor through opcode 19.
 
+Scenario startup now instantiates all seven records in the Remote Town PEOPLE
+group instead of stopping after the first. Their resource IDs resolve through
+the same zero-padded `Character/PEOPLE` catalog, including the shared
+`01000000` and `01000001` animal resources. Malse's new-game status follows
+messages `1000019` and `1000020`; the later quest offer stays behind the
+retail Red Goblin progression check.
+
+Syria's new-game status follows messages `1000040` and `1000041`. Opcode 2 now
+passes the current script character through the message event, which anchors
+her bubble without inventing an actor command absent from this branch.
+`0x00433f29` evaluates three operands and updates quest state. Its ordinary
+path writes the requested value and sends event `0x41`; its state-two path
+latches completion, requires old state one, writes state two, and sends event
+`0x42`. The optional server broadcast remains outside the current
+single-player slice. Syria exercises `{quest 0, state 1, no broadcast}`.
+`0x00433868` then stores quest zero as the selected notice and writes `600` to
+the adjacent counter. The counter's consumer and the two cue sounds remain to
+be traced.
+
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
 calls create three ordinary ground-item records plus 200 money. The portable

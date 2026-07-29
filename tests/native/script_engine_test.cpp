@@ -241,14 +241,100 @@ bool testRetailRemoteTown() {
             "Ostare's repeat callback did not show its second message.")) {
         return false;
     }
+    if (!check(
+            interpreter.resume() == osf::script::StepResult::complete &&
+            !interpreter.waitingForMessage() &&
+            native_commands.back() ==
+                std::make_pair(
+                    std::int32_t{19},
+                    std::vector<std::int32_t>{12000000}),
+            "Ostare's repeat conversation did not release the actor.")) {
+        return false;
+    }
+
+    const std::size_t malse_first_command =
+        native_commands.size();
+    const osf::script::StepResult malse_start =
+        interpreter.startStatus(0, 12000001);
+    if (!check(
+            malse_start ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000019 &&
+                messages.back().character_number == 12000001 &&
+                interpreter.readTemporaryFlag(1000002) == 20 &&
+                native_commands.size() ==
+                    malse_first_command + 2 &&
+                native_commands[malse_first_command] ==
+                    std::make_pair(
+                        std::int32_t{18},
+                        std::vector<std::int32_t>{12000001}) &&
+                native_commands[malse_first_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{21},
+                        std::vector<std::int32_t>{
+                            12000001, 0}),
+            "Malse's first interaction did not enter its retail script.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000020 &&
+                interpreter.readTemporaryFlag(1000002) == 0,
+            "Malse's first callback did not follow retail.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's opening conversation did not release the actor.")) {
+        return false;
+    }
+
+    const std::size_t syria_first_command =
+        native_commands.size();
+    if (!check(
+            interpreter.startStatus(0, 12000002) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000040 &&
+                messages.back().character_number == 12000002 &&
+                interpreter.readTemporaryFlag(1000002) == 40 &&
+                native_commands.size() ==
+                    syria_first_command,
+            "Syria's first interaction did not enter its retail script.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000041 &&
+                interpreter.readTemporaryFlag(1000002) == 0 &&
+                native_commands.size() ==
+                    syria_first_command + 2 &&
+                native_commands[syria_first_command] ==
+                    std::make_pair(
+                        std::int32_t{62},
+                        std::vector<std::int32_t>{0, 1, 0}) &&
+                native_commands[syria_first_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{48},
+                        std::vector<std::int32_t>{0}),
+            "Syria's callback did not start the retail quest.")) {
+        return false;
+    }
     return check(
         interpreter.resume() == osf::script::StepResult::complete &&
             !interpreter.waitingForMessage() &&
             native_commands.back() ==
                 std::make_pair(
                     std::int32_t{19},
-                    std::vector<std::int32_t>{12000000}),
-        "Ostare's repeat conversation did not release the actor.");
+                    std::vector<std::int32_t>{12000002}),
+        "Syria's opening conversation did not release the actor.");
 #else
     return true;
 #endif

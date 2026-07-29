@@ -434,7 +434,7 @@ bool testRetailRemoteTown() {
             world.playerWorldY() == 2811 &&
             world.playerDirection() == 3 &&
             world.musicTrack() == 0 &&
-            world.npcs().size() == 1 &&
+            world.npcs().size() == scenario.people().size() &&
             world.npcs()[0].id() == 0 &&
             world.npcs()[0].resourceId() == 13 &&
             world.npcs()[0].name() == "Ostare" &&
@@ -448,8 +448,20 @@ bool testRetailRemoteTown() {
             world.npcs()[0].partEnabled(3) &&
             !world.npcs()[0].partEnabled(4) &&
             !world.npcs()[0].partEnabled(5) &&
-            world.npcs()[0].partEnabled(6),
-        "WorldScene did not build Ostare from the decoded MCT record.")) {
+            world.npcs()[0].partEnabled(6) &&
+            world.npcs()[1].id() == 1 &&
+            world.npcs()[1].resourceId() == 8 &&
+            world.npcs()[1].name() == "Malse" &&
+            world.npcs()[2].id() == 2 &&
+            world.npcs()[2].resourceId() == 9 &&
+            world.npcs()[2].name() == "Syria" &&
+            world.npcs()[3].id() == 10000 &&
+            world.npcs()[3].resourceId() == 1000000 &&
+            world.npcs()[3].name() == "Kerberos" &&
+            world.npcs()[6].id() == 10003 &&
+            world.npcs()[6].resourceId() == 1000001 &&
+            world.npcs()[6].name() == "Harley",
+        "WorldScene did not build the Remote Town people table.")) {
         return false;
     }
 
@@ -738,6 +750,74 @@ bool testRetailRemoteTown() {
             !world.conversationActive() &&
                 world.conversationActorId() == -1,
             "Ostare's repeat conversation did not close cleanly.")) {
+        return false;
+    }
+
+    const osf::NpcActor& malse = world.npcs()[1];
+    const osf::ScreenPosition malse_anchor =
+        osf::calculateRealPosition(malse.position());
+    const std::int32_t malse_screen_x =
+        malse_anchor.x - world.cameraScreenX();
+    const std::int32_t malse_screen_y =
+        malse_anchor.y - world.cameraScreenY();
+    if (!check(
+            world.commandWorldInteraction(
+                malse_screen_x, malse_screen_y) &&
+                world.conversationActive() &&
+                world.conversationActorId() == 1 &&
+                world.conversationMessageId() == 1000019,
+            "Malse's actor did not enter its retail status-zero script.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationMessageId() == 1000020,
+            "Malse's first message callback did not follow retail.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Malse's opening conversation did not release world control.")) {
+        return false;
+    }
+
+    const osf::NpcActor& syria = world.npcs()[2];
+    const osf::ScreenPosition syria_anchor =
+        osf::calculateRealPosition(syria.position());
+    const std::int32_t syria_screen_x =
+        syria_anchor.x - world.cameraScreenX();
+    const std::int32_t syria_screen_y =
+        syria_anchor.y - world.cameraScreenY();
+    if (!check(
+            world.commandWorldInteraction(
+                syria_screen_x, syria_screen_y) &&
+                world.conversationActive() &&
+                world.conversationActorId() == 2 &&
+                world.conversationMessageId() == 1000040,
+            "Syria's actor did not enter its retail status-zero script.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            world.conversationActive() &&
+                world.conversationActorId() == 2 &&
+                world.conversationMessageId() == 1000041 &&
+                world.quests().state(0) == 1 &&
+                world.quests().lastCue() ==
+                    osf::QuestCue::updated &&
+                world.quests().notice().quest_id == 0 &&
+                world.quests().notice().counter == 600,
+            "Syria's callback did not apply its retail quest update.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive() &&
+                world.conversationActorId() == -1,
+            "Syria's opening conversation did not release world control.")) {
         return false;
     }
 

@@ -249,11 +249,14 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
   range;
 - verify the town population and positions against the retail game.
 
-That first checkpoint is now Ostare: his record, resource, part mask, idle
-pause, bounded walk, shadow, position, depth pass, hover tint, nameplate, and
-actor-anchored speech bubble are covered by a retail-data test. The next town
-slice can generalize the same path to the other six people and map the behavior
-that differs between human NPCs and animals.
+That path now builds all seven Remote Town people records and resolves their
+shared or individual `Character/PEOPLE` resources from the MCT table. Ostare's
+part mask, idle pause, bounded walk, shadow, depth pass, hover tint, nameplate,
+and actor-anchored speech bubble remain the detailed reference case. Malse and
+Syria are selectable and run their real first conversations. The next town
+work should map the behavior that differs between the three human NPCs and the
+four animals, then add dynamic actor collision and the remaining pointer
+selection rules.
 
 ### 4. Bring up scripts, conversations, and town interaction
 
@@ -304,6 +307,15 @@ original two-bounce drop arc in the same depth-sorted pass as actors and map
 objects. The recovered format,
 architecture, and extension rules are kept in
 [the script-engine notes](documentation/script-engine.md).
+
+The next interpreter checkpoint is live as well. Malse follows the short
+two-message branch used by a new game; his later quest dialogue remains gated
+by the retail Red Goblin progression value. Syria follows her two-message
+new-game branch and reaches opcodes 62 and 48, which now update world-owned
+quest state and select the retail 600-count quest notice. Message events retain
+their script character number, so actor bubbles stay anchored even on branches
+which do not run an explicit facing command. The notice consumer and cue audio
+are still pending; neither has been guessed.
 
 ### 5. Items, inventory, and equipment
 

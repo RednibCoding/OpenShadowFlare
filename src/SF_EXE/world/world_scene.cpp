@@ -197,23 +197,22 @@ bool WorldScene::loadInitialScenario(
         player_parts_enabled_[1] = 1;
     }
 
-    // This first people slice deliberately brings up one proven record before
-    // generalizing actor AI and interaction to the complete group.
-    if (!scenario_.people().empty()) {
+    npcs_.reserve(scenario_.people().size());
+    for (const ScenarioPerson& person : scenario_.people()) {
         NpcActor npc;
         std::string npc_error;
         const CharacterVisualResource* visual =
             people_visuals_.load(
                 data_root,
-                scenario_.people().front().resource_id,
+                person.resource_id,
                 &npc_error);
         if (!visual ||
             !npc.initialize(
-                scenario_.people().front(), *visual, &npc_error)) {
+                person, *visual, &npc_error)) {
             setError(
                 error,
-                "The first scenario NPC could not be loaded: " +
-                    npc_error);
+                "Scenario person " + std::to_string(person.id) +
+                    " could not be loaded: " + npc_error);
             clear();
             return false;
         }
@@ -249,6 +248,7 @@ void WorldScene::clear() {
     player_parts_enabled_.clear();
     npcs_.clear();
     ground_items_.clear();
+    quests_.clear();
     item_database_.clear();
     data_root_.clear();
     item_world_resources_.clear();
@@ -289,6 +289,10 @@ const std::vector<NpcActor>& WorldScene::npcs() const {
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
     return ground_items_;
+}
+
+const QuestState& WorldScene::quests() const {
+    return quests_;
 }
 
 const ItemDatabase& WorldScene::itemDatabase() const {
@@ -537,6 +541,25 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
+    if (opcode == 48) {
+        if (arguments.empty()) {
+            return false;
+        }
+        quests_.selectNotice(arguments[0]);
+        return true;
+    }
+
+    if (opcode == 62) {
+        if (arguments.size() < 3) {
+            return false;
+        }
+        // Argument two requests the retail server broadcast when a quest is
+        // completed. The initial scenario is strictly single-player, but the
+        // interpreter still evaluates and preserves that argument.
+        return quests_.applyScriptUpdate(
+            arguments[0], arguments[1]);
+    }
+
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;
@@ -573,6 +596,11 @@ void WorldScene::showScriptMessage(
     const script::MessageEvent& message) {
     conversation_ = message;
     conversation_active_ = true;
+    const NpcActor* speaker =
+        findScriptNpc(message.character_number);
+    if (speaker) {
+        conversation_actor_id_ = speaker->id();
+    }
 }
 
 std::int32_t WorldScene::npcIndexAtScreenPosition(

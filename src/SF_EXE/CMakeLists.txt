@@ -90,6 +90,7 @@ add_library(
   world/ground_item.cpp
   world/npc_actor.cpp
   world/player_actor.cpp
+  world/quest_state.cpp
   world/scenario_data.cpp
   world/script/scenario_script_runtime.cpp
   world/world_scene.cpp

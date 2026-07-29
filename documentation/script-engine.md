@@ -1,6 +1,3 @@
-<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
-<!-- SPDX-FileCopyrightText: 2026 Michael Binder and OpenShadowFlare contributors -->
-
 # ShadowFlare's script engine
 
 ShadowFlare does not hardcode every conversation, quest, and town event in the
@@ -193,8 +190,8 @@ no-ops.
 ## Commands implemented so far
 
 The retail opcode switch begins at `0x00430f80` and covers opcode values
-`0x00` through `0x4b`. Only commands reached by the first vertical slice are
-portable so far.
+`0x00` through `0x4b`. Only commands reached by the working Remote Town
+interactions are portable so far.
 
 | Opcode | Retail address | Current meaning |
 |---:|---:|---|
@@ -207,7 +204,9 @@ portable so far.
 | 18 | `0x00431efa` | Native actor action used by the opening interaction |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Native actor action with an evaluated value |
+| 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
+| 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
 in the executable are:
@@ -245,6 +244,20 @@ The portable interpreter asks its host for
 `ValueQuery::local_player_level`, so player data stays game-owned rather than
 being copied into the script library.
 
+Opcode 62 evaluates a quest ID, a new state, and a network-notification flag.
+Ordinary updates write the new state and issue cue `0x41`. State `2` is the
+completion path: the executable latches completion once, requires the old
+state to be `1`, writes state `2`, and issues cue `0x42`. Its optional server
+broadcast is deliberately left at the world hook because the current scenario
+is single-player. The portable `QuestState` owns these executable-level
+values; they do not live in the DLL-derived interpreter.
+
+Opcode 48 evaluates one quest ID, stores it as the selected quest notice, and
+sets the adjacent counter to `600`. Syria's first new-game conversation
+executes opcode 62 with `{0, 1, 0}` and then opcode 48 with `{0}`. The
+consumer of that counter still needs to be traced before it is decremented or
+rendered.
+
 ## Operands and variables
 
 Each command operand has a type and a value. The executable's operand reader
@@ -274,7 +287,7 @@ in a generic keyed map. That is sufficient to preserve assignments while the
 proper save and quest-state owners are reconstructed, but it is not the final
 persistence model.
 
-## First working conversation
+## Working conversations
 
 The first end-to-end slice is Ostare's opening Remote Town interaction:
 
@@ -301,6 +314,20 @@ path, and shows message `1000005`. Its status-kind-one callback then shows
 message `1000006`, resets the temporary dialogue state, and releases the actor.
 The interpreter retains the earlier persistent assignment, so this is a
 continuation of the same script state rather than a hand-written interaction.
+
+The same table-driven actor path now loads all seven Remote Town people
+records rather than stopping after Ostare. Malse's new-game status runs its
+real two-message branch (`1000019` and `1000020`) and releases him through
+opcode 19. The longer Malse quest dialogue is not forced: the retail SCS only
+selects it after the Red Goblin progression state reaches the required value.
+
+Syria's new-game status follows messages `1000040` and `1000041`. Its callback
+starts quest zero with opcode 62 and selects that quest's notice with opcode
+48 before waiting for the second bubble to close. Message events carry the
+script character number, so the renderer can anchor Syria's bubble even
+though this particular branch does not run the explicit actor-facing command
+used by Ostare and Malse. Dialogue text, actor IDs, branches, and quest IDs
+continue to come from the retail SCS.
 
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from

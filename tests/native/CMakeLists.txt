@@ -93,6 +93,27 @@ if(TARGET sf_game_core)
 
   add_test(NAME scenario_data COMMAND scenario_data_test)
 
+  add_executable(quest_state_test quest_state_test.cpp)
+  target_link_libraries(
+    quest_state_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    quest_state_test PRIVATE cxx_std_17)
+  set_target_properties(
+    quest_state_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      quest_state_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      quest_state_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME quest_state COMMAND quest_state_test)
+
   add_executable(item_database_test item_database_test.cpp)
   target_link_libraries(
     item_database_test

@@ -107,14 +107,21 @@ strengths stored in `Item.Ibn` supply their original ground colors. The
 format and interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
 
+All seven people records in Remote Town are loaded from `Scenario.Mct` now.
+Malse and Syria can be selected just like Ostare and run their actual
+new-game dialogue branches from `Scenario.Scs`. Syria's callback also reaches
+the first quest-state commands: it starts quest zero and selects the matching
+retail quest notice without putting quest IDs or dialogue into `WorldScene`.
+
 The first world interaction is in place too. Clicking the ground moves the
 player at the original gameplay cadence, follows the cursor with all eight
 directions, and moves the camera with the player. `R` switches between the
 retail walking and running speeds, using CAF charts one and two respectively.
 Remote Town's GND judgement layer and OBL rectangles stop the player at walls
-and scenery while the renderer keeps sorting nearby objects and Ostare in
-front of or behind the moving sprite. The remaining NPCs, script commands,
-HUD, darkness, and the rest of gameplay simulation are still in progress.
+and scenery while the renderer keeps sorting nearby objects and people in
+front of or behind the moving sprite. NPC-specific behavior, most script
+commands, the HUD, darkness, and the rest of gameplay simulation are still in
+progress.
 
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.

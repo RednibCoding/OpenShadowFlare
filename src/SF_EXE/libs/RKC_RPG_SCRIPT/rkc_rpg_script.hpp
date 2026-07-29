@@ -82,6 +82,7 @@ enum class StepResult {
 struct MessageEvent {
     std::int32_t id = -1;
     std::string text;
+    std::int32_t character_number = -1;
 };
 
 enum class ValueQuery {

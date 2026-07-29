@@ -153,6 +153,28 @@ StepResult Interpreter::run() {
 }
 
 StepResult Interpreter::execute(const Command& command) {
+    const auto executeNative =
+        [this, &command](std::size_t argument_count) {
+            if (command.operands.size() < argument_count) {
+                return StepResult::invalid_script;
+            }
+            std::vector<std::int32_t> arguments;
+            arguments.reserve(argument_count);
+            for (std::size_t index = 0;
+                 index < argument_count;
+                 ++index) {
+                arguments.push_back(
+                    readOperand(command.operands[index]));
+            }
+            if (!hooks_.native_command ||
+                !hooks_.native_command(
+                    command.opcode, arguments)) {
+                unsupported_opcode_ = command.opcode;
+                return StepResult::unsupported_command;
+            }
+            return StepResult::complete;
+        };
+
     switch (command.opcode) {
     case 0: {
         if (command.operands.size() < 4) {
@@ -204,7 +226,11 @@ StepResult Interpreter::execute(const Command& command) {
             return StepResult::invalid_script;
         }
         if (hooks_.show_message) {
-            hooks_.show_message({message->id, message->text});
+            hooks_.show_message({
+                message->id,
+                message->text,
+                current_character_number_,
+            });
         }
         waiting_for_message_ = true;
         const std::int32_t mode =
@@ -220,23 +246,8 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
-    case 10: {
-        if (command.operands.size() < 6) {
-            return StepResult::invalid_script;
-        }
-        std::vector<std::int32_t> arguments;
-        arguments.reserve(6);
-        for (std::size_t index = 0; index < 6; ++index) {
-            arguments.push_back(
-                readOperand(command.operands[index]));
-        }
-        if (!hooks_.native_command ||
-            !hooks_.native_command(command.opcode, arguments)) {
-            unsupported_opcode_ = command.opcode;
-            return StepResult::unsupported_command;
-        }
-        return StepResult::complete;
-    }
+    case 10:
+        return executeNative(6);
     case 11:
     case 12: {
         if (command.operands.size() < 2) {
@@ -253,48 +264,12 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
-    case 18: {
-        if (command.operands.empty()) {
-            return StepResult::invalid_script;
-        }
-        if (!hooks_.native_command ||
-            !hooks_.native_command(
-                command.opcode,
-                {readOperand(command.operands[0])})) {
-            unsupported_opcode_ = command.opcode;
-            return StepResult::unsupported_command;
-        }
-        return StepResult::complete;
-    }
-    case 19: {
-        if (command.operands.empty()) {
-            return StepResult::invalid_script;
-        }
-        if (!hooks_.native_command ||
-            !hooks_.native_command(
-                command.opcode,
-                {readOperand(command.operands[0])})) {
-            unsupported_opcode_ = command.opcode;
-            return StepResult::unsupported_command;
-        }
-        return StepResult::complete;
-    }
-    case 21: {
-        if (command.operands.size() < 2) {
-            return StepResult::invalid_script;
-        }
-        if (!hooks_.native_command ||
-            !hooks_.native_command(
-                command.opcode,
-                {
-                    readOperand(command.operands[0]),
-                    readOperand(command.operands[1]),
-                })) {
-            unsupported_opcode_ = command.opcode;
-            return StepResult::unsupported_command;
-        }
-        return StepResult::complete;
-    }
+    case 18:
+    case 19:
+    case 48:
+        return executeNative(1);
+    case 21:
+        return executeNative(2);
     case 61: {
         if (command.operands.empty()) {
             return StepResult::invalid_script;
@@ -311,6 +286,8 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 62:
+        return executeNative(3);
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;
