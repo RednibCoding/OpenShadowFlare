@@ -11,6 +11,7 @@ matching static-library folder there instead of being included directly from
 this compatibility layer.
 
 Run `./src/build.sh` from the repository root to cross-compile all fourteen
-DLLs. The output remains in `src/build-win32/`; use `./src/build.sh --deploy` to
-back up the original game DLLs and copy the reconstructed ones into the local
-game directory.
+DLLs. Release output goes to `build/dlls/release/`, while
+`./src/build.sh --config debug` writes to `build/dlls/debug/`. Add `--deploy`
+to back up the original game DLLs and copy the selected configuration into the
+local game directory.

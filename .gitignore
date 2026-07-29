@@ -37,10 +37,5 @@ __pycache__/
 .idea
 .vs
 .vscode
-cmake-build-debug
-cmake-build-release
-cmake-build-debug32
-cmake-build-release32
 /build/
-/build-wasm/
 tmp/

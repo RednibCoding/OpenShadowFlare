@@ -623,10 +623,10 @@ something meaningful to measure.
 At minimum:
 
 ```bash
-cmake -S . -B cmake-build-debug
-cmake --build cmake-build-debug
-ctest --test-dir cmake-build-debug --output-on-failure
-./cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt --smoke-test
+cmake -S . -B build/linux/debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/linux/debug
+ctest --test-dir build/linux/debug --output-on-failure
+./build/linux/debug/src/SF_EXE/ShadowFlare_rebuilt --smoke-test
 ./tests/run.sh
 ```
 

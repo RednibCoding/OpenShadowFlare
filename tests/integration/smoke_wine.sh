@@ -4,7 +4,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 ORIGINAL_DIR="$ROOT_DIR/tmp/ShadowFlare"
-REBUILT_DIR="$ROOT_DIR/src/build-win32"
+BUILD_CONFIG="${OSF_BUILD_CONFIG:-release}"
+REBUILT_DIR="$ROOT_DIR/build/dlls/$BUILD_CONFIG"
 DURATION="${OSF_SMOKE_SECONDS:-20}"
 
 if ! command -v wine >/dev/null 2>&1; then
@@ -12,7 +13,7 @@ if ! command -v wine >/dev/null 2>&1; then
     exit 1
 fi
 if [ ! -f "$REBUILT_DIR/RKC_UPDIB.dll" ]; then
-    echo "Error: rebuilt DLLs are missing; run ./src/build.sh first." >&2
+    echo "Error: rebuilt DLLs are missing; run ./src/build.sh --config $BUILD_CONFIG first." >&2
     exit 1
 fi
 

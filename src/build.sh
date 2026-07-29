@@ -6,9 +6,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOURCE_DIR="$SCRIPT_DIR/reconstructed"
-BUILD_DIR="$SCRIPT_DIR/build-win32"
-GAME_DIR="$SCRIPT_DIR/../tmp/ShadowFlare"
+GAME_DIR="$PROJECT_ROOT/tmp/ShadowFlare"
 
 # MinGW cross-compiler (32-bit for original game compatibility)
 CXX="i686-w64-mingw32-g++"
@@ -33,21 +33,59 @@ declare -a dirs=("RK_FUNCTION"
 
 # Parse arguments
 DEPLOY=false
-for arg in "$@"; do
-    case $arg in
+CONFIG=release
+while [ "$#" -gt 0 ]; do
+    case "$1" in
         --deploy)
             DEPLOY=true
             ;;
+        --config)
+            if [ "$#" -lt 2 ]; then
+                echo "Error: --config needs debug or release." >&2
+                exit 1
+            fi
+            CONFIG="$2"
+            shift
+            ;;
+        --debug)
+            CONFIG=debug
+            ;;
+        --release)
+            CONFIG=release
+            ;;
         --help)
-            echo "Usage: $0 [--deploy]"
+            echo "Usage: $0 [--config debug|release] [--deploy]"
+            echo "  --config  Select the output configuration (default: release)"
+            echo "  --debug   Shortcut for --config debug"
+            echo "  --release Shortcut for --config release"
             echo "  --deploy  Copy built DLLs to game folder and backup originals"
             exit 0
             ;;
+        *)
+            echo "Error: unknown argument: $1" >&2
+            exit 1
+            ;;
     esac
+    shift
 done
 
+case "$CONFIG" in
+    debug)
+        OPT_FLAGS=(-O0 -g)
+        ;;
+    release)
+        OPT_FLAGS=(-O2)
+        ;;
+    *)
+        echo "Error: configuration must be debug or release." >&2
+        exit 1
+        ;;
+esac
+
+BUILD_DIR="$PROJECT_ROOT/build/dlls/$CONFIG"
+
 # Check for MinGW
-if ! command -v $CXX &> /dev/null; then
+if ! command -v "$CXX" &> /dev/null; then
     echo "Error: $CXX not found. Install mingw-w64:"
     echo "  sudo apt install mingw-w64"
     exit 1
@@ -67,17 +105,17 @@ find "$OBJECT_DIR" -mindepth 1 -maxdepth 1 -type f -delete
 
 # LAL is C99 and is linked into RKC_DSOUND. Compile it as C rather than
 # relying on the C++ compiler's treatment of .c files.
-"$CC" -std=c99 -O2 -c \
+"$CC" -std=c99 "${OPT_FLAGS[@]}" -c \
     "$SCRIPT_DIR/../thirdparty/lal/lal.c" \
     -o "$OBJECT_DIR/lal.o"
-"$CC" -std=c99 -O2 -c \
+"$CC" -std=c99 "${OPT_FLAGS[@]}" -c \
     "$SCRIPT_DIR/../thirdparty/lal/lal_waveout.c" \
     -o "$OBJECT_DIR/lal_waveout.o"
 "$AR" rcs "$OBJECT_DIR/liblal.a" \
     "$OBJECT_DIR/lal.o" \
     "$OBJECT_DIR/lal_waveout.o"
 
-echo "Building Windows DLLs with MinGW..."
+echo "Building Windows DLLs with MinGW ($CONFIG)..."
 echo "========================================"
 
 # Loop through each directory and compile
@@ -100,6 +138,7 @@ for dir in "${dirs[@]}"; do
     
     "$CXX" -shared -static-libgcc -static-libstdc++ \
         -std=c++17 \
+        "${OPT_FLAGS[@]}" \
         -o "$BUILD_DIR/$dir.dll" \
         "$SOURCE_DIR/$dir/src/core.cpp" \
         "$SOURCE_DIR/$dir/dll.def" \

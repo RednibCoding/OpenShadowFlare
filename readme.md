@@ -128,6 +128,23 @@ For now, use the build instructions below.
 There are two builds at the moment: the compatibility DLLs used by the retail
 game, and the new portable executable foundation.
 
+All generated files stay under `build/<target>/<configuration>/`:
+
+```text
+build/
+  dlls/debug/       reconstructed compatibility DLLs
+  dlls/release/
+  linux/debug/      native portable executable and tests
+  linux/release/
+  tests/debug/      generated differential-test programs
+  tests/release/
+  wasm/debug/       browser build
+  wasm/release/
+```
+
+Other platforms follow the same layout, such as `build/windows/debug` or
+`build/android/release`. Build folders are disposable and are not committed.
+
 ### Compatibility DLLs
 
 The DLL build runs on Linux and cross-compiles 32-bit Windows DLLs with
@@ -139,18 +156,20 @@ On Debian or Ubuntu, install the compiler with:
 sudo apt install mingw-w64
 ```
 
-Then build all fourteen DLLs:
+Then build all fourteen DLLs. Release is the default:
 
 ```bash
 ./src/build.sh
+./src/build.sh --config debug
 ```
 
-The resulting files are placed in `src/build-win32/`.
+The resulting files are placed in `build/dlls/release/` or
+`build/dlls/debug/`.
 
 To copy them into the local game directory:
 
 ```bash
-./src/build.sh --deploy
+./src/build.sh --config release --deploy
 ```
 
 The first deployment renames the original DLLs to `o_<name>.dll`. Existing
@@ -164,14 +183,17 @@ You can then start the game through Wine:
 
 ### Portable executable
 
-The new executable uses CMake. Keep local development builds in
-`cmake-build-debug`; this is the project's canonical CMake build directory:
+The new executable uses CMake. The normal Linux development build lives in
+`build/linux/debug`:
 
 ```bash
-cmake -S . -B cmake-build-debug
-cmake --build cmake-build-debug
-./cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt
+cmake -S . -B build/linux/debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/linux/debug
+./build/linux/debug/src/SF_EXE/ShadowFlare_rebuilt
 ```
+
+Use `build/linux/release` with `-DCMAKE_BUILD_TYPE=Release` for a release
+build. Windows and macOS use the same pattern with their platform name.
 
 Linux and Windows builds are established. LWL and LAL also include macOS
 backends, though the new executable still needs to be built and exercised on
@@ -191,17 +213,21 @@ Install Emscripten with [emsdk](https://github.com/emscripten-core/emsdk)
 (`./emsdk install latest && ./emsdk activate latest`);
 
 ```bash
-emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
-cmake --build build-wasm
+emcmake cmake -S . -B build/wasm/release \
+  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+cmake --build build/wasm/release
 ```
 
 The build writes `ShadowFlare_rebuilt.js`, `ShadowFlare_rebuilt.wasm`, and a
-browser shell `index.html` into `build-wasm/src/SF_EXE/`. Serve that directory
-with any static web server and open the page:
+browser shell `index.html` into `build/wasm/release/src/SF_EXE/`. Serve that
+directory with any static web server and open the page:
 
 ```bash
-python -m http.server 8080 --directory build-wasm/src/SF_EXE
+python -m http.server 8080 --directory build/wasm/release/src/SF_EXE
 ```
+
+For an unoptimized browser build with debug information, use
+`build/wasm/debug` and `-DCMAKE_BUILD_TYPE=Debug`.
 
 ## Running the tests
 
@@ -214,10 +240,10 @@ Run the build and static ABI/fidelity checks with:
 For the portable libraries and executable:
 
 ```bash
-cmake -S . -B cmake-build-debug
-cmake --build cmake-build-debug
-ctest --test-dir cmake-build-debug --output-on-failure
-./cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt --smoke-test
+cmake -S . -B build/linux/debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/linux/debug
+ctest --test-dir build/linux/debug --output-on-failure
+./build/linux/debug/src/SF_EXE/ShadowFlare_rebuilt --smoke-test
 ```
 
 If Wine is installed, you can also run the original-vs-reconstructed
@@ -226,6 +252,9 @@ differential probes and the game smoke test:
 ```bash
 ./tests/run.sh --wine
 ```
+
+The compatibility tests use release DLLs by default. Pass
+`--config debug` to build and test `build/dlls/debug` instead.
 
 The Wine smoke test works in a temporary copy of the game directory. It does
 not replace files in your local installation.

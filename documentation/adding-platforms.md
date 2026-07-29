@@ -175,6 +175,11 @@ link requirement belongs to the LAL target, not the ShadowFlare executable.
 The main `src/SF_EXE/CMakeLists.txt` should only assemble the portable runtime
 and call the platform and presentation configuration functions.
 
+Generated files belong under `build/<target>/<configuration>`, for example
+`build/android/debug` and `build/android/release`. A port must not introduce a
+new build directory at the repository root or place compiler output beside
+source files.
+
 ## 7. Extend the guardrails
 
 `tests/native/check_source_boundaries.cmake` rejects known platform headers and

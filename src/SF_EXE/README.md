@@ -31,13 +31,15 @@ or LAL rather than game code.
 From the repository root:
 
 ```bash
-cmake -S . -B cmake-build-debug
-cmake --build cmake-build-debug
+cmake -S . -B build/linux/debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build/linux/debug
 ```
 
-Use `cmake-build-debug` as the single local CMake build directory. The
-executable is always written to
-`cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt`.
+Generated builds stay under `build/<target>/<configuration>`. The normal
+development executable is written to
+`build/linux/debug/src/SF_EXE/ShadowFlare_rebuilt`; release, web, and future
+platform builds use neighboring folders rather than new directories at the
+repository root.
 
 The development executable can be launched directly from the build folder. It
 looks for `tmp/ShadowFlare` relative to its own location, so starting it from a

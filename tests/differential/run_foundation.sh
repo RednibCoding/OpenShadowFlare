@@ -4,9 +4,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 PROBE_SOURCE="$ROOT_DIR/tests/differential/foundation_probe.cpp"
-PROBE_EXE="$ROOT_DIR/tests/differential/foundation_probe.exe"
+BUILD_CONFIG="${OSF_BUILD_CONFIG:-release}"
+PROBE_DIR="$ROOT_DIR/build/tests/$BUILD_CONFIG"
+PROBE_EXE="$PROBE_DIR/foundation_probe.exe"
 ORIGINAL_DIR="$ROOT_DIR/tmp/ShadowFlare"
-REBUILT_DIR="$ROOT_DIR/src/build-win32"
+REBUILT_DIR="$ROOT_DIR/build/dlls/$BUILD_CONFIG"
 ORIGINAL_PREFIX=""
 if [ -f "$ORIGINAL_DIR/o_RKC_FILE.dll" ]; then
     ORIGINAL_PREFIX="o_"
@@ -21,9 +23,23 @@ if ! command -v wine >/dev/null 2>&1; then
     exit 1
 fi
 
+case "$BUILD_CONFIG" in
+    debug)
+        OPT_FLAGS=(-O0 -g)
+        ;;
+    release)
+        OPT_FLAGS=(-O2)
+        ;;
+    *)
+        echo "Error: OSF_BUILD_CONFIG must be debug or release." >&2
+        exit 1
+        ;;
+esac
+
+mkdir -p "$PROBE_DIR"
 i686-w64-mingw32-g++ \
     -std=c++17 \
-    -O2 \
+    "${OPT_FLAGS[@]}" \
     -Wall \
     -Wextra \
     -Wno-cast-function-type \

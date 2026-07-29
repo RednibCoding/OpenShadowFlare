@@ -238,7 +238,7 @@ extern "C"
      * Renders a single character to m_doubleDIBitmap using GDI TextOut.
      * Will be implemented when SaveNJPFile is implemented.
      */
-    bool __thiscall DrawDoubleFont(
+    int __thiscall DrawDoubleFont(
         RKC_FONTMAKER* self, HDC hdc, unsigned char* charCode)
     {
         if (!charCode)
@@ -287,7 +287,7 @@ extern "C"
      * Renders a single character to m_normalDIBitmap using GDI TextOut.
      * Will be implemented when SaveNJPFile is implemented.
      */
-    bool __thiscall DrawNormalFont(
+    int __thiscall DrawNormalFont(
         RKC_FONTMAKER* self, HDC hdc, unsigned char charCode)
     {
         HDC memory = CreateCompatibleDC(hdc);

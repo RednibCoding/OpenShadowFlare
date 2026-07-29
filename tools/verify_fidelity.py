@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -13,7 +14,10 @@ from pe_exports import read_exports
 
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINAL_DIR = ROOT / "tmp" / "ShadowFlare"
-BUILD_DIR = ROOT / "src" / "build-win32"
+BUILD_CONFIG = os.environ.get("OSF_BUILD_CONFIG", "release")
+if BUILD_CONFIG not in {"debug", "release"}:
+    raise SystemExit("OSF_BUILD_CONFIG must be debug or release")
+BUILD_DIR = ROOT / "build" / "dlls" / BUILD_CONFIG
 INVENTORY_PATH = ROOT / "fidelity" / "inventory.json"
 ORIGINAL_DLL_PATTERN = re.compile(r'"(o_[A-Za-z0-9_]+\.dll)"', re.IGNORECASE)
 
@@ -42,7 +46,11 @@ def main() -> int:
             fail(f"{filename}: original DLL is missing", failures)
             continue
         if not rebuilt_path.is_file():
-            fail(f"{filename}: rebuilt DLL is missing; run ./src/build.sh", failures)
+            fail(
+                f"{filename}: rebuilt DLL is missing; "
+                f"run ./src/build.sh --config {BUILD_CONFIG}",
+                failures,
+            )
             continue
 
         original_exports = read_exports(original_path)
