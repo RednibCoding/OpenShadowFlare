@@ -43,6 +43,7 @@ public:
     std::int32_t walkingSpeedTier() const;
     std::int32_t walkingSpeed() const;
     std::int32_t runningSpeed() const;
+    std::int32_t level() const;
     MovementPace movementPace() const;
     PlayerMotion motion() const;
     std::int32_t animationChart() const;
@@ -56,6 +57,7 @@ private:
     std::int32_t walking_speed_tier_ = 5;
     std::int32_t walking_speed_ = 20;
     std::int32_t running_speed_ = 40;
+    std::int32_t level_ = 1;
     std::int32_t action_counter_ = 0;
     std::int32_t animation_chart_ = 0;
     std::int32_t animation_frame_ = 0;

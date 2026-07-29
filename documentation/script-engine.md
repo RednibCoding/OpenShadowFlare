@@ -91,6 +91,7 @@ hooks:
 
 - read or write an external operand domain;
 - perform a native actor/game command;
+- answer a typed query about game-owned state;
 - present a decoded message.
 
 This keeps the old DLL boundary visible without pretending that the original
@@ -116,6 +117,7 @@ portable so far.
 | 2 | `0x00431294` | Resolve a message, present it, and wait for confirmation |
 | 18 | `0x00431efa` | Native actor action used by the opening interaction |
 | 21 | `0x00432094` | Native actor action with an evaluated value |
+| 61 | `0x00433f16` | Write the local player's level to an operand |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
 in the executable are:
@@ -132,6 +134,12 @@ conversation proves that they address an actor and put it into the interaction
 state. Both evaluate their actor operand through the retail operand reader;
 opcode 21 evaluates its additional value as well. Their hook remains generic
 until more scripts reveal the complete behavior.
+
+Opcode 61 is much narrower. The retail handler gets the local player, reads
+the level field at offset `0x34`, and passes it to the common operand writer.
+The portable interpreter asks its host for
+`ValueQuery::local_player_level`, so player data stays game-owned rather than
+being copied into the script library.
 
 ## Operands and variables
 
@@ -177,6 +185,12 @@ The first end-to-end slice is Ostare's opening Remote Town interaction:
 The visible text begins with Ostare introducing himself as commander of the
 area. That text is read at runtime from the original data; it is not present in
 the OpenShadowFlare source.
+
+Clicking Ostare again follows the next real SCS branch. Sentence six uses
+opcode 61 to read the new character's level, selects the under-level-five
+path, and shows message `1000005`. The interpreter retains the earlier
+persistent assignment, so this is a continuation of the same script state
+rather than a second hand-written interaction.
 
 This is intentionally a narrow vertical slice. The message now uses the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from

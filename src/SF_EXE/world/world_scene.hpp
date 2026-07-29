@@ -76,6 +76,9 @@ private:
     bool executeScriptNativeCommand(
         std::int32_t opcode,
         const std::vector<std::int32_t>& arguments);
+    bool queryScriptValue(
+        script::ValueQuery query,
+        std::int32_t& value) const;
     void showScriptMessage(
         const script::MessageEvent& message);
     std::int32_t npcIndexAtScreenPosition(

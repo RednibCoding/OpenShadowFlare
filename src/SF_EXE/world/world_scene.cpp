@@ -84,6 +84,11 @@ WorldScene::WorldScene()
               return executeScriptNativeCommand(
                   opcode, arguments);
           },
+          [this](
+              script::ValueQuery query,
+              std::int32_t& value) {
+              return queryScriptValue(query, value);
+          },
       }) {}
 
 bool WorldScene::loadInitialScenario(
@@ -494,6 +499,20 @@ bool WorldScene::executeScriptNativeCommand(
     conversation_actor_id_ = found->id();
     hovered_npc_id_ = -1;
     return true;
+}
+
+bool WorldScene::queryScriptValue(
+    script::ValueQuery query,
+    std::int32_t& value) const {
+    if (!has_player_) {
+        return false;
+    }
+    switch (query) {
+    case script::ValueQuery::local_player_level:
+        value = player_.level();
+        return true;
+    }
+    return false;
 }
 
 void WorldScene::showScriptMessage(

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -15,6 +16,14 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+std::uint64_t operandKey(const osf::script::Operand& operand) {
+    return
+        (static_cast<std::uint64_t>(
+             static_cast<std::uint32_t>(operand.type))
+         << 32u) |
+        static_cast<std::uint32_t>(operand.value);
 }
 
 bool testRetailRemoteTown() {
@@ -67,11 +76,22 @@ bool testRetailRemoteTown() {
     std::vector<std::pair<
         std::int32_t,
         std::vector<std::int32_t>>> native_commands;
+    std::unordered_map<std::uint64_t, std::int32_t>
+        external_values;
+    std::int32_t player_level_queries = 0;
     osf::script::Interpreter interpreter({
-        [](const osf::script::Operand&) {
-            return 0;
+        [&external_values](const osf::script::Operand& operand) {
+            const auto found =
+                external_values.find(operandKey(operand));
+            return found == external_values.end()
+                       ? 0
+                       : found->second;
         },
-        [](const osf::script::Operand&, std::int32_t) {
+        [&external_values](
+            const osf::script::Operand& operand,
+            std::int32_t value) {
+            external_values.insert_or_assign(
+                operandKey(operand), value);
             return true;
         },
         [&messages](const osf::script::MessageEvent& message) {
@@ -81,6 +101,17 @@ bool testRetailRemoteTown() {
             std::int32_t opcode,
             const std::vector<std::int32_t>& arguments) {
             native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [&player_level_queries](
+            osf::script::ValueQuery query,
+            std::int32_t& value) {
+            if (query !=
+                osf::script::ValueQuery::local_player_level) {
+                return false;
+            }
+            ++player_level_queries;
+            value = 1;
             return true;
         },
     });
@@ -105,10 +136,29 @@ bool testRetailRemoteTown() {
             "Ostare's status-zero sentence did not emit its retail message.")) {
         return false;
     }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage(),
+            "The first Remote Town conversation did not resume cleanly.")) {
+        return false;
+    }
+
+    const osf::script::Message* repeated_message =
+        script.findMessage(1000005);
     return check(
-        interpreter.resume() == osf::script::StepResult::complete &&
-            !interpreter.waitingForMessage(),
-        "The first Remote Town conversation did not resume cleanly.");
+        repeated_message &&
+            interpreter.startStatus(0, 12000000) ==
+                osf::script::StepResult::waiting_for_message &&
+            interpreter.waitingForMessage() &&
+            player_level_queries == 1 &&
+            messages.size() == 2 &&
+            messages.back().id == 1000005 &&
+            messages.back().text == repeated_message->text &&
+            interpreter.readTemporaryFlag(1000000) ==
+                1000005 &&
+            interpreter.readTemporaryFlag(1000002) == 30,
+        "Ostare's level-one repeat interaction did not follow retail.");
 #else
     return true;
 #endif

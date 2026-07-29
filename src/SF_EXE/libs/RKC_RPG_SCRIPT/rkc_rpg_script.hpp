@@ -84,6 +84,10 @@ struct MessageEvent {
     std::string text;
 };
 
+enum class ValueQuery {
+    local_player_level,
+};
+
 struct InterpreterHooks {
     std::function<std::int32_t(const Operand&)> read_operand;
     std::function<bool(const Operand&, std::int32_t)> write_operand;
@@ -91,6 +95,7 @@ struct InterpreterHooks {
     std::function<bool(
         std::int32_t,
         const std::vector<std::int32_t>&)> native_command;
+    std::function<bool(ValueQuery, std::int32_t&)> query_value;
 };
 
 class Interpreter {

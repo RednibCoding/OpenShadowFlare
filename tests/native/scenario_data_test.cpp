@@ -521,6 +521,23 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    if (!check(
+            world.commandWorldInteraction(747, 269) &&
+                world.conversationActive() &&
+                world.conversationActorId() == 0 &&
+                world.conversationMessageId() == 1000005 &&
+                world.conversationText().rfind(
+                    "There is no new information so far", 0) == 0,
+            "Ostare's repeat interaction did not query the player level.")) {
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive(),
+            "Ostare's repeat message did not close cleanly.")) {
+        return false;
+    }
+
     world.update();
     if (!check(
             world.npcs()[0].animationFrame() == 0,

@@ -93,7 +93,9 @@ Remote Town's `Scenario.Scs` is now decoded through the portable
 from the MCT people record, resolves the retail status trigger and sentence,
 executes the initial comparisons, assignments, and actor commands, then shows
 message `1000000` from the original script data. Return or another click
-resumes the waiting sentence and restores world control. The format and
+resumes the waiting sentence and restores world control. Clicking Ostare
+again keeps that script state, reads the level-one player through retail
+opcode 61, and shows the original no-new-information response. The format and
 interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
 

@@ -46,7 +46,8 @@ The first game-core slice covers:
 - Ostare's retail people resource, placement, part mask, shadow, idle pause,
   and bounded walk
 - the complete Remote Town SCS container and the first status-triggered
-  conversation, including interpreter waits and native actor hooks
+  conversation, including interpreter waits, native actor hooks, and the
+  player-level branch used on a repeat interaction
 - Ostare's pointer hover, pale selection tint, nameplate, and actor-anchored
   `Hukidasi.njp` speech bubble
 
@@ -148,6 +149,9 @@ native actor actions. Clicking local person zero derives character number
 `12000000`, resolves status kind zero to sentence four, and waits on retail
 message `1000000`. The actor is held in an interaction idle and faces the
 player until Return or another click resumes and completes the sentence.
+On the next click, the retained type-11 flag enters sentence six. Opcode 61 at
+`0x00433f16` reads offset `0x34` from the local player, writes level one to the
+script destination, and selects the under-level-five message `1000005`.
 Unknown opcodes stop with an explicit unsupported result.
 
 Pointing at Ostare follows `0x0040ee70`: his projected actor bounds select the

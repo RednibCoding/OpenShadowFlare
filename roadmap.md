@@ -282,10 +282,14 @@ until message `1000000` waits for Return or another click. The initial
 interpreter covers comparisons, assignments, messages, nested sentence calls,
 and the two native actor commands reached by that path.
 
-The next script slice should continue through Ostare's opening quest rather
-than adding an unrelated hardcoded interaction. It will grow the same
-interpreter as new commands and operand domains are encountered. The recovered
-format, architecture, and extension rules are kept in
+The first follow-up branch is covered as well. A later click keeps the
+persistent conversation flag, executes retail opcode 61 to query the new
+character's level, and selects message `1000005` directly from the SCS. The
+next script slice should reconstruct the status-kind-one callback fired when a
+speech bubble closes. That callback advances Ostare's opening quest and soon
+reaches the original item-placement commands, so those should be traced
+together instead of faked as dialogue-only state. The recovered format,
+architecture, and extension rules are kept in
 [the script-engine notes](documentation/script-engine.md).
 
 ### 5. Items, inventory, and equipment

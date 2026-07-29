@@ -182,6 +182,22 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 61: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::local_player_level, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;
