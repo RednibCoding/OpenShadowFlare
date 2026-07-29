@@ -469,7 +469,7 @@ bool testGameplayLoadingTransition() {
             musicStarts == 1 &&
             musicStops == 1 &&
             movementCommands == 4 &&
-            movementCancels == 1 &&
+            movementCancels == 0 &&
             movementX == 240 &&
             movementY == 250 &&
             interactionCommands == 4 &&
@@ -479,6 +479,46 @@ bool testGameplayLoadingTransition() {
             worldUpdates == 13 &&
             runToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
+}
+
+bool testGameplayClickAndHoldMovement() {
+    std::int32_t movement_commands = 0;
+    std::int32_t movement_cancels = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [] { return true; };
+    hooks.command_player_movement =
+        [&](std::int32_t, std::int32_t) {
+            ++movement_commands;
+        };
+    hooks.cancel_player_movement =
+        [&] { ++movement_cancels; };
+
+    osf::GameplayState state(std::move(hooks));
+    state.enter();
+    state.update();
+    state.update({false, true, 600, 460});
+
+    state.update({false, true, 200, 200, true});
+    for (std::int32_t update = 0; update < 4; ++update) {
+        state.update({false, false, 200, 200, true});
+    }
+    state.update({false, false, 200, 200, false});
+    if (!check(
+            movement_commands == 5 &&
+                movement_cancels == 0,
+            "A normal-duration click was mistaken for held movement.")) {
+        return false;
+    }
+
+    state.update({false, true, 300, 200, true});
+    for (std::int32_t update = 0; update < 9; ++update) {
+        state.update({false, false, 300, 200, true});
+    }
+    state.update({false, false, 300, 200, false});
+    return check(
+        movement_commands == 15 &&
+            movement_cancels == 1,
+        "A retail-length held command did not stop on release.");
 }
 
 }  // namespace
@@ -491,7 +531,8 @@ int main() {
         !testStateDispatcher() ||
         !testGroundMapDecode() ||
         !testObjectMapDecode() ||
-        !testGameplayLoadingTransition()) {
+        !testGameplayLoadingTransition() ||
+        !testGameplayClickAndHoldMovement()) {
         return 1;
     }
     return 0;

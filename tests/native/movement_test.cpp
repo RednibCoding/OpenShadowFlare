@@ -69,7 +69,7 @@ osf::ObjectMap oneBlockingObject(
     return result;
 }
 
-osf::GroundMap oneBlockingGround() {
+osf::GroundMap oneBlockingGround(bool blocked = true) {
     std::vector<std::uint8_t> bytes;
     const char header[16] = "RPGSCRN_GNDv000";
     bytes.insert(bytes.end(), header, header + sizeof(header));
@@ -85,7 +85,9 @@ osf::GroundMap oneBlockingGround() {
     }
     bytes.push_back(0);
     for (std::int32_t index = 0; index < 36; ++index) {
-        appendI16(bytes, index == 25 ? 1 : 0);
+        appendI16(
+            bytes,
+            blocked && index == 25 ? 1 : 0);
     }
     osf::GroundMap result;
     result.decode(bytes);
@@ -255,13 +257,13 @@ bool testObjectJudgement() {
     blocked_target.reset({0, 0}, 1, 5);
     blocked_target.moveTo({90, 0});
     blocked_target.update(ground, objects);
-    blocked_target.update(ground, objects);
     if (!check(
             blocked_target.position().x == 10 &&
                 blocked_target.position().y == 0 &&
                 blocked_target.motion() ==
-                    osf::PlayerMotion::idle,
-            "A click inside blocked scenery did not stop at its edge.")) {
+                    osf::PlayerMotion::walking,
+            "The swept resolver did not return the last free point "
+            "before an object contact.")) {
         return false;
     }
 
@@ -292,7 +294,7 @@ bool testObjectJudgement() {
         "The retail movement controller did not follow the obstacle edge.");
 }
 
-bool testAxisSlide() {
+bool testDiagonalContact() {
     osf::GroundMap ground;
     osf::ObjectMap objects = oneBlockingObject(82, 0);
     osf::PlayerActor player;
@@ -301,9 +303,9 @@ bool testAxisSlide() {
     player.update(ground, objects);
     return check(
         player.position().x == 2 &&
-            player.position().y == 9 &&
+            player.position().y == 2 &&
             player.motion() == osf::PlayerMotion::walking,
-        "Diagonal collision did not keep contact and try an axis slide.");
+        "Diagonal collision did not stop at the retail swept contact.");
 }
 
 bool testGroundJudgement() {
@@ -316,6 +318,35 @@ bool testGroundJudgement() {
             !osf::positionIsWalkable(
                 ground, objects, {0, 0}, point),
         "The decoded GND judgement plane does not block movement.");
+}
+
+bool testDynamicActorJudgement() {
+    const osf::GroundMap ground = oneBlockingGround(false);
+    const osf::ObjectMap objects;
+    const std::vector<osf::MovementBlocker> actors{{
+        7,
+        {250, 0},
+        {-40, -40, 39, 39},
+    }};
+    osf::PlayerActor player;
+    player.reset({0, 0}, 1, 5);
+    player.moveTo({500, 0});
+    std::int32_t greatest_detour = 0;
+    for (std::int32_t update = 0;
+         update < 200 &&
+         player.position().x != 500;
+         ++update) {
+        player.update(ground, objects, &actors);
+        greatest_detour = std::max(
+            greatest_detour,
+            std::abs(player.position().y));
+    }
+    return check(
+        player.position().x == 500 &&
+            player.position().y == 0 &&
+            greatest_detour >= 120,
+        "The player did not route around a live actor's judgement "
+        "rectangle.");
 }
 
 bool testRemoteTownFixture() {
@@ -375,8 +406,9 @@ int main() {
         !testMovementAndAnimation() ||
         !testWalkRunToggle() ||
         !testObjectJudgement() ||
-        !testAxisSlide() ||
+        !testDiagonalContact() ||
         !testGroundJudgement() ||
+        !testDynamicActorJudgement() ||
         !testRemoteTownFixture()) {
         return 1;
     }

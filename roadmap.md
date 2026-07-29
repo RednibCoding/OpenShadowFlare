@@ -148,18 +148,24 @@ The slice is finished when all of these are true:
   units, while running covers 200;
 - idle, walking, arrival, and return-to-idle chart timing is covered;
 - the complete retail Remote Town GND judgement plane is decoded and tested;
-- static ground and object collision stop at the last walkable integer point,
-  then the shared controller follows the obstacle edge until a direct route
-  opens again;
+- static ground and object collision uses the retail dominant-axis integer
+  sweep and keeps the last walkable contact point;
+- the controller uses the original quadrant table, one-pixel probes,
+  movement/wall direction pairs, and corner transitions to follow an obstacle
+  edge. There is no added A* fallback;
+- live town actors use their decoded judgement rectangles as movement
+  blockers. The actor being approached stays solid too; interaction finishes
+  at the retail 159-unit rectangle distance before the two actors collide;
 - camera and depth keys are rebuilt from the live player position;
-- held input replaces the destination, releasing a held command stops the
-  hero immediately, and a quick single click remains latched;
+- held input replaces the destination, releasing after the retail ten-update
+  hold threshold stops the hero immediately, and an ordinary click remains
+  latched;
 - a native live run reaches Remote Town and moves the camera and player from a
   ground click;
-- the retail Remote Town fixture routes from the initial entry to Kerberos
-  through real collision data, routes around the full sacks footprint and
-  separate tree groups, and completes rendered companion choices plus
-  Harley's two-message explanation branch.
+- the retail Remote Town fixture crosses the full sacks footprint, covers the
+  exact Ostare-to-Malse approach with live actor blockers, walks longer trips
+  as successive click-sized legs, and completes rendered companion choices
+  plus Harley's two-message explanation branch.
 
 This gives us the first genuinely interactive gameplay milestone: we can walk
 around Remote Town. Any collision corner that looks different in a
@@ -261,7 +267,8 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - reproduce each actor's bounded idle/walk behavior where its MCT tail enables
   it;
 - place actors in the same shadow and visible-object passes as the player;
-- add actor-to-world and actor-to-actor collision;
+- finish actor-to-actor collision for NPC and enemy movement (the player
+  already treats live town actors as blockers);
 - reproduce the original update order and off-screen behavior;
 - extend the reconstructed pointer hover, pale actor tint, nameplates, and
   selection path from Ostare to every dynamic actor and the retail interaction
@@ -274,8 +281,8 @@ part mask, idle pause, bounded walk, shadow, depth pass, hover tint, nameplate,
 and actor-anchored speech bubble remain the detailed reference case. Malse and
 Syria are selectable and run their real first conversations. The next town
 work should map the behavior that differs between the three human NPCs and the
-four animals, then add dynamic actor collision and the remaining pointer
-selection rules.
+four animals, then extend dynamic collision beyond player movement and add
+the remaining pointer selection rules.
 
 ### 4. Bring up scripts, conversations, and town interaction
 

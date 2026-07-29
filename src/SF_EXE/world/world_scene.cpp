@@ -377,7 +377,7 @@ bool WorldScene::commandWorldInteraction(
             player_.judgement(),
             selected.position(),
             selected.judgement()) >
-        kRetailInteractionDistance) {
+            kRetailInteractionDistance) {
         player_.followTo(selected.position());
         return true;
     }
@@ -503,8 +503,18 @@ void WorldScene::update() {
     } else {
         pending_interaction_npc_id_ = -1;
     }
+    std::vector<MovementBlocker> actor_blockers;
+    actor_blockers.reserve(npcs_.size());
+    for (const NpcActor& npc : npcs_) {
+        actor_blockers.push_back({
+            npc.id(),
+            npc.position(),
+            npc.judgement(),
+        });
+    }
     if (has_player_) {
-        player_.update(ground_, object_map_);
+        player_.update(
+            ground_, object_map_, &actor_blockers);
     }
     for (NpcActor& npc : npcs_) {
         npc.update(ground_, object_map_);

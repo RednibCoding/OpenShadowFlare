@@ -17,6 +17,7 @@ void GameplayState::enter() {
     active_ = true;
     pointer_ground_command_active_ = false;
     continuous_pointer_movement_ = false;
+    pointer_hold_updates_ = 0;
     previous_pointer_down_ = false;
     pointer_consumed_until_release_ = false;
 }
@@ -32,6 +33,7 @@ void GameplayState::leave() {
     world_ready_ = false;
     pointer_ground_command_active_ = false;
     continuous_pointer_movement_ = false;
+    pointer_hold_updates_ = 0;
     previous_pointer_down_ = false;
     pointer_consumed_until_release_ = false;
 }
@@ -62,6 +64,7 @@ GameplayFrameResult GameplayState::update(
         if (conversation_active) {
             pointer_ground_command_active_ = false;
             continuous_pointer_movement_ = false;
+            pointer_hold_updates_ = 0;
             if (input.pointer_primary_pressed ||
                 input.pointer_primary_down) {
                 pointer_consumed_until_release_ = true;
@@ -118,12 +121,21 @@ GameplayFrameResult GameplayState::update(
             if (interaction_handled) {
                 pointer_ground_command_active_ = false;
                 continuous_pointer_movement_ = false;
+                pointer_hold_updates_ = 0;
             }
             if (!pointer_consumed &&
                 input.pointer_primary_down &&
-                !input.pointer_primary_pressed &&
                 pointer_ground_command_active_) {
-                continuous_pointer_movement_ = true;
+                if (input.pointer_primary_pressed) {
+                    pointer_hold_updates_ = 1;
+                } else {
+                    ++pointer_hold_updates_;
+                }
+                // The retail input record increments its hold counter while
+                // the button is down. Release stops movement only after that
+                // counter has passed nine updates.
+                continuous_pointer_movement_ =
+                    pointer_hold_updates_ > 9;
             }
             if (!pointer_consumed &&
                 (input.pointer_primary_pressed ||
@@ -141,6 +153,8 @@ GameplayFrameResult GameplayState::update(
                 if (input.pointer_primary_pressed) {
                     pointer_ground_command_active_ = true;
                     continuous_pointer_movement_ = false;
+                    pointer_hold_updates_ =
+                        input.pointer_primary_down ? 1 : 0;
                 }
             }
             if (previous_pointer_down_ &&
@@ -152,10 +166,12 @@ GameplayFrameResult GameplayState::update(
                 }
                 pointer_ground_command_active_ = false;
                 continuous_pointer_movement_ = false;
+                pointer_hold_updates_ = 0;
             } else if (
                 input.pointer_primary_pressed &&
                 !input.pointer_primary_down) {
                 pointer_ground_command_active_ = false;
+                pointer_hold_updates_ = 0;
             }
         }
         if (hooks_.update_world) {

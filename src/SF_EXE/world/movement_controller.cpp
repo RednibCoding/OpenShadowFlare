@@ -3,9 +3,15 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 namespace osf {
 namespace {
+
+constexpr std::int32_t kNorth = 1;
+constexpr std::int32_t kSouth = 2;
+constexpr std::int32_t kWest = 3;
+constexpr std::int32_t kEast = 4;
 
 std::int32_t separatedEdgeDistance(
     std::int32_t first_minimum,
@@ -19,6 +25,42 @@ std::int32_t separatedEdgeDistance(
         return first_minimum - second_maximum;
     }
     return 0;
+}
+
+bool samePosition(
+    WorldPosition first,
+    WorldPosition second) {
+    return first.x == second.x && first.y == second.y;
+}
+
+WorldPosition directionVector(std::int32_t direction) {
+    switch (direction) {
+    case kNorth:
+        return {0, -1};
+    case kSouth:
+        return {0, 1};
+    case kWest:
+        return {-1, 0};
+    case kEast:
+        return {1, 0};
+    default:
+        return {};
+    }
+}
+
+std::int32_t oppositeDirection(std::int32_t direction) {
+    switch (direction) {
+    case kNorth:
+        return kSouth;
+    case kSouth:
+        return kNorth;
+    case kWest:
+        return kEast;
+    case kEast:
+        return kWest;
+    default:
+        return 0;
+    }
 }
 
 WorldPosition movementCandidate(
@@ -45,74 +87,209 @@ WorldPosition movementCandidate(
     };
 }
 
-WorldPosition furthestWalkablePosition(
+bool boundsOverlap(
+    WorldPosition first_position,
+    const ObjectBounds& first,
+    WorldPosition second_position,
+    const ObjectBounds& second) {
+    return first_position.x + first.left <=
+               second_position.x + second.right &&
+           second_position.x + second.left <=
+               first_position.x + first.right &&
+           first_position.y + first.top <=
+               second_position.y + second.bottom &&
+           second_position.y + second.top <=
+               first_position.y + first.bottom;
+}
+
+bool movementPositionIsWalkable(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    WorldPosition position,
+    const ObjectBounds& bounds,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
+    if (!positionIsWalkable(
+            ground, objects, position, bounds)) {
+        return false;
+    }
+    if (!dynamic_blockers) {
+        return true;
+    }
+    for (const MovementBlocker& blocker : *dynamic_blockers) {
+        if (boundsOverlap(
+                position,
+                bounds,
+                blocker.position,
+                blocker.bounds)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<WorldPosition> rasterizedSegment(
+    WorldPosition start,
+    WorldPosition end) {
+    std::vector<WorldPosition> result;
+    const std::int32_t delta_x = end.x - start.x;
+    const std::int32_t delta_y = end.y - start.y;
+    const bool horizontal =
+        std::abs(delta_y) < std::abs(delta_x);
+    const std::int32_t count =
+        horizontal ? std::abs(delta_x) : std::abs(delta_y);
+    result.reserve(static_cast<std::size_t>(count) + 1);
+    if (count == 0) {
+        result.push_back(start);
+        return result;
+    }
+
+    if (horizontal) {
+        const std::int32_t increment = delta_x < 0 ? -1 : 1;
+        for (std::int32_t x = start.x;; x += increment) {
+            std::int32_t y;
+            if (x == start.x) {
+                y = start.y;
+            } else if (x == end.x) {
+                y = end.y;
+            } else {
+                y = (x - start.x) * delta_y / delta_x + start.y;
+                y = std::clamp(
+                    y,
+                    std::min(start.y, end.y),
+                    std::max(start.y, end.y));
+            }
+            result.push_back({x, y});
+            if (x == end.x) {
+                break;
+            }
+        }
+    } else {
+        const std::int32_t increment = delta_y < 0 ? -1 : 1;
+        for (std::int32_t y = start.y;; y += increment) {
+            std::int32_t x;
+            if (y == start.y) {
+                x = start.x;
+            } else if (y == end.y) {
+                x = end.x;
+            } else {
+                x = (y - start.y) * delta_x / delta_y + start.x;
+                x = std::clamp(
+                    x,
+                    std::min(start.x, end.x),
+                    std::max(start.x, end.x));
+            }
+            result.push_back({x, y});
+            if (y == end.y) {
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+struct SweepResult {
+    WorldPosition position;
+    bool collided = false;
+};
+
+SweepResult sweepMovement(
     const GroundMap& ground,
     const ObjectMap& objects,
     const ObjectBounds& bounds,
     WorldPosition start,
     WorldPosition end,
-    bool& reached) {
-    const std::int32_t delta_x = end.x - start.x;
-    const std::int32_t delta_y = end.y - start.y;
-    const std::int32_t steps = std::max(
-        std::abs(delta_x), std::abs(delta_y));
-    WorldPosition result = start;
-    reached = true;
-    for (std::int32_t step = 1; step <= steps; ++step) {
-        const WorldPosition position{
-            start.x + delta_x * step / steps,
-            start.y + delta_y * step / steps,
-        };
-        if (!positionIsWalkable(
-                ground, objects, position, bounds)) {
-            reached = false;
+    std::int32_t wall_direction,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<WorldPosition> path =
+        rasterizedSegment(start, end);
+    WorldPosition contact = start;
+    std::size_t contact_index = 0;
+    bool collided = false;
+    for (std::size_t index = 1; index < path.size(); ++index) {
+        if (!movementPositionIsWalkable(
+                ground,
+                objects,
+                path[index],
+                bounds,
+                dynamic_blockers)) {
+            collided = true;
             break;
         }
-        result = position;
+        contact = path[index];
+        contact_index = index;
     }
-    return result;
-}
 
-std::int64_t squaredDistance(
-    WorldPosition first,
-    WorldPosition second) {
-    const std::int64_t x =
-        static_cast<std::int64_t>(first.x) - second.x;
-    const std::int64_t y =
-        static_cast<std::int64_t>(first.y) - second.y;
-    return x * x + y * y;
-}
-
-WorldPosition directionVector(std::int32_t direction) {
-    // These are the controller's retail values, not the eight-way CAF
-    // direction numbers used for drawing actors.
-    switch (direction) {
-    case 1:
-        return {0, -1};
-    case 2:
-        return {0, 1};
-    case 3:
-        return {-1, 0};
-    case 4:
-        return {1, 0};
-    default:
-        return {};
+    const bool horizontal =
+        start.y == end.y && start.x != end.x;
+    const bool vertical =
+        start.x == end.x && start.y != end.y;
+    const bool valid_wall =
+        (horizontal &&
+         (wall_direction == kNorth ||
+          wall_direction == kSouth)) ||
+        (vertical &&
+         (wall_direction == kWest ||
+          wall_direction == kEast));
+    if (!valid_wall) {
+        return {contact, collided};
     }
-}
 
-std::int32_t oppositeDirection(std::int32_t direction) {
-    switch (direction) {
-    case 1:
-        return 2;
-    case 2:
-        return 1;
-    case 3:
-        return 4;
-    case 4:
-        return 3;
-    default:
-        return 0;
+    const WorldPosition wall = directionVector(wall_direction);
+    bool side_blocked = false;
+    for (std::size_t index = 0; index < path.size(); ++index) {
+        const WorldPosition side{
+            path[index].x + wall.x,
+            path[index].y + wall.y,
+        };
+        if (!movementPositionIsWalkable(
+                ground,
+                objects,
+                side,
+                bounds,
+                dynamic_blockers)) {
+            side_blocked = true;
+            break;
+        }
     }
+
+    std::size_t nudge_index = contact_index;
+    if (side_blocked) {
+        std::size_t first_side_open = path.size();
+        for (std::size_t index = 0;
+             index <= contact_index;
+             ++index) {
+            const WorldPosition side{
+                path[index].x + wall.x,
+                path[index].y + wall.y,
+            };
+            if (movementPositionIsWalkable(
+                    ground,
+                    objects,
+                    side,
+                    bounds,
+                    dynamic_blockers)) {
+                first_side_open = index;
+                break;
+            }
+        }
+        if (first_side_open == path.size()) {
+            return {contact, collided};
+        }
+        nudge_index = first_side_open;
+    }
+    const WorldPosition nudged{
+        path[nudge_index].x + wall.x,
+        path[nudge_index].y + wall.y,
+    };
+    if (movementPositionIsWalkable(
+            ground,
+            objects,
+            nudged,
+            bounds,
+            dynamic_blockers)) {
+        contact = nudged;
+    }
+    return {contact, collided || !samePosition(contact, end)};
 }
 
 bool canMoveOneUnit(
@@ -120,106 +297,180 @@ bool canMoveOneUnit(
     const ObjectMap& objects,
     const ObjectBounds& bounds,
     WorldPosition position,
-    std::int32_t direction) {
-    const WorldPosition vector = directionVector(direction);
-    return direction != 0 &&
-           positionIsWalkable(
-               ground,
-               objects,
-               {
-                   position.x + vector.x,
-                   position.y + vector.y,
-               },
-               bounds);
-}
-
-bool canMoveDistance(
-    const GroundMap& ground,
-    const ObjectMap& objects,
-    const ObjectBounds& bounds,
-    WorldPosition position,
     std::int32_t direction,
-    std::int32_t distance) {
+    const std::vector<MovementBlocker>* dynamic_blockers) {
     const WorldPosition vector = directionVector(direction);
-    bool reached = false;
-    furthestWalkablePosition(
+    return movementPositionIsWalkable(
         ground,
         objects,
+        {position.x + vector.x, position.y + vector.y},
         bounds,
-        position,
-        {
-            position.x + vector.x * std::max(distance, 1),
-            position.y + vector.y * std::max(distance, 1),
-        },
-        reached);
-    return direction != 0 && reached;
+        dynamic_blockers);
 }
 
-struct ObstacleTurn {
+struct ObstacleState {
     std::int32_t movement = 0;
     std::int32_t wall = 0;
 };
 
-ObstacleTurn chooseObstacleTurn(
+ObstacleState initialObstacleState(
     const GroundMap& ground,
     const ObjectMap& objects,
     const ObjectBounds& bounds,
-    WorldPosition position,
-    WorldPosition destination) {
-    const std::int32_t horizontal =
-        destination.x == position.x
-            ? 0
-            : (destination.x > position.x ? 4 : 3);
-    const std::int32_t vertical =
-        destination.y == position.y
-            ? 0
-            : (destination.y > position.y ? 2 : 1);
-    ObstacleTurn candidates[4]{};
-    if (horizontal != 0 && vertical != 0) {
-        candidates[0] = {horizontal, vertical};
-        candidates[1] = {vertical, horizontal};
-        candidates[2] = {
-            oppositeDirection(horizontal), vertical};
-        candidates[3] = {
-            oppositeDirection(vertical), horizontal};
-    } else if (horizontal != 0) {
-        candidates[0] = {2, horizontal};
-        candidates[1] = {1, horizontal};
-    } else if (vertical != 0) {
-        candidates[0] = {4, vertical};
-        candidates[1] = {3, vertical};
-    }
-    for (const ObstacleTurn& candidate : candidates) {
-        if (canMoveOneUnit(
+    WorldPosition start,
+    WorldPosition attempted,
+    WorldPosition contact,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const auto can_move =
+        [&](std::int32_t direction) {
+            return canMoveOneUnit(
                 ground,
                 objects,
                 bounds,
-                position,
-                candidate.movement)) {
-            return candidate;
+                start,
+                direction,
+                dynamic_blockers);
+        };
+    const bool stopped = samePosition(start, contact);
+
+    if (attempted.x > start.x && attempted.y > start.y) {
+        if (stopped) {
+            if (can_move(kEast)) return {kEast, kSouth};
+            if (can_move(kSouth)) return {kSouth, kEast};
+            if (can_move(kWest)) return {kWest, kSouth};
+            if (can_move(kNorth)) return {kNorth, kEast};
+            return {};
         }
+        if (contact.x == start.x && contact.y != start.y) {
+            return {kSouth, kEast};
+        }
+        if (contact.y == start.y && contact.x != start.x) {
+            return {kEast, kSouth};
+        }
+    } else if (attempted.x > start.x && attempted.y < start.y) {
+        if (stopped) {
+            if (can_move(kEast)) return {kEast, kNorth};
+            if (can_move(kNorth)) return {kNorth, kEast};
+            if (can_move(kWest)) return {kWest, kNorth};
+            if (can_move(kSouth)) return {kSouth, kEast};
+            return {};
+        }
+        if (contact.x == start.x && contact.y != start.y) {
+            return {kNorth, kEast};
+        }
+        if (contact.y == start.y && contact.x != start.x) {
+            return {kEast, kNorth};
+        }
+    } else if (attempted.x < start.x && attempted.y > start.y) {
+        if (stopped) {
+            if (can_move(kWest)) return {kWest, kSouth};
+            if (can_move(kSouth)) return {kSouth, kWest};
+            if (can_move(kEast)) return {kEast, kSouth};
+            if (can_move(kNorth)) return {kNorth, kWest};
+            return {};
+        }
+        if (contact.x == start.x && contact.y != start.y) {
+            return {kSouth, kWest};
+        }
+        if (contact.y == start.y && contact.x != start.x) {
+            return {kWest, kSouth};
+        }
+    } else if (attempted.x < start.x && attempted.y < start.y) {
+        if (stopped) {
+            if (can_move(kWest)) return {kWest, kNorth};
+            if (can_move(kNorth)) return {kNorth, kWest};
+            if (can_move(kEast)) return {kEast, kNorth};
+            if (can_move(kSouth)) return {kSouth, kWest};
+            return {};
+        }
+        if (contact.x == start.x && contact.y != start.y) {
+            return {kNorth, kWest};
+        }
+        if (contact.y == start.y && contact.x != start.x) {
+            return {kWest, kNorth};
+        }
+    } else if (attempted.x == start.x &&
+               attempted.y > start.y &&
+               contact.y == start.y) {
+        if (can_move(kEast)) return {kEast, kSouth};
+        if (can_move(kWest)) return {kWest, kSouth};
+    } else if (attempted.x == start.x &&
+               attempted.y < start.y &&
+               contact.y == start.y) {
+        if (can_move(kEast)) return {kEast, kNorth};
+        if (can_move(kWest)) return {kWest, kNorth};
+    } else if (attempted.y == start.y &&
+               attempted.x > start.x &&
+               contact.x == start.x) {
+        if (can_move(kSouth)) return {kSouth, kEast};
+        if (can_move(kNorth)) return {kNorth, kEast};
+    } else if (attempted.y == start.y &&
+               attempted.x < start.x &&
+               contact.x == start.x) {
+        if (can_move(kSouth)) return {kSouth, kWest};
+        if (can_move(kNorth)) return {kNorth, kWest};
     }
     return {};
 }
 
-bool directStepIsWalkable(
-    const GroundMap& ground,
-    const ObjectMap& objects,
-    const ObjectBounds& bounds,
+bool shouldStopEdgeFollowing(
     WorldPosition position,
     WorldPosition destination,
-    std::int32_t speed) {
-    const WorldPosition candidate =
-        movementCandidate(position, destination, speed);
-    bool reached = false;
-    furthestWalkablePosition(
-        ground,
-        objects,
-        bounds,
-        position,
-        candidate,
-        reached);
-    return reached;
+    std::int32_t movement,
+    std::int32_t wall) {
+    const std::int32_t dx = destination.x - position.x;
+    const std::int32_t dy = destination.y - position.y;
+    if (dy < 0) {
+        if (dx < 0) {
+            return (movement == kSouth && wall == kEast) ||
+                   (movement == kEast && wall == kSouth);
+        }
+        if (dx > 0) {
+            return (movement == kSouth && wall == kWest) ||
+                   (movement == kWest && wall == kSouth);
+        }
+        return movement == kSouth;
+    }
+    if (dy > 0) {
+        if (dx < 0) {
+            return (movement == kNorth && wall == kEast) ||
+                   (movement == kEast && wall == kNorth);
+        }
+        if (dx > 0) {
+            return (movement == kNorth && wall == kWest) ||
+                   (movement == kWest && wall == kNorth);
+        }
+        return movement == kNorth;
+    }
+    if (dx < 0) {
+        return movement == kEast;
+    }
+    if (dx > 0) {
+        return movement == kWest;
+    }
+    return true;
+}
+
+ObstacleState stateAfterSideStep(
+    WorldPosition position,
+    WorldPosition destination,
+    std::int32_t wall) {
+    const std::int32_t dx = destination.x - position.x;
+    const std::int32_t dy = destination.y - position.y;
+    if (dy < 0 && dx < 0) {
+        if (wall == kEast) return {kEast, kNorth};
+        if (wall == kSouth) return {kSouth, kWest};
+    } else if (dy < 0 && dx > 0) {
+        if (wall == kWest) return {kWest, kNorth};
+        if (wall == kSouth) return {kSouth, kEast};
+    } else if (dy > 0 && dx < 0) {
+        if (wall == kEast) return {kEast, kSouth};
+        if (wall == kNorth) return {kNorth, kWest};
+    } else if (dy > 0 && dx > 0) {
+        if (wall == kWest) return {kWest, kSouth};
+        if (wall == kNorth) return {kNorth, kEast};
+    }
+    return {};
 }
 
 }  // namespace
@@ -227,7 +478,6 @@ bool directStepIsWalkable(
 void MovementController::reset() {
     obstacle_direction_ = 0;
     wall_direction_ = 0;
-    detour_start_distance_ = 0;
 }
 
 MovementStepResult MovementController::advance(
@@ -237,9 +487,8 @@ MovementStepResult MovementController::advance(
     WorldPosition position,
     WorldPosition destination,
     std::int32_t speed,
-    bool stop_if_destination_blocked) {
-    if (position.x == destination.x &&
-        position.y == destination.y) {
+    const std::vector<MovementBlocker>* dynamic_blockers) {
+    if (samePosition(position, destination)) {
         reset();
         return {position, true, false};
     }
@@ -248,106 +497,113 @@ MovementStepResult MovementController::advance(
         return {position, false, false};
     }
 
-    if (obstacle_direction_ != 0 &&
-        directStepIsWalkable(
-            ground,
-            objects,
-            bounds,
-            position,
-            destination,
-            speed) &&
-        squaredDistance(position, destination) <
-            detour_start_distance_) {
-        reset();
-        return {position, false, false, true};
-    }
-
     if (obstacle_direction_ == 0) {
-        const MovementStepResult direct =
-            advanceMovement(
+        const WorldPosition attempted =
+            movementCandidate(position, destination, speed);
+        const SweepResult direct =
+            sweepMovement(
                 ground,
                 objects,
                 bounds,
                 position,
-                destination,
-                speed);
-        if (direct.reached_destination) {
-            reset();
-            return direct;
-        }
-        if (direct.moved) {
+                attempted,
+                0,
+                dynamic_blockers);
+        if (!direct.collided) {
             return {
                 direct.position,
+                samePosition(direct.position, destination),
+                !samePosition(direct.position, position),
+                true,
                 false,
-                true,
-                true,
             };
         }
-        if (stop_if_destination_blocked &&
-            !positionIsWalkable(
-                ground,
-                objects,
-                destination,
-                bounds)) {
-            reset();
-            return {position, false, false};
-        }
 
-        const ObstacleTurn turn =
-            chooseObstacleTurn(
+        const ObstacleState state =
+            initialObstacleState(
                 ground,
                 objects,
                 bounds,
                 position,
-                destination);
-        obstacle_direction_ = turn.movement;
-        wall_direction_ = turn.wall;
-        detour_start_distance_ =
-            squaredDistance(position, destination);
-        if (obstacle_direction_ == 0) {
-            return {position, false, false};
+                attempted,
+                direct.position,
+                dynamic_blockers);
+        if (state.movement == 0) {
+            if (!samePosition(direct.position, position)) {
+                return {
+                    direct.position,
+                    false,
+                    true,
+                    true,
+                    true,
+                };
+            }
+            reset();
+            return {position, false, false, false, true};
         }
+        obstacle_direction_ = state.movement;
+        wall_direction_ = state.wall;
+        return {
+            direct.position,
+            false,
+            !samePosition(direct.position, position),
+            true,
+            true,
+        };
     }
 
-    const WorldPosition direction =
+    if (shouldStopEdgeFollowing(
+            position,
+            destination,
+            obstacle_direction_,
+            wall_direction_)) {
+        reset();
+        return {position, false, false};
+    }
+
+    const WorldPosition movement =
         directionVector(obstacle_direction_);
-    const MovementStepResult edge_step =
-        advanceMovement(
+    const WorldPosition attempted{
+        position.x + movement.x * speed,
+        position.y + movement.y * speed,
+    };
+    const SweepResult edge =
+        sweepMovement(
             ground,
             objects,
             bounds,
             position,
-            {
-                position.x + direction.x * speed,
-                position.y + direction.y * speed,
-            },
-            speed);
-    if (!edge_step.moved) {
-        const std::int32_t old_movement =
+            attempted,
+            wall_direction_,
+            dynamic_blockers);
+    if (samePosition(edge.position, position)) {
+        const std::int32_t previous_movement =
             obstacle_direction_;
         obstacle_direction_ =
             oppositeDirection(wall_direction_);
-        wall_direction_ = old_movement;
-        return {position, false, false, true};
+        wall_direction_ = previous_movement;
+        return {position, false, false, true, edge.collided};
     }
 
-    if (canMoveDistance(
-            ground,
-            objects,
-            bounds,
-            edge_step.position,
-            wall_direction_,
-            speed)) {
-        const std::int32_t old_movement =
-            obstacle_direction_;
-        obstacle_direction_ = wall_direction_;
-        wall_direction_ = oppositeDirection(old_movement);
+    const bool moved_on_zero_x =
+        movement.x == 0 && edge.position.x != position.x;
+    const bool moved_on_zero_y =
+        movement.y == 0 && edge.position.y != position.y;
+    if (moved_on_zero_x || moved_on_zero_y) {
+        const ObstacleState next =
+            stateAfterSideStep(
+                edge.position,
+                destination,
+                wall_direction_);
+        obstacle_direction_ = next.movement;
+        wall_direction_ = next.wall;
     }
     return {
-        edge_step.position,
-        edge_step.reached_destination,
-        edge_step.moved,
+        edge.position,
+        samePosition(edge.position, destination),
         true,
+        true,
+        edge.collided,
     };
 }
 
@@ -389,60 +645,29 @@ MovementStepResult advanceMovement(
     const ObjectBounds& bounds,
     WorldPosition position,
     WorldPosition destination,
-    std::int32_t speed) {
-    if (position.x == destination.x &&
-        position.y == destination.y) {
+    std::int32_t speed,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
+    if (samePosition(position, destination)) {
         return {position, true, false};
     }
-
     const WorldPosition candidate =
         movementCandidate(
             position, destination, std::max(speed, 0));
-    bool reached = false;
-    const WorldPosition direct =
-        furthestWalkablePosition(
+    const SweepResult movement =
+        sweepMovement(
             ground,
             objects,
             bounds,
             position,
             candidate,
-            reached);
-    if (reached) {
-        return {
-            direct,
-            direct.x == destination.x &&
-                direct.y == destination.y,
-            direct.x != position.x || direct.y != position.y,
-        };
-    }
-
-    bool ignored = false;
-    const WorldPosition x_slide =
-        furthestWalkablePosition(
-            ground,
-            objects,
-            bounds,
-            direct,
-            {candidate.x, direct.y},
-            ignored);
-    const WorldPosition y_slide =
-        furthestWalkablePosition(
-            ground,
-            objects,
-            bounds,
-            direct,
-            {direct.x, candidate.y},
-            ignored);
-    const WorldPosition result =
-        squaredDistance(position, x_slide) >=
-                squaredDistance(position, y_slide)
-            ? x_slide
-            : y_slide;
+            0,
+            dynamic_blockers);
     return {
-        result,
-        result.x == destination.x &&
-            result.y == destination.y,
-        result.x != position.x || result.y != position.y,
+        movement.position,
+        samePosition(movement.position, destination),
+        !samePosition(movement.position, position),
+        false,
+        movement.collided,
     };
 }
 

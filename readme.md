@@ -160,7 +160,8 @@ You can then start the game through Wine:
 
 ### Portable executable
 
-The new executable uses CMake:
+The new executable uses CMake. Keep local development builds in
+`cmake-build-debug`; this is the project's canonical CMake build directory:
 
 ```bash
 cmake -S . -B cmake-build-debug

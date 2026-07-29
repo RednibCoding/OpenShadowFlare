@@ -80,7 +80,7 @@ Complete spell list (from 0x00407a60 MagicWindowDisplay):
 | Energy Shield | Shield % | Damage reduction |
 | Magic Shield | Def % | Defense boost |
 | Berserker | Attack % | Attack boost |
-| Moon | (none) | Unknown effect |
+| Moon | (none) | Increases companion stats while active |
 | Transport | (none) | Teleportation |
 | Identify | (none) | Identify items |
 

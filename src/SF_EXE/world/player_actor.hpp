@@ -5,6 +5,7 @@
 #include "movement_controller.hpp"
 
 #include <cstdint>
+#include <vector>
 
 namespace osf {
 
@@ -38,7 +39,8 @@ public:
     void toggleMovementPace();
     void update(
         const GroundMap& ground,
-        const ObjectMap& objects);
+        const ObjectMap& objects,
+        const std::vector<MovementBlocker>* dynamic_blockers = nullptr);
 
     WorldPosition position() const;
     WorldPosition renderPosition(double alpha) const;
@@ -70,7 +72,6 @@ private:
     MovementPace movement_pace_ = MovementPace::walk;
     PlayerMotion motion_ = PlayerMotion::idle;
     PlayerMotion previous_action_ = PlayerMotion::idle;
-    bool stop_if_destination_blocked_ = true;
     MovementController movement_controller_;
 };
 

@@ -30,6 +30,10 @@ cmake -S . -B cmake-build-debug
 cmake --build cmake-build-debug
 ```
 
+Use `cmake-build-debug` as the single local CMake build directory. The
+executable is always written to
+`cmake-build-debug/src/SF_EXE/ShadowFlare_rebuilt`.
+
 The development executable can be launched directly from the build folder. It
 looks for `tmp/ShadowFlare` relative to its own location, so starting it from a
 file manager works even when that file manager chooses a different working

@@ -69,6 +69,7 @@ private:
     bool active_ = false;
     bool pointer_ground_command_active_ = false;
     bool continuous_pointer_movement_ = false;
+    std::int32_t pointer_hold_updates_ = 0;
     bool previous_pointer_down_ = false;
     bool pointer_consumed_until_release_ = false;
 };

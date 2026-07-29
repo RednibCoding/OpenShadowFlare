@@ -834,6 +834,15 @@ bool testRetailRemoteTown() {
                 world.conversationActorId() == 1 &&
                 world.conversationMessageId() == 1000019,
             "Malse's actor did not enter its retail status-zero script.")) {
+        std::cerr
+            << "Player: "
+            << world.playerWorldX() << ", "
+            << world.playerWorldY()
+            << "; Malse: "
+            << malse.position().x << ", "
+            << malse.position().y
+            << "; pending: "
+            << world.interactionPending() << '\n';
         return false;
     }
     world.advanceConversation();
@@ -868,6 +877,15 @@ bool testRetailRemoteTown() {
                 world.conversationActorId() == 2 &&
                 world.conversationMessageId() == 1000040,
             "Syria's actor did not enter its retail status-zero script.")) {
+        std::cerr
+            << "Player: "
+            << world.playerWorldX() << ", "
+            << world.playerWorldY()
+            << "; Syria: "
+            << syria.position().x << ", "
+            << syria.position().y
+            << "; pending: "
+            << world.interactionPending() << '\n';
         return false;
     }
     world.advanceConversation();
@@ -898,9 +916,50 @@ bool testRetailRemoteTown() {
             "Remote Town could not be reloaded for the companion check.")) {
         return false;
     }
-    const osf::NpcActor& kerberos = companion_world.npcs()[3];
     constexpr osf::ObjectBounds player_bounds{
         -80, -80, 79, 79};
+    const osf::NpcActor& malse_route_target =
+        companion_world.npcs()[1];
+    std::vector<osf::MovementBlocker> town_actor_blockers;
+    for (const osf::NpcActor& npc : companion_world.npcs()) {
+        town_actor_blockers.push_back({
+            npc.id(),
+            npc.position(),
+            npc.judgement(),
+        });
+    }
+    osf::MovementController actor_route_controller;
+    osf::WorldPosition actor_route_position{90933, 1842};
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         osf::distanceBetweenBounds(
+             actor_route_position,
+             player_bounds,
+             malse_route_target.position(),
+             malse_route_target.judgement()) > 159;
+         ++update) {
+        actor_route_position =
+            actor_route_controller.advance(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                player_bounds,
+                actor_route_position,
+                malse_route_target.position(),
+                20,
+                &town_actor_blockers).position;
+    }
+    if (!check(
+            osf::distanceBetweenBounds(
+                actor_route_position,
+                player_bounds,
+                malse_route_target.position(),
+                malse_route_target.judgement()) <= 159,
+            "The Remote Town sacks route did not clear scenery and "
+            "live actor judgement.")) {
+        return false;
+    }
+
+    const osf::NpcActor& kerberos = companion_world.npcs()[3];
     constexpr osf::WorldPosition sacks_route_start{
         89800, 1450};
     constexpr osf::WorldPosition sacks_route_destination{
@@ -980,6 +1039,29 @@ bool testRetailRemoteTown() {
                       << position.x << ", "
                       << position.y << '\n';
             return false;
+        }
+    }
+    // The retail controller follows nearby obstacle edges; it is not a
+    // whole-map route planner. Keep this interaction test to camera-sized
+    // movement legs, like actual play does.
+    constexpr osf::WorldPosition kerberos_approach[] = {
+        {92000, 500},
+        {92000, -1000},
+        {93200, -3200},
+        {89900, -3200},
+    };
+    for (const osf::WorldPosition waypoint : kerberos_approach) {
+        const osf::ScreenPosition anchor =
+            osf::calculateRealPosition(waypoint);
+        companion_world.commandPlayerMovement(
+            anchor.x - companion_world.cameraScreenX(),
+            anchor.y - companion_world.cameraScreenY());
+        for (std::int32_t update = 0;
+             update < 2000 &&
+             companion_world.playerMotion() !=
+                 osf::PlayerMotion::idle;
+             ++update) {
+            companion_world.update();
         }
     }
     const osf::ScreenPosition kerberos_anchor =

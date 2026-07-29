@@ -109,7 +109,6 @@ void PlayerActor::reset(
     movement_pace_ = MovementPace::walk;
     motion_ = PlayerMotion::idle;
     previous_action_ = PlayerMotion::idle;
-    stop_if_destination_blocked_ = true;
     movement_controller_.reset();
 }
 
@@ -119,7 +118,6 @@ void PlayerActor::clear() {
 
 void PlayerActor::moveTo(WorldPosition destination) {
     destination_ = destination;
-    stop_if_destination_blocked_ = true;
     motion_ =
         movement_pace_ == MovementPace::run
             ? PlayerMotion::running
@@ -128,7 +126,6 @@ void PlayerActor::moveTo(WorldPosition destination) {
 
 void PlayerActor::followTo(WorldPosition destination) {
     destination_ = destination;
-    stop_if_destination_blocked_ = false;
     motion_ =
         movement_pace_ == MovementPace::run
             ? PlayerMotion::running
@@ -166,7 +163,8 @@ void PlayerActor::toggleMovementPace() {
 
 void PlayerActor::update(
     const GroundMap& ground,
-    const ObjectMap& objects) {
+    const ObjectMap& objects,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
     previous_position_ = position_;
     if (motion_ == PlayerMotion::idle) {
         if (previous_action_ != PlayerMotion::idle) {
@@ -210,7 +208,7 @@ void PlayerActor::update(
             moving_action == PlayerMotion::running
                 ? running_speed_
                 : walking_speed_,
-            stop_if_destination_blocked_);
+            dynamic_blockers);
     if (movement.moved) {
         direction_ = retailDirectionForVector(
             movement.position.x - position_.x,

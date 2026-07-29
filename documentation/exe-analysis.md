@@ -181,27 +181,91 @@ actors all reach this controller. `RKC_RPG_AICONTROL` chooses enemy intent and
 parameters; it does not contain a second enemy pathfinder.
 
 The portable `MovementController` now keeps the same pair of cardinal
-movement and wall directions between updates. A blocked direct sweep selects
-an edge and blocked edge movement rotates the pair. Once the actor has made
-net progress past the contact point and the next direct step is clear, it
-retries the direct sweep. This prevents a later tree from keeping the actor
-attached to an earlier obstacle. Fixed ground targets stop at the collision
-edge when the requested center itself is blocked; actor-follow targets remain
-active until their judgement rectangles enter interaction range. Player and
-PEOPLE movement share this owner, including their facing direction while
-detouring. Remote Town fixtures cover the route from the initial entry to
-Kerberos, the irregular sacks footprint beside Ostare, and several routes
-through separate blocker groups. Dynamic actor collision masks and later
-controller modes remain follow-up work.
+movement and wall directions between updates. `0x00414990` sweeps along the
+dominant axis, interpolates the other coordinate with integer arithmetic, and
+returns the last free point before contact. During cardinal edge movement it
+also checks a one-pixel strip on the wall side; that small side step is what
+lets an actor stay against an edge and turn its corner without an axis-slide
+shortcut.
+
+On the first blocked direct step, `0x00454930` compares the attempted quadrant
+with the returned contact. If no movement was possible, it probes east, south,
+west, or north in the quadrant-specific retail order. Those results select
+the cardinal movement direction and the side occupied by the wall. A blocked
+edge step swaps them by taking the opposite wall direction. Leaving an edge
+is controlled by the signs of the remaining X/Y distance and the exact
+movement/wall pair. It is not based on whether the Euclidean distance happened
+to improve.
+
+The portable implementation follows those tables directly and has no A*
+fallback. Live town actors take part in the same judgement query. The selected
+interaction actor remains solid; mode-one interaction ends at the 159-unit
+rectangle gap before collision. Player and PEOPLE movement share this owner,
+including facing during detours. Remote Town fixtures cover the sacks beside
+Ostare, the Ostare-to-Malse approach with the town actors present, and longer
+companion trips made from successive ordinary movement commands. Per-actor
+retail type masks and the remaining controller modes are still follow-up work.
+
+The controller's cardinal values are `1 = north`, `2 = south`, `3 = west`,
+and `4 = east`. The initial one-pixel probes are ordered by the attempted
+direction:
+
+| Attempt | Probe order if contact equals the start | Selected movement / wall |
+|---|---|---|
+| southeast | east, south, west, north | east/south, south/east, west/south, north/east |
+| northeast | east, north, west, south | east/north, north/east, west/north, south/east |
+| southwest | west, south, east, north | west/south, south/west, east/south, north/west |
+| northwest | west, north, east, south | west/north, north/west, east/north, south/west |
+| south or north | east, then west | east/vertical, then west/vertical |
+| east or west | south, then north | south/horizontal, then north/horizontal |
+
+The edge-stop tests are equally specific. For a destination northwest of the
+actor, the stop pairs are south/east and east/south. Northeast uses
+south/west and west/south. Southwest uses north/east and east/north.
+Southeast uses north/west and west/north. On a shared axis, movement directly
+away from the destination stops the edge walk. These pairs explain why a
+generic “distance got smaller” test produces loops that the retail code does
+not.
+
+Player movement calls `0x00454930` with dynamic collision enabled and mask
+`0xffffffff`; the resolver uses its low byte. `0x004145b0` excludes only the
+moving character number and interprets the mask like this:
+
+| Mask bit | Dynamic character class |
+|---|---|
+| `0x01` | local character numbers 0 through 3 |
+| `0x02` | type 0 |
+| `0x04` | type 1 |
+| `0x08` | type 2 |
+| `0x10` | type 4 |
+| `0x20` | type 3 |
+| `0x40` | type 5 |
+
+That means the player query treats every relevant live actor as solid. It does
+not remove the NPC selected for interaction. The controller's mode-one range
+test is what prevents the player from trying to occupy that NPC's rectangle.
+The portable player currently supplies all loaded town people to the same
+query; preserving the individual class masks matters once enemies and other
+players join the portable world.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
 destination with the live pointer position, but releasing after that held
-state cancels movement immediately. The portable gameplay state tracks that
-distinction explicitly rather than treating every held frame as another
-independent click. A press consumed by a speech bubble stays UI-owned until
-button release, even when selecting the option closes that bubble. It cannot
-be reinterpreted as a held ground command on the following update.
+state cancels movement immediately.
+
+`0x004562f0` makes the distinction explicit in each 28-byte input record:
+offsets `+0x04` and `+0x08` are the previous and current down states, `+0x10`
+is the press edge, `+0x14` is the release edge, and `+0x18` counts updates
+while the button remains down. `0x00441c00` does not arm release cancellation
+until that counter is greater than nine. A normal click can therefore span
+several game updates and still latch its destination. The pointer target is
+refreshed on every down update either way.
+
+The portable gameplay state now preserves that ten-update threshold rather
+than classifying any click longer than one 30 Hz update as a hold. A press
+consumed by a speech bubble stays UI-owned until button release, even when
+selecting the option closes that bubble. It cannot be reinterpreted as a held
+ground command on the following update.
 
 Portable gameplay still updates at the retail 30 Hz cadence, while the window
 is presented at 60 Hz. Rendering the current simulation snapshot twice made
