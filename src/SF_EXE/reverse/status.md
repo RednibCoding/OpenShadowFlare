@@ -107,8 +107,18 @@ zero scale. Pointer, shadow, occluding-object, effect-volume, and BGM-volume
 changes apply live; all changed configuration fields are written back through
 the reconstructed 64-byte `SFlare.Cfg` writer when the game exits. The
 screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
-empty so every later row keeps its retail coordinate. Mission, map, and help
-remain placeholders.
+empty so every later row keeps its retail coordinate. Mission and map remain
+placeholders.
+
+The Help row and `H` shortcut now open the screen drawn by `0x0040e710`.
+Status patterns 10 and 66 provide the authored 640-by-415 frame and the
+230-by-128 action preview. Font01 text keeps the retail coordinates, colors,
+shadows, row spacing, and original wording. The player uses CAF chart 7 at the
+preview anchor. Help entered through Settings also runs the shared
+`0x004088b0` `CLOSE` animation with Status patterns 27 through 30; Escape or
+any click above the HUD dismisses it. Drawing the current owned companion in
+the preview waits on the companion-ownership slice rather than borrowing a
+town NPC.
 
 The two save rows now use the same secondary states as `0x004103c0`. Their
 prompts replace the settings text without replacing or re-fading the panel;

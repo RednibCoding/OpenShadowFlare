@@ -130,10 +130,32 @@ GameplayOptionsResult GameplayOptionsMenu::update(
     pointer_x_ = input.pointer_x;
     pointer_y_ = input.pointer_y;
     ++animation_counter_;
+    if (active_ &&
+        page_ == GameplayOptionsPage::help &&
+        help_close_visible_) {
+        ++help_close_animation_counter_;
+    }
 
+    if (input.help_pressed) {
+        if (active_ && page_ == GameplayOptionsPage::help) {
+            close();
+        } else {
+            active_ = true;
+            page_ = GameplayOptionsPage::help;
+            help_close_visible_ = false;
+            help_close_animation_counter_ = 0;
+        }
+        return {};
+    }
     if (input.toggle_pressed) {
+        if (active_ && page_ == GameplayOptionsPage::help) {
+            close();
+            return {};
+        }
         active_ = !active_;
         page_ = GameplayOptionsPage::settings;
+        help_close_visible_ = false;
+        help_close_animation_counter_ = 0;
         return {};
     }
     if (!active_) {
@@ -142,6 +164,13 @@ GameplayOptionsResult GameplayOptionsMenu::update(
 
     GameplayOptionsResult result;
     if (page_ == GameplayOptionsPage::saving) {
+        return result;
+    }
+    if (page_ == GameplayOptionsPage::help) {
+        if (input.pointer_primary_pressed &&
+            input.pointer_y < 412) {
+            close();
+        }
         return result;
     }
     if (page_ != GameplayOptionsPage::settings) {
@@ -177,6 +206,20 @@ GameplayOptionsResult GameplayOptionsMenu::update(
         return result;
     }
 
+    if (input.pointer_primary_pressed &&
+        inside(
+            input.pointer_x,
+            input.pointer_y,
+            176,
+            286,
+            464,
+            298)) {
+        page_ = GameplayOptionsPage::help;
+        help_close_visible_ = true;
+        help_close_animation_counter_ = 0;
+        result.play_confirm_sound = true;
+        return result;
+    }
     if (input.pointer_primary_pressed &&
         inside(
             input.pointer_x,
@@ -241,6 +284,8 @@ void GameplayOptionsMenu::restoreConfirmation(
 void GameplayOptionsMenu::close() {
     active_ = false;
     page_ = GameplayOptionsPage::settings;
+    help_close_visible_ = false;
+    help_close_animation_counter_ = 0;
 }
 
 bool GameplayOptionsMenu::active() const {
@@ -261,6 +306,15 @@ std::int32_t GameplayOptionsMenu::pointerY() const {
 
 std::int32_t GameplayOptionsMenu::animationCounter() const {
     return animation_counter_;
+}
+
+bool GameplayOptionsMenu::helpCloseVisible() const {
+    return help_close_visible_;
+}
+
+std::int32_t
+GameplayOptionsMenu::helpCloseAnimationCounter() const {
+    return help_close_animation_counter_;
 }
 
 std::int32_t gameplayOptionsVolumeFromPointerX(

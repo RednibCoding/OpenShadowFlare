@@ -285,14 +285,16 @@ Save and Return and Save and Exit now open their original confirmation states,
 write the retail save envelope, and only leave gameplay after a successful
 write. With `Save Image at Game End` enabled, they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
-drawn. Mission List, Map, and Help stay visible for now; their clicks belong
+drawn. Help now opens its original full-width reference screen from either the
+menu row or `H`, including the animated player preview and the menu-owned
+`CLOSE` tab. Mission List and Map stay visible for now; their clicks belong
 with those still-missing screens.
 
 The remaining layers are:
 
 - map the experience field and table calculation, then draw its clipped fill;
 - reconstruct quick-slot ownership and values instead of painting placeholders;
-- message and help text;
+- finish the remaining message-window variants;
 - darkness and other final world overlays;
 - resizing behavior through the fixed 640×480 GAPI surface.
 

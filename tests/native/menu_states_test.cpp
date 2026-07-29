@@ -1,10 +1,12 @@
 #include "core/retail_random.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "states/character_select_state.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/save_catalog.hpp"
 #include "states/title_state.hpp"
+#include "world/world_scene.hpp"
 
 #include <algorithm>
 #include <array>
@@ -1365,6 +1367,67 @@ bool testGameplayOptionsDrawing() {
         "color.");
 }
 
+bool testGameplayHelpDrawing() {
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    osf::WorldScene world;
+    RecordingBackend backend;
+    osf::renderGameplayHelp(
+        backend, status, font, world, 17, true, 24);
+
+    const auto heading = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "SHADOW FLARE  \" MOUSE ACTION HELP \"" &&
+                   call.draw.x == 42 &&
+                   call.draw.y == 48 &&
+                   call.draw.color.red == 224 &&
+                   call.draw.color.green == 224 &&
+                   call.draw.color.blue == 64;
+        });
+    const auto mouse_action = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "Companions's Attack" &&
+                   call.draw.x == 310 &&
+                   call.draw.y == 148 &&
+                   call.draw.color.red == 139;
+        });
+    const auto escape_action = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text ==
+                       "Open the Settings Menu" &&
+                   call.draw.x == 406 &&
+                   call.draw.y == 358 &&
+                   call.draw.color.red == 192;
+        });
+    return check(
+        backend.patterns.size() == 3 &&
+            backend.patterns[0].index == 10 &&
+            backend.patterns[1].index == 66 &&
+            backend.patterns[1].draw.x == 64 &&
+            backend.patterns[1].draw.y == 70 &&
+            backend.patterns[2].index == 28 &&
+            backend.patterns[2].draw.x == 301 &&
+            backend.patterns[2].draw.y == 393 &&
+            backend.rectangles.size() == 4 &&
+            backend.rectangles[0].x == 63 &&
+            backend.rectangles[0].y == 69 &&
+            backend.rectangles[0].width == 232 &&
+            backend.rectangles[0].opacity == 500 &&
+            heading != backend.texts.end() &&
+            mouse_action != backend.texts.end() &&
+            escape_action != backend.texts.end(),
+        "The gameplay help frame, preview, or retail text "
+        "layout differs.");
+}
+
 }  // namespace
 
 int main() {
@@ -1380,7 +1443,8 @@ int main() {
         !testSavedGameDeleteDialog() ||
         !testNewCharacterCreationAndModeScreens() ||
         !testNewCharacterRetailDrawing() ||
-        !testGameplayOptionsDrawing()) {
+        !testGameplayOptionsDrawing() ||
+        !testGameplayHelpDrawing()) {
         return 1;
     }
     return 0;

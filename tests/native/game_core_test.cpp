@@ -659,6 +659,46 @@ bool testGameplayOptionsMenu() {
     }
 
     result = menu.update(
+        {false, true, true, 300, 286}, config);
+    if (!check(
+            menu.active() &&
+                menu.page() ==
+                    osf::GameplayOptionsPage::help &&
+                result.play_confirm_sound,
+            "The HELP row did not open the gameplay help screen.")) {
+        return false;
+    }
+    menu.update({true}, config);
+    if (!check(
+            !menu.active() &&
+                menu.page() ==
+                    osf::GameplayOptionsPage::settings,
+            "Escape did not close the gameplay help screen.")) {
+        return false;
+    }
+    menu.update({true}, config);
+    menu.update(
+        {false, true, true, 300, 286}, config);
+    menu.update(
+        {false, true, true, 500, 100}, config);
+    if (!check(
+            !menu.active(),
+            "A retail help-screen click did not dismiss the page.")) {
+        return false;
+    }
+    menu.update({true}, config);
+    menu.update(
+        {false, false, false, 0, 0, true}, config);
+    menu.update(
+        {false, false, false, 0, 0, true}, config);
+    if (!check(
+            !menu.active(),
+            "The retail H shortcut did not toggle the help screen.")) {
+        return false;
+    }
+    menu.update({true}, config);
+
+    result = menu.update(
         {false, true, true, 300, 302}, config);
     if (!check(
             menu.page() ==

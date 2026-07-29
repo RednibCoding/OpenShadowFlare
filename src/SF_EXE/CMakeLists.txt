@@ -123,6 +123,7 @@ add_library(
   render/character_renderer.cpp
   render/character_select_renderer.cpp
   render/conversation_layout.cpp
+  render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp

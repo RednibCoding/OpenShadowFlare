@@ -48,7 +48,9 @@ The original VOC containers are decoded portably and played through LAL, with
 the configured effect and BGM volumes. Gameplay's Escape menu can change those
 volumes, pointer range and priority, and the other reconstructed config fields
 using the retail panel and coordinates. The portable executable always opens
-in a window; the old fullscreen setting is intentionally not exposed. The
+in a window; the old fullscreen setting is intentionally not exposed. Its
+Help row and the `H` shortcut open the original mouse/keyboard reference page,
+with the authored preview, text layout, and animated close tab. The
 broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 

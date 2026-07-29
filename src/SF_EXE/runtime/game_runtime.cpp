@@ -9,6 +9,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
+#include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
@@ -412,12 +413,27 @@ private:
                 const auto* status =
                     frontendAssets_.pattern(6);
                 if (status && font) {
-                    osf::renderGameplayOptions(
-                        renderer_,
-                        *status,
-                        *font,
-                        gameplayOptions_,
-                        gameConfig_);
+                    if (gameplayOptions_.page() ==
+                        osf::GameplayOptionsPage::help) {
+                        osf::renderGameplayHelp(
+                            renderer_,
+                            *status,
+                            *font,
+                            world_,
+                            gameplayOptions_
+                                .animationCounter(),
+                            gameplayOptions_
+                                .helpCloseVisible(),
+                            gameplayOptions_
+                                .helpCloseAnimationCounter());
+                    } else {
+                        osf::renderGameplayOptions(
+                            renderer_,
+                            *status,
+                            *font,
+                            gameplayOptions_,
+                            gameConfig_);
+                    }
                 }
             }
         }
@@ -687,6 +703,7 @@ private:
                     input_.pointerPrimaryDown(),
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
+                    input_.gameplayHelpPressed(),
                 },
                 gameConfig_);
         if (!was_active && gameplayOptions_.active()) {

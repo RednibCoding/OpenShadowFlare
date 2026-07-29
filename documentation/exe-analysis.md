@@ -428,6 +428,20 @@ the far-left position is the separate mute value `-10000`. BGM changes update
 the playing world voice immediately. Escape closes the panel and ordinary
 world input remains suspended for every frame owned by it.
 
+The Help row at y=286 switches to `0x0040e710`. Status pattern 10 is the
+640-by-415 authored frame; pattern 66 supplies the 230-by-128 ground preview at
+`(64, 70)`, surrounded by the original half-opacity one-pixel outline. The
+player is drawn at `(152, 148)` with CAF chart 7. The mouse and keyboard tables
+are not rewritten descriptions: their original text, colors, 6-by-12 font
+cells, two-pixel keyboard line spacing, and coordinates are preserved.
+
+Opening Help from the settings row also starts the common modal-tab animator
+at `0x004088b0`. Status patterns 27 through 30 slide the `CLOSE` tab from
+y=413 to y=393 and then pulse in the retail eight-phase order. Escape or a
+click above y=412 closes Help. The `H` shortcut opens the same reference page
+directly. The companion preview is conditional in retail; the portable
+renderer will add it when the player-owned companion system exists.
+
 The Save and Return row occupies y=302 through 313, and Save and Exit occupies
 y=318 through 329. They enter confirmation states two and three. Both dialogs
 draw their prompt at y=170, with YES at `(336, 202)` and NO at `(384, 202)`.

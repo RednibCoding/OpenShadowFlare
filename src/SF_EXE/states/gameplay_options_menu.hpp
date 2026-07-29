@@ -9,6 +9,7 @@ namespace osf {
 
 enum class GameplayOptionsPage {
     settings,
+    help,
     return_to_title_confirmation,
     exit_game_confirmation,
     saving,
@@ -26,6 +27,7 @@ struct GameplayOptionsInput {
     bool pointer_primary_down = false;
     std::int32_t pointer_x = 0;
     std::int32_t pointer_y = 0;
+    bool help_pressed = false;
 };
 
 struct GameplayOptionsResult {
@@ -49,6 +51,8 @@ public:
     std::int32_t pointerX() const;
     std::int32_t pointerY() const;
     std::int32_t animationCounter() const;
+    bool helpCloseVisible() const;
+    std::int32_t helpCloseAnimationCounter() const;
 
 private:
     bool active_ = false;
@@ -56,6 +60,8 @@ private:
     std::int32_t pointer_x_ = 0;
     std::int32_t pointer_y_ = 0;
     std::int32_t animation_counter_ = 0;
+    bool help_close_visible_ = false;
+    std::int32_t help_close_animation_counter_ = 0;
 };
 
 std::int32_t gameplayOptionsVolumeFromPointerX(
