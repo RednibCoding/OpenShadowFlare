@@ -693,6 +693,7 @@ bool lwl_exe_path(char *buf, int size) {
 
 LwlGlConfig lwl_gl_config_default(void) {
   LwlGlConfig config;
+  config.api = LWL_GL_API_DESKTOP;
   config.major_version = 3;
   config.minor_version = 3;
   config.depth_bits = 24;
@@ -761,7 +762,8 @@ LwlGlContext* lwl_gl_context_create(
 
   if (!window || !window->hdc) { return NULL; }
   config = requested_config ? *requested_config : lwl_gl_config_default();
-  if (config.major_version < 1 || config.minor_version < 0 ||
+  if (config.api != LWL_GL_API_DESKTOP ||
+      config.major_version < 1 || config.minor_version < 0 ||
       config.depth_bits < 0 || config.depth_bits > 255 ||
       config.stencil_bits < 0 || config.stencil_bits > 255 ||
       (config.core_profile &&

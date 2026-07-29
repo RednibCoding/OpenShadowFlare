@@ -7,19 +7,24 @@ tested reconstructions as the behavioral reference.
 The executable uses the project-owned platform libraries:
 
 - LWL for windows, input, and timing
-- LGL for the small OpenGL 3.3 function set used to present a finished frame
+- LGL for the small OpenGL/OpenGL ES function set used to present a finished
+  frame
 - LAL for WAV/PCM playback
 
 Game drawing goes through `gapi`, the backend-neutral graphics interface. Its
 first backend is a software renderer working on a fixed 640×480 RGBA surface,
-like the original game's software DIB renderer. A tiny LGL presenter uploads
-that surface once per frame and lets the GPU scale it to the window. Maximizing
-the window therefore does not turn presentation into a large CPU scaling loop.
-Other render backends can implement the same `gapi::Backend` interface later.
+like the original game's software DIB renderer. Final display is a separate
+`SurfacePresenter` boundary. Its first implementation uploads the surface
+through LGL and lets the GPU scale it to the window. Maximizing the window
+therefore does not turn presentation into a large CPU scaling loop. Future
+Vulkan, Metal, or console presenters do not need to alter the software renderer
+or game runtime.
 
 Code in this directory must use those portable APIs and the C++ standard
-library. Native window handles, operating-system messages, platform headers,
-and conditional platform implementations belong inside LWL or LAL, not here.
+library. Platform lifecycle adapters are isolated under `runtime/platform/`,
+and graphics-API implementations are isolated under `runtime/presentation/`.
+Native window handles and operating-system messages still belong inside LWL
+or LAL rather than game code.
 
 ## Building
 
@@ -206,5 +211,11 @@ implementations:
 - `resources/` owns shared decoded assets and retail filesystem lookup
 - `states/` contains the top-level dispatcher and reconstructed game states
 - `world/` contains actors, scenario orchestration, and script-to-world glue
-- `runtime/` contains startup, input/audio adapters, frontend assets, and the
-  fixed-surface LGL presenter
+- `runtime/` contains startup, input/audio adapters, and frontend assets
+- `runtime/platform/` owns application-loop and lifecycle adapters
+- `runtime/presentation/` owns the final-surface presentation interface and
+  concrete graphics backends
+
+The steps and boundary rules for bringing up another operating system or
+console are in
+[`documentation/adding-platforms.md`](../../documentation/adding-platforms.md).

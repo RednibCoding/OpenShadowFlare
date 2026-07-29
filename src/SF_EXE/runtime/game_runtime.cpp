@@ -1,6 +1,5 @@
 #include "game_runtime.hpp"
 
-#include "lgl.h"
 #include "lwl.h"
 #include "core/retail_random.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
@@ -20,10 +19,11 @@
 #include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "resources/retail_filesystem.hpp"
+#include "runtime/application_loop.hpp"
 #include "runtime/audio_system.hpp"
 #include "runtime/frontend_assets.hpp"
 #include "runtime/input_adapter.hpp"
-#include "runtime/lgl_surface_presenter.hpp"
+#include "runtime/presentation/surface_presenter.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_map.hpp"
@@ -40,27 +40,22 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <utility>
-
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
 
 namespace {
 
 constexpr int kVirtualWidth = 640;
 constexpr int kVirtualHeight = 480;
 
-void* loadOpenGlFunction(const char* name, void*) {
-    return lwl_gl_get_proc_address(name);
-}
-
-class Runtime {
+class Runtime final : public osf::runtime::FrameApplication {
 public:
     explicit Runtime(std::filesystem::path dataRoot)
         : dataRoot_(std::move(dataRoot)),
           frontendAssets_(dataRoot_),
+          surfacePresenter_(
+              osf::runtime::createSurfacePresenter()),
           renderer_(
               kVirtualWidth,
               kVirtualHeight,
@@ -74,9 +69,8 @@ public:
           gameState_(makeGameStateCallbacks()) {}
 
     ~Runtime() {
-        surfacePresenter_.shutdown();
-        lgl_reset();
-        lwl_gl_context_destroy(context_);
+        saveConfigIfDirty();
+        surfacePresenter_.reset();
         lwl_window_destroy(window_);
         if (windowingInitialized_) {
             lwl_shutdown();
@@ -100,37 +94,16 @@ public:
         lwl_window_set_mode(window_, LWL_WINDOW_NORMAL);
         lwl_window_show(window_);
 
-        const LwlGlConfig config = lwl_gl_config_default();
-        context_ = lwl_gl_context_create(window_, &config);
-        if (!context_ || !lwl_gl_context_make_current(context_)) {
-            std::fprintf(
-                stderr,
-                "Could not create an OpenGL %d.%d core context.\n",
-                config.major_version,
-                config.minor_version);
-            return false;
-        }
-        if (!lgl_load(loadOpenGlFunction, nullptr)) {
-            std::fprintf(
-                stderr,
-                "Could not load OpenGL: %s\n",
-                lgl_last_error());
-            return false;
-        }
         std::string presenterError;
-        if (!surfacePresenter_.initialize(&presenterError)) {
+        if (!surfacePresenter_ ||
+            !surfacePresenter_->initialize(
+                window_, &presenterError)) {
             std::fprintf(
                 stderr,
                 "Could not initialize surface presentation: %s\n",
                 presenterError.c_str());
             return false;
         }
-        if (!lwl_gl_context_set_swap_interval(context_, 1)) {
-            std::fprintf(
-                stderr,
-                "Warning: display synchronization is unavailable.\n");
-        }
-
         std::string audioError;
         if (!audio_.initialize(
                 dataRoot_,
@@ -163,24 +136,21 @@ public:
         return true;
     }
 
-    int run(bool smokeTest) {
+    void start(bool smokeTest) {
         smokeTest_ = smokeTest;
         running_ = true;
         renderedFrames_ = 0;
         previousTime_ = lwl_time_seconds();
         nextFrame_ = previousTime_;
         gameAccumulator_ = kGameStep;
+    }
 
-#ifdef __EMSCRIPTEN__
-        emscripten_set_main_loop_arg(&Runtime::mainLoopThunk, this, 0, 1);
-        return 0;
-#else
-        while (running_) {
-            tickOnce();
+    bool frame() override {
+        tickOnce();
+        if (!running_) {
+            saveConfigIfDirty();
         }
-        saveConfigIfDirty();
-        return 0;
-#endif
+        return running_;
     }
 
 private:
@@ -239,23 +209,8 @@ private:
         }
     }
 
-#ifdef __EMSCRIPTEN__
-    static void mainLoopThunk(void* self) {
-        Runtime* runtime = static_cast<Runtime*>(self);
-        runtime->tickOnce();
-        if (!runtime->running_) {
-            runtime->saveConfigIfDirty();
-            emscripten_cancel_main_loop();
-        }
-    }
-#endif
-
     void presentSurface(osf::gapi::SurfaceView source) {
-        int width = 0;
-        int height = 0;
-        lwl_window_get_size(window_, &width, &height);
-        surfacePresenter_.present(source, width, height);
-        lwl_gl_context_swap_buffers(context_);
+        surfacePresenter_->present(source);
     }
 
 
@@ -998,7 +953,6 @@ private:
     }
 
     LwlWindow* window_ = nullptr;
-    LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
     bool configDirty_ = false;
     bool running_ = false;
@@ -1012,7 +966,8 @@ private:
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;
     osf::runtime::FrontendAssets frontendAssets_;
-    LglSurfacePresenter surfacePresenter_;
+    std::unique_ptr<osf::runtime::SurfacePresenter>
+        surfacePresenter_;
     osf::gapi::SoftwareBackend renderer_;
     osf::TitleFrameResult titleFrame_;
     osf::CharacterSelectFrameResult characterFrame_;
@@ -1041,9 +996,10 @@ int osf::runtime::runGame(
     const std::filesystem::path& data_root,
     const GameConfig& game_config,
     bool smoke_test) {
-    Runtime runtime(data_root);
-    if (!runtime.initialize(game_config)) {
+    auto runtime = std::make_unique<Runtime>(data_root);
+    if (!runtime->initialize(game_config)) {
         return 1;
     }
-    return runtime.run(smoke_test);
+    runtime->start(smoke_test);
+    return runApplicationLoop(std::move(runtime));
 }

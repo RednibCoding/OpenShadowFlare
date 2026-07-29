@@ -56,6 +56,11 @@ typedef enum {
 } LwlWindowMode;
 
 typedef enum {
+  LWL_GL_API_DESKTOP,
+  LWL_GL_API_ES,
+} LwlGlApi;
+
+typedef enum {
   LWL_EVENT_NONE,
   LWL_EVENT_QUIT,
   LWL_EVENT_RESIZED,
@@ -80,6 +85,7 @@ typedef struct {
 } LwlEvent;
 
 typedef struct {
+  LwlGlApi api;
   int major_version;
   int minor_version;
   int depth_bits;

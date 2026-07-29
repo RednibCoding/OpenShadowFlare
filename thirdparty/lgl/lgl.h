@@ -42,6 +42,11 @@ typedef char LGLchar;
 
 typedef void* (*LglLoadProc)(const char *name, void *user_data);
 
+typedef enum {
+  LGL_API_DESKTOP_OPENGL,
+  LGL_API_OPENGL_ES,
+} LglApi;
+
 enum {
   LGL_COLOR_BUFFER_BIT = 0x00004000,
   LGL_MAJOR_VERSION = 0x821B,
@@ -147,8 +152,11 @@ extern LglBindVertexArrayProc lglBindVertexArray;
 extern LglDrawArraysProc lglDrawArrays;
 
 bool lgl_load(LglLoadProc load, void *user_data);
+bool lgl_load_for_api(
+  LglLoadProc load, void *user_data, LglApi api);
 void lgl_reset(void);
 bool lgl_is_loaded(void);
+LglApi lgl_api(void);
 int lgl_version_major(void);
 int lgl_version_minor(void);
 const char* lgl_last_error(void);

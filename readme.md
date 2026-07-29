@@ -111,6 +111,10 @@ The [script-engine notes](documentation/script-engine.md) document how compiled
 scenario scripts are structured, how the portable interpreter is split from
 the game world, and which commands have been recovered so far.
 
+If you are working on a new desktop, mobile, web, or console target, read the
+[platform porting guide](documentation/adding-platforms.md) before adding SDK
+code or build settings.
+
 ## Prebuilt binaries
 
 We do not publish official prebuilt releases yet. The reconstruction is moving

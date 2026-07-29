@@ -20,13 +20,15 @@ LWL. If not, see <https://www.gnu.org/licenses/>.
 LWL is the project's small C platform layer for native window creation, input,
 timing, and presentation of a 32-bit RGBA software framebuffer.
 
-Bundled backends currently cover Win32, macOS, and Linux/X11. On Linux, the
-build enables XShm and Xinerama. The application must reacquire the framebuffer
-pointer after a resize because the backend may reallocate it.
+Bundled backends currently cover Win32, macOS, Linux/X11, and Emscripten. On
+Linux, the build enables XShm and Xinerama. The application must reacquire the
+framebuffer pointer after a resize because the backend may reallocate it.
 
 LWL can also create an optional OpenGL context for a window. Contexts are
-configured with `LwlGlConfig`; the default requests an OpenGL 3.3 core context
-with double buffering. Function loading deliberately stays outside LWL:
+configured with `LwlGlConfig`, including an explicit desktop OpenGL or OpenGL
+ES API choice. Desktop defaults request at least an OpenGL 3.3 core context
+(OpenGL 4.1 on macOS), while the Emscripten backend requests OpenGL ES 3.0
+through WebGL 2. Function loading deliberately stays outside LWL:
 `lwl_gl_get_proc_address()` supplies addresses to any loader the application
 chooses. Software-framebuffer applications can ignore the OpenGL API. Destroy
 an OpenGL context before destroying the window that owns it.

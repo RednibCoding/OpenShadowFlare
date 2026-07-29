@@ -39,6 +39,13 @@ static int check_pcm_conversion(void) {
   return result;
 }
 
+static void *unavailable_gl_function(
+    const char *name, void *user_data) {
+  (void) name;
+  (void) user_data;
+  return NULL;
+}
+
 int main(void) {
   if (!check_rgba_layout()) {
     fprintf(stderr, "LWL framebuffer is not byte-ordered RGBA.\n");
@@ -52,6 +59,14 @@ int main(void) {
   if (lgl_load(NULL, NULL) ||
       strstr(lgl_last_error(), "callback") == NULL) {
     fprintf(stderr, "LGL rejected-loader diagnostics failed.\n");
+    return 1;
+  }
+  if (lgl_load_for_api(
+          unavailable_gl_function,
+          NULL,
+          (LglApi) 99) ||
+      strstr(lgl_last_error(), "Unknown") == NULL) {
+    fprintf(stderr, "LGL rejected-API diagnostics failed.\n");
     return 1;
   }
   return 0;

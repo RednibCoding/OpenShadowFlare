@@ -477,6 +477,7 @@ bool lwl_exe_path(char *buf, int size) {
 LwlGlConfig lwl_gl_config_default(void) {
   LwlGlConfig config;
   memset(&config, 0, sizeof(config));
+  config.api = LWL_GL_API_ES;
   config.major_version = 3;
   config.minor_version = 0;
   config.depth_bits = 24;
@@ -488,18 +489,27 @@ LwlGlConfig lwl_gl_config_default(void) {
 }
 
 LwlGlContext *lwl_gl_context_create(LwlWindow *window,
-                                    const LwlGlConfig *config) {
+                                    const LwlGlConfig *requested_config) {
   EmscriptenWebGLContextAttributes attributes;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE handle;
+  LwlGlConfig config;
   LwlGlContext *context;
-  (void) window;
+
+  if (!window) {
+    return NULL;
+  }
+  config = requested_config ? *requested_config : lwl_gl_config_default();
+  if (config.api != LWL_GL_API_ES ||
+      config.major_version != 3 || config.minor_version != 0) {
+    return NULL;
+  }
 
   emscripten_webgl_init_context_attributes(&attributes);
   attributes.majorVersion = 2;
   attributes.minorVersion = 0;
   attributes.alpha = EM_FALSE;
-  attributes.depth = config && config->depth_bits > 0 ? EM_TRUE : EM_FALSE;
-  attributes.stencil = config && config->stencil_bits > 0 ? EM_TRUE : EM_FALSE;
+  attributes.depth = config.depth_bits > 0 ? EM_TRUE : EM_FALSE;
+  attributes.stencil = config.stencil_bits > 0 ? EM_TRUE : EM_FALSE;
   attributes.antialias = EM_FALSE;
   attributes.premultipliedAlpha = EM_TRUE;
   attributes.preserveDrawingBuffer = EM_FALSE;

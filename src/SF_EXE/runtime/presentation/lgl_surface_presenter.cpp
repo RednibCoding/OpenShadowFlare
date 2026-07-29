@@ -1,21 +1,17 @@
-#include "lgl_surface_presenter.hpp"
+#include "runtime/presentation/surface_presenter.hpp"
 
 #include "lgl.h"
+#include "lwl.h"
 
 #include <cstddef>
+#include <cstdio>
+#include <memory>
+#include <string>
 #include <vector>
 
 namespace {
 
-#if defined(__EMSCRIPTEN__)
-#define OSF_GLSL_VERSION "#version 300 es\n"
-#define OSF_GLSL_FRAGMENT_PRECISION "precision highp float;\n"
-#else
-#define OSF_GLSL_VERSION "#version 330 core\n"
-#define OSF_GLSL_FRAGMENT_PRECISION ""
-#endif
-
-constexpr const char* kVertexShader = OSF_GLSL_VERSION R"(
+constexpr const char* kVertexShaderBody = R"(
 out vec2 texture_coordinate;
 
 void main() {
@@ -34,8 +30,7 @@ void main() {
 }
 )";
 
-constexpr const char* kFragmentShader =
-    OSF_GLSL_VERSION OSF_GLSL_FRAGMENT_PRECISION R"(
+constexpr const char* kFragmentShaderBody = R"(
 in vec2 texture_coordinate;
 out vec4 fragment_color;
 uniform sampler2D surface_texture;
@@ -53,18 +48,81 @@ void setError(std::string* error, const char* message) {
     }
 }
 
-}  // namespace
+void* loadOpenGlFunction(const char* name, void*) {
+    return lwl_gl_get_proc_address(name);
+}
 
-bool LglSurfacePresenter::initialize(std::string* error) {
+class LglSurfacePresenter final
+    : public osf::runtime::SurfacePresenter {
+public:
+    ~LglSurfacePresenter() override {
+        shutdown();
+    }
+
+    bool initialize(
+        LwlWindow* window,
+        std::string* error) override;
+    void present(osf::gapi::SurfaceView surface) override;
+
+private:
+    void shutdown();
+    unsigned int compileShader(
+        unsigned int type,
+        const char* source,
+        std::string* error);
+
+    LwlWindow* window_ = nullptr;
+    LwlGlContext* context_ = nullptr;
+    unsigned int program_ = 0;
+    unsigned int texture_ = 0;
+    unsigned int vertex_array_ = 0;
+    std::int32_t texture_width_ = 0;
+    std::int32_t texture_height_ = 0;
+};
+
+bool LglSurfacePresenter::initialize(
+    LwlWindow* window,
+    std::string* error) {
     shutdown();
 
+    const LwlGlConfig config = lwl_gl_config_default();
+    context_ = lwl_gl_context_create(window, &config);
+    if (!context_ || !lwl_gl_context_make_current(context_)) {
+        setError(error, "Could not create the requested graphics context.");
+        shutdown();
+        return false;
+    }
+
+    const LglApi api = config.api == LWL_GL_API_ES
+        ? LGL_API_OPENGL_ES
+        : LGL_API_DESKTOP_OPENGL;
+    if (!lgl_load_for_api(loadOpenGlFunction, nullptr, api)) {
+        setError(error, lgl_last_error());
+        shutdown();
+        return false;
+    }
+
+    const char* version = api == LGL_API_OPENGL_ES
+        ? "#version 300 es\n"
+        : "#version 330 core\n";
+    const char* fragmentPrecision = api == LGL_API_OPENGL_ES
+        ? "precision highp float;\n"
+        : "";
+    const std::string vertexSource =
+        std::string(version) + kVertexShaderBody;
+    const std::string fragmentSource =
+        std::string(version) + fragmentPrecision +
+        kFragmentShaderBody;
+
     const unsigned int vertex =
-        compileShader(LGL_VERTEX_SHADER, kVertexShader, error);
+        compileShader(
+            LGL_VERTEX_SHADER, vertexSource.c_str(), error);
     if (vertex == 0) {
         return false;
     }
     const unsigned int fragment =
-        compileShader(LGL_FRAGMENT_SHADER, kFragmentShader, error);
+        compileShader(
+            LGL_FRAGMENT_SHADER, fragmentSource.c_str(), error);
     if (fragment == 0) {
         lglDeleteShader(vertex);
         return false;
@@ -105,6 +163,13 @@ bool LglSurfacePresenter::initialize(std::string* error) {
     lglPixelStorei(LGL_UNPACK_ALIGNMENT, 1);
     lglGenVertexArrays(1, &vertex_array_);
 
+    window_ = window;
+    if (!lwl_gl_context_set_swap_interval(context_, 1)) {
+        std::fprintf(
+            stderr,
+            "Warning: display synchronization is unavailable.\n");
+    }
+
     if (error) {
         error->clear();
     }
@@ -126,12 +191,18 @@ void LglSurfacePresenter::shutdown() {
     program_ = 0;
     texture_width_ = 0;
     texture_height_ = 0;
+    lgl_reset();
+    lwl_gl_context_destroy(context_);
+    context_ = nullptr;
+    window_ = nullptr;
 }
 
 void LglSurfacePresenter::present(
-    osf::gapi::SurfaceView surface,
-    std::int32_t window_width,
-    std::int32_t window_height) {
+    osf::gapi::SurfaceView surface) {
+    int window_width = 0;
+    int window_height = 0;
+    lwl_window_get_size(
+        window_, &window_width, &window_height);
     static_assert(
         sizeof(osf::gapi::Color) == 4,
         "GAPI colors must be tightly packed RGBA bytes.");
@@ -188,6 +259,7 @@ void LglSurfacePresenter::present(
     lglUseProgram(program_);
     lglBindVertexArray(vertex_array_);
     lglDrawArrays(LGL_TRIANGLES, 0, 3);
+    lwl_gl_context_swap_buffers(context_);
 }
 
 unsigned int LglSurfacePresenter::compileShader(
@@ -222,4 +294,11 @@ unsigned int LglSurfacePresenter::compileShader(
     }
     lglDeleteShader(shader);
     return 0;
+}
+
+}  // namespace
+
+std::unique_ptr<osf::runtime::SurfacePresenter>
+osf::runtime::createSurfacePresenter() {
+    return std::make_unique<LglSurfacePresenter>();
 }

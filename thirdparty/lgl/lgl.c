@@ -51,6 +51,7 @@ LglBindVertexArrayProc lglBindVertexArray;
 LglDrawArraysProc lglDrawArrays;
 
 static bool g_loaded;
+static LglApi g_api;
 static int g_major_version;
 static int g_minor_version;
 static char g_error[128];
@@ -85,6 +86,7 @@ void lgl_reset(void) {
   lglBindVertexArray = NULL;
   lglDrawArrays = NULL;
   g_loaded = false;
+  g_api = LGL_API_DESKTOP_OPENGL;
   g_major_version = 0;
   g_minor_version = 0;
   g_error[0] = '\0';
@@ -113,11 +115,22 @@ static bool load_function(
 }
 
 bool lgl_load(LglLoadProc load, void *user_data) {
+  return lgl_load_for_api(
+    load, user_data, LGL_API_DESKTOP_OPENGL);
+}
+
+bool lgl_load_for_api(
+    LglLoadProc load, void *user_data, LglApi api) {
   char error[sizeof(g_error)];
 
   lgl_reset();
   if (load == NULL) {
     snprintf(g_error, sizeof(g_error), "No OpenGL load callback was supplied.");
+    return false;
+  }
+  if (api != LGL_API_DESKTOP_OPENGL &&
+      api != LGL_API_OPENGL_ES) {
+    snprintf(g_error, sizeof(g_error), "Unknown OpenGL API.");
     return false;
   }
 
@@ -213,28 +226,38 @@ bool lgl_load(LglLoadProc load, void *user_data) {
 
   lglGetIntegerv(LGL_MAJOR_VERSION, &g_major_version);
   lglGetIntegerv(LGL_MINOR_VERSION, &g_minor_version);
-#if defined(__EMSCRIPTEN__)
-  if (g_major_version < 3) {
-#else
-  if (g_major_version < 3 ||
-      (g_major_version == 3 && g_minor_version < 3)) {
-#endif
+  if ((api == LGL_API_OPENGL_ES && g_major_version < 3) ||
+      (api == LGL_API_DESKTOP_OPENGL &&
+       (g_major_version < 3 ||
+        (g_major_version == 3 && g_minor_version < 3)))) {
     int major_version = g_major_version;
     int minor_version = g_minor_version;
     lgl_reset();
-    snprintf(
-      g_error, sizeof(g_error),
-      "OpenGL 3.3 is required; the active context is %d.%d.",
-      major_version, minor_version);
+    if (api == LGL_API_OPENGL_ES) {
+      snprintf(
+        g_error, sizeof(g_error),
+        "OpenGL ES 3.0 is required; the active context is %d.%d.",
+        major_version, minor_version);
+    } else {
+      snprintf(
+        g_error, sizeof(g_error),
+        "OpenGL 3.3 is required; the active context is %d.%d.",
+        major_version, minor_version);
+    }
     return false;
   }
 
+  g_api = api;
   g_loaded = true;
   return true;
 }
 
 bool lgl_is_loaded(void) {
   return g_loaded;
+}
+
+LglApi lgl_api(void) {
+  return g_api;
 }
 
 int lgl_version_major(void) {

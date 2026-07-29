@@ -146,6 +146,46 @@ foreach(source_file IN LISTS portable_game_sources)
   endif()
 endforeach()
 
+file(
+  GLOB_RECURSE runtime_sources
+  LIST_DIRECTORIES false
+  "${portable_root}/runtime/*.cpp"
+  "${portable_root}/runtime/*.hpp"
+)
+
+foreach(source_file IN LISTS runtime_sources)
+  file(RELATIVE_PATH relative_source "${portable_root}" "${source_file}")
+  file(READ "${source_file}" source_text)
+
+  if(NOT relative_source MATCHES "^runtime/platform/")
+    if(source_text MATCHES
+        "#[ \t]*include[ \t]*[<\"](emscripten[^>\"]*|jni\\.h|android/[^>\"]*)[>\"]")
+      message(FATAL_ERROR
+        "Platform SDK header escaped runtime/platform: ${source_file}")
+    endif()
+    if(source_text MATCHES
+        "(^|[^A-Za-z0-9_])(__EMSCRIPTEN__|__ANDROID__|ANDROID|JNIEnv|_WIN32|WINAPI|HWND|__ORBIS__|__PROSPERO__|__NX__|NN_NINTENDO_SDK)([^A-Za-z0-9_]|$)")
+      message(FATAL_ERROR
+        "Platform-specific code escaped runtime/platform: ${source_file}")
+    endif()
+  endif()
+
+  if(NOT relative_source MATCHES "^runtime/presentation/")
+    if(source_text MATCHES
+        "#[ \t]*include[ \t]*[<\"]lgl\\.h[>\"]|(^|[^A-Za-z0-9_])(LglSurfacePresenter|LwlGlContext|lgl_)")
+      message(FATAL_ERROR
+        "Presentation backend escaped runtime/presentation: ${source_file}")
+    endif()
+  endif()
+endforeach()
+
+file(READ "${portable_root}/CMakeLists.txt" executable_cmake)
+if(executable_cmake MATCHES
+    "(_lal_web_mix|-sEXPORTED_|-sMODULARIZE|-sENVIRONMENT)")
+  message(FATAL_ERROR
+    "Platform or library linker policy escaped the CMake adapters")
+endif()
+
 file(READ "${portable_root}/runtime/main.cpp" main_source)
 if(main_source MATCHES "class[ \t\r\n]+Runtime")
   message(FATAL_ERROR
