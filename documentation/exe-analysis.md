@@ -138,12 +138,14 @@ embedding `f00_01`, (`89898`, `2811`), direction 3, and music index 0 in
 `WorldScene`.
 
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
-collect the current display objects under the pointer. This is a per-pixel
-test against the visible NJP parts selected by the current CAF frame, not a
-loose rectangle around the actor. The candidates keep their normal world
-depth order and are grouped by the five priorities stored in `SFlare.Cfg`.
-With the retail defaults, a ground item wins over a person when their opaque
-pixels overlap.
+collect the current display objects inside the configured pointer square. A
+candidate must have an opaque pixel from a visible NJP part in that inclusive
+square; this is not a loose actor-bounds test. Turning the range option off
+reduces the test to the exact cursor tip. Within one priority group, an exact
+tip hit wins first and the nearest candidate wins otherwise. The candidates
+also keep their normal world depth order and are grouped by the five
+priorities stored in `SFlare.Cfg`. With the retail defaults, a ground item
+wins over a person when both are in range.
 
 `0x0040ee70` scans that result from front to back. For a person it projects the
 actor's feet, subtracts the MCT label height, draws a half-transparent black

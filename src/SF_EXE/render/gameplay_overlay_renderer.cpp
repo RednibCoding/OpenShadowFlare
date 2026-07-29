@@ -7,7 +7,6 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -180,21 +179,14 @@ void drawPointerRange(
     const WorldScene& world) {
     const WorldPointerConfiguration& configuration =
         world.pointerConfiguration();
-    constexpr std::array<std::int32_t, 5> half_sizes{{
-        0, 12, 16, 24, 48,
-    }};
     if (!world.pointerActive() ||
         !configuration.range_enabled ||
         world.conversationActive() ||
-        configuration.range < 0 ||
-        static_cast<std::size_t>(configuration.range) >=
-            half_sizes.size() ||
         world.pointerScreenY() >= 408) {
         return;
     }
     const std::int32_t half_size =
-        half_sizes[static_cast<std::size_t>(
-            configuration.range)];
+        worldPointerHalfSize(configuration);
     if (half_size <= 0) {
         return;
     }

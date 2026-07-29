@@ -265,13 +265,15 @@ with another cursor. LWL already supplies that native arrow on every desktop
 platform. What changes during play is the feedback drawn into the world, not
 the pointer shape.
 
-That feedback is live now too. The current CAF frame is tested against opaque
-NJP pixels, candidates retain their normal world depth, and the five
-configurable retail click priorities choose between overlapping targets.
-People keep their pale tint and nameplate. Ground items now receive the same
-tint, their `Item.Ibn` name (or quantity plus `Gold`), and the original yellow
-target square. Empty ground and people use the original white square at their
-different strengths. Conversations suppress it.
+That feedback is live now too. The configured range square is tested against
+opaque NJP pixels in the current CAF frame. An exact cursor-tip hit wins
+inside a priority group, then the nearest candidate, while the five
+configurable retail priorities choose between target types. Disabling the
+range restores exact-tip picking. People keep their pale tint and nameplate.
+Ground items now receive the same tint, their `Item.Ibn` name (or quantity
+plus `Gold`), and the original yellow target square. Empty ground and people
+use the original white square at their different strengths. Conversations
+suppress it.
 
 The remaining layers are:
 
@@ -308,9 +310,8 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - finish actor-to-actor collision for NPC and enemy movement (the player
   already treats live town actors as blockers);
 - reproduce the original update order and off-screen behavior;
-- extend the reconstructed pointer hover, pale actor tint, nameplates, and
-  selection path from Ostare to every dynamic actor and the retail interaction
-  range;
+- extend pointer hover, pale tint, nameplates, and selection from people and
+  ground items to the remaining dynamic actor classes;
 - verify the town population and positions against the retail game.
 
 That path now builds all seven Remote Town people records and resolves their

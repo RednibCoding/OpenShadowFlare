@@ -383,12 +383,67 @@ bool testWorldPointerPriority() {
     configuration.range = 99;
     pointer.configure(configuration);
     pointer.update(30, 40, candidates);
-    return check(
+    if (!check(
         pointer.target().kind ==
                 osf::WorldPointerTargetKind::npc &&
             pointer.target().id == 10 &&
             pointer.configuration().range == 4,
-        "The configured retail click priority was not applied.");
+        "The configured retail click priority was not applied.")) {
+        return false;
+    }
+
+    std::vector<osf::WorldPointerCandidate>
+        ranged_candidates{
+            {
+                {osf::WorldPointerTargetKind::npc, 30},
+                {0, {100, 100}, {}, 0},
+                0,
+                false,
+                100,
+            },
+            {
+                {osf::WorldPointerTargetKind::npc, 31},
+                {0, {100, 100}, {}, 0},
+                0,
+                false,
+                25,
+            },
+        };
+    osf::WorldPointer ranged_pointer;
+    ranged_pointer.update(30, 40, ranged_candidates);
+    if (!check(
+            ranged_pointer.target().id == 31,
+            "The nearest range-only pointer candidate did not "
+            "win its priority group.")) {
+        return false;
+    }
+    ranged_candidates.push_back({
+        {osf::WorldPointerTargetKind::npc, 32},
+        {0, {100, 100}, {}, 0},
+        0,
+        true,
+        400,
+    });
+    ranged_pointer.update(30, 40, ranged_candidates);
+    if (!check(
+            ranged_pointer.target().id == 32,
+            "An exact cursor hit did not win over nearer "
+            "range-only candidates.")) {
+        return false;
+    }
+
+    osf::WorldPointerConfiguration range_configuration;
+    if (!check(
+            osf::worldPointerHalfSize(
+                range_configuration) == 16,
+            "The default retail click range has the wrong size.")) {
+        return false;
+    }
+    range_configuration.range_enabled = false;
+    return check(
+        osf::worldPointerHalfSize(range_configuration) == 0,
+        "Disabling the click range did not restore exact-tip "
+        "picking.");
 }
 
 bool testRemoteTownFixture() {

@@ -33,7 +33,12 @@ struct WorldPointerCandidate {
     WorldPointerTarget target;
     DisplayOrderEntry display;
     std::int32_t retail_type = -1;
+    bool exact_hit = false;
+    std::int64_t pointer_distance_squared = 0;
 };
+
+std::int32_t worldPointerHalfSize(
+    const WorldPointerConfiguration& configuration);
 
 class WorldPointer {
 public:

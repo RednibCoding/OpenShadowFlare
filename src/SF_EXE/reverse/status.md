@@ -80,12 +80,14 @@ band. Retail registers the standard Windows arrow once and never calls
 `SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
 
 World feedback now follows `0x004165d0`, `0x0040ee70`, and `0x00416bb0`.
-Portable `RKC_RPGSCRN` tests the opaque pixels of each current visible CAF/NJP
-cell, then `WorldPointer` keeps retail display depth and applies the five
-priorities from `SFlare.Cfg`. The default priority selects an item over a
-person where their sprites overlap. The range renderer uses exact half-sizes
-0, 12, 16, 24, and 48, with strength 100 over empty ground and 300 over a
-target. PEOPLE targets are white and item targets are yellow.
+Portable `RKC_RPGSCRN` tests the configured inclusive square against the
+opaque pixels of each current visible CAF/NJP cell. `WorldPointer` prefers an
+exact tip hit, otherwise the nearest candidate in a priority group, while
+retaining retail display depth and the five priorities from `SFlare.Cfg`.
+Disabling the range reduces selection to the exact cursor tip. The default
+priority selects an item over a person. The range renderer uses the same exact
+half-sizes 0, 12, 16, 24, and 48, with strength 100 over empty ground and 300
+over a target. PEOPLE targets are white and item targets are yellow.
 
 Ground items use their `Item.Ibn` name, while money shows its quantity followed
 by `Gold`. Their visible part receives the same +300 pale tint as a selected

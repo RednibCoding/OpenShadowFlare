@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <utility>
 
 namespace osf {
@@ -22,6 +23,21 @@ std::int32_t priorityIndex(std::int32_t retail_type) {
 }
 
 }  // namespace
+
+std::int32_t worldPointerHalfSize(
+    const WorldPointerConfiguration& configuration) {
+    constexpr std::array<std::int32_t, 5> half_sizes{{
+        0, 12, 16, 24, 48,
+    }};
+    if (!configuration.range_enabled ||
+        configuration.range < 0 ||
+        static_cast<std::size_t>(configuration.range) >=
+            half_sizes.size()) {
+        return 0;
+    }
+    return half_sizes[static_cast<std::size_t>(
+        configuration.range)];
+}
 
 void WorldPointer::configure(
     const WorldPointerConfiguration& configuration) {
@@ -64,6 +80,10 @@ void WorldPointer::update(
     sortDisplayObjects(order);
 
     std::int32_t best_priority = -1;
+    bool best_exact_hit = false;
+    std::int64_t best_distance =
+        std::numeric_limits<std::int64_t>::max();
+    bool has_target = false;
     for (const DisplayOrderEntry& entry : order) {
         const WorldPointerCandidate& candidate =
             candidates[entry.source_index];
@@ -77,12 +97,26 @@ void WorldPointer::update(
         const std::int32_t priority =
             configuration_.click_priority[
                 static_cast<std::size_t>(index)];
-        // Retail inserts lower priority groups first, then scans the
-        // resulting display list backwards. A later draw wins ties.
-        if (priority >= best_priority) {
-            best_priority = priority;
-            target_ = candidate.target;
+        const bool better =
+            !has_target ||
+            priority > best_priority ||
+            (priority == best_priority &&
+             (candidate.exact_hit != best_exact_hit
+                  ? candidate.exact_hit
+                  : candidate.pointer_distance_squared <=
+                        best_distance));
+        if (!better) {
+            continue;
         }
+        // Within a retail priority group, a sprite directly below the
+        // cursor wins. Otherwise the nearest actor or item in the
+        // configured range wins. A later draw settles exact ties.
+        has_target = true;
+        best_priority = priority;
+        best_exact_hit = candidate.exact_hit;
+        best_distance =
+            candidate.pointer_distance_squared;
+        target_ = candidate.target;
     }
 }
 

@@ -1,4 +1,5 @@
 #include "gapi/gapi.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "render/conversation_layout.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
@@ -68,7 +69,7 @@ bool findNpcPointerPoint(
     return false;
 }
 
-bool findGroundItemPointerPoint(
+bool findGroundItemRangeOnlyPoint(
     osf::WorldScene& world,
     std::int32_t item_id,
     osf::ScreenPosition& point) {
@@ -81,14 +82,37 @@ bool findGroundItemPointerPoint(
     if (found == world.groundItems().end()) {
         return false;
     }
+    const osf::ItemWorldResource* resource =
+        world.itemWorldResource(found->resource_id);
+    if (!resource) {
+        return false;
+    }
     const osf::ScreenPosition anchor =
         osf::calculateRealPosition(found->position);
-    for (std::int32_t y = -64; y <= 32; ++y) {
-        for (std::int32_t x = -64; x <= 64; ++x) {
+    for (std::int32_t y = -96; y <= 64; ++y) {
+        for (std::int32_t x = -96; x <= 96; ++x) {
             point = {
                 anchor.x - world.cameraScreenX() + x,
                 anchor.y - world.cameraScreenY() + y,
             };
+            const bool exact_hit =
+                osf::displayAnimationContainsPoint(
+                    resource->animation(),
+                    resource->patterns(),
+                    found->position,
+                    found->animation_chart,
+                    8,
+                    0,
+                    [](std::size_t) {
+                        return true;
+                    },
+                    world.cameraScreenX(),
+                    world.cameraScreenY(),
+                    point,
+                    found->height * 20 / 100);
+            if (exact_hit) {
+                continue;
+            }
             world.updatePointerHover(point.x, point.y);
             if (world.hoveredGroundItemId() == item_id) {
                 return true;
@@ -949,13 +973,30 @@ bool testRetailRemoteTown() {
         world.groundItems().front().id;
     osf::ScreenPosition short_sword_pointer;
     if (!check(
-            findGroundItemPointerPoint(
+            findGroundItemRangeOnlyPoint(
                 world,
                 short_sword_id,
                 short_sword_pointer),
-            "The Short Sword has no opaque retail pointer cell.")) {
+            "The Short Sword was not selectable through the "
+            "configured click-range square.")) {
         return false;
     }
+    osf::WorldPointerConfiguration pointer_configuration =
+        world.pointerConfiguration();
+    pointer_configuration.range_enabled = false;
+    world.configurePointer(pointer_configuration);
+    world.updatePointerHover(
+        short_sword_pointer.x, short_sword_pointer.y);
+    if (!check(
+            world.hoveredGroundItemId() != short_sword_id,
+            "Disabling the click range did not restore exact-tip "
+            "ground-item picking.")) {
+        return false;
+    }
+    pointer_configuration.range_enabled = true;
+    world.configurePointer(pointer_configuration);
+    world.updatePointerHover(
+        short_sword_pointer.x, short_sword_pointer.y);
     renderer.item_calls.clear();
     renderer.text_calls.clear();
     renderer.rectangles.clear();

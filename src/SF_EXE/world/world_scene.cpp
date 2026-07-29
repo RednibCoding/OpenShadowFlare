@@ -861,22 +861,47 @@ WorldScene::pointerCandidatesAtScreenPosition(
     const std::int32_t camera_x = cameraScreenX();
     const std::int32_t camera_y = cameraScreenY();
     const ScreenPosition point{screen_x, screen_y};
+    const std::int32_t half_size =
+        worldPointerHalfSize(pointer_.configuration());
+    const DisplayHitRectangle hit_rectangle{
+        screen_x - half_size,
+        screen_y - half_size,
+        screen_x + half_size,
+        screen_y + half_size,
+    };
+    const WorldPosition pointer_world =
+        calculateWorldPosition({
+            camera_x + screen_x,
+            camera_y + screen_y,
+        });
+    const auto pointerDistanceSquared =
+        [pointer_world](WorldPosition position) {
+            const std::int64_t delta_x =
+                static_cast<std::int64_t>(position.x) -
+                pointer_world.x;
+            const std::int64_t delta_y =
+                static_cast<std::int64_t>(position.y) -
+                pointer_world.y;
+            return delta_x * delta_x + delta_y * delta_y;
+        };
     std::vector<WorldPointerCandidate> candidates;
     candidates.reserve(npcs_.size() + ground_items_.size());
     for (const NpcActor& npc : npcs_) {
-        if (!displayAnimationContainsPoint(
+        const auto part_enabled =
+            [&npc](std::size_t part) {
+                return npc.partEnabled(part);
+            };
+        if (!displayAnimationIntersectsRectangle(
                 npc.animation(),
                 npc.patterns(),
                 npc.position(),
                 npc.animationChart(),
                 npc.direction(),
                 npc.animationFrame(),
-                [&npc](std::size_t part) {
-                    return npc.partEnabled(part);
-                },
+                part_enabled,
                 camera_x,
                 camera_y,
-                point)) {
+                hit_rectangle)) {
             continue;
         }
         candidates.push_back({
@@ -888,26 +913,41 @@ WorldScene::pointerCandidatesAtScreenPosition(
                 0,
             },
             0,
+            displayAnimationContainsPoint(
+                npc.animation(),
+                npc.patterns(),
+                npc.position(),
+                npc.animationChart(),
+                npc.direction(),
+                npc.animationFrame(),
+                part_enabled,
+                camera_x,
+                camera_y,
+                point),
+            pointerDistanceSquared(npc.position()),
         });
     }
     for (const GroundItem& item : ground_items_) {
         const ItemWorldResource* resource =
             itemWorldResource(item.resource_id);
+        const auto part_enabled = [](std::size_t) {
+            return true;
+        };
+        const std::int32_t display_height =
+            item.height * kRetailHeightScale / 100;
         if (!resource ||
-            !displayAnimationContainsPoint(
+            !displayAnimationIntersectsRectangle(
                 resource->animation(),
                 resource->patterns(),
                 item.position,
                 item.animation_chart,
                 8,
                 0,
-                [](std::size_t) {
-                    return true;
-                },
+                part_enabled,
                 camera_x,
                 camera_y,
-                point,
-                item.height * kRetailHeightScale / 100)) {
+                hit_rectangle,
+                display_height)) {
             continue;
         }
         candidates.push_back({
@@ -919,6 +959,19 @@ WorldScene::pointerCandidatesAtScreenPosition(
                 0,
             },
             3,
+            displayAnimationContainsPoint(
+                resource->animation(),
+                resource->patterns(),
+                item.position,
+                item.animation_chart,
+                8,
+                0,
+                part_enabled,
+                camera_x,
+                camera_y,
+                point,
+                display_height),
+            pointerDistanceSquared(item.position),
         });
     }
     return candidates;

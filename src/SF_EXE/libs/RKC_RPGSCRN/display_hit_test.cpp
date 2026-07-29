@@ -35,13 +35,15 @@ std::uint8_t pixelIndex(
 
 }  // namespace
 
-bool displayPatternContainsPoint(
+bool displayPatternIntersectsRectangle(
     const gapi::NjpImage& image,
     std::size_t pattern_index,
     ScreenPosition anchor,
-    ScreenPosition point,
+    DisplayHitRectangle rectangle,
     std::int32_t height) {
-    if (pattern_index >= image.patterns().size()) {
+    if (pattern_index >= image.patterns().size() ||
+        rectangle.left > rectangle.right ||
+        rectangle.top > rectangle.bottom) {
         return false;
     }
     const gapi::NjpPattern& pattern =
@@ -71,27 +73,57 @@ bool displayPatternContainsPoint(
             anchor.x + pattern_part.x;
         const std::int32_t top =
             anchor.y + pattern_part.y - height;
-        if (width <= 0 || part_height <= 0 ||
-            point.x < left || point.x >= left + width ||
-            point.y < top || point.y >= top + part_height) {
+        if (width <= 0 || part_height <= 0) {
             continue;
         }
-        const std::int32_t source_x =
-            static_cast<std::int32_t>(
-                static_cast<std::int64_t>(point.x - left) *
-                part.width / width);
-        const std::int32_t source_y =
-            static_cast<std::int32_t>(
-                static_cast<std::int64_t>(point.y - top) *
-                part.height / part_height);
-        if (pixelIndex(part, source_x, source_y) != 0) {
-            return true;
+        const std::int32_t overlap_left =
+            std::max(left, rectangle.left);
+        const std::int32_t overlap_top =
+            std::max(top, rectangle.top);
+        const std::int32_t overlap_right =
+            std::min(left + width - 1, rectangle.right);
+        const std::int32_t overlap_bottom =
+            std::min(top + part_height - 1, rectangle.bottom);
+        for (std::int32_t y = overlap_top;
+             y <= overlap_bottom;
+             ++y) {
+            const std::int32_t source_y =
+                static_cast<std::int32_t>(
+                    static_cast<std::int64_t>(y - top) *
+                    part.height / part_height);
+            for (std::int32_t x = overlap_left;
+                 x <= overlap_right;
+                 ++x) {
+                const std::int32_t source_x =
+                    static_cast<std::int32_t>(
+                        static_cast<std::int64_t>(
+                            x - left) *
+                        part.width / width);
+                if (pixelIndex(
+                        part, source_x, source_y) != 0) {
+                    return true;
+                }
+            }
         }
     }
     return false;
 }
 
-bool displayAnimationContainsPoint(
+bool displayPatternContainsPoint(
+    const gapi::NjpImage& image,
+    std::size_t pattern_index,
+    ScreenPosition anchor,
+    ScreenPosition point,
+    std::int32_t height) {
+    return displayPatternIntersectsRectangle(
+        image,
+        pattern_index,
+        anchor,
+        {point.x, point.y, point.x, point.y},
+        height);
+}
+
+bool displayAnimationIntersectsRectangle(
     const gapi::CafAnimation& animation,
     const gapi::NjpImage& patterns,
     WorldPosition position,
@@ -101,7 +133,7 @@ bool displayAnimationContainsPoint(
     const DisplayPartEnabled& part_enabled,
     std::int32_t camera_x,
     std::int32_t camera_y,
-    ScreenPosition point,
+    DisplayHitRectangle rectangle,
     std::int32_t height) {
     if (animation.charts().empty()) {
         return false;
@@ -156,17 +188,43 @@ bool displayAnimationContainsPoint(
             cell.pattern_index < 0) {
             continue;
         }
-        if (displayPatternContainsPoint(
+        if (displayPatternIntersectsRectangle(
                 patterns,
                 static_cast<std::size_t>(
                     cell.pattern_index),
                 anchor,
-                point,
+                rectangle,
                 height)) {
             return true;
         }
     }
     return false;
+}
+
+bool displayAnimationContainsPoint(
+    const gapi::CafAnimation& animation,
+    const gapi::NjpImage& patterns,
+    WorldPosition position,
+    std::int32_t chart_index,
+    std::int32_t direction_index,
+    std::int32_t animation_frame,
+    const DisplayPartEnabled& part_enabled,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    ScreenPosition point,
+    std::int32_t height) {
+    return displayAnimationIntersectsRectangle(
+        animation,
+        patterns,
+        position,
+        chart_index,
+        direction_index,
+        animation_frame,
+        part_enabled,
+        camera_x,
+        camera_y,
+        {point.x, point.y, point.x, point.y},
+        height);
 }
 
 }  // namespace osf

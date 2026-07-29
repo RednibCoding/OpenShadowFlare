@@ -285,7 +285,17 @@ bool testNjpAndSoftwareBackend() {
                 osf::displayPatternContainsPoint(
                     image, 0, {10, 20}, {11, 21}) &&
                 !osf::displayPatternContainsPoint(
-                    image, 0, {10, 20}, {12, 21}),
+                    image, 0, {10, 20}, {12, 21}) &&
+                osf::displayPatternIntersectsRectangle(
+                    image,
+                    0,
+                    {10, 20},
+                    {9, 19, 10, 20}) &&
+                !osf::displayPatternIntersectsRectangle(
+                    image,
+                    0,
+                    {10, 20},
+                    {8, 18, 9, 19}),
             "RKC_RPGSCRN display-object pixel hit testing "
             "differs from the rendered NJP cells.")) {
         return false;
