@@ -1,4 +1,5 @@
 #include "items/item_database.hpp"
+#include "items/player_inventory.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -143,6 +144,34 @@ bool testRetailDatabase() {
 #endif
 }
 
+bool testPlayerInventory() {
+    osf::PlayerInventory inventory;
+    if (!check(
+            inventory.add(0, 0) &&
+                inventory.items().size() == 1 &&
+                inventory.items()[0].category == 0 &&
+                inventory.items()[0].definition_id == 0 &&
+                inventory.items()[0].quantity == 1,
+            "An ordinary pickup did not enter player inventory.")) {
+        return false;
+    }
+
+    inventory.clear();
+    if (!check(
+            inventory.add(4, 0, 15000) &&
+                inventory.items().size() == 2 &&
+                inventory.items()[0].quantity == 10000 &&
+                inventory.items()[1].quantity == 5000 &&
+                inventory.add(4, 0, 5000) &&
+                inventory.items().size() == 2 &&
+                inventory.items()[1].quantity == 10000,
+            "Retail gold stacks were not filled to 10000.")) {
+        return false;
+    }
+
+    return true;
+}
+
 }  // namespace
 
 int main() {
@@ -150,7 +179,8 @@ int main() {
     return check(
                !database.decode({}),
                "An empty item database was accepted.") &&
-                   testRetailDatabase()
+                   testRetailDatabase() &&
+                   testPlayerInventory()
                ? 0
                : 1;
 }

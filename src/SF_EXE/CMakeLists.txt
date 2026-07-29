@@ -41,6 +41,7 @@ add_library(
   osf_items STATIC
   items/item_database.cpp
   items/item_world_resource.cpp
+  items/player_inventory.cpp
 )
 add_library(OpenShadowFlare::Items ALIAS osf_items)
 osf_configure_game_library(osf_items)
@@ -96,6 +97,7 @@ add_library(
   world/quest_state.cpp
   world/scenario_data.cpp
   world/script/scenario_script_runtime.cpp
+  world/world_pointer.cpp
   world/world_scene.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)

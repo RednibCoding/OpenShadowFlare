@@ -6,6 +6,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
 #include "items/item_world_resource.hpp"
+#include "items/player_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "ground_item.hpp"
 #include "npc_actor.hpp"
@@ -14,6 +15,7 @@
 #include "quest_state.hpp"
 #include "scenario_data.hpp"
 #include "script/scenario_script_runtime.hpp"
+#include "world_pointer.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -44,6 +46,7 @@ public:
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const ItemDatabase& itemDatabase() const;
+    const PlayerInventory& playerInventory() const;
     const PlayerData& playerData() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
@@ -56,11 +59,18 @@ public:
     void updatePointerHover(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    void configurePointer(
+        const WorldPointerConfiguration& configuration);
     bool commandWorldInteraction(
         std::int32_t screen_x,
         std::int32_t screen_y);
     bool interactionPending() const;
     std::int32_t hoveredNpcId() const;
+    std::int32_t hoveredGroundItemId() const;
+    std::int32_t pointerScreenX() const;
+    std::int32_t pointerScreenY() const;
+    bool pointerActive() const;
+    const WorldPointerConfiguration& pointerConfiguration() const;
     bool conversationActive() const;
     std::int32_t conversationActorId() const;
     std::int32_t conversationMessageId() const;
@@ -103,7 +113,10 @@ private:
         std::int32_t& value) const;
     void showScriptMessage(
         const script::MessageEvent& message);
-    std::int32_t npcIndexAtScreenPosition(
+    WorldPointerTarget pointerTargetAtScreenPosition(
+        std::int32_t screen_x,
+        std::int32_t screen_y) const;
+    std::vector<WorldPointerCandidate> pointerCandidatesAtScreenPosition(
         std::int32_t screen_x,
         std::int32_t screen_y) const;
     NpcActor* findScriptNpc(std::int32_t character_number);
@@ -111,7 +124,9 @@ private:
         std::int32_t character_number) const;
     bool ensureItemWorldResource(std::int32_t resource_id);
     bool startNpcInteraction(NpcActor& npc);
+    bool startGroundItemInteraction(std::int32_t item_id);
     NpcActor* findNpc(std::int32_t id);
+    GroundItem* findGroundItem(std::int32_t id);
 
     ScenarioData scenario_;
     ScenarioScriptRuntime scenario_script_;
@@ -119,8 +134,8 @@ private:
     bool conversation_active_ = false;
     std::int32_t conversation_actor_id_ = -1;
     std::int32_t conversation_selected_option_ = -1;
-    std::int32_t hovered_npc_id_ = -1;
-    std::int32_t pending_interaction_npc_id_ = -1;
+    WorldPointer pointer_;
+    WorldPointerTarget pending_interaction_;
     GroundMap ground_;
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;
@@ -132,6 +147,7 @@ private:
     std::vector<GroundItem> ground_items_;
     QuestState quests_;
     ItemDatabase item_database_;
+    PlayerInventory player_inventory_;
     TableDatabase parameter_tables_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
@@ -141,6 +157,7 @@ private:
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t music_track_ = -1;
+    std::int32_t next_ground_item_id_ = 0;
 };
 
 }  // namespace osf

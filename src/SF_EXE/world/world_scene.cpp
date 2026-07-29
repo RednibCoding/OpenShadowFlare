@@ -1,17 +1,18 @@
 #include "world_scene.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "movement_controller.hpp"
 
 #include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <iterator>
-#include <limits>
 #include <utility>
 
 namespace osf {
 namespace {
 
 constexpr std::int32_t kRetailInteractionDistance = 0x9f;
+constexpr std::int32_t kRetailHeightScale = 20;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -247,8 +248,8 @@ void WorldScene::clear() {
     conversation_active_ = false;
     conversation_actor_id_ = -1;
     conversation_selected_option_ = -1;
-    hovered_npc_id_ = -1;
-    pending_interaction_npc_id_ = -1;
+    pointer_.reset();
+    pending_interaction_ = {};
     ground_.clear();
     object_map_.clear();
     map_patterns_.clear();
@@ -260,6 +261,7 @@ void WorldScene::clear() {
     ground_items_.clear();
     quests_.clear();
     item_database_.clear();
+    player_inventory_.clear();
     parameter_tables_.clear();
     data_root_.clear();
     item_world_resources_.clear();
@@ -268,6 +270,7 @@ void WorldScene::clear() {
     player_.clear();
     has_player_ = false;
     music_track_ = -1;
+    next_ground_item_id_ = 0;
 }
 
 const GroundMap& WorldScene::ground() const {
@@ -311,6 +314,10 @@ const ItemDatabase& WorldScene::itemDatabase() const {
     return item_database_;
 }
 
+const PlayerInventory& WorldScene::playerInventory() const {
+    return player_inventory_;
+}
+
 const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
@@ -341,7 +348,7 @@ void WorldScene::commandPlayerMovement(
     if (!has_player_) {
         return;
     }
-    pending_interaction_npc_id_ = -1;
+    pending_interaction_ = {};
     player_.moveTo(
         calculateWorldPosition({
             cameraScreenX() + screen_x,
@@ -350,7 +357,7 @@ void WorldScene::commandPlayerMovement(
 }
 
 void WorldScene::cancelPlayerMovement() {
-    pending_interaction_npc_id_ = -1;
+    pending_interaction_ = {};
     player_.cancelMovement();
 }
 
@@ -358,14 +365,19 @@ void WorldScene::updatePointerHover(
     std::int32_t screen_x,
     std::int32_t screen_y) {
     if (!has_player_ || conversation_active_) {
-        hovered_npc_id_ = -1;
+        pointer_.clearSelection();
         return;
     }
-    const std::int32_t index =
-        npcIndexAtScreenPosition(screen_x, screen_y);
-    hovered_npc_id_ = index < 0
-        ? -1
-        : npcs_[static_cast<std::size_t>(index)].id();
+    pointer_.update(
+        screen_x,
+        screen_y,
+        pointerCandidatesAtScreenPosition(
+            screen_x, screen_y));
+}
+
+void WorldScene::configurePointer(
+    const WorldPointerConfiguration& configuration) {
+    pointer_.configure(configuration);
 }
 
 bool WorldScene::commandWorldInteraction(
@@ -374,33 +386,54 @@ bool WorldScene::commandWorldInteraction(
     if (!has_player_ || conversation_active_) {
         return false;
     }
-    const std::int32_t index =
-        npcIndexAtScreenPosition(screen_x, screen_y);
-    if (index < 0) {
+    const WorldPointerTarget target =
+        pointerTargetAtScreenPosition(screen_x, screen_y);
+    if (target.kind == WorldPointerTargetKind::none) {
         return false;
     }
-    NpcActor& selected =
-        npcs_[static_cast<std::size_t>(index)];
+    if (target.kind ==
+        WorldPointerTargetKind::ground_item) {
+        pending_interaction_ = target;
+        GroundItem* item = findGroundItem(target.id);
+        if (!item) {
+            pending_interaction_ = {};
+            return false;
+        }
+        if (distanceBetweenBounds(
+                player_.position(),
+                player_.judgement(),
+                item->position,
+                {}) > kRetailInteractionDistance) {
+            player_.followTo(item->position);
+            return true;
+        }
+        return startGroundItemInteraction(item->id);
+    }
 
-    pending_interaction_npc_id_ = selected.id();
+    NpcActor* selected = findNpc(target.id);
+    if (!selected) {
+        return false;
+    }
+    pending_interaction_ = target;
     if (distanceBetweenBounds(
             player_.position(),
             player_.judgement(),
-            selected.position(),
-            selected.judgement()) >
+            selected->position(),
+            selected->judgement()) >
             kRetailInteractionDistance) {
-        player_.followTo(selected.position());
+        player_.followTo(selected->position());
         return true;
     }
-    return startNpcInteraction(selected);
+    return startNpcInteraction(*selected);
 }
 
 bool WorldScene::interactionPending() const {
-    return pending_interaction_npc_id_ >= 0;
+    return pending_interaction_.kind !=
+        WorldPointerTargetKind::none;
 }
 
 bool WorldScene::startNpcInteraction(NpcActor& selected) {
-    pending_interaction_npc_id_ = -1;
+    pending_interaction_ = {};
     player_.cancelMovement();
     player_.faceToward(selected.position());
     const std::int32_t script_character_number =
@@ -410,14 +443,41 @@ bool WorldScene::startNpcInteraction(NpcActor& selected) {
             0, script_character_number);
     if (result == script::StepResult::waiting_for_message ||
         result == script::StepResult::complete) {
-        hovered_npc_id_ = -1;
+        pointer_.clearSelection();
     }
     return result == script::StepResult::waiting_for_message ||
            result == script::StepResult::complete;
 }
 
 std::int32_t WorldScene::hoveredNpcId() const {
-    return hovered_npc_id_;
+    return pointer_.target().kind ==
+                   WorldPointerTargetKind::npc
+               ? pointer_.target().id
+               : -1;
+}
+
+std::int32_t WorldScene::hoveredGroundItemId() const {
+    return pointer_.target().kind ==
+                   WorldPointerTargetKind::ground_item
+               ? pointer_.target().id
+               : -1;
+}
+
+std::int32_t WorldScene::pointerScreenX() const {
+    return pointer_.screenX();
+}
+
+std::int32_t WorldScene::pointerScreenY() const {
+    return pointer_.screenY();
+}
+
+bool WorldScene::pointerActive() const {
+    return pointer_.active();
+}
+
+const WorldPointerConfiguration&
+WorldScene::pointerConfiguration() const {
+    return pointer_.configuration();
 }
 
 bool WorldScene::conversationActive() const {
@@ -507,12 +567,28 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
-    NpcActor* interaction_target =
-        findNpc(pending_interaction_npc_id_);
-    if (interaction_target) {
-        player_.followTo(interaction_target->position());
-    } else {
-        pending_interaction_npc_id_ = -1;
+    NpcActor* interaction_npc = nullptr;
+    GroundItem* interaction_item = nullptr;
+    if (pending_interaction_.kind ==
+        WorldPointerTargetKind::npc) {
+        interaction_npc =
+            findNpc(pending_interaction_.id);
+        if (interaction_npc) {
+            player_.followTo(interaction_npc->position());
+        }
+    } else if (
+        pending_interaction_.kind ==
+        WorldPointerTargetKind::ground_item) {
+        interaction_item =
+            findGroundItem(pending_interaction_.id);
+        if (interaction_item) {
+            player_.followTo(interaction_item->position);
+        }
+    }
+    if (pending_interaction_.kind !=
+            WorldPointerTargetKind::none &&
+        !interaction_npc && !interaction_item) {
+        pending_interaction_ = {};
     }
     std::vector<MovementBlocker> actor_blockers;
     actor_blockers.reserve(npcs_.size());
@@ -533,16 +609,33 @@ void WorldScene::update() {
     for (GroundItem& item : ground_items_) {
         updateGroundItem(item);
     }
-    interaction_target =
-        findNpc(pending_interaction_npc_id_);
-    if (interaction_target &&
+    interaction_npc =
+        pending_interaction_.kind ==
+                WorldPointerTargetKind::npc
+            ? findNpc(pending_interaction_.id)
+            : nullptr;
+    if (interaction_npc &&
         distanceBetweenBounds(
             player_.position(),
             player_.judgement(),
-            interaction_target->position(),
-            interaction_target->judgement()) <=
+            interaction_npc->position(),
+            interaction_npc->judgement()) <=
             kRetailInteractionDistance) {
-        startNpcInteraction(*interaction_target);
+        startNpcInteraction(*interaction_npc);
+        return;
+    }
+    interaction_item =
+        pending_interaction_.kind ==
+                WorldPointerTargetKind::ground_item
+            ? findGroundItem(pending_interaction_.id)
+            : nullptr;
+    if (interaction_item &&
+        distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            interaction_item->position,
+            {}) <= kRetailInteractionDistance) {
+        startGroundItemInteraction(interaction_item->id);
     }
 }
 
@@ -677,6 +770,7 @@ bool WorldScene::executeScriptNativeCommand(
                 definition->ground_green_strength;
             item.blue_strength =
                 definition->ground_blue_strength;
+            item.id = next_ground_item_id_++;
         }
         return true;
     }
@@ -714,7 +808,7 @@ bool WorldScene::executeScriptNativeCommand(
     }
     npc->beginInteraction(player_.position());
     conversation_actor_id_ = npc->id();
-    hovered_npc_id_ = -1;
+    pointer_.clearSelection();
     return true;
 }
 
@@ -747,36 +841,87 @@ void WorldScene::showScriptMessage(
     }
 }
 
-std::int32_t WorldScene::npcIndexAtScreenPosition(
+WorldPointerTarget WorldScene::pointerTargetAtScreenPosition(
+    std::int32_t screen_x,
+    std::int32_t screen_y) const {
+    WorldPointer resolver;
+    resolver.configure(pointer_.configuration());
+    resolver.update(
+        screen_x,
+        screen_y,
+        pointerCandidatesAtScreenPosition(
+            screen_x, screen_y));
+    return resolver.target();
+}
+
+std::vector<WorldPointerCandidate>
+WorldScene::pointerCandidatesAtScreenPosition(
     std::int32_t screen_x,
     std::int32_t screen_y) const {
     const std::int32_t camera_x = cameraScreenX();
     const std::int32_t camera_y = cameraScreenY();
-    std::int32_t selected = -1;
-    std::int32_t selected_distance =
-        std::numeric_limits<std::int32_t>::max();
-    for (std::size_t index = 0; index < npcs_.size(); ++index) {
-        const NpcActor& npc = npcs_[index];
-        const ScreenPosition anchor =
-            calculateRealPosition(npc.position());
-        const std::int32_t relative_x =
-            screen_x - (anchor.x - camera_x);
-        const std::int32_t relative_y =
-            screen_y - (anchor.y - camera_y);
-        if (relative_x < -32 || relative_x > 32 ||
-            relative_y < -npc.labelHeight() ||
-            relative_y > 12) {
+    const ScreenPosition point{screen_x, screen_y};
+    std::vector<WorldPointerCandidate> candidates;
+    candidates.reserve(npcs_.size() + ground_items_.size());
+    for (const NpcActor& npc : npcs_) {
+        if (!displayAnimationContainsPoint(
+                npc.animation(),
+                npc.patterns(),
+                npc.position(),
+                npc.animationChart(),
+                npc.direction(),
+                npc.animationFrame(),
+                [&npc](std::size_t part) {
+                    return npc.partEnabled(part);
+                },
+                camera_x,
+                camera_y,
+                point)) {
             continue;
         }
-        const std::int32_t distance =
-            relative_x * relative_x +
-            relative_y * relative_y;
-        if (distance < selected_distance) {
-            selected = static_cast<std::int32_t>(index);
-            selected_distance = distance;
-        }
+        candidates.push_back({
+            {WorldPointerTargetKind::npc, npc.id()},
+            {
+                0,
+                npc.position(),
+                npc.judgement(),
+                0,
+            },
+            0,
+        });
     }
-    return selected;
+    for (const GroundItem& item : ground_items_) {
+        const ItemWorldResource* resource =
+            itemWorldResource(item.resource_id);
+        if (!resource ||
+            !displayAnimationContainsPoint(
+                resource->animation(),
+                resource->patterns(),
+                item.position,
+                item.animation_chart,
+                8,
+                0,
+                [](std::size_t) {
+                    return true;
+                },
+                camera_x,
+                camera_y,
+                point,
+                item.height * kRetailHeightScale / 100)) {
+            continue;
+        }
+        candidates.push_back({
+            {WorldPointerTargetKind::ground_item, item.id},
+            {
+                0,
+                item.position,
+                {},
+                0,
+            },
+            3,
+        });
+    }
+    return candidates;
 }
 
 NpcActor* WorldScene::findScriptNpc(
@@ -811,6 +956,47 @@ NpcActor* WorldScene::findNpc(std::int32_t id) {
             return npc.id() == id;
         });
     return found == npcs_.end() ? nullptr : &*found;
+}
+
+GroundItem* WorldScene::findGroundItem(std::int32_t id) {
+    const auto found = std::find_if(
+        ground_items_.begin(),
+        ground_items_.end(),
+        [id](const GroundItem& item) {
+            return item.id == id;
+        });
+    return found == ground_items_.end()
+        ? nullptr
+        : &*found;
+}
+
+bool WorldScene::startGroundItemInteraction(
+    std::int32_t item_id) {
+    const auto found = std::find_if(
+        ground_items_.begin(),
+        ground_items_.end(),
+        [item_id](const GroundItem& item) {
+            return item.id == item_id;
+        });
+    if (found == ground_items_.end()) {
+        pending_interaction_ = {};
+        return false;
+    }
+
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    if (player_inventory_.add(
+            found->category,
+            found->definition_id,
+            found->quantity)) {
+        if (pointer_.target().kind ==
+                WorldPointerTargetKind::ground_item &&
+            pointer_.target().id == item_id) {
+            pointer_.clearSelection();
+        }
+        ground_items_.erase(found);
+    }
+    return true;
 }
 
 bool WorldScene::ensureItemWorldResource(

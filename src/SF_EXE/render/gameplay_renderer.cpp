@@ -291,7 +291,8 @@ void drawGroundItem(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    bool hovered) {
     const ItemWorldResource* resource =
         world.itemWorldResource(item.resource_id);
     if (!resource) {
@@ -309,12 +310,17 @@ void drawGroundItem(
         [](std::size_t) {
             return true;
         },
-        [&item](std::size_t part) {
+        [&item, hovered](std::size_t part) {
+            const std::int32_t hover_strength =
+                hovered ? 300 : 0;
             return part == 0
                        ? CharacterColorStrength{
-                             item.red_strength,
-                             item.green_strength,
-                             item.blue_strength,
+                             item.red_strength +
+                                 hover_strength,
+                             item.green_strength +
+                                 hover_strength,
+                             item.blue_strength +
+                                 hover_strength,
                          }
                        : CharacterColorStrength{};
         },
@@ -372,7 +378,9 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
+            shadow_opacity,
+            world.hoveredGroundItemId() ==
+                entry.item->id);
     }
 }
 

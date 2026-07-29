@@ -131,6 +131,11 @@ public:
         }
         shadowOpacity_ =
             gameConfig.semi_transparent_shadow ? 500 : 1000;
+        world_.configurePointer({
+            gameConfig.click_range,
+            gameConfig.click_range_enabled,
+            gameConfig.click_priority,
+        });
 
         if (!frontendAssets_.loadPattern(
                 0, "System\\Common\\Pattern\\Font00.njp") ||

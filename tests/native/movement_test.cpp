@@ -1,6 +1,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "world/movement_controller.hpp"
 #include "world/player_actor.hpp"
+#include "world/world_pointer.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -349,6 +350,47 @@ bool testDynamicActorJudgement() {
         "rectangle.");
 }
 
+bool testWorldPointerPriority() {
+    const std::vector<osf::WorldPointerCandidate> candidates{
+        {
+            {osf::WorldPointerTargetKind::npc, 10},
+            {0, {100, 100}, {-10, -10, 10, 10}, 0},
+            0,
+        },
+        {
+            {osf::WorldPointerTargetKind::ground_item, 20},
+            {0, {100, 100}, {}, 0},
+            3,
+        },
+    };
+    osf::WorldPointer pointer;
+    pointer.update(30, 40, candidates);
+    if (!check(
+            pointer.active() &&
+                pointer.screenX() == 30 &&
+                pointer.screenY() == 40 &&
+                pointer.target().kind ==
+                    osf::WorldPointerTargetKind::ground_item &&
+                pointer.target().id == 20,
+            "The default retail click priority did not prefer "
+            "an item over an actor.")) {
+        return false;
+    }
+
+    osf::WorldPointerConfiguration configuration;
+    configuration.click_priority[1] = 4;
+    configuration.click_priority[2] = 0;
+    configuration.range = 99;
+    pointer.configure(configuration);
+    pointer.update(30, 40, candidates);
+    return check(
+        pointer.target().kind ==
+                osf::WorldPointerTargetKind::npc &&
+            pointer.target().id == 10 &&
+            pointer.configuration().range == 4,
+        "The configured retail click priority was not applied.");
+}
+
 bool testRemoteTownFixture() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -409,6 +451,7 @@ int main() {
         !testDiagonalContact() ||
         !testGroundJudgement() ||
         !testDynamicActorJudgement() ||
+        !testWorldPointerPriority() ||
         !testRemoteTownFixture()) {
         return 1;
     }

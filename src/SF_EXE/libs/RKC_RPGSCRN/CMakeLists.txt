@@ -2,6 +2,7 @@ add_library(
   osf_rkc_rpgscrn STATIC
   caf.cpp
   coordinates.cpp
+  display_hit_test.cpp
   display_order.cpp
   ground_map.cpp
   judgement.cpp
@@ -17,6 +18,8 @@ target_include_directories(
 )
 target_link_libraries(
   osf_rkc_rpgscrn
+  PUBLIC
+    OpenShadowFlare::RKC_UPDIB
   PRIVATE
     OpenShadowFlare::RK_FUNCTION
 )

@@ -23,6 +23,7 @@ struct GroundItem {
     std::int32_t red_strength = 1000;
     std::int32_t green_strength = 1000;
     std::int32_t blue_strength = 1000;
+    std::int32_t id = -1;
 };
 
 bool createGroundItems(

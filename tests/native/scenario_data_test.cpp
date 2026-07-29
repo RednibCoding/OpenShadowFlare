@@ -36,6 +36,68 @@ bool updateUntilConversation(
     return world.conversationActive();
 }
 
+bool findNpcPointerPoint(
+    osf::WorldScene& world,
+    std::int32_t npc_id,
+    osf::ScreenPosition& point) {
+    const auto found = std::find_if(
+        world.npcs().begin(),
+        world.npcs().end(),
+        [npc_id](const osf::NpcActor& npc) {
+            return npc.id() == npc_id;
+        });
+    if (found == world.npcs().end()) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(found->position());
+    for (std::int32_t y = -found->labelHeight();
+         y <= 16;
+         ++y) {
+        for (std::int32_t x = -48; x <= 48; ++x) {
+            point = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            world.updatePointerHover(point.x, point.y);
+            if (world.hoveredNpcId() == npc_id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool findGroundItemPointerPoint(
+    osf::WorldScene& world,
+    std::int32_t item_id,
+    osf::ScreenPosition& point) {
+    const auto found = std::find_if(
+        world.groundItems().begin(),
+        world.groundItems().end(),
+        [item_id](const osf::GroundItem& item) {
+            return item.id == item_id;
+        });
+    if (found == world.groundItems().end()) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(found->position);
+    for (std::int32_t y = -64; y <= 32; ++y) {
+        for (std::int32_t x = -64; x <= 64; ++x) {
+            point = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            world.updatePointerHover(point.x, point.y);
+            if (world.hoveredGroundItemId() == item_id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool testGroundItemCreation() {
     osf::RetailRandom random;
     std::vector<osf::GroundItem> items;
@@ -584,7 +646,13 @@ bool testRetailRemoteTown() {
     }
     renderer.speech = &world.speechPatterns();
     renderer.calls.clear();
-    world.updatePointerHover(747, 269);
+    osf::ScreenPosition ostare_pointer;
+    if (!check(
+            findNpcPointerPoint(
+                world, 0, ostare_pointer),
+            "Ostare has no opaque retail pointer cell.")) {
+        return false;
+    }
     osf::renderWorld(renderer, world, 500, &font);
     if (!check(
             world.hoveredNpcId() == 0 &&
@@ -592,12 +660,19 @@ bool testRetailRemoteTown() {
                 renderer.calls[1].draw.red_strength == 1300 &&
                 renderer.calls[1].draw.green_strength == 1300 &&
                 renderer.calls[1].draw.blue_strength == 1300 &&
-                renderer.rectangles.size() == 1 &&
+                renderer.rectangles.size() == 5 &&
                 renderer.rectangles[0].x == 725 &&
                 renderer.rectangles[0].y == 187 &&
                 renderer.rectangles[0].width == 41 &&
                 renderer.rectangles[0].height == 15 &&
                 renderer.rectangles[0].opacity == 500 &&
+                renderer.rectangles[1].opacity == 300 &&
+                renderer.rectangles[1].color.red == 255 &&
+                renderer.rectangles[1].x ==
+                    ostare_pointer.x - 16 &&
+                renderer.rectangles[1].y ==
+                    ostare_pointer.y - 16 &&
+                renderer.rectangles[1].width == 33 &&
                 renderer.text_calls.size() == 2 &&
                 renderer.text_calls[0].text == "Ostare" &&
                 renderer.text_calls[0].draw.x == 730 &&
@@ -614,7 +689,8 @@ bool testRetailRemoteTown() {
     renderer.text_calls.clear();
     renderer.rectangles.clear();
     const bool ostare_click =
-        world.commandWorldInteraction(747, 269);
+        world.commandWorldInteraction(
+            ostare_pointer.x, ostare_pointer.y);
     const bool ostare_approached =
         world.interactionPending() &&
         !world.conversationActive();
@@ -837,12 +913,15 @@ bool testRetailRemoteTown() {
         return false;
     }
 
-    const osf::ScreenPosition repeat_ostare_anchor =
-        osf::calculateRealPosition(world.npcs()[0].position());
+    if (!check(
+            findNpcPointerPoint(
+                world, 0, ostare_pointer),
+            "Ostare lost his opaque pointer cells.")) {
+        return false;
+    }
     if (!check(
             world.commandWorldInteraction(
-                repeat_ostare_anchor.x - world.cameraScreenX(),
-                repeat_ostare_anchor.y - world.cameraScreenY()) &&
+                ostare_pointer.x, ostare_pointer.y) &&
                 world.conversationActive() &&
                 world.conversationActorId() == 0 &&
                 world.conversationMessageId() == 1000005 &&
@@ -866,16 +945,80 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    const std::int32_t short_sword_id =
+        world.groundItems().front().id;
+    osf::ScreenPosition short_sword_pointer;
+    if (!check(
+            findGroundItemPointerPoint(
+                world,
+                short_sword_id,
+                short_sword_pointer),
+            "The Short Sword has no opaque retail pointer cell.")) {
+        return false;
+    }
+    renderer.item_calls.clear();
+    renderer.text_calls.clear();
+    renderer.rectangles.clear();
+    osf::renderWorld(renderer, world, 500, &font);
+    const bool item_tinted = std::any_of(
+        renderer.item_calls.begin(),
+        renderer.item_calls.end(),
+        [](const NpcPatternCall& call) {
+            return !call.shadow &&
+                   call.draw.red_strength == 1300 &&
+                   call.draw.green_strength == 1300 &&
+                   call.draw.blue_strength == 1300;
+        });
+    if (!check(
+            world.hoveredGroundItemId() ==
+                    short_sword_id &&
+                item_tinted &&
+                renderer.text_calls.size() == 2 &&
+                renderer.text_calls[0].text ==
+                    "Short Sword" &&
+                renderer.rectangles.size() == 5 &&
+                renderer.rectangles[1].color.red == 224 &&
+                renderer.rectangles[1].color.green == 224 &&
+                renderer.rectangles[1].color.blue == 0 &&
+                renderer.rectangles[1].opacity == 300,
+            "Ground-item hover feedback differs from retail.")) {
+        return false;
+    }
+    const bool short_sword_click =
+        world.commandWorldInteraction(
+            short_sword_pointer.x,
+            short_sword_pointer.y);
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         world.groundItems().size() == 4;
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            short_sword_click &&
+                world.groundItems().size() == 3 &&
+                world.playerInventory().items().size() == 1 &&
+                world.playerInventory().items()[0].category == 0 &&
+                world.playerInventory()
+                        .items()[0]
+                        .definition_id == 0 &&
+                world.playerInventory().items()[0].quantity == 1,
+            "The retail approach-and-pickup path did not transfer "
+            "the Short Sword into player inventory.")) {
+        return false;
+    }
+
     const osf::NpcActor& malse = world.npcs()[1];
-    const osf::ScreenPosition malse_anchor =
-        osf::calculateRealPosition(malse.position());
-    const std::int32_t malse_screen_x =
-        malse_anchor.x - world.cameraScreenX();
-    const std::int32_t malse_screen_y =
-        malse_anchor.y - world.cameraScreenY();
+    osf::ScreenPosition malse_pointer;
+    if (!check(
+            findNpcPointerPoint(
+                world, malse.id(), malse_pointer),
+            "Malse has no opaque retail pointer cell.")) {
+        return false;
+    }
     const bool malse_click =
         world.commandWorldInteraction(
-            malse_screen_x, malse_screen_y);
+            malse_pointer.x, malse_pointer.y);
     updateUntilConversation(world);
     if (!check(
             malse_click &&

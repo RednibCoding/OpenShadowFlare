@@ -63,6 +63,9 @@ The first game-core slice covers:
   write-back, initial-minus-one informational follow-ups, and status-one
   callbacks, verified through Kerberos and Harley's live Remote Town
   interactions
+- opaque-pixel world selection for PEOPLE actors and ground items, including
+  configured click priority, the retail range square, item nameplates and
+  pale tint, shared auto-approach, and the first inventory-owned pickup
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -75,6 +78,23 @@ so the original 206-pixel artwork is revealed rather than stretched. The HUD
 is a screen-space renderer outside the world camera and owns the lower input
 band. Retail registers the standard Windows arrow once and never calls
 `SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
+
+World feedback now follows `0x004165d0`, `0x0040ee70`, and `0x00416bb0`.
+Portable `RKC_RPGSCRN` tests the opaque pixels of each current visible CAF/NJP
+cell, then `WorldPointer` keeps retail display depth and applies the five
+priorities from `SFlare.Cfg`. The default priority selects an item over a
+person where their sprites overlap. The range renderer uses exact half-sizes
+0, 12, 16, 24, and 48, with strength 100 over empty ground and 300 over a
+target. PEOPLE targets are white and item targets are yellow.
+
+Ground items use their `Item.Ibn` name, while money shows its quantity followed
+by `Gold`. Their visible part receives the same +300 pale tint as a selected
+person. Type-three interaction in `0x00449240` shares the 159-unit rectangle
+range and movement-controller approach. Once close, the first single-player
+`0x004526a0` path transfers the concrete item to `PlayerInventory` and erases
+the stable ground entity only after acceptance. Gold stacking to 10,000 is
+covered; grid placement, item footprints, full-inventory handling, panel
+drawing, and network replication remain.
 
 Portable behavior originating in the DLLs is kept under `SF_EXE/libs`, with a
 directory for each of the fourteen original boundaries. `RK_FUNCTION`,

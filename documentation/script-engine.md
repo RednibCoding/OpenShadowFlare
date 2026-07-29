@@ -361,8 +361,11 @@ executable-owned `Item.Ibn` loader keeps the inventory icon fields separate
 from the ground resource and CAF chart fields. The four drops load their real
 `Character/ITEM` animation and SDW shadow and share the normal depth-sorted
 world pass with actors and scenery. Their CAF-selected palettes and
-`Item.Ibn` RGB strengths also reproduce the default ground colors. Pointer
-selection and pickup are the next item-system work.
+`Item.Ibn` RGB strengths also reproduce the default ground colors. They now
+participate in opaque-pixel pointer selection and the common interaction-range
+approach too. A successful pickup moves the concrete category, definition,
+and quantity into `PlayerInventory`; the 9-by-4 grid and inventory panel are
+the next item-system work.
 
 ## How to extend it
 

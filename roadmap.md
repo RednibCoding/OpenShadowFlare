@@ -41,8 +41,10 @@ Gameplay now receives a proper player-data handoff too. New characters are
 initialized from the retail parameter tables, while selected saves contribute
 their complete plain 0x160-byte character record. The first gameplay HUD layer
 now reads that owner directly: the original bottom bar, level, life, mana, and
-walk/run state are visible in the world. Pickup, equipment, and combat can
-build on the same record rather than temporary values.
+walk/run state are visible in the world. World pointing now uses opaque sprite
+pixels, the retail click priorities and range square, and the opening quest's
+items can be approached and picked up into a real inventory owner. Equipment
+and combat can build on those owners rather than temporary values.
 
 The current reverse-engineering notes live in:
 
@@ -250,7 +252,7 @@ state, equipment objects, flags, and other dynamic data. It can be mapped a
 piece at a time as those systems gain real owners. This milestone does not
 claim full save loading or writing.
 
-## Current milestone: draw the gameplay HUD and cursor
+## Current milestone: draw the gameplay HUD and world-pointer feedback
 
 The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
 screen coordinates, digit placement, and 206-pixel life and mana calculations.
@@ -263,11 +265,18 @@ with another cursor. LWL already supplies that native arrow on every desktop
 platform. What changes during play is the feedback drawn into the world, not
 the pointer shape.
 
+That feedback is live now too. The current CAF frame is tested against opaque
+NJP pixels, candidates retain their normal world depth, and the five
+configurable retail click priorities choose between overlapping targets.
+People keep their pale tint and nameplate. Ground items now receive the same
+tint, their `Item.Ibn` name (or quantity plus `Gold`), and the original yellow
+target square. Empty ground and people use the original white square at their
+different strengths. Conversations suppress it.
+
 The remaining layers are:
 
 - map the experience field and table calculation, then draw its clipped fill;
 - reconstruct quick-slot ownership and values instead of painting placeholders;
-- clicked-ground and selected-target feedback;
 - message and help text;
 - darkness and other final world overlays;
 - resizing behavior through the fixed 640×480 GAPI surface.
@@ -390,9 +399,15 @@ This slice includes:
 - shops, prices, and money once the script layer requests them.
 
 The opening quest's four real ground items are now loaded and drawn from
-`Item.Ibn`. The next checkpoint is retail pointer selection and pickup for one
-of them. Equipping that item and seeing both the correct stat change and
-player artwork comes after that.
+`Item.Ibn`. Pointer selection and the first complete pickup path are live:
+distant clicks approach through the shared movement controller, then ownership
+moves into `PlayerInventory` before the world entity is erased. Gold fills
+existing stacks up to the retail 10,000 limit.
+
+The next checkpoint is the actual 9-by-4 inventory grid. It needs the decoded
+item footprint fields, placement and full-inventory failure, the original
+panel artwork, and moving or dropping an owned item. After that, equip the
+Short Sword and verify both its stat change and the matching player CAF layer.
 
 ### 4. Combat and death
 

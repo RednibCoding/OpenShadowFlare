@@ -1,4 +1,5 @@
 #include "gapi/gapi.hpp"
+#include "libs/RKC_RPGSCRN/display_hit_test.hpp"
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -276,6 +277,17 @@ bool testNjpAndSoftwareBackend() {
                 image.patterns()[0].parts.size() == 1 &&
                 image.palettes().size() == 2,
             "The portable NJP decoder produced the wrong structure.")) {
+        return false;
+    }
+    if (!check(
+            osf::displayPatternContainsPoint(
+                image, 0, {10, 20}, {10, 20}) &&
+                osf::displayPatternContainsPoint(
+                    image, 0, {10, 20}, {11, 21}) &&
+                !osf::displayPatternContainsPoint(
+                    image, 0, {10, 20}, {12, 21}),
+            "RKC_RPGSCRN display-object pixel hit testing "
+            "differs from the rendered NJP cells.")) {
         return false;
     }
 

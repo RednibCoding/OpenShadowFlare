@@ -537,6 +537,14 @@ The three strength fields are applied after palette lookup. The opening Round
 Shield uses `900, 800, 500`, while the other three drops use
 `1000, 1000, 1000`.
 
+Each script-created ground entity now also receives a stable runtime ID.
+Pointer hit testing follows the opaque pixels selected by its current CAF
+cell, while the label comes from the definition name above. Once the player is
+inside the retail interaction range, pickup transfers the category,
+definition ID, and quantity to the inventory owner before removing that
+ground ID. The unnamed field block is still the source of truth for the item
+footprint fields needed by the later 9-by-4 inventory grid.
+
 ## Table Data (Table.Tbd)
 
 ### Location  

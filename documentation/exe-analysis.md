@@ -137,13 +137,22 @@ loader now uses scenario `00000000`'s map path and entry key zero rather than
 embedding `f00_01`, (`89898`, `2811`), direction 3, and music index 0 in
 `WorldScene`.
 
-Gameplay pointer selection is handled by `0x0040ee70`. For an ordinary person
-it projects the actor's feet, subtracts the MCT label height, draws a
-half-transparent black plate around the centered 6-by-12 name, then draws a
-black one-pixel shadow and the actor's configured name color. The selected
-actor's visible RGB strengths each receive `+300`. Values above 1000 do not
-multiply the palette color: RKC_UPDIB moves each channel toward white, which
-produces the pale hover tint seen in the retail game.
+Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
+collect the current display objects under the pointer. This is a per-pixel
+test against the visible NJP parts selected by the current CAF frame, not a
+loose rectangle around the actor. The candidates keep their normal world
+depth order and are grouped by the five priorities stored in `SFlare.Cfg`.
+With the retail defaults, a ground item wins over a person when their opaque
+pixels overlap.
+
+`0x0040ee70` scans that result from front to back. For a person it projects the
+actor's feet, subtracts the MCT label height, draws a half-transparent black
+plate around the centered 6-by-12 name, then draws a black one-pixel shadow
+and the actor's configured name color. Ground items use the name from
+`Item.Ibn`; ordinary money is formatted as its quantity followed by `Gold`.
+The selected object's visible RGB strengths each receive `+300`. Values above
+1000 do not multiply the palette color: RKC_UPDIB moves each channel toward
+white, which produces the pale hover tint seen in the retail game.
 
 Message layout at `0x00456550` counts ASCII and Shift-JIS glyph widths, adds
 an eight-pixel text-box inset, and positions actor messages above the same MCT
@@ -186,7 +195,16 @@ starts movement-controller mode one and is followed as it moves. Once the
 rectangle gap reaches 159, the player faces the actor and starts that actor's
 status-zero script. This is why clicking a distant person in retail walks
 toward them instead of opening a remote conversation or simply rejecting the
-click.
+click. Type-three ground items use the same approach path. Once close enough,
+`0x004526a0` calls the local player's inventory insertion routine and removes
+the scenario entity only when ownership has transferred successfully.
+
+The portable first pickup checkpoint keeps that separation. `WorldScene`
+owns the stable ground entity and pending approach, while `PlayerInventory`
+owns the accepted category, definition ID, and quantity. Gold fills existing
+stacks to 10,000 as `0x00449ef0` does. The retail 9-by-4 placement grid,
+multi-cell item sizes, full-inventory failure, and inventory panel are still
+part of the next inventory slice.
 
 `0x00454210` initializes the executable's shared movement controller and
 `0x00454930` advances it. It is not an A* route search. A direct collision
@@ -371,6 +389,13 @@ values which still need their gameplay owners.
 The executable registers `IDC_ARROW` once in the window class and contains no
 later `SetCursor` call. Hover, selection, and click state are therefore drawn
 as world feedback; the pointer itself remains the normal platform arrow.
+
+`0x00416bb0` draws the ordinary gameplay feedback as four one-pixel lines.
+The configured range selects half-sizes `0`, `12`, `16`, `24`, or `48`; the
+shipped default is the 16-pixel choice. Empty ground uses white at strength
+100, any target raises it to 300, and a ground item changes it to
+`(224, 224, 0)`. The square is not submitted below y=407 and disappears while
+a modal gameplay message owns input.
 
 ## SFWindow Object Layout (at 0x00482778)
 

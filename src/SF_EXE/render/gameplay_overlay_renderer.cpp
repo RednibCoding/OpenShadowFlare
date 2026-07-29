@@ -7,6 +7,7 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -34,6 +35,20 @@ const NpcActor* findNpc(
             return npc.id() == id;
         });
     return found == world.npcs().end() ? nullptr : &*found;
+}
+
+const GroundItem* findGroundItem(
+    const WorldScene& world,
+    std::int32_t id) {
+    const auto found = std::find_if(
+        world.groundItems().begin(),
+        world.groundItems().end(),
+        [id](const GroundItem& item) {
+            return item.id == id;
+        });
+    return found == world.groundItems().end()
+        ? nullptr
+        : &*found;
 }
 
 gapi::Color npcNameColor(const NpcActor& npc) {
@@ -93,6 +108,136 @@ void drawHoveredNpcLabel(
             label_y,
             npcNameColor(*npc),
         });
+}
+
+void drawHoveredGroundItemLabel(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const gapi::NjpImage* font,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    if (!font) {
+        return;
+    }
+    const GroundItem* item =
+        findGroundItem(
+            world, world.hoveredGroundItemId());
+    if (!item) {
+        return;
+    }
+    const ItemDefinition* definition =
+        world.itemDatabase().find(
+            item->category, item->definition_id);
+    if (!definition) {
+        return;
+    }
+    const std::string label =
+        item->category == 4 &&
+                item->definition_id == 0
+            ? std::to_string(item->quantity) + " Gold"
+            : definition->name;
+    if (label.empty()) {
+        return;
+    }
+
+    const ScreenPosition anchor =
+        calculateRealPosition(item->position);
+    const std::int32_t center_x =
+        anchor.x - camera_x + 2;
+    const std::int32_t label_y =
+        anchor.y - camera_y - 24;
+    const std::int32_t half_width =
+        bitmapTextPixelWidth(label, 6) / 2;
+    renderer.drawRectangle({
+        center_x - half_width - 4,
+        label_y - 2,
+        half_width * 2 + 5,
+        15,
+        {0, 0, 0, 255},
+        1000,
+        500,
+    });
+    renderer.drawText(
+        *font,
+        label,
+        {
+            center_x - half_width + 1,
+            label_y + 1,
+            {0, 0, 0, 255},
+        });
+    renderer.drawText(
+        *font,
+        label,
+        {
+            center_x - half_width,
+            label_y,
+            {224, 224, 224, 255},
+        });
+}
+
+void drawPointerRange(
+    gapi::Backend& renderer,
+    const WorldScene& world) {
+    const WorldPointerConfiguration& configuration =
+        world.pointerConfiguration();
+    constexpr std::array<std::int32_t, 5> half_sizes{{
+        0, 12, 16, 24, 48,
+    }};
+    if (!world.pointerActive() ||
+        !configuration.range_enabled ||
+        world.conversationActive() ||
+        configuration.range < 0 ||
+        static_cast<std::size_t>(configuration.range) >=
+            half_sizes.size() ||
+        world.pointerScreenY() >= 408) {
+        return;
+    }
+    const std::int32_t half_size =
+        half_sizes[static_cast<std::size_t>(
+            configuration.range)];
+    if (half_size <= 0) {
+        return;
+    }
+
+    gapi::Color color{255, 255, 255, 255};
+    bool has_target = false;
+    if (world.hoveredGroundItemId() >= 0) {
+        color = {224, 224, 0, 255};
+        has_target = true;
+    } else if (world.hoveredNpcId() >= 0) {
+        has_target = true;
+    }
+    const std::int32_t opacity =
+        has_target ? 300 : 100;
+    const std::int32_t left =
+        world.pointerScreenX() - half_size;
+    const std::int32_t top =
+        world.pointerScreenY() - half_size;
+    const std::int32_t length = half_size * 2 + 1;
+    renderer.drawRectangle({
+        left, top, length, 1, color, 1000, opacity,
+    });
+    renderer.drawRectangle({
+        left, top, 1, length, color, 1000, opacity,
+    });
+    renderer.drawRectangle({
+        left + length - 1,
+        top,
+        1,
+        length,
+        color,
+        1000,
+        opacity,
+    });
+    renderer.drawRectangle({
+        left,
+        top + length - 1,
+        length,
+        1,
+        color,
+        1000,
+        opacity,
+    });
 }
 
 bool buildConversationLayout(
@@ -330,6 +475,12 @@ void renderGameplayOverlay(
         camera_x,
         camera_y,
         interpolation);
+    drawHoveredGroundItemLabel(
+        renderer,
+        world,
+        font,
+        camera_x,
+        camera_y);
     drawConversation(
         renderer,
         world,
@@ -337,6 +488,7 @@ void renderGameplayOverlay(
         camera_x,
         camera_y,
         interpolation);
+    drawPointerRange(renderer, world);
 }
 
 std::int32_t conversationChoiceAtScreenPosition(
