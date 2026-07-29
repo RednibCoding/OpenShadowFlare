@@ -148,11 +148,18 @@ The slice is finished when all of these are true:
   units, while running covers 200;
 - idle, walking, arrival, and return-to-idle chart timing is covered;
 - the complete retail Remote Town GND judgement plane is decoded and tested;
-- static ground and object collision stop at the last walkable integer point;
+- static ground and object collision stop at the last walkable integer point,
+  then the shared controller follows the obstacle edge until a direct route
+  opens again;
 - camera and depth keys are rebuilt from the live player position;
-- held input replaces the destination and out-of-window input is rejected;
+- held input replaces the destination, releasing a held command stops the
+  hero immediately, and a quick single click remains latched;
 - a native live run reaches Remote Town and moves the camera and player from a
-  ground click.
+  ground click;
+- the retail Remote Town fixture routes from the initial entry to Kerberos
+  through real collision data, routes around the full sacks footprint and
+  separate tree groups, and completes rendered companion choices plus
+  Harley's two-message explanation branch.
 
 This gives us the first genuinely interactive gameplay milestone: we can walk
 around Remote Town. Any collision corner that looks different in a

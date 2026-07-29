@@ -32,6 +32,7 @@ public:
     void clear();
 
     void moveTo(WorldPosition destination);
+    void followTo(WorldPosition destination);
     void cancelMovement();
     void faceToward(WorldPosition position);
     void toggleMovementPace();
@@ -69,6 +70,8 @@ private:
     MovementPace movement_pace_ = MovementPace::walk;
     PlayerMotion motion_ = PlayerMotion::idle;
     PlayerMotion previous_action_ = PlayerMotion::idle;
+    bool stop_if_destination_blocked_ = true;
+    MovementController movement_controller_;
 };
 
 }  // namespace osf

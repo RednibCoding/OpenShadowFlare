@@ -23,6 +23,7 @@ ConversationTextLayout layoutConversationText(
     std::int32_t column = 0;
     std::int32_t choice_line = 0;
     std::int32_t choice_column = 0;
+    std::size_t choice_byte_offset = 0;
     bool inside_choice = false;
     for (std::size_t index = 0; index < source.size(); ++index) {
         const std::uint8_t byte =
@@ -38,10 +39,13 @@ ConversationTextLayout layoutConversationText(
                     choice_line,
                     choice_column,
                     std::max(column - choice_column, 0),
+                    choice_byte_offset,
+                    result.text.size() - choice_byte_offset,
                 });
             } else {
                 choice_line = line;
                 choice_column = column;
+                choice_byte_offset = result.text.size();
             }
             inside_choice = !inside_choice;
             continue;

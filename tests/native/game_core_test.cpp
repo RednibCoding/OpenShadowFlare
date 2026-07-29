@@ -360,14 +360,17 @@ bool testGameplayLoadingTransition() {
     std::int32_t musicStarts = 0;
     std::int32_t musicStops = 0;
     std::int32_t movementCommands = 0;
+    std::int32_t movementCancels = 0;
     std::int32_t interactionCommands = 0;
     std::int32_t pointerUpdates = 0;
     std::int32_t conversationAdvances = 0;
+    std::int32_t conversationChoices = 0;
     std::int32_t worldUpdates = 0;
     std::int32_t runToggles = 0;
     std::int32_t movementX = 0;
     std::int32_t movementY = 0;
     bool conversationActive = false;
+    bool conversationSelectionRequired = false;
     osf::GameplayStateHooks hooks;
     hooks.prepare_world = [&prepares] {
             ++prepares;
@@ -384,6 +387,10 @@ bool testGameplayLoadingTransition() {
             movementX = x;
             movementY = y;
         };
+    hooks.cancel_player_movement =
+        [&movementCancels] {
+            ++movementCancels;
+        };
     hooks.update_pointer_hover =
         [&](std::int32_t, std::int32_t) {
             ++pointerUpdates;
@@ -397,6 +404,19 @@ bool testGameplayLoadingTransition() {
     hooks.conversation_active =
         [&conversationActive] {
             return conversationActive;
+        };
+    hooks.conversation_requires_selection =
+        [&conversationSelectionRequired] {
+            return conversationSelectionRequired;
+        };
+    hooks.choose_conversation_option =
+        [&](std::int32_t x, std::int32_t y) {
+            if (x != 330 || y != 240) {
+                return false;
+            }
+            ++conversationChoices;
+            conversationActive = false;
+            return true;
         };
     hooks.advance_conversation =
         [&] {
@@ -432,6 +452,15 @@ bool testGameplayLoadingTransition() {
     state.update({false, true, 300, 220});
     state.update({false, false, 310, 220, true, true});
     state.update({true});
+    state.update({false, true, 220, 230, true});
+    state.update({false, false, 230, 240, true});
+    state.update({false, false, 230, 240, false});
+    conversationActive = true;
+    conversationSelectionRequired = true;
+    state.update({false, true, 330, 240, true});
+    state.update({false, false, 330, 240, true});
+    state.update({false, false, 330, 240, false});
+    state.update({false, true, 240, 250});
     state.leave();
     return check(
             frame.phase == osf::GameplayPhase::world &&
@@ -439,13 +468,15 @@ bool testGameplayLoadingTransition() {
             releases == 1 &&
             musicStarts == 1 &&
             musicStops == 1 &&
-            movementCommands == 1 &&
-            movementX == 200 &&
-            movementY == 210 &&
-            interactionCommands == 2 &&
-            pointerUpdates == 6 &&
+            movementCommands == 4 &&
+            movementCancels == 1 &&
+            movementX == 240 &&
+            movementY == 250 &&
+            interactionCommands == 4 &&
+            pointerUpdates == 13 &&
             conversationAdvances == 1 &&
-            worldUpdates == 6 &&
+            conversationChoices == 1 &&
+            worldUpdates == 13 &&
             runToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
 }

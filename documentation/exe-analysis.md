@@ -148,6 +148,20 @@ operand for the selected zero-based range, and supply an initial selection.
 Dune's first menu starts on range three, `QUIT`. These bytes are UI control
 markup, not part of the English message.
 
+Mode one also carries companion follow-up text with initial range `-1`.
+Those messages have no `~` spans and are acknowledged like ordinary speech;
+they do not write a choice result. Harley's `Explanation` branch uses this
+form for messages `1000057` and `1000058`, then reaches the same status-one
+release chain. A non-negative initial range is therefore part of the choice
+contract, not just a visual default.
+
+Pointer handling at `0x00457fa0` replaces the current range only when
+`0x00457bb0` finds the pointer inside one of those spans. Moving away leaves
+the last range selected. `0x00456bb0` draws that range in red
+`(255, 0, 0)` and the other ranges in gray `(96, 96, 96)`. The portable
+conversation state now owns the same selection, so hover rendering and the
+option returned to the interpreter use one set of range indices.
+
 World interaction goes through `0x00449240`. It measures the shortest gap
 between the player and target judgement rectangles with `0x004143c0`, rather
 than comparing their center points. The player's initial interaction distance
@@ -165,6 +179,29 @@ modes cover fixed points, scenario actors, other players, bounded wandering,
 and related approach behavior. Calls from the player, PEOPLE actors, and enemy
 actors all reach this controller. `RKC_RPG_AICONTROL` chooses enemy intent and
 parameters; it does not contain a second enemy pathfinder.
+
+The portable `MovementController` now keeps the same pair of cardinal
+movement and wall directions between updates. A blocked direct sweep selects
+an edge and blocked edge movement rotates the pair. Once the actor has made
+net progress past the contact point and the next direct step is clear, it
+retries the direct sweep. This prevents a later tree from keeping the actor
+attached to an earlier obstacle. Fixed ground targets stop at the collision
+edge when the requested center itself is blocked; actor-follow targets remain
+active until their judgement rectangles enter interaction range. Player and
+PEOPLE movement share this owner, including their facing direction while
+detouring. Remote Town fixtures cover the route from the initial entry to
+Kerberos, the irregular sacks footprint beside Ostare, and several routes
+through separate blocker groups. Dynamic actor collision masks and later
+controller modes remain follow-up work.
+
+Primary-button input has two retail behaviors. A press and release is a
+latched destination click. Keeping the button down continuously replaces the
+destination with the live pointer position, but releasing after that held
+state cancels movement immediately. The portable gameplay state tracks that
+distinction explicitly rather than treating every held frame as another
+independent click. A press consumed by a speech bubble stays UI-owned until
+button release, even when selecting the option closes that bubble. It cannot
+be reinterpreted as a held ground command on the following update.
 
 Portable gameplay still updates at the retail 30 Hz cadence, while the window
 is presented at 60 Hz. Rendering the current simulation snapshot twice made

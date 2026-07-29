@@ -34,6 +34,7 @@ struct GameplayStateHooks {
     std::function<void()> stop_world_music;
     std::function<void(std::int32_t, std::int32_t)>
         command_player_movement;
+    std::function<void()> cancel_player_movement;
     std::function<void(std::int32_t, std::int32_t)>
         update_pointer_hover;
     std::function<bool(std::int32_t, std::int32_t)>
@@ -66,6 +67,10 @@ private:
     std::int32_t loading_counter_ = 0;
     bool world_ready_ = false;
     bool active_ = false;
+    bool pointer_ground_command_active_ = false;
+    bool continuous_pointer_movement_ = false;
+    bool previous_pointer_down_ = false;
+    bool pointer_consumed_until_release_ = false;
 };
 
 }  // namespace osf

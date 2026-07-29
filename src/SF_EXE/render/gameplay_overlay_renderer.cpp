@@ -294,6 +294,24 @@ void drawConversation(
             layout.y + 4,
             {0, 0, 0, 255},
         });
+    for (const ConversationChoiceSpan& choice :
+         layout.text.choices) {
+        renderer.drawText(
+            *font,
+            layout.text.text.substr(
+                choice.byte_offset,
+                choice.byte_length),
+            {
+                layout.x + 4 +
+                    choice.column * layout.cell_width,
+                layout.y + 4 +
+                    choice.line * layout.cell_height,
+                choice.index ==
+                        world.conversationSelectedOption()
+                    ? gapi::Color{255, 0, 0, 255}
+                    : gapi::Color{96, 96, 96, 255},
+            });
+    }
 }
 
 }  // namespace

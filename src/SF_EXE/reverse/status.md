@@ -53,12 +53,16 @@ The first game-core slice covers:
   `Hukidasi.njp` speech bubble
 - judgement-rectangle interaction range and retail-style auto-approach before
   an NPC status starts
-- one shared executable-owned movement boundary for the player and PEOPLE
-  actors, matching the retail ownership later enemies will also use
+- one shared executable-owned movement controller for the player and PEOPLE
+  actors, including persistent cardinal obstacle-edge steering and the retail
+  ownership later enemies will also use
 - smooth 60 Hz camera and actor presentation interpolated from unchanged
   30 Hz gameplay updates
 - companion choice messages with hidden `~` range markup, pointer hit testing,
-  initial selection, script result write-back, and status-one callbacks
+  persistent red hover selection, gray inactive choices, script result
+  write-back, initial-minus-one informational follow-ups, and status-one
+  callbacks, verified through Kerberos and Harley's live Remote Town
+  interactions
 
 These pieces live in `OpenShadowFlare::GameCore` and have no dependency on
 LWL, LGL, LAL, Win32, or another platform API. The executable runtime loads
@@ -240,8 +244,11 @@ the doubled 40-unit run step. Retail's DBF thread advances movement roughly
 every 33 ms. The portable shell now uses an elapsed-time accumulator to update
 all game state at the same 30 Hz cadence while continuing to present at 60 Hz.
 This keeps movement and CAF frame counters on one clock and preserves their
-real-time speeds. Held input replaces the destination without restarting the
-current movement action.
+real-time speeds. A quick click remains a latched destination. Held input
+replaces that destination without restarting the current action, while
+releasing after a held command cancels movement before the next world update.
+Speech-bubble clicks remain consumed until their button release, including
+when an option closes the conversation on the press frame.
 
 Walk is executable action 2 and CAF chart 1 at `0x004351f0`; run is action 3
 and CAF chart 2 at `0x00435530`. The `R` binding now toggles the persistent
@@ -253,11 +260,17 @@ GND loading now includes the second, 852-by-852 Remote Town judgement plane.
 The portable RKC_RPGSCRN boundary checks its bit-zero blockers and the
 status-one OBL judgement rectangles against the retail player box
 `[-80, -80, 79, 79]`. The movement controller performs integer swept checks,
-keeps the last walkable point, and tries the two axis slides when a diagonal
-step meets scenery. The renderer reads chart zero for idle and chart one for
-walking directly from player state, rebuilds the depth key from the moving
-position, and follows the player's projected position with the retail camera
-offset.
+keeps the last walkable point, and preserves the retail movement/wall
+actors share it and face their actual detour step. Direct movement is retried
+after the actor has made progress past the collision contact and the next step
+is clear, so nearby trees are treated as new blockers rather than extensions
+of the old edge. Fixed blocked ground targets stop at their edge; NPC targets
+remain dynamic until interaction range is reached. Fixtures walk from the
+initial Remote Town entry to Kerberos, cross the sacks beside Ostare, and
+cross several separate blocker groups. The renderer reads chart zero for idle
+and chart one for walking directly from player state, rebuilds the depth key
+from the moving position, and follows the player's projected position with
+the retail camera offset.
 
 This is still not complete gameplay. The other people records, broader AI,
 dynamic actor collision, remaining script commands and operand domains,

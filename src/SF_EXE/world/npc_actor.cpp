@@ -125,6 +125,7 @@ void NpcActor::clear() {
     walking_ = false;
     interaction_active_ = false;
     random_.seed(1);
+    movement_controller_.reset();
     part_visibility_.clear();
     red_strength_.clear();
     green_strength_.clear();
@@ -166,6 +167,7 @@ void NpcActor::update(
         };
         walking_ = destination_.x != position_.x ||
                    destination_.y != position_.y;
+        movement_controller_.reset();
         action_counter_ = 0;
         if (!walking_) {
             return;
@@ -179,16 +181,21 @@ void NpcActor::update(
         destination_.y - position_.y);
 
     const MovementStepResult movement =
-        advanceMovement(
+        movement_controller_.advance(
             ground,
             objects,
             judgement_,
             position_,
             destination_,
             walk_speed_);
+    if (movement.moved) {
+        direction_ = retailDirectionForVector(
+            movement.position.x - position_.x,
+            movement.position.y - position_.y);
+    }
     position_ = movement.position;
     ++action_counter_;
-    if (!movement.moved ||
+    if ((!movement.moved && !movement.controller_active) ||
         (position_.x == destination_.x &&
          position_.y == destination_.y) ||
         action_counter_ >= walk_duration_) {

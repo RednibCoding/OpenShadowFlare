@@ -11,6 +11,25 @@ struct MovementStepResult {
     WorldPosition position;
     bool reached_destination = false;
     bool moved = false;
+    bool controller_active = false;
+};
+
+class MovementController {
+public:
+    void reset();
+    MovementStepResult advance(
+        const GroundMap& ground,
+        const ObjectMap& objects,
+        const ObjectBounds& bounds,
+        WorldPosition position,
+        WorldPosition destination,
+        std::int32_t speed,
+        bool stop_if_destination_blocked = true);
+
+private:
+    std::int32_t obstacle_direction_ = 0;
+    std::int32_t wall_direction_ = 0;
+    std::int64_t detour_start_distance_ = 0;
 };
 
 std::int32_t distanceBetweenBounds(

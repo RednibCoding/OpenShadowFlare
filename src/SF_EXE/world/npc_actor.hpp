@@ -74,6 +74,7 @@ private:
     bool walking_ = false;
     bool interaction_active_ = false;
     RetailRandom random_;
+    MovementController movement_controller_;
     std::vector<std::int32_t> part_visibility_;
     std::vector<std::int16_t> red_strength_;
     std::vector<std::int16_t> green_strength_;

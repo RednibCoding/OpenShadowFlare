@@ -350,12 +350,48 @@ bool testRetailRemoteTown() {
             "Dune's status did not open the retail choice message.")) {
         return false;
     }
+    if (!check(
+            interpreter.resume(3) ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                interpreter.readTemporaryFlag(1000001) == 3,
+            "Dune's QUIT choice was not written back to the script.")) {
+        return false;
+    }
+
+    if (!check(
+            interpreter.startStatus(0, 12010003) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000056 &&
+                messages.back().selection_required,
+            "Harley's status did not open its retail choice message.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000057 &&
+                !messages.back().selection_required,
+            "Harley's first explanation line remained a choice message.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000058 &&
+                !messages.back().selection_required,
+            "Harley's explanation did not advance to its second line.")) {
+        return false;
+    }
     return check(
-        interpreter.resume(3) ==
+        interpreter.resume() ==
                 osf::script::StepResult::complete &&
             !interpreter.waitingForMessage() &&
-            interpreter.readTemporaryFlag(1000001) == 3,
-        "Dune's QUIT choice was not written back to the script.");
+            native_commands.back() ==
+                std::make_pair(
+                    std::int32_t{19},
+                    std::vector<std::int32_t>{12010003}),
+        "Harley's completed explanation did not release him.");
 #else
     return true;
 #endif

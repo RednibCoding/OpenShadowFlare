@@ -260,13 +260,27 @@ rendered.
 
 Opcode-2 mode one is the selectable-message path used by the four Remote Town
 companions. In this mode operand one is the writable selection result and
-operand three is the initially selected zero-based option. A pair of `~`
-characters surrounds each clickable text run. The executable's message layout
-removes those markers, records the enclosed line and columns for hit testing,
-and writes the chosen range number before entering the actor's status-kind-one
-callback. The portable interpreter and speech-bubble layout now preserve that
-same split: the interpreter owns the result operand and callback, while the
-executable-owned UI owns marker layout and pointer hit testing.
+operand three is the initially selected zero-based option. A non-negative
+initial option and paired `~` runs identify the actual choice step. The
+executable's message layout removes those markers, records the enclosed line
+and columns for hit testing, and writes the chosen range number before
+entering the actor's status-kind-one callback. Mode-one messages with initial
+option `-1` are chained informational speech instead: they have no selectable
+ranges and close without writing operand one. The portable interpreter and
+speech-bubble layout preserve that split.
+The native Remote Town fixture walks to Kerberos, opens his retail message,
+checks the initial red `QUIT` selection, moves the red highlight to
+`Check Status`, then hits the rendered `QUIT` range, writes option three, and
+verifies that the conversation releases the actor. Unselected ranges use the
+retail gray, and leaving all ranges keeps the most recent selection. This
+covers the actual world-to-render-to-interpreter path rather than only testing
+the marker parser by itself.
+
+Harley's `Explanation` choice exercises the other mode-one path. Choosing
+option one shows `1000057` (“You found me finally.”), ordinary acknowledgement
+advances to `1000058`, and acknowledging that second bubble reaches native
+actor command 19 and releases Harley. Both the interpreter fixture and the
+live `WorldScene` fixture cover this complete chain.
 
 ## Operands and variables
 
@@ -381,7 +395,7 @@ naturally reveal more of:
 - persistent flag initialization and save-game restoration;
 - message control bytes, portraits, speaker metadata, and alternate message
   frame modes;
-- keyboard movement and hover feedback between message choices;
+- keyboard movement between message choices;
 - waits for movement and animation completion;
 - gates, warps, shops, inventory, rewards, and quest-log actions;
 - remaining operand domains and the rest of the opcode switch;

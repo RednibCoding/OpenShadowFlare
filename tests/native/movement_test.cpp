@@ -251,15 +251,45 @@ bool testObjectJudgement() {
         return false;
     }
 
+    osf::PlayerActor blocked_target;
+    blocked_target.reset({0, 0}, 1, 5);
+    blocked_target.moveTo({90, 0});
+    blocked_target.update(ground, objects);
+    blocked_target.update(ground, objects);
+    if (!check(
+            blocked_target.position().x == 10 &&
+                blocked_target.position().y == 0 &&
+                blocked_target.motion() ==
+                    osf::PlayerMotion::idle,
+            "A click inside blocked scenery did not stop at its edge.")) {
+        return false;
+    }
+
     osf::PlayerActor player;
     player.reset({0, 0}, 1, 5);
-    player.moveTo({100, 0});
-    player.update(ground, objects);
-    player.update(ground, objects);
+    player.moveTo({250, 0});
+    std::int32_t greatest_y = 0;
+    for (std::int32_t update = 0;
+         update < 100 &&
+         player.position().x != 250;
+        ++update) {
+        player.update(ground, objects);
+        greatest_y =
+            std::max(greatest_y, std::abs(player.position().y));
+    }
+    const bool followed =
+        player.position().x == 250 &&
+        player.position().y == 0 &&
+        greatest_y > 79;
+    if (!followed) {
+        std::cerr
+            << "Position: " << player.position().x
+            << ", " << player.position().y
+            << "; maximum detour: " << greatest_y << '\n';
+    }
     return check(
-        player.position().x == 10 &&
-            player.motion() == osf::PlayerMotion::idle,
-        "Blocked movement did not stop at the last walkable point.");
+        followed,
+        "The retail movement controller did not follow the obstacle edge.");
 }
 
 bool testAxisSlide() {

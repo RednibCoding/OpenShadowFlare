@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_CONVERSATION_LAYOUT_HPP
 #define OPENSHADOWFLARE_CONVERSATION_LAYOUT_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -13,6 +14,8 @@ struct ConversationChoiceSpan {
     std::int32_t line = 0;
     std::int32_t column = 0;
     std::int32_t length = 0;
+    std::size_t byte_offset = 0;
+    std::size_t byte_length = 0;
 };
 
 struct ConversationTextLayout {

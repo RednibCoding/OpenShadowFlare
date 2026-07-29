@@ -248,11 +248,16 @@ StepResult Interpreter::execute(const Command& command) {
         }
         const std::int32_t mode =
             readOperand(command.operands[2]);
-        const bool selection_required = mode == 1;
+        const bool mode_one = mode == 1;
         const std::int32_t initial_selection =
-            selection_required
+            mode_one
                 ? readOperand(command.operands[3])
                 : -1;
+        // Mode one also carries the chained informational messages used by
+        // companion explanations. A non-negative initial range distinguishes
+        // the actual choice menus from those ordinary acknowledgement steps.
+        const bool selection_required =
+            mode_one && initial_selection >= 0;
         if (hooks_.show_message) {
             hooks_.show_message({
                 message->id,
@@ -263,7 +268,7 @@ StepResult Interpreter::execute(const Command& command) {
             });
         }
         waiting_for_message_ = true;
-        if (mode == 0 || selection_required) {
+        if (mode == 0 || mode_one) {
             const std::int32_t target =
                 readOperand(command.operands[4]);
             message_callback_pending_ = true;

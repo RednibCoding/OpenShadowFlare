@@ -241,6 +241,7 @@ void WorldScene::clear() {
     conversation_ = {};
     conversation_active_ = false;
     conversation_actor_id_ = -1;
+    conversation_selected_option_ = -1;
     hovered_npc_id_ = -1;
     pending_interaction_npc_id_ = -1;
     ground_.clear();
@@ -337,6 +338,11 @@ void WorldScene::commandPlayerMovement(
         }));
 }
 
+void WorldScene::cancelPlayerMovement() {
+    pending_interaction_npc_id_ = -1;
+    player_.cancelMovement();
+}
+
 void WorldScene::updatePointerHover(
     std::int32_t screen_x,
     std::int32_t screen_y) {
@@ -372,7 +378,7 @@ bool WorldScene::commandWorldInteraction(
             selected.position(),
             selected.judgement()) >
         kRetailInteractionDistance) {
-        player_.moveTo(selected.position());
+        player_.followTo(selected.position());
         return true;
     }
     return startNpcInteraction(selected);
@@ -427,6 +433,19 @@ std::int32_t WorldScene::conversationInitialSelection() const {
     return conversation_.initial_selection;
 }
 
+std::int32_t WorldScene::conversationSelectedOption() const {
+    return conversation_selected_option_;
+}
+
+void WorldScene::selectConversationOption(
+    std::int32_t option) {
+    if (conversation_active_ &&
+        conversation_.selection_required &&
+        option >= 0) {
+        conversation_selected_option_ = option;
+    }
+}
+
 const gapi::NjpImage& WorldScene::speechPatterns() const {
     return speech_patterns_;
 }
@@ -437,6 +456,7 @@ void WorldScene::advanceConversation() {
     }
     conversation_active_ = false;
     conversation_ = {};
+    conversation_selected_option_ = -1;
     const script::StepResult result =
         scenario_script_.resume();
     if (result != script::StepResult::waiting_for_message) {
@@ -457,6 +477,7 @@ void WorldScene::chooseConversationOption(
     }
     conversation_active_ = false;
     conversation_ = {};
+    conversation_selected_option_ = -1;
     const script::StepResult result =
         scenario_script_.resume(option);
     if (result != script::StepResult::waiting_for_message) {
@@ -478,7 +499,7 @@ void WorldScene::update() {
     NpcActor* interaction_target =
         findNpc(pending_interaction_npc_id_);
     if (interaction_target) {
-        player_.moveTo(interaction_target->position());
+        player_.followTo(interaction_target->position());
     } else {
         pending_interaction_npc_id_ = -1;
     }
@@ -686,6 +707,10 @@ void WorldScene::showScriptMessage(
     const script::MessageEvent& message) {
     conversation_ = message;
     conversation_active_ = true;
+    conversation_selected_option_ =
+        message.selection_required
+            ? message.initial_selection
+            : -1;
     const NpcActor* speaker =
         findScriptNpc(message.character_number);
     if (speaker) {

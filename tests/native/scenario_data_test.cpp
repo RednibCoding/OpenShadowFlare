@@ -1,7 +1,9 @@
 #include "gapi/gapi.hpp"
 #include "render/conversation_layout.hpp"
+#include "render/gameplay_overlay_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "world/ground_item.hpp"
+#include "world/movement_controller.hpp"
 #include "world/scenario_data.hpp"
 #include "world/world_scene.hpp"
 
@@ -104,10 +106,14 @@ bool testConversationChoiceMarkup() {
             layout.choices[0].line == 1 &&
             layout.choices[0].column == 0 &&
             layout.choices[0].length == 12 &&
+            layout.choices[0].byte_offset == 5 &&
+            layout.choices[0].byte_length == 12 &&
             layout.choices[1].index == 1 &&
             layout.choices[1].line == 2 &&
             layout.choices[1].column == 2 &&
-            layout.choices[1].length == 4,
+            layout.choices[1].length == 4 &&
+            layout.choices[1].byte_offset == 20 &&
+            layout.choices[1].byte_length == 4,
         "Retail companion choice markup was not removed and ranged.");
 }
 
@@ -882,6 +888,320 @@ bool testRetailRemoteTown() {
             !world.conversationActive() &&
                 world.conversationActorId() == -1,
             "Syria's opening conversation did not release world control.")) {
+        return false;
+    }
+
+    osf::WorldScene companion_world;
+    if (!check(
+            companion_world.loadInitialScenario(
+                data_root, 0, &error),
+            "Remote Town could not be reloaded for the companion check.")) {
+        return false;
+    }
+    const osf::NpcActor& kerberos = companion_world.npcs()[3];
+    constexpr osf::ObjectBounds player_bounds{
+        -80, -80, 79, 79};
+    constexpr osf::WorldPosition sacks_route_start{
+        89800, 1450};
+    constexpr osf::WorldPosition sacks_route_destination{
+        91800, 1450};
+    if (!check(
+            !osf::positionIsWalkable(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                {90700, 1450},
+                player_bounds),
+            "The Remote Town sacks regression no longer crosses their "
+            "blocked ground footprint.")) {
+        return false;
+    }
+    osf::MovementController sacks_controller;
+    osf::WorldPosition sacks_position = sacks_route_start;
+    std::int32_t greatest_sacks_detour = 0;
+    for (std::int32_t update = 0;
+         update < 500 &&
+         (sacks_position.x != sacks_route_destination.x ||
+          sacks_position.y != sacks_route_destination.y);
+         ++update) {
+        const osf::MovementStepResult step =
+            sacks_controller.advance(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                player_bounds,
+                sacks_position,
+                sacks_route_destination,
+                20);
+        sacks_position = step.position;
+        greatest_sacks_detour = std::max(
+            greatest_sacks_detour,
+            std::abs(
+                sacks_position.y -
+                sacks_route_start.y));
+    }
+    if (!check(
+            sacks_position.x == sacks_route_destination.x &&
+                sacks_position.y ==
+                    sacks_route_destination.y &&
+                greatest_sacks_detour > 100,
+            "Player navigation did not follow the full edge of the "
+            "Remote Town sacks.")) {
+        return false;
+    }
+    constexpr osf::WorldPosition town_routes[] = {
+        {92500, 500},
+        {91200, 500},
+        {93000, 3000},
+        {88700, 500},
+    };
+    for (const osf::WorldPosition destination : town_routes) {
+        osf::MovementController controller;
+        osf::WorldPosition position{89898, 2811};
+        for (std::int32_t update = 0;
+             update < 1000 &&
+             (position.x != destination.x ||
+              position.y != destination.y);
+             ++update) {
+            position = controller.advance(
+                companion_world.ground(),
+                companion_world.objectMap(),
+                player_bounds,
+                position,
+                destination,
+                20).position;
+        }
+        if (!check(
+                position.x == destination.x &&
+                    position.y == destination.y,
+                "The movement controller did not retry direct movement "
+                "between separate Remote Town obstacles.")) {
+            std::cerr << "Destination: "
+                      << destination.x << ", "
+                      << destination.y << "; position: "
+                      << position.x << ", "
+                      << position.y << '\n';
+            return false;
+        }
+    }
+    const osf::ScreenPosition kerberos_anchor =
+        osf::calculateRealPosition(kerberos.position());
+    const bool kerberos_click =
+        companion_world.commandWorldInteraction(
+            kerberos_anchor.x -
+                companion_world.cameraScreenX(),
+            kerberos_anchor.y -
+                companion_world.cameraScreenY());
+    const bool kerberos_approached =
+        companion_world.interactionPending();
+    if (!check(
+            kerberos_click &&
+                kerberos_approached &&
+                updateUntilConversation(companion_world, 5000) &&
+                companion_world.conversationActorId() == 10000 &&
+                companion_world.conversationRequiresSelection() &&
+                companion_world.conversationInitialSelection() == 3,
+            "The retail movement controller did not approach Kerberos "
+            "and open his choice message.")) {
+        std::cerr
+            << "Player: "
+            << companion_world.playerWorldX() << ", "
+            << companion_world.playerWorldY()
+            << "; Kerberos: "
+            << kerberos.position().x << ", "
+            << kerberos.position().y << '\n';
+        return false;
+    }
+
+    NpcRecordingBackend choice_renderer;
+    choice_renderer.speech =
+        &companion_world.speechPatterns();
+    osf::renderWorld(
+        choice_renderer, companion_world, 500, &font);
+    const osf::ConversationTextLayout choice_layout =
+        osf::layoutConversationText(
+            companion_world.conversationText(), true);
+    const auto quit = std::find_if(
+        choice_layout.choices.begin(),
+        choice_layout.choices.end(),
+        [](const osf::ConversationChoiceSpan& choice) {
+            return choice.index == 3;
+        });
+    const auto status = std::find_if(
+        choice_layout.choices.begin(),
+        choice_layout.choices.end(),
+        [](const osf::ConversationChoiceSpan& choice) {
+            return choice.index == 0;
+        });
+    if (!check(
+            !choice_renderer.text_calls.empty() &&
+                quit != choice_layout.choices.end() &&
+                status != choice_layout.choices.end(),
+            "Kerberos's rendered choice message is missing a range.")) {
+        return false;
+    }
+    const auto choice_text = std::find_if(
+        choice_renderer.text_calls.begin(),
+        choice_renderer.text_calls.end(),
+        [&choice_layout](const TextCall& call) {
+            return call.text == choice_layout.text;
+        });
+    const auto selected_quit = std::find_if(
+        choice_renderer.text_calls.begin(),
+        choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "QUIT" &&
+                   call.draw.color.red == 255 &&
+                   call.draw.color.green == 0 &&
+                   call.draw.color.blue == 0;
+        });
+    const auto unselected_status = std::find_if(
+        choice_renderer.text_calls.begin(),
+        choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "Check Status" &&
+                   call.draw.color.red == 96 &&
+                   call.draw.color.green == 96 &&
+                   call.draw.color.blue == 96;
+        });
+    if (!check(
+            choice_text != choice_renderer.text_calls.end() &&
+                selected_quit != choice_renderer.text_calls.end() &&
+                unselected_status !=
+                    choice_renderer.text_calls.end() &&
+                companion_world.conversationSelectedOption() == 3,
+            "The script-selected companion choice did not use the "
+            "retail red and gray colors.")) {
+        return false;
+    }
+    const osf::gapi::NjpPattern& font_pattern =
+        font.patterns().front();
+    const std::int32_t cell_width =
+        font_pattern.width / 16;
+    const std::int32_t cell_height =
+        font_pattern.height / 16;
+    const std::int32_t status_x =
+        choice_text->draw.x +
+        status->column * cell_width +
+        cell_width / 2;
+    const std::int32_t status_y =
+        choice_text->draw.y +
+        status->line * cell_height +
+        cell_height / 2;
+    companion_world.selectConversationOption(
+        osf::conversationChoiceAtScreenPosition(
+            companion_world,
+            font,
+            companion_world.cameraScreenX(),
+            companion_world.cameraScreenY(),
+            status_x,
+            status_y));
+    companion_world.selectConversationOption(-1);
+    NpcRecordingBackend hovered_choice_renderer;
+    hovered_choice_renderer.speech =
+        &companion_world.speechPatterns();
+    osf::renderWorld(
+        hovered_choice_renderer,
+        companion_world,
+        500,
+        &font);
+    const auto hovered_status = std::find_if(
+        hovered_choice_renderer.text_calls.begin(),
+        hovered_choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "Check Status" &&
+                   call.draw.color.red == 255 &&
+                   call.draw.color.green == 0 &&
+                   call.draw.color.blue == 0;
+        });
+    const auto unselected_quit = std::find_if(
+        hovered_choice_renderer.text_calls.begin(),
+        hovered_choice_renderer.text_calls.end(),
+        [](const TextCall& call) {
+            return call.text == "QUIT" &&
+                   call.draw.color.red == 96 &&
+                   call.draw.color.green == 96 &&
+                   call.draw.color.blue == 96;
+        });
+    if (!check(
+            companion_world.conversationSelectedOption() == 0 &&
+                hovered_status !=
+                    hovered_choice_renderer.text_calls.end() &&
+                unselected_quit !=
+                    hovered_choice_renderer.text_calls.end(),
+            "Pointer selection did not move the retail red highlight "
+            "between companion choices.")) {
+        return false;
+    }
+    const std::int32_t quit_x =
+        choice_text->draw.x +
+        quit->column * cell_width +
+        cell_width / 2;
+    const std::int32_t quit_y =
+        choice_text->draw.y +
+        quit->line * cell_height +
+        cell_height / 2;
+    const std::int32_t selected =
+        osf::conversationChoiceAtScreenPosition(
+            companion_world,
+            font,
+            companion_world.cameraScreenX(),
+            companion_world.cameraScreenY(),
+            quit_x,
+            quit_y);
+    companion_world.selectConversationOption(selected);
+    companion_world.chooseConversationOption(selected);
+    if (!check(
+            selected == 3 &&
+                !companion_world.conversationActive() &&
+                companion_world.conversationActorId() == -1,
+            "Kerberos's rendered QUIT choice was not clickable.")) {
+        return false;
+    }
+
+    osf::WorldScene harley_world;
+    if (!check(
+            harley_world.loadInitialScenario(
+                data_root, 0, &error),
+            "Remote Town could not be reloaded for Harley's dialogue.")) {
+        return false;
+    }
+    const osf::NpcActor& harley = harley_world.npcs()[6];
+    const osf::ScreenPosition harley_anchor =
+        osf::calculateRealPosition(harley.position());
+    if (!check(
+            harley_world.commandWorldInteraction(
+                harley_anchor.x -
+                    harley_world.cameraScreenX(),
+                harley_anchor.y -
+                    harley_world.cameraScreenY()) &&
+                updateUntilConversation(harley_world, 5000) &&
+                harley_world.conversationMessageId() == 1000056 &&
+                harley_world.conversationRequiresSelection(),
+            "Harley's choice menu did not open through live world "
+            "interaction.")) {
+        return false;
+    }
+    harley_world.chooseConversationOption(1);
+    if (!check(
+            harley_world.conversationActive() &&
+                harley_world.conversationMessageId() == 1000057 &&
+                !harley_world.conversationRequiresSelection(),
+            "Harley's first explanation line remained stuck in choice "
+            "mode.")) {
+        return false;
+    }
+    harley_world.advanceConversation();
+    if (!check(
+            harley_world.conversationActive() &&
+                harley_world.conversationMessageId() == 1000058 &&
+                !harley_world.conversationRequiresSelection(),
+            "Harley's explanation did not advance to its second line.")) {
+        return false;
+    }
+    harley_world.advanceConversation();
+    if (!check(
+            !harley_world.conversationActive() &&
+                harley_world.conversationActorId() == -1,
+            "Harley was not released after his explanation.")) {
         return false;
     }
 

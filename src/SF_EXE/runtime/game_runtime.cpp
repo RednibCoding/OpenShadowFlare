@@ -487,9 +487,28 @@ private:
             [this](std::int32_t x, std::int32_t y) {
                 world_.commandPlayerMovement(x, y);
             };
+        hooks.cancel_player_movement = [this] {
+            world_.cancelPlayerMovement();
+        };
         hooks.update_pointer_hover =
             [this](std::int32_t x, std::int32_t y) {
                 world_.updatePointerHover(x, y);
+                const auto* font = frontendAssets_.pattern(1);
+                if (!font ||
+                    !world_.conversationRequiresSelection()) {
+                    return;
+                }
+                const std::int32_t option =
+                    osf::conversationChoiceAtScreenPosition(
+                        world_,
+                        *font,
+                        world_.cameraScreenX(),
+                        world_.cameraScreenY(),
+                        x,
+                        y);
+                if (option >= 0) {
+                    world_.selectConversationOption(option);
+                }
             };
         hooks.command_world_interaction =
             [this](std::int32_t x, std::int32_t y) {

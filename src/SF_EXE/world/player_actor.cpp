@@ -109,6 +109,8 @@ void PlayerActor::reset(
     movement_pace_ = MovementPace::walk;
     motion_ = PlayerMotion::idle;
     previous_action_ = PlayerMotion::idle;
+    stop_if_destination_blocked_ = true;
+    movement_controller_.reset();
 }
 
 void PlayerActor::clear() {
@@ -117,6 +119,16 @@ void PlayerActor::clear() {
 
 void PlayerActor::moveTo(WorldPosition destination) {
     destination_ = destination;
+    stop_if_destination_blocked_ = true;
+    motion_ =
+        movement_pace_ == MovementPace::run
+            ? PlayerMotion::running
+            : PlayerMotion::walking;
+}
+
+void PlayerActor::followTo(WorldPosition destination) {
+    destination_ = destination;
+    stop_if_destination_blocked_ = false;
     motion_ =
         movement_pace_ == MovementPace::run
             ? PlayerMotion::running
@@ -126,6 +138,7 @@ void PlayerActor::moveTo(WorldPosition destination) {
 void PlayerActor::cancelMovement() {
     destination_ = position_;
     motion_ = PlayerMotion::idle;
+    movement_controller_.reset();
 }
 
 void PlayerActor::faceToward(WorldPosition position) {
@@ -188,7 +201,7 @@ void PlayerActor::update(
         destination_.x - position_.x,
         destination_.y - position_.y);
     const MovementStepResult movement =
-        advanceMovement(
+        movement_controller_.advance(
             ground,
             objects,
             judgement_,
@@ -196,9 +209,15 @@ void PlayerActor::update(
             destination_,
             moving_action == PlayerMotion::running
                 ? running_speed_
-                : walking_speed_);
-    position_ = movement.position;
+                : walking_speed_,
+            stop_if_destination_blocked_);
     if (movement.moved) {
+        direction_ = retailDirectionForVector(
+            movement.position.x - position_.x,
+            movement.position.y - position_.y);
+    }
+    position_ = movement.position;
+    if (movement.moved || movement.controller_active) {
         return;
     }
     motion_ = PlayerMotion::idle;

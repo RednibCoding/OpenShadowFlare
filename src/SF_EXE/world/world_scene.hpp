@@ -50,6 +50,7 @@ public:
     void commandPlayerMovement(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    void cancelPlayerMovement();
     void updatePointerHover(
         std::int32_t screen_x,
         std::int32_t screen_y);
@@ -64,6 +65,8 @@ public:
     const std::string& conversationText() const;
     bool conversationRequiresSelection() const;
     std::int32_t conversationInitialSelection() const;
+    std::int32_t conversationSelectedOption() const;
+    void selectConversationOption(std::int32_t option);
     const gapi::NjpImage& speechPatterns() const;
     void advanceConversation();
     void chooseConversationOption(std::int32_t option);
@@ -111,6 +114,7 @@ private:
     script::MessageEvent conversation_;
     bool conversation_active_ = false;
     std::int32_t conversation_actor_id_ = -1;
+    std::int32_t conversation_selected_option_ = -1;
     std::int32_t hovered_npc_id_ = -1;
     std::int32_t pending_interaction_npc_id_ = -1;
     GroundMap ground_;
