@@ -254,10 +254,6 @@ std::int32_t PlayerActor::runningSpeed() const {
     return running_speed_;
 }
 
-std::int32_t PlayerActor::level() const {
-    return level_;
-}
-
 MovementPace PlayerActor::movementPace() const {
     return movement_pace_;
 }

@@ -264,6 +264,34 @@ The portable player currently supplies all loaded town people to the same
 query; preserving the individual class masks matters once enemies and other
 players join the portable world.
 
+## Player record and new-game tables
+
+The character-selection object owns a 0x160-byte record beginning eight bytes
+into its small wrapper. `0x00440f70` copies all `0x58` dwords into the gameplay
+player at offset `+0x10`, then initializes the new-game defaults. The confirmed
+record fields are name at `0x00`, gender at `0x18`, the save-menu job value at
+`0x1c`, and level at `0x24`.
+
+New characters obtain thirteen values from `Table.Tbd`. The selected table is
+`0x385 - gender`, which is table 901 for male and 900 for female. The values
+are stored in a slightly shuffled part of the record because current life and
+current mana sit beside their base maxima. Runtime `+0x40/+0x44` are base
+maximum and current life, while `+0x48/+0x4c` are base maximum and current
+mana. Both current values start at their maximum. `0x0044ea60` later builds
+the separate derived values which include equipment and status modifiers.
+
+The second table row is the value consumed by `0x00450d40`. It is 128 for both
+new characters, producing movement tier five. This is now read through the
+portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
+receives only the resulting movement tier and no longer owns level or other
+character data.
+
+Retail saves begin with `ShadowFlare0005` and the same plain 0x160-byte record.
+The load menu reads this copy directly. The complete record is repeated inside
+the obfuscated payload and restored by `0x0044cac0` along with dynamic objects
+and world state. OpenShadowFlare currently preserves and uses the plain record
+but does not yet claim full payload loading.
+
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
 destination with the live pointer position, but releasing after that held

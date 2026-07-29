@@ -460,8 +460,11 @@ bool testRetailRemoteTown() {
     }
 
     osf::WorldScene world;
+    osf::PlayerLoadRequest player_request;
+    player_request.name = "Mina";
     if (!check(
-            world.loadInitialScenario(data_root, 0, &error),
+            world.loadInitialScenario(
+                data_root, player_request, &error),
             "Remote Town could not be loaded through Scenario.Mct.")) {
         std::cerr << error << '\n';
         return false;
@@ -471,6 +474,10 @@ bool testRetailRemoteTown() {
             world.playerWorldX() == 89898 &&
             world.playerWorldY() == 2811 &&
             world.playerDirection() == 3 &&
+            world.playerData().name() == "Mina" &&
+            world.playerData().level() == 1 &&
+            world.playerData().baseMaximumLife() == 140 &&
+            world.playerData().baseMaximumMana() == 160 &&
             world.musicTrack() == 0 &&
             world.npcs().size() == scenario.people().size() &&
             world.npcs()[0].id() == 0 &&
@@ -954,7 +961,7 @@ bool testRetailRemoteTown() {
     osf::WorldScene companion_world;
     if (!check(
             companion_world.loadInitialScenario(
-                data_root, 0, &error),
+                data_root, osf::PlayerLoadRequest{}, &error),
             "Remote Town could not be reloaded for the companion check.")) {
         return false;
     }
@@ -1284,7 +1291,7 @@ bool testRetailRemoteTown() {
     osf::WorldScene harley_world;
     if (!check(
             harley_world.loadInitialScenario(
-                data_root, 0, &error),
+                data_root, osf::PlayerLoadRequest{}, &error),
             "Remote Town could not be reloaded for Harley's dialogue.")) {
         return false;
     }
@@ -1332,7 +1339,7 @@ bool testRetailRemoteTown() {
     osf::WorldScene wander_world;
     if (!check(
             wander_world.loadInitialScenario(
-                data_root, 0, &error),
+                data_root, osf::PlayerLoadRequest{}, &error),
             "Remote Town could not be reloaded for the wander check.")) {
         return false;
     }

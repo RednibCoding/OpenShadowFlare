@@ -140,6 +140,58 @@ if(TARGET sf_game_core)
 
   add_test(NAME item_database COMMAND item_database_test)
 
+  add_executable(table_database_test table_database_test.cpp)
+  target_link_libraries(
+    table_database_test
+    PRIVATE
+      OpenShadowFlare::RKC_RPG_TABLE
+  )
+  target_compile_features(
+    table_database_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    table_database_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    table_database_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      table_database_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      table_database_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME table_database COMMAND table_database_test)
+
+  add_executable(player_data_test player_data_test.cpp)
+  target_link_libraries(
+    player_data_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_data_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_data_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_data_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_data_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_data_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME player_data COMMAND player_data_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test

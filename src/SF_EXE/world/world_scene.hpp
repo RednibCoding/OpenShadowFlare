@@ -10,6 +10,7 @@
 #include "ground_item.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
+#include "player_data.hpp"
 #include "quest_state.hpp"
 #include "scenario_data.hpp"
 #include "script/scenario_script_runtime.hpp"
@@ -28,7 +29,7 @@ public:
 
     bool loadInitialScenario(
         const std::filesystem::path& data_root,
-        std::int32_t character_gender,
+        const PlayerLoadRequest& player_request,
         std::string* error = nullptr);
     void clear();
 
@@ -43,6 +44,7 @@ public:
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const ItemDatabase& itemDatabase() const;
+    const PlayerData& playerData() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
@@ -129,10 +131,12 @@ private:
     std::vector<GroundItem> ground_items_;
     QuestState quests_;
     ItemDatabase item_database_;
+    TableDatabase parameter_tables_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;
     RetailRandom item_random_;
+    PlayerData player_data_;
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t music_track_ = -1;

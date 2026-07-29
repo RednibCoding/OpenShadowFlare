@@ -84,10 +84,19 @@ WorldScene::WorldScene()
 
 bool WorldScene::loadInitialScenario(
     const std::filesystem::path& data_root,
-    std::int32_t character_gender,
+    const PlayerLoadRequest& player_request,
     std::string* error) {
     clear();
 
+    if (!parameter_tables_.load(
+            data_root / "System" / "Game" / "Parameter" /
+                "Table.Tbd",
+            error) ||
+        !player_data_.load(
+            player_request, parameter_tables_, error)) {
+        clear();
+        return false;
+    }
     if (!scenario_.load(
             data_root / "Scenario" / "00000000" / "Scenario.Mct",
             error)) {
@@ -174,7 +183,7 @@ bool WorldScene::loadInitialScenario(
     }
 
     const char* player_directory =
-        character_gender == 0 ? "Male" : "Female";
+        player_data_.gender() == 1 ? "Female" : "Male";
     const std::filesystem::path player_root =
         data_root / "Player" / player_directory;
     std::string player_error;
@@ -222,14 +231,10 @@ bool WorldScene::loadInitialScenario(
         npcs_.push_back(std::move(npc));
     }
 
-    // The initial values come from scenario 00000000 and the new-character
-    // table path. FUN_00450d40 turns both gender tables' agility value 128
-    // into tier five; FUN_00450080 then converts that to 20 world units per
-    // update.
     player_.reset(
         {entry->world_x, entry->world_y},
         entry->direction,
-        5);
+        player_data_.walkingSpeedTier());
     music_track_ = scenario_.musicTrack();
     has_player_ = true;
     return true;
@@ -255,9 +260,11 @@ void WorldScene::clear() {
     ground_items_.clear();
     quests_.clear();
     item_database_.clear();
+    parameter_tables_.clear();
     data_root_.clear();
     item_world_resources_.clear();
     item_random_.seed(1);
+    player_data_.clear();
     player_.clear();
     has_player_ = false;
     music_track_ = -1;
@@ -302,6 +309,10 @@ const QuestState& WorldScene::quests() const {
 
 const ItemDatabase& WorldScene::itemDatabase() const {
     return item_database_;
+}
+
+const PlayerData& WorldScene::playerData() const {
+    return player_data_;
 }
 
 const ItemWorldResource* WorldScene::itemWorldResource(
@@ -711,7 +722,7 @@ bool WorldScene::queryScriptValue(
     }
     switch (query) {
     case script::ValueQuery::local_player_level:
-        value = player_.level();
+        value = player_data_.level();
         return true;
     }
     return false;

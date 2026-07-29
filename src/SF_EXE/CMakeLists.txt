@@ -25,6 +25,7 @@ add_subdirectory(libs/RKC_DSOUND)
 add_subdirectory(libs/RKC_UPDIB)
 add_subdirectory(libs/RKC_RPGSCRN)
 add_subdirectory(libs/RKC_RPG_SCRIPT)
+add_subdirectory(libs/RKC_RPG_TABLE)
 add_subdirectory(libs/RKC_DBFCONTROL)
 
 add_library(
@@ -91,6 +92,7 @@ add_library(
   world/movement_controller.cpp
   world/npc_actor.cpp
   world/player_actor.cpp
+  world/player_data.cpp
   world/quest_state.cpp
   world/scenario_data.cpp
   world/script/scenario_script_runtime.cpp
@@ -106,6 +108,7 @@ target_link_libraries(
     OpenShadowFlare::Resources
     OpenShadowFlare::RKC_RPGSCRN
     OpenShadowFlare::RKC_RPG_SCRIPT
+    OpenShadowFlare::RKC_RPG_TABLE
     OpenShadowFlare::RKC_UPDIB
 )
 

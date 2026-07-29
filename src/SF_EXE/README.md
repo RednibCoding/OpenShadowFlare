@@ -84,13 +84,12 @@ Configured semi-transparent shadows apply to both scenery and the player.
 Remote Town's MCT music index also starts the looping `BGM00.Voc` through LAL
 at the configured BGM volume.
 
-The first dynamic `PEOPLE` record is live as well. Ostare is read from the MCT
-rather than placed by hand, loads `Character/PEOPLE/00000013`, and uses his
-original position, direction, custom CAF layer mask, idle animation, and SDW
-shadow. His MCT tail also drives the original one-second idle pause followed
-by a short chart-one walk inside his scenario-defined rectangle. For now this
-slice deliberately stops at one NPC; the other six Remote Town people and
-their more involved behavior still need to be connected.
+All seven dynamic `PEOPLE` records are read from the MCT rather than placed by
+hand. They load their original `Character/PEOPLE` resources, positions,
+directions, CAF layer masks, animations, judgement rectangles, and SDW
+shadows. Their live bounds block player movement. Type-one MCT tails also drive
+the original idle pause and short walks inside each actor's scenario-defined
+rectangle.
 
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
@@ -128,6 +127,14 @@ or behind the moving sprite, including the large town houses and walls.
 NPC-specific behavior, most script commands, the HUD, darkness, and the rest
 of gameplay simulation are still in progress.
 
+Gameplay now owns a real `PlayerData` record rather than storing level on the
+movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
+new male and female characters receive the thirteen values from retail tables
+901 and 900. A selected save contributes its complete plain 0x160-byte player
+record, including unknown bytes that later inventory, equipment, and
+progression slices will need. Full decoding of the save's obfuscated dynamic
+payload is still pending.
+
 Run it with `--smoke-test` to close automatically after three frames. You can
 also pass `/w` to keep a smoke-test window out of fullscreen mode.
 
@@ -154,7 +161,7 @@ library with one public API header. The working Win32 reconstruction under
 portable version keeps the behavior but does not preserve its ABI, object
 layout, or platform-specific plumbing.
 
-The first seven static counterparts are:
+The first eight static counterparts are:
 
 - `OpenShadowFlare::RK_FUNCTION` for RCLIB-L decompression
 - `OpenShadowFlare::RKC_DBFCONTROL` for the software framebuffer backend
@@ -163,6 +170,7 @@ The first seven static counterparts are:
 - `OpenShadowFlare::RKC_UPDIB` for NJP/SDW patterns
 - `OpenShadowFlare::RKC_RPGSCRN` for CAF, GND, and OBL data
 - `OpenShadowFlare::RKC_RPG_SCRIPT` for compiled scenario data and execution
+- `OpenShadowFlare::RKC_RPG_TABLE` for general parameter-table databases
 
 Windowing and final presentation stay in the thin executable runtime and the
 LWL and LGL libraries. This keeps the reconstructed rules independently

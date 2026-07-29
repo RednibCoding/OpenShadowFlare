@@ -59,6 +59,7 @@ set(implemented_public_apis
   RKC_DBFCONTROL/rkc_dbfcontrol.hpp
   RKC_DIB/rkc_dib.hpp
   RKC_DSOUND/rkc_dsound.hpp
+  RKC_RPG_TABLE/rkc_rpg_table.hpp
   RKC_RPGSCRN/rkc_rpgscrn.hpp
   RKC_RPG_SCRIPT/rkc_rpg_script.hpp
   RKC_UPDIB/rkc_updib.hpp
@@ -84,6 +85,7 @@ set(dll_implementation_names
   software_backend.cpp
   script_data.cpp
   script_engine.cpp
+  table_database.cpp
   voc.cpp
   voc_player.cpp
 )

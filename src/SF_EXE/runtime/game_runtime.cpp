@@ -250,8 +250,33 @@ private:
             } else if (
                 characterFrame_.action ==
                 osf::CharacterSelectAction::enter_gameplay) {
-                gameplayGender_ =
-                    characterSelectState_.data().character_gender;
+                const auto& selection =
+                    characterSelectState_.data();
+                gameplayPlayer_ = {};
+                if (selection.mode ==
+                    osf::CharacterSelectMode::saved_game) {
+                    gameplayPlayer_.source =
+                        osf::PlayerDataSource::retail_save;
+                    const auto& saved_games =
+                        frontendAssets_.savedGames();
+                    if (selection.selected_saved_game >= 0 &&
+                        static_cast<std::size_t>(
+                            selection.selected_saved_game) <
+                            saved_games.size()) {
+                        gameplayPlayer_.save_path =
+                            saved_games[
+                                static_cast<std::size_t>(
+                                    selection.selected_saved_game)]
+                                .save_path;
+                    }
+                } else {
+                    gameplayPlayer_.source =
+                        osf::PlayerDataSource::new_character;
+                    gameplayPlayer_.name =
+                        selection.character_name;
+                    gameplayPlayer_.gender =
+                        selection.character_gender;
+                }
                 gameState_.transition(osf::GameState::gameplay);
             } else if (
                 characterFrame_.action ==
@@ -465,7 +490,7 @@ private:
             std::string error;
             const bool worldReady =
                 world_.loadInitialScenario(
-                    dataRoot_, gameplayGender_, &error);
+                    dataRoot_, gameplayPlayer_, &error);
             if (!worldReady) {
                 std::fprintf(
                     stderr,
@@ -559,7 +584,7 @@ private:
     LwlGlContext* context_ = nullptr;
     bool windowingInitialized_ = false;
     std::int32_t shadowOpacity_ = 500;
-    std::int32_t gameplayGender_ = 0;
+    osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;
     osf::runtime::FrontendAssets frontendAssets_;
     LglSurfacePresenter surfacePresenter_;

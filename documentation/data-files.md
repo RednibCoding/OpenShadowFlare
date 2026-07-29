@@ -429,21 +429,44 @@ void decompress_rclib_l(uint8_t* src, int srcSize, uint8_t* dest) {
 ## Save File Format (.Ssv)
 
 ### Header
-```
-0x00: char[16] magic = "ShadowFlare0005"
-0x10: uint32_t scenarioId (at [edi + 0x4e8])
-0x14: uint32_t playTime (at [edi + 0x4ec])
-... more fields from offset 0x4e8-0x510 in game state
-```
 
-### Encryption
-Save files use XOR encryption with a 64-byte key:
-```
-BE 66 B3 2F 01 6E 6D C8 1F 98 A5 46 76 5C 3D 0E
-AA 5E 9D FF EA A0 0D 4B 75 F6 61 85 5D BB DC FB
-8B C3 4F 45 04 90 81 1E 6B C9 D3 73 C6 E7 24 BA
-32 F3 C0 EC 57 CC C4 B6 C1 AE AF 88 ... (64 bytes)
-```
+The writer at `0x0044b580` starts every save with:
+
+| File offset | Size | Meaning |
+|-------------|------|---------|
+| `0x000` | 16 | `ShadowFlare0005` plus a terminating zero |
+| `0x010` | `0x160` | Plain player record used by the load-game menu |
+| `0x170` | 4 | Encrypted payload size |
+| `0x174` | 1 | Random XOR byte |
+| `0x175` | 4 | Checksum of the plaintext payload |
+| `0x179` | variable | Substituted, XOR-obscured payload |
+
+The plain 0x160-byte record is copied from player offset `+0x10`. Confirmed
+fields within that record are:
+
+| Record offset | Meaning |
+|---------------|---------|
+| `0x00` | Character name in a 24-byte area |
+| `0x18` | Gender (`0` male, `1` female) |
+| `0x1c` | Job value displayed by the save menu |
+| `0x24` | Level |
+| `0x28`..`0x60` | Thirteen initial/base parameters in retail storage order |
+| `0x30` / `0x34` | Base maximum/current life |
+| `0x38` / `0x3c` | Base maximum/current mana |
+
+Unknown bytes remain part of the record and must be preserved. The record is
+also serialized again at the beginning of the encrypted payload. Retail first
+uses the plain copy to construct the player and then restores the complete
+gameplay state through `0x0044cac0`.
+
+The payload is not encrypted with a repeating 64-byte key. The writer sums the
+plaintext bytes for its checksum, XORs every byte with the stored random byte,
+then replaces it with its index in a fixed 256-byte permutation. Loading
+reverses the permutation and XOR before parsing the dynamic records. That
+payload includes inventory and equipment objects, scenario state, global and
+script flags, companion progress, position, and other runtime-owned data. The
+portable executable currently reads and preserves the plain player record;
+full payload decoding remains future work.
 
 ### Related Files
 - `Save\%04d.Ssv` - Save slot data (0000-0005)
@@ -525,6 +548,47 @@ Via RKC_RPG_TABLE DLL:
 - `GetFromTableNo()` - Get table by number
 - `GetRowCount()` / `GetColCount()` - Get dimensions
 - `GetValue()` / `GetStrings()` - Get cell data
+
+### Binary layout
+
+The file begins with the 16-byte `TABLE DATA V000\x1a` signature and a
+32-bit compression flag. An uncompressed file follows with a 32-bit payload
+size and the payload. A compressed file places an ordinary RCLIB-L stream
+directly after the flag.
+
+The decoded payload is:
+
+1. a signed 32-bit table count;
+2. for each table, its number, row count, and column count;
+3. all signed 32-bit numeric cells in row-major order;
+4. one string for every cell, stored as a 32-bit byte count followed by
+   bitwise-inverted bytes.
+
+The portable `RKC_RPG_TABLE` static library keeps the numeric and string cells
+together and looks tables up by their stored number. The Episode 1 database
+contains 138 tables.
+
+`0x00440f70` uses table 901 for a new male player and table 900 for a new
+female player. Both tables have 13 rows and five columns. Column zero supplies
+the initial values; the other four columns hold per-growth-step values used by
+later progression:
+
+| Row | Female table 900 | Male table 901 |
+|-----|-----------------:|---------------:|
+| 0 | 100 | 100 |
+| 1 | 128 | 128 |
+| 2, life | 150 | 140 |
+| 3, mana | 150 | 160 |
+| 4 | 140 | 140 |
+| 5 | 10 | 8 |
+| 6 | 10 | 12 |
+| 7 | 10 | 10 |
+| 8 | 10 | 10 |
+| 9–12 | 40 | 40 |
+
+Only the life, mana, and second-row movement relationship are named so far.
+The remaining rows stay numbered until their consumers establish the retail
+names.
 
 ## Scenario Data
 
