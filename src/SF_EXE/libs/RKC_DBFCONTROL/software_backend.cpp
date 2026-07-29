@@ -105,6 +105,25 @@ bool SoftwareBackend::drawPattern(
     const NjpPalette& palette =
         image.palettes()[static_cast<std::size_t>(
             palette_index)];
+    NjpPalette adjusted_palette;
+    for (std::size_t index = 0;
+         index < adjusted_palette.size();
+         ++index) {
+        Color color = palette[index];
+        color.red =
+            applyBrightness(color.red, draw.brightness);
+        color.green =
+            applyBrightness(color.green, draw.brightness);
+        color.blue =
+            applyBrightness(color.blue, draw.brightness);
+        color.red = applyColorStrength(
+            color.red, draw.red_strength);
+        color.green = applyColorStrength(
+            color.green, draw.green_strength);
+        color.blue = applyColorStrength(
+            color.blue, draw.blue_strength);
+        adjusted_palette[index] = color;
+    }
 
     for (const NjpPatternPart& item : pattern.parts) {
         if (item.part_index < 0 ||
@@ -150,36 +169,48 @@ bool SoftwareBackend::drawPattern(
             continue;
         }
 
-        for (std::int32_t y = 0; y < destination_height; ++y) {
+        std::int32_t first_y =
+            std::max(0, -destination_y);
+        std::int32_t last_y =
+            std::min(destination_height, height_ - destination_y);
+        std::int32_t first_x =
+            std::max(0, -destination_x);
+        std::int32_t last_x =
+            std::min(destination_width, width_ - destination_x);
+        if (draw.clip.width > 0 && draw.clip.height > 0) {
+            first_y = std::max(
+                first_y, draw.clip.y - destination_y);
+            last_y = std::min(
+                last_y,
+                draw.clip.y + draw.clip.height -
+                    destination_y);
+            first_x = std::max(
+                first_x, draw.clip.x - destination_x);
+            last_x = std::min(
+                last_x,
+                draw.clip.x + draw.clip.width -
+                    destination_x);
+        }
+        if (first_x >= last_x || first_y >= last_y) {
+            continue;
+        }
+
+        const bool identity_scale_x =
+            destination_width == part.width;
+        const bool identity_scale_y =
+            destination_height == part.height;
+        for (std::int32_t y = first_y; y < last_y; ++y) {
             const std::int32_t target_y = destination_y + y;
-            if (target_y < 0 || target_y >= height_) {
-                continue;
-            }
-            if (draw.clip.width > 0 &&
-                draw.clip.height > 0 &&
-                (target_y < draw.clip.y ||
-                 target_y >=
-                     draw.clip.y + draw.clip.height)) {
-                continue;
-            }
-            const std::int32_t source_y =
-                static_cast<std::int32_t>(
+            const std::int32_t source_y = identity_scale_y
+                ? y
+                : static_cast<std::int32_t>(
                     static_cast<std::int64_t>(y) *
                     part.height / destination_height);
-            for (std::int32_t x = 0; x < destination_width; ++x) {
+            for (std::int32_t x = first_x; x < last_x; ++x) {
                 const std::int32_t target_x = destination_x + x;
-                if (target_x < 0 || target_x >= width_) {
-                    continue;
-                }
-                if (draw.clip.width > 0 &&
-                    draw.clip.height > 0 &&
-                    (target_x < draw.clip.x ||
-                     target_x >=
-                         draw.clip.x + draw.clip.width)) {
-                    continue;
-                }
-                const std::int32_t source_x =
-                    static_cast<std::int32_t>(
+                const std::int32_t source_x = identity_scale_x
+                    ? x
+                    : static_cast<std::int32_t>(
                         static_cast<std::int64_t>(x) *
                         part.width / destination_width);
                 std::uint8_t palette_index =
@@ -189,19 +220,8 @@ bool SoftwareBackend::drawPattern(
                 }
                 palette_index = static_cast<std::uint8_t>(
                     palette_index + item.palette_offset);
-                Color color = palette[palette_index];
-                color.red =
-                    applyBrightness(color.red, draw.brightness);
-                color.green =
-                    applyBrightness(color.green, draw.brightness);
-                color.blue =
-                    applyBrightness(color.blue, draw.brightness);
-                color.red = applyColorStrength(
-                    color.red, draw.red_strength);
-                color.green = applyColorStrength(
-                    color.green, draw.green_strength);
-                color.blue = applyColorStrength(
-                    color.blue, draw.blue_strength);
+                const Color color =
+                    adjusted_palette[palette_index];
                 Color& destination =
                     pixels_[
                         static_cast<std::size_t>(target_y) *
@@ -245,38 +265,95 @@ bool SoftwareBackend::drawBitmap(
         return false;
     }
 
-    for (std::int32_t y = 0; y < destinationHeight; ++y) {
+    std::int32_t firstY = 0;
+    std::int32_t lastY = destinationHeight;
+    std::int32_t firstX = 0;
+    std::int32_t lastX = destinationWidth;
+    if (draw.clip.width > 0 && draw.clip.height > 0) {
+        firstY = std::max(
+            firstY, draw.clip.y - draw.y);
+        lastY = std::min(
+            lastY,
+            draw.clip.y + draw.clip.height - draw.y);
+        firstX = std::max(
+            firstX, draw.clip.x - draw.x);
+        lastX = std::min(
+            lastX,
+            draw.clip.x + draw.clip.width - draw.x);
+    }
+    firstY = std::max(firstY, -draw.y);
+    lastY = std::min(lastY, height_ - draw.y);
+    firstX = std::max(firstX, -draw.x);
+    lastX = std::min(lastX, width_ - draw.x);
+    if (firstX >= lastX || firstY >= lastY) {
+        return true;
+    }
+
+    const std::int32_t sourceWidth = image.width();
+    const std::int32_t sourceHeight = image.height();
+    const std::vector<Color>& sourcePixels = image.pixels();
+    const bool identityScaleX = destinationWidth == sourceWidth;
+    const bool identityScaleY = destinationHeight == sourceHeight;
+    const bool identityBrightness = draw.brightness == 1000;
+    for (std::int32_t y = firstY; y < lastY; ++y) {
         const std::int32_t targetY = draw.y + y;
-        if (targetY < 0 || targetY >= height_) {
-            continue;
-        }
-        const std::int32_t sourceY =
-            static_cast<std::int32_t>(
+        const std::int32_t sourceY = identityScaleY
+            ? y
+            : static_cast<std::int32_t>(
                 static_cast<std::int64_t>(y) *
-                image.height() / destinationHeight);
-        for (std::int32_t x = 0; x < destinationWidth; ++x) {
+                sourceHeight / destinationHeight);
+        for (std::int32_t x = firstX; x < lastX; ++x) {
             const std::int32_t targetX = draw.x + x;
-            if (targetX < 0 || targetX >= width_) {
+            const std::int32_t sourceX = identityScaleX
+                ? x
+                : static_cast<std::int32_t>(
+                    static_cast<std::int64_t>(x) *
+                    sourceWidth / destinationWidth);
+            Color color = sourcePixels[
+                static_cast<std::size_t>(sourceY) *
+                    static_cast<std::size_t>(sourceWidth) +
+                static_cast<std::size_t>(sourceX)];
+            if (color.alpha == 0) {
                 continue;
             }
-            const std::int32_t sourceX =
-                static_cast<std::int32_t>(
-                    static_cast<std::int64_t>(x) *
-                    image.width() / destinationWidth);
-            Color color = image.pixels()[
-                static_cast<std::size_t>(sourceY) *
-                    static_cast<std::size_t>(image.width()) +
-                static_cast<std::size_t>(sourceX)];
-            color.red =
-                applyBrightness(color.red, draw.brightness);
-            color.green =
-                applyBrightness(color.green, draw.brightness);
-            color.blue =
-                applyBrightness(color.blue, draw.brightness);
-            pixels_[
+            if (!identityBrightness) {
+                color.red =
+                    applyBrightness(color.red, draw.brightness);
+                color.green =
+                    applyBrightness(color.green, draw.brightness);
+                color.blue =
+                    applyBrightness(color.blue, draw.brightness);
+            }
+            Color& destination = pixels_[
                 static_cast<std::size_t>(targetY) *
                     static_cast<std::size_t>(width_) +
-                static_cast<std::size_t>(targetX)] = color;
+                static_cast<std::size_t>(targetX)];
+            if (color.alpha == 255) {
+                destination = color;
+            } else {
+                destination.red = static_cast<std::uint8_t>(
+                    (static_cast<std::uint32_t>(color.red) *
+                         color.alpha +
+                     static_cast<std::uint32_t>(
+                         destination.red) *
+                         (255u - color.alpha)) /
+                    255u);
+                destination.green = static_cast<std::uint8_t>(
+                    (static_cast<std::uint32_t>(color.green) *
+                         color.alpha +
+                     static_cast<std::uint32_t>(
+                         destination.green) *
+                         (255u - color.alpha)) /
+                    255u);
+                destination.blue = static_cast<std::uint8_t>(
+                    (static_cast<std::uint32_t>(color.blue) *
+                         color.alpha +
+                     static_cast<std::uint32_t>(
+                         destination.blue) *
+                         (255u - color.alpha)) /
+                    255u);
+                destination.alpha = 255;
+            }
         }
     }
     return true;

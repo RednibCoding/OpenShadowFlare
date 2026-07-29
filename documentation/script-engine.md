@@ -258,6 +258,14 @@ executes opcode 62 with `{0, 1, 0}` and then opcode 48 with `{0}`. The
 consumer of that counter still needs to be traced before it is decremented or
 rendered.
 
+The ordinary Mission List does not store another hand-written copy of this
+information. `0x0040cea0` reads the state array written by opcode 62, takes all
+48 titles from `Table.Tbd` table 41, and reads mission `n`'s description from
+table `700+n`. State zero is absent from the list, state one is unfinished,
+and state two is cleared. In the portable code, `QuestState` still owns the
+script values while `MissionCatalog` owns the table text; the screen only
+combines those two sources for display.
+
 Opcode-2 mode one is the selectable-message path used by the four Remote Town
 companions. In this mode operand one is the writable selection result and
 operand three is the initially selected zero-based option. A non-negative

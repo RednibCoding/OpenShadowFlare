@@ -29,6 +29,7 @@ The portable executable already has a solid front half:
 - Remote Town's ground, static objects, shadows, player sprite, and music
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
+- the in-game Settings, Help, Mission List, and Map screens
 
 In other words, the game can reach the world and the player can now walk
 around it. Remote Town now loads all seven PEOPLE records, their movement and
@@ -115,8 +116,9 @@ original executable:
   PEOPLE actors, and enemies. It uses direct collision sweeps plus stateful
   obstacle-edge steering rather than A*; enemy intent still comes from
   `RKC_RPG_AICONTROL`;
-- the camera uses the projected player position minus the 320-by-240 screen
-  center, without another map-edge clamp.
+- the normal camera uses the projected player position minus the 320-by-240
+  screen center, without another map-edge clamp. Live half-width panels move
+  that anchor to 480-by-240 and restrict world input to the visible half.
 
 The interaction path is traced too. `0x00449240` uses the judgement-rectangle
 distance from `0x004143c0` and the player's 159-unit interaction range. A
@@ -287,12 +289,19 @@ write. With `Save Image at Game End` enabled, they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
 drawn. Help now opens its original full-width reference screen from either the
 menu row or `H`, including the animated player preview and the menu-owned
-`CLOSE` tab. Mission List and Map stay visible for now; their clicks belong
-with those still-missing screens.
+`CLOSE` tab. The Mission List is live from both its menu row and `Q`. It reads
+all 48 titles and their description tables from `Table.Tbd`, shows only
+script-started missions, keeps the original two-page layout and lock states,
+and opens the retail detail panel when a title is clicked. The Settings Map
+row and `N` now open the original half-width map too. It uses each scenario's
+authored overview, keeps unexplored ground black, reveals the same 68-by-46
+area while walking, and retains the original marker blink, scrolling,
+recentering, frame, and dismissal behavior.
 
 The remaining layers are:
 
-- map the experience field and table calculation, then draw its clipped fill;
+- identify the experience field and table calculation, then draw its clipped
+  fill;
 - reconstruct quick-slot ownership and values instead of painting placeholders;
 - finish the remaining message-window variants;
 - darkness and other final world overlays;
@@ -394,8 +403,10 @@ by the retail Red Goblin progression value. Syria follows her two-message
 new-game branch and reaches opcodes 62 and 48, which now update world-owned
 quest state and select the retail 600-count quest notice. Message events retain
 their script character number, so actor bubbles stay anchored even on branches
-which do not run an explicit facing command. The notice consumer and cue audio
-are still pending; neither has been guessed.
+which do not run an explicit facing command. The Mission List consumes those
+quest states directly and gets its text from the retail parameter tables.
+The short-lived 600-count notice and cue audio are still pending; neither has
+been guessed.
 
 ### 3. Items, inventory, and equipment
 
@@ -420,10 +431,32 @@ distant clicks approach through the shared movement controller, then ownership
 moves into `PlayerInventory` before the world entity is erased. Gold fills
 existing stacks up to the retail 10,000 limit.
 
-The next checkpoint is the actual 9-by-4 inventory grid. It needs the decoded
-item footprint fields, placement and full-inventory failure, the original
-panel artwork, and moving or dropping an owned item. After that, equip the
-Short Sword and verify both its stat change and the matching player CAF layer.
+The real 9-by-4 backpack grid is now in place. Width and height come from
+`Item.Ibn`, placement respects multi-cell footprints, and a full inventory
+rejects a pickup without losing or partly inserting it. The authored right
+panel stays open over a live left-hand world view, with its original camera
+anchor, input boundary, gender silhouette, gold and equipped-weight values,
+Close tab, and `Item0000.njp` through `Item0013.njp` artwork. `I` and the HUD
+ITEM button both control it.
+
+Owned-item interaction is live now. A click removes the item from its backpack
+container and carries the full icon under the pointer. Another click places its
+centered footprint into free cells; invalid placements leave it on the pointer,
+and placing it over one other item swaps which item is being carried. The held
+item survives closing the panel and can be dropped into the live world in the
+same eight directions and at the same 200-unit distance used by retail.
+
+The Short Sword now makes the first full equipment round trip. The main-hand
+box uses its retail `480..543, 16..143` hit region, accepts category-zero items
+only when the player's level meets the item requirement, and swaps cleanly
+between the pointer and its own equipment owner. Its weight changes the panel
+from 0 to 30, its two base derived contributions remain available to the later
+combat calculator, and appearance refresh enables only CAF part 12 with the
+item's own color strengths. Clicking it again carries it back to the backpack.
+
+The next checkpoint is extending the same path to the Round Shield and the
+helmet, body, and boots slots. That should reuse the owner and requirement
+rules rather than growing another panel-only item path.
 
 ### 4. Combat and death
 
@@ -455,7 +488,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - buffs, debuffs, resistances, reflection, and absorption;
 - character status and detailed stat panels;
 - skill assignment and quick slots;
-- journal, map, options, and the remaining modal screens;
+- map and the remaining modal screens;
 - the in-game sound, display, input, and gameplay settings.
 
 The large UI functions should be split by screen and concern in the portable

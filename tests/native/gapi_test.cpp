@@ -232,13 +232,15 @@ public:
     }
 
     bool drawRectangle(
-        const osf::gapi::RectangleDraw&) override {
+        const osf::gapi::RectangleDraw& draw) override {
+        rectangles.push_back(draw);
         return true;
     }
 
     void endFrame() override {}
 
     std::vector<PatternCall> patterns;
+    std::vector<osf::gapi::RectangleDraw> rectangles;
 };
 
 bool check(bool condition, const char* message) {
@@ -417,6 +419,22 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
+    osf::gapi::SoftwareBackend farClippedBackend(1, 1);
+    farClippedBackend.beginFrame({7, 8, 9, 255});
+    farClippedBackend.drawPattern(
+        image,
+        0,
+        {-1999, -1999, 1000000, 1000000});
+    const osf::gapi::Color farClipped =
+        farClippedBackend.surface().pixels[0];
+    if (!check(
+            farClipped.red == 200 &&
+                farClipped.green == 180 &&
+                farClipped.blue == 160,
+            "A large clipped pattern sampled the wrong visible pixel.")) {
+        return false;
+    }
+
     osf::gapi::SoftwareBackend rectangleBackend(1, 1);
     rectangleBackend.beginFrame({20, 40, 60, 255});
     rectangleBackend.drawRectangle({
@@ -450,6 +468,11 @@ bool testGameplayHudPackets() {
             osf::gameplayHudBarWidth(1, 1000) == 1 &&
             osf::gameplayHudBarWidth(50, 100) == 103 &&
             osf::gameplayHudBarWidth(200, 100) == 206 &&
+            backend.rectangles.size() == 1 &&
+            backend.rectangles[0].x == 0 &&
+            backend.rectangles[0].y == 412 &&
+            backend.rectangles[0].width == 640 &&
+            backend.rectangles[0].height == 68 &&
             backend.patterns.size() == 9 &&
             backend.patterns[0].index == 7 &&
             backend.patterns[1].index == 8 &&
@@ -527,6 +550,34 @@ bool testBitmapAndTextDrawing() {
             surface.pixels[3 * 5 + 2].green == 50 &&
             surface.pixels[3 * 5 + 2].blue == 25,
         "BMP orientation, BGR conversion, or font tinting differs.");
+}
+
+bool testMutableBitmapMask() {
+    osf::gapi::BitmapImage bitmap;
+    if (!check(
+            bitmap.create(4, 4, {0, 0, 0, 0}),
+            "A mutable bitmap mask could not be created.")) {
+        return false;
+    }
+    bitmap.fillRectangle(
+        1, 1, 2, 2, {255, 0, 0, 128});
+
+    osf::gapi::SoftwareBackend backend(4, 4);
+    backend.beginFrame({0, 255, 0, 255});
+    backend.drawBitmap(
+        bitmap,
+        {0, 0, 1000, 1000, 1000, {2, 1, 1, 2}});
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const osf::gapi::Color untouched = surface.pixels[1 * 4 + 1];
+    const osf::gapi::Color blended = surface.pixels[1 * 4 + 2];
+    return check(
+        untouched.red == 0 &&
+            untouched.green == 255 &&
+            blended.red == 128 &&
+            blended.green == 127 &&
+            surface.pixels[2 * 4 + 2].red == 128 &&
+            surface.pixels[3 * 4 + 2].green == 255,
+        "Bitmap alpha or destination clipping differs.");
 }
 
 bool testCafAndTitleAnimation() {
@@ -608,6 +659,7 @@ int main() {
         !testNjpAndSoftwareBackend() ||
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
+        !testMutableBitmapMask() ||
         !testCafAndTitleAnimation() ||
         !testInitialLoadingPackets() ||
         !testGameplayHudPackets()) {

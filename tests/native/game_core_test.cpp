@@ -412,6 +412,7 @@ bool testGameplayLoadingTransition() {
     std::int32_t movementCancels = 0;
     std::int32_t interactionCommands = 0;
     std::int32_t pointerUpdates = 0;
+    std::int32_t pointerClears = 0;
     std::int32_t conversationAdvances = 0;
     std::int32_t conversationChoices = 0;
     std::int32_t worldUpdates = 0;
@@ -451,6 +452,10 @@ bool testGameplayLoadingTransition() {
     hooks.update_pointer_hover =
         [&](std::int32_t, std::int32_t) {
             ++pointerUpdates;
+        };
+    hooks.clear_pointer_hover =
+        [&pointerClears] {
+            ++pointerClears;
         };
     hooks.command_world_interaction =
         [&](std::int32_t x, std::int32_t y) {
@@ -533,7 +538,8 @@ bool testGameplayLoadingTransition() {
             movementX == 240 &&
             movementY == 250 &&
             interactionCommands == 4 &&
-            pointerUpdates == 14 &&
+            pointerUpdates == 12 &&
+            pointerClears == 2 &&
             conversationAdvances == 1 &&
             conversationChoices == 1 &&
             worldUpdates == 14 &&
@@ -575,10 +581,16 @@ bool testGameplayClickAndHoldMovement() {
         state.update({false, false, 300, 200, true});
     }
     state.update({false, false, 300, 200, false});
+    osf::GameplayFrameInput covered_panel_click;
+    covered_panel_click.pointer_primary_pressed = true;
+    covered_panel_click.pointer_x = 200;
+    covered_panel_click.pointer_y = 200;
+    covered_panel_click.world_view_left = 320;
+    state.update(covered_panel_click);
     return check(
         movement_commands == 15 &&
             movement_cancels == 1,
-        "A retail-length held command did not stop on release.");
+        "Held movement or split-view input clipping diverged.");
 }
 
 bool testGameplayOptionsMenu() {

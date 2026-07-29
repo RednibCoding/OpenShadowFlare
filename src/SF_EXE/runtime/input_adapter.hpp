@@ -28,9 +28,17 @@ public:
     CharacterSelectFrameInput& characterSelect();
     const CharacterSelectFrameInput& characterSelect() const;
     bool pointerPrimaryDown() const;
+    bool pointerSecondaryPressed() const;
     bool runTogglePressed() const;
     bool gameplayOptionsPressed() const;
     bool gameplayHelpPressed() const;
+    bool gameplayMissionListPressed() const;
+    bool gameplayMapPressed() const;
+    bool gameplayInventoryPressed() const;
+    bool upHeld() const;
+    bool downHeld() const;
+    bool leftHeld() const;
+    bool rightHeld() const;
 
 private:
     void setPointerPosition(
@@ -51,11 +59,18 @@ private:
     bool delete_held_ = false;
     bool backspace_held_ = false;
     bool pointer_primary_down_ = false;
+    bool pointer_secondary_pressed_ = false;
     bool run_held_ = false;
     bool help_held_ = false;
+    bool mission_list_held_ = false;
+    bool map_held_ = false;
+    bool inventory_held_ = false;
     bool run_toggle_pressed_ = false;
     bool gameplay_options_pressed_ = false;
     bool gameplay_help_pressed_ = false;
+    bool gameplay_mission_list_pressed_ = false;
+    bool gameplay_map_pressed_ = false;
+    bool gameplay_inventory_pressed_ = false;
 };
 
 }  // namespace osf::runtime

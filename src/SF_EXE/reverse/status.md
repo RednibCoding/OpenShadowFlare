@@ -95,8 +95,26 @@ person. Type-three interaction in `0x00449240` shares the 159-unit rectangle
 range and movement-controller approach. Once close, the first single-player
 `0x004526a0` path transfers the concrete item to `PlayerInventory` and erases
 the stable ground entity only after acceptance. Gold stacking to 10,000 is
-covered; grid placement, item footprints, full-inventory handling, panel
-drawing, and network replication remain.
+covered. Definition offsets `0x1c`, `0x20`, and `0x24` now provide the
+inventory width, height, and item weight. Backpack insertion scans the retail
+9-by-4 grid in row-major order, retains each multi-cell footprint, and leaves
+ownership unchanged when no complete placement is available.
+
+The first inventory screen follows `0x00404760`, `0x00407170`, and
+`0x00408a80`. `I` and the lower ITEM button toggle the live right-hand panel,
+move the camera anchor to x=160, and restrict world picking to x=0..319.
+`Status.njp` patterns 2, 3, 0/1, and 74/75 supply the original frame, gender
+silhouette, and Close tab. Gold is summed from the owned stacks; equipped
+weight comes from the equipment owner. Backpack
+items draw from the separate `Item0000.njp` through `Item0013.njp` groups at
+`(336 + grid_x*32, 264 + grid_y*32)`. The inventory and lower HUD regions are
+cleared before their transparent authored layers are composed, matching
+retail's reserved UI surfaces instead of exposing world pixels through slots.
+Moving and dropping use the retail held-item path. The main-hand box now
+accepts the Short Sword at level one, displays its 30 weight, retains its
+20/100 derived contributions, and swaps it back to the pointer on another
+click. Helmet, body, boots, off-hand, condition overlays, detailed hover text,
+special consumable placement, and network replication remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the
@@ -107,8 +125,9 @@ zero scale. Pointer, shadow, occluding-object, effect-volume, and BGM-volume
 changes apply live; all changed configuration fields are written back through
 the reconstructed 64-byte `SFlare.Cfg` writer when the game exits. The
 screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
-empty so every later row keeps its retail coordinate. Mission and map remain
-placeholders.
+empty so every later row keeps its retail coordinate. Mission and Map now
+open their own screens from the original rows: Mission is modal, while Map
+leaves the right-hand world viewport live.
 
 The Help row and `H` shortcut now open the screen drawn by `0x0040e710`.
 Status patterns 10 and 66 provide the authored 640-by-415 frame and the
@@ -119,6 +138,33 @@ preview anchor. Help entered through Settings also runs the shared
 any click above the HUD dismisses it. Drawing the current owned companion in
 the preview waits on the companion-ownership slice rather than borrowing a
 town NPC.
+
+The Mission List follows `0x0040cea0`. Status pattern 10 supplies the authored
+640-by-415 frame, patterns 110 through 113 select either 24-entry page, and
+patterns 25 and 26 provide the unfinished and cleared locks. Titles come from
+`Table.Tbd` table 41; mission `n` gets its description lines from table
+`700+n`. Script state zero hides a row, one draws the bright unfinished row,
+and two draws the gray cleared row. The list keeps the retail 12 rows per
+column, 27-pixel row cells, page-tab hit boxes, `Q` shortcut, and Settings
+entry. Page-tab selection uses retail sample 58. Clicking a row opens the same
+tinted patterns 59 and 58 detail panel with the bracketed title and 16-pixel
+description lines. A click on the detail returns to the list, while Escape,
+`Q`, or a click outside the list but above the HUD closes it.
+
+The live half-width Map follows `0x0040d4d0`. It loads the current scenario's
+`Scenario.Njp`, clips it to x=32..318 and y=40..374, and covers unexplored
+territory with the same map-sized mask used by retail. Movement reveals the
+retail 68-by-46 rectangle around each visited position. The player stays at
+the original 160,210 map anchor while arrow keys scroll by 16 horizontal or
+10 vertical pixels, Enter recenters, and the marker from `MapIcon.njp` uses
+the 15-of-20 blink. Status patterns 71 and 118 provide the authored frame and
+pulse. Its `0x11` UI mode leaves simulation and world input running in the
+right half, moves the camera anchor from x=320 to x=480, and prevents Map-panel
+clicks from leaking into the world. `N`, the Settings row, Escape, and a
+secondary click above the HUD open or close it through the matching retail
+paths. Loading and writing the per-save `Save/M%08d%02d.msk` history,
+other online-player markers, and later scenario transitions remain with their
+future owners.
 
 The two save rows now use the same secondary states as `0x004103c0`. Their
 prompts replace the settings text without replacing or re-fading the panel;
@@ -361,6 +407,21 @@ movement legs for longer trips to companion interactions. The renderer
 reads chart zero for idle and chart one for walking directly from player state,
 rebuilds the depth key from the moving position, and follows the player's
 projected position with the retail camera offset.
+
+Owned inventory interaction now follows `0x00446320`, `0x00447290`, and
+`0x004087b0`. Backpack clicks address the visible 9-by-4 grid. An owned item is
+removed from its container and carried by the shared item pointer, while its
+inventory artwork is centered under the cursor using the complete multi-cell
+footprint. Placement rounds that centered top-left corner to a grid cell,
+rejects out-of-bounds and multi-item overlaps without losing the held item, and
+leaves a single displaced item on the pointer. Closing the panel does not
+discard the held item.
+
+Clicking the live world with an item follows the branch at `0x00441d96`.
+`0x00413ec0` chooses one of eight directions from the hero to the pointer and
+the drop is placed exactly 200 world units away on that direction's axes. It
+then re-enters the same ground-item resource, CAF, color, bounce, depth, hover,
+and pickup path as scenario-created items.
 
 This is still not complete gameplay. The other people records, broader AI,
 dynamic collision for NPC and enemy movement, remaining script commands and

@@ -26,6 +26,12 @@ struct GroundItem {
     std::int32_t id = -1;
 };
 
+bool createGroundItem(
+    std::vector<GroundItem>& items,
+    std::int32_t category,
+    std::int32_t definition_id,
+    WorldPosition position,
+    std::int32_t quantity = 1);
 bool createGroundItems(
     std::vector<GroundItem>& items,
     RetailRandom& random,

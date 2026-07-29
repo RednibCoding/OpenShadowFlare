@@ -6,9 +6,13 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
 #include "items/item_world_resource.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/item_inventory_resource.hpp"
 #include "ground_item.hpp"
+#include "mission_catalog.hpp"
+#include "map_exploration.hpp"
 #include "npc_actor.hpp"
 #include "player_actor.hpp"
 #include "player_data.hpp"
@@ -45,12 +49,24 @@ public:
     const std::vector<NpcActor>& npcs() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
+    const MissionCatalog& missions() const;
     const ItemDatabase& itemDatabase() const;
+    PlayerEquipment& playerEquipment();
+    const PlayerEquipment& playerEquipment() const;
+    PlayerInventory& playerInventory();
     const PlayerInventory& playerInventory() const;
+    const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
+    std::int32_t playerPartRedStrength(
+        std::size_t part) const;
+    std::int32_t playerPartGreenStrength(
+        std::size_t part) const;
+    std::int32_t playerPartBlueStrength(
+        std::size_t part) const;
+    void refreshPlayerAppearance();
     bool hasPlayer() const;
     void commandPlayerMovement(
         std::int32_t screen_x,
@@ -59,9 +75,14 @@ public:
     void updatePointerHover(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    void clearPointerHover();
     void configurePointer(
         const WorldPointerConfiguration& configuration);
     bool commandWorldInteraction(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    bool dropInventoryItem(
+        const InventoryItem& item,
         std::int32_t screen_x,
         std::int32_t screen_y);
     bool interactionPending() const;
@@ -80,6 +101,8 @@ public:
     std::int32_t conversationSelectedOption() const;
     void selectConversationOption(std::int32_t option);
     const gapi::NjpImage& speechPatterns() const;
+    const gapi::NjpImage& mapOverviewPatterns() const;
+    const MapExploration& mapExploration() const;
     void advanceConversation();
     void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
@@ -95,6 +118,9 @@ public:
     std::int32_t cameraScreenY() const;
     std::int32_t renderCameraScreenX(double alpha) const;
     std::int32_t renderCameraScreenY(double alpha) const;
+    void setCameraAnchor(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
     WorldPosition playerRenderPosition(double alpha) const;
     const ObjectBounds& playerJudgement() const;
     std::int32_t musicTrack() const;
@@ -123,6 +149,7 @@ private:
     const NpcActor* findScriptNpc(
         std::int32_t character_number) const;
     bool ensureItemWorldResource(std::int32_t resource_id);
+    bool prepareGroundItems(std::size_t first_item);
     bool startNpcInteraction(NpcActor& npc);
     bool startGroundItemInteraction(std::int32_t item_id);
     NpcActor* findNpc(std::int32_t id);
@@ -142,12 +169,20 @@ private:
     CharacterVisualResource player_visual_;
     PeopleVisualResources people_visuals_;
     gapi::NjpImage speech_patterns_;
+    gapi::NjpImage map_overview_patterns_;
+    MapExploration map_exploration_;
     std::vector<std::uint8_t> player_parts_enabled_;
+    std::vector<std::int32_t> player_part_red_strengths_;
+    std::vector<std::int32_t> player_part_green_strengths_;
+    std::vector<std::int32_t> player_part_blue_strengths_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
     QuestState quests_;
+    MissionCatalog missions_;
     ItemDatabase item_database_;
+    PlayerEquipment player_equipment_;
     PlayerInventory player_inventory_;
+    ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
@@ -158,6 +193,8 @@ private:
     bool has_player_ = false;
     std::int32_t music_track_ = -1;
     std::int32_t next_ground_item_id_ = 0;
+    std::int32_t camera_anchor_x_ = 320;
+    std::int32_t camera_anchor_y_ = 240;
 };
 
 }  // namespace osf

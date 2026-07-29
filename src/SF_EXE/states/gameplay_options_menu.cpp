@@ -211,6 +211,31 @@ GameplayOptionsResult GameplayOptionsMenu::update(
             input.pointer_x,
             input.pointer_y,
             176,
+            254,
+            464,
+            266)) {
+        result.action =
+            GameplayOptionsAction::open_mission_list;
+        result.play_confirm_sound = true;
+        return result;
+    }
+    if (input.pointer_primary_pressed &&
+        inside(
+            input.pointer_x,
+            input.pointer_y,
+            176,
+            270,
+            464,
+            282)) {
+        result.action = GameplayOptionsAction::open_map;
+        result.play_confirm_sound = true;
+        return result;
+    }
+    if (input.pointer_primary_pressed &&
+        inside(
+            input.pointer_x,
+            input.pointer_y,
+            176,
             286,
             464,
             298)) {

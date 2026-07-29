@@ -10,6 +10,9 @@
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
+#include "render/gameplay_inventory_renderer.hpp"
+#include "render/gameplay_map_renderer.hpp"
+#include "render/gameplay_mission_list_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
@@ -21,6 +24,9 @@
 #include "runtime/input_adapter.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_inventory.hpp"
+#include "states/gameplay_map.hpp"
+#include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
@@ -333,15 +339,24 @@ private:
             break;
         }
         case osf::GameState::gameplay: {
-            if (!updateGameplayOptions(running)) {
+            if (!updateGameplayScreens(running)) {
+                const bool map_active =
+                    gameplayMap_.active();
+                const bool inventory_active =
+                    gameplayInventory_.active();
                 gameplayFrame_ = gameplayState_.update({
-                    input_.menu().confirm_pressed,
+                    input_.menu().confirm_pressed &&
+                        !map_active,
                     input_.menu()
                         .pointer_primary_pressed,
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
                     input_.pointerPrimaryDown(),
                     input_.runTogglePressed(),
+                    map_active ? 320 : 0,
+                    0,
+                    inventory_active ? 320 : 640,
+                    400,
                 });
             }
             break;
@@ -429,7 +444,8 @@ private:
                             world_.playerData(),
                             world_.playerMovementPace()));
                 }
-                if (!gameplayOptions_.active()) {
+                if (!gameplayOptions_.active() &&
+                    !gameplayMissionList_.active()) {
                     osf::renderGameplayOverlay(
                         renderer_,
                         world_,
@@ -443,7 +459,35 @@ private:
                 const auto* status =
                     frontendAssets_.pattern(6);
                 if (status && font) {
-                    if (gameplayOptions_.page() ==
+                    const auto* map_icons =
+                        frontendAssets_.pattern(7);
+                    if (gameplayInventory_.active()) {
+                        osf::renderGameplayInventory(
+                            renderer_,
+                            *status,
+                            *font,
+                            gameplayInventory_,
+                            world_);
+                    } else if (
+                        gameplayMap_.active() &&
+                        map_icons) {
+                        osf::renderGameplayMap(
+                            renderer_,
+                            *status,
+                            *font,
+                            *map_icons,
+                            gameplayMap_,
+                            world_);
+                    } else if (gameplayMissionList_.active()) {
+                        osf::renderGameplayMissionList(
+                            renderer_,
+                            *status,
+                            *font,
+                            gameplayMissionList_,
+                            world_.missions(),
+                            world_.quests());
+                    } else if (
+                        gameplayOptions_.page() ==
                         osf::GameplayOptionsPage::help) {
                         osf::renderGameplayHelp(
                             renderer_,
@@ -464,6 +508,10 @@ private:
                             gameplayOptions_,
                             gameConfig_);
                     }
+                    osf::renderHeldInventoryItem(
+                        renderer_,
+                        gameplayInventory_,
+                        world_);
                 }
             }
         }
@@ -574,6 +622,9 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayOptions_.close();
+            gameplayInventory_.close();
+            gameplayMap_.close();
+            gameplayMissionList_.close();
             savePreview_.clear();
             pendingGameplayOptionsAction_ =
                 osf::GameplayOptionsAction::none;
@@ -581,6 +632,9 @@ private:
         };
         callbacks.gameplay.leave = [this] {
             gameplayOptions_.close();
+            gameplayInventory_.close();
+            gameplayMap_.close();
+            gameplayMissionList_.close();
             gameplayState_.leave();
         };
         return callbacks;
@@ -600,11 +654,19 @@ private:
                 frontendAssets_.releasePattern(5);
                 return false;
             }
+            if (!frontendAssets_.loadPattern(
+                    7,
+                    "System\\Game\\Pattern\\MapIcon.njp")) {
+                frontendAssets_.releasePattern(5);
+                frontendAssets_.releasePattern(6);
+                return false;
+            }
             return true;
         };
         hooks.release_interface = [this] {
             frontendAssets_.releasePattern(5);
             frontendAssets_.releasePattern(6);
+            frontendAssets_.releasePattern(7);
         };
         hooks.prepare_world = [this] {
             std::string error;
@@ -655,6 +717,9 @@ private:
                     world_.selectConversationOption(option);
                 }
             };
+        hooks.clear_pointer_hover = [this] {
+            world_.clearPointerHover();
+        };
         hooks.command_world_interaction =
             [this](std::int32_t x, std::int32_t y) {
                 return world_.commandWorldInteraction(x, y);
@@ -700,11 +765,117 @@ private:
         return hooks;
     }
 
-    bool updateGameplayOptions(bool& running) {
+    bool updateGameplayScreens(bool& running) {
         if (gameplayFrame_.phase !=
             osf::GameplayPhase::world) {
             return false;
         }
+        const bool inventory_was_active =
+            gameplayInventory_.active();
+        const bool inventory_hud_toggle =
+            input_.menu().pointer_primary_pressed &&
+            input_.menu().pointer_x >= 584 &&
+            input_.menu().pointer_x < 640 &&
+            input_.menu().pointer_y >= 440 &&
+            input_.menu().pointer_y < 464;
+        const bool inventory_toggle =
+            (input_.gameplayInventoryPressed() ||
+             inventory_hud_toggle) &&
+            (!world_.conversationActive() ||
+             inventory_was_active) &&
+            !gameplayOptions_.active() &&
+            !gameplayMap_.active() &&
+            !gameplayMissionList_.active();
+        if (inventory_was_active ||
+            inventory_toggle ||
+            gameplayInventory_.holdingItem()) {
+            const osf::GameplayInventoryResult result =
+                gameplayInventory_.update(
+                    {
+                        inventory_toggle,
+                        input_.gameplayOptionsPressed() ||
+                            (input_.pointerSecondaryPressed() &&
+                             input_.menu().pointer_y < 412),
+                        input_.menu().pointer_primary_pressed,
+                        input_.menu().pointer_x,
+                        input_.menu().pointer_y,
+                    },
+                    world_.playerInventory(),
+                    world_.playerEquipment(),
+                    world_.itemDatabase(),
+                    world_.playerData().level());
+            if (result.equipment_changed) {
+                world_.refreshPlayerAppearance();
+            }
+            if (result.world_drop_requested) {
+                const osf::InventoryItem* held_item =
+                    gameplayInventory_.heldItem();
+                gameplayInventory_.completeWorldDrop(
+                    held_item &&
+                    world_.dropInventoryItem(
+                        *held_item,
+                        result.world_drop_screen_x,
+                        result.world_drop_screen_y));
+            }
+            world_.setCameraAnchor(
+                gameplayInventory_.active() ? 160 : 320,
+                240);
+            return result.pointer_consumed ||
+                   inventory_hud_toggle;
+        }
+
+        const bool map_was_active = gameplayMap_.active();
+        const bool map_toggle =
+            input_.gameplayMapPressed() &&
+            (!world_.conversationActive() ||
+             map_was_active) &&
+            !gameplayOptions_.active() &&
+            !gameplayMissionList_.active();
+        if (map_was_active || map_toggle) {
+            gameplayMap_.update({
+                map_toggle,
+                input_.gameplayOptionsPressed() ||
+                    (input_.pointerSecondaryPressed() &&
+                     input_.menu().pointer_y < 412),
+                input_.leftHeld(),
+                input_.upHeld(),
+                input_.rightHeld(),
+                input_.downHeld(),
+                input_.menu().confirm_pressed,
+            });
+            world_.setCameraAnchor(
+                gameplayMap_.active() ? 480 : 320,
+                240);
+            return false;
+        }
+        const bool mission_was_active =
+            gameplayMissionList_.active();
+        const bool mission_toggle =
+            input_.gameplayMissionListPressed() &&
+            (!world_.conversationActive() ||
+             mission_was_active) &&
+            !gameplayOptions_.active();
+        if (mission_was_active || mission_toggle) {
+            const osf::GameplayMissionListResult result =
+                gameplayMissionList_.update(
+                    {
+                        mission_toggle,
+                        input_.gameplayOptionsPressed(),
+                        input_.menu().pointer_primary_pressed,
+                        input_.menu().pointer_x,
+                        input_.menu().pointer_y,
+                    },
+                    world_.quests());
+            if (!mission_was_active &&
+                gameplayMissionList_.active()) {
+                world_.cancelPlayerMovement();
+            }
+            if (result.play_move_sound) {
+                audio_.playGameplayMenuMove();
+            }
+            return true;
+        }
+
         if (pendingGameplayOptionsAction_ !=
             osf::GameplayOptionsAction::none) {
             const osf::GameplayOptionsAction action =
@@ -748,6 +919,19 @@ private:
         }
         if (result.play_confirm_sound) {
             audio_.playOptionsConfirm();
+        }
+        if (result.action ==
+            osf::GameplayOptionsAction::open_mission_list) {
+            gameplayOptions_.close();
+            gameplayMissionList_.open();
+            return true;
+        }
+        if (result.action ==
+            osf::GameplayOptionsAction::open_map) {
+            gameplayOptions_.close();
+            gameplayMap_.open();
+            world_.setCameraAnchor(480, 240);
+            return true;
         }
         if (result.action !=
             osf::GameplayOptionsAction::none) {
@@ -835,6 +1019,9 @@ private:
     osf::WorldScene world_;
     osf::RetailSavePreview savePreview_;
     osf::GameplayOptionsMenu gameplayOptions_;
+    osf::GameplayInventory gameplayInventory_;
+    osf::GameplayMap gameplayMap_;
+    osf::GameplayMissionList gameplayMissionList_;
     osf::GameplayOptionsAction
         pendingGameplayOptionsAction_ =
             osf::GameplayOptionsAction::none;

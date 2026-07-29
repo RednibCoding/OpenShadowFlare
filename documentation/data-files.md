@@ -512,6 +512,9 @@ known offsets are shared by all five field blocks:
 |--------------|---------|
 | `0x04` | Definition ID |
 | `0x08` | Item subtype |
+| `0x1c` | Inventory width in 32-pixel cells |
+| `0x20` | Inventory height in 32-pixel cells |
+| `0x24` | Item weight |
 | `0x28` | Inventory `ItemNNNN.njp` group |
 | `0x2c` | Inventory pattern number |
 | `0x30` | Ground `Character/ITEM` resource ID |
@@ -520,6 +523,21 @@ known offsets are shared by all five field blocks:
 | `0x3c` | Ground sprite red strength (`1000` is unchanged) |
 | `0x40` | Ground sprite green strength (`1000` is unchanged) |
 | `0x44` | Ground sprite blue strength (`1000` is unchanged) |
+
+Weapon records also expose the fields used by the first equipment slice:
+
+| Field offset | Meaning |
+|--------------|---------|
+| `0x68`..`0x8c` | Ten contributions consumed by the derived-stat refresh |
+| `0x94` | Required player level |
+| `0xa8` | Player CAF appearance part |
+| `0xac` | Appearance-part red strength |
+| `0xb0` | Appearance-part green strength |
+| `0xb4` | Appearance-part blue strength |
+
+For the Short Sword these values are requirement level 1, CAF part 12, RGB
+strengths `1000, 1000, 1000`, and first derived contributions 20 and 100.
+Those are decoded from the table rather than attached to the item by name.
 
 The portable loader retains the complete unnamed field block instead of
 throwing it away. Ostare's four opening drops have inventory patterns 0, 45,
@@ -542,8 +560,9 @@ Pointer hit testing follows the opaque pixels selected by its current CAF
 cell, while the label comes from the definition name above. Once the player is
 inside the retail interaction range, pickup transfers the category,
 definition ID, and quantity to the inventory owner before removing that
-ground ID. The unnamed field block is still the source of truth for the item
-footprint fields needed by the later 9-by-4 inventory grid.
+ground ID. The same field block remains the source of truth for backpack
+footprints, equipment requirements, derived contributions, and player
+appearance.
 
 ## Table Data (Table.Tbd)
 

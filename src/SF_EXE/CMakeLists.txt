@@ -41,6 +41,7 @@ add_library(
   osf_items STATIC
   items/item_database.cpp
   items/item_world_resource.cpp
+  items/player_equipment.cpp
   items/player_inventory.cpp
 )
 add_library(OpenShadowFlare::Items ALIAS osf_items)
@@ -57,6 +58,7 @@ target_link_libraries(
 add_library(
   osf_resources STATIC
   resources/character_visual_resource.cpp
+  resources/item_inventory_resource.cpp
   resources/retail_filesystem.cpp
 )
 add_library(OpenShadowFlare::Resources ALIAS osf_resources)
@@ -71,6 +73,9 @@ target_link_libraries(
 add_library(
   osf_states STATIC
   states/game_state.cpp
+  states/gameplay_inventory.cpp
+  states/gameplay_map.cpp
+  states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
   states/gameplay_state.cpp
   states/character_select_state.cpp
@@ -86,11 +91,14 @@ target_link_libraries(
   osf_states
   PUBLIC
     OpenShadowFlare::Core
+    OpenShadowFlare::Items
 )
 
 add_library(
   osf_world STATIC
   world/ground_item.cpp
+  world/map_exploration.cpp
+  world/mission_catalog.cpp
   world/movement_controller.cpp
   world/npc_actor.cpp
   world/player_actor.cpp
@@ -125,6 +133,9 @@ add_library(
   render/conversation_layout.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
+  render/gameplay_inventory_renderer.cpp
+  render/gameplay_map_renderer.cpp
+  render/gameplay_mission_list_renderer.cpp
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp

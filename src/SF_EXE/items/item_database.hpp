@@ -11,17 +11,30 @@
 namespace osf {
 
 struct ItemDefinition {
+    static constexpr std::size_t derived_parameter_count = 10;
+
     std::int32_t category = -1;
     std::int32_t id = -1;
     std::int32_t subtype = -1;
+    std::int32_t inventory_width = 1;
+    std::int32_t inventory_height = 1;
+    std::int32_t weight = 0;
     std::int32_t inventory_pattern_group = -1;
     std::int32_t inventory_pattern = -1;
     std::int32_t ground_resource_id = -1;
     std::int32_t ground_animation_chart = -1;
-    std::int32_t inventory_shadow_pattern = -1;
+    std::int32_t inventory_palette = -1;
     std::int32_t ground_red_strength = 1000;
     std::int32_t ground_green_strength = 1000;
     std::int32_t ground_blue_strength = 1000;
+    std::array<
+        std::int32_t,
+        derived_parameter_count> derived_parameter_bonuses{};
+    std::int32_t required_level = 1;
+    std::int32_t appearance_part = -1;
+    std::int32_t appearance_red_strength = 1000;
+    std::int32_t appearance_green_strength = 1000;
+    std::int32_t appearance_blue_strength = 1000;
     std::string name;
     std::string description;
 

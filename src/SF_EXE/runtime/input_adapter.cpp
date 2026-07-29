@@ -38,6 +38,11 @@ bool InputAdapter::handleEvent(
         pointer_primary_down_ = false;
         return true;
     }
+    if (event.type == LWL_EVENT_MOUSE_DOWN && event.button == 3) {
+        setPointerPosition(window, event.x, event.y);
+        pointer_secondary_pressed_ = true;
+        return true;
+    }
     if (event.type == LWL_EVENT_TEXT_INPUT) {
         character_select_.text_input += event.text;
         return true;
@@ -65,6 +70,12 @@ bool InputAdapter::handleEvent(
             run_held_ = false;
         } else if (std::strcmp(event.key, "h") == 0) {
             help_held_ = false;
+        } else if (std::strcmp(event.key, "q") == 0) {
+            mission_list_held_ = false;
+        } else if (std::strcmp(event.key, "n") == 0) {
+            map_held_ = false;
+        } else if (std::strcmp(event.key, "i") == 0) {
+            inventory_held_ = false;
         }
         return true;
     }
@@ -141,6 +152,27 @@ bool InputAdapter::handleEvent(
             gameplay_help_pressed_ = true;
         }
         help_held_ = true;
+    } else if (
+        std::strcmp(event.key, "q") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!mission_list_held_) {
+            gameplay_mission_list_pressed_ = true;
+        }
+        mission_list_held_ = true;
+    } else if (
+        std::strcmp(event.key, "n") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!map_held_) {
+            gameplay_map_pressed_ = true;
+        }
+        map_held_ = true;
+    } else if (
+        std::strcmp(event.key, "i") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!inventory_held_) {
+            gameplay_inventory_pressed_ = true;
+        }
+        inventory_held_ = true;
     }
     return true;
 }
@@ -163,6 +195,10 @@ void InputAdapter::clearTransientInput() {
     run_toggle_pressed_ = false;
     gameplay_options_pressed_ = false;
     gameplay_help_pressed_ = false;
+    gameplay_mission_list_pressed_ = false;
+    gameplay_map_pressed_ = false;
+    gameplay_inventory_pressed_ = false;
+    pointer_secondary_pressed_ = false;
 }
 
 MenuFrameInput& InputAdapter::menu() {
@@ -187,6 +223,10 @@ bool InputAdapter::pointerPrimaryDown() const {
     return pointer_primary_down_;
 }
 
+bool InputAdapter::pointerSecondaryPressed() const {
+    return pointer_secondary_pressed_;
+}
+
 bool InputAdapter::runTogglePressed() const {
     return run_toggle_pressed_;
 }
@@ -197,6 +237,34 @@ bool InputAdapter::gameplayOptionsPressed() const {
 
 bool InputAdapter::gameplayHelpPressed() const {
     return gameplay_help_pressed_;
+}
+
+bool InputAdapter::gameplayMissionListPressed() const {
+    return gameplay_mission_list_pressed_;
+}
+
+bool InputAdapter::gameplayMapPressed() const {
+    return gameplay_map_pressed_;
+}
+
+bool InputAdapter::gameplayInventoryPressed() const {
+    return gameplay_inventory_pressed_;
+}
+
+bool InputAdapter::upHeld() const {
+    return up_held_;
+}
+
+bool InputAdapter::downHeld() const {
+    return down_held_;
+}
+
+bool InputAdapter::leftHeld() const {
+    return left_held_;
+}
+
+bool InputAdapter::rightHeld() const {
+    return right_held_;
 }
 
 void InputAdapter::setPointerPosition(

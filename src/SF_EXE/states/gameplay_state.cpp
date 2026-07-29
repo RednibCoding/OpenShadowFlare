@@ -3,6 +3,17 @@
 #include <utility>
 
 namespace osf {
+namespace {
+
+bool pointerInsideWorldView(const GameplayFrameInput& input) {
+    return input.pointer_x >= input.world_view_left &&
+           input.pointer_x < input.world_view_right &&
+           input.pointer_y >= input.world_view_top &&
+           input.pointer_y < input.world_view_bottom;
+}
+
+}  // namespace
+
 GameplayState::GameplayState(GameplayStateHooks hooks)
     : hooks_(std::move(hooks)) {}
 
@@ -62,9 +73,16 @@ GameplayFrameResult GameplayState::update(
             phase_ = GameplayPhase::world;
         }
     } else {
-        if (hooks_.update_pointer_hover) {
+        const bool pointer_in_world =
+            pointerInsideWorldView(input);
+        if (pointer_in_world &&
+            hooks_.update_pointer_hover) {
             hooks_.update_pointer_hover(
                 input.pointer_x, input.pointer_y);
+        } else if (
+            !pointer_in_world &&
+            hooks_.clear_pointer_hover) {
+            hooks_.clear_pointer_hover();
         }
         const bool conversation_active =
             hooks_.conversation_active &&
@@ -117,10 +135,7 @@ GameplayFrameResult GameplayState::update(
             bool interaction_handled = false;
             if (!pointer_consumed &&
                 input.pointer_primary_pressed &&
-                input.pointer_x >= 0 &&
-                input.pointer_x < 640 &&
-                input.pointer_y >= 0 &&
-                input.pointer_y < 400 &&
+                pointer_in_world &&
                 hooks_.command_world_interaction) {
                 interaction_handled =
                     hooks_.command_world_interaction(
@@ -151,10 +166,7 @@ GameplayFrameResult GameplayState::update(
                 !interaction_handled &&
                 (!hooks_.world_interaction_pending ||
                  !hooks_.world_interaction_pending()) &&
-                input.pointer_x >= 0 &&
-                input.pointer_x < 640 &&
-                input.pointer_y >= 0 &&
-                input.pointer_y < 400 &&
+                pointer_in_world &&
                 hooks_.command_player_movement) {
                 hooks_.command_player_movement(
                     input.pointer_x, input.pointer_y);

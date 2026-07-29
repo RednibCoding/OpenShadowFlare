@@ -16,6 +16,35 @@ constexpr double kGoldDropAngleStep = 0.3141592;
 
 }  // namespace
 
+bool createGroundItem(
+    std::vector<GroundItem>& items,
+    std::int32_t category,
+    std::int32_t definition_id,
+    WorldPosition position,
+    std::int32_t quantity) {
+    const bool gold =
+        category == kGoldCategory &&
+        definition_id == kGoldDefinition;
+    if (quantity <= 0 ||
+        (!gold && quantity != 1) ||
+        (gold && quantity > kMaximumGoldStack)) {
+        return false;
+    }
+    items.push_back({
+        category,
+        definition_id,
+        quantity,
+        position,
+        -1,
+        -1,
+        0,
+        1600,
+        280,
+        0,
+    });
+    return true;
+}
+
 bool createGroundItems(
     std::vector<GroundItem>& items,
     RetailRandom& random,
@@ -26,19 +55,11 @@ bool createGroundItems(
     std::int32_t maximum_quantity) {
     if (category != kGoldCategory ||
         definition_id != kGoldDefinition) {
-        items.push_back({
+        return createGroundItem(
+            items,
             category,
             definition_id,
-            1,
-            position,
-            -1,
-            -1,
-            0,
-            1600,
-            280,
-            0,
-        });
-        return true;
+            position);
     }
 
     if (minimum_quantity < 0 ||
@@ -66,18 +87,14 @@ bool createGroundItems(
             position.y - static_cast<std::int32_t>(
                              std::sin(angle) * kGoldDropRadius),
         };
-        items.push_back({
-            category,
-            definition_id,
-            quantity,
-            drop_position,
-            -1,
-            -1,
-            0,
-            1600,
-            280,
-            0,
-        });
+        if (!createGroundItem(
+                items,
+                category,
+                definition_id,
+                drop_position,
+                quantity)) {
+            return false;
+        }
         remaining -= quantity;
         angle += kGoldDropAngleStep;
     }

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -1046,6 +1047,31 @@ bool testRetailRemoteTown() {
                 world.playerInventory().items()[0].quantity == 1,
             "The retail approach-and-pickup path did not transfer "
             "the Short Sword into player inventory.")) {
+        return false;
+    }
+    const std::int32_t drop_origin_x =
+        world.playerWorldX();
+    const std::int32_t drop_origin_y =
+        world.playerWorldY();
+    const std::optional<osf::InventoryItem> dropped_sword =
+        world.playerInventory().take(0);
+    if (!check(
+            dropped_sword &&
+                world.dropInventoryItem(
+                    *dropped_sword, 0, 240) &&
+                world.playerInventory().items().empty() &&
+                world.groundItems().size() == 4 &&
+                world.groundItems().back().category == 0 &&
+                world.groundItems().back().definition_id == 0 &&
+                world.groundItems().back().resource_id == 0 &&
+                (std::abs(
+                     world.groundItems().back().position.x -
+                     drop_origin_x) == 200 ||
+                 std::abs(
+                     world.groundItems().back().position.y -
+                     drop_origin_y) == 200),
+            "Dropping an owned item did not return it through the "
+            "retail ground-item path.")) {
         return false;
     }
 

@@ -93,6 +93,7 @@ bool WorldScene::loadInitialScenario(
             data_root / "System" / "Game" / "Parameter" /
                 "Table.Tbd",
             error) ||
+        !missions_.load(parameter_tables_, error) ||
         !player_data_.load(
             player_request, parameter_tables_, error)) {
         clear();
@@ -112,6 +113,12 @@ bool WorldScene::loadInitialScenario(
     if (!item_database_.load(
             data_root / "System" / "Game" / "Parameter" /
                 "Item.Ibn",
+            error)) {
+        clear();
+        return false;
+    }
+    if (!item_inventory_patterns_.load(
+            data_root,
             error)) {
         clear();
         return false;
@@ -147,6 +154,17 @@ bool WorldScene::loadInitialScenario(
             data_root / "System" / "Game" / "Pattern" /
                 "Hukidasi.njp",
             error)) {
+        clear();
+        return false;
+    }
+    if (!map_overview_patterns_.load(
+            data_root / "Scenario" / "00000000" /
+                "Scenario.Njp",
+            error) ||
+        !map_exploration_.initialize(ground_)) {
+        setError(
+            error,
+            "The scenario map could not be prepared.");
         clear();
         return false;
     }
@@ -198,17 +216,7 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
-    // The retail appearance refresh at 0x00444ca0 clears this table,
-    // enables the base body and shadow, then enables only parts supplied by
-    // equipped items. A newly created character has no equipped item parts.
-    player_parts_enabled_.assign(
-        player_visual_.animation().maxPartCount(), 0);
-    if (!player_parts_enabled_.empty()) {
-        player_parts_enabled_[0] = 1;
-    }
-    if (player_parts_enabled_.size() > 1) {
-        player_parts_enabled_[1] = 1;
-    }
+    refreshPlayerAppearance();
 
     npcs_.reserve(scenario_.people().size());
     for (const ScenarioPerson& person : scenario_.people()) {
@@ -236,6 +244,7 @@ bool WorldScene::loadInitialScenario(
         {entry->world_x, entry->world_y},
         entry->direction,
         player_data_.walkingSpeedTier());
+    map_exploration_.reveal(player_.position());
     music_track_ = scenario_.musicTrack();
     has_player_ = true;
     return true;
@@ -256,12 +265,20 @@ void WorldScene::clear() {
     player_visual_.clear();
     people_visuals_.clear();
     speech_patterns_.clear();
+    map_overview_patterns_.clear();
+    map_exploration_.clear();
     player_parts_enabled_.clear();
+    player_part_red_strengths_.clear();
+    player_part_green_strengths_.clear();
+    player_part_blue_strengths_.clear();
     npcs_.clear();
     ground_items_.clear();
     quests_.clear();
+    missions_.clear();
     item_database_.clear();
+    player_equipment_.clear();
     player_inventory_.clear();
+    item_inventory_patterns_.clear();
     parameter_tables_.clear();
     data_root_.clear();
     item_world_resources_.clear();
@@ -271,6 +288,8 @@ void WorldScene::clear() {
     has_player_ = false;
     music_track_ = -1;
     next_ground_item_id_ = 0;
+    camera_anchor_x_ = 320;
+    camera_anchor_y_ = 240;
 }
 
 const GroundMap& WorldScene::ground() const {
@@ -310,12 +329,33 @@ const QuestState& WorldScene::quests() const {
     return quests_;
 }
 
+const MissionCatalog& WorldScene::missions() const {
+    return missions_;
+}
+
 const ItemDatabase& WorldScene::itemDatabase() const {
     return item_database_;
 }
 
+PlayerEquipment& WorldScene::playerEquipment() {
+    return player_equipment_;
+}
+
+const PlayerEquipment& WorldScene::playerEquipment() const {
+    return player_equipment_;
+}
+
+PlayerInventory& WorldScene::playerInventory() {
+    return player_inventory_;
+}
+
 const PlayerInventory& WorldScene::playerInventory() const {
     return player_inventory_;
+}
+
+const ItemInventoryResource&
+WorldScene::itemInventoryPatterns() const {
+    return item_inventory_patterns_;
 }
 
 const PlayerData& WorldScene::playerData() const {
@@ -336,6 +376,68 @@ const ItemWorldResource* WorldScene::itemWorldResource(
 bool WorldScene::playerPartEnabled(std::size_t part) const {
     return part < player_parts_enabled_.size() &&
            player_parts_enabled_[part] != 0;
+}
+
+std::int32_t WorldScene::playerPartRedStrength(
+    std::size_t part) const {
+    return part < player_part_red_strengths_.size()
+        ? player_part_red_strengths_[part]
+        : 1000;
+}
+
+std::int32_t WorldScene::playerPartGreenStrength(
+    std::size_t part) const {
+    return part < player_part_green_strengths_.size()
+        ? player_part_green_strengths_[part]
+        : 1000;
+}
+
+std::int32_t WorldScene::playerPartBlueStrength(
+    std::size_t part) const {
+    return part < player_part_blue_strengths_.size()
+        ? player_part_blue_strengths_[part]
+        : 1000;
+}
+
+void WorldScene::refreshPlayerAppearance() {
+    const std::size_t part_count =
+        player_visual_.animation().maxPartCount();
+    player_parts_enabled_.assign(part_count, 0);
+    player_part_red_strengths_.assign(part_count, 1000);
+    player_part_green_strengths_.assign(part_count, 1000);
+    player_part_blue_strengths_.assign(part_count, 1000);
+    if (!player_parts_enabled_.empty()) {
+        player_parts_enabled_[0] = 1;
+    }
+    if (player_parts_enabled_.size() > 1) {
+        player_parts_enabled_[1] = 1;
+    }
+
+    const InventoryItem* main_hand =
+        player_equipment_.mainHand();
+    if (!main_hand) {
+        return;
+    }
+    const ItemDefinition* definition =
+        item_database_.find(
+            main_hand->category,
+            main_hand->definition_id);
+    if (!definition ||
+        definition->appearance_part < 0 ||
+        static_cast<std::size_t>(
+            definition->appearance_part) >= part_count) {
+        return;
+    }
+    const std::size_t part =
+        static_cast<std::size_t>(
+            definition->appearance_part);
+    player_parts_enabled_[part] = 1;
+    player_part_red_strengths_[part] =
+        definition->appearance_red_strength;
+    player_part_green_strengths_[part] =
+        definition->appearance_green_strength;
+    player_part_blue_strengths_[part] =
+        definition->appearance_blue_strength;
 }
 
 bool WorldScene::hasPlayer() const {
@@ -373,6 +475,10 @@ void WorldScene::updatePointerHover(
         screen_y,
         pointerCandidatesAtScreenPosition(
             screen_x, screen_y));
+}
+
+void WorldScene::clearPointerHover() {
+    pointer_.clearSelection();
 }
 
 void WorldScene::configurePointer(
@@ -425,6 +531,91 @@ bool WorldScene::commandWorldInteraction(
         return true;
     }
     return startNpcInteraction(*selected);
+}
+
+bool WorldScene::dropInventoryItem(
+    const InventoryItem& item,
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_) {
+        return false;
+    }
+
+    const ItemDefinition* definition =
+        item_database_.find(
+            item.category, item.definition_id);
+    if (!definition ||
+        !ensureItemWorldResource(
+            definition->ground_resource_id)) {
+        return false;
+    }
+
+    const WorldPosition pointer_world =
+        calculateWorldPosition({
+            cameraScreenX() + screen_x,
+            cameraScreenY() + screen_y,
+        });
+    const WorldPosition player_position =
+        player_.position();
+    const std::int32_t direction =
+        retailDirectionForVector(
+            pointer_world.x - player_position.x,
+            pointer_world.y - player_position.y);
+
+    WorldPosition drop_position = player_position;
+    constexpr std::int32_t kRetailDropDistance = 200;
+    switch (direction) {
+    case 0:
+        drop_position.x += kRetailDropDistance;
+        drop_position.y += kRetailDropDistance;
+        break;
+    case 1:
+        drop_position.x += kRetailDropDistance;
+        break;
+    case 2:
+        drop_position.x += kRetailDropDistance;
+        drop_position.y -= kRetailDropDistance;
+        break;
+    case 3:
+        drop_position.y -= kRetailDropDistance;
+        break;
+    case 4:
+        drop_position.x -= kRetailDropDistance;
+        drop_position.y -= kRetailDropDistance;
+        break;
+    case 5:
+        drop_position.x -= kRetailDropDistance;
+        break;
+    case 6:
+        drop_position.x -= kRetailDropDistance;
+        drop_position.y += kRetailDropDistance;
+        break;
+    case 7:
+        drop_position.y += kRetailDropDistance;
+        break;
+    default:
+        return false;
+    }
+
+    const std::size_t first_item =
+        ground_items_.size();
+    const std::int32_t first_id =
+        next_ground_item_id_;
+    if (!createGroundItem(
+            ground_items_,
+            item.category,
+            item.definition_id,
+            drop_position,
+            item.quantity) ||
+        !prepareGroundItems(first_item)) {
+        ground_items_.resize(first_item);
+        next_ground_item_id_ = first_id;
+        return false;
+    }
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    pointer_.clearSelection();
+    return true;
 }
 
 bool WorldScene::interactionPending() const {
@@ -521,6 +712,15 @@ const gapi::NjpImage& WorldScene::speechPatterns() const {
     return speech_patterns_;
 }
 
+const gapi::NjpImage&
+WorldScene::mapOverviewPatterns() const {
+    return map_overview_patterns_;
+}
+
+const MapExploration& WorldScene::mapExploration() const {
+    return map_exploration_;
+}
+
 void WorldScene::advanceConversation() {
     if (!conversation_active_) {
         return;
@@ -602,6 +802,7 @@ void WorldScene::update() {
     if (has_player_) {
         player_.update(
             ground_, object_map_, &actor_blockers);
+        map_exploration_.reveal(player_.position());
     }
     for (NpcActor& npc : npcs_) {
         npc.update(ground_, object_map_);
@@ -670,27 +871,34 @@ std::int32_t WorldScene::playerAnimationFrame() const {
 std::int32_t WorldScene::cameraScreenX() const {
     const ScreenPosition position =
         calculateRealPosition(player_.position());
-    return position.x - 320;
+    return position.x - camera_anchor_x_;
 }
 
 std::int32_t WorldScene::cameraScreenY() const {
     const ScreenPosition position =
         calculateRealPosition(player_.position());
-    return position.y - 240;
+    return position.y - camera_anchor_y_;
 }
 
 std::int32_t WorldScene::renderCameraScreenX(
     double alpha) const {
     const ScreenPosition position =
         calculateRealPosition(player_.renderPosition(alpha));
-    return position.x - 320;
+    return position.x - camera_anchor_x_;
 }
 
 std::int32_t WorldScene::renderCameraScreenY(
     double alpha) const {
     const ScreenPosition position =
         calculateRealPosition(player_.renderPosition(alpha));
-    return position.y - 240;
+    return position.y - camera_anchor_y_;
+}
+
+void WorldScene::setCameraAnchor(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    camera_anchor_x_ = screen_x;
+    camera_anchor_y_ = screen_y;
 }
 
 WorldPosition WorldScene::playerRenderPosition(
@@ -747,32 +955,7 @@ bool WorldScene::executeScriptNativeCommand(
                 arguments[5])) {
             return false;
         }
-        for (std::size_t index = first_item;
-             index < ground_items_.size();
-             ++index) {
-            GroundItem& item = ground_items_[index];
-            const ItemDefinition* definition =
-                item_database_.find(
-                    item.category, item.definition_id);
-            if (!definition ||
-                !ensureItemWorldResource(
-                    definition->ground_resource_id)) {
-                ground_items_.resize(first_item);
-                return false;
-            }
-            item.resource_id =
-                definition->ground_resource_id;
-            item.animation_chart =
-                definition->ground_animation_chart;
-            item.red_strength =
-                definition->ground_red_strength;
-            item.green_strength =
-                definition->ground_green_strength;
-            item.blue_strength =
-                definition->ground_blue_strength;
-            item.id = next_ground_item_id_++;
-        }
-        return true;
+        return prepareGroundItems(first_item);
     }
 
     if (opcode == 48) {
@@ -1038,9 +1221,13 @@ bool WorldScene::startGroundItemInteraction(
 
     pending_interaction_ = {};
     player_.cancelMovement();
-    if (player_inventory_.add(
+    const ItemDefinition* definition =
+        item_database_.find(
             found->category,
-            found->definition_id,
+            found->definition_id);
+    if (definition &&
+        player_inventory_.add(
+            *definition,
             found->quantity)) {
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&
@@ -1071,6 +1258,42 @@ bool WorldScene::ensureItemWorldResource(
         item_world_resources_.resize(index + 1u);
     }
     item_world_resources_[index] = std::move(resource);
+    return true;
+}
+
+bool WorldScene::prepareGroundItems(
+    std::size_t first_item) {
+    if (first_item > ground_items_.size()) {
+        return false;
+    }
+    const std::int32_t first_id =
+        next_ground_item_id_;
+    for (std::size_t index = first_item;
+         index < ground_items_.size();
+         ++index) {
+        GroundItem& item = ground_items_[index];
+        const ItemDefinition* definition =
+            item_database_.find(
+                item.category, item.definition_id);
+        if (!definition ||
+            !ensureItemWorldResource(
+                definition->ground_resource_id)) {
+            ground_items_.resize(first_item);
+            next_ground_item_id_ = first_id;
+            return false;
+        }
+        item.resource_id =
+            definition->ground_resource_id;
+        item.animation_chart =
+            definition->ground_animation_chart;
+        item.red_strength =
+            definition->ground_red_strength;
+        item.green_strength =
+            definition->ground_green_strength;
+        item.blue_strength =
+            definition->ground_blue_strength;
+        item.id = next_ground_item_id_++;
+    }
     return true;
 }
 

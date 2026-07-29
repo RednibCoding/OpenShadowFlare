@@ -48,6 +48,7 @@ Total: 258 RKC DLL imports
 | 0x00402900 | RightClickHandler - Right/middle mouse |
 | 0x00402920 | PaintInitialLoadingScreen - cached loading page and overlay |
 | 0x004030F0 | RenderWorld - ground, shadow, and depth-sorted object passes |
+| 0x0040CEA0 | RenderMissionList - two pages, script state, and detail panel |
 | 0x004023d0 | UpdateGameState - Game state machine (switches on state 0/1/2) |
 | 0x00401b90 | Shutdown - Cleanup all subsystems |
 | 0x0041d970 | BootstrapGameplay - first-frame scenario setup (2936 bytes) |
@@ -300,6 +301,23 @@ maximum and current life, while `+0x48/+0x4c` are base maximum and current
 mana. Both current values start at their maximum. `0x0044ea60` later builds
 the separate derived values which include equipment and status modifiers.
 
+The item panel keeps equipment separate from the backpack. Pointer classifier
+`0x00447290` returns main hand for x=480 through 543 and y=16 through 143.
+`0x00446320` accepts category-zero items there, compares the definition's
+required-level field with player offset `+0x34`, and stores the equipped
+instance at player offset `+0x4f4`. Clicking an occupied main hand with an
+empty pointer unequips it; carrying another valid weapon swaps the two.
+
+The decoded weapon record maps requirement level from field-block offset
+`0x94`, player CAF part from `0xa8`, and that part's RGB strengths from
+`0xac` through `0xb4`. Short Sword requires level one and selects part 12.
+Its first two entries in the ten-value derived contribution block are 20 and
+100. Retail runs both the derived-value refresh at `0x00450080` and appearance
+refresh at `0x00444ca0` after changing equipment. The portable equipment owner
+keeps those contributions available for combat, updates the visible 30 weight
+immediately, and rebuilds the player part mask without making the item panel
+own world rendering state.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
@@ -441,6 +459,33 @@ y=413 to y=393 and then pulse in the retail eight-phase order. Escape or a
 click above y=412 closes Help. The `H` shortcut opens the same reference page
 directly. The companion preview is conditional in retail; the portable
 renderer will add it when the player-owned companion system exists.
+
+The Map row at y=270 and the `N` shortcut switch to `0x0040d4d0`. The screen
+keeps the right half of the world visible and clips its own content to
+`(32, 40)` through `(318, 374)`. Pattern 0 from the current scenario's
+`Scenario.Njp` is positioned in one-tenth real-screen coordinates, with the
+local player held at `(160, 210)`. A separate map-sized mask begins black.
+Gameplay clears a 68-by-46 rectangle in that mask around every visited
+position, which reveals the overview without exposing unexplored territory.
+
+`MapIcon.njp` patterns 0 and 1 form the local `PLAYER.` marker. It is visible
+for 15 updates and hidden for five. Arrow keys change the map origin by 16
+pixels horizontally or 10 vertically; Enter clears both offsets. Status
+pattern 71 supplies the authored half-screen frame and pattern 118 pulses over
+60 updates. The scenario title is drawn at `(72, 50)` over its half-opacity
+label backing.
+
+Unlike Help and the Mission List, the Map is not a pausing modal. Its active
+UI flags are `0x11`: the left 320 pixels belong to the Map while the world
+keeps updating in the right 320-pixel viewport. The camera anchor moves from
+`(320, 240)` to `(480, 240)`, so the local player stays centered in the visible
+half, and mouse picking uses the shifted projection. Clicks in the Map panel
+do not become world commands. Escape or `N` closes it and restores the normal
+camera anchor; the secondary-click handler at `0x0044ad80` also closes it for
+clicks above the HUD. Retail loads and saves the exploration masks as
+`Save/M%08d%02d.msk`; portable
+per-save mask persistence and the three other online-player markers remain
+to be connected.
 
 The Save and Return row occupies y=302 through 313, and Save and Exit occupies
 y=318 through 329. They enter confirmation states two and three. Both dialogs

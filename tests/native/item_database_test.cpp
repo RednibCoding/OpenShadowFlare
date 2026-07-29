@@ -1,4 +1,5 @@
 #include "items/item_database.hpp"
+#include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 
 #include <cstdint>
@@ -6,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -45,7 +47,7 @@ bool checkDefinition(
                 ground_resource &&
             definition->ground_animation_chart ==
                 ground_chart &&
-            definition->inventory_shadow_pattern == -1 &&
+            definition->inventory_palette == -1 &&
             definition->ground_red_strength == red_strength &&
             definition->ground_green_strength == green_strength &&
             definition->ground_blue_strength == blue_strength,
@@ -78,6 +80,38 @@ bool testRetailDatabase() {
                 database.definitions(3).size() == 31 &&
                 database.definitions(4).size() == 45,
             "The retail item category counts differ.")) {
+        return false;
+    }
+    const osf::ItemDefinition* short_sword =
+        database.find(0, 0);
+    if (!check(
+            short_sword &&
+                short_sword->inventory_width == 1 &&
+                short_sword->inventory_height == 4 &&
+                short_sword->weight == 30 &&
+                short_sword->required_level == 1 &&
+                short_sword->derived_parameter_bonuses[0] == 20 &&
+                short_sword->derived_parameter_bonuses[1] == 100 &&
+                short_sword->appearance_part == 12 &&
+                short_sword->appearance_red_strength == 1000 &&
+                short_sword->appearance_green_strength == 1000 &&
+                short_sword->appearance_blue_strength == 1000,
+            "The Short Sword equipment fields differ.")) {
+        return false;
+    }
+    osf::InventoryItem sword_item;
+    sword_item.category = short_sword->category;
+    sword_item.definition_id = short_sword->id;
+    sword_item.width = short_sword->inventory_width;
+    sword_item.height = short_sword->inventory_height;
+    osf::PlayerEquipment equipment;
+    if (!check(
+            !equipment.placeMainHand(
+                 sword_item, *short_sword, 0).accepted &&
+                equipment.placeMainHand(
+                    sword_item, *short_sword, 1).accepted &&
+                equipment.mainHand(),
+            "The Short Sword level requirement was not enforced.")) {
         return false;
     }
     if (!checkDefinition(
@@ -161,15 +195,101 @@ bool testPlayerInventory() {
             inventory.add(4, 0, 15000) &&
                 inventory.items().size() == 2 &&
                 inventory.items()[0].quantity == 10000 &&
+                inventory.items()[0].grid_x == 0 &&
+                inventory.items()[0].grid_y == 0 &&
                 inventory.items()[1].quantity == 5000 &&
+                inventory.items()[1].grid_x == 1 &&
+                inventory.items()[1].grid_y == 0 &&
                 inventory.add(4, 0, 5000) &&
                 inventory.items().size() == 2 &&
-                inventory.items()[1].quantity == 10000,
+                inventory.items()[1].quantity == 10000 &&
+                inventory.gold() == 20000,
             "Retail gold stacks were not filled to 10000.")) {
         return false;
     }
 
-    return true;
+    inventory.clear();
+    osf::ItemDefinition sword;
+    sword.category = 0;
+    sword.id = 0;
+    sword.inventory_width = 1;
+    sword.inventory_height = 4;
+    sword.weight = 30;
+    osf::ItemDefinition shield;
+    shield.category = 1;
+    shield.id = 1000000;
+    shield.inventory_width = 2;
+    shield.inventory_height = 3;
+    shield.weight = 40;
+    if (!check(
+            inventory.add(sword) &&
+                inventory.add(shield) &&
+                inventory.items().size() == 2 &&
+                inventory.items()[0].grid_x == 0 &&
+                inventory.items()[0].grid_y == 0 &&
+                inventory.items()[0].width == 1 &&
+                inventory.items()[0].height == 4 &&
+                inventory.items()[1].grid_x == 1 &&
+                inventory.items()[1].grid_y == 0 &&
+                inventory.items()[1].width == 2 &&
+                inventory.items()[1].height == 3,
+            "Retail-sized items were not placed in the 9-by-4 grid.")) {
+        return false;
+    }
+    const std::optional<osf::InventoryItem> held_sword =
+        inventory.take(0);
+    const osf::InventoryPlacementResult invalid =
+        held_sword
+            ? inventory.place(*held_sword, 4, 1)
+            : osf::InventoryPlacementResult{};
+    if (!check(
+            held_sword &&
+                !invalid.accepted &&
+                inventory.items().size() == 1 &&
+                inventory.items()[0].category == 1,
+            "An invalid owned-item move changed the inventory.")) {
+        return false;
+    }
+    const osf::InventoryPlacementResult displaced =
+        inventory.place(*held_sword, 1, 0);
+    if (!check(
+            displaced.accepted &&
+                displaced.held_item &&
+                displaced.held_item->category == 1 &&
+                inventory.items().size() == 1 &&
+                inventory.items()[0].grid_x == 1 &&
+                inventory.items()[0].grid_y == 0,
+            "Placing onto one item did not leave that item held.")) {
+        return false;
+    }
+    const osf::InventoryPlacementResult placed =
+        inventory.place(*displaced.held_item, 4, 0);
+    if (!check(
+            placed.accepted &&
+                !placed.held_item &&
+                inventory.items().size() == 2 &&
+                inventory.items()[1].grid_x == 4 &&
+                inventory.items()[1].grid_y == 0,
+            "A displaced item could not be placed in free cells.")) {
+        return false;
+    }
+
+    inventory.clear();
+    for (std::int32_t index = 0;
+         index < 36;
+         ++index) {
+        if (!inventory.add(0, index)) {
+            return check(
+                false,
+                "A free 9-by-4 inventory cell was rejected.");
+        }
+    }
+    return check(
+        inventory.items().size() == 36 &&
+            !inventory.add(0, 36) &&
+            inventory.items().size() == 36,
+        "A full inventory accepted another item.");
+
 }
 
 }  // namespace
