@@ -1,6 +1,7 @@
 #include "gameplay_inventory_renderer.hpp"
 
 #include "gapi/gapi.hpp"
+#include "items/item_condition.hpp"
 #include "items/item_database.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
@@ -53,10 +54,12 @@ void drawRightAlignedNumber(
 
 bool drawInventoryItem(
     gapi::Backend& renderer,
+    const gapi::NjpImage& status_patterns,
     const WorldScene& world,
     const InventoryItem& item,
     std::int32_t x,
-    std::int32_t y) {
+    std::int32_t y,
+    std::uint32_t gameplay_counter) {
     const ItemDefinition* definition =
         world.itemDatabase().find(
             item.category,
@@ -74,7 +77,7 @@ bool drawInventoryItem(
             patterns->patterns().size()) {
         return false;
     }
-    return renderer.drawPattern(
+    if (!renderer.drawPattern(
         *patterns,
         static_cast<std::size_t>(
             definition->inventory_pattern),
@@ -89,7 +92,26 @@ bool drawInventoryItem(
             1000,
             1000,
             definition->inventory_palette,
-        });
+        })) {
+        return false;
+    }
+
+    if (itemConditionWarningVisible(
+            item, *definition, gameplay_counter) &&
+        status_patterns.patterns().size() > 16) {
+        renderer.drawPattern(
+            status_patterns,
+            16,
+            {
+                x + item.width *
+                        GameplayInventory::cell_size -
+                    16,
+                y + item.height *
+                        GameplayInventory::cell_size -
+                    16,
+            });
+    }
+    return true;
 }
 
 }  // namespace
@@ -99,7 +121,8 @@ void renderGameplayInventory(
     const gapi::NjpImage& status_patterns,
     const gapi::NjpImage& font,
     const GameplayInventory& inventory,
-    const WorldScene& world) {
+    const WorldScene& world,
+    std::uint32_t gameplay_counter) {
     if (!inventory.active() || !world.hasPlayer()) {
         return;
     }
@@ -160,6 +183,7 @@ void renderGameplayInventory(
             GameplayInventory::equipmentRegion(slot);
         drawInventoryItem(
             renderer,
+            status_patterns,
             world,
             *equipped,
             region.left +
@@ -167,7 +191,8 @@ void renderGameplayInventory(
                     GameplayInventory::cell_size / 2,
             region.top +
                 (region.height_in_cells - equipped->height) *
-                    GameplayInventory::cell_size / 2);
+                    GameplayInventory::cell_size / 2,
+            gameplay_counter);
     }
 
     const auto& items = owned.items();
@@ -177,6 +202,7 @@ void renderGameplayInventory(
         const InventoryItem& item = items[index];
         drawInventoryItem(
             renderer,
+            status_patterns,
             world,
             item,
             GameplayInventory::backpack_left +
@@ -184,7 +210,8 @@ void renderGameplayInventory(
                     GameplayInventory::cell_size,
             GameplayInventory::backpack_top +
                 item.grid_y *
-                    GameplayInventory::cell_size);
+                    GameplayInventory::cell_size,
+            gameplay_counter);
     }
 
     renderer.drawPattern(
@@ -194,8 +221,10 @@ void renderGameplayInventory(
 
 void renderHeldInventoryItem(
     gapi::Backend& renderer,
+    const gapi::NjpImage& status_patterns,
     const GameplayInventory& inventory,
-    const WorldScene& world) {
+    const WorldScene& world,
+    std::uint32_t gameplay_counter) {
     const InventoryItem* item =
         inventory.heldItem();
     if (!item) {
@@ -203,6 +232,7 @@ void renderHeldInventoryItem(
     }
     drawInventoryItem(
         renderer,
+        status_patterns,
         world,
         *item,
         inventory.pointerX() -
@@ -210,7 +240,8 @@ void renderHeldInventoryItem(
                 GameplayInventory::cell_size / 2,
         inventory.pointerY() -
             item->height *
-                GameplayInventory::cell_size / 2);
+                GameplayInventory::cell_size / 2,
+        gameplay_counter);
 }
 
 }  // namespace osf

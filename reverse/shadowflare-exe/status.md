@@ -146,8 +146,15 @@ definition zero takes the executable's shorter branch: Gold shows its stack
 amount in the exact `Price                     :%9d` row, producing the wide
 three-line panel instead of a name-only box.
 
-Condition artwork, special consumable placement, dynamic dyed colors, and
-network replication remain.
+The condition corner in `0x00465cb0` is reconstructed for backpack, equipped,
+and pointer-held gear. Categories zero and one compare current and maximum
+durability using the executable's integer percentage. Values below ten
+percent draw `Status.njp` pattern 16 at
+`(x + width*32 - 16, y + height*32 - 16)`. A nonzero value blinks for eight
+game updates and hides for eight; zero durability stays visible. The adjacent
+pattern-17 state has not yet been given a trustworthy gameplay owner.
+Special consumable placement, dynamic dyed colors, and network replication
+remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the

@@ -250,7 +250,8 @@ bool testInventoryResourcesAndRendering() {
         status,
         font,
         inventory,
-        world);
+        world,
+        0);
     if (!check(
         renderer.patterns.size() == 4 &&
             renderer.rectangles.size() == 1 &&
@@ -300,7 +301,8 @@ bool testInventoryResourcesAndRendering() {
         status,
         font,
         inventory,
-        world);
+        world,
+        0);
     if (!check(
             equipped.equipment_changed &&
                 equipped.pointer_consumed &&
@@ -363,11 +365,14 @@ bool testInventoryResourcesAndRendering() {
         status,
         font,
         inventory,
-        world);
+        world,
+        0);
     osf::renderHeldInventoryItem(
         held_renderer,
+        status,
         inventory,
-        world);
+        world,
+        0);
     if (!check(
             inventory.holdingItem() &&
                 held_renderer.patterns.size() == 5 &&
@@ -437,7 +442,8 @@ bool testInventoryResourcesAndRendering() {
         status,
         font,
         inventory,
-        world);
+        world,
+        0);
     if (!check(
         shield_equipped.equipment_changed &&
             !inventory.holdingItem() &&
@@ -659,11 +665,253 @@ bool testInventoryResourcesAndRendering() {
         "retail.");
 }
 
+bool testConditionArtwork() {
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Mina";
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                &error),
+            error.empty()
+                ? "The condition-artwork world could not be prepared."
+                : error.c_str())) {
+        return false;
+    }
+
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    if (!check(
+            status.load(
+                data_root / "System" / "Game" / "Pattern" /
+                    "Status.njp",
+                &error) &&
+                font.load(
+                    data_root / "System" / "Common" / "Pattern" /
+                        "Font01.njp",
+                    &error) &&
+                status.patterns().size() > 17 &&
+                status.patterns()[16].width == 14 &&
+                status.patterns()[16].height == 15,
+            "The retail condition pattern is unavailable or changed.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* dagger =
+        world.itemDatabase().find(0, 100);
+    if (!check(
+            dagger &&
+                world.playerInventory().add(*dagger),
+            "The condition-artwork Dagger could not be created.")) {
+        return false;
+    }
+
+    std::optional<osf::InventoryItem> low_dagger =
+        world.playerInventory().take(0);
+    if (!low_dagger) {
+        return false;
+    }
+    low_dagger->durability = 29;
+    const std::int32_t backpack_x =
+        osf::GameplayInventory::backpack_left +
+        low_dagger->grid_x *
+            osf::GameplayInventory::cell_size;
+    const std::int32_t backpack_y =
+        osf::GameplayInventory::backpack_top +
+        low_dagger->grid_y *
+            osf::GameplayInventory::cell_size;
+    const std::int32_t backpack_warning_x =
+        backpack_x +
+        low_dagger->width *
+            osf::GameplayInventory::cell_size -
+        16;
+    const std::int32_t backpack_warning_y =
+        backpack_y +
+        low_dagger->height *
+            osf::GameplayInventory::cell_size -
+        16;
+    if (!world.playerInventory()
+             .place(
+                 *low_dagger,
+                 low_dagger->grid_x,
+                 low_dagger->grid_y)
+             .accepted) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.open();
+    RecordingBackend warning_on;
+    osf::renderGameplayInventory(
+        warning_on,
+        status,
+        font,
+        inventory,
+        world,
+        7);
+    if (!check(
+            warning_on.patterns.size() == 6 &&
+                warning_on.patterns[4].image == &status &&
+                warning_on.patterns[4].index == 16 &&
+                warning_on.patterns[4].draw.x ==
+                    backpack_warning_x &&
+                warning_on.patterns[4].draw.y ==
+                    backpack_warning_y,
+            "Low durability did not draw Status pattern 16 at "
+            "the retail backpack corner.")) {
+        return false;
+    }
+
+    RecordingBackend warning_off;
+    osf::renderGameplayInventory(
+        warning_off,
+        status,
+        font,
+        inventory,
+        world,
+        8);
+    if (!check(
+            warning_off.patterns.size() == 5,
+            "The low-durability warning did not blink off.")) {
+        return false;
+    }
+
+    std::optional<osf::InventoryItem> broken_dagger =
+        world.playerInventory().take(0);
+    if (!broken_dagger) {
+        return false;
+    }
+    broken_dagger->durability = 0;
+    if (!world.playerInventory()
+             .place(
+                 *broken_dagger,
+                 broken_dagger->grid_x,
+                 broken_dagger->grid_y)
+             .accepted) {
+        return false;
+    }
+    RecordingBackend broken;
+    osf::renderGameplayInventory(
+        broken,
+        status,
+        font,
+        inventory,
+        world,
+        8);
+    if (!check(
+            broken.patterns.size() == 6 &&
+                broken.patterns[4].image == &status &&
+                broken.patterns[4].index == 16,
+            "A broken backpack item did not keep its warning visible.")) {
+        return false;
+    }
+
+    const std::int32_t pointer_x = backpack_x + 8;
+    const std::int32_t pointer_y = backpack_y + 8;
+    inventory.update(
+        {false, false, true, pointer_x, pointer_y},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.itemDatabase(),
+        world.playerData().level());
+    RecordingBackend held;
+    osf::renderGameplayInventory(
+        held,
+        status,
+        font,
+        inventory,
+        world,
+        8);
+    osf::renderHeldInventoryItem(
+        held,
+        status,
+        inventory,
+        world,
+        8);
+    if (!check(
+            inventory.holdingItem() &&
+                held.patterns.size() == 6 &&
+                held.patterns.back().image == &status &&
+                held.patterns.back().index == 16 &&
+                held.patterns.back().draw.x ==
+                    pointer_x +
+                        broken_dagger->width *
+                            osf::GameplayInventory::cell_size /
+                            2 -
+                        16 &&
+                held.patterns.back().draw.y ==
+                    pointer_y +
+                        broken_dagger->height *
+                            osf::GameplayInventory::cell_size /
+                            2 -
+                        16,
+            "The held broken item lost its retail condition corner.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult equipped =
+        inventory.update(
+            {false, false, true, 510, 80},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.playerData().level());
+    const osf::InventoryItem* equipped_dagger =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::main_hand);
+    if (!equipped_dagger) {
+        return false;
+    }
+    const osf::EquipmentRegion region =
+        osf::GameplayInventory::equipmentRegion(
+            osf::EquipmentSlot::main_hand);
+    const std::int32_t equipped_x =
+        region.left +
+        (region.width_in_cells - equipped_dagger->width) *
+            osf::GameplayInventory::cell_size / 2;
+    const std::int32_t equipped_y =
+        region.top +
+        (region.height_in_cells - equipped_dagger->height) *
+            osf::GameplayInventory::cell_size / 2;
+    RecordingBackend equipped_renderer;
+    osf::renderGameplayInventory(
+        equipped_renderer,
+        status,
+        font,
+        inventory,
+        world,
+        8);
+    return check(
+        equipped.equipment_changed &&
+            !inventory.holdingItem() &&
+            equipped_renderer.patterns.size() == 6 &&
+            equipped_renderer.patterns[4].image == &status &&
+            equipped_renderer.patterns[4].index == 16 &&
+            equipped_renderer.patterns[4].draw.x ==
+                equipped_x +
+                    equipped_dagger->width *
+                        osf::GameplayInventory::cell_size -
+                    16 &&
+            equipped_renderer.patterns[4].draw.y ==
+                equipped_y +
+                    equipped_dagger->height *
+                        osf::GameplayInventory::cell_size -
+                    16,
+        "Equipped broken gear did not use the same retail "
+        "condition placement.");
+}
+
 }  // namespace
 
 int main() {
     return testInventoryState() &&
-                   testInventoryResourcesAndRendering()
+                   testInventoryResourcesAndRendering() &&
+                   testConditionArtwork()
         ? 0
         : 1;
 }

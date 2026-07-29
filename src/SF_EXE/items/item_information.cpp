@@ -1,5 +1,6 @@
 #include "item_information.hpp"
 
+#include "item_condition.hpp"
 #include "item_database.hpp"
 #include "player_inventory.hpp"
 
@@ -35,14 +36,6 @@ void appendValue(
     output << label << std::setw(9) << value << '\n';
 }
 
-std::int32_t itemDurability(
-    const InventoryItem& item,
-    const ItemDefinition& definition) {
-    return item.durability >= 0
-        ? item.durability
-        : definition.maximum_durability;
-}
-
 }  // namespace
 
 std::int32_t itemSalePrice(
@@ -56,7 +49,7 @@ std::int32_t itemSalePrice(
         price =
             price *
             std::clamp(
-                itemDurability(item, definition),
+                itemCurrentDurability(item, definition),
                 0,
                 definition.maximum_durability) /
             definition.maximum_durability;
@@ -90,7 +83,7 @@ std::string itemInformationText(
         appendValue(
             output,
             "Durability                :",
-            itemDurability(item, definition));
+            itemCurrentDurability(item, definition));
         appendValue(
             output,
             "Weight                    :",

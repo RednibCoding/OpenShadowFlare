@@ -1,4 +1,5 @@
 #include "items/item_database.hpp"
+#include "items/item_condition.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 
@@ -381,6 +382,66 @@ bool testPlayerInventory() {
 
 }
 
+bool testItemCondition() {
+    osf::ItemDefinition definition;
+    definition.category = 0;
+    definition.id = 100;
+    definition.maximum_durability = 300;
+
+    osf::InventoryItem item;
+    item.category = definition.category;
+    item.definition_id = definition.id;
+    if (!check(
+            osf::itemCurrentDurability(
+                item, definition) == 300 &&
+                !osf::itemConditionWarningVisible(
+                    item, definition, 0),
+            "An undamaged item displayed a condition warning.")) {
+        return false;
+    }
+
+    item.durability = 30;
+    if (!check(
+            !osf::itemConditionWarningVisible(
+                item, definition, 0),
+            "The retail ten-percent boundary displayed too early.")) {
+        return false;
+    }
+
+    item.durability = 29;
+    if (!check(
+            osf::itemConditionWarningVisible(
+                item, definition, 7) &&
+                !osf::itemConditionWarningVisible(
+                    item, definition, 8) &&
+                !osf::itemConditionWarningVisible(
+                    item, definition, 15) &&
+                osf::itemConditionWarningVisible(
+                    item, definition, 16),
+            "Low durability did not use the retail eight-on, "
+            "eight-off warning cycle.")) {
+        return false;
+    }
+
+    item.durability = 0;
+    if (!check(
+            osf::itemConditionWarningVisible(
+                item, definition, 8) &&
+                osf::itemConditionWarningVisible(
+                    item, definition, 15),
+            "A broken item did not keep its condition warning visible.")) {
+        return false;
+    }
+
+    definition.category = 4;
+    item.category = 4;
+    definition.maximum_durability = 300;
+    return check(
+        !osf::itemConditionWarningVisible(
+            item, definition, 0),
+        "A non-equipment item displayed a durability warning.");
+}
+
 }  // namespace
 
 int main() {
@@ -389,7 +450,8 @@ int main() {
                !database.decode({}),
                "An empty item database was accepted.") &&
                    testRetailDatabase() &&
-                   testPlayerInventory()
+                   testPlayerInventory() &&
+                   testItemCondition()
                ? 0
                : 1;
 }

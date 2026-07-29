@@ -43,6 +43,7 @@ osf_configure_game_library(osf_core)
 add_library(
   osf_items STATIC
   items/item_database.cpp
+  items/item_condition.cpp
   items/item_information.cpp
   items/player_equipment.cpp
   items/player_inventory.cpp

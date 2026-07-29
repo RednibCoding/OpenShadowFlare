@@ -132,7 +132,8 @@ void RuntimeRenderer::render(
                         *status,
                         *font,
                         context.gameplay_inventory,
-                        context.world);
+                        context.world,
+                        context.gameplay_counter);
                 } else if (
                     context.gameplay_map.active() &&
                     map_icons) {
@@ -174,8 +175,10 @@ void RuntimeRenderer::render(
                 }
                 renderHeldInventoryItem(
                     renderer_,
+                    *status,
                     context.gameplay_inventory,
-                    context.world);
+                    context.world,
+                    context.gameplay_counter);
                 renderItemInformation(
                     renderer_,
                     *font,

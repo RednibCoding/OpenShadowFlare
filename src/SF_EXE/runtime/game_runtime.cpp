@@ -197,6 +197,7 @@ private:
                 gameplayUi_.missionList(),
                 gameConfig_,
                 shadowOpacity_,
+                gameplayCounter_,
             },
             interpolation);
 
@@ -307,6 +308,7 @@ private:
             break;
         }
         case osf::GameState::gameplay: {
+            ++gameplayCounter_;
             if (!gameplayUi_.update(
                     gameplayFrame_,
                     input_,
@@ -364,6 +366,7 @@ private:
         };
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
+            gameplayCounter_ = 0;
             gameplayUi_.reset();
             savePreview_.clear();
             gameplayState_.enter();
@@ -385,6 +388,7 @@ private:
     double nextFrame_ = 0.0;
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
+    std::uint32_t gameplayCounter_ = 0;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;

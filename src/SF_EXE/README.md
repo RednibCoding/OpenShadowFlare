@@ -149,6 +149,11 @@ the five ordinary slots. Hovering a backpack or equipped item also opens the
 small retail information overlay after its original short delay. The text is
 built from `Item.Ibn`, including combat values, durability, weight, level,
 condition-adjusted sale price, and the eight elemental values.
+Weapons and armor below ten percent durability also use the original
+`Status.njp` warning in the lower-right of their icon. It blinks at the
+retail cadence while the item still has durability and stays visible once the
+item is completely broken, whether the item is equipped, in the backpack, or
+being carried by the pointer.
 
 Gameplay now owns a real `PlayerData` record rather than storing level on the
 movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and

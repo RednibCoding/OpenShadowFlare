@@ -40,6 +40,7 @@ struct RuntimeRenderContext {
     const GameplayMissionList& gameplay_mission_list;
     const GameConfig& game_config;
     std::int32_t shadow_opacity = 500;
+    std::uint32_t gameplay_counter = 0;
 };
 
 class RuntimeRenderer {

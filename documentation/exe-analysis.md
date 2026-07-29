@@ -209,6 +209,17 @@ stacks to 10,000 as `0x00449ef0` does. The retail 9-by-4 placement grid,
 multi-cell item sizes, full-inventory failure, and inventory panel are still
 part of the next inventory slice.
 
+Inventory artwork goes through `0x00465cb0`, separately from the world item
+CAF path. After drawing an ordinary weapon or armor icon, it divides current
+durability times 100 by maximum durability. Results from zero through nine
+draw `Status.njp` pattern 16 at the lower-right of the complete multi-cell
+footprint. Nonzero durability uses the low four bits of the gameplay update
+counter for an eight-update-visible, eight-update-hidden cycle. Zero
+durability skips that blink and leaves the warning visible. Backpack,
+equipment, and pointer-held items all reach the same drawing rule. The nearby
+pattern-17 branch depends on a different runtime item state and remains
+unclassified rather than being folded into the condition model.
+
 `0x00454210` initializes the executable's shared movement controller and
 `0x00454930` advances it. It is not an A* route search. A direct collision
 sweep is followed by stateful cardinal obstacle-edge steering. Controller

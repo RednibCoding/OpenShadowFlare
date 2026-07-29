@@ -470,9 +470,12 @@ frame. The values come from `Item.Ibn`; the Dagger, for example, shows the same
 retail. Gold follows its separate retail branch and shows the stack amount in
 the wide Price row rather than collapsing to a name-only tooltip.
 
-Condition artwork is the next useful checkpoint here. After that, the
-special-item and belt-pocket regions can join the same ownership model without
-being mistaken for ordinary equipment.
+The retail condition warning is now shared by backpack, equipment, and held
+items. Weapons and armor below ten percent durability blink `Status.njp`
+pattern 16 for eight updates on and eight off; broken gear keeps it visible.
+The next useful checkpoint is bringing the special-item and belt-pocket
+regions into the same ownership model without mistaking them for ordinary
+equipment.
 
 ### 4. Combat and death
 

@@ -6,6 +6,7 @@ address,name,portable_owner,status,notes
 0x00482d18,g_pDbfControl,,identified,Rendering subsystem
 0x00482d28,g_pDsound,osf::VocPlayer / LAL,implemented,Portable V001 and V003 VOC decoding plus cross-platform playback replace DirectSound
 0x00482db0,g_gameMode,,identified,0 single player 1 client 2 server
+0x0048ce98,g_gameplayUpdateCounter,Runtime::gameplayCounter_,partial,Used modulo 16 by the low-durability condition warning and by additional gameplay effects that remain to be mapped
 0x0048d528,g_unknownConfig48d528,GameConfig::unknown_48d528,implemented,Meaning not yet proven
 0x0048d530,g_semiTransparentShadow,GameConfig::semi_transparent_shadow,implemented,
 0x0048d534,g_semiTransparentObjects,GameConfig::semi_transparent_objects,implemented,
