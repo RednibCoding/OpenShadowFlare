@@ -181,6 +181,24 @@ Win32 DLL binaries. The tested compatibility reconstructions live separately
 in `src/reconstructed` and remain the reference as their behavior is brought
 into the portable executable piece by piece.
 
+### Web (WebAssembly) build
+
+Install Emscripten with [emsdk](https://github.com/emscripten-core/emsdk)
+(`./emsdk install latest && ./emsdk activate latest`);
+
+```bash
+emcmake cmake -S . -B build-wasm -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+cmake --build build-wasm
+```
+
+The build writes `ShadowFlare_rebuilt.js`, `ShadowFlare_rebuilt.wasm`, and a
+browser shell `index.html` into `build-wasm/src/SF_EXE/`. Serve that directory
+with any static web server and open the page:
+
+```bash
+python -m http.server 8080 --directory build-wasm/src/SF_EXE
+```
+
 ## Running the tests
 
 Run the build and static ABI/fidelity checks with:

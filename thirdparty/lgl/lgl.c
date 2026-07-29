@@ -213,8 +213,12 @@ bool lgl_load(LglLoadProc load, void *user_data) {
 
   lglGetIntegerv(LGL_MAJOR_VERSION, &g_major_version);
   lglGetIntegerv(LGL_MINOR_VERSION, &g_minor_version);
+#if defined(__EMSCRIPTEN__)
+  if (g_major_version < 3) {
+#else
   if (g_major_version < 3 ||
       (g_major_version == 3 && g_minor_version < 3)) {
+#endif
     int major_version = g_major_version;
     int minor_version = g_minor_version;
     lgl_reset();

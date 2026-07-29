@@ -31,7 +31,15 @@ else()
   target_compile_options(lwl PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-if(WIN32)
+if(EMSCRIPTEN)
+  target_sources(lwl PRIVATE lwl_emscripten.c)
+  target_link_options(
+    lwl
+    PUBLIC
+      "-sMAX_WEBGL_VERSION=2"
+      "-sGL_ENABLE_GET_PROC_ADDRESS=1"
+  )
+elseif(WIN32)
   target_sources(lwl PRIVATE lwl_win32.c)
   target_link_libraries(
     lwl
