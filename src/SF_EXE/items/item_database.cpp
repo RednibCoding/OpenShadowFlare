@@ -260,11 +260,14 @@ bool ItemDatabase::decode(
             };
             definition.id = field(4);
             definition.subtype = field(8);
+            definition.inventory_width = field(28);
+            definition.inventory_height = field(32);
+            definition.weight = field(36);
             definition.inventory_pattern_group = field(40);
             definition.inventory_pattern = field(44);
             definition.ground_resource_id = field(48);
             definition.ground_animation_chart = field(52);
-            definition.inventory_shadow_pattern = field(56);
+            definition.inventory_palette = field(56);
             definition.ground_red_strength = field(60);
             definition.ground_green_strength = field(64);
             definition.ground_blue_strength = field(68);

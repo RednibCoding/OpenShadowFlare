@@ -431,10 +431,18 @@ distant clicks approach through the shared movement controller, then ownership
 moves into `PlayerInventory` before the world entity is erased. Gold fills
 existing stacks up to the retail 10,000 limit.
 
-The next checkpoint is the actual 9-by-4 inventory grid. It needs the decoded
-item footprint fields, placement and full-inventory failure, the original
-panel artwork, and moving or dropping an owned item. After that, equip the
-Short Sword and verify both its stat change and the matching player CAF layer.
+The real 9-by-4 backpack grid is now in place. Width and height come from
+`Item.Ibn`, placement respects multi-cell footprints, and a full inventory
+rejects a pickup without losing or partly inserting it. The authored right
+panel stays open over a live left-hand world view, with its original camera
+anchor, input boundary, gender silhouette, gold and equipped-weight values,
+Close tab, and `Item0000.njp` through `Item0013.njp` artwork. `I` and the HUD
+ITEM button both control it.
+
+The next checkpoint is owned-item interaction: pick up an item with the mouse,
+move it only onto a valid footprint, return it to its old cells on failure,
+and drop it back into the world through the same ground-item path. After that,
+equip the Short Sword and verify its stat change and matching player CAF layer.
 
 ### 4. Combat and death
 

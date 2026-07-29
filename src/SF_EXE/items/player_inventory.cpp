@@ -1,13 +1,87 @@
 #include "player_inventory.hpp"
 
+#include "item_database.hpp"
+
 #include <algorithm>
+#include <array>
 #include <cstdint>
+#include <limits>
+#include <utility>
 
 namespace osf {
 namespace {
 
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
+
+bool findPlacement(
+    const std::vector<InventoryItem>& items,
+    std::int32_t width,
+    std::int32_t height,
+    std::int32_t& grid_x,
+    std::int32_t& grid_y) {
+    if (width <= 0 || height <= 0 ||
+        width > PlayerInventory::grid_width ||
+        height > PlayerInventory::grid_height) {
+        return false;
+    }
+
+    std::array<
+        bool,
+        static_cast<std::size_t>(
+            PlayerInventory::grid_width *
+            PlayerInventory::grid_height)> occupied{};
+    for (const InventoryItem& item : items) {
+        for (std::int32_t y = 0; y < item.height; ++y) {
+            for (std::int32_t x = 0; x < item.width; ++x) {
+                const std::int32_t occupied_x = item.grid_x + x;
+                const std::int32_t occupied_y = item.grid_y + y;
+                if (occupied_x >= 0 &&
+                    occupied_x < PlayerInventory::grid_width &&
+                    occupied_y >= 0 &&
+                    occupied_y < PlayerInventory::grid_height) {
+                    occupied[
+                        static_cast<std::size_t>(
+                            occupied_y *
+                                PlayerInventory::grid_width +
+                            occupied_x)] = true;
+                }
+            }
+        }
+    }
+
+    for (std::int32_t y = 0;
+         y <= PlayerInventory::grid_height - height;
+         ++y) {
+        for (std::int32_t x = 0;
+             x <= PlayerInventory::grid_width - width;
+             ++x) {
+            bool available = true;
+            for (std::int32_t item_y = 0;
+                 item_y < height && available;
+                 ++item_y) {
+                for (std::int32_t item_x = 0;
+                     item_x < width;
+                     ++item_x) {
+                    if (occupied[
+                            static_cast<std::size_t>(
+                                (y + item_y) *
+                                    PlayerInventory::grid_width +
+                                x + item_x)]) {
+                        available = false;
+                        break;
+                    }
+                }
+            }
+            if (available) {
+                grid_x = x;
+                grid_y = y;
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 }  // namespace
 
@@ -19,14 +93,40 @@ bool PlayerInventory::add(
     std::int32_t category,
     std::int32_t definition_id,
     std::int32_t quantity) {
+    return add(
+        category,
+        definition_id,
+        quantity,
+        1,
+        1);
+}
+
+bool PlayerInventory::add(
+    const ItemDefinition& definition,
+    std::int32_t quantity) {
+    return add(
+        definition.category,
+        definition.id,
+        quantity,
+        definition.inventory_width,
+        definition.inventory_height);
+}
+
+bool PlayerInventory::add(
+    std::int32_t category,
+    std::int32_t definition_id,
+    std::int32_t quantity,
+    std::int32_t width,
+    std::int32_t height) {
     if (quantity <= 0) {
         return false;
     }
 
+    std::vector<InventoryItem> updated = items_;
     std::int32_t remaining = quantity;
     if (category == kGoldCategory &&
         definition_id == kGoldDefinition) {
-        for (InventoryItem& owned : items_) {
+        for (InventoryItem& owned : updated) {
             if (owned.category != category ||
                 owned.definition_id != definition_id ||
                 owned.quantity >= maximum_gold_stack) {
@@ -38,6 +138,7 @@ bool PlayerInventory::add(
             owned.quantity += moved;
             remaining -= moved;
             if (remaining == 0) {
+                items_ = std::move(updated);
                 return true;
             }
         }
@@ -49,21 +150,50 @@ bool PlayerInventory::add(
             ? maximum_gold_stack
             : 1;
     while (remaining > 0) {
-        const std::int32_t quantity =
+        std::int32_t grid_x = 0;
+        std::int32_t grid_y = 0;
+        if (!findPlacement(
+                updated,
+                width,
+                height,
+                grid_x,
+                grid_y)) {
+            return false;
+        }
+        const std::int32_t stack_quantity =
             std::min(remaining, stack_limit);
-        items_.push_back({
+        updated.push_back({
             category,
             definition_id,
-            quantity,
+            stack_quantity,
+            grid_x,
+            grid_y,
+            width,
+            height,
         });
-        remaining -= quantity;
+        remaining -= stack_quantity;
     }
+    items_ = std::move(updated);
     return true;
 }
 
 const std::vector<InventoryItem>&
 PlayerInventory::items() const {
     return items_;
+}
+
+std::int32_t PlayerInventory::gold() const {
+    std::int64_t total = 0;
+    for (const InventoryItem& item : items_) {
+        if (item.category == kGoldCategory &&
+            item.definition_id == kGoldDefinition) {
+            total += item.quantity;
+        }
+    }
+    return static_cast<std::int32_t>(
+        std::min<std::int64_t>(
+            total,
+            std::numeric_limits<std::int32_t>::max()));
 }
 
 }  // namespace osf

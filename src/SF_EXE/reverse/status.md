@@ -95,8 +95,23 @@ person. Type-three interaction in `0x00449240` shares the 159-unit rectangle
 range and movement-controller approach. Once close, the first single-player
 `0x004526a0` path transfers the concrete item to `PlayerInventory` and erases
 the stable ground entity only after acceptance. Gold stacking to 10,000 is
-covered; grid placement, item footprints, full-inventory handling, panel
-drawing, and network replication remain.
+covered. Definition offsets `0x1c`, `0x20`, and `0x24` now provide the
+inventory width, height, and item weight. Backpack insertion scans the retail
+9-by-4 grid in row-major order, retains each multi-cell footprint, and leaves
+ownership unchanged when no complete placement is available.
+
+The first inventory screen follows `0x00404760`, `0x00407170`, and
+`0x00408a80`. `I` and the lower ITEM button toggle the live right-hand panel,
+move the camera anchor to x=160, and restrict world picking to x=0..319.
+`Status.njp` patterns 2, 3, 0/1, and 74/75 supply the original frame, gender
+silhouette, and Close tab. Gold is summed from the owned stacks; equipped
+weight remains zero until equipment ownership is reconstructed. Backpack
+items draw from the separate `Item0000.njp` through `Item0013.njp` groups at
+`(336 + grid_x*32, 264 + grid_y*32)`. The inventory and lower HUD regions are
+cleared before their transparent authored layers are composed, matching
+retail's reserved UI surfaces instead of exposing world pixels through slots.
+Moving, dropping, equipping, condition overlays, detailed hover text, special
+consumable placement, and network replication remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the

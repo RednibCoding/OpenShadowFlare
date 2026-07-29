@@ -167,6 +167,38 @@ if(TARGET sf_game_core)
 
   add_test(NAME gameplay_map COMMAND gameplay_map_test)
 
+  add_executable(
+    gameplay_inventory_test
+    gameplay_inventory_test.cpp
+  )
+  target_link_libraries(
+    gameplay_inventory_test
+    PRIVATE
+      OpenShadowFlare::Render
+  )
+  target_compile_features(
+    gameplay_inventory_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gameplay_inventory_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    gameplay_inventory_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      gameplay_inventory_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_inventory_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME gameplay_inventory
+    COMMAND gameplay_inventory_test)
+
   add_executable(item_database_test item_database_test.cpp)
   target_link_libraries(
     item_database_test

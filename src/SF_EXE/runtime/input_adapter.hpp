@@ -34,6 +34,7 @@ public:
     bool gameplayHelpPressed() const;
     bool gameplayMissionListPressed() const;
     bool gameplayMapPressed() const;
+    bool gameplayInventoryPressed() const;
     bool upHeld() const;
     bool downHeld() const;
     bool leftHeld() const;
@@ -63,11 +64,13 @@ private:
     bool help_held_ = false;
     bool mission_list_held_ = false;
     bool map_held_ = false;
+    bool inventory_held_ = false;
     bool run_toggle_pressed_ = false;
     bool gameplay_options_pressed_ = false;
     bool gameplay_help_pressed_ = false;
     bool gameplay_mission_list_pressed_ = false;
     bool gameplay_map_pressed_ = false;
+    bool gameplay_inventory_pressed_ = false;
 };
 
 }  // namespace osf::runtime

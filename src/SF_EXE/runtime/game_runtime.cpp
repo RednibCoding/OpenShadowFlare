@@ -10,6 +10,7 @@
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
+#include "render/gameplay_inventory_renderer.hpp"
 #include "render/gameplay_map_renderer.hpp"
 #include "render/gameplay_mission_list_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
@@ -23,6 +24,7 @@
 #include "runtime/input_adapter.hpp"
 #include "runtime/lgl_surface_presenter.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_inventory.hpp"
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
@@ -310,6 +312,8 @@ private:
             if (!updateGameplayScreens(running)) {
                 const bool map_active =
                     gameplayMap_.active();
+                const bool inventory_active =
+                    gameplayInventory_.active();
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed &&
                         !map_active,
@@ -321,7 +325,7 @@ private:
                     input_.runTogglePressed(),
                     map_active ? 320 : 0,
                     0,
-                    640,
+                    inventory_active ? 320 : 640,
                     400,
                 });
             }
@@ -427,7 +431,16 @@ private:
                 if (status && font) {
                     const auto* map_icons =
                         frontendAssets_.pattern(7);
-                    if (gameplayMap_.active() && map_icons) {
+                    if (gameplayInventory_.active()) {
+                        osf::renderGameplayInventory(
+                            renderer_,
+                            *status,
+                            *font,
+                            gameplayInventory_,
+                            world_);
+                    } else if (
+                        gameplayMap_.active() &&
+                        map_icons) {
                         osf::renderGameplayMap(
                             renderer_,
                             *status,
@@ -575,6 +588,7 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayOptions_.close();
+            gameplayInventory_.close();
             gameplayMap_.close();
             gameplayMissionList_.close();
             savePreview_.clear();
@@ -584,6 +598,7 @@ private:
         };
         callbacks.gameplay.leave = [this] {
             gameplayOptions_.close();
+            gameplayInventory_.close();
             gameplayMap_.close();
             gameplayMissionList_.close();
             gameplayState_.leave();
@@ -721,6 +736,42 @@ private:
             osf::GameplayPhase::world) {
             return false;
         }
+        const bool inventory_was_active =
+            gameplayInventory_.active();
+        const bool inventory_hud_toggle =
+            input_.menu().pointer_primary_pressed &&
+            input_.menu().pointer_x >= 584 &&
+            input_.menu().pointer_x < 640 &&
+            input_.menu().pointer_y >= 440 &&
+            input_.menu().pointer_y < 464;
+        const bool inventory_toggle =
+            (input_.gameplayInventoryPressed() ||
+             inventory_hud_toggle) &&
+            (!world_.conversationActive() ||
+             inventory_was_active) &&
+            !gameplayOptions_.active() &&
+            !gameplayMap_.active() &&
+            !gameplayMissionList_.active();
+        if (inventory_was_active || inventory_toggle) {
+            const osf::GameplayInventoryResult result =
+                gameplayInventory_.update(
+                    {
+                        inventory_toggle,
+                        input_.gameplayOptionsPressed() ||
+                            (input_.pointerSecondaryPressed() &&
+                             input_.menu().pointer_y < 412),
+                        input_.menu().pointer_primary_pressed,
+                        input_.menu().pointer_x,
+                        input_.menu().pointer_y,
+                    },
+                    world_.playerInventory());
+            world_.setCameraAnchor(
+                gameplayInventory_.active() ? 160 : 320,
+                240);
+            return result.pointer_consumed ||
+                   inventory_hud_toggle;
+        }
+
         const bool map_was_active = gameplayMap_.active();
         const bool map_toggle =
             input_.gameplayMapPressed() &&
@@ -910,6 +961,7 @@ private:
     osf::WorldScene world_;
     osf::RetailSavePreview savePreview_;
     osf::GameplayOptionsMenu gameplayOptions_;
+    osf::GameplayInventory gameplayInventory_;
     osf::GameplayMap gameplayMap_;
     osf::GameplayMissionList gameplayMissionList_;
     osf::GameplayOptionsAction

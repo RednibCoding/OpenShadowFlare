@@ -232,13 +232,15 @@ public:
     }
 
     bool drawRectangle(
-        const osf::gapi::RectangleDraw&) override {
+        const osf::gapi::RectangleDraw& draw) override {
+        rectangles.push_back(draw);
         return true;
     }
 
     void endFrame() override {}
 
     std::vector<PatternCall> patterns;
+    std::vector<osf::gapi::RectangleDraw> rectangles;
 };
 
 bool check(bool condition, const char* message) {
@@ -466,6 +468,11 @@ bool testGameplayHudPackets() {
             osf::gameplayHudBarWidth(1, 1000) == 1 &&
             osf::gameplayHudBarWidth(50, 100) == 103 &&
             osf::gameplayHudBarWidth(200, 100) == 206 &&
+            backend.rectangles.size() == 1 &&
+            backend.rectangles[0].x == 0 &&
+            backend.rectangles[0].y == 412 &&
+            backend.rectangles[0].width == 640 &&
+            backend.rectangles[0].height == 68 &&
             backend.patterns.size() == 9 &&
             backend.patterns[0].index == 7 &&
             backend.patterns[1].index == 8 &&

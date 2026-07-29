@@ -92,6 +92,17 @@ void renderGameplayHud(
     gapi::Backend& renderer,
     const gapi::NjpImage& bar_patterns,
     const GameplayHudValues& values) {
+    // The bottom 68 pixels are a reserved UI surface in retail. Bar.njp has
+    // transparent openings for its gauges and quick slots, so scenery must
+    // not remain underneath them.
+    renderer.drawRectangle({
+        0,
+        412,
+        640,
+        68,
+        {0, 0, 0, 255},
+    });
+
     // FUN_004039f0 draws the two fixed pieces before the live values.
     renderer.drawPattern(bar_patterns, 7);
     renderer.drawPattern(bar_patterns, 8);

@@ -74,6 +74,8 @@ bool InputAdapter::handleEvent(
             mission_list_held_ = false;
         } else if (std::strcmp(event.key, "n") == 0) {
             map_held_ = false;
+        } else if (std::strcmp(event.key, "i") == 0) {
+            inventory_held_ = false;
         }
         return true;
     }
@@ -164,6 +166,13 @@ bool InputAdapter::handleEvent(
             gameplay_map_pressed_ = true;
         }
         map_held_ = true;
+    } else if (
+        std::strcmp(event.key, "i") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!inventory_held_) {
+            gameplay_inventory_pressed_ = true;
+        }
+        inventory_held_ = true;
     }
     return true;
 }
@@ -188,6 +197,7 @@ void InputAdapter::clearTransientInput() {
     gameplay_help_pressed_ = false;
     gameplay_mission_list_pressed_ = false;
     gameplay_map_pressed_ = false;
+    gameplay_inventory_pressed_ = false;
     pointer_secondary_pressed_ = false;
 }
 
@@ -235,6 +245,10 @@ bool InputAdapter::gameplayMissionListPressed() const {
 
 bool InputAdapter::gameplayMapPressed() const {
     return gameplay_map_pressed_;
+}
+
+bool InputAdapter::gameplayInventoryPressed() const {
+    return gameplay_inventory_pressed_;
 }
 
 bool InputAdapter::upHeld() const {

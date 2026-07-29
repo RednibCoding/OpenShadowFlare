@@ -117,6 +117,12 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
+    if (!item_inventory_patterns_.load(
+            data_root,
+            error)) {
+        clear();
+        return false;
+    }
     data_root_ = data_root;
     const std::string map_name = mapStem(scenario_.mapPath());
     if (map_name.empty()) {
@@ -278,6 +284,7 @@ void WorldScene::clear() {
     missions_.clear();
     item_database_.clear();
     player_inventory_.clear();
+    item_inventory_patterns_.clear();
     parameter_tables_.clear();
     data_root_.clear();
     item_world_resources_.clear();
@@ -338,6 +345,11 @@ const ItemDatabase& WorldScene::itemDatabase() const {
 
 const PlayerInventory& WorldScene::playerInventory() const {
     return player_inventory_;
+}
+
+const ItemInventoryResource&
+WorldScene::itemInventoryPatterns() const {
+    return item_inventory_patterns_;
 }
 
 const PlayerData& WorldScene::playerData() const {
@@ -1081,9 +1093,13 @@ bool WorldScene::startGroundItemInteraction(
 
     pending_interaction_ = {};
     player_.cancelMovement();
-    if (player_inventory_.add(
+    const ItemDefinition* definition =
+        item_database_.find(
             found->category,
-            found->definition_id,
+            found->definition_id);
+    if (definition &&
+        player_inventory_.add(
+            *definition,
             found->quantity)) {
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&

@@ -8,6 +8,7 @@
 #include "items/item_world_resource.hpp"
 #include "items/player_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/item_inventory_resource.hpp"
 #include "ground_item.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
@@ -50,6 +51,7 @@ public:
     const MissionCatalog& missions() const;
     const ItemDatabase& itemDatabase() const;
     const PlayerInventory& playerInventory() const;
+    const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
@@ -160,6 +162,7 @@ private:
     MissionCatalog missions_;
     ItemDatabase item_database_;
     PlayerInventory player_inventory_;
+    ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>

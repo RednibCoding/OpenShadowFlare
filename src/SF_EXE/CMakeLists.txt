@@ -57,6 +57,7 @@ target_link_libraries(
 add_library(
   osf_resources STATIC
   resources/character_visual_resource.cpp
+  resources/item_inventory_resource.cpp
   resources/retail_filesystem.cpp
 )
 add_library(OpenShadowFlare::Resources ALIAS osf_resources)
@@ -71,6 +72,7 @@ target_link_libraries(
 add_library(
   osf_states STATIC
   states/game_state.cpp
+  states/gameplay_inventory.cpp
   states/gameplay_map.cpp
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
@@ -129,6 +131,7 @@ add_library(
   render/conversation_layout.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
+  render/gameplay_inventory_renderer.cpp
   render/gameplay_map_renderer.cpp
   render/gameplay_mission_list_renderer.cpp
   render/gameplay_options_renderer.cpp
