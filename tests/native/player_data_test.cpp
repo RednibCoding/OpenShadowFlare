@@ -497,6 +497,17 @@ int main() {
             "The female record does not match table 900.")) {
         return 1;
     }
+    female.setCurrentLife(1);
+    female.setCurrentMana(2);
+    female.restoreForRespawn();
+    if (!check(
+            female.currentLife() == female.baseMaximumLife() &&
+                female.currentMana() ==
+                    female.baseMaximumMana(),
+            "The retail revive reset did not restore both player "
+            "resource pools.")) {
+        return 1;
+    }
 
     std::array<std::uint8_t, osf::PlayerData::retail_record_size>
         saved_record{};

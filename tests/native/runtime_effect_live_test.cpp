@@ -421,7 +421,10 @@ bool testShippedLiveProjectile(
     return check(
         loaded &&
             restored.playerData().currentLife() ==
-                damaged_life &&
+                (damaged_life > 0
+                     ? damaged_life
+                     : restored.playerData()
+                           .baseMaximumLife()) &&
             sameItems(
                 restored.playerInventory().items(),
                 inventory_before) &&
@@ -434,8 +437,8 @@ bool testShippedLiveProjectile(
                 *restored.playerEquipment().item(
                     osf::EquipmentSlot::body),
                 body_copy),
-        "Saving after the live projectile discarded damage or "
-        "owned items.");
+        "Saving after the live projectile discarded live damage, "
+        "dead-state recovery, or owned items.");
 }
 
 bool testLiveMissPresentation(

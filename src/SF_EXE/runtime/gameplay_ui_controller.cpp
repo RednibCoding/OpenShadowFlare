@@ -56,6 +56,14 @@ bool GameplayUiController::update(
         return false;
     }
 
+    // Retail routes a dead player directly through its locked death action.
+    // Menus cannot pause that action or expose save commands before revival.
+    if (world.playerMotion() == PlayerMotion::defeated) {
+        reset();
+        world.setCameraAnchor(320, 240);
+        return false;
+    }
+
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {

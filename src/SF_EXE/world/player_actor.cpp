@@ -84,6 +84,8 @@ void PlayerActor::reset(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    respawn_requested_ = false;
+    pending_respawn_request_ = false;
     movement_controller_.reset();
     damage_presentation_ = {};
 }
@@ -106,6 +108,8 @@ void PlayerActor::relocate(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    respawn_requested_ = false;
+    pending_respawn_request_ = false;
     movement_controller_.reset();
     damage_presentation_ = {};
 }
@@ -311,6 +315,13 @@ void PlayerActor::update(
             damage_presentation_.counter,
             count - 1);
         ++damage_presentation_.counter;
+        // FUN_00435b60 holds the final death frame for 120 updates before
+        // requesting a scenario-entry transition with revival enabled.
+        if (!respawn_requested_ &&
+            damage_presentation_.counter >= count + 120) {
+            respawn_requested_ = true;
+            pending_respawn_request_ = true;
+        }
         return;
     }
     if (attack_controller_.active()) {
@@ -437,6 +448,12 @@ PlayerAttackActionEvent PlayerActor::takeAttackEvent() {
     return event;
 }
 
+bool PlayerActor::takeRespawnRequest() {
+    const bool requested = pending_respawn_request_;
+    pending_respawn_request_ = false;
+    return requested;
+}
+
 PlayerDamagePresentation
 PlayerActor::damagePresentation() const {
     PlayerDamagePresentation presentation =
@@ -472,6 +489,8 @@ void PlayerActor::applyDamagePresentation(
     movement_controller_.reset();
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    respawn_requested_ = false;
+    pending_respawn_request_ = false;
     action_counter_ = 0;
     motion_ =
         presentation.action == 4

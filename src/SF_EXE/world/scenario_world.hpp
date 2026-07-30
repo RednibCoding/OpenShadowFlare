@@ -41,7 +41,11 @@ public:
     std::int32_t id() const;
     std::int32_t musicTrack() const;
     std::int32_t localPlayerNumber() const;
+    std::int32_t entryValue() const;
     const ScenarioEntry& entry() const;
+    void setEntry(
+        std::int32_t entry_value,
+        const ScenarioEntry& entry);
     const ScenarioData& data() const;
     ScenarioData& data();
     script::ScriptData takeScriptData();
@@ -67,6 +71,7 @@ private:
     std::int32_t id_ = -1;
     std::int32_t music_track_ = -1;
     std::int32_t local_player_number_ = 0;
+    std::int32_t entry_value_ = 0;
     ScenarioEntry entry_;
     ScenarioData data_;
     script::ScriptData script_data_;

@@ -145,6 +145,12 @@ retail loot-level field and Table 31's fixed-item rule, so early enemies no
 longer select equipment merely because its required-level field happened to
 fit a misread table column.
 
+Player death also completes its retail recovery path. The last death frame
+stays on screen for 120 game updates, ordinary menus remain locked, and the
+hero then returns to the current scenario entry with full life and mana. Older
+portable saves which accidentally stored a zero-life hero are repaired by
+that same revive reset when the world loads.
+
 Outdoor chests and crates now complete their original scenario-script path:
 the closed object is hidden, its open partner appears, the positional opening
 sound plays, and opcode 24 creates the authored Table 30 loot. Level gains

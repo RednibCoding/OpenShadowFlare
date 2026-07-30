@@ -455,6 +455,18 @@ void WorldScene::update() {
             playerAttackSpeedTier(),
             &player_visual_.animation());
         handlePlayerAttackEvent(player_.takeAttackEvent());
+        if (player_.takeRespawnRequest()) {
+            player_data_.restoreForRespawn();
+            const ScenarioTravelResult respawn =
+                transitionScenario({
+                    scenario_world_.id(),
+                    scenario_world_.entryValue(),
+                    scenario_world_.localPlayerNumber(),
+                });
+            if (respawn != ScenarioTravelResult::failed) {
+                return;
+            }
+        }
         scenario_world_.mapExploration().reveal(
             player_.position());
         actor_blockers.push_back({

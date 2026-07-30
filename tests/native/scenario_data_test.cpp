@@ -1348,6 +1348,81 @@ bool testWorldItemSaveRoundTrip() {
 #endif
 }
 
+bool testLegacyDeadSaveRecovery() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    std::string error;
+    osf::TableDatabase tables;
+    osf::ItemDatabase items;
+    osf::PlayerData dead_player;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" /
+                    "Parameter" / "Table.Tbd",
+                &error) &&
+                items.load(
+                    data_root / "System" / "Game" /
+                        "Parameter" / "Item.Ibn",
+                    &error) &&
+                dead_player.initializeNew(
+                    "DeadSave", 0, tables, &error),
+            "The dead-save recovery fixture could not be prepared.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    dead_player.setCurrentLife(0);
+    dead_player.setCurrentMana(1);
+
+    const std::filesystem::path save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_dead_save_recovery_test";
+    const std::filesystem::path save_path =
+        save_root / "Save" / "0000.Ssv";
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(save_root, cleanup_error);
+    const osf::PlayerInventory inventory;
+    const osf::PlayerEquipment equipment;
+    const osf::PlayerBelt belt;
+    const osf::PlayerSpecialItems special_items;
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                dead_player,
+                items,
+                inventory,
+                equipment,
+                belt,
+                special_items,
+                0x52,
+                &error),
+            "The legacy zero-life save fixture could not be written.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest request;
+    request.source = osf::PlayerDataSource::retail_save;
+    request.save_path = save_path;
+    osf::WorldScene world;
+    const bool loaded =
+        world.loadInitialScenario(data_root, request, &error);
+    std::filesystem::remove_all(save_root, cleanup_error);
+    return check(
+        loaded &&
+            world.playerData().currentLife() ==
+                world.playerData().baseMaximumLife() &&
+            world.playerData().currentMana() ==
+                world.playerData().baseMaximumMana() &&
+            world.playerMotion() == osf::PlayerMotion::idle,
+        "A save made by the old portable dead-state bug did not "
+        "enter town through the retail revive reset.");
+#else
+    return true;
+#endif
+}
+
 bool testGeneralScenarioStart() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -3687,6 +3762,7 @@ int main() {
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&
+                   testLegacyDeadSaveRecovery() &&
                    testRetailRemoteTown()
                ? 0
                : 1;

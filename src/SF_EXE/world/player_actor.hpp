@@ -79,6 +79,7 @@ public:
     bool attackActive() const;
     std::int32_t attackTargetId() const;
     PlayerAttackActionEvent takeAttackEvent();
+    bool takeRespawnRequest();
     PlayerDamagePresentation damagePresentation() const;
     void applyDamagePresentation(
         const PlayerDamagePresentation& presentation);
@@ -102,6 +103,8 @@ private:
     PlayerMotion previous_action_ = PlayerMotion::idle;
     PlayerAttackActionController attack_controller_;
     PlayerAttackActionEvent pending_attack_event_;
+    bool respawn_requested_ = false;
+    bool pending_respawn_request_ = false;
     MovementController movement_controller_;
     PlayerDamagePresentation damage_presentation_;
 };

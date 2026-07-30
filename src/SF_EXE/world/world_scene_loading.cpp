@@ -121,6 +121,15 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    // Retail never reaches a normal save action while dead: its locked
+    // death action completes a revive transition first. Repair saves made
+    // by older portable builds that could persist that impossible state.
+    if (player_request.source ==
+            PlayerDataSource::retail_save &&
+        player_data_.currentLife() <= 0) {
+        player_data_.restoreForRespawn();
+    }
+
     const char* player_directory =
         player_data_.gender() == 1 ? "Female" : "Male";
     const std::filesystem::path player_root =
@@ -218,6 +227,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
         runtime_effects_.clear();
         miss_effects_.clear();
         pointer_.clearSelection();
+        scenario_world_.setEntry(
+            start.entry_value, *entry);
         player_.relocate(
             {entry->world_x, entry->world_y},
             entry->direction);

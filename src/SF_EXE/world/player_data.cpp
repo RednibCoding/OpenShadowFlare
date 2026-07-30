@@ -350,6 +350,13 @@ void PlayerData::setCurrentMana(std::int32_t value) {
             std::max(0, baseMaximumMana())));
 }
 
+void PlayerData::restoreForRespawn() {
+    // FUN_00440c20 restores both pools when a scenario transition carries
+    // the retail revive flag.
+    setCurrentLife(baseMaximumLife());
+    setCurrentMana(baseMaximumMana());
+}
+
 bool PlayerData::restoreLife(
     std::int32_t amount,
     std::int32_t maximum_percent) {

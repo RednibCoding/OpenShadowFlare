@@ -100,14 +100,21 @@ behavior that cannot be exercised by that first sword fight:
 
 - finish the remaining enemy effect-controller families one shipped family at
   a time, with both passive timing coverage and a live actor using each one;
-- reconstruct player death, its final presentation, and the original recovery
-  or menu path;
 - finish ranged player actions and projectiles without bypassing the common
   effect actors;
 - attach companion targeting and attacks to the same receiver and reward
   owners;
 - keep checking item state, audio, experience, and saving beside each change
   so a new combat path cannot silently damage adjacent ownership.
+
+Player death and recovery are now reconstructed. Retail locks ordinary input,
+plays chart four facing direction eight, holds its final frame for 120 game
+updates, then returns the hero to the current scenario entry through a revive
+transition. That transition restores both life and mana to their maximums.
+The portable menus no longer interrupt that locked action, so Save & Exit
+cannot preserve a dead actor. Saves made by older builds which already contain
+zero life are repaired through the same revive reset when they enter the
+world.
 
 Once those are solid, the next large player-facing milestone is skills, magic,
 status effects, and their remaining HUD and assignment screens.
@@ -998,9 +1005,9 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to the remaining effect-controller families, player
-death and recovery, then the ranged player actions and companion attacks,
-keeping one shipped live encounter beside each passive reconstruction.
+finish. It should move to the remaining effect-controller families, then the
+ranged player actions and companion attacks, keeping one shipped live
+encounter beside each passive reconstruction.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,
