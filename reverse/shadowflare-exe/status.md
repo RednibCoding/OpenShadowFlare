@@ -999,6 +999,17 @@ presentation `+0x1f8` replaces current `+0x1f4`, and the counters advance
 after dispatch. The portable actor keeps that order instead of polling an
 independent behavior tree.
 
+The living-target search at the top of `0x00458f70` uses the inclusive
+`0..5000` judgement-distance window. Without such a target, the ordinary
+single-player path resets the actor to idle instead of continuing AID patrol
+work across the whole map. The portable dispatcher now has the same activation
+gate. Movement intent and visible motion are kept separate as well: the shared
+controller can retain its obstacle-edge state after a blocked probe, but chart
+one is only submitted on an update where the enemy's world position actually
+changed. A controller request that becomes inactive returns the actor to idle
+so action ten can publish its completion event and the AID table can recheck
+the direct-attack range.
+
 Patrol, approach, retreat, wait, and walk-point actions now feed the existing
 movement destination selector and shared collision controller. In particular,
 `0x0045c3c0` uses AID parameter three scaled by the enemy movement factor,

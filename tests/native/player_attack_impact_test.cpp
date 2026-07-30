@@ -425,6 +425,23 @@ bool testLiveWorldMutationAndAudio() {
         std::cerr << error << '\n';
         return false;
     }
+    const osf::ItemDefinition* starter_sword =
+        world.itemDatabase().find(0, 0);
+    if (!check(
+            starter_sword &&
+                world.playerEquipment()
+                    .place(
+                        osf::EquipmentSlot::main_hand,
+                        osf::makeInventoryItem(
+                            *starter_sword),
+                        *starter_sword,
+                        world.playerData().level())
+                    .accepted,
+            "The live player-impact fixture could not equip its "
+            "retail starter sword.")) {
+        return false;
+    }
+    world.refreshPlayerAppearance();
 
     std::int32_t enemy_id = -1;
     osf::ScreenPosition pointer;

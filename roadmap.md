@@ -899,6 +899,12 @@ approach, retreat, wait, and walk-point requests all use the existing
 destination selector and movement controller, including live actor blockers.
 The Wasteland fixture proves that an authored event-zero patrol turns into an
 approach and ordinary attack rather than relying on a test-only enemy.
+The dispatcher's opening target search is part of that loop too: living
+enemies only run autonomous AID work while a living target is within 5000
+judgement units. Enemies outside that range return to idle instead of marching
+through the same patrol cycle off-screen. A blocked movement request may keep
+its obstacle-following state, but the renderer only shows the walk chart on an
+update that actually changed the actor's position.
 
 Direct enemy impacts now pass through the reconstructed player receiver. The
 live receiver snapshot uses the named player base rows and matching equipment

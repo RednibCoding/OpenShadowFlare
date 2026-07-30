@@ -1481,21 +1481,24 @@ bool testGeneralScenarioStart() {
         first_enemy.position();
     wasteland.update();
     if (!check(
-            wasteland.enemies().front().animationChart() == 1 &&
+            wasteland.enemies().front().animationChart() == 0 &&
                 wasteland.enemies().front().animationFrame() == 0 &&
-                (wasteland.enemies().front().position().x !=
-                     enemy_position.x ||
-                 wasteland.enemies().front().position().y !=
-                     enemy_position.y),
-            "The first enemy did not evaluate event zero and enter "
-            "its authored retail patrol.")) {
+                wasteland.enemies().front().position().x ==
+                    enemy_position.x &&
+                wasteland.enemies().front().position().y ==
+                    enemy_position.y,
+            "An enemy outside the retail activation range began "
+            "its authored patrol.")) {
         return false;
     }
     wasteland.update();
     if (!check(
-            wasteland.enemies().front().animationChart() == 1 &&
-                wasteland.enemies().front().animationFrame() == 1,
-            "The live enemy patrol did not continue on the shared "
+            wasteland.enemies().front().animationChart() == 0 &&
+                wasteland.enemies().front().position().x ==
+                    enemy_position.x &&
+                wasteland.enemies().front().position().y ==
+                    enemy_position.y,
+            "The inactive enemy did not remain idle on the shared "
             "active-map cadence.")) {
         return false;
     }

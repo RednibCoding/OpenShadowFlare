@@ -455,6 +455,21 @@ EnemyActorUpdate EnemyActor::update(
     bool run_presentation =
         presentation_.presentationAction() >= 1 &&
         presentation_.presentationAction() <= 6;
+    if (!context.ai_active && !run_presentation) {
+        ai_action_.reset();
+        presentation_.reset();
+        movement_destination_.reset();
+        movement_controller_.reset();
+        movement_speed_ = 0;
+        movement_action_counter_ = 0;
+        event_number_ = 0;
+        presentation_action_ =
+            kIdlePresentationAction;
+        animation_chart_ = 0;
+        animation_frame_ = action_counter_++;
+        draw_strength_ = 1000;
+        return result;
+    }
     if (!run_presentation && ai_control_ &&
         context.random) {
         const EnemyAiSelection selected =
@@ -618,15 +633,34 @@ EnemyActorUpdate EnemyActor::update(
                     movement.position.y - position_.y);
             }
             position_ = movement.position;
+            if (!movement.controller_active &&
+                !movement.moved) {
+                movement_destination_.reset();
+                movement_controller_.reset();
+                movement_speed_ = 0;
+                movement_action_counter_ = 0;
+                presentation_action_ =
+                    kIdlePresentationAction;
+                action_counter_ = 0;
+                animation_chart_ = 0;
+                animation_frame_ = 0;
+                draw_strength_ = 1000;
+                return result;
+            }
             if (presentation_action_ !=
                 kWalkPresentationAction) {
                 presentation_action_ =
                     kWalkPresentationAction;
                 movement_action_counter_ = 0;
             }
-            animation_chart_ = kWalkAnimationChart;
-            animation_frame_ =
-                movement_action_counter_++;
+            if (movement.moved) {
+                animation_chart_ = kWalkAnimationChart;
+                animation_frame_ =
+                    movement_action_counter_++;
+            } else {
+                animation_chart_ = 0;
+                animation_frame_ = action_counter_++;
+            }
             draw_strength_ = 1000;
             return result;
         }
