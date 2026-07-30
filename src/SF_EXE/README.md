@@ -115,10 +115,14 @@ the live actors untouched.
 Enemy records have their first runtime boundary as well. Their common MCT
 identity, state, bounds, name, direction, CAF part data, AI-control name, and
 `Character/ENEMY` visual are owned by `ScenarioWorld`. The proven default
-action draws CAF chart zero and advances its idle frame at gameplay cadence,
-and enabled enemy judgement rectangles already block the player. AI event
-selection attachment, enemy movement, life changes, attacks, drops, and combat
-are deliberately still pending rather than approximated.
+action draws CAF chart zero and advances its idle frame at gameplay cadence.
+Enabled enemy judgement rectangles block the player, and ordinary player
+attacks now mutate the live enemy through the reconstructed receiver. A hit
+plays CAF chart two and applies the retail collision-aware displacement. Death
+plays chart three, its resource-specific voice and common death effect, then
+fades and removes the actor on the original update schedule. AI event
+selection attachment, enemy movement and attacks, kill accounting, experience,
+and drops are deliberately still pending rather than approximated.
 
 The actor also owns the fields proven beyond that common boundary:
 spawn-relative patrol bounds, current and maximum life initialized from the
@@ -169,15 +173,15 @@ Enemy presentation actions one through six now have a separate controller as
 well. It owns target-facing on entry, the retail ten-value CAF speed table,
 crossed-frame impact and three-slot sound markers, their resource-specific and
 fallback sample lookup, final-frame clamping, typed effect parameters, and
-completion events two through seven. It is intentionally not live yet:
-direct and effect packets, the shared damage arithmetic, and the complete
-passive enemy receiver are reconstructed. The receiver preserves MCT defense
-and reaction values, local/client damage ownership, attribution, hit and death
-presentations, reflection, configured and random effects, status requests,
-audio samples, and kill metadata. Player and companion receivers are still
-pending, and the typed enemy result still needs to meet movement, world
-effects, audio, networking, kill accounting, and death completion at the live
-actor boundary before enemies can run without dropping behavior.
+completion events two through seven. Direct and effect packets, the shared
+damage arithmetic, and all three passive damage receivers are reconstructed.
+The enemy receiver preserves MCT defense and reaction values, local/client
+damage ownership, attribution, hit and death presentations, reflection,
+configured and random effects, status requests, audio samples, and kill
+metadata. Common receiver effects now become depth-sorted world actors through
+the executable-owned `Character/OPTION` resource cache. Networking, specialized
+effect families, kill accounting, experience, drops, and the live enemy attack
+dispatcher still need their own complete slices.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

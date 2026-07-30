@@ -11,10 +11,12 @@
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/effect_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
 #include "resources/item_world_resource.hpp"
 #include "resources/object_visual_resource.hpp"
 #include "ground_item.hpp"
+#include "combat_effect_actor.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
 #include "npc_actor.hpp"
@@ -81,6 +83,8 @@ public:
         scenarioObjects() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<EnemyActor>& enemies() const;
+    const std::vector<CombatEffectActor>&
+        combatEffects() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
@@ -244,6 +248,13 @@ private:
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);
+    void queueCombatEffect(
+        const CombatEffectSpawnRequest& request);
+    void spawnPendingCombatEffects();
+    WorldPosition combatEffectOrigin(
+        const CombatEffectSpawnRequest& request) const;
+    ObjectBounds combatEffectJudgement(
+        const CombatEffectSpawnRequest& request) const;
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -251,9 +262,13 @@ private:
     WorldPointerTarget pending_interaction_;
     PlayerAttackTargetController player_attack_target_;
     CharacterVisualResource player_visual_;
+    EffectVisualResources effect_visuals_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
+    std::vector<CombatEffectSpawnRequest>
+        pending_combat_effects_;
+    std::vector<CombatEffectActor> combat_effects_;
     QuestState quests_;
     MissionCatalog missions_;
     TransportCatalog transports_;

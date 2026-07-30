@@ -44,7 +44,7 @@ osf::PlayerAttackImpactStats stats() {
     }
     stats.reflection_chance = 50;
     stats.reflection_percent = 25;
-    stats.reaction_motion = 1;
+    stats.suppress_reaction_displacement = 1;
     stats.reaction_chance_modifier = 8;
     stats.reaction_duration_modifier = 9;
     stats.weapon_identifier = 1234;
@@ -198,7 +198,7 @@ bool testReceiverApplication() {
     ordinary.weapon_identifier = -1;
     ordinary.reflection_chance = 0;
     ordinary.reflection_percent = 0;
-    ordinary.reaction_motion = 0;
+    ordinary.suppress_reaction_displacement = 0;
     ordinary.reaction_chance_modifier = 0;
     ordinary.reaction_duration_modifier = 0;
     ordinary.state_words.fill(0);
@@ -448,6 +448,8 @@ bool testLiveWorldMutationAndAudio() {
     const std::int32_t initial_life = enemyLife();
     bool hit = false;
     bool heard_hit = false;
+    bool saw_hit_effect = false;
+    bool hit_effect_owned_by_enemy = false;
     for (std::int32_t attempt = 0;
          attempt < 10 && !hit;
          ++attempt) {
@@ -477,6 +479,28 @@ bool testLiveWorldMutationAndAudio() {
                     samples.begin(),
                     samples.end(),
                     6) != samples.end();
+            const auto enemy_now = std::find_if(
+                world.enemies().begin(),
+                world.enemies().end(),
+                [enemy_id](const osf::EnemyActor& enemy) {
+                    return enemy.id() == enemy_id;
+                });
+            for (const osf::CombatEffectActor& effect :
+                 world.combatEffects()) {
+                if (effect.effectNumber() < 21000 ||
+                    effect.effectNumber() > 21006) {
+                    continue;
+                }
+                if (!saw_hit_effect &&
+                    enemy_now != world.enemies().end()) {
+                    hit_effect_owned_by_enemy =
+                        effect.position().x ==
+                            enemy_now->position().x &&
+                        effect.position().y ==
+                            enemy_now->position().y;
+                }
+                saw_hit_effect = true;
+            }
             if (impact_seen &&
                 world.playerMotion() ==
                     osf::PlayerMotion::idle) {
@@ -488,10 +512,12 @@ bool testLiveWorldMutationAndAudio() {
     return check(
         hit &&
             heard_hit &&
+            saw_hit_effect &&
+            hit_effect_owned_by_enemy &&
             enemyLife() >= 0 &&
             enemyLife() < initial_life,
-        "The live CAF impact did not mutate enemy life and queue "
-        "the retail post-hit sample.");
+        "The live CAF impact did not mutate enemy life, own its "
+        "hit effect, and queue the retail post-hit sample.");
 #else
     return true;
 #endif

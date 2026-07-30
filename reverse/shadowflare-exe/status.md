@@ -41,6 +41,12 @@ The first game-core slice covers:
 - the passive enemy damage receiver, including local and network ownership,
   reaction tables, life attribution, reflection, packet effects, audio and
   status requests, kill metadata, and death presentation selection
+- the live enemy hit and death actions, including chart-two reaction timing,
+  collision-aware displacement, chart-three direction selection, marker and
+  death audio, fade timing, and final actor removal
+- common `Character/OPTION` combat effects 21000 through 21014, including
+  owner-position snapshots, display ordering, one-pass CAF lifetime, and the
+  fixed death-effect timing
 - the player combat defense profile, including the two-dimensional elemental
   anchors, equipment and rolled-item contributions, identified backpack
   passives, two-handed off-hand suppression, and final affinity clamps
@@ -842,9 +848,9 @@ does not. The portable item owner, save round trip, tooltip, player appearance,
 and combat profile now share those meanings.
 
 This is still not complete gameplay. Live enemy AI dispatch and movement,
-hit/death presentation, experience and drops, remaining script commands and
-operand domains, alternate conversation modes, darkness, and saved-game
-scenario restoration are the next executable layers.
+kill accounting, experience and drops, remaining script commands and operand
+domains, alternate conversation modes, darkness, and saved-game scenario
+restoration are the next executable layers.
 
 The first player attack action now follows the executable rather than a visual
 approximation. `0x00450630` maps main-hand subtypes to actions 7 through 10
@@ -873,5 +879,7 @@ loss after the receiver. A zero-condition weapon remains equipped and retains
 its weight and instance effects, but `0x0044ea60` excludes its base derived
 values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
-attachment. Hit/death CAF presentation, reaction movement, effect-list
-ownership, experience, and drops remain next.
+attachment. Hit/death CAF presentation, reaction displacement, common
+effect-list ownership, marker and death audio, fading, and actor removal now
+run at the live boundary. Kill accounting, experience, item and Gold drops,
+and specialized effect families remain next.

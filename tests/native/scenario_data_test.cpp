@@ -681,7 +681,7 @@ bool testFixture() {
                 enemy->post_ai_values[38] &&
             enemy->reaction_duration_defense ==
                 enemy->post_ai_values[39] &&
-            enemy->force_reaction_motion ==
+            enemy->always_suppress_reaction_displacement ==
                 (enemy->post_ai_values[40] == 1) &&
             enemy->movement_speed_scale ==
                 enemy->post_ai_values[54] &&
@@ -1422,7 +1422,8 @@ bool testGeneralScenarioStart() {
                 first_enemy.magicalDefense() == 25 &&
                 first_enemy.reactionChanceDefense() == 0 &&
                 first_enemy.reactionDurationDefense() == 0 &&
-                !first_enemy.forceReactionMotion() &&
+                !first_enemy
+                     .alwaysSuppressReactionDisplacement() &&
                 first_enemy.movementSpeedScale() == 3000 &&
                 first_enemy.visible() &&
                 first_enemy.pointerEnabled() &&

@@ -10,6 +10,35 @@ constexpr std::int32_t kResourceCount = 25;
 constexpr std::int32_t kChartCount = 10;
 constexpr std::int32_t kMarkerSlotCount = 3;
 
+constexpr std::array<std::int32_t, kResourceCount>
+    kDeathSamples{{
+        -1,
+        105,
+        104,
+        107,
+        106,
+        104,
+        -1,
+        -1,
+        114,
+        111,
+        118,
+        118,
+        117,
+        114,
+        133,
+        130,
+        148,
+        148,
+        142,
+        -1,
+        -1,
+        151,
+        111,
+        114,
+        136,
+    }};
+
 struct SampleOverride {
     std::int32_t resource_id;
     std::int32_t marker_slot;
@@ -110,6 +139,15 @@ std::int32_t retailEnemyPresentationSample(
     // marker slot maps it to sample 86.
     return animation_chart == 3
         ? 86
+        : kNoEnemyPresentationSample;
+}
+
+std::int32_t retailEnemyDeathSample(
+    std::int32_t resource_id) {
+    return resource_id >= 0 &&
+                   resource_id < kResourceCount
+        ? kDeathSamples[
+              static_cast<std::size_t>(resource_id)]
         : kNoEnemyPresentationSample;
 }
 

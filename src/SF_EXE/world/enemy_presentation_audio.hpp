@@ -12,6 +12,9 @@ std::int32_t retailEnemyPresentationSample(
     std::int32_t animation_chart,
     std::int32_t marker_slot);
 
+std::int32_t retailEnemyDeathSample(
+    std::int32_t resource_id);
+
 }  // namespace osf
 
 #endif

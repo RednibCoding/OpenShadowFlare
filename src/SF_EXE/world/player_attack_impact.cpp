@@ -106,7 +106,7 @@ PlayerAttackImpactStats buildPlayerAttackImpactStats(
         stats.reaction_duration_modifier =
             retailItemInstanceParameter(
                 *main_hand, 15);
-        stats.reaction_motion =
+        stats.suppress_reaction_displacement =
             retailItemInstanceParameter(
                     *main_hand, 16) != 0
             ? 1
@@ -167,7 +167,8 @@ PlayerAttackImpactResult resolvePlayerAttackImpact(
             ? input.stats.reflection_percent
             : 0);
     result.packet.write(
-        40, input.stats.reaction_motion);
+        40,
+        input.stats.suppress_reaction_displacement);
     result.packet.write(
         42,
         input.stats.reaction_chance_modifier);

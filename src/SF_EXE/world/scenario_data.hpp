@@ -92,7 +92,7 @@ struct ScenarioEnemy : ScenarioEntity {
     std::int32_t magical_defense = 0;
     std::int32_t reaction_chance_defense = 0;
     std::int32_t reaction_duration_defense = 0;
-    bool force_reaction_motion = false;
+    bool always_suppress_reaction_displacement = false;
     std::int32_t movement_speed_scale = 0;
     EnemyPresentationProfile presentation;
 };

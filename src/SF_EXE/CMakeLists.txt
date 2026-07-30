@@ -66,6 +66,7 @@ target_link_libraries(
 add_library(
   osf_resources STATIC
   resources/character_visual_resource.cpp
+  resources/effect_visual_resource.cpp
   resources/item_inventory_resource.cpp
   resources/item_world_resource.cpp
   resources/object_visual_resource.cpp
@@ -111,6 +112,7 @@ add_library(
   world/actor_direction.cpp
   world/companion_damage_receiver.cpp
   world/combat_damage.cpp
+  world/combat_effect_actor.cpp
   world/combat_hit_chance.cpp
   world/enemy_actor.cpp
   world/enemy_ai_action.cpp
@@ -149,6 +151,7 @@ add_library(
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
+  world/world_scene_combat.cpp
   world/world_scene_interaction.cpp
   world/world_scene_items.cpp
   world/world_scene_loading.cpp

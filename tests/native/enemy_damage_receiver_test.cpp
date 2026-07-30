@@ -316,7 +316,7 @@ bool testOrdinaryHitReaction() {
             result.state.action_lock == 1 &&
             result.state.reaction_duration == 16 &&
             result.state.reaction_stage == 1 &&
-            !result.state.reaction_motion &&
+            !result.state.reaction_displacement_suppressed &&
             result.state.reaction_additive == 2 &&
             std::abs(result.state.reaction_angle) < 0.000001 &&
             result.state.direction == 5 &&
@@ -340,7 +340,7 @@ bool testEffectReactionOverride() {
     reacting.current_life = 1000;
     reacting.maximum_life = 1000;
     reacting.native_element = 2;
-    reacting.force_reaction_motion = true;
+    reacting.always_suppress_reaction_displacement = true;
     osf::CombatPacket effect = packet();
     effect.write(0, 2);
     effect.write(1, 3);
@@ -373,7 +373,7 @@ bool testEffectReactionOverride() {
             result.state.presentation_action == 10 &&
             result.state.reaction_duration == 15 &&
             result.state.reaction_stage == 2 &&
-            result.state.reaction_motion &&
+            result.state.reaction_displacement_suppressed &&
             result.effects.empty() &&
             result.audio_samples.empty() &&
             result.network.effect_family &&

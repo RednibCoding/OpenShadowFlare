@@ -53,9 +53,12 @@ void WorldScene::clear() {
     pending_interaction_ = {};
     player_attack_target_.cancel();
     player_visual_.clear();
+    effect_visuals_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
     pending_audio_samples_.clear();
+    pending_combat_effects_.clear();
+    combat_effects_.clear();
     quests_.clear();
     missions_.clear();
     transports_.clear();
@@ -119,6 +122,11 @@ const std::vector<NpcActor>& WorldScene::npcs() const {
 const std::vector<EnemyActor>&
 WorldScene::enemies() const {
     return scenario_world_.enemies();
+}
+
+const std::vector<CombatEffectActor>&
+WorldScene::combatEffects() const {
+    return combat_effects_;
 }
 
 const TransportCatalog& WorldScene::transports() const {
@@ -249,6 +257,27 @@ void WorldScene::togglePlayerRun() {
 
 void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
+    std::vector<EnemyActor>& live_enemies =
+        scenario_world_.enemies();
+    live_enemies.erase(
+        std::remove_if(
+            live_enemies.begin(),
+            live_enemies.end(),
+            [](const EnemyActor& enemy) {
+                return enemy.expired();
+            }),
+        live_enemies.end());
+    for (CombatEffectActor& effect : combat_effects_) {
+        effect.update();
+    }
+    combat_effects_.erase(
+        std::remove_if(
+            combat_effects_.begin(),
+            combat_effects_.end(),
+            [](const CombatEffectActor& effect) {
+                return effect.expired();
+            }),
+        combat_effects_.end());
     if (!scenario_script_.messageActive()) {
         scenario_script_.runStatusKind(5);
     }
@@ -363,11 +392,21 @@ void WorldScene::update() {
             npc.judgement(),
         });
     }
+    std::vector<std::size_t> enemy_blocker_indices(
+        scenario_world_.enemies().size(),
+        actor_blockers.size());
     for (const EnemyActor& enemy :
          scenario_world_.enemies()) {
+        const std::size_t index =
+            static_cast<std::size_t>(
+                &enemy -
+                scenario_world_.enemies().data());
         if (!enemy.judgementEnabled()) {
+            enemy_blocker_indices[index] = no_blocker;
             continue;
         }
+        enemy_blocker_indices[index] =
+            actor_blockers.size();
         actor_blockers.push_back({
             enemy.movementBlockerId(),
             enemy.position(),
@@ -407,10 +446,29 @@ void WorldScene::update() {
                 npc.position();
         }
     }
-    for (EnemyActor& enemy :
-         scenario_world_.enemies()) {
-        enemy.update();
+    for (std::size_t index = 0;
+         index < scenario_world_.enemies().size();
+         ++index) {
+        EnemyActor& enemy =
+            scenario_world_.enemies()[index];
+        const EnemyActorUpdate update =
+            enemy.update(
+                scenario_world_.ground(),
+                scenario_world_.objectMap(),
+                &actor_blockers,
+                item_random_);
+        pending_audio_samples_.insert(
+            pending_audio_samples_.end(),
+            update.audio_samples.begin(),
+            update.audio_samples.end());
+        queueCombatEffect(update.effect_spawn);
+        if (enemy_blocker_indices[index] != no_blocker) {
+            actor_blockers[
+                enemy_blocker_indices[index]].position =
+                enemy.position();
+        }
     }
+    spawnPendingCombatEffects();
     for (GroundItem& item : scenario_world_.groundItems()) {
         if (updateGroundItem(item) !=
             GroundItemUpdateEvent::first_impact) {

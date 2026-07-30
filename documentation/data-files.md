@@ -205,8 +205,9 @@ by native AI action one. Pre-AI value 8 is copied into both runtime current
 life at `+0xd4` and maximum life at `+0xe4`. Pre-AI values 6, 9, 10, and 11
 are native element, physical defense, physical evasion, and magical defense.
 The player direct-hit gate reads value 10 at runtime `+0xec`. Post-AI values
-38 through 40 defend reaction chance, defend reaction duration, and force
-reaction movement. Post-AI value 54 reaches `+0x1dc`; movement actions
+38 through 40 defend reaction chance, defend reaction duration, and always
+suppress reaction displacement. Post-AI value 54 reaches `+0x1dc`; movement
+actions
 multiply their authored AID speed by this value and divide by 1,000. The raw
 arrays remain available so this partial naming does not discard or reshuffle
 any unclassified field.

@@ -1,9 +1,13 @@
 #include "enemy_actor.hpp"
 
+#include "core/retail_random.hpp"
+#include "enemy_presentation_audio.hpp"
 #include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "resources/character_visual_resource.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <utility>
 
 namespace osf {
@@ -23,6 +27,99 @@ void copyParts(
         source.begin(),
         std::min(destination.size(), source.size()),
         destination.begin());
+}
+
+constexpr std::int32_t kIdlePresentationAction = 7;
+constexpr std::int32_t kHitPresentationAction = 10;
+constexpr std::int32_t kDeathPresentationAction = 11;
+constexpr std::int32_t kHitAnimationChart = 2;
+constexpr std::int32_t kDeathAnimationChart = 3;
+constexpr std::int32_t kDeathDirection = 8;
+constexpr std::int32_t kHitDisplacement = 120;
+constexpr std::int32_t kDeathFadeUpdates = 120;
+constexpr std::int32_t kDeathEffectNumber = 21010;
+
+const gapi::CafDirection* animationDirection(
+    const CharacterVisualResource* visual,
+    std::int32_t chart,
+    std::int32_t direction) {
+    if (!visual || chart < 0 || direction < 0 ||
+        direction >= 9 ||
+        static_cast<std::size_t>(chart) >=
+            visual->animation().charts().size()) {
+        return nullptr;
+    }
+    return &visual->animation()
+                .charts()[static_cast<std::size_t>(chart)]
+                .directions[
+                    static_cast<std::size_t>(direction)];
+}
+
+void appendMarkerAudio(
+    const gapi::CafDirection& direction,
+    std::int32_t frame,
+    std::int32_t resource_id,
+    std::int32_t chart,
+    std::vector<std::int32_t>& samples) {
+    if (frame < 0 || direction.parts.empty() ||
+        static_cast<std::size_t>(frame) >=
+            direction.parts.front().size()) {
+        return;
+    }
+    const std::uint16_t status =
+        static_cast<std::uint16_t>(
+            direction.parts.front()[
+                static_cast<std::size_t>(frame)]
+                .status);
+    constexpr std::uint16_t first_marker = 0x400u;
+    for (std::int32_t slot = 0; slot < 3; ++slot) {
+        if ((status &
+             (first_marker <<
+              static_cast<std::uint32_t>(slot))) == 0) {
+            continue;
+        }
+        const std::int32_t sample =
+            retailEnemyPresentationSample(
+                resource_id, chart, slot);
+        if (sample >= 0) {
+            samples.push_back(sample);
+        }
+    }
+}
+
+WorldPosition displacedPosition(
+    WorldPosition position,
+    double angle,
+    std::int32_t distance) {
+    return {
+        position.x +
+            static_cast<std::int32_t>(
+                std::cos(angle) *
+                static_cast<double>(distance)),
+        position.y -
+            static_cast<std::int32_t>(
+                std::sin(angle) *
+                static_cast<double>(distance)),
+    };
+}
+
+CombatEffectSpawnRequest deathEffect(
+    const EnemyActor& enemy,
+    std::int32_t direction) {
+    CombatEffectSpawnRequest request;
+    request.valid = true;
+    request.effect_number = kDeathEffectNumber;
+    request.owner_kind = 4;
+    request.source_character_number =
+        enemy.characterNumber();
+    request.target_kind = 0;
+    request.target_identifier = 0;
+    request.has_source_judgement = true;
+    request.source_judgement = enemy.judgement();
+    request.packet_kind = direction;
+    request.instance_identifier = -1;
+    request.constructor_value_21 = 200;
+    return request;
 }
 
 }  // namespace
@@ -62,6 +159,7 @@ bool EnemyActor::initialize(
     name_color_ = enemy.name_color;
     label_height_ = enemy.label_height;
     position_ = {enemy.world_x, enemy.world_y};
+    previous_position_ = position_;
     judgement_ = {
         enemy.judgement_left,
         enemy.judgement_top,
@@ -88,8 +186,8 @@ bool EnemyActor::initialize(
         enemy.reaction_chance_defense;
     reaction_duration_defense_ =
         enemy.reaction_duration_defense;
-    force_reaction_motion_ =
-        enemy.force_reaction_motion;
+    always_suppress_reaction_displacement_ =
+        enemy.always_suppress_reaction_displacement;
     movement_speed_scale_ =
         enemy.movement_speed_scale;
     presentation_profile_ = enemy.presentation;
@@ -122,8 +220,10 @@ void EnemyActor::clear() {
     name_color_ = 0;
     label_height_ = 0;
     position_ = {};
+    previous_position_ = {};
     judgement_ = {};
     direction_ = 0;
+    animation_chart_ = 0;
     animation_frame_ = 0;
     action_counter_ = 0;
     ai_control_name_.clear();
@@ -138,12 +238,12 @@ void EnemyActor::clear() {
     magical_defense_ = 0;
     reaction_chance_defense_ = 0;
     reaction_duration_defense_ = 0;
-    force_reaction_motion_ = false;
+    always_suppress_reaction_displacement_ = false;
     presentation_action_ = 7;
     action_lock_ = 0;
     reaction_duration_ = 0;
     reaction_stage_ = 0;
-    reaction_motion_ = false;
+    reaction_displacement_suppressed_ = false;
     reaction_additive_ = 0;
     reaction_angle_ = 0.0;
     event_number_ = 0;
@@ -151,6 +251,8 @@ void EnemyActor::clear() {
     death_counter_ = 0;
     defeated_by_effect_ = false;
     defeat_source_character_number_ = -1;
+    draw_strength_ = 1000;
+    expired_ = false;
     movement_speed_scale_ = 0;
     presentation_profile_ = {};
     state_.clear();
@@ -161,11 +263,171 @@ void EnemyActor::clear() {
     visual_ = nullptr;
 }
 
-void EnemyActor::update() {
+EnemyActorUpdate EnemyActor::update(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    RetailRandom& random) {
+    EnemyActorUpdate result;
+    previous_position_ = position_;
+    if (expired_) {
+        result.expired = true;
+        return result;
+    }
+
+    if (presentation_action_ == kHitPresentationAction) {
+        action_lock_ = 1;
+        reaction_duration_ =
+            std::max<std::int32_t>(
+                reaction_duration_, 1);
+        animation_chart_ = kHitAnimationChart;
+        const gapi::CafDirection* animation =
+            animationDirection(
+                visual_,
+                animation_chart_,
+                direction_);
+        const std::int32_t frame_count =
+            animation
+                ? animation->frame_count
+                : 0;
+        if (animation && frame_count > 0) {
+            appendMarkerAudio(
+                *animation,
+                action_counter_ % frame_count,
+                resource_id_,
+                animation_chart_,
+                result.audio_samples);
+            animation_frame_ =
+                action_counter_ * frame_count /
+                reaction_duration_;
+            if (action_counter_ ==
+                reaction_duration_ - 1) {
+                animation_frame_ = frame_count - 1;
+            }
+            animation_frame_ = std::clamp(
+                animation_frame_, 0, frame_count - 1);
+        } else {
+            animation_frame_ = 0;
+            reaction_duration_ = 1;
+        }
+        if (reaction_stage_ == 2) {
+            animation_frame_ = 0;
+        }
+
+        // The retail field is true when authored displacement is
+        // suppressed. A false value applies the diminishing
+        // 120-unit impulse away from the impact origin.
+        if (!reaction_displacement_suppressed_ &&
+            reaction_additive_ == 0) {
+            const std::int32_t distance =
+                (reaction_duration_ - action_counter_) *
+                kHitDisplacement /
+                reaction_duration_;
+            if (distance != 0) {
+                const WorldPosition destination =
+                    displacedPosition(
+                        position_,
+                        reaction_angle_,
+                        distance);
+                position_ = advanceMovement(
+                    ground,
+                    objects,
+                    judgement_,
+                    position_,
+                    destination,
+                    distance,
+                    dynamic_blockers,
+                    movementBlockerId())
+                                .position;
+            }
+        }
+
+        if (action_counter_ ==
+            reaction_duration_ - 1) {
+            action_lock_ = 0;
+            presentation_action_ =
+                kIdlePresentationAction;
+            if (event_number_ == -1) {
+                event_number_ = 16;
+            }
+        }
+        ++action_counter_;
+        if (reaction_additive_ != 0) {
+            --reaction_additive_;
+        }
+        return result;
+    }
+
+    if (presentation_action_ == kDeathPresentationAction) {
+        action_lock_ = 1;
+        animation_chart_ = kDeathAnimationChart;
+        if (action_counter_ == 0 && visual_) {
+            draw_strength_ = 1000;
+            result.effect_spawn =
+                deathEffect(*this, random.next() % 8);
+        }
+
+        const gapi::CafDirection* death_direction =
+            animationDirection(
+                visual_,
+                animation_chart_,
+                kDeathDirection);
+        if (death_direction &&
+            death_direction->frame_count > 0) {
+            direction_ = kDeathDirection;
+        }
+        const gapi::CafDirection* animation =
+            animationDirection(
+                visual_,
+                animation_chart_,
+                direction_);
+        const std::int32_t frame_count =
+            animation && animation->frame_count > 0
+                ? animation->frame_count
+                : 1;
+        if (animation) {
+            appendMarkerAudio(
+                *animation,
+                action_counter_,
+                resource_id_,
+                animation_chart_,
+                result.audio_samples);
+        }
+        if (action_counter_ == 1 && visual_) {
+            const std::int32_t sample =
+                retailEnemyDeathSample(resource_id_);
+            if (sample >= 0) {
+                result.audio_samples.push_back(sample);
+            }
+        }
+
+        animation_frame_ = std::min(
+            action_counter_, frame_count - 1);
+        if (action_counter_ >= frame_count - 1) {
+            draw_strength_ = std::max<std::int32_t>(
+                ((frame_count - action_counter_) +
+                 (kDeathFadeUpdates - 1)) *
+                    1000 /
+                    kDeathFadeUpdates,
+                0);
+        }
+        if (action_counter_ >=
+            frame_count + kDeathFadeUpdates - 1) {
+            expired_ = true;
+            result.expired = true;
+            return result;
+        }
+        ++action_counter_;
+        return result;
+    }
+
     // Enemy action seven is the retail idle action. It selects CAF chart
     // zero, submits the current counter, then advances it once per
     // active-map gameplay update.
+    animation_chart_ = 0;
     animation_frame_ = action_counter_++;
+    draw_strength_ = 1000;
+    return result;
 }
 
 std::int32_t EnemyActor::stateValue(
@@ -211,6 +473,11 @@ WorldPosition EnemyActor::position() const {
     return position_;
 }
 
+WorldPosition EnemyActor::renderPosition(double alpha) const {
+    return interpolateWorldPosition(
+        previous_position_, position_, alpha);
+}
+
 const ObjectBounds& EnemyActor::judgement() const {
     return judgement_;
 }
@@ -220,11 +487,19 @@ std::int32_t EnemyActor::direction() const {
 }
 
 std::int32_t EnemyActor::animationChart() const {
-    return 0;
+    return animation_chart_;
 }
 
 std::int32_t EnemyActor::animationFrame() const {
     return animation_frame_;
+}
+
+std::int32_t EnemyActor::drawStrength() const {
+    return draw_strength_;
+}
+
+bool EnemyActor::expired() const {
+    return expired_;
 }
 
 const std::string& EnemyActor::aiControlName() const {
@@ -275,8 +550,8 @@ std::int32_t EnemyActor::reactionDurationDefense() const {
     return reaction_duration_defense_;
 }
 
-bool EnemyActor::forceReactionMotion() const {
-    return force_reaction_motion_;
+bool EnemyActor::alwaysSuppressReactionDisplacement() const {
+    return always_suppress_reaction_displacement_;
 }
 
 std::int32_t EnemyActor::movementSpeedScale() const {
@@ -360,8 +635,8 @@ EnemyDamageReceiverState EnemyActor::damageReceiverState(
         reaction_chance_defense_;
     state.reaction_duration_defense =
         reaction_duration_defense_;
-    state.force_reaction_motion =
-        force_reaction_motion_;
+    state.always_suppress_reaction_displacement =
+        always_suppress_reaction_displacement_;
     state.presentation_action =
         presentation_action_;
     state.presentation_counter =
@@ -370,7 +645,8 @@ EnemyDamageReceiverState EnemyActor::damageReceiverState(
     state.reaction_duration =
         reaction_duration_;
     state.reaction_stage = reaction_stage_;
-    state.reaction_motion = reaction_motion_;
+    state.reaction_displacement_suppressed =
+        reaction_displacement_suppressed_;
     state.reaction_additive = reaction_additive_;
     state.reaction_angle = reaction_angle_;
     state.direction = direction_;
@@ -399,7 +675,8 @@ void EnemyActor::applyDamageReceiverState(
     reaction_duration_ =
         state.reaction_duration;
     reaction_stage_ = state.reaction_stage;
-    reaction_motion_ = state.reaction_motion;
+    reaction_displacement_suppressed_ =
+        state.reaction_displacement_suppressed;
     reaction_additive_ =
         state.reaction_additive;
     reaction_angle_ = state.reaction_angle;

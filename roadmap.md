@@ -359,7 +359,8 @@ retail order.
 
 The enemy side of that receiver boundary is reconstructed as a passive result.
 It decodes the enemy's native element, physical and magical defense, two
-reaction defenses, and force-motion flag from the MCT initializer. Local
+  reaction defenses, and always-suppress-displacement flag from the MCT
+  initializer. Local
 source ownership, client minimum-one prediction, authoritative damage
 attribution, tables 24 and 25, effect element banks, reaction stages,
 reflection, the two configured effects, the 20-percent random hit effect,
@@ -390,17 +391,19 @@ The owned companion uses a third receiver at retail address `0x0045f9f0`,
 not either of those paths. Its family-one profile, owner-slot life mutation,
 actions 7/8/10 rejection, tables 24 and 25 reaction, action-five hit stages,
 action-six death, distinct effect owner kinds, sample 119, event four, and
-random draws are reconstructed separately. All three results stay passive
-until movement consumption, world effect ownership, audio playback, network
-transport, kill accounting, death completion, drops, and the complete live
-update can be attached together.
+random draws are reconstructed separately. The enemy result is now attached
+to the live actor, including reaction displacement, hit/death presentation,
+common world effects, and audio. Player and companion results remain passive
+until their own live state, effect, equipment, and networking owners can be
+attached without skipping side effects. Kill accounting, experience, and
+drops remain a separate enemy-death slice.
 
-The marker-to-sample lookup is reconstructed separately. It checks the exact
+The marker-to-sample lookup checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback
 rows; all 59 populated overrides are preserved and chart three's sample 86 is
-the only fallback. Presentation updates now return resolved samples, while
-the world audio owner will perform playback after the complete enemy update
-path is attached.
+the only fallback. Live hit and death actions return those samples to the
+world audio owner, and death also uses the resource-specific 25-entry voice
+table.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
@@ -822,10 +825,36 @@ still weigh the same and remain equipped, but no longer contribute their base
 stats or elemental strengths. A live retail-world regression clicks a real
 enemy and requires the CAF marker to lower its life and queue sample 6.
 
-The next combat slice should make the receiver's presentation state visible:
-reconstruct enemy hit and death CAF actions, apply any authored reaction
-movement, and attach the configured hit-effect requests without folding those
-concerns into the damage formula.
+The receiver's presentation state is live now. Action 10 selects CAF chart
+two and stretches its frames over the exact reaction duration. Its sound
+markers still use the retail counter-based cell lookup, and the last update
+shows the last frame before returning to idle and publishing event 16. Packet
+word 40 and the enemy's MCT flag are now named for what their consumers
+actually do: they suppress displacement. When displacement is allowed, the
+enemy receives the decreasing 120-unit reaction impulse and uses the shared
+map, object, and live-actor collision sweep. Render interpolation keeps that
+movement smooth without changing the 30 Hz simulation.
+
+Action 11 selects CAF chart three, uses direction eight only when that chart
+really supplies it, scans the same three sound markers, and plays the separate
+resource-specific death sample on update one. It holds the final frame through
+the original 120-update fade and then removes the enemy from the scenario.
+Its first update also creates effect 21010 with the original random direction.
+
+The world now owns the ordinary receiver visuals too. Effects 21000 through
+21014 resolve through the executable's dispatch table to their exact
+`Character/OPTION` resources, snapshot the source actor after its update,
+join the normal depth-sorted world pass, and expire after one CAF pass.
+Effects 21010 through 21012 keep their separate 120-update lifetime,
+500-strength start, and 30-update fade. Specialized reflection, staged
+reaction, projectile, and spell effect handlers remain typed requests until
+their own dispatch branches are reconstructed.
+
+The next combat slice should follow the lethal path after presentation
+selection: reconstruct kill accounting, experience distribution, and the
+enemy's authored item/Gold drops. Drops must enter the existing ground-item
+owner so their palettes, bounce timing, landing sounds, pickup, saving, and
+script visibility are not reimplemented in combat code.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

@@ -1010,6 +1010,10 @@ void WorldScene::applyPlayerAttackImpact(
             pending_audio_samples_.end(),
             application.receiver.audio_samples.begin(),
             application.receiver.audio_samples.end());
+        for (const CombatEffectSpawnRequest& effect :
+             application.receiver.effects) {
+            queueCombatEffect(effect);
+        }
     }
     if (application.impact.post_hit_audio_sample >= 0) {
         pending_audio_samples_.push_back(

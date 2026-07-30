@@ -2,7 +2,9 @@
 #define OPENSHADOWFLARE_ENEMY_ACTOR_HPP
 
 #include "enemy_damage_receiver.hpp"
+#include "combat_effect_request.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "movement_controller.hpp"
 #include "scenario_data.hpp"
 #include "scenario_entity_state.hpp"
 
@@ -16,10 +18,17 @@ namespace osf {
 
 class CharacterVisualResource;
 class AiControlList;
+class RetailRandom;
 
 namespace gapi {
 class NjpImage;
 }
+
+struct EnemyActorUpdate {
+    CombatEffectSpawnRequest effect_spawn;
+    std::vector<std::int32_t> audio_samples;
+    bool expired = false;
+};
 
 class EnemyActor {
 public:
@@ -30,7 +39,11 @@ public:
         std::int32_t ai_control_index,
         std::string* error = nullptr);
     void clear();
-    void update();
+    EnemyActorUpdate update(
+        const GroundMap& ground,
+        const ObjectMap& objects,
+        const std::vector<MovementBlocker>* dynamic_blockers,
+        RetailRandom& random);
 
     std::int32_t stateValue(
         ScenarioEntityStateChannel channel) const;
@@ -46,10 +59,13 @@ public:
     std::uint32_t nameColor() const;
     std::int32_t labelHeight() const;
     WorldPosition position() const;
+    WorldPosition renderPosition(double alpha) const;
     const ObjectBounds& judgement() const;
     std::int32_t direction() const;
     std::int32_t animationChart() const;
     std::int32_t animationFrame() const;
+    std::int32_t drawStrength() const;
+    bool expired() const;
     const std::string& aiControlName() const;
     const AiControlList* aiControl() const;
     std::int32_t aiControlIndex() const;
@@ -62,7 +78,7 @@ public:
     std::int32_t magicalDefense() const;
     std::int32_t reactionChanceDefense() const;
     std::int32_t reactionDurationDefense() const;
-    bool forceReactionMotion() const;
+    bool alwaysSuppressReactionDisplacement() const;
     std::int32_t movementSpeedScale() const;
     const EnemyPresentationProfile&
     presentationProfile() const;
@@ -92,8 +108,10 @@ private:
     std::uint32_t name_color_ = 0;
     std::int32_t label_height_ = 0;
     WorldPosition position_;
+    WorldPosition previous_position_;
     ObjectBounds judgement_;
     std::int32_t direction_ = 0;
+    std::int32_t animation_chart_ = 0;
     std::int32_t animation_frame_ = 0;
     std::int32_t action_counter_ = 0;
     std::string ai_control_name_;
@@ -108,12 +126,12 @@ private:
     std::int32_t magical_defense_ = 0;
     std::int32_t reaction_chance_defense_ = 0;
     std::int32_t reaction_duration_defense_ = 0;
-    bool force_reaction_motion_ = false;
+    bool always_suppress_reaction_displacement_ = false;
     std::int32_t presentation_action_ = 7;
     std::int32_t action_lock_ = 0;
     std::int32_t reaction_duration_ = 0;
     std::int32_t reaction_stage_ = 0;
-    bool reaction_motion_ = false;
+    bool reaction_displacement_suppressed_ = false;
     std::int32_t reaction_additive_ = 0;
     double reaction_angle_ = 0.0;
     std::int32_t event_number_ = 0;
@@ -124,6 +142,8 @@ private:
     std::int32_t death_counter_ = 0;
     bool defeated_by_effect_ = false;
     std::int32_t defeat_source_character_number_ = -1;
+    std::int32_t draw_strength_ = 1000;
+    bool expired_ = false;
     std::int32_t movement_speed_scale_ = 0;
     EnemyPresentationProfile presentation_profile_;
     ScenarioEntityState state_;

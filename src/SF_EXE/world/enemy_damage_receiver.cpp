@@ -243,14 +243,14 @@ ReactionResult resolveReaction(
     duration = retailAdd(duration, affinity.duration);
     duration = std::max<std::int32_t>(duration, 1);
 
-    bool reaction_motion = packet[40] != 0;
+    bool displacement_suppressed = packet[40] != 0;
     if (packet[1] == 3 &&
         packet[
             static_cast<std::size_t>(
                 state.native_element + 45)] == 0) {
-        reaction_motion = false;
+        displacement_suppressed = false;
     }
-    if (!reaction_motion) {
+    if (!displacement_suppressed) {
         duration = std::min<std::int32_t>(
             duration, 15);
     }
@@ -268,16 +268,17 @@ ReactionResult resolveReaction(
             kHitPresentationAction;
         state.presentation_counter = 0;
         state.action_lock = 1;
-        state.reaction_motion = reaction_motion;
+        state.reaction_displacement_suppressed =
+            displacement_suppressed;
         state.reaction_additive = packet[76];
-        if (state.force_reaction_motion) {
-            state.reaction_motion = true;
+        if (state.always_suppress_reaction_displacement) {
+            state.reaction_displacement_suppressed = true;
         }
         state.reaction_angle =
             retailAngleForVector(
                 state.position.x - impact_origin.x,
                 state.position.y - impact_origin.y);
-        if (!state.reaction_motion) {
+        if (!state.reaction_displacement_suppressed) {
             state.direction =
                 retailDirectionForAngle(
                     state.reaction_angle -

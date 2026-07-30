@@ -374,7 +374,7 @@ bool readScenarioEnemy(
         post_ai_values[38];
     enemy.reaction_duration_defense =
         post_ai_values[39];
-    enemy.force_reaction_motion =
+    enemy.always_suppress_reaction_displacement =
         post_ai_values[40] == 1;
     enemy.movement_speed_scale = post_ai_values[54];
     enemy.presentation.packet_word_31 =

@@ -30,14 +30,14 @@ struct EnemyDamageReceiverState {
     std::int32_t magical_defense = 0;
     std::int32_t reaction_chance_defense = 0;
     std::int32_t reaction_duration_defense = 0;
-    bool force_reaction_motion = false;
+    bool always_suppress_reaction_displacement = false;
 
     std::int32_t presentation_action = 7;
     std::int32_t presentation_counter = 0;
     std::int32_t action_lock = 0;
     std::int32_t reaction_duration = 0;
     std::int32_t reaction_stage = 0;
-    bool reaction_motion = false;
+    bool reaction_displacement_suppressed = false;
     std::int32_t reaction_additive = 0;
     double reaction_angle = 0.0;
     std::int32_t direction = 0;

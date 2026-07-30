@@ -101,12 +101,38 @@ bool testInvalidIndicesAreContained() {
         "accepted an invalid chart/marker index.");
 }
 
+bool testCompleteDeathSampleTable() {
+    std::int32_t sample_count = 0;
+    std::int32_t sample_sum = 0;
+    std::uint64_t hash = 1469598103934665603ull;
+    for (std::int32_t resource = 0;
+         resource < 25;
+         ++resource) {
+        const std::int32_t sample =
+            osf::retailEnemyDeathSample(resource);
+        if (sample >= 0) {
+            ++sample_count;
+            sample_sum += sample;
+        }
+        hash = hashWord(hash, sample);
+    }
+    return check(
+        sample_count == 20 &&
+            sample_sum == 2431 &&
+            hash == 0x086ee0f4b8c1f596ull &&
+            osf::retailEnemyDeathSample(-1) == -1 &&
+            osf::retailEnemyDeathSample(25) == -1,
+        "The resource-specific enemy death samples differ from "
+        "DAT_004815d8.");
+}
+
 }  // namespace
 
 int main() {
     return testCompleteRetailOverrideTable() &&
                    testOverrideAndFallbackOrder() &&
-                   testInvalidIndicesAreContained()
+                   testInvalidIndicesAreContained() &&
+                   testCompleteDeathSampleTable()
         ? 0
         : 1;
 }

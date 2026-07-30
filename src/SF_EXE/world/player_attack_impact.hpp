@@ -27,7 +27,7 @@ struct PlayerAttackImpactStats {
     std::array<std::int32_t, 17> state_words{};
     std::int32_t reflection_chance = 0;
     std::int32_t reflection_percent = 0;
-    std::int32_t reaction_motion = 0;
+    std::int32_t suppress_reaction_displacement = 0;
     std::int32_t reaction_chance_modifier = 0;
     std::int32_t reaction_duration_modifier = 0;
     std::int32_t weapon_identifier = -1;

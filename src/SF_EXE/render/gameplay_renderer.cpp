@@ -29,6 +29,7 @@ struct WorldDrawEntry {
     DisplayOrderEntry order;
     const ScenarioObjectActor* scenario_object = nullptr;
     const EnemyActor* enemy = nullptr;
+    const CombatEffectActor* effect = nullptr;
 };
 
 ScreenPosition toScreen(
@@ -116,13 +117,14 @@ void renderEnemyPass(
     std::int32_t camera_y,
     bool shadow,
     std::int32_t shadow_opacity,
-    bool hovered) {
+    bool hovered,
+    double interpolation) {
     renderCharacterAnimationPass(
         renderer,
         enemy.animation(),
         enemy.patterns(),
         enemy.shadowPatterns(),
-        enemy.position(),
+        enemy.renderPosition(interpolation),
         enemy.animationChart(),
         enemy.direction(),
         enemy.animationFrame(),
@@ -144,7 +146,37 @@ void renderEnemyPass(
         camera_x,
         camera_y,
         shadow,
-        shadow_opacity);
+        shadow_opacity * enemy.drawStrength() / 1000,
+        0,
+        enemy.drawStrength());
+}
+
+void renderCombatEffect(
+    gapi::Backend& renderer,
+    const CombatEffectActor& effect,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    renderCharacterAnimationPass(
+        renderer,
+        effect.animation(),
+        effect.patterns(),
+        effect.patterns(),
+        effect.position(),
+        effect.animationChart(),
+        effect.direction(),
+        effect.animationFrame(),
+        [&effect](std::size_t part) {
+            return effect.partEnabled(part);
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0,
+        effect.displayHeight(),
+        effect.drawStrength());
 }
 
 void renderScenarioObjectPass(
@@ -421,7 +453,8 @@ std::vector<WorldDrawEntry> collectWorldEntries(
         });
     }
     for (const EnemyActor& enemy : world.enemies()) {
-        if (!enemy.visible() || !enemy.hasVisual()) {
+        if (!enemy.visible() || !enemy.hasVisual() ||
+            enemy.expired()) {
             continue;
         }
         entries.push_back({
@@ -432,7 +465,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             false,
             {
                 entries.size(),
-                enemy.position(),
+                enemy.renderPosition(interpolation),
                 enemy.judgement(),
                 0,
             },
@@ -458,6 +491,30 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             },
             nullptr,
         });
+    }
+    if (!shadow) {
+        for (const CombatEffectActor& effect :
+             world.combatEffects()) {
+            if (effect.expired()) {
+                continue;
+            }
+            entries.push_back({
+                nullptr,
+                nullptr,
+                nullptr,
+                false,
+                false,
+                {
+                    entries.size(),
+                    effect.position(),
+                    effect.judgement(),
+                    0,
+                },
+                nullptr,
+                nullptr,
+                &effect,
+            });
+        }
     }
 
     std::vector<DisplayOrderEntry> order;
@@ -634,7 +691,8 @@ void drawWorldEntry(
             camera_y,
             shadow,
             shadow_opacity,
-            world.hoveredEnemyId() == entry.enemy->id());
+            world.hoveredEnemyId() == entry.enemy->id(),
+            interpolation);
     } else if (entry.item) {
         drawGroundItem(
             renderer,
@@ -646,6 +704,12 @@ void drawWorldEntry(
             shadow_opacity,
             world.hoveredGroundItemId() ==
                 entry.item->id);
+    } else if (entry.effect) {
+        renderCombatEffect(
+            renderer,
+            *entry.effect,
+            camera_x,
+            camera_y);
     }
 }
 

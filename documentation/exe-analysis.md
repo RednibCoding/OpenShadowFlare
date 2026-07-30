@@ -281,9 +281,9 @@ reflection, death, and drops stay outside this shared arithmetic boundary.
 The enemy receiver at `0x00459690` is now reconstructed on top of that
 boundary. The 72-word enemy initializer supplies native element, physical and
 magical defense, hit-reaction chance and duration defense, and the flag that
-forces reaction movement. Those values come from MCT pre-AI words 6, 9, and
-11 and post-AI words 38 through 40. They are decoded once with the enemy
-rather than looked up again by the receiver.
+always suppresses reaction displacement. Those values come from MCT pre-AI
+words 6, 9, and 11 and post-AI words 38 through 40. They are decoded once
+with the enemy rather than looked up again by the receiver.
 
 The callback rejects an already defeated enemy and a negative source before
 doing anything. A non-positive packet base skips the shared damage formula
@@ -300,11 +300,13 @@ Visual enemies calculate hit reaction before life changes. Table 25 selects
 chance and duration from damage as a percentage of half maximum life, capped
 at row 49. Table 24 adds the packet's authored affinity grade for player
 attacks or row five for an opposing-element non-player packet. Effect-family
-packets replace chance, duration, and motion permission from their three
+packets replace chance, duration, and displacement suppression from their three
 element-indexed packet banks. The chance comparison consumes one draw even
 when its final value is zero. A reaction without movement is capped at 15
-updates before packet word 76 is added; an enemy's force-motion flag is
-applied after that cap. This ordering is intentional.
+updates before packet word 76 is added; an enemy's always-suppress flag is
+applied after that cap. This ordering is intentional. The names matter here:
+a zero in the stored motion field permits the later action-ten impulse, while
+a one prevents it.
 
 A started reaction selects presentation ten, records the impact angle, faces
 the source when motion is disabled, locks the action, and preserves packet
@@ -323,9 +325,36 @@ path, and emits the local player's enabled on-kill statuses 7, 8, and 9.
 Presentation eleven and the action lock are selected only after reflection
 and packet effects have had their normal chance to run. Player direct hits
 now commit the returned life, attribution, reaction, event, and defeat state
-to the live enemy and forward its audio requests. Network transport,
-effect-list ownership, experience accounting, hit/death animation completion,
-and drops remain outside this receiver.
+to the live enemy and forward its audio requests.
+
+The live presentation consumer follows `0x0045bb20` for action ten. CAF chart
+two is sampled across the authored reaction duration: the displayed frame is
+`counter * frame_count / duration`, with the last update forced to the last
+frame. Sound-status lookup deliberately uses `counter % frame_count` instead
+of that displayed frame. When displacement is not suppressed and packet word
+76's delay has elapsed, each update projects the enemy along the stored impact
+angle by `(duration - counter) * 120 / duration` and passes the segment through
+the ordinary map, object, and actor collision owner. Completion unlocks the
+actor, restores presentation seven, and publishes event 16 only from the
+native minus-one event state.
+
+Action eleven follows `0x0045bec0`. It selects chart three, switches to
+direction eight only when that chart contains frames there, plays the separate
+25-entry `DAT_004815d8` death sample on update one, and emits effect 21010
+with one `rand() % 8` direction draw on entry. Once the CAF reaches its last
+frame, the actor fades from strength 1,000 over 120 updates and is removed.
+The chart-three marker fallback still supplies sample 86.
+
+Receiver visuals now cross a world-owned effect boundary as well.
+`0x00429ec0` maps effects 21000 through 21014 to the exact OPTION resources
+11000000, 11000001, 11000002, 11000009, and 11000017 through 11000027.
+`0x0042b860` creates the ordinary one-pass CAF owner at the source actor's
+resolved position. The specialized `0x0042cba0` path used by 21010 through
+21012 instead lasts 120 updates at initial strength 500 and fades during its
+last 30. These visual actors participate in normal world depth sorting and do
+not own damage. Reflection, staged-reaction, projectile, and spell effect
+dispatchers remain separate follow-up branches. Network transport, experience
+accounting, and drops remain outside this receiver/presentation boundary.
 
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a
@@ -750,11 +779,13 @@ no damage attribution array, source status 73, reflection, kill-status award,
 or network request in this callback.
 
 A surviving companion uses tables 24 and 25 like the enemy family, but has no
-separate reaction-defense or force-motion fields. Player-family packets use
+separate reaction-defense or always-suppress-displacement fields.
+Player-family packets use
 the native element's opposing packet strength to select table 24; other
 packets use row five when packet element is opposing. Effect-family chance,
-duration, and motion come directly from the native-element banks. A
-non-motion reaction is capped to 15 updates before packet word 76 is added,
+duration, and displacement suppression come directly from the native-element
+banks. A reaction that permits displacement is capped to 15 updates before
+packet word 76 is added,
 then presentation action five stores the impact angle and optional facing.
 
 Packet reaction stage one creates effect 21015 through 21018 with owner kind
@@ -1194,5 +1225,6 @@ event, and defeat fields back to `EnemyActor`. It deliberately reuses
 Broken category-zero and category-one equipment remains present and keeps its
 weight, while `0x0044ea60` proves that its base derived contributions and
 element strengths no longer participate. Hit/death CAF presentation,
-reaction displacement, effect-list ownership, experience, and drops remain
-separate follow-up work.
+reaction displacement, and ordinary configured effect-list ownership now run
+at the live actor boundary described above. Experience, drops, and the
+specialized effect dispatch families remain separate follow-up work.

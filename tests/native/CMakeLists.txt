@@ -465,6 +465,40 @@ if(TARGET sf_game_core)
     COMMAND enemy_presentation_test)
 
   add_executable(
+    enemy_reaction_presentation_test
+    enemy_reaction_presentation_test.cpp
+  )
+  target_link_libraries(
+    enemy_reaction_presentation_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    enemy_reaction_presentation_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    enemy_reaction_presentation_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    enemy_reaction_presentation_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      enemy_reaction_presentation_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      enemy_reaction_presentation_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME enemy_reaction_presentation
+    COMMAND enemy_reaction_presentation_test)
+
+  add_executable(
     enemy_presentation_audio_test
     enemy_presentation_audio_test.cpp
   )
