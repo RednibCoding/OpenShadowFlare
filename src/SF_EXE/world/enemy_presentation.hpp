@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_ENEMY_PRESENTATION_HPP
 #define OPENSHADOWFLARE_ENEMY_PRESENTATION_HPP
 
+#include "enemy_effect_impact.hpp"
 #include "enemy_presentation_profile.hpp"
 #include "enemy_target_selector.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -9,6 +10,9 @@
 #include <cstdint>
 
 namespace osf {
+
+class RetailRandom;
+class TableDatabase;
 
 constexpr std::uint8_t kEnemyAudioMarkerZero = 1u << 0u;
 constexpr std::uint8_t kEnemyAudioMarkerOne = 1u << 1u;
@@ -24,8 +28,12 @@ struct EnemyPresentationContext {
     std::int32_t direction = 0;
     std::int32_t event_number = -1;
     std::int32_t resource_id = -1;
+    std::int32_t source_character_number = -1;
+    ObjectBounds source_judgement;
     const EnemyPresentationProfile* profile = nullptr;
     const gapi::CafAnimation* animation = nullptr;
+    const TableDatabase* parameter_tables = nullptr;
+    RetailRandom* random = nullptr;
     EnemyTargetSearch target_in_range;
     EnemyDefaultTargetSearch default_target;
 };
@@ -49,6 +57,8 @@ struct EnemyPresentationUpdate {
     std::int32_t effect_parameter = 0;
     std::int32_t effect_additive = 0;
     EnemyAiTarget target;
+    EnemyAiTarget effect_impact_target;
+    EnemyEffectSpawnRequest effect_spawn;
     std::int32_t completion_event = -1;
 };
 
@@ -75,6 +85,7 @@ private:
     std::int32_t direction_ = 0;
     std::int32_t elapsed_updates_ = 0;
     std::int32_t previous_animation_frame_ = -1;
+    double direction_radians_ = 0.0;
     EnemyAiTarget target_;
 };
 

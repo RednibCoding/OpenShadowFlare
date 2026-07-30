@@ -111,6 +111,7 @@ add_library(
   world/enemy_actor.cpp
   world/enemy_ai_action.cpp
   world/enemy_ai_evaluator.cpp
+  world/enemy_effect_impact.cpp
   world/enemy_presentation.cpp
   world/enemy_presentation_audio.cpp
   world/enemy_target_selector.cpp

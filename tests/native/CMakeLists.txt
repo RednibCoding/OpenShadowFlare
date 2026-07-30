@@ -379,6 +379,11 @@ if(TARGET sf_game_core)
   )
   target_compile_features(
     enemy_presentation_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    enemy_presentation_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
   set_target_properties(
     enemy_presentation_test PROPERTIES CXX_EXTENSIONS OFF)
 
@@ -423,6 +428,40 @@ if(TARGET sf_game_core)
   add_test(
     NAME enemy_presentation_audio
     COMMAND enemy_presentation_audio_test)
+
+  add_executable(
+    enemy_effect_impact_test
+    enemy_effect_impact_test.cpp
+  )
+  target_link_libraries(
+    enemy_effect_impact_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    enemy_effect_impact_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    enemy_effect_impact_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    enemy_effect_impact_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      enemy_effect_impact_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      enemy_effect_impact_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME enemy_effect_impact
+    COMMAND enemy_effect_impact_test)
 
   add_executable(
     movement_destination_test

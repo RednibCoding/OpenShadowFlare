@@ -427,6 +427,19 @@ count, sum, and byte hash, and the portable presentation result now carries
 the final sample number for each marker rather than making animation code own
 audio playback.
 
+The effect-side impact path at `0x0045ac90` is reconstructed through its
+enqueue boundary. `0x00417410` reads table 19 for selectors five and above,
+table 18 for the packet value with the MCT additive, table 35 for constructor
+argument six, and table 21 for the final argument. `0x004174b0` expands one
+three-column group from each of tables 70 through 78 into the executable's
+three separate nine-word packet banks. The portable request preserves the
+77-word packet indices, the fields written by `0x00417e70`, the twelve
+nonnegative type cases, type 10's one random visual draw, explicit origins
+for types 3, 10, and 13, and type 12's second default-target lookup at impact.
+All shipped nonnegative type/subtype pairs fit those tables; type `-1` remains
+disabled. The shared runtime effect owner and the direct damage path are not
+attached yet.
+
 The first native dispatcher pair is reconstructed separately. `0x0045c350`
 implements action zero as a timed idle: AID parameter one is its duration,
 event 11 holds it active, and event zero is restored when the counter reaches

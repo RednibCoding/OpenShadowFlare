@@ -328,8 +328,16 @@ frame is drawn once before idle action seven and completion events two through
 seven are restored only over an event of minus one, including the native
 fast-frame skip and resource-less completion paths. Every visual enemy across
 the retail MCT catalog has a valid speed index and referenced chart.
-Damage/effect construction, movement consumption, and live AI attachment
-remain the next boundary.
+Effect construction itself is now decoded. Actions four through six expand
+their MCT type, subtype, parameter, and additive through `Table.Tbd` tables
+18, 19, 21, 35, and 70 through 78, build the exact 77-word packet fields the
+executable writes, preserve the twelve shipped type-specific constructor
+variants and random draw, and emit a typed spawn request. Type 12 repeats the
+default target lookup at impact and keeps the player-slot versus
+companion-character distinction. Unwritten stack words are marked instead of
+being given invented meanings, and the catalog's disabled type `-1` stays a
+no-op. Direct hit selection, hit chance, damage, movement consumption, the
+shared effect owner, and live AI attachment remain next.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback

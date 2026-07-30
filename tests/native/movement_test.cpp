@@ -1,11 +1,14 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "world/actor_direction.hpp"
 #include "world/movement_controller.hpp"
 #include "world/npc_actor.hpp"
 #include "world/player_actor.hpp"
 #include "world/world_pointer.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -131,6 +134,32 @@ bool testDirections() {
             return check(
                 false,
                 "The retail eight-way direction map is incorrect.");
+        }
+    }
+    constexpr double degrees_to_radians =
+        0.01745328888888889;
+    constexpr std::array<double, 8> expected_angles{{
+        315.0 * degrees_to_radians,
+        0.0,
+        45.0 * degrees_to_radians,
+        90.0 * degrees_to_radians,
+        135.0 * degrees_to_radians,
+        180.0 * degrees_to_radians,
+        225.0 * degrees_to_radians,
+        270.0 * degrees_to_radians,
+    }};
+    for (std::int32_t direction = 0;
+         direction < 8;
+         ++direction) {
+        if (std::abs(
+                osf::retailAngleForDirection(direction) -
+                expected_angles[
+                    static_cast<std::size_t>(
+                        direction)]) >
+            1.0e-12) {
+            return check(
+                false,
+                "The retail direction-to-angle map is incorrect.");
         }
     }
     return true;

@@ -1,6 +1,7 @@
 #include "enemy_presentation.hpp"
 
 #include "actor_direction.hpp"
+#include "enemy_effect_impact.hpp"
 #include "enemy_presentation_audio.hpp"
 
 #include <array>
@@ -90,6 +91,7 @@ void EnemyPresentationController::reset() {
     direction_ = 0;
     elapsed_updates_ = 0;
     previous_animation_frame_ = -1;
+    direction_radians_ = 0.0;
     target_ = {};
 }
 
@@ -133,6 +135,8 @@ EnemyPresentationController::update(
         elapsed_updates_ = 0;
         previous_animation_frame_ = -1;
         direction_ = context.direction;
+        direction_radians_ =
+            retailAngleForDirection(context.direction);
         target_ = {};
 
         const std::size_t variant =
@@ -149,6 +153,12 @@ EnemyPresentationController::update(
                         variant]);
         }
         if (target_.found) {
+            direction_radians_ =
+                retailAngleForVector(
+                    target_.position.x -
+                        context.position.x,
+                    target_.position.y -
+                        context.position.y);
             direction_ = retailDirectionForVector(
                 target_.position.x - context.position.x,
                 target_.position.y - context.position.y);
@@ -257,6 +267,32 @@ EnemyPresentationController::update(
                 context.profile->effect_parameter[variant];
             result.effect_additive =
                 context.profile->effect_additive[variant];
+            if (result.effect_type == 12 &&
+                context.default_target) {
+                result.effect_impact_target =
+                    context.default_target();
+            }
+            if (context.parameter_tables &&
+                context.random) {
+                result.effect_spawn =
+                    resolveEnemyEffectImpact(
+                        {
+                            context
+                                .source_character_number,
+                            context.position,
+                            context.source_judgement,
+                            direction_radians_,
+                            result.effect_type,
+                            result.effect_subtype,
+                            result.effect_parameter,
+                            result.effect_additive,
+                            context.profile
+                                ->packet_source_value,
+                            result.effect_impact_target,
+                        },
+                        *context.parameter_tables,
+                        *context.random);
+            }
         }
     }
     if (!context.animation ||

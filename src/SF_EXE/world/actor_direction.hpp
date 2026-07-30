@@ -8,6 +8,11 @@ namespace osf {
 std::int32_t retailDirectionForVector(
     std::int32_t x,
     std::int32_t y);
+double retailAngleForVector(
+    std::int32_t x,
+    std::int32_t y);
+double retailAngleForDirection(
+    std::int32_t direction);
 
 }  // namespace osf
 

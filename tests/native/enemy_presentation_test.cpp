@@ -1,7 +1,10 @@
+#include "core/retail_random.hpp"
+#include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "world/enemy_presentation.hpp"
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <string>
@@ -100,6 +103,7 @@ osf::gapi::CafAnimation animationWithCharts(
 
 osf::EnemyPresentationProfile profile() {
     osf::EnemyPresentationProfile result;
+    result.packet_source_value = 77;
     result.direct_maximum_target_distance = {
         321, 654, 987};
     result.direct_animation_chart = {4, 5, 6};
@@ -260,6 +264,21 @@ bool testEffectTargetAndCompletion() {
         });
     const osf::EnemyPresentationProfile values =
         profile();
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The effect presentation tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::RetailRandom random(1);
     osf::EnemyPresentationController controller;
     controller.reset();
     controller.select(6);
@@ -269,8 +288,12 @@ bool testEffectTargetAndCompletion() {
     context.position = {0, 0};
     context.direction = 5;
     context.resource_id = 8;
+    context.source_character_number = 14000006;
+    context.source_judgement = {-20, -30, 20, 30};
     context.profile = &values;
     context.animation = &animation;
+    context.parameter_tables = &tables;
+    context.random = &random;
     context.default_target = [&searches]() {
         ++searches;
         return osf::EnemyAiTarget{
@@ -298,11 +321,27 @@ bool testEffectTargetAndCompletion() {
             update.effect_subtype == 22 &&
             update.effect_parameter == 32 &&
             update.effect_additive == 42 &&
+            update.effect_impact_target.found &&
+            update.effect_impact_target.identifier ==
+                osf::kFirstCompanionCharacterNumber &&
+            update.effect_spawn.valid &&
+            update.effect_spawn.effect_number ==
+                10012 &&
+            update.effect_spawn.source_character_number ==
+                14000006 &&
+            update.effect_spawn.target_kind == 2 &&
+            update.effect_spawn.target_identifier ==
+                osf::kFirstCompanionCharacterNumber &&
+            update.effect_spawn.packet[4] == 32 &&
+            update.effect_spawn.packet[31] == 77 &&
+            update.effect_spawn.packet[36] == 186 &&
             update.audio_samples[0] == 110 &&
             update.completion_event == 7 &&
-            searches == 1,
+            searches == 2 &&
+            random.state() == 1,
         "Effect presentation six did not use default targeting, "
-        "its frame marker, or completion event seven.");
+        "its impact packet, frame marker, or completion event "
+        "seven.");
 }
 
 bool testSkippedFramesAndMissingVisual() {
@@ -357,6 +396,43 @@ bool testSkippedFramesAndMissingVisual() {
         "immediately with its retail event.");
 }
 
+bool testTypeTwelveRetargetDoesNotDependOnTables() {
+    const osf::gapi::CafAnimation animation =
+        animationWithCharts({
+            {9, {0x40u}},
+        });
+    const osf::EnemyPresentationProfile values =
+        profile();
+    osf::EnemyPresentationController controller;
+    controller.reset();
+    controller.select(6);
+
+    std::int32_t searches = 0;
+    osf::EnemyPresentationContext context;
+    context.profile = &values;
+    context.animation = &animation;
+    context.default_target = [&searches]() {
+        ++searches;
+        return osf::EnemyAiTarget{
+            true,
+            osf::MovementTargetKind::player,
+            searches - 1,
+            10,
+            {100, 0},
+        };
+    };
+    const osf::EnemyPresentationUpdate update =
+        controller.update(context);
+    return check(
+        searches == 2 &&
+            update.target.identifier == 0 &&
+            update.effect_impact_target.identifier == 1 &&
+            !update.effect_spawn.valid,
+        "Effect type twelve skipped or conflated its independent "
+        "impact-time target lookup when parameter tables were "
+        "not attached.");
+}
+
 bool testInvalidSpeedIsRejectedWithoutStateChange() {
     osf::EnemyPresentationProfile values = profile();
     values.direct_animation_speed_index[0] = 10;
@@ -404,6 +480,7 @@ int main() {
                    testSlowTimingDoesNotRestart() &&
                    testEffectTargetAndCompletion() &&
                    testSkippedFramesAndMissingVisual() &&
+                   testTypeTwelveRetargetDoesNotDependOnTables() &&
                    testInvalidSpeedIsRejectedWithoutStateChange() &&
                    testExistingEventIsNotOverwritten()
         ? 0

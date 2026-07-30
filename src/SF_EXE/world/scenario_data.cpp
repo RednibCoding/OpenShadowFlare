@@ -367,6 +367,8 @@ bool readScenarioEnemy(
     enemy.patrol_bottom = pre_ai_values[4];
     enemy.maximum_life = pre_ai_values[8];
     enemy.movement_speed_scale = post_ai_values[54];
+    enemy.presentation.packet_source_value =
+        pre_ai_values[7];
     for (std::size_t variant = 0; variant < 3; ++variant) {
         enemy.presentation
             .direct_maximum_target_distance[variant] =

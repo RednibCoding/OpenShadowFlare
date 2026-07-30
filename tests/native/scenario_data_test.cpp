@@ -1,10 +1,13 @@
+#include "core/retail_random.hpp"
 #include "gapi/gapi.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "ui/conversation_layout.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "world/ground_item.hpp"
+#include "world/enemy_effect_impact.hpp"
 #include "world/movement_controller.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
@@ -671,6 +674,9 @@ bool testFixture() {
             enemy->movement_speed_scale ==
                 enemy->post_ai_values[54] &&
             enemy->presentation
+                    .packet_source_value ==
+                enemy->pre_ai_values[7] &&
+            enemy->presentation
                     .direct_maximum_target_distance ==
                 std::array<std::int32_t, 3>{
                     enemy->post_ai_values[3],
@@ -796,6 +802,18 @@ bool testRetailScenarioCatalog() {
         std::cerr << ai_error << '\n';
         return false;
     }
+    osf::TableDatabase parameter_tables;
+    std::string table_error;
+    if (!check(
+            parameter_tables.load(
+                data_root / "System" / "Game" /
+                    "Parameter" / "Table.Tbd",
+                &table_error),
+            "The scenario catalog parameter-table fixture could "
+            "not be decoded.")) {
+        std::cerr << table_error << '\n';
+        return false;
+    }
     std::size_t scenario_count = 0;
     std::size_t object_count = 0;
     std::size_t people_count = 0;
@@ -804,6 +822,8 @@ bool testRetailScenarioCatalog() {
     std::set<std::int32_t> people_reserved_values;
     std::set<std::string> enemy_ai_controls;
     std::set<std::int32_t> enemy_resource_ids;
+    std::set<std::pair<std::int32_t, std::int32_t>>
+        enemy_effect_pairs;
     std::map<std::int32_t, std::int32_t>
         enemy_maximum_presentation_chart;
     std::size_t enemy_hole_count = 0;
@@ -879,6 +899,14 @@ bool testRetailScenarioCatalog() {
         }
         for (const osf::ScenarioEnemy& enemy :
              scenario.enemies()) {
+            for (std::size_t variant = 0;
+                 variant < 3;
+                 ++variant) {
+                enemy_effect_pairs.emplace(
+                    enemy.presentation.effect_type[variant],
+                    enemy.presentation
+                        .effect_subtype[variant]);
+            }
             enemy_ai_controls.insert(enemy.ai_control_name);
             const osf::AiControlList* control =
                 ai_control.find(enemy.ai_control_name);
@@ -1015,6 +1043,55 @@ bool testRetailScenarioCatalog() {
         item_count += scenario.items().size();
     }
     osf::CharacterVisualResources enemy_visuals{"ENEMY"};
+    for (const auto& effect : enemy_effect_pairs) {
+        if (effect.first == -1) {
+            continue;
+        }
+        osf::RetailRandom random(1);
+        osf::EnemyEffectImpactInput input;
+        input.type = effect.first;
+        input.subtype = effect.second;
+        const osf::EnemyEffectSpawnRequest request =
+            osf::resolveEnemyEffectImpact(
+                input, parameter_tables, random);
+        bool tables_contain_pair =
+            parameter_tables.find(18) &&
+            parameter_tables.find(18)->contains(
+                effect.first, effect.second - 1) &&
+            parameter_tables.find(19) &&
+            parameter_tables.find(19)->contains(
+                effect.first, 0) &&
+            parameter_tables.find(21) &&
+            parameter_tables.find(21)->contains(
+                effect.first, effect.second - 1) &&
+            parameter_tables.find(35) &&
+            parameter_tables.find(35)->contains(
+                effect.first, effect.second - 1);
+        for (std::int32_t table_number = 70;
+             table_number <= 78;
+             ++table_number) {
+            const osf::TableData* table =
+                parameter_tables.find(table_number);
+            tables_contain_pair =
+                tables_contain_pair &&
+                table &&
+                table->contains(
+                    effect.first,
+                    effect.second * 3 - 1);
+        }
+        if (!check(
+                request.valid &&
+                    tables_contain_pair,
+                "A shipped enemy effect type/subtype pair is "
+                "not covered by its retail constructor or "
+                "parameter tables.")) {
+            std::cerr
+                << "effect type/subtype: "
+                << effect.first << '/'
+                << effect.second << '\n';
+            return false;
+        }
+    }
     for (const std::int32_t resource_id :
          enemy_resource_ids) {
         std::string error;
