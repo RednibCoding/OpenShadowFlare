@@ -346,6 +346,19 @@ mismatch between a nonnegative object, PEOPLE, or enemy resource and its
 preload list. Enemy tails retain their fixed AI-controller name separately
 from the surrounding parameter blocks.
 
+The first enemy runtime follows the common half of that loader and
+`0x00458f40`. Enemy character numbers use `14000000 + local ID`; the actor
+keeps its MCT state, position, judgement, direction, name, optional part
+table, resolved `Character\ENEMY` animation, and AI-control name. The
+Wasteland of Pillars fixture creates all 66 records transactionally. The
+constructor-selected action seven reaches `0x0045b600`, which draws CAF chart
+zero and advances one frame per active-map update. Enemies join the ordinary
+shadow/visible depth passes and their enabled judgement rectangles block the
+player. The catalog also contains 34 invisible, non-colliding `Enemy Hole`
+actors with resource `-1`; these remain live script/AI identities without a
+fabricated visual. The AI event interpreter, movement actions, health, combat,
+death, and drops are not inferred by this initial actor slice.
+
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
 `Warehouse`. `0x0045dd00` maps the 13-value tail into the type-zero runtime
@@ -634,8 +647,7 @@ the drop is placed exactly 200 world units away on that direction's axes. It
 then re-enters the same ground-item resource, CAF, color, bounce, depth, hover,
 and pickup path as scenario-created items.
 
-This is still not complete gameplay. The other people records, broader AI,
-dynamic collision for enemy movement, remaining script commands and
-operand domains,
-alternate conversation modes, HUD, darkness, equipment state, and saved-game
-scenario restoration are the next executable layers.
+This is still not complete gameplay. Enemy AI and combat, dynamic collision
+for enemy movement, remaining script commands and operand domains, alternate
+conversation modes, darkness, and saved-game scenario restoration are the
+next executable layers.

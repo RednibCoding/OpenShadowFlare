@@ -78,6 +78,7 @@ public:
     const std::vector<ScenarioObjectActor>&
         scenarioObjects() const;
     const std::vector<NpcActor>& npcs() const;
+    const std::vector<EnemyActor>& enemies() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
@@ -201,6 +202,10 @@ private:
     ScenarioObjectActor* findScriptObject(
         std::int32_t character_number);
     const ScenarioObjectActor* findScriptObject(
+        std::int32_t character_number) const;
+    EnemyActor* findScriptEnemy(
+        std::int32_t character_number);
+    const EnemyActor* findScriptEnemy(
         std::int32_t character_number) const;
     GroundItem* findScriptGroundItem(
         std::int32_t character_number);

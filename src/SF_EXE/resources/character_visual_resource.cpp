@@ -64,12 +64,19 @@ CharacterVisualResource::animation() const {
     return animation_;
 }
 
-const CharacterVisualResource* PeopleVisualResources::load(
+CharacterVisualResources::CharacterVisualResources(
+    std::string category)
+    : category_(std::move(category)) {}
+
+const CharacterVisualResource* CharacterVisualResources::load(
     const std::filesystem::path& data_root,
     std::int32_t resource_id,
     std::string* error) {
     if (resource_id < 0 || resource_id > 99999999) {
-        setError(error, "The person animation resource ID is invalid.");
+        setError(
+            error,
+            "The " + category_ +
+                " animation resource ID is invalid.");
         return nullptr;
     }
     const auto found = resources_.find(resource_id);
@@ -80,13 +87,14 @@ const CharacterVisualResource* PeopleVisualResources::load(
     auto resource = std::make_unique<CharacterVisualResource>();
     std::string resource_error;
     if (!resource->load(
-            data_root / "Character" / "PEOPLE" /
+            data_root / "Character" / category_ /
                 resourceDirectory(resource_id),
             "Animation",
             &resource_error)) {
         setError(
             error,
-            "The NPC animation could not be loaded: " +
+            "The " + category_ +
+                " animation could not be loaded: " +
                 resource_error);
         return nullptr;
     }
@@ -98,7 +106,7 @@ const CharacterVisualResource* PeopleVisualResources::load(
     return result;
 }
 
-const CharacterVisualResource* PeopleVisualResources::find(
+const CharacterVisualResource* CharacterVisualResources::find(
     std::int32_t resource_id) const {
     const auto found = resources_.find(resource_id);
     return found == resources_.end()
@@ -106,7 +114,7 @@ const CharacterVisualResource* PeopleVisualResources::find(
                : found->second.get();
 }
 
-void PeopleVisualResources::clear() {
+void CharacterVisualResources::clear() {
     resources_.clear();
 }
 

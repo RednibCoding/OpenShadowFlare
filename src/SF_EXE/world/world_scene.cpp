@@ -113,6 +113,11 @@ const std::vector<NpcActor>& WorldScene::npcs() const {
     return scenario_world_.people();
 }
 
+const std::vector<EnemyActor>&
+WorldScene::enemies() const {
+    return scenario_world_.enemies();
+}
+
 const TransportCatalog& WorldScene::transports() const {
     return transports_;
 }
@@ -277,6 +282,7 @@ void WorldScene::update() {
     actor_blockers.reserve(
         scenario_world_.objects().size() +
         scenario_world_.people().size() +
+        scenario_world_.enemies().size() +
         (has_player_ ? 1u : 0u));
     for (const ScenarioObjectActor& object :
          scenario_world_.objects()) {
@@ -309,6 +315,17 @@ void WorldScene::update() {
             npc.judgement(),
         });
     }
+    for (const EnemyActor& enemy :
+         scenario_world_.enemies()) {
+        if (!enemy.judgementEnabled()) {
+            continue;
+        }
+        actor_blockers.push_back({
+            enemy.movementBlockerId(),
+            enemy.position(),
+            enemy.judgement(),
+        });
+    }
     if (has_player_) {
         player_.update(
             scenario_world_.ground(),
@@ -339,6 +356,10 @@ void WorldScene::update() {
                 npc_blocker_indices[index]].position =
                 npc.position();
         }
+    }
+    for (EnemyActor& enemy :
+         scenario_world_.enemies()) {
+        enemy.update();
     }
     for (GroundItem& item : scenario_world_.groundItems()) {
         if (updateGroundItem(item) !=

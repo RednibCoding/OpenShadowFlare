@@ -238,6 +238,33 @@ bool ScenarioWorld::load(
         people_.push_back(std::move(actor));
     }
 
+    enemies_.reserve(data_.enemies().size());
+    for (const ScenarioEnemy& enemy :
+         data_.enemies()) {
+        EnemyActor actor;
+        std::string actor_error;
+        const CharacterVisualResource* visual =
+            enemy.resource_id < 0
+                ? nullptr
+                : enemy_visuals_.load(
+                      data_root,
+                      enemy.resource_id,
+                      &actor_error);
+        if ((enemy.resource_id >= 0 && !visual) ||
+            !actor.initialize(
+                enemy, visual, &actor_error)) {
+            setError(
+                error,
+                "Scenario enemy " +
+                    std::to_string(enemy.id) +
+                    " could not be loaded: " +
+                    actor_error);
+            clear();
+            return false;
+        }
+        enemies_.push_back(std::move(actor));
+    }
+
     ground_items_.reserve(data_.items().size());
     for (const ScenarioItem& item : data_.items()) {
         if (!createScenarioGroundItem(
@@ -274,10 +301,12 @@ void ScenarioWorld::clear() {
     map_patterns_.clear();
     object_visuals_.clear();
     people_visuals_.clear();
+    enemy_visuals_.clear();
     map_overview_patterns_.clear();
     map_exploration_.clear();
     objects_.clear();
     people_.clear();
+    enemies_.clear();
     ground_items_.clear();
 }
 
@@ -357,6 +386,15 @@ std::vector<NpcActor>& ScenarioWorld::people() {
 const std::vector<NpcActor>&
 ScenarioWorld::people() const {
     return people_;
+}
+
+std::vector<EnemyActor>& ScenarioWorld::enemies() {
+    return enemies_;
+}
+
+const std::vector<EnemyActor>&
+ScenarioWorld::enemies() const {
+    return enemies_;
 }
 
 std::vector<GroundItem>& ScenarioWorld::groundItems() {

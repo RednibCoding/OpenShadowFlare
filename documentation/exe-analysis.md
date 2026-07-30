@@ -153,6 +153,15 @@ the static resource layout, a direct `Pattern.njp`/`Pattern.sdw` index.
 Category-four definition-zero records are the sole branch which rolls an
 inclusive MCT quantity; one source record still creates one actor.
 
+The enemy branch creates character number `14000000 + local ID`, resolves the
+fixed 32-byte controller name through `RKC_RPG_AICONTROL`, and rearranges the
+15 values before that name plus the 56 values after it into a 72-word
+initializer consumed by `0x00458f40`. That function copies the complete block
+to runtime offset `+0xc4`, synchronizes the screen object, and initializes the
+AI-list slot to `-1`. The default action selected by the constructor is action
+seven; `0x0045b600` renders CAF chart zero using the MCT direction and advances
+its frame counter on every active-map update.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

@@ -3,6 +3,7 @@
 #include "ui/conversation_layout.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/loading_renderer.hpp"
+#include "resources/character_visual_resource.hpp"
 #include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
 #include "world/retail_save_file.hpp"
@@ -727,6 +728,10 @@ bool testRetailScenarioCatalog() {
     std::size_t item_count = 0;
     std::set<std::int32_t> people_reserved_values;
     std::set<std::string> enemy_ai_controls;
+    std::set<std::int32_t> enemy_resource_ids;
+    std::size_t enemy_hole_count = 0;
+    bool enemy_holes_match = true;
+    bool enemy_hole_runtime_matches = true;
     bool item_common_records_match = true;
     for (const auto& entry :
          std::filesystem::recursive_directory_iterator(
@@ -797,6 +802,28 @@ bool testRetailScenarioCatalog() {
         for (const osf::ScenarioEnemy& enemy :
              scenario.enemies()) {
             enemy_ai_controls.insert(enemy.ai_control_name);
+            if (enemy.resource_id >= 0) {
+                enemy_resource_ids.insert(enemy.resource_id);
+            } else {
+                ++enemy_hole_count;
+                enemy_holes_match =
+                    enemy_holes_match &&
+                    enemy.resource_id == -1 &&
+                    enemy.name == "Enemy Hole" &&
+                    enemy.initial_state_values ==
+                        std::vector<std::int32_t>{0, 1, 0};
+                osf::EnemyActor enemy_hole;
+                std::string actor_error;
+                enemy_hole_runtime_matches =
+                    enemy_hole_runtime_matches &&
+                    enemy_hole.initialize(
+                        enemy, nullptr, &actor_error) &&
+                    !enemy_hole.hasVisual() &&
+                    !enemy_hole.visible() &&
+                    enemy_hole.pointerEnabled() &&
+                    !enemy_hole.judgementEnabled() &&
+                    actor_error.empty();
+            }
             if (enemy.initial_state_values.size() != 3) {
                 std::cerr
                     << entry.path()
@@ -850,6 +877,26 @@ bool testRetailScenarioCatalog() {
         enemy_count += scenario.enemies().size();
         item_count += scenario.items().size();
     }
+    osf::CharacterVisualResources enemy_visuals{"ENEMY"};
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    for (const std::int32_t resource_id :
+         enemy_resource_ids) {
+        std::string error;
+        const osf::CharacterVisualResource* visual =
+            enemy_visuals.load(
+                data_root, resource_id, &error);
+        if (!check(
+                visual &&
+                    !visual->animation().charts().empty(),
+                "A shipped MCT enemy resource could not be decoded.")) {
+            std::cerr
+                << "ENEMY resource " << resource_id
+                << ": " << error << '\n';
+            return false;
+        }
+    }
     if (scenario_count != 209 ||
         object_count != 5203 ||
         people_count != 163 ||
@@ -869,6 +916,9 @@ bool testRetailScenarioCatalog() {
             enemy_count == 18788 &&
             item_count == 84 &&
             item_common_records_match &&
+            enemy_hole_count == 34 &&
+            enemy_holes_match &&
+            enemy_hole_runtime_matches &&
             people_reserved_values ==
                 std::set<std::int32_t>{-100, -85, -65} &&
             !enemy_ai_controls.empty() &&
@@ -1030,6 +1080,7 @@ bool testGeneralScenarioStart() {
                 wasteland.playerDirection() == entry->direction &&
                 wasteland.scenarioObjects().size() == 35 &&
                 wasteland.npcs().size() == 2 &&
+                wasteland.enemies().size() == 66 &&
                 wasteland.ground().width() > 0 &&
                 wasteland.ground().height() > 0 &&
                 !wasteland.objectMap().objects().empty() &&
@@ -1039,6 +1090,79 @@ bool testGeneralScenarioStart() {
                      .empty(),
             "The decimal scenario directory, entry key, map, actors, "
             "or music differ from retail scenario 6.")) {
+        return false;
+    }
+
+    const osf::EnemyActor& first_enemy =
+        wasteland.enemies().front();
+    if (!check(
+            first_enemy.id() == 0 &&
+                first_enemy.characterNumber() == 14000000 &&
+                first_enemy.resourceId() == 1 &&
+                first_enemy.name() == "Spike Centinel" &&
+                first_enemy.labelHeight() == 70 &&
+                first_enemy.position().x == 27480 &&
+                first_enemy.position().y == -10341 &&
+                first_enemy.judgement().left == -80 &&
+                first_enemy.judgement().top == -80 &&
+                first_enemy.judgement().right == 79 &&
+                first_enemy.judgement().bottom == 79 &&
+                first_enemy.direction() == 7 &&
+                first_enemy.animationChart() == 0 &&
+                first_enemy.animationFrame() == 0 &&
+                !first_enemy.aiControlName().empty() &&
+                first_enemy.visible() &&
+                first_enemy.pointerEnabled() &&
+                first_enemy.judgementEnabled() &&
+                !first_enemy.animation().charts().empty(),
+            "The first Wasteland enemy did not preserve its common "
+            "MCT identity, visual, state, or idle action.")) {
+        return false;
+    }
+
+    NpcRecordingBackend enemy_renderer;
+    enemy_renderer.patterns =
+        &first_enemy.patterns();
+    enemy_renderer.shadows =
+        &first_enemy.shadowPatterns();
+    osf::renderWorldGeometry(
+        enemy_renderer, wasteland);
+    if (!check(
+            !enemy_renderer.calls.empty() &&
+                std::any_of(
+                    enemy_renderer.calls.begin(),
+                    enemy_renderer.calls.end(),
+                    [](const NpcPatternCall& call) {
+                        return call.shadow;
+                    }) &&
+                std::any_of(
+                    enemy_renderer.calls.begin(),
+                    enemy_renderer.calls.end(),
+                    [](const NpcPatternCall& call) {
+                        return !call.shadow;
+                    }),
+            "Wasteland enemies did not join both retail world render "
+            "passes.")) {
+        return false;
+    }
+    const osf::WorldPosition enemy_position =
+        first_enemy.position();
+    wasteland.update();
+    if (!check(
+            wasteland.enemies().front().animationFrame() == 0 &&
+                wasteland.enemies().front().position().x ==
+                    enemy_position.x &&
+                wasteland.enemies().front().position().y ==
+                    enemy_position.y,
+            "The first enemy did not submit its initial retail idle "
+            "frame without guessed AI movement.")) {
+        return false;
+    }
+    wasteland.update();
+    if (!check(
+            wasteland.enemies().front().animationFrame() == 1,
+            "The enemy idle action did not advance after submitting "
+            "its first retail frame.")) {
         return false;
     }
 
@@ -1190,6 +1314,7 @@ bool testLiveScenarioTransition() {
                 world.playerDirection() == 7 &&
                 world.scenarioObjects().size() == 35 &&
                 world.npcs().size() == 2 &&
+                world.enemies().size() == 66 &&
                 world.groundItems().empty() &&
                 world.playerInventory().items().size() ==
                     inventory_count &&
@@ -1212,6 +1337,31 @@ bool testLiveScenarioTransition() {
         return false;
     }
 
+    const osf::WorldPosition first_enemy_position =
+        world.enemies().front().position();
+    const std::int32_t first_enemy_character =
+        world.enemies().front().characterNumber();
+    error.clear();
+    if (!check(
+            world.transitionScenario({2, 0, 0}, &error) ==
+                    osf::ScenarioTravelResult::failed &&
+                world.scenarioId() == 6 &&
+                world.enemies().size() == 66 &&
+                world.enemies().front().characterNumber() ==
+                    first_enemy_character &&
+                world.enemies().front().position().x ==
+                    first_enemy_position.x &&
+                world.enemies().front().position().y ==
+                    first_enemy_position.y &&
+                world.playerInventory().items().size() ==
+                    inventory_count &&
+                world.playerSpecialItems().items().size() == 1 &&
+                !error.empty(),
+            "A failed map load discarded live enemies or persistent "
+            "player ownership.")) {
+        return false;
+    }
+
     world.commandPlayerMovement(400, 200);
     world.update();
     return check(
@@ -1221,6 +1371,7 @@ bool testLiveScenarioTransition() {
             world.playerWorldX() == 35105 &&
             world.playerWorldY() == -6156 &&
             world.playerDirection() == 7 &&
+            world.enemies().size() == 66 &&
             world.playerInventory().items().size() ==
                 inventory_count &&
             world.playerSpecialItems().items().size() == 1,

@@ -250,6 +250,18 @@ sound. Both animated `Animation.*` item resources and the static
 selection. Leaving a map releases these actors with the rest of its
 `ScenarioWorld`; a failed load keeps the current set intact.
 
+Enemies now cross the same scenario boundary for the first time. The
+Wasteland of Pillars fixture creates all 66 records, loads their shared
+`Character/ENEMY` CAF/NJP/SDW resources through the general character cache,
+and keeps their common MCT state, identity, bounds, direction, name, part
+colors, and AI-control name. Their retail default action renders chart-zero
+idle frames at active-map cadence, and enabled judgement rectangles are live
+player blockers. The 34 resource-less `Enemy Hole` records found across the
+catalog are preserved as invisible, non-colliding actors instead of being
+rejected or assigned made-up graphics. This is intentionally not called enemy
+AI yet: target selection, movement, attacks, health, drops, and the AI event
+interpreter remain separate slices.
+
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
 spawn-relative movement rectangle. He now alternates chart-zero idling with a
@@ -269,7 +281,8 @@ transition path around `0x00426200`:
 
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
-- add the remaining enemy actor runtime separately from static OBL scenery;
+- reconstruct the enemy AI event interpreter and movement on top of the
+  separate actor runtime;
 - release the old scenario in the same order the original does;
 - identify the condition and sequence for the alternate `VisualNN.njp`
   artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is

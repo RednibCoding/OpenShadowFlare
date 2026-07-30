@@ -28,6 +28,7 @@ struct WorldDrawEntry {
     bool semi_transparent = false;
     DisplayOrderEntry order;
     const ScenarioObjectActor* scenario_object = nullptr;
+    const EnemyActor* enemy = nullptr;
 };
 
 ScreenPosition toScreen(
@@ -100,6 +101,38 @@ void renderNpcPass(
                 npc.partRedStrength(part) + hover_strength,
                 npc.partGreenStrength(part) + hover_strength,
                 npc.partBlueStrength(part) + hover_strength,
+            };
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity);
+}
+
+void renderEnemyPass(
+    gapi::Backend& renderer,
+    const EnemyActor& enemy,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity) {
+    renderCharacterAnimationPass(
+        renderer,
+        enemy.animation(),
+        enemy.patterns(),
+        enemy.shadowPatterns(),
+        enemy.position(),
+        enemy.animationChart(),
+        enemy.direction(),
+        enemy.animationFrame(),
+        [&enemy](std::size_t part) {
+            return enemy.partEnabled(part);
+        },
+        [&enemy](std::size_t part) {
+            return CharacterColorStrength{
+                enemy.partRedStrength(part),
+                enemy.partGreenStrength(part),
+                enemy.partBlueStrength(part),
             };
         },
         camera_x,
@@ -381,6 +414,26 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
         });
     }
+    for (const EnemyActor& enemy : world.enemies()) {
+        if (!enemy.visible() || !enemy.hasVisual()) {
+            continue;
+        }
+        entries.push_back({
+            nullptr,
+            nullptr,
+            nullptr,
+            false,
+            false,
+            {
+                entries.size(),
+                enemy.position(),
+                enemy.judgement(),
+                0,
+            },
+            nullptr,
+            &enemy,
+        });
+    }
     for (const GroundItem& item : world.groundItems()) {
         if (!item.visible()) {
             continue;
@@ -567,6 +620,14 @@ void drawWorldEntry(
             shadow_opacity,
             world.hoveredNpcId() == entry.npc->id(),
             interpolation);
+    } else if (entry.enemy) {
+        renderEnemyPass(
+            renderer,
+            *entry.enemy,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity);
     } else if (entry.item) {
         drawGroundItem(
             renderer,

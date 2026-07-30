@@ -106,6 +106,7 @@ target_link_libraries(
 
 add_library(
   osf_world STATIC
+  world/enemy_actor.cpp
   world/ground_item.cpp
   world/map_exploration.cpp
   world/mission_catalog.cpp

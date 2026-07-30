@@ -30,8 +30,11 @@ private:
     gapi::CafAnimation animation_;
 };
 
-class PeopleVisualResources {
+class CharacterVisualResources {
 public:
+    explicit CharacterVisualResources(
+        std::string category);
+
     const CharacterVisualResource* load(
         const std::filesystem::path& data_root,
         std::int32_t resource_id,
@@ -41,6 +44,7 @@ public:
     void clear();
 
 private:
+    std::string category_;
     std::unordered_map<
         std::int32_t,
         std::unique_ptr<CharacterVisualResource>> resources_;

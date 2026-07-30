@@ -83,6 +83,11 @@ bool WorldScene::readScriptWorldOperand(
             value = item->state.value(channel);
             return true;
         }
+        if (const EnemyActor* enemy =
+                findScriptEnemy(character_number)) {
+            value = enemy->stateValue(channel);
+            return true;
+        }
         return false;
     }
     if (operand.type != 6 && operand.type != 7) {
@@ -107,6 +112,13 @@ bool WorldScene::readScriptWorldOperand(
         value = operand.type == 6
                     ? item->position.x
                     : item->position.y;
+        return true;
+    }
+    if (const EnemyActor* enemy =
+            findScriptEnemy(operand.value)) {
+        value = operand.type == 6
+                    ? enemy->position().x
+                    : enemy->position().y;
         return true;
     }
     return false;
@@ -155,6 +167,11 @@ bool WorldScene::writeScriptWorldOperand(
                 player_.cancelMovement();
             }
         }
+        return true;
+    }
+    if (EnemyActor* enemy =
+            findScriptEnemy(character_number)) {
+        enemy->setStateValue(channel, value);
         return true;
     }
     return false;

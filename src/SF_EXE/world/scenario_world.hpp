@@ -4,6 +4,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "enemy_actor.hpp"
 #include "ground_item.hpp"
 #include "map_exploration.hpp"
 #include "npc_actor.hpp"
@@ -54,6 +55,8 @@ public:
     const std::vector<ScenarioObjectActor>& objects() const;
     std::vector<NpcActor>& people();
     const std::vector<NpcActor>& people() const;
+    std::vector<EnemyActor>& enemies();
+    const std::vector<EnemyActor>& enemies() const;
     std::vector<GroundItem>& groundItems();
     const std::vector<GroundItem>& groundItems() const;
 
@@ -67,11 +70,13 @@ private:
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;
     ObjectVisualResources object_visuals_;
-    PeopleVisualResources people_visuals_;
+    CharacterVisualResources people_visuals_{"PEOPLE"};
+    CharacterVisualResources enemy_visuals_{"ENEMY"};
     gapi::NjpImage map_overview_patterns_;
     MapExploration map_exploration_;
     std::vector<ScenarioObjectActor> objects_;
     std::vector<NpcActor> people_;
+    std::vector<EnemyActor> enemies_;
     std::vector<GroundItem> ground_items_;
 };
 

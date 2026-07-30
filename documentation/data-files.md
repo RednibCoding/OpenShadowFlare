@@ -186,6 +186,26 @@ the string separately and retains both indexed value blocks. Their individual
 gameplay names will be assigned from the enemy consumers as combat and AI are
 reconstructed, rather than inferred from plausible numbers.
 
+The scenario loader creates the enemy actor with character number
+`14000000 + local ID`, copies the common state, position, judgement, direction,
+name, and optional CAF part table, and resolves the common resource through
+`Character/ENEMY/%08d/Animation.{Njp,Sdw,Caf}`. The retail loader rearranges
+71 of the tail values plus the resolved AI-list number into a 72-value runtime
+block; one slot in its stack block is not initialized. That rearrangement is
+documented before assigning gameplay names to the individual values.
+
+There is one deliberate resource-less enemy form. Thirty-four records named
+`Enemy Hole` use resource `-1` and initial state `{0, 1, 0}`. They are retained
+as invisible, non-colliding script/AI actors without trying to load or invent
+an animation. All other shipped enemies have a nonnegative resource ID.
+
+Enemy action seven is the default idle action. Its draw path selects CAF chart
+zero with the actor's MCT direction and increments the frame counter once per
+active-map update. The portable actor currently implements this proven
+initial state and keeps the decoded AI-control name, but does not substitute
+guessed movement, targeting, combat, or loot behavior for the still-pending
+AI interpreter.
+
 An item's `0x10`-byte tail is four signed values:
 
 | Index | Confirmed use |

@@ -110,8 +110,19 @@ records expose the retail category, definition, and quantity range. Those
 item records now become scenario-local ground actors through `Item.Ibn`.
 They start settled, keep their script-visible MCT state, and disappear with
 the old scenario on a successful map change. A failed map preparation leaves
-the live actors untouched. Enemy records remain decoded scenario data until
-their portable actor runtime is implemented.
+the live actors untouched.
+
+Enemy records have their first runtime boundary as well. Their common MCT
+identity, state, bounds, name, direction, CAF part data, AI-control name, and
+`Character/ENEMY` visual are owned by `ScenarioWorld`. The proven default
+action draws CAF chart zero and advances its idle frame at gameplay cadence,
+and enabled enemy judgement rectangles already block the player. AI event
+selection, enemy movement, health, attacks, drops, and combat are deliberately
+still pending rather than approximated.
+
+Retail's resource-less `Enemy Hole` records live in the same actor collection.
+They keep their script and AI identity but have no fabricated visual or
+collision.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

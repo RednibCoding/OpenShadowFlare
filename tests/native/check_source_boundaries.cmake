@@ -246,10 +246,12 @@ foreach(escaped_scenario_owner IN ITEMS
     "GroundMap ground_"
     "ObjectMap object_map_"
     "ObjectVisualResources object_visuals_"
-    "PeopleVisualResources people_visuals_"
+    "CharacterVisualResources people_visuals_"
+    "CharacterVisualResources enemy_visuals_"
     "map_overview_patterns_"
     "map_exploration_"
     "scenario_objects_"
+    "enemies_"
     "ground_items_")
   if(world_scene_header MATCHES "${escaped_scenario_owner}")
     message(FATAL_ERROR
