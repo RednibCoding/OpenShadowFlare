@@ -1,5 +1,6 @@
 #include "gameplay_overlay_renderer.hpp"
 
+#include "enemy_nameplate_renderer.hpp"
 #include "ui/conversation_layout.hpp"
 #include "gapi/gapi.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -201,6 +202,7 @@ void drawHoveredEnemyLabel(
     gapi::Backend& renderer,
     const WorldScene& world,
     const gapi::NjpImage* font,
+    const gapi::NjpImage* status_icons,
     std::int32_t camera_x,
     std::int32_t camera_y) {
     if (!font) {
@@ -216,32 +218,18 @@ void drawHoveredEnemyLabel(
     const std::int32_t center_x = anchor.x - camera_x;
     const std::int32_t label_y =
         anchor.y - camera_y - enemy->labelHeight();
-    const std::int32_t half_width =
-        bitmapTextPixelWidth(enemy->name(), 6) / 2;
-    renderer.drawRectangle({
-        center_x - half_width - 4,
-        label_y - 2,
-        half_width * 2 + 5,
-        15,
-        {0, 0, 0, 255},
-        1000,
-        500,
-    });
-    renderer.drawText(
+    renderEnemyNameplate(
+        renderer,
         *font,
-        enemy->name(),
+        status_icons,
         {
-            center_x - half_width + 1,
-            label_y + 1,
-            {0, 0, 0, 255},
-        });
-    renderer.drawText(
-        *font,
-        enemy->name(),
-        {
-            center_x - half_width,
-            label_y,
+            enemy->name(),
             enemyNameColor(*enemy),
+            enemy->currentLife(),
+            enemy->maximumLife(),
+            enemy->nativeElement(),
+            center_x,
+            label_y,
         });
 }
 
@@ -612,6 +600,7 @@ void renderGameplayOverlay(
     gapi::Backend& renderer,
     const WorldScene& world,
     const gapi::NjpImage* font,
+    const gapi::NjpImage* status_icons,
     std::int32_t camera_x,
     std::int32_t camera_y,
     double interpolation) {
@@ -632,6 +621,7 @@ void renderGameplayOverlay(
         renderer,
         world,
         font,
+        status_icons,
         camera_x,
         camera_y);
     drawHoveredGroundItemLabel(

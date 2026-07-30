@@ -101,14 +101,18 @@ the world ready, the label is replaced by a 16-pixel horizontally moving
 arrow; Return or a click in its bottom-right rectangle continues into the
 world.
 
-`0x00417bd0` is a different loading presenter used later in gameplay. It draws
+`0x00417bd0` is not the ordinary map loading screen. It is a later
+story/briefing visual presenter: it selects the Epilogue artwork from
 `Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
-rendered frames, and uses `WaitIcon.njp`. The standard path is live in the
-portable runtime: the background and icon receive the same 0-to-1000 RGB
-strength ramp, while the icon moves between x=590, 598, and 606 in three
-five-frame phases at y=440. The game simulation and input stay stopped for
-those 120 presentation frames. The nonzero alternate-visual selector still
-needs to be tied to its owner.
+rendered frames, and animates `WaitIcon.njp`. The owner of its nonzero visual
+selector still needs to be tied down. The portable runtime no longer calls
+this routine after every map change.
+
+Retail's ordinary map transition remains black with the crossed-swords
+`Waiting.njp` image and its `LOADING` plate only while loading is in progress.
+The portable scenario transaction is currently synchronous and completes
+between presented frames, so a fast transition goes directly to the new map
+instead of manufacturing a fixed delay.
 
 The initial scenario map is loaded by the large transition routine at
 `0x00426200`. The `f00_01.Lst` indices are preserved across ground and object
@@ -936,8 +940,9 @@ zero. The handler stores both values in the pending transition record, enables
 the request, and resets the explicit-position selector to `-1`. The portable
 world defers the actual transaction until the interpreter has returned, then
 publishes one scenario-change event to the runtime. This keeps the SCS owner
-valid during command execution and lets the runtime enter the existing
-120-render-frame loading phase before accepting more simulation or input.
+valid during command execution. Once that synchronous transaction has
+finished, the runtime resets map-local UI and camera state, changes music, and
+presents the new world immediately.
 
 Scenario 1 is `Near the Remote Town`, map `f00_02`, music track 1. Entry key
 zero places the local player at `(90581,5288)`, direction 7, with the camera

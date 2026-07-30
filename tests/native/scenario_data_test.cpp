@@ -3,8 +3,8 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "ui/conversation_layout.hpp"
+#include "render/enemy_nameplate_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
-#include "render/loading_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "world/ground_item.hpp"
 #include "world/enemy_effect_impact.hpp"
@@ -306,12 +306,11 @@ public:
     const osf::gapi::NjpImage* speech = nullptr;
     const osf::gapi::NjpImage* item_patterns = nullptr;
     const osf::gapi::NjpImage* item_shadows = nullptr;
-    const osf::gapi::NjpImage* loading = nullptr;
-    const osf::gapi::NjpImage* wait_icon = nullptr;
+    const osf::gapi::NjpImage* status_icons = nullptr;
     std::vector<NpcPatternCall> calls;
     std::vector<NpcPatternCall> speech_calls;
     std::vector<NpcPatternCall> item_calls;
-    std::vector<NpcPatternCall> loading_calls;
+    std::vector<NpcPatternCall> status_icon_calls;
     std::vector<TextCall> text_calls;
     std::vector<osf::gapi::RectangleDraw> rectangles;
 
@@ -331,11 +330,9 @@ public:
             item_calls.push_back({false, pattern, draw});
         } else if (&image == item_shadows) {
             item_calls.push_back({true, pattern, draw});
-        } else if (
-            &image == loading ||
-            &image == wait_icon) {
-            loading_calls.push_back(
-                {&image == wait_icon, pattern, draw});
+        } else if (&image == status_icons) {
+            status_icon_calls.push_back(
+                {false, pattern, draw});
         }
         return true;
     }
@@ -363,40 +360,52 @@ public:
     void endFrame() override {}
 };
 
-bool testScenarioLoadingPresentation() {
-    osf::gapi::NjpImage loading;
-    osf::gapi::NjpImage wait_icon;
-    NpcRecordingBackend backend;
-    backend.loading = &loading;
-    backend.wait_icon = &wait_icon;
-    osf::renderScenarioLoadingScreen(
-        backend, loading, wait_icon, 60);
-    if (!check(
-            backend.loading_calls.size() == 2 &&
-                !backend.loading_calls[0].shadow &&
-                backend.loading_calls[0].pattern == 4 &&
-                backend.loading_calls[0].draw.x == 0 &&
-                backend.loading_calls[0].draw.y == 0 &&
-                backend.loading_calls[0].draw.red_strength == 500 &&
-                backend.loading_calls[0].draw.green_strength == 500 &&
-                backend.loading_calls[0].draw.blue_strength == 500 &&
-                backend.loading_calls[1].shadow &&
-                backend.loading_calls[1].pattern == 0 &&
-                backend.loading_calls[1].draw.x == 590 &&
-                backend.loading_calls[1].draw.y == 440 &&
-                backend.loading_calls[1].draw.red_strength == 500,
-            "The later retail loading screen packets or fade differ.")) {
-        return false;
-    }
-    backend.loading_calls.clear();
-    osf::renderScenarioLoadingScreen(
-        backend, loading, wait_icon, 70);
+bool testEnemyNameplatePresentation() {
+    osf::gapi::NjpImage font;
+    osf::gapi::NjpImage status_icons;
+    NpcRecordingBackend renderer;
+    renderer.status_icons = &status_icons;
+    osf::renderEnemyNameplate(
+        renderer,
+        font,
+        &status_icons,
+        {
+            "Goblin",
+            {224, 224, 224, 255},
+            25,
+            100,
+            2,
+            100,
+            50,
+        });
     return check(
-        backend.loading_calls.size() == 2 &&
-            backend.loading_calls[1].draw.x == 606 &&
-            backend.loading_calls[0].draw.red_strength == 583 &&
-            backend.loading_calls[1].draw.red_strength == 583,
-        "The retail WaitIcon phase or 120-update fade differs.");
+        renderer.rectangles.size() == 3 &&
+            renderer.rectangles[0].x == 71 &&
+            renderer.rectangles[0].y == 47 &&
+            renderer.rectangles[0].width == 56 &&
+            renderer.rectangles[0].height == 18 &&
+            renderer.rectangles[0].opacity == 800 &&
+            renderer.rectangles[1].x == 72 &&
+            renderer.rectangles[1].width == 13 &&
+            renderer.rectangles[1].height == 16 &&
+            renderer.rectangles[1].color.red == 128 &&
+            renderer.rectangles[1].color.green == 32 &&
+            renderer.rectangles[1].opacity == 500 &&
+            renderer.rectangles[2].x == 85 &&
+            renderer.rectangles[2].width == 41 &&
+            renderer.text_calls.size() == 2 &&
+            renderer.text_calls[0].text ==
+                std::string("\x81\x40Goblin") &&
+            renderer.text_calls[0].draw.x == 77 &&
+            renderer.text_calls[0].draw.y == 51 &&
+            renderer.text_calls[1].draw.x == 76 &&
+            renderer.text_calls[1].draw.y == 50 &&
+            renderer.status_icon_calls.size() == 1 &&
+            renderer.status_icon_calls[0].pattern == 5 &&
+            renderer.status_icon_calls[0].draw.x == 74 &&
+            renderer.status_icon_calls[0].draw.y == 51,
+        "Enemy hover did not reproduce the retail health bar, "
+        "element icon, or name placement.");
 }
 
 void writeI32(
@@ -2886,9 +2895,17 @@ bool testRetailRemoteTown() {
     for (std::int32_t update = 0; update < 19; ++update) {
         world.update();
     }
+    const std::vector<std::int32_t> drop_samples =
+        world.takeAudioSamples();
     if (!check(
-            world.takeAudioSamples() ==
-                std::vector<std::int32_t>{15, 15, 15, 85},
+            std::count(
+                drop_samples.begin(),
+                drop_samples.end(),
+                15) == 3 &&
+                std::count(
+                    drop_samples.begin(),
+                    drop_samples.end(),
+                    85) == 1,
             "Ostare's scripted drops did not emit their retail landing sounds.")) {
         return false;
     }
@@ -3753,7 +3770,7 @@ bool testRetailRemoteTown() {
 int main() {
     return testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
-                   testScenarioLoadingPresentation() &&
+                   testEnemyNameplatePresentation() &&
                    testFixture() &&
                    testMalformedData() &&
                    testRetailScenarioCatalog() &&

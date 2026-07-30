@@ -455,6 +455,12 @@ void WorldScene::update() {
             playerAttackSpeedTier(),
             &player_visual_.animation());
         handlePlayerAttackEvent(player_.takeAttackEvent());
+        const std::int32_t footstep_sample =
+            player_.takeFootstepSample();
+        if (footstep_sample >= 0) {
+            pending_audio_samples_.push_back(
+                footstep_sample);
+        }
         if (player_.takeRespawnRequest()) {
             player_data_.restoreForRespawn();
             const ScenarioTravelResult respawn =

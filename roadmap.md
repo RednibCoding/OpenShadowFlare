@@ -258,8 +258,12 @@ prepared before it replaces the old map, then its script data is adopted by
 the stable interpreter runtime. Failed preparation leaves the current map,
 script, player, inventory, equipment, belt, Special Items, missions, quests,
 and transport flags untouched. Successful changes restart the scenario's BGM
-and run the later `Waiting.njp`/`WaitIcon.njp` presentation for 120 rendered
-frames while gameplay input and simulation are held.
+and return directly to the new world once its synchronous load is complete.
+An earlier pass had mistaken the Epilogue/`VisualNN` presenter at `0x00417bd0`
+for the ordinary map loader and held it on screen for 120 frames. Retail only
+shows its black crossed-swords loading image while work is actually pending;
+the current synchronous portable load is normally too quick to expose an
+intermediate frame.
 
 The next slices identified the three resource preload lists, the variable
 common entity record, and all four entity-group shapes. Objects and `PEOPLE`
@@ -460,9 +464,8 @@ transition path around `0x00426200`:
   target, and selected-action state, then implement its native movement
   actions on top of the shared movement controller;
 - release the old scenario in the same order the original does;
-- identify the condition and sequence for the alternate `VisualNN.njp`
-  artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is
-  reconstructed;
+- identify the story/briefing owner that requests the Epilogue and alternate
+  `VisualNN.njp` artwork rendered by `0x00417bd0`;
 - support returning to the title cleanly when loading fails.
 
 Remote Town should then be one input to the loader, not a special hard-coded

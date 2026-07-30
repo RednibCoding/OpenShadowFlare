@@ -946,7 +946,8 @@ void WorldScene::handlePlayerAttackEvent(
     }
     if (event.action != PlayerAttackAction::basic) {
         pending_audio_samples_.push_back(
-            player_data_.gender() == 1 ? 96 : 99);
+            retailPlayerAttackVoiceSample(
+                player_data_.gender()));
     }
     EnemyActor* enemy = findEnemy(event.target_id);
     if (!enemy ||

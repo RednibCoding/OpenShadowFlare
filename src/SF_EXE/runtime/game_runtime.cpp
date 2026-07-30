@@ -124,10 +124,7 @@ public:
                 1, "System\\Common\\Pattern\\Font01.njp") ||
             !frontendAssets_.loadPattern(
                 2,
-                "System\\Common\\Pattern\\Waiting.njp") ||
-            !frontendAssets_.loadPattern(
-                3,
-                "System\\Common\\Pattern\\WaitIcon.njp")) {
+                "System\\Common\\Pattern\\Waiting.njp")) {
             return false;
         }
         gameState_.transition(osf::GameState::title);
@@ -200,18 +197,11 @@ private:
                 gameplayUi_.missionList(),
                 gameplayUi_.transport(),
                 gameConfig_,
-                scenarioLoadingRenderCounter_,
                 shadowOpacity_,
                 gameplayCounter_,
             },
             interpolation);
 
-        if (gameState_.currentState() ==
-                osf::GameState::gameplay &&
-            gameplayFrame_.phase ==
-                osf::GameplayPhase::scenario_loading) {
-            ++scenarioLoadingRenderCounter_;
-        }
         ++renderedFrames_;
         if (smokeTest_ && renderedFrames_ >= 3) {
             running_ = false;
@@ -237,13 +227,10 @@ private:
         surfacePresenter_->present(source);
     }
 
-    void beginScenarioLoading() {
+    void completeScenarioChange() {
         gameplayUi_.reset();
         world_.setCameraAnchor(320, 240);
         audio_.startWorldMusic(world_.musicTrack());
-        scenarioLoadingRenderCounter_ = 0;
-        gameplayFrame_ =
-            gameplayState_.beginScenarioLoading();
     }
 
     void updateGame(bool& running) {
@@ -328,13 +315,6 @@ private:
         }
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
-            if (gameplayFrame_.phase ==
-                    osf::GameplayPhase::scenario_loading &&
-                scenarioLoadingRenderCounter_ >= 120) {
-                gameplayFrame_ =
-                    gameplayState_.finishScenarioLoading();
-                scenarioLoadingRenderCounter_ = 0;
-            }
             const bool ui_consumed = gameplayUi_.update(
                     gameplayFrame_,
                     input_,
@@ -349,7 +329,7 @@ private:
                     running,
                     shadowOpacity_);
             if (world_.takeScenarioChanged()) {
-                beginScenarioLoading();
+                completeScenarioChange();
             } else if (!ui_consumed) {
                 const bool map_active =
                     gameplayUi_.map().active();
@@ -379,7 +359,7 @@ private:
                     400,
                 });
                 if (world_.takeScenarioChanged()) {
-                    beginScenarioLoading();
+                    completeScenarioChange();
                 }
             }
             break;
@@ -408,7 +388,6 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayCounter_ = 0;
-            scenarioLoadingRenderCounter_ = 0;
             gameplayUi_.reset();
             savePreview_.clear();
             gameplayState_.enter();
@@ -416,7 +395,6 @@ private:
         callbacks.gameplay.leave = [this] {
             gameplayUi_.reset();
             gameplayState_.leave();
-            scenarioLoadingRenderCounter_ = 0;
         };
         return callbacks;
     }
@@ -432,7 +410,6 @@ private:
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     std::uint32_t gameplayCounter_ = 0;
-    std::int32_t scenarioLoadingRenderCounter_ = 0;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;

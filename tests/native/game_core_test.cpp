@@ -593,56 +593,6 @@ bool testGameplayClickAndHoldMovement() {
         "Held movement or split-view input clipping diverged.");
 }
 
-bool testGameplayScenarioLoading() {
-    std::int32_t world_updates = 0;
-    osf::GameplayStateHooks hooks;
-    hooks.prepare_world = [] { return true; };
-    hooks.update_world =
-        [&world_updates] { ++world_updates; };
-    osf::GameplayState state(std::move(hooks));
-    state.enter();
-    state.update();
-    state.update({false, true, 600, 460});
-
-    osf::GameplayFrameResult frame =
-        state.beginScenarioLoading();
-    if (!check(
-            frame.phase ==
-                    osf::GameplayPhase::scenario_loading &&
-                frame.loading_counter == 0 &&
-                !frame.ready_to_continue,
-            "A live scenario change did not enter its own loading "
-            "presentation.")) {
-        return false;
-    }
-    for (std::int32_t update = 0; update < 120; ++update) {
-        frame = state.update(
-            {true, true, 200, 200, true, true});
-    }
-    if (!check(
-            frame.phase ==
-                    osf::GameplayPhase::scenario_loading &&
-                frame.loading_counter == 0 &&
-                world_updates == 0,
-            "Scenario loading accepted gameplay input or advanced from "
-            "the 30 Hz game loop.")) {
-        return false;
-    }
-    frame = state.finishScenarioLoading();
-    if (!check(
-            frame.phase == osf::GameplayPhase::world &&
-                frame.loading_counter == 0 &&
-                world_updates == 0,
-            "Presentation could not return scenario loading to the "
-            "world.")) {
-        return false;
-    }
-    state.update();
-    return check(
-        world_updates == 1,
-        "World updates did not resume after scenario loading.");
-}
-
 bool testGameplayOptionsMenu() {
     osf::GameConfig config;
     osf::GameplayOptionsMenu menu;
@@ -824,7 +774,6 @@ int main() {
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
         !testGameplayClickAndHoldMovement() ||
-        !testGameplayScenarioLoading() ||
         !testGameplayOptionsMenu()) {
         return 1;
     }

@@ -796,7 +796,10 @@ Walk is executable action 2 and CAF chart 1 at `0x004351f0`; run is action 3
 and CAF chart 2 at `0x00435530`. The `R` binding now toggles the persistent
 movement mode on its key-down edge. Switching while already moving resets the
 animation counter and immediately changes both the chart and the movement
-step, as the retail action transition does.
+step, as the retail action transition does. Those same routines play
+`Voice00.Voc` sample zero on action-counter zero and then every 12 walking
+updates or eight running updates. The cadence is fixed rather than randomly
+selecting several footstep samples.
 
 GND loading now includes the second, 852-by-852 Remote Town judgement plane.
 The portable RKC_RPGSCRN boundary checks its bit-zero blockers and the
@@ -886,10 +889,12 @@ Live travel now uses the boundary: the same-scenario branch only relocates,
 while a changed scenario prepares every new local owner before commit. A
 failed load leaves the old map, script, player, items, missions, quests, and
 transport flags usable. Success clears stale local interaction/audio state,
-adopts the new SCS, relocates, changes BGM, and holds gameplay during the
-standard `Waiting.njp` pattern 4 plus `WaitIcon.njp` 120-render-frame fade.
-The icon uses x positions 590/598/606 in five-frame phases at y=440, matching
-`0x00417bd0`. The alternate `VisualNN` selector remains pending. All 51
+adopts the new SCS, relocates, and changes BGM. It then presents the new map
+immediately because the synchronous load has already completed. The previous
+120-frame Epilogue fade was removed after a closer trace showed that
+`0x00417bd0` owns story/briefing visuals rather than ordinary map loading.
+Retail's black crossed-swords screen exists only while loading work is
+pending. The alternate `VisualNN` selector remains pending. All 51
 Table 40 rows are also checked against their shipped scenario directory and
 single-player MCT entry.
 
@@ -963,7 +968,17 @@ the distinct counter order, chart pairs, sound counters, movement lock, and
 recovery completion. `0x00450c60` supplies Table 4's attack-speed tier and
 overweight fallback. The CAF part-zero `0x40` marker is retained as a typed
 impact event and revalidated against the live enemy before later damage code
-may consume it.
+may consume it. The attack voice choice is translated at the portable player
+boundary because portable save/UI data uses zero for male and one for female,
+opposite to the raw field convention tested by `0x00435e60`; male therefore
+plays sample 96 and female sample 99.
+
+Enemy hover labels now follow the type-two branch in `0x0040ee70`. A
+name-sized dark frame contains a translucent red life fill proportional to
+current over maximum life, the remaining width stays black, and
+`StatusIcon.njp` pattern `native element + 3` supplies the colored dot before
+the name. This replaces the generic PEOPLE-style label previously used for
+enemies.
 
 Player impact delivery is now reconstructed through the live actor boundary.
 `0x00413e00` uses derived hit rate at player `+0x1bc` against enemy pre-AI

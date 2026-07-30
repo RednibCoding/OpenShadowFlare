@@ -84,6 +84,7 @@ void PlayerActor::reset(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    pending_footstep_sample_ = -1;
     respawn_requested_ = false;
     pending_respawn_request_ = false;
     movement_controller_.reset();
@@ -108,6 +109,7 @@ void PlayerActor::relocate(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    pending_footstep_sample_ = -1;
     respawn_requested_ = false;
     pending_respawn_request_ = false;
     movement_controller_.reset();
@@ -216,6 +218,7 @@ void PlayerActor::update(
     std::int32_t attack_speed_tier,
     const gapi::CafAnimation* animation) {
     previous_position_ = position_;
+    pending_footstep_sample_ = -1;
     if (damage_presentation_.action == 4) {
         constexpr std::int32_t kHitChart = 3;
         constexpr std::int32_t kHitDisplacement = 120;
@@ -358,6 +361,12 @@ void PlayerActor::update(
     animation_frame_ = animationFrameForSpeed(
         action_counter_, walking_speed_tier_);
     previous_action_ = moving_action;
+    const std::int32_t footstep_interval =
+        moving_action == PlayerMotion::running ? 8 : 12;
+    if (action_counter_ % footstep_interval == 0) {
+        // FUN_004351f0 and FUN_00435530 both play Voice00 sample zero.
+        pending_footstep_sample_ = 0;
+    }
 
     if (position_.x == destination_.x &&
         position_.y == destination_.y) {
@@ -446,6 +455,12 @@ PlayerAttackActionEvent PlayerActor::takeAttackEvent() {
     PlayerAttackActionEvent event = pending_attack_event_;
     pending_attack_event_ = {};
     return event;
+}
+
+std::int32_t PlayerActor::takeFootstepSample() {
+    const std::int32_t sample = pending_footstep_sample_;
+    pending_footstep_sample_ = -1;
+    return sample;
 }
 
 bool PlayerActor::takeRespawnRequest() {

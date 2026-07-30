@@ -16,6 +16,7 @@ void renderGameplayOverlay(
     gapi::Backend& renderer,
     const WorldScene& world,
     const gapi::NjpImage* font,
+    const gapi::NjpImage* status_icons,
     std::int32_t camera_x,
     std::int32_t camera_y,
     double interpolation = 1.0);

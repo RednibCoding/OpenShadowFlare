@@ -201,6 +201,7 @@ add_library(
   osf_render STATIC
   render/character_renderer.cpp
   render/character_select_renderer.cpp
+  render/enemy_nameplate_renderer.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp

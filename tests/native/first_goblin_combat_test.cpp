@@ -559,7 +559,7 @@ bool testFirstGoblinCombat() {
                 containsSample(samples, 1);
             heard_attack_voice =
                 heard_attack_voice ||
-                containsSample(samples, 99);
+                containsSample(samples, 96);
             heard_hit =
                 heard_hit ||
                 containsSample(samples, 6);

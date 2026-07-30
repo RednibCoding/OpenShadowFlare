@@ -16,12 +16,6 @@ void renderInitialLoadingScreen(
     std::int32_t counter,
     bool ready_to_continue);
 
-void renderScenarioLoadingScreen(
-    gapi::Backend& renderer,
-    const gapi::NjpImage& waiting,
-    const gapi::NjpImage& wait_icon,
-    std::int32_t counter);
-
 }  // namespace osf
 
 #endif
