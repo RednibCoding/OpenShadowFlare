@@ -74,9 +74,12 @@ bool testTypeOneZeroDelay() {
                 source.judgement.top == 32 &&
                 source.judgement.right == 22 &&
                 source.judgement.bottom == 32 &&
-                source.action ==
-                    osf::RuntimeEffectActorAction::
-                        source_animation &&
+                source.lifetime == -1 &&
+                source.lifetime_from_animation &&
+                source.collide_with_environment &&
+                !source.expire_on_environment_collision &&
+                source.target_collision_start == -1 &&
+                source.target_collision_end == -1 &&
                 source.animation_chart == 0 &&
                 source.animation_direction == 8 &&
                 !source.has_packet,
@@ -91,19 +94,23 @@ bool testTypeOneZeroDelay() {
                 child.resource_id == 10000010 &&
                 child.owner_kind == 4 &&
                 child.source_character_number == 14000042 &&
-                child.target_kind == 1 &&
+                child.target_mask == 1 &&
                 child.target_identifier == 3 &&
-                child.constructor_value_6 == 73 &&
-                child.constructor_value_7 == 250 &&
+                child.travel_speed == 73 &&
+                child.display_height == 250 &&
                 child.position.x == 280 &&
                 child.position.y == 200 &&
                 child.judgement.left == -50 &&
                 child.judgement.top == -50 &&
                 child.judgement.right == 50 &&
                 child.judgement.bottom == 50 &&
-                child.action ==
-                    osf::RuntimeEffectActorAction::forward &&
-                child.animation_chart == 5 &&
+                child.lifetime == -1 &&
+                !child.lifetime_from_animation &&
+                child.collide_with_environment &&
+                child.expire_on_environment_collision &&
+                child.target_collision_start == 0 &&
+                child.target_collision_end == -1 &&
+                child.animation_chart == 0 &&
                 child.animation_direction == 1 &&
                 child.has_packet &&
                 child.packet[2] == 14000042 &&

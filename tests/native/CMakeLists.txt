@@ -591,6 +591,40 @@ if(TARGET sf_game_core)
     COMMAND enemy_effect_controller_test)
 
   add_executable(
+    runtime_effect_actor_test
+    runtime_effect_actor_test.cpp
+  )
+  target_link_libraries(
+    runtime_effect_actor_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    runtime_effect_actor_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    runtime_effect_actor_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    runtime_effect_actor_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      runtime_effect_actor_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      runtime_effect_actor_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME runtime_effect_actor
+    COMMAND runtime_effect_actor_test)
+
+  add_executable(
     enemy_direct_impact_test
     enemy_direct_impact_test.cpp
   )

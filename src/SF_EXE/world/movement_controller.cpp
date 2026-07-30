@@ -108,9 +108,14 @@ bool movementPositionIsWalkable(
     WorldPosition position,
     const ObjectBounds& bounds,
     const std::vector<MovementBlocker>* dynamic_blockers,
-    std::int32_t ignored_blocker_id) {
+    std::int32_t ignored_blocker_id,
+    bool exclude_special_objects) {
     if (!positionIsWalkable(
-            ground, objects, position, bounds)) {
+            ground,
+            objects,
+            position,
+            bounds,
+            exclude_special_objects)) {
         return false;
     }
     if (!dynamic_blockers) {
@@ -204,7 +209,8 @@ SweepResult sweepMovement(
     WorldPosition end,
     std::int32_t wall_direction,
     const std::vector<MovementBlocker>* dynamic_blockers,
-    std::int32_t ignored_blocker_id) {
+    std::int32_t ignored_blocker_id,
+    bool exclude_special_objects = false) {
     const std::vector<WorldPosition> path =
         rasterizedSegment(start, end);
     WorldPosition contact = start;
@@ -217,7 +223,8 @@ SweepResult sweepMovement(
                 path[index],
                 bounds,
                 dynamic_blockers,
-                ignored_blocker_id)) {
+                ignored_blocker_id,
+                exclude_special_objects)) {
             collided = true;
             break;
         }
@@ -253,7 +260,8 @@ SweepResult sweepMovement(
                 side,
                 bounds,
                 dynamic_blockers,
-                ignored_blocker_id)) {
+                ignored_blocker_id,
+                exclude_special_objects)) {
             side_blocked = true;
             break;
         }
@@ -275,7 +283,8 @@ SweepResult sweepMovement(
                     side,
                     bounds,
                     dynamic_blockers,
-                    ignored_blocker_id)) {
+                    ignored_blocker_id,
+                    exclude_special_objects)) {
                 first_side_open = index;
                 break;
             }
@@ -295,7 +304,8 @@ SweepResult sweepMovement(
             nudged,
             bounds,
             dynamic_blockers,
-            ignored_blocker_id)) {
+            ignored_blocker_id,
+            exclude_special_objects)) {
         contact = nudged;
     }
     return {contact, collided || !samePosition(contact, end)};
@@ -316,7 +326,8 @@ bool canMoveOneUnit(
         {position.x + vector.x, position.y + vector.y},
         bounds,
         dynamic_blockers,
-        ignored_blocker_id);
+        ignored_blocker_id,
+        false);
 }
 
 struct ObstacleState {
@@ -686,6 +697,30 @@ MovementStepResult advanceMovement(
         samePosition(movement.position, destination),
         !samePosition(movement.position, position),
         false,
+        movement.collided,
+    };
+}
+
+LinearMovementStep advanceLinearMovement(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    const ObjectBounds& bounds,
+    WorldPosition position,
+    WorldPosition destination,
+    bool exclude_special_objects) {
+    const SweepResult movement =
+        sweepMovement(
+            ground,
+            objects,
+            bounds,
+            position,
+            destination,
+            0,
+            nullptr,
+            kNoMovementBlockerId,
+            exclude_special_objects);
+    return {
+        movement.position,
         movement.collided,
     };
 }

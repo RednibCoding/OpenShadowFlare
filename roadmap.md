@@ -907,12 +907,15 @@ meant to prevent.
 That split has started with types 1 and 2. Their portable controller now emits
 the immediate source animation and delayed forward actor as two independent
 requests, including source re-resolution, exact bounds, packet data, and
-positional samples 19 and 94. The next slice is the shared
-category-50000000 actor owner: movement and collision timing first, then
-target filtering, hit bookkeeping, receiver dispatch, audio markers, and the
-action-one-to-action-two transition. Types 1 and 2 should only be connected to
-live enemy attacks once that common path can carry their actual hit and sound
-behavior.
+positional samples 19 and 94. The shared category-50000000 actor now also has
+its first passive slice: chart-zero source lifetime, forward movement from the
+spawn point, the zero-distance first update, static collision, contact expiry,
+special-ground filtering, and inclusive target-window timing.
+
+The next slice is target filtering, hit bookkeeping, evasion, receiver
+dispatch, and configured positional audio. Types 1 and 2 should only be
+connected to live enemy attacks once that common path can carry their actual
+hit and sound behavior.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

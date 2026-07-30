@@ -1,0 +1,381 @@
+#include "resources/effect_visual_resource.hpp"
+#include "world/enemy_effect_controller.hpp"
+#include "world/movement_controller.hpp"
+#include "world/runtime_effect_actor.hpp"
+
+#include <cstdint>
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
+
+namespace {
+
+void appendI16(
+    std::vector<std::uint8_t>& bytes,
+    std::int16_t value) {
+    const std::uint16_t raw =
+        static_cast<std::uint16_t>(value);
+    bytes.push_back(static_cast<std::uint8_t>(raw));
+    bytes.push_back(
+        static_cast<std::uint8_t>(raw >> 8u));
+}
+
+void appendI32(
+    std::vector<std::uint8_t>& bytes,
+    std::int32_t value) {
+    const std::uint32_t raw =
+        static_cast<std::uint32_t>(value);
+    bytes.push_back(static_cast<std::uint8_t>(raw));
+    bytes.push_back(
+        static_cast<std::uint8_t>(raw >> 8u));
+    bytes.push_back(
+        static_cast<std::uint8_t>(raw >> 16u));
+    bytes.push_back(
+        static_cast<std::uint8_t>(raw >> 24u));
+}
+
+bool check(bool condition, const char* message) {
+    if (!condition) {
+        std::cerr << message << '\n';
+    }
+    return condition;
+}
+
+osf::ObjectMap oneBlockingObject(
+    std::int32_t x,
+    std::int32_t y) {
+    std::vector<std::uint8_t> bytes;
+    const char header[] = "RPGSCRN_OBJv001\x1a";
+    bytes.insert(bytes.end(), header, header + 16);
+    appendI32(bytes, 1);
+    appendI32(bytes, x);
+    appendI32(bytes, y);
+    appendI16(bytes, -1);
+    appendI16(bytes, -1);
+    appendI16(bytes, -1);
+    appendI16(bytes, 1000);
+    appendI16(bytes, 1);
+    appendI16(bytes, 0);
+    appendI16(bytes, 1000);
+    appendI16(bytes, 1000);
+    appendI16(bytes, 1000);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+
+    osf::ObjectMap result;
+    result.decode(bytes);
+    return result;
+}
+
+osf::GroundMap oneSpecialBlockingGround() {
+    std::vector<std::uint8_t> bytes;
+    const char header[16] = "RPGSCRN_GNDv000";
+    bytes.insert(
+        bytes.end(), header, header + sizeof(header));
+    appendI32(bytes, 2);
+    appendI32(bytes, 1);
+    appendI32(bytes, 64);
+    appendI32(bytes, 48);
+    appendI32(bytes, 160);
+    appendI32(bytes, 160);
+    bytes.push_back(0);
+    for (std::int32_t index = 0;
+         index < 6;
+         ++index) {
+        appendI16(bytes, 0);
+    }
+    bytes.push_back(0);
+    for (std::int32_t index = 0;
+         index < 36;
+         ++index) {
+        appendI16(bytes, index == 25 ? 3 : 0);
+    }
+    osf::GroundMap result;
+    result.decode(bytes);
+    return result;
+}
+
+std::filesystem::path optionDirectory(
+    std::int32_t resource_id) {
+    return std::filesystem::path(
+               OPENSHADOWFLARE_SOURCE_DIR) /
+           "tmp" / "ShadowFlare" / "Character" /
+           "OPTION" /
+           std::to_string(resource_id);
+}
+
+bool loadVisual(
+    std::int32_t resource_id,
+    osf::EffectVisualResource& visual) {
+    std::string error;
+    if (visual.load(
+            optionDirectory(resource_id), &error)) {
+        return true;
+    }
+    std::cerr << error << '\n';
+    return false;
+}
+
+osf::CombatEffectSpawnRequest controllerRequest(
+    std::int32_t effect_number,
+    std::int32_t delay) {
+    osf::CombatEffectSpawnRequest request;
+    request.valid = true;
+    request.effect_number = effect_number;
+    request.owner_kind = 4;
+    request.source_character_number = 14000042;
+    request.target_kind = 19;
+    request.target_identifier = -1;
+    request.constructor_value_6 = 60;
+    request.constructor_value_7 = 250;
+    request.direction_radians = 0.0;
+    request.has_source_judgement = true;
+    request.source_judgement = {-20, -30, 21, 31};
+    request.constructor_value_12 = delay;
+    request.has_packet = true;
+    request.packet.write(2, 14000042);
+    return request;
+}
+
+bool testSourceAnimationLifetime() {
+    osf::EnemyEffectController controller;
+    controller.initialize(
+        controllerRequest(10001, 4));
+    const auto controller_update =
+        controller.update({true, {100, 200}});
+
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000012, visual)) {
+        return false;
+    }
+    const std::int32_t frame_count =
+        visual.animation()
+            .charts()[0]
+            .directions[8]
+            .frame_count;
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(
+                controller_update.actor_spawns[0],
+                visual) &&
+                actor.lifetime() == frame_count &&
+                actor.animationChart() == 0 &&
+                actor.animationDirection() == 8 &&
+                actor.displayHeight() == 0,
+            "The source actor did not resolve its lifetime from "
+            "retail chart zero, direction eight.")) {
+        return false;
+    }
+
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    for (std::int32_t update_number = 0;
+         update_number < frame_count;
+         ++update_number) {
+        const osf::RuntimeEffectActorUpdate update =
+            actor.update(ground, objects);
+        if (!check(
+                update.target_collision_active == false &&
+                    actor.animationFrame() ==
+                        update_number &&
+                    update.expired ==
+                        (update_number ==
+                         frame_count - 1),
+                "The source actor did not show each chart-zero "
+                "frame for one retail update.")) {
+            return false;
+        }
+    }
+    return check(
+        actor.expired() &&
+            actor.counter() == frame_count &&
+            actor.position().x == 100 &&
+            actor.position().y == 200,
+        "The source actor did not expire after its complete "
+        "one-pass animation.");
+}
+
+bool testForwardMovementAndInterpolation() {
+    osf::EnemyEffectController controller;
+    controller.initialize(
+        controllerRequest(10001, 0));
+    const auto controller_update =
+        controller.update({true, {100, 200}});
+
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(
+                controller_update.actor_spawns[1],
+                visual),
+            "The type-one forward actor did not initialize.")) {
+        return false;
+    }
+
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    const auto first = actor.update(ground, objects);
+    if (!check(
+            first.intended_position.x == 280 &&
+                actor.position().x == 280 &&
+                actor.movementCounter() == 1 &&
+                first.target_collision_active &&
+                !first.environment_collision,
+            "A forward actor moved on update zero or omitted its "
+            "inclusive collision window.")) {
+        return false;
+    }
+
+    const auto second = actor.update(ground, objects);
+    const osf::WorldPosition halfway =
+        actor.renderPosition(0.5);
+    return check(
+        second.intended_position.x == 340 &&
+            second.intended_position.y == 200 &&
+            actor.previousPosition().x == 280 &&
+            actor.position().x == 340 &&
+            halfway.x == 310 &&
+            halfway.y == 200 &&
+            actor.counter() == 2 &&
+            !actor.expired(),
+        "The forward actor did not use its start point, speed, "
+        "counter, or interpolated snapshots.");
+}
+
+bool testEnvironmentCollisionAndExpiry() {
+    osf::EnemyEffectController controller;
+    controller.initialize(
+        controllerRequest(10001, 0));
+    auto controller_update =
+        controller.update({true, {-180, 0}});
+    osf::RuntimeEffectActorSpawnRequest request =
+        controller_update.actor_spawns[1];
+
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActor actor;
+    actor.initialize(request, visual);
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects =
+        oneBlockingObject(100, 0);
+    const auto first = actor.update(ground, objects);
+    const auto second = actor.update(ground, objects);
+    if (!check(
+            !first.environment_collision &&
+                second.intended_position.x == 60 &&
+                second.environment_collision &&
+                second.expired &&
+                actor.position().x == 49,
+            "The forward actor did not stop at the last free "
+            "point and expire on static contact.")) {
+        return false;
+    }
+
+    request.expire_on_environment_collision = false;
+    actor.initialize(request, visual);
+    actor.update(ground, objects);
+    const auto retained = actor.update(ground, objects);
+    return check(
+        retained.environment_collision &&
+            !retained.expired &&
+            !actor.expired() &&
+            actor.position().x == 49,
+        "A non-expiring runtime actor was removed by an "
+        "environment collision.");
+}
+
+bool testInclusiveTargetWindow() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = 10000010;
+    request.collide_with_environment = false;
+    request.target_collision_start = 2;
+    request.target_collision_end = 3;
+    request.animation_direction = 1;
+
+    osf::RuntimeEffectActor actor;
+    actor.initialize(request, visual);
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    for (std::int32_t update_number = 0;
+         update_number < 5;
+         ++update_number) {
+        const auto update =
+            actor.update(ground, objects);
+        const bool expected =
+            update_number == 2 || update_number == 3;
+        if (!check(
+                update.target_collision_active == expected,
+                "The target collision window was not inclusive "
+                "at both authored endpoints.")) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool testSpecialEnvironmentFiltering() {
+    const osf::GroundMap ground =
+        oneSpecialBlockingGround();
+    const osf::ObjectMap objects;
+    const osf::ObjectBounds point;
+    const osf::LinearMovementStep blocked =
+        osf::advanceLinearMovement(
+            ground,
+            objects,
+            point,
+            {-1, 0},
+            {0, 0},
+            false);
+    const osf::LinearMovementStep excluded =
+        osf::advanceLinearMovement(
+            ground,
+            objects,
+            point,
+            {-1, 0},
+            {0, 0},
+            true);
+    return check(
+        blocked.collided &&
+            blocked.position.x == -1 &&
+            !excluded.collided &&
+            excluded.position.x == 0 &&
+            !osf::positionIsWalkable(
+                ground,
+                objects,
+                {0, 0},
+                point,
+                false) &&
+            osf::positionIsWalkable(
+                ground,
+                objects,
+                {0, 0},
+                point,
+                true),
+        "The runtime-effect collision query did not preserve "
+        "the retail special-ground exclusion flag.");
+}
+
+}  // namespace
+
+int main() {
+    if (!testSourceAnimationLifetime() ||
+        !testForwardMovementAndInterpolation() ||
+        !testEnvironmentCollisionAndExpiry() ||
+        !testInclusiveTargetWindow() ||
+        !testSpecialEnvironmentFiltering()) {
+        return 1;
+    }
+    return 0;
+}

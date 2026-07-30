@@ -83,6 +83,7 @@ RuntimeEffectActorSpawnRequest sourceActor(
         right,
         bottom,
     };
+    actor.lifetime_from_animation = true;
     return actor;
 }
 
@@ -99,12 +100,12 @@ RuntimeEffectActorSpawnRequest childActor(
     actor.owner_kind = request.owner_kind;
     actor.source_character_number =
         request.source_character_number;
-    actor.target_kind = request.target_kind;
+    actor.target_mask = request.target_kind;
     actor.target_identifier =
         request.target_identifier;
-    actor.constructor_value_6 =
+    actor.travel_speed =
         request.constructor_value_6;
-    actor.constructor_value_7 =
+    actor.display_height =
         request.constructor_value_7;
     actor.direction_radians =
         request.direction_radians;
@@ -115,8 +116,8 @@ RuntimeEffectActorSpawnRequest childActor(
         kChildRadius,
         kChildRadius,
     };
-    actor.action = RuntimeEffectActorAction::forward;
-    actor.animation_chart = 5;
+    actor.expire_on_environment_collision = true;
+    actor.target_collision_start = 0;
     actor.animation_direction =
         retailDirectionForAngle(
             request.direction_radians);

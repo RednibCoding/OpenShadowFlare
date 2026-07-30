@@ -141,11 +141,12 @@ add_library(
   world/player_damage_receiver.cpp
   world/player_data.cpp
   world/player_item_controller.cpp
+  world/quest_state.cpp
   world/retail_save_file.cpp
   world/retail_save_items.cpp
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
-  world/quest_state.cpp
+  world/runtime_effect_actor.cpp
   world/scenario_data.cpp
   world/scenario_entity_state.cpp
   world/scenario_object_actor.cpp

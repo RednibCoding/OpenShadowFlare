@@ -1249,19 +1249,30 @@ source actor's then-current position. At constructor delay 12, the handler
 resolves that position again and creates a second actor 180 world units along
 the stored angle. The type-1 child uses resource `10000010` and positional
 sample 19; type 2 uses resource `10000040` and sample 94. Both use
-`[-50,-50,50,50]` judgement, retain the packet, and enter runtime visual action
-one. The controller expires after creating the child, independently of both
-visual actors.
+`[-50,-50,50,50]` judgement, retain the packet, use CAF chart zero, and expire
+when their static environment sweep collides. The controller expires after
+creating the child, independently of both visual actors.
 
 `0x00429dd0` creates those children in the category-50000000 actor family.
 `0x0045e1a0` installs a 126-word descriptor, and `0x0045e1e0` owns their
-common update. That update supports attached and fixed movement, an inclusive
-collision window, independent player/companion/enemy target bits, exact target
-IDs, living and current-scenario checks, optional previous-hit storage,
-physical or magical evasion checks, receiver callbacks, configured positional
-audio, and ten visual action modes. Action one at `0x0045fff0` uses chart five,
-scans every newly crossed CAF frame for impact and audio markers, and hands
-the actor to action two after its final frame.
+common update. That update supports homing, free, and owner-attached movement;
+static environment sweeps; an inclusive target-collision window; independent
+player/companion/enemy target bits; exact target IDs; living and
+current-scenario checks; optional previous-hit storage; physical or magical
+evasion checks; receiver callbacks; and configured positional audio. It then
+draws either the descriptor's static pattern or CAF chart and applies the
+authored lifetime. The nearby action dispatcher at `0x0045f960` belongs to the
+separate category-40000000 actor class; it is not part of this generic effect
+actor.
+
+For types 1 and 2, descriptor offset `+0x1c` gives the source actor one complete
+chart-zero/direction-eight lifetime and leaves the traveling child unlimited.
+`+0x40` enables the static environment query, `+0x44` makes only the child
+expire on contact, `+0x48` carries its distance per update, `+0x54` carries
+display height, and `+0x58` selects chart zero. Target collision starts at
+update zero for the child through `+0x8c`; the source uses `-1` and never opens
+that window. `+0x94` enables drawing. These fields explain the two actors
+without inventing a visual “action one.”
 
 The portable implementation must preserve both lists. A controller is
 simulation state that can create several actors over time; a runtime actor is
@@ -1276,8 +1287,15 @@ delay, projects the second actor with the retail Y-axis convention, copies the
 combat packet, and places sample 19 or 94 at that second position. A zero delay
 creates both actors in one update, a negative delay remains active, missing
 owners resolve from zero, and omitted origin or judgement pointers do not leak
-stale values. The emitted actor requests remain passive until the shared
-category-50000000 update and its collision/receiver path are reconstructed.
+stale values.
+
+`RuntimeEffectActor` now ports the next shared part: chart-zero source lifetime,
+free movement from the immutable spawn point, the zero-distance first update,
+retail integer projection, static OBL/GND sweeping, the special-environment
+exclusion bit, contact expiry, inclusive target-window timing, CAF frame
+scaling, and interpolated render snapshots. Target selection and receiver
+dispatch are still passive, so the actors are not attached to live enemies
+yet.
 
 ## Enemy kill rewards
 

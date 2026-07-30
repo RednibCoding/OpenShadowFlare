@@ -49,26 +49,34 @@ reaches constructor argument 12, it resolves the source position again,
 projects a point exactly 180 world units along the stored angle, and creates a
 second runtime actor there. Type 1 uses resource `10000010` and positional
 sample 19; type 2 uses resource `10000040` and positional sample 94. The
-second actor has `[-50,-50,50,50]` bounds, action mode one, chart-five timing,
-and the copied combat packet. Only then does the controller return zero.
+second actor has `[-50,-50,50,50]` bounds, chart-zero timing, the copied combat
+packet, and contact expiry. Only then does the controller return zero.
 
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
-the actor. `0x0045e1e0` owns attachment or fixed movement, collision timing,
-target masks, exact-target filtering, living and scenario checks, optional
-one-hit bookkeeping for up to 500 identities, physical-versus-magical hit
-chance, receiver dispatch, and visual action modes one through ten. Collision
-is active only from descriptor word 35 through word 36 inclusive. Bits one,
-two, and four select player, owned-companion, and enemy families
-independently.
+the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
+environment collision; target masks; exact-target filtering; living and
+scenario checks; optional one-hit bookkeeping for up to 500 identities;
+physical-versus-magical hit chance; receiver dispatch; descriptor-driven
+static/CAF drawing; and lifetime. Target collision is active only from
+descriptor word 35 through word 36 inclusive. Bits one, two, and four select
+player, owned-companion, and enemy families independently.
+
+The category-40000000 action dispatcher at `0x0045f960` and its chart-five
+branch at `0x0045fff0` are adjacent in the executable but belong to a different
+actor class. They must not be used to interpret category-50000000 descriptor
+word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
 of types 1 and 2. Focused tests cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, and positional samples. Its actor outputs are
-intentionally passive: the shared category-50000000 actor update is still
-needed before either effect is attached to live enemies. The other ten
-specialized controllers also remain to be reconstructed. Mapping
+paired with a passive `RuntimeEffectActor` that now covers source-animation
+lifetime, free forward movement, static collision and special-ground
+filtering, contact expiry, chart-zero frame timing, and the inclusive target
+window. Target filtering and receiver dispatch are still needed before either
+effect is attached to live enemies. The other ten specialized controllers
+also remain to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 
