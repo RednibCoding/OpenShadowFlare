@@ -108,6 +108,8 @@
       const startButton = document.getElementById("start");
       const statusEl = document.getElementById("status");
       const logEl = document.getElementById("log");
+      const canvas = document.getElementById("canvas")
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault())
       let pickedFiles = [];
 
       function setStatus(text) {
@@ -139,7 +141,7 @@
         let ModuleInstance;
         try {
           ModuleInstance = await ShadowFlareModule({
-            canvas: document.getElementById("canvas"),
+            canvas,
             noInitialRun: true,
             print: appendLog,
             printErr: (text) => appendLog("[stderr] " + text),
@@ -175,7 +177,7 @@
           appendLog("[chdir] " + error);
         }
 
-        document.getElementById("canvas").focus();
+        canvas.focus();
         try {
           ModuleInstance.callMain([]);
           setStatus("Running. Click the canvas and play.");
