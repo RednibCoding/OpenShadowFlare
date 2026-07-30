@@ -28,7 +28,7 @@ osf::EnemyEffectImpactInput inputForType(
     input.subtype = 10;
     input.parameter = 123;
     input.additive = 7;
-    input.packet_source_value = 456;
+    input.packet_word_31 = 456;
     return input;
 }
 
@@ -46,17 +46,18 @@ bool testTableExpansionAndConstructorPacket(
                     14000042 &&
                 request.target_kind == 19 &&
                 request.target_identifier == -1 &&
-                request.table_35_value == 100 &&
-                request.duration == 250 &&
+                request.constructor_value_6 == 100 &&
+                request.constructor_value_7 == 250 &&
                 request.direction_radians == 0.75 &&
                 !request.has_explicit_origin &&
+                request.has_source_judgement &&
                 request.source_judgement.left == -20 &&
                 request.constructor_value_12 == 0 &&
                 request.packet_kind == 8 &&
                 request.instance_identifier == -1 &&
-                request.subtype == 10 &&
+                request.constructor_value_17 == 10 &&
                 request.constructor_value_21 == 200 &&
-                request.table_21_value == 0,
+                request.constructor_value_22 == 0,
             "Effect type two did not preserve the retail "
             "constructor arguments.")) {
         return false;
@@ -113,11 +114,11 @@ bool testTableExpansionAndConstructorPacket(
         }
     }
     if (!check(
-            request.written_packet_words.count() == 50 &&
-                request.written_packet_words.test(0) &&
-                request.written_packet_words.test(72) &&
-                !request.written_packet_words.test(5) &&
-                !request.written_packet_words.test(33),
+            request.packet.written_words.count() == 50 &&
+                request.packet.written_words.test(0) &&
+                request.packet.written_words.test(72) &&
+                !request.packet.written_words.test(5) &&
+                !request.packet.written_words.test(33),
             "The effect packet did not distinguish retail-written "
             "fields from untouched stack words.")) {
         return false;
@@ -191,7 +192,8 @@ bool testEveryRetailEffectType(
                 random);
         if (!check(
                 request.valid &&
-                    request.duration == values.duration &&
+                    request.constructor_value_7 ==
+                        values.duration &&
                     request.constructor_value_12 ==
                         values.constructor_value_12 &&
                     request.packet[3] ==
@@ -291,8 +293,8 @@ bool testMissingTablesRemainExplicit() {
             inputForType(1), tables, random);
     return check(
         request.valid &&
-            request.table_35_value == -1 &&
-            request.table_21_value == -1 &&
+            request.constructor_value_6 == -1 &&
+            request.constructor_value_22 == -1 &&
             request.packet[32] == -1 &&
             request.packet[36] == 6 &&
             request.packet[45] == -1 &&

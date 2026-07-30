@@ -103,7 +103,13 @@ osf::gapi::CafAnimation animationWithCharts(
 
 osf::EnemyPresentationProfile profile() {
     osf::EnemyPresentationProfile result;
-    result.packet_source_value = 77;
+    result.packet_word_31 = 77;
+    result.direct_packet_word_32 = 88;
+    result.direct_packet_word_4 = {10, 11, 12};
+    result.direct_hit_rate = {200, 201, 202};
+    result.direct_packet_word_40 = {40, 41, 42};
+    result.direct_packet_word_41 = {50, 51, 52};
+    result.direct_packet_word_43 = {60, 61, 62};
     result.direct_maximum_target_distance = {
         321, 654, 987};
     result.direct_animation_chart = {4, 5, 6};
@@ -135,12 +141,16 @@ bool testDirectTimingMarkersAndCompletion() {
     controller.select(1);
 
     std::int32_t searches = 0;
+    std::int32_t impact_searches = 0;
+    osf::RetailRandom random(1);
     osf::EnemyPresentationContext context;
     context.position = {20, 30};
     context.direction = 6;
     context.resource_id = 3;
+    context.source_character_number = 14000006;
     context.profile = &values;
     context.animation = &animation;
+    context.random = &random;
     context.target_in_range =
         [&searches](
             std::int32_t minimum,
@@ -155,6 +165,23 @@ bool testDirectTimingMarkersAndCompletion() {
                 0,
                 80,
                 {100, 30},
+            };
+        };
+    context.direct_impact_target =
+        [&impact_searches](
+            std::int32_t maximum,
+            std::int32_t direction) {
+            ++impact_searches;
+            if (maximum != 321 || direction != 1) {
+                return osf::EnemyAiTarget{};
+            }
+            return osf::EnemyAiTarget{
+                true,
+                osf::MovementTargetKind::player,
+                1,
+                75,
+                {100, 30},
+                0,
             };
         };
 
@@ -191,12 +218,26 @@ bool testDirectTimingMarkersAndCompletion() {
                     osf::EnemyPresentationFamily::direct &&
                 update.impact_variant == 0 &&
                 update.target.found &&
-                searches == 1,
+                update.direct_impact_target.found &&
+                update.direct_impact.valid &&
+                update.direct_impact.apply_damage &&
+                update.direct_impact.packet[4] == 10 &&
+                update.direct_impact.packet[31] == 77 &&
+                update.direct_impact.packet[32] == 88 &&
+                update.direct_impact.hit_chance == 98 &&
+                update.direct_impact.hit_roll == 67 &&
+                update.direct_impact
+                        .post_hit_audio_sample == 6 &&
+                update.direct_impact.post_hit_event == 17 &&
+                searches == 1 &&
+                impact_searches == 1,
             "Direct presentation did not scan every crossed "
             "frame or preserve its entry target.")) {
         return false;
     }
 
+    context.event_number =
+        update.direct_impact.post_hit_event;
     update = controller.update(context);
     return check(
         update.handled &&
@@ -204,11 +245,11 @@ bool testDirectTimingMarkersAndCompletion() {
             update.animation_frame == 4 &&
             update.audio_markers ==
                 osf::kEnemyAudioMarkerTwo &&
-            update.completion_event == 2 &&
+            update.completion_event == -1 &&
             controller.presentationAction() == 7 &&
             controller.animationChart() == 0,
-        "Direct presentation did not clamp its last frame, emit "
-        "event two, and return to idle.");
+        "Direct presentation did not clamp its last frame, retain "
+        "the impact event, and return to idle.");
 }
 
 bool testSlowTimingDoesNotRestart() {
@@ -409,6 +450,7 @@ bool testTypeTwelveRetargetDoesNotDependOnTables() {
 
     std::int32_t searches = 0;
     osf::EnemyPresentationContext context;
+    context.direction = 1;
     context.profile = &values;
     context.animation = &animation;
     context.default_target = [&searches]() {
@@ -431,6 +473,114 @@ bool testTypeTwelveRetargetDoesNotDependOnTables() {
         "Effect type twelve skipped or conflated its independent "
         "impact-time target lookup when parameter tables were "
         "not attached.");
+}
+
+bool testDirectSpecialEffectBypassesImpactTarget() {
+    const osf::gapi::CafAnimation animation =
+        animationWithCharts({
+            {5, {0x40u}},
+        });
+    osf::EnemyPresentationProfile values = profile();
+    values.direct_special_effect_number = 5;
+    values.direct_special_variant = 1;
+    values.direct_special_constructor_value_6 = 61;
+    values.direct_special_constructor_value_7 = 71;
+    values.direct_special_constructor_value_21 = 211;
+    osf::RetailRandom random(1);
+    osf::EnemyPresentationController controller;
+    controller.reset();
+    controller.select(2);
+
+    std::int32_t entry_searches = 0;
+    std::int32_t impact_searches = 0;
+    osf::EnemyPresentationContext context;
+    context.position = {10, 20};
+    context.direction = 1;
+    context.source_character_number = 14000009;
+    context.profile = &values;
+    context.animation = &animation;
+    context.random = &random;
+    context.target_in_range =
+        [&entry_searches](
+            std::int32_t,
+            std::int32_t) {
+            ++entry_searches;
+            return osf::EnemyAiTarget{
+                true,
+                osf::MovementTargetKind::player,
+                0,
+                10,
+                {100, 20},
+            };
+        };
+    context.direct_impact_target =
+        [&impact_searches](
+            std::int32_t,
+            std::int32_t) {
+            ++impact_searches;
+            return osf::EnemyAiTarget{
+                true,
+                osf::MovementTargetKind::player,
+                1,
+                5,
+                {20, 20},
+            };
+        };
+
+    const osf::EnemyPresentationUpdate update =
+        controller.update(context);
+    return check(
+        update.impact &&
+            update.direct_impact.valid &&
+            update.direct_impact.special_effect &&
+            update.direct_impact.effect_spawn.valid &&
+            update.direct_impact
+                    .effect_spawn.effect_number == 5 &&
+            entry_searches == 1 &&
+            impact_searches == 0,
+        "A special direct impact skipped entry targeting or ran "
+        "the normal impact target search before spawning its "
+        "retail effect.");
+}
+
+bool testDirectHitEventPrecedesCompletion() {
+    const osf::gapi::CafAnimation animation =
+        animationWithCharts({
+            {4, {0x40u}},
+        });
+    const osf::EnemyPresentationProfile values =
+        profile();
+    osf::RetailRandom random(1);
+    osf::EnemyPresentationController controller;
+    controller.reset();
+    controller.select(1);
+
+    osf::EnemyPresentationContext context;
+    context.direction = 1;
+    context.profile = &values;
+    context.animation = &animation;
+    context.random = &random;
+    context.direct_impact_target =
+        [](std::int32_t, std::int32_t) {
+            return osf::EnemyAiTarget{
+                true,
+                osf::MovementTargetKind::player,
+                0,
+                10,
+                {10, 0},
+                0,
+            };
+        };
+    const osf::EnemyPresentationUpdate update =
+        controller.update(context);
+    return check(
+        !update.active &&
+            update.direct_impact.apply_damage &&
+            update.direct_impact.post_hit_event == 17 &&
+            update.completion_event == -1,
+        "A one-frame direct hit emitted its normal completion "
+        "event after retail event 17 had already taken the "
+        "minus-one event slot.");
 }
 
 bool testInvalidSpeedIsRejectedWithoutStateChange() {
@@ -481,6 +631,8 @@ int main() {
                    testEffectTargetAndCompletion() &&
                    testSkippedFramesAndMissingVisual() &&
                    testTypeTwelveRetargetDoesNotDependOnTables() &&
+                   testDirectSpecialEffectBypassesImpactTarget() &&
+                   testDirectHitEventPrecedesCompletion() &&
                    testInvalidSpeedIsRejectedWithoutStateChange() &&
                    testExistingEventIsNotOverwritten()
         ? 0

@@ -258,7 +258,38 @@ EnemyPresentationController::update(
         result.impact_variant = static_cast<std::int32_t>(
             variant);
         if (result.impact_family ==
-            EnemyPresentationFamily::effect) {
+            EnemyPresentationFamily::direct) {
+            const bool special_effect =
+                enemyDirectImpactUsesSpecialEffect(
+                    *context.profile,
+                    static_cast<std::int32_t>(
+                        variant));
+            if (!special_effect &&
+                context.direct_impact_target) {
+                result.direct_impact_target =
+                    context.direct_impact_target(
+                        context.profile
+                            ->direct_maximum_target_distance[
+                                variant],
+                        direction_);
+            }
+            if (context.random) {
+                result.direct_impact =
+                    resolveEnemyDirectImpact(
+                        {
+                            context
+                                .source_character_number,
+                            context.position,
+                            direction_radians_,
+                            context.event_number,
+                            static_cast<std::int32_t>(
+                                variant),
+                            context.profile,
+                            result.direct_impact_target,
+                        },
+                        *context.random);
+            }
+        } else {
             result.effect_type =
                 context.profile->effect_type[variant];
             result.effect_subtype =
@@ -287,7 +318,7 @@ EnemyPresentationController::update(
                             result.effect_parameter,
                             result.effect_additive,
                             context.profile
-                                ->packet_source_value,
+                                ->packet_word_31,
                             result.effect_impact_target,
                         },
                         *context.parameter_tables,
@@ -299,7 +330,10 @@ EnemyPresentationController::update(
         frame_count <= 0 ||
         animation_frame_ == frame_count - 1) {
         result.active = false;
-        if (context.event_number == -1) {
+        const bool impact_event_precedes_completion =
+            result.direct_impact.post_hit_event != -1;
+        if (context.event_number == -1 &&
+            !impact_event_precedes_completion) {
             result.completion_event =
                 presentation_action_ + 1;
         }

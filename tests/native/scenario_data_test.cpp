@@ -674,8 +674,51 @@ bool testFixture() {
             enemy->movement_speed_scale ==
                 enemy->post_ai_values[54] &&
             enemy->presentation
-                    .packet_source_value ==
+                    .packet_word_31 ==
                 enemy->pre_ai_values[7] &&
+            enemy->presentation
+                    .direct_packet_word_32 ==
+                enemy->pre_ai_values[6] &&
+            enemy->presentation
+                    .direct_special_effect_number ==
+                enemy->post_ai_values[21] &&
+            enemy->presentation
+                    .direct_special_constructor_value_6 ==
+                enemy->post_ai_values[23] &&
+            enemy->presentation
+                    .direct_special_constructor_value_7 ==
+                enemy->post_ai_values[22] &&
+            enemy->presentation
+                    .direct_special_constructor_value_21 ==
+                enemy->post_ai_values[24] &&
+            enemy->presentation
+                    .direct_special_variant ==
+                enemy->post_ai_values[25] &&
+            enemy->presentation.direct_packet_word_4 ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[0],
+                    enemy->post_ai_values[1],
+                    enemy->post_ai_values[2]} &&
+            enemy->presentation.direct_hit_rate ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[6],
+                    enemy->post_ai_values[7],
+                    enemy->post_ai_values[8]} &&
+            enemy->presentation.direct_packet_word_40 ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[35],
+                    enemy->post_ai_values[36],
+                    enemy->post_ai_values[37]} &&
+            enemy->presentation.direct_packet_word_41 ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[29],
+                    enemy->post_ai_values[30],
+                    enemy->post_ai_values[31]} &&
+            enemy->presentation.direct_packet_word_43 ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[32],
+                    enemy->post_ai_values[33],
+                    enemy->post_ai_values[34]} &&
             enemy->presentation
                     .direct_maximum_target_distance ==
                 std::array<std::int32_t, 3>{
@@ -824,6 +867,8 @@ bool testRetailScenarioCatalog() {
     std::set<std::int32_t> enemy_resource_ids;
     std::set<std::pair<std::int32_t, std::int32_t>>
         enemy_effect_pairs;
+    std::set<std::pair<std::int32_t, std::int32_t>>
+        enemy_direct_special_pairs;
     std::map<std::int32_t, std::int32_t>
         enemy_maximum_presentation_chart;
     std::size_t enemy_hole_count = 0;
@@ -899,6 +944,11 @@ bool testRetailScenarioCatalog() {
         }
         for (const osf::ScenarioEnemy& enemy :
              scenario.enemies()) {
+            enemy_direct_special_pairs.emplace(
+                enemy.presentation
+                    .direct_special_effect_number,
+                enemy.presentation
+                    .direct_special_variant);
             for (std::size_t variant = 0;
                  variant < 3;
                  ++variant) {
@@ -1139,6 +1189,19 @@ bool testRetailScenarioCatalog() {
             enemy_presentation_values_match &&
             people_reserved_values ==
                 std::set<std::int32_t>{-100, -85, -65} &&
+            enemy_direct_special_pairs ==
+                std::set<
+                    std::pair<
+                        std::int32_t,
+                        std::int32_t>>{
+                    {-1, 0},
+                    {0, 0},
+                    {1, 0},
+                    {4, 0},
+                    {5, 0},
+                    {6, 1},
+                    {7, 0},
+                } &&
             !enemy_ai_controls.empty() &&
             enemy_ai_controls.find("") ==
                 enemy_ai_controls.end(),

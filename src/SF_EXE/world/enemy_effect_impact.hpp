@@ -1,20 +1,16 @@
 #ifndef OPENSHADOWFLARE_ENEMY_EFFECT_IMPACT_HPP
 #define OPENSHADOWFLARE_ENEMY_EFFECT_IMPACT_HPP
 
+#include "enemy_combat_packet.hpp"
 #include "enemy_target_selector.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 
-#include <array>
-#include <bitset>
-#include <cstddef>
 #include <cstdint>
 
 namespace osf {
 
 class RetailRandom;
 class TableDatabase;
-
-constexpr std::size_t kEnemyEffectPacketWordCount = 77;
 
 struct EnemyEffectImpactInput {
     std::int32_t source_character_number = -1;
@@ -25,7 +21,7 @@ struct EnemyEffectImpactInput {
     std::int32_t subtype = 0;
     std::int32_t parameter = 0;
     std::int32_t additive = 0;
-    std::int32_t packet_source_value = 0;
+    std::int32_t packet_word_31 = 0;
     EnemyAiTarget target;
 };
 
@@ -36,24 +32,24 @@ struct EnemyEffectSpawnRequest {
     std::int32_t source_character_number = -1;
     std::int32_t target_kind = 19;
     std::int32_t target_identifier = -1;
-    std::int32_t table_35_value = -1;
-    std::int32_t duration = 0;
+    std::int32_t constructor_value_6 = -1;
+    std::int32_t constructor_value_7 = 0;
     double direction_radians = 0.0;
     bool has_explicit_origin = false;
     WorldPosition origin;
+    bool has_source_judgement = false;
     ObjectBounds source_judgement;
     std::int32_t constructor_value_12 = 0;
-    std::array<
-        std::int32_t,
-        kEnemyEffectPacketWordCount>
-        packet{};
-    std::bitset<kEnemyEffectPacketWordCount>
-        written_packet_words;
+    EnemyCombatPacket packet;
     std::int32_t packet_kind = 8;
     std::int32_t instance_identifier = -1;
-    std::int32_t subtype = 0;
+    std::int32_t constructor_value_16 = 0;
+    std::int32_t constructor_value_17 = 0;
+    std::int32_t constructor_value_18 = 0;
+    std::int32_t constructor_value_19 = 0;
+    std::int32_t constructor_value_20 = 0;
     std::int32_t constructor_value_21 = 200;
-    std::int32_t table_21_value = -1;
+    std::int32_t constructor_value_22 = -1;
 };
 
 std::int32_t retailEnemyEffectParameter(

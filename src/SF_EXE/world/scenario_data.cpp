@@ -367,9 +367,34 @@ bool readScenarioEnemy(
     enemy.patrol_bottom = pre_ai_values[4];
     enemy.maximum_life = pre_ai_values[8];
     enemy.movement_speed_scale = post_ai_values[54];
-    enemy.presentation.packet_source_value =
+    enemy.presentation.packet_word_31 =
         pre_ai_values[7];
+    enemy.presentation.direct_packet_word_32 =
+        pre_ai_values[6];
+    enemy.presentation.direct_special_effect_number =
+        post_ai_values[21];
+    enemy.presentation
+        .direct_special_constructor_value_6 =
+        post_ai_values[23];
+    enemy.presentation
+        .direct_special_constructor_value_7 =
+        post_ai_values[22];
+    enemy.presentation
+        .direct_special_constructor_value_21 =
+        post_ai_values[24];
+    enemy.presentation.direct_special_variant =
+        post_ai_values[25];
     for (std::size_t variant = 0; variant < 3; ++variant) {
+        enemy.presentation.direct_packet_word_4[variant] =
+            post_ai_values[variant];
+        enemy.presentation.direct_hit_rate[variant] =
+            post_ai_values[6 + variant];
+        enemy.presentation.direct_packet_word_40[variant] =
+            post_ai_values[35 + variant];
+        enemy.presentation.direct_packet_word_41[variant] =
+            post_ai_values[29 + variant];
+        enemy.presentation.direct_packet_word_43[variant] =
+            post_ai_values[32 + variant];
         enemy.presentation
             .direct_maximum_target_distance[variant] =
             post_ai_values[3 + variant];

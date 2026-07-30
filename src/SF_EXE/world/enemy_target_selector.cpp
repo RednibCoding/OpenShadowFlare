@@ -1,5 +1,6 @@
 #include "enemy_target_selector.hpp"
 
+#include "actor_direction.hpp"
 #include "movement_controller.hpp"
 
 #include <algorithm>
@@ -100,6 +101,7 @@ EnemyAiTarget findEnemyTargetInRange(
             static_cast<std::int32_t>(slot),
             distance,
             candidate.position,
+            candidate.combat_defense,
         };
     }
     if (selected.found) {
@@ -143,6 +145,7 @@ EnemyAiTarget findEnemyTargetInRange(
             character_number,
             distance,
             candidate->position,
+            candidate->combat_defense,
         };
     }
     return selected;
@@ -181,6 +184,7 @@ EnemyAiTarget findDefaultEnemyTarget(
             static_cast<std::int32_t>(slot),
             distance,
             candidate.position,
+            candidate.combat_defense,
         };
     }
     if (selected.found) {
@@ -211,6 +215,98 @@ EnemyAiTarget findDefaultEnemyTarget(
             candidate.character_number,
             distance,
             candidate.position,
+            candidate.combat_defense,
+        };
+    }
+    return selected;
+}
+
+EnemyAiTarget findEnemyDirectImpactTarget(
+    const EnemyTargetSearchContext& context,
+    std::int32_t maximum_distance,
+    std::int32_t direction,
+    EnemyTargetLifeRequirement life_requirement) {
+    EnemyAiTarget selected;
+    for (std::size_t slot = 0;
+         slot < context.players.size();
+         ++slot) {
+        const EnemyPlayerTargetState& candidate =
+            context.players[slot];
+        if (!candidate.present ||
+            candidate.active_state == 0 ||
+            candidate.scenario_id != context.scenario_id ||
+            !living(
+                candidate.current_life,
+                life_requirement)) {
+            continue;
+        }
+        const std::int32_t distance =
+            targetDistance(
+                context,
+                candidate.position,
+                candidate.bounds);
+        const std::int32_t candidate_direction =
+            retailDirectionForVector(
+                candidate.position.x -
+                    context.position.x,
+                candidate.position.y -
+                    context.position.y);
+        const std::int32_t direction_difference =
+            (direction - candidate_direction + 8) % 8;
+        if (distance > maximum_distance ||
+            (direction_difference != 0 &&
+             direction_difference != 1 &&
+             direction_difference != 7) ||
+            !nearer(selected, distance)) {
+            continue;
+        }
+        selected = {
+            true,
+            MovementTargetKind::player,
+            static_cast<std::int32_t>(slot),
+            distance,
+            candidate.position,
+            candidate.combat_defense,
+        };
+    }
+    if (selected.found) {
+        return selected;
+    }
+
+    for (const EnemyCompanionTargetState& candidate :
+         context.companions) {
+        if (!candidate.present ||
+            candidate.scenario_id != context.scenario_id ||
+            !candidate.attack_target_enabled ||
+            candidate.owner_mode == 1 ||
+            !living(
+                candidate.current_life,
+                life_requirement)) {
+            continue;
+        }
+        const std::int32_t distance =
+            targetDistance(
+                context,
+                candidate.position,
+                candidate.bounds);
+        const std::int32_t candidate_direction =
+            retailDirectionForVector(
+                candidate.position.x -
+                    context.position.x,
+                candidate.position.y -
+                    context.position.y);
+        if (distance > maximum_distance ||
+            direction != candidate_direction ||
+            !nearer(selected, distance)) {
+            continue;
+        }
+        selected = {
+            true,
+            MovementTargetKind::scenario_actor,
+            candidate.character_number,
+            distance,
+            candidate.position,
+            candidate.combat_defense,
         };
     }
     return selected;

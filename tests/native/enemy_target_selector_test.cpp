@@ -22,6 +22,7 @@ osf::EnemyPlayerTargetState player(
     result.active_state = active_state;
     result.scenario_id = scenario;
     result.current_life = life;
+    result.combat_defense = x + 1000;
     result.position = {x, 0};
     return result;
 }
@@ -38,7 +39,9 @@ osf::EnemyCompanionTargetState companion(
     result.character_number = character_number;
     result.scenario_id = scenario;
     result.script_active = script_active;
+    result.attack_target_enabled = true;
     result.current_life = life;
+    result.combat_defense = x + 2000;
     result.owner_mode = owner_mode;
     result.position = {x, 0};
     return result;
@@ -277,6 +280,114 @@ bool testJudgementBoundsDistance() {
         "judgement bounds.");
 }
 
+bool testDirectImpactPlayerRules() {
+    osf::EnemyTargetSearchContext search = context();
+    search.players[0] = player(301, 6, 2);
+    search.players[1] = player(101);
+    search.companions.push_back(
+        companion(16000009, 2));
+
+    osf::EnemyAiTarget target =
+        osf::findEnemyDirectImpactTarget(
+            search,
+            100,
+            1,
+            osf::EnemyTargetLifeRequirement::living);
+    if (!check(
+            target.found &&
+                target.kind ==
+                    osf::MovementTargetKind::player &&
+                target.identifier == 1 &&
+                target.distance == 100 &&
+                target.combat_defense == 1101,
+            "Direct impact did not accept a nonzero-state player "
+            "at its inclusive range or preserve player priority "
+            "and combat defense.")) {
+        return false;
+    }
+
+    search.players[1].position = {100, -100};
+    target = osf::findEnemyDirectImpactTarget(
+        search,
+        200,
+        1,
+        osf::EnemyTargetLifeRequirement::living);
+    if (!check(
+            target.found &&
+                target.identifier == 1,
+            "Direct impact rejected a player one direction sector "
+            "beside the attacker's facing.")) {
+        return false;
+    }
+    search.players[1].position = {0, -100};
+    target = osf::findEnemyDirectImpactTarget(
+        search,
+        200,
+        1,
+        osf::EnemyTargetLifeRequirement::living);
+    return check(
+        target.found &&
+            target.kind ==
+                osf::MovementTargetKind::scenario_actor &&
+            target.identifier == 16000009,
+        "Direct impact accepted a player more than one direction "
+        "sector outside the attacker's facing instead of using "
+        "its companion fallback.");
+}
+
+bool testDirectImpactCompanionRules() {
+    osf::EnemyTargetSearchContext search = context();
+    search.companions = {
+        companion(16000009, 101, 6, false, 100, 2),
+        companion(16000010, 51),
+    };
+    search.companions[1].attack_target_enabled = false;
+
+    osf::EnemyAiTarget target =
+        osf::findEnemyDirectImpactTarget(
+            search,
+            100,
+            1,
+            osf::EnemyTargetLifeRequirement::living);
+    if (!check(
+            target.found &&
+                target.kind ==
+                    osf::MovementTargetKind::
+                        scenario_actor &&
+                target.identifier == 16000009 &&
+                target.combat_defense == 2101,
+            "Direct impact incorrectly required the entry "
+            "selector's fixed companion IDs, script flag, or "
+            "owner mode zero.")) {
+        return false;
+    }
+
+    search.companions[0].position = {100, -100};
+    target = osf::findEnemyDirectImpactTarget(
+        search,
+        200,
+        1,
+        osf::EnemyTargetLifeRequirement::living);
+    if (!check(
+            !target.found,
+            "Direct impact gave a companion the player's adjacent-"
+            "direction tolerance.")) {
+        return false;
+    }
+
+    search.companions[0].position = {101, 0};
+    search.companions[0].owner_mode = 1;
+    target = osf::findEnemyDirectImpactTarget(
+        search,
+        100,
+        1,
+        osf::EnemyTargetLifeRequirement::living);
+    return check(
+        !target.found,
+        "Direct impact accepted owner mode one or an actor without "
+        "the active-status high bit.");
+}
+
 }  // namespace
 
 int main() {
@@ -284,7 +395,9 @@ int main() {
                    testRetailPlayerEligibility() &&
                    testCompanionFallbackAndEligibility() &&
                    testDefaultTargetRules() &&
-                   testJudgementBoundsDistance()
+                   testJudgementBoundsDistance() &&
+                   testDirectImpactPlayerRules() &&
+                   testDirectImpactCompanionRules()
                ? 0
                : 1;
 }

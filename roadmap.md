@@ -336,8 +336,23 @@ variants and random draw, and emit a typed spawn request. Type 12 repeats the
 default target lookup at impact and keeps the player-slot versus
 companion-character distinction. Unwritten stack words are marked instead of
 being given invented meanings, and the catalog's disabled type `-1` stays a
-no-op. Direct hit selection, hit chance, damage, movement consumption, the
-shared effect owner, and live AI attachment remain next.
+no-op.
+
+Direct impacts are decoded through the damage-owner boundary too. Their
+impact-time search is deliberately separate from animation-entry targeting:
+it accepts nonzero-state players across the facing sector and its two
+neighbors, then falls back to active type-five actors in the exact facing
+sector. Players still win even when a companion is closer. The resolver
+builds the exact written words of the shared 77-word packet, consumes the
+visual draw before the clamped 20-to-98-percent hit roll, and emits distinct
+damage, miss, sample-six, and event-17 requests without applying them early.
+Successful damage requests retain the attacker's current position passed to
+the retail target callback.
+It also preserves the MCT-controlled special branch, its two random draws,
+all shipped effect-number switches, and its bypass of normal impact targeting.
+Applying the packet to player and companion health, the player-only
+post-damage death abort, movement consumption, shared effect ownership, audio
+playback, and live AI attachment remain next.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback

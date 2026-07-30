@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_ENEMY_PRESENTATION_HPP
 #define OPENSHADOWFLARE_ENEMY_PRESENTATION_HPP
 
+#include "enemy_direct_impact.hpp"
 #include "enemy_effect_impact.hpp"
 #include "enemy_presentation_profile.hpp"
 #include "enemy_target_selector.hpp"
@@ -36,6 +37,7 @@ struct EnemyPresentationContext {
     RetailRandom* random = nullptr;
     EnemyTargetSearch target_in_range;
     EnemyDefaultTargetSearch default_target;
+    EnemyDirectImpactTargetSearch direct_impact_target;
 };
 
 struct EnemyPresentationUpdate {
@@ -57,6 +59,8 @@ struct EnemyPresentationUpdate {
     std::int32_t effect_parameter = 0;
     std::int32_t effect_additive = 0;
     EnemyAiTarget target;
+    EnemyAiTarget direct_impact_target;
+    EnemyDirectImpactResult direct_impact;
     EnemyAiTarget effect_impact_target;
     EnemyEffectSpawnRequest effect_spawn;
     std::int32_t completion_event = -1;

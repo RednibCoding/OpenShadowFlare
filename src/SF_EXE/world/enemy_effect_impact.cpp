@@ -34,65 +34,65 @@ bool configureType(
     switch (input.type) {
     case 1:
     case 16:
-        request.duration = 250;
+        request.constructor_value_7 = 250;
         request.constructor_value_12 = 0;
-        request.packet[3] = 0;
-        request.packet[34] = 20000;
-        request.packet[72] = 0;
+        request.packet.write(3, 0);
+        request.packet.write(34, 20000);
+        request.packet.write(72, 0);
         return true;
     case 2:
-        request.duration = 250;
+        request.constructor_value_7 = 250;
         request.constructor_value_12 = 0;
-        request.packet[3] = 1;
-        request.packet[34] = 21013;
-        request.packet[72] = 0;
+        request.packet.write(3, 1);
+        request.packet.write(34, 21013);
+        request.packet.write(72, 0);
         return true;
     case 3:
-        request.duration = 0;
+        request.constructor_value_7 = 0;
         request.constructor_value_12 = 0;
         request.has_explicit_origin = true;
         request.origin = input.source_position;
-        request.packet[3] = 0;
-        request.packet[34] = 20005;
-        request.packet[72] = 0;
+        request.packet.write(3, 0);
+        request.packet.write(34, 20005);
+        request.packet.write(72, 0);
         return true;
     case 4:
-        request.duration = 0;
+        request.constructor_value_7 = 0;
         request.constructor_value_12 = 10;
-        request.packet[3] = 0;
-        request.packet[34] = 20001;
-        request.packet[72] = 0;
+        request.packet.write(3, 0);
+        request.packet.write(34, 20001);
+        request.packet.write(72, 0);
         return true;
     case 5:
-        request.duration = 0;
+        request.constructor_value_7 = 0;
         request.constructor_value_12 = 10;
-        request.packet[3] = 1;
-        request.packet[34] = 21013;
-        request.packet[72] = 0;
+        request.packet.write(3, 1);
+        request.packet.write(34, 21013);
+        request.packet.write(72, 0);
         return true;
     case 10:
-        request.duration = 0;
+        request.constructor_value_7 = 0;
         request.constructor_value_12 = 0;
         request.has_explicit_origin = true;
         request.origin = input.source_position;
-        request.packet[3] = 0;
-        request.packet[34] =
-            random.next() % 4 + 21000;
-        request.packet[72] = 1;
+        request.packet.write(3, 0);
+        request.packet.write(
+            34, random.next() % 4 + 21000);
+        request.packet.write(72, 1);
         return true;
     case 11:
-        request.duration = 250;
+        request.constructor_value_7 = 250;
         request.constructor_value_12 = 0;
-        request.packet[3] = 0;
-        request.packet[34] = 20000;
-        request.packet[72] = 0;
+        request.packet.write(3, 0);
+        request.packet.write(34, 20000);
+        request.packet.write(72, 0);
         return true;
     case 12:
-        request.duration = 0;
+        request.constructor_value_7 = 0;
         request.constructor_value_12 = 10;
-        request.packet[3] = 1;
-        request.packet[34] = 21013;
-        request.packet[72] = 0;
+        request.packet.write(3, 1);
+        request.packet.write(34, 21013);
+        request.packet.write(72, 0);
         if (input.target.found) {
             request.target_kind =
                 input.target.kind ==
@@ -104,27 +104,27 @@ bool configureType(
         }
         return true;
     case 13:
-        request.duration = 0;
+        request.constructor_value_7 = 0;
         request.constructor_value_12 = 0;
         request.has_explicit_origin = true;
         request.origin = input.source_position;
-        request.packet[3] = 0;
-        request.packet[34] = 20005;
-        request.packet[72] = 0;
+        request.packet.write(3, 0);
+        request.packet.write(34, 20005);
+        request.packet.write(72, 0);
         return true;
     case 14:
-        request.duration = 250;
+        request.constructor_value_7 = 250;
         request.constructor_value_12 = 0;
-        request.packet[3] = 2;
-        request.packet[34] = 21019;
-        request.packet[72] = 0;
+        request.packet.write(3, 2);
+        request.packet.write(34, 21019);
+        request.packet.write(72, 0);
         return true;
     case 21:
-        request.duration = 250;
+        request.constructor_value_7 = 250;
         request.constructor_value_12 = 0;
-        request.packet[3] = 0;
-        request.packet[34] = 21000;
-        request.packet[72] = 0;
+        request.packet.write(3, 0);
+        request.packet.write(34, 21000);
+        request.packet.write(72, 0);
         return true;
     default:
         return false;
@@ -164,37 +164,40 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
     request.source_character_number =
         input.source_character_number;
     request.direction_radians = input.direction_radians;
+    request.has_source_judgement = true;
     request.source_judgement = input.source_judgement;
-    request.subtype = input.subtype;
+    request.constructor_value_17 = input.subtype;
 
-    request.packet[0] = 2;
-    request.packet[1] = 3;
-    request.packet[2] = input.source_character_number;
-    request.packet[4] = input.parameter;
-    request.packet[31] = input.packet_source_value;
+    request.packet.write(0, 2);
+    request.packet.write(1, 3);
+    request.packet.write(
+        2, input.source_character_number);
+    request.packet.write(4, input.parameter);
+    request.packet.write(31, input.packet_word_31);
     const std::int32_t type_value =
         retailEnemyEffectParameter(
             tables,
             input.type,
             input.subtype,
             5);
-    request.packet[32] = type_value;
-    request.packet[35] = 8;
-    request.packet[36] =
+    request.packet.write(32, type_value);
+    request.packet.write(35, 8);
+    request.packet.write(
+        36,
         retailEnemyEffectParameter(
             tables,
             input.type,
             input.subtype,
             1) +
-        input.additive;
-    request.packet[37] = 0;
-    request.packet[38] = 0;
-    request.packet[39] = 0;
-    request.packet[40] = type_value;
-    request.packet[41] = type_value;
-    request.packet[42] = 0;
-    request.packet[43] = type_value;
-    request.packet[44] = 0;
+        input.additive);
+    request.packet.write(37, 0);
+    request.packet.write(38, 0);
+    request.packet.write(39, 0);
+    request.packet.write(40, type_value);
+    request.packet.write(41, type_value);
+    request.packet.write(42, 0);
+    request.packet.write(43, type_value);
+    request.packet.write(44, 0);
     for (std::size_t table_index = 0;
          table_index < 9;
          ++table_index) {
@@ -203,57 +206,40 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
                      table_index);
         const std::int32_t first_column =
             input.subtype * 3 - 3;
-        request.packet[54 + table_index] =
+        request.packet.write(
+            54 + table_index,
             tableValue(
                 tables,
                 table_number,
                 input.type,
-                first_column);
-        request.packet[63 + table_index] =
+                first_column));
+        request.packet.write(
+            63 + table_index,
             tableValue(
                 tables,
                 table_number,
                 input.type,
-                first_column + 1);
-        request.packet[45 + table_index] =
+                first_column + 1));
+        request.packet.write(
+            45 + table_index,
             tableValue(
                 tables,
                 table_number,
                 input.type,
-                first_column + 2);
+                first_column + 2));
     }
-    request.packet[73] = -1;
-    request.packet[74] = -1;
-    request.packet[75] = 8;
-    request.packet[76] = 0;
-    request.written_packet_words.set(0);
-    request.written_packet_words.set(1);
-    request.written_packet_words.set(2);
-    request.written_packet_words.set(4);
-    request.written_packet_words.set(31);
-    request.written_packet_words.set(32);
-    for (std::size_t index = 35;
-         index <= 44;
-         ++index) {
-        request.written_packet_words.set(index);
-    }
-    for (std::size_t index = 45;
-         index <= 71;
-         ++index) {
-        request.written_packet_words.set(index);
-    }
-    request.written_packet_words.set(73);
-    request.written_packet_words.set(74);
-    request.written_packet_words.set(75);
-    request.written_packet_words.set(76);
+    request.packet.write(73, -1);
+    request.packet.write(74, -1);
+    request.packet.write(75, 8);
+    request.packet.write(76, 0);
 
-    request.table_35_value =
+    request.constructor_value_6 =
         retailEnemyEffectParameter(
             tables,
             input.type,
             input.subtype,
             3);
-    request.table_21_value =
+    request.constructor_value_22 =
         retailEnemyEffectParameter(
             tables,
             input.type,
@@ -261,11 +247,6 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
             4);
     request.valid = configureType(
         input, request, random);
-    if (request.valid) {
-        request.written_packet_words.set(3);
-        request.written_packet_words.set(34);
-        request.written_packet_words.set(72);
-    }
     return request;
 }
 

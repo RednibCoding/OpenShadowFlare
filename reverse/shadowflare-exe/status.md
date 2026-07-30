@@ -440,6 +440,31 @@ All shipped nonnegative type/subtype pairs fit those tables; type `-1` remains
 disabled. The shared runtime effect owner and the direct damage path are not
 attached yet.
 
+The direct impact half of `0x0045a2f0` is reconstructed up to its target
+damage callbacks. `0x00453d50` accepts living same-scenario players with any
+nonzero active state, inclusive judgement distance, and the attacker's exact
+or neighboring facing sector. Only if no player qualifies does `0x00453fa0`
+scan type-five actors, requiring the active-status high bit, exact facing,
+positive life, and owner mode other than one. Both keep strict first-entry
+ties. The common 77-word packet now carries post-AI values 0 through 2, 6
+through 8, 29 through 37, plus pre-AI values 6 and 7 at their exact indices.
+Its visual draw happens before `0x00413e00` clamps attack minus defense to
+20 through 98 and consumes the hit roll. Misses emit the native miss request;
+hits emit a damage request with the attacker's current position, followed by
+sample 6 and event 17 only over event minus one. Player damage may switch the
+attacker to presentation 11 and abort those post-hit effects, so that decision
+remains explicit for the future live owner.
+
+The alternative direct branch is preserved separately. When post-AI value 21
+is not minus one and value 25 matches the attack variant, it skips normal
+impact targeting and hit chance, consumes two visual draws, applies the exact
+effect-number 0, 4, 5, 7, or default packet switch, and emits the 22-argument
+effect request using post-AI values 23, 22, and 24. The shipped catalog
+contains pairs `-1/0`, `0/0`, `1/0`, `4/0`, `5/0`, `6/1`, and `7/0`.
+Actual player/type-five health mutation, miss presentation, effect-list
+ownership, audio playback, and live enemy attachment are still outside this
+passive boundary.
+
 The first native dispatcher pair is reconstructed separately. `0x0045c350`
 implements action zero as a timed idle: AID parameter one is its duration,
 event 11 holds it active, and event zero is restored when the counter reaches
