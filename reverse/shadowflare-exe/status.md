@@ -399,7 +399,21 @@ Mode three in `0x00454310` draws the patrol X and Y independently from
 inclusive ranges on its first active update. A zero movement limit returns
 before either draw. The portable controller pins all 61 shipped wait actions,
 all 92 patrol actions, and the six zero-duration patrol cases, but stays
-dormant while action numbers 2 through 11 remain unimplemented.
+dormant while later presentation-side behavior remains incomplete.
+
+The three short dispatch handlers after patrol are pinned too. `0x0045c560`
+maps AI actions two through four onto presentation actions one through three,
+and `0x0045c5a0` maps actions five through seven onto presentation actions
+four through six. They clear the current presentation and reset the elapsed
+action counter on entry, then do nothing on later updates while the
+presentation routine owns completion. `0x0045c5e0` handles action eight by
+resetting the counter on entry without changing the current presentation.
+
+The shipped catalog uses action two 450 times, action three 158 times, action
+five 178 times, action six 91 times, and action seven 42 times. It contains no
+action-four or action-eight records. Their native handlers are still covered,
+and unsupported actions nine through eleven remain unable to alter controller
+state.
 
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named

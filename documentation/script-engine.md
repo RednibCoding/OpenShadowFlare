@@ -121,6 +121,16 @@ actions and 92 patrol actions, including six of those zero-duration patrols.
 This passive controller remains dormant until the rest of the native action
 dispatcher can be connected without leaving an enemy in an unsupported state.
 
+Actions two through seven are the two three-variant animated action families.
+Their native handlers map them directly to presentation actions one through
+six, clear the old presentation, and reset the action counter on entry. The
+presentation routine owns targeting and effects, then returns the matching
+event number when its animation finishes. Action eight is different: it
+resets its action counter but deliberately keeps the presentation already in
+progress. The shipped `Control.aid` does not select actions four or eight, but
+their executable paths are still preserved. None of these actions drive a
+live enemy until their presentation-side behavior is reconstructed.
+
 ### What is not a script
 
 Several other binary files are essential to gameplay but should not be routed

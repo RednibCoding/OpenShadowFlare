@@ -213,6 +213,22 @@ With a zero update limit it exits before either draw. The passive portable
 controller reproduces this event, counter, presentation, speed, and random
 contract without yet changing a live enemy.
 
+The next dispatcher group is intentionally small. Actions two through four
+enter `0x0045c560` and request presentation actions one through three; actions
+five through seven enter `0x0045c5a0` and request presentation actions four
+through six. Both handlers clear the current presentation and reset the
+action counter only on entry. Their presentation routines later restore idle
+action seven and publish the matching event number when the animation ends.
+Action eight at `0x0045c5e0` only records its own entry and resets the counter,
+leaving the current presentation alone.
+
+`Control.aid` contains 450 action-two records, 158 action-three records, 178
+action-five records, 91 action-six records, and 42 action-seven records. It
+contains no action-four or action-eight records, even though both native
+paths exist. These dispatch transitions are portable and tested, but remain
+behind the live-enemy boundary until their animation, targeting, damage, and
+completion-event work can be connected as one unit.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

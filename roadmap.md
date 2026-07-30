@@ -284,13 +284,16 @@ value 8 initializes both current and maximum life, and post-controller value
 54 scales AID movement speed in thousandths. All other initializer words stay
 indexed until another executable consumer proves them.
 
-Native actions zero and one now have an executable-owned controller behind the
-live-actor boundary. It reproduces timed waiting, bounded patrol target draws,
-movement and idle phases, speed scaling, presentation requests, and the exact
-event 11/12 holding states. Its tests also cover the six shipped zero-duration
-patrol records, which must not consume random state. Actions 2 through 11 are
-still unsupported, so the controller is deliberately not allowed to drive a
-live enemy yet.
+Native actions zero through eight now have an executable-owned controller
+behind the live-actor boundary. It reproduces timed waiting, bounded patrol
+target draws, movement and idle phases, speed scaling, and the exact event
+11/12 holding states. Its tests also cover the six shipped zero-duration
+patrol records, which must not consume random state. The two three-variant
+animated action families preserve their presentation mappings and entry-only
+counter reset, while action eight keeps the presentation already in progress.
+Actions nine through eleven and the presentation-side targeting, damage, and
+completion work are still unsupported, so the controller does not yet drive a
+live enemy.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small

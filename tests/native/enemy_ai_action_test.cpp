@@ -1,5 +1,6 @@
 #include "world/enemy_ai_action.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -155,7 +156,7 @@ bool testRetailPatrolAction() {
 
 bool testUnsupportedActionStaysDormant() {
     osf::EnemyAiActionController controller;
-    controller.select(action(2, 0));
+    controller.select(action(9, 0));
     osf::EnemyAiActionContext context;
     osf::RetailRandom random;
     const std::uint32_t initial_random =
@@ -202,7 +203,66 @@ bool testZeroDurationPatrolDoesNotDrawRandom() {
         "consumed random state.");
 }
 
-bool testRetailPassiveActionCatalog() {
+bool testRetailPresentationActionDispatch() {
+    osf::EnemyAiActionController controller;
+    osf::EnemyAiActionContext context;
+    context.presentation_action = 7;
+    osf::RetailRandom random;
+    const std::uint32_t initial_random =
+        random.state();
+
+    for (std::int32_t action_number = 2;
+         action_number <= 7;
+         ++action_number) {
+        controller.select(
+            action(action_number, 100));
+        const osf::EnemyAiActionUpdate update =
+            controller.update(context, random);
+        if (!check(
+                update.handled &&
+                    update.event_number == -1 &&
+                    update.clear_current_presentation &&
+                    update.requested_presentation_action ==
+                        action_number - 1 &&
+                    controller.currentAction() ==
+                        action_number &&
+                    controller.actionCounter() == 1 &&
+                    controller.eventNumber() == -1,
+                "An enemy presentation action did not reproduce "
+                "the native dispatcher mapping.")) {
+            return false;
+        }
+
+        const osf::EnemyAiActionUpdate held =
+            controller.update(context, random);
+        if (!check(
+                held.handled &&
+                    held.event_number == -1 &&
+                    !held.clear_current_presentation &&
+                    held.requested_presentation_action == -1 &&
+                    controller.actionCounter() == 2,
+                "An active enemy presentation action restarted "
+                "before its animation completed.")) {
+            return false;
+        }
+    }
+
+    controller.select(action(8, 100));
+    const osf::EnemyAiActionUpdate retained =
+        controller.update(context, random);
+    return check(
+        retained.handled &&
+            retained.event_number == -1 &&
+            !retained.clear_current_presentation &&
+            retained.requested_presentation_action == -1 &&
+            controller.currentAction() == 8 &&
+            controller.actionCounter() == 1 &&
+            random.state() == initial_random,
+        "Enemy action eight did not retain the active native "
+        "presentation.");
+}
+
+bool testRetailActionCatalog() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     osf::AiControlDatabase database;
     std::string error;
@@ -222,6 +282,7 @@ bool testRetailPassiveActionCatalog() {
     std::size_t patrol_count = 0;
     std::size_t zero_patrol = 0;
     std::size_t ordinary_patrol = 0;
+    std::array<std::size_t, 12> action_counts{};
     bool values_match = true;
     for (const osf::AiControlList& list :
          database.lists()) {
@@ -229,6 +290,14 @@ bool testRetailPassiveActionCatalog() {
              list.events()) {
             for (const osf::AiActionData& candidate :
                  event.actions()) {
+                if (candidate.action_number >= 0 &&
+                    candidate.action_number <
+                        static_cast<std::int32_t>(
+                            action_counts.size())) {
+                    ++action_counts[
+                        static_cast<std::size_t>(
+                            candidate.action_number)];
+                }
                 if (candidate.action_number == 0) {
                     ++wait_count;
                     switch (candidate.parameters[1]) {
@@ -264,6 +333,21 @@ bool testRetailPassiveActionCatalog() {
             }
         }
     }
+    const std::array<std::size_t, 12>
+        expected_action_counts{
+            61,
+            92,
+            450,
+            158,
+            0,
+            178,
+            91,
+            42,
+            0,
+            61,
+            205,
+            0,
+        };
     return check(
         wait_count == 61 &&
             wait_minus_one == 1 &&
@@ -272,9 +356,10 @@ bool testRetailPassiveActionCatalog() {
             patrol_count == 92 &&
             zero_patrol == 6 &&
             ordinary_patrol == 86 &&
+            action_counts == expected_action_counts &&
             values_match,
-        "The shipped passive-action parameters no longer match the "
-        "traced native handlers.");
+        "The shipped action distribution or passive parameters no "
+        "longer match the traced native handlers.");
 #else
     return true;
 #endif
@@ -287,7 +372,8 @@ int main() {
                    testRetailPatrolAction() &&
                    testUnsupportedActionStaysDormant() &&
                    testZeroDurationPatrolDoesNotDrawRandom() &&
-                   testRetailPassiveActionCatalog()
+                   testRetailPresentationActionDispatch() &&
+                   testRetailActionCatalog()
                ? 0
                : 1;
 }

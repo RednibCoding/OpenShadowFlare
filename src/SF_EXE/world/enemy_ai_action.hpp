@@ -20,6 +20,7 @@ struct EnemyAiActionUpdate {
     bool handled = false;
     std::int32_t event_number = -1;
     std::int32_t requested_presentation_action = -1;
+    bool clear_current_presentation = false;
     bool begin_patrol = false;
     WorldPosition patrol_destination;
     std::int32_t movement_speed = 0;

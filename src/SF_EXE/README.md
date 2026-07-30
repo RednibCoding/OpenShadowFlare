@@ -142,8 +142,11 @@ The first dispatcher unit is ready behind the same boundary. Native actions
 zero and one reproduce authored waiting and bounded patrol cycles, including
 their holding/completion events, inclusive random destinations, movement
 versus idle counters, speed scaling, presentation requests, and the shipped
-zero-duration patrol case. Unsupported action numbers are explicitly left
-dormant instead of being approximated.
+zero-duration patrol case. Actions two through seven preserve the native
+mapping to presentation actions one through six and their entry-only reset
+behavior. Action eight preserves the active presentation. Actions nine
+through eleven, along with incomplete presentation-side effects, are
+explicitly left dormant instead of being approximated.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

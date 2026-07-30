@@ -9,6 +9,8 @@ namespace {
 
 constexpr std::int32_t kWaitAction = 0;
 constexpr std::int32_t kPatrolAction = 1;
+constexpr std::int32_t kFirstPresentationAction = 2;
+constexpr std::int32_t kLastPresentationAction = 8;
 constexpr std::int32_t kIdlePresentation = 7;
 constexpr std::int32_t kWalkPresentation = 8;
 constexpr std::int32_t kWaitEvent = 11;
@@ -105,8 +107,8 @@ EnemyAiActionUpdate EnemyAiActionController::update(
     EnemyAiActionUpdate result;
     const std::int32_t action_number =
         action_.action_number;
-    if (action_number != kWaitAction &&
-        action_number != kPatrolAction) {
+    if (action_number < kWaitAction ||
+        action_number > kLastPresentationAction) {
         return result;
     }
 
@@ -124,7 +126,14 @@ EnemyAiActionUpdate EnemyAiActionController::update(
         next_action_counter = 0;
     }
 
-    if (action_number == kWaitAction) {
+    if (action_number >= kFirstPresentationAction) {
+        if (entering &&
+            action_number < kLastPresentationAction) {
+            result.clear_current_presentation = true;
+            result.requested_presentation_action =
+                action_number - 1;
+        }
+    } else if (action_number == kWaitAction) {
         if (entering &&
             context.presentation_action !=
                 kIdlePresentation) {
@@ -136,7 +145,7 @@ EnemyAiActionUpdate EnemyAiActionController::update(
                     next_action_counter
                 ? 0
                 : kWaitEvent;
-    } else {
+    } else if (action_number == kPatrolAction) {
         const std::int32_t movement_duration =
             action_.parameters[kPatrolMovementDuration];
         const std::int32_t idle_duration =
