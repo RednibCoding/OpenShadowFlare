@@ -1229,6 +1229,46 @@ reaction displacement, and ordinary configured effect-list ownership now run
 at the live actor boundary described above. Specialized effect dispatch
 families remain separate follow-up work.
 
+## Enemy effect controllers and runtime actors
+
+Enemy effect presentations enqueue a controller request; they do not create a
+projectile directly. `0x0042fdc0` stores the request in a `0x3b0`-byte node,
+including both actor identities, the direction, optional origin and source
+judgement, the complete combat packet, the authored delay, and the remaining
+constructor values. The list updater at `0x0042fd60` keeps that node until the
+handler selected by `0x00429ec0` returns zero.
+
+All twelve nonnegative effect types found in the shipped enemy records have a
+specialized branch. The dispatch covers types 1, 2, 3, 4, 5, 10, 11, 12, 13,
+14, 16, and 21. This is separate from the much simpler 21000-series receiver
+visuals already owned by `CombatEffectActor`.
+
+Types 1 and 2 establish the controller/actor boundary. Their first controller
+update creates source resources `10000012` and `11000027` respectively at the
+source actor's then-current position. At constructor delay 12, the handler
+resolves that position again and creates a second actor 180 world units along
+the stored angle. The type-1 child uses resource `10000010` and positional
+sample 19; type 2 uses resource `10000040` and sample 94. Both use
+`[-50,-50,50,50]` judgement, retain the packet, and enter runtime visual action
+one. The controller expires after creating the child, independently of both
+visual actors.
+
+`0x00429dd0` creates those children in the category-50000000 actor family.
+`0x0045e1a0` installs a 126-word descriptor, and `0x0045e1e0` owns their
+common update. That update supports attached and fixed movement, an inclusive
+collision window, independent player/companion/enemy target bits, exact target
+IDs, living and current-scenario checks, optional previous-hit storage,
+physical or magical evasion checks, receiver callbacks, configured positional
+audio, and ten visual action modes. Action one at `0x0045fff0` uses chart five,
+scans every newly crossed CAF frame for impact and audio markers, and hands
+the actor to action two after its final frame.
+
+The portable implementation must preserve both lists. A controller is
+simulation state that can create several actors over time; a runtime actor is
+renderable state that can move, collide, and dispatch an impact. Treating an
+enemy request as one short CAF would make the picture plausible while moving
+the actual effect, sound, and damage to the wrong update.
+
 ## Enemy kill rewards
 
 The lethal callback at `0x004134a0` uses each enemy's MCT pre-AI value 13 as

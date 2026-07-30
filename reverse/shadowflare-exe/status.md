@@ -12,6 +12,63 @@ Addresses describe the retail executable only. The portable executable does
 not try to preserve internal addresses, compiler-generated class layouts, or
 operating-system handles.
 
+## Enemy effect runtime
+
+The effect path has two distinct retail owners. `0x0042fdc0` first copies the
+22 constructor arguments into a `0x3b0`-byte controller node. That node keeps
+the effect number, source and target identities, direction, optional explicit
+origin, source judgement, delay, complete 77-word packet, packet kind, and the
+remaining authored constructor values. `0x0042fd60` updates this controller
+list and removes a node only when its selected handler returns zero.
+
+`0x00429ec0` is the controller dispatch, not a visual-resource lookup table.
+The twelve effect numbers present in shipped enemy profiles dispatch as
+follows:
+
+| Effect | Controller |
+|---:|---:|
+| 10001 | `0x0042ae40` |
+| 10002 | `0x0042b1c0` |
+| 10003 | `0x0042b540` |
+| 10004 | `0x0042a860` |
+| 10005 | `0x0042cd70` |
+| 10010 | `0x0042e7e0` |
+| 10011 | `0x0042d6e0` |
+| 10012 | `0x0042db10` |
+| 10013 | `0x0042e240` |
+| 10014 | `0x0042e5c0` |
+| 10016 | `0x0042ea50` |
+| 10021 | `0x0042eeb0` |
+
+The first two branches prove why a portable effect cannot be represented as
+one animation with a damage callback. On controller update zero, type 1 creates
+resource `10000012` at the current source actor and type 2 creates resource
+`11000027`. Both are ordinary source animations whose positive judgement
+edges come from the source bounds plus one. When the controller counter
+reaches constructor argument 12, it resolves the source position again,
+projects a point exactly 180 world units along the stored angle, and creates a
+second runtime actor there. Type 1 uses resource `10000010` and positional
+sample 19; type 2 uses resource `10000040` and positional sample 94. The
+second actor has `[-50,-50,50,50]` bounds, action mode one, chart-five timing,
+and the copied combat packet. Only then does the controller return zero.
+
+Runtime actors are a separate category. `0x00429dd0` creates identity
+`50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
+the actor. `0x0045e1e0` owns attachment or fixed movement, collision timing,
+target masks, exact-target filtering, living and scenario checks, optional
+one-hit bookkeeping for up to 500 identities, physical-versus-magical hit
+chance, receiver dispatch, and visual action modes one through ten. Collision
+is active only from descriptor word 35 through word 36 inclusive. Bits one,
+two, and four select player, owned-companion, and enemy families
+independently.
+
+This is analysis evidence, not a portable-fidelity claim. The portable owner
+still needs a controller list distinct from its renderable actor list. Each
+specialized controller must be reconstructed before its shipped effect type
+can be called complete; mapping `type + 10000` directly to one OPTION resource
+would lose retail timing, targeting, audio, and often an entire intermediate
+actor.
+
 ## Current portable slices
 
 The first game-core slice covers:

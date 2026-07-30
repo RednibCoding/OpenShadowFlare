@@ -888,11 +888,21 @@ then saves and reloads the damaged character to make sure no owned items are
 lost as an accidental side effect.
 
 The next combat slice should finish enemy effect attacks. Actions four through
-six already evaluate their authored data and create typed effect requests, but
-the resulting projectile or area actor still needs its retail movement,
-lifetime, collision/impact dispatch, and player-receiver handoff. Work from
-the executable's effect update branches and cover at least one shipped live
-enemy case before treating that path as complete.
+six already evaluate their authored data and create typed effect requests.
+The executable trace now also proves that these requests enter a controller
+list first and that a controller may create several category-50000000 actors
+over time. Types 1 and 2, for example, create one source animation immediately
+and a second actor 180 units forward only after the authored delay. The
+controller and renderable-actor lifetimes must stay separate.
+
+The portable work should follow that split: add the controller owner, port one
+specialized dispatch family at a time, then attach the common runtime actor's
+movement, inclusive collision window, target filtering, hit bookkeeping,
+evasion check, receiver callback, and audio. Each family needs a passive
+timing test and at least one shipped live enemy case before it is marked done.
+Do not map `type + 10000` straight to one OPTION animation; that would skip
+retail state and repeat the kind of adjacent-behavior loss this roadmap is
+meant to prevent.
 
 ### 5. Skills, magic, status, and the remaining game screens
 
