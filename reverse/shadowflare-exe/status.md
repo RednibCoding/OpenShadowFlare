@@ -157,8 +157,10 @@ patterns 14 and 15 over a reserved left-hand surface, moves the camera anchor
 to x=480, and keeps the right-hand world viewport live. It shares pointer
 ownership, centered placement, single-item displacement, Gold stacking, and
 the three-update information delay with the ordinary inventory. Opening
-Inventory or Special Item closes the other. The inventory-panel transfer
-button at classifier case 10 and save-payload persistence remain pending.
+Inventory or Special Item closes the other. Opcode 41 argument zero reaches
+this same owner from the Warehouse; it does not create another container.
+The owner now restores and rewrites its exact save-payload container. The
+inventory-panel transfer button at classifier case 10 remains pending.
 
 Category-one records place the requirement at serialized offset 148, CAF part
 at 152, and default RGB strengths at 156, 160, and 164. The Short Sword
@@ -263,13 +265,15 @@ When rewriting an original save, it validates and decodes the payload, updates
 its repeated player record, then parses the exact item prefix used by
 `0x0044b580`: eleven optional equipment records followed by backpack, belt,
 and special-item containers. The nine player equipment slots, 9-by-4
-backpack, and 4-by-2 belt now save and load their category, definition, grid
-position, Gold quantity, durability, quality, and category-sized instance
-state. The two still-unnamed equipment records, special-item container, and
-all trailing payload bytes remain byte-for-byte unchanged. Tests cover a new
-world save/load round trip and unchanged re-encoding of an original retail
-save. Scenario, position, mines, special items, quests, and the remaining
-dynamic payload still need owners. Writes go through a sibling temporary file
+backpack, 4-by-2 belt, and 9-by-10 Special Item container now save and load
+their category, definition, grid position, Gold quantity, durability, quality,
+and category-sized instance state. The two still-unnamed equipment records
+and all trailing payload bytes remain byte-for-byte unchanged. The loader also
+skips the first counted flag array after the items and restores the following
+51 transport flags against Table 40. Tests cover a new world save/load round
+trip and unchanged re-encoding of an original retail save. Scenario, position,
+mines, quests, and the remaining dynamic payload still need owners. Writes go
+through a sibling temporary file
 and protected replacement so a corrupt source or failed write does not
 silently destroy the slot.
 
@@ -547,8 +551,18 @@ portable actor. Resources 8 and 14 supply static `Pattern.Njp` and
 `Animation.Njp` path. Static and animated objects use the MCT pattern/chart,
 height, status, strength, and RGB fields in the shared shadow and visible
 display lists. Judgement-enabled objects join the live movement blocker set.
-The Warehouse and object 200 status-zero UI actions remain pending until
-their native opcodes 41 and 37 are reconstructed.
+Pointer-enabled objects now use opaque static NJP or current CAF cells, the
+shared range square and priority path, a +300 pale tint, and their MCT
+nameplate.
+
+Object 200 status zero emits opcode 37 at `0x004334da` and opens the transport
+owner rendered by `0x0040c950`. It reads the 51 destination name/scenario/entry
+triples from Table 40, compacts enabled rows into ten entries per page, uses
+Status patterns 13, 22 through 24, 11, and 12, and plays sample 58. New
+characters enable row zero (`Remote Town`, scenario 0, entry 50). Its
+same-scenario selection resolves entry key 200 and relocates to
+`(94685,-2756)`, direction 7. Warehouse status zero emits opcode 41 argument
+zero at `0x004335ac` and toggles the existing Special Item owner.
 
 Periodic status kind five executes independent scenario callbacks. Remote
 Town sentences 158, 173, 188, and 203 read player-record offset `0x140`

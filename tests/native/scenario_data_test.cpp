@@ -70,6 +70,36 @@ bool findNpcPointerPoint(
     return false;
 }
 
+bool findScenarioObjectPointerPoint(
+    osf::WorldScene& world,
+    std::int32_t object_id,
+    osf::ScreenPosition& point) {
+    const auto found = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [object_id](const osf::ScenarioObjectActor& object) {
+            return object.id() == object_id;
+        });
+    if (found == world.scenarioObjects().end()) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(found->position());
+    for (std::int32_t y = -240; y <= 160; ++y) {
+        for (std::int32_t x = -240; x <= 240; ++x) {
+            point = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            world.updatePointerHover(point.x, point.y);
+            if (world.hoveredScenarioObjectId() == object_id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool findGroundItemRangeOnlyPoint(
     osf::WorldScene& world,
     std::int32_t item_id,
@@ -663,6 +693,20 @@ bool testWorldItemSaveRoundTrip() {
         save_root / "Save" / "0000.Ssv";
     std::error_code cleanup_error;
     std::filesystem::remove_all(save_root, cleanup_error);
+    const osf::ItemDefinition* special_gold =
+        saved_world.itemDatabase().find(4, 0);
+    if (!check(
+            special_gold &&
+                saved_world.playerSpecialItems()
+                    .place(
+                        osf::makeInventoryItem(
+                            *special_gold, 125),
+                        2,
+                        3)
+                    .accepted,
+            "The special-item save fixture could not be placed.")) {
+        return false;
+    }
     if (!check(
             osf::writeRetailSave(
                 save_path,
@@ -671,6 +715,7 @@ bool testWorldItemSaveRoundTrip() {
                 saved_world.playerInventory(),
                 saved_world.playerEquipment(),
                 saved_world.playerBelt(),
+                saved_world.playerSpecialItems(),
                 0x5a,
                 &error),
             "The world-owned item state could not be saved.")) {
@@ -717,8 +762,14 @@ bool testWorldItemSaveRoundTrip() {
                         ->category == 1 &&
                 loaded_world.playerEquipment()
                         .item(osf::EquipmentSlot::body)
-                        ->definition_id == 0,
-            "World loading discarded backpack, belt, or equipped items.")) {
+                        ->definition_id == 0 &&
+                loaded_world.playerSpecialItems().items().size() == 1 &&
+                loaded_world.playerSpecialItems().items()[0].category == 4 &&
+                loaded_world.playerSpecialItems().items()[0].quantity == 125 &&
+                loaded_world.playerSpecialItems().items()[0].grid_x == 2 &&
+                loaded_world.playerSpecialItems().items()[0].grid_y == 3,
+            "World loading discarded backpack, belt, equipped, or "
+            "special items.")) {
         std::cerr << error << '\n';
         return false;
     }
@@ -2082,6 +2133,49 @@ bool testRetailRemoteTown() {
             !harley_world.conversationActive() &&
                 harley_world.conversationActorId() == -1,
             "Harley was not released after his explanation.")) {
+        return false;
+    }
+
+    osf::ScreenPosition transport_pointer;
+    if (!check(
+            world.transports().destinations().size() == 51 &&
+                world.transports().enabled(0) &&
+                world.activateTransportDestination(0) &&
+                world.playerWorldX() == 94685 &&
+                world.playerWorldY() == -2756 &&
+                world.playerDirection() == 7 &&
+                findScenarioObjectPointerPoint(
+                    world, 200, transport_pointer) &&
+                world.hoveredScenarioObjectId() == 200,
+            "Remote Town's type-zero transport object was not selectable "
+            "at its retail entry point.")) {
+        return false;
+    }
+    if (!check(
+            world.commandWorldInteraction(
+                transport_pointer.x,
+                transport_pointer.y),
+            "The transport object's pointer click was not accepted.")) {
+        return false;
+    }
+    osf::GameplayServiceRequest transport_request =
+        world.takeGameplayServiceRequest();
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         transport_request.kind ==
+             osf::GameplayServiceKind::none;
+         ++update) {
+        world.update();
+        transport_request =
+            world.takeGameplayServiceRequest();
+    }
+    if (!check(
+            transport_request.kind ==
+                    osf::GameplayServiceKind::transport &&
+                transport_request.argument == 0 &&
+                !world.interactionPending(),
+            "The transport object did not route through status zero and "
+            "opcode 37.")) {
         return false;
     }
 

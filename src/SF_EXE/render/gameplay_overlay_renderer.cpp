@@ -26,6 +26,20 @@ const NpcActor* findNpc(
     return found == world.npcs().end() ? nullptr : &*found;
 }
 
+const ScenarioObjectActor* findScenarioObject(
+    const WorldScene& world,
+    std::int32_t id) {
+    const auto found = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [id](const ScenarioObjectActor& object) {
+            return object.id() == id;
+        });
+    return found == world.scenarioObjects().end()
+        ? nullptr
+        : &*found;
+}
+
 const GroundItem* findGroundItem(
     const WorldScene& world,
     std::int32_t id) {
@@ -48,6 +62,66 @@ gapi::Color npcNameColor(const NpcActor& npc) {
         static_cast<std::uint8_t>(color >> 16u),
         255,
     };
+}
+
+gapi::Color scenarioObjectNameColor(
+    const ScenarioObjectActor& object) {
+    const std::uint32_t color = object.nameColor();
+    return {
+        static_cast<std::uint8_t>(color),
+        static_cast<std::uint8_t>(color >> 8u),
+        static_cast<std::uint8_t>(color >> 16u),
+        255,
+    };
+}
+
+void drawHoveredScenarioObjectLabel(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const gapi::NjpImage* font,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    if (!font) {
+        return;
+    }
+    const ScenarioObjectActor* object =
+        findScenarioObject(
+            world, world.hoveredScenarioObjectId());
+    if (!object || object->name().empty()) {
+        return;
+    }
+    const ScreenPosition anchor =
+        calculateRealPosition(object->position());
+    const std::int32_t center_x = anchor.x - camera_x;
+    const std::int32_t label_y =
+        anchor.y - camera_y - object->labelHeight();
+    const std::int32_t half_width =
+        bitmapTextPixelWidth(object->name(), 6) / 2;
+    renderer.drawRectangle({
+        center_x - half_width - 4,
+        label_y - 2,
+        half_width * 2 + 5,
+        15,
+        {0, 0, 0, 255},
+        1000,
+        500,
+    });
+    renderer.drawText(
+        *font,
+        object->name(),
+        {
+            center_x - half_width + 1,
+            label_y + 1,
+            {0, 0, 0, 255},
+        });
+    renderer.drawText(
+        *font,
+        object->name(),
+        {
+            center_x - half_width,
+            label_y,
+            scenarioObjectNameColor(*object),
+        });
 }
 
 void drawHoveredNpcLabel(
@@ -186,7 +260,9 @@ void drawPointerRange(
     if (world.hoveredGroundItemId() >= 0) {
         color = {224, 224, 0, 255};
         has_target = true;
-    } else if (world.hoveredNpcId() >= 0) {
+    } else if (
+        world.hoveredScenarioObjectId() >= 0 ||
+        world.hoveredNpcId() >= 0) {
         has_target = true;
     }
     const std::int32_t opacity =
@@ -402,6 +478,12 @@ void renderGameplayOverlay(
     std::int32_t camera_x,
     std::int32_t camera_y,
     double interpolation) {
+    drawHoveredScenarioObjectLabel(
+        renderer,
+        world,
+        font,
+        camera_x,
+        camera_y);
     drawHoveredNpcLabel(
         renderer,
         world,

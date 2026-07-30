@@ -11,6 +11,7 @@ namespace osf {
 
 enum class WorldPointerTargetKind {
     none,
+    scenario_object,
     npc,
     ground_item,
 };

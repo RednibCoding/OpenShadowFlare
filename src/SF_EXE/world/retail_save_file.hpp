@@ -13,6 +13,7 @@ class PlayerBelt;
 class PlayerData;
 class PlayerEquipment;
 class PlayerInventory;
+class PlayerSpecialItems;
 
 bool readRetailSavePayload(
     const std::filesystem::path& path,
@@ -31,6 +32,7 @@ bool writeRetailSave(
     const PlayerInventory& inventory,
     const PlayerEquipment& equipment,
     const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
     std::uint8_t xor_key,
     std::string* error = nullptr);
 

@@ -67,6 +67,7 @@ void WorldScene::clear() {
     pending_audio_samples_.clear();
     quests_.clear();
     missions_.clear();
+    transports_.clear();
     item_database_.clear();
     player_equipment_.clear();
     player_belt_.clear();
@@ -85,6 +86,7 @@ void WorldScene::clear() {
     next_ground_item_id_ = 0;
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
+    gameplay_service_request_ = {};
 }
 
 const GroundMap& WorldScene::ground() const {
@@ -119,6 +121,10 @@ WorldScene::scenarioObjects() const {
 
 const std::vector<NpcActor>& WorldScene::npcs() const {
     return npcs_;
+}
+
+const TransportCatalog& WorldScene::transports() const {
+    return transports_;
 }
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
@@ -243,8 +249,16 @@ void WorldScene::update() {
         scenario_script_.runStatusKind(5);
     }
     NpcActor* interaction_npc = nullptr;
+    ScenarioObjectActor* interaction_object = nullptr;
     GroundItem* interaction_item = nullptr;
     if (pending_interaction_.kind ==
+        WorldPointerTargetKind::scenario_object) {
+        interaction_object =
+            findScenarioObject(pending_interaction_.id);
+        if (interaction_object) {
+            player_.followTo(interaction_object->position());
+        }
+    } else if (pending_interaction_.kind ==
         WorldPointerTargetKind::npc) {
         interaction_npc =
             findNpc(pending_interaction_.id);
@@ -262,7 +276,9 @@ void WorldScene::update() {
     }
     if (pending_interaction_.kind !=
             WorldPointerTargetKind::none &&
-        !interaction_npc && !interaction_item) {
+        !interaction_object &&
+        !interaction_npc &&
+        !interaction_item) {
         pending_interaction_ = {};
     }
     constexpr std::int32_t player_blocker_id =
@@ -353,6 +369,21 @@ void WorldScene::update() {
             interaction_npc->judgement()) <=
             kRetailInteractionDistance) {
         startNpcInteraction(*interaction_npc);
+        return;
+    }
+    interaction_object =
+        pending_interaction_.kind ==
+                WorldPointerTargetKind::scenario_object
+            ? findScenarioObject(pending_interaction_.id)
+            : nullptr;
+    if (interaction_object &&
+        distanceBetweenBounds(
+            player_.position(),
+            player_.judgement(),
+            interaction_object->position(),
+            interaction_object->judgement()) <=
+            kRetailInteractionDistance) {
+        startScenarioObjectInteraction(*interaction_object);
         return;
     }
     interaction_item =

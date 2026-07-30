@@ -23,6 +23,7 @@ void GameplayUiController::reset() {
     inventory_.close();
     map_.close();
     mission_list_.close();
+    transport_.close();
     pending_action_ = GameplayOptionsAction::none;
 }
 
@@ -41,6 +42,58 @@ bool GameplayUiController::update(
     std::int32_t& shadow_opacity) {
     if (gameplay_frame.phase != GameplayPhase::world) {
         return false;
+    }
+
+    const GameplayServiceRequest service =
+        world.takeGameplayServiceRequest();
+    if (service.kind != GameplayServiceKind::none) {
+        options_.close();
+        map_.close();
+        mission_list_.close();
+        world.cancelPlayerMovement();
+        if (service.kind == GameplayServiceKind::transport) {
+            inventory_.close();
+            transport_.open();
+            world.setCameraAnchor(480, 240);
+        } else if (
+            service.kind ==
+            GameplayServiceKind::toggle_special_items) {
+            transport_.close();
+            if (inventory_.specialItemsActive()) {
+                inventory_.close();
+                world.setCameraAnchor(320, 240);
+            } else {
+                inventory_.openSpecialItems();
+                world.setCameraAnchor(480, 240);
+            }
+        }
+        return false;
+    }
+
+    const bool transport_was_active = transport_.active();
+    if (transport_was_active) {
+        const GameplayTransportResult result =
+            transport_.update(
+                {
+                    input.gameplayOptionsPressed() ||
+                        (input.pointerSecondaryPressed() &&
+                         input.menu().pointer_y < 412),
+                    input.menu().pointer_primary_pressed,
+                    input.menu().pointer_x,
+                    input.menu().pointer_y,
+                },
+                world.transports().enabledRows());
+        if (result.play_move_sound) {
+            audio.playGameplayMenuMove();
+        }
+        if (result.selected_destination >= 0) {
+            world.activateTransportDestination(
+                result.selected_destination);
+        }
+        world.setCameraAnchor(
+            transport_.active() ? 480 : 320,
+            240);
+        return result.pointer_consumed;
     }
 
     const std::int32_t belt_pocket =
@@ -273,6 +326,7 @@ bool GameplayUiController::update(
                 world.playerInventory(),
                 world.playerEquipment(),
                 world.playerBelt(),
+                world.playerSpecialItems(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);
@@ -323,6 +377,11 @@ const GameplayMap& GameplayUiController::map() const {
 const GameplayMissionList&
 GameplayUiController::missionList() const {
     return mission_list_;
+}
+
+const GameplayTransport&
+GameplayUiController::transport() const {
+    return transport_;
 }
 
 void GameplayUiController::applyConfig(

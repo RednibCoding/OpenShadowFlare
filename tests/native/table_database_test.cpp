@@ -41,13 +41,19 @@ int main() {
 
     const osf::TableData* female = tables.find(900);
     const osf::TableData* male = tables.find(901);
+    const osf::TableData* transport = tables.find(40);
     if (!check(
             tables.tables().size() == 138 &&
-                female && male &&
+                female && male && transport &&
                 female->rowCount() == 13 &&
                 female->columnCount() == 5 &&
                 male->rowCount() == 13 &&
-                male->columnCount() == 5,
+                male->columnCount() == 5 &&
+                transport->rowCount() == 51 &&
+                transport->columnCount() == 3 &&
+                transport->text(0, 0) == "Remote Town" &&
+                transport->value(0, 1) == 0 &&
+                transport->value(0, 2) == 50,
             "The retail table catalog or player table dimensions changed.")) {
         return 1;
     }

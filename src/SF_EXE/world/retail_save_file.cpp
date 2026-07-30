@@ -2,6 +2,7 @@
 
 #include "player_data.hpp"
 #include "retail_save_items.hpp"
+#include "items/player_special_items.hpp"
 
 #include <algorithm>
 #include <array>
@@ -239,6 +240,7 @@ bool writeRetailSaveImpl(
     const PlayerInventory* inventory,
     const PlayerEquipment* equipment,
     const PlayerBelt* belt,
+    const PlayerSpecialItems* special_items,
     std::uint8_t xor_key,
     std::string* error) {
     if (!player.valid()) {
@@ -283,12 +285,15 @@ bool writeRetailSaveImpl(
     std::copy(record.begin(), record.end(), payload.begin());
     if (item_database &&
         (!inventory || !equipment || !belt ||
+         !special_items ||
          !replaceRetailOwnedItems(
              payload,
              *item_database,
              *inventory,
              *equipment,
              *belt,
+             *special_items,
+             nullptr,
              error))) {
         return false;
     }
@@ -371,6 +376,7 @@ bool writeRetailSave(
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
         xor_key,
         error);
 }
@@ -382,6 +388,7 @@ bool writeRetailSave(
     const PlayerInventory& inventory,
     const PlayerEquipment& equipment,
     const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
     std::uint8_t xor_key,
     std::string* error) {
     return writeRetailSaveImpl(
@@ -391,6 +398,7 @@ bool writeRetailSave(
         &inventory,
         &equipment,
         &belt,
+        &special_items,
         xor_key,
         error);
 }

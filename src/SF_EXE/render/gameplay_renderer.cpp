@@ -114,7 +114,8 @@ void renderScenarioObjectPass(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    bool hovered) {
     if (!object.drawEnabled()) {
         return;
     }
@@ -142,9 +143,18 @@ void renderScenarioObjectPass(
                     ? std::clamp(shadow_opacity, 0, 1000)
                     : std::clamp(
                           object.drawStrength(), 0, 1000),
-                shadow ? 1000 : object.redDrawStrength(),
-                shadow ? 1000 : object.greenDrawStrength(),
-                shadow ? 1000 : object.blueDrawStrength(),
+                shadow
+                    ? 1000
+                    : object.redDrawStrength() +
+                          (hovered ? 300 : 0),
+                shadow
+                    ? 1000
+                    : object.greenDrawStrength() +
+                          (hovered ? 300 : 0),
+                shadow
+                    ? 1000
+                    : object.blueDrawStrength() +
+                          (hovered ? 300 : 0),
             });
         return;
     }
@@ -163,11 +173,16 @@ void renderScenarioObjectPass(
         [&object](std::size_t part) {
             return object.partEnabled(part);
         },
-        [&object](std::size_t part) {
+        [&object, hovered](std::size_t part) {
+            const std::int32_t hover_strength =
+                hovered ? 300 : 0;
             return CharacterColorStrength{
-                object.partRedStrength(part),
-                object.partGreenStrength(part),
-                object.partBlueStrength(part),
+                object.partRedStrength(part) +
+                    hover_strength,
+                object.partGreenStrength(part) +
+                    hover_strength,
+                object.partBlueStrength(part) +
+                    hover_strength,
             };
         },
         camera_x,
@@ -477,7 +492,9 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
+            shadow_opacity,
+            world.hoveredScenarioObjectId() ==
+                entry.scenario_object->id());
     } else if (entry.player) {
         renderPlayerPass(
             renderer,

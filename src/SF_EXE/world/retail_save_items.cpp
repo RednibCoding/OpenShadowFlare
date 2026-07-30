@@ -4,6 +4,7 @@
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
 #include "world/player_data.hpp"
 
 #include <array>
@@ -306,6 +307,7 @@ bool skipOrRestoreEquipment(
 enum class ContainerKind {
     inventory,
     belt,
+    special_items,
     ignored,
 };
 
@@ -315,6 +317,7 @@ bool skipOrRestoreContainer(
     const ItemDatabase* item_database,
     PlayerInventory* inventory,
     PlayerBelt* belt,
+    PlayerSpecialItems* special_items,
     std::string* error) {
     std::int32_t count = 0;
     if (!cursor.readI32(count) ||
@@ -327,7 +330,9 @@ bool skipOrRestoreContainer(
         InventoryItem item;
         InventoryItem* destination =
             (kind == ContainerKind::inventory && inventory) ||
-                    (kind == ContainerKind::belt && belt)
+                    (kind == ContainerKind::belt && belt) ||
+                    (kind == ContainerKind::special_items &&
+                     special_items)
                 ? &item
                 : nullptr;
         if (!decodeItem(
@@ -371,6 +376,23 @@ bool skipOrRestoreContainer(
                     "A saved item does not fit the belt.");
                 return false;
             }
+        } else if (
+            kind == ContainerKind::special_items &&
+            special_items) {
+            const std::int32_t grid_x = item.grid_x;
+            const std::int32_t grid_y = item.grid_y;
+            const InventoryPlacementResult placement =
+                special_items->place(
+                    std::move(item),
+                    grid_x,
+                    grid_y);
+            if (!placement.accepted ||
+                placement.held_item) {
+                setError(
+                    error,
+                    "A saved item does not fit the special-item window.");
+                return false;
+            }
         }
     }
     return true;
@@ -383,6 +405,7 @@ bool parseOwnedItems(
     PlayerInventory* inventory,
     PlayerEquipment* equipment,
     PlayerBelt* belt,
+    PlayerSpecialItems* special_items,
     ParsedSections& sections,
     std::string* error) {
     if (payload.size() < kItemPayloadOffset) {
@@ -409,6 +432,7 @@ bool parseOwnedItems(
             item_database,
             inventory,
             belt,
+            special_items,
             error) ||
         !skipOrRestoreContainer(
             cursor,
@@ -416,16 +440,18 @@ bool parseOwnedItems(
             item_database,
             inventory,
             belt,
+            special_items,
             error)) {
         return false;
     }
     sections.special_items_begin = cursor.offset();
     if (!skipOrRestoreContainer(
             cursor,
-            ContainerKind::ignored,
+            ContainerKind::special_items,
             item_database,
             inventory,
             belt,
+            special_items,
             error)) {
         return false;
     }
@@ -530,11 +556,13 @@ bool restoreRetailOwnedItems(
     PlayerInventory& inventory,
     PlayerEquipment& equipment,
     PlayerBelt& belt,
+    PlayerSpecialItems& special_items,
     std::size_t* serialized_end,
     std::string* error) {
     PlayerInventory restored_inventory;
     PlayerEquipment restored_equipment;
     PlayerBelt restored_belt;
+    PlayerSpecialItems restored_special_items;
     ParsedSections sections;
     if (!parseOwnedItems(
             payload,
@@ -543,6 +571,7 @@ bool restoreRetailOwnedItems(
             &restored_inventory,
             &restored_equipment,
             &restored_belt,
+            &restored_special_items,
             sections,
             error)) {
         return false;
@@ -550,6 +579,7 @@ bool restoreRetailOwnedItems(
     inventory = std::move(restored_inventory);
     equipment = std::move(restored_equipment);
     belt = std::move(restored_belt);
+    special_items = std::move(restored_special_items);
     if (serialized_end) {
         *serialized_end = sections.end;
     }
@@ -565,12 +595,15 @@ bool replaceRetailOwnedItems(
     const PlayerInventory& inventory,
     const PlayerEquipment& equipment,
     const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
+    std::size_t* serialized_end,
     std::string* error) {
     ParsedSections sections;
     if (!parseOwnedItems(
             payload,
             nullptr,
             0,
+            nullptr,
             nullptr,
             nullptr,
             nullptr,
@@ -627,26 +660,23 @@ bool replaceRetailOwnedItems(
             error)) {
         return false;
     }
-    // Special items have a separate owner. Preserve that complete container
-    // until its portable load path joins this serializer.
-    if (sections.has_item_stream) {
-        encoded.insert(
-            encoded.end(),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(
-                    sections.special_items_begin),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(
-                    sections.special_items_end));
-    } else {
-        appendI32(encoded, 0);
+    if (!encodeContainer(
+            encoded,
+            special_items.items(),
+            item_database,
+            error)) {
+        return false;
     }
+    const std::size_t new_serialized_end = encoded.size();
     encoded.insert(
         encoded.end(),
         payload.begin() +
             static_cast<std::ptrdiff_t>(sections.end),
         payload.end());
     payload = std::move(encoded);
+    if (serialized_end) {
+        *serialized_end = new_serialized_end;
+    }
     if (error) {
         error->clear();
     }

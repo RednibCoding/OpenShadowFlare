@@ -116,6 +116,21 @@ void PlayerActor::clear() {
     reset({}, 0);
 }
 
+void PlayerActor::relocate(
+    WorldPosition position,
+    std::int32_t direction) {
+    position_ = position;
+    previous_position_ = position;
+    destination_ = position;
+    direction_ = direction;
+    action_counter_ = 0;
+    animation_chart_ = 0;
+    animation_frame_ = 0;
+    motion_ = PlayerMotion::idle;
+    previous_action_ = PlayerMotion::idle;
+    movement_controller_.reset();
+}
+
 void PlayerActor::moveTo(WorldPosition destination) {
     destination_ = destination;
     motion_ =

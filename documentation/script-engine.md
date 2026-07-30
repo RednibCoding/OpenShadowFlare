@@ -214,6 +214,8 @@ interactions are portable so far.
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
+| 37 | `0x004334da` | Request the transport service selected by the command argument |
+| 41 | `0x004335ac` | Toggle an executable-owned item service; argument zero is the Warehouse/Special Item owner |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
@@ -235,6 +237,15 @@ facing. Opcode 21 evaluates an actor and a target. Target zero is the local
 player; a nonzero value resolves another scenario actor. The actor turns only
 when its PEOPLE-tail scripted-turning flag is enabled. This is enabled for
 Ostare, Syria, and the four Remote Town animals, but disabled for Malse.
+
+Opcodes 37 and 41 show why native commands remain hooks. Remote Town object
+200 has script character `10000200`; its status-zero sentence calls opcode 37
+with argument zero, which asks the executable to open the transport panel.
+The named Warehouse is character `10000300` and calls opcode 41 with argument
+zero, which toggles the same Special Item owner opened by `X`. The interpreter
+does not include panel, input, camera, item, or transport headers. It only
+evaluates the command and sends the typed request across its native-command
+hook.
 
 Opcode 10 evaluates six operands: category, definition ID, world X, world Y,
 minimum quantity, and maximum quantity. Ordinary items create one record at
@@ -307,6 +318,13 @@ option one shows `1000057` (“You found me finally.”), ordinary acknowledgeme
 advances to `1000058`, and acknowledging that second bubble reaches native
 actor command 19 and releases Harley. Both the interpreter fixture and the
 live `WorldScene` fixture cover this complete chain.
+
+The two scripted type-zero services use the same status route. Their MCT
+visibility and pointer flags decide whether they can be selected, the common
+159-unit judgement distance controls the approach, and only then does status
+kind zero run. This keeps Warehouse and transport behavior out of
+`WorldScene`: the world owns selection and relocation, while the runtime owns
+the panels and their input.
 
 ## Operands and variables
 
@@ -397,8 +415,8 @@ world pass with actors and scenery. Their CAF-selected palettes and
 `Item.Ibn` RGB strengths also reproduce the default ground colors. They now
 participate in opaque-pixel pointer selection and the common interaction-range
 approach too. A successful pickup moves the concrete category, definition,
-and quantity into `PlayerInventory`; the 9-by-4 grid and inventory panel are
-the next item-system work.
+and quantity into `PlayerInventory`; that owner now feeds the live 9-by-4
+inventory panel and retail save stream.
 
 ## How to extend it
 
@@ -433,7 +451,7 @@ naturally reveal more of:
   frame modes;
 - keyboard movement between message choices;
 - waits for movement and animation completion;
-- gates, warps, shops, inventory, rewards, and quest-log actions;
+- gates, later warps, shops, rewards, and quest-log actions;
 - remaining operand domains and the rest of the opcode switch;
 - multiplayer and network flag behavior.
 

@@ -31,6 +31,9 @@ public:
         std::int32_t direction,
         std::int32_t walking_speed_tier = 5);
     void clear();
+    void relocate(
+        WorldPosition position,
+        std::int32_t direction);
 
     void moveTo(WorldPosition destination);
     void followTo(WorldPosition destination);

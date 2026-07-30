@@ -25,6 +25,7 @@
 #include "scenario_data.hpp"
 #include "scenario_object_actor.hpp"
 #include "script/scenario_script_runtime.hpp"
+#include "transport_catalog.hpp"
 #include "world_pointer.hpp"
 
 #include <cstdint>
@@ -34,6 +35,17 @@
 #include <vector>
 
 namespace osf {
+
+enum class GameplayServiceKind {
+    none,
+    transport,
+    toggle_special_items,
+};
+
+struct GameplayServiceRequest {
+    GameplayServiceKind kind = GameplayServiceKind::none;
+    std::int32_t argument = 0;
+};
 
 class WorldScene {
 public:
@@ -58,6 +70,7 @@ public:
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
+    const TransportCatalog& transports() const;
     const ItemDatabase& itemDatabase() const;
     PlayerEquipment& playerEquipment();
     const PlayerEquipment& playerEquipment() const;
@@ -101,6 +114,7 @@ public:
         std::int32_t screen_x,
         std::int32_t screen_y);
     bool interactionPending() const;
+    std::int32_t hoveredScenarioObjectId() const;
     std::int32_t hoveredNpcId() const;
     std::int32_t hoveredGroundItemId() const;
     std::int32_t pointerScreenX() const;
@@ -108,6 +122,8 @@ public:
     bool pointerActive() const;
     const WorldPointerConfiguration& pointerConfiguration() const;
     bool conversationActive() const;
+    GameplayServiceRequest takeGameplayServiceRequest();
+    bool activateTransportDestination(std::int32_t row);
     std::int32_t conversationActorId() const;
     std::int32_t conversationMessageId() const;
     const std::string& conversationText() const;
@@ -172,7 +188,11 @@ private:
     bool ensureItemWorldResource(std::int32_t resource_id);
     bool prepareGroundItems(std::size_t first_item);
     bool startNpcInteraction(NpcActor& npc);
+    bool startScenarioObjectInteraction(
+        ScenarioObjectActor& object);
     bool startGroundItemInteraction(std::int32_t item_id);
+    ScenarioObjectActor* findScenarioObject(
+        std::int32_t id);
     NpcActor* findNpc(std::int32_t id);
     GroundItem* findGroundItem(std::int32_t id);
 
@@ -196,6 +216,7 @@ private:
     std::vector<std::int32_t> pending_audio_samples_;
     QuestState quests_;
     MissionCatalog missions_;
+    TransportCatalog transports_;
     ItemDatabase item_database_;
     PlayerEquipment player_equipment_;
     PlayerBelt player_belt_;
@@ -215,6 +236,7 @@ private:
     std::int32_t next_ground_item_id_ = 0;
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;
+    GameplayServiceRequest gameplay_service_request_;
 };
 
 }  // namespace osf

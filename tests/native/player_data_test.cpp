@@ -2,12 +2,15 @@
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "world/player_data.hpp"
 #include "world/player_item_controller.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_items.hpp"
 #include "world/retail_save_preview.hpp"
+#include "world/retail_save_progress.hpp"
+#include "world/transport_catalog.hpp"
 
 #include <algorithm>
 #include <array>
@@ -231,12 +234,19 @@ int main() {
     osf::PlayerInventory saved_inventory;
     osf::PlayerEquipment saved_equipment;
     osf::PlayerBelt saved_belt;
+    osf::PlayerSpecialItems saved_special_items;
     if (!check(
             dagger &&
                 leather_cloth &&
                 gold &&
                 saved_inventory.add(*dagger) &&
-                saved_inventory.add(*gold, 250),
+                saved_inventory.add(*gold, 250) &&
+                saved_special_items
+                    .place(
+                        osf::makeInventoryItem(*gold, 75),
+                        3,
+                        2)
+                    .accepted,
             "The save item round-trip fixture could not be created.")) {
         return 1;
     }
@@ -275,6 +285,7 @@ int main() {
                 saved_inventory,
                 saved_equipment,
                 saved_belt,
+                saved_special_items,
                 0x34,
                 &error),
             "Owned items could not be written to the retail payload.")) {
@@ -285,6 +296,7 @@ int main() {
     osf::PlayerInventory restored_inventory;
     osf::PlayerEquipment restored_equipment;
     osf::PlayerBelt restored_belt;
+    osf::PlayerSpecialItems restored_special_items;
     if (!check(
             osf::readRetailSavePayload(
                 new_save_path,
@@ -297,6 +309,7 @@ int main() {
                     restored_inventory,
                     restored_equipment,
                     restored_belt,
+                    restored_special_items,
                     nullptr,
                     &error) &&
                 restored_inventory.items().size() == 2 &&
@@ -310,8 +323,13 @@ int main() {
                         ->definition_id == 0 &&
                 restored_belt.itemAt(2, 0) &&
                 restored_belt.itemAt(2, 0)->category == 3 &&
-                restored_belt.itemAt(2, 0)->definition_id == 0,
-            "Backpack, equipment, or belt ownership did not "
+                restored_belt.itemAt(2, 0)->definition_id == 0 &&
+                restored_special_items.items().size() == 1 &&
+                restored_special_items.items()[0].category == 4 &&
+                restored_special_items.items()[0].quantity == 75 &&
+                restored_special_items.items()[0].grid_x == 3 &&
+                restored_special_items.items()[0].grid_y == 2,
+            "Backpack, equipment, belt, or special-item ownership did not "
             "survive a save/load round trip.")) {
         std::cerr << error << '\n';
         return 1;
@@ -326,6 +344,8 @@ int main() {
         osf::PlayerInventory retail_fixture_inventory;
         osf::PlayerEquipment retail_fixture_equipment;
         osf::PlayerBelt retail_fixture_belt;
+        osf::PlayerSpecialItems retail_fixture_special_items;
+        std::size_t retail_owned_items_end = 0;
         if (!check(
                 retail_fixture_player.loadRetailSave(
                     retail_save_fixture,
@@ -341,9 +361,32 @@ int main() {
                         retail_fixture_inventory,
                         retail_fixture_equipment,
                         retail_fixture_belt,
-                        nullptr,
+                        retail_fixture_special_items,
+                        &retail_owned_items_end,
                         &error),
                 "The original retail item stream could not be restored.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        osf::TransportCatalog retail_transports;
+        if (!check(
+                retail_transports.load(tables, &error),
+                "The retail transport catalog could not be loaded.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        std::vector<std::int32_t> transport_flags =
+            retail_transports.enabledFlags();
+        if (!check(
+                osf::restoreRetailTransportFlags(
+                    retail_fixture_payload,
+                    retail_owned_items_end,
+                    transport_flags,
+                    &error) &&
+                    transport_flags.size() == 51 &&
+                    transport_flags.front() != 0,
+                "The original retail transport flags could not be "
+                "restored after the owned-item stream.")) {
             std::cerr << error << '\n';
             return 1;
         }
@@ -356,6 +399,8 @@ int main() {
                     retail_fixture_inventory,
                     retail_fixture_equipment,
                     retail_fixture_belt,
+                    retail_fixture_special_items,
+                    nullptr,
                     &error) &&
                     rewritten_retail_payload ==
                         retail_fixture_payload,

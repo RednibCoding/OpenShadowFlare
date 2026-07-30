@@ -3,10 +3,13 @@
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/gameplay_mission_list_renderer.hpp"
+#include "render/gameplay_transport_renderer.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
+#include "states/gameplay_transport.hpp"
 #include "world/mission_catalog.hpp"
 #include "world/quest_state.hpp"
+#include "world/transport_catalog.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -312,13 +315,109 @@ bool testOptionsEntry() {
         "The Settings menu Mission List row is not wired.");
 }
 
+bool testTransportPanel() {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::string(OPENSHADOWFLARE_SOURCE_DIR) +
+                    "/tmp/ShadowFlare/System/Game/Parameter/Table.Tbd",
+                &error),
+            "The retail tables for the transport panel could not be loaded.")) {
+        return false;
+    }
+    osf::TransportCatalog catalog;
+    if (!check(
+            catalog.load(tables, &error) &&
+                catalog.destinations().size() == 51 &&
+                catalog.enabledRows() ==
+                    std::vector<std::int32_t>{0} &&
+                catalog.destinations()[0].name == "Remote Town" &&
+                catalog.destinations()[0].scenario == 0 &&
+                catalog.destinations()[0].entry == 50,
+            "The transport owner did not preserve retail Table 40.")) {
+        return false;
+    }
+
+    osf::GameplayTransport panel;
+    panel.open();
+    const std::vector<std::int32_t> enabled =
+        catalog.enabledRows();
+    const osf::GameplayTransportResult hovered =
+        panel.update({false, false, 40, 64}, enabled);
+    if (!check(
+            !hovered.pointer_consumed &&
+                panel.active() &&
+                panel.page() == 0 &&
+                panel.pageCount(enabled.size()) == 1 &&
+                panel.hoveredDestination() == 0 &&
+                panel.visibleDestinations(enabled) == enabled,
+            "The transport panel did not map its first retail hit row.")) {
+        return false;
+    }
+
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    RecordingBackend backend;
+    osf::renderGameplayTransport(
+        backend, status, font, panel, catalog);
+    const auto title = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "Remote Town" &&
+                   call.draw.x == 79 &&
+                   call.draw.y == 65 &&
+                   call.draw.color.red == 224;
+        });
+    if (!check(
+            backend.patterns.size() == 2 &&
+                backend.patterns[0].index == 13 &&
+                backend.patterns[1].index == 23 &&
+                backend.patterns[1].draw.x == 52 &&
+                backend.patterns[1].draw.y == 59 &&
+                title != backend.texts.end(),
+            "The transport frame, hovered row, or destination title "
+            "differs from retail.")) {
+        return false;
+    }
+
+    const osf::GameplayTransportResult selected =
+        panel.update({false, true, 40, 64}, enabled);
+    if (!check(
+            selected.selected_destination == 0 &&
+                selected.play_move_sound &&
+                selected.pointer_consumed &&
+                !panel.active(),
+            "Selecting a transport destination did not close and consume "
+            "the retail panel click.")) {
+        return false;
+    }
+
+    std::vector<std::int32_t> two_pages;
+    for (std::int32_t row = 0; row < 11; ++row) {
+        two_pages.push_back(row);
+    }
+    panel.open();
+    const osf::GameplayTransportResult next =
+        panel.update({false, true, 230, 370}, two_pages);
+    return check(
+        next.play_move_sound &&
+            next.selected_destination == -1 &&
+            panel.page() == 1 &&
+            panel.visibleDestinations(two_pages) ==
+                std::vector<std::int32_t>{10},
+        "The retail ten-destination transport paging differs.");
+}
+
 }  // namespace
 
 int main() {
     return testMissionCatalog() &&
                    testMissionListState() &&
                    testMissionListRendering() &&
-                   testOptionsEntry()
+                   testOptionsEntry() &&
+                   testTransportPanel()
         ? 0
         : 1;
 }

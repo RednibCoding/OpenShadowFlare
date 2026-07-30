@@ -10,6 +10,7 @@
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/gameplay_transport_renderer.hpp"
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/title_renderer.hpp"
@@ -20,6 +21,7 @@
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
+#include "states/gameplay_transport.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
@@ -113,7 +115,8 @@ void RuntimeRenderer::render(
                     context.world);
             }
             if (!context.gameplay_options.active() &&
-                !context.gameplay_mission_list.active()) {
+                !context.gameplay_mission_list.active() &&
+                !context.gameplay_transport.active()) {
                 renderGameplayOverlay(
                     renderer_,
                     context.world,
@@ -137,6 +140,14 @@ void RuntimeRenderer::render(
                         context.gameplay_inventory,
                         context.world,
                         context.gameplay_counter);
+                } else if (
+                    context.gameplay_transport.active()) {
+                    renderGameplayTransport(
+                        renderer_,
+                        *status,
+                        *font,
+                        context.gameplay_transport,
+                        context.world.transports());
                 } else if (
                     context.gameplay_inventory.active()) {
                     renderGameplayInventory(

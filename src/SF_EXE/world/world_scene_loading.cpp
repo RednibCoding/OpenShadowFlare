@@ -3,6 +3,7 @@
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
 #include "retail_save_items.hpp"
+#include "retail_save_progress.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -71,6 +72,7 @@ bool WorldScene::loadInitialScenario(
                 "Table.Tbd",
             error) ||
         !missions_.load(parameter_tables_, error) ||
+        !transports_.load(parameter_tables_, error) ||
         !player_data_.load(
             player_request, parameter_tables_, error)) {
         clear();
@@ -109,6 +111,7 @@ bool WorldScene::loadInitialScenario(
         player_item_controller_.initializeNew();
     } else {
         std::vector<std::uint8_t> payload;
+        std::size_t owned_items_end = 0;
         if (!readRetailSavePayload(
                 player_request.save_path,
                 payload,
@@ -120,8 +123,28 @@ bool WorldScene::loadInitialScenario(
                 player_inventory_,
                 player_equipment_,
                 player_belt_,
-                nullptr,
+                player_special_items_,
+                &owned_items_end,
                 error)) {
+            clear();
+            return false;
+        }
+        std::vector<std::int32_t> transport_flags =
+            transports_.enabledFlags();
+        if (!restoreRetailTransportFlags(
+                payload,
+                owned_items_end,
+                transport_flags,
+                error)) {
+            clear();
+            return false;
+        }
+        if (!transports_.restoreEnabledFlags(
+                transport_flags)) {
+            setError(
+                error,
+                "The saved transport state does not match the "
+                "transport catalog.");
             clear();
             return false;
         }

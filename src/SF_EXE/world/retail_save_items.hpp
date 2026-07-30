@@ -12,6 +12,7 @@ class ItemDatabase;
 class PlayerBelt;
 class PlayerEquipment;
 class PlayerInventory;
+class PlayerSpecialItems;
 
 bool restoreRetailOwnedItems(
     const std::vector<std::uint8_t>& payload,
@@ -20,6 +21,7 @@ bool restoreRetailOwnedItems(
     PlayerInventory& inventory,
     PlayerEquipment& equipment,
     PlayerBelt& belt,
+    PlayerSpecialItems& special_items,
     std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 
@@ -29,6 +31,8 @@ bool replaceRetailOwnedItems(
     const PlayerInventory& inventory,
     const PlayerEquipment& equipment,
     const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
+    std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 
 }  // namespace osf

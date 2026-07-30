@@ -16,6 +16,7 @@ class GameplayInventory;
 class GameplayMap;
 class GameplayMissionList;
 class GameplayOptionsMenu;
+class GameplayTransport;
 struct GameplayFrameResult;
 class RetailSavePreview;
 struct TitleFrameResult;
@@ -38,6 +39,7 @@ struct RuntimeRenderContext {
     const GameplayInventory& gameplay_inventory;
     const GameplayMap& gameplay_map;
     const GameplayMissionList& gameplay_mission_list;
+    const GameplayTransport& gameplay_transport;
     const GameConfig& game_config;
     std::int32_t shadow_opacity = 500;
     std::uint32_t gameplay_counter = 0;

@@ -364,10 +364,12 @@ its index in the same 256-byte permutation used by the retail data path.
 OpenShadowFlare now writes that envelope and performs the inverse operation
 when preserving an existing save. It also follows the retail variable-sized
 item stream to restore and rewrite the nine known equipment slots, backpack,
-and belt. Grid positions, Gold quantities, durability, quality, and all
-still-unnamed instance bytes survive the round trip. The extra equipment
-records, special-item container, and unknown trailing payload bytes remain
-untouched. The rest of the dynamic payload is still pending.
+the belt, and the 9-by-10 Special Item owner. Grid positions, Gold quantities,
+durability, quality, and all still-unnamed instance bytes survive the round
+trip. The extra equipment records and unknown trailing payload bytes remain
+untouched. Loading also walks the next counted state array and restores the 51
+transport flags against Table 40. The rest of the dynamic payload is still
+pending.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
@@ -417,6 +419,27 @@ They use object resources 8, 15, and 14 from the first preload list. These
 records are separate from the map's static OBL scenery. Across all 209 retail
 MCT files, the exact sequential decoder reaches 5,203 object and 163 PEOPLE
 records without a resource-list mismatch.
+
+Object 200 and the Warehouse at local ID 300 are the first reconstructed
+type-zero pointer actions. The normal world pointer tests opaque cells in
+their static NJP or current CAF display, then uses the common judgement-box
+distance before running status kind zero for script characters `10000200` and
+`10000300`.
+
+Object 200 reaches opcode 37 at `0x004334da`. Its argument zero sets the
+transport UI owner used by `0x0040c950`. That renderer draws Status pattern 13,
+compacts enabled Table 40 rows into ten entries per page, uses patterns 22
+through 24 for rows and patterns 11/12 for paging, and plays sample 58 on
+navigation or selection. Table 40 row zero is `Remote Town`, scenario zero,
+entry 50. The same-scenario branch at `0x00426200` combines that entry value
+with local player zero as `entry * 4`, selecting MCT entry key 200 at
+`(94685,-2756)`, direction 7.
+
+The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
+flag `0x0048ce48`, the same one-page Special Item owner handled by
+`0x00447970`; it is not a separate warehouse container. Nonzero opcode-41
+arguments select a related ten-page owner which is not exercised by Remote
+Town and remains pending.
 
 The portable decoder also reads all seven Remote Town PEOPLE records and their
 bounded-wander tails. The first value after the bounds is copied to runtime

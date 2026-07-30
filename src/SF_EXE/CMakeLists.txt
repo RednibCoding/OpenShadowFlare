@@ -87,6 +87,7 @@ add_library(
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
   states/gameplay_state.cpp
+  states/gameplay_transport.cpp
   states/save_slot.cpp
   states/character_select_state.cpp
   states/character_select/network_flow.cpp
@@ -117,10 +118,12 @@ add_library(
   world/retail_save_file.cpp
   world/retail_save_items.cpp
   world/retail_save_preview.cpp
+  world/retail_save_progress.cpp
   world/quest_state.cpp
   world/scenario_data.cpp
   world/scenario_entity_state.cpp
   world/scenario_object_actor.cpp
+  world/transport_catalog.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
@@ -170,6 +173,7 @@ add_library(
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp
+  render/gameplay_transport_renderer.cpp
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/title_renderer.cpp

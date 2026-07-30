@@ -511,11 +511,28 @@ portable executable decodes the envelope and the item prefix: eleven optional
 equipment records followed by backpack, belt, and special-item containers.
 Each concrete item stores category, definition ID, an instance value, optional
 grid coordinates, its category-sized state-block length, and that state block.
-The nine known player equipment slots, backpack, and belt are restored and
-rewritten. The extra two equipment records, special-item container, and
-unmapped trailing payload remain byte-for-byte preserved. Scenario position,
-quests, mines, companions, and the rest of the dynamic payload are still
-pending.
+The nine known player equipment slots, backpack, belt, and Special Item
+container are restored and rewritten. The extra two equipment records and
+unmapped trailing payload remain byte-for-byte preserved. After those item
+containers, loading skips the first counted flag array and restores the next
+counted array as the 51 Table 40 transport flags. Scenario position, quests,
+mines, companions, and the rest of the dynamic payload are still pending.
+
+## Transport destination table
+
+Table 40 in `Table.Tbd` has 51 rows and three columns:
+
+| Column | Meaning |
+|---:|---|
+| 0 | Display name |
+| 1 | Scenario ID |
+| 2 | Scenario entry value |
+
+Every new character starts with row zero enabled. That row is `Remote Town`,
+scenario zero, entry 50. The transport panel only displays enabled rows and
+packs them into ten visible slots per page; disabled rows do not leave gaps.
+For a same-scenario single-player move, the executable looks up the MCT entry
+key as `local player number + entry * 4`, so row zero resolves entry key 200.
 
 ### Related Files
 - `Save\%04d.Ssv` - Save slot data (0000-0005)

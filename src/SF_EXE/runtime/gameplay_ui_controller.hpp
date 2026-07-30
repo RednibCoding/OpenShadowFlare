@@ -5,6 +5,7 @@
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
+#include "states/gameplay_transport.hpp"
 
 #include <cstdint>
 
@@ -45,6 +46,7 @@ public:
     const GameplayInventory& inventory() const;
     const GameplayMap& map() const;
     const GameplayMissionList& missionList() const;
+    const GameplayTransport& transport() const;
 
 private:
     void applyConfig(
@@ -57,6 +59,7 @@ private:
     GameplayInventory inventory_;
     GameplayMap map_;
     GameplayMissionList mission_list_;
+    GameplayTransport transport_;
     GameplayOptionsAction pending_action_ =
         GameplayOptionsAction::none;
 };

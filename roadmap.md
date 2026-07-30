@@ -374,10 +374,26 @@ They are initial visibility, pointer, and judgement state, not part overrides.
 The scenario script addresses those channels through its 100-, 300-, and
 200-million key ranges. Remote Town's periodic companion sentences use the
 same state path: the player's own companion stays absent while the other three
-town companions become visible, selectable, and solid. Type-zero click actions
-for the Warehouse and the other scripted object are still waiting on their
-native UI opcodes; they should be added with those services instead of
-exposing a clickable object which does nothing.
+town companions become visible, selectable, and solid.
+
+Type-zero pointing and the first two object services are now live as well.
+Static objects use their opaque NJP pixels, animated objects use their current
+CAF cells, and both share the retail range square, display ordering, pale hover
+tint, and MCT-owned nameplate data. Clicking object 200 runs its real
+status-zero sentence and opcode 37. That opens the left-hand transport panel,
+whose destination names and scenario/entry values come from all 51 rows of
+Table 40. The panel compacts enabled destinations into ten rows per page, uses
+the retail frame, row and arrow patterns, plays sample 58 for navigation, and
+moves the player through the scenario entry table. Its shifted right-hand
+world view keeps updating and accepts world input while the left panel owns
+its clicks. Remote Town starts with only its own row enabled, exactly as a new
+retail character does.
+
+The named Warehouse object follows the same pointer and range path. Its
+status-zero sentence reaches opcode 41 with argument zero and toggles the
+existing 9-by-10 Special Item owner instead of creating a second warehouse
+inventory. UI ownership stays in the runtime controller; scripts only request
+the service and the world only owns scenario data and relocation.
 
 ### 2. Grow scripts, conversations, and town interaction
 
@@ -510,10 +526,12 @@ successful belt use plays its own medicine sound.
 
 Those owned items now survive the real `.Ssv` path. The obfuscated payload's
 retail item prefix restores and rewrites all nine player equipment slots, the
-backpack, and the belt, including exact grid placement, Gold quantities,
-durability, quality, and preserved instance bytes. Unknown equipment records,
-special items, and the rest of an original save remain untouched until their
-owners are reconstructed.
+backpack, belt, and Special Item owner, including exact grid placement, Gold
+quantities, durability, quality, and preserved instance bytes. Unknown
+equipment records and the rest of an original save remain untouched until
+their owners are reconstructed. The counted transport flags following the
+owned-item prefix are also restored against Table 40, while new saves without
+that later retail section keep the new-character default.
 
 `X` now opens the separate special-item owner on the left. Its 9-by-10 grid,
 Status patterns 14 and 15, item origins, centered placement, swapping, Gold

@@ -87,6 +87,26 @@ bool WorldScene::commandWorldInteraction(
         return startGroundItemInteraction(item->id);
     }
 
+    if (target.kind ==
+        WorldPointerTargetKind::scenario_object) {
+        ScenarioObjectActor* selected =
+            findScenarioObject(target.id);
+        if (!selected) {
+            return false;
+        }
+        pending_interaction_ = target;
+        if (distanceBetweenBounds(
+                player_.position(),
+                player_.judgement(),
+                selected->position(),
+                selected->judgement()) >
+            kRetailInteractionDistance) {
+            player_.followTo(selected->position());
+            return true;
+        }
+        return startScenarioObjectInteraction(*selected);
+    }
+
     NpcActor* selected = findNpc(target.id);
     if (!selected) {
         return false;
@@ -194,6 +214,41 @@ bool WorldScene::interactionPending() const {
         WorldPointerTargetKind::none;
 }
 
+GameplayServiceRequest
+WorldScene::takeGameplayServiceRequest() {
+    GameplayServiceRequest request =
+        gameplay_service_request_;
+    gameplay_service_request_ = {};
+    return request;
+}
+
+bool WorldScene::activateTransportDestination(
+    std::int32_t row) {
+    const TransportDestination* destination =
+        transports_.find(row);
+    if (!destination ||
+        !transports_.enabled(row) ||
+        destination->scenario != 0) {
+        return false;
+    }
+    // FUN_00426200 indexes a same-scenario entry as
+    // local-player-number + transport-entry * 4. Single-player owns
+    // local player zero, so Remote Town's table value 50 selects MCT
+    // entry 200.
+    const ScenarioEntry* entry =
+        scenario_.findEntry(destination->entry * 4);
+    if (!entry) {
+        return false;
+    }
+    pending_interaction_ = {};
+    pointer_.clearSelection();
+    player_.relocate(
+        {entry->world_x, entry->world_y},
+        entry->direction);
+    map_exploration_.reveal(player_.position());
+    return true;
+}
+
 bool WorldScene::startNpcInteraction(NpcActor& selected) {
     pending_interaction_ = {};
     player_.cancelMovement();
@@ -209,6 +264,29 @@ bool WorldScene::startNpcInteraction(NpcActor& selected) {
     }
     return result == script::StepResult::waiting_for_message ||
            result == script::StepResult::complete;
+}
+
+bool WorldScene::startScenarioObjectInteraction(
+    ScenarioObjectActor& selected) {
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    player_.faceToward(selected.position());
+    const script::StepResult result =
+        scenario_script_.startStatus(
+            0, selected.characterNumber());
+    if (result == script::StepResult::waiting_for_message ||
+        result == script::StepResult::complete) {
+        pointer_.clearSelection();
+    }
+    return result == script::StepResult::waiting_for_message ||
+           result == script::StepResult::complete;
+}
+
+std::int32_t WorldScene::hoveredScenarioObjectId() const {
+    return pointer_.target().kind ==
+                   WorldPointerTargetKind::scenario_object
+               ? pointer_.target().id
+               : -1;
 }
 
 std::int32_t WorldScene::hoveredNpcId() const {
@@ -361,7 +439,94 @@ WorldScene::pointerCandidatesAtScreenPosition(
             return delta_x * delta_x + delta_y * delta_y;
         };
     std::vector<WorldPointerCandidate> candidates;
-    candidates.reserve(npcs_.size() + ground_items_.size());
+    candidates.reserve(
+        scenario_objects_.size() +
+        npcs_.size() +
+        ground_items_.size());
+    for (const ScenarioObjectActor& object :
+         scenario_objects_) {
+        if (!object.visible() ||
+            !object.pointerEnabled() ||
+            !object.drawEnabled()) {
+            continue;
+        }
+        bool intersects = false;
+        bool exact_hit = false;
+        if (object.hasStaticVisual()) {
+            const ScreenPosition projected =
+                calculateRealPosition(object.position());
+            const ScreenPosition anchor{
+                projected.x - camera_x,
+                projected.y - camera_y,
+            };
+            intersects =
+                displayPatternIntersectsRectangle(
+                    object.staticPatterns(),
+                    static_cast<std::size_t>(
+                        object.staticPattern()),
+                    anchor,
+                    hit_rectangle,
+                    object.displayHeight());
+            exact_hit =
+                displayPatternContainsPoint(
+                    object.staticPatterns(),
+                    static_cast<std::size_t>(
+                        object.staticPattern()),
+                    anchor,
+                    point,
+                    object.displayHeight());
+        } else if (object.hasAnimatedVisual()) {
+            const auto part_enabled =
+                [&object](std::size_t part) {
+                    return object.partEnabled(part);
+                };
+            intersects =
+                displayAnimationIntersectsRectangle(
+                    object.animation(),
+                    object.animationPatterns(),
+                    object.position(),
+                    object.animationChart(),
+                    object.direction(),
+                    object.animationFrame(),
+                    part_enabled,
+                    camera_x,
+                    camera_y,
+                    hit_rectangle,
+                    object.displayHeight());
+            exact_hit =
+                displayAnimationContainsPoint(
+                    object.animation(),
+                    object.animationPatterns(),
+                    object.position(),
+                    object.animationChart(),
+                    object.direction(),
+                    object.animationFrame(),
+                    part_enabled,
+                    camera_x,
+                    camera_y,
+                    point,
+                    object.displayHeight());
+        }
+        if (!intersects) {
+            continue;
+        }
+        candidates.push_back({
+            {
+                WorldPointerTargetKind::scenario_object,
+                object.id(),
+            },
+            {
+                0,
+                object.position(),
+                object.judgement(),
+                static_cast<std::int16_t>(
+                    object.displayStatus()),
+            },
+            0,
+            exact_hit,
+            pointerDistanceSquared(object.position()),
+        });
+    }
     for (const NpcActor& npc : npcs_) {
         if (!npc.visible() || !npc.pointerEnabled()) {
             continue;
@@ -516,6 +681,19 @@ NpcActor* WorldScene::findNpc(std::int32_t id) {
             return npc.id() == id;
         });
     return found == npcs_.end() ? nullptr : &*found;
+}
+
+ScenarioObjectActor* WorldScene::findScenarioObject(
+    std::int32_t id) {
+    const auto found = std::find_if(
+        scenario_objects_.begin(),
+        scenario_objects_.end(),
+        [id](const ScenarioObjectActor& object) {
+            return object.id() == id;
+        });
+    return found == scenario_objects_.end()
+        ? nullptr
+        : &*found;
 }
 
 GroundItem* WorldScene::findGroundItem(std::int32_t id) {

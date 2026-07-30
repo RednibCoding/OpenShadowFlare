@@ -441,15 +441,36 @@ bool testRetailRemoteTown() {
             "Harley's explanation did not advance to its second line.")) {
         return false;
     }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                !interpreter.waitingForMessage() &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12010003}),
+            "Harley's completed explanation did not release him.")) {
+        return false;
+    }
+
+    if (!check(
+            interpreter.startStatus(0, 10000200) ==
+                    osf::script::StepResult::complete &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{37},
+                        std::vector<std::int32_t>{0}),
+            "The Remote Town transport object did not emit opcode 37.")) {
+        return false;
+    }
     return check(
-        interpreter.resume() ==
+        interpreter.startStatus(0, 10000300) ==
                 osf::script::StepResult::complete &&
-            !interpreter.waitingForMessage() &&
             native_commands.back() ==
                 std::make_pair(
-                    std::int32_t{19},
-                    std::vector<std::int32_t>{12010003}),
-        "Harley's completed explanation did not release him.");
+                    std::int32_t{41},
+                    std::vector<std::int32_t>{0}),
+        "The Warehouse object did not emit opcode 41.");
 #else
     return true;
 #endif

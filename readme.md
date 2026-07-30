@@ -85,9 +85,12 @@ Here's where things stand today:
   screen and enters Remote Town with the player on the decoded retail ground
   map. Remote Town's original gates, walls, trees, rocks, and semi-transparent
   shadows are decoded from its object map and depth-sorted around the player.
-  Player walking and running, collision, the first wandering NPC, and the first
-  real `Scenario.Scs`-driven conversation are working too. The rest of the town
-  population, script commands, HUD, combat, and broader gameplay simulation
+  Player walking and running, retail obstacle steering, all seven town people,
+  script-driven conversations and item drops, the HUD, inventory, equipment,
+  belt, Special Item window, Map, Mission List, Settings, and the first
+  type-zero services are working too. The Warehouse now opens the shared
+  Special Item owner, while Remote Town's transport object reads its
+  destination from the retail table. Combat and broader scenario progression
   come next.
 
 That completes the first big reconstruction milestone: the whole support-DLL
@@ -101,8 +104,8 @@ For the DLL details, see the [fidelity inventory](fidelity/README.md).
 ## Roadmap
 
 The [project roadmap](roadmap.md) is our working guide for the executable
-reconstruction. It explains what is already finished, why player movement is
-the next slice, and how the later work builds toward NPCs, scripts, combat,
+reconstruction. It explains what is already finished, what the current
+gameplay slice is teaching us, and how the later work builds toward combat,
 save compatibility, all four episodes, and multiplayer.
 
 It is a living plan rather than a promised schedule. We update it as the retail
