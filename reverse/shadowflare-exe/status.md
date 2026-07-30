@@ -397,6 +397,28 @@ any nonzero player active state and its type-five companion fallback does not
 repeat the script-active test. Both measure judgement-rectangle distance,
 prefer every player over every companion, and preserve first-entry ties.
 
+The MCT-to-runtime rearrangement for all six attack presentations is pinned
+too. Direct variants take target limits from post-AI values 3 through 5,
+chart offsets from 41 through 43, and speed indices from 47 through 49.
+Effect variants take type/subtype/parameter/additive triples from values
+9, 15, 12, and 18 respectively, chart offsets from 44 through 46, and speed
+indices from 50 through 52. Retail adds chart bases four and seven. Every
+visual enemy in all 209 shipped scenarios has a speed index inside the
+ten-value table and a resulting chart present in its CAF.
+
+Presentation dispatch at `0x00459290` sends actions one through three to
+`0x0045a2f0` and four through six to `0x0045ac90`. Entry performs the matching
+ranged or default target lookup and faces it. Continuing updates calculate
+the frame from elapsed updates times `{0.3, 0.4, 0.6, 0.8, 1.0, 1.5, 2.0,
+2.5, 3.0, 4.0}`, truncating toward zero. Every newly crossed part-zero CAF
+cell is scanned for impact bit `0x40` and sound slots `0x400`, `0x800`, and
+`0x1000`; a jump beyond the chart end deliberately skips those frames before
+clamping. The last frame restores idle action seven and emits events two
+through seven only if the current event is minus one. The portable controller
+now returns the exact frame, facing, target, marker mask, typed effect fields,
+and completion event. Native damage, effect creation, audio-table resolution,
+and live update attachment are still kept outside this timing owner.
+
 The first native dispatcher pair is reconstructed separately. `0x0045c350`
 implements action zero as a timed idle: AID parameter one is its duration,
 event 11 holds it active, and event zero is restored when the counter reaches

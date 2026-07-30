@@ -82,6 +82,7 @@ bool EnemyActor::initialize(
     maximum_life_ = enemy.maximum_life;
     movement_speed_scale_ =
         enemy.movement_speed_scale;
+    presentation_profile_ = enemy.presentation;
 
     const std::size_t part_count =
         visual
@@ -122,6 +123,7 @@ void EnemyActor::clear() {
     current_life_ = 0;
     maximum_life_ = 0;
     movement_speed_scale_ = 0;
+    presentation_profile_ = {};
     state_.clear();
     part_visibility_.clear();
     red_strength_.clear();
@@ -222,6 +224,11 @@ std::int32_t EnemyActor::maximumLife() const {
 
 std::int32_t EnemyActor::movementSpeedScale() const {
     return movement_speed_scale_;
+}
+
+const EnemyPresentationProfile&
+EnemyActor::presentationProfile() const {
+    return presentation_profile_;
 }
 
 bool EnemyActor::partEnabled(std::size_t part) const {

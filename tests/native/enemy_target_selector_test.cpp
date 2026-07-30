@@ -71,7 +71,9 @@ bool testPlayerPriorityAndInclusiveRange() {
                 target.kind ==
                     osf::MovementTargetKind::player &&
                 target.identifier == 1 &&
-                target.distance == 500,
+                target.distance == 500 &&
+                target.position.x == 501 &&
+                target.position.y == 0,
             "Range selection did not preserve inclusive bounds, "
             "nearest-player choice, or player priority.")) {
         return false;

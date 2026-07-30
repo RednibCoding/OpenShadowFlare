@@ -1,6 +1,6 @@
 #include "npc_actor.hpp"
+#include "actor_direction.hpp"
 #include "movement_controller.hpp"
-#include "player_actor.hpp"
 #include "resources/character_visual_resource.hpp"
 
 #include <algorithm>

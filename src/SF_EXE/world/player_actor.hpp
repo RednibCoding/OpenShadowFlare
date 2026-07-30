@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_PLAYER_ACTOR_HPP
 #define OPENSHADOWFLARE_PLAYER_ACTOR_HPP
 
+#include "actor_direction.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
 
@@ -19,10 +20,6 @@ enum class MovementPace {
     walk,
     run,
 };
-
-std::int32_t retailDirectionForVector(
-    std::int32_t x,
-    std::int32_t y);
 
 class PlayerActor {
 public:

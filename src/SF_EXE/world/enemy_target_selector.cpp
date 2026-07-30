@@ -99,6 +99,7 @@ EnemyAiTarget findEnemyTargetInRange(
             MovementTargetKind::player,
             static_cast<std::int32_t>(slot),
             distance,
+            candidate.position,
         };
     }
     if (selected.found) {
@@ -141,6 +142,7 @@ EnemyAiTarget findEnemyTargetInRange(
             MovementTargetKind::scenario_actor,
             character_number,
             distance,
+            candidate->position,
         };
     }
     return selected;
@@ -178,6 +180,7 @@ EnemyAiTarget findDefaultEnemyTarget(
             MovementTargetKind::player,
             static_cast<std::int32_t>(slot),
             distance,
+            candidate.position,
         };
     }
     if (selected.found) {
@@ -207,6 +210,7 @@ EnemyAiTarget findDefaultEnemyTarget(
             MovementTargetKind::scenario_actor,
             candidate.character_number,
             distance,
+            candidate.position,
         };
     }
     return selected;

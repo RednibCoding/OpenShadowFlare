@@ -282,8 +282,10 @@ boundary.
 The live actor now has the initializer fields needed by those next steps.
 Pre-controller MCT values 1 through 4 are the spawn-relative patrol rectangle,
 value 8 initializes both current and maximum life, and post-controller value
-54 scales AID movement speed in thousandths. All other initializer words stay
-indexed until another executable consumer proves them.
+54 scales AID movement speed in thousandths. The post-controller triples used
+by presentation actions one through six are named too: target distance,
+chart/speed selection, and the four effect-construction values. All other
+initializer words stay indexed until another executable consumer proves them.
 
 Native actions zero through eleven now have an executable-owned controller
 behind the live-actor boundary. It reproduces timed waiting, bounded patrol
@@ -317,6 +319,19 @@ keeps its looser nonzero player state and does not apply the companion
 script-active gate. The evaluator and dispatcher now consume the same typed
 target result rather than maintaining look-alike boolean queries.
 
+Presentation actions one through six now have their own passive controller.
+It reproduces entry-only target acquisition and facing, direct versus effect
+chart selection, the ten exact animation-speed multipliers, truncating frame
+timing, and the part-zero scan across every newly crossed frame. Impact bit
+`0x40` and the three CAF sound markers are returned as typed events. The last
+frame is drawn once before idle action seven and completion events two through
+seven are restored only over an event of minus one, including the native
+fast-frame skip and resource-less completion paths. Every visual enemy across
+the retail MCT catalog has a valid speed index and referenced chart.
+Damage/effect construction,
+sound-table resolution, movement consumption, and live AI attachment remain
+the next boundary.
+
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
 spawn-relative movement rectangle. He now alternates chart-zero idling with a
@@ -326,8 +341,9 @@ update path does.
 The MCT is now structurally decoded from beginning to end. The last PEOPLE
 value is retained as reserved state: retail copies it into the actor
 initializer, but its PEOPLE update and render paths do not read it. The enemy
-parameter blocks deliberately remain indexed until their actual AI and combat
-consumers establish names. Partners and other runtime categories are created
+parameters without proven consumers deliberately remain indexed until their
+actual AI and combat paths establish names. Partners and other runtime
+categories are created
 outside this four-group MCT sequence and still need to be traced at their
 actual owners.
 

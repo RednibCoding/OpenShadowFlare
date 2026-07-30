@@ -1,6 +1,8 @@
 #ifndef OPENSHADOWFLARE_SCENARIO_DATA_HPP
 #define OPENSHADOWFLARE_SCENARIO_DATA_HPP
 
+#include "enemy_presentation_profile.hpp"
+
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -85,6 +87,7 @@ struct ScenarioEnemy : ScenarioEntity {
     std::int32_t patrol_bottom = 0;
     std::int32_t maximum_life = 0;
     std::int32_t movement_speed_scale = 0;
+    EnemyPresentationProfile presentation;
 };
 
 struct ScenarioItem : ScenarioEntity {

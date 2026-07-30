@@ -55,6 +55,8 @@ public:
     std::int32_t currentLife() const;
     std::int32_t maximumLife() const;
     std::int32_t movementSpeedScale() const;
+    const EnemyPresentationProfile&
+    presentationProfile() const;
     bool partEnabled(std::size_t part) const;
     std::int32_t partRedStrength(
         std::size_t part) const;
@@ -88,6 +90,7 @@ private:
     std::int32_t current_life_ = 0;
     std::int32_t maximum_life_ = 0;
     std::int32_t movement_speed_scale_ = 0;
+    EnemyPresentationProfile presentation_profile_;
     ScenarioEntityState state_;
     std::vector<std::int32_t> part_visibility_;
     std::vector<std::int16_t> red_strength_;

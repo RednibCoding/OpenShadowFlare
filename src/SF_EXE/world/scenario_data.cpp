@@ -367,6 +367,30 @@ bool readScenarioEnemy(
     enemy.patrol_bottom = pre_ai_values[4];
     enemy.maximum_life = pre_ai_values[8];
     enemy.movement_speed_scale = post_ai_values[54];
+    for (std::size_t variant = 0; variant < 3; ++variant) {
+        enemy.presentation
+            .direct_maximum_target_distance[variant] =
+            post_ai_values[3 + variant];
+        enemy.presentation.direct_animation_chart[variant] =
+            post_ai_values[41 + variant] + 4;
+        enemy.presentation
+            .direct_animation_speed_index[variant] =
+            post_ai_values[47 + variant];
+
+        enemy.presentation.effect_type[variant] =
+            post_ai_values[9 + variant];
+        enemy.presentation.effect_subtype[variant] =
+            post_ai_values[15 + variant];
+        enemy.presentation.effect_parameter[variant] =
+            post_ai_values[12 + variant];
+        enemy.presentation.effect_additive[variant] =
+            post_ai_values[18 + variant];
+        enemy.presentation.effect_animation_chart[variant] =
+            post_ai_values[44 + variant] + 7;
+        enemy.presentation
+            .effect_animation_speed_index[variant] =
+            post_ai_values[50 + variant];
+    }
     return true;
 }
 

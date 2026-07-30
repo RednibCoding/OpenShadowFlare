@@ -53,10 +53,24 @@ struct EnemyTargetSearchContext {
 };
 
 struct EnemyAiTarget {
+    EnemyAiTarget() = default;
+    EnemyAiTarget(
+        bool target_found,
+        MovementTargetKind target_kind,
+        std::int32_t target_identifier,
+        std::int32_t target_distance = 0,
+        WorldPosition target_position = {})
+        : found(target_found),
+          kind(target_kind),
+          identifier(target_identifier),
+          distance(target_distance),
+          position(target_position) {}
+
     bool found = false;
     MovementTargetKind kind = MovementTargetKind::none;
     std::int32_t identifier = -1;
     std::int32_t distance = 0;
+    WorldPosition position;
 };
 
 using EnemyTargetSearch =

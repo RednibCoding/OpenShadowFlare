@@ -120,10 +120,11 @@ and enabled enemy judgement rectangles already block the player. AI event
 selection attachment, enemy movement, life changes, attacks, drops, and combat
 are deliberately still pending rather than approximated.
 
-The actor also owns the first fields proven beyond that common boundary:
+The actor also owns the fields proven beyond that common boundary:
 spawn-relative patrol bounds, current and maximum life initialized from the
-same MCT value, and the per-enemy movement-speed scale. The surrounding MCT
-values remain raw until their actual consumers are reconstructed.
+same MCT value, the per-enemy movement-speed scale, and the six presentation
+profiles reconstructed from the loader's reordered values. The complete raw
+MCT blocks remain available for fields whose consumers are not understood yet.
 
 Retail's resource-less `Enemy Hole` records live in the same actor collection.
 They keep their script and AI identity but have no fabricated visual or
@@ -163,6 +164,14 @@ nearest and tie rules, judgement-bound distances, activity/life gates, and
 the four exact companion IDs. The event evaluator and action dispatcher
 consume one typed target result, so a later live hookup cannot silently use
 different eligibility logic for conditions and movement.
+
+Enemy presentation actions one through six now have a separate controller as
+well. It owns target-facing on entry, the retail ten-value CAF speed table,
+crossed-frame impact and three-slot sound markers, final-frame clamping, typed
+effect parameters, and completion events two through seven. It is intentionally
+not live yet: damage/effect construction, sound-table lookup, and movement
+still need to meet it at the actor boundary before enemies can run the full AI
+loop without dropping behavior.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

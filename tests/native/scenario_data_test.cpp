@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -669,6 +670,54 @@ bool testFixture() {
                 enemy->pre_ai_values[8] &&
             enemy->movement_speed_scale ==
                 enemy->post_ai_values[54] &&
+            enemy->presentation
+                    .direct_maximum_target_distance ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[3],
+                    enemy->post_ai_values[4],
+                    enemy->post_ai_values[5]} &&
+            enemy->presentation.direct_animation_chart ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[41] + 4,
+                    enemy->post_ai_values[42] + 4,
+                    enemy->post_ai_values[43] + 4} &&
+            enemy->presentation
+                    .direct_animation_speed_index ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[47],
+                    enemy->post_ai_values[48],
+                    enemy->post_ai_values[49]} &&
+            enemy->presentation.effect_type ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[9],
+                    enemy->post_ai_values[10],
+                    enemy->post_ai_values[11]} &&
+            enemy->presentation.effect_subtype ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[15],
+                    enemy->post_ai_values[16],
+                    enemy->post_ai_values[17]} &&
+            enemy->presentation.effect_parameter ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[12],
+                    enemy->post_ai_values[13],
+                    enemy->post_ai_values[14]} &&
+            enemy->presentation.effect_additive ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[18],
+                    enemy->post_ai_values[19],
+                    enemy->post_ai_values[20]} &&
+            enemy->presentation.effect_animation_chart ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[44] + 7,
+                    enemy->post_ai_values[45] + 7,
+                    enemy->post_ai_values[46] + 7} &&
+            enemy->presentation
+                    .effect_animation_speed_index ==
+                std::array<std::int32_t, 3>{
+                    enemy->post_ai_values[50],
+                    enemy->post_ai_values[51],
+                    enemy->post_ai_values[52]} &&
             scenario.items().size() == 1 &&
             item &&
             item->id == 7 &&
@@ -755,9 +804,12 @@ bool testRetailScenarioCatalog() {
     std::set<std::int32_t> people_reserved_values;
     std::set<std::string> enemy_ai_controls;
     std::set<std::int32_t> enemy_resource_ids;
+    std::map<std::int32_t, std::int32_t>
+        enemy_maximum_presentation_chart;
     std::size_t enemy_hole_count = 0;
     bool enemy_holes_match = true;
     bool enemy_hole_runtime_matches = true;
+    bool enemy_presentation_values_match = true;
     bool item_common_records_match = true;
     for (const auto& entry :
          std::filesystem::recursive_directory_iterator(
@@ -841,6 +893,50 @@ bool testRetailScenarioCatalog() {
             }
             if (enemy.resource_id >= 0) {
                 enemy_resource_ids.insert(enemy.resource_id);
+                const auto speed_valid =
+                    [](std::int32_t speed_index) {
+                        return speed_index >= 0 &&
+                               speed_index < 10;
+                    };
+                enemy_presentation_values_match =
+                    enemy_presentation_values_match &&
+                    std::all_of(
+                        enemy.presentation
+                            .direct_animation_speed_index
+                            .begin(),
+                        enemy.presentation
+                            .direct_animation_speed_index
+                            .end(),
+                        speed_valid) &&
+                    std::all_of(
+                        enemy.presentation
+                            .effect_animation_speed_index
+                            .begin(),
+                        enemy.presentation
+                            .effect_animation_speed_index
+                            .end(),
+                        speed_valid);
+                std::int32_t& maximum_chart =
+                    enemy_maximum_presentation_chart[
+                        enemy.resource_id];
+                maximum_chart = std::max(
+                    maximum_chart,
+                    *std::max_element(
+                        enemy.presentation
+                            .direct_animation_chart
+                            .begin(),
+                        enemy.presentation
+                            .direct_animation_chart
+                            .end()));
+                maximum_chart = std::max(
+                    maximum_chart,
+                    *std::max_element(
+                        enemy.presentation
+                            .effect_animation_chart
+                            .begin(),
+                        enemy.presentation
+                            .effect_animation_chart
+                            .end()));
             } else {
                 ++enemy_hole_count;
                 enemy_holes_match =
@@ -927,7 +1023,13 @@ bool testRetailScenarioCatalog() {
                 data_root, resource_id, &error);
         if (!check(
                 visual &&
-                    !visual->animation().charts().empty(),
+                    !visual->animation().charts().empty() &&
+                    enemy_maximum_presentation_chart[
+                        resource_id] >= 0 &&
+                    static_cast<std::size_t>(
+                        enemy_maximum_presentation_chart[
+                            resource_id]) <
+                        visual->animation().charts().size(),
                 "A shipped MCT enemy resource could not be decoded.")) {
             std::cerr
                 << "ENEMY resource " << resource_id
@@ -957,6 +1059,7 @@ bool testRetailScenarioCatalog() {
             enemy_hole_count == 34 &&
             enemy_holes_match &&
             enemy_hole_runtime_matches &&
+            enemy_presentation_values_match &&
             people_reserved_values ==
                 std::set<std::int32_t>{-100, -85, -65} &&
             !enemy_ai_controls.empty() &&

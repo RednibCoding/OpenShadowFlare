@@ -200,7 +200,42 @@ Its companion path does not repeat the script-active-bit test, though it still
 requires owner mode zero and optional positive life. The portable enemy target
 selector keeps both entry points behind one typed query result so the event
 evaluator and native movement/presentation actions cannot disagree about
-target kind, identifier, or measured distance.
+target kind, identifier, measured distance, or the position used for facing.
+
+The scenario loader's rearrangement is important for the six non-movement
+presentations. Direct actions one through three read maximum target distance
+from post-controller values 3 through 5, animation chart offsets from values
+41 through 43, and speed-table indices from values 47 through 49. Retail adds
+four to those authored chart offsets. Effect actions four through six use
+post-controller values 9 through 11 as effect types, 15 through 17 as
+subtypes, 12 through 14 as their direct parameters, and 18 through 20 as
+additive values. Their chart offsets come from values 44 through 46 with a
+retail base of seven, and values 50 through 52 select animation speed.
+`0x00458f40` sees these fields at runtime offsets `+0x110` through `+0x170`;
+the portable profile exposes the proven consumers while retaining both raw
+MCT blocks.
+
+`0x00459290` dispatches presentation actions one through three to
+`0x0045a2f0` and actions four through six to `0x0045ac90`. On entry, the
+first family searches from distance zero through its authored maximum; the
+second uses the default target query. Either one faces the selected actor,
+starts at frame zero, and keeps that target for the presentation-side result.
+The ten animation multipliers are exactly `0.3`, `0.4`, `0.6`, `0.8`, `1.0`,
+`1.5`, `2.0`, `2.5`, `3.0`, and `4.0`. A continuing update multiplies its
+integer elapsed counter by the chosen value and truncates toward zero.
+
+Both routines scan part zero for every newly crossed CAF frame. Status bit
+`0x40` is the impact point; bits `0x400`, `0x800`, and `0x1000` select the
+three sound-marker slots consumed by `0x0045a2a0`. A frame which jumps beyond
+the end is not scanned before the draw frame is clamped, an odd but observable
+retail edge case. Reaching the last frame draws it once, restores presentation
+seven, and publishes events two through four for the direct family or five
+through seven for the effect family only when the existing event is `-1`;
+another event is never overwritten. A resource-less actor completes
+immediately. The portable controller emits typed impact/effect and audio
+marker results; damage resolution, effect construction, and the sound-table
+lookup remain separate consumers rather than being hidden inside animation
+timing.
 
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a
@@ -242,9 +277,11 @@ leaving the current presentation alone.
 `Control.aid` contains 450 action-two records, 158 action-three records, 178
 action-five records, 91 action-six records, and 42 action-seven records. It
 contains no action-four or action-eight records, even though both native
-paths exist. These dispatch transitions are portable and tested, but remain
-behind the live-enemy boundary until their animation, targeting, damage, and
-completion-event work can be connected as one unit.
+paths exist. These dispatch transitions and their animation, targeting,
+marker, typed-effect, and completion-event consumer are portable and tested.
+They remain behind the live-enemy boundary until damage/effect construction,
+sound-table resolution, and movement can be connected as one complete update
+path.
 
 Actions nine and ten at `0x0045c600` and `0x0045c780` are the target-movement
 pair. If the selected AID condition enables a target range, they repeat the
