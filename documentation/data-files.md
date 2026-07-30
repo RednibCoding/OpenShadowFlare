@@ -128,7 +128,7 @@ The executable loader at `0x00427b50` starts with this fixed section:
 | `0x21c` | 4 | Unknown 32-bit field |
 | `0x220` | 4 | Zero-based music index |
 | `0x224` | 256 | Area title |
-| `0x324` | variable | Entity and scenario records, not fully mapped yet |
+| `0x324` | variable | Entity groups, entries, and footer |
 
 The variable section begins with three `count + int32[count]` preload lists
 for `Character\OBJECT`, `Character\PEOPLE`, and `Character\ENEMY` resources,
@@ -171,12 +171,39 @@ A person's `0x2c`-byte tail starts with walk speed, maximum walk updates, idle
 updates, and a flag choosing relative or absolute bounds, followed by the
 left, top, right, and bottom of its movement rectangle. The next value allows
 native action 21 to turn the person toward its evaluated target. The following
-value disables autonomous wandering when nonzero. The final signed value is
-still unnamed; it is `-65` for every Remote Town person.
+value disables autonomous wandering when nonzero. Retail copies the final
+signed value into the person's ten-value initialization block, but the
+PEOPLE update and render paths never read it. It is therefore kept as a
+reserved behavior value instead of being given a guessed meaning. The shipped
+files use `-100`, `-85`, and `-65`; every Remote Town person uses `-65`.
 
-Enemy and item records carry `0x13c`- and `0x10`-byte tails respectively.
-Their shared prefixes and exact boundaries are validated now, but their tails
-remain to be named and exposed.
+An enemy's `0x13c`-byte tail is not an array of 79 integers. It contains 15
+signed values, a fixed 32-byte AI-controller name, and another 56 signed
+values. The loader at `0x00427b50` looks up that name through
+`RKC_RPG_AICONTROL`, rearranges the surrounding values, and passes a 72-value
+block to the enemy initializer at `0x00458f40`. The portable decoder exposes
+the string separately and retains both indexed value blocks. Their individual
+gameplay names will be assigned from the enemy consumers as combat and AI are
+reconstructed, rather than inferred from plausible numbers.
+
+An item's `0x10`-byte tail is four signed values:
+
+| Index | Confirmed use |
+|---:|---|
+| 0 | Item category |
+| 1 | Definition ID within that category |
+| 2 | Minimum quantity |
+| 3 | Maximum quantity |
+
+Retail resolves the category and definition through the item database and
+places the result at the common entity position. For category 4, definition
+0 (gold), it chooses a quantity uniformly from the inclusive minimum/maximum
+range. Other item definitions do not enter that quantity-override branch.
+
+Across all 209 shipped files, the exact decoder finds 5,203 objects, 163
+PEOPLE records, 18,788 enemies, and 84 placed items. Every enemy has a
+non-empty AI-controller name and every nonnegative object, PEOPLE, and enemy
+resource ID appears in its matching preload list.
 
 Remote Town has seven people. The first is Ostare: local ID 0, resource ID 13,
 position (`91467`, `1532`), judgement `[-80, -80, 79, 79]`, and direction 7.
@@ -693,10 +720,10 @@ names.
 ## Scenario Data
 
 ### Scenario.Mct
-The fixed header, preload lists, object/PEOPLE records, remaining entity-group
-boundaries, entry table, and footer are documented in
-[Scenario Files](#scenario-files). Enemy and item tails are still being mapped
-from `0x00427b50`.
+The fixed header, preload lists, all four entity groups, entry table, and
+footer are documented in [Scenario Files](#scenario-files). The enemy value
+blocks remain deliberately indexed until their AI and combat consumers give
+them evidence-backed names.
 
 ### Scenario.Scs
 Compiled scenario script containing flags, messages, status triggers,

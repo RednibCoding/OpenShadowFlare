@@ -103,6 +103,14 @@ shadows. Their live bounds block player movement. Type-one MCT tails also drive
 the original idle pause and short walks inside each actor's scenario-defined
 rectangle.
 
+The same general decoder now retains all four MCT entity groups for every
+shipped scenario. Enemy records preserve their separate fixed-width
+AI-controller names and surrounding parameter blocks, while placed-item
+records expose the retail category, definition, and quantity range. Those
+records stay scenario data until their respective portable actor runtimes are
+implemented; the loader does not quietly discard or prematurely interpret
+them.
+
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
 and their script-controlled visibility and judgement state decides whether

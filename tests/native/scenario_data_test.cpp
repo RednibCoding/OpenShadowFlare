@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -481,8 +482,27 @@ std::vector<std::uint8_t> scenarioFixture() {
         bytes, 5, 8, "Other", 500, 600, 1, false);
     bytes.insert(bytes.end(), 0x2c, 0);
 
+    appendI32(bytes, 1);
+    appendCommonEntity(
+        bytes, 6, 99, "Test Enemy", 700, 800, 2, false);
+    for (std::int32_t value = 0; value < 15; ++value) {
+        appendI32(bytes, value * 3 - 17);
+    }
+    const std::string ai_control = "Test Chase";
+    bytes.insert(
+        bytes.end(), ai_control.begin(), ai_control.end());
+    bytes.resize(bytes.size() + 32 - ai_control.size(), 0);
+    for (std::int32_t value = 0; value < 56; ++value) {
+        appendI32(bytes, value * 5 + 11);
+    }
+
+    appendI32(bytes, 1);
+    appendCommonEntity(
+        bytes, 7, -1, "", 900, 1000, 4, false);
+    appendI32(bytes, 4);
     appendI32(bytes, 0);
-    appendI32(bytes, 0);
+    appendI32(bytes, 25);
+    appendI32(bytes, 75);
 
     appendI32(bytes, 2);
     appendI32(bytes, 0);
@@ -520,6 +540,14 @@ bool testFixture() {
         scenario.objects().empty()
             ? nullptr
             : &scenario.objects().front();
+    const osf::ScenarioEnemy* enemy =
+        scenario.enemies().empty()
+            ? nullptr
+            : &scenario.enemies().front();
+    const osf::ScenarioItem* item =
+        scenario.items().empty()
+            ? nullptr
+            : &scenario.items().front();
     return check(
         scenario.controllerPath() ==
                 "System\\Game\\Parameter\\Control.aid" &&
@@ -577,7 +605,30 @@ bool testFixture() {
             person->wander_bottom == 80 &&
             person->wandering_enabled &&
             person->scripted_turning_enabled &&
-            person->unknown_tail_value == -65 &&
+            person->reserved_behavior_value == -65 &&
+            scenario.enemies().size() == 1 &&
+            enemy &&
+            enemy->id == 6 &&
+            enemy->resource_id == 99 &&
+            enemy->name == "Test Enemy" &&
+            enemy->world_x == 700 &&
+            enemy->world_y == 800 &&
+            enemy->direction == 2 &&
+            enemy->pre_ai_values.front() == -17 &&
+            enemy->pre_ai_values.back() == 25 &&
+            enemy->ai_control_name == "Test Chase" &&
+            enemy->post_ai_values.front() == 11 &&
+            enemy->post_ai_values.back() == 286 &&
+            scenario.items().size() == 1 &&
+            item &&
+            item->id == 7 &&
+            item->world_x == 900 &&
+            item->world_y == 1000 &&
+            item->direction == 4 &&
+            item->category == 4 &&
+            item->definition_id == 0 &&
+            item->minimum_quantity == 25 &&
+            item->maximum_quantity == 75 &&
             scenario.entries().size() == 2 &&
             first &&
             first->world_x == 100 &&
@@ -635,6 +686,10 @@ bool testRetailScenarioCatalog() {
     std::size_t scenario_count = 0;
     std::size_t object_count = 0;
     std::size_t people_count = 0;
+    std::size_t enemy_count = 0;
+    std::size_t item_count = 0;
+    std::set<std::int32_t> people_reserved_values;
+    std::set<std::string> enemy_ai_controls;
     for (const auto& entry :
          std::filesystem::recursive_directory_iterator(
              scenario_root)) {
@@ -677,6 +732,8 @@ bool testRetailScenarioCatalog() {
         }
         for (const osf::ScenarioPerson& person :
              scenario.people()) {
+            people_reserved_values.insert(
+                person.reserved_behavior_value);
             if (person.initial_state_values.size() != 3) {
                 std::cerr
                     << entry.path()
@@ -699,14 +756,72 @@ bool testRetailScenarioCatalog() {
                 return false;
             }
         }
+        for (const osf::ScenarioEnemy& enemy :
+             scenario.enemies()) {
+            enemy_ai_controls.insert(enemy.ai_control_name);
+            if (enemy.initial_state_values.size() != 3) {
+                std::cerr
+                    << entry.path()
+                    << ": enemy "
+                    << enemy.id
+                    << " does not contain three state values.\n";
+                return false;
+            }
+            if (enemy.resource_id >= 0 &&
+                std::find(
+                    scenario.enemyResourceIds().begin(),
+                    scenario.enemyResourceIds().end(),
+                    enemy.resource_id) ==
+                    scenario.enemyResourceIds().end()) {
+                std::cerr
+                    << entry.path()
+                    << ": enemy resource "
+                    << enemy.resource_id
+                    << " is absent from its preload list.\n";
+                return false;
+            }
+        }
+        for (const osf::ScenarioItem& item :
+             scenario.items()) {
+            if (item.initial_state_values.size() != 3 ||
+                item.minimum_quantity > item.maximum_quantity) {
+                std::cerr
+                    << entry.path()
+                    << ": placed item "
+                    << item.id
+                    << " has an invalid state or quantity range.\n";
+                return false;
+            }
+        }
         ++scenario_count;
         object_count += scenario.objects().size();
         people_count += scenario.people().size();
+        enemy_count += scenario.enemies().size();
+        item_count += scenario.items().size();
+    }
+    if (scenario_count != 209 ||
+        object_count != 5203 ||
+        people_count != 163 ||
+        enemy_count != 18788 ||
+        item_count != 84) {
+        std::cerr
+            << "catalog counts: scenarios=" << scenario_count
+            << ", objects=" << object_count
+            << ", people=" << people_count
+            << ", enemies=" << enemy_count
+            << ", items=" << item_count << '\n';
     }
     return check(
         scenario_count == 209 &&
             object_count == 5203 &&
-            people_count == 163,
+            people_count == 163 &&
+            enemy_count == 18788 &&
+            item_count == 84 &&
+            people_reserved_values ==
+                std::set<std::int32_t>{-100, -85, -65} &&
+            !enemy_ai_controls.empty() &&
+            enemy_ai_controls.find("") ==
+                enemy_ai_controls.end(),
         "The retail MCT catalog counts differ from the exact loader "
         "trace.");
 #else
@@ -1183,7 +1298,7 @@ bool testRetailRemoteTown() {
                     people_initial_states[index].end()) &&
             person.wandering_enabled == (index == 0) &&
             person.scripted_turning_enabled == (index != 1) &&
-            person.unknown_tail_value == -65;
+            person.reserved_behavior_value == -65;
     }
     if (!check(
             scenario.mapPath() == "Map\\f00_01.map" &&
@@ -1230,7 +1345,7 @@ bool testRetailRemoteTown() {
                 ostare->wander_bottom == 231 &&
                 ostare->wandering_enabled &&
                 ostare->scripted_turning_enabled &&
-                ostare->unknown_tail_value == -65 &&
+                ostare->reserved_behavior_value == -65 &&
                 people_tail_matches &&
                 scenario.entries().size() == 12 &&
                 entry &&

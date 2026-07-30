@@ -29,10 +29,17 @@ constexpr std::size_t kObjectEntityTailSize = 0x34;
 constexpr std::size_t kPeopleEntityTailSize = 0x2c;
 constexpr std::size_t kEnemyEntityTailSize = 0x13c;
 constexpr std::size_t kItemEntityTailSize = 0x10;
+constexpr std::size_t kEnemyAiControlNameSize = 32;
 static_assert(
     13 * sizeof(std::int32_t) == kObjectEntityTailSize);
 static_assert(
     11 * sizeof(std::int32_t) == kPeopleEntityTailSize);
+static_assert(
+    (15 + 56) * sizeof(std::int32_t) +
+            kEnemyAiControlNameSize ==
+        kEnemyEntityTailSize);
+static_assert(
+    4 * sizeof(std::int32_t) == kItemEntityTailSize);
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -129,14 +136,6 @@ public:
         return true;
     }
 
-    bool skip(std::size_t size) {
-        if (!has(size)) {
-            return false;
-        }
-        offset_ += size;
-        return true;
-    }
-
     std::size_t remaining() const {
         return bytes_.size() - offset_;
     }
@@ -150,30 +149,14 @@ private:
     std::size_t offset_;
 };
 
-struct CommonEntity {
-    std::int32_t id = 0;
-    std::int32_t resource_id = 0;
-    std::string name;
-    std::uint32_t name_color = 0;
-    std::int32_t label_height = 0;
-    std::int32_t world_x = 0;
-    std::int32_t world_y = 0;
-    std::array<std::int32_t, 4> judgement{};
-    std::int32_t direction = 0;
-    std::vector<std::int32_t> initial_state_values;
-    std::vector<std::int32_t> part_visibility;
-    std::vector<std::int16_t> red_strength;
-    std::vector<std::int16_t> green_strength;
-    std::vector<std::int16_t> blue_strength;
-    std::int32_t unknown_common_value = 0;
-};
-
 struct VariableData {
     std::vector<std::int32_t> object_resource_ids;
     std::vector<std::int32_t> people_resource_ids;
     std::vector<std::int32_t> enemy_resource_ids;
     std::vector<ScenarioObject> objects;
     std::vector<ScenarioPerson> people;
+    std::vector<ScenarioEnemy> enemies;
+    std::vector<ScenarioItem> items;
     std::vector<ScenarioEntry> entries;
     std::array<std::int32_t, 3> footer_values{};
 };
@@ -232,7 +215,7 @@ bool readI16Vector(
     return true;
 }
 
-bool readCommonEntity(Reader& input, CommonEntity& entity) {
+bool readCommonEntity(Reader& input, ScenarioEntity& entity) {
     std::uint32_t name_size = 0;
     if (!input.readI32(entity.id) ||
         !input.readI32(entity.resource_id) ||
@@ -251,10 +234,11 @@ bool readCommonEntity(Reader& input, CommonEntity& entity) {
         !input.readI32(entity.world_y)) {
         return false;
     }
-    for (std::int32_t& edge : entity.judgement) {
-        if (!input.readI32(edge)) {
-            return false;
-        }
+    if (!input.readI32(entity.judgement_left) ||
+        !input.readI32(entity.judgement_top) ||
+        !input.readI32(entity.judgement_right) ||
+        !input.readI32(entity.judgement_bottom)) {
+        return false;
     }
     if (!input.readI32(entity.direction)) {
         return false;
@@ -293,9 +277,8 @@ bool readCommonEntity(Reader& input, CommonEntity& entity) {
 bool readScenarioObject(
     Reader& input,
     ScenarioObject& object) {
-    CommonEntity common;
     std::array<std::int32_t, 13> fields{};
-    if (!readCommonEntity(input, common)) {
+    if (!readCommonEntity(input, object)) {
         return false;
     }
     for (std::int32_t& field : fields) {
@@ -304,48 +287,27 @@ bool readScenarioObject(
         }
     }
 
-    object = {
-        common.id,
-        common.resource_id,
-        std::move(common.name),
-        common.name_color,
-        common.label_height,
-        common.world_x,
-        common.world_y,
-        common.judgement[0],
-        common.judgement[1],
-        common.judgement[2],
-        common.judgement[3],
-        common.direction,
-        std::move(common.initial_state_values),
-        std::move(common.part_visibility),
-        std::move(common.red_strength),
-        std::move(common.green_strength),
-        std::move(common.blue_strength),
-        common.unknown_common_value,
-        fields[0],
-        fields[1],
-        fields[2],
-        fields[3] != 0,
-        fields[4],
-        fields[5],
-        fields[6],
-        fields[7],
-        fields[8],
-        fields[9],
-        fields[10],
-        fields[11],
-        fields[12],
-    };
+    object.visual_mode = fields[0];
+    object.static_pattern = fields[1];
+    object.animation_chart = fields[2];
+    object.draw_status_bit_80 = fields[3] != 0;
+    object.height = fields[4];
+    object.unknown_tail_5 = fields[5];
+    object.unknown_tail_6 = fields[6];
+    object.draw_flags = fields[7];
+    object.draw_strength = fields[8];
+    object.unknown_tail_9 = fields[9];
+    object.red_draw_strength = fields[10];
+    object.green_draw_strength = fields[11];
+    object.blue_draw_strength = fields[12];
     return true;
 }
 
 bool readScenarioPerson(
     Reader& input,
     ScenarioPerson& person) {
-    CommonEntity common;
     std::array<std::int32_t, 11> fields{};
-    if (!readCommonEntity(input, common)) {
+    if (!readCommonEntity(input, person)) {
         return false;
     }
     for (std::int32_t& field : fields) {
@@ -354,55 +316,71 @@ bool readScenarioPerson(
         }
     }
 
-    person = {
-        common.id,
-        common.resource_id,
-        std::move(common.name),
-        common.name_color,
-        common.label_height,
-        common.world_x,
-        common.world_y,
-        common.judgement[0],
-        common.judgement[1],
-        common.judgement[2],
-        common.judgement[3],
-        common.direction,
-        std::move(common.initial_state_values),
-        std::move(common.part_visibility),
-        std::move(common.red_strength),
-        std::move(common.green_strength),
-        std::move(common.blue_strength),
-        common.unknown_common_value,
-        fields[0],
-        fields[1],
-        fields[2],
-        fields[3] == 0,
-        fields[4],
-        fields[5],
-        fields[6],
-        fields[7],
-        fields[9] == 0,
-        fields[8] != 0,
-        fields[10],
-    };
+    person.walk_speed = fields[0];
+    person.walk_duration = fields[1];
+    person.idle_duration = fields[2];
+    person.wander_bounds_relative = fields[3] == 0;
+    person.wander_left = fields[4];
+    person.wander_top = fields[5];
+    person.wander_right = fields[6];
+    person.wander_bottom = fields[7];
+    person.wandering_enabled = fields[9] == 0;
+    person.scripted_turning_enabled = fields[8] != 0;
+    person.reserved_behavior_value = fields[10];
     return true;
 }
 
-bool skipEntityGroup(
+bool readScenarioEnemy(
     Reader& input,
-    std::size_t tail_size) {
-    std::uint32_t count = 0;
-    if (!input.readU32(count) ||
-        !plausibleCount(count, input.remaining(), 4)) {
+    ScenarioEnemy& enemy) {
+    std::array<std::int32_t, 15> pre_ai_values{};
+    std::string ai_control_name;
+    std::array<std::int32_t, 56> post_ai_values{};
+    if (!readCommonEntity(input, enemy)) {
         return false;
     }
-    for (std::uint32_t index = 0; index < count; ++index) {
-        CommonEntity ignored;
-        if (!readCommonEntity(input, ignored) ||
-            !input.skip(tail_size)) {
+    for (std::int32_t& field : pre_ai_values) {
+        if (!input.readI32(field)) {
             return false;
         }
     }
+    if (!input.readString(
+            kEnemyAiControlNameSize, ai_control_name)) {
+        return false;
+    }
+    const std::size_t name_end = ai_control_name.find('\0');
+    if (name_end != std::string::npos) {
+        ai_control_name.resize(name_end);
+    }
+    for (std::int32_t& field : post_ai_values) {
+        if (!input.readI32(field)) {
+            return false;
+        }
+    }
+
+    enemy.pre_ai_values = pre_ai_values;
+    enemy.ai_control_name = std::move(ai_control_name);
+    enemy.post_ai_values = post_ai_values;
+    return true;
+}
+
+bool readScenarioItem(
+    Reader& input,
+    ScenarioItem& item) {
+    std::array<std::int32_t, 4> fields{};
+    if (!readCommonEntity(input, item)) {
+        return false;
+    }
+    for (std::int32_t& field : fields) {
+        if (!input.readI32(field)) {
+            return false;
+        }
+    }
+
+    item.category = fields[0];
+    item.definition_id = fields[1];
+    item.minimum_quantity = fields[2];
+    item.maximum_quantity = fields[3];
     return true;
 }
 
@@ -450,9 +428,38 @@ bool readVariableData(
         data.people.push_back(std::move(person));
     }
 
-    if (!skipEntityGroup(input, kEnemyEntityTailSize) ||
-        !skipEntityGroup(input, kItemEntityTailSize)) {
+    std::uint32_t enemy_count = 0;
+    if (!input.readU32(enemy_count) ||
+        !plausibleCount(
+            enemy_count, input.remaining(), kEnemyEntityTailSize)) {
         return false;
+    }
+    data.enemies.reserve(enemy_count);
+    for (std::uint32_t index = 0;
+         index < enemy_count;
+         ++index) {
+        ScenarioEnemy enemy;
+        if (!readScenarioEnemy(input, enemy)) {
+            return false;
+        }
+        data.enemies.push_back(std::move(enemy));
+    }
+
+    std::uint32_t item_count = 0;
+    if (!input.readU32(item_count) ||
+        !plausibleCount(
+            item_count, input.remaining(), kItemEntityTailSize)) {
+        return false;
+    }
+    data.items.reserve(item_count);
+    for (std::uint32_t index = 0;
+         index < item_count;
+         ++index) {
+        ScenarioItem item;
+        if (!readScenarioItem(input, item)) {
+            return false;
+        }
+        data.items.push_back(std::move(item));
     }
 
     std::uint32_t entry_count = 0;
@@ -548,6 +555,8 @@ bool ScenarioData::decode(
         std::move(variable.enemy_resource_ids);
     objects_ = std::move(variable.objects);
     people_ = std::move(variable.people);
+    enemies_ = std::move(variable.enemies);
+    items_ = std::move(variable.items);
     entries_ = std::move(variable.entries);
     footer_values_ = variable.footer_values;
     return true;
@@ -563,6 +572,8 @@ void ScenarioData::clear() {
     enemy_resource_ids_.clear();
     objects_.clear();
     people_.clear();
+    enemies_.clear();
+    items_.clear();
     entries_.clear();
     footer_values_.fill(0);
 }
@@ -605,6 +616,14 @@ ScenarioData::objects() const {
 
 const std::vector<ScenarioPerson>& ScenarioData::people() const {
     return people_;
+}
+
+const std::vector<ScenarioEnemy>& ScenarioData::enemies() const {
+    return enemies_;
+}
+
+const std::vector<ScenarioItem>& ScenarioData::items() const {
+    return items_;
 }
 
 const std::vector<ScenarioEntry>& ScenarioData::entries() const {

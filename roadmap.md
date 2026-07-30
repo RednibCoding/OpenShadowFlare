@@ -230,12 +230,15 @@ and run the later `Waiting.njp`/`WaitIcon.njp` presentation for 120 rendered
 frames while gameplay input and simulation are held.
 
 The next slices identified the three resource preload lists, the variable
-common entity record, and the complete object and `PEOPLE` group shapes.
-Remote Town's seven objects and seven people now decode with their retail
-resource IDs, names, positions, judgement boxes, directions, custom CAF part
-masks, and type-specific tails. The loader follows the object, PEOPLE, enemy,
-item, entry, and footer sequence directly; every one of the 209 shipped MCT
-files passes that path.
+common entity record, and all four entity-group shapes. Objects and `PEOPLE`
+decode with their retail resource IDs, names, positions, judgement boxes,
+directions, custom CAF part masks, and type-specific tails. Enemy records
+retain the 15 values before their fixed 32-byte AI-controller name and the 56
+values after it. Placed items expose their category, definition ID, and
+minimum/maximum quantity. The loader follows the object, PEOPLE, enemy, item,
+entry, and footer sequence directly; every one of the 209 shipped MCT files
+passes that path, covering 5,203 objects, 163 PEOPLE actors, 18,788 enemies,
+and 84 placed items.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
@@ -243,19 +246,17 @@ spawn-relative movement rectangle. He now alternates chart-zero idling with a
 short chart-one walk to a random point inside those bounds, as the original
 update path does.
 
-This is still not a complete MCT decoder. Enemy and item tails remain to be
-named and exposed, as does the last people-specific field and the more
-involved runtime behavior. Partners and other runtime categories are created
-outside this four-group MCT sequence and should be traced at their actual
-owners.
+The MCT is now structurally decoded from beginning to end. The last PEOPLE
+value is retained as reserved state: retail copies it into the actor
+initializer, but its PEOPLE update and render paths do not read it. The enemy
+parameter blocks deliberately remain indexed until their actual AI and combat
+consumers establish names. Partners and other runtime categories are created
+outside this four-group MCT sequence and still need to be traced at their
+actual owners.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:
 
-- name and expose the enemy and item tails which the exact decoder currently
-  validates and skips;
-- identify the final unnamed PEOPLE-tail value and connect it if it affects
-  portable state;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
 - represent dynamic entities separately from static OBL scenery;
