@@ -46,6 +46,22 @@ std::uint64_t scriptOperandKey(
         static_cast<std::uint32_t>(operand.value);
 }
 
+bool boundsIntersect(
+    WorldPosition first_position,
+    const ObjectBounds& first_bounds,
+    WorldPosition second_position,
+    const ObjectBounds& second_bounds) {
+    return
+        first_position.x + first_bounds.left <=
+            second_position.x + second_bounds.right &&
+        second_position.x + second_bounds.left <=
+            first_position.x + first_bounds.right &&
+        first_position.y + first_bounds.top <=
+            second_position.y + second_bounds.bottom &&
+        second_position.y + second_bounds.top <=
+            first_position.y + first_bounds.bottom;
+}
+
 }  // namespace
 
 bool WorldScene::readScriptWorldOperand(
@@ -180,6 +196,20 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 17) {
+        if (arguments.size() < 2 ||
+            script_travel_pending_) {
+            return false;
+        }
+        pending_script_travel_ = {
+            arguments[0],
+            arguments[1],
+            0,
+        };
+        script_travel_pending_ = true;
+        return true;
+    }
+
     if (opcode == 10) {
         if (arguments.size() < 6) {
             return false;
@@ -298,6 +328,62 @@ bool WorldScene::queryScriptValue(
         return true;
     }
     return false;
+}
+
+void WorldScene::runScenarioContactTriggers() {
+    if (!has_player_ || scenario_script_.messageActive()) {
+        return;
+    }
+    const WorldPosition player_position = player_.position();
+    const ObjectBounds& player_judgement = player_.judgement();
+    for (const script::Status& status :
+         scenario_script_.data().statuses()) {
+        if (status.kind != 3) {
+            continue;
+        }
+
+        WorldPosition position;
+        const ObjectBounds* judgement = nullptr;
+        if (const ScenarioObjectActor* object =
+                findScriptObject(status.character_number)) {
+            position = object->position();
+            judgement = &object->judgement();
+        } else if (const NpcActor* npc =
+                       findScriptNpc(status.character_number)) {
+            position = npc->position();
+            judgement = &npc->judgement();
+        } else if (const EnemyActor* enemy =
+                       findScriptEnemy(status.character_number)) {
+            position = enemy->position();
+            judgement = &enemy->judgement();
+        } else if (const GroundItem* item =
+                       findScriptGroundItem(status.character_number)) {
+            position = item->position;
+            judgement = &item->judgement;
+        }
+        if (!judgement ||
+            !boundsIntersect(
+                player_position,
+                player_judgement,
+                position,
+                *judgement)) {
+            continue;
+        }
+        scenario_script_.startStatus(
+            3, status.character_number);
+    }
+}
+
+bool WorldScene::processPendingScriptTravel() {
+    if (!script_travel_pending_) {
+        return false;
+    }
+    const ScenarioStart start = pending_script_travel_;
+    pending_script_travel_ = {};
+    script_travel_pending_ = false;
+    std::string error;
+    return transitionScenario(start, &error) !=
+           ScenarioTravelResult::failed;
 }
 
 

@@ -93,7 +93,10 @@ Here's where things stand today:
   destination from the retail table. The world loader is no longer tied to
   scenario zero either: the Wasteland of Pillars fixture now proves the same
   data and resource path with a nonzero retail scenario and entry. Live
-  transitions, combat, and broader scenario progression come next.
+  scenario travel is working now as well: walking through Remote Town's real
+  south-gate trigger loads `Near the Remote Town`, and the matching outdoor
+  trigger brings the player back. The first outdoor goblin combat pass and
+  broader scenario progression come next.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.

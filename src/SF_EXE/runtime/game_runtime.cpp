@@ -237,6 +237,14 @@ private:
         surfacePresenter_->present(source);
     }
 
+    void beginScenarioLoading() {
+        gameplayUi_.reset();
+        world_.setCameraAnchor(320, 240);
+        audio_.startWorldMusic(world_.musicTrack());
+        scenarioLoadingRenderCounter_ = 0;
+        gameplayFrame_ =
+            gameplayState_.beginScenarioLoading();
+    }
 
     void updateGame(bool& running) {
         switch (gameState_.currentState()) {
@@ -340,11 +348,8 @@ private:
                     gameState_,
                     running,
                     shadowOpacity_);
-            if (gameplayUi_.takeScenarioChanged()) {
-                audio_.startWorldMusic(world_.musicTrack());
-                scenarioLoadingRenderCounter_ = 0;
-                gameplayFrame_ =
-                    gameplayState_.beginScenarioLoading();
+            if (world_.takeScenarioChanged()) {
+                beginScenarioLoading();
             } else if (!ui_consumed) {
                 const bool map_active =
                     gameplayUi_.map().active();
@@ -373,6 +378,9 @@ private:
                     inventory_active ? 320 : 640,
                     400,
                 });
+                if (world_.takeScenarioChanged()) {
+                    beginScenarioLoading();
+                }
             }
             break;
         }

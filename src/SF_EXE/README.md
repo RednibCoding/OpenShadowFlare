@@ -112,6 +112,14 @@ They start settled, keep their script-visible MCT state, and disappear with
 the old scenario on a successful map change. A failed map preparation leaves
 the live actors untouched.
 
+Remote Town can now be left through its real south-gate trigger. The invisible
+MCT object runs its status-kind-three sentence when the player's rectangle
+overlaps it, and opcode 17 supplies scenario 1 and entry zero. The runtime
+shows the normal map loading screen, switches to `Near the Remote Town` and
+its music, and creates the outdoor map's authored objects and enemies. The
+matching trigger outside returns to Remote Town through the same data-driven
+path.
+
 Enemy records have a live runtime boundary as well. Their common MCT identity,
 state, bounds, name, direction, CAF part data, AI-control name, and
 `Character/ENEMY` visual are owned by `ScenarioWorld`. Patrol, targeting,

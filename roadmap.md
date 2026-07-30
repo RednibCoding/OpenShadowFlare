@@ -940,12 +940,18 @@ the MISS path. Types 1 and 2 can therefore be treated as complete; the other
 specialized effect families still need the same controller-by-controller
 work.
 
-The next player-visible checkpoint is leaving Remote Town through its authored
-script/object path and entering the first outdoor goblin area. That slice must
-trace the actual exit trigger, entry key, loading presentation, music change,
-spawn position, camera, collision, enemy activation, and return path. Once the
-transition is faithful, the first goblin pass should cover ordinary attacks,
-these live projectile effects where authored, reactions, death, experience,
+The first half of the next player-visible checkpoint is complete. Remote
+Town's invisible south-gate object uses status kind three and the retail
+inclusive rectangle check; its sentence calls opcode 17 with scenario 1 and
+entry zero. Walking through it now shows the existing loading presentation
+and enters `Near the Remote Town` at `(90581,5288)`, facing 7, with music
+track 1, its map collision, 48 objects, and all 127 enemies. The matching
+outdoor trigger returns through `{0,0}` to Remote Town's original entry,
+camera, and music. A live regression walks both directions and checks that
+each crossing publishes one loading transition.
+
+The next pass can stay entirely player-visible: reach the first nearby goblin
+and finish ordinary attacks, authored effects, reactions, death, experience,
 Gold and item drops, pickup, and save/reload without shortcuts.
 
 ### 5. Skills, magic, status, and the remaining game screens

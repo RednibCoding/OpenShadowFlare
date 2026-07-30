@@ -87,6 +87,9 @@ void WorldScene::clear() {
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
     gameplay_service_request_ = {};
+    pending_script_travel_ = {};
+    script_travel_pending_ = false;
+    scenario_changed_ = false;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -512,6 +515,10 @@ void WorldScene::update() {
             pending_audio_samples_.push_back(
                 retailItemLandingSound(*definition));
         }
+    }
+    runScenarioContactTriggers();
+    if (processPendingScriptTravel()) {
+        return;
     }
     interaction_npc =
         pending_interaction_.kind ==

@@ -454,6 +454,18 @@ bool testRetailRemoteTown() {
     }
 
     if (!check(
+            interpreter.startStatus(3, 10000000) ==
+                    osf::script::StepResult::complete &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{17},
+                        std::vector<std::int32_t>{1, 0}),
+            "The Remote Town south-gate trigger did not emit its "
+            "authored scenario and entry.")) {
+        return false;
+    }
+
+    if (!check(
             interpreter.startStatus(0, 10000200) ==
                     osf::script::StepResult::complete &&
                 native_commands.back() ==

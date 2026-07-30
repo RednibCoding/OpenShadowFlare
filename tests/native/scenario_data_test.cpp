@@ -1826,6 +1826,139 @@ bool testLiveScenarioTransition() {
 #endif
 }
 
+bool testScriptedRemoteTownExit() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, osf::PlayerLoadRequest{}, &error),
+            "The authored-exit fixture could not load Remote Town.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto trigger = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000000;
+        });
+    if (!check(
+            trigger != world.scenarioObjects().end() &&
+                !trigger->visible() &&
+                !trigger->judgementEnabled(),
+            "Remote Town no longer contains its retail invisible "
+            "south-gate trigger.")) {
+        return false;
+    }
+    const osf::ObjectBounds& bounds = trigger->judgement();
+    const osf::WorldPosition target{
+        trigger->position().x +
+            (bounds.left + bounds.right) / 2,
+        trigger->position().y +
+            (bounds.top + bounds.bottom) / 2,
+    };
+    const osf::ScreenPosition target_screen =
+        osf::calculateRealPosition(target);
+    world.commandPlayerMovement(
+        target_screen.x - world.cameraScreenX(),
+        target_screen.y - world.cameraScreenY());
+    for (std::int32_t update = 0;
+         update < 2000 && world.scenarioId() == 0;
+         ++update) {
+        world.update();
+    }
+
+    const osf::ScenarioEntry* destination_entry =
+        world.scenario().findEntry(0);
+    if (!check(
+            world.scenarioId() == 1 &&
+            world.scenario().title() ==
+                "Near the Remote Town" &&
+            destination_entry &&
+            destination_entry->world_x == 90581 &&
+            destination_entry->world_y == 5288 &&
+            destination_entry->direction == 7 &&
+            world.playerWorldX() == destination_entry->world_x &&
+            world.playerWorldY() == destination_entry->world_y &&
+            world.playerDirection() ==
+                destination_entry->direction &&
+            world.cameraScreenX() == 12473 &&
+            world.cameraScreenY() == 9346 &&
+            world.musicTrack() == 1 &&
+            world.scenario().mapPath() ==
+                "Map\\f00_02.map" &&
+            world.ground().width() > 0 &&
+            world.objectMap().objects().size() > 0 &&
+            world.enemies().size() == 127 &&
+            world.enemies().front().aiControl() &&
+            world.takeScenarioChanged() &&
+            !world.takeScenarioChanged(),
+        "Walking through Remote Town's authored trigger did not run "
+        "status kind three, opcode 17, and the destination load exactly "
+        "once.")) {
+        return false;
+    }
+
+    const auto return_trigger = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000000;
+        });
+    if (!check(
+            return_trigger != world.scenarioObjects().end(),
+            "The first outdoor map no longer contains its authored "
+            "Remote Town return trigger.")) {
+        return false;
+    }
+    const osf::ObjectBounds& return_bounds =
+        return_trigger->judgement();
+    const osf::WorldPosition return_target{
+        return_trigger->position().x +
+            (return_bounds.left + return_bounds.right) / 2,
+        return_trigger->position().y +
+            (return_bounds.top + return_bounds.bottom) / 2,
+    };
+    const osf::ScreenPosition return_screen =
+        osf::calculateRealPosition(return_target);
+    world.commandPlayerMovement(
+        return_screen.x - world.cameraScreenX(),
+        return_screen.y - world.cameraScreenY());
+    for (std::int32_t update = 0;
+         update < 2000 && world.scenarioId() == 1;
+         ++update) {
+        world.update();
+    }
+
+    const osf::ScenarioEntry* town_entry =
+        world.scenario().findEntry(0);
+    return check(
+        world.scenarioId() == 0 &&
+            town_entry &&
+            town_entry->world_x == 89898 &&
+            town_entry->world_y == 2811 &&
+            town_entry->direction == 3 &&
+            world.playerWorldX() == town_entry->world_x &&
+            world.playerWorldY() == town_entry->world_y &&
+            world.playerDirection() == town_entry->direction &&
+            world.cameraScreenX() == 12743 &&
+            world.cameraScreenY() == 9030 &&
+            world.musicTrack() == 0 &&
+            world.scenarioObjects().size() == 7 &&
+            world.enemies().empty() &&
+            world.takeScenarioChanged() &&
+            !world.takeScenarioChanged(),
+        "The outdoor return trigger did not restore Remote Town entry "
+        "zero and publish one loading transition.");
+#else
+    return true;
+#endif
+}
+
 bool testPlacedScenarioItems() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -3549,6 +3682,7 @@ int main() {
                    testRetailScenarioCatalog() &&
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
+                   testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&
                    testRetailRemoteTown()

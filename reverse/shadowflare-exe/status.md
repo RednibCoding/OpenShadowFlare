@@ -890,6 +890,23 @@ The icon uses x positions 590/598/606 in five-frame phases at y=440, matching
 Table 40 rows are also checked against their shipped scenario directory and
 single-player MCT entry.
 
+The authored Remote Town exit is reconstructed too. `0x004305d0` runs status
+kind five records, then scans kind three records and resolves each status
+character to its live scenario entity. `0x00414350` compares that entity's
+absolute rectangle with the local player's rectangle using inclusive edges;
+the ordinary visible, pointer, and judgement state values do not gate this
+contact check.
+
+Remote Town object `10000000` is the invisible south-gate trigger at
+`(90124,4275)`, bounds `[-106,66,964,604]`. Its status-three sentence 219
+executes opcode 17 at `0x00432162` with `{1,0}`. The handler writes the
+scenario and entry to runtime offsets `+0x440` and `+0x444`, sets the pending
+flag at `+0x43c`, and writes `-1` at `+0x454`. Scenario 1 (`Near the Remote
+Town`) then loads `f00_02`, BGM 1, entry key zero at `(90581,5288)` facing 7,
+48 objects, and 127 enemies. Its own object-zero status-three sentence sends
+`{0,0}`, returning to Remote Town entry zero and BGM 0. The portable runtime
+publishes exactly one loading transition in each direction.
+
 Periodic status kind five executes independent scenario callbacks. Remote
 Town sentences 158, 173, 188, and 203 read player-record offset `0x140`
 through opcode 44, compare it with each companion type and the play mode, then

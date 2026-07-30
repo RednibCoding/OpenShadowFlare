@@ -160,6 +160,7 @@ public:
     ScenarioTravelResult transitionScenario(
         const ScenarioStart& start,
         std::string* error = nullptr);
+    bool takeScenarioChanged();
     std::int32_t conversationActorId() const;
     std::int32_t conversationMessageId() const;
     const std::string& conversationText() const;
@@ -213,6 +214,8 @@ private:
     bool queryScriptValue(
         script::ValueQuery query,
         std::int32_t& value) const;
+    void runScenarioContactTriggers();
+    bool processPendingScriptTravel();
     WorldPointerTarget pointerTargetAtScreenPosition(
         std::int32_t screen_x,
         std::int32_t screen_y) const;
@@ -337,6 +340,9 @@ private:
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;
     GameplayServiceRequest gameplay_service_request_;
+    ScenarioStart pending_script_travel_;
+    bool script_travel_pending_ = false;
+    bool scenario_changed_ = false;
 };
 
 }  // namespace osf

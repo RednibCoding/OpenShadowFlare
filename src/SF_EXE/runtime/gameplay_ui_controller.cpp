@@ -25,7 +25,6 @@ void GameplayUiController::reset() {
     mission_list_.close();
     transport_.close();
     pending_action_ = GameplayOptionsAction::none;
-    scenario_changed_ = false;
 }
 
 bool GameplayUiController::update(
@@ -93,8 +92,6 @@ bool GameplayUiController::update(
                 world.activateTransportDestination(
                     result.selected_destination,
                     &error);
-            scenario_changed_ =
-                travel == ScenarioTravelResult::loaded;
             if (travel == ScenarioTravelResult::failed) {
                 std::fprintf(
                     stderr,
@@ -370,12 +367,6 @@ bool GameplayUiController::update(
            options_.active() ||
            (input.gameplayOptionsPressed() &&
             !world.conversationActive());
-}
-
-bool GameplayUiController::takeScenarioChanged() {
-    const bool changed = scenario_changed_;
-    scenario_changed_ = false;
-    return changed;
 }
 
 const GameplayOptionsMenu&

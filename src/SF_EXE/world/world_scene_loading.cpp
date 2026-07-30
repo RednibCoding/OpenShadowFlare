@@ -276,7 +276,14 @@ ScenarioTravelResult WorldScene::transitionScenario(
     if (error) {
         error->clear();
     }
+    scenario_changed_ = true;
     return ScenarioTravelResult::loaded;
+}
+
+bool WorldScene::takeScenarioChanged() {
+    const bool changed = scenario_changed_;
+    scenario_changed_ = false;
+    return changed;
 }
 
 }  // namespace osf

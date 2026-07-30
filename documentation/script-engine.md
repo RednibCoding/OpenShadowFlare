@@ -231,8 +231,11 @@ so clicking him looks up character `12000000`, status kind `0`, and enters
 sentence `4`. Nothing in the portable world layer needs to know his name,
 message number, or sentence number.
 
-More status kinds exist and their event meanings still need to be named as we
-reach them.
+Kind `3` is an overlap trigger. The scenario update at `0x004305d0` resolves
+the status character to its live MCT entity and passes the entity and local
+player rectangles to `0x00414350`. Touching edges count as an overlap. The
+sentence runs even when the entity's ordinary visible, pointer, and judgement
+channels are disabled, which is how invisible map exits work.
 
 Kind `5` is a periodic scenario update. Remote Town has five such records.
 Four keep the town companion actors in sync with the local player's saved
@@ -288,6 +291,7 @@ interactions are portable so far.
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
+| 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
@@ -316,6 +320,14 @@ facing. Opcode 21 evaluates an actor and a target. Target zero is the local
 player; a nonzero value resolves another scenario actor. The actor turns only
 when its PEOPLE-tail scripted-turning flag is enabled. This is enabled for
 Ostare, Syria, and the four Remote Town animals, but disabled for Malse.
+
+Opcode 17 evaluates a scenario ID and entry value, writes them to the
+executable's pending-travel fields, enables the travel request, and clears the
+optional explicit-position selector. Remote Town's invisible object zero has
+status kind `3`; its sentence 219 supplies `{1, 0}`. Walking through the south
+gate therefore loads scenario 1, `Near the Remote Town`, at entry key zero.
+That outdoor scenario uses the same mechanism in reverse: object zero supplies
+`{0, 0}` and returns to Remote Town's entry key zero.
 
 Opcodes 37 and 41 show why native commands remain hooks. Remote Town object
 200 has script character `10000200`; its status-zero sentence calls opcode 37
@@ -523,16 +535,16 @@ placement and movement bounds should remain scenario data.
 
 ## Still to map
 
-The next useful script work is another real Remote Town actor or service,
-chosen after the opening items have a visible data-backed path. That should
-naturally reveal more of:
+The next useful script work should keep following real scenario interactions
+and combat rather than adding commands in isolation. That should naturally
+reveal more of:
 
 - persistent flag initialization and save-game restoration;
 - message control bytes, portraits, speaker metadata, and alternate message
   frame modes;
 - keyboard movement between message choices;
 - waits for movement and animation completion;
-- gates, later warps, shops, rewards, and quest-log actions;
+- later warps, shops, rewards, and quest-log actions;
 - remaining operand domains and the rest of the opcode switch;
 - multiplayer and network flag behavior.
 

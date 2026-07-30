@@ -923,6 +923,28 @@ switches BGM, and starts the later standard loading presentation. Explicit
 coordinate entry `-1`, the alternate `VisualNN` presentation, multiplayer
 ownership, and exact teardown ordering remain.
 
+The first authored cross-map path is now traced end to end. During the
+scenario update at `0x004305d0`, status kind three resolves its character to a
+live MCT entity and calls the inclusive rectangle test at `0x00414350`
+against the local player. This does not consult the entity's three ordinary
+state channels. Remote Town object zero is consequently an invisible trigger
+at `(90124,4275)` with bounds `[-106,66,964,604]`, even though its visible and
+judgement channels are zero.
+
+Its sentence 219 calls opcode 17 at `0x00432162` with scenario 1 and entry
+zero. The handler stores both values in the pending transition record, enables
+the request, and resets the explicit-position selector to `-1`. The portable
+world defers the actual transaction until the interpreter has returned, then
+publishes one scenario-change event to the runtime. This keeps the SCS owner
+valid during command execution and lets the runtime enter the existing
+120-render-frame loading phase before accepting more simulation or input.
+
+Scenario 1 is `Near the Remote Town`, map `f00_02`, music track 1. Entry key
+zero places the local player at `(90581,5288)`, direction 7, with the camera
+still anchored at `(320,240)`. The MCT creates 48 objects and 127 enemies.
+Its object-zero kind-three trigger calls the same opcode with `{0,0}`, landing
+back at Remote Town's `(89898,2811)`, direction 3, and music track 0.
+
 The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
 flag `0x0048ce48`, the same one-page Special Item owner handled by
 `0x00447970`; it is not a separate warehouse container. Nonzero opcode-41
