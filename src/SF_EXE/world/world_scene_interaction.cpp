@@ -1134,6 +1134,8 @@ bool WorldScene::startGroundItemInteraction(
             found->item.definition_id);
     if (definition &&
         player_inventory_.store(found->item)) {
+        pending_audio_samples_.push_back(
+            retailItemMoveSound(*definition));
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&
             pointer_.target().id == item_id) {

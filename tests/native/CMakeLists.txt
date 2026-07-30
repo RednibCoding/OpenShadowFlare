@@ -1006,6 +1006,39 @@ if(TARGET sf_game_core)
     NAME enemy_death_rewards
     COMMAND enemy_death_rewards_test)
 
+  add_executable(
+    first_goblin_combat_test
+    first_goblin_combat_test.cpp
+  )
+  target_link_libraries(
+    first_goblin_combat_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    first_goblin_combat_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    first_goblin_combat_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    first_goblin_combat_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      first_goblin_combat_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      first_goblin_combat_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME first_goblin_combat
+    COMMAND first_goblin_combat_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test

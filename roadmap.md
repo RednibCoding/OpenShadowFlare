@@ -30,13 +30,17 @@ The portable executable already has a solid front half:
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
 - the in-game Settings, Help, Mission List, and Map screens
+- the inventory, equipment, belt, Special Item, tooltip, and retail save owners
+- the authored Remote Town exit and return loading transitions
+- the ordinary player/enemy combat loop through death, rewards, and pickup
 
 In other words, the game can reach the world and the player can now walk
-around it. Remote Town now loads all seven PEOPLE records, their movement and
-collision, the first human and companion conversations, and Ostare's four
-opening item drops. The world renderer also uses the retail display lists and
-full judgement rectangles, so large scenery such as walls and houses occludes
-actors correctly.
+around it, leave through the south gate, and fight the first Goblin outside.
+Remote Town loads all seven PEOPLE records, their movement and collision, the
+first human and companion conversations, and Ostare's four opening item drops.
+The world renderer also uses the retail display lists and full judgement
+rectangles, so large scenery such as walls and houses occludes actors
+correctly.
 
 Gameplay now receives a proper player-data handoff too. New characters are
 initialized from the retail parameter tables, while selected saves contribute
@@ -88,16 +92,37 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Last completed milestone: make Remote Town feel like a game
+## Current milestone: take combat beyond the first Goblin
+
+The ordinary encounter is now proven in the live outdoor map, all the way from
+targeting through pickup and save/reload. The next useful combat work is the
+behavior that cannot be exercised by that first sword fight:
+
+- finish the remaining enemy effect-controller families one shipped family at
+  a time, with both passive timing coverage and a live actor using each one;
+- reconstruct player death, its final presentation, and the original recovery
+  or menu path;
+- finish ranged player actions and projectiles without bypassing the common
+  effect actors;
+- attach companion targeting and attacks to the same receiver and reward
+  owners;
+- keep checking item state, audio, experience, and saving beside each change
+  so a new combat path cannot silently damage adjacent ownership.
+
+Once those are solid, the next large player-facing milestone is skills, magic,
+status effects, and their remaining HUD and assignment screens.
+
+## Completed foundation: make Remote Town feel like a game
 
 This slice touched nearly every piece the rest of gameplay will need: input,
 world coordinates, actor state, animation, collision, camera movement, and
 depth-sorted rendering.
 
 The first goal was simply to make a new character walk around Remote Town as
-the original game does. That work has since grown into the common movement,
-interaction, and display-order foundation used by the player, PEOPLE actors,
-ground items, and scenery. The HUD, inventory, and combat are still waiting.
+the original game does. That work grew into the common movement, interaction,
+and display-order foundation used by the player, PEOPLE actors, ground items,
+and scenery. The HUD, inventory, and ordinary combat milestones described
+later now build on that foundation.
 
 ### What the retail path taught us
 
@@ -459,7 +484,7 @@ state, equipment objects, flags, and other dynamic data. It can be mapped a
 piece at a time as those systems gain real owners. This milestone does not
 claim full save loading or writing.
 
-## Current milestone: draw the gameplay HUD and world-pointer feedback
+## Completed foundation: draw the gameplay HUD and world-pointer feedback
 
 The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
 screen coordinates, digit placement, and 206-pixel life and mana calculations.
@@ -950,9 +975,26 @@ outdoor trigger returns through `{0,0}` to Remote Town's original entry,
 camera, and music. A live regression walks both directions and checks that
 each crossing publishes one loading transition.
 
-The next pass can stay entirely player-visible: reach the first nearby goblin
-and finish ordinary attacks, authored effects, reactions, death, experience,
-Gold and item drops, pickup, and save/reload without shortcuts.
+That player-visible pass is complete too. The first authored target outside
+the gate is local enemy 101, the level-one Goblin with 40 life, one experience
+point, loot row zero, and its 10-percent roll for 10 through 20 Gold. A live
+regression equips Ostare's actual Short Sword, approaches that exact actor
+through the outdoor map, and keeps every click in the normal pointer, movement,
+CAF attack, receiver, reaction, and death paths. It requires the hit and death
+effects, swing and impact sounds, experience and kill credit, the authored
+drop, its bounce and landing sound, and normal approach-and-pickup behavior.
+Ground pickup now also queues selector zero's retail item-move sound instead
+of silently moving the item into the backpack. The resulting inventory,
+experience, kill count, and equipped sword are written through the `.Ssv`
+owner and checked again after a real reload. Gold's separate chance, amount,
+Gold Find, stacking, and save path remain covered by their deterministic
+reward and owner tests because a faithful 10-percent roll must not be forced
+to succeed in this live encounter.
+
+The next combat work is no longer about proving that an ordinary encounter can
+finish. It should move to the remaining effect-controller families, player
+death and recovery, then the ranged player actions and companion attacks,
+keeping one shipped live encounter beside each passive reconstruction.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

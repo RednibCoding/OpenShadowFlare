@@ -131,6 +131,14 @@ packets to live targets, play positional launch and impact sounds, and render
 their OPTION CAF resources in the ordinary depth list. A miss uses the
 original bouncing and fading OPTION 11000011 `MISS` pattern.
 
+The first complete outdoor encounter is covered as one player-visible path,
+not as a collection of disconnected combat helpers. The level-one Goblin
+nearest the Remote Town gate can be approached and attacked with Ostare's
+Short Sword, plays its hit and death presentation, awards experience and kill
+credit, and creates its authored item and possible Gold drops. Those drops
+bounce, play their landing sound, can be approached and picked up with their
+item-specific movement sound, and remain owned after saving and loading.
+
 The actor also owns the fields proven beyond that common boundary:
 spawn-relative patrol bounds, current and maximum life initialized from the
 same MCT value, the per-enemy movement-speed scale, and the six presentation

@@ -248,7 +248,10 @@ Inventory movement sounds follow `0x00466110`: category-two items use sample
 93, Gold uses 85, ordinary items below weight 60 use 48, and heavier ones use
 47. Equipment placement uses sample 49 except for category two, while a
 successful belt effect uses sample 16. Sounds are emitted only after the
-corresponding ownership change succeeds.
+corresponding ownership change succeeds. The success tail of
+`0x00449ef0` also calls selector zero after a picked-up world item has entered
+the player owner, so ground pickup uses the same category-and-weight sample
+instead of being silent.
 
 Ground drops use selector two from the same routine. Their first contact with
 the ground plays sample 15 for an ordinary item, 85 for Gold, or 93 for a
