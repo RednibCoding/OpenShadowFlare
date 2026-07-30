@@ -409,6 +409,7 @@ bool testNpcDynamicActorJudgement() {
     person.wander_right = 100;
     person.wander_bottom = 0;
     person.wandering_enabled = true;
+    person.initial_state_values = {1, 1, 1};
 
     osf::CharacterVisualResource visual;
     osf::NpcActor npc;
@@ -419,7 +420,7 @@ bool testNpcDynamicActorJudgement() {
     }
     std::vector<osf::MovementBlocker> actors{
         {
-            npc.id(),
+            npc.movementBlockerId(),
             npc.position(),
             npc.judgement(),
         },
@@ -471,6 +472,7 @@ bool testScriptedNpcTurningFlag() {
     person.id = 7;
     person.resource_id = 1;
     person.direction = 1;
+    person.initial_state_values = {1, 1, 1};
 
     osf::CharacterVisualResource visual;
     osf::NpcActor npc;

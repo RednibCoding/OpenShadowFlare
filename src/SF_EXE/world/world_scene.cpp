@@ -22,6 +22,11 @@ WorldScene::WorldScene()
               std::int32_t& value) {
               return readScriptWorldOperand(operand, value);
           },
+          [this](
+              const script::Operand& operand,
+              std::int32_t value) {
+              return writeScriptWorldOperand(operand, value);
+          },
           [this](std::int32_t character_number) {
               const NpcActor* npc =
                   findScriptNpc(character_number);
@@ -50,11 +55,13 @@ void WorldScene::clear() {
     object_map_.clear();
     map_patterns_.clear();
     player_visual_.clear();
+    object_visuals_.clear();
     people_visuals_.clear();
     speech_patterns_.clear();
     map_overview_patterns_.clear();
     map_exploration_.clear();
     player_appearance_.clear();
+    scenario_objects_.clear();
     npcs_.clear();
     ground_items_.clear();
     pending_audio_samples_.clear();
@@ -103,6 +110,11 @@ const gapi::NjpImage& WorldScene::playerShadowPatterns() const {
 
 const gapi::CafAnimation& WorldScene::playerAnimation() const {
     return player_visual_.animation();
+}
+
+const std::vector<ScenarioObjectActor>&
+WorldScene::scenarioObjects() const {
+    return scenario_objects_;
 }
 
 const std::vector<NpcActor>& WorldScene::npcs() const {
@@ -227,6 +239,9 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    if (!scenario_script_.messageActive()) {
+        scenario_script_.runStatusKind(5);
+    }
     NpcActor* interaction_npc = nullptr;
     GroundItem* interaction_item = nullptr;
     if (pending_interaction_.kind ==
@@ -254,10 +269,33 @@ void WorldScene::update() {
         kNoMovementBlockerId + 1;
     std::vector<MovementBlocker> actor_blockers;
     actor_blockers.reserve(
-        npcs_.size() + (has_player_ ? 1u : 0u));
-    for (const NpcActor& npc : npcs_) {
+        scenario_objects_.size() + npcs_.size() +
+        (has_player_ ? 1u : 0u));
+    for (const ScenarioObjectActor& object :
+         scenario_objects_) {
+        if (!object.judgementEnabled()) {
+            continue;
+        }
         actor_blockers.push_back({
-            npc.id(),
+            object.movementBlockerId(),
+            object.position(),
+            object.judgement(),
+        });
+    }
+    std::vector<std::size_t> npc_blocker_indices(
+        npcs_.size(), actor_blockers.size());
+    constexpr std::size_t no_blocker =
+        static_cast<std::size_t>(-1);
+    for (const NpcActor& npc : npcs_) {
+        const std::size_t index =
+            static_cast<std::size_t>(&npc - npcs_.data());
+        if (!npc.judgementEnabled()) {
+            npc_blocker_indices[index] = no_blocker;
+            continue;
+        }
+        npc_blocker_indices[index] = actor_blockers.size();
+        actor_blockers.push_back({
+            npc.movementBlockerId(),
             npc.position(),
             npc.judgement(),
         });
@@ -272,14 +310,21 @@ void WorldScene::update() {
             player_.judgement(),
         });
     }
+    for (ScenarioObjectActor& object :
+         scenario_objects_) {
+        object.update();
+    }
     for (std::size_t index = 0;
          index < npcs_.size();
          ++index) {
         NpcActor& npc = npcs_[index];
         npc.update(
             ground_, object_map_, &actor_blockers);
-        actor_blockers[index].position =
-            npc.position();
+        if (npc_blocker_indices[index] != no_blocker) {
+            actor_blockers[
+                npc_blocker_indices[index]].position =
+                npc.position();
+        }
     }
     for (GroundItem& item : ground_items_) {
         if (updateGroundItem(item) !=

@@ -577,6 +577,14 @@ bool testRetailScenarioCatalog() {
         }
         for (const osf::ScenarioObject& object :
              scenario.objects()) {
+            if (object.initial_state_values.size() != 3) {
+                std::cerr
+                    << entry.path()
+                    << ": object "
+                    << object.id
+                    << " does not contain three state values.\n";
+                return false;
+            }
             if (object.resource_id >= 0 &&
                 std::find(
                     scenario.objectResourceIds().begin(),
@@ -593,6 +601,14 @@ bool testRetailScenarioCatalog() {
         }
         for (const osf::ScenarioPerson& person :
              scenario.people()) {
+            if (person.initial_state_values.size() != 3) {
+                std::cerr
+                    << entry.path()
+                    << ": PEOPLE actor "
+                    << person.id
+                    << " does not contain three state values.\n";
+                return false;
+            }
             if (person.resource_id >= 0 &&
                 std::find(
                     scenario.peopleResourceIds().begin(),
@@ -743,6 +759,18 @@ bool testRetailRemoteTown() {
         -1, 8, 8, -1, 15, 15, 14,
     };
     const std::array<
+        std::array<std::int32_t, 3>,
+        7>
+        object_initial_states{{
+            {0, 1, 0},
+            {1, 1, 1},
+            {1, 0, 0},
+            {0, 0, 0},
+            {1, 0, 0},
+            {1, 0, 0},
+            {1, 1, 1},
+        }};
+    const std::array<
         std::array<std::int32_t, 13>,
         7>
         object_tails{{
@@ -788,9 +816,25 @@ bool testRetailRemoteTown() {
             object_records_match &&
             object.id == object_ids[index] &&
             object.resource_id == object_resources[index] &&
+            object.initial_state_values ==
+                std::vector<std::int32_t>(
+                    object_initial_states[index].begin(),
+                    object_initial_states[index].end()) &&
             tail == object_tails[index];
     }
     bool people_tail_matches = scenario.people().size() == 7;
+    const std::array<
+        std::array<std::int32_t, 3>,
+        7>
+        people_initial_states{{
+            {1, 1, 1},
+            {1, 1, 1},
+            {1, 1, 1},
+            {0, 0, 0},
+            {0, 0, 0},
+            {0, 0, 0},
+            {0, 0, 0},
+        }};
     for (std::size_t index = 0;
          index < scenario.people().size();
          ++index) {
@@ -798,6 +842,10 @@ bool testRetailRemoteTown() {
             scenario.people()[index];
         people_tail_matches =
             people_tail_matches &&
+            person.initial_state_values ==
+                std::vector<std::int32_t>(
+                    people_initial_states[index].begin(),
+                    people_initial_states[index].end()) &&
             person.wandering_enabled == (index == 0) &&
             person.scripted_turning_enabled == (index != 1) &&
             person.unknown_tail_value == -65;
@@ -916,6 +964,44 @@ bool testRetailRemoteTown() {
             "update order.")) {
         return false;
     }
+    if (!check(
+            world.scenarioObjects().size() == 7 &&
+                world.scenarioObjects()[0].id() == 0 &&
+                world.scenarioObjects()[0].characterNumber() ==
+                    10000000 &&
+                !world.scenarioObjects()[0].visible() &&
+                world.scenarioObjects()[0].pointerEnabled() &&
+                !world.scenarioObjects()[0].judgementEnabled() &&
+                world.scenarioObjects()[1].id() == 200 &&
+                world.scenarioObjects()[1].resourceId() == 8 &&
+                world.scenarioObjects()[1].hasStaticVisual() &&
+                world.scenarioObjects()[1].hasStaticShadow() &&
+                world.scenarioObjects()[1].drawEnabled() &&
+                world.scenarioObjects()[1].judgementEnabled() &&
+                world.scenarioObjects()[2].id() == 201 &&
+                world.scenarioObjects()[2].visible() &&
+                !world.scenarioObjects()[2].pointerEnabled() &&
+                !world.scenarioObjects()[2].judgementEnabled() &&
+                world.scenarioObjects()[4].id() == 203 &&
+                world.scenarioObjects()[4].resourceId() == 15 &&
+                world.scenarioObjects()[4].hasAnimatedVisual() &&
+                world.scenarioObjects()[4].animationChart() == 0 &&
+                world.scenarioObjects()[4].animationFrame() == 0 &&
+                world.scenarioObjects()[4].displayHeight() == 240 &&
+                world.scenarioObjects()[5].id() == 204 &&
+                !world.scenarioObjects()[5].drawEnabled() &&
+                world.scenarioObjects()[6].id() == 300 &&
+                world.scenarioObjects()[6].resourceId() == 14 &&
+                world.scenarioObjects()[6].name() ==
+                    "  Warehouse  " &&
+                world.scenarioObjects()[6].hasStaticVisual() &&
+                world.scenarioObjects()[6].hasStaticShadow() &&
+                world.scenarioObjects()[6].pointerEnabled() &&
+                world.scenarioObjects()[6].judgementEnabled(),
+            "WorldScene did not preserve the retail type-zero object "
+            "state, resource mode, or draw controls.")) {
+        return false;
+    }
 
     bool initial_medicine_layout = true;
     for (std::int32_t row = 0; row < 4; ++row) {
@@ -1020,6 +1106,24 @@ bool testRetailRemoteTown() {
                 !renderer.calls[2].shadow &&
                 renderer.calls[2].pattern == 1784,
             "Ostare's idle frame, part mask, shadow, or placement differs.")) {
+        return false;
+    }
+    NpcRecordingBackend warehouse_renderer;
+    warehouse_renderer.patterns =
+        &world.scenarioObjects()[6].staticPatterns();
+    warehouse_renderer.shadows =
+        &world.scenarioObjects()[6].staticShadows();
+    osf::renderWorld(warehouse_renderer, world, 500);
+    if (!check(
+            warehouse_renderer.calls.size() == 2 &&
+                warehouse_renderer.calls[0].shadow &&
+                warehouse_renderer.calls[0].pattern == 0 &&
+                warehouse_renderer.calls[0].draw.opacity == 500 &&
+                !warehouse_renderer.calls[1].shadow &&
+                warehouse_renderer.calls[1].pattern == 0 &&
+                warehouse_renderer.calls[1].draw.opacity == 1000,
+            "The Warehouse type-zero object did not submit its retail "
+            "shadow and static pattern passes.")) {
         return false;
     }
 
@@ -1561,9 +1665,23 @@ bool testRetailRemoteTown() {
     const osf::NpcActor& malse_route_target =
         companion_world.npcs()[1];
     std::vector<osf::MovementBlocker> town_actor_blockers;
-    for (const osf::NpcActor& npc : companion_world.npcs()) {
+    for (const osf::ScenarioObjectActor& object :
+         companion_world.scenarioObjects()) {
+        if (!object.judgementEnabled()) {
+            continue;
+        }
         town_actor_blockers.push_back({
-            npc.id(),
+            object.movementBlockerId(),
+            object.position(),
+            object.judgement(),
+        });
+    }
+    for (const osf::NpcActor& npc : companion_world.npcs()) {
+        if (!npc.judgementEnabled()) {
+            continue;
+        }
+        town_actor_blockers.push_back({
+            npc.movementBlockerId(),
             npc.position(),
             npc.judgement(),
         });
@@ -1599,7 +1717,41 @@ bool testRetailRemoteTown() {
         return false;
     }
 
-    const osf::NpcActor& kerberos = companion_world.npcs()[3];
+    const std::int32_t object_animation_frame =
+        companion_world.scenarioObjects()[4].animationFrame();
+    companion_world.update();
+    const osf::NpcActor& kerberos =
+        companion_world.npcs()[3];
+    const osf::NpcActor& gravity =
+        companion_world.npcs()[4];
+    if (!check(
+            !kerberos.visible() &&
+                !kerberos.pointerEnabled() &&
+                !kerberos.judgementEnabled() &&
+                gravity.visible() &&
+                gravity.pointerEnabled() &&
+                gravity.judgementEnabled() &&
+                companion_world.npcs()[5].visible() &&
+                companion_world.npcs()[5].pointerEnabled() &&
+                companion_world.npcs()[5].judgementEnabled() &&
+                companion_world.npcs()[6].visible() &&
+                companion_world.npcs()[6].pointerEnabled() &&
+                companion_world.npcs()[6].judgementEnabled() &&
+                object_animation_frame == 0 &&
+                companion_world.scenarioObjects()[4]
+                        .animationFrame() == 1,
+            "The periodic companion scripts did not hide the player's "
+            "own dog, activate the other town companions, or advance "
+            "type-zero actors in retail order.")) {
+        return false;
+    }
+    osf::ScreenPosition kerberos_pointer;
+    if (!check(
+            !findNpcPointerPoint(
+                companion_world, kerberos.id(), kerberos_pointer),
+            "The player's own companion remained selectable in town.")) {
+        return false;
+    }
     constexpr osf::WorldPosition sacks_route_start{
         89800, 1450};
     constexpr osf::WorldPosition sacks_route_destination{
@@ -1684,13 +1836,14 @@ bool testRetailRemoteTown() {
     // The retail controller follows nearby obstacle edges; it is not a
     // whole-map route planner. Keep this interaction test to camera-sized
     // movement legs, like actual play does.
-    constexpr osf::WorldPosition kerberos_approach[] = {
-        {92000, 500},
-        {92000, -1000},
+    constexpr osf::WorldPosition gravity_approach[] = {
+        {93000, 1500},
+        {93000, 0},
+        {94000, -1500},
         {93200, -3200},
         {89900, -3200},
     };
-    for (const osf::WorldPosition waypoint : kerberos_approach) {
+    for (const osf::WorldPosition waypoint : gravity_approach) {
         const osf::ScreenPosition anchor =
             osf::calculateRealPosition(waypoint);
         companion_world.commandPlayerMovement(
@@ -1704,32 +1857,36 @@ bool testRetailRemoteTown() {
             companion_world.update();
         }
     }
-    const osf::ScreenPosition kerberos_anchor =
-        osf::calculateRealPosition(kerberos.position());
-    const bool kerberos_click =
-        companion_world.commandWorldInteraction(
-            kerberos_anchor.x -
-                companion_world.cameraScreenX(),
-            kerberos_anchor.y -
-                companion_world.cameraScreenY());
-    const bool kerberos_approached =
-        companion_world.interactionPending();
+    osf::ScreenPosition gravity_pointer;
     if (!check(
-            kerberos_click &&
-                kerberos_approached &&
+            findNpcPointerPoint(
+                companion_world, gravity.id(), gravity_pointer),
+            "Gravity has no opaque retail pointer cell.")) {
+        return false;
+    }
+    const bool gravity_click =
+        companion_world.commandWorldInteraction(
+            gravity_pointer.x,
+            gravity_pointer.y);
+    const bool gravity_started_or_approached =
+        companion_world.interactionPending() ||
+        companion_world.conversationActive();
+    if (!check(
+            gravity_click &&
+                gravity_started_or_approached &&
                 updateUntilConversation(companion_world, 5000) &&
-                companion_world.conversationActorId() == 10000 &&
+                companion_world.conversationActorId() == 10001 &&
                 companion_world.conversationRequiresSelection() &&
                 companion_world.conversationInitialSelection() == 3,
-            "The retail movement controller did not approach Kerberos "
+            "The retail movement controller did not approach Gravity "
             "and open his choice message.")) {
         std::cerr
             << "Player: "
             << companion_world.playerWorldX() << ", "
             << companion_world.playerWorldY()
-            << "; Kerberos: "
-            << kerberos.position().x << ", "
-            << kerberos.position().y << '\n';
+            << "; Gravity: "
+            << gravity.position().x << ", "
+            << gravity.position().y << '\n';
         return false;
     }
 
@@ -1757,7 +1914,7 @@ bool testRetailRemoteTown() {
             !choice_renderer.text_calls.empty() &&
                 quit != choice_layout.choices.end() &&
                 status != choice_layout.choices.end(),
-            "Kerberos's rendered choice message is missing a range.")) {
+            "Gravity's rendered choice message is missing a range.")) {
         return false;
     }
     const auto choice_text = std::find_if(
@@ -1875,7 +2032,7 @@ bool testRetailRemoteTown() {
             selected == 3 &&
                 !companion_world.conversationActive() &&
                 companion_world.conversationActorId() == -1,
-            "Kerberos's rendered QUIT choice was not clickable.")) {
+            "Gravity's rendered QUIT choice was not clickable.")) {
         return false;
     }
 
@@ -1886,6 +2043,7 @@ bool testRetailRemoteTown() {
             "Remote Town could not be reloaded for Harley's dialogue.")) {
         return false;
     }
+    harley_world.update();
     const osf::NpcActor& harley = harley_world.npcs()[6];
     const osf::ScreenPosition harley_anchor =
         osf::calculateRealPosition(harley.position());

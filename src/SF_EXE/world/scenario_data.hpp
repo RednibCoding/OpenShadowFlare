@@ -29,7 +29,7 @@ struct ScenarioObject {
     std::int32_t judgement_right = 0;
     std::int32_t judgement_bottom = 0;
     std::int32_t direction = 0;
-    std::vector<std::int32_t> part_overrides;
+    std::vector<std::int32_t> initial_state_values;
     std::vector<std::int32_t> part_visibility;
     std::vector<std::int16_t> red_strength;
     std::vector<std::int16_t> green_strength;
@@ -63,7 +63,7 @@ struct ScenarioPerson {
     std::int32_t judgement_right = 0;
     std::int32_t judgement_bottom = 0;
     std::int32_t direction = 0;
-    std::vector<std::int32_t> part_overrides;
+    std::vector<std::int32_t> initial_state_values;
     std::vector<std::int32_t> part_visibility;
     std::vector<std::int16_t> red_strength;
     std::vector<std::int16_t> green_strength;

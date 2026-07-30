@@ -25,7 +25,8 @@ void renderCharacterAnimationPass(
     std::int32_t camera_y,
     bool shadow,
     std::int32_t shadow_opacity,
-    std::int32_t screen_height) {
+    std::int32_t screen_height,
+    std::int32_t opacity) {
     if (animation.charts().empty()) {
         return;
     }
@@ -121,7 +122,11 @@ void renderCharacterAnimationPass(
              shadow
                  ? std::clamp(shadow_opacity, 0, 1000)
                  : std::clamp<std::int32_t>(
-                       cell->transparency, 0, 1000),
+                       cell->transparency *
+                           std::clamp(opacity, 0, 1000) /
+                           1000,
+                       0,
+                       1000),
              shadow ? 1000 : strength.red,
              shadow ? 1000 : strength.green,
              shadow ? 1000 : strength.blue,

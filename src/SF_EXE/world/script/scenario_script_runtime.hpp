@@ -16,6 +16,9 @@ struct ScenarioScriptRuntimeHooks {
     std::function<bool(
         const script::Operand&,
         std::int32_t&)> read_world_operand;
+    std::function<bool(
+        const script::Operand&,
+        std::int32_t)> write_world_operand;
     std::function<std::int32_t(std::int32_t)> resolve_actor_id;
     std::function<bool(
         std::int32_t,
@@ -38,6 +41,7 @@ public:
     script::StepResult startStatus(
         std::int32_t kind,
         std::int32_t character_number);
+    script::StepResult runStatusKind(std::int32_t kind);
     script::StepResult resume(std::int32_t selection = -1);
     const script::ScriptData& data() const;
 

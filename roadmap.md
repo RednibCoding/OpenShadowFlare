@@ -362,11 +362,22 @@ active-map entity loop.
 
 The same MCT also contains seven type-zero dynamic objects, separate from
 `f00_01.Obl`: local IDs `0`, `200` through `204`, and the named Warehouse at
-`300`. Their records and 13-value tails are preserved now, including the
-confirmed static-pattern/CAF choice, height, draw flags, draw strength, and
-RGB strengths. The next town slice should load their `Character/OBJECT`
-resources and reconstruct their type-zero update, display, collision, and
-script behavior before extending live collision to enemies.
+`300`. They now have their own portable actor and `Character/OBJECT` resource
+owner. Mixed-case retail filenames are resolved without platform assumptions,
+static NJP/SDW pairs and CAF animations stay distinct, and the MCT height,
+draw flags, opacity, and color strengths feed the shared depth-sorted shadow
+and visible passes. Active object judgement joins the same live blocker set as
+PEOPLE actors.
+
+The three common values before the CAF part tables are understood now too.
+They are initial visibility, pointer, and judgement state, not part overrides.
+The scenario script addresses those channels through its 100-, 300-, and
+200-million key ranges. Remote Town's periodic companion sentences use the
+same state path: the player's own companion stays absent while the other three
+town companions become visible, selectable, and solid. Type-zero click actions
+for the Warehouse and the other scripted object are still waiting on their
+native UI opcodes; they should be added with those services instead of
+exposing a clickable object which does nothing.
 
 ### 2. Grow scripts, conversations, and town interaction
 

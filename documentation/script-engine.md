@@ -155,6 +155,14 @@ message number, or sentence number.
 More status kinds exist and their event meanings still need to be named as we
 reach them.
 
+Kind `5` is a periodic scenario update. Remote Town has five such records.
+Four keep the town companion actors in sync with the local player's saved
+companion type. The player-owned dog is disabled and the other three are
+enabled. Each status is an independent callback, so one unsupported periodic
+branch must not prevent the later records from updating their actors. The
+fifth Remote Town record drives a separate distance/effect path whose native
+commands are not portable yet.
+
 ## Interpreter architecture
 
 The portable implementation lives in
@@ -204,6 +212,9 @@ interactions are portable so far.
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
+| 22 | opcode switch | Enable all three state channels for a scenario entity |
+| 23 | opcode switch | Disable all three state channels for a scenario entity |
+| 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
@@ -245,6 +256,12 @@ The portable interpreter asks its host for
 `ValueQuery::local_player_level`, so player data stays game-owned rather than
 being copied into the script library.
 
+Opcodes 22 and 23 take a script character number and write one or zero to all
+three of its live entity-state keys. Opcode 44 reads player-record offset
+`0x140`, which is the currently owned companion type, through a typed host
+query. Remote Town combines those commands with the play-mode operand to keep
+the selected companion from also appearing as a clickable town NPC.
+
 Opcode 62 evaluates a quest ID, a new state, and a network-notification flag.
 Ordinary updates write the new state and issue cue `0x41`. State `2` is the
 completion path: the executable latches completion once, requires the old
@@ -277,7 +294,7 @@ entering the actor's status-kind-one callback. Mode-one messages with initial
 option `-1` are chained informational speech instead: they have no selectable
 ranges and close without writing operand one. The portable interpreter and
 speech-bubble layout preserve that split.
-The native Remote Town fixture walks to Kerberos, opens his retail message,
+The native Remote Town fixture walks to Gravity, opens his retail message,
 checks the initial red `QUIT` selection, moves the red highlight to
 `Check Status`, then hits the rendered `QUIT` range, writes option three, and
 verifies that the conversation releases the actor. Unselected ranges use the
@@ -306,11 +323,18 @@ The currently understood domains are:
 | 5 | Network/state domain |
 | 6 | Script character's current world X |
 | 7 | Script character's current world Y |
+| 8 | Current play mode (`0` single player, `1` client, `2` server) |
 | 10, 11, 12 | Persistent global arrays |
 | 13 | Local-player array |
 
-Several additional types address actors and broader game state. They will be
-named only when an exercised retail path gives us enough evidence.
+Type `5` includes three confirmed live scenario-entity ranges. A key beginning
+at `100000000` controls visibility, `300000000` controls pointer selection,
+and `200000000` controls judgement/collision. The remainder is the entity's
+script character number. Type-zero MCT objects use `10000000 + local ID`;
+PEOPLE use `12000000 + local ID`.
+
+Several additional types address broader game state. They will be named only
+when an exercised retail path gives us enough evidence.
 
 Temporary flags are owned directly by the interpreter and initialized from the
 SCS definitions. Persistent and game-owned domains are callbacks because their

@@ -160,7 +160,7 @@ struct CommonEntity {
     std::int32_t world_y = 0;
     std::array<std::int32_t, 4> judgement{};
     std::int32_t direction = 0;
-    std::vector<std::int32_t> part_overrides;
+    std::vector<std::int32_t> initial_state_values;
     std::vector<std::int32_t> part_visibility;
     std::vector<std::int16_t> red_strength;
     std::vector<std::int16_t> green_strength;
@@ -260,10 +260,12 @@ bool readCommonEntity(Reader& input, CommonEntity& entity) {
         return false;
     }
 
-    std::uint32_t override_count = 0;
-    if (!input.readU32(override_count) ||
+    std::uint32_t state_value_count = 0;
+    if (!input.readU32(state_value_count) ||
         !readI32Vector(
-            input, override_count, entity.part_overrides)) {
+            input,
+            state_value_count,
+            entity.initial_state_values)) {
         return false;
     }
 
@@ -315,7 +317,7 @@ bool readScenarioObject(
         common.judgement[2],
         common.judgement[3],
         common.direction,
-        std::move(common.part_overrides),
+        std::move(common.initial_state_values),
         std::move(common.part_visibility),
         std::move(common.red_strength),
         std::move(common.green_strength),
@@ -365,7 +367,7 @@ bool readScenarioPerson(
         common.judgement[2],
         common.judgement[3],
         common.direction,
-        std::move(common.part_overrides),
+        std::move(common.initial_state_values),
         std::move(common.part_visibility),
         std::move(common.red_strength),
         std::move(common.green_strength),

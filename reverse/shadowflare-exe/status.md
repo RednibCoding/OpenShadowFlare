@@ -526,10 +526,38 @@ projected position with the retail camera offset.
 The dynamic-entity loop at `0x00429ce0` calls every active-map entry without a
 camera or clip test. Its insertion path at `0x004298c0` orders entries by
 character number. The gameplay frame updates the player before that scenario
-loop. Remote Town's MCT records are already in ascending local-ID order, so
-the portable scene updates the hero first and then all seven PEOPLE records,
-including actors outside the current view. Each later actor therefore sees
-the positions produced earlier in the same update.
+loop. Type-zero objects use character numbers `10000000 + local ID`; PEOPLE
+use `12000000 + local ID`. The portable scene therefore updates the hero, all
+seven Remote Town objects, and then all seven PEOPLE records, including actors
+outside the current view. Each later actor sees positions produced earlier in
+the same update.
+
+The common MCT vector previously labelled as part overrides is the initial
+three-channel entity state. The loader at `0x004300e0` maps runtime offsets
+`+0x4c`, `+0x50`, and `+0x54` to script keys based at 100, 300, and 200
+million respectively. The type-zero paths at `0x0045ddd0` and `0x0045e080`
+use them as visibility, pointer-selection, and judgement/collision flags.
+Remote Town's exact object triplets are `{0,1,0}`, `{1,1,1}`, `{1,0,0}`,
+`{0,0,0}`, `{1,0,0}`, `{1,0,0}`, and `{1,1,1}`. Its first three PEOPLE
+records start `{1,1,1}` and all four companion records start `{0,0,0}`.
+
+The type-zero object constructor at `0x0045dca0` is now represented by a
+portable actor. Resources 8 and 14 supply static `Pattern.Njp` and
+`Pattern.Sdw`; resource 15 supplies the paired `Animation.Caf` and
+`Animation.Njp` path. Static and animated objects use the MCT pattern/chart,
+height, status, strength, and RGB fields in the shared shadow and visible
+display lists. Judgement-enabled objects join the live movement blocker set.
+The Warehouse and object 200 status-zero UI actions remain pending until
+their native opcodes 41 and 37 are reconstructed.
+
+Periodic status kind five executes independent scenario callbacks. Remote
+Town sentences 158, 173, 188, and 203 read player-record offset `0x140`
+through opcode 44, compare it with each companion type and the play mode, then
+use opcodes 22 or 23 to set all three entity channels. In single player this
+hides the player's own companion and enables the other three town dogs.
+Sentence 149 is a separate distance/effect callback and still reaches
+unsupported native behavior; it must not stop the later independent status
+records from running.
 
 Owned inventory interaction now follows `0x00445bd0`, `0x00446320`,
 `0x00447290`, `0x00447970`, and `0x004087b0`. Backpack and special-item clicks

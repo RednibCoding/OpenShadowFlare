@@ -8,20 +8,98 @@
 #include <utility>
 
 namespace osf {
+namespace {
+
+bool decodeEntityStateKey(
+    std::int32_t key,
+    std::int32_t& character_number,
+    ScenarioEntityStateChannel& channel) {
+    if (key >= 300000000 && key < 400000000) {
+        character_number = key - 300000000;
+        channel = ScenarioEntityStateChannel::pointer;
+        return true;
+    }
+    if (key >= 200000000 && key < 300000000) {
+        character_number = key - 200000000;
+        channel = ScenarioEntityStateChannel::judgement;
+        return true;
+    }
+    if (key >= 100000000 && key < 200000000) {
+        character_number = key - 100000000;
+        channel = ScenarioEntityStateChannel::visible;
+        return true;
+    }
+    return false;
+}
+
+}  // namespace
 
 bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t& value) const {
+    if (operand.type == 5) {
+        std::int32_t character_number = 0;
+        ScenarioEntityStateChannel channel =
+            ScenarioEntityStateChannel::visible;
+        if (!decodeEntityStateKey(
+                operand.value, character_number, channel)) {
+            return false;
+        }
+        if (const ScenarioObjectActor* object =
+                findScriptObject(character_number)) {
+            value = object->stateValue(channel);
+            return true;
+        }
+        if (const NpcActor* npc =
+                findScriptNpc(character_number)) {
+            value = npc->stateValue(channel);
+            return true;
+        }
+        return false;
+    }
     if (operand.type != 6 && operand.type != 7) {
         return false;
     }
-    const NpcActor* npc = findScriptNpc(operand.value);
-    value = !npc
-                ? 0
-                : (operand.type == 6
-                       ? npc->position().x
-                       : npc->position().y);
-    return true;
+    if (const ScenarioObjectActor* object =
+            findScriptObject(operand.value)) {
+        value = operand.type == 6
+                    ? object->position().x
+                    : object->position().y;
+        return true;
+    }
+    if (const NpcActor* npc =
+            findScriptNpc(operand.value)) {
+        value = operand.type == 6
+                    ? npc->position().x
+                    : npc->position().y;
+        return true;
+    }
+    return false;
+}
+
+bool WorldScene::writeScriptWorldOperand(
+    const script::Operand& operand,
+    std::int32_t value) {
+    if (operand.type != 5) {
+        return false;
+    }
+    std::int32_t character_number = 0;
+    ScenarioEntityStateChannel channel =
+        ScenarioEntityStateChannel::visible;
+    if (!decodeEntityStateKey(
+            operand.value, character_number, channel)) {
+        return false;
+    }
+    if (ScenarioObjectActor* object =
+            findScriptObject(character_number)) {
+        object->setStateValue(channel, value);
+        return true;
+    }
+    if (NpcActor* npc = findScriptNpc(character_number)) {
+        npc->setStateValue(channel, value);
+        return true;
+    }
+    return false;
 }
 
 bool WorldScene::executeScriptNativeCommand(
@@ -107,6 +185,12 @@ bool WorldScene::queryScriptValue(
     switch (query) {
     case script::ValueQuery::local_player_level:
         value = player_data_.level();
+        return true;
+    case script::ValueQuery::local_player_companion_type:
+        value = player_data_.companionType();
+        return true;
+    case script::ValueQuery::play_mode:
+        value = 0;
         return true;
     }
     return false;

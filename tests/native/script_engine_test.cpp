@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <iterator>
 #include <numeric>
 #include <string>
 #include <unordered_map>
@@ -79,6 +80,8 @@ bool testRetailRemoteTown() {
     std::unordered_map<std::uint64_t, std::int32_t>
         external_values;
     std::int32_t player_level_queries = 0;
+    std::int32_t companion_type_queries = 0;
+    std::int32_t play_mode_queries = 0;
     osf::script::Interpreter interpreter({
         [&external_values](const osf::script::Operand& operand) {
             if (operand.type == 6 &&
@@ -111,16 +114,27 @@ bool testRetailRemoteTown() {
             native_commands.emplace_back(opcode, arguments);
             return true;
         },
-        [&player_level_queries](
+        [&player_level_queries,
+         &companion_type_queries,
+         &play_mode_queries](
             osf::script::ValueQuery query,
             std::int32_t& value) {
-            if (query !=
-                osf::script::ValueQuery::local_player_level) {
-                return false;
+            switch (query) {
+            case osf::script::ValueQuery::local_player_level:
+                ++player_level_queries;
+                value = 1;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_companion_type:
+                ++companion_type_queries;
+                value = 0;
+                return true;
+            case osf::script::ValueQuery::play_mode:
+                ++play_mode_queries;
+                value = 0;
+                return true;
             }
-            ++player_level_queries;
-            value = 1;
-            return true;
+            return false;
         },
     });
     interpreter.bind(&script);
@@ -339,6 +353,50 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    constexpr std::int32_t companion_characters[] = {
+        12010000,
+        12010001,
+        12010002,
+        12010003,
+    };
+    constexpr std::int32_t companion_sentences[] = {
+        158,
+        173,
+        188,
+        203,
+    };
+    for (std::size_t index = 0;
+         index < std::size(companion_characters);
+         ++index) {
+        if (!check(
+                interpreter.startSentence(
+                    companion_sentences[index], -1) ==
+                    osf::script::StepResult::complete,
+                "A Remote Town companion activation sentence failed.")) {
+            return false;
+        }
+        const std::int32_t expected = index == 0 ? 0 : 1;
+        for (const std::int32_t base :
+             {100000000, 200000000, 300000000}) {
+            const osf::script::Operand state_operand{
+                5, base + companion_characters[index]};
+            if (!check(
+                    external_values[operandKey(state_operand)] ==
+                        expected,
+                    "A companion script did not update all three "
+                    "retail entity state channels.")) {
+                return false;
+            }
+        }
+    }
+    if (!check(
+            companion_type_queries == 4 &&
+                play_mode_queries == 4,
+            "Companion activation did not query the retail player "
+            "companion and single-player mode values.")) {
+        return false;
+    }
+
     if (!check(
             interpreter.startStatus(0, 12010000) ==
                     osf::script::StepResult::waiting_for_message &&
@@ -347,7 +405,7 @@ bool testRetailRemoteTown() {
                 messages.back().initial_selection == 3 &&
                 messages.back().text.find("~Check Status~") !=
                     std::string::npos,
-            "Dune's status did not open the retail choice message.")) {
+            "Kerberos's status did not open the retail choice message.")) {
         return false;
     }
     if (!check(
@@ -355,7 +413,7 @@ bool testRetailRemoteTown() {
                     osf::script::StepResult::complete &&
                 !interpreter.waitingForMessage() &&
                 interpreter.readTemporaryFlag(1000001) == 3,
-            "Dune's QUIT choice was not written back to the script.")) {
+            "Kerberos's QUIT choice was not written back to the script.")) {
         return false;
     }
 

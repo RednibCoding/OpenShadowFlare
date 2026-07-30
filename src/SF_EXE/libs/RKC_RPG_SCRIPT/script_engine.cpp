@@ -71,6 +71,24 @@ StepResult Interpreter::startStatus(
     return enterStatus(kind, character_number, false);
 }
 
+StepResult Interpreter::startSentence(
+    std::int32_t sentence,
+    std::int32_t character_number) {
+    frames_.clear();
+    waiting_for_message_ = false;
+    message_callback_pending_ = false;
+    message_selection_pending_ = false;
+    message_selection_operand_ = {};
+    message_initial_selection_ = -1;
+    message_callback_character_number_ = -1;
+    current_character_number_ = character_number;
+    unsupported_opcode_ = -1;
+    if (!script_ || !pushSentence(sentence)) {
+        return StepResult::invalid_script;
+    }
+    return run();
+}
+
 StepResult Interpreter::enterStatus(
     std::int32_t kind,
     std::int32_t character_number,
@@ -308,6 +326,46 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(1);
     case 21:
         return executeNative(2);
+    case 22:
+    case 23: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t character_number =
+            readOperand(command.operands[0]);
+        const std::int32_t state =
+            command.opcode == 22 ? 1 : 0;
+        constexpr std::int32_t state_bases[] = {
+            100000000,
+            200000000,
+            300000000,
+        };
+        for (std::int32_t base : state_bases) {
+            if (!writeOperand(
+                    {5, base + character_number},
+                    state)) {
+                return StepResult::invalid_script;
+            }
+        }
+        return StepResult::complete;
+    }
+    case 44: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::local_player_companion_type,
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 61: {
         if (command.operands.empty()) {
             return StepResult::invalid_script;
@@ -343,6 +401,13 @@ std::int32_t Interpreter::readOperand(
         return found == temporary_flags_.end()
                    ? -1
                    : found->second;
+    }
+    if (operand.type == 8) {
+        std::int32_t value = 0;
+        if (hooks_.query_value &&
+            hooks_.query_value(ValueQuery::play_mode, value)) {
+            return value;
+        }
     }
     return hooks_.read_operand
                ? hooks_.read_operand(operand)

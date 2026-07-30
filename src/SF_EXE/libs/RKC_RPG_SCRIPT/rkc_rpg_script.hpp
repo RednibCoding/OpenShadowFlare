@@ -89,6 +89,8 @@ struct MessageEvent {
 
 enum class ValueQuery {
     local_player_level,
+    local_player_companion_type,
+    play_mode,
 };
 
 struct InterpreterHooks {
@@ -109,6 +111,9 @@ public:
     void reset();
     StepResult startStatus(
         std::int32_t kind,
+        std::int32_t character_number);
+    StepResult startSentence(
+        std::int32_t sentence,
         std::int32_t character_number);
     StepResult resume(std::int32_t selection = -1);
     bool waitingForMessage() const;

@@ -363,6 +363,9 @@ WorldScene::pointerCandidatesAtScreenPosition(
     std::vector<WorldPointerCandidate> candidates;
     candidates.reserve(npcs_.size() + ground_items_.size());
     for (const NpcActor& npc : npcs_) {
+        if (!npc.visible() || !npc.pointerEnabled()) {
+            continue;
+        }
         const auto part_enabled =
             [&npc](std::size_t part) {
                 return npc.partEnabled(part);
@@ -475,6 +478,34 @@ const NpcActor* WorldScene::findScriptNpc(
                    character_number;
         });
     return found == npcs_.end() ? nullptr : &*found;
+}
+
+ScenarioObjectActor* WorldScene::findScriptObject(
+    std::int32_t character_number) {
+    const auto found = std::find_if(
+        scenario_objects_.begin(),
+        scenario_objects_.end(),
+        [character_number](const ScenarioObjectActor& object) {
+            return object.characterNumber() ==
+                   character_number;
+        });
+    return found == scenario_objects_.end()
+               ? nullptr
+               : &*found;
+}
+
+const ScenarioObjectActor* WorldScene::findScriptObject(
+    std::int32_t character_number) const {
+    const auto found = std::find_if(
+        scenario_objects_.begin(),
+        scenario_objects_.end(),
+        [character_number](const ScenarioObjectActor& object) {
+            return object.characterNumber() ==
+                   character_number;
+        });
+    return found == scenario_objects_.end()
+               ? nullptr
+               : &*found;
 }
 
 NpcActor* WorldScene::findNpc(std::int32_t id) {

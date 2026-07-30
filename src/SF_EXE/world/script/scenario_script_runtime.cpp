@@ -69,6 +69,33 @@ script::StepResult ScenarioScriptRuntime::startStatus(
     return interpreter_.startStatus(kind, character_number);
 }
 
+script::StepResult ScenarioScriptRuntime::runStatusKind(
+    std::int32_t kind) {
+    if (message_active_) {
+        return script::StepResult::waiting_for_message;
+    }
+    script::StepResult first_failure =
+        script::StepResult::complete;
+    for (const script::Status& status : data_.statuses()) {
+        if (status.kind != kind) {
+            continue;
+        }
+        const script::StepResult result =
+            interpreter_.startSentence(
+                status.sentence,
+                status.character_number);
+        if (result ==
+            script::StepResult::waiting_for_message) {
+            return result;
+        }
+        if (result != script::StepResult::complete &&
+            first_failure == script::StepResult::complete) {
+            first_failure = result;
+        }
+    }
+    return first_failure;
+}
+
 script::StepResult ScenarioScriptRuntime::resume(
     std::int32_t selection) {
     clearMessage();
@@ -122,6 +149,10 @@ std::int32_t ScenarioScriptRuntime::readOperand(
 bool ScenarioScriptRuntime::writeOperand(
     const script::Operand& operand,
     std::int32_t value) {
+    if (hooks_.write_world_operand &&
+        hooks_.write_world_operand(operand, value)) {
+        return true;
+    }
     values_.insert_or_assign(valueKey(operand), value);
     return true;
 }

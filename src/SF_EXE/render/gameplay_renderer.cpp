@@ -27,6 +27,7 @@ struct WorldDrawEntry {
     bool player = false;
     bool semi_transparent = false;
     DisplayOrderEntry order;
+    const ScenarioObjectActor* scenario_object = nullptr;
 };
 
 ScreenPosition toScreen(
@@ -105,6 +106,76 @@ void renderNpcPass(
         camera_y,
         shadow,
         shadow_opacity);
+}
+
+void renderScenarioObjectPass(
+    gapi::Backend& renderer,
+    const ScenarioObjectActor& object,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity) {
+    if (!object.drawEnabled()) {
+        return;
+    }
+    if (object.hasStaticVisual()) {
+        if (shadow && !object.hasStaticShadow()) {
+            return;
+        }
+        const gapi::NjpImage& image =
+            shadow
+                ? object.staticShadows()
+                : object.staticPatterns();
+        const ScreenPosition position =
+            calculateRealPosition(object.position());
+        renderer.drawPattern(
+            image,
+            static_cast<std::size_t>(object.staticPattern()),
+            {
+                position.x - camera_x,
+                position.y - camera_y -
+                    (shadow ? 0 : object.displayHeight()),
+                1000,
+                1000,
+                1000,
+                shadow
+                    ? std::clamp(shadow_opacity, 0, 1000)
+                    : std::clamp(
+                          object.drawStrength(), 0, 1000),
+                shadow ? 1000 : object.redDrawStrength(),
+                shadow ? 1000 : object.greenDrawStrength(),
+                shadow ? 1000 : object.blueDrawStrength(),
+            });
+        return;
+    }
+    if (!object.hasAnimatedVisual()) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        object.animation(),
+        object.animationPatterns(),
+        object.animationPatterns(),
+        object.position(),
+        object.animationChart(),
+        object.direction(),
+        object.animationFrame(),
+        [&object](std::size_t part) {
+            return object.partEnabled(part);
+        },
+        [&object](std::size_t part) {
+            return CharacterColorStrength{
+                object.partRedStrength(part),
+                object.partGreenStrength(part),
+                object.partBlueStrength(part),
+            };
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity,
+        object.displayHeight(),
+        object.drawStrength());
 }
 
 const gapi::NjpImage* objectImage(
@@ -231,6 +302,32 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 object.judgement,
                 object.status,
             },
+            nullptr,
+        });
+    }
+
+    for (const ScenarioObjectActor& object :
+         world.scenarioObjects()) {
+        if (!object.drawEnabled() ||
+            (shadow &&
+             !object.hasStaticShadow() &&
+             !object.hasAnimatedVisual())) {
+            continue;
+        }
+        entries.push_back({
+            nullptr,
+            nullptr,
+            nullptr,
+            false,
+            false,
+            {
+                entries.size(),
+                object.position(),
+                object.judgement(),
+                static_cast<std::int16_t>(
+                    object.displayStatus()),
+            },
+            &object,
         });
     }
 
@@ -247,9 +344,13 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 world.playerJudgement(),
                 0,
             },
+            nullptr,
         });
     }
     for (const NpcActor& npc : world.npcs()) {
+        if (!npc.visible()) {
+            continue;
+        }
         entries.push_back({
             nullptr,
             &npc,
@@ -262,6 +363,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 npc.judgement(),
                 0,
             },
+            nullptr,
         });
     }
     for (const GroundItem& item : world.groundItems()) {
@@ -277,6 +379,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 {},
                 0,
             },
+            nullptr,
         });
     }
 
@@ -367,6 +470,14 @@ void drawWorldEntry(
             shadow,
             shadow_opacity,
             entry.semi_transparent);
+    } else if (entry.scenario_object) {
+        renderScenarioObjectPass(
+            renderer,
+            *entry.scenario_object,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity);
     } else if (entry.player) {
         renderPlayerPass(
             renderer,

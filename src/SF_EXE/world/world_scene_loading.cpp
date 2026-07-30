@@ -227,6 +227,45 @@ bool WorldScene::loadInitialScenario(
 
     refreshPlayerAppearance();
 
+    for (std::int32_t resource_id :
+         scenario_.objectResourceIds()) {
+        std::string object_resource_error;
+        if (!object_visuals_.load(
+                data_root,
+                resource_id,
+                &object_resource_error)) {
+            setError(
+                error,
+                "Scenario object resource " +
+                    std::to_string(resource_id) +
+                    " could not be loaded: " +
+                    object_resource_error);
+            clear();
+            return false;
+        }
+    }
+    scenario_objects_.reserve(scenario_.objects().size());
+    for (const ScenarioObject& object : scenario_.objects()) {
+        ScenarioObjectActor actor;
+        std::string object_error;
+        const ObjectVisualResource* visual =
+            object.resource_id < 0
+                ? nullptr
+                : object_visuals_.find(object.resource_id);
+        if (!actor.initialize(
+                object, visual, &object_error)) {
+            setError(
+                error,
+                "Scenario object " +
+                    std::to_string(object.id) +
+                    " could not be loaded: " +
+                    object_error);
+            clear();
+            return false;
+        }
+        scenario_objects_.push_back(std::move(actor));
+    }
+
     npcs_.reserve(scenario_.people().size());
     for (const ScenarioPerson& person : scenario_.people()) {
         NpcActor npc;

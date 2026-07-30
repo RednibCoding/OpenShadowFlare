@@ -66,6 +66,7 @@ add_library(
   resources/character_visual_resource.cpp
   resources/item_inventory_resource.cpp
   resources/item_world_resource.cpp
+  resources/object_visual_resource.cpp
   resources/retail_filesystem.cpp
   resources/save_catalog.cpp
 )
@@ -118,6 +119,8 @@ add_library(
   world/retail_save_preview.cpp
   world/quest_state.cpp
   world/scenario_data.cpp
+  world/scenario_entity_state.cpp
+  world/scenario_object_actor.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp

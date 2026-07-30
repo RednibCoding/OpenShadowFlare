@@ -103,6 +103,12 @@ shadows. Their live bounds block player movement. Type-one MCT tails also drive
 the original idle pause and short walks inside each actor's scenario-defined
 rectangle.
 
+The seven type-zero MCT objects have a separate actor path as well. Their
+`Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
+and their script-controlled visibility and judgement state decides whether
+they are drawn or block movement. They share the ordinary display-order passes
+with scenery, the player, PEOPLE actors, and ground items.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,

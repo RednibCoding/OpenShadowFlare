@@ -245,6 +245,13 @@ std::int32_t PlayerData::initialParameter(
         : 0;
 }
 
+std::int32_t PlayerData::companionType() const {
+    // FUN_00433692 reads runtime offset 0x150. The persistent 0x160-byte
+    // player record starts at runtime offset 0x10, so the value belongs to
+    // record offset 0x140 and survives retail saves.
+    return readI32(0x140);
+}
+
 std::int32_t PlayerData::walkingSpeedTier() const {
     // FUN_00450d40 uses the second initial parameter, adds 32, divides by
     // 32, and clamps the resulting movement tier to the retail 0..9 range.

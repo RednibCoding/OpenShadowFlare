@@ -38,6 +38,13 @@ bool NpcActor::initialize(
     }
 
     visual_ = &visual;
+    if (!state_.initialize(person.initial_state_values)) {
+        setError(
+            error,
+            "The person does not contain its three retail state values.");
+        clear();
+        return false;
+    }
     id_ = person.id;
     resource_id_ = person.resource_id;
     name_ = person.name;
@@ -91,7 +98,6 @@ bool NpcActor::initialize(
     green_strength_.assign(part_count, 1000);
     blue_strength_.assign(part_count, 1000);
 
-    copyParts(part_visibility_, person.part_overrides);
     if (!person.part_visibility.empty()) {
         copyParts(part_visibility_, person.part_visibility);
         copyParts(red_strength_, person.red_strength);
@@ -129,6 +135,7 @@ void NpcActor::clear() {
     interaction_active_ = false;
     random_.seed(1);
     movement_controller_.reset();
+    state_.clear();
     part_visibility_.clear();
     red_strength_.clear();
     green_strength_.clear();
@@ -193,7 +200,7 @@ void NpcActor::update(
             destination_,
             walk_speed_,
             dynamic_blockers,
-            id_);
+            movementBlockerId());
     if (movement.moved) {
         direction_ = retailDirectionForVector(
             movement.position.x - position_.x,
@@ -237,8 +244,27 @@ void NpcActor::endInteraction() {
     action_counter_ = 0;
 }
 
+std::int32_t NpcActor::stateValue(
+    ScenarioEntityStateChannel channel) const {
+    return state_.value(channel);
+}
+
+void NpcActor::setStateValue(
+    ScenarioEntityStateChannel channel,
+    std::int32_t value) {
+    state_.setValue(channel, value);
+}
+
 std::int32_t NpcActor::id() const {
     return id_;
+}
+
+std::int32_t NpcActor::characterNumber() const {
+    return 12000000 + id_;
+}
+
+std::int32_t NpcActor::movementBlockerId() const {
+    return characterNumber();
 }
 
 std::int32_t NpcActor::resourceId() const {
@@ -318,6 +344,18 @@ const gapi::NjpImage& NpcActor::shadowPatterns() const {
 
 const gapi::CafAnimation& NpcActor::animation() const {
     return visual_->animation();
+}
+
+bool NpcActor::visible() const {
+    return state_.visible();
+}
+
+bool NpcActor::pointerEnabled() const {
+    return state_.pointerEnabled();
+}
+
+bool NpcActor::judgementEnabled() const {
+    return state_.judgementEnabled();
 }
 
 }  // namespace osf

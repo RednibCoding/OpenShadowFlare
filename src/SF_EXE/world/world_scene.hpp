@@ -12,6 +12,7 @@
 #include "resources/character_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
 #include "resources/item_world_resource.hpp"
+#include "resources/object_visual_resource.hpp"
 #include "ground_item.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
@@ -22,6 +23,7 @@
 #include "player_item_controller.hpp"
 #include "quest_state.hpp"
 #include "scenario_data.hpp"
+#include "scenario_object_actor.hpp"
 #include "script/scenario_script_runtime.hpp"
 #include "world_pointer.hpp"
 
@@ -50,6 +52,8 @@ public:
     const gapi::NjpImage& playerPatterns() const;
     const gapi::NjpImage& playerShadowPatterns() const;
     const gapi::CafAnimation& playerAnimation() const;
+    const std::vector<ScenarioObjectActor>&
+        scenarioObjects() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -143,6 +147,9 @@ private:
     bool readScriptWorldOperand(
         const script::Operand& operand,
         std::int32_t& value) const;
+    bool writeScriptWorldOperand(
+        const script::Operand& operand,
+        std::int32_t value);
     bool executeScriptNativeCommand(
         std::int32_t opcode,
         const std::vector<std::int32_t>& arguments);
@@ -157,6 +164,10 @@ private:
         std::int32_t screen_y) const;
     NpcActor* findScriptNpc(std::int32_t character_number);
     const NpcActor* findScriptNpc(
+        std::int32_t character_number) const;
+    ScenarioObjectActor* findScriptObject(
+        std::int32_t character_number);
+    const ScenarioObjectActor* findScriptObject(
         std::int32_t character_number) const;
     bool ensureItemWorldResource(std::int32_t resource_id);
     bool prepareGroundItems(std::size_t first_item);
@@ -173,11 +184,13 @@ private:
     ObjectMap object_map_;
     std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;
     CharacterVisualResource player_visual_;
+    ObjectVisualResources object_visuals_;
     PeopleVisualResources people_visuals_;
     gapi::NjpImage speech_patterns_;
     gapi::NjpImage map_overview_patterns_;
     MapExploration map_exploration_;
     PlayerAppearance player_appearance_;
+    std::vector<ScenarioObjectActor> scenario_objects_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
     std::vector<std::int32_t> pending_audio_samples_;
