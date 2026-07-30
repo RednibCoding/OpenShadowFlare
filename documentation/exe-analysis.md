@@ -249,10 +249,18 @@ The portable implementation follows those tables directly and has no A*
 fallback. Live town actors take part in the same judgement query. The selected
 interaction actor remains solid; mode-one interaction ends at the 159-unit
 rectangle gap before collision. Player and PEOPLE movement share this owner,
-including facing during detours. Remote Town fixtures cover the sacks beside
-Ostare, the Ostare-to-Malse approach with the town actors present, and longer
-companion trips made from successive ordinary movement commands. Per-actor
-retail type masks and the remaining controller modes are still follow-up work.
+including facing during detours. The PEOPLE walk at `0x0045da25` passes
+dynamic collision mask `0xffffffff`, just like the player. Its own character
+number is the only live entry excluded by `0x004145b0`. The portable world
+therefore keeps one live blocker set for the hero and all PEOPLE actors,
+excludes only the actor currently moving, and refreshes positions as actors
+are updated.
+
+Remote Town fixtures cover the sacks beside Ostare, the Ostare-to-Malse
+approach with the town actors present, longer companion trips made from
+successive ordinary movement commands, and a wandering PEOPLE actor steering
+around another live actor. Per-actor retail type masks, enemy integration,
+and the remaining controller modes are still follow-up work.
 
 The controller's cardinal values are `1 = north`, `2 = south`, `3 = west`,
 and `4 = east`. The initial one-pixel probes are ordered by the attempted

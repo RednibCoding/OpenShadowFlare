@@ -4,9 +4,13 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace osf {
+
+inline constexpr std::int32_t kNoMovementBlockerId =
+    std::numeric_limits<std::int32_t>::min();
 
 struct MovementBlocker {
     std::int32_t id = -1;
@@ -32,7 +36,8 @@ public:
         WorldPosition position,
         WorldPosition destination,
         std::int32_t speed,
-        const std::vector<MovementBlocker>* dynamic_blockers = nullptr);
+        const std::vector<MovementBlocker>* dynamic_blockers = nullptr,
+        std::int32_t ignored_blocker_id = kNoMovementBlockerId);
 
 private:
     std::int32_t obstacle_direction_ = 0;
@@ -52,7 +57,8 @@ MovementStepResult advanceMovement(
     WorldPosition position,
     WorldPosition destination,
     std::int32_t speed,
-    const std::vector<MovementBlocker>* dynamic_blockers = nullptr);
+    const std::vector<MovementBlocker>* dynamic_blockers = nullptr,
+    std::int32_t ignored_blocker_id = kNoMovementBlockerId);
 
 WorldPosition interpolateWorldPosition(
     WorldPosition previous,

@@ -333,8 +333,9 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - reproduce each actor's bounded idle/walk behavior where its MCT tail enables
   it;
 - place actors in the same shadow and visible-object passes as the player;
-- finish actor-to-actor collision for NPC and enemy movement (the player
-  already treats live town actors as blockers);
+- finish actor-to-actor collision for enemy movement. PEOPLE movement now
+  uses the same live hero-and-actor blocker set as retail, excluding only the
+  actor currently moving;
 - reproduce the original update order and off-screen behavior;
 - extend pointer hover, pale tint, nameplates, and selection from people and
   ground items to the remaining dynamic actor classes;
@@ -346,8 +347,8 @@ part mask, idle pause, bounded walk, shadow, depth pass, hover tint, nameplate,
 and actor-anchored speech bubble remain the detailed reference case. Malse and
 Syria are selectable and run their real first conversations. The next town
 work should map the behavior that differs between the three human NPCs and the
-four animals, then extend dynamic collision beyond player movement and add
-the remaining pointer selection rules.
+four animals, reconstruct the exact update and off-screen rules, then extend
+live collision to enemies and add the remaining pointer selection rules.
 
 ### 2. Grow scripts, conversations, and town interaction
 
