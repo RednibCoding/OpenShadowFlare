@@ -100,7 +100,7 @@ struct EnemyDamageReceiverResult {
         local_player_statuses;
     EnemyDamageNetworkRequest network;
     bool kill_requested = false;
-    std::vector<EnemyEffectSpawnRequest> effects;
+    std::vector<CombatEffectSpawnRequest> effects;
     std::vector<std::int32_t> audio_samples;
 };
 

@@ -46,6 +46,9 @@ public:
     std::optional<InventoryItem> take(EquipmentSlot slot);
 
     const InventoryItem* item(EquipmentSlot slot) const;
+    bool decreaseDurability(
+        EquipmentSlot slot,
+        std::int32_t amount);
     std::int32_t totalWeight(
         const ItemDatabase& database) const;
     std::int32_t derivedParameterBonus(

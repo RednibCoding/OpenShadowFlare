@@ -65,6 +65,24 @@ const InventoryItem* PlayerEquipment::item(
     return equipped ? &*equipped : nullptr;
 }
 
+bool PlayerEquipment::decreaseDurability(
+    EquipmentSlot slot,
+    std::int32_t amount) {
+    const std::size_t index =
+        static_cast<std::size_t>(slot);
+    if (index >= slot_count || !slots_[index]) {
+        return true;
+    }
+    InventoryItem& equipped = *slots_[index];
+    if (amount > 0) {
+        equipped.durability =
+            equipped.durability <= amount
+                ? 0
+                : equipped.durability - amount;
+    }
+    return equipped.durability != 0;
+}
+
 std::int32_t PlayerEquipment::totalWeight(
     const ItemDatabase& database) const {
     std::int32_t weight = 0;

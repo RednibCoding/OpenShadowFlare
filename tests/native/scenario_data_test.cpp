@@ -1113,7 +1113,7 @@ bool testRetailScenarioCatalog() {
         osf::EnemyEffectImpactInput input;
         input.type = effect.first;
         input.subtype = effect.second;
-        const osf::EnemyEffectSpawnRequest request =
+        const osf::CombatEffectSpawnRequest request =
             osf::resolveEnemyEffectImpact(
                 input, parameter_tables, random);
         bool tables_contain_pair =

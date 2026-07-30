@@ -379,11 +379,15 @@ two adjacent mistakes: saved item metadata is an identified flag rather than
 the tooltip color tier, and the two-handed weapon classifier uses raw weapon
 field `0xcc`, not the unrelated field at `0xdc`.
 
-The player receiver itself and companion receivers remain separate and still
-need barriers, life and mana, durability, statuses, reflection, and death
-behavior. The enemy result also stays passive until movement consumption,
+The player receiver is reconstructed as a separate passive boundary. It keeps
+local ownership, Increased Power, Energy Shield, Magic Shield, life and mana
+routing, the category-four revival item, exact helmet/body/off-hand/boots
+durability checks, equipment and Counter Burst reflection, tables 25 and 26
+reaction selection, packet effects, training, audio, death action, and random
+draw ordering. Companion receivers remain separate and still need their own
+trace. Both player and enemy results stay passive until movement consumption,
 world effect ownership, audio playback, network transport, kill accounting,
-death completion, drops, and the complete live AI update can be attached
+death completion, drops, and the complete live update can be attached
 together.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact

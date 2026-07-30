@@ -639,6 +639,50 @@ variant-one and variant-two definitions begin unidentified; the other
 variants begin identified. Tooltip color comes from the definition's variant,
 so loading an identified ordinary item cannot accidentally recolor its name.
 
+The rest of `0x00443cb0` is now a passive portable receiver rather than an
+early live-world shortcut. Increased Power multiplies physical defense by
+`12/10` and adds two to spell level before the normal `1..20` clamp, global
+magic-level addition, and final `1..30` clamp. A local Energy Shield uses
+table 17 row 9 to scale ordinary physical defense and sends ordinary damage
+to mana while mana remains. Effect-family damage still reaches life.
+
+Magic Shield only handles effect-family packets for the locally owned player.
+Table 17 row 18 supplies its reduction and a zero result is forced back to one
+damage. Damage of at least 20 requests spell training. The shield emits effect
+21029 and sample 60, then charges table 16 at the currently selected magic
+row and Magic Shield's effective level. Equipped instance parameter 19 lowers
+that cost but cannot take it below one. Empty mana disables the shield.
+Counter Burst repeats that cost path with spell 19 after a valid reflection.
+
+Lethal local damage searches the Special Item owner for category four,
+definition `98000000`. The first match is consumed, both life and mana return
+to maximum, sample 17 plays, and effect 21020 is requested. Without it the
+player enters presentation action five. Retail then checks helmet, body,
+off hand, and boots for one durability point with 20, 30, 30, and 20 percent
+chances. Only occupied slots consume draws. The off-hand draw happens before
+the two-handed-main-hand test, and a break requests both equipment sync and a
+derived-value refresh.
+
+Packet word 38 enables player reflection. The equipment pass always consumes
+its chance draw and sums instance parameters 20 and 21 across active gear;
+Counter Burst adds table 17 row 19. Only a live type-two scenario source can
+receive the reflected immediate packet. It carries the player number, derived
+physical defense, level, a random effect number from 20015 through 20017, and
+at least one reflected damage. Source value 100 halves that damage. Equipment
+reflection creates effect 20014 toward the source, while Counter Burst creates
+21030; both play sample 60.
+
+Player hit reaction uses the packet element to select one of the eight defense
+affinities. Negative values `-10..-1` add table 26 chance and duration.
+Table 25 supplies damage-scaled defaults, while effect packets select their
+negative, neutral, or positive chance, duration, and motion banks. Instance
+parameters 14 and 15 defend chance and duration, and parameter 16 forces
+motion after the non-motion duration cap. Packet stages, configured effects,
+the 20-percent random hit visual, sample 119, and event four follow in the
+same order as retail. The result deliberately leaves live state mutation,
+effect ownership, audio playback, and equipment synchronization to later
+world owners.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`

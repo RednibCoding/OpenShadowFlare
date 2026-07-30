@@ -35,7 +35,7 @@ osf::EnemyEffectImpactInput inputForType(
 bool testTableExpansionAndConstructorPacket(
     const osf::TableDatabase& tables) {
     osf::RetailRandom random(1);
-    const osf::EnemyEffectSpawnRequest request =
+    const osf::CombatEffectSpawnRequest request =
         osf::resolveEnemyEffectImpact(
             inputForType(2), tables, random);
     if (!check(
@@ -137,7 +137,7 @@ bool testScalarSelectorTable(
          selector < 6;
          ++selector) {
         if (!check(
-                osf::retailEnemyEffectParameter(
+                osf::retailEffectParameter(
                     tables,
                     2,
                     10,
@@ -151,9 +151,9 @@ bool testScalarSelectorTable(
         }
     }
     return check(
-        osf::retailEnemyEffectParameter(
+        osf::retailEffectParameter(
             tables, 2, 10, 30) == 1 &&
-            osf::retailEnemyEffectParameter(
+            osf::retailEffectParameter(
                 tables, 2, 10, -1) == -1,
         "The effect scalar selector did not preserve its "
         "table-19 fallback or contain a negative selector.");
@@ -186,7 +186,7 @@ bool testEveryRetailEffectType(
 
     for (const Expected& values : expected) {
         osf::RetailRandom random(1);
-        const osf::EnemyEffectSpawnRequest request =
+        const osf::CombatEffectSpawnRequest request =
             osf::resolveEnemyEffectImpact(
                 inputForType(values.type),
                 tables,
@@ -220,7 +220,7 @@ bool testEveryRetailEffectType(
     }
 
     osf::RetailRandom random(1);
-    const osf::EnemyEffectSpawnRequest invalid =
+    const osf::CombatEffectSpawnRequest invalid =
         osf::resolveEnemyEffectImpact(
             inputForType(-1), tables, random);
     return check(
@@ -242,7 +242,7 @@ bool testTypeTwelveTarget(
         {10, 20},
     };
     osf::RetailRandom random(1);
-    osf::EnemyEffectSpawnRequest request =
+    osf::CombatEffectSpawnRequest request =
         osf::resolveEnemyEffectImpact(
             input, tables, random);
     if (!check(
@@ -271,7 +271,7 @@ bool testExplicitOrigins(
     const osf::TableDatabase& tables) {
     for (const std::int32_t type : {3, 10, 13}) {
         osf::RetailRandom random(1);
-        const osf::EnemyEffectSpawnRequest request =
+        const osf::CombatEffectSpawnRequest request =
             osf::resolveEnemyEffectImpact(
                 inputForType(type), tables, random);
         if (!check(
@@ -289,7 +289,7 @@ bool testExplicitOrigins(
 bool testMissingTablesRemainExplicit() {
     osf::TableDatabase tables;
     osf::RetailRandom random(1);
-    const osf::EnemyEffectSpawnRequest request =
+    const osf::CombatEffectSpawnRequest request =
         osf::resolveEnemyEffectImpact(
             inputForType(1), tables, random);
     return check(

@@ -2,7 +2,7 @@
 
 #include "core/retail_integer.hpp"
 #include "items/item_database.hpp"
-#include "items/item_element_bonus.hpp"
+#include "items/item_instance_values.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 

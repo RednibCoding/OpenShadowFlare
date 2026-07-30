@@ -44,10 +44,10 @@ bool readTableValue(
     return true;
 }
 
-EnemyEffectSpawnRequest baseEffect(
+CombatEffectSpawnRequest baseEffect(
     const EnemyDamageReceiverState& state,
     std::int32_t effect_number) {
-    EnemyEffectSpawnRequest request;
+    CombatEffectSpawnRequest request;
     request.valid = true;
     request.effect_number = effect_number;
     request.owner_kind = 4;
@@ -74,11 +74,11 @@ EnemyEffectSpawnRequest baseEffect(
     return request;
 }
 
-EnemyEffectSpawnRequest reflectionEffect(
+CombatEffectSpawnRequest reflectionEffect(
     const EnemyDamageReceiverState& state,
     std::int32_t source_slot,
     double direction) {
-    EnemyEffectSpawnRequest request =
+    CombatEffectSpawnRequest request =
         baseEffect(state, kReflectionEffect);
     request.target_kind = 1;
     request.target_identifier = source_slot;
@@ -89,21 +89,21 @@ EnemyEffectSpawnRequest reflectionEffect(
     return request;
 }
 
-EnemyEffectSpawnRequest reactionEffect(
+CombatEffectSpawnRequest reactionEffect(
     const EnemyDamageReceiverState& state,
     std::int32_t effect_number) {
-    EnemyEffectSpawnRequest request =
+    CombatEffectSpawnRequest request =
         baseEffect(state, effect_number);
     request.constructor_value_12 =
         state.reaction_duration;
     return request;
 }
 
-EnemyEffectSpawnRequest configuredEffect(
+CombatEffectSpawnRequest configuredEffect(
     const EnemyDamageReceiverState& state,
     std::int32_t effect_number,
     std::int32_t packet_kind) {
-    EnemyEffectSpawnRequest request =
+    CombatEffectSpawnRequest request =
         baseEffect(state, effect_number);
     request.packet_kind = packet_kind;
     return request;

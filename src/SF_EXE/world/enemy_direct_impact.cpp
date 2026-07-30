@@ -53,7 +53,7 @@ void buildCommonPacket(
     packet.write(76, 0);
 }
 
-EnemyEffectSpawnRequest buildSpecialEffect(
+CombatEffectSpawnRequest buildSpecialEffect(
     const EnemyDirectImpactInput& input,
     CombatPacket packet,
     RetailRandom& random) {
@@ -90,7 +90,7 @@ EnemyEffectSpawnRequest buildSpecialEffect(
     packet.write(34, visual_number);
     packet.write(74, secondary_visual);
 
-    EnemyEffectSpawnRequest request;
+    CombatEffectSpawnRequest request;
     request.valid = true;
     request.effect_number = effect_number;
     request.source_character_number =

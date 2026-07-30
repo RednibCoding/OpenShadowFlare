@@ -46,7 +46,7 @@ add_library(
   items/item_database.cpp
   items/item_audio.cpp
   items/item_condition.cpp
-  items/item_element_bonus.cpp
+  items/item_instance_values.cpp
   items/item_grid.cpp
   items/item_information.cpp
   items/new_player_loadout.cpp
@@ -128,6 +128,7 @@ add_library(
   world/player_appearance.cpp
   world/player_actor.cpp
   world/player_combat_defense.cpp
+  world/player_damage_receiver.cpp
   world/player_data.cpp
   world/player_item_controller.cpp
   world/retail_save_file.cpp

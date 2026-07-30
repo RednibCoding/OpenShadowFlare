@@ -21,12 +21,14 @@ std::int32_t tableValue(
     std::int32_t row,
     std::int32_t column) {
     const TableData* table = tables.find(table_number);
-    return table ? table->value(row, column) : -1;
+    return table && table->contains(row, column)
+        ? table->value(row, column)
+        : -1;
 }
 
 bool configureType(
     const EnemyEffectImpactInput& input,
-    EnemyEffectSpawnRequest& request,
+    CombatEffectSpawnRequest& request,
     RetailRandom& random) {
     request.target_kind = kDefaultTargetKind;
     request.target_identifier = -1;
@@ -133,7 +135,7 @@ bool configureType(
 
 }  // namespace
 
-std::int32_t retailEnemyEffectParameter(
+std::int32_t retailEffectParameter(
     const TableDatabase& tables,
     std::int32_t type,
     std::int32_t subtype,
@@ -155,11 +157,11 @@ std::int32_t retailEnemyEffectParameter(
     return tableValue(tables, 19, type, 0);
 }
 
-EnemyEffectSpawnRequest resolveEnemyEffectImpact(
+CombatEffectSpawnRequest resolveEnemyEffectImpact(
     const EnemyEffectImpactInput& input,
     const TableDatabase& tables,
     RetailRandom& random) {
-    EnemyEffectSpawnRequest request;
+    CombatEffectSpawnRequest request;
     request.effect_number = input.type + kEffectTypeBase;
     request.source_character_number =
         input.source_character_number;
@@ -176,7 +178,7 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
     request.packet.write(4, input.parameter);
     request.packet.write(31, input.packet_word_31);
     const std::int32_t type_value =
-        retailEnemyEffectParameter(
+        retailEffectParameter(
             tables,
             input.type,
             input.subtype,
@@ -185,7 +187,7 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
     request.packet.write(35, 8);
     request.packet.write(
         36,
-        retailEnemyEffectParameter(
+        retailEffectParameter(
             tables,
             input.type,
             input.subtype,
@@ -235,13 +237,13 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
     request.packet.write(76, 0);
 
     request.constructor_value_6 =
-        retailEnemyEffectParameter(
+        retailEffectParameter(
             tables,
             input.type,
             input.subtype,
             3);
     request.constructor_value_22 =
-        retailEnemyEffectParameter(
+        retailEffectParameter(
             tables,
             input.type,
             input.subtype,

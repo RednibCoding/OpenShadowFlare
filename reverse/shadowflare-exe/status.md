@@ -44,6 +44,9 @@ The first game-core slice covers:
 - the player combat defense profile, including the two-dimensional elemental
   anchors, equipment and rolled-item contributions, identified backpack
   passives, two-handed off-hand suppression, and final affinity clamps
+- the passive player damage receiver, including local life and mana ownership,
+  three shield paths, revival, equipment durability, reflection, hit reaction,
+  configured effects, audio requests, training, and death presentation
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
 - the initial `00000000` scenario's fixed MCT header and entry-point table

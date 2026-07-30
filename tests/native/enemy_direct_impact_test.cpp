@@ -228,7 +228,7 @@ bool testSpecialEffectSwitches() {
         osf::RetailRandom expected_random(1);
         expected_random.next();
         expected_random.next();
-        const osf::EnemyEffectSpawnRequest& spawn =
+        const osf::CombatEffectSpawnRequest& spawn =
             result.effect_spawn;
         if (!check(
                 result.valid &&

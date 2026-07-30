@@ -561,6 +561,40 @@ if(TARGET sf_game_core)
     COMMAND player_combat_defense_test)
 
   add_executable(
+    player_damage_receiver_test
+    player_damage_receiver_test.cpp
+  )
+  target_link_libraries(
+    player_damage_receiver_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_damage_receiver_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_damage_receiver_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_damage_receiver_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_damage_receiver_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_damage_receiver_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME player_damage_receiver
+    COMMAND player_damage_receiver_test)
+
+  add_executable(
     enemy_damage_receiver_test
     enemy_damage_receiver_test.cpp
   )

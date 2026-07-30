@@ -1,4 +1,4 @@
-#include "item_element_bonus.hpp"
+#include "item_instance_values.hpp"
 
 #include "item_database.hpp"
 #include "player_inventory.hpp"
@@ -54,6 +54,19 @@ std::int32_t retailItemRolledElementStrength(
     return readStateI32(
         item.retail_state,
         (kRolledElementWord + element) * kWordSize);
+}
+
+std::int32_t retailItemInstanceParameter(
+    const InventoryItem& item,
+    std::size_t parameter) {
+    if (parameter >= 39 ||
+        item.category < 0 ||
+        item.category > 2) {
+        return 0;
+    }
+    return readStateI32(
+        item.retail_state,
+        parameter * kWordSize);
 }
 
 std::int32_t retailItemElementStrength(

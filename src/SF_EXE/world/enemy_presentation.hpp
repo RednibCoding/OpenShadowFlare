@@ -62,7 +62,7 @@ struct EnemyPresentationUpdate {
     EnemyAiTarget direct_impact_target;
     EnemyDirectImpactResult direct_impact;
     EnemyAiTarget effect_impact_target;
-    EnemyEffectSpawnRequest effect_spawn;
+    CombatEffectSpawnRequest effect_spawn;
     std::int32_t completion_event = -1;
 };
 

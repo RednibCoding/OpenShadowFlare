@@ -35,7 +35,7 @@ struct EnemyDirectImpactResult {
     std::int32_t post_hit_audio_sample = -1;
     std::int32_t post_hit_event = -1;
     bool player_damage_can_abort_post_hit = false;
-    EnemyEffectSpawnRequest effect_spawn;
+    CombatEffectSpawnRequest effect_spawn;
 };
 
 bool enemyDirectImpactUsesSpecialEffect(
