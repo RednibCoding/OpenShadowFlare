@@ -135,8 +135,8 @@ decoded once when a world starts, and every shipped MCT enemy name resolves to
 the exact list and stable index used by retail. The executable-owned event
 evaluator now reproduces the confirmed life and target conditions, retail
 candidate ordering, weighted choice, and event-zero fallback. It remains
-dormant until the live enemy life/target inputs and native action dispatcher
-can be connected as one complete behavior slice.
+dormant until live target search and the movement/presentation consumers can
+be connected as one complete behavior slice.
 
 The first dispatcher unit is ready behind the same boundary. Native actions
 zero and one reproduce authored waiting and bounded patrol cycles, including
@@ -144,9 +144,11 @@ their holding/completion events, inclusive random destinations, movement
 versus idle counters, speed scaling, presentation requests, and the shipped
 zero-duration patrol case. Actions two through seven preserve the native
 mapping to presentation actions one through six and their entry-only reset
-behavior. Action eight preserves the active presentation. Actions nine
-through eleven, along with incomplete presentation-side effects, are
-explicitly left dormant instead of being approximated.
+behavior. Action eight preserves the active presentation. Actions nine and
+ten emit typed target retreat/approach movement with exact mode, distance,
+timing, and event rules. Action eleven emits the fixed-point walk using the
+AI list's speed. The full dispatcher stays behind the live boundary until
+those requests have complete movement and presentation consumers.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

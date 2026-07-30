@@ -118,8 +118,8 @@ times the enemy's MCT speed scale divided by 1,000. A zero movement duration
 still enters and immediately leaves the walk presentation but does not choose
 a destination or consume random state. The shipped database contains 61 wait
 actions and 92 patrol actions, including six of those zero-duration patrols.
-This passive controller remains dormant until the rest of the native action
-dispatcher can be connected without leaving an enemy in an unsupported state.
+This controller remains dormant until its movement and presentation requests
+have complete live consumers.
 
 Actions two through seven are the two three-variant animated action families.
 Their native handlers map them directly to presentation actions one through
@@ -130,6 +130,22 @@ resets its action counter but deliberately keeps the presentation already in
 progress. The shipped `Control.aid` does not select actions four or eight, but
 their executable paths are still preserved. None of these actions drive a
 live enemy until their presentation-side behavior is reconstructed.
+
+Actions nine and ten move relative to a target. Nine retreats to a bounds
+distance of 10,000 and uses event 14 while active; ten approaches to contact
+and uses event 15. Both return their own action number as the completion
+event, whether the authored duration expires, no eligible target exists, or
+walking stops. Parameter three is scaled movement speed, parameter seven is
+target-refresh cadence, and parameter eight is random-turn chance. Player
+targets and scenario-actor targets use separate native movement modes.
+
+Action eleven walks toward the cached walk point at the AI list's
+`WalkPointSpeed`, stops within 150, and holds event minus one for counters zero
+through 90 before returning to event zero. It also completes when walking
+stops. No shipped AID record selects action eleven; the executable can force
+that path itself. The portable dispatcher now covers all native actions zero
+through eleven, but stays off the live actor until its emitted movement and
+presentation requests have complete runtime consumers.
 
 ### What is not a script
 

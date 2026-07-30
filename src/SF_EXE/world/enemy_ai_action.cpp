@@ -11,16 +11,31 @@ constexpr std::int32_t kWaitAction = 0;
 constexpr std::int32_t kPatrolAction = 1;
 constexpr std::int32_t kFirstPresentationAction = 2;
 constexpr std::int32_t kLastPresentationAction = 8;
+constexpr std::int32_t kRetreatAction = 9;
+constexpr std::int32_t kApproachAction = 10;
+constexpr std::int32_t kReturnToWalkPointAction = 11;
+constexpr std::int32_t kLastSupportedAction =
+    kReturnToWalkPointAction;
 constexpr std::int32_t kIdlePresentation = 7;
 constexpr std::int32_t kWalkPresentation = 8;
 constexpr std::int32_t kWaitEvent = 11;
 constexpr std::int32_t kPatrolEvent = 12;
+constexpr std::int32_t kRetreatEvent = 14;
+constexpr std::int32_t kApproachEvent = 15;
+constexpr std::int32_t kWalkPointDuration = 90;
+constexpr std::int32_t kWalkPointStopDistance = 150;
+constexpr std::int32_t kRetreatStopDistance = 10000;
 
 constexpr std::size_t kActionDuration = 1;
 constexpr std::size_t kMovementSpeed = 3;
 constexpr std::size_t kPatrolMovementDuration = 4;
 constexpr std::size_t kPatrolIdleDuration = 5;
 constexpr std::size_t kMovementAnimationChart = 6;
+constexpr std::size_t kTargetRefreshInterval = 7;
+constexpr std::size_t kRandomTurnChance = 8;
+constexpr std::size_t kTargetConditionEnabled = 3;
+constexpr std::size_t kMinimumTargetDistance = 4;
+constexpr std::size_t kMaximumTargetDistance = 5;
 
 bool inclusiveRange(
     std::int32_t minimum,
@@ -84,6 +99,13 @@ bool scaledSpeed(
     return true;
 }
 
+bool validTarget(const EnemyAiTarget& target) {
+    return !target.found ||
+           target.kind == EnemyAiTargetKind::player ||
+           target.kind ==
+               EnemyAiTargetKind::scenario_actor;
+}
+
 }  // namespace
 
 void EnemyAiActionController::reset() {
@@ -108,7 +130,7 @@ EnemyAiActionUpdate EnemyAiActionController::update(
     const std::int32_t action_number =
         action_.action_number;
     if (action_number < kWaitAction ||
-        action_number > kLastPresentationAction) {
+        action_number > kLastSupportedAction) {
         return result;
     }
 
@@ -126,7 +148,8 @@ EnemyAiActionUpdate EnemyAiActionController::update(
         next_action_counter = 0;
     }
 
-    if (action_number >= kFirstPresentationAction) {
+    if (action_number >= kFirstPresentationAction &&
+        action_number <= kLastPresentationAction) {
         if (entering &&
             action_number < kLastPresentationAction) {
             result.clear_current_presentation = true;
@@ -188,8 +211,10 @@ EnemyAiActionUpdate EnemyAiActionController::update(
                 result.handled = false;
                 return result;
             }
-            result.begin_patrol = true;
-            result.patrol_destination =
+            result.movement.begin = true;
+            result.movement.mode =
+                EnemyAiMovementMode::patrol;
+            result.movement.destination =
                 context.spawn_position;
             if (movement_duration != 0) {
                 if (!absoluteRange(
@@ -215,17 +240,17 @@ EnemyAiActionUpdate EnemyAiActionController::update(
                     result.handled = false;
                     return result;
                 }
-                result.patrol_destination = {
+                result.movement.destination = {
                     minimum_x +
                         random.next() % horizontal_range,
                     minimum_y +
                         random.next() % vertical_range,
                 };
             }
-            result.movement_speed = speed;
-            result.movement_duration =
+            result.movement.speed = speed;
+            result.movement.duration =
                 movement_duration;
-            result.movement_animation_chart =
+            result.movement.animation_chart =
                 action_.parameters[
                     kMovementAnimationChart];
             if (context.presentation_action !=
@@ -241,6 +266,134 @@ EnemyAiActionUpdate EnemyAiActionController::update(
                     next_action_counter
                 ? 1
                 : kPatrolEvent;
+    } else if (
+        action_number == kRetreatAction ||
+        action_number == kApproachAction) {
+        const std::int32_t completion_event =
+            action_number;
+        const std::int32_t holding_event =
+            action_number == kRetreatAction
+            ? kRetreatEvent
+            : kApproachEvent;
+        if (!entering &&
+            context.presentation_action !=
+                kWalkPresentation) {
+            event_number_ = completion_event;
+        } else if (entering) {
+            std::int32_t speed = 0;
+            if (!scaledSpeed(
+                    action_.parameters[kMovementSpeed],
+                    context.movement_speed_scale,
+                    speed)) {
+                result.handled = false;
+                return result;
+            }
+
+            EnemyAiTarget target;
+            if (action_.conditions[
+                    kTargetConditionEnabled] == 1) {
+                if (context.target_in_range) {
+                    target = context.target_in_range(
+                        action_.conditions[
+                            kMinimumTargetDistance],
+                        action_.conditions[
+                            kMaximumTargetDistance]);
+                }
+            } else if (context.default_target) {
+                target = context.default_target();
+            }
+
+            if (!validTarget(target)) {
+                result.handled = false;
+                return result;
+            }
+            if (!target.found) {
+                event_number_ = completion_event;
+            } else {
+                result.movement.begin = true;
+                result.movement.mode =
+                    action_number == kRetreatAction
+                    ? (target.kind ==
+                               EnemyAiTargetKind::player
+                           ? EnemyAiMovementMode::
+                                 retreat_from_player
+                           : EnemyAiMovementMode::
+                                 retreat_from_scenario_actor)
+                    : (target.kind ==
+                               EnemyAiTargetKind::player
+                           ? EnemyAiMovementMode::
+                                 approach_player
+                           : EnemyAiMovementMode::
+                                 approach_scenario_actor);
+                result.movement.target_kind =
+                    target.kind;
+                result.movement.target_identifier =
+                    target.identifier;
+                result.movement.speed = speed;
+                result.movement.stop_distance =
+                    action_number == kRetreatAction
+                    ? kRetreatStopDistance
+                    : 0;
+                result.movement.random_turn_chance =
+                    action_.parameters[
+                        kRandomTurnChance];
+                result.movement.target_refresh_interval =
+                    action_.parameters[
+                        kTargetRefreshInterval];
+                if (context.presentation_action !=
+                    kWalkPresentation) {
+                    result.requested_presentation_action =
+                        kWalkPresentation;
+                }
+                event_number_ =
+                    action_.parameters[kActionDuration] <=
+                            next_action_counter
+                        ? completion_event
+                        : holding_event;
+            }
+        } else {
+            event_number_ =
+                action_.parameters[kActionDuration] <=
+                        next_action_counter
+                    ? completion_event
+                    : holding_event;
+        }
+    } else if (
+        action_number == kReturnToWalkPointAction) {
+        if (!entering &&
+            context.presentation_action !=
+                kWalkPresentation) {
+            event_number_ = 0;
+        } else {
+            if (entering) {
+                std::int32_t speed = 0;
+                if (!scaledSpeed(
+                        context.walk_point_speed,
+                        context.movement_speed_scale,
+                        speed)) {
+                    result.handled = false;
+                    return result;
+                }
+                result.movement.begin = true;
+                result.movement.mode =
+                    EnemyAiMovementMode::fixed_point;
+                result.movement.destination =
+                    context.walk_point;
+                result.movement.speed = speed;
+                result.movement.stop_distance =
+                    kWalkPointStopDistance;
+                if (context.presentation_action !=
+                    kWalkPresentation) {
+                    result.requested_presentation_action =
+                        kWalkPresentation;
+                }
+            }
+            event_number_ =
+                next_action_counter >
+                        kWalkPointDuration
+                    ? 0
+                    : -1;
+        }
     }
 
     current_action_ = next_current_action;

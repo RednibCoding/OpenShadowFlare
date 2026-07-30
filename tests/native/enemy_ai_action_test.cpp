@@ -39,7 +39,7 @@ bool testRetailWaitAction() {
             update.handled &&
                 update.event_number == 11 &&
                 update.requested_presentation_action == 7 &&
-                !update.begin_patrol &&
+                !update.movement.begin &&
                 controller.currentAction() == 0 &&
                 controller.actionCounter() == 1 &&
                 random.state() == initial_random,
@@ -97,12 +97,14 @@ bool testRetailPatrolAction() {
             update.handled &&
                 update.event_number == 12 &&
                 update.requested_presentation_action == 8 &&
-                update.begin_patrol &&
-                update.patrol_destination.x == 110 &&
-                update.patrol_destination.y == 98 &&
-                update.movement_speed == 45 &&
-                update.movement_duration == 3 &&
-                update.movement_animation_chart == 4 &&
+                update.movement.begin &&
+                update.movement.mode ==
+                    osf::EnemyAiMovementMode::patrol &&
+                update.movement.destination.x == 110 &&
+                update.movement.destination.y == 98 &&
+                update.movement.speed == 45 &&
+                update.movement.duration == 3 &&
+                update.movement.animation_chart == 4 &&
                 controller.actionCounter() == 1 &&
                 controller.patrolCounter() == 1,
             "Enemy AI action one did not start the authored retail "
@@ -113,7 +115,7 @@ bool testRetailPatrolAction() {
     context.presentation_action = 8;
     update = controller.update(context, random);
     if (!check(
-            !update.begin_patrol &&
+            !update.movement.begin &&
                 controller.patrolCounter() == 2,
             "An active patrol restarted before its movement phase "
             "completed.")) {
@@ -123,7 +125,7 @@ bool testRetailPatrolAction() {
     context.presentation_action = 7;
     update = controller.update(context, random);
     if (!check(
-            !update.begin_patrol &&
+            !update.movement.begin &&
                 controller.patrolCounter() == 4,
             "An early patrol arrival did not clamp to the authored "
             "movement duration.")) {
@@ -131,14 +133,14 @@ bool testRetailPatrolAction() {
     }
     update = controller.update(context, random);
     if (!check(
-            !update.begin_patrol &&
+            !update.movement.begin &&
                 controller.patrolCounter() == 5,
             "The patrol idle phase did not retain retail cadence.")) {
         return false;
     }
     update = controller.update(context, random);
     if (!check(
-            update.begin_patrol &&
+            update.movement.begin &&
                 controller.actionCounter() == 5 &&
                 controller.patrolCounter() == 1,
             "The next patrol target was not chosen at the complete "
@@ -156,7 +158,7 @@ bool testRetailPatrolAction() {
 
 bool testUnsupportedActionStaysDormant() {
     osf::EnemyAiActionController controller;
-    controller.select(action(9, 0));
+    controller.select(action(12, 0));
     osf::EnemyAiActionContext context;
     osf::RetailRandom random;
     const std::uint32_t initial_random =
@@ -170,6 +172,228 @@ bool testUnsupportedActionStaysDormant() {
             controller.actionCounter() == 0 &&
             random.state() == initial_random,
         "An unreconstructed enemy action was partially executed.");
+}
+
+bool testRetailTargetMovementActions() {
+    osf::AiActionData retreat = action(9, 2);
+    retreat.parameters[3] = 15;
+    retreat.parameters[7] = 4;
+    retreat.parameters[8] = 25;
+    retreat.conditions[3] = 1;
+    retreat.conditions[4] = 100;
+    retreat.conditions[5] = 500;
+
+    osf::EnemyAiActionController controller;
+    controller.select(retreat);
+    osf::EnemyAiActionContext context;
+    context.movement_speed_scale = 3000;
+    context.presentation_action = 7;
+    std::int32_t searched_minimum = -1;
+    std::int32_t searched_maximum = -1;
+    context.target_in_range =
+        [&](std::int32_t minimum, std::int32_t maximum) {
+            searched_minimum = minimum;
+            searched_maximum = maximum;
+            return osf::EnemyAiTarget{
+                true, osf::EnemyAiTargetKind::player, 3};
+        };
+    osf::RetailRandom random;
+    const std::uint32_t initial_random =
+        random.state();
+
+    osf::EnemyAiActionUpdate update =
+        controller.update(context, random);
+    if (!check(
+            update.handled &&
+                update.event_number == 14 &&
+                update.requested_presentation_action == 8 &&
+                update.movement.begin &&
+                update.movement.mode ==
+                    osf::EnemyAiMovementMode::
+                        retreat_from_player &&
+                update.movement.target_kind ==
+                    osf::EnemyAiTargetKind::player &&
+                update.movement.target_identifier == 3 &&
+                update.movement.speed == 45 &&
+                update.movement.stop_distance == 10000 &&
+                update.movement.random_turn_chance == 25 &&
+                update.movement.target_refresh_interval == 4 &&
+                searched_minimum == 100 &&
+                searched_maximum == 500 &&
+                random.state() == initial_random,
+            "Enemy action nine did not enter retail target-retreat "
+            "movement.")) {
+        return false;
+    }
+
+    context.presentation_action = 8;
+    update = controller.update(context, random);
+    if (!check(
+            update.event_number == 14 &&
+                !update.movement.begin,
+            "Enemy action nine left its holding event too early.")) {
+        return false;
+    }
+    update = controller.update(context, random);
+    if (!check(
+            update.event_number == 9 &&
+                controller.actionCounter() == 3,
+            "Enemy action nine did not complete on its inclusive "
+            "duration boundary.")) {
+        return false;
+    }
+
+    controller.select(retreat);
+    context.presentation_action = 8;
+    context.target_in_range =
+        [](std::int32_t, std::int32_t) {
+            return osf::EnemyAiTarget{
+                true,
+                osf::EnemyAiTargetKind::scenario_actor,
+                14000008};
+        };
+    update = controller.update(context, random);
+    if (!check(
+            update.movement.begin &&
+                update.movement.mode ==
+                    osf::EnemyAiMovementMode::
+                        retreat_from_scenario_actor,
+            "Enemy action nine did not use the native non-player "
+            "retreat mode.")) {
+        return false;
+    }
+
+    osf::AiActionData approach = action(10, 10);
+    approach.parameters[3] = 20;
+    approach.parameters[7] = 3;
+    approach.parameters[8] = 40;
+    controller.select(approach);
+    context.presentation_action = 7;
+    bool used_default_target = false;
+    context.default_target = [&] {
+        used_default_target = true;
+        return osf::EnemyAiTarget{
+            true,
+            osf::EnemyAiTargetKind::scenario_actor,
+            14000007};
+    };
+    update = controller.update(context, random);
+    if (!check(
+                update.event_number == 15 &&
+                update.movement.begin &&
+                update.movement.mode ==
+                    osf::EnemyAiMovementMode::
+                        approach_scenario_actor &&
+                update.movement.target_kind ==
+                    osf::EnemyAiTargetKind::scenario_actor &&
+                update.movement.target_identifier == 14000007 &&
+                update.movement.speed == 60 &&
+                update.movement.stop_distance == 0 &&
+                update.movement.random_turn_chance == 40 &&
+                update.movement.target_refresh_interval == 3 &&
+                used_default_target,
+            "Enemy action ten did not enter retail target-approach "
+            "movement.")) {
+        return false;
+    }
+
+    controller.select(approach);
+    context.presentation_action = 8;
+    context.default_target = [] {
+        return osf::EnemyAiTarget{
+            true, osf::EnemyAiTargetKind::player, 2};
+    };
+    update = controller.update(context, random);
+    if (!check(
+            update.movement.begin &&
+                update.movement.mode ==
+                    osf::EnemyAiMovementMode::
+                        approach_player,
+            "Enemy action ten did not use the native player-target "
+            "approach mode.")) {
+        return false;
+    }
+
+    context.presentation_action = 7;
+    update = controller.update(context, random);
+    if (!check(
+            update.event_number == 10 &&
+                !update.movement.begin,
+            "A stopped target movement did not publish its native "
+            "completion event.")) {
+        return false;
+    }
+
+    controller.select(approach);
+    context.default_target = [] {
+        return osf::EnemyAiTarget{};
+    };
+    update = controller.update(context, random);
+    return check(
+        update.event_number == 10 &&
+            !update.movement.begin &&
+            controller.currentAction() == 10 &&
+            controller.actionCounter() == 1,
+        "A target movement without an eligible target did not "
+        "complete immediately.");
+}
+
+bool testRetailWalkPointAction() {
+    osf::EnemyAiActionController controller;
+    controller.select(action(11, 0));
+    osf::EnemyAiActionContext context;
+    context.presentation_action = 7;
+    context.walk_point = {123, 456};
+    context.walk_point_speed = 10;
+    context.movement_speed_scale = 3000;
+    osf::RetailRandom random;
+
+    osf::EnemyAiActionUpdate update =
+        controller.update(context, random);
+    if (!check(
+            update.handled &&
+                update.event_number == -1 &&
+                update.requested_presentation_action == 8 &&
+                update.movement.begin &&
+                update.movement.mode ==
+                    osf::EnemyAiMovementMode::fixed_point &&
+                update.movement.destination.x == 123 &&
+                update.movement.destination.y == 456 &&
+                update.movement.speed == 30 &&
+                update.movement.stop_distance == 150,
+            "Enemy action eleven did not start its retail walk-point "
+            "movement.")) {
+        return false;
+    }
+
+    context.presentation_action = 8;
+    for (std::int32_t counter = 1;
+         counter <= 90;
+         ++counter) {
+        update = controller.update(context, random);
+        if (!check(
+                update.event_number == -1,
+                "Enemy action eleven completed before counter 91.")) {
+            return false;
+        }
+    }
+    update = controller.update(context, random);
+    if (!check(
+            update.event_number == 0 &&
+                controller.actionCounter() == 92,
+            "Enemy action eleven did not complete after counter 90.")) {
+        return false;
+    }
+
+    controller.select(action(11, 0));
+    context.presentation_action = 8;
+    update = controller.update(context, random);
+    context.presentation_action = 7;
+    update = controller.update(context, random);
+    return check(
+        update.event_number == 0 &&
+            !update.movement.begin,
+        "A stopped walk-point action did not return to event zero.");
 }
 
 bool testZeroDurationPatrolDoesNotDrawRandom() {
@@ -192,11 +416,13 @@ bool testZeroDurationPatrolDoesNotDrawRandom() {
     const osf::EnemyAiActionUpdate update =
         controller.update(context, random);
     return check(
-        update.handled &&
-            update.begin_patrol &&
-            update.patrol_destination.x == 300 &&
-            update.patrol_destination.y == 400 &&
-            update.movement_duration == 0 &&
+            update.handled &&
+            update.movement.begin &&
+            update.movement.mode ==
+                osf::EnemyAiMovementMode::patrol &&
+            update.movement.destination.x == 300 &&
+            update.movement.destination.y == 400 &&
+            update.movement.duration == 0 &&
             update.requested_presentation_action == 8 &&
             random.state() == initial_random,
         "A zero-duration retail patrol selected a destination or "
@@ -283,6 +509,10 @@ bool testRetailActionCatalog() {
     std::size_t zero_patrol = 0;
     std::size_t ordinary_patrol = 0;
     std::array<std::size_t, 12> action_counts{};
+    std::size_t targeted_retreat = 0;
+    std::size_t default_retreat = 0;
+    std::size_t plain_approach = 0;
+    std::size_t randomized_approach = 0;
     bool values_match = true;
     for (const osf::AiControlList& list :
          database.lists()) {
@@ -329,6 +559,33 @@ bool testRetailActionCatalog() {
                     } else {
                         values_match = false;
                     }
+                } else if (candidate.action_number == 9) {
+                    values_match =
+                        values_match &&
+                        candidate.parameters[7] == 0 &&
+                        candidate.parameters[8] == 0;
+                    if (candidate.conditions[3] == 1) {
+                        ++targeted_retreat;
+                    } else if (
+                        candidate.conditions[3] == 0) {
+                        ++default_retreat;
+                    } else {
+                        values_match = false;
+                    }
+                } else if (candidate.action_number == 10) {
+                    values_match =
+                        values_match &&
+                        candidate.conditions[3] == 1;
+                    if (candidate.parameters[7] == 0 &&
+                        candidate.parameters[8] == 0) {
+                        ++plain_approach;
+                    } else if (
+                        candidate.parameters[7] > 0 &&
+                        candidate.parameters[8] > 0) {
+                        ++randomized_approach;
+                    } else {
+                        values_match = false;
+                    }
                 }
             }
         }
@@ -356,6 +613,10 @@ bool testRetailActionCatalog() {
             patrol_count == 92 &&
             zero_patrol == 6 &&
             ordinary_patrol == 86 &&
+            targeted_retreat == 44 &&
+            default_retreat == 17 &&
+            plain_approach == 175 &&
+            randomized_approach == 30 &&
             action_counts == expected_action_counts &&
             values_match,
         "The shipped action distribution or passive parameters no "
@@ -371,6 +632,8 @@ int main() {
     return testRetailWaitAction() &&
                    testRetailPatrolAction() &&
                    testUnsupportedActionStaysDormant() &&
+                   testRetailTargetMovementActions() &&
+                   testRetailWalkPointAction() &&
                    testZeroDurationPatrolDoesNotDrawRandom() &&
                    testRetailPresentationActionDispatch() &&
                    testRetailActionCatalog()

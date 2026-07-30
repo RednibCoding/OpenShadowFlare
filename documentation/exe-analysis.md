@@ -229,6 +229,31 @@ paths exist. These dispatch transitions are portable and tested, but remain
 behind the live-enemy boundary until their animation, targeting, damage, and
 completion-event work can be connected as one unit.
 
+Actions nine and ten at `0x0045c600` and `0x0045c780` are the target-movement
+pair. If the selected AID condition enables a target range, they repeat the
+retail target lookup with its minimum and maximum; otherwise they use the
+enemy's default eligible target. A missing target immediately returns event
+nine or ten. A valid target starts presentation action eight at parameter
+three times the MCT speed scale divided by 1,000. Parameter seven controls
+target refresh cadence and parameter eight is the random-turn chance.
+
+Action nine retreats until the bounds distance reaches 10,000, using movement
+mode five for a player and mode two for a scenario actor. Event 14 holds it
+until parameter one's inclusive duration, after which it returns event nine.
+Action ten approaches to bounds contact with modes four and one respectively;
+event 15 holds it before event ten. Either action also returns its completion
+event if the walking presentation stops.
+
+Action eleven at `0x0045c900` starts fixed-point movement mode zero toward the
+enemy's cached walk point. Its speed is the AI list's `WalkPointSpeed` times
+the MCT scale divided by 1,000, and its stop distance is 150. It keeps event
+minus one through elapsed counter 90 and returns event zero at counter 91, or
+as soon as the walking presentation stops. Retail `Control.aid` contains 61
+action-nine and 205 action-ten records, but no action-eleven records. Of the
+retreat records, 44 repeat an authored range lookup and 17 use the default
+target. All approach records use range lookup; 30 enable the optional
+random-turn and refresh pair.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

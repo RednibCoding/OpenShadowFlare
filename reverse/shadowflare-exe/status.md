@@ -412,8 +412,27 @@ resetting the counter on entry without changing the current presentation.
 The shipped catalog uses action two 450 times, action three 158 times, action
 five 178 times, action six 91 times, and action seven 42 times. It contains no
 action-four or action-eight records. Their native handlers are still covered,
-and unsupported actions nine through eleven remain unable to alter controller
-state.
+and malformed action numbers remain unable to alter controller state.
+
+The remaining native dispatcher handlers are reconstructed behind the same
+boundary. Action nine at `0x0045c600` retreats from its selected target using
+movement mode five for a player or two for a scenario actor. It stops at
+bounds distance 10,000, reports event 14 while active, and returns event nine
+when its inclusive duration expires, target lookup fails, or walking stops.
+Action ten at `0x0045c780` approaches to bounds contact with player mode four
+or actor mode one, using event 15 before event ten. Both scale AID parameter
+three by the MCT speed field; parameters seven and eight become target-refresh
+cadence and random-turn chance.
+
+Action eleven at `0x0045c900` starts mode-zero movement toward the cached walk
+point, using the AI list's scaled `WalkPointSpeed` and stop distance 150. It
+holds event minus one through counter 90, then returns event zero. The shipped
+catalog contains 61 retreat actions, 205 approach actions, and no action
+eleven. Forty-four retreats use authored target ranges and 17 use default
+target selection; every approach uses a range, with 30 enabling refresh and
+random turning. All twelve native dispatcher actions now emit one typed
+portable movement/presentation result, but live consumption still waits for
+the corresponding presentation and movement-mode reconstruction.
 
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
