@@ -65,7 +65,8 @@ bool testTableExpansionAndConstructorPacket(
 
     const auto& packet = request.packet;
     if (!check(
-            packet[0] == 2 &&
+            request.has_packet &&
+                packet[0] == 2 &&
                 packet[1] == 3 &&
                 packet[2] == 14000042 &&
                 packet[3] == 1 &&

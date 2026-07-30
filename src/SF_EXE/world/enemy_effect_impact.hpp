@@ -40,6 +40,7 @@ struct EnemyEffectSpawnRequest {
     bool has_source_judgement = false;
     ObjectBounds source_judgement;
     std::int32_t constructor_value_12 = 0;
+    bool has_packet = false;
     CombatPacket packet;
     std::int32_t packet_kind = 8;
     std::int32_t instance_identifier = -1;

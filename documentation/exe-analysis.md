@@ -72,7 +72,7 @@ The game uses separate globals, not one monolithic struct:
 | 0x00482D20 | RKC_RPGSCRN_CHARANIMBLOCK* | Character animation |
 | 0x00482D24 | RKC_NETWORK* | Network system |
 | 0x00482D28 | RKC_DSOUND* | Sound system |
-| 0x00482DB0 | int | Game mode (0=SP, 1=Client, 2=Server) |
+| 0x00482DB0 | int | Game mode (0=SP, 1=Server, 2=Client) |
 | 0x0048D71C | int | Screenshot requested flag |
 | 0x0048D8B8 | int | Window style index |
 | 0x0048D8CC | int | IME enabled flag |
@@ -277,6 +277,54 @@ table or unsafe index is reported as invalid instead of following the
 executable's unchecked pointer behavior. Receiver-owned barriers, life and
 mana changes, reaction state, equipment durability, status application,
 reflection, death, and drops stay outside this shared arithmetic boundary.
+
+The enemy receiver at `0x00459690` is now reconstructed on top of that
+boundary. The 72-word enemy initializer supplies native element, physical and
+magical defense, hit-reaction chance and duration defense, and the flag that
+forces reaction movement. Those values come from MCT pre-AI words 6, 9, and
+11 and post-AI words 38 through 40. They are decoded once with the enemy
+rather than looked up again by the receiver.
+
+The callback rejects an already defeated enemy and a negative source before
+doing anything. A non-positive packet base skips the shared damage formula
+but still reaches the later status, effect, and event paths. Damage is applied
+only when the packet's source slot matches the local player slot. In
+single-player and server mode, the amount credited to that slot is capped by
+the enemy's life before subtraction. A surviving hit asks the server path to
+broadcast its seven-field damage record. Client mode instead sends that record
+to the server and keeps its predicted local enemy at a minimum of one life.
+This branch is also the evidence that global mode one is server and mode two
+is client.
+
+Visual enemies calculate hit reaction before life changes. Table 25 selects
+chance and duration from damage as a percentage of half maximum life, capped
+at row 49. Table 24 adds the packet's authored affinity grade for player
+attacks or row five for an opposing-element non-player packet. Effect-family
+packets replace chance, duration, and motion permission from their three
+element-indexed packet banks. The chance comparison consumes one draw even
+when its final value is zero. A reaction without movement is capped at 15
+updates before packet word 76 is added; an enemy's force-motion flag is
+applied after that cap. This ordering is intentional.
+
+A started reaction selects presentation ten, records the impact angle, faces
+the source when motion is disabled, locks the action, and preserves packet
+reaction stages one and two. Stage one spawns effect 21015 through 21018 and
+plays sample 119. Reflection word 39 emits five effect-20013 requests with
+five independent spread draws and sample 61. Packet words 34/35 and 74/75
+emit their two configured effects with null combat-packet pointers. Word 72
+uses a strict 20-percent draw followed by separate packet-kind and
+21011/21012 draws. The portable effect request now records whether the retail
+constructor received a packet pointer, so these paths cannot be confused with
+the packet-owning attack effects.
+
+A lethal authoritative hit records whether the packet was effect-family,
+retains its full source character number, requests the retail kill-accounting
+path, and emits the local player's enabled on-kill statuses 7, 8, and 9.
+Presentation eleven and the action lock are selected only after reflection
+and packet effects have had their normal chance to run. The result is passive
+for now: live enemy mutation, network transport, effect-list ownership,
+experience accounting, audio playback, death-animation completion, and drops
+will be connected together at the actor boundary.
 
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a

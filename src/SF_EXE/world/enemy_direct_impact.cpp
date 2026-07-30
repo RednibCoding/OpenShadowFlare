@@ -34,7 +34,7 @@ void buildCommonPacket(
     packet.write(3, 0);
     packet.write(4, profile.direct_packet_word_4[variant]);
     packet.write(31, profile.packet_word_31);
-    packet.write(32, profile.direct_packet_word_32);
+    packet.write(32, profile.native_element);
     packet.write(34, random.next() % 4 + 21000);
     packet.write(35, 8);
     packet.write(36, profile.direct_hit_rate[variant]);
@@ -105,6 +105,7 @@ EnemyEffectSpawnRequest buildSpecialEffect(
     request.has_explicit_origin = false;
     request.has_source_judgement = false;
     request.constructor_value_12 = 0;
+    request.has_packet = true;
     request.packet = packet;
     request.packet_kind = 8;
     request.instance_identifier = -1;

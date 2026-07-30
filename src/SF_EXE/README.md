@@ -170,10 +170,14 @@ well. It owns target-facing on entry, the retail ten-value CAF speed table,
 crossed-frame impact and three-slot sound markers, their resource-specific and
 fallback sample lookup, final-frame clamping, typed effect parameters, and
 completion events two through seven. It is intentionally not live yet:
-direct and effect packets plus the shared damage arithmetic are reconstructed,
-but receiver-owned barriers, life changes, reactions, audio playback, and
-movement still need to meet it at the actor boundary before enemies can run
-the full AI loop without dropping behavior.
+direct and effect packets, the shared damage arithmetic, and the complete
+passive enemy receiver are reconstructed. The receiver preserves MCT defense
+and reaction values, local/client damage ownership, attribution, hit and death
+presentations, reflection, configured and random effects, status requests,
+audio samples, and kill metadata. Player and companion receivers are still
+pending, and the typed enemy result still needs to meet movement, world
+effects, audio, networking, kill accounting, and death completion at the live
+actor boundary before enemies can run without dropping behavior.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

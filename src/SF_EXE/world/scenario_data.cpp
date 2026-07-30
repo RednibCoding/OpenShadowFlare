@@ -366,11 +366,20 @@ bool readScenarioEnemy(
     enemy.patrol_right = pre_ai_values[3];
     enemy.patrol_bottom = pre_ai_values[4];
     enemy.maximum_life = pre_ai_values[8];
+    enemy.native_element = pre_ai_values[6];
+    enemy.physical_defense = pre_ai_values[9];
+    enemy.magical_defense = pre_ai_values[11];
+    enemy.reaction_chance_defense =
+        post_ai_values[38];
+    enemy.reaction_duration_defense =
+        post_ai_values[39];
+    enemy.force_reaction_motion =
+        post_ai_values[40] == 1;
     enemy.movement_speed_scale = post_ai_values[54];
     enemy.presentation.packet_word_31 =
         pre_ai_values[7];
-    enemy.presentation.direct_packet_word_32 =
-        pre_ai_values[6];
+    enemy.presentation.native_element =
+        enemy.native_element;
     enemy.presentation.direct_special_effect_number =
         post_ai_values[21];
     enemy.presentation

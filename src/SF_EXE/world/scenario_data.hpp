@@ -86,6 +86,12 @@ struct ScenarioEnemy : ScenarioEntity {
     std::int32_t patrol_right = 0;
     std::int32_t patrol_bottom = 0;
     std::int32_t maximum_life = 0;
+    std::int32_t native_element = 0;
+    std::int32_t physical_defense = 0;
+    std::int32_t magical_defense = 0;
+    std::int32_t reaction_chance_defense = 0;
+    std::int32_t reaction_duration_defense = 0;
+    bool force_reaction_motion = false;
     std::int32_t movement_speed_scale = 0;
     EnemyPresentationProfile presentation;
 };

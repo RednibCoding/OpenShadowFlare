@@ -8,11 +8,10 @@ namespace osf {
 
 struct EnemyPresentationProfile {
     // Pre-AI initializer word 7 is copied to packet word 31 by
-    // both attack families. Pre-AI word 6 is copied to direct
-    // packet word 32. Their gameplay meanings stay unnamed until
-    // the packet consumer is reconstructed.
+    // both attack families. Its gameplay meaning stays unnamed
+    // until a consumer establishes it.
     std::int32_t packet_word_31 = 0;
-    std::int32_t direct_packet_word_32 = 0;
+    std::int32_t native_element = 0;
 
     std::array<std::int32_t, 3>
         direct_packet_word_4{};

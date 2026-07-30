@@ -80,6 +80,15 @@ bool EnemyActor::initialize(
     };
     current_life_ = enemy.maximum_life;
     maximum_life_ = enemy.maximum_life;
+    native_element_ = enemy.native_element;
+    physical_defense_ = enemy.physical_defense;
+    magical_defense_ = enemy.magical_defense;
+    reaction_chance_defense_ =
+        enemy.reaction_chance_defense;
+    reaction_duration_defense_ =
+        enemy.reaction_duration_defense;
+    force_reaction_motion_ =
+        enemy.force_reaction_motion;
     movement_speed_scale_ =
         enemy.movement_speed_scale;
     presentation_profile_ = enemy.presentation;
@@ -122,6 +131,12 @@ void EnemyActor::clear() {
     patrol_bounds_ = {};
     current_life_ = 0;
     maximum_life_ = 0;
+    native_element_ = 0;
+    physical_defense_ = 0;
+    magical_defense_ = 0;
+    reaction_chance_defense_ = 0;
+    reaction_duration_defense_ = 0;
+    force_reaction_motion_ = false;
     movement_speed_scale_ = 0;
     presentation_profile_ = {};
     state_.clear();
@@ -220,6 +235,30 @@ std::int32_t EnemyActor::currentLife() const {
 
 std::int32_t EnemyActor::maximumLife() const {
     return maximum_life_;
+}
+
+std::int32_t EnemyActor::nativeElement() const {
+    return native_element_;
+}
+
+std::int32_t EnemyActor::physicalDefense() const {
+    return physical_defense_;
+}
+
+std::int32_t EnemyActor::magicalDefense() const {
+    return magical_defense_;
+}
+
+std::int32_t EnemyActor::reactionChanceDefense() const {
+    return reaction_chance_defense_;
+}
+
+std::int32_t EnemyActor::reactionDurationDefense() const {
+    return reaction_duration_defense_;
+}
+
+bool EnemyActor::forceReactionMotion() const {
+    return force_reaction_motion_;
 }
 
 std::int32_t EnemyActor::movementSpeedScale() const {

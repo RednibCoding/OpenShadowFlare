@@ -44,7 +44,12 @@ double retailAngleForDirection(
 std::int32_t retailDirectionForVector(
     std::int32_t x,
     std::int32_t y) {
-    double angle = retailAngleForVector(x, y);
+    return retailDirectionForAngle(
+        retailAngleForVector(x, y));
+}
+
+std::int32_t retailDirectionForAngle(
+    double angle) {
     constexpr double full_turn =
         6.28318530717958647692;
     constexpr double radians_to_tenths_of_degrees =

@@ -1,11 +1,11 @@
 #include "combat_damage.hpp"
 
+#include "core/retail_integer.hpp"
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 
 #include <algorithm>
 #include <cstdint>
-#include <limits>
 
 namespace osf {
 namespace {
@@ -13,36 +13,6 @@ namespace {
 constexpr std::int32_t kPhysicalScaleTable = 7;
 constexpr std::int32_t kDefenseScaleTable = 11;
 constexpr std::int32_t kTableRowOffset = 10;
-
-std::int32_t signedWord(
-    std::uint32_t value) {
-    constexpr std::uint32_t kSignedMaximum =
-        static_cast<std::uint32_t>(
-            std::numeric_limits<std::int32_t>::max());
-    if (value <= kSignedMaximum) {
-        return static_cast<std::int32_t>(value);
-    }
-    return -1 -
-           static_cast<std::int32_t>(
-               std::numeric_limits<std::uint32_t>::max() -
-               value);
-}
-
-std::int32_t wrappedMultiply(
-    std::int32_t left,
-    std::int32_t right) {
-    return signedWord(
-        static_cast<std::uint32_t>(left) *
-        static_cast<std::uint32_t>(right));
-}
-
-std::int32_t wrappedSubtract(
-    std::int32_t left,
-    std::int32_t right) {
-    return signedWord(
-        static_cast<std::uint32_t>(left) -
-        static_cast<std::uint32_t>(right));
-}
 
 std::int32_t pairedElement(
     std::int32_t element) {
@@ -109,13 +79,13 @@ std::int32_t scaledElementalDamage(
     const std::int32_t random_factor =
         random.next() % 3 + 9;
     const std::int32_t scaled =
-        wrappedMultiply(
-            wrappedMultiply(
+        retailMultiply(
+            retailMultiply(
                 random_factor,
                 base_damage),
             elemental_factor) /
         100;
-    return wrappedSubtract(scaled, defense_value);
+    return retailSubtract(scaled, defense_value);
 }
 
 CombatDamageResult finished(
@@ -144,14 +114,14 @@ CombatDamageResult resolveEffectDamage(
         const std::int32_t random_factor =
             random.next() % 3 + 9;
         const std::int32_t offense =
-            wrappedMultiply(
+            retailMultiply(
                 random_factor, packet[4]) /
             10;
         const std::int32_t reduction =
-            wrappedMultiply(defense[4], scale) /
+            retailMultiply(defense[4], scale) /
             10;
         return finished(
-            wrappedSubtract(offense, reduction));
+            retailSubtract(offense, reduction));
     }
     if (defense[0] != 1 && defense[0] != 2) {
         return finished(1);
@@ -214,14 +184,14 @@ CombatDamageResult resolvePhysicalScaleDamage(
     }
 
     const std::int32_t scaled =
-        wrappedMultiply(
-            wrappedMultiply(
+        retailMultiply(
+            retailMultiply(
                 packet[4], random_factor),
             scale) /
         100;
     result.valid = true;
     result.damage = std::max<std::int32_t>(
-        wrappedSubtract(scaled, defense[3]), 1);
+        retailSubtract(scaled, defense[3]), 1);
     return result;
 }
 
@@ -238,14 +208,14 @@ CombatDamageResult resolveDefenseScaleDamage(
     const std::int32_t random_factor =
         random.next() % 3 + 9;
     const std::int32_t offense =
-        wrappedMultiply(
+        retailMultiply(
             random_factor, packet[4]) /
         10;
     const std::int32_t reduction =
-        wrappedMultiply(defense[3], scale) /
+        retailMultiply(defense[3], scale) /
         10;
     return finished(
-        wrappedSubtract(offense, reduction));
+        retailSubtract(offense, reduction));
 }
 
 }  // namespace

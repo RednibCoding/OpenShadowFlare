@@ -17,7 +17,7 @@ bool check(bool condition, const char* message) {
 osf::EnemyPresentationProfile profile() {
     osf::EnemyPresentationProfile result;
     result.packet_word_31 = 310;
-    result.direct_packet_word_32 = 320;
+    result.native_element = 320;
     result.direct_packet_word_4 = {40, 41, 42};
     result.direct_hit_rate = {200, 50, -20};
     result.direct_packet_word_40 = {400, 401, 402};
@@ -258,6 +258,7 @@ bool testSpecialEffectSwitches() {
                     spawn.constructor_value_20 == 0 &&
                     spawn.constructor_value_21 == 211 &&
                     spawn.constructor_value_22 == 0 &&
+                    spawn.has_packet &&
                     spawn.packet[3] ==
                         values.packet_mode &&
                     spawn.packet[34] ==

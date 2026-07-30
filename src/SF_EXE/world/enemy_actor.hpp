@@ -54,6 +54,12 @@ public:
     const ObjectBounds& patrolBounds() const;
     std::int32_t currentLife() const;
     std::int32_t maximumLife() const;
+    std::int32_t nativeElement() const;
+    std::int32_t physicalDefense() const;
+    std::int32_t magicalDefense() const;
+    std::int32_t reactionChanceDefense() const;
+    std::int32_t reactionDurationDefense() const;
+    bool forceReactionMotion() const;
     std::int32_t movementSpeedScale() const;
     const EnemyPresentationProfile&
     presentationProfile() const;
@@ -89,6 +95,12 @@ private:
     ObjectBounds patrol_bounds_;
     std::int32_t current_life_ = 0;
     std::int32_t maximum_life_ = 0;
+    std::int32_t native_element_ = 0;
+    std::int32_t physical_defense_ = 0;
+    std::int32_t magical_defense_ = 0;
+    std::int32_t reaction_chance_defense_ = 0;
+    std::int32_t reaction_duration_defense_ = 0;
+    bool force_reaction_motion_ = false;
     std::int32_t movement_speed_scale_ = 0;
     EnemyPresentationProfile presentation_profile_;
     ScenarioEntityState state_;

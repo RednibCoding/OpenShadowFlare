@@ -671,13 +671,25 @@ bool testFixture() {
                 enemy->pre_ai_values[4] &&
             enemy->maximum_life ==
                 enemy->pre_ai_values[8] &&
+            enemy->native_element ==
+                enemy->pre_ai_values[6] &&
+            enemy->physical_defense ==
+                enemy->pre_ai_values[9] &&
+            enemy->magical_defense ==
+                enemy->pre_ai_values[11] &&
+            enemy->reaction_chance_defense ==
+                enemy->post_ai_values[38] &&
+            enemy->reaction_duration_defense ==
+                enemy->post_ai_values[39] &&
+            enemy->force_reaction_motion ==
+                (enemy->post_ai_values[40] == 1) &&
             enemy->movement_speed_scale ==
                 enemy->post_ai_values[54] &&
             enemy->presentation
                     .packet_word_31 ==
                 enemy->pre_ai_values[7] &&
             enemy->presentation
-                    .direct_packet_word_32 ==
+                    .native_element ==
                 enemy->pre_ai_values[6] &&
             enemy->presentation
                     .direct_special_effect_number ==
@@ -1405,6 +1417,12 @@ bool testGeneralScenarioStart() {
                 first_enemy.patrolBounds().bottom == 799 &&
                 first_enemy.currentLife() == 400 &&
                 first_enemy.maximumLife() == 400 &&
+                first_enemy.nativeElement() == 0 &&
+                first_enemy.physicalDefense() == 20 &&
+                first_enemy.magicalDefense() == 25 &&
+                first_enemy.reactionChanceDefense() == 0 &&
+                first_enemy.reactionDurationDefense() == 0 &&
+                !first_enemy.forceReactionMotion() &&
                 first_enemy.movementSpeedScale() == 3000 &&
                 first_enemy.visible() &&
                 first_enemy.pointerEnabled() &&

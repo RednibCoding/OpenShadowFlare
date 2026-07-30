@@ -167,6 +167,7 @@ EnemyEffectSpawnRequest resolveEnemyEffectImpact(
     request.has_source_judgement = true;
     request.source_judgement = input.source_judgement;
     request.constructor_value_17 = input.subtype;
+    request.has_packet = true;
 
     request.packet.write(0, 2);
     request.packet.write(1, 3);

@@ -104,7 +104,7 @@ osf::gapi::CafAnimation animationWithCharts(
 osf::EnemyPresentationProfile profile() {
     osf::EnemyPresentationProfile result;
     result.packet_word_31 = 77;
-    result.direct_packet_word_32 = 88;
+    result.native_element = 88;
     result.direct_packet_word_4 = {10, 11, 12};
     result.direct_hit_rate = {200, 201, 202};
     result.direct_packet_word_40 = {40, 41, 42};

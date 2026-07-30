@@ -352,13 +352,27 @@ It also preserves the MCT-controlled special branch, its two random draws,
 all shipped effect-number switches, and its bypass of normal impact targeting.
 The shared packet-to-damage calculation underneath those callbacks is
 reconstructed too. It keeps the immediate damage override, effect family,
-all four ordinary packet/receiver combinations, tables 7 and 11, paired and
-same-element modifiers, separate physical and magical defense words,
+all four ordinary packet/receiver combinations, tables 7 and 11, opposing-
+and same-element modifiers, separate physical and magical defense words,
 minimum-one clamp, source lookup request, and every conditional random draw in
-retail order. Applying the result through player, companion, and enemy
-receivers is still separate: barriers, life and mana, reaction, durability,
-statuses, reflection, death, movement consumption, shared effect ownership,
-audio playback, and live AI attachment remain next.
+retail order.
+
+The enemy side of that receiver boundary is reconstructed as a passive result.
+It decodes the enemy's native element, physical and magical defense, two
+reaction defenses, and force-motion flag from the MCT initializer. Local
+source ownership, client minimum-one prediction, authoritative damage
+attribution, tables 24 and 25, effect element banks, reaction stages,
+reflection, the two configured effects, the 20-percent random hit effect,
+samples 61 and 119, source status 73, on-kill statuses 7 through 9, death
+metadata, and presentation actions 10 and 11 all keep retail ordering and
+random draws. Effect requests also distinguish a real combat packet pointer
+from the null pointers used by receiver-side visuals.
+
+Player and companion receivers remain separate and still need barriers, life
+and mana, durability, statuses, reflection, and death behavior. The enemy
+result also stays passive until movement consumption, world effect ownership,
+audio playback, network transport, kill accounting, death completion, drops,
+and the complete live AI update can be attached together.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback
