@@ -82,6 +82,7 @@ bool EnemyActor::initialize(
     maximum_life_ = enemy.maximum_life;
     native_element_ = enemy.native_element;
     physical_defense_ = enemy.physical_defense;
+    physical_evasion_ = enemy.physical_evasion;
     magical_defense_ = enemy.magical_defense;
     reaction_chance_defense_ =
         enemy.reaction_chance_defense;
@@ -133,10 +134,23 @@ void EnemyActor::clear() {
     maximum_life_ = 0;
     native_element_ = 0;
     physical_defense_ = 0;
+    physical_evasion_ = 0;
     magical_defense_ = 0;
     reaction_chance_defense_ = 0;
     reaction_duration_defense_ = 0;
     force_reaction_motion_ = false;
+    presentation_action_ = 7;
+    action_lock_ = 0;
+    reaction_duration_ = 0;
+    reaction_stage_ = 0;
+    reaction_motion_ = false;
+    reaction_additive_ = 0;
+    reaction_angle_ = 0.0;
+    event_number_ = 0;
+    attributed_damage_.fill(0);
+    death_counter_ = 0;
+    defeated_by_effect_ = false;
+    defeat_source_character_number_ = -1;
     movement_speed_scale_ = 0;
     presentation_profile_ = {};
     state_.clear();
@@ -245,6 +259,10 @@ std::int32_t EnemyActor::physicalDefense() const {
     return physical_defense_;
 }
 
+std::int32_t EnemyActor::physicalEvasion() const {
+    return physical_evasion_;
+}
+
 std::int32_t EnemyActor::magicalDefense() const {
     return magical_defense_;
 }
@@ -323,6 +341,77 @@ bool EnemyActor::pointerEnabled() const {
 
 bool EnemyActor::judgementEnabled() const {
     return state_.judgementEnabled();
+}
+
+EnemyDamageReceiverState EnemyActor::damageReceiverState(
+    std::int32_t scenario_number) const {
+    EnemyDamageReceiverState state;
+    state.character_number = characterNumber();
+    state.scenario_number = scenario_number;
+    state.position = position_;
+    state.judgement = judgement_;
+    state.has_visual = hasVisual();
+    state.current_life = current_life_;
+    state.maximum_life = maximum_life_;
+    state.native_element = native_element_;
+    state.physical_defense = physical_defense_;
+    state.magical_defense = magical_defense_;
+    state.reaction_chance_defense =
+        reaction_chance_defense_;
+    state.reaction_duration_defense =
+        reaction_duration_defense_;
+    state.force_reaction_motion =
+        force_reaction_motion_;
+    state.presentation_action =
+        presentation_action_;
+    state.presentation_counter =
+        action_counter_;
+    state.action_lock = action_lock_;
+    state.reaction_duration =
+        reaction_duration_;
+    state.reaction_stage = reaction_stage_;
+    state.reaction_motion = reaction_motion_;
+    state.reaction_additive = reaction_additive_;
+    state.reaction_angle = reaction_angle_;
+    state.direction = direction_;
+    state.event_number = event_number_;
+    state.attributed_damage =
+        attributed_damage_;
+    state.death_counter = death_counter_;
+    state.defeated_by_effect =
+        defeated_by_effect_;
+    state.defeat_source_character_number =
+        defeat_source_character_number_;
+    return state;
+}
+
+void EnemyActor::applyDamageReceiverState(
+    const EnemyDamageReceiverState& state) {
+    if (state.character_number != characterNumber()) {
+        return;
+    }
+    current_life_ = state.current_life;
+    presentation_action_ =
+        state.presentation_action;
+    action_counter_ =
+        state.presentation_counter;
+    action_lock_ = state.action_lock;
+    reaction_duration_ =
+        state.reaction_duration;
+    reaction_stage_ = state.reaction_stage;
+    reaction_motion_ = state.reaction_motion;
+    reaction_additive_ =
+        state.reaction_additive;
+    reaction_angle_ = state.reaction_angle;
+    direction_ = state.direction;
+    event_number_ = state.event_number;
+    attributed_damage_ =
+        state.attributed_damage;
+    death_counter_ = state.death_counter;
+    defeated_by_effect_ =
+        state.defeated_by_effect;
+    defeat_source_character_number_ =
+        state.defeat_source_character_number;
 }
 
 }  // namespace osf

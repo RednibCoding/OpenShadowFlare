@@ -370,8 +370,9 @@ zero and advances one frame per active-map update. Enemies join the ordinary
 shadow/visible depth passes and their enabled judgement rectangles block the
 player. The catalog also contains 34 invisible, non-colliding `Enemy Hole`
 actors with resource `-1`; these remain live script/AI identities without a
-fabricated visual. Live AI selection, movement actions, life changes, combat,
-death, and drops are not inferred by this initial actor slice.
+fabricated visual. Live AI selection, movement actions, hit/death
+presentation, experience, and drops remain; the later player-impact boundary
+now commits receiver life and reaction state.
 
 The loader rearrangement now has three more named consumers. Pre-AI MCT values
 1 through 4 become the spawn-relative patrol rectangle read by `0x0045c3c0`.
@@ -840,10 +841,10 @@ subtype three, or weapon field `0xcc` suppresses the off hand; field `0xdc`
 does not. The portable item owner, save round trip, tooltip, player appearance,
 and combat profile now share those meanings.
 
-This is still not complete gameplay. Enemy AI and combat, dynamic collision
-for enemy movement, remaining script commands and operand domains, alternate
-conversation modes, darkness, and saved-game scenario restoration are the
-next executable layers.
+This is still not complete gameplay. Live enemy AI dispatch and movement,
+hit/death presentation, experience and drops, remaining script commands and
+operand domains, alternate conversation modes, darkness, and saved-game
+scenario restoration are the next executable layers.
 
 The first player attack action now follows the executable rather than a visual
 approximation. `0x00450630` maps main-hand subtypes to actions 7 through 10
@@ -852,4 +853,25 @@ the distinct counter order, chart pairs, sound counters, movement lock, and
 recovery completion. `0x00450c60` supplies Table 4's attack-speed tier and
 overweight fallback. The CAF part-zero `0x40` marker is retained as a typed
 impact event and revalidated against the live enemy before later damage code
-may consume it; no life mutation is guessed into this slice.
+may consume it.
+
+Player impact delivery is now reconstructed through the live actor boundary.
+`0x00413e00` uses derived hit rate at player `+0x1bc` against enemy pre-AI
+word 10 and keeps the exact `20..98` clamp. Successful actions 7 through 10
+build their 77-word family-zero packet with derived attack and physical
+defense, level, affinities, the 17 runtime words from `+0x1dc`, main-hand
+reaction parameters, reflection percentage, hit effect, and weapon identity.
+The base effect draw, unconditional equipment-reflection draw, subtype-8/9
+replacement draw, receiver draws, and post-receiver durability draw remain in
+native order.
+
+The existing enemy receiver now supplies the only damage calculation. Its
+returned life, attribution, reaction, event, and defeat state are copied back
+to the live `EnemyActor`; its samples and the player's post-hit sample 6 enter
+the world audio queue. An occupied main hand rolls its 30-percent durability
+loss after the receiver. A zero-condition weapon remains equipped and retains
+its weight and instance effects, but `0x0044ea60` excludes its base derived
+values and elemental strengths. Deterministic packet tests and a live
+Wasteland enemy click cover both the passive boundary and actual world
+attachment. Hit/death CAF presentation, reaction movement, effect-list
+ownership, experience, and drops remain next.

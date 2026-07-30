@@ -295,6 +295,8 @@ bool ScenarioWorld::load(
 
     id_ = start.scenario_id;
     music_track_ = data_.musicTrack();
+    local_player_number_ =
+        start.local_player_number;
     entry_ = *selected_entry;
     map_exploration_.reveal(
         {entry_.world_x, entry_.world_y});
@@ -307,6 +309,7 @@ bool ScenarioWorld::load(
 void ScenarioWorld::clear() {
     id_ = -1;
     music_track_ = -1;
+    local_player_number_ = 0;
     entry_ = {};
     data_.clear();
     script_data_.clear();
@@ -330,6 +333,10 @@ std::int32_t ScenarioWorld::id() const {
 
 std::int32_t ScenarioWorld::musicTrack() const {
     return music_track_;
+}
+
+std::int32_t ScenarioWorld::localPlayerNumber() const {
+    return local_player_number_;
 }
 
 const ScenarioEntry& ScenarioWorld::entry() const {

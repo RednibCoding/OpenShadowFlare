@@ -368,6 +368,7 @@ bool readScenarioEnemy(
     enemy.maximum_life = pre_ai_values[8];
     enemy.native_element = pre_ai_values[6];
     enemy.physical_defense = pre_ai_values[9];
+    enemy.physical_evasion = pre_ai_values[10];
     enemy.magical_defense = pre_ai_values[11];
     enemy.reaction_chance_defense =
         post_ai_values[38];

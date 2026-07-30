@@ -88,6 +88,7 @@ struct ScenarioEnemy : ScenarioEntity {
     std::int32_t maximum_life = 0;
     std::int32_t native_element = 0;
     std::int32_t physical_defense = 0;
+    std::int32_t physical_evasion = 0;
     std::int32_t magical_defense = 0;
     std::int32_t reaction_chance_defense = 0;
     std::int32_t reaction_duration_defense = 0;

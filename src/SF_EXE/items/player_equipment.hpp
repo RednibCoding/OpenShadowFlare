@@ -54,6 +54,14 @@ public:
     std::int32_t derivedParameterBonus(
         std::size_t parameter,
         const ItemDatabase& database) const;
+    std::int32_t instanceParameterBonus(
+        std::size_t parameter,
+        const ItemDatabase& database) const;
+    std::array<std::int32_t, 2>
+        conditionalInstanceParameterBonus(
+            std::size_t condition_parameter,
+            std::size_t value_parameter,
+            const ItemDatabase& database) const;
 
 private:
     static bool accepts(

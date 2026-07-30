@@ -321,10 +321,11 @@ A lethal authoritative hit records whether the packet was effect-family,
 retains its full source character number, requests the retail kill-accounting
 path, and emits the local player's enabled on-kill statuses 7, 8, and 9.
 Presentation eleven and the action lock are selected only after reflection
-and packet effects have had their normal chance to run. The result is passive
-for now: live enemy mutation, network transport, effect-list ownership,
-experience accounting, audio playback, death-animation completion, and drops
-will be connected together at the actor boundary.
+and packet effects have had their normal chance to run. Player direct hits
+now commit the returned life, attribution, reaction, event, and defeat state
+to the live enemy and forward its audio requests. Network transport,
+effect-list ownership, experience accounting, hit/death animation completion,
+and drops remain outside this receiver.
 
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a
@@ -1166,3 +1167,32 @@ menu. The load screen places it at `(224, 60)` without scaling.
 | Address    | Function Name | Description |
 |------------|---------------|-------------|
 | 0x00401b90 | Shutdown      | Release all subsystems |
+
+## Player attack impact
+
+The CAF marker now enters the direct player-impact path from `0x00439140` and
+`0x00435e60`. `0x00413e00` compares derived player hit rate at `+0x1bc` with
+the enemy initializer's pre-AI word 10, clamps the difference to `20..98`,
+then consumes exactly one `rand() % 100` roll. A miss stops there. A hit calls
+`0x00417e70`, then fills the family-zero packet with the local player number,
+derived physical attack and defense, eight affinities, the 17 persistent
+words copied from runtime `+0x1dc`, level, reaction modifiers from main-hand
+instance parameters 16, 14, and 15, and the weapon identifier.
+
+The first hit-effect draw selects `21000..21003`. `0x0044f990` then always
+consumes the reflection roll, summing active equipment instance parameter 20
+as its chance and parameter 21 as its returned percentage. Main-hand subtypes
+8 and 9 consume one later draw and replace the effect with `21004..21006`.
+The target receiver runs next. Sample 6 is queued after it returns, and only
+then does an occupied main hand consume its 30-percent durability roll.
+Weapons with zero maximum durability still consume that roll but do not lose
+condition.
+
+The live owner commits the receiver's life, per-player attribution, reaction,
+event, and defeat fields back to `EnemyActor`. It deliberately reuses
+`resolveEnemyDamage`, including its tables and conditional random draws.
+Broken category-zero and category-one equipment remains present and keeps its
+weight, while `0x0044ea60` proves that its base derived contributions and
+element strengths no longer participate. Hit/death CAF presentation,
+reaction displacement, effect-list ownership, experience, and drops remain
+separate follow-up work.

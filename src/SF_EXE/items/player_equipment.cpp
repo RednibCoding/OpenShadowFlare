@@ -1,11 +1,30 @@
 #include "player_equipment.hpp"
 
 #include "item_database.hpp"
+#include "item_instance_values.hpp"
 
+#include <limits>
 #include <utility>
 
 namespace osf {
 namespace {
+
+std::int32_t wrappedAdd(
+    std::int32_t left,
+    std::int32_t right) {
+    const std::uint32_t value =
+        static_cast<std::uint32_t>(left) +
+        static_cast<std::uint32_t>(right);
+    constexpr std::uint32_t kSignedMaximum =
+        static_cast<std::uint32_t>(
+            std::numeric_limits<std::int32_t>::max());
+    return value <= kSignedMaximum
+        ? static_cast<std::int32_t>(value)
+        : -1 -
+              static_cast<std::int32_t>(
+                  std::numeric_limits<std::uint32_t>::max() -
+                  value);
+}
 
 bool offHandIsSuppressed(
     const PlayerEquipment& equipment,
@@ -149,7 +168,9 @@ std::int32_t PlayerEquipment::derivedParameterBonus(
             continue;
         }
         const auto& equipped = slots_[index];
-        if (!equipped) {
+        if (!equipped ||
+            (equipped->category <= 1 &&
+             equipped->durability == 0)) {
             continue;
         }
         const ItemDefinition* definition =
@@ -157,11 +178,75 @@ std::int32_t PlayerEquipment::derivedParameterBonus(
                 equipped->category,
                 equipped->definition_id);
         if (definition) {
-            bonus +=
-                definition->derived_parameter_bonuses[parameter];
+            bonus = wrappedAdd(
+                bonus,
+                definition
+                    ->derived_parameter_bonuses[parameter]);
         }
     }
     return bonus;
+}
+
+std::int32_t PlayerEquipment::instanceParameterBonus(
+    std::size_t parameter,
+    const ItemDatabase& database) const {
+    std::int32_t bonus = 0;
+    const bool suppress_off_hand =
+        offHandIsSuppressed(*this, database);
+    for (std::size_t index = 0;
+         index < slots_.size();
+         ++index) {
+        if (index ==
+                static_cast<std::size_t>(
+                    EquipmentSlot::off_hand) &&
+            suppress_off_hand) {
+            continue;
+        }
+        const auto& equipped = slots_[index];
+        if (!equipped) {
+            continue;
+        }
+        bonus = wrappedAdd(
+            bonus,
+            retailItemInstanceParameter(
+                *equipped, parameter));
+    }
+    return bonus;
+}
+
+std::array<std::int32_t, 2>
+PlayerEquipment::conditionalInstanceParameterBonus(
+    std::size_t condition_parameter,
+    std::size_t value_parameter,
+    const ItemDatabase& database) const {
+    std::array<std::int32_t, 2> result{};
+    const bool suppress_off_hand =
+        offHandIsSuppressed(*this, database);
+    for (std::size_t index = 0;
+         index < slots_.size();
+         ++index) {
+        if (index ==
+                static_cast<std::size_t>(
+                    EquipmentSlot::off_hand) &&
+            suppress_off_hand) {
+            continue;
+        }
+        const auto& equipped = slots_[index];
+        if (!equipped) {
+            continue;
+        }
+        const std::int32_t condition =
+            retailItemInstanceParameter(
+                *equipped, condition_parameter);
+        result[0] = wrappedAdd(result[0], condition);
+        if (condition != 0) {
+            result[1] = wrappedAdd(
+                result[1],
+                retailItemInstanceParameter(
+                    *equipped, value_parameter));
+        }
+    }
+    return result;
 }
 
 bool PlayerEquipment::accepts(

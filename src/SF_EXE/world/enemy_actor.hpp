@@ -1,10 +1,12 @@
 #ifndef OPENSHADOWFLARE_ENEMY_ACTOR_HPP
 #define OPENSHADOWFLARE_ENEMY_ACTOR_HPP
 
+#include "enemy_damage_receiver.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "scenario_data.hpp"
 #include "scenario_entity_state.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -56,6 +58,7 @@ public:
     std::int32_t maximumLife() const;
     std::int32_t nativeElement() const;
     std::int32_t physicalDefense() const;
+    std::int32_t physicalEvasion() const;
     std::int32_t magicalDefense() const;
     std::int32_t reactionChanceDefense() const;
     std::int32_t reactionDurationDefense() const;
@@ -77,6 +80,10 @@ public:
     bool visible() const;
     bool pointerEnabled() const;
     bool judgementEnabled() const;
+    EnemyDamageReceiverState damageReceiverState(
+        std::int32_t scenario_number) const;
+    void applyDamageReceiverState(
+        const EnemyDamageReceiverState& state);
 
 private:
     std::int32_t id_ = -1;
@@ -97,10 +104,26 @@ private:
     std::int32_t maximum_life_ = 0;
     std::int32_t native_element_ = 0;
     std::int32_t physical_defense_ = 0;
+    std::int32_t physical_evasion_ = 0;
     std::int32_t magical_defense_ = 0;
     std::int32_t reaction_chance_defense_ = 0;
     std::int32_t reaction_duration_defense_ = 0;
     bool force_reaction_motion_ = false;
+    std::int32_t presentation_action_ = 7;
+    std::int32_t action_lock_ = 0;
+    std::int32_t reaction_duration_ = 0;
+    std::int32_t reaction_stage_ = 0;
+    bool reaction_motion_ = false;
+    std::int32_t reaction_additive_ = 0;
+    double reaction_angle_ = 0.0;
+    std::int32_t event_number_ = 0;
+    std::array<
+        std::int32_t,
+        kEnemyDamageSourceSlotCount>
+        attributed_damage_{};
+    std::int32_t death_counter_ = 0;
+    bool defeated_by_effect_ = false;
+    std::int32_t defeat_source_character_number_ = -1;
     std::int32_t movement_speed_scale_ = 0;
     EnemyPresentationProfile presentation_profile_;
     ScenarioEntityState state_;

@@ -243,6 +243,7 @@ private:
     std::int32_t playerAttackSpeedTier() const;
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
+    void applyPlayerAttackImpact(EnemyActor& enemy);
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;

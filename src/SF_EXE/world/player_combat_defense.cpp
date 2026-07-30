@@ -38,6 +38,10 @@ void addItemStrengths(
     if (!item) {
         return;
     }
+    if (item->category <= 1 &&
+        item->durability == 0) {
+        return;
+    }
     const ItemDefinition* definition =
         item_database.find(
             item->category,

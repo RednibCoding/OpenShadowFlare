@@ -5,7 +5,6 @@
 #include "core/retail_random.hpp"
 #include "enemy_effect_impact.hpp"
 #include "items/item_database.hpp"
-#include "items/item_instance_values.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 
 #include <algorithm>
@@ -86,74 +85,6 @@ bool suppressesOffHand(
     return definition && definition->suppresses_off_hand;
 }
 
-template <typename Function>
-void forEachActiveEquipmentItem(
-    const PlayerEquipment& equipment,
-    const ItemDatabase& items,
-    Function function) {
-    const bool skip_off_hand =
-        suppressesOffHand(equipment, items);
-    for (std::size_t index = 0;
-         index < PlayerEquipment::slot_count;
-         ++index) {
-        const EquipmentSlot slot =
-            static_cast<EquipmentSlot>(index);
-        if (slot == EquipmentSlot::off_hand &&
-            skip_off_hand) {
-            continue;
-        }
-        const InventoryItem* item = equipment.item(slot);
-        if (item) {
-            function(*item);
-        }
-    }
-}
-
-std::int32_t equipmentParameter(
-    const PlayerEquipment& equipment,
-    const ItemDatabase& items,
-    std::size_t parameter) {
-    std::int32_t total = 0;
-    forEachActiveEquipmentItem(
-        equipment,
-        items,
-        [&](const InventoryItem& item) {
-            total = retailAdd(
-                total,
-                retailItemInstanceParameter(
-                    item, parameter));
-        });
-    return total;
-}
-
-struct ReflectionModifiers {
-    std::int32_t chance = 0;
-    std::int32_t percent = 0;
-};
-
-ReflectionModifiers reflectionModifiers(
-    const PlayerEquipment& equipment,
-    const ItemDatabase& items) {
-    ReflectionModifiers modifiers;
-    forEachActiveEquipmentItem(
-        equipment,
-        items,
-        [&](const InventoryItem& item) {
-            const std::int32_t chance =
-                retailItemInstanceParameter(item, 20);
-            modifiers.chance =
-                retailAdd(modifiers.chance, chance);
-            if (chance != 0) {
-                modifiers.percent =
-                    retailAdd(
-                        modifiers.percent,
-                        retailItemInstanceParameter(
-                            item, 21));
-            }
-        });
-    return modifiers;
-}
-
 std::int32_t manaCost(
     const PlayerDamageReceiverState& state,
     std::int32_t shield_spell,
@@ -173,8 +104,8 @@ std::int32_t manaCost(
     return std::max<std::int32_t>(
         retailSubtract(
             cost,
-            equipmentParameter(
-                state.equipment, items, 19)),
+            state.equipment.instanceParameterBonus(
+                19, items)),
         1);
 }
 
@@ -348,8 +279,8 @@ bool resolveReaction(
         retailAdd(
             chance,
             retailAdd(packet[42], affinity_chance)),
-        -equipmentParameter(
-            state.equipment, items, 14));
+        -state.equipment.instanceParameterBonus(
+            14, items));
     chance = std::max<std::int32_t>(chance, 0);
     if (state.presentation_action >= 22 &&
         state.presentation_action <= 36) {
@@ -393,8 +324,8 @@ bool resolveReaction(
         retailAdd(
             duration,
             retailAdd(packet[44], affinity_duration)),
-        -equipmentParameter(
-            state.equipment, items, 15));
+        -state.equipment.instanceParameterBonus(
+            15, items));
     duration = std::max<std::int32_t>(duration, 1);
 
     bool motion = packet[40] != 0;
@@ -415,8 +346,8 @@ bool resolveReaction(
         duration =
             std::min<std::int32_t>(duration, 15);
     }
-    if (equipmentParameter(
-            state.equipment, items, 16) != 0) {
+    if (state.equipment.instanceParameterBonus(
+            16, items) != 0) {
         motion = true;
     }
 
@@ -568,11 +499,12 @@ void tryReflection(
         incoming[38] != 1) {
         return;
     }
-    const ReflectionModifiers equipment =
-        reflectionModifiers(state.equipment, items);
+    const std::array<std::int32_t, 2> equipment =
+        state.equipment.conditionalInstanceParameterBonus(
+            20, 21, items);
     std::int32_t reflected_percent =
-        random.next() % 100 < equipment.chance
-            ? equipment.percent
+        random.next() % 100 < equipment[0]
+            ? equipment[1]
             : 0;
     if (state.counter_burst_active) {
         const std::int32_t spell_percent =
