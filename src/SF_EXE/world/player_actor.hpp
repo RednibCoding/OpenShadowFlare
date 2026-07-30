@@ -59,6 +59,7 @@ public:
         std::int32_t attack_speed_tier,
         const gapi::CafAnimation& animation);
     void toggleMovementPace();
+    void setMovementPace(MovementPace pace);
     void update(
         const GroundMap& ground,
         const ObjectMap& objects,

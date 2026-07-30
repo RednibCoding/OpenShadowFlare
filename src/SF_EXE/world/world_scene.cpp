@@ -77,6 +77,7 @@ void WorldScene::clear() {
     parameter_tables_.clear();
     ai_control_database_.clear();
     script_persistent_values_.clear();
+    scenario_flags_.clear();
     data_root_.clear();
     item_world_resources_.clear();
     item_random_.seed(1);
@@ -181,6 +182,15 @@ const ItemDatabase& WorldScene::itemDatabase() const {
 const AiControlDatabase&
 WorldScene::aiControlDatabase() const {
     return ai_control_database_;
+}
+
+RetailSaveProgress WorldScene::retailSaveProgress() const {
+    return {
+        scenario_flags_,
+        transports_.enabledFlags(),
+        quests_.states(),
+        player_.movementPace() == MovementPace::run,
+    };
 }
 
 PlayerEquipment& WorldScene::playerEquipment() {

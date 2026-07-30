@@ -213,6 +213,17 @@ void PlayerActor::toggleMovementPace() {
     }
 }
 
+void PlayerActor::setMovementPace(MovementPace pace) {
+    movement_pace_ = pace;
+    if (motion_ == PlayerMotion::walking ||
+        motion_ == PlayerMotion::running) {
+        motion_ =
+            movement_pace_ == MovementPace::run
+                ? PlayerMotion::running
+                : PlayerMotion::walking;
+    }
+}
+
 void PlayerActor::update(
     const GroundMap& ground,
     const ObjectMap& objects,

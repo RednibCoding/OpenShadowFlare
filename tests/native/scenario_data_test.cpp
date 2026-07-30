@@ -1372,6 +1372,103 @@ bool testWorldItemSaveRoundTrip() {
 #endif
 }
 
+bool testPersistentConversationAndMovementState() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    std::string error;
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Progress";
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, &error),
+            "The persistent-state fixture world could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::ScreenPosition ostare_pointer;
+    if (!check(
+            findNpcPointerPoint(world, 0, ostare_pointer) &&
+                world.commandWorldInteraction(
+                    ostare_pointer.x, ostare_pointer.y) &&
+                updateUntilConversation(world) &&
+                world.conversationMessageId() == 1000000,
+            "Ostare's first conversation could not be prepared for saving.")) {
+        return false;
+    }
+    for (std::int32_t message = 0; message < 5; ++message) {
+        world.advanceConversation();
+    }
+    world.togglePlayerRun();
+    if (!check(
+            !world.conversationActive() &&
+                world.quests().state(4) == 1 &&
+                world.playerMovementPace() ==
+                    osf::MovementPace::run,
+            "The conversation or movement state was not live before saving.")) {
+        return false;
+    }
+
+    const std::filesystem::path save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_progress_save_test";
+    const std::filesystem::path save_path =
+        save_root / "Save" / "0000.Ssv";
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(save_root, cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                world.playerData(),
+                world.itemDatabase(),
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerBelt(),
+                world.playerSpecialItems(),
+                world.retailSaveProgress(),
+                0x6d,
+                &error),
+            "The conversation and movement state could not be saved.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest saved_player;
+    saved_player.source = osf::PlayerDataSource::retail_save;
+    saved_player.save_path = save_path;
+    osf::WorldScene restored;
+    const bool loaded =
+        restored.loadInitialScenario(
+            data_root, saved_player, &error);
+    const bool restored_state =
+        loaded &&
+        restored.quests().state(4) == 1 &&
+        restored.playerMovementPace() ==
+            osf::MovementPace::run &&
+        restored.groundItems().empty() &&
+        findNpcPointerPoint(restored, 0, ostare_pointer) &&
+        restored.commandWorldInteraction(
+            ostare_pointer.x, ostare_pointer.y) &&
+        updateUntilConversation(restored) &&
+        restored.conversationMessageId() == 1000005 &&
+        restored.groundItems().empty();
+    std::filesystem::remove_all(save_root, cleanup_error);
+    if (!check(
+            restored_state,
+            "Saved quest/conversation state repeated Ostare's starter "
+            "drop or lost the run/walk choice.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    return true;
+#else
+    return true;
+#endif
+}
+
 bool testLegacyDeadSaveRecovery() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -3859,6 +3956,7 @@ int main() {
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&
+                   testPersistentConversationAndMovementState() &&
                    testLegacyDeadSaveRecovery() &&
                    testRetailRemoteTown()
                ? 0

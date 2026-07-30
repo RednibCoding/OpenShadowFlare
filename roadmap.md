@@ -422,8 +422,7 @@ routing, the category-four revival item, exact helmet/body/off-hand/boots
 durability checks, equipment and Counter Burst reflection, tables 25 and 26
 reaction selection, packet effects, training, audio, death action, and random
 draw ordering. The attached death presentation plays its retail gender voice
-once on the first action update: sample 13 for the portable male and sample 14
-for the portable female.
+once on the first action update: sample 13 for male and sample 14 for female.
 
 The owned companion uses a third receiver at retail address `0x0045f9f0`,
 not either of those paths. Its family-one profile, owner-slot life mutation,
@@ -1075,11 +1074,16 @@ That means:
 
 The envelope writer is now in place, including the random XOR byte,
 signed-byte checksum, substitution pass, and safe preservation of an existing
-unknown payload. New saves carry the player record we currently own. Writing
-also captures the retail-sized paired preview from the world-only render when
-the option is enabled. Saving is not complete yet: each persistent gameplay
-owner still has to contribute its real payload fields, and loading must restore
-those fields before OpenShadowFlare can claim full round-trip compatibility.
+unknown payload. New saves carry the player record and owned items we currently
+own. The three counted retail arrays after the item stream now preserve
+scenario flags, transport unlocks, and quest/conversation state; this is
+covered by saving after Ostare's opening and proving his starter reward does
+not repeat after loading. Walk/run also survives a portable round trip through
+a small versioned tail until its exact retail save owner is identified.
+Writing captures the retail-sized paired preview from the world-only render
+when the option is enabled. Saving is not complete yet: the remaining
+persistent gameplay owners still have to contribute their real payload fields
+before OpenShadowFlare can claim full round-trip compatibility.
 
 ### 7. Play through Episode 1
 

@@ -29,6 +29,7 @@
 #include "player_damage_receiver.hpp"
 #include "player_item_controller.hpp"
 #include "quest_state.hpp"
+#include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
 #include "script/scenario_script_runtime.hpp"
@@ -213,6 +214,7 @@ public:
     const ScenarioData& scenario() const;
     std::int32_t scenarioId() const;
     const script::ScriptData& scenarioScript() const;
+    RetailSaveProgress retailSaveProgress() const;
 
 private:
     bool readScriptWorldOperand(
@@ -345,6 +347,7 @@ private:
     AiControlDatabase ai_control_database_;
     std::unordered_map<std::uint64_t, std::int32_t>
         script_persistent_values_;
+    std::vector<std::int32_t> scenario_flags_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;

@@ -986,15 +986,14 @@ the distinct counter order, chart pairs, sound counters, movement lock, and
 recovery completion. `0x00450c60` supplies Table 4's attack-speed tier and
 overweight fallback. The CAF part-zero `0x40` marker is retained as a typed
 impact event and revalidated against the live enemy before later damage code
-may consume it. The attack voice choice is translated at the portable player
-boundary because portable save/UI data uses zero for male and one for female,
-opposite to the raw field convention tested by `0x00435e60`; male therefore
-plays sample 96 and female sample 99.
+may consume it. Character selection and the saved player record use the retail
+encoding directly: zero is female and one is male. `0x00435e60` therefore
+plays sample 96 for male and sample 99 for female without a second runtime
+translation.
 
-The same translation now covers the first update of the death action.
-`0x00435b60` plays `14 - raw gender`, so a portable male queues Voice00 sample
-13 and a portable female queues sample 14 exactly once before chart four
-advances.
+The first update of the death action uses that same field directly.
+`0x00435b60` plays `14 - raw gender`, so male queues Voice00 sample 13 and
+female queues sample 14 exactly once before chart four advances.
 
 Enemy hover labels now follow the type-two branch in `0x0040ee70`. A
 name-sized dark frame contains a translucent red life fill proportional to

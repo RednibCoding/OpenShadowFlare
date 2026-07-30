@@ -294,16 +294,20 @@ being carried by the pointer.
 Gameplay now owns a real `PlayerData` record rather than storing level on the
 movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
 new male and female characters receive the thirteen values from retail tables
-901 and 900. A selected save contributes its complete plain 0x160-byte player
-record. The in-game save actions also decode the retail item stream and
+900 and 901. Gender keeps the original saved encoding (`0` female, `1` male)
+all the way from character selection through resources and voice playback. A
+selected save contributes its complete plain 0x160-byte player record. The
+in-game save actions also decode the retail item stream and
 round-trip equipped items, the backpack, and the belt without replacing the
-unknown equipment, special-item, or trailing state in an original save. When
+unknown equipment, special-item, or trailing state in an original save. The
+three retail scenario, transport, and quest/conversation flag arrays are
+restored and rewritten as well, and the selected walk/run mode survives a
+portable save/load. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
 Game. Confirmed return-to-title and exit actions still complete when a map,
 warehouse, special-item, or inventory panel is open. Scenario position,
-quests, mines, companions, and the remaining dynamic
-state are still pending.
+mines, companions, and the remaining dynamic state are still pending.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

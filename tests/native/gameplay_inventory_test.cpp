@@ -199,6 +199,8 @@ bool testInventoryResourcesAndRendering() {
     osf::WorldScene world;
     osf::PlayerLoadRequest player;
     player.name = "Mina";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
     std::string error;
     if (!check(
             world.loadInitialScenario(

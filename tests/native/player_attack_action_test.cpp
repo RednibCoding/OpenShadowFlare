@@ -43,10 +43,10 @@ bool testActionSelectionAndAudio() {
                     osf::PlayerAttackAction::basic &&
                 osf::retailItemAttackSound(nullptr) == 1 &&
                 osf::retailItemAttackSound(&weapon) == 1 &&
-                osf::retailPlayerAttackVoiceSample(0) == 96 &&
-                osf::retailPlayerAttackVoiceSample(1) == 99 &&
-                osf::retailPlayerDeathVoiceSample(0) == 13 &&
-                osf::retailPlayerDeathVoiceSample(1) == 14,
+                osf::retailPlayerAttackVoiceSample(0) == 99 &&
+                osf::retailPlayerAttackVoiceSample(1) == 96 &&
+                osf::retailPlayerDeathVoiceSample(0) == 14 &&
+                osf::retailPlayerDeathVoiceSample(1) == 13,
             "The empty-hand action or light attack sound differs.")) {
         return false;
     }

@@ -665,7 +665,8 @@ record fields are name at `0x00`, gender at `0x18`, the save-menu job value at
 `0x1c`, and level at `0x24`.
 
 New characters obtain thirteen values from `Table.Tbd`. The selected table is
-`0x385 - gender`, which is table 901 for male and 900 for female. The values
+`0x385 - gender`. The saved field uses zero for female and one for male, so
+this selects table 901 for female and table 900 for male. The values
 are stored in a slightly shuffled part of the record because current life and
 current mana sit beside their base maxima. Runtime `+0x40/+0x44` are base
 maximum and current life, while `+0x48/+0x4c` are base maximum and current

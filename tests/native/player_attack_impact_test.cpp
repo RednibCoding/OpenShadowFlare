@@ -414,6 +414,8 @@ bool testLiveWorldMutationAndAudio() {
     osf::WorldScene world;
     osf::PlayerLoadRequest player;
     player.name = "Impact";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
     std::string error;
     if (!check(
             world.loadInitialScenario(

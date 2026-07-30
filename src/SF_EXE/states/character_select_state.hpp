@@ -53,7 +53,7 @@ struct CharacterSelectStateData {
     std::int32_t previous_pointer_y = 0;
     std::int32_t input_latch = 1;
     bool new_character_data_loaded = false;
-    std::int32_t character_gender = 0;
+    std::int32_t character_gender = 1;
     std::string character_name;
     bool name_entry_active = false;
     std::string host_address;

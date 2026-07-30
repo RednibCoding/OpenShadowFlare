@@ -17,10 +17,20 @@ enum class PlayerDataSource {
     retail_save,
 };
 
+// This is the value stored by the retail executable in the player record.
+enum class PlayerGender : std::int32_t {
+    female = 0,
+    male = 1,
+};
+
+constexpr std::int32_t playerGenderValue(PlayerGender gender) {
+    return static_cast<std::int32_t>(gender);
+}
+
 struct PlayerLoadRequest {
     PlayerDataSource source = PlayerDataSource::new_character;
     std::string name;
-    std::int32_t gender = 0;
+    std::int32_t gender = playerGenderValue(PlayerGender::female);
     std::filesystem::path save_path;
 };
 

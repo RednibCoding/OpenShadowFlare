@@ -401,6 +401,7 @@ bool GameplayUiController::update(
                 world.playerEquipment(),
                 world.playerBelt(),
                 world.playerSpecialItems(),
+                world.retailSaveProgress(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);

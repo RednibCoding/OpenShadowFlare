@@ -452,6 +452,8 @@ bool testFirstGoblinCombat() {
     osf::WorldScene world;
     osf::PlayerLoadRequest player;
     player.name = "GoblinTest";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
     std::string error;
     if (!check(
             world.loadInitialScenario(
