@@ -55,11 +55,14 @@ void WorldScene::clear() {
     player_attack_target_.cancel();
     player_visual_.clear();
     effect_visuals_.clear();
+    effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
     pending_audio_samples_.clear();
     pending_combat_effects_.clear();
     combat_effects_.clear();
+    runtime_effects_.clear();
+    miss_effects_.clear();
     quests_.clear();
     missions_.clear();
     transports_.clear();
@@ -133,6 +136,21 @@ WorldScene::enemies() const {
 const std::vector<CombatEffectActor>&
 WorldScene::combatEffects() const {
     return combat_effects_;
+}
+
+const std::vector<RuntimeEffectActor>&
+WorldScene::runtimeEffects() const {
+    return runtime_effects_.actors();
+}
+
+const std::vector<MissEffectActor>&
+WorldScene::missEffects() const {
+    return miss_effects_;
+}
+
+std::size_t
+WorldScene::runtimeEffectControllerCount() const {
+    return runtime_effects_.controllerCount();
 }
 
 const TransportCatalog& WorldScene::transports() const {
@@ -479,6 +497,7 @@ void WorldScene::update() {
                 enemy.position();
         }
     }
+    updateRuntimeEffects();
     spawnPendingCombatEffects();
     for (GroundItem& item : scenario_world_.groundItems()) {
         if (updateGroundItem(item) !=

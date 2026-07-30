@@ -96,6 +96,7 @@ public:
     std::int32_t physicalDefense() const;
     std::int32_t physicalEvasion() const;
     std::int32_t magicalDefense() const;
+    std::int32_t magicalEvasion() const;
     std::int32_t experienceReward() const;
     std::int32_t lootTableRow() const;
     std::int32_t goldDropChance() const;
@@ -149,6 +150,7 @@ private:
     std::int32_t physical_defense_ = 0;
     std::int32_t physical_evasion_ = 0;
     std::int32_t magical_defense_ = 0;
+    std::int32_t magical_evasion_ = 0;
     std::int32_t experience_reward_ = 0;
     std::int32_t loot_table_row_ = -1;
     std::int32_t gold_drop_chance_ = 0;

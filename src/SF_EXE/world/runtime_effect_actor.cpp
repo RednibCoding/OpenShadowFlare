@@ -116,6 +116,7 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
     }
 
     previous_position_ = position_;
+    has_updated_ = true;
     result.target_collision_active =
         collisionWindowActive(request_, counter_);
     if (result.target_collision_active) {
@@ -253,6 +254,15 @@ std::int32_t RuntimeEffectActor::resourceId() const {
     return request_.resource_id;
 }
 
+std::int32_t RuntimeEffectActor::ownerKind() const {
+    return request_.owner_kind;
+}
+
+std::int32_t
+RuntimeEffectActor::sourceCharacterNumber() const {
+    return request_.source_character_number;
+}
+
 WorldPosition RuntimeEffectActor::position() const {
     return position_;
 }
@@ -307,6 +317,16 @@ bool RuntimeEffectActor::visible() const {
 
 bool RuntimeEffectActor::expired() const {
     return expired_;
+}
+
+bool RuntimeEffectActor::hasUpdated() const {
+    return has_updated_;
+}
+
+bool RuntimeEffectActor::targetCollisionActive() const {
+    return !expired_ &&
+           visual_ &&
+           collisionWindowActive(request_, counter_);
 }
 
 bool RuntimeEffectActor::hasPacket() const {

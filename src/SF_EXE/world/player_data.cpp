@@ -435,6 +435,10 @@ std::int32_t PlayerData::baseEvasionRate() const {
     return initialParameter(10);
 }
 
+std::int32_t PlayerData::baseMagicalEvasionRate() const {
+    return initialParameter(12);
+}
+
 std::int32_t PlayerData::elementX() const {
     return readI32(0x64);
 }

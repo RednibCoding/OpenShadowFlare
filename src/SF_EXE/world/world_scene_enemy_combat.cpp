@@ -88,29 +88,50 @@ void WorldScene::applyEnemyDirectImpact(
             scenario_world_.localPlayerNumber()) {
         return;
     }
+    if (!applyPlayerDamagePacket(
+            impact.packet,
+            impact.damage_origin,
+            enemy.characterNumber())) {
+        return;
+    }
+    if (impact.post_hit_audio_sample >= 0) {
+        pending_audio_samples_.push_back(
+            impact.post_hit_audio_sample);
+    }
+}
 
+bool WorldScene::applyPlayerDamagePacket(
+    const CombatPacket& packet,
+    WorldPosition impact_origin,
+    std::int32_t source_character_number) {
+    EnemyActor* source_enemy =
+        findScriptEnemy(source_character_number);
     PlayerDamageReceiverContext context;
     context.local_player_character_number =
         scenario_world_.localPlayerNumber();
     context.reflection_target = {
-        enemy.currentLife() > 0,
-        enemy.characterNumber(),
+        source_enemy && source_enemy->currentLife() > 0,
+        source_character_number,
         2,
-        enemy.currentLife() > 0 ? 1 : 0,
+        source_enemy && source_enemy->currentLife() > 0
+            ? 1
+            : 0,
         0,
-        enemy.position(),
+        source_enemy
+            ? source_enemy->position()
+            : WorldPosition{},
     };
     const PlayerDamageReceiverResult receiver =
         resolvePlayerDamage(
             playerDamageReceiverState(),
-            impact.packet,
-            impact.damage_origin,
+            packet,
+            impact_origin,
             context,
             item_database_,
             parameter_tables_,
             item_random_);
     if (!receiver.valid || !receiver.accepted) {
-        return;
+        return false;
     }
 
     applyPlayerDamageReceiverState(receiver.state);
@@ -127,9 +148,10 @@ void WorldScene::applyEnemyDirectImpact(
         refreshPlayerAppearance();
     }
 
-    if (receiver.reflection.valid &&
+    if (source_enemy &&
+        receiver.reflection.valid &&
         receiver.reflection.target_character_number ==
-            enemy.characterNumber()) {
+            source_enemy->characterNumber()) {
         EnemyDamageReceiverContext enemy_context;
         enemy_context.local_player_slot =
             scenario_world_.localPlayerNumber();
@@ -139,7 +161,7 @@ void WorldScene::applyEnemyDirectImpact(
             player_.position();
         const EnemyDamageReceiverResult reflected =
             resolveEnemyDamage(
-                enemy.damageReceiverState(
+                source_enemy->damageReceiverState(
                     scenario_world_.id()),
                 receiver.reflection.packet,
                 receiver.reflection.impact_origin,
@@ -147,13 +169,13 @@ void WorldScene::applyEnemyDirectImpact(
                 parameter_tables_,
                 item_random_);
         if (reflected.valid && reflected.accepted) {
-            enemy.applyDamageReceiverState(
+            source_enemy->applyDamageReceiverState(
                 reflected.state);
             if (reflected.kill_requested) {
                 accountRetailEnemyKill(
                     player_data_,
                     reflected.state,
-                    enemy.experienceReward(),
+                    source_enemy->experienceReward(),
                     scenario_world_.localPlayerNumber(),
                     -1,
                     parameter_tables_);
@@ -168,11 +190,7 @@ void WorldScene::applyEnemyDirectImpact(
             }
         }
     }
-
-    if (impact.post_hit_audio_sample >= 0) {
-        pending_audio_samples_.push_back(
-            impact.post_hit_audio_sample);
-    }
+    return true;
 }
 
 EnemyActorUpdate WorldScene::updateEnemyActor(

@@ -187,6 +187,7 @@ bool EnemyActor::initialize(
     physical_defense_ = enemy.physical_defense;
     physical_evasion_ = enemy.physical_evasion;
     magical_defense_ = enemy.magical_defense;
+    magical_evasion_ = enemy.magical_evasion;
     experience_reward_ = enemy.experience_reward;
     loot_table_row_ = enemy.loot_table_row;
     gold_drop_chance_ = enemy.gold_drop_chance;
@@ -250,6 +251,7 @@ void EnemyActor::clear() {
     physical_defense_ = 0;
     physical_evasion_ = 0;
     magical_defense_ = 0;
+    magical_evasion_ = 0;
     experience_reward_ = 0;
     loot_table_row_ = -1;
     gold_drop_chance_ = 0;
@@ -767,6 +769,10 @@ std::int32_t EnemyActor::physicalEvasion() const {
 
 std::int32_t EnemyActor::magicalDefense() const {
     return magical_defense_;
+}
+
+std::int32_t EnemyActor::magicalEvasion() const {
+    return magical_evasion_;
 }
 
 std::int32_t EnemyActor::experienceReward() const {

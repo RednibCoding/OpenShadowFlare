@@ -654,6 +654,74 @@ if(TARGET sf_game_core)
     COMMAND runtime_effect_target_test)
 
   add_executable(
+    runtime_effect_system_test
+    runtime_effect_system_test.cpp
+  )
+  target_link_libraries(
+    runtime_effect_system_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    runtime_effect_system_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    runtime_effect_system_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    runtime_effect_system_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      runtime_effect_system_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      runtime_effect_system_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME runtime_effect_system
+    COMMAND runtime_effect_system_test)
+
+  add_executable(
+    runtime_effect_live_test
+    runtime_effect_live_test.cpp
+  )
+  target_link_libraries(
+    runtime_effect_live_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::RKC_RPG_TABLE
+  )
+  target_compile_features(
+    runtime_effect_live_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    runtime_effect_live_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    runtime_effect_live_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      runtime_effect_live_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      runtime_effect_live_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME runtime_effect_live
+    COMMAND runtime_effect_live_test)
+
+  add_executable(
     enemy_direct_impact_test
     enemy_direct_impact_test.cpp
   )

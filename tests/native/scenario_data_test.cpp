@@ -14,6 +14,7 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdint>
 #include <filesystem>
@@ -677,6 +678,8 @@ bool testFixture() {
                 enemy->pre_ai_values[9] &&
             enemy->magical_defense ==
                 enemy->pre_ai_values[11] &&
+            enemy->magical_evasion ==
+                enemy->pre_ai_values[12] &&
             enemy->experience_reward ==
                 enemy->pre_ai_values[13] &&
             enemy->loot_table_row ==
@@ -1430,6 +1433,11 @@ bool testGeneralScenarioStart() {
                 first_enemy.nativeElement() == 0 &&
                 first_enemy.physicalDefense() == 20 &&
                 first_enemy.magicalDefense() == 25 &&
+                first_enemy.magicalEvasion() ==
+                    wasteland.scenario()
+                        .enemies()
+                        .front()
+                        .pre_ai_values[12] &&
                 first_enemy.reactionChanceDefense() == 0 &&
                 first_enemy.reactionDurationDefense() == 0 &&
                 !first_enemy

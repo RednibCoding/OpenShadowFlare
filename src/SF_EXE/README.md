@@ -112,17 +112,16 @@ They start settled, keep their script-visible MCT state, and disappear with
 the old scenario on a successful map change. A failed map preparation leaves
 the live actors untouched.
 
-Enemy records have their first runtime boundary as well. Their common MCT
-identity, state, bounds, name, direction, CAF part data, AI-control name, and
-`Character/ENEMY` visual are owned by `ScenarioWorld`. The proven default
-action draws CAF chart zero and advances its idle frame at gameplay cadence.
-Enabled enemy judgement rectangles block the player, and ordinary player
-attacks now mutate the live enemy through the reconstructed receiver. A hit
-plays CAF chart two and applies the retail collision-aware displacement. Death
-plays chart three, its resource-specific voice and common death effect, then
-fades and removes the actor on the original update schedule. AI event
-selection attachment, enemy movement and attacks, kill accounting, experience,
-and drops are deliberately still pending rather than approximated.
+Enemy records have a live runtime boundary as well. Their common MCT identity,
+state, bounds, name, direction, CAF part data, AI-control name, and
+`Character/ENEMY` visual are owned by `ScenarioWorld`. Patrol, targeting,
+movement, direct attacks, hit reactions, death, experience, Gold, and item
+drops all pass through their reconstructed owners. Effect attacks no longer
+turn straight into a flat animation either: the first two retail controller
+families create their separate source and moving actors, apply collision
+packets to live targets, play positional launch and impact sounds, and render
+their OPTION CAF resources in the ordinary depth list. A miss uses the
+original bouncing and fading OPTION 11000011 `MISS` pattern.
 
 The actor also owns the fields proven beyond that common boundary:
 spawn-relative patrol bounds, current and maximum life initialized from the

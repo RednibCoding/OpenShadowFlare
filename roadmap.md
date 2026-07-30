@@ -920,13 +920,33 @@ evasion consume the portable Visual C++ random stream in retail order, misses
 remain remembered, and typed receiver and positional-audio requests retain
 the original once-per-update sound guard and NPC mode.
 
-The next slice is the live owner for type-1 and type-2 controllers and runtime
-actors. It must build snapshots from the actual player and Wasteland enemies,
-apply successful and missed receiver requests, queue both configured sound
-fields at the actor position, render both actor resources, and remove each
-controller and actor on its own lifetime. A shipped live enemy case should
-prove damage, sound, visuals, repeat-hit behavior, and save ownership together
-before these two effect types are called complete.
+The live owner for types 1 and 2 is complete now. It builds current player,
+object, PEOPLE, and enemy snapshots, resolves the controller's source again on
+each update, and keeps controller and category-50000000 actor lifetimes
+separate. Existing actors move and collide before controllers run, so a newly
+created source or projectile waits for the following actor update just as it
+does in retail. The renderer uses the actor's CAF, direction, frame, depth,
+and tenths-of-a-pixel height rather than treating the request as a flat hit
+animation.
+
+Successful contacts pass the original packet into the live player or enemy
+receiver and queue the configured positional sound. Misses create effect
+20012 instead: its static OPTION 11000011 pattern follows the original
+three-bounce height controller and ten-step opacity fade. A shipped
+`03000507` enemy regression proves type 2's source and forward resources,
+samples 94 and 20, player damage, rendering, independent cleanup, unchanged
+starter items, and save/reload ownership. A separate low-hit live case proves
+the MISS path. Types 1 and 2 can therefore be treated as complete; the other
+specialized effect families still need the same controller-by-controller
+work.
+
+The next player-visible checkpoint is leaving Remote Town through its authored
+script/object path and entering the first outdoor goblin area. That slice must
+trace the actual exit trigger, entry key, loading presentation, music change,
+spawn position, camera, collision, enemy activation, and return path. Once the
+transition is faithful, the first goblin pass should cover ordinary attacks,
+these live projectile effects where authored, reactions, death, experience,
+Gold and item drops, pickup, and save/reload without shortcuts.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

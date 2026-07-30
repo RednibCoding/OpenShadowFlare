@@ -11,6 +11,7 @@
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/effect_pattern_resource.hpp"
 #include "resources/effect_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
 #include "resources/item_world_resource.hpp"
@@ -19,6 +20,7 @@
 #include "combat_effect_actor.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
+#include "miss_effect_actor.hpp"
 #include "npc_actor.hpp"
 #include "player_appearance.hpp"
 #include "player_actor.hpp"
@@ -27,12 +29,14 @@
 #include "player_damage_receiver.hpp"
 #include "player_item_controller.hpp"
 #include "quest_state.hpp"
+#include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
 #include "script/scenario_script_runtime.hpp"
 #include "transport_catalog.hpp"
 #include "world_pointer.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -86,6 +90,11 @@ public:
     const std::vector<EnemyActor>& enemies() const;
     const std::vector<CombatEffectActor>&
         combatEffects() const;
+    const std::vector<RuntimeEffectActor>&
+        runtimeEffects() const;
+    const std::vector<MissEffectActor>&
+        missEffects() const;
+    std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
@@ -164,6 +173,8 @@ public:
     void advanceConversation();
     void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
+    void queueCombatEffect(
+        const CombatEffectSpawnRequest& request);
     void update();
     std::vector<std::int32_t> takeAudioSamples();
     std::int32_t playerWorldX() const;
@@ -262,13 +273,27 @@ private:
     void applyEnemyDirectImpact(
         EnemyActor& enemy,
         const EnemyDirectImpactResult& impact);
-    void queueCombatEffect(
-        const CombatEffectSpawnRequest& request);
+    bool applyPlayerDamagePacket(
+        const CombatPacket& packet,
+        WorldPosition impact_origin,
+        std::int32_t source_character_number);
     void spawnPendingCombatEffects();
     WorldPosition combatEffectOrigin(
         const CombatEffectSpawnRequest& request) const;
     ObjectBounds combatEffectJudgement(
         const CombatEffectSpawnRequest& request) const;
+    EnemyEffectControllerSource runtimeEffectSource(
+        std::int32_t owner_kind,
+        std::int32_t source_character_number) const;
+    std::vector<RuntimeEffectTargetSnapshot>
+        runtimeEffectTargets() const;
+    void applyRuntimeEffectDispatch(
+        const RuntimeEffectReceiverDispatch& dispatch);
+    void spawnRuntimeMiss(
+        const RuntimeEffectTargetContact& contact);
+    void updateRuntimeEffects();
+    void queueRuntimeEffectAudio(
+        const RuntimeEffectAudioRequest& request);
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -277,12 +302,15 @@ private:
     PlayerAttackTargetController player_attack_target_;
     CharacterVisualResource player_visual_;
     EffectVisualResources effect_visuals_;
+    EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
     std::vector<CombatEffectSpawnRequest>
         pending_combat_effects_;
     std::vector<CombatEffectActor> combat_effects_;
+    RuntimeEffectSystem runtime_effects_;
+    std::vector<MissEffectActor> miss_effects_;
     QuestState quests_;
     MissionCatalog missions_;
     TransportCatalog transports_;

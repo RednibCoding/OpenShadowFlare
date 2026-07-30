@@ -73,6 +73,8 @@ public:
 
     std::int32_t controllerEffectNumber() const;
     std::int32_t resourceId() const;
+    std::int32_t ownerKind() const;
+    std::int32_t sourceCharacterNumber() const;
     WorldPosition position() const;
     WorldPosition previousPosition() const;
     WorldPosition renderPosition(double alpha) const;
@@ -86,6 +88,8 @@ public:
     std::int32_t lifetime() const;
     bool visible() const;
     bool expired() const;
+    bool hasUpdated() const;
+    bool targetCollisionActive() const;
     bool hasPacket() const;
     const CombatPacket& packet() const;
     std::size_t rememberedTargetCount() const;
@@ -103,6 +107,7 @@ private:
     std::int32_t movement_counter_ = 0;
     std::int32_t lifetime_ = -1;
     bool expired_ = false;
+    bool has_updated_ = false;
     RuntimeEffectTargetMemory target_memory_;
     const EffectVisualResource* visual_ = nullptr;
 };

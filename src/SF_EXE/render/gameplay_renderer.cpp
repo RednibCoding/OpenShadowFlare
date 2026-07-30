@@ -30,6 +30,8 @@ struct WorldDrawEntry {
     const ScenarioObjectActor* scenario_object = nullptr;
     const EnemyActor* enemy = nullptr;
     const CombatEffectActor* effect = nullptr;
+    const RuntimeEffectActor* runtime_effect = nullptr;
+    const MissEffectActor* miss_effect = nullptr;
 };
 
 ScreenPosition toScreen(
@@ -175,8 +177,57 @@ void renderCombatEffect(
         camera_y,
         false,
         0,
-        effect.displayHeight(),
+        effect.displayHeight() / 10,
         effect.drawStrength());
+}
+
+void renderRuntimeEffect(
+    gapi::Backend& renderer,
+    const RuntimeEffectActor& effect,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    renderCharacterAnimationPass(
+        renderer,
+        effect.animation(),
+        effect.patterns(),
+        effect.patterns(),
+        effect.renderPosition(interpolation),
+        effect.animationChart(),
+        effect.animationDirection(),
+        effect.animationFrame(),
+        [&effect](std::size_t part) {
+            return effect.partEnabled(part);
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0,
+        effect.displayHeight() / 10);
+}
+
+void renderMissEffect(
+    gapi::Backend& renderer,
+    const MissEffectActor& effect,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    const ScreenPosition position =
+        calculateRealPosition(effect.position());
+    renderer.drawPattern(
+        effect.patterns(),
+        0,
+        {
+            position.x - camera_x,
+            position.y - camera_y -
+                effect.height() / 10,
+            1000,
+            1000,
+            1000,
+            effect.opacity(),
+        });
 }
 
 void renderScenarioObjectPass(
@@ -515,6 +566,37 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 &effect,
             });
         }
+        for (const RuntimeEffectActor& effect :
+             world.runtimeEffects()) {
+            if (!effect.visible() ||
+                !effect.hasUpdated()) {
+                continue;
+            }
+            WorldDrawEntry entry;
+            entry.runtime_effect = &effect;
+            entry.order = {
+                entries.size(),
+                effect.renderPosition(interpolation),
+                effect.judgement(),
+                0,
+            };
+            entries.push_back(entry);
+        }
+        for (const MissEffectActor& effect :
+             world.missEffects()) {
+            if (effect.expired()) {
+                continue;
+            }
+            WorldDrawEntry entry;
+            entry.miss_effect = &effect;
+            entry.order = {
+                entries.size(),
+                effect.position(),
+                effect.judgement(),
+                0,
+            };
+            entries.push_back(entry);
+        }
     }
 
     std::vector<DisplayOrderEntry> order;
@@ -708,6 +790,19 @@ void drawWorldEntry(
         renderCombatEffect(
             renderer,
             *entry.effect,
+            camera_x,
+            camera_y);
+    } else if (entry.runtime_effect) {
+        renderRuntimeEffect(
+            renderer,
+            *entry.runtime_effect,
+            camera_x,
+            camera_y,
+            interpolation);
+    } else if (entry.miss_effect) {
+        renderMissEffect(
+            renderer,
+            *entry.miss_effect,
             camera_x,
             camera_y);
     }

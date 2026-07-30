@@ -103,6 +103,8 @@ int main() {
                 male.baseMaximumMana() == 160 &&
                 male.currentMana() == 160 &&
                 male.initialParameter(1) == 128 &&
+                male.baseMagicalEvasionRate() ==
+                    male.initialParameter(12) &&
                 male.walkingSpeedTier() == 5,
             "The male record does not match table 901 and FUN_00440f70.")) {
         return 1;

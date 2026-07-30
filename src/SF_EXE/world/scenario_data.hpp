@@ -90,6 +90,7 @@ struct ScenarioEnemy : ScenarioEntity {
     std::int32_t physical_defense = 0;
     std::int32_t physical_evasion = 0;
     std::int32_t magical_defense = 0;
+    std::int32_t magical_evasion = 0;
     std::int32_t experience_reward = 0;
     std::int32_t loot_table_row = -1;
     std::int32_t gold_drop_chance = 0;

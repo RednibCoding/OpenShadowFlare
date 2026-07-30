@@ -1003,7 +1003,30 @@ The live Wasteland regression begins with the authored event-zero patrol,
 waits for the same enemy to approach and damage the player, requires the
 receiver effect and sample, and verifies that inventory, belt, and equipment
 ownership remain unchanged. It then writes and reloads a retail save and
-checks the damaged life and those owned item containers again. Enemy effect
-actions four through six already create their typed visual requests, but
-their moving/area effect actors do not deliver damage yet and remain the next
-combat boundary.
+checks the damaged life and those owned item containers again.
+
+Type-1 and type-2 enemy effects now cross the live world boundary. The
+portable owner preserves `FUN_00429ec0` actor updates before
+`FUN_0042fd60` controller updates, assigns category-50000000 identities,
+resolves the controller source from the current actor, and loads each emitted
+OPTION CAF independently. Source and forward actors therefore keep separate
+lifetimes; controller completion does not erase either actor. Actor height is
+stored in retail tenths of a screen pixel, including the authored value 250.
+
+The common collision pass queries the actor's current position before its
+movement step, builds live player/object/PEOPLE/enemy target snapshots, and
+delivers successful packets through the existing receiver owners. Type 2's
+shipped enemy 316 in scenario `03000507` emits source resource 11000027,
+forward resource 10000040, launch sample 94, and contact sample 20. The live
+regression requires the CAF draw, player damage, actor cleanup, unchanged
+inventory/belt/body equipment, and the same damaged life and item ownership
+after a retail save round trip.
+
+Miss dispatch follows `FUN_00417a60` and effect 20012 rather than disappearing.
+`FUN_0042c750` loads static OPTION resource 11000011, starts at height 400,
+adds vertical velocity in tenths, performs the 500/-100, 300/-100, and
+200/-100 bounce phases, then writes opacity 1000 down through 100 before
+expiring the actor. The portable resource owner deliberately accepts its
+standalone `Pattern.Njp`; it is not forced through the CAF resource path. A
+low-hit live projectile regression proves that the actual target miss request
+creates and renders this actor.

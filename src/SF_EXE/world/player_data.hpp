@@ -77,6 +77,7 @@ public:
     std::int32_t baseMagicalDefense() const;
     std::int32_t baseHitRate() const;
     std::int32_t baseEvasionRate() const;
+    std::int32_t baseMagicalEvasionRate() const;
     std::int32_t elementX() const;
     std::int32_t elementY() const;
     std::array<std::int32_t, 17>

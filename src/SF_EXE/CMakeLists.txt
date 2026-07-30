@@ -67,6 +67,7 @@ target_link_libraries(
 add_library(
   osf_resources STATIC
   resources/character_visual_resource.cpp
+  resources/effect_pattern_resource.cpp
   resources/effect_visual_resource.cpp
   resources/item_inventory_resource.cpp
   resources/item_world_resource.cpp
@@ -128,6 +129,7 @@ add_library(
   world/enemy_target_selector.cpp
   world/ground_item.cpp
   world/map_exploration.cpp
+  world/miss_effect_actor.cpp
   world/mission_catalog.cpp
   world/movement_controller.cpp
   world/movement_destination_selector.cpp
@@ -147,6 +149,7 @@ add_library(
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
   world/runtime_effect_actor.cpp
+  world/runtime_effect_system.cpp
   world/runtime_effect_target.cpp
   world/scenario_data.cpp
   world/scenario_entity_state.cpp
@@ -158,6 +161,7 @@ add_library(
   world/world_scene.cpp
   world/world_scene_combat.cpp
   world/world_scene_enemy_combat.cpp
+  world/world_scene_effects.cpp
   world/world_scene_interaction.cpp
   world/world_scene_items.cpp
   world/world_scene_loading.cpp
