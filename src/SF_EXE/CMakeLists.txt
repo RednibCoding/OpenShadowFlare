@@ -27,6 +27,7 @@ add_subdirectory(libs/RKC_DIB)
 add_subdirectory(libs/RKC_DSOUND)
 add_subdirectory(libs/RKC_UPDIB)
 add_subdirectory(libs/RKC_RPGSCRN)
+add_subdirectory(libs/RKC_RPG_AICONTROL)
 add_subdirectory(libs/RKC_RPG_SCRIPT)
 add_subdirectory(libs/RKC_RPG_TABLE)
 add_subdirectory(libs/RKC_DBFCONTROL)
@@ -145,6 +146,7 @@ target_link_libraries(
     OpenShadowFlare::Resources
     OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_RPGSCRN
+    OpenShadowFlare::RKC_RPG_AICONTROL
     OpenShadowFlare::RKC_RPG_SCRIPT
     OpenShadowFlare::RKC_RPG_TABLE
     OpenShadowFlare::RKC_UPDIB

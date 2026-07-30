@@ -65,6 +65,7 @@ void WorldScene::clear() {
     player_special_items_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
+    ai_control_database_.clear();
     script_persistent_values_.clear();
     data_root_.clear();
     item_world_resources_.clear();
@@ -136,6 +137,11 @@ const MissionCatalog& WorldScene::missions() const {
 
 const ItemDatabase& WorldScene::itemDatabase() const {
     return item_database_;
+}
+
+const AiControlDatabase&
+WorldScene::aiControlDatabase() const {
+    return ai_control_database_;
 }
 
 PlayerEquipment& WorldScene::playerEquipment() {

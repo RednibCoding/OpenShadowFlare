@@ -35,7 +35,8 @@
 `System\Game\Parameter\Control.aid` is the global actor and enemy behavior
 database loaded through `RKC_RPG_AICONTROL`. Its header is
 `RKC_AIDATA v001`, followed by byte `0x1a`. The preserved file declares 64
-behavior lists and 18 event buckets per list.
+behavior lists and 18 event buckets per list, containing 1,338 action
+candidates in total.
 
 A version-1 behavior list stores a variable-length name and walk-point speed,
 then its event buckets. Every action candidate within an event stores:
@@ -46,11 +47,12 @@ then its event buckets. Every action candidate within an event stores:
 | Parameter block | 36 bytes | Priority, weight, timing, range, movement, and other action inputs |
 | Condition block | 24 bytes | Eligibility tests against actor/world state |
 
-The reconstructed DLL handles the binary container, list/event lookup, and
-copying. The executable evaluates conditions, chooses an eligible action, and
-executes the selected native behavior. This makes AID script-like data, but it
-is not another `Scenario.Scs` format and does not use the scenario opcode
-interpreter.
+The portable `RKC_RPG_AICONTROL` library now handles the binary container and
+exact-name/index lookup. It validates complete records and preserves each
+parameter as nine signed values and each condition as six signed values.
+The executable evaluates conditions, chooses an eligible action, and executes
+the selected native behavior. This makes AID script-like data, but it is not
+another `Scenario.Scs` format and does not use the scenario opcode interpreter.
 
 The known division of responsibility and the requirements for its future
 portable implementation are covered in

@@ -162,6 +162,14 @@ AI-list slot to `-1`. The default action selected by the constructor is action
 seven; `0x0045b600` renders CAF chart zero using the MCT direction and advances
 its frame counter on every active-map update.
 
+`0x004127d0` loads the global `System/Game/Parameter/Control.aid` catalog
+before scenarios create enemies. Its version-one file contains 64 named lists,
+18 event buckets per list, and 1,338 action records. The scenario loader uses
+the DLL's exact-name lookup and stores the returned zero-based list number in
+the enemy initializer. The portable `AiControlDatabase` follows that ownership:
+it is loaded once by `WorldScene`, while scenario-local enemies retain a
+non-owning list reference and its stable index.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

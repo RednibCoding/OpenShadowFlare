@@ -251,6 +251,32 @@ if(TARGET sf_game_core)
 
   add_test(NAME table_database COMMAND table_database_test)
 
+  add_executable(ai_control_test ai_control_test.cpp)
+  target_link_libraries(
+    ai_control_test
+    PRIVATE
+      OpenShadowFlare::RKC_RPG_AICONTROL
+  )
+  target_compile_features(
+    ai_control_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    ai_control_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    ai_control_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      ai_control_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      ai_control_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME ai_control COMMAND ai_control_test)
+
   add_executable(player_data_test player_data_test.cpp)
   target_link_libraries(
     player_data_test

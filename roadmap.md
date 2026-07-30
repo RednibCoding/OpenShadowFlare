@@ -262,6 +262,13 @@ rejected or assigned made-up graphics. This is intentionally not called enemy
 AI yet: target selection, movement, attacks, health, drops, and the AI event
 interpreter remain separate slices.
 
+The data side of that interpreter is now in place. The portable
+`RKC_RPG_AICONTROL` boundary decodes all 64 lists, their fixed 18 event
+buckets, and 1,338 action candidates from `Control.aid`. Every shipped MCT
+enemy name resolves through exact byte-name lookup, and each runtime enemy
+keeps the resulting stable list index. The nine parameter and six condition
+values stay raw until their executable consumers prove names and units.
+
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
 spawn-relative movement rectangle. He now alternates chart-zero idling with a
@@ -281,8 +288,8 @@ transition path around `0x00426200`:
 
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
-- reconstruct the enemy AI event interpreter and movement on top of the
-  separate actor runtime;
+- reconstruct the enemy AI event evaluator and native movement actions on top
+  of the decoded control lists and separate actor runtime;
 - release the old scenario in the same order the original does;
 - identify the condition and sequence for the alternate `VisualNN.njp`
   artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is

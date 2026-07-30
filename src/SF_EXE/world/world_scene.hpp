@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_WORLD_SCENE_HPP
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
@@ -84,6 +85,7 @@ public:
     const MissionCatalog& missions() const;
     const TransportCatalog& transports() const;
     const ItemDatabase& itemDatabase() const;
+    const AiControlDatabase& aiControlDatabase() const;
     PlayerEquipment& playerEquipment();
     const PlayerEquipment& playerEquipment() const;
     PlayerBelt& playerBelt();
@@ -247,6 +249,7 @@ private:
     PlayerSpecialItems player_special_items_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
+    AiControlDatabase ai_control_database_;
     std::unordered_map<std::uint64_t, std::int32_t>
         script_persistent_values_;
     std::filesystem::path data_root_;

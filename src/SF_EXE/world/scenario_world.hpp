@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_SCENARIO_WORLD_HPP
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "enemy_actor.hpp"
@@ -32,6 +33,7 @@ public:
     bool load(
         const std::filesystem::path& data_root,
         const ScenarioStart& start,
+        const AiControlDatabase& ai_control,
         RetailRandom& item_random,
         std::string* error = nullptr);
     void clear();

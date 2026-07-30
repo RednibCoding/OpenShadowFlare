@@ -718,9 +718,23 @@ bool testMalformedData() {
 
 bool testRetailScenarioCatalog() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
-    const std::filesystem::path scenario_root =
+    const std::filesystem::path data_root =
         std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
-        "tmp" / "ShadowFlare" / "Scenario";
+        "tmp" / "ShadowFlare";
+    const std::filesystem::path scenario_root =
+        data_root / "Scenario";
+    osf::AiControlDatabase ai_control;
+    std::string ai_error;
+    if (!check(
+            ai_control.load(
+                data_root / "System" / "Game" /
+                    "Parameter" / "Control.aid",
+                &ai_error),
+            "The scenario catalog AI-control fixture could not be "
+            "decoded.")) {
+        std::cerr << ai_error << '\n';
+        return false;
+    }
     std::size_t scenario_count = 0;
     std::size_t object_count = 0;
     std::size_t people_count = 0;
@@ -802,6 +816,17 @@ bool testRetailScenarioCatalog() {
         for (const osf::ScenarioEnemy& enemy :
              scenario.enemies()) {
             enemy_ai_controls.insert(enemy.ai_control_name);
+            const osf::AiControlList* control =
+                ai_control.find(enemy.ai_control_name);
+            const std::int32_t control_index =
+                ai_control.indexOf(control);
+            if (!control || control_index < 0) {
+                std::cerr
+                    << entry.path()
+                    << ": enemy " << enemy.id
+                    << " references an unknown AI-control list.\n";
+                return false;
+            }
             if (enemy.resource_id >= 0) {
                 enemy_resource_ids.insert(enemy.resource_id);
             } else {
@@ -817,7 +842,11 @@ bool testRetailScenarioCatalog() {
                 enemy_hole_runtime_matches =
                     enemy_hole_runtime_matches &&
                     enemy_hole.initialize(
-                        enemy, nullptr, &actor_error) &&
+                        enemy,
+                        nullptr,
+                        *control,
+                        control_index,
+                        &actor_error) &&
                     !enemy_hole.hasVisual() &&
                     !enemy_hole.visible() &&
                     enemy_hole.pointerEnabled() &&
@@ -878,9 +907,6 @@ bool testRetailScenarioCatalog() {
         item_count += scenario.items().size();
     }
     osf::CharacterVisualResources enemy_visuals{"ENEMY"};
-    const std::filesystem::path data_root =
-        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
-        "tmp" / "ShadowFlare";
     for (const std::int32_t resource_id :
          enemy_resource_ids) {
         std::string error;
@@ -1111,6 +1137,13 @@ bool testGeneralScenarioStart() {
                 first_enemy.animationChart() == 0 &&
                 first_enemy.animationFrame() == 0 &&
                 !first_enemy.aiControlName().empty() &&
+                first_enemy.aiControl() &&
+                first_enemy.aiControl()->name() ==
+                    first_enemy.aiControlName() &&
+                first_enemy.aiControlIndex() >= 0 &&
+                wasteland.aiControlDatabase().indexOf(
+                    first_enemy.aiControl()) ==
+                    first_enemy.aiControlIndex() &&
                 first_enemy.visible() &&
                 first_enemy.pointerEnabled() &&
                 first_enemy.judgementEnabled() &&
@@ -1341,6 +1374,8 @@ bool testLiveScenarioTransition() {
         world.enemies().front().position();
     const std::int32_t first_enemy_character =
         world.enemies().front().characterNumber();
+    const osf::AiControlList* first_enemy_control =
+        world.enemies().front().aiControl();
     error.clear();
     if (!check(
             world.transitionScenario({2, 0, 0}, &error) ==
@@ -1349,6 +1384,11 @@ bool testLiveScenarioTransition() {
                 world.enemies().size() == 66 &&
                 world.enemies().front().characterNumber() ==
                     first_enemy_character &&
+                world.enemies().front().aiControl() ==
+                    first_enemy_control &&
+                world.aiControlDatabase().indexOf(
+                    first_enemy_control) ==
+                    world.enemies().front().aiControlIndex() &&
                 world.enemies().front().position().x ==
                     first_enemy_position.x &&
                 world.enemies().front().position().y ==
@@ -1372,6 +1412,8 @@ bool testLiveScenarioTransition() {
             world.playerWorldY() == -6156 &&
             world.playerDirection() == 7 &&
             world.enemies().size() == 66 &&
+            world.enemies().front().aiControl() ==
+                first_enemy_control &&
             world.playerInventory().items().size() ==
                 inventory_count &&
             world.playerSpecialItems().items().size() == 1,

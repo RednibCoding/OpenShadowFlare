@@ -42,6 +42,10 @@ bool WorldScene::loadInitialScenario(
             data_root / "System" / "Game" / "Parameter" /
                 "Table.Tbd",
             error) ||
+        !ai_control_database_.load(
+            data_root / "System" / "Game" / "Parameter" /
+                "Control.aid",
+            error) ||
         !missions_.load(parameter_tables_, error) ||
         !transports_.load(parameter_tables_, error) ||
         !player_data_.load(
@@ -137,6 +141,7 @@ bool WorldScene::loadInitialScenario(
     if (!prepared_scenario.load(
             data_root,
             start,
+            ai_control_database_,
             prepared_item_random,
             error)) {
         clear();
@@ -223,6 +228,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     if (!prepared_scenario.load(
             data_root_,
             start,
+            ai_control_database_,
             prepared_item_random,
             error)) {
         return ScenarioTravelResult::failed;

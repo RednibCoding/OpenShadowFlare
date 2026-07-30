@@ -124,6 +124,12 @@ Retail's resource-less `Enemy Hole` records live in the same actor collection.
 They keep their script and AI identity but have no fabricated visual or
 collision.
 
+The global `Control.aid` owner now lives in the portable
+`RKC_RPG_AICONTROL` library. Its 64 lists and 1,338 action candidates are
+decoded once when a world starts, and every shipped MCT enemy name resolves to
+the exact list and stable index used by retail. Condition evaluation and
+native action dispatch remain separate executable slices.
+
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
 and their script-controlled visibility and judgement state decides whether

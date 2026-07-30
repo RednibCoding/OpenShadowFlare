@@ -80,11 +80,15 @@ health-based tests, priority, selection weight, timing, distance, and movement
 values. Their complete names and units still need retail traces, so unknown
 fields should remain raw rather than receiving speculative meanings.
 
-For the portable executable, this should eventually become a separate
-`RKC_RPG_AICONTROL` static library which owns AID decoding and lookup. The
-executable-owned actor system should evaluate the records and implement the
-native actions. AI lists, probabilities, and condition values must come from
-`Control.aid`, not from NPC-specific C++ branches.
+The portable executable now has a separate `RKC_RPG_AICONTROL` static library
+which owns AID decoding and lookup. The shipped catalog resolves all 18,788
+MCT enemy references against its 64 exact names and keeps all 1,338 candidates
+under their original event buckets. Parameter and condition values remain raw
+until the executable consumers establish their meanings.
+
+The executable-owned actor system still needs to evaluate those records and
+implement the native actions. AI lists, probabilities, and condition values
+must come from `Control.aid`, not from NPC-specific C++ branches.
 
 ### What is not a script
 

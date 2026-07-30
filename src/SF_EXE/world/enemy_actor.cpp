@@ -1,5 +1,6 @@
 #include "enemy_actor.hpp"
 
+#include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "resources/character_visual_resource.hpp"
 
 #include <algorithm>
@@ -29,10 +30,17 @@ void copyParts(
 bool EnemyActor::initialize(
     const ScenarioEnemy& enemy,
     const CharacterVisualResource* visual,
+    const AiControlList& ai_control,
+    std::int32_t ai_control_index,
     std::string* error) {
     clear();
     if (enemy.resource_id >= 0 && !visual) {
         setError(error, "The enemy animation resource is missing.");
+        return false;
+    }
+    if (ai_control_index < 0 ||
+        ai_control.name() != enemy.ai_control_name) {
+        setError(error, "The enemy AI-control list is invalid.");
         return false;
     }
     if (!state_.initialize(enemy.initial_state_values)) {
@@ -62,6 +70,8 @@ bool EnemyActor::initialize(
     };
     direction_ = enemy.direction;
     ai_control_name_ = enemy.ai_control_name;
+    ai_control_ = &ai_control;
+    ai_control_index_ = ai_control_index;
 
     const std::size_t part_count =
         visual
@@ -96,6 +106,8 @@ void EnemyActor::clear() {
     animation_frame_ = 0;
     action_counter_ = 0;
     ai_control_name_.clear();
+    ai_control_ = nullptr;
+    ai_control_index_ = -1;
     state_.clear();
     part_visibility_.clear();
     red_strength_.clear();
@@ -172,6 +184,14 @@ std::int32_t EnemyActor::animationFrame() const {
 
 const std::string& EnemyActor::aiControlName() const {
     return ai_control_name_;
+}
+
+const AiControlList* EnemyActor::aiControl() const {
+    return ai_control_;
+}
+
+std::int32_t EnemyActor::aiControlIndex() const {
+    return ai_control_index_;
 }
 
 bool EnemyActor::partEnabled(std::size_t part) const {

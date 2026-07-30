@@ -359,6 +359,14 @@ actors with resource `-1`; these remain live script/AI identities without a
 fabricated visual. The AI event interpreter, movement actions, health, combat,
 death, and drops are not inferred by this initial actor slice.
 
+The global AI catalog now has its portable owner too. `0x004127d0` loads
+`Control.aid` before scenario actors are created; the preserved version-one
+file contains 64 exact-name lists, 18 event buckets per list, and 1,338 action
+candidates. `AiControlDatabase` retains the nine parameter and six condition
+integers without speculative field names. All 18,788 MCT enemy records resolve
+their controller name, and each live enemy stores the resulting stable list
+index. Candidate evaluation and native enemy actions remain executable work.
+
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
 `Warehouse`. `0x0045dd00` maps the 13-value tail into the type-zero runtime

@@ -13,6 +13,7 @@
 namespace osf {
 
 class CharacterVisualResource;
+class AiControlList;
 
 namespace gapi {
 class NjpImage;
@@ -23,6 +24,8 @@ public:
     bool initialize(
         const ScenarioEnemy& enemy,
         const CharacterVisualResource* visual,
+        const AiControlList& ai_control,
+        std::int32_t ai_control_index,
         std::string* error = nullptr);
     void clear();
     void update();
@@ -46,6 +49,8 @@ public:
     std::int32_t animationChart() const;
     std::int32_t animationFrame() const;
     const std::string& aiControlName() const;
+    const AiControlList* aiControl() const;
+    std::int32_t aiControlIndex() const;
     bool partEnabled(std::size_t part) const;
     std::int32_t partRedStrength(
         std::size_t part) const;
@@ -73,6 +78,8 @@ private:
     std::int32_t animation_frame_ = 0;
     std::int32_t action_counter_ = 0;
     std::string ai_control_name_;
+    const AiControlList* ai_control_ = nullptr;
+    std::int32_t ai_control_index_ = -1;
     ScenarioEntityState state_;
     std::vector<std::int32_t> part_visibility_;
     std::vector<std::int16_t> red_strength_;
