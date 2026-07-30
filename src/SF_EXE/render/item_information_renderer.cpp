@@ -45,7 +45,8 @@ void renderItemInformation(
     const InventoryItem* item =
         inventory.informationItem(
             world.playerInventory(),
-            world.playerEquipment());
+            world.playerEquipment(),
+            world.playerSpecialItems());
     if (!item || font.patterns().empty()) {
         return;
     }

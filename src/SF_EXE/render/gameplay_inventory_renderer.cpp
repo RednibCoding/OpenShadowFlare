@@ -3,8 +3,10 @@
 #include "gapi/gapi.hpp"
 #include "items/item_condition.hpp"
 #include "items/item_database.hpp"
+#include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "resources/item_inventory_resource.hpp"
 #include "states/gameplay_inventory.hpp"
@@ -54,7 +56,7 @@ void drawRightAlignedNumber(
 
 bool drawInventoryItem(
     gapi::Backend& renderer,
-    const gapi::NjpImage& status_patterns,
+    const gapi::NjpImage* status_patterns,
     const WorldScene& world,
     const InventoryItem& item,
     std::int32_t x,
@@ -98,9 +100,10 @@ bool drawInventoryItem(
 
     if (itemConditionWarningVisible(
             item, *definition, gameplay_counter) &&
-        status_patterns.patterns().size() > 16) {
+        status_patterns &&
+        status_patterns->patterns().size() > 16) {
         renderer.drawPattern(
-            status_patterns,
+            *status_patterns,
             16,
             {
                 x + item.width *
@@ -183,7 +186,7 @@ void renderGameplayInventory(
             GameplayInventory::equipmentRegion(slot);
         drawInventoryItem(
             renderer,
-            status_patterns,
+            &status_patterns,
             world,
             *equipped,
             region.left +
@@ -202,7 +205,7 @@ void renderGameplayInventory(
         const InventoryItem& item = items[index];
         drawInventoryItem(
             renderer,
-            status_patterns,
+            &status_patterns,
             world,
             item,
             GameplayInventory::backpack_left +
@@ -219,6 +222,65 @@ void renderGameplayInventory(
         inventory.closeHovered() ? 75 : 74);
 }
 
+void renderGameplayBeltItems(
+    gapi::Backend& renderer,
+    const WorldScene& world) {
+    for (const InventoryItem& item :
+         world.playerBelt().items()) {
+        // FUN_00407170 uses staggered origins for the two 4-cell rows.
+        drawInventoryItem(
+            renderer,
+            nullptr,
+            world,
+            item,
+            (item.grid_y == 0 ? 357 : 405) +
+                item.grid_x *
+                    GameplayInventory::cell_size,
+            413 +
+                item.grid_y *
+                    GameplayInventory::cell_size,
+            0);
+    }
+}
+
+void renderGameplaySpecialItems(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& status_patterns,
+    const GameplayInventory& inventory,
+    const WorldScene& world,
+    std::uint32_t gameplay_counter) {
+    if (!inventory.specialItemsActive() ||
+        !world.hasPlayer()) {
+        return;
+    }
+
+    renderer.drawRectangle({
+        0,
+        0,
+        GameplayInventory::panel_left,
+        412,
+        {0, 0, 0, 255},
+    });
+    renderer.drawPattern(status_patterns, 14);
+    renderer.drawPattern(status_patterns, 15);
+
+    for (const InventoryItem& item :
+         world.playerSpecialItems().items()) {
+        drawInventoryItem(
+            renderer,
+            &status_patterns,
+            world,
+            item,
+            GameplayInventory::special_left +
+                item.grid_x *
+                    GameplayInventory::cell_size,
+            GameplayInventory::special_top +
+                item.grid_y *
+                    GameplayInventory::cell_size,
+            gameplay_counter);
+    }
+}
+
 void renderHeldInventoryItem(
     gapi::Backend& renderer,
     const gapi::NjpImage& status_patterns,
@@ -232,7 +294,7 @@ void renderHeldInventoryItem(
     }
     drawInventoryItem(
         renderer,
-        status_patterns,
+        &status_patterns,
         world,
         *item,
         inventory.pointerX() -

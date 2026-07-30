@@ -42,7 +42,8 @@ bool GameplayUiController::update(
         return false;
     }
 
-    const bool inventory_was_active = inventory_.active();
+    const bool inventory_was_active =
+        inventory_.anyItemPanelActive();
     const bool inventory_hud_toggle =
         input.menu().pointer_primary_pressed &&
         input.menu().pointer_x >= 584 &&
@@ -57,9 +58,27 @@ bool GameplayUiController::update(
         !options_.active() &&
         !map_.active() &&
         !mission_list_.active();
+    const bool special_items_toggle =
+        input.gameplaySpecialItemsPressed() &&
+        (!world.conversationActive() ||
+         inventory_.specialItemsActive()) &&
+        !options_.active() &&
+        !map_.active() &&
+        !mission_list_.active();
+    const bool belt_pointer_pressed =
+        input.menu().pointer_primary_pressed &&
+        !world.conversationActive() &&
+        !options_.active() &&
+        !map_.active() &&
+        !mission_list_.active() &&
+        GameplayInventory::beltPocketAt(
+            input.menu().pointer_x,
+            input.menu().pointer_y).has_value();
     if (inventory_was_active ||
         inventory_toggle ||
-        inventory_.holdingItem()) {
+        special_items_toggle ||
+        inventory_.holdingItem() ||
+        belt_pointer_pressed) {
         const GameplayInventoryResult result =
             inventory_.update(
                 {
@@ -70,9 +89,12 @@ bool GameplayUiController::update(
                     input.menu().pointer_primary_pressed,
                     input.menu().pointer_x,
                     input.menu().pointer_y,
+                    special_items_toggle,
                 },
                 world.playerInventory(),
                 world.playerEquipment(),
+                world.playerBelt(),
+                world.playerSpecialItems(),
                 world.itemDatabase(),
                 world.playerData().level());
         if (result.equipment_changed) {
@@ -88,9 +110,13 @@ bool GameplayUiController::update(
                     result.world_drop_screen_x,
                     result.world_drop_screen_y));
         }
-        world.setCameraAnchor(
-            inventory_.active() ? 160 : 320,
-            240);
+        const std::int32_t camera_anchor_x =
+            inventory_.active()
+                ? 160
+                : inventory_.specialItemsActive()
+                    ? 480
+                    : 320;
+        world.setCameraAnchor(camera_anchor_x, 240);
         return result.pointer_consumed ||
                inventory_hud_toggle;
     }

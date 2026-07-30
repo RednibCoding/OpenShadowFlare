@@ -145,10 +145,13 @@ of gameplay simulation are still in progress.
 
 The inventory is a live panel rather than a mock-up. Items keep their original
 multi-cell sizes, can be picked up, moved, swapped, dropped, and equipped in
-the five ordinary slots. Hovering a backpack or equipped item also opens the
-small retail information overlay after its original short delay. The text is
-built from `Item.Ibn`, including combat values, durability, weight, level,
-condition-adjusted sale price, and the eight elemental values.
+the five ordinary slots and four accessory cells. Category-three items can
+also be carried in the HUD's staggered two-row belt. `X` opens the separate
+9-by-10 special-item panel on the left and shifts the live world view to the
+right, just like the original. Hovering a backpack, equipped, or special item
+opens the small retail information overlay after its original short delay.
+The text is built from `Item.Ibn`, including combat values, durability, weight,
+level, condition-adjusted sale price, and the eight elemental values.
 Weapons and armor below ten percent durability also use the original
 `Status.njp` warning in the lower-right of their icon. It blinks at the
 retail cadence while the item still has durability and stays visible once the

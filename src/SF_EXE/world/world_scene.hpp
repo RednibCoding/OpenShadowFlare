@@ -5,8 +5,10 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
+#include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
 #include "resources/item_world_resource.hpp"
@@ -54,8 +56,12 @@ public:
     const ItemDatabase& itemDatabase() const;
     PlayerEquipment& playerEquipment();
     const PlayerEquipment& playerEquipment() const;
+    PlayerBelt& playerBelt();
+    const PlayerBelt& playerBelt() const;
     PlayerInventory& playerInventory();
     const PlayerInventory& playerInventory() const;
+    PlayerSpecialItems& playerSpecialItems();
+    const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     const ItemWorldResource* itemWorldResource(
@@ -173,7 +179,9 @@ private:
     MissionCatalog missions_;
     ItemDatabase item_database_;
     PlayerEquipment player_equipment_;
+    PlayerBelt player_belt_;
     PlayerInventory player_inventory_;
+    PlayerSpecialItems player_special_items_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
     std::filesystem::path data_root_;

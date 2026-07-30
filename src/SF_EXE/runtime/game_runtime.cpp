@@ -326,6 +326,9 @@ private:
                     gameplayUi_.map().active();
                 const bool inventory_active =
                     gameplayUi_.inventory().active();
+                const bool special_items_active =
+                    gameplayUi_.inventory()
+                        .specialItemsActive();
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed &&
                         !map_active,
@@ -335,7 +338,9 @@ private:
                     input_.menu().pointer_y,
                     input_.pointerPrimaryDown(),
                     input_.runTogglePressed(),
-                    map_active ? 320 : 0,
+                    map_active || special_items_active
+                        ? 320
+                        : 0,
                     0,
                     inventory_active ? 320 : 640,
                     400,

@@ -24,6 +24,10 @@ enum class EquipmentSlot : std::size_t {
     boots,
     main_hand,
     off_hand,
+    accessory_1,
+    accessory_2,
+    accessory_3,
+    accessory_4,
     count
 };
 

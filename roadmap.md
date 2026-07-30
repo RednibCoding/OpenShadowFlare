@@ -448,19 +448,34 @@ and placing it over one other item swaps which item is being carried. The held
 item survives closing the panel and can be dropped into the live world in the
 same eight directions and at the same 200-unit distance used by retail.
 
-The five ordinary equipment boxes now share one complete ownership path.
+All nine equipment boxes now share one complete ownership path.
 Helmet, body, boots, main hand, and off hand use their original hit regions
 and category/subtype rules, enforce the item's level requirement, and swap
-cleanly with the pointer. Equipped weight and all ten decoded base
-contributions are summed across the owner. The Short Sword enables CAF part 12
-and the Round Shield enables part 9 with its original color strengths; body
-armor and secondary weapon parts use the same table-backed appearance path.
-Weapons marked by the original classifier suppress the off-hand layer. As in
-the retail refresh, helmets and boots affect equipment values but do not
-independently enable a player CAF layer.
+cleanly with the pointer. The four exact 1-by-1 accessory cells accept
+category-two records and enforce the requirement stored in their own table
+layout. Equipped weight and all ten decoded base contributions are summed
+across the owner. The Short Sword enables CAF part 12 and the Round Shield
+enables part 9 with its original color strengths; body armor and secondary
+weapon parts use the same table-backed appearance path. Weapons marked by the
+original classifier suppress the off-hand layer. As in the retail refresh,
+helmets and boots affect equipment values but do not independently enable a
+player CAF layer.
+
+The lower HUD's belt is a separate 4-by-2 owner rather than part of the
+backpack. It accepts only category-three items, retains full multi-cell
+footprints, uses the retail staggered screen origins, and supports pointer
+pickup and swapping even while the main inventory is closed. The `1` through
+`8` use shortcuts still belong to a later item-effect slice.
+
+`X` now opens the separate special-item owner on the left. Its 9-by-10 grid,
+Status patterns 14 and 15, item origins, centered placement, swapping, Gold
+stacking, hover information, camera anchor, and world-input boundary follow
+the corresponding retail paths. Inventory and Special Item close each other
+instead of pretending to be two views of one container.
 
 The ordinary item information display is live now. Resting the pointer over a
-backpack or equipment item for the same short delay as retail draws its name,
+backpack, equipment, or special item for the same short delay as retail draws
+its name,
 non-zero combat values, durability, weight, required level, condition-adjusted
 sale price, and all eight elemental values. It uses the original six-pixel
 text grid, stat order, quality colors, pointer-relative position, and screen
@@ -473,9 +488,10 @@ the wide Price row rather than collapsing to a name-only tooltip.
 The retail condition warning is now shared by backpack, equipment, and held
 items. Weapons and armor below ten percent durability blink `Status.njp`
 pattern 16 for eight updates on and eight off; broken gear keeps it visible.
-The next useful checkpoint is bringing the special-item and belt-pocket
-regions into the same ownership model without mistaking them for ordinary
-equipment.
+The next useful checkpoint is reconstructing item use: the `1` through `8`
+belt shortcuts, category-three effects and quantities, and the script-facing
+special-item operations. That work should consume these owners rather than
+adding another parallel inventory model.
 
 ### 4. Combat and death
 

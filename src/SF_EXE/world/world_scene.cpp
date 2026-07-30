@@ -60,7 +60,9 @@ void WorldScene::clear() {
     missions_.clear();
     item_database_.clear();
     player_equipment_.clear();
+    player_belt_.clear();
     player_inventory_.clear();
+    player_special_items_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
     data_root_.clear();
@@ -128,12 +130,28 @@ const PlayerEquipment& WorldScene::playerEquipment() const {
     return player_equipment_;
 }
 
+PlayerBelt& WorldScene::playerBelt() {
+    return player_belt_;
+}
+
+const PlayerBelt& WorldScene::playerBelt() const {
+    return player_belt_;
+}
+
 PlayerInventory& WorldScene::playerInventory() {
     return player_inventory_;
 }
 
 const PlayerInventory& WorldScene::playerInventory() const {
     return player_inventory_;
+}
+
+PlayerSpecialItems& WorldScene::playerSpecialItems() {
+    return player_special_items_;
+}
+
+const PlayerSpecialItems& WorldScene::playerSpecialItems() const {
+    return player_special_items_;
 }
 
 const ItemInventoryResource&

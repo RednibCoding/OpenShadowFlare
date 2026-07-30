@@ -3,6 +3,7 @@
 #include "items/item_database.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -77,20 +78,50 @@ EquipmentRegion GameplayInventory::equipmentRegion(
         return {480, 16, 2, 4};
     case EquipmentSlot::off_hand:
         return {480, 160, 2, 3};
+    case EquipmentSlot::accessory_1:
+        return {400, 143, 1, 1};
+    case EquipmentSlot::accessory_2:
+        return {400, 183, 1, 1};
+    case EquipmentSlot::accessory_3:
+        return {440, 143, 1, 1};
+    case EquipmentSlot::accessory_4:
+        return {440, 183, 1, 1};
     case EquipmentSlot::count:
         return {};
     }
     return {};
 }
 
+std::optional<BeltPocket> GameplayInventory::beltPocketAt(
+    std::int32_t x,
+    std::int32_t y) {
+    // FUN_00445bd0 uses two staggered rows of four 32-pixel pockets.
+    if (inside(x, y, 357, 413, 485, 445)) {
+        return BeltPocket{(x - 357) / cell_size, 0};
+    }
+    if (inside(x, y, 405, 445, 533, 477)) {
+        return BeltPocket{(x - 405) / cell_size, 1};
+    }
+    return std::nullopt;
+}
+
 void GameplayInventory::open() {
     active_ = true;
+    special_items_active_ = false;
+    close_hovered_ = false;
+    clearItemHover();
+}
+
+void GameplayInventory::openSpecialItems() {
+    active_ = false;
+    special_items_active_ = true;
     close_hovered_ = false;
     clearItemHover();
 }
 
 void GameplayInventory::close() {
     active_ = false;
+    special_items_active_ = false;
     close_hovered_ = false;
     clearItemHover();
 }
@@ -99,6 +130,8 @@ GameplayInventoryResult GameplayInventory::update(
     const GameplayInventoryInput& input,
     PlayerInventory& inventory,
     PlayerEquipment& equipment,
+    PlayerBelt& belt,
+    PlayerSpecialItems& special_items,
     const ItemDatabase& item_database,
     std::int32_t player_level) {
     GameplayInventoryResult result;
@@ -114,6 +147,115 @@ GameplayInventoryResult GameplayInventory::update(
                 input.pointer_y,
                 inventory,
                 equipment);
+        }
+        return result;
+    }
+    if (input.special_toggle_pressed) {
+        if (special_items_active_) {
+            close();
+        } else {
+            openSpecialItems();
+            updateSpecialHover(
+                input.pointer_x,
+                input.pointer_y,
+                special_items);
+        }
+        return result;
+    }
+    if (input.pointer_primary_pressed) {
+        if (const std::optional<BeltPocket> pocket =
+                beltPocketAt(
+                    input.pointer_x,
+                    input.pointer_y)) {
+            if (held_item_) {
+                const ItemDefinition* definition =
+                    item_database.find(
+                        held_item_->category,
+                        held_item_->definition_id);
+                if (definition) {
+                    const InventoryPlacementResult placement =
+                        belt.place(
+                            *held_item_,
+                            pocket->grid_x,
+                            pocket->grid_y,
+                            *definition);
+                    if (placement.accepted) {
+                        held_item_ = placement.held_item;
+                    }
+                }
+            } else {
+                held_item_ = belt.takeAt(
+                    pocket->grid_x,
+                    pocket->grid_y);
+            }
+            result.pointer_consumed = true;
+            return result;
+        }
+    }
+    if (special_items_active_) {
+        updateSpecialHover(
+            input.pointer_x,
+            input.pointer_y,
+            special_items);
+        if (input.close_pressed) {
+            close();
+            return result;
+        }
+        if (input.pointer_primary_pressed) {
+            if (inside(
+                    input.pointer_x,
+                    input.pointer_y,
+                    special_left,
+                    special_top,
+                    special_left +
+                        PlayerSpecialItems::grid_width *
+                            cell_size,
+                    special_top +
+                        PlayerSpecialItems::grid_height *
+                            cell_size)) {
+                if (held_item_) {
+                    const InventoryItem& item = *held_item_;
+                    const std::int32_t grid_x =
+                        (input.pointer_x -
+                         item.width * cell_size / 2) /
+                        cell_size;
+                    const std::int32_t grid_y =
+                        (input.pointer_y -
+                         item.height * cell_size / 2 -
+                         (special_top - cell_size / 2)) /
+                        cell_size;
+                    const InventoryPlacementResult placement =
+                        special_items.place(
+                            item,
+                            grid_x,
+                            grid_y);
+                    if (placement.accepted) {
+                        held_item_ = placement.held_item;
+                    }
+                } else if (
+                    hovered_special_item_index_ >= 0) {
+                    held_item_ = special_items.take(
+                        static_cast<std::size_t>(
+                            hovered_special_item_index_));
+                    hovered_special_item_index_ = -1;
+                    item_hover_updates_ = 0;
+                }
+                result.pointer_consumed = true;
+            } else if (
+                holdingItem() &&
+                input.pointer_x >= panel_left &&
+                input.pointer_y < 412) {
+                result.pointer_consumed = true;
+                result.world_drop_requested = true;
+                result.world_drop_screen_x =
+                    input.pointer_x;
+                result.world_drop_screen_y =
+                    input.pointer_y;
+            } else if (
+                input.pointer_x < panel_left &&
+                input.pointer_y < 412) {
+                result.pointer_consumed = true;
+            }
         }
         return result;
     }
@@ -242,6 +384,14 @@ bool GameplayInventory::active() const {
     return active_;
 }
 
+bool GameplayInventory::specialItemsActive() const {
+    return special_items_active_;
+}
+
+bool GameplayInventory::anyItemPanelActive() const {
+    return active_ || special_items_active_;
+}
+
 bool GameplayInventory::closeHovered() const {
     return close_hovered_;
 }
@@ -261,11 +411,25 @@ GameplayInventory::hoveredEquipmentSlot() const {
 
 const InventoryItem* GameplayInventory::informationItem(
     const PlayerInventory& inventory,
-    const PlayerEquipment& equipment) const {
+    const PlayerEquipment& equipment,
+    const PlayerSpecialItems& special_items) const {
     // FUN_00408a80 waits for three cursor updates before creating the
     // information display and does not describe an item being carried.
-    if (!active_ || held_item_ || item_hover_updates_ < 3) {
+    if (!anyItemPanelActive() ||
+        held_item_ ||
+        item_hover_updates_ < 3) {
         return nullptr;
+    }
+    if (special_items_active_) {
+        if (hovered_special_item_index_ < 0 ||
+            static_cast<std::size_t>(
+                hovered_special_item_index_) >=
+                special_items.items().size()) {
+            return nullptr;
+        }
+        return &special_items.items()[
+            static_cast<std::size_t>(
+                hovered_special_item_index_)];
     }
     if (hovered_equipment_slot_ >= 0) {
         return equipment.item(
@@ -358,11 +522,55 @@ void GameplayInventory::updateHover(
     }
     hovered_item_index_ = next_item_index;
     hovered_equipment_slot_ = next_equipment_slot;
+    hovered_special_item_index_ = -1;
+}
+
+void GameplayInventory::updateSpecialHover(
+    std::int32_t pointer_x,
+    std::int32_t pointer_y,
+    const PlayerSpecialItems& special_items) {
+    close_hovered_ = false;
+    std::int32_t next_special_item_index = -1;
+    if (!held_item_) {
+        const auto& items = special_items.items();
+        for (std::size_t index = 0;
+             index < items.size();
+             ++index) {
+            const InventoryItem& item = items[index];
+            if (inside(
+                    pointer_x,
+                    pointer_y,
+                    special_left + item.grid_x * cell_size,
+                    special_top + item.grid_y * cell_size,
+                    special_left +
+                        (item.grid_x + item.width) * cell_size,
+                    special_top +
+                        (item.grid_y + item.height) * cell_size)) {
+                next_special_item_index =
+                    static_cast<std::int32_t>(index);
+                break;
+            }
+        }
+    }
+    if (next_special_item_index ==
+            hovered_special_item_index_ &&
+        next_special_item_index >= 0) {
+        item_hover_updates_ =
+            std::min(item_hover_updates_ + 1, 3);
+    } else {
+        item_hover_updates_ =
+            next_special_item_index >= 0 ? 1 : 0;
+    }
+    hovered_item_index_ = -1;
+    hovered_equipment_slot_ = -1;
+    hovered_special_item_index_ =
+        next_special_item_index;
 }
 
 void GameplayInventory::clearItemHover() {
     hovered_item_index_ = -1;
     hovered_equipment_slot_ = -1;
+    hovered_special_item_index_ = -1;
     item_hover_updates_ = 0;
 }
 

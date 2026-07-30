@@ -278,6 +278,10 @@ bool ItemDatabase::decode(
                  definition.raw_fields.size() >= 224) ||
                 (category == 1 &&
                  definition.raw_fields.size() >= 168);
+            if (category == 2 &&
+                definition.raw_fields.size() >= 104) {
+                definition.required_level = field(100);
+            }
             if (has_equipment_fields) {
                 definition.maximum_durability = field(100);
                 for (std::size_t parameter = 0;

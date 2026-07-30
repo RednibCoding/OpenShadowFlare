@@ -44,9 +44,12 @@ add_library(
   osf_items STATIC
   items/item_database.cpp
   items/item_condition.cpp
+  items/item_grid.cpp
   items/item_information.cpp
+  items/player_belt.cpp
   items/player_equipment.cpp
   items/player_inventory.cpp
+  items/player_special_items.cpp
 )
 add_library(OpenShadowFlare::Items ALIAS osf_items)
 osf_configure_game_library(osf_items)

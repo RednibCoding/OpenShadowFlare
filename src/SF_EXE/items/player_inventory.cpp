@@ -1,6 +1,7 @@
 #include "player_inventory.hpp"
 
 #include "item_database.hpp"
+#include "item_grid.hpp"
 
 #include <algorithm>
 #include <array>
@@ -13,15 +14,6 @@ namespace {
 
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
-
-bool footprintsOverlap(
-    const InventoryItem& first,
-    const InventoryItem& second) {
-    return first.grid_x < second.grid_x + second.width &&
-           first.grid_x + first.width > second.grid_x &&
-           first.grid_y < second.grid_y + second.height &&
-           first.grid_y + first.height > second.grid_y;
-}
 
 bool findPlacement(
     const std::vector<InventoryItem>& items,
@@ -208,35 +200,22 @@ InventoryPlacementResult PlayerInventory::place(
     std::int32_t grid_y) {
     item.grid_x = grid_x;
     item.grid_y = grid_y;
-    if (grid_x < 0 || grid_y < 0 ||
-        grid_x + item.width > grid_width ||
-        grid_y + item.height > grid_height) {
+    if (!itemFitsGrid(item, grid_width, grid_height)) {
         return {};
     }
 
-    std::int32_t overlapping_index = -1;
-    for (std::size_t index = 0;
-         index < items_.size();
-         ++index) {
-        if (!footprintsOverlap(
-                item, items_[index])) {
-            continue;
-        }
-        if (overlapping_index >= 0) {
-            return {};
-        }
-        overlapping_index =
-            static_cast<std::int32_t>(index);
+    const ItemGridOverlap overlap =
+        findItemGridOverlap(items_, item);
+    if (overlap.multiple) {
+        return {};
     }
-
-    if (overlapping_index < 0) {
+    if (!overlap.item_index) {
         items_.push_back(std::move(item));
         return {true, std::nullopt};
     }
 
     InventoryItem& overlapping =
-        items_[static_cast<std::size_t>(
-            overlapping_index)];
+        items_[*overlap.item_index];
     if (item.category == kGoldCategory &&
         item.definition_id == kGoldDefinition &&
         overlapping.category == kGoldCategory &&
@@ -262,7 +241,7 @@ InventoryPlacementResult PlayerInventory::place(
     items_.erase(
         items_.begin() +
         static_cast<std::ptrdiff_t>(
-            overlapping_index));
+            *overlap.item_index));
     items_.push_back(std::move(item));
     return {true, std::move(displaced)};
 }

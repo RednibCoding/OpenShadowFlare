@@ -108,6 +108,9 @@ void RuntimeRenderer::render(
                     gameplayHudValues(
                         context.world.playerData(),
                         context.world.playerMovementPace()));
+                renderGameplayBeltItems(
+                    renderer_,
+                    context.world);
             }
             if (!context.gameplay_options.active() &&
                 !context.gameplay_mission_list.active()) {
@@ -126,7 +129,16 @@ void RuntimeRenderer::render(
             if (status && font) {
                 const auto* map_icons =
                     context.frontend_assets.pattern(7);
-                if (context.gameplay_inventory.active()) {
+                if (context.gameplay_inventory
+                        .specialItemsActive()) {
+                    renderGameplaySpecialItems(
+                        renderer_,
+                        *status,
+                        context.gameplay_inventory,
+                        context.world,
+                        context.gameplay_counter);
+                } else if (
+                    context.gameplay_inventory.active()) {
                     renderGameplayInventory(
                         renderer_,
                         *status,

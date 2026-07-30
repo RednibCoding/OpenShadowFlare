@@ -17,8 +17,8 @@ EquipmentPlacementResult PlayerEquipment::place(
     InventoryItem item,
     const ItemDefinition& definition,
     std::int32_t player_level) {
-    // FUN_00446320 classifies the five ordinary regions by category and
-    // armor subtype, then applies the same required-level gate to each.
+    // FUN_00446320 classifies the five ordinary and four accessory
+    // regions, then applies the same required-level gate to each.
     if (!accepts(slot, definition) ||
         definition.id != item.definition_id ||
         item.category != definition.category ||
@@ -110,22 +110,27 @@ std::int32_t PlayerEquipment::derivedParameterBonus(
 bool PlayerEquipment::accepts(
     EquipmentSlot slot,
     const ItemDefinition& definition) {
-    if (slot == EquipmentSlot::main_hand) {
-        return definition.category == 0;
-    }
-    if (definition.category != 1) {
-        return false;
-    }
     switch (slot) {
-    case EquipmentSlot::helmet:
-        return definition.subtype == 0;
-    case EquipmentSlot::body:
-        return definition.subtype == 1;
-    case EquipmentSlot::boots:
-        return definition.subtype == 3;
-    case EquipmentSlot::off_hand:
-        return definition.subtype == 2;
     case EquipmentSlot::main_hand:
+        return definition.category == 0;
+    case EquipmentSlot::accessory_1:
+    case EquipmentSlot::accessory_2:
+    case EquipmentSlot::accessory_3:
+    case EquipmentSlot::accessory_4:
+        return definition.category == 2 &&
+               definition.inventory_width == 1;
+    case EquipmentSlot::helmet:
+        return definition.category == 1 &&
+               definition.subtype == 0;
+    case EquipmentSlot::body:
+        return definition.category == 1 &&
+               definition.subtype == 1;
+    case EquipmentSlot::boots:
+        return definition.category == 1 &&
+               definition.subtype == 3;
+    case EquipmentSlot::off_hand:
+        return definition.category == 1 &&
+               definition.subtype == 2;
     case EquipmentSlot::count:
         return false;
     }

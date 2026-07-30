@@ -20,6 +20,18 @@ void renderGameplayInventory(
     const GameplayInventory& inventory,
     const WorldScene& world,
     std::uint32_t gameplay_counter);
+
+void renderGameplayBeltItems(
+    gapi::Backend& renderer,
+    const WorldScene& world);
+
+void renderGameplaySpecialItems(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& status_patterns,
+    const GameplayInventory& inventory,
+    const WorldScene& world,
+    std::uint32_t gameplay_counter);
+
 void renderHeldInventoryItem(
     gapi::Backend& renderer,
     const gapi::NjpImage& status_patterns,

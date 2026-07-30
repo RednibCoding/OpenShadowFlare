@@ -110,14 +110,33 @@ items draw from the separate `Item0000.njp` through `Item0013.njp` groups at
 `(336 + grid_x*32, 264 + grid_y*32)`. The inventory and lower HUD regions are
 cleared before their transparent authored layers are composed, matching
 retail's reserved UI surfaces instead of exposing world pixels through slots.
-Moving and dropping use the retail held-item path. The five ordinary equipment
+Moving and dropping use the retail held-item path. All nine equipment
 boxes now follow the `0x00447290` regions: helmet `560..623,16..79`, body
 `560..623,88..183`, boots `560..623,192..255`, main hand
-`480..543,16..143`, and off hand `480..543,160..255`. Category zero belongs in
-the main hand. Category one's first serialized field classifies helmet, body,
-off hand, and boots as subtypes zero through three. Every box applies the
-required-level check and performs the same pointer swap. Equipped weight and
-the ten base contribution fields are summed over all five objects.
+`480..543,16..143`, off hand `480..543,160..255`, and the four accessory
+cells at `(400,143)`, `(400,183)`, `(440,143)`, and `(440,183)`. Category zero
+belongs in the main hand. Category one's first serialized field classifies
+helmet, body, off hand, and boots as subtypes zero through three. Accessories
+accept category two with a one-cell width and use serialized offset 100 for
+their required level. Every box applies that check and performs the same
+pointer swap. Equipped weight and the ten base contribution fields are summed
+over all nine objects.
+
+The HUD pockets follow `0x00445bd0` and the item tail of `0x00407170`. They
+form a separate 4-by-2 category-three owner, with row-zero origin `(357,413)`
+and row-one origin `(405,445)`. Pointer hit testing uses the exact staggered
+rectangles, complete item footprints are retained, and placing over one item
+swaps it onto the shared pointer. The `1` through `8` activation path and item
+effects are still pending.
+
+The `X` panel follows `0x00404760`, `0x00409000`, and `0x00447970`. It owns a
+separate 9-by-10 grid whose first item cell is `(16,72)`, composes Status
+patterns 14 and 15 over a reserved left-hand surface, moves the camera anchor
+to x=480, and keeps the right-hand world viewport live. It shares pointer
+ownership, centered placement, single-item displacement, Gold stacking, and
+the three-update information delay with the ordinary inventory. Opening
+Inventory or Special Item closes the other. The inventory-panel transfer
+button at classifier case 10 and save-payload persistence remain pending.
 
 Category-one records place the requirement at serialized offset 148, CAF part
 at 152, and default RGB strengths at 156, 160, and 164. The Short Sword
@@ -129,7 +148,8 @@ layer. A weapon's optional second part and the retail off-hand suppression
 rule are decoded too.
 
 The shared item information path at `0x00409160` and `0x00409a60` is now used
-by backpack and equipment hovers. The pointer must remain on the item for three
+by backpack, equipment, and special-item hovers. The pointer must remain on
+the item for three
 updates. Font01 uses its native 6-by-12 cells with no extra letter spacing;
 the widest elemental row controls the centered x position. Retail flag `0x20`
 adds four pixels of padding around the text, fills that rectangle with the
@@ -153,8 +173,8 @@ percent draw `Status.njp` pattern 16 at
 `(x + width*32 - 16, y + height*32 - 16)`. A nonzero value blinks for eight
 game updates and hides for eight; zero durability stays visible. The adjacent
 pattern-17 state has not yet been given a trustworthy gameplay owner.
-Special consumable placement, dynamic dyed colors, and network replication
-remain.
+Special-item script operations, consumable effects, dynamic dyed colors, and
+network replication remain.
 
 The in-game settings panel now follows `0x004103c0`. Escape opens the original
 two-layer `Status.njp` panel and suspends world input. Boolean options use the
@@ -448,14 +468,16 @@ reads chart zero for idle and chart one for walking directly from player state,
 rebuilds the depth key from the moving position, and follows the player's
 projected position with the retail camera offset.
 
-Owned inventory interaction now follows `0x00446320`, `0x00447290`, and
-`0x004087b0`. Backpack clicks address the visible 9-by-4 grid. An owned item is
-removed from its container and carried by the shared item pointer, while its
-inventory artwork is centered under the cursor using the complete multi-cell
-footprint. Placement rounds that centered top-left corner to a grid cell,
-rejects out-of-bounds and multi-item overlaps without losing the held item, and
-leaves a single displaced item on the pointer. Closing the panel does not
-discard the held item.
+Owned inventory interaction now follows `0x00445bd0`, `0x00446320`,
+`0x00447290`, `0x00447970`, and `0x004087b0`. Backpack and special-item clicks
+address their visible grids, the four accessory cells join the equipment
+owner, and category-three objects use the separate staggered belt. An owned
+item is removed from its container and carried by the shared item pointer,
+while its inventory artwork is centered under the cursor using the complete
+multi-cell footprint. Placement rounds that centered top-left corner to a grid
+cell, rejects out-of-bounds and multi-item overlaps without losing the held
+item, and leaves a single displaced item on the pointer. Closing either panel
+does not discard the held item.
 
 Clicking the live world with an item follows the branch at `0x00441d96`.
 `0x00413ec0` chooses one of eight directions from the hero to the pointer and

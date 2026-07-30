@@ -76,6 +76,8 @@ bool InputAdapter::handleEvent(
             map_held_ = false;
         } else if (std::strcmp(event.key, "i") == 0) {
             inventory_held_ = false;
+        } else if (std::strcmp(event.key, "x") == 0) {
+            special_items_held_ = false;
         }
         return true;
     }
@@ -173,6 +175,13 @@ bool InputAdapter::handleEvent(
             gameplay_inventory_pressed_ = true;
         }
         inventory_held_ = true;
+    } else if (
+        std::strcmp(event.key, "x") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!special_items_held_) {
+            gameplay_special_items_pressed_ = true;
+        }
+        special_items_held_ = true;
     }
     return true;
 }
@@ -198,6 +207,7 @@ void InputAdapter::clearTransientInput() {
     gameplay_mission_list_pressed_ = false;
     gameplay_map_pressed_ = false;
     gameplay_inventory_pressed_ = false;
+    gameplay_special_items_pressed_ = false;
     pointer_secondary_pressed_ = false;
 }
 
@@ -249,6 +259,10 @@ bool InputAdapter::gameplayMapPressed() const {
 
 bool InputAdapter::gameplayInventoryPressed() const {
     return gameplay_inventory_pressed_;
+}
+
+bool InputAdapter::gameplaySpecialItemsPressed() const {
+    return gameplay_special_items_pressed_;
 }
 
 bool InputAdapter::upHeld() const {

@@ -1,7 +1,9 @@
 #include "items/item_database.hpp"
 #include "items/item_condition.hpp"
+#include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -95,6 +97,16 @@ bool testRetailDatabase() {
         database.find(1, 3000000);
     const osf::ItemDefinition* dagger =
         database.find(0, 100);
+    const osf::ItemDefinition* stone_accessory =
+        database.find(2, 1000000);
+    const osf::ItemDefinition* blade_ring =
+        database.find(2, 4000100);
+    const osf::ItemDefinition* tablet =
+        database.find(3, 0);
+    const osf::ItemDefinition* capsule =
+        database.find(3, 10000000);
+    const osf::ItemDefinition* white_medicine =
+        database.find(3, 30000000);
     if (!check(
             short_sword &&
                 short_sword->base_price == 400 &&
@@ -118,7 +130,18 @@ bool testRetailDatabase() {
                 dagger->derived_parameter_bonuses[1] == 120 &&
                 dagger->derived_parameter_bonuses[8] == 50 &&
                 dagger->element_strengths[0] == 0 &&
-                dagger->element_strengths[7] == 0,
+                dagger->element_strengths[7] == 0 &&
+            stone_accessory &&
+                stone_accessory->inventory_width == 1 &&
+                stone_accessory->inventory_height == 1 &&
+                stone_accessory->required_level == 1 &&
+            blade_ring &&
+                blade_ring->required_level == 23 &&
+            tablet &&
+            capsule &&
+            white_medicine &&
+                white_medicine->inventory_width == 1 &&
+                white_medicine->inventory_height == 2,
             "The Short Sword equipment fields differ.")) {
         return false;
     }
@@ -198,9 +221,84 @@ bool testRetailDatabase() {
                     makeItem(*round_shield),
                     *round_shield,
                     1).accepted &&
-                equipment.totalWeight(database) == 180 &&
+                equipment.place(
+                    osf::EquipmentSlot::accessory_1,
+                    makeItem(*stone_accessory),
+                    *stone_accessory,
+                    1).accepted &&
+                !equipment.place(
+                    osf::EquipmentSlot::accessory_2,
+                    makeItem(*blade_ring),
+                    *blade_ring,
+                    22).accepted &&
+                equipment.place(
+                    osf::EquipmentSlot::accessory_2,
+                    makeItem(*blade_ring),
+                    *blade_ring,
+                    23).accepted &&
+                equipment.totalWeight(database) == 186 &&
                 equipment.derivedParameterBonus(2, database) == 39,
-            "The five ordinary retail equipment slots differ.")) {
+            "The ordinary or accessory equipment slots differ.")) {
+        return false;
+    }
+
+    osf::PlayerBelt belt;
+    const osf::InventoryItem tablet_item =
+        makeItem(*tablet);
+    const osf::InventoryItem capsule_item =
+        makeItem(*capsule);
+    const osf::InventoryItem medicine_item =
+        makeItem(*white_medicine);
+    if (!check(
+            belt.place(
+                tablet_item, 0, 0, *tablet).accepted &&
+                belt.place(
+                    capsule_item, 0, 0, *capsule)
+                    .held_item->definition_id == tablet->id &&
+                belt.place(
+                    medicine_item, 3, 0, *white_medicine)
+                    .accepted &&
+                !belt.place(
+                    medicine_item, 2, 1, *white_medicine)
+                    .accepted &&
+                belt.itemAt(3, 1) &&
+                belt.takeAt(3, 1)->definition_id ==
+                    white_medicine->id &&
+                !belt.place(
+                    makeItem(*short_sword),
+                    1,
+                    0,
+                    *short_sword).accepted,
+            "The retail 4-by-2 category-three belt rules differ.")) {
+        return false;
+    }
+
+    osf::PlayerSpecialItems special_items;
+    osf::InventoryItem first_gold;
+    first_gold.category = 4;
+    first_gold.definition_id = 0;
+    first_gold.quantity = 9000;
+    osf::InventoryItem second_gold = first_gold;
+    second_gold.quantity = 2000;
+    if (!check(
+            special_items.place(first_gold, 0, 0).accepted,
+            "The special-item gold fixture could not be placed.")) {
+        return false;
+    }
+    const osf::InventoryPlacementResult merged_gold =
+        special_items.place(second_gold, 0, 0);
+    osf::InventoryItem invalid_item = tablet_item;
+    invalid_item.width = 0;
+    if (!check(
+            merged_gold.accepted &&
+                merged_gold.held_item &&
+                merged_gold.held_item->quantity == 1000 &&
+                special_items.items().size() == 1 &&
+                special_items.items()[0].quantity ==
+                    osf::PlayerInventory::maximum_gold_stack &&
+                !special_items.place(
+                    invalid_item, 1, 0).accepted,
+            "The retail special-item grid or gold stacking differs.")) {
         return false;
     }
     if (!checkDefinition(
