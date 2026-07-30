@@ -135,7 +135,8 @@ void NpcActor::clear() {
 
 void NpcActor::update(
     const GroundMap& ground,
-    const ObjectMap& objects) {
+    const ObjectMap& objects,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
     previous_position_ = position_;
     if (interaction_active_) {
         animation_chart_ = 0;
@@ -187,7 +188,9 @@ void NpcActor::update(
             judgement_,
             position_,
             destination_,
-            walk_speed_);
+            walk_speed_,
+            dynamic_blockers,
+            id_);
     if (movement.moved) {
         direction_ = retailDirectionForVector(
             movement.position.x - position_.x,

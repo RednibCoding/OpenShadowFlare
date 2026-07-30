@@ -250,8 +250,11 @@ void WorldScene::update() {
         !interaction_npc && !interaction_item) {
         pending_interaction_ = {};
     }
+    constexpr std::int32_t player_blocker_id =
+        kNoMovementBlockerId + 1;
     std::vector<MovementBlocker> actor_blockers;
-    actor_blockers.reserve(npcs_.size());
+    actor_blockers.reserve(
+        npcs_.size() + (has_player_ ? 1u : 0u));
     for (const NpcActor& npc : npcs_) {
         actor_blockers.push_back({
             npc.id(),
@@ -263,9 +266,20 @@ void WorldScene::update() {
         player_.update(
             ground_, object_map_, &actor_blockers);
         map_exploration_.reveal(player_.position());
+        actor_blockers.push_back({
+            player_blocker_id,
+            player_.position(),
+            player_.judgement(),
+        });
     }
-    for (NpcActor& npc : npcs_) {
-        npc.update(ground_, object_map_);
+    for (std::size_t index = 0;
+         index < npcs_.size();
+         ++index) {
+        NpcActor& npc = npcs_[index];
+        npc.update(
+            ground_, object_map_, &actor_blockers);
+        actor_blockers[index].position =
+            npc.position();
     }
     for (GroundItem& item : ground_items_) {
         if (updateGroundItem(item) !=

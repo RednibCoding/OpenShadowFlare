@@ -107,7 +107,8 @@ bool movementPositionIsWalkable(
     const ObjectMap& objects,
     WorldPosition position,
     const ObjectBounds& bounds,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t ignored_blocker_id) {
     if (!positionIsWalkable(
             ground, objects, position, bounds)) {
         return false;
@@ -116,6 +117,9 @@ bool movementPositionIsWalkable(
         return true;
     }
     for (const MovementBlocker& blocker : *dynamic_blockers) {
+        if (blocker.id == ignored_blocker_id) {
+            continue;
+        }
         if (boundsOverlap(
                 position,
                 bounds,
@@ -199,7 +203,8 @@ SweepResult sweepMovement(
     WorldPosition start,
     WorldPosition end,
     std::int32_t wall_direction,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t ignored_blocker_id) {
     const std::vector<WorldPosition> path =
         rasterizedSegment(start, end);
     WorldPosition contact = start;
@@ -211,7 +216,8 @@ SweepResult sweepMovement(
                 objects,
                 path[index],
                 bounds,
-                dynamic_blockers)) {
+                dynamic_blockers,
+                ignored_blocker_id)) {
             collided = true;
             break;
         }
@@ -246,7 +252,8 @@ SweepResult sweepMovement(
                 objects,
                 side,
                 bounds,
-                dynamic_blockers)) {
+                dynamic_blockers,
+                ignored_blocker_id)) {
             side_blocked = true;
             break;
         }
@@ -267,7 +274,8 @@ SweepResult sweepMovement(
                     objects,
                     side,
                     bounds,
-                    dynamic_blockers)) {
+                    dynamic_blockers,
+                    ignored_blocker_id)) {
                 first_side_open = index;
                 break;
             }
@@ -286,7 +294,8 @@ SweepResult sweepMovement(
             objects,
             nudged,
             bounds,
-            dynamic_blockers)) {
+            dynamic_blockers,
+            ignored_blocker_id)) {
         contact = nudged;
     }
     return {contact, collided || !samePosition(contact, end)};
@@ -298,14 +307,16 @@ bool canMoveOneUnit(
     const ObjectBounds& bounds,
     WorldPosition position,
     std::int32_t direction,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t ignored_blocker_id) {
     const WorldPosition vector = directionVector(direction);
     return movementPositionIsWalkable(
         ground,
         objects,
         {position.x + vector.x, position.y + vector.y},
         bounds,
-        dynamic_blockers);
+        dynamic_blockers,
+        ignored_blocker_id);
 }
 
 struct ObstacleState {
@@ -320,7 +331,8 @@ ObstacleState initialObstacleState(
     WorldPosition start,
     WorldPosition attempted,
     WorldPosition contact,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t ignored_blocker_id) {
     const auto can_move =
         [&](std::int32_t direction) {
             return canMoveOneUnit(
@@ -329,7 +341,8 @@ ObstacleState initialObstacleState(
                 bounds,
                 start,
                 direction,
-                dynamic_blockers);
+                dynamic_blockers,
+                ignored_blocker_id);
         };
     const bool stopped = samePosition(start, contact);
 
@@ -487,7 +500,8 @@ MovementStepResult MovementController::advance(
     WorldPosition position,
     WorldPosition destination,
     std::int32_t speed,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t ignored_blocker_id) {
     if (samePosition(position, destination)) {
         reset();
         return {position, true, false};
@@ -508,7 +522,8 @@ MovementStepResult MovementController::advance(
                 position,
                 attempted,
                 0,
-                dynamic_blockers);
+                dynamic_blockers,
+                ignored_blocker_id);
         if (!direct.collided) {
             return {
                 direct.position,
@@ -527,7 +542,8 @@ MovementStepResult MovementController::advance(
                 position,
                 attempted,
                 direct.position,
-                dynamic_blockers);
+                dynamic_blockers,
+                ignored_blocker_id);
         if (state.movement == 0) {
             if (!samePosition(direct.position, position)) {
                 return {
@@ -575,7 +591,8 @@ MovementStepResult MovementController::advance(
             position,
             attempted,
             wall_direction_,
-            dynamic_blockers);
+            dynamic_blockers,
+            ignored_blocker_id);
     if (samePosition(edge.position, position)) {
         const std::int32_t previous_movement =
             obstacle_direction_;
@@ -646,7 +663,8 @@ MovementStepResult advanceMovement(
     WorldPosition position,
     WorldPosition destination,
     std::int32_t speed,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t ignored_blocker_id) {
     if (samePosition(position, destination)) {
         return {position, true, false};
     }
@@ -661,7 +679,8 @@ MovementStepResult advanceMovement(
             position,
             candidate,
             0,
-            dynamic_blockers);
+            dynamic_blockers,
+            ignored_blocker_id);
     return {
         movement.position,
         samePosition(movement.position, destination),

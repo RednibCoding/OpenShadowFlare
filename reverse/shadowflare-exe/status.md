@@ -489,6 +489,11 @@ destination-sign tables rather than a distance-improvement guess.
 There is no A* fallback in this path. Player and PEOPLE actors share the same
 controller and face their actual detour step. Live town actors contribute
 their judgement rectangles, including the actor being approached. The
+PEOPLE walk at `0x0045da25` supplies dynamic collision mask `0xffffffff`.
+`0x004145b0` excludes only the mover's own character number, so wandering
+town actors also collide with the current hero and every other live PEOPLE
+rectangle. The portable scene keeps that shared set current after each actor
+update and has direct tests for self-exclusion and actor detours. The
 159-unit rectangle range ends an interaction approach before that target
 becomes a collision. Fixtures cross the sacks beside Ostare, cover the exact
 Ostare-to-Malse route with live actors present, and use successive ordinary
@@ -515,7 +520,7 @@ then re-enters the same ground-item resource, CAF, color, bounce, depth, hover,
 and pickup path as scenario-created items.
 
 This is still not complete gameplay. The other people records, broader AI,
-dynamic collision for NPC and enemy movement, remaining script commands and
+dynamic collision for enemy movement, remaining script commands and
 operand domains,
 alternate conversation modes, HUD, darkness, equipment state, and saved-game
 scenario restoration are the next executable layers.

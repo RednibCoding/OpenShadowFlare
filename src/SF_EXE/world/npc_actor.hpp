@@ -28,7 +28,8 @@ public:
     void clear();
     void update(
         const GroundMap& ground,
-        const ObjectMap& objects);
+        const ObjectMap& objects,
+        const std::vector<MovementBlocker>* dynamic_blockers = nullptr);
     void beginInteraction(WorldPosition player_position);
     void endInteraction();
 

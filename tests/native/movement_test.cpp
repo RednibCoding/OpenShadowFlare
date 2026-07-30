@@ -1,8 +1,11 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "resources/character_visual_resource.hpp"
 #include "world/movement_controller.hpp"
+#include "world/npc_actor.hpp"
 #include "world/player_actor.hpp"
 #include "world/world_pointer.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -350,6 +353,119 @@ bool testDynamicActorJudgement() {
         "rectangle.");
 }
 
+bool testDynamicActorSelfExclusion() {
+    const osf::GroundMap ground =
+        oneBlockingGround(false);
+    const osf::ObjectMap objects;
+    const std::vector<osf::MovementBlocker> actors{
+        {
+            7,
+            {0, 0},
+            {-40, -40, 39, 39},
+        },
+        {
+            8,
+            {250, 0},
+            {-40, -40, 39, 39},
+        },
+    };
+    osf::MovementController controller;
+    const osf::MovementStepResult movement =
+        controller.advance(
+            ground,
+            objects,
+            {-40, -40, 39, 39},
+            {0, 0},
+            {500, 0},
+            20,
+            &actors,
+            7);
+    return check(
+        movement.moved &&
+            movement.position.x == 20 &&
+            movement.position.y == 0,
+        "A live actor could not exclude its own judgement "
+        "rectangle.");
+}
+
+bool testNpcDynamicActorJudgement() {
+    const osf::GroundMap ground =
+        oneBlockingGround(false);
+    const osf::ObjectMap objects;
+    osf::ScenarioPerson person;
+    person.id = 7;
+    person.resource_id = 1;
+    person.world_x = 0;
+    person.world_y = 0;
+    person.judgement_left = -10;
+    person.judgement_top = -10;
+    person.judgement_right = 10;
+    person.judgement_bottom = 10;
+    person.walk_speed = 10;
+    person.walk_duration = 100;
+    person.idle_duration = 0;
+    person.wander_left = 100;
+    person.wander_top = 0;
+    person.wander_right = 100;
+    person.wander_bottom = 0;
+    person.wandering_enabled = true;
+
+    osf::CharacterVisualResource visual;
+    osf::NpcActor npc;
+    if (!check(
+            npc.initialize(person, visual),
+            "The synthetic wandering NPC could not be initialized.")) {
+        return false;
+    }
+    std::vector<osf::MovementBlocker> actors{
+        {
+            npc.id(),
+            npc.position(),
+            npc.judgement(),
+        },
+        {
+            8,
+            {50, 0},
+            {-10, -10, 10, 10},
+        },
+    };
+    std::int32_t greatest_detour = 0;
+    for (std::int32_t update = 0;
+         update < 100 &&
+         npc.position().x != 100;
+         ++update) {
+        npc.update(ground, objects, &actors);
+        actors[0].position = npc.position();
+        greatest_detour = std::max(
+            greatest_detour,
+            std::abs(npc.position().y));
+        const osf::WorldPosition position =
+            npc.position();
+        const osf::MovementBlocker& other =
+            actors[1];
+        const bool overlaps =
+            position.x + npc.judgement().left <=
+                other.position.x + other.bounds.right &&
+            other.position.x + other.bounds.left <=
+                position.x + npc.judgement().right &&
+            position.y + npc.judgement().top <=
+                other.position.y + other.bounds.bottom &&
+            other.position.y + other.bounds.top <=
+                position.y + npc.judgement().bottom;
+        if (overlaps) {
+            return check(
+                false,
+                "A wandering NPC entered another live actor's "
+                "judgement rectangle.");
+        }
+    }
+    return check(
+        npc.position().x == 100 &&
+            npc.position().y == 0 &&
+            greatest_detour >= 20,
+        "A wandering NPC did not route around a live actor.");
+}
+
 bool testWorldPointerPriority() {
     const std::vector<osf::WorldPointerCandidate> candidates{
         {
@@ -506,6 +622,8 @@ int main() {
         !testDiagonalContact() ||
         !testGroundJudgement() ||
         !testDynamicActorJudgement() ||
+        !testDynamicActorSelfExclusion() ||
+        !testNpcDynamicActorJudgement() ||
         !testWorldPointerPriority() ||
         !testRemoteTownFixture()) {
         return 1;
