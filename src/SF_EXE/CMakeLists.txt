@@ -121,6 +121,7 @@ add_library(
   world/enemy_damage_receiver.cpp
   world/enemy_death_rewards.cpp
   world/enemy_direct_impact.cpp
+  world/enemy_effect_controller.cpp
   world/enemy_effect_impact.cpp
   world/enemy_presentation.cpp
   world/enemy_presentation_audio.cpp

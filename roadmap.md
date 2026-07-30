@@ -904,6 +904,16 @@ Do not map `type + 10000` straight to one OPTION animation; that would skip
 retail state and repeat the kind of adjacent-behavior loss this roadmap is
 meant to prevent.
 
+That split has started with types 1 and 2. Their portable controller now emits
+the immediate source animation and delayed forward actor as two independent
+requests, including source re-resolution, exact bounds, packet data, and
+positional samples 19 and 94. The next slice is the shared
+category-50000000 actor owner: movement and collision timing first, then
+target filtering, hit bookkeeping, receiver dispatch, audio markers, and the
+action-one-to-action-two transition. Types 1 and 2 should only be connected to
+live enemy attacks once that common path can carry their actual hit and sound
+behavior.
+
 ### 5. Skills, magic, status, and the remaining game screens
 
 Once the ordinary combat loop is reliable, add the systems that modify it:

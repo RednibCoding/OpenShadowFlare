@@ -1269,6 +1269,16 @@ renderable state that can move, collide, and dispatch an impact. Treating an
 enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
+`EnemyEffectController` now ports the complete controller half of types 1 and
+2 without pretending that their runtime actors are finished. It emits the
+source actor on update zero, re-resolves the source at the exact authored
+delay, projects the second actor with the retail Y-axis convention, copies the
+combat packet, and places sample 19 or 94 at that second position. A zero delay
+creates both actors in one update, a negative delay remains active, missing
+owners resolve from zero, and omitted origin or judgement pointers do not leak
+stale values. The emitted actor requests remain passive until the shared
+category-50000000 update and its collision/receiver path are reconstructed.
+
 ## Enemy kill rewards
 
 The lethal callback at `0x004134a0` uses each enemy's MCT pre-AI value 13 as

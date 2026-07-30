@@ -562,6 +562,35 @@ if(TARGET sf_game_core)
     COMMAND enemy_effect_impact_test)
 
   add_executable(
+    enemy_effect_controller_test
+    enemy_effect_controller_test.cpp
+  )
+  target_link_libraries(
+    enemy_effect_controller_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    enemy_effect_controller_test PRIVATE cxx_std_17)
+  set_target_properties(
+    enemy_effect_controller_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      enemy_effect_controller_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      enemy_effect_controller_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME enemy_effect_controller
+    COMMAND enemy_effect_controller_test)
+
+  add_executable(
     enemy_direct_impact_test
     enemy_direct_impact_test.cpp
   )

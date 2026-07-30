@@ -62,12 +62,15 @@ is active only from descriptor word 35 through word 36 inclusive. Bits one,
 two, and four select player, owned-companion, and enemy families
 independently.
 
-This is analysis evidence, not a portable-fidelity claim. The portable owner
-still needs a controller list distinct from its renderable actor list. Each
-specialized controller must be reconstructed before its shipped effect type
-can be called complete; mapping `type + 10000` directly to one OPTION resource
-would lose retail timing, targeting, audio, and often an entire intermediate
-actor.
+The portable `EnemyEffectController` now covers the complete controller half
+of types 1 and 2. Focused tests cover zero, positive, and negative delays,
+source re-resolution, missing and fixed owners, exact resources and bounds,
+packet copying, projection, and positional samples. Its actor outputs are
+intentionally passive: the shared category-50000000 actor update is still
+needed before either effect is attached to live enemies. The other ten
+specialized controllers also remain to be reconstructed. Mapping
+`type + 10000` directly to one OPTION resource would still lose retail timing,
+targeting, audio, and often an entire intermediate actor.
 
 ## Current portable slices
 
