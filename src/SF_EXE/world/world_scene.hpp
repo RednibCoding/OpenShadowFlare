@@ -47,6 +47,12 @@ struct GameplayServiceRequest {
     std::int32_t argument = 0;
 };
 
+struct ScenarioStart {
+    std::int32_t scenario_id = 0;
+    std::int32_t entry_value = 0;
+    std::int32_t local_player_number = 0;
+};
+
 class WorldScene {
 public:
     WorldScene();
@@ -54,6 +60,11 @@ public:
     bool loadInitialScenario(
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,
+        std::string* error = nullptr);
+    bool loadInitialScenario(
+        const std::filesystem::path& data_root,
+        const PlayerLoadRequest& player_request,
+        const ScenarioStart& start,
         std::string* error = nullptr);
     void clear();
 
@@ -157,6 +168,7 @@ public:
     const ObjectBounds& playerJudgement() const;
     std::int32_t musicTrack() const;
     const ScenarioData& scenario() const;
+    std::int32_t scenarioId() const;
     const script::ScriptData& scenarioScript() const;
 
 private:
@@ -225,6 +237,7 @@ private:
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
     std::filesystem::path data_root_;
+    std::int32_t scenario_id_ = -1;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;
     RetailRandom item_random_;

@@ -195,11 +195,21 @@ than worked around in later actor code.
 The order below follows dependencies. Each heading is still meant to become
 several small commits rather than one giant implementation.
 
-Remote Town began as a carefully reconstructed first case. The first loader
-slice now reads `Scenario/00000000/Scenario.Mct` itself instead of embedding
-its map name, entry position, facing direction, title, and music index in the
-code. The loader understands the fixed MCED header and the trailing entry-point
-table, and tests those fields against the retail file.
+Remote Town began as a carefully reconstructed first case. The loader now
+accepts an explicit decimal scenario ID, entry value, and local-player number
+instead of embedding scenario zero or entry zero in the code. It resolves the
+retail `%08d` scenario directory, reads that scenario's MCT, SCS, and overview
+NJP, and selects the MCT entry key as `local player + entry * 4`, matching
+`0x00426200`.
+
+Remote Town remains the default start. The first nonzero fixture is Table 40's
+`Wasteland of Pillars`: scenario 6, entry value 4, MCT key 16. A fresh world
+now loads its `f00_07` ground, object, and pattern resources, its 35 type-zero
+objects and two PEOPLE records, entry position `(35105,-6156)`, direction 7,
+and music index 1. Missing directories or entries clear the partial world and
+report an error. A catalog regression also checks every one of Table 40's 51
+rows against its shipped decimal scenario directory and single-player MCT
+entry key.
 
 The next slices identified the three resource preload lists, the variable
 common entity record, and the complete object and `PEOPLE` group shapes.
@@ -228,7 +238,8 @@ transition path around `0x00426200`:
   validates and skips;
 - identify the final unnamed PEOPLE-tail value and connect it if it affects
   portable state;
-- select arbitrary scenario IDs and entry keys during transitions;
+- preserve the now-general scenario/entry selection while moving a live
+  player's persistent owners through a transition;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
 - represent dynamic entities separately from static OBL scenery;

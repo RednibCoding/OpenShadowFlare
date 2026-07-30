@@ -9,6 +9,7 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -779,6 +780,135 @@ bool testWorldItemSaveRoundTrip() {
 #endif
 }
 
+bool testGeneralScenarioStart() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Traveler";
+    std::string error;
+    osf::WorldScene wasteland;
+    if (!check(
+            wasteland.loadInitialScenario(
+                data_root,
+                player,
+                {6, 4, 0},
+                &error),
+            "Wasteland of Pillars could not be loaded through the "
+            "general scenario start path.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::ScenarioEntry* entry =
+        wasteland.scenario().findEntry(16);
+    if (!check(
+            wasteland.scenarioId() == 6 &&
+                wasteland.scenario().title() ==
+                    "Wasteland of Pillars" &&
+                wasteland.scenario().mapPath() ==
+                    "Map\\f00_07.map" &&
+                wasteland.musicTrack() == 1 &&
+                entry &&
+                entry->world_x == 35105 &&
+                entry->world_y == -6156 &&
+                entry->direction == 7 &&
+                wasteland.playerWorldX() == entry->world_x &&
+                wasteland.playerWorldY() == entry->world_y &&
+                wasteland.playerDirection() == entry->direction &&
+                wasteland.scenarioObjects().size() == 35 &&
+                wasteland.npcs().size() == 2 &&
+                wasteland.ground().width() > 0 &&
+                wasteland.ground().height() > 0 &&
+                !wasteland.objectMap().objects().empty() &&
+                !wasteland.mapPatterns().empty() &&
+                !wasteland.mapOverviewPatterns()
+                     .patterns()
+                     .empty(),
+            "The decimal scenario directory, entry key, map, actors, "
+            "or music differ from retail scenario 6.")) {
+        return false;
+    }
+
+    for (const osf::TransportDestination& destination :
+         wasteland.transports().destinations()) {
+        char directory[16]{};
+        std::snprintf(
+            directory,
+            sizeof(directory),
+            "%08d",
+            destination.scenario);
+        osf::ScenarioData destination_scenario;
+        if (!check(
+                destination_scenario.load(
+                    data_root / "Scenario" / directory /
+                        "Scenario.Mct",
+                    &error) &&
+                    destination_scenario.findEntry(
+                        destination.entry * 4),
+                "A Table 40 destination does not resolve its single-player "
+                "scenario entry.")) {
+            std::cerr
+                << "Transport row "
+                << destination.row << " ("
+                << destination.name << "): "
+                << error << '\n';
+            return false;
+        }
+    }
+
+    osf::WorldScene invalid_entry;
+    error.clear();
+    if (!check(
+            !invalid_entry.loadInitialScenario(
+                data_root,
+                player,
+                {6, 999, 0},
+                &error) &&
+                !invalid_entry.hasPlayer() &&
+                invalid_entry.scenarioId() == -1 &&
+                invalid_entry.scenarioObjects().empty() &&
+                error.find("entry key 3996") !=
+                    std::string::npos,
+            "A missing scenario entry did not fail without leaving a "
+            "partially loaded world.")) {
+        return false;
+    }
+
+    osf::WorldScene missing_scenario;
+    error.clear();
+    if (!check(
+            !missing_scenario.loadInitialScenario(
+                data_root,
+                player,
+                {2, 0, 0},
+                &error) &&
+                !missing_scenario.hasPlayer() &&
+                missing_scenario.scenarioId() == -1 &&
+                missing_scenario.scenarioObjects().empty() &&
+                !error.empty(),
+            "A missing decimal scenario directory left a partially loaded "
+            "world.")) {
+        return false;
+    }
+
+    osf::WorldScene invalid_request;
+    error.clear();
+    return check(
+        !invalid_request.loadInitialScenario(
+            data_root,
+            player,
+            {-1, 0, 0},
+            &error) &&
+            !invalid_request.hasPlayer() &&
+            invalid_request.scenarioId() == -1 &&
+            error == "The scenario start request is invalid.",
+        "An invalid scenario start request was not rejected before loading.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailRemoteTown() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -971,7 +1101,8 @@ bool testRetailRemoteTown() {
         return false;
     }
     if (!check(
-        world.scenario().title() == "Remote Town" &&
+        world.scenarioId() == 0 &&
+            world.scenario().title() == "Remote Town" &&
             world.playerWorldX() == 89898 &&
             world.playerWorldY() == 2811 &&
             world.playerDirection() == 3 &&
@@ -2251,6 +2382,7 @@ int main() {
                    testFixture() &&
                    testMalformedData() &&
                    testRetailScenarioCatalog() &&
+                   testGeneralScenarioStart() &&
                    testWorldItemSaveRoundTrip() &&
                    testRetailRemoteTown()
                ? 0

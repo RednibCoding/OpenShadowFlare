@@ -7,8 +7,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <utility>
 
 namespace osf {
@@ -59,13 +61,50 @@ std::string mapStem(const std::string& map_path) {
     return std::filesystem::path(normalized).stem().string();
 }
 
+std::filesystem::path scenarioDirectory(
+    const std::filesystem::path& data_root,
+    std::int32_t scenario_id) {
+    char directory[16]{};
+    std::snprintf(
+        directory,
+        sizeof(directory),
+        "%08d",
+        scenario_id);
+    return data_root / "Scenario" / directory;
+}
+
 }  // namespace
 
 bool WorldScene::loadInitialScenario(
     const std::filesystem::path& data_root,
     const PlayerLoadRequest& player_request,
     std::string* error) {
+    return loadInitialScenario(
+        data_root,
+        player_request,
+        ScenarioStart{},
+        error);
+}
+
+bool WorldScene::loadInitialScenario(
+    const std::filesystem::path& data_root,
+    const PlayerLoadRequest& player_request,
+    const ScenarioStart& start,
+    std::string* error) {
     clear();
+    if (start.scenario_id < 0 ||
+        start.entry_value < 0 ||
+        start.local_player_number < 0 ||
+        start.local_player_number > 3 ||
+        start.entry_value >
+            (std::numeric_limits<std::int32_t>::max() -
+             start.local_player_number) /
+                4) {
+        setError(error, "The scenario start request is invalid.");
+        return false;
+    }
+    const std::filesystem::path scenario_root =
+        scenarioDirectory(data_root, start.scenario_id);
 
     if (!parameter_tables_.load(
             data_root / "System" / "Game" / "Parameter" /
@@ -79,12 +118,13 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
     if (!scenario_.load(
-            data_root / "Scenario" / "00000000" / "Scenario.Mct",
+            scenario_root / "Scenario.Mct",
             error)) {
+        clear();
         return false;
     }
     if (!scenario_script_.load(
-            data_root / "Scenario" / "00000000" / "Scenario.Scs",
+            scenario_root / "Scenario.Scs",
             error)) {
         clear();
         return false;
@@ -162,11 +202,16 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
-    const ScenarioEntry* entry = scenario_.findEntry(0);
+    const std::int32_t entry_key =
+        start.local_player_number +
+        start.entry_value * 4;
+    const ScenarioEntry* entry =
+        scenario_.findEntry(entry_key);
     if (!entry) {
         setError(
             error,
-            "The scenario does not contain entry point 0.");
+            "The scenario does not contain entry key " +
+                std::to_string(entry_key) + ".");
         clear();
         return false;
     }
@@ -190,8 +235,7 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
     if (!map_overview_patterns_.load(
-            data_root / "Scenario" / "00000000" /
-                "Scenario.Njp",
+            scenario_root / "Scenario.Njp",
             error) ||
         !map_exploration_.initialize(ground_)) {
         setError(
@@ -317,6 +361,7 @@ bool WorldScene::loadInitialScenario(
         player_data_.walkingSpeedTier());
     map_exploration_.reveal(player_.position());
     music_track_ = scenario_.musicTrack();
+    scenario_id_ = start.scenario_id;
     has_player_ = true;
     return true;
 }

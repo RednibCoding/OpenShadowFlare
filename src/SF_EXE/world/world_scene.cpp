@@ -76,6 +76,7 @@ void WorldScene::clear() {
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
     data_root_.clear();
+    scenario_id_ = -1;
     item_world_resources_.clear();
     item_random_.seed(1);
     player_data_.clear();
@@ -483,6 +484,10 @@ std::int32_t WorldScene::musicTrack() const {
 
 const ScenarioData& WorldScene::scenario() const {
     return scenario_;
+}
+
+std::int32_t WorldScene::scenarioId() const {
+    return scenario_id_;
 }
 
 const script::ScriptData& WorldScene::scenarioScript() const {

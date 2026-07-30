@@ -534,6 +534,13 @@ packs them into ten visible slots per page; disabled rows do not leave gaps.
 For a same-scenario single-player move, the executable looks up the MCT entry
 key as `local player number + entry * 4`, so row zero resolves entry key 200.
 
+Scenario folders use zero-padded decimal IDs, not hexadecimal IDs. For
+example, Table 40 row one names scenario `6`, which lives at
+`Scenario/00000006/`; row 12 names scenario `99000001`, whose directory keeps
+all eight decimal digits. Each folder supplies its own `Scenario.Mct`,
+`Scenario.Scs`, and `Scenario.Njp`. Row one's entry value 4 selects MCT key 16
+for local player zero and starts Wasteland of Pillars at `(35105,-6156)`.
+
 ### Related Files
 - `Save\%04d.Ssv` - Save slot data (0000-0005)
 - `Save\%04d.Bmp` - Save thumbnail

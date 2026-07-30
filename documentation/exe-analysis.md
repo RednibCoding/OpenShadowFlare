@@ -435,6 +435,24 @@ entry 50. The same-scenario branch at `0x00426200` combines that entry value
 with local player zero as `entry * 4`, selecting MCT entry key 200 at
 `(94685,-2756)`, direction 7.
 
+The complete `0x00426200` call takes player number, scenario ID, entry value,
+an auxiliary transition flag, an optional explicit position, and an entry-key
+player override. With a nonnegative entry value, both the same-scenario fast
+path and the full load path query:
+
+```text
+entry key = local player number + entry value * 4
+```
+
+An entry value of `-1` uses the supplied world coordinates instead. A changed
+scenario saves/releases the old scenario state, changes music when needed,
+rebuilds map and dynamic resources, loads that scenario's `Scenario.Njp`, and
+then applies the entry. The portable fresh-world loader now accepts the first
+three values explicitly and resolves scenario directories with the retail
+decimal `%08d` spelling. Scenario 6, entry value 4 is covered against MCT key
+16. Moving an already-live player's persistent owners through the teardown
+and reproducing the later loading screen remain the next transition slice.
+
 The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
 flag `0x0048ce48`, the same one-page Special Item owner handled by
 `0x00447970`; it is not a separate warehouse container. Nonzero opcode-41

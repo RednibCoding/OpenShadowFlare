@@ -564,6 +564,22 @@ same-scenario selection resolves entry key 200 and relocates to
 `(94685,-2756)`, direction 7. Warehouse status zero emits opcode 41 argument
 zero at `0x004335ac` and toggles the existing Special Item owner.
 
+The `0x00426200` transition signature is now separated from the transport UI.
+Its scenario argument selects a `%08d` decimal directory. A nonnegative entry
+value resolves MCT key `local-player-number + entry-value * 4`; `-1` uses the
+explicit coordinate pointer instead. The same-scenario branch skips resource
+teardown, while a changed scenario releases the old dynamic/map owners,
+switches music, reads the new map and Scenario NJP, and then applies the same
+entry rule.
+
+The portable fresh-world path accepts scenario ID, entry value, and local
+player explicitly. The first cross-map fixture is Table 40 row one: scenario
+6, entry 4, key 16. It loads Wasteland of Pillars, `Map\f00_07.map`, position
+`(35105,-6156)`, direction 7, BGM 1, 35 type-zero objects, and two PEOPLE
+records. Live persistent-owner migration and the later loading presentation
+remain pending. All 51 Table 40 rows are also checked against their shipped
+scenario directory and single-player MCT entry.
+
 Periodic status kind five executes independent scenario callbacks. Remote
 Town sentences 158, 173, 188, and 203 read player-record offset `0x140`
 through opcode 44, compare it with each companion type and the play mode, then
