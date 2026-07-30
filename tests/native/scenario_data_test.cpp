@@ -1473,20 +1473,124 @@ bool testGeneralScenarioStart() {
         first_enemy.position();
     wasteland.update();
     if (!check(
-            wasteland.enemies().front().animationFrame() == 0 &&
-                wasteland.enemies().front().position().x ==
-                    enemy_position.x &&
-                wasteland.enemies().front().position().y ==
-                    enemy_position.y,
-            "The first enemy did not submit its initial retail idle "
-            "frame without guessed AI movement.")) {
+            wasteland.enemies().front().animationChart() == 1 &&
+                wasteland.enemies().front().animationFrame() == 0 &&
+                (wasteland.enemies().front().position().x !=
+                     enemy_position.x ||
+                 wasteland.enemies().front().position().y !=
+                     enemy_position.y),
+            "The first enemy did not evaluate event zero and enter "
+            "its authored retail patrol.")) {
         return false;
     }
     wasteland.update();
     if (!check(
-            wasteland.enemies().front().animationFrame() == 1,
-            "The enemy idle action did not advance after submitting "
-            "its first retail frame.")) {
+            wasteland.enemies().front().animationChart() == 1 &&
+                wasteland.enemies().front().animationFrame() == 1,
+            "The live enemy patrol did not continue on the shared "
+            "active-map cadence.")) {
+        return false;
+    }
+    const std::int32_t life_before_enemy_ai =
+        wasteland.playerData().currentLife();
+    const std::size_t inventory_before_enemy_ai =
+        wasteland.playerInventory().items().size();
+    const std::size_t belt_before_enemy_ai =
+        wasteland.playerBelt().items().size();
+    bool heard_enemy_hit = false;
+    bool saw_player_hit_effect = false;
+    for (std::int32_t update = 0;
+         update < 300 &&
+         wasteland.playerData().currentLife() ==
+             life_before_enemy_ai;
+         ++update) {
+        wasteland.update();
+        const std::vector<std::int32_t> samples =
+            wasteland.takeAudioSamples();
+        heard_enemy_hit =
+            heard_enemy_hit ||
+            std::find(
+                samples.begin(), samples.end(), 6) !=
+                samples.end();
+        saw_player_hit_effect =
+            saw_player_hit_effect ||
+            std::any_of(
+                wasteland.combatEffects().begin(),
+                wasteland.combatEffects().end(),
+                [](const osf::CombatEffectActor& effect) {
+                    return effect.effectNumber() >= 21000 &&
+                           effect.effectNumber() <= 21014;
+                });
+    }
+    if (!check(
+            wasteland.playerData().currentLife() <
+                    life_before_enemy_ai &&
+                heard_enemy_hit &&
+                saw_player_hit_effect &&
+                wasteland.playerInventory().items().size() ==
+                    inventory_before_enemy_ai &&
+                wasteland.playerBelt().items().size() ==
+                    belt_before_enemy_ai &&
+                wasteland.playerEquipment().item(
+                    osf::EquipmentSlot::body) &&
+                (wasteland.playerMotion() ==
+                     osf::PlayerMotion::reacting ||
+                 wasteland.playerMotion() ==
+                     osf::PlayerMotion::defeated),
+            "A live Wasteland enemy did not approach, complete its "
+            "authored attack presentation, pass damage through the "
+            "player receiver, and publish its effect and sample.")) {
+        return false;
+    }
+    const std::int32_t damaged_life =
+        wasteland.playerData().currentLife();
+    const std::filesystem::path combat_save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_enemy_ai_save_test";
+    const std::filesystem::path combat_save =
+        combat_save_root / "Save" / "0000.Ssv";
+    std::error_code combat_cleanup_error;
+    std::filesystem::remove_all(
+        combat_save_root, combat_cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                combat_save,
+                wasteland.playerData(),
+                wasteland.itemDatabase(),
+                wasteland.playerInventory(),
+                wasteland.playerEquipment(),
+                wasteland.playerBelt(),
+                wasteland.playerSpecialItems(),
+                0x73,
+                &error),
+            "The live enemy-hit state could not be written through "
+            "the retail save path.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::PlayerLoadRequest damaged_player;
+    damaged_player.source =
+        osf::PlayerDataSource::retail_save;
+    damaged_player.save_path = combat_save;
+    osf::WorldScene restored_combat;
+    const bool combat_loaded =
+        restored_combat.loadInitialScenario(
+            data_root, damaged_player, &error);
+    std::filesystem::remove_all(
+        combat_save_root, combat_cleanup_error);
+    if (!check(
+            combat_loaded &&
+                restored_combat.playerData().currentLife() ==
+                    damaged_life &&
+                restored_combat.playerInventory().items().size() ==
+                    inventory_before_enemy_ai &&
+                restored_combat.playerBelt().items().size() ==
+                    belt_before_enemy_ai &&
+                restored_combat.playerEquipment().item(
+                    osf::EquipmentSlot::body),
+            "Saving after a live enemy hit discarded life or owned "
+            "item state on reload.")) {
+        std::cerr << error << '\n';
         return false;
     }
 

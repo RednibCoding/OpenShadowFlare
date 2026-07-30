@@ -424,7 +424,8 @@ void WorldScene::update() {
             scenario_world_.ground(),
             scenario_world_.objectMap(),
             &actor_blockers,
-            playerAttackSpeedTier());
+            playerAttackSpeedTier(),
+            &player_visual_.animation());
         handlePlayerAttackEvent(player_.takeAttackEvent());
         scenario_world_.mapExploration().reveal(
             player_.position());
@@ -458,14 +459,14 @@ void WorldScene::update() {
         EnemyActor& enemy =
             scenario_world_.enemies()[index];
         const EnemyActorUpdate update =
-            enemy.update(
-                scenario_world_.ground(),
-                scenario_world_.objectMap(),
-                &actor_blockers);
+            updateEnemyActor(
+                enemy, actor_blockers);
         pending_audio_samples_.insert(
             pending_audio_samples_.end(),
             update.audio_samples.begin(),
             update.audio_samples.end());
+        applyEnemyDirectImpact(
+            enemy, update.direct_impact);
         if (update.death_started) {
             handleEnemyDeathStart(
                 enemy, update.effect_spawn);

@@ -24,6 +24,7 @@
 #include "player_actor.hpp"
 #include "player_attack_target.hpp"
 #include "player_data.hpp"
+#include "player_damage_receiver.hpp"
 #include "player_item_controller.hpp"
 #include "quest_state.hpp"
 #include "scenario_world.hpp"
@@ -252,6 +253,15 @@ private:
     void handleEnemyDeathStart(
         EnemyActor& enemy,
         CombatEffectSpawnRequest effect);
+    EnemyActorUpdate updateEnemyActor(
+        EnemyActor& enemy,
+        const std::vector<MovementBlocker>& blockers);
+    PlayerDamageReceiverState playerDamageReceiverState() const;
+    void applyPlayerDamageReceiverState(
+        const PlayerDamageReceiverState& state);
+    void applyEnemyDirectImpact(
+        EnemyActor& enemy,
+        const EnemyDirectImpactResult& impact);
     void queueCombatEffect(
         const CombatEffectSpawnRequest& request);
     void spawnPendingCombatEffects();

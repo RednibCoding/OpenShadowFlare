@@ -16,11 +16,26 @@ enum class PlayerMotion {
     walking,
     running,
     attacking,
+    reacting,
+    defeated,
 };
 
 enum class MovementPace {
     walk,
     run,
+};
+
+struct PlayerDamagePresentation {
+    std::int32_t action = 1;
+    std::int32_t counter = 0;
+    std::int32_t action_lock = 0;
+    std::int32_t reaction_duration = 0;
+    std::int32_t reaction_stage = 0;
+    bool suppress_displacement = false;
+    std::int32_t reaction_additive = 0;
+    double reaction_angle = 0.0;
+    std::int32_t direction = 0;
+    std::int32_t event_number = 0;
 };
 
 class PlayerActor {
@@ -48,7 +63,8 @@ public:
         const GroundMap& ground,
         const ObjectMap& objects,
         const std::vector<MovementBlocker>* dynamic_blockers = nullptr,
-        std::int32_t attack_speed_tier = -1);
+        std::int32_t attack_speed_tier = -1,
+        const gapi::CafAnimation* animation = nullptr);
 
     WorldPosition position() const;
     WorldPosition renderPosition(double alpha) const;
@@ -63,6 +79,9 @@ public:
     bool attackActive() const;
     std::int32_t attackTargetId() const;
     PlayerAttackActionEvent takeAttackEvent();
+    PlayerDamagePresentation damagePresentation() const;
+    void applyDamagePresentation(
+        const PlayerDamagePresentation& presentation);
     std::int32_t animationChart() const;
     std::int32_t animationFrame() const;
 
@@ -84,6 +103,7 @@ private:
     PlayerAttackActionController attack_controller_;
     PlayerAttackActionEvent pending_attack_event_;
     MovementController movement_controller_;
+    PlayerDamagePresentation damage_presentation_;
 };
 
 }  // namespace osf

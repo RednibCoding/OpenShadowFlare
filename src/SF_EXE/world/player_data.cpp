@@ -423,6 +423,10 @@ std::int32_t PlayerData::basePhysicalDefense() const {
     return initialParameter(6);
 }
 
+std::int32_t PlayerData::baseMagicalDefense() const {
+    return initialParameter(8);
+}
+
 std::int32_t PlayerData::baseHitRate() const {
     return initialParameter(9);
 }

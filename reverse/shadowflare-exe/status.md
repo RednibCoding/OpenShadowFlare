@@ -851,10 +851,9 @@ subtype three, or weapon field `0xcc` suppresses the off hand; field `0xdc`
 does not. The portable item owner, save round trip, tooltip, player appearance,
 and combat profile now share those meanings.
 
-This is still not complete gameplay. Live enemy AI dispatch and movement,
-remaining script commands and operand
-domains, alternate conversation modes, darkness, and saved-game scenario
-restoration are the next executable layers.
+This is still not complete gameplay. Enemy effect-actor impacts, remaining
+script commands and operand domains, alternate conversation modes, darkness,
+and saved-game scenario restoration are the next executable layers.
 
 The first player attack action now follows the executable rather than a visual
 approximation. `0x00450630` maps main-hand subtypes to actions 7 through 10
@@ -888,5 +887,42 @@ effect-list ownership, marker and death audio, fading, and actor removal now
 run at the live boundary. Lethal hits also update persistent kill and
 experience fields, apply novice level growth, create Table 30/31 item rolls
 and Gold Find-scaled money through the full ground-item owner, and preserve
-their constructor state through pickup and saving. Live AI attachment and
-specialized effect families remain next.
+their constructor state through pickup and saving.
+
+The enemy dispatcher at `0x00458f70` is live now. When presentation offset
+`+0x254` is clear, it evaluates the current event at `+0x204`, writes the
+selected AID action at `+0x200`, clears the native slot at `+0x1fc`, and then
+atomically promotes and dispatches that record through `0x00459340`. Direct
+and effect presentations hold the presentation lock; otherwise queued
+presentation `+0x1f8` replaces current `+0x1f4`, and the counters advance
+after dispatch. The portable actor keeps that order instead of polling an
+independent behavior tree.
+
+Patrol, approach, retreat, wait, and walk-point actions now feed the existing
+movement destination selector and shared collision controller. In particular,
+`0x0045c3c0` uses AID parameter three scaled by the enemy movement factor,
+spawn-relative MCT patrol bounds, parameter four as its movement duration, and
+queues walk presentation eight. Parameter six is retained but is not a CAF
+chart selector. `0x0045c780` chooses movement mode four for a player or mode
+one for a scenario actor and uses parameters seven and eight for target
+refresh and random turning.
+
+Ordinary enemy actions one through three acquire their target on entry, face
+it, scan the CAF marker, revalidate the impact target, and send the exact
+packet through the live player receiver. The receiver commits life, mana,
+equipment, backpack, Special Items, reaction, effects, reflection, and audio
+before sample six. The base player magical-defense field is initial parameter
+row eight and its matching equipped contribution is Item.Ibn derived
+parameter six; magical attack is the separate row seven/parameter-four pair.
+Player receiver actions four and five now own chart-three hit reaction and
+chart-four death presentation, movement and attack interruption, action
+locking, direction, and collision-aware displacement.
+
+The live Wasteland regression begins with the authored event-zero patrol,
+waits for the same enemy to approach and damage the player, requires the
+receiver effect and sample, and verifies that inventory, belt, and equipment
+ownership remain unchanged. It then writes and reloads a retail save and
+checks the damaged life and those owned item containers again. Enemy effect
+actions four through six already create their typed visual requests, but
+their moving/area effect actors do not deliver damage yet and remain the next
+combat boundary.

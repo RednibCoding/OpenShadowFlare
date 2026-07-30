@@ -314,6 +314,8 @@ bool testRetailStatBuilder() {
                     player.initialParameter(5) &&
                 player.basePhysicalDefense() ==
                     player.initialParameter(6) &&
+                player.baseMagicalDefense() ==
+                    player.initialParameter(8) &&
                 player.baseHitRate() ==
                     player.initialParameter(9) &&
                 player.baseEvasionRate() ==

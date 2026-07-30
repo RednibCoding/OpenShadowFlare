@@ -154,6 +154,7 @@ add_library(
   world/world_pointer.cpp
   world/world_scene.cpp
   world/world_scene_combat.cpp
+  world/world_scene_enemy_combat.cpp
   world/world_scene_interaction.cpp
   world/world_scene_items.cpp
   world/world_scene_loading.cpp

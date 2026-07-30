@@ -1,10 +1,14 @@
 #ifndef OPENSHADOWFLARE_ENEMY_ACTOR_HPP
 #define OPENSHADOWFLARE_ENEMY_ACTOR_HPP
 
-#include "enemy_damage_receiver.hpp"
 #include "combat_effect_request.hpp"
+#include "enemy_ai_action.hpp"
+#include "enemy_damage_receiver.hpp"
+#include "enemy_direct_impact.hpp"
+#include "enemy_presentation.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
+#include "movement_destination_selector.hpp"
 #include "scenario_data.hpp"
 #include "scenario_entity_state.hpp"
 
@@ -19,6 +23,7 @@ namespace osf {
 class CharacterVisualResource;
 class AiControlList;
 class RetailRandom;
+class TableDatabase;
 
 namespace gapi {
 class NjpImage;
@@ -26,9 +31,22 @@ class NjpImage;
 
 struct EnemyActorUpdate {
     CombatEffectSpawnRequest effect_spawn;
+    EnemyDirectImpactResult direct_impact;
     std::vector<std::int32_t> audio_samples;
     bool death_started = false;
     bool expired = false;
+};
+
+struct EnemyActorUpdateContext {
+    const GroundMap* ground = nullptr;
+    const ObjectMap* objects = nullptr;
+    const std::vector<MovementBlocker>* dynamic_blockers = nullptr;
+    const TableDatabase* parameter_tables = nullptr;
+    RetailRandom* random = nullptr;
+    EnemyTargetSearch target_in_range;
+    EnemyDefaultTargetSearch default_target;
+    EnemyDirectImpactTargetSearch direct_impact_target;
+    MovementTargetResolver resolve_movement_target;
 };
 
 class EnemyActor {
@@ -40,6 +58,8 @@ public:
         std::int32_t ai_control_index,
         std::string* error = nullptr);
     void clear();
+    EnemyActorUpdate update(
+        const EnemyActorUpdateContext& context);
     EnemyActorUpdate update(
         const GroundMap& ground,
         const ObjectMap& objects,
@@ -155,6 +175,14 @@ private:
     std::int32_t draw_strength_ = 1000;
     bool expired_ = false;
     std::int32_t movement_speed_scale_ = 0;
+    WorldPosition spawn_position_;
+    WorldPosition walk_point_;
+    EnemyAiActionController ai_action_;
+    EnemyPresentationController presentation_;
+    MovementDestinationSelector movement_destination_;
+    MovementController movement_controller_;
+    std::int32_t movement_speed_ = 0;
+    std::int32_t movement_action_counter_ = 0;
     EnemyPresentationProfile presentation_profile_;
     ScenarioEntityState state_;
     std::vector<std::int32_t> part_visibility_;

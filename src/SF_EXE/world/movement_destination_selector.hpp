@@ -46,7 +46,6 @@ struct MovementDestinationRequest {
     std::int32_t speed = 0;
     std::int32_t stop_distance = 0;
     std::int32_t duration = 0;
-    std::int32_t animation_chart = 0;
     std::int32_t random_turn_chance = 0;
     std::int32_t target_refresh_interval = 0;
 };

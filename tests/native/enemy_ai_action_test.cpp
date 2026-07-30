@@ -101,7 +101,6 @@ bool testRetailPatrolAction() {
                 update.movement.destination_bounds.bottom == 110 &&
                 update.movement.speed == 45 &&
                 update.movement.duration == 3 &&
-                update.movement.animation_chart == 4 &&
                 controller.actionCounter() == 1 &&
                 controller.patrolCounter() == 1,
             "Enemy AI action one did not start the authored retail "

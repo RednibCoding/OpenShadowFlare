@@ -30,7 +30,6 @@ constexpr std::size_t kActionDuration = 1;
 constexpr std::size_t kMovementSpeed = 3;
 constexpr std::size_t kPatrolMovementDuration = 4;
 constexpr std::size_t kPatrolIdleDuration = 5;
-constexpr std::size_t kMovementAnimationChart = 6;
 constexpr std::size_t kTargetRefreshInterval = 7;
 constexpr std::size_t kRandomTurnChance = 8;
 constexpr std::size_t kTargetConditionEnabled = 3;
@@ -218,9 +217,6 @@ EnemyAiActionUpdate EnemyAiActionController::update(
             result.movement.speed = speed;
             result.movement.duration =
                 movement_duration;
-            result.movement.animation_chart =
-                action_.parameters[
-                    kMovementAnimationChart];
             if (context.presentation_action !=
                 kWalkPresentation) {
                 result.requested_presentation_action =

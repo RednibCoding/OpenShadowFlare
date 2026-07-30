@@ -867,11 +867,32 @@ Gold Find reads rolled equipment parameter 26. Item and Gold drops keep their
 full instance object while bouncing, so landing audio, pickup, inventory
 placement, equipment, and save/load do not silently discard rolled values.
 
-The next combat slice should connect the already reconstructed AI evaluator
-and native action controller to live enemies. Start with one Wasteland enemy:
-its current life, target distance, event, patrol movement, and presentation
-completion should drive the real AID choices, shared movement controller, and
-ordinary attack receiver without adding a second AI or collision path.
+The live enemy dispatcher is connected now. Each enemy evaluates its current
+AID event, promotes the chosen native action, and then updates either that
+action or its locked presentation in the same order as `0x00458f70`. Patrol,
+approach, retreat, wait, and walk-point requests all use the existing
+destination selector and movement controller, including live actor blockers.
+The Wasteland fixture proves that an authored event-zero patrol turns into an
+approach and ordinary attack rather than relying on a test-only enemy.
+
+Direct enemy impacts now pass through the reconstructed player receiver. The
+live receiver snapshot uses the named player base rows and matching equipment
+contributions, including row eight and item parameter six for magical defense.
+Returned life, mana, backpack, equipment, Special Items, reaction state,
+durability changes, effects, reflection, and audio are committed in retail
+order; the separate belt remains untouched. Player actions four and five show
+the hit and death CAF presentations and interrupt movement or attacks. A live
+regression waits
+for a Wasteland enemy to damage the player, requires its hit effect and sound,
+then saves and reloads the damaged character to make sure no owned items are
+lost as an accidental side effect.
+
+The next combat slice should finish enemy effect attacks. Actions four through
+six already evaluate their authored data and create typed effect requests, but
+the resulting projectile or area actor still needs its retail movement,
+lifetime, collision/impact dispatch, and player-receiver handoff. Work from
+the executable's effect update branches and cover at least one shipped live
+enemy case before treating that path as complete.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

@@ -1,5 +1,7 @@
 #include "enemy_actor.hpp"
 
+#include "actor_direction.hpp"
+#include "enemy_ai_evaluator.hpp"
 #include "enemy_presentation_audio.hpp"
 #include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "resources/character_visual_resource.hpp"
@@ -37,6 +39,8 @@ constexpr std::int32_t kDeathDirection = 8;
 constexpr std::int32_t kHitDisplacement = 120;
 constexpr std::int32_t kDeathFadeUpdates = 120;
 constexpr std::int32_t kDeathEffectNumber = 21010;
+constexpr std::int32_t kWalkPresentationAction = 8;
+constexpr std::int32_t kWalkAnimationChart = 1;
 
 const gapi::CafDirection* animationDirection(
     const CharacterVisualResource* visual,
@@ -159,6 +163,8 @@ bool EnemyActor::initialize(
     label_height_ = enemy.label_height;
     position_ = {enemy.world_x, enemy.world_y};
     previous_position_ = position_;
+    spawn_position_ = position_;
+    walk_point_ = position_;
     judgement_ = {
         enemy.judgement_left,
         enemy.judgement_top,
@@ -195,6 +201,10 @@ bool EnemyActor::initialize(
     movement_speed_scale_ =
         enemy.movement_speed_scale;
     presentation_profile_ = enemy.presentation;
+    ai_action_.reset();
+    presentation_.reset();
+    movement_destination_.reset();
+    movement_controller_.reset();
 
     const std::size_t part_count =
         visual
@@ -263,6 +273,14 @@ void EnemyActor::clear() {
     draw_strength_ = 1000;
     expired_ = false;
     movement_speed_scale_ = 0;
+    spawn_position_ = {};
+    walk_point_ = {};
+    ai_action_.reset();
+    presentation_.reset();
+    movement_destination_.reset();
+    movement_controller_.reset();
+    movement_speed_ = 0;
+    movement_action_counter_ = 0;
     presentation_profile_ = {};
     state_.clear();
     part_visibility_.clear();
@@ -273,9 +291,7 @@ void EnemyActor::clear() {
 }
 
 EnemyActorUpdate EnemyActor::update(
-    const GroundMap& ground,
-    const ObjectMap& objects,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const EnemyActorUpdateContext& context) {
     EnemyActorUpdate result;
     previous_position_ = position_;
     if (expired_) {
@@ -337,16 +353,18 @@ EnemyActorUpdate EnemyActor::update(
                         position_,
                         reaction_angle_,
                         distance);
-                position_ = advanceMovement(
-                    ground,
-                    objects,
-                    judgement_,
-                    position_,
-                    destination,
-                    distance,
-                    dynamic_blockers,
-                    movementBlockerId())
-                                .position;
+                if (context.ground && context.objects) {
+                    position_ = advanceMovement(
+                        *context.ground,
+                        *context.objects,
+                        judgement_,
+                        position_,
+                        destination,
+                        distance,
+                        context.dynamic_blockers,
+                        movementBlockerId())
+                                    .position;
+                }
             }
         }
 
@@ -429,13 +447,214 @@ EnemyActorUpdate EnemyActor::update(
         return result;
     }
 
+    // UpdateEnemy evaluates and promotes a native AID action only while
+    // the direct/effect presentation lock is clear. Once selected, that
+    // presentation keeps control until it publishes its completion event.
+    bool run_presentation =
+        presentation_.presentationAction() >= 1 &&
+        presentation_.presentationAction() <= 6;
+    if (!run_presentation && ai_control_ &&
+        context.random) {
+        const EnemyAiSelection selected =
+            evaluateEnemyAiEvent(
+                *ai_control_,
+                event_number_,
+                {
+                    current_life_,
+                    maximum_life_,
+                    context.target_in_range,
+                },
+                *context.random);
+        if (selected.selected) {
+            ai_action_.select(selected.action);
+            event_number_ = -1;
+        }
+
+        EnemyAiActionContext action_context;
+        action_context.spawn_position =
+            spawn_position_;
+        action_context.patrol_bounds =
+            patrol_bounds_;
+        action_context.movement_speed_scale =
+            movement_speed_scale_;
+        action_context.presentation_action =
+            presentation_action_;
+        action_context.walk_point = walk_point_;
+        action_context.walk_point_speed =
+            ai_control_->walkPointSpeed();
+        action_context.target_in_range =
+            context.target_in_range;
+        action_context.default_target =
+            context.default_target;
+        const EnemyAiActionUpdate action =
+            ai_action_.update(action_context);
+        if (action.handled) {
+            event_number_ = action.event_number;
+        }
+        if (action.clear_current_presentation) {
+            presentation_.reset();
+            movement_destination_.reset();
+            movement_controller_.reset();
+            movement_speed_ = 0;
+        }
+        if (action.requested_presentation_action >= 1 &&
+            action.requested_presentation_action <= 6) {
+            presentation_.select(
+                action.requested_presentation_action);
+            run_presentation = true;
+        } else if (
+            action.requested_presentation_action ==
+                kIdlePresentationAction ||
+            action.requested_presentation_action ==
+                kWalkPresentationAction) {
+            if (presentation_action_ !=
+                action.requested_presentation_action) {
+                action_counter_ = 0;
+            }
+            presentation_action_ =
+                action.requested_presentation_action;
+        }
+        if (action.movement.mode !=
+            MovementDestinationMode::none) {
+            movement_destination_.initialize(
+                action.movement, position_);
+            movement_speed_ = action.movement.speed;
+            movement_controller_.reset();
+        }
+    }
+
+    if (run_presentation) {
+        EnemyPresentationContext presentation_context;
+        presentation_context.position = position_;
+        presentation_context.direction = direction_;
+        presentation_context.event_number =
+            event_number_;
+        presentation_context.resource_id =
+            resource_id_;
+        presentation_context.source_character_number =
+            characterNumber();
+        presentation_context.source_judgement =
+            judgement_;
+        presentation_context.profile =
+            &presentation_profile_;
+        presentation_context.animation =
+            visual_ ? &visual_->animation() : nullptr;
+        presentation_context.parameter_tables =
+            context.parameter_tables;
+        presentation_context.random = context.random;
+        presentation_context.target_in_range =
+            context.target_in_range;
+        presentation_context.default_target =
+            context.default_target;
+        presentation_context.direct_impact_target =
+            context.direct_impact_target;
+        const EnemyPresentationUpdate presentation =
+            presentation_.update(
+                presentation_context);
+        if (presentation.handled) {
+            presentation_action_ =
+                presentation.presentation_action;
+            animation_chart_ =
+                presentation.animation_chart;
+            animation_frame_ =
+                presentation.animation_frame;
+            direction_ = presentation.direction;
+        }
+        for (std::int32_t sample :
+             presentation.audio_samples) {
+            if (sample >= 0) {
+                result.audio_samples.push_back(sample);
+            }
+        }
+        if (presentation.direct_impact.valid) {
+            result.direct_impact =
+                presentation.direct_impact;
+            if (presentation
+                    .direct_impact.post_hit_event != -1) {
+                event_number_ =
+                    presentation
+                        .direct_impact.post_hit_event;
+            }
+        }
+        if (presentation.effect_spawn.valid) {
+            result.effect_spawn =
+                presentation.effect_spawn;
+        }
+        if (presentation.completion_event != -1) {
+            event_number_ =
+                presentation.completion_event;
+        }
+        return result;
+    }
+
+    if (context.ground && context.objects &&
+        context.random &&
+        movement_destination_.request().mode !=
+            MovementDestinationMode::none) {
+        const MovementDestinationResult destination =
+            movement_destination_.update(
+                {
+                    position_,
+                    judgement_,
+                    context.resolve_movement_target,
+                },
+                *context.random);
+        if (destination.active) {
+            const MovementStepResult movement =
+                movement_controller_.advance(
+                    *context.ground,
+                    *context.objects,
+                    judgement_,
+                    position_,
+                    destination.destination,
+                    movement_speed_,
+                    context.dynamic_blockers,
+                    movementBlockerId());
+            if (movement.moved) {
+                direction_ = retailDirectionForVector(
+                    movement.position.x - position_.x,
+                    movement.position.y - position_.y);
+            }
+            position_ = movement.position;
+            if (presentation_action_ !=
+                kWalkPresentationAction) {
+                presentation_action_ =
+                    kWalkPresentationAction;
+                movement_action_counter_ = 0;
+            }
+            animation_chart_ = kWalkAnimationChart;
+            animation_frame_ =
+                movement_action_counter_++;
+            draw_strength_ = 1000;
+            return result;
+        }
+        movement_destination_.reset();
+        movement_controller_.reset();
+        movement_speed_ = 0;
+        presentation_action_ =
+            kIdlePresentationAction;
+        action_counter_ = 0;
+    }
+
     // Enemy action seven is the retail idle action. It selects CAF chart
     // zero, submits the current counter, then advances it once per
     // active-map gameplay update.
+    presentation_action_ = kIdlePresentationAction;
     animation_chart_ = 0;
     animation_frame_ = action_counter_++;
     draw_strength_ = 1000;
     return result;
+}
+
+EnemyActorUpdate EnemyActor::update(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    const std::vector<MovementBlocker>* dynamic_blockers) {
+    EnemyActorUpdateContext context;
+    context.ground = &ground;
+    context.objects = &objects;
+    context.dynamic_blockers = dynamic_blockers;
+    return update(context);
 }
 
 std::int32_t EnemyActor::stateValue(
@@ -717,6 +936,16 @@ void EnemyActor::applyDamageReceiverState(
         state.defeated_by_effect;
     defeat_source_character_number_ =
         state.defeat_source_character_number;
+    if (presentation_action_ ==
+            kHitPresentationAction ||
+        presentation_action_ ==
+            kDeathPresentationAction) {
+        presentation_.reset();
+        movement_destination_.reset();
+        movement_controller_.reset();
+        movement_speed_ = 0;
+        movement_action_counter_ = 0;
+    }
 }
 
 }  // namespace osf

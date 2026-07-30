@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <utility>
 
@@ -43,6 +44,23 @@ std::int32_t animationFrameForSpeed(
         speedFactor(tier));
 }
 
+std::int32_t frameCount(
+    const gapi::CafAnimation* animation,
+    std::int32_t chart,
+    std::int32_t direction) {
+    if (!animation || chart < 0 || direction < 0 ||
+        direction >= 9 ||
+        static_cast<std::size_t>(chart) >=
+            animation->charts().size()) {
+        return 0;
+    }
+    return animation->charts()[
+               static_cast<std::size_t>(chart)]
+        .directions[
+            static_cast<std::size_t>(direction)]
+        .frame_count;
+}
+
 }  // namespace
 
 void PlayerActor::reset(
@@ -67,6 +85,7 @@ void PlayerActor::reset(
     attack_controller_.cancel();
     pending_attack_event_ = {};
     movement_controller_.reset();
+    damage_presentation_ = {};
 }
 
 void PlayerActor::clear() {
@@ -88,10 +107,12 @@ void PlayerActor::relocate(
     attack_controller_.cancel();
     pending_attack_event_ = {};
     movement_controller_.reset();
+    damage_presentation_ = {};
 }
 
 void PlayerActor::moveTo(WorldPosition destination) {
-    if (attack_controller_.active()) {
+    if (attack_controller_.active() ||
+        damage_presentation_.action_lock != 0) {
         return;
     }
     destination_ = destination;
@@ -102,7 +123,8 @@ void PlayerActor::moveTo(WorldPosition destination) {
 }
 
 void PlayerActor::followTo(WorldPosition destination) {
-    if (attack_controller_.active()) {
+    if (attack_controller_.active() ||
+        damage_presentation_.action_lock != 0) {
         return;
     }
     destination_ = destination;
@@ -113,7 +135,8 @@ void PlayerActor::followTo(WorldPosition destination) {
 }
 
 void PlayerActor::cancelMovement() {
-    if (attack_controller_.active()) {
+    if (attack_controller_.active() ||
+        damage_presentation_.action_lock != 0) {
         return;
     }
     destination_ = position_;
@@ -136,7 +159,8 @@ bool PlayerActor::beginAttack(
     std::int32_t target_id,
     std::int32_t attack_speed_tier,
     const gapi::CafAnimation& animation) {
-    if (attack_controller_.active()) {
+    if (attack_controller_.active() ||
+        damage_presentation_.action_lock != 0) {
         return false;
     }
     PlayerAttackAnimationTiming timing;
@@ -185,8 +209,110 @@ void PlayerActor::update(
     const GroundMap& ground,
     const ObjectMap& objects,
     const std::vector<MovementBlocker>* dynamic_blockers,
-    std::int32_t attack_speed_tier) {
+    std::int32_t attack_speed_tier,
+    const gapi::CafAnimation* animation) {
     previous_position_ = position_;
+    if (damage_presentation_.action == 4) {
+        constexpr std::int32_t kHitChart = 3;
+        constexpr std::int32_t kHitDisplacement = 120;
+        damage_presentation_.action_lock = 1;
+        damage_presentation_.reaction_duration =
+            std::max<std::int32_t>(
+                damage_presentation_.reaction_duration,
+                1);
+        motion_ = PlayerMotion::reacting;
+        animation_chart_ = kHitChart;
+        const std::int32_t count =
+            std::max<std::int32_t>(
+                frameCount(
+                    animation,
+                    animation_chart_,
+                    direction_),
+                1);
+        animation_frame_ =
+            damage_presentation_.counter * count /
+            damage_presentation_.reaction_duration;
+        if (damage_presentation_.counter ==
+            damage_presentation_.reaction_duration - 1) {
+            animation_frame_ = count - 1;
+        }
+        animation_frame_ = std::clamp(
+            animation_frame_, 0, count - 1);
+        if (damage_presentation_.reaction_stage == 2) {
+            animation_frame_ = 0;
+        }
+
+        if (!damage_presentation_.suppress_displacement &&
+            damage_presentation_.reaction_additive == 0) {
+            const std::int32_t distance =
+                (damage_presentation_.reaction_duration -
+                 damage_presentation_.counter) *
+                kHitDisplacement /
+                damage_presentation_.reaction_duration;
+            const WorldPosition destination{
+                position_.x +
+                    static_cast<std::int32_t>(
+                        std::cos(
+                            damage_presentation_
+                                .reaction_angle) *
+                        distance),
+                position_.y -
+                    static_cast<std::int32_t>(
+                        std::sin(
+                            damage_presentation_
+                                .reaction_angle) *
+                        distance),
+            };
+            position_ = advanceMovement(
+                ground,
+                objects,
+                judgement_,
+                position_,
+                destination,
+                distance,
+                dynamic_blockers)
+                            .position;
+        }
+        if (damage_presentation_.counter ==
+            damage_presentation_.reaction_duration - 1) {
+            damage_presentation_.action = 1;
+            damage_presentation_.action_lock = 0;
+            damage_presentation_.reaction_duration = 0;
+            motion_ = PlayerMotion::idle;
+            action_counter_ = 0;
+        } else {
+            ++damage_presentation_.counter;
+        }
+        if (damage_presentation_.reaction_additive != 0) {
+            --damage_presentation_.reaction_additive;
+        }
+        return;
+    }
+    if (damage_presentation_.action == 5) {
+        constexpr std::int32_t kDeathChart = 4;
+        constexpr std::int32_t kDeathDirection = 8;
+        damage_presentation_.action_lock = 1;
+        motion_ = PlayerMotion::defeated;
+        animation_chart_ = kDeathChart;
+        if (frameCount(
+                animation,
+                animation_chart_,
+                kDeathDirection) > 0) {
+            direction_ = kDeathDirection;
+        }
+        const std::int32_t count =
+            std::max<std::int32_t>(
+                frameCount(
+                    animation,
+                    animation_chart_,
+                    direction_),
+                1);
+        animation_frame_ = std::min(
+            damage_presentation_.counter,
+            count - 1);
+        ++damage_presentation_.counter;
+        return;
+    }
     if (attack_controller_.active()) {
         pending_attack_event_ =
             attack_controller_.update(attack_speed_tier);
@@ -309,6 +435,48 @@ PlayerAttackActionEvent PlayerActor::takeAttackEvent() {
     PlayerAttackActionEvent event = pending_attack_event_;
     pending_attack_event_ = {};
     return event;
+}
+
+PlayerDamagePresentation
+PlayerActor::damagePresentation() const {
+    PlayerDamagePresentation presentation =
+        damage_presentation_;
+    if (presentation.action_lock != 0) {
+        return presentation;
+    }
+    if (attack_controller_.active()) {
+        presentation.action =
+            static_cast<std::int32_t>(
+                attack_controller_.action());
+    } else if (motion_ == PlayerMotion::walking) {
+        presentation.action = 2;
+    } else if (motion_ == PlayerMotion::running) {
+        presentation.action = 3;
+    } else {
+        presentation.action = 1;
+    }
+    presentation.counter = action_counter_;
+    presentation.direction = direction_;
+    return presentation;
+}
+
+void PlayerActor::applyDamagePresentation(
+    const PlayerDamagePresentation& presentation) {
+    damage_presentation_ = presentation;
+    direction_ = presentation.direction;
+    if (presentation.action != 4 &&
+        presentation.action != 5) {
+        return;
+    }
+    destination_ = position_;
+    movement_controller_.reset();
+    attack_controller_.cancel();
+    pending_attack_event_ = {};
+    action_counter_ = 0;
+    motion_ =
+        presentation.action == 4
+            ? PlayerMotion::reacting
+            : PlayerMotion::defeated;
 }
 
 std::int32_t PlayerActor::animationChart() const {
