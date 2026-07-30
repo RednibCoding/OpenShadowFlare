@@ -404,7 +404,8 @@ reduces the test to the exact cursor tip. Within one priority group, an exact
 tip hit wins first and the nearest candidate wins otherwise. The candidates
 also keep their normal world depth order and are grouped by the five
 priorities stored in `SFlare.Cfg`. With the retail defaults, a ground item
-wins over a person when both are in range.
+wins over a person when both are in range, while type-two enemies use the
+highest `ENEM` priority and win over both.
 
 `0x0040ee70` scans that result from front to back. For a person it projects the
 actor's feet, subtracts the MCT label height, draws a half-transparent black
@@ -414,6 +415,8 @@ and the actor's configured name color. Ground items use the name from
 The selected object's visible RGB strengths each receive `+300`. Values above
 1000 do not multiply the palette color: RKC_UPDIB moves each channel toward
 white, which produces the pale hover tint seen in the retail game.
+Enemies use that same nameplate and pale-tint path, with their MCT name color
+and label height.
 
 Message layout at `0x00456550` counts ASCII and Shift-JIS glyph widths, adds
 an eight-pixel text-box inset, and positions actor messages above the same MCT
@@ -459,6 +462,17 @@ toward them instead of opening a remote conversation or simply rejecting the
 click. Type-three ground items use the same approach path. Once close enough,
 `0x004526a0` calls the local player's inventory insertion routine and removes
 the scenario entity only when ownership has transferred successfully.
+
+Type-two enemies split from the script-interaction path. A living, visible,
+pointer-enabled enemy outside the same inclusive `0x9f` rectangle-gap range
+becomes movement-controller mode one's moving target. On reaching the range,
+the player stops, faces the enemy, stores its character number, and requests
+the currently selected ordinary attack. The `SFlare.Cfg` field mirrored at
+`0x0048d540` is the `Attack While Moving` gate used by this branch; retail
+unconditionally restores it to enabled while loading the config. The portable
+target controller now owns the approach-to-ready transition and cancels it if
+the enemy disappears, dies, becomes hidden, or loses pointer status. CAF
+attack startup and the impact marker remain the next combat checkpoint.
 
 The portable first pickup checkpoint keeps that separation. `WorldScene`
 owns the stable ground entity and pending approach, while `PlayerInventory`

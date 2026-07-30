@@ -64,7 +64,7 @@ bool testRetailDefaultsAndFixture() {
                 config.semi_transparent_objects &&
                 config.display_darkness &&
                 config.unknown_48d528 &&
-                config.unknown_48d540 &&
+                config.attack_while_moving &&
                 config.save_image_at_game_end &&
                 config.click_range == 2 &&
                 config.click_range_enabled &&
@@ -97,7 +97,7 @@ bool testConfigValidationAndWriting() {
         -9, -5, 0, 2, 1, 0, 9, 8, -2, 0, 1, 2, 3, 4, -12000, 100,
     }};
     GameConfig config;
-    config.unknown_48d540 = false;
+    config.attack_while_moving = false;
     std::istringstream input(encode(values), std::ios::binary);
     if (!check(
             osf::loadGameConfig(input, config),
@@ -109,7 +109,7 @@ bool testConfigValidationAndWriting() {
                 config.semi_transparent_shadow &&
                 !config.semi_transparent_objects &&
                 config.display_darkness &&
-                config.unknown_48d540 &&
+                config.attack_while_moving &&
                 config.save_image_at_game_end &&
                 config.click_range == 2 &&
                 config.click_range_enabled &&

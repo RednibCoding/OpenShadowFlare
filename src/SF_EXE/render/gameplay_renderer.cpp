@@ -115,7 +115,8 @@ void renderEnemyPass(
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    bool hovered) {
     renderCharacterAnimationPass(
         renderer,
         enemy.animation(),
@@ -128,11 +129,16 @@ void renderEnemyPass(
         [&enemy](std::size_t part) {
             return enemy.partEnabled(part);
         },
-        [&enemy](std::size_t part) {
+        [&enemy, hovered](std::size_t part) {
+            const std::int32_t hover_strength =
+                hovered ? 300 : 0;
             return CharacterColorStrength{
-                enemy.partRedStrength(part),
-                enemy.partGreenStrength(part),
-                enemy.partBlueStrength(part),
+                enemy.partRedStrength(part) +
+                    hover_strength,
+                enemy.partGreenStrength(part) +
+                    hover_strength,
+                enemy.partBlueStrength(part) +
+                    hover_strength,
             };
         },
         camera_x,
@@ -627,7 +633,8 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
+            shadow_opacity,
+            world.hoveredEnemyId() == entry.enemy->id());
     } else if (entry.item) {
         drawGroundItem(
             renderer,

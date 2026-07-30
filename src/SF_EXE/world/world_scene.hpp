@@ -20,6 +20,7 @@
 #include "npc_actor.hpp"
 #include "player_appearance.hpp"
 #include "player_actor.hpp"
+#include "player_attack_target.hpp"
 #include "player_data.hpp"
 #include "player_item_controller.hpp"
 #include "quest_state.hpp"
@@ -130,6 +131,7 @@ public:
     bool interactionPending() const;
     std::int32_t hoveredScenarioObjectId() const;
     std::int32_t hoveredNpcId() const;
+    std::int32_t hoveredEnemyId() const;
     std::int32_t hoveredGroundItemId() const;
     std::int32_t pointerScreenX() const;
     std::int32_t pointerScreenY() const;
@@ -165,6 +167,7 @@ public:
     MovementPace playerMovementPace() const;
     std::int32_t playerAnimationChart() const;
     std::int32_t playerAnimationFrame() const;
+    std::int32_t playerAttackTargetId() const;
     std::int32_t cameraScreenX() const;
     std::int32_t cameraScreenY() const;
     std::int32_t renderCameraScreenX(double alpha) const;
@@ -229,12 +232,19 @@ private:
     ScenarioObjectActor* findScenarioObject(
         std::int32_t id);
     NpcActor* findNpc(std::int32_t id);
+    EnemyActor* findEnemy(std::int32_t id);
+    const EnemyActor* findEnemy(std::int32_t id) const;
     GroundItem* findGroundItem(std::int32_t id);
+    PlayerAttackTargetSnapshot attackTargetSnapshot(
+        const EnemyActor& enemy) const;
+    bool commandPlayerAttack(EnemyActor& enemy);
+    bool readyPlayerAttack(EnemyActor& enemy);
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
     WorldPointer pointer_;
     WorldPointerTarget pending_interaction_;
+    PlayerAttackTargetController player_attack_target_;
     CharacterVisualResource player_visual_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;

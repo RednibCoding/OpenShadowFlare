@@ -4,6 +4,7 @@
 #include "world/movement_controller.hpp"
 #include "world/npc_actor.hpp"
 #include "world/player_actor.hpp"
+#include "world/player_attack_target.hpp"
 #include "world/world_pointer.hpp"
 
 #include <algorithm>
@@ -543,6 +544,11 @@ bool testWorldPointerPriority() {
             {0, {100, 100}, {}, 0},
             3,
         },
+        {
+            {osf::WorldPointerTargetKind::enemy, 30},
+            {0, {100, 100}, {}, 0},
+            2,
+        },
     };
     osf::WorldPointer pointer;
     pointer.update(30, 40, candidates);
@@ -551,16 +557,17 @@ bool testWorldPointerPriority() {
                 pointer.screenX() == 30 &&
                 pointer.screenY() == 40 &&
                 pointer.target().kind ==
-                    osf::WorldPointerTargetKind::ground_item &&
-                pointer.target().id == 20,
+                    osf::WorldPointerTargetKind::enemy &&
+                pointer.target().id == 30,
             "The default retail click priority did not prefer "
-            "an item over an actor.")) {
+            "an enemy over other world targets.")) {
         return false;
     }
 
     osf::WorldPointerConfiguration configuration;
     configuration.click_priority[1] = 4;
     configuration.click_priority[2] = 0;
+    configuration.click_priority[0] = 1;
     configuration.range = 99;
     pointer.configure(configuration);
     pointer.update(30, 40, candidates);
@@ -627,6 +634,134 @@ bool testWorldPointerPriority() {
         "picking.");
 }
 
+bool testPlayerAttackTargetRange() {
+    const osf::ObjectBounds actor_bounds{
+        -80, -80, 79, 79,
+    };
+    osf::PlayerAttackTargetSnapshot target{
+        7,
+        {319, 0},
+        actor_bounds,
+        10,
+        true,
+        true,
+    };
+    if (!check(
+            osf::kRetailPlayerAttackRange == 0x9f &&
+                osf::classifyPlayerAttackTarget(
+                    {0, 0},
+                    actor_bounds,
+                    target) ==
+                    osf::PlayerAttackTargetDisposition::ready,
+            "The inclusive retail player attack-range edge was "
+            "not accepted.")) {
+        return false;
+    }
+
+    target.position.x = 320;
+    if (!check(
+            osf::classifyPlayerAttackTarget(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                osf::PlayerAttackTargetDisposition::approach,
+            "A target one unit beyond retail attack range did "
+            "not request an approach.")) {
+        return false;
+    }
+
+    osf::PlayerAttackTargetController controller;
+    if (!check(
+            controller.command(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                    osf::PlayerAttackTargetDisposition::approach &&
+                controller.approachTargetId() == 7 &&
+                controller.readyTargetId() == -1,
+            "The retail attack target did not enter its approach "
+            "state.")) {
+        return false;
+    }
+    target.position.x = 319;
+    if (!check(
+            controller.refresh(
+                {0, 0},
+                actor_bounds,
+                &target) ==
+                    osf::PlayerAttackTargetDisposition::ready &&
+                controller.approachTargetId() == -1 &&
+                controller.readyTargetId() == 7,
+            "Reaching retail attack range did not promote the "
+            "approach target to ready.")) {
+        return false;
+    }
+    target.life = 0;
+    if (!check(
+            !controller.validateReady(&target) &&
+                controller.readyTargetId() == -1,
+            "A defeated ready target was retained by the player "
+            "combat controller.")) {
+        return false;
+    }
+    target.life = 10;
+    controller.command({0, 0}, actor_bounds, target);
+    controller.cancel();
+    if (!check(
+            controller.approachTargetId() == -1 &&
+                controller.readyTargetId() == -1,
+            "Cancelling a player command retained its combat "
+            "target.")) {
+        return false;
+    }
+
+    target.position.x = 320;
+    controller.command({0, 0}, actor_bounds, target);
+    if (!check(
+            controller.refresh(
+                {0, 0},
+                actor_bounds,
+                nullptr) ==
+                    osf::PlayerAttackTargetDisposition::rejected &&
+                controller.approachTargetId() == -1 &&
+                controller.readyTargetId() == -1,
+            "A removed enemy did not cancel the pending player "
+            "approach.")) {
+        return false;
+    }
+
+    target.life = 0;
+    if (!check(
+            osf::classifyPlayerAttackTarget(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                osf::PlayerAttackTargetDisposition::rejected,
+            "A defeated enemy remained a valid player target.")) {
+        return false;
+    }
+    target.life = 10;
+    target.visible = false;
+    if (!check(
+            osf::classifyPlayerAttackTarget(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                osf::PlayerAttackTargetDisposition::rejected,
+            "A hidden enemy remained a valid player target.")) {
+        return false;
+    }
+    target.visible = true;
+    target.pointer_enabled = false;
+    return check(
+        osf::classifyPlayerAttackTarget(
+            {0, 0},
+            actor_bounds,
+            target) ==
+            osf::PlayerAttackTargetDisposition::rejected,
+        "A pointer-disabled enemy remained a valid player target.");
+}
+
 bool testRemoteTownFixture() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -691,6 +826,7 @@ int main() {
         !testNpcDynamicActorJudgement() ||
         !testScriptedNpcTurningFlag() ||
         !testWorldPointerPriority() ||
+        !testPlayerAttackTargetRange() ||
         !testRemoteTownFixture()) {
         return 1;
     }

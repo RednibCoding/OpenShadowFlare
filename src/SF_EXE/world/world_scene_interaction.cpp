@@ -22,6 +22,7 @@ void WorldScene::commandPlayerMovement(
         return;
     }
     pending_interaction_ = {};
+    player_attack_target_.cancel();
     player_.moveTo(
         calculateWorldPosition({
             cameraScreenX() + screen_x,
@@ -31,6 +32,7 @@ void WorldScene::commandPlayerMovement(
 
 void WorldScene::cancelPlayerMovement() {
     pending_interaction_ = {};
+    player_attack_target_.cancel();
     player_.cancelMovement();
 }
 
@@ -68,6 +70,7 @@ bool WorldScene::commandWorldInteraction(
     if (target.kind == WorldPointerTargetKind::none) {
         return false;
     }
+    player_attack_target_.cancel();
     if (target.kind ==
         WorldPointerTargetKind::ground_item) {
         pending_interaction_ = target;
@@ -105,6 +108,11 @@ bool WorldScene::commandWorldInteraction(
             return true;
         }
         return startScenarioObjectInteraction(*selected);
+    }
+
+    if (target.kind == WorldPointerTargetKind::enemy) {
+        EnemyActor* selected = findEnemy(target.id);
+        return selected && commandPlayerAttack(*selected);
     }
 
     NpcActor* selected = findNpc(target.id);
@@ -204,6 +212,7 @@ bool WorldScene::dropInventoryItem(
         return false;
     }
     pending_interaction_ = {};
+    player_attack_target_.cancel();
     player_.cancelMovement();
     pointer_.clearSelection();
     return true;
@@ -211,7 +220,8 @@ bool WorldScene::dropInventoryItem(
 
 bool WorldScene::interactionPending() const {
     return pending_interaction_.kind !=
-        WorldPointerTargetKind::none;
+               WorldPointerTargetKind::none ||
+           player_attack_target_.approachTargetId() >= 0;
 }
 
 GameplayServiceRequest
@@ -246,6 +256,7 @@ WorldScene::activateTransportDestination(
 
 bool WorldScene::startNpcInteraction(NpcActor& selected) {
     pending_interaction_ = {};
+    player_attack_target_.cancel();
     player_.cancelMovement();
     player_.faceToward(selected.position());
     const std::int32_t script_character_number =
@@ -264,6 +275,7 @@ bool WorldScene::startNpcInteraction(NpcActor& selected) {
 bool WorldScene::startScenarioObjectInteraction(
     ScenarioObjectActor& selected) {
     pending_interaction_ = {};
+    player_attack_target_.cancel();
     player_.cancelMovement();
     player_.faceToward(selected.position());
     const script::StepResult result =
@@ -287,6 +299,13 @@ std::int32_t WorldScene::hoveredScenarioObjectId() const {
 std::int32_t WorldScene::hoveredNpcId() const {
     return pointer_.target().kind ==
                    WorldPointerTargetKind::npc
+               ? pointer_.target().id
+               : -1;
+}
+
+std::int32_t WorldScene::hoveredEnemyId() const {
+    return pointer_.target().kind ==
+                   WorldPointerTargetKind::enemy
                ? pointer_.target().id
                : -1;
 }
@@ -437,6 +456,7 @@ WorldScene::pointerCandidatesAtScreenPosition(
     candidates.reserve(
         scenario_world_.objects().size() +
         scenario_world_.people().size() +
+        scenario_world_.enemies().size() +
         scenario_world_.groundItems().size());
     for (const ScenarioObjectActor& object :
          scenario_world_.objects()) {
@@ -564,6 +584,55 @@ WorldScene::pointerCandidatesAtScreenPosition(
                 camera_y,
                 point),
             pointerDistanceSquared(npc.position()),
+        });
+    }
+    for (const EnemyActor& enemy :
+         scenario_world_.enemies()) {
+        if (classifyPlayerAttackTarget(
+                player_.position(),
+                player_.judgement(),
+                attackTargetSnapshot(enemy)) ==
+            PlayerAttackTargetDisposition::rejected) {
+            continue;
+        }
+        const auto part_enabled =
+            [&enemy](std::size_t part) {
+                return enemy.partEnabled(part);
+            };
+        if (!displayAnimationIntersectsRectangle(
+                enemy.animation(),
+                enemy.patterns(),
+                enemy.position(),
+                enemy.animationChart(),
+                enemy.direction(),
+                enemy.animationFrame(),
+                part_enabled,
+                camera_x,
+                camera_y,
+                hit_rectangle)) {
+            continue;
+        }
+        candidates.push_back({
+            {WorldPointerTargetKind::enemy, enemy.id()},
+            {
+                0,
+                enemy.position(),
+                enemy.judgement(),
+                0,
+            },
+            2,
+            displayAnimationContainsPoint(
+                enemy.animation(),
+                enemy.patterns(),
+                enemy.position(),
+                enemy.animationChart(),
+                enemy.direction(),
+                enemy.animationFrame(),
+                part_enabled,
+                camera_x,
+                camera_y,
+                point),
+            pointerDistanceSquared(enemy.position()),
         });
     }
     for (const GroundItem& item :
@@ -736,6 +805,77 @@ const EnemyActor* WorldScene::findScriptEnemy(
                    character_number;
         });
     return found == enemies.end() ? nullptr : &*found;
+}
+
+EnemyActor* WorldScene::findEnemy(std::int32_t id) {
+    std::vector<EnemyActor>& enemies =
+        scenario_world_.enemies();
+    const auto found = std::find_if(
+        enemies.begin(),
+        enemies.end(),
+        [id](const EnemyActor& enemy) {
+            return enemy.id() == id;
+        });
+    return found == enemies.end() ? nullptr : &*found;
+}
+
+const EnemyActor* WorldScene::findEnemy(
+    std::int32_t id) const {
+    const std::vector<EnemyActor>& enemies =
+        scenario_world_.enemies();
+    const auto found = std::find_if(
+        enemies.begin(),
+        enemies.end(),
+        [id](const EnemyActor& enemy) {
+            return enemy.id() == id;
+        });
+    return found == enemies.end() ? nullptr : &*found;
+}
+
+PlayerAttackTargetSnapshot WorldScene::attackTargetSnapshot(
+    const EnemyActor& enemy) const {
+    return {
+        enemy.id(),
+        enemy.position(),
+        enemy.judgement(),
+        enemy.currentLife(),
+        enemy.visible(),
+        enemy.pointerEnabled(),
+    };
+}
+
+bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
+    const PlayerAttackTargetDisposition disposition =
+        player_attack_target_.command(
+            player_.position(),
+            player_.judgement(),
+            attackTargetSnapshot(enemy));
+    if (disposition ==
+        PlayerAttackTargetDisposition::rejected) {
+        return false;
+    }
+    pending_interaction_ = {};
+    if (disposition ==
+        PlayerAttackTargetDisposition::approach) {
+        player_.followTo(enemy.position());
+        return true;
+    }
+    return readyPlayerAttack(enemy);
+}
+
+bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
+    if (classifyPlayerAttackTarget(
+            player_.position(),
+            player_.judgement(),
+            attackTargetSnapshot(enemy)) !=
+        PlayerAttackTargetDisposition::ready) {
+        return false;
+    }
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    player_.faceToward(enemy.position());
+    pointer_.clearSelection();
+    return true;
 }
 
 GroundItem* WorldScene::findScriptGroundItem(

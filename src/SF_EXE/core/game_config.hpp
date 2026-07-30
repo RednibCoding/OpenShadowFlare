@@ -21,7 +21,7 @@ struct GameConfig {
     bool semi_transparent_objects = true;       // 0x0048d534
     bool display_darkness = true;               // 0x0048d538
     bool unknown_48d528 = true;
-    bool unknown_48d540 = true;
+    bool attack_while_moving = true;             // 0x0048d540
     bool save_image_at_game_end = true;         // 0x0048d544
     std::int32_t click_range = 2;                // 0x0048d734
     bool click_range_enabled = true;             // 0x0048d738

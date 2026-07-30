@@ -51,6 +51,7 @@ void WorldScene::clear() {
     scenario_script_.clear();
     pointer_.reset();
     pending_interaction_ = {};
+    player_attack_target_.cancel();
     player_visual_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
@@ -251,6 +252,7 @@ void WorldScene::update() {
     }
     NpcActor* interaction_npc = nullptr;
     ScenarioObjectActor* interaction_object = nullptr;
+    EnemyActor* interaction_enemy = nullptr;
     GroundItem* interaction_item = nullptr;
     if (pending_interaction_.kind ==
         WorldPointerTargetKind::scenario_object) {
@@ -281,6 +283,44 @@ void WorldScene::update() {
         !interaction_npc &&
         !interaction_item) {
         pending_interaction_ = {};
+    }
+    const std::int32_t approach_target_id =
+        player_attack_target_.approachTargetId();
+    if (approach_target_id >= 0) {
+        interaction_enemy = findEnemy(approach_target_id);
+        const PlayerAttackTargetSnapshot snapshot =
+            interaction_enemy
+                ? attackTargetSnapshot(*interaction_enemy)
+                : PlayerAttackTargetSnapshot{};
+        const PlayerAttackTargetDisposition disposition =
+            interaction_enemy
+                ? classifyPlayerAttackTarget(
+                player_.position(),
+                player_.judgement(),
+                snapshot)
+                : PlayerAttackTargetDisposition::rejected;
+        if (disposition ==
+            PlayerAttackTargetDisposition::approach) {
+            player_.followTo(interaction_enemy->position());
+        } else if (
+            disposition ==
+            PlayerAttackTargetDisposition::rejected) {
+            player_attack_target_.cancel();
+            player_.cancelMovement();
+            interaction_enemy = nullptr;
+        }
+    }
+    const std::int32_t ready_target_id =
+        player_attack_target_.readyTargetId();
+    if (ready_target_id >= 0) {
+        const EnemyActor* ready_enemy =
+            findEnemy(ready_target_id);
+        const PlayerAttackTargetSnapshot snapshot =
+            ready_enemy
+                ? attackTargetSnapshot(*ready_enemy)
+                : PlayerAttackTargetSnapshot{};
+        player_attack_target_.validateReady(
+            ready_enemy ? &snapshot : nullptr);
     }
     constexpr std::int32_t player_blocker_id =
         kNoMovementBlockerId + 1;
@@ -411,6 +451,25 @@ void WorldScene::update() {
         startScenarioObjectInteraction(*interaction_object);
         return;
     }
+    if (interaction_enemy &&
+        player_attack_target_.approachTargetId() >= 0) {
+        const PlayerAttackTargetSnapshot snapshot =
+            attackTargetSnapshot(*interaction_enemy);
+        const PlayerAttackTargetDisposition disposition =
+            player_attack_target_.refresh(
+                player_.position(),
+                player_.judgement(),
+                &snapshot);
+        if (disposition ==
+            PlayerAttackTargetDisposition::ready) {
+            readyPlayerAttack(*interaction_enemy);
+            return;
+        }
+        if (disposition ==
+            PlayerAttackTargetDisposition::rejected) {
+            player_.cancelMovement();
+        }
+    }
     interaction_item =
         pending_interaction_.kind ==
                 WorldPointerTargetKind::ground_item
@@ -459,6 +518,10 @@ std::int32_t WorldScene::playerAnimationChart() const {
 
 std::int32_t WorldScene::playerAnimationFrame() const {
     return player_.animationFrame();
+}
+
+std::int32_t WorldScene::playerAttackTargetId() const {
+    return player_attack_target_.readyTargetId();
 }
 
 std::int32_t WorldScene::cameraScreenX() const {

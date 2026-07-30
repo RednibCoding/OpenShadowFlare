@@ -774,6 +774,16 @@ Work through it in this order:
 One player class fighting one known enemy is enough for the first combat
 slice. Other classes and special attacks come after the basic loop matches.
 
+The first item is now reconstructed. Type-two enemies participate in the same
+opaque-pixel click square, depth order, configurable priority, nameplate, and
+pale hover tint as the other world targets. A valid hostile click follows the
+moving enemy until the exact judgement-rectangle gap reaches the inclusive
+retail range of `0x9f`, then stops, faces it, and promotes the target from
+approach to attack-ready state. Ground commands, other interactions, target
+loss, death, visibility changes, and pointer-status changes clear that combat
+state. The next slice starts the ordinary player attack CAF from this ready
+target and preserves its movement-cancellation and frame timing.
+
 ### 5. Skills, magic, status, and the remaining game screens
 
 Once the ordinary combat loop is reliable, add the systems that modify it:
