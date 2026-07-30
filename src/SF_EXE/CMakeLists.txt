@@ -109,6 +109,7 @@ target_link_libraries(
 add_library(
   osf_world STATIC
   world/actor_direction.cpp
+  world/companion_damage_receiver.cpp
   world/combat_damage.cpp
   world/enemy_actor.cpp
   world/enemy_ai_action.cpp

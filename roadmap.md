@@ -384,11 +384,16 @@ local ownership, Increased Power, Energy Shield, Magic Shield, life and mana
 routing, the category-four revival item, exact helmet/body/off-hand/boots
 durability checks, equipment and Counter Burst reflection, tables 25 and 26
 reaction selection, packet effects, training, audio, death action, and random
-draw ordering. Companion receivers remain separate and still need their own
-trace. Both player and enemy results stay passive until movement consumption,
-world effect ownership, audio playback, network transport, kill accounting,
-death completion, drops, and the complete live update can be attached
-together.
+draw ordering.
+
+The owned companion uses a third receiver at retail address `0x0045f9f0`,
+not either of those paths. Its family-one profile, owner-slot life mutation,
+actions 7/8/10 rejection, tables 24 and 25 reaction, action-five hit stages,
+action-six death, distinct effect owner kinds, sample 119, event four, and
+random draws are reconstructed separately. All three results stay passive
+until movement consumption, world effect ownership, audio playback, network
+transport, kill accounting, death completion, drops, and the complete live
+update can be attached together.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback

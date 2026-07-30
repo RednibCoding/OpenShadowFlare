@@ -683,6 +683,37 @@ same order as retail. The result deliberately leaves live state mutation,
 effect ownership, audio playback, and equipment synchronization to later
 world owners.
 
+The player's owned companion does not reuse either receiver. Its virtual
+callback is `0x0045f9f0`, selected from the type-five companion vtable at
+`0x00476e38`. It rejects companions with no life and presentation actions
+7, 8, and 10 before reading the packet or consuming randomness. The defense
+profile is family one: character number, physical defense, magical defense,
+and the companion's native element. A non-positive packet base again skips
+the shared formula and becomes zero damage.
+
+Only the client whose local player slot equals `companion character number %
+10` changes companion life. Lethal damage selects presentation action six,
+resets its counter, and locks the action. Unlike the enemy receiver there is
+no damage attribution array, source status 73, reflection, kill-status award,
+or network request in this callback.
+
+A surviving companion uses tables 24 and 25 like the enemy family, but has no
+separate reaction-defense or force-motion fields. Player-family packets use
+the native element's opposing packet strength to select table 24; other
+packets use row five when packet element is opposing. Effect-family chance,
+duration, and motion come directly from the native-element banks. A
+non-motion reaction is capped to 15 updates before packet word 76 is added,
+then presentation action five stores the impact angle and optional facing.
+
+Packet reaction stage one creates effect 21015 through 21018 with owner kind
+four and plays sample 119; stage two only changes the reaction stage. The two
+configured packet effects and the 20-percent random hit effect instead use
+owner kind two. That otherwise easy-to-miss constructor difference is
+preserved in the portable request. Death action six and default event four are
+selected after those common effects. As with the other receivers, live actor
+mutation, effect allocation, and audio playback remain consumers for the
+later complete combat loop.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
