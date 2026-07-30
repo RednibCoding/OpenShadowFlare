@@ -1,7 +1,7 @@
 #ifndef OPENSHADOWFLARE_ENEMY_DIRECT_IMPACT_HPP
 #define OPENSHADOWFLARE_ENEMY_DIRECT_IMPACT_HPP
 
-#include "enemy_combat_packet.hpp"
+#include "combat_packet.hpp"
 #include "enemy_effect_impact.hpp"
 #include "enemy_presentation_profile.hpp"
 #include "enemy_target_selector.hpp"
@@ -26,7 +26,7 @@ struct EnemyDirectImpactResult {
     bool valid = false;
     bool special_effect = false;
     EnemyAiTarget target;
-    EnemyCombatPacket packet;
+    CombatPacket packet;
     std::int32_t hit_chance = 0;
     std::int32_t hit_roll = -1;
     bool apply_damage = false;

@@ -350,9 +350,15 @@ Successful damage requests retain the attacker's current position passed to
 the retail target callback.
 It also preserves the MCT-controlled special branch, its two random draws,
 all shipped effect-number switches, and its bypass of normal impact targeting.
-Applying the packet to player and companion health, the player-only
-post-damage death abort, movement consumption, shared effect ownership, audio
-playback, and live AI attachment remain next.
+The shared packet-to-damage calculation underneath those callbacks is
+reconstructed too. It keeps the immediate damage override, effect family,
+all four ordinary packet/receiver combinations, tables 7 and 11, paired and
+same-element modifiers, separate physical and magical defense words,
+minimum-one clamp, source lookup request, and every conditional random draw in
+retail order. Applying the result through player, companion, and enemy
+receivers is still separate: barriers, life and mana, reaction, durability,
+statuses, reflection, death, movement consumption, shared effect ownership,
+audio playback, and live AI attachment remain next.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback

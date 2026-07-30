@@ -1,7 +1,7 @@
 #ifndef OPENSHADOWFLARE_ENEMY_EFFECT_IMPACT_HPP
 #define OPENSHADOWFLARE_ENEMY_EFFECT_IMPACT_HPP
 
-#include "enemy_combat_packet.hpp"
+#include "combat_packet.hpp"
 #include "enemy_target_selector.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 
@@ -40,7 +40,7 @@ struct EnemyEffectSpawnRequest {
     bool has_source_judgement = false;
     ObjectBounds source_judgement;
     std::int32_t constructor_value_12 = 0;
-    EnemyCombatPacket packet;
+    CombatPacket packet;
     std::int32_t packet_kind = 8;
     std::int32_t instance_identifier = -1;
     std::int32_t constructor_value_16 = 0;

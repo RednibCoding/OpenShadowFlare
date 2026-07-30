@@ -36,6 +36,8 @@ The first game-core slice covers:
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
 - the statically linked Visual C++ random-number generator
+- the shared 77-word combat packet damage formula, including its table,
+  element, defense, minimum-damage, source-lookup, and random-order rules
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
 - the initial `00000000` scenario's fixed MCT header and entry-point table

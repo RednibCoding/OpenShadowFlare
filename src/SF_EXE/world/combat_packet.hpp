@@ -1,5 +1,5 @@
-#ifndef OPENSHADOWFLARE_ENEMY_COMBAT_PACKET_HPP
-#define OPENSHADOWFLARE_ENEMY_COMBAT_PACKET_HPP
+#ifndef OPENSHADOWFLARE_COMBAT_PACKET_HPP
+#define OPENSHADOWFLARE_COMBAT_PACKET_HPP
 
 #include <array>
 #include <bitset>
@@ -8,9 +8,9 @@
 
 namespace osf {
 
-constexpr std::size_t kEnemyCombatPacketWordCount = 77;
+constexpr std::size_t kCombatPacketWordCount = 77;
 
-struct EnemyCombatPacket {
+struct CombatPacket {
     void write(
         std::size_t index,
         std::int32_t value) {
@@ -30,9 +30,9 @@ struct EnemyCombatPacket {
 
     std::array<
         std::int32_t,
-        kEnemyCombatPacketWordCount>
+        kCombatPacketWordCount>
         words{};
-    std::bitset<kEnemyCombatPacketWordCount>
+    std::bitset<kCombatPacketWordCount>
         written_words;
 };
 

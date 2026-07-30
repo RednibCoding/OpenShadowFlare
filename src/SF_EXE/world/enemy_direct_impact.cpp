@@ -20,7 +20,7 @@ bool validVariant(std::int32_t variant) {
 }
 
 void buildCommonPacket(
-    EnemyCombatPacket& packet,
+    CombatPacket& packet,
     const EnemyDirectImpactInput& input,
     RetailRandom& random,
     bool special_effect) {
@@ -55,7 +55,7 @@ void buildCommonPacket(
 
 EnemyEffectSpawnRequest buildSpecialEffect(
     const EnemyDirectImpactInput& input,
-    EnemyCombatPacket packet,
+    CombatPacket packet,
     RetailRandom& random) {
     const EnemyPresentationProfile& profile =
         *input.profile;

@@ -244,6 +244,40 @@ has one: sample 86 for every slot. The portable resolver preserves that
 override-first order and hands the resolved sample back with the presentation
 update, leaving actual playback to the world audio owner.
 
+Damage itself does not belong to either presentation routine.
+`0x00412a40` is a shared packet-to-damage function called by the player
+receiver at `0x00443cb0` and the enemy receiver at `0x00459690`. Its first
+argument is the same 77-word packet built by direct attacks and effects. Its
+second argument is a 14-word receiver profile. Word zero selects the receiver
+formula family, words three and four are the two defense values consumed by
+ordinary and effect paths, words five onward provide the table-indexed
+elemental modifiers, and word 13 is the receiver's native element.
+
+Packet word 37 equal to one is an immediate override: word four is returned
+unchanged, even when it is below one. Every calculated branch clamps to one.
+Effect-family packet kind three uses table 11 with receiver family zero, or an
+element comparison and receiver word four with families one and two. The
+ordinary dispatch combines the low 16 bits of packet word zero and receiver
+word zero. Its four accepted pairs use table 7, table 11, or the shared
+elemental calculation; every other pair returns one without consuming
+random state.
+
+The elemental calculation compares packet word 32 with the receiver's native
+element and its opposing pair: Fire/Water, Earth/Thunder, Holy/Dark, and
+Gel/Metal. The opposing element gets `rand() % 4 + 10`, the same element gets
+`rand() % 4 + 7`, and any other element gets ten without that optional draw.
+A second `rand() % 3 + 9` supplies the base multiplier. The table-7 branch
+instead draws its base factor first, asks the character owner to resolve
+packet word two, and indexes the packet through the opposing element.
+The source lookup does not change the arithmetic, but it is retained as a
+typed request so the later live receiver can preserve the call.
+
+The portable resolver keeps these lookups and draws in retail order. A missing
+table or unsafe index is reported as invalid instead of following the
+executable's unchecked pointer behavior. Receiver-owned barriers, life and
+mana changes, reaction state, equipment durability, status application,
+reflection, death, and drops stay outside this shared arithmetic boundary.
+
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a
 later lower-priority action is still inserted. Weighted traversal is therefore
