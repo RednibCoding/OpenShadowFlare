@@ -122,8 +122,10 @@ public:
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     std::int32_t playerExperienceThreshold() const;
-    BeltItemUseResult usePlayerBeltPocket(
+    PlayerItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);
+    PlayerItemUseResult usePlayerInventoryItem(
+        std::int32_t item_index);
     std::int32_t playerMineCount() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;

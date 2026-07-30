@@ -18,12 +18,15 @@ struct GameplayInventoryInput {
     std::int32_t pointer_x = 0;
     std::int32_t pointer_y = 0;
     bool special_toggle_pressed = false;
+    bool pointer_secondary_pressed = false;
 };
 
 struct GameplayInventoryResult {
     bool pointer_consumed = false;
     bool world_drop_requested = false;
     bool equipment_changed = false;
+    std::int32_t inventory_item_use_requested = -1;
+    std::int32_t belt_pocket_use_requested = -1;
     std::int32_t world_drop_screen_x = 0;
     std::int32_t world_drop_screen_y = 0;
     std::int32_t item_sound_sample = -1;
@@ -68,6 +71,7 @@ public:
         const ItemDatabase& item_database,
         std::int32_t player_level);
     void completeWorldDrop(bool succeeded);
+    void completeItemUse(bool consumed);
 
     bool active() const;
     bool specialItemsActive() const;

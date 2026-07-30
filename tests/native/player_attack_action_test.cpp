@@ -7,6 +7,7 @@
 #include "world/player_attack_action.hpp"
 #include "world/player_attack_target.hpp"
 #include "world/player_data.hpp"
+#include "world/player_voice.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -43,7 +44,9 @@ bool testActionSelectionAndAudio() {
                 osf::retailItemAttackSound(nullptr) == 1 &&
                 osf::retailItemAttackSound(&weapon) == 1 &&
                 osf::retailPlayerAttackVoiceSample(0) == 96 &&
-                osf::retailPlayerAttackVoiceSample(1) == 99,
+                osf::retailPlayerAttackVoiceSample(1) == 99 &&
+                osf::retailPlayerDeathVoiceSample(0) == 13 &&
+                osf::retailPlayerDeathVoiceSample(1) == 14,
             "The empty-hand action or light attack sound differs.")) {
         return false;
     }
@@ -263,11 +266,15 @@ bool testRetailDeathHold(
     });
     osf::GroundMap ground;
     osf::ObjectMap objects;
+    std::int32_t death_voice_requests = 0;
     for (std::int32_t update = 0;
          update < death_frames + 119;
          ++update) {
         player.update(
             ground, objects, nullptr, -1, &animation);
+        if (player.takeDeathVoiceRequest()) {
+            ++death_voice_requests;
+        }
         if (player.takeRespawnRequest()) {
             return check(
                 false,
@@ -276,10 +283,14 @@ bool testRetailDeathHold(
         }
     }
     player.update(ground, objects, nullptr, -1, &animation);
+    if (player.takeDeathVoiceRequest()) {
+        ++death_voice_requests;
+    }
     return check(
         player.motion() == osf::PlayerMotion::defeated &&
             player.animationChart() == 4 &&
             player.animationFrame() == death_frames - 1 &&
+            death_voice_requests == 1 &&
             player.takeRespawnRequest() &&
             !player.takeRespawnRequest(),
         "The player death action did not publish one revival request "

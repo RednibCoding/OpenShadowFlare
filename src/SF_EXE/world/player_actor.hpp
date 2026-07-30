@@ -80,6 +80,7 @@ public:
     std::int32_t attackTargetId() const;
     PlayerAttackActionEvent takeAttackEvent();
     std::int32_t takeFootstepSample();
+    bool takeDeathVoiceRequest();
     bool takeRespawnRequest();
     PlayerDamagePresentation damagePresentation() const;
     void applyDamagePresentation(
@@ -105,6 +106,7 @@ private:
     PlayerAttackActionController attack_controller_;
     PlayerAttackActionEvent pending_attack_event_;
     std::int32_t pending_footstep_sample_ = -1;
+    bool pending_death_voice_request_ = false;
     bool respawn_requested_ = false;
     bool pending_respawn_request_ = false;
     MovementController movement_controller_;

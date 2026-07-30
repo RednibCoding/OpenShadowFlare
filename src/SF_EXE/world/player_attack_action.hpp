@@ -51,9 +51,6 @@ std::int32_t retailPlayerAttackSpeedTier(
     std::int32_t equipped_weight,
     std::int32_t weight_capacity,
     const TableData* speed_table);
-std::int32_t retailPlayerAttackVoiceSample(
-    std::int32_t portable_gender);
-
 class PlayerAttackActionController {
 public:
     bool start(

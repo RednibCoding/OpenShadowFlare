@@ -143,6 +143,7 @@ add_library(
   world/player_damage_receiver.cpp
   world/player_data.cpp
   world/player_item_controller.cpp
+  world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
   world/retail_save_items.cpp

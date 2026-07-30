@@ -172,7 +172,7 @@ int main() {
     }
     belt_player.setCurrentLife(
         belt_player.baseMaximumLife() - 10);
-    const osf::BeltItemUseResult tablet_use =
+    const osf::PlayerItemUseResult tablet_use =
         item_controller.useBeltPocket(
             0,
             belt,
@@ -180,7 +180,7 @@ int main() {
             belt_player);
     belt_player.setCurrentMana(
         belt_player.baseMaximumMana() - 10);
-    const osf::BeltItemUseResult capsule_use =
+    const osf::PlayerItemUseResult capsule_use =
         item_controller.useBeltPocket(
             4,
             belt,
@@ -198,6 +198,56 @@ int main() {
                 belt_player.currentMana() ==
                     belt_player.baseMaximumMana(),
             "Tablet/Capsule use or the 1-8 belt mapping differs.")) {
+        return 1;
+    }
+
+    osf::PlayerInventory medicine_inventory;
+    if (!check(
+            medicine_inventory.add(*tablet) &&
+                medicine_inventory.add(*capsule),
+            "The backpack medicine fixture could not be prepared.")) {
+        return 1;
+    }
+    osf::PlayerData inventory_player = male;
+    if (!check(
+            !item_controller
+                 .useInventoryItem(
+                     0,
+                     medicine_inventory,
+                     items,
+                     inventory_player)
+                 .consumed &&
+                medicine_inventory.items().size() == 2,
+            "A backpack Tablet was consumed while life was full.")) {
+        return 1;
+    }
+    inventory_player.setCurrentLife(
+        inventory_player.baseMaximumLife() - 10);
+    const osf::PlayerItemUseResult inventory_tablet_use =
+        item_controller.useInventoryItem(
+            0,
+            medicine_inventory,
+            items,
+            inventory_player);
+    inventory_player.setCurrentMana(
+        inventory_player.baseMaximumMana() - 10);
+    const osf::PlayerItemUseResult inventory_capsule_use =
+        item_controller.useInventoryItem(
+            0,
+            medicine_inventory,
+            items,
+            inventory_player);
+    if (!check(
+            inventory_tablet_use.consumed &&
+                inventory_tablet_use.sound_sample == 16 &&
+                inventory_capsule_use.consumed &&
+                inventory_capsule_use.sound_sample == 16 &&
+                medicine_inventory.items().empty() &&
+                inventory_player.currentLife() ==
+                    inventory_player.baseMaximumLife() &&
+                inventory_player.currentMana() ==
+                    inventory_player.baseMaximumMana(),
+            "Right-click backpack medicine use differs from belt use.")) {
         return 1;
     }
 

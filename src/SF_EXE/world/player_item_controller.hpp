@@ -8,8 +8,9 @@ namespace osf {
 class ItemDatabase;
 class PlayerBelt;
 class PlayerData;
+class PlayerInventory;
 
-struct BeltItemUseResult {
+struct PlayerItemUseResult {
     bool consumed = false;
     std::int32_t sound_sample = -1;
 };
@@ -19,9 +20,14 @@ public:
     void clear();
     void initializeNew();
 
-    BeltItemUseResult useBeltPocket(
+    PlayerItemUseResult useBeltPocket(
         std::int32_t pocket,
         PlayerBelt& belt,
+        const ItemDatabase& item_database,
+        PlayerData& player);
+    PlayerItemUseResult useInventoryItem(
+        std::int32_t item_index,
+        PlayerInventory& inventory,
         const ItemDatabase& item_database,
         PlayerData& player);
 

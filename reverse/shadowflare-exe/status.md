@@ -234,8 +234,10 @@ rectangles, complete item footprints are retained, and placing over one item
 swaps it onto the shared pointer. `0x0044a5f0` maps keys `1` through `8` to
 the four row-zero cells followed by the four row-one cells. `0x0044a240`
 applies the decoded flat and maximum-percent player life/mana fields and
-removes the item only when a value changes. Its companion and status-effect
-branches remain pending.
+removes the item only when a value changes. The same path handles a secondary
+click on medicine in either the backpack or belt, so a Tablet at full life or
+a Capsule at full mana stays in its owner and produces no use sound. Its
+companion and status-effect branches remain pending.
 
 New-character equipment and owned items now follow `0x00440f70` as well.
 Category one definition zero is equipped in the body slot. Category-three
@@ -296,7 +298,11 @@ element arrays begin at offsets 208 and 168. Quality zero through three uses
 the retail gray, muted red, pale blue, and blue text colors. Category-four
 definition zero takes the executable's shorter branch: Gold shows its stack
 amount in the exact `Price                     :%9d` row, producing the wide
-three-line panel instead of a name-only box.
+three-line panel instead of a name-only box. The other formatter branches are
+preserved too: category two shows weight, required level, and sale price;
+category three consumables such as Tablet show sale price; and non-Gold
+category-four items show sale price. One-cell items therefore keep the
+authored-width information panel rather than collapsing to a name-only box.
 
 The condition corner in `0x00465cb0` is reconstructed for backpack, equipped,
 and pointer-held gear. Categories zero and one compare current and maximum
@@ -320,6 +326,11 @@ screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
 empty so every later row keeps its retail coordinate. Mission and Map now
 open their own screens from the original rows: Mission is modal, while Map
 leaves the right-hand world viewport live.
+
+The two confirmed save actions defer their final transition for the retail
+saving frame, then process it before any independently open Map, Warehouse,
+Special Item, or Inventory panel. Those panels can no longer consume every
+following UI update and strand the saving confirmation on screen.
 
 The Help row and `H` shortcut now open the screen drawn by `0x0040e710`.
 Status patterns 10 and 66 provide the authored 640-by-415 frame and the
@@ -972,6 +983,11 @@ may consume it. The attack voice choice is translated at the portable player
 boundary because portable save/UI data uses zero for male and one for female,
 opposite to the raw field convention tested by `0x00435e60`; male therefore
 plays sample 96 and female sample 99.
+
+The same translation now covers the first update of the death action.
+`0x00435b60` plays `14 - raw gender`, so a portable male queues Voice00 sample
+13 and a portable female queues sample 14 exactly once before chart four
+advances.
 
 Enemy hover labels now follow the type-two branch in `0x0040ee70`. A
 name-sized dark frame contains a translucent red life fill proportional to

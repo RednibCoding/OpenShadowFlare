@@ -114,13 +114,33 @@ std::string itemInformationText(
             << definition.element_strengths[6]
             << " Metal  :" << std::setw(3)
             << definition.element_strengths[7] << '\n';
-    } else if (
-        definition.category == 4 &&
-        definition.id == 0) {
+    } else if (definition.category == 2) {
         appendValue(
             output,
-            "Price                     :",
-            item.quantity);
+            "Weight                    :",
+            definition.weight);
+        appendValue(
+            output,
+            "Required Level            :",
+            definition.required_level);
+        appendValue(
+            output,
+            "Sale Price                :",
+            itemSalePrice(item, definition));
+    } else if (definition.category == 3) {
+        appendValue(
+            output,
+            "Sale Price                :",
+            itemSalePrice(item, definition));
+    } else if (definition.category == 4) {
+        appendValue(
+            output,
+            definition.id == 0
+                ? "Price                     :"
+                : "Sale Price                :",
+            definition.id == 0
+                ? item.quantity
+                : itemSalePrice(item, definition));
     }
     return output.str();
 }

@@ -421,7 +421,9 @@ local ownership, Increased Power, Energy Shield, Magic Shield, life and mana
 routing, the category-four revival item, exact helmet/body/off-hand/boots
 durability checks, equipment and Counter Burst reflection, tables 25 and 26
 reaction selection, packet effects, training, audio, death action, and random
-draw ordering.
+draw ordering. The attached death presentation plays its retail gender voice
+once on the first action update: sample 13 for the portable male and sample 14
+for the portable female.
 
 The owned companion uses a third receiver at retail address `0x0045f9f0`,
 not either of those paths. Its family-one profile, owner-slot life mutation,
@@ -525,7 +527,9 @@ settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
 intentionally blank, but its space remains so none of the following rows move.
 Save and Return and Save and Exit now open their original confirmation states,
 write the retail save envelope, and only leave gameplay after a successful
-write. With `Save Image at Game End` enabled, they also write the paired
+write. Their deferred transition runs before either independently open side
+panel can consume the next UI update. With `Save Image at Game End` enabled,
+they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
 drawn. Help now opens its original full-width reference screen from either the
 menu row or `H`, including the animated player preview and the menu-owned
@@ -746,14 +750,16 @@ footprints, uses the retail staggered screen origins, and supports pointer
 pickup and swapping even while the main inventory is closed. The `1` through
 `8` shortcuts address its four upper pockets followed by its four lower
 pockets. Tablets restore life, Capsules restore mana, and an item is removed
-only when it actually changes the target, matching the executable.
+only when it actually changes the target, matching the executable. A
+right-click uses those medicines directly from either the backpack or belt;
+full life or mana leaves the corresponding item untouched.
 
 A new character now receives the loadout built by `0x00440f70`: Leather Cloth
 in the body slot, four Tablets and four Capsules in the first two backpack
 columns, the same four-plus-four medicine layout in the belt, and five mines
 in the player's separate mine counter. Moving, swapping, equipping, and
 dropping owned items also use the retail category/weight sound selection;
-successful belt use plays its own medicine sound.
+successful medicine use plays its own sound.
 
 Those owned items now survive the real `.Ssv` path. The obfuscated payload's
 retail item prefix restores and rewrites all nine player equipment slots, the
@@ -780,7 +786,11 @@ edge clamping, including the padded translucent black backing and faint white
 frame. The values come from `Item.Ibn`; the Dagger, for example, shows the same
 10 attack, 120 hit rate, 50 attack speed, 300 durability, and 100 sale price as
 retail. Gold follows its separate retail branch and shows the stack amount in
-the wide Price row rather than collapsing to a name-only tooltip.
+the wide Price row rather than collapsing to a name-only tooltip. The other
+small-item branches now follow `0x00409a60` as well: category-two items show
+weight, required level, and sale price, while category-three consumables such
+as Tablet show sale price. Their one-cell icons therefore keep the original
+wide information panel.
 
 The retail condition warning is now shared by backpack, equipment, and held
 items. Weapons and armor below ten percent durability blink `Status.njp`

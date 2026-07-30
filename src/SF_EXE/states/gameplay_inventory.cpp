@@ -224,6 +224,31 @@ GameplayInventoryResult GameplayInventory::update(
             return result;
         }
     }
+    if (input.pointer_secondary_pressed && !held_item_) {
+        if (const std::optional<BeltPocket> pocket =
+                beltPocketAt(
+                    input.pointer_x,
+                    input.pointer_y)) {
+            result.pointer_consumed = true;
+            result.belt_pocket_use_requested =
+                pocket->grid_y * PlayerBelt::grid_width +
+                pocket->grid_x;
+            return result;
+        }
+        if (active_) {
+            updateHover(
+                input.pointer_x,
+                input.pointer_y,
+                inventory,
+                equipment);
+            if (hovered_item_index_ >= 0) {
+                result.pointer_consumed = true;
+                result.inventory_item_use_requested =
+                    hovered_item_index_;
+                return result;
+            }
+        }
+    }
     if (input.close_pressed) {
         close();
         return result;
@@ -437,6 +462,13 @@ void GameplayInventory::completeWorldDrop(
     bool succeeded) {
     if (succeeded) {
         held_item_.reset();
+    }
+}
+
+void GameplayInventory::completeItemUse(
+    bool consumed) {
+    if (consumed) {
+        clearItemHover();
     }
 }
 

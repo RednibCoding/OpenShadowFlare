@@ -2,6 +2,7 @@
 #include "enemy_death_rewards.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
+#include "player_voice.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -223,11 +224,20 @@ const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
 
-BeltItemUseResult WorldScene::usePlayerBeltPocket(
+PlayerItemUseResult WorldScene::usePlayerBeltPocket(
     std::int32_t pocket) {
     return player_item_controller_.useBeltPocket(
         pocket,
         player_belt_,
+        item_database_,
+        player_data_);
+}
+
+PlayerItemUseResult WorldScene::usePlayerInventoryItem(
+    std::int32_t item_index) {
+    return player_item_controller_.useInventoryItem(
+        item_index,
+        player_inventory_,
         item_database_,
         player_data_);
 }
@@ -460,6 +470,11 @@ void WorldScene::update() {
         if (footstep_sample >= 0) {
             pending_audio_samples_.push_back(
                 footstep_sample);
+        }
+        if (player_.takeDeathVoiceRequest()) {
+            pending_audio_samples_.push_back(
+                retailPlayerDeathVoiceSample(
+                    player_data_.gender()));
         }
         if (player_.takeRespawnRequest()) {
             player_data_.restoreForRespawn();

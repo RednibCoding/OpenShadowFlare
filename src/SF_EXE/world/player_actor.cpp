@@ -85,6 +85,7 @@ void PlayerActor::reset(
     attack_controller_.cancel();
     pending_attack_event_ = {};
     pending_footstep_sample_ = -1;
+    pending_death_voice_request_ = false;
     respawn_requested_ = false;
     pending_respawn_request_ = false;
     movement_controller_.reset();
@@ -110,6 +111,7 @@ void PlayerActor::relocate(
     attack_controller_.cancel();
     pending_attack_event_ = {};
     pending_footstep_sample_ = -1;
+    pending_death_voice_request_ = false;
     respawn_requested_ = false;
     pending_respawn_request_ = false;
     movement_controller_.reset();
@@ -298,6 +300,11 @@ void PlayerActor::update(
     if (damage_presentation_.action == 5) {
         constexpr std::int32_t kDeathChart = 4;
         constexpr std::int32_t kDeathDirection = 8;
+        if (damage_presentation_.counter == 0) {
+            // FUN_00435b60 plays the gender-specific voice before advancing
+            // the first frame of the locked death presentation.
+            pending_death_voice_request_ = true;
+        }
         damage_presentation_.action_lock = 1;
         motion_ = PlayerMotion::defeated;
         animation_chart_ = kDeathChart;
@@ -461,6 +468,12 @@ std::int32_t PlayerActor::takeFootstepSample() {
     const std::int32_t sample = pending_footstep_sample_;
     pending_footstep_sample_ = -1;
     return sample;
+}
+
+bool PlayerActor::takeDeathVoiceRequest() {
+    const bool requested = pending_death_voice_request_;
+    pending_death_voice_request_ = false;
+    return requested;
 }
 
 bool PlayerActor::takeRespawnRequest() {

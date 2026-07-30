@@ -275,7 +275,9 @@ the five ordinary slots and four accessory cells. Category-three items can
 also be carried in the HUD's staggered two-row belt; keys `1` through `8` use
 those pockets. A fresh hero starts with the original Leather Cloth, four
 Tablets and four Capsules in both the backpack and belt, and five mines.
-Inventory movement, equipment, world drops, and medicine use play the
+Right-clicking a Tablet or Capsule in either owner uses it when the matching
+life or mana pool is not already full. Inventory movement, equipment, world
+drops, and medicine use play the
 corresponding retail effects. `X` opens the separate
 9-by-10 special-item panel on the left and shifts the live world view to the
 right, just like the original. Hovering a backpack, equipped, or special item
@@ -297,7 +299,9 @@ round-trip equipped items, the backpack, and the belt without replacing the
 unknown equipment, special-item, or trailing state in an original save. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
-Game. Scenario position, quests, mines, companions, and the remaining dynamic
+Game. Confirmed return-to-title and exit actions still complete when a map,
+warehouse, special-item, or inventory panel is open. Scenario position,
+quests, mines, companions, and the remaining dynamic
 state are still pending.
 
 Run it with `--smoke-test` to close automatically after three frames.

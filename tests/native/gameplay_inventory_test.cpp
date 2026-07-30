@@ -516,6 +516,69 @@ bool testInventoryResourcesAndRendering() {
         return false;
     }
 
+    const osf::ItemDefinition* tablet =
+        world.itemDatabase().find(3, 0);
+    if (!check(
+            tablet &&
+                world.playerInventory().add(*tablet),
+            "The Tablet information fixture could not be prepared.")) {
+        return false;
+    }
+    const osf::InventoryItem& tablet_item =
+        world.playerInventory().items().back();
+    const std::int32_t tablet_pointer_x =
+        osf::GameplayInventory::backpack_left +
+        tablet_item.grid_x *
+            osf::GameplayInventory::cell_size + 8;
+    const std::int32_t tablet_pointer_y =
+        osf::GameplayInventory::backpack_top +
+        tablet_item.grid_y *
+            osf::GameplayInventory::cell_size + 8;
+    for (std::int32_t update = 0; update < 3; ++update) {
+        inventory.update(
+            {
+                false,
+                false,
+                false,
+                tablet_pointer_x,
+                tablet_pointer_y,
+            },
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.playerBelt(),
+            world.playerSpecialItems(),
+            world.itemDatabase(),
+            world.playerData().level());
+    }
+    RecordingBackend tablet_information_renderer;
+    osf::renderItemInformation(
+        tablet_information_renderer,
+        font,
+        inventory,
+        world);
+    const std::string tablet_information =
+        osf::itemInformationText(
+            tablet_item, *tablet);
+    if (!check(
+            tablet_information.rfind(
+                "[Tablet]\n\n"
+                "Sale Price                :",
+                0) == 0 &&
+                tablet_information_renderer.texts.size() == 2 &&
+                tablet_information_renderer.texts[1].text ==
+                    tablet_information &&
+                tablet_information_renderer.rectangles.size() == 5 &&
+                tablet_information_renderer.rectangles[0].x ==
+                    tablet_pointer_x - 112 &&
+                tablet_information_renderer.rectangles[0].y ==
+                    tablet_pointer_y + 8 &&
+                tablet_information_renderer.rectangles[0].width == 224 &&
+                tablet_information_renderer.rectangles[0].height == 44,
+            "The one-cell Tablet information omitted its retail "
+            "sale-price row or popup dimensions.")) {
+        return false;
+    }
+
     const osf::ItemDefinition* gold =
         world.itemDatabase().find(4, 0);
     if (!check(
@@ -1402,10 +1465,87 @@ bool testSpecialItemOwnershipAndRendering() {
         "their own owners.");
 }
 
+bool testSecondaryUseRequests() {
+    osf::PlayerInventory owned;
+    osf::PlayerEquipment equipment;
+    osf::PlayerBelt belt;
+    osf::PlayerSpecialItems special_items;
+    osf::ItemDatabase database;
+    osf::ItemDefinition tablet;
+    tablet.category = 3;
+    tablet.id = 0;
+    tablet.inventory_width = 1;
+    tablet.inventory_height = 1;
+    if (!owned.add(tablet) ||
+        !belt.place(
+                 osf::makeInventoryItem(tablet),
+                 0,
+                 0,
+                 tablet)
+             .accepted) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.open();
+    const osf::GameplayInventoryResult backpack_use =
+        inventory.update(
+            {
+                false,
+                true,
+                false,
+                osf::GameplayInventory::backpack_left + 8,
+                osf::GameplayInventory::backpack_top + 8,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            backpack_use.pointer_consumed &&
+                backpack_use.inventory_item_use_requested == 0 &&
+                backpack_use.belt_pocket_use_requested == -1 &&
+                inventory.active(),
+            "Right-clicking a backpack item did not request its use "
+            "before the panel-close path.")) {
+        return false;
+    }
+
+    inventory.completeItemUse(false);
+    const osf::GameplayInventoryResult belt_use =
+        inventory.update(
+            {
+                false,
+                false,
+                false,
+                357 + 8,
+                413 + 8,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    return check(
+        belt_use.pointer_consumed &&
+            belt_use.inventory_item_use_requested == -1 &&
+            belt_use.belt_pocket_use_requested == 0,
+        "Right-clicking a belt item did not request the retail "
+        "1-8 pocket.");
+}
+
 }  // namespace
 
 int main() {
     return testInventoryState() &&
+                   testSecondaryUseRequests() &&
                    testInventoryResourcesAndRendering() &&
                    testConditionArtwork() &&
                    testAccessoryAndBeltOwnership() &&

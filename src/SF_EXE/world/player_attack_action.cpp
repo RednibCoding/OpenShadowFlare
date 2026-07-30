@@ -147,14 +147,6 @@ std::int32_t retailPlayerAttackSpeedTier(
     return std::clamp(table_value + 1, 0, 9);
 }
 
-std::int32_t retailPlayerAttackVoiceSample(
-    std::int32_t portable_gender) {
-    // Portable character/save data uses zero for male and one for female.
-    // FUN_00435e60 tests the opposite numeric convention before choosing
-    // Voice00 sample 96 or 99.
-    return portable_gender == 1 ? 99 : 96;
-}
-
 bool PlayerAttackActionController::start(
     PlayerAttackAction action,
     std::int32_t target_id,

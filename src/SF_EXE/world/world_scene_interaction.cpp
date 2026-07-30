@@ -4,6 +4,7 @@
 #include "player_attack_impact.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
+#include "player_voice.hpp"
 
 #include <algorithm>
 #include <cctype>
