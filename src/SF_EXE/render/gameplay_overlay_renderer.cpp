@@ -262,14 +262,15 @@ void drawHoveredGroundItemLabel(
     }
     const ItemDefinition* definition =
         world.itemDatabase().find(
-            item->category, item->definition_id);
+            item->item.category,
+            item->item.definition_id);
     if (!definition) {
         return;
     }
     const std::string label =
-        item->category == 4 &&
-                item->definition_id == 0
-            ? std::to_string(item->quantity) + " Gold"
+        item->item.category == 4 &&
+                item->item.definition_id == 0
+            ? std::to_string(item->item.quantity) + " Gold"
             : definition->name;
     if (label.empty()) {
         return;

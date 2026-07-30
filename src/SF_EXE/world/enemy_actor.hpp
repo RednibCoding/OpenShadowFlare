@@ -27,6 +27,7 @@ class NjpImage;
 struct EnemyActorUpdate {
     CombatEffectSpawnRequest effect_spawn;
     std::vector<std::int32_t> audio_samples;
+    bool death_started = false;
     bool expired = false;
 };
 
@@ -42,8 +43,7 @@ public:
     EnemyActorUpdate update(
         const GroundMap& ground,
         const ObjectMap& objects,
-        const std::vector<MovementBlocker>* dynamic_blockers,
-        RetailRandom& random);
+        const std::vector<MovementBlocker>* dynamic_blockers);
 
     std::int32_t stateValue(
         ScenarioEntityStateChannel channel) const;
@@ -76,6 +76,11 @@ public:
     std::int32_t physicalDefense() const;
     std::int32_t physicalEvasion() const;
     std::int32_t magicalDefense() const;
+    std::int32_t experienceReward() const;
+    std::int32_t lootTableRow() const;
+    std::int32_t goldDropChance() const;
+    std::int32_t goldMinimum() const;
+    std::int32_t goldMaximum() const;
     std::int32_t reactionChanceDefense() const;
     std::int32_t reactionDurationDefense() const;
     bool alwaysSuppressReactionDisplacement() const;
@@ -124,6 +129,11 @@ private:
     std::int32_t physical_defense_ = 0;
     std::int32_t physical_evasion_ = 0;
     std::int32_t magical_defense_ = 0;
+    std::int32_t experience_reward_ = 0;
+    std::int32_t loot_table_row_ = -1;
+    std::int32_t gold_drop_chance_ = 0;
+    std::int32_t gold_minimum_ = 0;
+    std::int32_t gold_maximum_ = 0;
     std::int32_t reaction_chance_defense_ = 0;
     std::int32_t reaction_duration_defense_ = 0;
     bool always_suppress_reaction_displacement_ = false;

@@ -44,6 +44,9 @@ The first game-core slice covers:
 - the live enemy hit and death actions, including chart-two reaction timing,
   collision-aware displacement, chart-three direction selection, marker and
   death audio, fade timing, and final actor removal
+- lethal kill accounting, proportional experience, novice level growth,
+  weapon/effect counters, authored Table 30/31 item rolls, Gold Find, and
+  complete ground-item instance ownership
 - common `Character/OPTION` combat effects 21000 through 21014, including
   owner-position snapshots, display ordering, one-pass CAF lifetime, and the
   fixed death-effect timing
@@ -93,8 +96,9 @@ the config before creating its LWL window, just as the retail entry point does.
 
 The first gameplay HUD layer now follows `0x004039f0`. `Bar.njp` supplies the
 fixed lower interface, walk/run marker, level digits, life and mana fills, and
-experience frame. GAPI has a general destination clip for the two live fills,
-so the original 206-pixel artwork is revealed rather than stretched. The HUD
+the Table 13-driven 109-pixel experience fill and frame. GAPI has a general
+destination clip for the live fills, so the original artwork is revealed
+rather than stretched. The HUD
 is a screen-space renderer outside the world camera and owns the lower input
 band. Retail registers the standard Windows arrow once and never calls
 `SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
@@ -848,7 +852,7 @@ does not. The portable item owner, save round trip, tooltip, player appearance,
 and combat profile now share those meanings.
 
 This is still not complete gameplay. Live enemy AI dispatch and movement,
-kill accounting, experience and drops, remaining script commands and operand
+remaining script commands and operand
 domains, alternate conversation modes, darkness, and saved-game scenario
 restoration are the next executable layers.
 
@@ -881,5 +885,8 @@ values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
 effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Kill accounting, experience, item and Gold drops,
-and specialized effect families remain next.
+run at the live boundary. Lethal hits also update persistent kill and
+experience fields, apply novice level growth, create Table 30/31 item rolls
+and Gold Find-scaled money through the full ground-item owner, and preserve
+their constructor state through pickup and saving. Live AI attachment and
+specialized effect families remain next.

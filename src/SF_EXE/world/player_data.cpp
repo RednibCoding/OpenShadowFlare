@@ -1,5 +1,7 @@
 #include "player_data.hpp"
 
+#include "core/retail_integer.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -30,6 +32,18 @@ constexpr std::array<std::size_t, 13>
         0x5c,
         0x60,
     }};
+
+constexpr std::array<std::int32_t, 17> kJobGrowthMap{{
+    -1, -1, 4, -1, -1, 3, 1, -1, 5,
+    2, 6, -1, -1, -1, -1, -1, 0,
+}};
+
+constexpr std::size_t kTotalKillCountOffset = 0xb0;
+constexpr std::size_t kKillCountOffset = 0xb4;
+constexpr std::size_t kKillCountCount = 9;
+constexpr std::size_t kExperienceOffset = 0xd8;
+constexpr std::size_t kJobHistoryOffset = 0xdc;
+constexpr std::size_t kJobHistoryCount = 100;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -75,6 +89,11 @@ bool PlayerData::initializeNew(
     writeI32(0x1c, 0x10);
     writeI32(0x20, 0x10);
     writeI32(0x24, 1);
+    std::fill_n(
+        record_.begin() +
+            static_cast<std::ptrdiff_t>(kJobHistoryOffset),
+        kJobHistoryCount,
+        static_cast<std::uint8_t>(0x10));
 
     for (std::size_t row = 0;
          row < initial_parameter_count;
@@ -164,6 +183,137 @@ std::int32_t PlayerData::job() const {
 
 std::int32_t PlayerData::level() const {
     return readI32(0x24);
+}
+
+std::int32_t PlayerData::experience() const {
+    return readI32(kExperienceOffset);
+}
+
+std::int32_t PlayerData::experienceThreshold(
+    const TableDatabase& tables) const {
+    const TableData* thresholds = tables.find(13);
+    return level() > 0 &&
+               level() < 100 &&
+               thresholds &&
+               thresholds->contains(level() - 1, 0)
+        ? thresholds->value(level() - 1, 0)
+        : 0;
+}
+
+std::int32_t PlayerData::totalKillCount() const {
+    return readI32(kTotalKillCountOffset);
+}
+
+std::int32_t PlayerData::killCount(
+    std::size_t kind) const {
+    return kind < kKillCountCount
+        ? readI32(kKillCountOffset + kind * 4u)
+        : 0;
+}
+
+void PlayerData::addExperience(std::int32_t amount) {
+    writeI32(
+        kExperienceOffset,
+        retailAdd(experience(), amount));
+}
+
+void PlayerData::addKillCount(std::size_t kind) {
+    writeI32(
+        kTotalKillCountOffset,
+        retailAdd(totalKillCount(), 1));
+    if (kind < kKillCountCount) {
+        writeI32(
+            kKillCountOffset + kind * 4u,
+            retailAdd(killCount(kind), 1));
+    }
+}
+
+bool PlayerData::applyLevelThreshold(
+    const TableDatabase& tables) {
+    const std::int32_t current_level = level();
+    const std::int32_t threshold =
+        experienceThreshold(tables);
+    if (current_level <= 0 ||
+        current_level >= 100 ||
+        threshold <= 0 ||
+        experience() < threshold) {
+        return false;
+    }
+    levelUp(tables);
+    writeI32(kExperienceOffset, 0);
+    setCurrentLife(baseMaximumLife());
+    setCurrentMana(baseMaximumMana());
+    return true;
+}
+
+void PlayerData::levelUp(
+    const TableDatabase& tables) {
+    const std::int32_t old_level = level();
+    const std::int32_t current_job = job();
+    if (old_level <= 0 || old_level >= 100 ||
+        current_job < 0 ||
+        static_cast<std::size_t>(current_job) >=
+            kJobGrowthMap.size()) {
+        return;
+    }
+
+    record_[
+        kJobHistoryOffset +
+        static_cast<std::size_t>(old_level)] =
+        static_cast<std::uint8_t>(current_job);
+    const std::int32_t new_level = old_level + 1;
+    writeI32(0x24, new_level);
+
+    std::int32_t job_level = 0;
+    for (std::int32_t index = 0;
+         index < new_level;
+         ++index) {
+        if (record_[
+                kJobHistoryOffset +
+                static_cast<std::size_t>(index)] ==
+            static_cast<std::uint8_t>(current_job)) {
+            ++job_level;
+        }
+    }
+
+    const std::int32_t growth_group =
+        kJobGrowthMap[
+            static_cast<std::size_t>(current_job)];
+    const TableData* growth =
+        growth_group >= 0
+            ? tables.find(
+                  901 + growth_group * 2 - gender())
+            : nullptr;
+    const std::int32_t column = job_level - 1;
+    if (growth && column >= 0 &&
+        growth->columnCount() > column) {
+        for (std::size_t row = 0;
+             row < kInitialParameterOffsets.size();
+             ++row) {
+            const std::size_t offset =
+                kInitialParameterOffsets[row];
+            writeI32(
+                offset,
+                retailAdd(
+                    readI32(offset),
+                    growth->value(
+                        static_cast<std::int32_t>(row),
+                        column)));
+        }
+    }
+
+    if (new_level == 5) {
+        writeI32(0x1c, 6);
+        writeI32(0x20, 6);
+    }
+    if (new_level >= 5) {
+        writeI32(kTotalKillCountOffset, 0);
+        for (std::size_t kind = 0;
+             kind < kKillCountCount;
+             ++kind) {
+            writeI32(kKillCountOffset + kind * 4u, 0);
+        }
+    }
 }
 
 std::int32_t PlayerData::baseMaximumLife() const {

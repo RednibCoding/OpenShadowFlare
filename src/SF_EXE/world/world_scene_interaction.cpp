@@ -1,4 +1,5 @@
 #include "world_scene.hpp"
+#include "enemy_death_rewards.hpp"
 
 #include "player_attack_impact.hpp"
 #include "items/item_audio.hpp"
@@ -210,10 +211,8 @@ bool WorldScene::dropInventoryItem(
         next_ground_item_id_;
     if (!createGroundItem(
             scenario_world_.groundItems(),
-            item.category,
-            item.definition_id,
-            drop_position,
-            item.quantity) ||
+            item,
+            drop_position) ||
         !prepareGroundItems(first_item)) {
         scenario_world_.groundItems().resize(first_item);
         next_ground_item_id_ = first_id;
@@ -1006,6 +1005,17 @@ void WorldScene::applyPlayerAttackImpact(
         application.receiver.accepted) {
         enemy.applyDamageReceiverState(
             application.receiver.state);
+        if (application.receiver.kill_requested) {
+            accountRetailEnemyKill(
+                player_data_,
+                application.receiver.state,
+                enemy.experienceReward(),
+                scenario_world_.localPlayerNumber(),
+                definition
+                    ? definition->subtype
+                    : -1,
+                parameter_tables_);
+        }
         pending_audio_samples_.insert(
             pending_audio_samples_.end(),
             application.receiver.audio_samples.begin(),
@@ -1120,12 +1130,10 @@ bool WorldScene::startGroundItemInteraction(
     player_.cancelMovement();
     const ItemDefinition* definition =
         item_database_.find(
-            found->category,
-            found->definition_id);
+            found->item.category,
+            found->item.definition_id);
     if (definition &&
-        player_inventory_.add(
-            *definition,
-            found->quantity)) {
+        player_inventory_.store(found->item)) {
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&
             pointer_.target().id == item_id) {

@@ -90,6 +90,11 @@ struct ScenarioEnemy : ScenarioEntity {
     std::int32_t physical_defense = 0;
     std::int32_t physical_evasion = 0;
     std::int32_t magical_defense = 0;
+    std::int32_t experience_reward = 0;
+    std::int32_t loot_table_row = -1;
+    std::int32_t gold_drop_chance = 0;
+    std::int32_t gold_minimum = 0;
+    std::int32_t gold_maximum = 0;
     std::int32_t reaction_chance_defense = 0;
     std::int32_t reaction_duration_defense = 0;
     bool always_suppress_reaction_displacement = false;

@@ -101,6 +101,7 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
+    std::int32_t playerExperienceThreshold() const;
     BeltItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);
     std::int32_t playerMineCount() const;
@@ -248,6 +249,9 @@ private:
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);
+    void handleEnemyDeathStart(
+        EnemyActor& enemy,
+        CombatEffectSpawnRequest effect);
     void queueCombatEffect(
         const CombatEffectSpawnRequest& request);
     void spawnPendingCombatEffects();

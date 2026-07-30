@@ -460,6 +460,8 @@ bool testGameplayHudPackets() {
             100,
             200,
             160,
+            20,
+            25,
             true,
         });
     return check(
@@ -467,12 +469,14 @@ bool testGameplayHudPackets() {
             osf::gameplayHudBarWidth(1, 1000) == 1 &&
             osf::gameplayHudBarWidth(50, 100) == 103 &&
             osf::gameplayHudBarWidth(200, 100) == 206 &&
+            osf::gameplayHudExperienceBarWidth(
+                20, 25) == 87 &&
             backend.rectangles.size() == 1 &&
             backend.rectangles[0].x == 0 &&
             backend.rectangles[0].y == 412 &&
             backend.rectangles[0].width == 640 &&
             backend.rectangles[0].height == 68 &&
-            backend.patterns.size() == 9 &&
+            backend.patterns.size() == 10 &&
             backend.patterns[0].index == 7 &&
             backend.patterns[1].index == 8 &&
             backend.patterns[2].index == 10 &&
@@ -490,7 +494,12 @@ bool testGameplayHudPackets() {
             backend.patterns[7].draw.clip.x == 106 &&
             backend.patterns[7].draw.clip.y == 452 &&
             backend.patterns[7].draw.clip.width == 206 &&
-            backend.patterns[8].index == 15,
+            backend.patterns[8].index == 15 &&
+            backend.patterns[9].index == 14 &&
+            backend.patterns[9].draw.clip.x == 530 &&
+            backend.patterns[9].draw.clip.y == 395 &&
+            backend.patterns[9].draw.clip.width == 87 &&
+            backend.patterns[9].draw.clip.height == 9,
         "The gameplay HUD packets differ from FUN_004039f0.");
 }
 

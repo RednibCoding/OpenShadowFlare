@@ -1,6 +1,5 @@
 #include "enemy_actor.hpp"
 
-#include "core/retail_random.hpp"
 #include "enemy_presentation_audio.hpp"
 #include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "resources/character_visual_resource.hpp"
@@ -182,6 +181,11 @@ bool EnemyActor::initialize(
     physical_defense_ = enemy.physical_defense;
     physical_evasion_ = enemy.physical_evasion;
     magical_defense_ = enemy.magical_defense;
+    experience_reward_ = enemy.experience_reward;
+    loot_table_row_ = enemy.loot_table_row;
+    gold_drop_chance_ = enemy.gold_drop_chance;
+    gold_minimum_ = enemy.gold_minimum;
+    gold_maximum_ = enemy.gold_maximum;
     reaction_chance_defense_ =
         enemy.reaction_chance_defense;
     reaction_duration_defense_ =
@@ -236,6 +240,11 @@ void EnemyActor::clear() {
     physical_defense_ = 0;
     physical_evasion_ = 0;
     magical_defense_ = 0;
+    experience_reward_ = 0;
+    loot_table_row_ = -1;
+    gold_drop_chance_ = 0;
+    gold_minimum_ = 0;
+    gold_maximum_ = 0;
     reaction_chance_defense_ = 0;
     reaction_duration_defense_ = 0;
     always_suppress_reaction_displacement_ = false;
@@ -266,8 +275,7 @@ void EnemyActor::clear() {
 EnemyActorUpdate EnemyActor::update(
     const GroundMap& ground,
     const ObjectMap& objects,
-    const std::vector<MovementBlocker>* dynamic_blockers,
-    RetailRandom& random) {
+    const std::vector<MovementBlocker>* dynamic_blockers) {
     EnemyActorUpdate result;
     previous_position_ = position_;
     if (expired_) {
@@ -361,10 +369,10 @@ EnemyActorUpdate EnemyActor::update(
     if (presentation_action_ == kDeathPresentationAction) {
         action_lock_ = 1;
         animation_chart_ = kDeathAnimationChart;
-        if (action_counter_ == 0 && visual_) {
+        if (action_counter_ == 0) {
             draw_strength_ = 1000;
-            result.effect_spawn =
-                deathEffect(*this, random.next() % 8);
+            result.death_started = true;
+            result.effect_spawn = deathEffect(*this, 0);
         }
 
         const gapi::CafDirection* death_direction =
@@ -540,6 +548,26 @@ std::int32_t EnemyActor::physicalEvasion() const {
 
 std::int32_t EnemyActor::magicalDefense() const {
     return magical_defense_;
+}
+
+std::int32_t EnemyActor::experienceReward() const {
+    return experience_reward_;
+}
+
+std::int32_t EnemyActor::lootTableRow() const {
+    return loot_table_row_;
+}
+
+std::int32_t EnemyActor::goldDropChance() const {
+    return gold_drop_chance_;
+}
+
+std::int32_t EnemyActor::goldMinimum() const {
+    return gold_minimum_;
+}
+
+std::int32_t EnemyActor::goldMaximum() const {
+    return gold_maximum_;
 }
 
 std::int32_t EnemyActor::reactionChanceDefense() const {

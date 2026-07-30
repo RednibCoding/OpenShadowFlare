@@ -1,4 +1,5 @@
 #include "world_scene.hpp"
+#include "enemy_death_rewards.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 
@@ -83,6 +84,11 @@ void WorldScene::clear() {
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
     gameplay_service_request_ = {};
+}
+
+std::int32_t WorldScene::playerExperienceThreshold() const {
+    return player_data_.experienceThreshold(
+        parameter_tables_);
 }
 
 const GroundMap& WorldScene::ground() const {
@@ -455,13 +461,17 @@ void WorldScene::update() {
             enemy.update(
                 scenario_world_.ground(),
                 scenario_world_.objectMap(),
-                &actor_blockers,
-                item_random_);
+                &actor_blockers);
         pending_audio_samples_.insert(
             pending_audio_samples_.end(),
             update.audio_samples.begin(),
             update.audio_samples.end());
-        queueCombatEffect(update.effect_spawn);
+        if (update.death_started) {
+            handleEnemyDeathStart(
+                enemy, update.effect_spawn);
+        } else {
+            queueCombatEffect(update.effect_spawn);
+        }
         if (enemy_blocker_indices[index] != no_blocker) {
             actor_blockers[
                 enemy_blocker_indices[index]].position =
@@ -476,8 +486,8 @@ void WorldScene::update() {
         }
         const ItemDefinition* definition =
             item_database_.find(
-                item.category,
-                item.definition_id);
+                item.item.category,
+                item.item.definition_id);
         if (definition) {
             pending_audio_samples_.push_back(
                 retailItemLandingSound(*definition));

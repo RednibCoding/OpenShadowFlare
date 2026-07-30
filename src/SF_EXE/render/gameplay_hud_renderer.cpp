@@ -19,12 +19,13 @@ void drawClippedBar(
     std::size_t pattern,
     std::int32_t x,
     std::int32_t y,
-    std::int32_t width) {
+    std::int32_t width,
+    std::int32_t height = 12) {
     if (width <= 0) {
         return;
     }
     gapi::PatternDraw draw;
-    draw.clip = {x, y, width, 12};
+    draw.clip = {x, y, width, height};
     renderer.drawPattern(patterns, pattern, draw);
 }
 
@@ -61,15 +62,35 @@ void drawLevel(
 
 GameplayHudValues gameplayHudValues(
     const PlayerData& player,
-    MovementPace movement_pace) {
+    MovementPace movement_pace,
+    std::int32_t experience_threshold) {
     return {
         player.level(),
         player.currentLife(),
         player.baseMaximumLife(),
         player.currentMana(),
         player.baseMaximumMana(),
+        player.experience(),
+        experience_threshold,
         movement_pace == MovementPace::run,
     };
+}
+
+std::int32_t gameplayHudExperienceBarWidth(
+    std::int32_t experience,
+    std::int32_t threshold) {
+    constexpr std::int32_t kRetailExperienceWidth = 109;
+    if (experience <= 0 || threshold <= 0) {
+        return 0;
+    }
+    if (experience >= threshold) {
+        return kRetailExperienceWidth;
+    }
+    return std::max(
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(experience) *
+            kRetailExperienceWidth / threshold),
+        1);
 }
 
 std::int32_t gameplayHudBarWidth(
@@ -132,9 +153,17 @@ void renderGameplayHud(
             values.current_mana,
             values.maximum_mana));
 
-    // Pattern 15 is the experience-bar frame. Its fill is added once the
-    // record field and level table behind FUN_004039f0 are both mapped.
     renderer.drawPattern(bar_patterns, 15);
+    drawClippedBar(
+        renderer,
+        bar_patterns,
+        14,
+        530,
+        395,
+        gameplayHudExperienceBarWidth(
+            values.experience,
+            values.experience_threshold),
+        9);
 }
 
 }  // namespace osf

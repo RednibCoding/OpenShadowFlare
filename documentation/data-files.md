@@ -204,6 +204,7 @@ become the left, top, right, and bottom offsets of the patrol rectangle used
 by native AI action one. Pre-AI value 8 is copied into both runtime current
 life at `+0xd4` and maximum life at `+0xe4`. Pre-AI values 6, 9, 10, and 11
 are native element, physical defense, physical evasion, and magical defense.
+Pre-AI values 13 and 14 are the experience reward and Table 30 loot row.
 The player direct-hit gate reads value 10 at runtime `+0xec`. Post-AI values
 38 through 40 defend reaction chance, defend reaction duration, and always
 suppress reaction displacement. Post-AI value 54 reaches `+0x1dc`; movement
@@ -211,6 +212,11 @@ actions
 multiply their authored AID speed by this value and divide by 1,000. The raw
 arrays remain available so this partial naming does not discard or reshuffle
 any unclassified field.
+
+Post-AI values 26, 27, and 28 are the Gold drop chance, minimum amount, and
+maximum amount. The chance comparison is strict (`rand() % 100 < chance`);
+the amount is selected from the inclusive range and then scaled by
+`100 + Gold Find`. Gold Find is rolled equipment instance parameter 26.
 
 There is one deliberate resource-less enemy form. Thirty-four records named
 `Enemy Hole` use resource `-1` and initial state `{0, 1, 0}`. They are retained
@@ -663,8 +669,11 @@ known offsets are shared by all five field blocks:
 
 | Field offset | Meaning |
 |--------------|---------|
+| `0x00` | Item subtype |
 | `0x04` | Definition ID |
-| `0x08` | Item subtype |
+| `0x08` | Quality/variant number |
+| `0x0c` | Episode mask used by loot profiles |
+| `0x10` | Weighted loot-selection value |
 | `0x1c` | Inventory width in 32-pixel cells |
 | `0x20` | Inventory height in 32-pixel cells |
 | `0x24` | Item weight |
@@ -707,6 +716,23 @@ contains one shared shadow palette, so shadows keep their pattern default.
 The three strength fields are applied after palette lookup. The opening Round
 Shield uses `900, 800, 500`, while the other three drops use
 `1000, 1000, 1000`.
+
+Categories zero through two carry 39 `{minimum, maximum, chance}` instance
+triples followed by eight elemental triples. Their instance blocks begin at
+field offsets 240/200/108, while elemental triples begin at 708/668/576 for
+weapon, armor, and accessory categories respectively. Every triple consumes
+its chance roll. Armor and accessories also consume the range roll after a
+successful chance even when minimum equals maximum; weapons skip that second
+draw when the bounds are equal. These values are retained in the concrete
+item instance and survive ground pickup and the retail save payload.
+
+Table 30 is the authored enemy-loot table and Table 31 supplies its profiles.
+A successful attempt picks one of ten profile pairs, enables the authored
+quality digits, filters definition episode and level fields, then selects by
+the `0x10` weight. The executable's weighted offset is built from nine
+successive decimal `rand() % 10` digits rather than one additional ordinary
+roll. Successful drops are spaced around the enemy on a 200-world-unit
+radius.
 
 There are two ground-resource layouts. Directories zero through six contain
 `Animation.Njp`, `Animation.Sdw`, and `Animation.Caf`; the table's ground

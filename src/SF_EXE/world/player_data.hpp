@@ -48,6 +48,14 @@ public:
     std::int32_t gender() const;
     std::int32_t job() const;
     std::int32_t level() const;
+    std::int32_t experience() const;
+    std::int32_t experienceThreshold(
+        const TableDatabase& tables) const;
+    std::int32_t totalKillCount() const;
+    std::int32_t killCount(std::size_t kind) const;
+    void addExperience(std::int32_t amount);
+    void addKillCount(std::size_t kind);
+    bool applyLevelThreshold(const TableDatabase& tables);
     std::int32_t baseMaximumLife() const;
     std::int32_t currentLife() const;
     std::int32_t baseMaximumMana() const;
@@ -79,6 +87,7 @@ public:
 private:
     std::int32_t readI32(std::size_t offset) const;
     void writeI32(std::size_t offset, std::int32_t value);
+    void levelUp(const TableDatabase& tables);
 
     std::array<std::uint8_t, retail_record_size> record_{};
     bool valid_ = false;

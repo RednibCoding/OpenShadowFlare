@@ -65,20 +65,25 @@ bool WorldScene::prepareGroundItems(
         GroundItem& item = ground_items[index];
         const ItemDefinition* definition =
             item_database_.find(
-                item.category, item.definition_id);
+                item.item.category,
+                item.item.definition_id);
         if (!definition) {
             if (error) {
                 *error =
                     "Ground-item category " +
-                    std::to_string(item.category) +
+                    std::to_string(item.item.category) +
                     ", definition " +
                     std::to_string(
-                        item.definition_id) +
+                        item.item.definition_id) +
                     " is absent from Item.Ibn.";
             }
             ground_items.resize(first_item);
             next_item_id = first_id;
             return false;
+        }
+        if (item.item.retail_state.empty()) {
+            item.item = makeInventoryItem(
+                *definition, item.item.quantity);
         }
         std::string resource_error;
         if (!ensureItemWorldResource(
@@ -87,10 +92,10 @@ bool WorldScene::prepareGroundItems(
             if (error) {
                 *error =
                     "Ground-item category " +
-                    std::to_string(item.category) +
+                    std::to_string(item.item.category) +
                     ", definition " +
                     std::to_string(
-                        item.definition_id) +
+                        item.item.definition_id) +
                     " could not load resource " +
                     std::to_string(
                         definition->ground_resource_id) +

@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_GROUND_ITEM_HPP
 
 #include "core/retail_random.hpp"
+#include "items/player_inventory.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "scenario_entity_state.hpp"
 
@@ -13,9 +14,7 @@ namespace osf {
 struct ScenarioItem;
 
 struct GroundItem {
-    std::int32_t category = 0;
-    std::int32_t definition_id = 0;
-    std::int32_t quantity = 1;
+    InventoryItem item;
     WorldPosition position;
     std::int32_t resource_id = -1;
     std::int32_t animation_chart = -1;
@@ -41,6 +40,10 @@ enum class GroundItemUpdateEvent {
     first_impact,
 };
 
+bool createGroundItem(
+    std::vector<GroundItem>& items,
+    InventoryItem item,
+    WorldPosition position);
 bool createGroundItem(
     std::vector<GroundItem>& items,
     std::int32_t category,

@@ -48,6 +48,7 @@ public:
     bool add(
         const ItemDefinition& definition,
         std::int32_t quantity = 1);
+    bool store(InventoryItem item);
     std::optional<InventoryItem> take(
         std::size_t item_index);
     InventoryPlacementResult place(

@@ -241,7 +241,7 @@ bool testHitAndDeathActions(
                     enemy.direction())]
             .frame_count;
     enemy.update(
-        empty_ground, empty_objects, nullptr, random);
+        empty_ground, empty_objects, nullptr);
     if (!check(
             enemy.animationChart() == 2 &&
                 enemy.animationFrame() == 0 &&
@@ -252,7 +252,7 @@ bool testHitAndDeathActions(
         return false;
     }
     enemy.update(
-        empty_ground, empty_objects, nullptr, random);
+        empty_ground, empty_objects, nullptr);
     if (!check(
             enemy.animationFrame() ==
                 hit_frames / 4,
@@ -261,9 +261,9 @@ bool testHitAndDeathActions(
         return false;
     }
     enemy.update(
-        empty_ground, empty_objects, nullptr, random);
+        empty_ground, empty_objects, nullptr);
     enemy.update(
-        empty_ground, empty_objects, nullptr, random);
+        empty_ground, empty_objects, nullptr);
     state = enemy.damageReceiverState(world.id());
     if (!check(
             state.presentation_action == 7 &&
@@ -289,7 +289,7 @@ bool testHitAndDeathActions(
     const osf::WorldPosition before_impulse =
         enemy.position();
     enemy.update(
-        empty_ground, empty_objects, nullptr, random);
+        empty_ground, empty_objects, nullptr);
     if (!check(
             enemy.position().x ==
                     before_impulse.x + 120 &&
@@ -323,8 +323,7 @@ bool testHitAndDeathActions(
     enemy.update(
         empty_ground,
         empty_objects,
-        &blockers,
-        random);
+        &blockers);
     if (!check(
             enemy.position().x <
                 before_blocked_impulse.x + 120,
@@ -339,16 +338,11 @@ bool testHitAndDeathActions(
     state.presentation_counter = 0;
     state.action_lock = 1;
     enemy.applyDamageReceiverState(state);
-    osf::RetailRandom death_random(7);
-    osf::RetailRandom expected_random(7);
-    const std::int32_t expected_direction =
-        expected_random.next() % 8;
     const osf::EnemyActorUpdate first_death =
         enemy.update(
             empty_ground,
             empty_objects,
-            nullptr,
-            death_random);
+            nullptr);
     if (!check(
             enemy.animationChart() == 3 &&
                 first_death.effect_spawn.valid &&
@@ -358,20 +352,17 @@ bool testHitAndDeathActions(
                 first_death.effect_spawn
                         .source_character_number ==
                     enemy.characterNumber() &&
-                first_death.effect_spawn.packet_kind ==
-                    expected_direction &&
-                death_random.state() ==
-                    expected_random.state(),
+                first_death.death_started &&
+                first_death.effect_spawn.packet_kind == 0,
             "Enemy action eleven did not create the retail "
-            "owner-bound death effect in random order.")) {
+            "owner-bound death effect request.")) {
         return false;
     }
     const osf::EnemyActorUpdate second_death =
         enemy.update(
             empty_ground,
             empty_objects,
-            nullptr,
-            death_random);
+            nullptr);
     const std::int32_t death_sample =
         osf::retailEnemyDeathSample(
             enemy.resourceId());
@@ -394,8 +385,7 @@ bool testHitAndDeathActions(
         enemy.update(
             empty_ground,
             empty_objects,
-            nullptr,
-            death_random);
+            nullptr);
         faded =
             faded || enemy.drawStrength() < 1000;
     }

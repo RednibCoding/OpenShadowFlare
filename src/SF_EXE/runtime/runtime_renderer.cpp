@@ -123,7 +123,9 @@ void RuntimeRenderer::render(
                     *bar,
                     gameplayHudValues(
                         context.world.playerData(),
-                        context.world.playerMovementPace()));
+                        context.world.playerMovementPace(),
+                        context.world
+                            .playerExperienceThreshold()));
                 renderGameplayBeltItems(
                     renderer_,
                     context.world);

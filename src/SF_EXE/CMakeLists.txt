@@ -49,6 +49,7 @@ add_library(
   items/item_instance_values.cpp
   items/item_grid.cpp
   items/item_information.cpp
+  items/item_instance_factory.cpp
   items/new_player_loadout.cpp
   items/player_belt.cpp
   items/player_equipment.cpp
@@ -118,6 +119,7 @@ add_library(
   world/enemy_ai_action.cpp
   world/enemy_ai_evaluator.cpp
   world/enemy_damage_receiver.cpp
+  world/enemy_death_rewards.cpp
   world/enemy_direct_impact.cpp
   world/enemy_effect_impact.cpp
   world/enemy_presentation.cpp

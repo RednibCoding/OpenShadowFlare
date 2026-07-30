@@ -168,9 +168,9 @@ bool testGroundItemCreation() {
             osf::createGroundItems(
                 items, random, 2, 45, {100, 200}, -1, -1) &&
                 items.size() == 1 &&
-                items[0].category == 2 &&
-                items[0].definition_id == 45 &&
-                items[0].quantity == 1 &&
+                items[0].item.category == 2 &&
+                items[0].item.definition_id == 45 &&
+                items[0].item.quantity == 1 &&
                 items[0].position.x == 100 &&
                 items[0].position.y == 200,
             "Ordinary script items were not created at their exact point.")) {
@@ -186,9 +186,9 @@ bool testGroundItemCreation() {
                 25000,
                 25000) &&
                 items.size() == 4 &&
-                items[1].quantity == 10000 &&
-                items[2].quantity == 10000 &&
-                items[3].quantity == 5000 &&
+                items[1].item.quantity == 10000 &&
+                items[2].item.quantity == 10000 &&
+                items[3].item.quantity == 5000 &&
                 items[1].position.x == 300 &&
                 items[1].position.y == 200,
             "Retail money splitting or radial placement differs.")) {
@@ -240,7 +240,7 @@ bool testGroundItemCreation() {
     }
     osf::GroundItem& authored = items.back();
     if (!check(
-            authored.quantity == 25000 &&
+            authored.item.quantity == 25000 &&
                 authored.position.x == -450 &&
                 authored.position.y == 900 &&
                 authored.scenario_character_number == 18000012 &&
@@ -677,6 +677,16 @@ bool testFixture() {
                 enemy->pre_ai_values[9] &&
             enemy->magical_defense ==
                 enemy->pre_ai_values[11] &&
+            enemy->experience_reward ==
+                enemy->pre_ai_values[13] &&
+            enemy->loot_table_row ==
+                enemy->pre_ai_values[14] &&
+            enemy->gold_drop_chance ==
+                enemy->post_ai_values[26] &&
+            enemy->gold_minimum ==
+                enemy->post_ai_values[27] &&
+            enemy->gold_maximum ==
+                enemy->post_ai_values[28] &&
             enemy->reaction_chance_defense ==
                 enemy->post_ai_values[38] &&
             enemy->reaction_duration_defense ==
@@ -1756,10 +1766,10 @@ bool testPlacedScenarioItems() {
         const osf::GroundItem& item =
             world.groundItems()[index];
         if (!check(
-                item.category == expected.category &&
-                    item.definition_id ==
+                item.item.category == expected.category &&
+                    item.item.definition_id ==
                         expected.definition_id &&
-                    item.quantity == 1 &&
+                    item.item.quantity == 1 &&
                     item.position.x == expected.world_x &&
                     item.position.y == expected.world_y &&
                     item.id ==
@@ -1884,10 +1894,10 @@ bool testPlacedScenarioItems() {
                             .scenario_character_number ==
                         initial_items[index]
                             .scenario_character_number &&
-                    world.groundItems()[index].category ==
-                        initial_items[index].category &&
-                    world.groundItems()[index].definition_id ==
-                        initial_items[index].definition_id &&
+                    world.groundItems()[index].item.category ==
+                        initial_items[index].item.category &&
+                    world.groundItems()[index].item.definition_id ==
+                        initial_items[index].item.definition_id &&
                     world.groundItems()[index].position.x ==
                         initial_items[index].position.x &&
                     world.groundItems()[index].position.y ==
@@ -2502,9 +2512,9 @@ bool testRetailRemoteTown() {
             world.conversationActive() &&
                 world.conversationMessageId() == 1000003 &&
                 world.groundItems().size() == 4 &&
-                world.groundItems()[0].category == 0 &&
-                world.groundItems()[0].definition_id == 0 &&
-                world.groundItems()[0].quantity == 1 &&
+                world.groundItems()[0].item.category == 0 &&
+                world.groundItems()[0].item.definition_id == 0 &&
+                world.groundItems()[0].item.quantity == 1 &&
                 world.groundItems()[0].position.x ==
                     interaction_position.x + 200 &&
                 world.groundItems()[0].position.y ==
@@ -2514,8 +2524,8 @@ bool testRetailRemoteTown() {
                 world.groundItems()[0].red_strength == 1000 &&
                 world.groundItems()[0].green_strength == 1000 &&
                 world.groundItems()[0].blue_strength == 1000 &&
-                world.groundItems()[1].category == 1 &&
-                world.groundItems()[1].definition_id == 1000000 &&
+                world.groundItems()[1].item.category == 1 &&
+                world.groundItems()[1].item.definition_id == 1000000 &&
                 world.groundItems()[1].position.x ==
                     interaction_position.x &&
                 world.groundItems()[1].position.y ==
@@ -2525,8 +2535,8 @@ bool testRetailRemoteTown() {
                 world.groundItems()[1].red_strength == 900 &&
                 world.groundItems()[1].green_strength == 800 &&
                 world.groundItems()[1].blue_strength == 500 &&
-                world.groundItems()[2].category == 0 &&
-                world.groundItems()[2].definition_id == 100 &&
+                world.groundItems()[2].item.category == 0 &&
+                world.groundItems()[2].item.definition_id == 100 &&
                 world.groundItems()[2].position.x ==
                     interaction_position.x + 200 &&
                 world.groundItems()[2].position.y ==
@@ -2536,9 +2546,9 @@ bool testRetailRemoteTown() {
                 world.groundItems()[2].red_strength == 1000 &&
                 world.groundItems()[2].green_strength == 1000 &&
                 world.groundItems()[2].blue_strength == 1000 &&
-                world.groundItems()[3].category == 4 &&
-                world.groundItems()[3].definition_id == 0 &&
-                world.groundItems()[3].quantity == 200 &&
+                world.groundItems()[3].item.category == 4 &&
+                world.groundItems()[3].item.definition_id == 0 &&
+                world.groundItems()[3].item.quantity == 200 &&
                 world.groundItems()[3].position.x ==
                     interaction_position.x + 200 &&
                 world.groundItems()[3].position.y ==
@@ -2739,7 +2749,19 @@ bool testRetailRemoteTown() {
                 world.playerInventory()
                         .items()[0]
                         .definition_id == 0 &&
-                world.playerInventory().items()[0].quantity == 1,
+                world.playerInventory().items()[0].quantity == 1 &&
+                world.playerInventory().items()[0].width ==
+                    world.itemDatabase()
+                        .find(0, 0)
+                        ->inventory_width &&
+                world.playerInventory().items()[0].height ==
+                    world.itemDatabase()
+                        .find(0, 0)
+                        ->inventory_height &&
+                world.playerInventory().items()[0].durability ==
+                    world.itemDatabase()
+                        .find(0, 0)
+                        ->maximum_durability,
             "The retail approach-and-pickup path did not transfer "
             "the Short Sword into player inventory.")) {
         return false;
@@ -2756,8 +2778,8 @@ bool testRetailRemoteTown() {
                     *dropped_sword, 0, 240) &&
                 world.playerInventory().items().empty() &&
                 world.groundItems().size() == 4 &&
-                world.groundItems().back().category == 0 &&
-                world.groundItems().back().definition_id == 0 &&
+                world.groundItems().back().item.category == 0 &&
+                world.groundItems().back().item.definition_id == 0 &&
                 world.groundItems().back().resource_id == 0 &&
                 (std::abs(
                      world.groundItems().back().position.x -

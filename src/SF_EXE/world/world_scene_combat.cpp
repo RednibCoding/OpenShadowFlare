@@ -1,9 +1,59 @@
 #include "world_scene.hpp"
+#include "enemy_death_rewards.hpp"
 
 #include <string>
 #include <utility>
 
 namespace osf {
+
+void WorldScene::handleEnemyDeathStart(
+    EnemyActor& enemy,
+    CombatEffectSpawnRequest effect) {
+    constexpr std::int32_t kEpisodeOneMask = 1;
+    const std::vector<EnemyDeathDrop> drops =
+        createRetailEnemyDrops(
+            enemy.lootTableRow(),
+            enemy.goldDropChance(),
+            enemy.goldMinimum(),
+            enemy.goldMaximum(),
+            enemy.position(),
+            enemy.judgement(),
+            player_equipment_.instanceParameterBonus(
+                26, item_database_),
+            kEpisodeOneMask,
+            1,
+            parameter_tables_,
+            item_database_,
+            item_random_);
+
+    std::vector<GroundItem>& ground_items =
+        scenario_world_.groundItems();
+    const std::size_t first_item =
+        ground_items.size();
+    const std::int32_t first_id =
+        next_ground_item_id_;
+    bool created = true;
+    for (const EnemyDeathDrop& drop : drops) {
+        if (!createGroundItem(
+                ground_items,
+                drop.item,
+                drop.position)) {
+            created = false;
+            break;
+        }
+    }
+    if (!created || !prepareGroundItems(first_item)) {
+        ground_items.resize(first_item);
+        next_ground_item_id_ = first_id;
+    }
+
+    // Retail creates all item and Gold instances first. Its death-effect
+    // direction is the next PRNG draw after those constructors finish.
+    if (effect.valid) {
+        effect.packet_kind = item_random_.next() % 8;
+        queueCombatEffect(effect);
+    }
+}
 
 void WorldScene::queueCombatEffect(
     const CombatEffectSpawnRequest& request) {

@@ -1226,5 +1226,40 @@ Broken category-zero and category-one equipment remains present and keeps its
 weight, while `0x0044ea60` proves that its base derived contributions and
 element strengths no longer participate. Hit/death CAF presentation,
 reaction displacement, and ordinary configured effect-list ownership now run
-at the live actor boundary described above. Experience, drops, and the
-specialized effect dispatch families remain separate follow-up work.
+at the live actor boundary described above. Specialized effect dispatch
+families remain separate follow-up work.
+
+## Enemy kill rewards
+
+The lethal callback at `0x004134a0` uses each enemy's MCT pre-AI value 13 as
+its experience reward. Per-player attributed damage selects Table 14 row
+`damage * 10 / maximum life`, clamped to 0 through 10, and that percentage is
+applied to the reward. A direct local-player kill increments the persistent
+total at player-record offset `0xb0`; ordinary main-hand subtypes select the
+eight counters beginning at `0xb4`, while effects and other sources use
+`0xd4`. The experience total lives at `0xd8`, so the existing 0x160-byte
+player record already carries all of these values through save/load.
+
+Table 13 supplies the threshold for `level - 1`. Reaching it discards overflow,
+records the current job in the 100-byte history at `0xdc`, applies the matching
+gender-specific 900-series growth column to the 13 base parameters, refreshes
+life and mana, and resets experience. New-character initialization fills that
+history with novice job `0x10`, matching `0x00440f70`. The full later
+job-selection and skill-unlock branch still needs its own class-system slice.
+
+Enemy death action 11 calls `0x0045a000` before `0x0045a030`. The first uses
+MCT pre-AI value 14 as a Table 30 row. Every attempt consumes the chance draw;
+a success consumes a separate ten-slot profile draw, applies Table 31's
+category, level, variant, and episode filters, then uses `0x00401520(9)` for
+the weighted item offset. Constructing the definition rolls 39 instance and
+eight element triples. Successful objects are placed around the enemy at
+radius 200.
+
+The Gold callback reads MCT post-AI values 26 through 28. Equipped instance
+parameter 26 changes the 100-percent multiplier, the chance comparison is
+strict, and the inclusive amount draw occurs only after Gold construction.
+Its origin is the enemy position plus the judgement left/top corner and 100
+world units on y. Both paths create complete owned item instances through the
+ordinary ground-item owner. The next PRNG draw then chooses death effect
+21010's direction, and the first bounce produces the existing category
+landing sound.

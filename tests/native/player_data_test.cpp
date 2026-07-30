@@ -1,4 +1,5 @@
 #include "items/item_database.hpp"
+#include "items/item_instance_factory.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
@@ -11,6 +12,7 @@
 #include "world/retail_save_preview.hpp"
 #include "world/retail_save_progress.hpp"
 #include "world/transport_catalog.hpp"
+#include "core/retail_random.hpp"
 
 #include <algorithm>
 #include <array>
@@ -235,11 +237,20 @@ int main() {
     osf::PlayerEquipment saved_equipment;
     osf::PlayerBelt saved_belt;
     osf::PlayerSpecialItems saved_special_items;
+    osf::RetailRandom dropped_item_random(73);
+    const osf::InventoryItem dropped_dagger =
+        dagger
+            ? osf::makeRetailInventoryItem(
+                  *dagger,
+                  [&dropped_item_random]() {
+                      return dropped_item_random.next();
+                  })
+            : osf::InventoryItem{};
     if (!check(
             dagger &&
                 leather_cloth &&
                 gold &&
-                saved_inventory.add(*dagger) &&
+                saved_inventory.store(dropped_dagger) &&
                 saved_inventory.add(*gold, 250) &&
                 saved_special_items
                     .place(
@@ -316,6 +327,8 @@ int main() {
                 restored_inventory.itemAt(4, 0) &&
                 restored_inventory.itemAt(4, 0)->category == 0 &&
                 restored_inventory.itemAt(4, 0)->identified == 1 &&
+                restored_inventory.itemAt(4, 0)->retail_state ==
+                    dropped_dagger.retail_state &&
                 restored_inventory.gold() == 250 &&
                 restored_equipment.item(
                     osf::EquipmentSlot::body) &&

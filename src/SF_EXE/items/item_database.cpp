@@ -261,6 +261,8 @@ bool ItemDatabase::decode(
             definition.id = field(4);
             definition.subtype = field(0);
             definition.variant = field(8);
+            definition.loot_episode_mask = field(12);
+            definition.loot_weight = field(16);
             definition.base_price = field(20);
             definition.inventory_width = field(28);
             definition.inventory_height = field(32);
@@ -331,6 +333,50 @@ bool ItemDatabase::decode(
                     definition.appearance_red_strength = field(156);
                     definition.appearance_green_strength = field(160);
                     definition.appearance_blue_strength = field(164);
+                }
+            }
+            if (category <= 2) {
+                const std::size_t parameter_offset =
+                    category == 0
+                        ? 240u
+                        : category == 1
+                            ? 200u
+                            : 108u;
+                const std::size_t element_roll_offset =
+                    category == 0
+                        ? 708u
+                        : category == 1
+                            ? 668u
+                            : 576u;
+                for (std::size_t parameter = 0;
+                     parameter <
+                         definition.instance_parameter_rolls.size();
+                     ++parameter) {
+                    RetailItemRoll& roll =
+                        definition
+                            .instance_parameter_rolls[parameter];
+                    roll.minimum =
+                        field(parameter_offset + parameter * 12u);
+                    roll.maximum =
+                        field(parameter_offset + parameter * 12u + 4u);
+                    roll.chance =
+                        field(parameter_offset + parameter * 12u + 8u);
+                }
+                for (std::size_t element = 0;
+                     element < definition.element_rolls.size();
+                     ++element) {
+                    RetailItemRoll& roll =
+                        definition.element_rolls[element];
+                    roll.minimum =
+                        field(element_roll_offset + element * 12u);
+                    roll.maximum =
+                        field(
+                            element_roll_offset +
+                            element * 12u + 4u);
+                    roll.chance =
+                        field(
+                            element_roll_offset +
+                            element * 12u + 8u);
                 }
             }
             definitions.push_back(std::move(definition));

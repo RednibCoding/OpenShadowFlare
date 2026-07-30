@@ -839,7 +839,8 @@ Action 11 selects CAF chart three, uses direction eight only when that chart
 really supplies it, scans the same three sound markers, and plays the separate
 resource-specific death sample on update one. It holds the final frame through
 the original 120-update fade and then removes the enemy from the scenario.
-Its first update also creates effect 21010 with the original random direction.
+Its first update creates the authored item drops and Gold first, then effect
+21010 with the next random direction, preserving the executable's order.
 
 The world now owns the ordinary receiver visuals too. Effects 21000 through
 21014 resolve through the executable's dispatch table to their exact
@@ -850,11 +851,27 @@ Effects 21010 through 21012 keep their separate 120-update lifetime,
 reaction, projectile, and spell effect handlers remain typed requests until
 their own dispatch branches are reconstructed.
 
-The next combat slice should follow the lethal path after presentation
-selection: reconstruct kill accounting, experience distribution, and the
-enemy's authored item/Gold drops. Drops must enter the existing ground-item
-owner so their palettes, bounce timing, landing sounds, pickup, saving, and
-script visibility are not reimplemented in combat code.
+The lethal reward path is complete now. MCT pre-AI values 13 and 14 supply
+experience and the Table 30 loot row; post-AI values 26 through 28 supply the
+Gold chance and inclusive amount range. Table 31 profiles select item
+categories, level ranges, episode masks, and quality variants. Their weighted
+choice keeps the original nine-digit random helper and each selected
+definition rolls all 39 instance parameters plus eight elemental values in
+the same constructor order.
+
+Damage attribution awards the local player Table 14's share of the enemy's
+experience, updates the retail weapon/effect kill counters, checks Table 13,
+and performs novice stat growth from the gender-specific 900-series table.
+The HUD now reveals pattern 14 across the original 109-pixel experience bar.
+Gold Find reads rolled equipment parameter 26. Item and Gold drops keep their
+full instance object while bouncing, so landing audio, pickup, inventory
+placement, equipment, and save/load do not silently discard rolled values.
+
+The next combat slice should connect the already reconstructed AI evaluator
+and native action controller to live enemies. Start with one Wasteland enemy:
+its current life, target distance, event, patrol movement, and presentation
+completion should drive the real AID choices, shared movement controller, and
+ordinary attack receiver without adding a second AI or collision path.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

@@ -813,6 +813,39 @@ if(TARGET sf_game_core)
 
   add_test(NAME player_data COMMAND player_data_test)
 
+  add_executable(
+    enemy_death_rewards_test
+    enemy_death_rewards_test.cpp
+  )
+  target_link_libraries(
+    enemy_death_rewards_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    enemy_death_rewards_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    enemy_death_rewards_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    enemy_death_rewards_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      enemy_death_rewards_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      enemy_death_rewards_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME enemy_death_rewards
+    COMMAND enemy_death_rewards_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test

@@ -10,14 +10,23 @@
 
 namespace osf {
 
+struct RetailItemRoll {
+    std::int32_t minimum = 0;
+    std::int32_t maximum = 0;
+    std::int32_t chance = 0;
+};
+
 struct ItemDefinition {
     static constexpr std::size_t derived_parameter_count = 10;
     static constexpr std::size_t element_count = 8;
+    static constexpr std::size_t instance_parameter_count = 39;
 
     std::int32_t category = -1;
     std::int32_t id = -1;
     std::int32_t subtype = -1;
     std::int32_t variant = -1;
+    std::int32_t loot_episode_mask = 0;
+    std::int32_t loot_weight = 0;
     std::int32_t base_price = 0;
     std::int32_t inventory_width = 1;
     std::int32_t inventory_height = 1;
@@ -37,6 +46,12 @@ struct ItemDefinition {
     std::array<
         std::int32_t,
         element_count> element_strengths{};
+    std::array<
+        RetailItemRoll,
+        instance_parameter_count> instance_parameter_rolls{};
+    std::array<
+        RetailItemRoll,
+        element_count> element_rolls{};
     std::int32_t required_level = 1;
     std::int32_t appearance_part = -1;
     std::int32_t appearance_red_strength = 1000;

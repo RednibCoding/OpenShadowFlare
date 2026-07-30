@@ -370,6 +370,11 @@ bool readScenarioEnemy(
     enemy.physical_defense = pre_ai_values[9];
     enemy.physical_evasion = pre_ai_values[10];
     enemy.magical_defense = pre_ai_values[11];
+    enemy.experience_reward = pre_ai_values[13];
+    enemy.loot_table_row = pre_ai_values[14];
+    enemy.gold_drop_chance = post_ai_values[26];
+    enemy.gold_minimum = post_ai_values[27];
+    enemy.gold_maximum = post_ai_values[28];
     enemy.reaction_chance_defense =
         post_ai_values[38];
     enemy.reaction_duration_defense =
