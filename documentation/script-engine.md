@@ -64,31 +64,44 @@ Recognizable embedded names include behavior families such as `HITandAWAY`,
 `GUARD`, and `MAGIC`.
 
 The executable contains the evaluator and the action implementations. The
-currently traced evaluator:
+evaluator at `0x0045c9f0`:
 
 1. selects an event bucket from the actor's behavior list;
-2. rejects candidates whose condition block does not match current actor or
-   world state;
-3. keeps candidates at the highest eligible priority;
-4. performs a weighted random selection among those candidates;
-5. copies the selected action number and parameter block into the actor;
-6. dispatches that number to native movement, attack, guard, spell, or other
+2. rejects candidates outside their inclusive life-percentage or target-range
+   conditions, with `-1` meaning an open end;
+3. clears the retained candidates whenever it finds a new highest priority,
+   but still inserts later lower-priority candidates at the front of the
+   temporary list;
+4. performs a weighted random selection while traversing that temporary list,
+   which is the reverse of file order;
+5. falls back to event zero when events 1 through 10, 16, or 17 select
+   nothing;
+6. copies the selected action number and complete action record into the
+   actor;
+7. dispatches that number to native movement, attack, guard, spell, or other
    action code.
 
-Some condition and parameter fields are visible in the decompiler, including
-health-based tests, priority, selection weight, timing, distance, and movement
-values. Their complete names and units still need retail traces, so unknown
-fields should remain raw rather than receiving speculative meanings.
+The unusual third step is retail behavior, not a simplified priority rule.
+The shipped file contains 33 places where a lower priority follows a higher
+one in the same event, so preserving it can affect real selections. Parameter
+zero is priority and parameter two is selection weight. Condition zero enables
+the inclusive percentage test in conditions one and two; condition three
+enables the target-distance query using conditions four and five. Timing,
+movement, and the remaining values still need consumer traces, so they remain
+raw rather than receiving speculative names.
 
 The portable executable now has a separate `RKC_RPG_AICONTROL` static library
 which owns AID decoding and lookup. The shipped catalog resolves all 18,788
 MCT enemy references against its 64 exact names and keeps all 1,338 candidates
-under their original event buckets. Parameter and condition values remain raw
-until the executable consumers establish their meanings.
+under their original event buckets. An executable-owned evaluator reproduces
+the proven filtering, candidate-list quirk, weighted draw, and event-zero
+fallback without putting runtime policy into the data library.
 
-The executable-owned actor system still needs to evaluate those records and
-implement the native actions. AI lists, probabilities, and condition values
-must come from `Control.aid`, not from NPC-specific C++ branches.
+It is deliberately not connected to live enemies yet. Enemy life fields,
+target querying, selected-action storage, and the native action dispatcher
+must be reconstructed together before evaluation can safely alter an actor.
+AI lists, probabilities, and condition values must come from `Control.aid`,
+not from NPC-specific C++ branches.
 
 ### What is not a script
 

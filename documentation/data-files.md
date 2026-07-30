@@ -44,15 +44,18 @@ then its event buckets. Every action candidate within an event stores:
 | Field | Size | Purpose |
 |---|---:|---|
 | Action number | 4 bytes | Selects native executable behavior |
-| Parameter block | 36 bytes | Priority, weight, timing, range, movement, and other action inputs |
-| Condition block | 24 bytes | Eligibility tests against actor/world state |
+| Parameter block | 36 bytes | Nine signed values; index 0 is priority and index 2 is selection weight |
+| Condition block | 24 bytes | Six signed values; indexes 0–2 gate life percentage and 3–5 gate target distance |
 
 The portable `RKC_RPG_AICONTROL` library now handles the binary container and
 exact-name/index lookup. It validates complete records and preserves each
 parameter as nine signed values and each condition as six signed values.
-The executable evaluates conditions, chooses an eligible action, and executes
-the selected native behavior. This makes AID script-like data, but it is not
-another `Scenario.Scs` format and does not use the scenario opcode interpreter.
+The executable evaluator treats the two condition ranges as inclusive and
+uses `-1` for an unbounded end. It retains retail's unusual candidate-list
+ordering, performs the parameter-2 weighted draw, and uses event zero as the
+fallback for events 1–10, 16, and 17. Native action execution is a separate
+executable concern. This makes AID script-like data, but it is not another
+`Scenario.Scs` format and does not use the scenario opcode interpreter.
 
 The known division of responsibility and the requirements for its future
 portable implementation are covered in

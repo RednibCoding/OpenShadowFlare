@@ -269,6 +269,15 @@ enemy name resolves through exact byte-name lookup, and each runtime enemy
 keeps the resulting stable list index. The nine parameter and six condition
 values stay raw until their executable consumers prove names and units.
 
+The executable-owned event selector is reconstructed separately from the data
+library. It applies the proven life-percentage and target-range conditions,
+preserves retail's reverse temporary-list order and later-lower-priority quirk,
+draws with parameter two as the weight, and falls back to event zero for the
+same event set as retail. It is not attached to live enemies yet: doing that
+before their life fields, target query, selected-action state, and native
+action dispatcher are all present would create a convincing but incomplete
+behavior path.
+
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
 spawn-relative movement rectangle. He now alternates chart-zero idling with a
@@ -288,8 +297,9 @@ transition path around `0x00426200`:
 
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
-- reconstruct the enemy AI event evaluator and native movement actions on top
-  of the decoded control lists and separate actor runtime;
+- connect the reconstructed enemy AI event evaluator to proven enemy life,
+  target, and selected-action state, then implement its native movement
+  actions on top of the shared movement controller;
 - release the old scenario in the same order the original does;
 - identify the condition and sequence for the alternate `VisualNN.njp`
   artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is

@@ -170,6 +170,25 @@ the enemy initializer. The portable `AiControlDatabase` follows that ownership:
 it is loaded once by `WorldScene`, while scenario-local enemies retain a
 non-owning list reference and its stable index.
 
+Enemy update reaches the event selector at `0x0045c9f0`. Parameter zero is
+the candidate priority and parameter two is its random-selection weight.
+Condition zero enables a current-life percentage test with the inclusive
+minimum and maximum in conditions one and two; condition three enables the
+same kind of inclusive range around target distance using conditions four and
+five. A bound of `-1` is open. The target query at `0x00459500` searches the
+four player slots and then companion character numbers `16000000` through
+`16000003`.
+
+Eligible actions are copied into a temporary linked list at position zero.
+Finding a priority above the current maximum clears that list first, but a
+later lower-priority action is still inserted. Weighted traversal is therefore
+in reverse file order and may include those later lower-priority candidates.
+This is observable data behavior: 33 priority decreases exist inside the
+shipped event buckets. If no action is chosen, requested events 1 through 10,
+16, and 17 retry event zero. The portable event evaluator preserves this path
+as a deterministic unit, but does not update a live enemy until the remaining
+actor fields and native action dispatcher have been traced.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

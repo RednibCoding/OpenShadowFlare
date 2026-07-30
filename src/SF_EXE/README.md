@@ -127,8 +127,11 @@ collision.
 The global `Control.aid` owner now lives in the portable
 `RKC_RPG_AICONTROL` library. Its 64 lists and 1,338 action candidates are
 decoded once when a world starts, and every shipped MCT enemy name resolves to
-the exact list and stable index used by retail. Condition evaluation and
-native action dispatch remain separate executable slices.
+the exact list and stable index used by retail. The executable-owned event
+evaluator now reproduces the confirmed life and target conditions, retail
+candidate ordering, weighted choice, and event-zero fallback. It remains
+dormant until the live enemy life/target inputs and native action dispatcher
+can be connected as one complete behavior slice.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

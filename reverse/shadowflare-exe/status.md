@@ -365,7 +365,19 @@ file contains 64 exact-name lists, 18 event buckets per list, and 1,338 action
 candidates. `AiControlDatabase` retains the nine parameter and six condition
 integers without speculative field names. All 18,788 MCT enemy records resolve
 their controller name, and each live enemy stores the resulting stable list
-index. Candidate evaluation and native enemy actions remain executable work.
+index.
+
+The evaluator at `0x0045c9f0` is now reproduced as an executable-owned,
+deterministic unit. Condition values zero through two gate inclusive current
+life percentage, values three through five request a target inside inclusive
+distance limits, parameter zero supplies priority, and parameter two supplies
+weight. Its temporary linked list reverses file order and retains a later
+lower-priority candidate until another new maximum clears the list; the
+portable path preserves that retail quirk. Events 1 through 10, 16, and 17
+fall back to event zero when nothing is selected. Live attachment remains
+pending until `0x00459500` target lookup, enemy life fields, selected-action
+storage, and the native action dispatcher can be connected without a partial
+behavior path.
 
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
