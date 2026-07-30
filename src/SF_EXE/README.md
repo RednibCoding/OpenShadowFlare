@@ -138,6 +138,20 @@ Short Sword, plays its hit and death presentation, awards experience and kill
 credit, and creates its authored item and possible Gold drops. Those drops
 bounce, play their landing sound, can be approached and picked up with their
 item-specific movement sound, and remain owned after saving and loading.
+The same live path checks that the Goblin acquires and attacks a passive hero,
+keeps fighting after being hit, plays the hero's gender-specific attack voice,
+and stops blocking movement as soon as death starts. Loot uses the separate
+retail loot-level field and Table 31's fixed-item rule, so early enemies no
+longer select equipment merely because its required-level field happened to
+fit a misread table column.
+
+Outdoor chests and crates now complete their original scenario-script path:
+the closed object is hidden, its open partner appears, the positional opening
+sound plays, and opcode 24 creates the authored Table 30 loot. Level gains
+show the retail changed-stat notice for its 900-update lifetime and play the
+normal level sound, plus the extra level-five cue. The Warehouse or map can
+stay open on the left while Inventory remains usable on the right; with both
+sides open the world view stays centered.
 
 The actor also owns the fields proven beyond that common boundary:
 spawn-relative patrol bounds, current and maximum life initialized from the

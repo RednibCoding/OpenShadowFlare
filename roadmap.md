@@ -996,6 +996,21 @@ finish. It should move to the remaining effect-controller families, player
 death and recovery, then the ranged player actions and companion attacks,
 keeping one shipped live encounter beside each passive reconstruction.
 
+A fidelity cleanup now protects that checkpoint too. The first Goblin must
+acquire and attack a passive player, continue retaliating after being struck,
+and play the gender-specific hero voice on ordinary weapon impacts. Death
+disables the enemy judgement rectangle immediately, before the corpse has
+finished fading. Table 31 now uses its real category, loot-level bounds, fixed
+definition, and episode fields, so a level-one encounter cannot manufacture
+late-game equipment through a column mix-up.
+
+The nearby outdoor containers run their shipped scripts all the way through
+the positional opening sound and Table 30 loot command. Level gains publish
+the original changed-stat text for 900 updates and play their retail samples.
+The Warehouse and map remain left-side owners while Inventory remains an
+independent right-side owner; opening both keeps the world camera centered and
+allows items to move between the Warehouse and backpack.
+
 ### 5. Skills, magic, status, and the remaining game screens
 
 Once the ordinary combat loop is reliable, add the systems that modify it:

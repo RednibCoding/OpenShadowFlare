@@ -263,6 +263,7 @@ PlayerAttackActionController::displayedFrame() const {
 PlayerAttackActionEvent
 PlayerAttackActionController::eventForCurrentFrame() {
     PlayerAttackActionEvent event;
+    event.action = action_;
     event.target_id = target_id_;
     if (displayed_frame_ < timing_.first_frame_count &&
         displayed_frame_ != previous_scanned_frame_) {

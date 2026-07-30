@@ -141,6 +141,206 @@ bool containsSample(
            samples.end();
 }
 
+bool leaveRemoteTown(osf::WorldScene& world) {
+    const auto trigger = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000000;
+        });
+    if (trigger == world.scenarioObjects().end()) {
+        return false;
+    }
+    const osf::ObjectBounds& bounds =
+        trigger->judgement();
+    const osf::WorldPosition target{
+        trigger->position().x +
+            (bounds.left + bounds.right) / 2,
+        trigger->position().y +
+            (bounds.top + bounds.bottom) / 2,
+    };
+    const osf::ScreenPosition screen =
+        osf::calculateRealPosition(target);
+    world.commandPlayerMovement(
+        screen.x - world.cameraScreenX(),
+        screen.y - world.cameraScreenY());
+    for (std::int32_t update = 0;
+         update < 2000 && world.scenarioId() == 0;
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    return world.scenarioId() == 1;
+}
+
+bool testFirstGoblinAggression() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(
+            OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    if (!std::filesystem::is_directory(
+            data_root / "Scenario" / "00000001")) {
+        return true;
+    }
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                osf::PlayerLoadRequest{},
+                &error),
+            "The first-Goblin aggression map could not be "
+            "loaded.") ||
+        !check(
+            leaveRemoteTown(world),
+            "The first-Goblin aggression fixture could not "
+            "leave Remote Town.")) {
+        return false;
+    }
+    constexpr std::int32_t kFirstGoblinId = 101;
+    const osf::EnemyActor* goblin =
+        findEnemy(world, kFirstGoblinId);
+    const osf::ItemDefinition* starter_sword =
+        world.itemDatabase().find(0, 0);
+    if (!goblin || !starter_sword ||
+        !world.playerEquipment()
+             .place(
+                 osf::EquipmentSlot::main_hand,
+                 osf::makeInventoryItem(*starter_sword),
+                 *starter_sword,
+                 world.playerData().level())
+             .accepted) {
+        return check(
+            false,
+            "The first-Goblin aggression fixture is missing.");
+    }
+    world.refreshPlayerAppearance();
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const osf::WorldPosition goblin_before =
+        goblin->position();
+    osf::ScreenPosition pointer;
+    approachVisibleEnemy(
+        world, kFirstGoblinId, pointer);
+    bool heard_hit = false;
+    for (std::int32_t update = 0;
+         update < 600 &&
+         world.playerData().currentLife() == life_before;
+         ++update) {
+        world.update();
+        heard_hit =
+            heard_hit ||
+            containsSample(
+                world.takeAudioSamples(), 6);
+    }
+    goblin = findEnemy(world, kFirstGoblinId);
+    if (world.playerData().currentLife() ==
+            life_before) {
+        std::cerr
+            << "first Goblin aggression: player-life="
+            << world.playerData().currentLife()
+            << " goblin-position="
+            << (goblin ? goblin->position().x : -1)
+            << ','
+            << (goblin ? goblin->position().y : -1)
+            << " initial="
+            << goblin_before.x << ',' << goblin_before.y
+            << " chart="
+            << (goblin
+                    ? goblin->animationChart()
+                    : -1)
+            << " frame="
+            << (goblin
+                    ? goblin->animationFrame()
+                    : -1)
+            << '\n';
+    }
+    if (!check(
+            world.playerData().currentLife() < life_before &&
+                heard_hit,
+            "The first authored Goblin did not acquire, approach, "
+            "and attack the living player.")) {
+        return false;
+    }
+
+    for (std::int32_t update = 0;
+         update < 200 &&
+         world.playerMotion() != osf::PlayerMotion::idle;
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (!findEnemyPointer(
+            world, kFirstGoblinId, pointer) ||
+        !world.commandWorldInteraction(
+            pointer.x, pointer.y)) {
+        return check(
+            false,
+            "The first Goblin could not be attacked for the "
+            "retaliation check.");
+    }
+    const std::int32_t goblin_life_before =
+        goblin->currentLife();
+    for (std::int32_t update = 0;
+         update < 1000;
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+        goblin = findEnemy(world, kFirstGoblinId);
+        if (goblin &&
+            goblin->currentLife() <
+                goblin_life_before) {
+            break;
+        }
+    }
+    const std::int32_t life_before_retaliation =
+        world.playerData().currentLife();
+    for (std::int32_t update = 0;
+         update < 600 &&
+         world.playerData().currentLife() ==
+             life_before_retaliation;
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (world.playerData().currentLife() ==
+            life_before_retaliation) {
+        goblin = findEnemy(world, kFirstGoblinId);
+        std::cerr
+            << "retaliation: player-life="
+            << world.playerData().currentLife()
+            << " goblin-life="
+            << (goblin ? goblin->currentLife() : -1)
+            << " goblin-position="
+            << (goblin ? goblin->position().x : -1)
+            << ','
+            << (goblin ? goblin->position().y : -1)
+            << " player-position="
+            << world.playerWorldX() << ','
+            << world.playerWorldY()
+            << " chart="
+            << (goblin ? goblin->animationChart() : -1)
+            << " frame="
+            << (goblin ? goblin->animationFrame() : -1)
+            << " player-motion="
+            << static_cast<std::int32_t>(
+                   world.playerMotion())
+            << '\n';
+    }
+    return check(
+        goblin &&
+            goblin->currentLife() <
+                goblin_life_before &&
+            world.playerData().currentLife() <
+                life_before_retaliation,
+        "The first Goblin stopped attacking after the player "
+        "hit it.");
+#else
+    return true;
+#endif
+}
+
 bool testFirstGoblinCombat() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -216,6 +416,7 @@ bool testFirstGoblinCombat() {
     }
 
     bool heard_swing = false;
+    bool heard_attack_voice = false;
     bool heard_hit = false;
     bool heard_death =
         death_sample < 0;
@@ -259,6 +460,9 @@ bool testFirstGoblinCombat() {
             heard_swing =
                 heard_swing ||
                 containsSample(samples, 1);
+            heard_attack_voice =
+                heard_attack_voice ||
+                containsSample(samples, 99);
             heard_hit =
                 heard_hit ||
                 containsSample(samples, 6);
@@ -323,6 +527,7 @@ bool testFirstGoblinCombat() {
         world.playerData().totalKillCount() ==
             kills_before + 1 &&
         heard_swing &&
+        heard_attack_voice &&
         heard_hit &&
         heard_death &&
         saw_hit_effect &&
@@ -338,6 +543,7 @@ bool testFirstGoblinCombat() {
             << " kills="
             << world.playerData().totalKillCount()
             << " swing=" << heard_swing
+            << " attack-voice=" << heard_attack_voice
             << " hit=" << heard_hit
             << " death-audio=" << heard_death
             << " hit-effect=" << saw_hit_effect
@@ -349,6 +555,12 @@ bool testFirstGoblinCombat() {
             defeated,
             "The first live Goblin did not complete its retail "
             "attack, death, reward, and loot path.")) {
+        return false;
+    }
+
+    if (!check(
+            !osf::enemyBlocksMovement(*goblin),
+            "A defeated enemy still blocked the player's movement.")) {
         return false;
     }
 
@@ -508,5 +720,8 @@ bool testFirstGoblinCombat() {
 }  // namespace
 
 int main() {
-    return testFirstGoblinCombat() ? 0 : 1;
+    return testFirstGoblinAggression() &&
+                   testFirstGoblinCombat()
+               ? 0
+               : 1;
 }

@@ -165,15 +165,6 @@ void RuntimeRenderer::render(
                         context.gameplay_transport,
                         context.world.transports());
                 } else if (
-                    context.gameplay_inventory.active()) {
-                    renderGameplayInventory(
-                        renderer_,
-                        *status,
-                        *font,
-                        context.gameplay_inventory,
-                        context.world,
-                        context.gameplay_counter);
-                } else if (
                     context.gameplay_map.active() &&
                     map_icons) {
                     renderGameplayMap(
@@ -211,6 +202,15 @@ void RuntimeRenderer::render(
                         *font,
                         context.gameplay_options,
                         context.game_config);
+                }
+                if (context.gameplay_inventory.active()) {
+                    renderGameplayInventory(
+                        renderer_,
+                        *status,
+                        *font,
+                        context.gameplay_inventory,
+                        context.world,
+                        context.gameplay_counter);
                 }
                 renderHeldInventoryItem(
                     renderer_,

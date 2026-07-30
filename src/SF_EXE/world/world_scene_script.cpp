@@ -1,8 +1,11 @@
 #include "world_scene.hpp"
+#include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <iterator>
 #include <utility>
@@ -62,6 +65,17 @@ bool boundsIntersect(
             first_position.y + first_bounds.bottom;
 }
 
+std::int32_t scriptAudioDistance(
+    WorldPosition first,
+    WorldPosition second) {
+    const double x =
+        static_cast<double>(first.x) - second.x;
+    const double y =
+        static_cast<double>(first.y) - second.y;
+    return static_cast<std::int32_t>(
+        std::trunc(std::hypot(x, y)));
+}
+
 }  // namespace
 
 bool WorldScene::readScriptWorldOperand(
@@ -82,7 +96,14 @@ bool WorldScene::readScriptWorldOperand(
             ScenarioEntityStateChannel::visible;
         if (!decodeEntityStateKey(
                 operand.value, character_number, channel)) {
-            return false;
+            const auto found =
+                script_persistent_values_.find(
+                    scriptOperandKey(operand));
+            value =
+                found == script_persistent_values_.end()
+                    ? 0
+                    : found->second;
+            return true;
         }
         if (const ScenarioObjectActor* object =
                 findScriptObject(character_number)) {
@@ -156,7 +177,9 @@ bool WorldScene::writeScriptWorldOperand(
         ScenarioEntityStateChannel::visible;
     if (!decodeEntityStateKey(
             operand.value, character_number, channel)) {
-        return false;
+        script_persistent_values_.insert_or_assign(
+            scriptOperandKey(operand), value);
+        return true;
     }
     if (ScenarioObjectActor* object =
             findScriptObject(character_number)) {
@@ -196,6 +219,23 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 16) {
+        if (arguments.empty() || arguments[0] < 0) {
+            return false;
+        }
+        constexpr std::int32_t kAudibleRange = 3000;
+        if (arguments.size() >= 4 &&
+            arguments[1] == 0 &&
+            scriptAudioDistance(
+                player_.position(),
+                {arguments[2], arguments[3]}) >
+                kAudibleRange) {
+            return true;
+        }
+        pending_audio_samples_.push_back(arguments[0]);
+        return true;
+    }
+
     if (opcode == 17) {
         if (arguments.size() < 2 ||
             script_travel_pending_) {
@@ -228,6 +268,49 @@ bool WorldScene::executeScriptNativeCommand(
             return false;
         }
         return prepareGroundItems(first_item);
+    }
+
+    if (opcode == 24) {
+        if (arguments.size() < 3) {
+            return false;
+        }
+        constexpr std::int32_t kEpisodeOneMask = 1;
+        const std::vector<EnemyDeathDrop> drops =
+            createRetailEnemyDrops(
+                arguments[0],
+                0,
+                0,
+                0,
+                {arguments[1], arguments[2]},
+                {},
+                0,
+                kEpisodeOneMask,
+                1,
+                parameter_tables_,
+                item_database_,
+                item_random_);
+        std::vector<GroundItem>& ground_items =
+            scenario_world_.groundItems();
+        const std::size_t first_item =
+            ground_items.size();
+        const std::int32_t first_id =
+            next_ground_item_id_;
+        for (const EnemyDeathDrop& drop : drops) {
+            if (!createGroundItem(
+                    ground_items,
+                    drop.item,
+                    drop.position)) {
+                ground_items.resize(first_item);
+                next_ground_item_id_ = first_id;
+                return false;
+            }
+        }
+        if (!prepareGroundItems(first_item)) {
+            ground_items.resize(first_item);
+            next_ground_item_id_ = first_id;
+            return false;
+        }
+        return true;
     }
 
     if (opcode == 48) {

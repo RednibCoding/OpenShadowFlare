@@ -59,6 +59,7 @@ void WorldScene::clear() {
     speech_patterns_.clear();
     player_appearance_.clear();
     pending_audio_samples_.clear();
+    level_up_notice_ = {};
     pending_combat_effects_.clear();
     combat_effects_.clear();
     runtime_effects_.clear();
@@ -284,6 +285,12 @@ void WorldScene::togglePlayerRun() {
 
 void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
+    if (level_up_notice_.counter > 0) {
+        --level_up_notice_.counter;
+        if (level_up_notice_.counter == 0) {
+            level_up_notice_.text.clear();
+        }
+    }
     std::vector<EnemyActor>& live_enemies =
         scenario_world_.enemies();
     live_enemies.erase(
@@ -428,7 +435,7 @@ void WorldScene::update() {
             static_cast<std::size_t>(
                 &enemy -
                 scenario_world_.enemies().data());
-        if (!enemy.judgementEnabled()) {
+        if (!enemyBlocksMovement(enemy)) {
             enemy_blocker_indices[index] = no_blocker;
             continue;
         }
@@ -589,6 +596,11 @@ std::vector<std::int32_t> WorldScene::takeAudioSamples() {
     std::vector<std::int32_t> samples;
     samples.swap(pending_audio_samples_);
     return samples;
+}
+
+const PlayerLevelUpNotice&
+WorldScene::levelUpNotice() const {
+    return level_up_notice_;
 }
 
 std::int32_t WorldScene::playerWorldX() const {

@@ -1050,3 +1050,44 @@ expiring the actor. The portable resource owner deliberately accepts its
 standalone `Pattern.Njp`; it is not forced through the CAF resource path. A
 low-hit live projectile regression proves that the actual target miss request
 creates and renders this actor.
+
+The first outdoor encounter has had a second retail pass after several small
+rules drifted apart. Enemy death action eleven clears judgement at its first
+update, so a corpse may finish its animation and fade but must stop blocking
+movement immediately. Ordinary weapon actions eight through ten play sample
+96 for the female hero or 99 for the male hero at their CAF impact marker.
+The live first-Goblin regression now also requires authored passive aggression,
+continued retaliation after a player hit, the weapon voice, and non-blocking
+death state.
+
+`FUN_00417550` confirms that Table 31 is not laid out like the portable code
+first assumed. Its five fields are category, upper loot level, lower loot
+level, fixed definition ID, and episode mask. A fixed ID other than `-1`
+bypasses the weighted selection. Weighted rows compare against a separate
+Item.Ibn loot-level field rather than the player's required-level field. This
+means loot row zero's shipped profiles yield their authored low-level fixed
+consumables and mine instead of accidentally selecting high-level equipment.
+
+Outdoor containers use ordinary scenario scripts rather than a separate
+hard-coded chest owner. Their status hides the closed object, shows its open
+partner, calls opcode 16 for positional sound, and calls opcode 24 with a
+Table 30 row and world position. Opcode 16 follows `FUN_00417260`: the sound
+is accepted unconditionally when its flag is set and otherwise only within
+3000 world units. Opcode 24 feeds the same complete loot constructor used by
+enemy death. A real `Scenario.Scs` regression checks the shipped closed/open
+pair, sample 77, and authored row-four drop.
+
+Level growth now publishes the native feedback as part of kill accounting.
+`FUN_00412fb0` lists changed fields in HP, MP, Attack Speed, Walking Speed,
+Strength, Attack, Defense, Hit Rate, Evasion Rate, Magical Attack, Magical
+Defense, Magical Hit Rate, and Magical Evasion Rate order. It keeps the notice
+for 900 updates and plays sample 63; reaching level five plays sample 64 just
+before it. The portable overlay uses the same fixed-width text and thin
+half-opacity white frame while later job selection and skill unlocks remain
+outside this slice.
+
+Gameplay panels are independent owners on opposite sides of the world view.
+The Warehouse's opcode 41 owner stays on the left while backpack and equipment
+stay on the right, and the camera remains centered when both are open. The
+same camera policy applies to a left map with the right inventory. Item
+transfers between Warehouse and backpack are exercised in both directions.

@@ -11,7 +11,9 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <vector>
 
 namespace osf {
@@ -20,6 +22,35 @@ namespace {
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
 constexpr double kTwoPi = 6.28318530717958647692;
+struct LevelUpField {
+    std::size_t parameter_row = 0;
+    const char* prefix = nullptr;
+};
+
+constexpr std::array<LevelUpField, 13> kLevelUpFields{{
+    {2, "  HP                    +"},
+    {3, "  MP                    +"},
+    {0, "  Attack Speed          +"},
+    {1, "  Walking Speed         +"},
+    {4, "  Strength              +"},
+    {5, "  Attack                +"},
+    {6, "  Defense               +"},
+    {9, "  Hit Rate              +"},
+    {10, "  Evasion Rate          +"},
+    {7, "  Magical Attack        +"},
+    {8, "  Magical Defense       +"},
+    {11, "  Magical Hit Rate      +"},
+    {12, "  Magical Evasion Rate  +"},
+}};
+
+std::array<std::int32_t, 13> playerParameters(
+    const PlayerData& player) {
+    std::array<std::int32_t, 13> result{};
+    for (std::size_t row = 0; row < result.size(); ++row) {
+        result[row] = player.initialParameter(row);
+    }
+    return result;
+}
 
 std::int32_t nineDigitRandom(RetailRandom& random) {
     std::int32_t result = 0;
@@ -46,9 +77,9 @@ bool itemMatchesLootProfile(
     }
     return
         (upper_level == -1 ||
-         item.required_level <= upper_level) &&
+         item.loot_level <= upper_level) &&
         (lower_level == -1 ||
-         item.required_level >= lower_level);
+         item.loot_level >= lower_level);
 }
 
 const ItemDefinition* chooseWeightedItem(
@@ -129,6 +160,8 @@ EnemyKillAccountingResult accountRetailEnemyKill(
     std::int32_t main_hand_subtype,
     const TableDatabase& tables) {
     EnemyKillAccountingResult result;
+    const std::array<std::int32_t, 13> parameters_before =
+        playerParameters(player);
     const TableData* shares = tables.find(14);
     if (player.level() < 100 &&
         local_player_slot >= 0 &&
@@ -168,6 +201,29 @@ EnemyKillAccountingResult accountRetailEnemyKill(
     }
     result.level_gained =
         player.applyLevelThreshold(tables);
+    if (result.level_gained) {
+        std::ostringstream text;
+        text << "Level " << player.level() << '\n';
+        const std::array<std::int32_t, 13> parameters_after =
+            playerParameters(player);
+        for (const LevelUpField& field : kLevelUpFields) {
+            const std::int32_t change =
+                parameters_after[field.parameter_row] -
+                parameters_before[field.parameter_row];
+            if (change == 0) {
+                continue;
+            }
+            text << field.prefix
+                 << std::setw(4) << change
+                 << "    \n";
+        }
+        result.level_up_notice = text.str();
+        result.level_up_notice_counter = 900;
+        if (player.level() == 5) {
+            result.audio_samples.push_back(64);
+        }
+        result.audio_samples.push_back(63);
+    }
     return result;
 }
 
@@ -227,16 +283,23 @@ std::vector<EnemyDeathDrop> createRetailEnemyDrops(
             }
             variants[3] = true;
 
+            const std::int32_t category =
+                profiles->value(profile_row, 0);
+            const std::int32_t fixed_definition =
+                profiles->value(profile_row, 3);
             const ItemDefinition* definition =
-                chooseWeightedItem(
-                    profiles->value(profile_row, 3),
-                    profiles->value(profile_row, 2),
-                    profiles->value(profile_row, 1),
-                    profiles->value(profile_row, 4) &
-                        episode_mask,
-                    variants,
-                    items,
-                    random);
+                fixed_definition == -1
+                    ? chooseWeightedItem(
+                          category,
+                          profiles->value(profile_row, 2),
+                          profiles->value(profile_row, 1),
+                          profiles->value(profile_row, 4) &
+                              episode_mask,
+                          variants,
+                          items,
+                          random)
+                    : items.find(
+                          category, fixed_definition);
             if (!definition) {
                 continue;
             }

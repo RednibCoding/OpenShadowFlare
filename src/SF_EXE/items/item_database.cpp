@@ -263,6 +263,11 @@ bool ItemDatabase::decode(
             definition.variant = field(8);
             definition.loot_episode_mask = field(12);
             definition.loot_weight = field(16);
+            if (category <= 1) {
+                definition.loot_level = field(0x90);
+            } else if (category <= 3) {
+                definition.loot_level = field(0x64);
+            }
             definition.base_price = field(20);
             definition.inventory_width = field(28);
             definition.inventory_height = field(32);

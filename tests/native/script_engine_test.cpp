@@ -496,8 +496,102 @@ bool testMalformedScript() {
         "A script with the wrong header was accepted.");
 }
 
+bool testRetailOutdoorChestScript() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    std::unordered_map<std::uint64_t, std::int32_t> values;
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    osf::script::Interpreter interpreter({
+        [&values](const osf::script::Operand& operand) {
+            if (operand.type == 6) {
+                return std::int32_t{80801};
+            }
+            if (operand.type == 7) {
+                return std::int32_t{1832};
+            }
+            const auto found = values.find(operandKey(operand));
+            return found == values.end()
+                ? std::int32_t{0}
+                : found->second;
+        },
+        [&values](
+            const osf::script::Operand& operand,
+            std::int32_t value) {
+            values.insert_or_assign(
+                operandKey(operand), value);
+            return true;
+        },
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery, std::int32_t& value) {
+            value = 0;
+            return true;
+        },
+    });
+    interpreter.bind(&script);
+    const osf::script::StepResult result =
+        interpreter.startStatus(0, 10020000);
+    const bool opened =
+        values[operandKey({5, 110020000})] == 0 &&
+        values[operandKey({5, 110020001})] == 1;
+    const bool played_sound =
+        std::any_of(
+            native_commands.begin(),
+            native_commands.end(),
+            [](const auto& command) {
+                return command.first == 16 &&
+                       command.second ==
+                           std::vector<std::int32_t>{
+                               77, 0, 80801, 1832};
+            });
+    const bool created_loot =
+        std::any_of(
+            native_commands.begin(),
+            native_commands.end(),
+            [](const auto& command) {
+                return command.first == 24 &&
+                       command.second ==
+                           std::vector<std::int32_t>{
+                               4, 81001, 2032};
+            });
+    return check(
+        result == osf::script::StepResult::complete &&
+            opened &&
+            played_sound &&
+            created_loot,
+        "The first outdoor chest did not swap its authored objects, "
+        "play its sound, and emit its item callback.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
-    return testRetailRemoteTown() && testMalformedScript() ? 0 : 1;
+    return testRetailRemoteTown() &&
+                   testRetailOutdoorChestScript() &&
+                   testMalformedScript()
+               ? 0
+               : 1;
 }

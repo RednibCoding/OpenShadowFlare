@@ -4,6 +4,31 @@
 
 namespace osf {
 
+void WorldScene::accountEnemyKill(
+    const EnemyDamageReceiverState& enemy,
+    std::int32_t experience_reward,
+    std::int32_t main_hand_subtype) {
+    const EnemyKillAccountingResult accounting =
+        accountRetailEnemyKill(
+            player_data_,
+            enemy,
+            experience_reward,
+            scenario_world_.localPlayerNumber(),
+            main_hand_subtype,
+            parameter_tables_);
+    if (!accounting.level_gained) {
+        return;
+    }
+    level_up_notice_ = {
+        accounting.level_up_notice,
+        accounting.level_up_notice_counter,
+    };
+    pending_audio_samples_.insert(
+        pending_audio_samples_.end(),
+        accounting.audio_samples.begin(),
+        accounting.audio_samples.end());
+}
+
 PlayerDamageReceiverState
 WorldScene::playerDamageReceiverState() const {
     PlayerDamageReceiverState state;
@@ -172,13 +197,10 @@ bool WorldScene::applyPlayerDamagePacket(
             source_enemy->applyDamageReceiverState(
                 reflected.state);
             if (reflected.kill_requested) {
-                accountRetailEnemyKill(
-                    player_data_,
+                accountEnemyKill(
                     reflected.state,
                     source_enemy->experienceReward(),
-                    scenario_world_.localPlayerNumber(),
-                    -1,
-                    parameter_tables_);
+                    -1);
             }
             pending_audio_samples_.insert(
                 pending_audio_samples_.end(),

@@ -5,6 +5,7 @@
 #include "items/player_inventory.hpp"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace osf {
@@ -24,6 +25,9 @@ struct EnemyKillAccountingResult {
     std::int32_t experience_awarded = 0;
     bool direct_local_kill = false;
     bool level_gained = false;
+    std::string level_up_notice;
+    std::int32_t level_up_notice_counter = 0;
+    std::vector<std::int32_t> audio_samples;
 };
 
 EnemyKillAccountingResult accountRetailEnemyKill(

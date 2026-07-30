@@ -954,4 +954,10 @@ void EnemyActor::applyDamageReceiverState(
     }
 }
 
+bool enemyBlocksMovement(const EnemyActor& enemy) {
+    return
+        enemy.judgementEnabled() &&
+        enemy.currentLife() > 0;
+}
+
 }  // namespace osf

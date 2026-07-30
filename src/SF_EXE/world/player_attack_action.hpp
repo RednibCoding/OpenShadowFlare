@@ -31,6 +31,7 @@ struct PlayerAttackAnimationTiming {
 };
 
 struct PlayerAttackActionEvent {
+    PlayerAttackAction action = PlayerAttackAction::basic;
     std::int32_t target_id = -1;
     bool impact_due = false;
     bool swing_sound_due = false;

@@ -1,5 +1,6 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <limits>
 #include <utility>
@@ -304,6 +305,12 @@ StepResult Interpreter::execute(const Command& command) {
     }
     case 10:
         return executeNative(6);
+    case 16:
+        return command.operands.empty()
+            ? StepResult::invalid_script
+            : executeNative(
+                  std::min<std::size_t>(
+                      command.operands.size(), 4));
     case 11:
     case 12: {
         if (command.operands.size() < 2) {
@@ -326,6 +333,8 @@ StepResult Interpreter::execute(const Command& command) {
     case 41:
     case 48:
         return executeNative(1);
+    case 24:
+        return executeNative(3);
     case 17:
     case 21:
         return executeNative(2);

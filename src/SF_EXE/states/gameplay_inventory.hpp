@@ -57,6 +57,7 @@ public:
 
     void open();
     void openSpecialItems();
+    void closeSpecialItems();
     void close();
     GameplayInventoryResult update(
         const GameplayInventoryInput& input,

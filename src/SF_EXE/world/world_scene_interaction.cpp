@@ -944,6 +944,10 @@ void WorldScene::handlePlayerAttackEvent(
     if (!event.impact_due || event.target_id < 0) {
         return;
     }
+    if (event.action != PlayerAttackAction::basic) {
+        pending_audio_samples_.push_back(
+            player_data_.gender() == 1 ? 96 : 99);
+    }
     EnemyActor* enemy = findEnemy(event.target_id);
     if (!enemy ||
         classifyPlayerAttackTarget(
@@ -1006,15 +1010,12 @@ void WorldScene::applyPlayerAttackImpact(
         enemy.applyDamageReceiverState(
             application.receiver.state);
         if (application.receiver.kill_requested) {
-            accountRetailEnemyKill(
-                player_data_,
+            accountEnemyKill(
                 application.receiver.state,
                 enemy.experienceReward(),
-                scenario_world_.localPlayerNumber(),
                 definition
                     ? definition->subtype
-                    : -1,
-                parameter_tables_);
+                    : -1);
         }
         pending_audio_samples_.insert(
             pending_audio_samples_.end(),

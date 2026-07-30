@@ -1310,8 +1310,58 @@ bool testSpecialItemOwnershipAndRendering() {
         world.playerData().level());
     if (!check(
             inventory.active() &&
-                !inventory.specialItemsActive(),
-            "Opening inventory did not close the special-item panel.")) {
+                inventory.specialItemsActive(),
+            "The left Special Item owner and right inventory owner "
+            "could not remain open together.")) {
+        return false;
+    }
+    world.playerInventory().clear();
+    inventory.update(
+        {false, false, true, 64, 152},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, true, 352, 280},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            !inventory.holdingItem() &&
+                world.playerSpecialItems().items().empty() &&
+                world.playerInventory().items().size() == 1,
+            "An item could not move from the left Warehouse owner "
+            "to the open right inventory.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, true, 352, 280},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, true, 32, 88},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            !inventory.holdingItem() &&
+                world.playerInventory().items().empty() &&
+                world.playerSpecialItems().items().size() == 1,
+            "An item could not move back from the right inventory "
+            "to the open left Warehouse owner.")) {
         return false;
     }
     inventory.update(
@@ -1330,9 +1380,26 @@ bool testSpecialItemOwnershipAndRendering() {
         world.playerSpecialItems(),
         world.itemDatabase(),
         world.playerData().level());
+    inventory.update(
+        {true, false, false, 64, 152},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, false, 64, 152, true},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
     return check(
         !inventory.anyItemPanelActive(),
-        "The X shortcut did not close its own panel.");
+        "The independent left and right item panels did not close "
+        "their own owners.");
 }
 
 }  // namespace

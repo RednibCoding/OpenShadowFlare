@@ -122,14 +122,18 @@ std::optional<BeltPocket> GameplayInventory::beltPocketAt(
 
 void GameplayInventory::open() {
     active_ = true;
-    special_items_active_ = false;
     close_hovered_ = false;
     clearItemHover();
 }
 
 void GameplayInventory::openSpecialItems() {
-    active_ = false;
     special_items_active_ = true;
+    close_hovered_ = false;
+    clearItemHover();
+}
+
+void GameplayInventory::closeSpecialItems() {
+    special_items_active_ = false;
     close_hovered_ = false;
     clearItemHover();
 }
@@ -154,7 +158,9 @@ GameplayInventoryResult GameplayInventory::update(
     pointer_y_ = input.pointer_y;
     if (input.toggle_pressed) {
         if (active_) {
-            close();
+            active_ = false;
+            close_hovered_ = false;
+            clearItemHover();
         } else {
             open();
             updateHover(
@@ -167,7 +173,9 @@ GameplayInventoryResult GameplayInventory::update(
     }
     if (input.special_toggle_pressed) {
         if (special_items_active_) {
-            close();
+            special_items_active_ = false;
+            close_hovered_ = false;
+            clearItemHover();
         } else {
             openSpecialItems();
             updateSpecialHover(
@@ -216,15 +224,16 @@ GameplayInventoryResult GameplayInventory::update(
             return result;
         }
     }
-    if (special_items_active_) {
+    if (input.close_pressed) {
+        close();
+        return result;
+    }
+    if (special_items_active_ &&
+        (!active_ || input.pointer_x < panel_left)) {
         updateSpecialHover(
             input.pointer_x,
             input.pointer_y,
             special_items);
-        if (input.close_pressed) {
-            close();
-            return result;
-        }
         if (input.pointer_primary_pressed) {
             if (inside(
                     input.pointer_x,
@@ -310,9 +319,7 @@ GameplayInventoryResult GameplayInventory::update(
         input.pointer_y,
         inventory,
         equipment);
-    if (input.close_pressed) {
-        close();
-    } else if (
+    if (
         input.pointer_primary_pressed &&
         close_hovered_) {
         result.pointer_consumed =
@@ -473,7 +480,7 @@ const InventoryItem* GameplayInventory::informationItem(
         item_hover_updates_ < 3) {
         return nullptr;
     }
-    if (special_items_active_) {
+    if (hovered_special_item_index_ >= 0) {
         if (hovered_special_item_index_ < 0 ||
             static_cast<std::size_t>(
                 hovered_special_item_index_) >=

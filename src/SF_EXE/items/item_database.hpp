@@ -27,6 +27,7 @@ struct ItemDefinition {
     std::int32_t variant = -1;
     std::int32_t loot_episode_mask = 0;
     std::int32_t loot_weight = 0;
+    std::int32_t loot_level = -1;
     std::int32_t base_price = 0;
     std::int32_t inventory_width = 1;
     std::int32_t inventory_height = 1;

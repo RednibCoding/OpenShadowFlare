@@ -118,6 +118,7 @@ bool testRetailDatabase() {
                 short_sword->inventory_height == 4 &&
                 short_sword->weight == 30 &&
                 short_sword->required_level == 1 &&
+                short_sword->loot_level == 1 &&
                 short_sword->derived_parameter_bonuses[0] == 20 &&
                 short_sword->derived_parameter_bonuses[1] == 100 &&
                 short_sword->appearance_part == 12 &&
@@ -140,6 +141,7 @@ bool testRetailDatabase() {
                 stone_accessory->required_level == 1 &&
             blade_ring &&
                 blade_ring->required_level == 23 &&
+                blade_ring->loot_level == 23 &&
             tablet &&
                 tablet->restore_life == 200 &&
                 tablet->restore_mana == 0 &&

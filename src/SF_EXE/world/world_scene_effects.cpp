@@ -191,13 +191,10 @@ void WorldScene::applyRuntimeEffectDispatch(
     enemy->applyDamageReceiverState(receiver.state);
     if (receiver.kill_requested &&
         context.source_player_available) {
-        accountRetailEnemyKill(
-            player_data_,
+        accountEnemyKill(
             receiver.state,
             enemy->experienceReward(),
-            scenario_world_.localPlayerNumber(),
-            -1,
-            parameter_tables_);
+            -1);
     }
     pending_audio_samples_.insert(
         pending_audio_samples_.end(),

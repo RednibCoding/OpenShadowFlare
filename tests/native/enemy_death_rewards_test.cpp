@@ -123,9 +123,15 @@ int main() {
             0,
             tables);
     if (!check(
-            accounting.experience_awarded == 25 &&
+                accounting.experience_awarded == 25 &&
                 accounting.direct_local_kill &&
                 accounting.level_gained &&
+                accounting.level_up_notice_counter == 900 &&
+                accounting.level_up_notice.rfind(
+                    "Level 2\n", 0) == 0 &&
+                !accounting.level_up_notice.empty() &&
+                accounting.audio_samples ==
+                    std::vector<std::int32_t>{63} &&
                 player.level() == 2 &&
                 player.experience() == 0 &&
                 player.totalKillCount() == 1 &&
@@ -135,6 +141,25 @@ int main() {
                     player.baseMaximumLife(),
             "Kill attribution, experience, or novice level growth "
             "differs from the retail callback.")) {
+        return 1;
+    }
+    osf::EnemyKillAccountingResult level_five;
+    while (player.level() < 5) {
+        level_five = osf::accountRetailEnemyKill(
+            player,
+            defeated,
+            player.experienceThreshold(tables),
+            0,
+            0,
+            tables);
+    }
+    if (!check(
+            player.level() == 5 &&
+                level_five.level_gained &&
+                level_five.audio_samples ==
+                    std::vector<std::int32_t>{64, 63},
+            "The level-five occupation cue did not precede the "
+            "ordinary retail level-up sound.")) {
         return 1;
     }
 
@@ -155,11 +180,14 @@ int main() {
             loot_random);
     if (!check(
             loot.size() == 1 &&
-                loot.front().item.category == 1 &&
-                loot.front().item.definition_id == 30213 &&
+                loot.front().item.category == 4 &&
+                loot.front().item.definition_id == 1 &&
+                items.find(4, 1) &&
+                items.find(4, 1)->name == "Mine" &&
+                items.find(4, 1)->required_level == 1 &&
                 loot.front().position.x == 1200 &&
                 loot.front().position.y == 2000 &&
-                loot.front().item.retail_state.size() == 200,
+                loot.front().item.retail_state.size() == 4,
             "The authored loot table no longer follows the retail "
             "chance, profile, weighting, and placement order.")) {
         return 1;

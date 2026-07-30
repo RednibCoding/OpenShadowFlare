@@ -37,6 +37,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -54,6 +55,15 @@ enum class GameplayServiceKind {
 struct GameplayServiceRequest {
     GameplayServiceKind kind = GameplayServiceKind::none;
     std::int32_t argument = 0;
+};
+
+struct PlayerLevelUpNotice {
+    std::string text;
+    std::int32_t counter = 0;
+
+    bool active() const {
+        return counter > 0 && !text.empty();
+    }
 };
 
 enum class ScenarioTravelResult {
@@ -178,6 +188,7 @@ public:
         const CombatEffectSpawnRequest& request);
     void update();
     std::vector<std::int32_t> takeAudioSamples();
+    const PlayerLevelUpNotice& levelUpNotice() const;
     std::int32_t playerWorldX() const;
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
@@ -264,6 +275,10 @@ private:
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);
+    void accountEnemyKill(
+        const EnemyDamageReceiverState& enemy,
+        std::int32_t experience_reward,
+        std::int32_t main_hand_subtype);
     void handleEnemyDeathStart(
         EnemyActor& enemy,
         CombatEffectSpawnRequest effect);
@@ -309,6 +324,7 @@ private:
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
+    PlayerLevelUpNotice level_up_notice_;
     std::vector<CombatEffectSpawnRequest>
         pending_combat_effects_;
     std::vector<CombatEffectActor> combat_effects_;

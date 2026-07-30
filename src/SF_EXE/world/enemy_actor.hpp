@@ -194,6 +194,8 @@ private:
     const CharacterVisualResource* visual_ = nullptr;
 };
 
+bool enemyBlocksMovement(const EnemyActor& enemy);
+
 }  // namespace osf
 
 #endif

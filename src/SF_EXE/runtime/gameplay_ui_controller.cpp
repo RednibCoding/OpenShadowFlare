@@ -17,6 +17,18 @@
 #include <string>
 
 namespace osf::runtime {
+namespace {
+
+std::int32_t gameplayCameraAnchorX(
+    bool left_panel_active,
+    bool right_panel_active) {
+    if (left_panel_active == right_panel_active) {
+        return 320;
+    }
+    return left_panel_active ? 480 : 160;
+}
+
+}  // namespace
 
 void GameplayUiController::reset() {
     options_.close();
@@ -52,19 +64,27 @@ bool GameplayUiController::update(
         mission_list_.close();
         world.cancelPlayerMovement();
         if (service.kind == GameplayServiceKind::transport) {
-            inventory_.close();
             transport_.open();
-            world.setCameraAnchor(480, 240);
+            world.setCameraAnchor(
+                gameplayCameraAnchorX(
+                    true, inventory_.active()),
+                240);
         } else if (
             service.kind ==
             GameplayServiceKind::toggle_special_items) {
             transport_.close();
             if (inventory_.specialItemsActive()) {
-                inventory_.close();
-                world.setCameraAnchor(320, 240);
+                inventory_.closeSpecialItems();
+                world.setCameraAnchor(
+                    gameplayCameraAnchorX(
+                        false, inventory_.active()),
+                    240);
             } else {
                 inventory_.openSpecialItems();
-                world.setCameraAnchor(480, 240);
+                world.setCameraAnchor(
+                    gameplayCameraAnchorX(
+                        true, inventory_.active()),
+                    240);
             }
         }
         return false;
@@ -100,7 +120,9 @@ bool GameplayUiController::update(
             }
         }
         world.setCameraAnchor(
-            transport_.active() ? 480 : 320,
+            gameplayCameraAnchorX(
+                transport_.active(),
+                inventory_.active()),
             240);
         return result.pointer_consumed;
     }
@@ -134,25 +156,31 @@ bool GameplayUiController::update(
          inventory_hud_toggle) &&
         (!world.conversationActive() ||
          inventory_was_active) &&
-        !options_.active() &&
-        !map_.active() &&
-        !mission_list_.active();
+        !options_.active();
     const bool special_items_toggle =
         input.gameplaySpecialItemsPressed() &&
         (!world.conversationActive() ||
          inventory_.specialItemsActive()) &&
-        !options_.active() &&
-        !map_.active() &&
-        !mission_list_.active();
+        !options_.active();
     const bool belt_pointer_pressed =
         input.menu().pointer_primary_pressed &&
         !world.conversationActive() &&
         !options_.active() &&
-        !map_.active() &&
-        !mission_list_.active() &&
         GameplayInventory::beltPocketAt(
             input.menu().pointer_x,
             input.menu().pointer_y).has_value();
+    if ((map_.active() || input.gameplayMapPressed()) &&
+        (inventory_was_active || inventory_toggle)) {
+        map_.update({
+            input.gameplayMapPressed(),
+            false,
+            input.leftHeld(),
+            input.upHeld(),
+            input.rightHeld(),
+            input.downHeld(),
+            input.menu().confirm_pressed,
+        });
+    }
     if (inventory_was_active ||
         inventory_toggle ||
         special_items_toggle ||
@@ -206,13 +234,16 @@ bool GameplayUiController::update(
                         *definition));
             }
         }
-        const std::int32_t camera_anchor_x =
-            inventory_.active()
-                ? 160
-                : inventory_.specialItemsActive()
-                    ? 480
-                    : 320;
-        world.setCameraAnchor(camera_anchor_x, 240);
+        const bool left_panel_active =
+            inventory_.specialItemsActive() ||
+            map_.active() ||
+            mission_list_.active() ||
+            transport_.active();
+        world.setCameraAnchor(
+            gameplayCameraAnchorX(
+                left_panel_active,
+                inventory_.active()),
+            240);
         return result.pointer_consumed ||
                inventory_hud_toggle;
     }
@@ -237,7 +268,9 @@ bool GameplayUiController::update(
             input.menu().confirm_pressed,
         });
         world.setCameraAnchor(
-            map_.active() ? 480 : 320,
+            gameplayCameraAnchorX(
+                map_.active(),
+                inventory_.active()),
             240);
         return false;
     }
@@ -268,6 +301,11 @@ bool GameplayUiController::update(
         if (result.play_move_sound) {
             audio.playGameplayMenuMove();
         }
+        world.setCameraAnchor(
+            gameplayCameraAnchorX(
+                mission_list_.active(),
+                inventory_.active()),
+            240);
         return true;
     }
 

@@ -1902,7 +1902,6 @@ bool testScriptedRemoteTownExit() {
         "once.")) {
         return false;
     }
-
     const auto return_trigger = std::find_if(
         world.scenarioObjects().begin(),
         world.scenarioObjects().end(),
