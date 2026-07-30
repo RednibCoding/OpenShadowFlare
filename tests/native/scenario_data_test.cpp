@@ -377,14 +377,22 @@ std::vector<std::uint8_t> scenarioFixture() {
     writeI32(bytes, 0x220, 6);
     writeString(bytes, 0x224, "Test Place");
 
-    appendI32(bytes, 0);
-    appendI32(bytes, 0);
-    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    appendI32(bytes, 7);
+    appendI32(bytes, 2);
+    appendI32(bytes, 13);
+    appendI32(bytes, 8);
+    appendI32(bytes, 1);
+    appendI32(bytes, 99);
 
     appendI32(bytes, 1);
     appendCommonEntity(
-        bytes, 50, -1, "", 10, 20, 0, false);
-    bytes.insert(bytes.end(), 0x34, 0);
+        bytes, 50, 7, "", 10, 20, 0, false);
+    for (std::int32_t value :
+         {1, 3, -1, 1, 120, 1, 30000,
+          16, 1000, 1, 750, 600, 1500}) {
+        appendI32(bytes, value);
+    }
 
     appendI32(bytes, 2);
     appendCommonEntity(
@@ -397,8 +405,8 @@ std::vector<std::uint8_t> scenarioFixture() {
         bytes, 5, 8, "Other", 500, 600, 1, false);
     bytes.insert(bytes.end(), 0x2c, 0);
 
-    // Later entity groups remain outside this focused decoder slice.
-    bytes.insert(bytes.end(), 23, 0xcc);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
 
     appendI32(bytes, 2);
     appendI32(bytes, 0);
@@ -432,12 +440,40 @@ bool testFixture() {
         scenario.people().empty()
             ? nullptr
             : &scenario.people().front();
+    const osf::ScenarioObject* object =
+        scenario.objects().empty()
+            ? nullptr
+            : &scenario.objects().front();
     return check(
         scenario.controllerPath() ==
                 "System\\Game\\Parameter\\Control.aid" &&
             scenario.mapPath() == "Map\\test_01.map" &&
             scenario.title() == "Test Place" &&
             scenario.musicTrack() == 6 &&
+            scenario.objectResourceIds() ==
+                std::vector<std::int32_t>{7} &&
+            scenario.peopleResourceIds() ==
+                std::vector<std::int32_t>{13, 8} &&
+            scenario.enemyResourceIds() ==
+                std::vector<std::int32_t>{99} &&
+            scenario.objects().size() == 1 &&
+            object &&
+            object->id == 50 &&
+            object->resource_id == 7 &&
+            object->unknown_common_value == 1 &&
+            object->visual_mode == 1 &&
+            object->static_pattern == 3 &&
+            object->animation_chart == -1 &&
+            object->draw_status_bit_80 &&
+            object->height == 120 &&
+            object->unknown_tail_5 == 1 &&
+            object->unknown_tail_6 == 30000 &&
+            object->draw_flags == 16 &&
+            object->draw_strength == 1000 &&
+            object->unknown_tail_9 == 1 &&
+            object->red_draw_strength == 750 &&
+            object->green_draw_strength == 600 &&
+            object->blue_draw_strength == 1500 &&
             scenario.people().size() == 2 &&
             person &&
             person->id == 4 &&
@@ -454,6 +490,7 @@ bool testFixture() {
             person->red_strength ==
                 std::vector<std::int16_t>(
                     7, static_cast<std::int16_t>(1000)) &&
+            person->unknown_common_value == 1 &&
             person->walk_speed == 10 &&
             person->walk_duration == 30 &&
             person->idle_duration == 30 &&
@@ -474,6 +511,8 @@ bool testFixture() {
             second->world_x == -50 &&
             second->world_y == 60 &&
             second->direction == 7 &&
+            scenario.footerValues() ==
+                std::array<std::int32_t, 3>{11, 22, 33} &&
             scenario.findEntry(99) == nullptr,
         "The synthetic scenario fields were decoded incorrectly.");
 }
@@ -490,9 +529,97 @@ bool testMalformedData() {
 
     bytes = scenarioFixture();
     bytes.resize(0x324);
+    if (!check(
+            !scenario.decode(bytes),
+            "A scenario without its variable data was accepted.")) {
+        return false;
+    }
+
+    bytes = scenarioFixture();
+    bytes.push_back(0xcc);
+    if (!check(
+            !scenario.decode(bytes),
+            "A scenario with bytes after the retail footer was "
+            "accepted.")) {
+        return false;
+    }
+
+    bytes = scenarioFixture();
+    writeI32(bytes, bytes.size() - 32, 8);
     return check(
         !scenario.decode(bytes),
-        "A scenario without an entry table was accepted.");
+        "A scenario entry with a non-retail direction was accepted.");
+}
+
+bool testRetailScenarioCatalog() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path scenario_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    std::size_t scenario_count = 0;
+    std::size_t object_count = 0;
+    std::size_t people_count = 0;
+    for (const auto& entry :
+         std::filesystem::recursive_directory_iterator(
+             scenario_root)) {
+        if (!entry.is_regular_file() ||
+            entry.path().filename() != "Scenario.Mct") {
+            continue;
+        }
+        osf::ScenarioData scenario;
+        std::string error;
+        if (!check(
+                scenario.load(entry.path(), &error),
+                "A retail scenario MCT failed the exact sequential "
+                "decoder.")) {
+            std::cerr << entry.path() << ": " << error << '\n';
+            return false;
+        }
+        for (const osf::ScenarioObject& object :
+             scenario.objects()) {
+            if (object.resource_id >= 0 &&
+                std::find(
+                    scenario.objectResourceIds().begin(),
+                    scenario.objectResourceIds().end(),
+                    object.resource_id) ==
+                    scenario.objectResourceIds().end()) {
+                std::cerr
+                    << entry.path()
+                    << ": object resource "
+                    << object.resource_id
+                    << " is absent from its preload list.\n";
+                return false;
+            }
+        }
+        for (const osf::ScenarioPerson& person :
+             scenario.people()) {
+            if (person.resource_id >= 0 &&
+                std::find(
+                    scenario.peopleResourceIds().begin(),
+                    scenario.peopleResourceIds().end(),
+                    person.resource_id) ==
+                    scenario.peopleResourceIds().end()) {
+                std::cerr
+                    << entry.path()
+                    << ": PEOPLE resource "
+                    << person.resource_id
+                    << " is absent from its preload list.\n";
+                return false;
+            }
+        }
+        ++scenario_count;
+        object_count += scenario.objects().size();
+        people_count += scenario.people().size();
+    }
+    return check(
+        scenario_count == 209 &&
+            object_count == 5203 &&
+            people_count == 163,
+        "The retail MCT catalog counts differ from the exact loader "
+        "trace.");
+#else
+    return true;
+#endif
 }
 
 bool testWorldItemSaveRoundTrip() {
@@ -609,6 +736,60 @@ bool testRetailRemoteTown() {
         scenario.people().empty()
             ? nullptr
             : &scenario.people().front();
+    const std::array<std::int32_t, 7> object_ids{
+        0, 200, 201, 202, 203, 204, 300,
+    };
+    const std::array<std::int32_t, 7> object_resources{
+        -1, 8, 8, -1, 15, 15, 14,
+    };
+    const std::array<
+        std::array<std::int32_t, 13>,
+        7>
+        object_tails{{
+            {0, -1, -1, 0, 0, 0, -1,
+             0, 1000, 0, 1000, 1000, 1000},
+            {1, 0, -1, 0, 0, 0, -1,
+             0, 1000, 0, 1000, 1000, 1000},
+            {1, 1, -1, 1, 0, 0, -1,
+             0, 1000, 0, 1000, 1000, 1000},
+            {1, -1, -1, 0, 0, 0, -1,
+             0, 1000, 0, 1000, 1000, 1000},
+            {0, -1, 0, 0, 1200, 0, -1,
+             0, 1000, 0, 1000, 1000, 1000},
+            {1, 0, -1, 1, 0, 0, -1,
+             16, 0, 0, 1000, 1000, 1000},
+            {1, 0, 0, 0, 0, 0, -1,
+             0, 1000, 0, 1000, 1000, 1000},
+        }};
+    bool object_records_match =
+        scenario.objects().size() == object_ids.size();
+    for (std::size_t index = 0;
+         index < scenario.objects().size() &&
+         index < object_ids.size();
+         ++index) {
+        const osf::ScenarioObject& object =
+            scenario.objects()[index];
+        const std::array<std::int32_t, 13> tail{
+            object.visual_mode,
+            object.static_pattern,
+            object.animation_chart,
+            object.draw_status_bit_80 ? 1 : 0,
+            object.height,
+            object.unknown_tail_5,
+            object.unknown_tail_6,
+            object.draw_flags,
+            object.draw_strength,
+            object.unknown_tail_9,
+            object.red_draw_strength,
+            object.green_draw_strength,
+            object.blue_draw_strength,
+        };
+        object_records_match =
+            object_records_match &&
+            object.id == object_ids[index] &&
+            object.resource_id == object_resources[index] &&
+            tail == object_tails[index];
+    }
     bool people_tail_matches = scenario.people().size() == 7;
     for (std::size_t index = 0;
          index < scenario.people().size();
@@ -625,6 +806,22 @@ bool testRetailRemoteTown() {
             scenario.mapPath() == "Map\\f00_01.map" &&
                 scenario.title() == "Remote Town" &&
                 scenario.musicTrack() == 0 &&
+                scenario.objectResourceIds() ==
+                    std::vector<std::int32_t>{8, 15, 14} &&
+                scenario.peopleResourceIds() ==
+                    std::vector<std::int32_t>{
+                        13, 8, 9, 1000000, 1000001} &&
+                scenario.enemyResourceIds().empty() &&
+                object_records_match &&
+                scenario.objects()[0].world_x == 90124 &&
+                scenario.objects()[0].world_y == 4275 &&
+                scenario.objects()[0].judgement_left == -106 &&
+                scenario.objects()[0].judgement_bottom == 604 &&
+                scenario.objects()[6].name == "  Warehouse  " &&
+                scenario.objects()[6].label_height == 80 &&
+                scenario.objects()[6].world_x == 92314 &&
+                scenario.objects()[6].world_y == 565 &&
+                scenario.objects()[6].unknown_common_value == -1 &&
                 scenario.people().size() == 7 &&
                 ostare &&
                 ostare->id == 0 &&
@@ -656,7 +853,10 @@ bool testRetailRemoteTown() {
                 entry &&
                 entry->world_x == 89898 &&
                 entry->world_y == 2811 &&
-                entry->direction == 3,
+                entry->direction == 3 &&
+                scenario.footerValues() ==
+                    std::array<std::int32_t, 3>{
+                        0, 0, 2000},
             "The retail Remote Town scenario differs from the traced data.")) {
         return false;
     }
@@ -1798,6 +1998,7 @@ int main() {
                    testConversationChoiceMarkup() &&
                    testFixture() &&
                    testMalformedData() &&
+                   testRetailScenarioCatalog() &&
                    testWorldItemSaveRoundTrip() &&
                    testRetailRemoteTown()
                ? 0

@@ -331,13 +331,24 @@ part of this initial transition.
 
 `ScenarioData` follows the fixed part of `0x00427b50`: it validates
 `MCED DATA v0000\x1a`, reads the two 260-byte paths, music index, and 256-byte
-area title, then decodes the trailing 16-byte entry records in their file order
-of key, world X, world Y, and direction. At `0x324`, the first three counted ID
-lists lead into a shared variable entity record. The portable slice skips the
-understood-size object tail and decodes the following `PEOPLE` records,
-including variable names and custom part/color arrays. Later entity groups
-remain opaque. For scenario `00000000`, entry key zero supplies
-(`89898`, `2811`, direction `3`) and the MCT map path selects `f00_01`.
+area title. At `0x324`, the first three counted lists preload object, PEOPLE,
+and enemy resources. The object, PEOPLE, enemy, and item groups then use a
+shared variable entity record before tails of `0x34`, `0x2c`, `0x13c`, and
+`0x10` bytes. The portable decoder walks that sequence exactly, reads the
+entry table and three-word footer in forward file order, and rejects truncated
+groups or trailing bytes. All 209 shipped MCT files pass this path, covering
+5,203 object and 163 PEOPLE records with no mismatch between a nonnegative
+resource and its preload list.
+
+Remote Town's object group contains local IDs `0`, `200` through `204`, and
+`300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
+`Warehouse`. `0x0045dd00` maps the 13-value tail into the type-zero runtime
+object: its first three values select static-pattern or CAF-chart drawing,
+while later confirmed values supply status bit `0x80`, height, draw flags and
+strength, and RGB strengths. The remaining raw values are preserved without
+guessed names. Remote Town's enemy and item counts are both zero. Entry key
+zero supplies (`89898`, `2811`, direction `3`), the MCT map path selects
+`f00_01`, and its footer is `{0, 0, 2000}`.
 
 The first scenario then draws the decoded `f00_01.Gnd` cells at that entry and
 places the selected male or female animation at the camera center. Its 279

@@ -395,16 +395,37 @@ previous and current actor positions and interpolates only their render
 positions and the camera between updates. Collision, scripts, animation
 counters, and all other game state remain on the fixed 30 Hz clock.
 
-The variable section at `0x324` begins with three counted ID lists, followed
-by counted runtime entity groups. The object and `PEOPLE` groups share IDs,
-optional names and colors, label height, position, judgement, direction,
-initial CAF part overrides, and optional fixed-capacity part/color arrays
-before their type-specific tails. The portable decoder now reads all seven
-Remote Town people records and the bounded-wander fields at the start of their
-tails. The first value after the bounds is copied to runtime offset `+0xd4`
-and gates native action 21's target-facing branch. The next is inverted by the
-loader and controls autonomous wandering at `+0xd0`. The final value, `-65`
-for all seven records, remains unnamed. Later entity groups are still open.
+The variable section at `0x324` begins with counted object, PEOPLE, and enemy
+resource preload lists. Four counted runtime groups follow in a fixed order:
+object, PEOPLE, enemy, and item. Their common record contains IDs, optional
+names and colors, label height, position, judgement, direction, initial CAF
+part overrides, optional fixed-capacity part/color arrays, and one preserved
+unknown value.
+
+The object tail is `0x34` bytes. `FUN_00429600` creates its type-zero
+`0x120`-byte runtime class through `0x0045dca0`; its character number is local
+ID plus 10,000,000. The initializer at `0x0045dd00` copies the transformed
+tail. Tail value zero chooses between a static `Pattern.Njp` index and a CAF
+chart stored by values one and two. The remaining confirmed values feed draw
+status bit `0x80`, object height, draw flags and strength, and red/green/blue
+strengths into `0x0045ddd0`. Unknown values remain lossless in
+`ScenarioObject`.
+
+Remote Town contains seven of these dynamic objects, with local IDs `0`,
+`200` through `204`, and `300`. The final one is the named Warehouse object.
+They use object resources 8, 15, and 14 from the first preload list. These
+records are separate from the map's static OBL scenery. Across all 209 retail
+MCT files, the exact sequential decoder reaches 5,203 object and 163 PEOPLE
+records without a resource-list mismatch.
+
+The portable decoder also reads all seven Remote Town PEOPLE records and their
+bounded-wander tails. The first value after the bounds is copied to runtime
+offset `+0xd4` and gates native action 21's target-facing branch. The next is
+inverted by the loader and controls autonomous wandering at `+0xd0`. The
+final value, `-65` for all seven records, remains unnamed. Enemy and item
+records are now structurally traversed at their retail `0x13c` and `0x10` tail
+sizes, so the entry table and three footer values are read in forward file
+order. Their tail meanings and runtime actors are still open.
 
 All seven people records are instantiated from that table. Resource lookup at
 `0x00455ee0` resolves each ID to its zero-padded `Character\PEOPLE` directory;

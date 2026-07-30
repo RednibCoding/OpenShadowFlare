@@ -201,10 +201,13 @@ its map name, entry position, facing direction, title, and music index in the
 code. The loader understands the fixed MCED header and the trailing entry-point
 table, and tests those fields against the retail file.
 
-The next slice identified the leading ID lists, the variable common entity
-record, and the complete `PEOPLE` group shape. Remote Town's seven people
-records now decode with their retail resource IDs, names, positions, judgement
-boxes, directions, custom CAF part masks, shadows, and idle animations.
+The next slices identified the three resource preload lists, the variable
+common entity record, and the complete object and `PEOPLE` group shapes.
+Remote Town's seven objects and seven people now decode with their retail
+resource IDs, names, positions, judgement boxes, directions, custom CAF part
+masks, and type-specific tails. The loader follows the object, PEOPLE, enemy,
+item, entry, and footer sequence directly; every one of the 209 shipped MCT
+files passes that path.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
@@ -212,14 +215,17 @@ spawn-relative movement rectangle. He now alternates chart-zero idling with a
 short chart-one walk to a random point inside those bounds, as the original
 update path does.
 
-This is still not a complete MCT decoder. Later object, enemy, item, partner,
-and option groups remain to be named and mapped, as does the last
-people-specific field and the more involved AI paths.
+This is still not a complete MCT decoder. Enemy and item tails remain to be
+named and exposed, as does the last people-specific field and the more
+involved runtime behavior. Partners and other runtime categories are created
+outside this four-group MCT sequence and should be traced at their actual
+owners.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:
 
-- identify and decode the remaining variable entity groups in the MCT;
+- name and expose the enemy and item tails which the exact decoder currently
+  validates and skips;
 - identify the final unnamed PEOPLE-tail value and connect it if it affects
   portable state;
 - select arbitrary scenario IDs and entry keys during transitions;
@@ -352,8 +358,15 @@ Syria are selectable and run their real first conversations. All seven use the
 same type-one updater: only Ostare wanders, Malse ignores scripted turn
 requests, and the others can turn without autonomous movement. They update
 offscreen in ascending character-number order after the player, matching the
-active-map entity loop. The next town work should extend live collision to
-enemies and add the remaining pointer selection rules.
+active-map entity loop.
+
+The same MCT also contains seven type-zero dynamic objects, separate from
+`f00_01.Obl`: local IDs `0`, `200` through `204`, and the named Warehouse at
+`300`. Their records and 13-value tails are preserved now, including the
+confirmed static-pattern/CAF choice, height, draw flags, draw strength, and
+RGB strengths. The next town slice should load their `Character/OBJECT`
+resources and reconstruct their type-zero update, display, collision, and
+script behavior before extending live collision to enemies.
 
 ### 2. Grow scripts, conversations, and town interaction
 

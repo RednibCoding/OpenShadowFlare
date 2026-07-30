@@ -130,9 +130,13 @@ The executable loader at `0x00427b50` starts with this fixed section:
 | `0x224` | 256 | Area title |
 | `0x324` | variable | Entity and scenario records, not fully mapped yet |
 
-The variable section begins with three `count + int32[count]` ID lists. A
-counted scenario-object group follows, then a counted `PEOPLE` group. Both use
-a shared variable-length prefix:
+The variable section begins with three `count + int32[count]` preload lists
+for `Character\OBJECT`, `Character\PEOPLE`, and `Character\ENEMY` resources,
+in that order. Every nonnegative resource used by the matching records appears
+in its list across all 209 shipped MCT files.
+
+Four counted runtime-entity groups follow: object, `PEOPLE`, enemy, and item.
+They all use this shared variable-length prefix:
 
 - local ID and character resource ID;
 - byte length, name bytes, and a name color when the length is nonzero;
@@ -143,14 +147,36 @@ a shared variable-length prefix:
   and signed 16-bit red, green, and blue strengths;
 - one more unknown 32-bit field.
 
-Object records then carry another `0x34` bytes. A person's `0x2c`-byte tail
-starts with walk speed, maximum walk updates, idle updates, and a flag choosing
-relative or absolute bounds, followed by the left, top, right, and bottom of
-its movement rectangle. The next value allows native action 21 to turn the
-person toward its evaluated target. The following value disables autonomous
-wandering when nonzero. The final signed value is still unnamed; it is `-65`
-for every Remote Town person. Later entity groups use other tails and remain
-to be decoded.
+An object's `0x34`-byte tail contains 13 signed values:
+
+| Index | Confirmed use |
+|---:|---|
+| 0 | Visual mode: `0` selects a CAF animation and `1` selects a static pattern |
+| 1 | Static `Pattern.Njp` index when mode is `1` |
+| 2 | `Animation.Caf` chart when mode is `0` |
+| 3 | Adds status bit `0x80` to the draw request |
+| 4 | Object height passed to the screen object |
+| 5 | Unknown zero/one value |
+| 6 | Unknown value; retail data uses `-1` or `30000` through `30500` |
+| 7 | Draw flags; retail data uses `0` or `16` |
+| 8 | Draw strength; retail data uses `0` or `1000` |
+| 9 | Unknown zero/one value |
+| 10–12 | Red, green, and blue draw strengths |
+
+These meanings come from the type-zero initializer at `0x0045dd00` and draw
+path at `0x0045ddd0`. The portable decoder preserves the still-unknown values
+without assigning behavior to them.
+
+A person's `0x2c`-byte tail starts with walk speed, maximum walk updates, idle
+updates, and a flag choosing relative or absolute bounds, followed by the
+left, top, right, and bottom of its movement rectangle. The next value allows
+native action 21 to turn the person toward its evaluated target. The following
+value disables autonomous wandering when nonzero. The final signed value is
+still unnamed; it is `-65` for every Remote Town person.
+
+Enemy and item records carry `0x13c`- and `0x10`-byte tails respectively.
+Their shared prefixes and exact boundaries are validated now, but their tails
+remain to be named and exposed.
 
 Remote Town has seven people. The first is Ostare: local ID 0, resource ID 13,
 position (`91467`, `1532`), judgement `[-80, -80, 79, 79]`, and direction 7.
@@ -161,10 +187,22 @@ His custom table enables CAF parts 0, 1, 2, 3, and 6. Resource 13 resolves to
 are both enabled. Malse disables both; Syria and all four town animals allow
 scripted turning but do not wander.
 
-Near the end of the file is a 32-bit entry count followed by 16-byte entry
-records. Each record stores a signed 32-bit key, world X, world Y, and
-eight-way direction, in that order. Three more 32-bit scenario fields close
-the file; their meanings are not known yet.
+Remote Town also has seven dynamic object records, separate from the 279
+static entries in `f00_01.Obl`. Their local IDs are `0`, `200` through `204`,
+and `300`; the three nonnegative resources are `8`, `15`, and `14`. Object
+`300` is named `Warehouse`. Resources 8 and 14 use
+`Character\OBJECT\00000008` and `00000014` pattern/shadow pairs, while
+resource 15 contains both static pattern data and
+`Animation.Caf`/`Animation.Njp`.
+Scenario `00000000` has zero enemy and zero item records.
+
+After the item group is a 32-bit entry count followed by 16-byte entry records.
+Each record stores a signed 32-bit key, world X, world Y, and eight-way
+direction, in that order. Three more 32-bit scenario fields close the file;
+their meanings are not known yet. The portable loader now reaches this table
+sequentially and rejects missing groups, invalid entry directions, truncated
+footers, and trailing bytes instead of guessing the table location from the
+end of the file.
 
 The initial `00000000` file names `Map\f00_01.map`, title `Remote Town`, and
 music index 0. Entry key 0 starts a new character at world position
@@ -631,9 +669,10 @@ names.
 ## Scenario Data
 
 ### Scenario.Mct
-The known fixed header, first object/people groups, and trailing entry-point
-layout are documented in [Scenario Files](#scenario-files). The later variable
-entity groups are still being mapped from `0x00427b50`.
+The fixed header, preload lists, object/PEOPLE records, remaining entity-group
+boundaries, entry table, and footer are documented in
+[Scenario Files](#scenario-files). Enemy and item tails are still being mapped
+from `0x00427b50`.
 
 ### Scenario.Scs
 Compiled scenario script containing flags, messages, status triggers,
