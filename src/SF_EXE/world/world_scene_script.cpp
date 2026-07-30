@@ -76,9 +76,25 @@ bool WorldScene::executeScriptNativeCommand(
         npc->endInteraction();
         return true;
     }
-    npc->beginInteraction(player_.position());
-    scenario_script_.setActorId(npc->id());
-    pointer_.clearSelection();
+    if (opcode == 18) {
+        npc->beginInteraction();
+        scenario_script_.setActorId(npc->id());
+        pointer_.clearSelection();
+        return true;
+    }
+    if (arguments.size() < 2) {
+        return false;
+    }
+    if (arguments[1] == 0) {
+        npc->faceToward(player_.position());
+        return true;
+    }
+    const NpcActor* target =
+        findScriptNpc(arguments[1]);
+    if (!target) {
+        return false;
+    }
+    npc->faceToward(target->position());
     return true;
 }
 

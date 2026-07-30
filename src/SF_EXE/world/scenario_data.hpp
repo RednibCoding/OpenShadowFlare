@@ -42,6 +42,8 @@ struct ScenarioPerson {
     std::int32_t wander_right = 0;
     std::int32_t wander_bottom = 0;
     bool wandering_enabled = false;
+    bool scripted_turning_enabled = false;
+    std::int32_t unknown_tail_value = 0;
 };
 
 class ScenarioData {

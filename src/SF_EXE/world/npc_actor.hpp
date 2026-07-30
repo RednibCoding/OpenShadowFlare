@@ -30,7 +30,8 @@ public:
         const GroundMap& ground,
         const ObjectMap& objects,
         const std::vector<MovementBlocker>* dynamic_blockers = nullptr);
-    void beginInteraction(WorldPosition player_position);
+    void beginInteraction();
+    void faceToward(WorldPosition target_position);
     void endInteraction();
 
     std::int32_t id() const;
@@ -72,6 +73,7 @@ private:
     WorldPosition wander_max_;
     WorldPosition destination_;
     bool wandering_enabled_ = false;
+    bool scripted_turning_enabled_ = false;
     bool walking_ = false;
     bool interaction_active_ = false;
     RetailRandom random_;

@@ -346,6 +346,8 @@ bool readPeople(
             people_fields[6],
             people_fields[7],
             people_fields[9] == 0,
+            people_fields[8] != 0,
+            people_fields[10],
         });
     }
     return true;

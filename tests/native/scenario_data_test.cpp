@@ -463,6 +463,8 @@ bool testFixture() {
             person->wander_right == 60 &&
             person->wander_bottom == 80 &&
             person->wandering_enabled &&
+            person->scripted_turning_enabled &&
+            person->unknown_tail_value == -65 &&
             scenario.entries().size() == 2 &&
             first &&
             first->world_x == 100 &&
@@ -607,6 +609,18 @@ bool testRetailRemoteTown() {
         scenario.people().empty()
             ? nullptr
             : &scenario.people().front();
+    bool people_tail_matches = scenario.people().size() == 7;
+    for (std::size_t index = 0;
+         index < scenario.people().size();
+         ++index) {
+        const osf::ScenarioPerson& person =
+            scenario.people()[index];
+        people_tail_matches =
+            people_tail_matches &&
+            person.wandering_enabled == (index == 0) &&
+            person.scripted_turning_enabled == (index != 1) &&
+            person.unknown_tail_value == -65;
+    }
     if (!check(
             scenario.mapPath() == "Map\\f00_01.map" &&
                 scenario.title() == "Remote Town" &&
@@ -635,6 +649,9 @@ bool testRetailRemoteTown() {
                 ostare->wander_right == 269 &&
                 ostare->wander_bottom == 231 &&
                 ostare->wandering_enabled &&
+                ostare->scripted_turning_enabled &&
+                ostare->unknown_tail_value == -65 &&
+                people_tail_matches &&
                 scenario.entries().size() == 12 &&
                 entry &&
                 entry->world_x == 89898 &&
@@ -688,10 +705,15 @@ bool testRetailRemoteTown() {
             world.npcs()[3].id() == 10000 &&
             world.npcs()[3].resourceId() == 1000000 &&
             world.npcs()[3].name() == "Kerberos" &&
+            world.npcs()[4].id() == 10001 &&
+            world.npcs()[4].name() == "Gravity" &&
+            world.npcs()[5].id() == 10002 &&
+            world.npcs()[5].name() == "Dune" &&
             world.npcs()[6].id() == 10003 &&
             world.npcs()[6].resourceId() == 1000001 &&
             world.npcs()[6].name() == "Harley",
-            "WorldScene did not build the Remote Town people table.")) {
+            "WorldScene did not build the ascending Remote Town PEOPLE "
+            "update order.")) {
         return false;
     }
 
@@ -868,9 +890,16 @@ bool testRetailRemoteTown() {
                 ostare_approached &&
                 world.conversationActive() &&
                 world.conversationMessageId() == 1000000 &&
+                world.npcs()[0].direction() ==
+                    osf::retailDirectionForVector(
+                        world.playerWorldX() -
+                            world.npcs()[0].position().x,
+                        world.playerWorldY() -
+                            world.npcs()[0].position().y) &&
                 world.conversationText().rfind(
                     "Thank you for coming. I am Ostare", 0) == 0,
-            "Ostare's click did not enter the retail status-zero script.")) {
+            "Ostare's click did not enter and face the player through "
+            "its retail status-zero script.")) {
         return false;
     }
     osf::renderWorld(renderer, world, 500, &font);
@@ -1242,7 +1271,8 @@ bool testRetailRemoteTown() {
             malse_click &&
                 world.conversationActive() &&
                 world.conversationActorId() == 1 &&
-                world.conversationMessageId() == 1000019,
+                world.conversationMessageId() == 1000019 &&
+                malse.direction() == 1,
             "Malse's actor did not enter its retail status-zero script.")) {
         std::cerr
             << "Player: "
@@ -1704,6 +1734,22 @@ bool testRetailRemoteTown() {
             "Remote Town could not be reloaded for the wander check.")) {
         return false;
     }
+    const osf::ScreenPosition ostare_screen =
+        osf::calculateRealPosition(
+            wander_world.npcs()[0].position());
+    const std::int32_t ostare_view_x =
+        ostare_screen.x - wander_world.cameraScreenX();
+    const std::int32_t ostare_view_y =
+        ostare_screen.y - wander_world.cameraScreenY();
+    if (!check(
+            ostare_view_x < 0 ||
+                ostare_view_x >= 640 ||
+                ostare_view_y < 0 ||
+                ostare_view_y >= 480,
+            "The offscreen PEOPLE update fixture unexpectedly placed "
+            "Ostare inside the camera.")) {
+        return false;
+    }
     wander_world.update();
     if (!check(
             wander_world.npcs()[0].animationFrame() == 0,
@@ -1738,7 +1784,8 @@ bool testRetailRemoteTown() {
             walking_position.x <= 91736 &&
             walking_position.y >= 1309 &&
             walking_position.y <= 1763,
-        "Ostare did not begin the retail bounded wander action.");
+        "Offscreen Ostare did not begin the retail bounded wander "
+        "action.");
 #else
     return true;
 #endif

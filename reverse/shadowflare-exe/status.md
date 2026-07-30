@@ -387,6 +387,16 @@ the same zero-padded `Character/PEOPLE` catalog, including the shared
 messages `1000019` and `1000020`; the later quest offer stays behind the
 retail Red Goblin progression check.
 
+All seven records use the same type-one PEOPLE updater. Their final tail
+values account for the visible differences: runtime offset `+0xd4` permits
+native action 21 to face its evaluated target, while the preceding loader
+conversion at `+0xd0` enables autonomous wandering only when the raw value is
+zero. Malse disables both, so his opening action 21 intentionally leaves his
+direction alone. Syria and the four animals can turn but do not wander;
+Ostare enables both. Native action 18 only suspends movement and starts the
+interaction, and action 19 releases it. The remaining tail value is `-65` for
+all seven and is still unnamed.
+
 Syria's new-game status follows messages `1000040` and `1000041`. Opcode 2 now
 passes the current script character through the message event, which anchors
 her bubble without inventing an actor command absent from this branch.
@@ -501,6 +511,14 @@ movement legs for longer trips to companion interactions. The renderer
 reads chart zero for idle and chart one for walking directly from player state,
 rebuilds the depth key from the moving position, and follows the player's
 projected position with the retail camera offset.
+
+The dynamic-entity loop at `0x00429ce0` calls every active-map entry without a
+camera or clip test. Its insertion path at `0x004298c0` orders entries by
+character number. The gameplay frame updates the player before that scenario
+loop. Remote Town's MCT records are already in ascending local-ID order, so
+the portable scene updates the hero first and then all seven PEOPLE records,
+including actors outside the current view. Each later actor therefore sees
+the positions produced earlier in the same update.
 
 Owned inventory interaction now follows `0x00445bd0`, `0x00446320`,
 `0x00447290`, `0x00447970`, and `0x004087b0`. Backpack and special-item clicks

@@ -466,6 +466,40 @@ bool testNpcDynamicActorJudgement() {
         "A wandering NPC did not route around a live actor.");
 }
 
+bool testScriptedNpcTurningFlag() {
+    osf::ScenarioPerson person;
+    person.id = 7;
+    person.resource_id = 1;
+    person.direction = 1;
+
+    osf::CharacterVisualResource visual;
+    osf::NpcActor npc;
+    if (!check(
+            npc.initialize(person, visual),
+            "The non-turning NPC could not be initialized.")) {
+        return false;
+    }
+    npc.faceToward({0, 100});
+    if (!check(
+            npc.direction() == 1,
+            "A PEOPLE record ignored its disabled scripted-turning "
+            "flag.")) {
+        return false;
+    }
+
+    person.scripted_turning_enabled = true;
+    if (!check(
+            npc.initialize(person, visual),
+            "The turning NPC could not be initialized.")) {
+        return false;
+    }
+    npc.faceToward({0, 100});
+    return check(
+        npc.direction() ==
+            osf::retailDirectionForVector(0, 100),
+        "Native PEOPLE action 21 did not face its enabled target.");
+}
+
 bool testWorldPointerPriority() {
     const std::vector<osf::WorldPointerCandidate> candidates{
         {
@@ -624,6 +658,7 @@ int main() {
         !testDynamicActorJudgement() ||
         !testDynamicActorSelfExclusion() ||
         !testNpcDynamicActorJudgement() ||
+        !testScriptedNpcTurningFlag() ||
         !testWorldPointerPriority() ||
         !testRemoteTownFixture()) {
         return 1;

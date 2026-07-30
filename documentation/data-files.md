@@ -146,16 +146,20 @@ a shared variable-length prefix:
 Object records then carry another `0x34` bytes. A person's `0x2c`-byte tail
 starts with walk speed, maximum walk updates, idle updates, and a flag choosing
 relative or absolute bounds, followed by the left, top, right, and bottom of
-its movement rectangle. Of the final three values, the middle one disables
-wandering when nonzero; the other two are not named yet. Later entity groups
-use other tails and remain to be decoded.
+its movement rectangle. The next value allows native action 21 to turn the
+person toward its evaluated target. The following value disables autonomous
+wandering when nonzero. The final signed value is still unnamed; it is `-65`
+for every Remote Town person. Later entity groups use other tails and remain
+to be decoded.
 
 Remote Town has seven people. The first is Ostare: local ID 0, resource ID 13,
 position (`91467`, `1532`), judgement `[-80, -80, 79, 79]`, and direction 7.
 His custom table enables CAF parts 0, 1, 2, 3, and 6. Resource 13 resolves to
 `Character\PEOPLE\00000013\Animation.{Caf,Njp,Sdw}`. His tail stores speed 10,
 30 walk updates, 30 idle updates, and a spawn-relative rectangle from
-(`-437`, `-223`) to (`269`, `231`).
+(`-437`, `-223`) to (`269`, `231`). Its scripted-turning and wandering values
+are both enabled. Malse disables both; Syria and all four town animals allow
+scripted turning but do not wander.
 
 Near the end of the file is a 32-bit entry count followed by 16-byte entry
 records. Each record stores a signed 32-bit key, world X, world Y, and

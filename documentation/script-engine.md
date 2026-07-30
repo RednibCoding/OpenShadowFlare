@@ -201,9 +201,9 @@ interactions are portable so far.
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
-| 18 | `0x00431efa` | Native actor action used by the opening interaction |
+| 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
-| 21 | `0x00432094` | Native actor action with an evaluated value |
+| 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
@@ -218,11 +218,12 @@ in the executable are:
 | 2 | greater than |
 | 3 | less than |
 
-The native meanings of opcodes 18 and 21 are not fully named yet. The first
-conversation proves that they address an actor and put it into the interaction
-state. Both evaluate their actor operand through the retail operand reader;
-opcode 21 evaluates its additional value as well. Their hook remains generic
-until more scripts reveal the complete behavior.
+Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
+stops its current walk, and enters interaction state without changing its
+facing. Opcode 21 evaluates an actor and a target. Target zero is the local
+player; a nonzero value resolves another scenario actor. The actor turns only
+when its PEOPLE-tail scripted-turning flag is enabled. This is enabled for
+Ostare, Syria, and the four Remote Town animals, but disabled for Malse.
 
 Opcode 10 evaluates six operands: category, definition ID, world X, world Y,
 minimum quantity, and maximum quantity. Ordinary items create one record at
@@ -327,8 +328,8 @@ The first end-to-end slice is Ostare's opening Remote Town interaction:
 2. A click on his rendered actor derives script character `12000000`.
 3. Status kind `0` resolves to sentence `4`.
 4. The interpreter follows its nested comparisons and sentence calls.
-5. Native actor commands stop Ostare's wandering and turn him toward the
-   player.
+5. Opcode 18 stops Ostare's wandering; opcode 21 separately turns him toward
+   the player because his MCT flag allows it.
 6. Message `1000000` is decoded from the retail SCS and shown.
 7. Return or another click invokes Ostare's status-kind-one sentence.
 8. Four more callbacks show messages `1000001` through `1000004`.

@@ -262,6 +262,15 @@ successive ordinary movement commands, and a wandering PEOPLE actor steering
 around another live actor. Per-actor retail type masks, enemy integration,
 and the remaining controller modes are still follow-up work.
 
+The scenario entity manager updates every active-map entry through its virtual
+update slot at `0x00429ce0`; it does not first test the camera or render clip.
+`0x004298c0` inserts those entries in ascending character-number order. In the
+gameplay frame at `0x0041e4f0`, the player update runs before the scenario
+manager at `0x004274f0`. Portable Remote Town follows that player-first order,
+then updates its seven PEOPLE records in their MCT order, which is ascending
+by local ID. This preserves both offscreen wandering and the live blocker
+positions seen by the next actor in the same update.
+
 The controller's cardinal values are `1 = north`, `2 = south`, `3 = west`,
 and `4 = east`. The initial one-pixel probes are ordered by the attempted
 direction:
@@ -392,8 +401,10 @@ optional names and colors, label height, position, judgement, direction,
 initial CAF part overrides, and optional fixed-capacity part/color arrays
 before their type-specific tails. The portable decoder now reads all seven
 Remote Town people records and the bounded-wander fields at the start of their
-tails.
-Later entity groups and the final two unnamed people fields are still open.
+tails. The first value after the bounds is copied to runtime offset `+0xd4`
+and gates native action 21's target-facing branch. The next is inverted by the
+loader and controls autonomous wandering at `+0xd0`. The final value, `-65`
+for all seven records, remains unnamed. Later entity groups are still open.
 
 All seven people records are instantiated from that table. Resource lookup at
 `0x00455ee0` resolves each ID to its zero-padded `Character\PEOPLE` directory;
@@ -407,6 +418,14 @@ inclusive random point inside the spawn-relative rectangle, while
 arrival or the tail's 30-update limit. The MCT's custom mask disables parts 4
 and 5, leaving the shadow and two visible frame-zero cells rather than drawing
 every CAF layer.
+
+All seven Remote Town records use this type-one PEOPLE class, but the two tail
+flags produce different behavior. Only Ostare enables autonomous wandering.
+Ostare, Syria, and the four animals allow native action 21 to face its
+evaluated target; Malse deliberately ignores that turn request. Native action
+18 separately stops the current walk and enters interaction state, while
+action 19 releases it. Keeping actions 18 and 21 separate is important:
+scripts may suspend an actor without changing its direction.
 
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0

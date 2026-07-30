@@ -80,6 +80,8 @@ bool NpcActor::initialize(
         person.wandering_enabled &&
         walk_speed_ > 0 &&
         walk_duration_ > 0;
+    scripted_turning_enabled_ =
+        person.scripted_turning_enabled;
     random_.seed(static_cast<std::uint32_t>(person.id + 1));
 
     const std::size_t part_count =
@@ -122,6 +124,7 @@ void NpcActor::clear() {
     wander_min_ = {};
     wander_max_ = {};
     wandering_enabled_ = false;
+    scripted_turning_enabled_ = false;
     walking_ = false;
     interaction_active_ = false;
     random_.seed(1);
@@ -208,17 +211,25 @@ void NpcActor::update(
     }
 }
 
-void NpcActor::beginInteraction(
-    WorldPosition player_position) {
+void NpcActor::beginInteraction() {
     walking_ = false;
     destination_ = position_;
     action_counter_ = 0;
     animation_chart_ = 0;
     animation_frame_ = 0;
     interaction_active_ = true;
+}
+
+void NpcActor::faceToward(
+    WorldPosition target_position) {
+    if (!scripted_turning_enabled_ ||
+        (target_position.x == position_.x &&
+         target_position.y == position_.y)) {
+        return;
+    }
     direction_ = retailDirectionForVector(
-        player_position.x - position_.x,
-        player_position.y - position_.y);
+        target_position.x - position_.x,
+        target_position.y - position_.y);
 }
 
 void NpcActor::endInteraction() {

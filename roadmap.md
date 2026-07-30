@@ -213,14 +213,15 @@ short chart-one walk to a random point inside those bounds, as the original
 update path does.
 
 This is still not a complete MCT decoder. Later object, enemy, item, partner,
-and option groups remain to be named and mapped, as do the last people-specific
-fields and the more involved AI paths.
+and option groups remain to be named and mapped, as does the last
+people-specific field and the more involved AI paths.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:
 
 - identify and decode the remaining variable entity groups in the MCT;
-- connect the remaining people fields to portable AI and interaction state;
+- identify the final unnamed PEOPLE-tail value and connect it if it affects
+  portable state;
 - select arbitrary scenario IDs and entry keys during transitions;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
@@ -336,7 +337,9 @@ This will require the first portable slices of `RKC_RPG_AICONTROL`,
 - finish actor-to-actor collision for enemy movement. PEOPLE movement now
   uses the same live hero-and-actor blocker set as retail, excluding only the
   actor currently moving;
-- reproduce the original update order and off-screen behavior;
+- preserve the reconstructed active-map update rules when later dynamic actor
+  classes are added. The player now updates first, followed by ascending
+  PEOPLE IDs, and PEOPLE continue updating while offscreen;
 - extend pointer hover, pale tint, nameplates, and selection from people and
   ground items to the remaining dynamic actor classes;
 - verify the town population and positions against the retail game.
@@ -345,10 +348,12 @@ That path now builds all seven Remote Town people records and resolves their
 shared or individual `Character/PEOPLE` resources from the MCT table. Ostare's
 part mask, idle pause, bounded walk, shadow, depth pass, hover tint, nameplate,
 and actor-anchored speech bubble remain the detailed reference case. Malse and
-Syria are selectable and run their real first conversations. The next town
-work should map the behavior that differs between the three human NPCs and the
-four animals, reconstruct the exact update and off-screen rules, then extend
-live collision to enemies and add the remaining pointer selection rules.
+Syria are selectable and run their real first conversations. All seven use the
+same type-one updater: only Ostare wanders, Malse ignores scripted turn
+requests, and the others can turn without autonomous movement. They update
+offscreen in ascending character-number order after the player, matching the
+active-map entity loop. The next town work should extend live collision to
+enemies and add the remaining pointer selection rules.
 
 ### 2. Grow scripts, conversations, and town interaction
 
