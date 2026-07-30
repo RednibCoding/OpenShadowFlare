@@ -277,8 +277,9 @@ those pockets. A fresh hero starts with the original Leather Cloth, four
 Tablets and four Capsules in both the backpack and belt, and five mines.
 Right-clicking a Tablet or Capsule in either owner uses it when the matching
 life or mana pool is not already full. Inventory movement, equipment, world
-drops, and medicine use play the
-corresponding retail effects. `X` opens the separate
+drops, and medicine use play the corresponding retail effects. A ground item
+that cannot fit in the backpack repeats its original bounce and landing sound
+instead of silently ignoring the pickup. `X` opens the separate
 9-by-10 special-item panel on the left and shifts the live world view to the
 right, just like the original. Hovering a backpack, equipped, or special item
 opens the small retail information overlay after its original short delay.

@@ -255,6 +255,12 @@ corresponding ownership change succeeds. The success tail of
 the player owner, so ground pickup uses the same category-and-weight sample
 instead of being silent.
 
+If that owner rejects the item because no backpack footprint is available,
+the single-player tail of `0x004526a0` recreates the same concrete instance as
+a mode-zero world drop. The portable ground actor keeps its position and item
+state while resetting height, velocity, gravity, and bounce state. It then
+plays selector two at first impact instead of pretending the click was lost.
+
 Ground drops use selector two from the same routine. Their first contact with
 the ground plays sample 15 for an ordinary item, 85 for Gold, or 93 for a
 category-two item. The smaller second bounce is silent. This lives in the
@@ -740,8 +746,9 @@ default red, green, and blue strengths. The
 portable entities also reproduce the 1600 initial vertical velocity, 280
 gravity, 700 rebound, and two-bounce settle state before joining the shared
 dynamic depth pass. The first impact emits the retail selector-two item sound;
-the second impact is silent. Unnamed definition fields remain preserved as
-raw bytes.
+the second impact is silent. A pickup rejected by the full backpack restarts
+this same mode-zero presentation and sound. Unnamed definition fields remain
+preserved as raw bytes.
 
 The loader's separate MCT item branch sets initialization mode one. Those
 actors use script character number `18000000 + local ID`, copy the three

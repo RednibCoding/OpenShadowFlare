@@ -62,6 +62,7 @@ bool createScenarioGroundItem(
     std::vector<GroundItem>& items,
     RetailRandom& random,
     const ScenarioItem& source);
+void restartGroundItemDrop(GroundItem& item);
 GroundItemUpdateEvent updateGroundItem(GroundItem& item);
 
 }  // namespace osf

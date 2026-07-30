@@ -207,6 +207,21 @@ bool testGroundItemCreation() {
             "A new ground item did not begin its retail drop arc.")) {
         return false;
     }
+    osf::GroundItem restarted = bouncing;
+    restarted.height = 400;
+    restarted.vertical_velocity = -80;
+    restarted.vertical_gravity = 100;
+    restarted.bounce_state = 2;
+    osf::restartGroundItemDrop(restarted);
+    if (!check(
+            restarted.height == 0 &&
+                restarted.vertical_velocity == 1600 &&
+                restarted.vertical_gravity == 280 &&
+                restarted.bounce_state == 0,
+            "Restarting a rejected pickup did not restore the "
+            "mode-zero drop state.")) {
+        return false;
+    }
     std::int32_t impact_count = 0;
     for (std::int32_t update = 1; update < 19; ++update) {
         if (osf::updateGroundItem(bouncing) ==
@@ -3070,10 +3085,76 @@ bool testRetailRemoteTown() {
             "Ground-item hover feedback differs from retail.")) {
         return false;
     }
+    const osf::ItemDefinition* pickup_blocker =
+        world.itemDatabase().find(3, 0);
+    if (!check(
+            pickup_blocker &&
+                world.playerInventory().add(
+                    *pickup_blocker,
+                    osf::PlayerInventory::grid_width *
+                        osf::PlayerInventory::grid_height),
+            "The full-backpack pickup fixture could not be prepared.")) {
+        return false;
+    }
     const bool short_sword_click =
         world.commandWorldInteraction(
             short_sword_pointer.x,
             short_sword_pointer.y);
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         world.groundItems().front().bounce_state == 2;
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            short_sword_click &&
+                world.groundItems().size() == 4 &&
+                world.groundItems().front().id ==
+                    short_sword_id &&
+                world.groundItems().front().bounce_state == 0 &&
+                world.groundItems().front().height == 0 &&
+                world.groundItems().front().vertical_velocity == 1600 &&
+                world.playerInventory().items().size() ==
+                    static_cast<std::size_t>(
+                        osf::PlayerInventory::grid_width *
+                        osf::PlayerInventory::grid_height),
+            "A full backpack did not leave the clicked item on the "
+            "ground and restart its retail drop animation.")) {
+        return false;
+    }
+    world.playerInventory().clear();
+    bool heard_rejected_pickup_landing = false;
+    for (std::int32_t update = 0;
+         update < 40 &&
+         world.groundItems().front().bounce_state != 2;
+         ++update) {
+        world.update();
+        const std::vector<std::int32_t> samples =
+            world.takeAudioSamples();
+        heard_rejected_pickup_landing =
+            heard_rejected_pickup_landing ||
+            std::find(
+                samples.begin(), samples.end(), 15) !=
+                samples.end();
+    }
+    if (!check(
+            world.groundItems().front().bounce_state == 2 &&
+                heard_rejected_pickup_landing,
+            "The rejected pickup did not complete its bounce and "
+            "play the Short Sword landing sound.")) {
+        return false;
+    }
+    if (!check(
+            findGroundItemRangeOnlyPoint(
+                world,
+                short_sword_id,
+                short_sword_pointer) &&
+                world.commandWorldInteraction(
+                    short_sword_pointer.x,
+                    short_sword_pointer.y),
+            "The settled rejected pickup could not be selected again.")) {
+        return false;
+    }
     for (std::int32_t update = 0;
          update < 2000 &&
          world.groundItems().size() == 4;
@@ -3081,8 +3162,7 @@ bool testRetailRemoteTown() {
         world.update();
     }
     if (!check(
-            short_sword_click &&
-                world.groundItems().size() == 3 &&
+            world.groundItems().size() == 3 &&
                 world.playerInventory().items().size() == 1 &&
                 world.playerInventory().items()[0].category == 0 &&
                 world.playerInventory()

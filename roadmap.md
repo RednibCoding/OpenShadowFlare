@@ -714,11 +714,15 @@ distant clicks approach through the shared movement controller, then ownership
 moves into `PlayerInventory` before the world entity is erased. Gold fills
 existing stacks up to the retail 10,000 limit. Scripted and player-created
 drops also play their category-specific retail sound on the first ground
-impact.
+impact. If a clicked item cannot fit in the backpack, it stays on the ground
+and visibly repeats that two-bounce drop and first-impact sound, matching the
+retail failed-pickup feedback.
 
 The real 9-by-4 backpack grid is now in place. Width and height come from
 `Item.Ibn`, placement respects multi-cell footprints, and a full inventory
-rejects a pickup without losing or partly inserting it. The authored right
+rejects a pickup without losing or partly inserting it; the retained world
+item restarts its drop presentation instead of appearing unresponsive. The
+authored right
 panel stays open over a live left-hand world view, with its original camera
 anchor, input boundary, gender silhouette, gold and equipped-weight values,
 Close tab, and `Item0000.njp` through `Item0013.njp` artwork. `I` and the HUD

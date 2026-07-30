@@ -1135,17 +1135,28 @@ bool WorldScene::startGroundItemInteraction(
         item_database_.find(
             found->item.category,
             found->item.definition_id);
-    if (definition &&
-        player_inventory_.store(found->item)) {
-        pending_audio_samples_.push_back(
-            retailItemMoveSound(*definition));
+    if (!definition ||
+        !player_inventory_.store(found->item)) {
+        // The single-player failure tail of FUN_004526a0 recreates the
+        // concrete item as a mode-zero world drop. Its ordinary first-impact
+        // update supplies the audible feedback; there is no pickup sound.
+        restartGroundItemDrop(*found);
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&
             pointer_.target().id == item_id) {
             pointer_.clearSelection();
         }
-        ground_items.erase(found);
+        return true;
     }
+
+    pending_audio_samples_.push_back(
+        retailItemMoveSound(*definition));
+    if (pointer_.target().kind ==
+            WorldPointerTargetKind::ground_item &&
+        pointer_.target().id == item_id) {
+        pointer_.clearSelection();
+    }
+    ground_items.erase(found);
     return true;
 }
 

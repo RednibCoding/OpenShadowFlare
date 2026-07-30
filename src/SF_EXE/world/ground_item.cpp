@@ -160,6 +160,17 @@ bool createScenarioGroundItem(
     return true;
 }
 
+void restartGroundItemDrop(GroundItem& item) {
+    // When FUN_004526a0 cannot insert a picked-up item into the player's
+    // owner, it recreates that same item through the ordinary mode-zero
+    // world constructor. Keep the instance and position, but restart every
+    // field owned by its two-bounce drop presentation.
+    item.height = 0;
+    item.vertical_velocity = 1600;
+    item.vertical_gravity = 280;
+    item.bounce_state = 0;
+}
+
 GroundItemUpdateEvent updateGroundItem(GroundItem& item) {
     if (item.bounce_state >= 2) {
         return GroundItemUpdateEvent::none;
