@@ -112,6 +112,7 @@ add_library(
   world/enemy_ai_action.cpp
   world/enemy_ai_evaluator.cpp
   world/enemy_presentation.cpp
+  world/enemy_presentation_audio.cpp
   world/enemy_target_selector.cpp
   world/ground_item.cpp
   world/map_exploration.cpp

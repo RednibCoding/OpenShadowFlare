@@ -233,9 +233,16 @@ seven, and publishes events two through four for the direct family or five
 through seven for the effect family only when the existing event is `-1`;
 another event is never overwritten. A resource-less actor completes
 immediately. The portable controller emits typed impact/effect and audio
-marker results; damage resolution, effect construction, and the sound-table
-lookup remain separate consumers rather than being hidden inside animation
-timing.
+marker results; damage resolution and effect construction remain separate
+consumers rather than being hidden inside animation timing.
+
+The sound helper first indexes `DAT_00480a20` as
+`resource * 30 + marker * 10 + chart`. It is exactly 25 enemy resources by
+three marker slots by ten charts, with 59 non-`-1` overrides. When that cell
+is `-1`, `DAT_004809a8` supplies a marker-by-chart fallback. Only chart three
+has one: sample 86 for every slot. The portable resolver preserves that
+override-first order and hands the resolved sample back with the presentation
+update, leaving actual playback to the world audio owner.
 
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a
@@ -280,8 +287,7 @@ contains no action-four or action-eight records, even though both native
 paths exist. These dispatch transitions and their animation, targeting,
 marker, typed-effect, and completion-event consumer are portable and tested.
 They remain behind the live-enemy boundary until damage/effect construction,
-sound-table resolution, and movement can be connected as one complete update
-path.
+audio playback, and movement can be connected as one complete update path.
 
 Actions nine and ten at `0x0045c600` and `0x0045c780` are the target-movement
 pair. If the selected AID condition enables a target range, they repeat the

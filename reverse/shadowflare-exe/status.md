@@ -416,8 +416,16 @@ cell is scanned for impact bit `0x40` and sound slots `0x400`, `0x800`, and
 clamping. The last frame restores idle action seven and emits events two
 through seven only if the current event is minus one. The portable controller
 now returns the exact frame, facing, target, marker mask, typed effect fields,
-and completion event. Native damage, effect creation, audio-table resolution,
-and live update attachment are still kept outside this timing owner.
+resolved samples, and completion event. Native damage, effect creation, audio
+playback, and live update attachment are still kept outside this timing owner.
+
+`0x0045a2a0` indexes a 25-resource by three-marker by ten-chart override table
+at `0x00480a20`, then falls back to the three ten-chart rows at `0x004809a8`.
+The override table has 59 populated cells. Only chart three has a fallback,
+sample 86 in all three rows. The complete 750-cell override table is pinned by
+count, sum, and byte hash, and the portable presentation result now carries
+the final sample number for each marker rather than making animation code own
+audio playback.
 
 The first native dispatcher pair is reconstructed separately. `0x0045c350`
 implements action zero as a timed idle: AID parameter one is its duration,

@@ -328,9 +328,15 @@ frame is drawn once before idle action seven and completion events two through
 seven are restored only over an event of minus one, including the native
 fast-frame skip and resource-less completion paths. Every visual enemy across
 the retail MCT catalog has a valid speed index and referenced chart.
-Damage/effect construction,
-sound-table resolution, movement consumption, and live AI attachment remain
-the next boundary.
+Damage/effect construction, movement consumption, and live AI attachment
+remain the next boundary.
+
+The marker-to-sample lookup is reconstructed separately. It checks the exact
+25-by-3-by-10 resource override table first, then the three ten-chart fallback
+rows; all 59 populated overrides are preserved and chart three's sample 86 is
+the only fallback. Presentation updates now return resolved samples, while
+the world audio owner will perform playback after the complete enemy update
+path is attached.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
@@ -343,9 +349,8 @@ value is retained as reserved state: retail copies it into the actor
 initializer, but its PEOPLE update and render paths do not read it. The enemy
 parameters without proven consumers deliberately remain indexed until their
 actual AI and combat paths establish names. Partners and other runtime
-categories are created
-outside this four-group MCT sequence and still need to be traced at their
-actual owners.
+categories are created outside this four-group MCT sequence and still need to
+be traced at their actual owners.
 
 We need to finish the general MCT path around `0x00427b50` and the scenario
 transition path around `0x00426200`:

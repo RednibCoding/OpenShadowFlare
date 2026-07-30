@@ -134,6 +134,7 @@ bool testDirectTimingMarkersAndCompletion() {
     osf::EnemyPresentationContext context;
     context.position = {20, 30};
     context.direction = 6;
+    context.resource_id = 3;
     context.profile = &values;
     context.animation = &animation;
     context.target_in_range =
@@ -178,6 +179,9 @@ bool testDirectTimingMarkersAndCompletion() {
                 update.animation_frame == 2 &&
                 update.audio_markers ==
                     osf::kEnemyAudioMarkerOne &&
+                update.audio_samples[0] == -1 &&
+                update.audio_samples[1] == 90 &&
+                update.audio_samples[2] == -1 &&
                 update.impact &&
                 update.impact_family ==
                     osf::EnemyPresentationFamily::direct &&
@@ -252,7 +256,7 @@ bool testSlowTimingDoesNotRestart() {
 bool testEffectTargetAndCompletion() {
     const osf::gapi::CafAnimation animation =
         animationWithCharts({
-            {9, {0x40u}},
+            {9, {0x40u | 0x400u}},
         });
     const osf::EnemyPresentationProfile values =
         profile();
@@ -264,6 +268,7 @@ bool testEffectTargetAndCompletion() {
     osf::EnemyPresentationContext context;
     context.position = {0, 0};
     context.direction = 5;
+    context.resource_id = 8;
     context.profile = &values;
     context.animation = &animation;
     context.default_target = [&searches]() {
@@ -293,6 +298,7 @@ bool testEffectTargetAndCompletion() {
             update.effect_subtype == 22 &&
             update.effect_parameter == 32 &&
             update.effect_additive == 42 &&
+            update.audio_samples[0] == 110 &&
             update.completion_event == 7 &&
             searches == 1,
         "Effect presentation six did not use default targeting, "

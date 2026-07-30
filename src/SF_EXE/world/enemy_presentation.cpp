@@ -1,6 +1,7 @@
 #include "enemy_presentation.hpp"
 
 #include "actor_direction.hpp"
+#include "enemy_presentation_audio.hpp"
 
 #include <array>
 #include <cstddef>
@@ -214,6 +215,21 @@ EnemyPresentationController::update(
                 result.impact = true;
             }
         }
+    }
+    for (std::int32_t marker_slot = 0;
+         marker_slot < 3;
+         ++marker_slot) {
+        if ((result.audio_markers &
+             (1u << static_cast<std::uint32_t>(
+                 marker_slot))) == 0) {
+            continue;
+        }
+        result.audio_samples[
+            static_cast<std::size_t>(marker_slot)] =
+            retailEnemyPresentationSample(
+                context.resource_id,
+                animation_chart_,
+                marker_slot);
     }
 
     if (frame_count > 0 &&

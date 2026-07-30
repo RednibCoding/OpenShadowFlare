@@ -396,6 +396,35 @@ if(TARGET sf_game_core)
     COMMAND enemy_presentation_test)
 
   add_executable(
+    enemy_presentation_audio_test
+    enemy_presentation_audio_test.cpp
+  )
+  target_link_libraries(
+    enemy_presentation_audio_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    enemy_presentation_audio_test PRIVATE cxx_std_17)
+  set_target_properties(
+    enemy_presentation_audio_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      enemy_presentation_audio_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      enemy_presentation_audio_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME enemy_presentation_audio
+    COMMAND enemy_presentation_audio_test)
+
+  add_executable(
     movement_destination_test
     movement_destination_test.cpp
   )

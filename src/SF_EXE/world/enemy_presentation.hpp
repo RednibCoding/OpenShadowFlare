@@ -5,6 +5,7 @@
 #include "enemy_target_selector.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 
+#include <array>
 #include <cstdint>
 
 namespace osf {
@@ -22,6 +23,7 @@ struct EnemyPresentationContext {
     WorldPosition position;
     std::int32_t direction = 0;
     std::int32_t event_number = -1;
+    std::int32_t resource_id = -1;
     const EnemyPresentationProfile* profile = nullptr;
     const gapi::CafAnimation* animation = nullptr;
     EnemyTargetSearch target_in_range;
@@ -36,6 +38,8 @@ struct EnemyPresentationUpdate {
     std::int32_t animation_frame = 0;
     std::int32_t direction = 0;
     std::uint8_t audio_markers = 0;
+    std::array<std::int32_t, 3> audio_samples{{
+        -1, -1, -1}};
     bool impact = false;
     EnemyPresentationFamily impact_family =
         EnemyPresentationFamily::direct;

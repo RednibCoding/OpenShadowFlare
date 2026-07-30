@@ -167,11 +167,12 @@ different eligibility logic for conditions and movement.
 
 Enemy presentation actions one through six now have a separate controller as
 well. It owns target-facing on entry, the retail ten-value CAF speed table,
-crossed-frame impact and three-slot sound markers, final-frame clamping, typed
-effect parameters, and completion events two through seven. It is intentionally
-not live yet: damage/effect construction, sound-table lookup, and movement
-still need to meet it at the actor boundary before enemies can run the full AI
-loop without dropping behavior.
+crossed-frame impact and three-slot sound markers, their resource-specific and
+fallback sample lookup, final-frame clamping, typed effect parameters, and
+completion events two through seven. It is intentionally not live yet:
+damage/effect construction, audio playback, and movement still need to meet it
+at the actor boundary before enemies can run the full AI loop without dropping
+behavior.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
