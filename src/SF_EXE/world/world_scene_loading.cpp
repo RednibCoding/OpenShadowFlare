@@ -132,15 +132,32 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    RetailRandom prepared_item_random = item_random_;
     ScenarioWorld prepared_scenario;
-    if (!prepared_scenario.load(data_root, start, error)) {
+    if (!prepared_scenario.load(
+            data_root,
+            start,
+            prepared_item_random,
+            error)) {
         clear();
         return false;
     }
 
     data_root_ = data_root;
+    std::int32_t prepared_next_ground_item_id = 0;
+    if (!prepareGroundItems(
+            prepared_scenario.groundItems(),
+            0,
+            prepared_next_ground_item_id,
+            error)) {
+        clear();
+        return false;
+    }
     refreshPlayerAppearance();
     scenario_world_ = std::move(prepared_scenario);
+    item_random_ = prepared_item_random;
+    next_ground_item_id_ =
+        prepared_next_ground_item_id;
     scenario_script_.adopt(
         scenario_world_.takeScriptData());
     player_.reset(
@@ -201,8 +218,21 @@ ScenarioTravelResult WorldScene::transitionScenario(
         return ScenarioTravelResult::relocated;
     }
 
+    RetailRandom prepared_item_random = item_random_;
     ScenarioWorld prepared_scenario;
-    if (!prepared_scenario.load(data_root_, start, error)) {
+    if (!prepared_scenario.load(
+            data_root_,
+            start,
+            prepared_item_random,
+            error)) {
+        return ScenarioTravelResult::failed;
+    }
+    std::int32_t prepared_next_ground_item_id = 0;
+    if (!prepareGroundItems(
+            prepared_scenario.groundItems(),
+            0,
+            prepared_next_ground_item_id,
+            error)) {
         return ScenarioTravelResult::failed;
     }
 
@@ -211,8 +241,10 @@ ScenarioTravelResult WorldScene::transitionScenario(
     pending_interaction_ = {};
     pending_audio_samples_.clear();
     gameplay_service_request_ = {};
-    next_ground_item_id_ = 0;
     scenario_world_ = std::move(prepared_scenario);
+    item_random_ = prepared_item_random;
+    next_ground_item_id_ =
+        prepared_next_ground_item_id;
     scenario_script_.adopt(
         scenario_world_.takeScriptData());
     player_.relocate(

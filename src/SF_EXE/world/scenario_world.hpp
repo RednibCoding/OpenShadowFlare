@@ -31,6 +31,7 @@ public:
     bool load(
         const std::filesystem::path& data_root,
         const ScenarioStart& start,
+        RetailRandom& item_random,
         std::string* error = nullptr);
     void clear();
 

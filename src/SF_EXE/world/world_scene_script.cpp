@@ -78,6 +78,11 @@ bool WorldScene::readScriptWorldOperand(
             value = npc->stateValue(channel);
             return true;
         }
+        if (const GroundItem* item =
+                findScriptGroundItem(character_number)) {
+            value = item->state.value(channel);
+            return true;
+        }
         return false;
     }
     if (operand.type != 6 && operand.type != 7) {
@@ -95,6 +100,13 @@ bool WorldScene::readScriptWorldOperand(
         value = operand.type == 6
                     ? npc->position().x
                     : npc->position().y;
+        return true;
+    }
+    if (const GroundItem* item =
+            findScriptGroundItem(operand.value)) {
+        value = operand.type == 6
+                    ? item->position.x
+                    : item->position.y;
         return true;
     }
     return false;
@@ -125,6 +137,24 @@ bool WorldScene::writeScriptWorldOperand(
     }
     if (NpcActor* npc = findScriptNpc(character_number)) {
         npc->setStateValue(channel, value);
+        return true;
+    }
+    if (GroundItem* item =
+            findScriptGroundItem(character_number)) {
+        item->state.setValue(channel, value);
+        if (!item->visible() || !item->pointerEnabled()) {
+            if (pointer_.target().kind ==
+                    WorldPointerTargetKind::ground_item &&
+                pointer_.target().id == item->id) {
+                pointer_.clearSelection();
+            }
+            if (pending_interaction_.kind ==
+                    WorldPointerTargetKind::ground_item &&
+                pending_interaction_.id == item->id) {
+                pending_interaction_ = {};
+                player_.cancelMovement();
+            }
+        }
         return true;
     }
     return false;

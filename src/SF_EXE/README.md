@@ -107,9 +107,11 @@ The same general decoder now retains all four MCT entity groups for every
 shipped scenario. Enemy records preserve their separate fixed-width
 AI-controller names and surrounding parameter blocks, while placed-item
 records expose the retail category, definition, and quantity range. Those
-records stay scenario data until their respective portable actor runtimes are
-implemented; the loader does not quietly discard or prematurely interpret
-them.
+item records now become scenario-local ground actors through `Item.Ibn`.
+They start settled, keep their script-visible MCT state, and disappear with
+the old scenario on a successful map change. A failed map preparation leaves
+the live actors untouched. Enemy records remain decoded scenario data until
+their portable actor runtime is implemented.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
@@ -134,6 +136,10 @@ inventory icons. They also follow the original two-bounce drop arc before
 settling into the world depth pass, with the matching item sound on the first
 impact and a silent second bounce. CAF chart palettes and the default RGB
 strengths stored in `Item.Ibn` supply their original ground colors. The
+separate MCT-authored item path uses the retail settled initialization mode,
+so those items neither bounce nor emit a landing sound. Item resources may
+also use the static `Pattern.njp`/`Pattern.sdw` layout instead of a CAF; both
+layouts share the same world-item renderer and pointer path. The
 format and interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
 

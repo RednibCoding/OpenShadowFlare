@@ -568,6 +568,9 @@ WorldScene::pointerCandidatesAtScreenPosition(
     }
     for (const GroundItem& item :
          scenario_world_.groundItems()) {
+        if (!item.visible() || !item.pointerEnabled()) {
+            continue;
+        }
         const ItemWorldResource* resource =
             itemWorldResource(item.resource_id);
         const auto part_enabled = [](std::size_t) {
@@ -575,42 +578,72 @@ WorldScene::pointerCandidatesAtScreenPosition(
         };
         const std::int32_t display_height =
             item.height * kRetailHeightScale / 100;
-        if (!resource ||
-            !displayAnimationIntersectsRectangle(
-                resource->animation(),
-                resource->patterns(),
-                item.position,
-                item.animation_chart,
-                8,
-                0,
-                part_enabled,
-                camera_x,
-                camera_y,
-                hit_rectangle,
-                display_height)) {
+        if (!resource) {
             continue;
         }
+        const ScreenPosition projected =
+            calculateRealPosition(item.position);
+        const ScreenPosition anchor{
+            projected.x - camera_x,
+            projected.y - camera_y,
+        };
+        const bool intersects =
+            resource->animated()
+                ? displayAnimationIntersectsRectangle(
+                      resource->animation(),
+                      resource->patterns(),
+                      item.position,
+                      item.animation_chart,
+                      8,
+                      0,
+                      part_enabled,
+                      camera_x,
+                      camera_y,
+                      hit_rectangle,
+                      display_height)
+                : item.animation_chart >= 0 &&
+                      displayPatternIntersectsRectangle(
+                          resource->patterns(),
+                          static_cast<std::size_t>(
+                              item.animation_chart),
+                          anchor,
+                          hit_rectangle,
+                          display_height);
+        if (!intersects) {
+            continue;
+        }
+        const bool exact_hit =
+            resource->animated()
+                ? displayAnimationContainsPoint(
+                      resource->animation(),
+                      resource->patterns(),
+                      item.position,
+                      item.animation_chart,
+                      8,
+                      0,
+                      part_enabled,
+                      camera_x,
+                      camera_y,
+                      point,
+                      display_height)
+                : item.animation_chart >= 0 &&
+                      displayPatternContainsPoint(
+                          resource->patterns(),
+                          static_cast<std::size_t>(
+                              item.animation_chart),
+                          anchor,
+                          point,
+                          display_height);
         candidates.push_back({
             {WorldPointerTargetKind::ground_item, item.id},
             {
                 0,
                 item.position,
-                {},
+                item.judgement,
                 0,
             },
             3,
-            displayAnimationContainsPoint(
-                resource->animation(),
-                resource->patterns(),
-                item.position,
-                item.animation_chart,
-                8,
-                0,
-                part_enabled,
-                camera_x,
-                camera_y,
-                point,
-                display_height),
+            exact_hit,
             pointerDistanceSquared(item.position),
         });
     }
@@ -677,6 +710,34 @@ const ScenarioObjectActor* WorldScene::findScriptObject(
                : &*found;
 }
 
+GroundItem* WorldScene::findScriptGroundItem(
+    std::int32_t character_number) {
+    std::vector<GroundItem>& items =
+        scenario_world_.groundItems();
+    const auto found = std::find_if(
+        items.begin(),
+        items.end(),
+        [character_number](const GroundItem& item) {
+            return item.scenario_character_number ==
+                   character_number;
+        });
+    return found == items.end() ? nullptr : &*found;
+}
+
+const GroundItem* WorldScene::findScriptGroundItem(
+    std::int32_t character_number) const {
+    const std::vector<GroundItem>& items =
+        scenario_world_.groundItems();
+    const auto found = std::find_if(
+        items.begin(),
+        items.end(),
+        [character_number](const GroundItem& item) {
+            return item.scenario_character_number ==
+                   character_number;
+        });
+    return found == items.end() ? nullptr : &*found;
+}
+
 NpcActor* WorldScene::findNpc(std::int32_t id) {
     std::vector<NpcActor>& people =
         scenario_world_.people();
@@ -729,6 +790,11 @@ bool WorldScene::startGroundItemInteraction(
             return item.id == item_id;
         });
     if (found == ground_items.end()) {
+        pending_interaction_ = {};
+        return false;
+    }
+    if (!found->visible() ||
+        !found->pointerEnabled()) {
         pending_interaction_ = {};
         return false;
     }

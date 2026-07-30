@@ -202,8 +202,19 @@ private:
         std::int32_t character_number);
     const ScenarioObjectActor* findScriptObject(
         std::int32_t character_number) const;
-    bool ensureItemWorldResource(std::int32_t resource_id);
+    GroundItem* findScriptGroundItem(
+        std::int32_t character_number);
+    const GroundItem* findScriptGroundItem(
+        std::int32_t character_number) const;
+    bool ensureItemWorldResource(
+        std::int32_t resource_id,
+        std::string* error = nullptr);
     bool prepareGroundItems(std::size_t first_item);
+    bool prepareGroundItems(
+        std::vector<GroundItem>& ground_items,
+        std::size_t first_item,
+        std::int32_t& next_item_id,
+        std::string* error = nullptr);
     bool startNpcInteraction(NpcActor& npc);
     bool startScenarioObjectInteraction(
         ScenarioObjectActor& object);

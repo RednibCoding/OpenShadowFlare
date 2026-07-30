@@ -83,6 +83,7 @@ bool validStart(const ScenarioStart& start) {
 bool ScenarioWorld::load(
     const std::filesystem::path& data_root,
     const ScenarioStart& start,
+    RetailRandom& item_random,
     std::string* error) {
     clear();
     if (error) {
@@ -235,6 +236,20 @@ bool ScenarioWorld::load(
             return false;
         }
         people_.push_back(std::move(actor));
+    }
+
+    ground_items_.reserve(data_.items().size());
+    for (const ScenarioItem& item : data_.items()) {
+        if (!createScenarioGroundItem(
+                ground_items_, item_random, item)) {
+            setError(
+                error,
+                "Scenario item " +
+                    std::to_string(item.id) +
+                    " could not be initialized.");
+            clear();
+            return false;
+        }
     }
 
     id_ = start.scenario_id;

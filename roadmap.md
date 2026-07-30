@@ -240,6 +240,16 @@ entry, and footer sequence directly; every one of the 209 shipped MCT files
 passes that path, covering 5,203 objects, 163 PEOPLE actors, 18,788 enemies,
 and 84 placed items.
 
+Placed items now have their runtime side too. `ScenarioWorld` creates them as
+one actor per MCT record, assigns the retail `18000000 + local ID` script
+identity, resolves their `Item.Ibn` visuals before committing a map change,
+and keeps their three script-controlled state channels live. They use retail
+mode 1: already settled, fixed runtime bounds, no bounce, and no landing
+sound. Both animated `Animation.*` item resources and the static
+`Pattern.njp`/`Pattern.sdw` layout are supported for drawing and opaque-pixel
+selection. Leaving a map releases these actors with the rest of its
+`ScenarioWorld`; a failed load keeps the current set intact.
+
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
 spawn-relative movement rectangle. He now alternates chart-zero idling with a
@@ -259,7 +269,7 @@ transition path around `0x00426200`:
 
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
-- represent dynamic entities separately from static OBL scenery;
+- add the remaining enemy actor runtime separately from static OBL scenery;
 - release the old scenario in the same order the original does;
 - identify the condition and sequence for the alternate `VisualNN.njp`
   artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is

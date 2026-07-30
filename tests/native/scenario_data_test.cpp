@@ -215,10 +215,47 @@ bool testGroundItemCreation() {
             "A ground item did not emit one first impact while settling.")) {
         return false;
     }
+
+    osf::ScenarioItem placed;
+    placed.id = 12;
+    placed.world_x = -450;
+    placed.world_y = 900;
+    placed.initial_state_values = {1, 0, 1};
+    placed.category = 4;
+    placed.definition_id = 0;
+    placed.minimum_quantity = 25000;
+    placed.maximum_quantity = 25000;
+    const std::size_t placed_index = items.size();
+    if (!check(
+            osf::createScenarioGroundItem(
+                items, random, placed) &&
+                items.size() == placed_index + 1,
+            "A map-authored item could not be created.")) {
+        return false;
+    }
+    osf::GroundItem& authored = items.back();
+    if (!check(
+            authored.quantity == 25000 &&
+                authored.position.x == -450 &&
+                authored.position.y == 900 &&
+                authored.scenario_character_number == 18000012 &&
+                authored.height == 0 &&
+                authored.vertical_velocity == 0 &&
+                authored.bounce_state == 2 &&
+                authored.visible() &&
+                !authored.pointerEnabled() &&
+                authored.judgementEnabled() &&
+                osf::updateGroundItem(authored) ==
+                    osf::GroundItemUpdateEvent::none,
+            "A map-authored item did not enter the settled retail "
+            "runtime state.")) {
+        return false;
+    }
+
     return check(
         !osf::createGroundItems(
             items, random, 4, 0, {}, 10, 9) &&
-            items.size() == 4,
+            items.size() == placed_index + 1,
         "An invalid script money range created a ground item.");
 }
 
@@ -690,6 +727,7 @@ bool testRetailScenarioCatalog() {
     std::size_t item_count = 0;
     std::set<std::int32_t> people_reserved_values;
     std::set<std::string> enemy_ai_controls;
+    bool item_common_records_match = true;
     for (const auto& entry :
          std::filesystem::recursive_directory_iterator(
              scenario_root)) {
@@ -792,6 +830,19 @@ bool testRetailScenarioCatalog() {
                     << " has an invalid state or quantity range.\n";
                 return false;
             }
+            item_common_records_match =
+                item_common_records_match &&
+                item.initial_state_values ==
+                    std::vector<std::int32_t>{1, 1, 1} &&
+                item.resource_id == 0 &&
+                item.name.empty() &&
+                item.judgement_left == -40 &&
+                item.judgement_top == -40 &&
+                item.judgement_right == 39 &&
+                item.judgement_bottom == 39 &&
+                item.direction == 8 &&
+                item.minimum_quantity == 0 &&
+                item.maximum_quantity == 0;
         }
         ++scenario_count;
         object_count += scenario.objects().size();
@@ -817,6 +868,7 @@ bool testRetailScenarioCatalog() {
             people_count == 163 &&
             enemy_count == 18788 &&
             item_count == 84 &&
+            item_common_records_match &&
             people_reserved_values ==
                 std::set<std::int32_t>{-100, -85, -65} &&
             !enemy_ai_controls.empty() &&
@@ -1173,6 +1225,240 @@ bool testLiveScenarioTransition() {
                 inventory_count &&
             world.playerSpecialItems().items().size() == 1,
         "The same-map fast path reloaded the scenario or lost ownership.");
+#else
+    return true;
+#endif
+}
+
+bool testPlacedScenarioItems() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    const std::filesystem::path scenario_path =
+        data_root / "Scenario" / "03130000" /
+        "Scenario.Mct";
+    if (!std::filesystem::is_regular_file(scenario_path)) {
+        return true;
+    }
+
+    osf::ScenarioData source;
+    std::string error;
+    if (!check(
+            source.load(scenario_path, &error) &&
+                source.items().size() == 4,
+            "The authored-item fixture scenario could not be decoded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "PlacedItems";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {3130000, 0, 0},
+                &error),
+            "The authored-item fixture scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    if (!check(
+            world.groundItems().size() ==
+                    source.items().size() &&
+                world.takeAudioSamples().empty(),
+            "Loading map-authored items emitted audio or lost an "
+            "item record.")) {
+        return false;
+    }
+    for (std::size_t index = 0;
+         index < source.items().size();
+         ++index) {
+        const osf::ScenarioItem& expected =
+            source.items()[index];
+        const osf::GroundItem& item =
+            world.groundItems()[index];
+        if (!check(
+                item.category == expected.category &&
+                    item.definition_id ==
+                        expected.definition_id &&
+                    item.quantity == 1 &&
+                    item.position.x == expected.world_x &&
+                    item.position.y == expected.world_y &&
+                    item.id ==
+                        static_cast<std::int32_t>(index) &&
+                    item.scenario_character_number ==
+                        18000000 + expected.id &&
+                    item.resource_id >= 0 &&
+                    item.animation_chart >= 0 &&
+                    item.height == 0 &&
+                    item.vertical_velocity == 0 &&
+                    item.bounce_state == 2 &&
+                    item.visible() &&
+                    item.pointerEnabled() &&
+                    item.judgementEnabled() &&
+                    item.judgement.left == -20 &&
+                    item.judgement.top == -20 &&
+                    item.judgement.right == 19 &&
+                    item.judgement.bottom == 19,
+                "A map-authored item did not preserve its MCT identity, "
+                "resolved visual, or settled runtime state.")) {
+            return false;
+        }
+    }
+
+    const osf::GroundItem& first_item =
+        world.groundItems().front();
+    const osf::ItemWorldResource* static_resource =
+        world.itemWorldResource(first_item.resource_id);
+    if (!check(
+            static_resource &&
+                !static_resource->animated() &&
+                first_item.animation_chart >= 0 &&
+                static_cast<std::size_t>(
+                    first_item.animation_chart) <
+                    static_resource->patterns()
+                        .patterns()
+                        .size() &&
+                static_cast<std::size_t>(
+                    first_item.animation_chart) <
+                    static_resource->shadowPatterns()
+                        .patterns()
+                        .size(),
+            "The retail static item-resource layout was not resolved.")) {
+        return false;
+    }
+
+    NpcRecordingBackend renderer;
+    renderer.item_patterns =
+        &static_resource->patterns();
+    renderer.item_shadows =
+        &static_resource->shadowPatterns();
+    osf::renderWorldGeometry(renderer, world);
+    if (!check(
+            renderer.item_calls.size() == 8 &&
+                std::all_of(
+                    renderer.item_calls.begin(),
+                    renderer.item_calls.end(),
+                    [&first_item](
+                        const NpcPatternCall& call) {
+                        return call.pattern ==
+                            static_cast<std::size_t>(
+                                first_item
+                                    .animation_chart);
+                    }),
+            "Static map-authored item patterns and shadows were not "
+            "rendered through their retail chart index.")) {
+        return false;
+    }
+
+    const osf::ScreenPosition item_anchor =
+        osf::calculateRealPosition(first_item.position);
+    bool item_hovered = false;
+    for (std::int32_t y = -96;
+         y <= 64 && !item_hovered;
+         ++y) {
+        for (std::int32_t x = -96;
+             x <= 96;
+             ++x) {
+            world.updatePointerHover(
+                item_anchor.x -
+                    world.cameraScreenX() + x,
+                item_anchor.y -
+                    world.cameraScreenY() + y);
+            if (world.hoveredGroundItemId() ==
+                first_item.id) {
+                item_hovered = true;
+                break;
+            }
+        }
+    }
+    if (!check(
+            item_hovered,
+            "A static map-authored item could not be selected through "
+            "its visible pattern.")) {
+        return false;
+    }
+    world.clearPointerHover();
+
+    const std::vector<osf::GroundItem> initial_items =
+        world.groundItems();
+    error.clear();
+    if (!check(
+            world.transitionScenario(
+                {88888888, 0, 0},
+                &error) ==
+                    osf::ScenarioTravelResult::failed &&
+                world.scenarioId() == 3130000 &&
+                world.groundItems().size() ==
+                    initial_items.size() &&
+                !error.empty(),
+            "A failed scenario load discarded the live authored-item "
+            "owner.")) {
+        return false;
+    }
+    for (std::size_t index = 0;
+         index < initial_items.size();
+         ++index) {
+        if (!check(
+                world.groundItems()[index].id ==
+                        initial_items[index].id &&
+                    world.groundItems()[index]
+                            .scenario_character_number ==
+                        initial_items[index]
+                            .scenario_character_number &&
+                    world.groundItems()[index].category ==
+                        initial_items[index].category &&
+                    world.groundItems()[index].definition_id ==
+                        initial_items[index].definition_id &&
+                    world.groundItems()[index].position.x ==
+                        initial_items[index].position.x &&
+                    world.groundItems()[index].position.y ==
+                        initial_items[index].position.y,
+                "A failed scenario load partially replaced an authored "
+                "item.")) {
+            return false;
+        }
+    }
+
+    if (!check(
+            world.transitionScenario({0, 0, 0}, &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                world.scenarioId() == 0 &&
+                world.groundItems().empty(),
+            "Leaving an authored-item scenario retained its local "
+            "ground items.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    if (!check(
+            world.transitionScenario(
+                {3130000, 0, 0},
+                &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                world.groundItems().size() ==
+                    source.items().size(),
+            "Returning to an authored-item scenario did not rebuild its "
+            "local item actors.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    for (std::size_t index = 0;
+         index < world.groundItems().size();
+         ++index) {
+        if (!check(
+                world.groundItems()[index].id ==
+                        static_cast<std::int32_t>(index) &&
+                    world.groundItems()[index].bounce_state == 2,
+                "Reloaded map-authored items did not receive stable "
+                "scenario-local selection IDs or settled state.")) {
+            return false;
+        }
+    }
+    return true;
 #else
     return true;
 #endif
@@ -2655,6 +2941,7 @@ int main() {
                    testRetailScenarioCatalog() &&
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
+                   testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&
                    testRetailRemoteTown()
                ? 0

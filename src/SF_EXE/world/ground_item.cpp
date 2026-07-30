@@ -1,9 +1,11 @@
 #include "ground_item.hpp"
+#include "scenario_data.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <utility>
 
 namespace osf {
 namespace {
@@ -13,6 +15,8 @@ constexpr std::int32_t kGoldDefinition = 0;
 constexpr std::int32_t kMaximumGoldStack = 10000;
 constexpr double kGoldDropRadius = 200.0;
 constexpr double kGoldDropAngleStep = 0.3141592;
+constexpr std::int32_t kScenarioItemCharacterBase = 18000000;
+const std::vector<std::int32_t> kEnabledState{1, 1, 1};
 
 }  // namespace
 
@@ -30,18 +34,13 @@ bool createGroundItem(
         (gold && quantity > kMaximumGoldStack)) {
         return false;
     }
-    items.push_back({
-        category,
-        definition_id,
-        quantity,
-        position,
-        -1,
-        -1,
-        0,
-        1600,
-        280,
-        0,
-    });
+    GroundItem item;
+    item.category = category;
+    item.definition_id = definition_id;
+    item.quantity = quantity;
+    item.position = position;
+    item.state.initialize(kEnabledState);
+    items.push_back(std::move(item));
     return true;
 }
 
@@ -101,6 +100,57 @@ bool createGroundItems(
     return true;
 }
 
+bool createScenarioGroundItem(
+    std::vector<GroundItem>& items,
+    RetailRandom& random,
+    const ScenarioItem& source) {
+    if (source.id < 0 ||
+        source.id >
+            std::numeric_limits<std::int32_t>::max() -
+                kScenarioItemCharacterBase) {
+        return false;
+    }
+
+    std::int32_t quantity = 1;
+    if (source.category == kGoldCategory &&
+        source.definition_id == kGoldDefinition) {
+        if (source.minimum_quantity < 0 ||
+            source.maximum_quantity <
+                source.minimum_quantity) {
+            return false;
+        }
+        const std::int64_t range =
+            static_cast<std::int64_t>(
+                source.maximum_quantity) -
+            source.minimum_quantity + 1;
+        if (range <= 0 ||
+            range >
+                std::numeric_limits<std::int32_t>::max()) {
+            return false;
+        }
+        quantity =
+            source.minimum_quantity +
+            random.next() %
+                static_cast<std::int32_t>(range);
+    }
+
+    GroundItem item;
+    item.category = source.category;
+    item.definition_id = source.definition_id;
+    item.quantity = quantity;
+    item.position = {source.world_x, source.world_y};
+    item.vertical_velocity = 0;
+    item.bounce_state = 2;
+    item.scenario_character_number =
+        kScenarioItemCharacterBase + source.id;
+    if (!item.state.initialize(
+            source.initial_state_values)) {
+        return false;
+    }
+    items.push_back(std::move(item));
+    return true;
+}
+
 GroundItemUpdateEvent updateGroundItem(GroundItem& item) {
     if (item.bounce_state >= 2) {
         return GroundItemUpdateEvent::none;
@@ -120,6 +170,18 @@ GroundItemUpdateEvent updateGroundItem(GroundItem& item) {
         item.bounce_state = 2;
     }
     return GroundItemUpdateEvent::none;
+}
+
+bool GroundItem::visible() const {
+    return state.visible();
+}
+
+bool GroundItem::pointerEnabled() const {
+    return state.pointerEnabled();
+}
+
+bool GroundItem::judgementEnabled() const {
+    return state.judgementEnabled();
 }
 
 }  // namespace osf

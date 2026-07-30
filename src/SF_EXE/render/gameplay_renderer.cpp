@@ -382,6 +382,9 @@ std::vector<WorldDrawEntry> collectWorldEntries(
         });
     }
     for (const GroundItem& item : world.groundItems()) {
+        if (!item.visible()) {
+            continue;
+        }
         entries.push_back({
             nullptr,
             nullptr,
@@ -391,7 +394,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             {
                 entries.size(),
                 item.position,
-                {},
+                item.judgement,
                 0,
             },
             nullptr,
@@ -429,6 +432,56 @@ void drawGroundItem(
     const ItemWorldResource* resource =
         world.itemWorldResource(item.resource_id);
     if (!resource) {
+        return;
+    }
+    if (!resource->animated()) {
+        const gapi::NjpImage& image =
+            shadow
+                ? resource->shadowPatterns()
+                : resource->patterns();
+        if (item.animation_chart < 0 ||
+            static_cast<std::size_t>(
+                item.animation_chart) >=
+                image.patterns().size()) {
+            return;
+        }
+        const ScreenPosition screen =
+            calculateRealPosition(item.position);
+        const std::int32_t hover_strength =
+            hovered ? 300 : 0;
+        renderer.drawPattern(
+            image,
+            static_cast<std::size_t>(
+                item.animation_chart),
+            {
+                screen.x - camera_x,
+                screen.y - camera_y -
+                    (shadow
+                         ? 0
+                         : item.height *
+                               kRetailHeightScale /
+                               100),
+                1000,
+                1000,
+                1000,
+                shadow
+                    ? std::clamp(
+                          shadow_opacity, 0, 1000)
+                    : 1000,
+                shadow
+                    ? 1000
+                    : item.red_strength +
+                          hover_strength,
+                shadow
+                    ? 1000
+                    : item.green_strength +
+                          hover_strength,
+                shadow
+                    ? 1000
+                    : item.blue_strength +
+                          hover_strength,
+                -1,
+            });
         return;
     }
     renderCharacterAnimationPass(

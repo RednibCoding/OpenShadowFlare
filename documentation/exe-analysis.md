@@ -143,6 +143,16 @@ loader now uses scenario `00000000`'s map path and entry key zero rather than
 embedding `f00_01`, (`89898`, `2811`), direction 3, and music index 0 in
 `WorldScene`.
 
+The item group near the end of that variable section constructs ordinary item
+actors with initialization mode one and script identity
+`18000000 + local ID`. `0x00458930` immediately turns that mode into the
+settled state: zero height and vertical speed, bounce state two, runtime
+judgement `[-20,-20,19,19]`, and no landing sound. Definition offsets `0x30`
+and `0x34` select the `Character/ITEM` resource and either a CAF chart or, for
+the static resource layout, a direct `Pattern.njp`/`Pattern.sdw` index.
+Category-four definition-zero records are the sole branch which rolls an
+inclusive MCT quantity; one source record still creates one actor.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

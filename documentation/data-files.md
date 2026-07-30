@@ -200,6 +200,21 @@ places the result at the common entity position. For category 4, definition
 0 (gold), it chooses a quantity uniformly from the inclusive minimum/maximum
 range. Other item definitions do not enter that quantity-override branch.
 
+These records use the item actor's initialization mode 1. That detail matters:
+the actor starts at height zero with no vertical speed and is already in its
+settled state. It does not run the two-bounce drop arc or play a landing
+sound. Retail creates one actor for one MCT record, including a gold record;
+the 10,000-Gold splitting rule belongs to script-created drops and is not
+applied here. Once initialized, the item actor replaces the common MCT
+judgement rectangle with `[-20,-20,19,19]` and is addressed by script
+character number `18000000 + local ID`.
+
+All 84 items in the shipped MCT catalog start with state values `1,1,1`,
+direction 8, resource ID zero, an empty common name, and common bounds
+`[-40,-40,39,39]`. Their quantity ranges are both zero because none of those
+records is Gold. These repeated values are checked as catalog facts, not
+treated as a reason to skip decoding the fields.
+
 Across all 209 shipped files, the exact decoder finds 5,203 objects, 163
 PEOPLE records, 18,788 enemies, and 84 placed items. Every enemy has a
 non-empty AI-controller name and every nonnegative object, PEOPLE, and enemy
@@ -654,6 +669,14 @@ contains one shared shadow palette, so shadows keep their pattern default.
 The three strength fields are applied after palette lookup. The opening Round
 Shield uses `900, 800, 500`, while the other three drops use
 `1000, 1000, 1000`.
+
+There are two ground-resource layouts. Directories zero through six contain
+`Animation.Njp`, `Animation.Sdw`, and `Animation.Caf`; the table's ground
+selection names a CAF chart. Directories seven through eleven contain the
+static `Pattern.njp` and `Pattern.sdw` pair instead; the same table field is
+then the pattern index. The retail resource loader accepts whichever files
+exist, and the portable resource boundary does the same rather than inventing
+a CAF for static items.
 
 Each script-created ground entity now also receives a stable runtime ID.
 Pointer hit testing follows the opaque pixels selected by its current CAF

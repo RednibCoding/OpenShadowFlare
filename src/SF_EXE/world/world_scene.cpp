@@ -394,7 +394,8 @@ void WorldScene::update() {
             player_.position(),
             player_.judgement(),
             interaction_item->position,
-            {}) <= kRetailInteractionDistance) {
+            interaction_item->judgement) <=
+            kRetailInteractionDistance) {
         startGroundItemInteraction(interaction_item->id);
     }
 }

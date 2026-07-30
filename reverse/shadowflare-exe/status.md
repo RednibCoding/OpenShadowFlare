@@ -341,8 +341,10 @@ shared variable entity record before tails of `0x34`, `0x2c`, `0x13c`, and
 `0x10` bytes. The portable decoder walks that sequence exactly, reads the
 entry table and three-word footer in forward file order, and rejects truncated
 groups or trailing bytes. All 209 shipped MCT files pass this path, covering
-5,203 object and 163 PEOPLE records with no mismatch between a nonnegative
-resource and its preload list.
+5,203 objects, 163 PEOPLE records, 18,788 enemies, and 84 placed items with no
+mismatch between a nonnegative object, PEOPLE, or enemy resource and its
+preload list. Enemy tails retain their fixed AI-controller name separately
+from the surrounding parameter blocks.
 
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
@@ -444,6 +446,18 @@ gravity, 700 rebound, and two-bounce settle state before joining the shared
 dynamic depth pass. The first impact emits the retail selector-two item sound;
 the second impact is silent. Unnamed definition fields remain preserved as
 raw bytes.
+
+The loader's separate MCT item branch sets initialization mode one. Those
+actors use script character number `18000000 + local ID`, copy the three
+common state channels, replace the common judgement with
+`[-20,-20,19,19]`, and start at height zero in bounce state two. They
+therefore do not run the drop arc or emit either impact sound. One MCT record
+creates one actor; only category-four definition zero receives an inclusive
+random quantity, without the script drop path's 10,000-Gold splitting.
+Ground resources zero through six use the animated `Animation.*` layout,
+while resources seven through eleven use static `Pattern.njp` and
+`Pattern.sdw`; definition offset `0x34` is the CAF chart or direct pattern
+index respectively.
 
 On the next click, the retained type-11 flag enters sentence six. Opcode 61 at
 `0x00433f16` reads offset `0x34` from the local player, writes level one to the

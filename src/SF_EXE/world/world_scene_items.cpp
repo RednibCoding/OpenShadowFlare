@@ -10,8 +10,13 @@
 namespace osf {
 
 bool WorldScene::ensureItemWorldResource(
-    std::int32_t resource_id) {
+    std::int32_t resource_id,
+    std::string* error) {
     if (resource_id < 0 || resource_id > 99999999) {
+        if (error) {
+            *error =
+                "The ground-item resource ID is invalid.";
+        }
         return false;
     }
     const std::size_t index =
@@ -21,7 +26,8 @@ bool WorldScene::ensureItemWorldResource(
         return true;
     }
     auto resource = std::make_unique<ItemWorldResource>();
-    if (!resource->load(data_root_, resource_id)) {
+    if (!resource->load(
+            data_root_, resource_id, error)) {
         return false;
     }
     if (item_world_resources_.size() <= index) {
@@ -33,13 +39,26 @@ bool WorldScene::ensureItemWorldResource(
 
 bool WorldScene::prepareGroundItems(
     std::size_t first_item) {
-    std::vector<GroundItem>& ground_items =
-        scenario_world_.groundItems();
+    return prepareGroundItems(
+        scenario_world_.groundItems(),
+        first_item,
+        next_ground_item_id_);
+}
+
+bool WorldScene::prepareGroundItems(
+    std::vector<GroundItem>& ground_items,
+    std::size_t first_item,
+    std::int32_t& next_item_id,
+    std::string* error) {
     if (first_item > ground_items.size()) {
+        if (error) {
+            *error =
+                "The first ground-item index is invalid.";
+        }
         return false;
     }
     const std::int32_t first_id =
-        next_ground_item_id_;
+        next_item_id;
     for (std::size_t index = first_item;
          index < ground_items.size();
          ++index) {
@@ -47,11 +66,38 @@ bool WorldScene::prepareGroundItems(
         const ItemDefinition* definition =
             item_database_.find(
                 item.category, item.definition_id);
-        if (!definition ||
-            !ensureItemWorldResource(
-                definition->ground_resource_id)) {
+        if (!definition) {
+            if (error) {
+                *error =
+                    "Ground-item category " +
+                    std::to_string(item.category) +
+                    ", definition " +
+                    std::to_string(
+                        item.definition_id) +
+                    " is absent from Item.Ibn.";
+            }
             ground_items.resize(first_item);
-            next_ground_item_id_ = first_id;
+            next_item_id = first_id;
+            return false;
+        }
+        std::string resource_error;
+        if (!ensureItemWorldResource(
+                definition->ground_resource_id,
+                &resource_error)) {
+            if (error) {
+                *error =
+                    "Ground-item category " +
+                    std::to_string(item.category) +
+                    ", definition " +
+                    std::to_string(
+                        item.definition_id) +
+                    " could not load resource " +
+                    std::to_string(
+                        definition->ground_resource_id) +
+                    ": " + resource_error;
+            }
+            ground_items.resize(first_item);
+            next_item_id = first_id;
             return false;
         }
         item.resource_id =
@@ -64,7 +110,7 @@ bool WorldScene::prepareGroundItems(
             definition->ground_green_strength;
         item.blue_strength =
             definition->ground_blue_strength;
-        item.id = next_ground_item_id_++;
+        item.id = next_item_id++;
     }
     return true;
 }

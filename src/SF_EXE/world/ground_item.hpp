@@ -3,11 +3,14 @@
 
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "scenario_entity_state.hpp"
 
 #include <cstdint>
 #include <vector>
 
 namespace osf {
+
+struct ScenarioItem;
 
 struct GroundItem {
     std::int32_t category = 0;
@@ -24,6 +27,13 @@ struct GroundItem {
     std::int32_t green_strength = 1000;
     std::int32_t blue_strength = 1000;
     std::int32_t id = -1;
+    std::int32_t scenario_character_number = -1;
+    ObjectBounds judgement{-20, -20, 19, 19};
+    ScenarioEntityState state;
+
+    bool visible() const;
+    bool pointerEnabled() const;
+    bool judgementEnabled() const;
 };
 
 enum class GroundItemUpdateEvent {
@@ -45,6 +55,10 @@ bool createGroundItems(
     WorldPosition position,
     std::int32_t minimum_quantity,
     std::int32_t maximum_quantity);
+bool createScenarioGroundItem(
+    std::vector<GroundItem>& items,
+    RetailRandom& random,
+    const ScenarioItem& source);
 GroundItemUpdateEvent updateGroundItem(GroundItem& item);
 
 }  // namespace osf

@@ -19,12 +19,14 @@ public:
     void clear();
 
     std::int32_t id() const;
+    bool animated() const;
     const gapi::NjpImage& patterns() const;
     const gapi::NjpImage& shadowPatterns() const;
     const gapi::CafAnimation& animation() const;
 
 private:
     std::int32_t id_ = -1;
+    bool animated_ = false;
     gapi::NjpImage patterns_;
     gapi::NjpImage shadow_patterns_;
     gapi::CafAnimation animation_;
