@@ -85,6 +85,9 @@ bool ScenarioWorld::load(
     const ScenarioStart& start,
     std::string* error) {
     clear();
+    if (error) {
+        error->clear();
+    }
     if (!validStart(start)) {
         setError(error, "The scenario start request is invalid.");
         return false;

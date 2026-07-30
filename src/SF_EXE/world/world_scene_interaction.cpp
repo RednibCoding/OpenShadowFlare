@@ -222,33 +222,26 @@ WorldScene::takeGameplayServiceRequest() {
     return request;
 }
 
-bool WorldScene::activateTransportDestination(
-    std::int32_t row) {
+ScenarioTravelResult
+WorldScene::activateTransportDestination(
+    std::int32_t row,
+    std::string* error) {
     const TransportDestination* destination =
         transports_.find(row);
     if (!destination ||
-        !transports_.enabled(row) ||
-        destination->scenario != 0) {
-        return false;
+        !transports_.enabled(row)) {
+        if (error) {
+            *error = "The transport destination is not available.";
+        }
+        return ScenarioTravelResult::failed;
     }
-    // FUN_00426200 indexes a same-scenario entry as
-    // local-player-number + transport-entry * 4. Single-player owns
-    // local player zero, so Remote Town's table value 50 selects MCT
-    // entry 200.
-    const ScenarioEntry* entry =
-        scenario_world_.data().findEntry(
-            destination->entry * 4);
-    if (!entry) {
-        return false;
-    }
-    pending_interaction_ = {};
-    pointer_.clearSelection();
-    player_.relocate(
-        {entry->world_x, entry->world_y},
-        entry->direction);
-    scenario_world_.mapExploration().reveal(
-        player_.position());
-    return true;
+    return transitionScenario(
+        {
+            destination->scenario,
+            destination->entry,
+            0,
+        },
+        error);
 }
 
 bool WorldScene::startNpcInteraction(NpcActor& selected) {

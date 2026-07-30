@@ -2,6 +2,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "ui/conversation_layout.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/loading_renderer.hpp"
 #include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
 #include "world/retail_save_file.hpp"
@@ -261,9 +262,12 @@ public:
     const osf::gapi::NjpImage* speech = nullptr;
     const osf::gapi::NjpImage* item_patterns = nullptr;
     const osf::gapi::NjpImage* item_shadows = nullptr;
+    const osf::gapi::NjpImage* loading = nullptr;
+    const osf::gapi::NjpImage* wait_icon = nullptr;
     std::vector<NpcPatternCall> calls;
     std::vector<NpcPatternCall> speech_calls;
     std::vector<NpcPatternCall> item_calls;
+    std::vector<NpcPatternCall> loading_calls;
     std::vector<TextCall> text_calls;
     std::vector<osf::gapi::RectangleDraw> rectangles;
 
@@ -283,6 +287,11 @@ public:
             item_calls.push_back({false, pattern, draw});
         } else if (&image == item_shadows) {
             item_calls.push_back({true, pattern, draw});
+        } else if (
+            &image == loading ||
+            &image == wait_icon) {
+            loading_calls.push_back(
+                {&image == wait_icon, pattern, draw});
         }
         return true;
     }
@@ -309,6 +318,42 @@ public:
 
     void endFrame() override {}
 };
+
+bool testScenarioLoadingPresentation() {
+    osf::gapi::NjpImage loading;
+    osf::gapi::NjpImage wait_icon;
+    NpcRecordingBackend backend;
+    backend.loading = &loading;
+    backend.wait_icon = &wait_icon;
+    osf::renderScenarioLoadingScreen(
+        backend, loading, wait_icon, 60);
+    if (!check(
+            backend.loading_calls.size() == 2 &&
+                !backend.loading_calls[0].shadow &&
+                backend.loading_calls[0].pattern == 4 &&
+                backend.loading_calls[0].draw.x == 0 &&
+                backend.loading_calls[0].draw.y == 0 &&
+                backend.loading_calls[0].draw.red_strength == 500 &&
+                backend.loading_calls[0].draw.green_strength == 500 &&
+                backend.loading_calls[0].draw.blue_strength == 500 &&
+                backend.loading_calls[1].shadow &&
+                backend.loading_calls[1].pattern == 0 &&
+                backend.loading_calls[1].draw.x == 590 &&
+                backend.loading_calls[1].draw.y == 440 &&
+                backend.loading_calls[1].draw.red_strength == 500,
+            "The later retail loading screen packets or fade differ.")) {
+        return false;
+    }
+    backend.loading_calls.clear();
+    osf::renderScenarioLoadingScreen(
+        backend, loading, wait_icon, 70);
+    return check(
+        backend.loading_calls.size() == 2 &&
+            backend.loading_calls[1].draw.x == 606 &&
+            backend.loading_calls[0].draw.red_strength == 583 &&
+            backend.loading_calls[1].draw.red_strength == 583,
+        "The retail WaitIcon phase or 120-update fade differs.");
+}
 
 void writeI32(
     std::vector<std::uint8_t>& bytes,
@@ -904,6 +949,115 @@ bool testGeneralScenarioStart() {
             invalid_request.scenarioId() == -1 &&
             error == "The scenario start request is invalid.",
         "An invalid scenario start request was not rejected before loading.");
+#else
+    return true;
+#endif
+}
+
+bool testLiveScenarioTransition() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Traveler";
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, &error),
+            "The live transition fixture could not load Remote Town.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    const osf::ItemDefinition* gold =
+        world.itemDatabase().find(4, 0);
+    if (!check(
+            gold &&
+                world.playerSpecialItems()
+                    .place(
+                        osf::makeInventoryItem(*gold, 125),
+                        2,
+                        3)
+                    .accepted,
+            "The transition fixture could not seed Special Items.")) {
+        return false;
+    }
+    const std::size_t inventory_count =
+        world.playerInventory().items().size();
+    const std::size_t belt_count =
+        world.playerBelt().items().size();
+    const std::int32_t original_x = world.playerWorldX();
+    const std::int32_t original_y = world.playerWorldY();
+    const std::size_t original_script_statuses =
+        world.scenarioScript().statuses().size();
+
+    error.clear();
+    if (!check(
+            world.transitionScenario({6, 999, 0}, &error) ==
+                    osf::ScenarioTravelResult::failed &&
+                world.scenarioId() == 0 &&
+                world.playerWorldX() == original_x &&
+                world.playerWorldY() == original_y &&
+                world.scenarioScript().statuses().size() ==
+                    original_script_statuses &&
+                world.playerInventory().items().size() ==
+                    inventory_count &&
+                world.playerBelt().items().size() ==
+                    belt_count &&
+                world.playerSpecialItems().items().size() == 1 &&
+                !error.empty(),
+            "A failed cross-map load mutated the live world or a "
+            "persistent owner.")) {
+        return false;
+    }
+
+    if (!check(
+            world.transitionScenario({6, 4, 0}, &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                world.scenarioId() == 6 &&
+                world.musicTrack() == 1 &&
+                world.playerWorldX() == 35105 &&
+                world.playerWorldY() == -6156 &&
+                world.playerDirection() == 7 &&
+                world.scenarioObjects().size() == 35 &&
+                world.npcs().size() == 2 &&
+                world.groundItems().empty() &&
+                world.playerInventory().items().size() ==
+                    inventory_count &&
+                world.playerBelt().items().size() ==
+                    belt_count &&
+                world.playerEquipment().item(
+                    osf::EquipmentSlot::body) &&
+                world.playerEquipment()
+                        .item(osf::EquipmentSlot::body)
+                        ->definition_id == 0 &&
+                world.playerSpecialItems().items().size() == 1 &&
+                world.playerSpecialItems().items()[0].quantity == 125 &&
+                world.transports().enabled(0) &&
+                !world.transports().enabled(1) &&
+                world.missions().missions().size() == 48 &&
+                world.quests().state(0) == 0,
+            "A successful cross-map load lost player-owned state or "
+            "progress catalogs, or kept old scenario-local state.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    world.commandPlayerMovement(400, 200);
+    world.update();
+    return check(
+        world.transitionScenario({6, 4, 0}, &error) ==
+                osf::ScenarioTravelResult::relocated &&
+            world.scenarioId() == 6 &&
+            world.playerWorldX() == 35105 &&
+            world.playerWorldY() == -6156 &&
+            world.playerDirection() == 7 &&
+            world.playerInventory().items().size() ==
+                inventory_count &&
+            world.playerSpecialItems().items().size() == 1,
+        "The same-map fast path reloaded the scenario or lost ownership.");
 #else
     return true;
 #endif
@@ -2271,7 +2425,8 @@ bool testRetailRemoteTown() {
     if (!check(
             world.transports().destinations().size() == 51 &&
                 world.transports().enabled(0) &&
-                world.activateTransportDestination(0) &&
+                world.activateTransportDestination(0) ==
+                    osf::ScenarioTravelResult::relocated &&
                 world.playerWorldX() == 94685 &&
                 world.playerWorldY() == -2756 &&
                 world.playerDirection() == 7 &&
@@ -2379,10 +2534,12 @@ bool testRetailRemoteTown() {
 int main() {
     return testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
+                   testScenarioLoadingPresentation() &&
                    testFixture() &&
                    testMalformedData() &&
                    testRetailScenarioCatalog() &&
                    testGeneralScenarioStart() &&
+                   testLiveScenarioTransition() &&
                    testWorldItemSaveRoundTrip() &&
                    testRetailRemoteTown()
                ? 0

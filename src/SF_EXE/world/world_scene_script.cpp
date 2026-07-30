@@ -32,11 +32,34 @@ bool decodeEntityStateKey(
     return false;
 }
 
+bool isPersistentScriptOperand(
+    const script::Operand& operand) {
+    return operand.type >= 10 && operand.type <= 13;
+}
+
+std::uint64_t scriptOperandKey(
+    const script::Operand& operand) {
+    return
+        (static_cast<std::uint64_t>(
+             static_cast<std::uint32_t>(operand.type))
+         << 32u) |
+        static_cast<std::uint32_t>(operand.value);
+}
+
 }  // namespace
 
 bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t& value) const {
+    if (isPersistentScriptOperand(operand)) {
+        const auto found =
+            script_persistent_values_.find(
+                scriptOperandKey(operand));
+        value = found == script_persistent_values_.end()
+            ? 0
+            : found->second;
+        return true;
+    }
     if (operand.type == 5) {
         std::int32_t character_number = 0;
         ScenarioEntityStateChannel channel =
@@ -80,6 +103,11 @@ bool WorldScene::readScriptWorldOperand(
 bool WorldScene::writeScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t value) {
+    if (isPersistentScriptOperand(operand)) {
+        script_persistent_values_.insert_or_assign(
+            scriptOperandKey(operand), value);
+        return true;
+    }
     if (operand.type != 5) {
         return false;
     }

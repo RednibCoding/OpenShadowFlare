@@ -5,6 +5,7 @@
 #include "retail_save_items.hpp"
 #include "retail_save_progress.hpp"
 
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -156,6 +157,76 @@ bool WorldScene::loadInitialScenario(
         error->clear();
     }
     return true;
+}
+
+ScenarioTravelResult WorldScene::transitionScenario(
+    const ScenarioStart& start,
+    std::string* error) {
+    if (!has_player_ || data_root_.empty()) {
+        setError(error, "There is no live world to move.");
+        return ScenarioTravelResult::failed;
+    }
+
+    if (start.scenario_id == scenario_world_.id()) {
+        if (start.entry_value < 0 ||
+            start.local_player_number < 0 ||
+            start.local_player_number > 3 ||
+            start.entry_value >
+                (std::numeric_limits<std::int32_t>::max() -
+                 start.local_player_number) /
+                    4) {
+            setError(error, "The scenario start request is invalid.");
+            return ScenarioTravelResult::failed;
+        }
+        const ScenarioEntry* entry =
+            scenario_world_.data().findEntry(
+                start.local_player_number +
+                start.entry_value * 4);
+        if (!entry) {
+            setError(
+                error,
+                "The scenario does not contain the requested entry.");
+            return ScenarioTravelResult::failed;
+        }
+        pending_interaction_ = {};
+        pointer_.clearSelection();
+        player_.relocate(
+            {entry->world_x, entry->world_y},
+            entry->direction);
+        scenario_world_.mapExploration().reveal(
+            player_.position());
+        if (error) {
+            error->clear();
+        }
+        return ScenarioTravelResult::relocated;
+    }
+
+    ScenarioWorld prepared_scenario;
+    if (!prepared_scenario.load(data_root_, start, error)) {
+        return ScenarioTravelResult::failed;
+    }
+
+    player_.cancelMovement();
+    pointer_.reset();
+    pending_interaction_ = {};
+    pending_audio_samples_.clear();
+    gameplay_service_request_ = {};
+    next_ground_item_id_ = 0;
+    scenario_world_ = std::move(prepared_scenario);
+    scenario_script_.adopt(
+        scenario_world_.takeScriptData());
+    player_.relocate(
+        {
+            scenario_world_.entry().world_x,
+            scenario_world_.entry().world_y,
+        },
+        scenario_world_.entry().direction);
+    scenario_world_.mapExploration().reveal(
+        player_.position());
+    if (error) {
+        error->clear();
+    }
+    return ScenarioTravelResult::loaded;
 }
 
 }  // namespace osf

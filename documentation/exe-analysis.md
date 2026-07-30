@@ -103,7 +103,12 @@ world.
 
 `0x00417bd0` is a different loading presenter used later in gameplay. It draws
 `Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
-frames, and uses `WaitIcon.njp`.
+rendered frames, and uses `WaitIcon.njp`. The standard path is live in the
+portable runtime: the background and icon receive the same 0-to-1000 RGB
+strength ramp, while the icon moves between x=590, 598, and 606 in three
+five-frame phases at y=440. The game simulation and input stay stopped for
+those 120 presentation frames. The nonzero alternate-visual selector still
+needs to be tied to its owner.
 
 The initial scenario map is loaded by the large transition routine at
 `0x00426200`. The `f00_01.Lst` indices are preserved across ground and object
@@ -457,10 +462,20 @@ Portable ownership now follows the teardown boundary visible in this routine.
 patterns and overview, exploration mask, scenario objects, PEOPLE actors, and
 ground items. Player data, equipped and carried items, belt contents, Special
 Items, quests, missions, transport flags, and common resources stay in
-`WorldScene`. A scenario is prepared as a temporary complete owner and only
-then handed to the interpreter runtime, whose callbacks remain at a stable
-address. Moving an already-live player through this transaction and
-reproducing the later loading screen remain the next transition slice.
+`WorldScene`. Types 10 through 13 script values live with that persistent
+owner as the retail global and local-player arrays do. A scenario is prepared
+as a temporary complete owner and only then handed to the interpreter runtime,
+whose callbacks remain at a stable address.
+
+The live path now uses the same transaction. Same-scenario travel resolves the
+entry and relocates without rebuilding resources. A changed scenario commits
+only after all data and visuals have loaded; failure keeps the old map, script,
+player, items, progress, and music usable. A successful commit clears stale
+pointer, interaction, ground-item, and pending-audio state, preserves the
+player-owned and progress owners, adopts the new SCS, relocates to its entry,
+switches BGM, and starts the later standard loading presentation. Explicit
+coordinate entry `-1`, the alternate `VisualNN` presentation, multiplayer
+ownership, and exact teardown ordering remain.
 
 The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
 flag `0x0048ce48`, the same one-page Special Item owner handled by

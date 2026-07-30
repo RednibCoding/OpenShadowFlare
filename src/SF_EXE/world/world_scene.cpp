@@ -65,6 +65,7 @@ void WorldScene::clear() {
     player_special_items_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
+    script_persistent_values_.clear();
     data_root_.clear();
     item_world_resources_.clear();
     item_random_.seed(1);

@@ -57,6 +57,34 @@ void GameplayState::leave() {
     pointer_consumed_until_release_ = false;
 }
 
+GameplayFrameResult GameplayState::beginScenarioLoading() {
+    phase_ = GameplayPhase::scenario_loading;
+    loading_counter_ = 0;
+    pointer_ground_command_active_ = false;
+    continuous_pointer_movement_ = false;
+    pointer_hold_updates_ = 0;
+    previous_pointer_down_ = false;
+    pointer_consumed_until_release_ = false;
+    return {
+        phase_,
+        loading_counter_,
+        world_ready_,
+        false,
+    };
+}
+
+GameplayFrameResult GameplayState::finishScenarioLoading() {
+    if (phase_ == GameplayPhase::scenario_loading) {
+        phase_ = GameplayPhase::world;
+    }
+    return {
+        phase_,
+        loading_counter_,
+        world_ready_,
+        false,
+    };
+}
+
 GameplayFrameResult GameplayState::update(
     const GameplayFrameInput& input) {
     if (phase_ == GameplayPhase::loading) {
@@ -72,6 +100,9 @@ GameplayFrameResult GameplayState::update(
              arrowClicked)) {
             phase_ = GameplayPhase::world;
         }
+    } else if (phase_ == GameplayPhase::scenario_loading) {
+        // The retail counter advances from the drawing routine. Runtime
+        // presentation completes this phase after 120 rendered frames.
     } else {
         const bool pointer_in_world =
             pointerInsideWorldView(input);

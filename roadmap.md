@@ -220,6 +220,15 @@ handed into the existing interpreter runtime after a complete scenario has
 loaded, so its callbacks never point into a temporary or moved runtime. This
 is the transaction boundary the live map-change path will use.
 
+Live changes now use that boundary too. A same-map destination keeps the
+retail fast path and only relocates the player. A different scenario is fully
+prepared before it replaces the old map, then its script data is adopted by
+the stable interpreter runtime. Failed preparation leaves the current map,
+script, player, inventory, equipment, belt, Special Items, missions, quests,
+and transport flags untouched. Successful changes restart the scenario's BGM
+and run the later `Waiting.njp`/`WaitIcon.njp` presentation for 120 rendered
+frames while gameplay input and simulation are held.
+
 The next slices identified the three resource preload lists, the variable
 common entity record, and the complete object and `PEOPLE` group shapes.
 Remote Town's seven objects and seven people now decode with their retail
@@ -247,14 +256,13 @@ transition path around `0x00426200`:
   validates and skips;
 - identify the final unnamed PEOPLE-tail value and connect it if it affects
   portable state;
-- use the scenario-local transaction owner to move a live player between maps
-  without clearing persistent player, item, quest, mission, or transport state;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
 - represent dynamic entities separately from static OBL scenery;
 - release the old scenario in the same order the original does;
-- reconstruct the later `VisualNN.njp`/`WaitIcon.njp` loading path at
-  `0x00417bd0`;
+- identify the condition and sequence for the alternate `VisualNN.njp`
+  artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is
+  reconstructed;
 - support returning to the title cleanly when loading fails.
 
 Remote Town should then be one input to the loader, not a special hard-coded

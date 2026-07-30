@@ -357,9 +357,11 @@ when an exercised retail path gives us enough evidence.
 Temporary flags are owned directly by the interpreter and initialized from the
 SCS definitions. Persistent and game-owned domains are callbacks because their
 lifetime belongs to scenario state, save data, the player, or another portable
-DLL boundary. The initial world slice stores unknown-but-valid external values
-in a generic keyed map. That is sufficient to preserve assignments while the
-proper save and quest-state owners are reconstructed, but it is not the final
+DLL boundary. Types `10` through `13` now live in the persistent `WorldScene`
+owner, so replacing an MCT/SCS/map transaction does not reset their assigned
+values. Other unknown-but-valid external values still use the runtime's
+generic keyed map. That is sufficient to preserve assignments while the proper
+save and quest-state owners are reconstructed, but it is not the final
 persistence model.
 
 ## Working conversations

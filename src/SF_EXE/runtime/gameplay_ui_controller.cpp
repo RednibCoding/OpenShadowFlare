@@ -25,6 +25,7 @@ void GameplayUiController::reset() {
     mission_list_.close();
     transport_.close();
     pending_action_ = GameplayOptionsAction::none;
+    scenario_changed_ = false;
 }
 
 bool GameplayUiController::update(
@@ -87,8 +88,19 @@ bool GameplayUiController::update(
             audio.playGameplayMenuMove();
         }
         if (result.selected_destination >= 0) {
-            world.activateTransportDestination(
-                result.selected_destination);
+            std::string error;
+            const ScenarioTravelResult travel =
+                world.activateTransportDestination(
+                    result.selected_destination,
+                    &error);
+            scenario_changed_ =
+                travel == ScenarioTravelResult::loaded;
+            if (travel == ScenarioTravelResult::failed) {
+                std::fprintf(
+                    stderr,
+                    "Could not travel to the selected scenario: %s\n",
+                    error.c_str());
+            }
         }
         world.setCameraAnchor(
             transport_.active() ? 480 : 320,
@@ -358,6 +370,12 @@ bool GameplayUiController::update(
            options_.active() ||
            (input.gameplayOptionsPressed() &&
             !world.conversationActive());
+}
+
+bool GameplayUiController::takeScenarioChanged() {
+    const bool changed = scenario_changed_;
+    scenario_changed_ = false;
+    return changed;
 }
 
 const GameplayOptionsMenu&

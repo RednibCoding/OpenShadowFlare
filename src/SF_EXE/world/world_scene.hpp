@@ -31,6 +31,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace osf {
@@ -44,6 +45,12 @@ enum class GameplayServiceKind {
 struct GameplayServiceRequest {
     GameplayServiceKind kind = GameplayServiceKind::none;
     std::int32_t argument = 0;
+};
+
+enum class ScenarioTravelResult {
+    failed,
+    relocated,
+    loaded,
 };
 
 class WorldScene {
@@ -127,7 +134,12 @@ public:
     const WorldPointerConfiguration& pointerConfiguration() const;
     bool conversationActive() const;
     GameplayServiceRequest takeGameplayServiceRequest();
-    bool activateTransportDestination(std::int32_t row);
+    ScenarioTravelResult activateTransportDestination(
+        std::int32_t row,
+        std::string* error = nullptr);
+    ScenarioTravelResult transitionScenario(
+        const ScenarioStart& start,
+        std::string* error = nullptr);
     std::int32_t conversationActorId() const;
     std::int32_t conversationMessageId() const;
     const std::string& conversationText() const;
@@ -219,6 +231,8 @@ private:
     PlayerSpecialItems player_special_items_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
+    std::unordered_map<std::uint64_t, std::int32_t>
+        script_persistent_values_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;

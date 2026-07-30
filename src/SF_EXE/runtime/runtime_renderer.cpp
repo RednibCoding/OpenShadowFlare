@@ -91,6 +91,20 @@ void RuntimeRenderer::render(
                     context.gameplay_frame.loading_counter,
                     context.gameplay_frame.ready_to_continue);
             }
+        } else if (
+            context.gameplay_frame.phase ==
+            GameplayPhase::scenario_loading) {
+            const auto* waiting =
+                context.frontend_assets.pattern(2);
+            const auto* wait_icon =
+                context.frontend_assets.pattern(3);
+            if (waiting && wait_icon) {
+                renderScenarioLoadingScreen(
+                    renderer_,
+                    *waiting,
+                    *wait_icon,
+                    context.scenario_loading_counter);
+            }
         } else {
             const auto* font =
                 context.frontend_assets.pattern(1);

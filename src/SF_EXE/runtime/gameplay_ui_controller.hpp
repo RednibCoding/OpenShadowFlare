@@ -41,6 +41,7 @@ public:
         GameStateDispatcher& game_state,
         bool& running,
         std::int32_t& shadow_opacity);
+    bool takeScenarioChanged();
 
     const GameplayOptionsMenu& options() const;
     const GameplayInventory& inventory() const;
@@ -62,6 +63,7 @@ private:
     GameplayTransport transport_;
     GameplayOptionsAction pending_action_ =
         GameplayOptionsAction::none;
+    bool scenario_changed_ = false;
 };
 
 }  // namespace runtime

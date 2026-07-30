@@ -581,9 +581,18 @@ actors, and ground items now share one `ScenarioWorld` lifetime. Player data,
 all four item owners, quests, missions, transports, and common resources live
 outside that boundary. Script data is adopted only after the full scenario
 owner succeeds, leaving the callback-bearing interpreter runtime in place.
-Live transaction wiring and the later loading presentation remain pending.
-All 51 Table 40 rows are also checked against their shipped scenario directory
-and single-player MCT entry.
+Types 10 through 13 script values live outside the scenario transaction.
+
+Live travel now uses the boundary: the same-scenario branch only relocates,
+while a changed scenario prepares every new local owner before commit. A
+failed load leaves the old map, script, player, items, missions, quests, and
+transport flags usable. Success clears stale local interaction/audio state,
+adopts the new SCS, relocates, changes BGM, and holds gameplay during the
+standard `Waiting.njp` pattern 4 plus `WaitIcon.njp` 120-render-frame fade.
+The icon uses x positions 590/598/606 in five-frame phases at y=440, matching
+`0x00417bd0`. The alternate `VisualNN` selector remains pending. All 51
+Table 40 rows are also checked against their shipped scenario directory and
+single-player MCT entry.
 
 Periodic status kind five executes independent scenario callbacks. Remote
 Town sentences 158, 173, 188, and 203 read player-record offset `0x140`
