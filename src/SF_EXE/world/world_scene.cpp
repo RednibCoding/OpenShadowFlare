@@ -75,6 +75,7 @@ void WorldScene::clear() {
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
+    pending_player_attack_impact_target_id_ = -1;
     next_ground_item_id_ = 0;
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
@@ -247,6 +248,7 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    pending_player_attack_impact_target_id_ = -1;
     if (!scenario_script_.messageActive()) {
         scenario_script_.runStatusKind(5);
     }
@@ -376,7 +378,9 @@ void WorldScene::update() {
         player_.update(
             scenario_world_.ground(),
             scenario_world_.objectMap(),
-            &actor_blockers);
+            &actor_blockers,
+            playerAttackSpeedTier());
+        handlePlayerAttackEvent(player_.takeAttackEvent());
         scenario_world_.mapExploration().reveal(
             player_.position());
         actor_blockers.push_back({
@@ -521,7 +525,19 @@ std::int32_t WorldScene::playerAnimationFrame() const {
 }
 
 std::int32_t WorldScene::playerAttackTargetId() const {
-    return player_attack_target_.readyTargetId();
+    const std::int32_t active_target =
+        player_.attackTargetId();
+    return active_target >= 0
+        ? active_target
+        : player_attack_target_.readyTargetId();
+}
+
+std::int32_t
+WorldScene::takePlayerAttackImpactTargetId() {
+    const std::int32_t target_id =
+        pending_player_attack_impact_target_id_;
+    pending_player_attack_impact_target_id_ = -1;
+    return target_id;
 }
 
 std::int32_t WorldScene::cameraScreenX() const {

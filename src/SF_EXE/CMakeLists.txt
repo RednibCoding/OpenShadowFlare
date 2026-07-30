@@ -128,6 +128,7 @@ add_library(
   world/npc_actor.cpp
   world/player_appearance.cpp
   world/player_actor.cpp
+  world/player_attack_action.cpp
   world/player_attack_target.cpp
   world/player_combat_defense.cpp
   world/player_damage_receiver.cpp

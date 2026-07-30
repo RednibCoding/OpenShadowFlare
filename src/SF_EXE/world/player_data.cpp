@@ -252,6 +252,19 @@ std::int32_t PlayerData::companionType() const {
     return readI32(0x140);
 }
 
+std::int32_t PlayerData::baseAttackSpeed() const {
+    // FUN_00440f70 stores table 900/901 row zero at runtime offset
+    // 0x38 (persistent record offset 0x28). FUN_0044ea60 copies it to
+    // the derived attack-speed field at 0x198 before equipment is added.
+    return initialParameter(0);
+}
+
+std::int32_t PlayerData::baseWeightCapacity() const {
+    // Row four becomes runtime offset 0x50 and then derived offset
+    // 0x1b0, the capacity compared with equipped weight by FUN_00450c60.
+    return initialParameter(4);
+}
+
 std::int32_t PlayerData::walkingSpeedTier() const {
     // FUN_00450d40 uses the second initial parameter, adds 32, divides by
     // 32, and clamps the resulting movement tier to the retail 0..9 range.

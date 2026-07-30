@@ -5,6 +5,23 @@
 #include <utility>
 
 namespace osf {
+namespace {
+
+bool offHandIsSuppressed(
+    const PlayerEquipment& equipment,
+    const ItemDatabase& database) {
+    const InventoryItem* main_hand =
+        equipment.item(EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? database.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    return definition && definition->suppresses_off_hand;
+}
+
+}  // namespace
 
 void PlayerEquipment::clear() {
     for (auto& slot : slots_) {
@@ -86,7 +103,18 @@ bool PlayerEquipment::decreaseDurability(
 std::int32_t PlayerEquipment::totalWeight(
     const ItemDatabase& database) const {
     std::int32_t weight = 0;
-    for (const auto& equipped : slots_) {
+    const bool suppress_off_hand =
+        offHandIsSuppressed(*this, database);
+    for (std::size_t index = 0;
+         index < slots_.size();
+         ++index) {
+        if (index ==
+                static_cast<std::size_t>(
+                    EquipmentSlot::off_hand) &&
+            suppress_off_hand) {
+            continue;
+        }
+        const auto& equipped = slots_[index];
         if (!equipped) {
             continue;
         }
@@ -109,7 +137,18 @@ std::int32_t PlayerEquipment::derivedParameterBonus(
         return 0;
     }
     std::int32_t bonus = 0;
-    for (const auto& equipped : slots_) {
+    const bool suppress_off_hand =
+        offHandIsSuppressed(*this, database);
+    for (std::size_t index = 0;
+         index < slots_.size();
+         ++index) {
+        if (index ==
+                static_cast<std::size_t>(
+                    EquipmentSlot::off_hand) &&
+            suppress_off_hand) {
+            continue;
+        }
+        const auto& equipped = slots_[index];
         if (!equipped) {
             continue;
         }

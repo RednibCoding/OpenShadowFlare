@@ -784,6 +784,27 @@ loss, death, visibility changes, and pointer-status changes clear that combat
 state. The next slice starts the ordinary player attack CAF from this ready
 target and preserves its movement-cancellation and frame timing.
 
+That attack-start slice is complete too. `0x00450630` selects action 7 for an
+empty hand or an unclassified weapon, actions 8, 9, and 10 for the three
+proven ordinary weapon subtype branches, and leaves the separate actions 19
+and 20 to the ranged slice. The ordinary actions lock movement, keep the
+facing chosen at the end of the approach, and play the authored first/recovery
+chart pairs 5/6, 15/16, or 19/20. Their frame counter uses the ten retail
+attack-speed factors from 0.6 through 1.5 and the tier produced by Table 4;
+carrying more equipped weight than the player's capacity forces tier zero.
+That tier is refreshed on every action update rather than frozen at startup.
+
+The hit point in the animation is data rather than a hard-coded delay.
+Actions scan every newly crossed cell in part zero of the first CAF chart for
+status bit `0x40`, including frames crossed by a fast attack. Both shipped
+male and female chart 5 fixtures have ten attack frames, the marker on frame
+7, and nine recovery frames. The empty-hand action emits its swing sound at
+counter five, the weapon actions at counter six, and input stays locked until
+the last recovery frame has been presented. The world rechecks the retained
+enemy's life, visibility, pointer state, and inclusive range before exposing
+the impact event. Applying that event to the enemy damage receiver is the next
+combat slice; this checkpoint deliberately does not subtract life early.
+
 ### 5. Skills, magic, status, and the remaining game screens
 
 Once the ordinary combat loop is reliable, add the systems that modify it:

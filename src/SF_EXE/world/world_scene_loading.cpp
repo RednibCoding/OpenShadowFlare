@@ -211,6 +211,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
             return ScenarioTravelResult::failed;
         }
         pending_interaction_ = {};
+        player_attack_target_.cancel();
+        pending_player_attack_impact_target_id_ = -1;
         pointer_.clearSelection();
         player_.relocate(
             {entry->world_x, entry->world_y},
@@ -245,6 +247,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
     player_.cancelMovement();
     pointer_.reset();
     pending_interaction_ = {};
+    player_attack_target_.cancel();
+    pending_player_attack_impact_target_id_ = -1;
     pending_audio_samples_.clear();
     gameplay_service_request_ = {};
     scenario_world_ = std::move(prepared_scenario);

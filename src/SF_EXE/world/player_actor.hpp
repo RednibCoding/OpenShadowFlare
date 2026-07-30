@@ -4,6 +4,7 @@
 #include "actor_direction.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
+#include "player_attack_action.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -14,6 +15,7 @@ enum class PlayerMotion {
     idle,
     walking,
     running,
+    attacking,
 };
 
 enum class MovementPace {
@@ -36,11 +38,17 @@ public:
     void followTo(WorldPosition destination);
     void cancelMovement();
     void faceToward(WorldPosition position);
+    bool beginAttack(
+        PlayerAttackAction action,
+        std::int32_t target_id,
+        std::int32_t attack_speed_tier,
+        const gapi::CafAnimation& animation);
     void toggleMovementPace();
     void update(
         const GroundMap& ground,
         const ObjectMap& objects,
-        const std::vector<MovementBlocker>* dynamic_blockers = nullptr);
+        const std::vector<MovementBlocker>* dynamic_blockers = nullptr,
+        std::int32_t attack_speed_tier = -1);
 
     WorldPosition position() const;
     WorldPosition renderPosition(double alpha) const;
@@ -52,6 +60,9 @@ public:
     std::int32_t runningSpeed() const;
     MovementPace movementPace() const;
     PlayerMotion motion() const;
+    bool attackActive() const;
+    std::int32_t attackTargetId() const;
+    PlayerAttackActionEvent takeAttackEvent();
     std::int32_t animationChart() const;
     std::int32_t animationFrame() const;
 
@@ -70,6 +81,8 @@ private:
     MovementPace movement_pace_ = MovementPace::walk;
     PlayerMotion motion_ = PlayerMotion::idle;
     PlayerMotion previous_action_ = PlayerMotion::idle;
+    PlayerAttackActionController attack_controller_;
+    PlayerAttackActionEvent pending_attack_event_;
     MovementController movement_controller_;
 };
 

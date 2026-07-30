@@ -13,6 +13,8 @@ std::int32_t retailItemEquipSound(
     const ItemDefinition& definition);
 std::int32_t retailItemLandingSound(
     const ItemDefinition& definition);
+std::int32_t retailItemAttackSound(
+    const ItemDefinition* definition);
 
 }  // namespace osf
 

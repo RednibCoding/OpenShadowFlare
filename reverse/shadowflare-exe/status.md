@@ -844,3 +844,12 @@ This is still not complete gameplay. Enemy AI and combat, dynamic collision
 for enemy movement, remaining script commands and operand domains, alternate
 conversation modes, darkness, and saved-game scenario restoration are the
 next executable layers.
+
+The first player attack action now follows the executable rather than a visual
+approximation. `0x00450630` maps main-hand subtypes to actions 7 through 10
+and the deferred ranged actions 19/20. `0x00439140` and `0x00435e60` provide
+the distinct counter order, chart pairs, sound counters, movement lock, and
+recovery completion. `0x00450c60` supplies Table 4's attack-speed tier and
+overweight fallback. The CAF part-zero `0x40` marker is retained as a typed
+impact event and revalidated against the live enemy before later damage code
+may consume it; no life mutation is guessed into this slice.

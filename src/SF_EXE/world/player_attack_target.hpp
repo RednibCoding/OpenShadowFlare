@@ -42,6 +42,7 @@ public:
         const PlayerAttackTargetSnapshot* target);
     bool validateReady(
         const PlayerAttackTargetSnapshot* target);
+    std::int32_t takeReadyTargetId();
     void cancel();
 
     std::int32_t approachTargetId() const;

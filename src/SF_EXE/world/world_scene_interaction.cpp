@@ -1,4 +1,5 @@
 #include "world_scene.hpp"
+#include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 
 #include <algorithm>
@@ -18,7 +19,7 @@ constexpr std::int32_t kRetailHeightScale = 20;
 void WorldScene::commandPlayerMovement(
     std::int32_t screen_x,
     std::int32_t screen_y) {
-    if (!has_player_) {
+    if (!has_player_ || player_.attackActive()) {
         return;
     }
     pending_interaction_ = {};
@@ -31,6 +32,9 @@ void WorldScene::commandPlayerMovement(
 }
 
 void WorldScene::cancelPlayerMovement() {
+    if (player_.attackActive()) {
+        return;
+    }
     pending_interaction_ = {};
     player_attack_target_.cancel();
     player_.cancelMovement();
@@ -62,7 +66,9 @@ void WorldScene::configurePointer(
 bool WorldScene::commandWorldInteraction(
     std::int32_t screen_x,
     std::int32_t screen_y) {
-    if (!has_player_ || scenario_script_.messageActive()) {
+    if (!has_player_ ||
+        player_.attackActive() ||
+        scenario_script_.messageActive()) {
         return false;
     }
     const WorldPointerTarget target =
@@ -136,7 +142,7 @@ bool WorldScene::dropInventoryItem(
     const InventoryItem& item,
     std::int32_t screen_x,
     std::int32_t screen_y) {
-    if (!has_player_) {
+    if (!has_player_ || player_.attackActive()) {
         return false;
     }
 
@@ -221,7 +227,9 @@ bool WorldScene::dropInventoryItem(
 bool WorldScene::interactionPending() const {
     return pending_interaction_.kind !=
                WorldPointerTargetKind::none ||
-           player_attack_target_.approachTargetId() >= 0;
+           player_attack_target_.approachTargetId() >= 0 ||
+           player_attack_target_.readyTargetId() >= 0 ||
+           player_.attackActive();
 }
 
 GameplayServiceRequest
@@ -845,6 +853,9 @@ PlayerAttackTargetSnapshot WorldScene::attackTargetSnapshot(
 }
 
 bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
+    if (player_.attackActive()) {
+        return false;
+    }
     const PlayerAttackTargetDisposition disposition =
         player_attack_target_.command(
             player_.position(),
@@ -874,8 +885,75 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
     pending_interaction_ = {};
     player_.cancelMovement();
     player_.faceToward(enemy.position());
+    const InventoryItem* main_hand =
+        player_equipment_.item(EquipmentSlot::main_hand);
+    const ItemDefinition* main_hand_definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerAttackAction action =
+        retailPlayerAttackAction(main_hand_definition);
+    if (!playerAttackActionIsSupported(action)) {
+        player_attack_target_.cancel();
+        return false;
+    }
+    if (!player_.beginAttack(
+            action,
+            enemy.id(),
+            playerAttackSpeedTier(),
+            player_visual_.animation())) {
+        player_attack_target_.cancel();
+        return false;
+    }
+    player_attack_target_.takeReadyTargetId();
+    handlePlayerAttackEvent(player_.takeAttackEvent());
     pointer_.clearSelection();
     return true;
+}
+
+std::int32_t WorldScene::playerAttackSpeedTier() const {
+    const std::int32_t attack_speed =
+        player_data_.baseAttackSpeed() +
+        player_equipment_.derivedParameterBonus(
+            8, item_database_);
+    return retailPlayerAttackSpeedTier(
+        attack_speed,
+        player_equipment_.totalWeight(item_database_),
+        player_data_.baseWeightCapacity(),
+        parameter_tables_.find(4));
+}
+
+void WorldScene::handlePlayerAttackEvent(
+    const PlayerAttackActionEvent& event) {
+    if (event.swing_sound_due) {
+        const InventoryItem* main_hand =
+            player_equipment_.item(
+                EquipmentSlot::main_hand);
+        const ItemDefinition* definition =
+            main_hand
+                ? item_database_.find(
+                      main_hand->category,
+                      main_hand->definition_id)
+                : nullptr;
+        pending_audio_samples_.push_back(
+            retailItemAttackSound(definition));
+    }
+    if (!event.impact_due || event.target_id < 0) {
+        return;
+    }
+    const EnemyActor* enemy = findEnemy(event.target_id);
+    if (!enemy ||
+        classifyPlayerAttackTarget(
+            player_.position(),
+            player_.judgement(),
+            attackTargetSnapshot(*enemy)) !=
+            PlayerAttackTargetDisposition::ready) {
+        return;
+    }
+    pending_player_attack_impact_target_id_ =
+        event.target_id;
 }
 
 GroundItem* WorldScene::findScriptGroundItem(

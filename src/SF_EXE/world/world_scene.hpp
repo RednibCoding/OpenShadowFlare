@@ -168,6 +168,7 @@ public:
     std::int32_t playerAnimationChart() const;
     std::int32_t playerAnimationFrame() const;
     std::int32_t playerAttackTargetId() const;
+    std::int32_t takePlayerAttackImpactTargetId();
     std::int32_t cameraScreenX() const;
     std::int32_t cameraScreenY() const;
     std::int32_t renderCameraScreenX(double alpha) const;
@@ -239,6 +240,9 @@ private:
         const EnemyActor& enemy) const;
     bool commandPlayerAttack(EnemyActor& enemy);
     bool readyPlayerAttack(EnemyActor& enemy);
+    std::int32_t playerAttackSpeedTier() const;
+    void handlePlayerAttackEvent(
+        const PlayerAttackActionEvent& event);
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -270,6 +274,7 @@ private:
     PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;
+    std::int32_t pending_player_attack_impact_target_id_ = -1;
     std::int32_t next_ground_item_id_ = 0;
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;

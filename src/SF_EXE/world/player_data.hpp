@@ -62,6 +62,8 @@ public:
         std::int32_t maximum_percent);
     std::int32_t initialParameter(std::size_t row) const;
     std::int32_t companionType() const;
+    std::int32_t baseAttackSpeed() const;
+    std::int32_t baseWeightCapacity() const;
     std::int32_t walkingSpeedTier() const;
     const std::array<std::uint8_t, retail_record_size>&
         retailRecord() const;

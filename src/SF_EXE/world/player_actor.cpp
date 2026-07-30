@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <utility>
 
 namespace osf {
 namespace {
@@ -63,6 +64,8 @@ void PlayerActor::reset(
     movement_pace_ = MovementPace::walk;
     motion_ = PlayerMotion::idle;
     previous_action_ = PlayerMotion::idle;
+    attack_controller_.cancel();
+    pending_attack_event_ = {};
     movement_controller_.reset();
 }
 
@@ -82,10 +85,15 @@ void PlayerActor::relocate(
     animation_frame_ = 0;
     motion_ = PlayerMotion::idle;
     previous_action_ = PlayerMotion::idle;
+    attack_controller_.cancel();
+    pending_attack_event_ = {};
     movement_controller_.reset();
 }
 
 void PlayerActor::moveTo(WorldPosition destination) {
+    if (attack_controller_.active()) {
+        return;
+    }
     destination_ = destination;
     motion_ =
         movement_pace_ == MovementPace::run
@@ -94,6 +102,9 @@ void PlayerActor::moveTo(WorldPosition destination) {
 }
 
 void PlayerActor::followTo(WorldPosition destination) {
+    if (attack_controller_.active()) {
+        return;
+    }
     destination_ = destination;
     motion_ =
         movement_pace_ == MovementPace::run
@@ -102,6 +113,9 @@ void PlayerActor::followTo(WorldPosition destination) {
 }
 
 void PlayerActor::cancelMovement() {
+    if (attack_controller_.active()) {
+        return;
+    }
     destination_ = position_;
     motion_ = PlayerMotion::idle;
     movement_controller_.reset();
@@ -117,12 +131,49 @@ void PlayerActor::faceToward(WorldPosition position) {
         position.y - position_.y);
 }
 
+bool PlayerActor::beginAttack(
+    PlayerAttackAction action,
+    std::int32_t target_id,
+    std::int32_t attack_speed_tier,
+    const gapi::CafAnimation& animation) {
+    if (attack_controller_.active()) {
+        return false;
+    }
+    PlayerAttackAnimationTiming timing;
+    if (!buildPlayerAttackAnimationTiming(
+            animation,
+            action,
+            direction_,
+            timing)) {
+        return false;
+    }
+    destination_ = position_;
+    movement_controller_.reset();
+    if (!attack_controller_.start(
+            action,
+            target_id,
+            attack_speed_tier,
+            std::move(timing),
+            &pending_attack_event_)) {
+        return false;
+    }
+    action_counter_ = 0;
+    animation_chart_ =
+        attack_controller_.animationChart();
+    animation_frame_ =
+        attack_controller_.animationFrame();
+    motion_ = PlayerMotion::attacking;
+    previous_action_ = PlayerMotion::attacking;
+    return true;
+}
+
 void PlayerActor::toggleMovementPace() {
     movement_pace_ =
         movement_pace_ == MovementPace::walk
             ? MovementPace::run
             : MovementPace::walk;
-    if (motion_ != PlayerMotion::idle) {
+    if (motion_ == PlayerMotion::walking ||
+        motion_ == PlayerMotion::running) {
         motion_ =
             movement_pace_ == MovementPace::run
                 ? PlayerMotion::running
@@ -133,8 +184,21 @@ void PlayerActor::toggleMovementPace() {
 void PlayerActor::update(
     const GroundMap& ground,
     const ObjectMap& objects,
-    const std::vector<MovementBlocker>* dynamic_blockers) {
+    const std::vector<MovementBlocker>* dynamic_blockers,
+    std::int32_t attack_speed_tier) {
     previous_position_ = position_;
+    if (attack_controller_.active()) {
+        pending_attack_event_ =
+            attack_controller_.update(attack_speed_tier);
+        animation_chart_ =
+            attack_controller_.animationChart();
+        animation_frame_ =
+            attack_controller_.animationFrame();
+        if (!attack_controller_.active()) {
+            motion_ = PlayerMotion::idle;
+        }
+        return;
+    }
     if (motion_ == PlayerMotion::idle) {
         if (previous_action_ != PlayerMotion::idle) {
             action_counter_ = 0;
@@ -229,6 +293,22 @@ MovementPace PlayerActor::movementPace() const {
 
 PlayerMotion PlayerActor::motion() const {
     return motion_;
+}
+
+bool PlayerActor::attackActive() const {
+    return attack_controller_.active();
+}
+
+std::int32_t PlayerActor::attackTargetId() const {
+    return attack_controller_.active()
+        ? attack_controller_.targetId()
+        : -1;
+}
+
+PlayerAttackActionEvent PlayerActor::takeAttackEvent() {
+    PlayerAttackActionEvent event = pending_attack_event_;
+    pending_attack_event_ = {};
+    return event;
 }
 
 std::int32_t PlayerActor::animationChart() const {

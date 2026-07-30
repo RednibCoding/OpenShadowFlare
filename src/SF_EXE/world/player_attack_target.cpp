@@ -86,6 +86,13 @@ bool PlayerAttackTargetController::validateReady(
     return true;
 }
 
+std::int32_t
+PlayerAttackTargetController::takeReadyTargetId() {
+    const std::int32_t target_id = ready_target_id_;
+    ready_target_id_ = -1;
+    return target_id;
+}
+
 void PlayerAttackTargetController::cancel() {
     approach_target_id_ = -1;
     ready_target_id_ = -1;

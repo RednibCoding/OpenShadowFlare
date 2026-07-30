@@ -472,7 +472,44 @@ the currently selected ordinary attack. The `SFlare.Cfg` field mirrored at
 unconditionally restores it to enabled while loading the config. The portable
 target controller now owns the approach-to-ready transition and cancels it if
 the enemy disappears, dies, becomes hidden, or loses pointer status. CAF
-attack startup and the impact marker remain the next combat checkpoint.
+attack startup and the impact marker are owned separately from that approach.
+
+`0x00450630` chooses the ordinary player action from the equipped main-hand
+instance's subtype. No main hand, or a subtype outside the five explicit
+branches, selects action 7. Subtype 0 selects action 8, subtype 3 selects
+action 9, subtype 1 selects action 10, and subtypes 4 and 5 select the
+separate actions 19 and 20. The portable ordinary-action checkpoint implements
+7 through 10 and recognizes 19/20 without pretending they use a melee chart.
+
+Action 7 at `0x00439140` and actions 8 through 10 at `0x00435e60` share the
+same authored timing contract. Action 7 and action 8 use CAF charts 5 then 6;
+action 9 uses 15 then 16; action 10 uses 19 then 20. On entry the actor locks
+movement, clears the displayed frame, sets the previously scanned frame to
+minus one, and synchronizes the action. Action 7 calculates the displayed
+frame before incrementing its counter, while 8 through 10 increment first.
+This one-update distinction is preserved. Action 7 requests its swing sound at
+counter five; 8 through 10 do so at counter six. A null or light main hand
+uses sample 1, and weapon weight 60 or greater uses sample 2 through
+`0x00466110` selector four.
+
+`0x00450c60` derives the animation tier from Table 4 after capping the derived
+Speed of Attack value at 255. The ten frame factors are exactly 0.6, 0.7, 0.8,
+0.9, 1.0, 1.1, 1.2, 1.3, 1.4, and 1.5. Equipped weight greater than the
+derived capacity forces tier zero. The action calls this calculation on every
+update, so an equipment or weight change can affect an attack already in
+progress. `0x00445630` counts equipped objects only
+and omits the off hand when the main-hand classifier suppresses it; portable
+weight and base-contribution accumulation now do the same.
+
+The damage moment is not inferred from a frame count. The action scans part
+zero of every newly crossed frame in its first chart and emits an impact when
+CAF status bit `0x40` appears. It only scans while the global displayed frame
+is still in that first chart, then subtracts the first chart's frame count,
+clamps within the recovery chart, and unlocks on its final frame. The shipped
+male and female chart-5 data both contain ten first frames with the marker at
+frame 7 and nine chart-6 recovery frames. The portable world validates the
+retained target again at the marker before publishing the typed impact event;
+the next combat checkpoint owns packet construction and enemy mutation.
 
 The portable first pickup checkpoint keeps that separation. `WorldScene`
 owns the stable ground entity and pending approach, while `PlayerInventory`

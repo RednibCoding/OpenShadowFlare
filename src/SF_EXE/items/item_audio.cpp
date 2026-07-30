@@ -36,4 +36,11 @@ std::int32_t retailItemLandingSound(
     return 15;
 }
 
+std::int32_t retailItemAttackSound(
+    const ItemDefinition* definition) {
+    // FUN_00466110 selector four uses sample one for an empty hand and
+    // chooses samples one/two at the exact 60-weight boundary otherwise.
+    return definition && definition->weight >= 60 ? 2 : 1;
+}
+
 }  // namespace osf

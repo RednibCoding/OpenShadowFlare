@@ -696,6 +696,13 @@ bool testPlayerAttackTargetRange() {
             "approach target to ready.")) {
         return false;
     }
+    if (!check(
+            controller.takeReadyTargetId() == 7 &&
+                controller.readyTargetId() == -1,
+            "Starting an attack did not consume its ready target.")) {
+        return false;
+    }
+    controller.command({0, 0}, actor_bounds, target);
     target.life = 0;
     if (!check(
             !controller.validateReady(&target) &&
