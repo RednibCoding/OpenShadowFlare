@@ -26,6 +26,7 @@ struct GameplayInventoryResult {
     bool equipment_changed = false;
     std::int32_t world_drop_screen_x = 0;
     std::int32_t world_drop_screen_y = 0;
+    std::int32_t item_sound_sample = -1;
 };
 
 struct EquipmentRegion {

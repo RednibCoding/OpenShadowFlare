@@ -101,23 +101,25 @@ bool createGroundItems(
     return true;
 }
 
-void updateGroundItem(GroundItem& item) {
+GroundItemUpdateEvent updateGroundItem(GroundItem& item) {
     if (item.bounce_state >= 2) {
-        return;
+        return GroundItemUpdateEvent::none;
     }
     item.height += item.vertical_velocity / 10;
     item.vertical_velocity -= item.vertical_gravity;
     if (item.height > 0) {
-        return;
+        return GroundItemUpdateEvent::none;
     }
 
     item.height = 0;
     if (item.bounce_state == 0) {
         item.bounce_state = 1;
         item.vertical_velocity = 700;
+        return GroundItemUpdateEvent::first_impact;
     } else {
         item.bounce_state = 2;
     }
+    return GroundItemUpdateEvent::none;
 }
 
 }  // namespace osf

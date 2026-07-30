@@ -182,6 +182,62 @@ std::int32_t PlayerData::currentMana() const {
     return readI32(0x3c);
 }
 
+void PlayerData::setCurrentLife(std::int32_t value) {
+    writeI32(
+        0x34,
+        std::clamp(
+            value,
+            0,
+            std::max(0, baseMaximumLife())));
+}
+
+void PlayerData::setCurrentMana(std::int32_t value) {
+    writeI32(
+        0x3c,
+        std::clamp(
+            value,
+            0,
+            std::max(0, baseMaximumMana())));
+}
+
+bool PlayerData::restoreLife(
+    std::int32_t amount,
+    std::int32_t maximum_percent) {
+    const std::int32_t before = currentLife();
+    const std::int64_t restored =
+        static_cast<std::int64_t>(before) +
+        amount +
+        static_cast<std::int64_t>(maximum_percent) *
+            baseMaximumLife() /
+            100;
+    setCurrentLife(
+        static_cast<std::int32_t>(
+            std::clamp<std::int64_t>(
+                restored,
+                0,
+                std::max(0, baseMaximumLife()))));
+    return currentLife() != before;
+}
+
+bool PlayerData::restoreMana(
+    std::int32_t amount,
+    std::int32_t maximum_percent) {
+    const std::int32_t before = currentMana();
+    const std::int64_t restored =
+        static_cast<std::int64_t>(before) +
+        amount +
+        static_cast<std::int64_t>(maximum_percent) *
+            baseMaximumMana() /
+            100;
+    setCurrentMana(
+        static_cast<std::int32_t>(
+            std::clamp<std::int64_t>(
+                restored,
+                0,
+                std::max(0, baseMaximumMana()))));
+    return currentMana() != before;
+}
+
 std::int32_t PlayerData::initialParameter(
     std::size_t row) const {
     return row < kInitialParameterOffsets.size()

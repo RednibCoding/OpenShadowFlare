@@ -4,14 +4,33 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace osf {
 
+class ItemDatabase;
+class PlayerBelt;
 class PlayerData;
+class PlayerEquipment;
+class PlayerInventory;
+
+bool readRetailSavePayload(
+    const std::filesystem::path& path,
+    std::vector<std::uint8_t>& payload,
+    std::string* error = nullptr);
 
 bool writeRetailSave(
     const std::filesystem::path& path,
     const PlayerData& player,
+    std::uint8_t xor_key,
+    std::string* error = nullptr);
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    const ItemDatabase& item_database,
+    const PlayerInventory& inventory,
+    const PlayerEquipment& equipment,
+    const PlayerBelt& belt,
     std::uint8_t xor_key,
     std::string* error = nullptr);
 

@@ -5,6 +5,18 @@
 #include <cstring>
 
 namespace osf::runtime {
+namespace {
+
+std::int32_t beltPocketKey(const char* key) {
+    if (key[0] >= '1' &&
+        key[0] <= '8' &&
+        key[1] == '\0') {
+        return key[0] - '1';
+    }
+    return -1;
+}
+
+}  // namespace
 
 InputAdapter::InputAdapter(
     std::int32_t virtual_width,
@@ -48,7 +60,13 @@ bool InputAdapter::handleEvent(
         return true;
     }
     if (event.type == LWL_EVENT_KEY_UP) {
-        if (std::strcmp(event.key, "up") == 0) {
+        const std::int32_t belt_pocket =
+            beltPocketKey(event.key);
+        if (belt_pocket >= 0) {
+            belt_pocket_held_[
+                static_cast<std::size_t>(
+                    belt_pocket)] = false;
+        } else if (std::strcmp(event.key, "up") == 0) {
             up_held_ = false;
         } else if (std::strcmp(event.key, "down") == 0) {
             down_held_ = false;
@@ -82,6 +100,22 @@ bool InputAdapter::handleEvent(
         return true;
     }
     if (event.type != LWL_EVENT_KEY_DOWN) {
+        return true;
+    }
+
+    const std::int32_t belt_pocket =
+        beltPocketKey(event.key);
+    if (belt_pocket >= 0 &&
+        current_state == GameState::gameplay) {
+        bool& held =
+            belt_pocket_held_[
+                static_cast<std::size_t>(
+                    belt_pocket)];
+        if (!held) {
+            gameplay_belt_pocket_pressed_ =
+                belt_pocket;
+        }
+        held = true;
         return true;
     }
 
@@ -208,6 +242,7 @@ void InputAdapter::clearTransientInput() {
     gameplay_map_pressed_ = false;
     gameplay_inventory_pressed_ = false;
     gameplay_special_items_pressed_ = false;
+    gameplay_belt_pocket_pressed_ = -1;
     pointer_secondary_pressed_ = false;
 }
 
@@ -263,6 +298,10 @@ bool InputAdapter::gameplayInventoryPressed() const {
 
 bool InputAdapter::gameplaySpecialItemsPressed() const {
     return gameplay_special_items_pressed_;
+}
+
+std::int32_t InputAdapter::gameplayBeltPocketPressed() const {
+    return gameplay_belt_pocket_pressed_;
 }
 
 bool InputAdapter::upHeld() const {

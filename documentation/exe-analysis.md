@@ -345,9 +345,12 @@ Visual C++ `rand()` sequence and a four-byte signed-byte checksum. It XORs
 each plain payload byte with that random byte, then replaces the result with
 its index in the same 256-byte permutation used by the retail data path.
 OpenShadowFlare now writes that envelope and performs the inverse operation
-when preserving an existing save. The repeated player record is updated while
-unknown trailing payload bytes remain untouched. Full dynamic payload loading
-and serialization are still pending.
+when preserving an existing save. It also follows the retail variable-sized
+item stream to restore and rewrite the nine known equipment slots, backpack,
+and belt. Grid positions, Gold quantities, durability, quality, and all
+still-unnamed instance bytes survive the round trip. The extra equipment
+records, special-item container, and unknown trailing payload bytes remain
+untouched. The rest of the dynamic payload is still pending.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the

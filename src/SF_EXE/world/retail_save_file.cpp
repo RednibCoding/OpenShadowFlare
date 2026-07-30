@@ -1,6 +1,7 @@
 #include "retail_save_file.hpp"
 
 #include "player_data.hpp"
+#include "retail_save_items.hpp"
 
 #include <algorithm>
 #include <array>
@@ -97,7 +98,7 @@ std::uint32_t signedByteChecksum(
     return checksum;
 }
 
-bool readExistingPayload(
+bool decodeRetailSavePayload(
     const std::filesystem::path& path,
     std::vector<std::uint8_t>& payload,
     std::string* error) {
@@ -221,9 +222,23 @@ bool replaceFile(
 
 }  // namespace
 
-bool writeRetailSave(
+bool readRetailSavePayload(
+    const std::filesystem::path& path,
+    std::vector<std::uint8_t>& payload,
+    std::string* error) {
+    payload.clear();
+    return decodeRetailSavePayload(path, payload, error);
+}
+
+namespace {
+
+bool writeRetailSaveImpl(
     const std::filesystem::path& path,
     const PlayerData& player,
+    const ItemDatabase* item_database,
+    const PlayerInventory* inventory,
+    const PlayerEquipment* equipment,
+    const PlayerBelt* belt,
     std::uint8_t xor_key,
     std::string* error) {
     if (!player.valid()) {
@@ -258,7 +273,7 @@ bool writeRetailSave(
 
     std::vector<std::uint8_t> payload;
     if (exists &&
-        !readExistingPayload(path, payload, error)) {
+        !decodeRetailSavePayload(path, payload, error)) {
         return false;
     }
     const auto& record = player.retailRecord();
@@ -266,6 +281,17 @@ bool writeRetailSave(
         payload.resize(record.size());
     }
     std::copy(record.begin(), record.end(), payload.begin());
+    if (item_database &&
+        (!inventory || !equipment || !belt ||
+         !replaceRetailOwnedItems(
+             payload,
+             *item_database,
+             *inventory,
+             *equipment,
+             *belt,
+             error))) {
+        return false;
+    }
     if (payload.size() >
         std::numeric_limits<std::uint32_t>::max()) {
         setError(error, "The save payload is too large.");
@@ -329,6 +355,44 @@ bool writeRetailSave(
         error->clear();
     }
     return true;
+}
+
+}  // namespace
+
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    std::uint8_t xor_key,
+    std::string* error) {
+    return writeRetailSaveImpl(
+        path,
+        player,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        xor_key,
+        error);
+}
+
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    const ItemDatabase& item_database,
+    const PlayerInventory& inventory,
+    const PlayerEquipment& equipment,
+    const PlayerBelt& belt,
+    std::uint8_t xor_key,
+    std::string* error) {
+    return writeRetailSaveImpl(
+        path,
+        player,
+        &item_database,
+        &inventory,
+        &equipment,
+        &belt,
+        xor_key,
+        error);
 }
 
 }  // namespace osf

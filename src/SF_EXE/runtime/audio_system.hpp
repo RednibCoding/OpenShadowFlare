@@ -45,6 +45,7 @@ public:
     void playOptionsClick();
     void playOptionsConfirm();
     void playGameplayMenuMove();
+    void playGameplayEffect(std::int32_t sample);
 
 private:
     bool loadVoc(VocPlayer& player, std::string_view retail_path);

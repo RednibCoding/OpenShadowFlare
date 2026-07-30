@@ -43,9 +43,11 @@ osf_configure_game_library(osf_core)
 add_library(
   osf_items STATIC
   items/item_database.cpp
+  items/item_audio.cpp
   items/item_condition.cpp
   items/item_grid.cpp
   items/item_information.cpp
+  items/new_player_loadout.cpp
   items/player_belt.cpp
   items/player_equipment.cpp
   items/player_inventory.cpp
@@ -110,7 +112,9 @@ add_library(
   world/player_appearance.cpp
   world/player_actor.cpp
   world/player_data.cpp
+  world/player_item_controller.cpp
   world/retail_save_file.cpp
+  world/retail_save_items.cpp
   world/retail_save_preview.cpp
   world/quest_state.cpp
   world/scenario_data.cpp

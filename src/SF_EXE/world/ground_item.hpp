@@ -26,6 +26,11 @@ struct GroundItem {
     std::int32_t id = -1;
 };
 
+enum class GroundItemUpdateEvent {
+    none,
+    first_impact,
+};
+
 bool createGroundItem(
     std::vector<GroundItem>& items,
     std::int32_t category,
@@ -40,7 +45,7 @@ bool createGroundItems(
     WorldPosition position,
     std::int32_t minimum_quantity,
     std::int32_t maximum_quantity);
-void updateGroundItem(GroundItem& item);
+GroundItemUpdateEvent updateGroundItem(GroundItem& item);
 
 }  // namespace osf
 

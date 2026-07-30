@@ -431,7 +431,9 @@ The opening quest's four real ground items are now loaded and drawn from
 `Item.Ibn`. Pointer selection and the first complete pickup path are live:
 distant clicks approach through the shared movement controller, then ownership
 moves into `PlayerInventory` before the world entity is erased. Gold fills
-existing stacks up to the retail 10,000 limit.
+existing stacks up to the retail 10,000 limit. Scripted and player-created
+drops also play their category-specific retail sound on the first ground
+impact.
 
 The real 9-by-4 backpack grid is now in place. Width and height come from
 `Item.Ibn`, placement respects multi-cell footprints, and a full inventory
@@ -465,7 +467,23 @@ The lower HUD's belt is a separate 4-by-2 owner rather than part of the
 backpack. It accepts only category-three items, retains full multi-cell
 footprints, uses the retail staggered screen origins, and supports pointer
 pickup and swapping even while the main inventory is closed. The `1` through
-`8` use shortcuts still belong to a later item-effect slice.
+`8` shortcuts address its four upper pockets followed by its four lower
+pockets. Tablets restore life, Capsules restore mana, and an item is removed
+only when it actually changes the target, matching the executable.
+
+A new character now receives the loadout built by `0x00440f70`: Leather Cloth
+in the body slot, four Tablets and four Capsules in the first two backpack
+columns, the same four-plus-four medicine layout in the belt, and five mines
+in the player's separate mine counter. Moving, swapping, equipping, and
+dropping owned items also use the retail category/weight sound selection;
+successful belt use plays its own medicine sound.
+
+Those owned items now survive the real `.Ssv` path. The obfuscated payload's
+retail item prefix restores and rewrites all nine player equipment slots, the
+backpack, and the belt, including exact grid placement, Gold quantities,
+durability, quality, and preserved instance bytes. Unknown equipment records,
+special items, and the rest of an original save remain untouched until their
+owners are reconstructed.
 
 `X` now opens the separate special-item owner on the left. Its 9-by-10 grid,
 Status patterns 14 and 15, item origins, centered placement, swapping, Gold
@@ -488,10 +506,11 @@ the wide Price row rather than collapsing to a name-only tooltip.
 The retail condition warning is now shared by backpack, equipment, and held
 items. Weapons and armor below ten percent durability blink `Status.njp`
 pattern 16 for eight updates on and eight off; broken gear keeps it visible.
-The next useful checkpoint is reconstructing item use: the `1` through `8`
-belt shortcuts, category-three effects and quantities, and the script-facing
-special-item operations. That work should consume these owners rather than
-adding another parallel inventory model.
+The player-life and player-mana fields of category-three records are decoded.
+Companion restoration, timed/status effects, mine placement, and the
+script-facing special-item commands remain the next item checkpoint. Those
+paths should keep using these owners rather than adding parallel inventory
+models.
 
 ### 4. Combat and death
 

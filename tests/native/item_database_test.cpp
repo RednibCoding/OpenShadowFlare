@@ -1,3 +1,4 @@
+#include "items/item_audio.hpp"
 #include "items/item_database.hpp"
 #include "items/item_condition.hpp"
 #include "items/player_belt.hpp"
@@ -107,6 +108,8 @@ bool testRetailDatabase() {
         database.find(3, 10000000);
     const osf::ItemDefinition* white_medicine =
         database.find(3, 30000000);
+    const osf::ItemDefinition* gold =
+        database.find(4, 0);
     if (!check(
             short_sword &&
                 short_sword->base_price == 400 &&
@@ -138,11 +141,34 @@ bool testRetailDatabase() {
             blade_ring &&
                 blade_ring->required_level == 23 &&
             tablet &&
+                tablet->restore_life == 200 &&
+                tablet->restore_mana == 0 &&
+                tablet->consumable_effect == -1 &&
             capsule &&
+                capsule->restore_life == 0 &&
+                capsule->restore_mana == 200 &&
+                capsule->consumable_effect == -1 &&
             white_medicine &&
                 white_medicine->inventory_width == 1 &&
-                white_medicine->inventory_height == 2,
+                white_medicine->inventory_height == 2 &&
+                white_medicine->consumable_effect == -2,
             "The Short Sword equipment fields differ.")) {
+        return false;
+    }
+    osf::ItemDefinition heavy_item = *short_sword;
+    heavy_item.weight = 60;
+    if (!check(
+            osf::retailItemMoveSound(*tablet) == 48 &&
+                osf::retailItemMoveSound(*stone_accessory) == 93 &&
+                gold &&
+                osf::retailItemMoveSound(*gold) == 85 &&
+                osf::retailItemMoveSound(heavy_item) == 47 &&
+                osf::retailItemEquipSound(*leather_cloth) == 49 &&
+                osf::retailItemEquipSound(*stone_accessory) == 93 &&
+                osf::retailItemLandingSound(*tablet) == 15 &&
+                osf::retailItemLandingSound(*stone_accessory) == 93 &&
+                osf::retailItemLandingSound(*gold) == 85,
+            "The retail item move, equip, or landing sound differs.")) {
         return false;
     }
     if (!check(

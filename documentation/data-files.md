@@ -465,8 +465,15 @@ then replaces it with its index in a fixed 256-byte permutation. Loading
 reverses the permutation and XOR before parsing the dynamic records. That
 payload includes inventory and equipment objects, scenario state, global and
 script flags, companion progress, position, and other runtime-owned data. The
-portable executable currently reads and preserves the plain player record;
-full payload decoding remains future work.
+portable executable decodes the envelope and the item prefix: eleven optional
+equipment records followed by backpack, belt, and special-item containers.
+Each concrete item stores category, definition ID, an instance value, optional
+grid coordinates, its category-sized state-block length, and that state block.
+The nine known player equipment slots, backpack, and belt are restored and
+rewritten. The extra two equipment records, special-item container, and
+unmapped trailing payload remain byte-for-byte preserved. Scenario position,
+quests, mines, companions, and the rest of the dynamic payload are still
+pending.
 
 ### Related Files
 - `Save\%04d.Ssv` - Save slot data (0000-0005)

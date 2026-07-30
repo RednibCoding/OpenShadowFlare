@@ -20,12 +20,19 @@ struct InventoryItem {
     std::int32_t height = 1;
     std::int32_t durability = -1;
     std::int32_t quality = 0;
+    // Preserves the category-specific retail instance fields that have not
+    // been named yet. Save/load patches the fields represented above.
+    std::vector<std::uint8_t> retail_state;
 };
 
 struct InventoryPlacementResult {
     bool accepted = false;
     std::optional<InventoryItem> held_item;
 };
+
+InventoryItem makeInventoryItem(
+    const ItemDefinition& definition,
+    std::int32_t quantity = 1);
 
 class PlayerInventory {
 public:
@@ -48,6 +55,9 @@ public:
         std::int32_t grid_x,
         std::int32_t grid_y);
 
+    const InventoryItem* itemAt(
+        std::int32_t grid_x,
+        std::int32_t grid_y) const;
     const std::vector<InventoryItem>& items() const;
     std::int32_t gold() const;
 

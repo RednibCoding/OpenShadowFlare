@@ -1,6 +1,12 @@
+#include "items/item_database.hpp"
+#include "items/player_belt.hpp"
+#include "items/player_equipment.hpp"
+#include "items/player_inventory.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "world/player_data.hpp"
+#include "world/player_item_controller.hpp"
 #include "world/retail_save_file.hpp"
+#include "world/retail_save_items.hpp"
 #include "world/retail_save_preview.hpp"
 
 #include <algorithm>
@@ -10,7 +16,9 @@
 #include <fstream>
 #include <iterator>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -95,6 +103,97 @@ int main() {
         return 1;
     }
 
+    osf::ItemDatabase items;
+    if (!check(
+            items.load(
+                std::string(OPENSHADOWFLARE_SOURCE_DIR) +
+                    "/tmp/ShadowFlare/System/Game/Parameter/Item.Ibn",
+                &error),
+            "The item data for belt-use testing could not be loaded.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    const osf::ItemDefinition* tablet =
+        items.find(3, 0);
+    const osf::ItemDefinition* capsule =
+        items.find(3, 10000000);
+    osf::PlayerBelt belt;
+    osf::PlayerItemController item_controller;
+    item_controller.initializeNew();
+    if (!check(
+            tablet &&
+                capsule &&
+                belt.place(
+                    osf::makeInventoryItem(*tablet),
+                    0,
+                    0,
+                    *tablet)
+                    .accepted &&
+                belt.place(
+                    osf::makeInventoryItem(*capsule),
+                    0,
+                    1,
+                    *capsule)
+                    .accepted &&
+                item_controller.mineCount() == 5,
+            "The belt-use fixture or initial mine count differs.")) {
+        return 1;
+    }
+
+    osf::PlayerData belt_player = male;
+    if (!check(
+            !item_controller
+                 .useBeltPocket(
+                     0,
+                     belt,
+                     items,
+                     belt_player)
+                 .consumed &&
+                belt.itemAt(0, 0),
+            "A Tablet was consumed while life was already full.")) {
+        return 1;
+    }
+    belt_player.setCurrentLife(0);
+    belt_player.setCurrentMana(0);
+    if (!check(
+            belt_player.restoreLife(0, 10) &&
+                belt_player.currentLife() == 14 &&
+                belt_player.restoreMana(0, 10) &&
+                belt_player.currentMana() == 16,
+            "Percentage life or mana restoration differs.")) {
+        return 1;
+    }
+    belt_player.setCurrentLife(
+        belt_player.baseMaximumLife() - 10);
+    const osf::BeltItemUseResult tablet_use =
+        item_controller.useBeltPocket(
+            0,
+            belt,
+            items,
+            belt_player);
+    belt_player.setCurrentMana(
+        belt_player.baseMaximumMana() - 10);
+    const osf::BeltItemUseResult capsule_use =
+        item_controller.useBeltPocket(
+            4,
+            belt,
+            items,
+            belt_player);
+    if (!check(
+            tablet_use.consumed &&
+                tablet_use.sound_sample == 16 &&
+                !belt.itemAt(0, 0) &&
+                belt_player.currentLife() ==
+                    belt_player.baseMaximumLife() &&
+                capsule_use.consumed &&
+                capsule_use.sound_sample == 16 &&
+                !belt.itemAt(0, 1) &&
+                belt_player.currentMana() ==
+                    belt_player.baseMaximumMana(),
+            "Tablet/Capsule use or the 1-8 belt mapping differs.")) {
+        return 1;
+    }
+
     const std::filesystem::path new_save_root =
         std::filesystem::temp_directory_path() /
         "openshadowflare_new_save_test";
@@ -121,6 +220,150 @@ int main() {
             "record.")) {
         std::cerr << error << '\n';
         return 1;
+    }
+
+    const osf::ItemDefinition* dagger =
+        items.find(0, 0);
+    const osf::ItemDefinition* leather_cloth =
+        items.find(1, 0);
+    const osf::ItemDefinition* gold =
+        items.find(4, 0);
+    osf::PlayerInventory saved_inventory;
+    osf::PlayerEquipment saved_equipment;
+    osf::PlayerBelt saved_belt;
+    if (!check(
+            dagger &&
+                leather_cloth &&
+                gold &&
+                saved_inventory.add(*dagger) &&
+                saved_inventory.add(*gold, 250),
+            "The save item round-trip fixture could not be created.")) {
+        return 1;
+    }
+    std::optional<osf::InventoryItem> carried_dagger =
+        saved_inventory.take(0);
+    if (!check(
+            carried_dagger &&
+                saved_inventory
+                    .place(
+                        std::move(*carried_dagger),
+                        4,
+                        0)
+                    .accepted &&
+                saved_equipment
+                    .place(
+                        osf::EquipmentSlot::body,
+                        osf::makeInventoryItem(*leather_cloth),
+                        *leather_cloth,
+                        male.level())
+                    .accepted &&
+                saved_belt
+                    .place(
+                        osf::makeInventoryItem(*tablet),
+                        2,
+                        0,
+                        *tablet)
+                    .accepted,
+            "The positioned save item fixture could not be created.")) {
+        return 1;
+    }
+    if (!check(
+            osf::writeRetailSave(
+                new_save_path,
+                male,
+                items,
+                saved_inventory,
+                saved_equipment,
+                saved_belt,
+                0x34,
+                &error),
+            "Owned items could not be written to the retail payload.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::vector<std::uint8_t> owned_item_payload;
+    osf::PlayerInventory restored_inventory;
+    osf::PlayerEquipment restored_equipment;
+    osf::PlayerBelt restored_belt;
+    if (!check(
+            osf::readRetailSavePayload(
+                new_save_path,
+                owned_item_payload,
+                &error) &&
+                osf::restoreRetailOwnedItems(
+                    owned_item_payload,
+                    items,
+                    male.level(),
+                    restored_inventory,
+                    restored_equipment,
+                    restored_belt,
+                    nullptr,
+                    &error) &&
+                restored_inventory.items().size() == 2 &&
+                restored_inventory.itemAt(4, 0) &&
+                restored_inventory.itemAt(4, 0)->category == 0 &&
+                restored_inventory.gold() == 250 &&
+                restored_equipment.item(
+                    osf::EquipmentSlot::body) &&
+                restored_equipment
+                        .item(osf::EquipmentSlot::body)
+                        ->definition_id == 0 &&
+                restored_belt.itemAt(2, 0) &&
+                restored_belt.itemAt(2, 0)->category == 3 &&
+                restored_belt.itemAt(2, 0)->definition_id == 0,
+            "Backpack, equipment, or belt ownership did not "
+            "survive a save/load round trip.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    const std::filesystem::path retail_save_fixture =
+        std::string(OPENSHADOWFLARE_SOURCE_DIR) +
+        "/tmp/ShadowFlare/Save/0003.Ssv";
+    if (std::filesystem::exists(retail_save_fixture)) {
+        osf::PlayerData retail_fixture_player;
+        std::vector<std::uint8_t> retail_fixture_payload;
+        osf::PlayerInventory retail_fixture_inventory;
+        osf::PlayerEquipment retail_fixture_equipment;
+        osf::PlayerBelt retail_fixture_belt;
+        if (!check(
+                retail_fixture_player.loadRetailSave(
+                    retail_save_fixture,
+                    &error) &&
+                    osf::readRetailSavePayload(
+                        retail_save_fixture,
+                        retail_fixture_payload,
+                        &error) &&
+                    osf::restoreRetailOwnedItems(
+                        retail_fixture_payload,
+                        items,
+                        retail_fixture_player.level(),
+                        retail_fixture_inventory,
+                        retail_fixture_equipment,
+                        retail_fixture_belt,
+                        nullptr,
+                        &error),
+                "The original retail item stream could not be restored.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        std::vector<std::uint8_t> rewritten_retail_payload =
+            retail_fixture_payload;
+        if (!check(
+                osf::replaceRetailOwnedItems(
+                    rewritten_retail_payload,
+                    items,
+                    retail_fixture_inventory,
+                    retail_fixture_equipment,
+                    retail_fixture_belt,
+                    &error) &&
+                    rewritten_retail_payload ==
+                        retail_fixture_payload,
+                "Re-encoding unchanged retail-owned items altered "
+                "their bytes or an unowned payload section.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
     }
 
     constexpr std::int32_t surface_width = 640;

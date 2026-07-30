@@ -4,6 +4,7 @@
 #include "render/gameplay_renderer.hpp"
 #include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
+#include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
 #include "world/world_scene.hpp"
 
@@ -156,21 +157,29 @@ bool testGroundItemCreation() {
         return false;
     }
     osf::GroundItem bouncing = items.front();
-    osf::updateGroundItem(bouncing);
+    const osf::GroundItemUpdateEvent first_update =
+        osf::updateGroundItem(bouncing);
     if (!check(
+            first_update ==
+                    osf::GroundItemUpdateEvent::none &&
             bouncing.height == 160 &&
                 bouncing.vertical_velocity == 1320 &&
                 bouncing.bounce_state == 0,
             "A new ground item did not begin its retail drop arc.")) {
         return false;
     }
+    std::int32_t impact_count = 0;
     for (std::int32_t update = 1; update < 19; ++update) {
-        osf::updateGroundItem(bouncing);
+        if (osf::updateGroundItem(bouncing) ==
+            osf::GroundItemUpdateEvent::first_impact) {
+            ++impact_count;
+        }
     }
     if (!check(
             bouncing.height == 0 &&
-                bouncing.bounce_state == 2,
-            "A ground item did not settle after its two retail bounces.")) {
+                bouncing.bounce_state == 2 &&
+                impact_count == 1,
+            "A ground item did not emit one first impact while settling.")) {
         return false;
     }
     return check(
@@ -484,6 +493,96 @@ bool testMalformedData() {
         "A scenario without an entry table was accepted.");
 }
 
+bool testWorldItemSaveRoundTrip() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    std::string error;
+    osf::WorldScene saved_world;
+    osf::PlayerLoadRequest new_player;
+    new_player.name = "ItemSave";
+    if (!check(
+            saved_world.loadInitialScenario(
+                data_root,
+                new_player,
+                &error),
+            "The item save fixture world could not be loaded.")) {
+        return false;
+    }
+
+    const std::filesystem::path save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_world_item_save_test";
+    const std::filesystem::path save_path =
+        save_root / "Save" / "0000.Ssv";
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(save_root, cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                saved_world.playerData(),
+                saved_world.itemDatabase(),
+                saved_world.playerInventory(),
+                saved_world.playerEquipment(),
+                saved_world.playerBelt(),
+                0x5a,
+                &error),
+            "The world-owned item state could not be saved.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest saved_player;
+    saved_player.source = osf::PlayerDataSource::retail_save;
+    saved_player.save_path = save_path;
+    osf::WorldScene loaded_world;
+    const bool loaded =
+        loaded_world.loadInitialScenario(
+            data_root,
+            saved_player,
+            &error);
+    std::filesystem::remove_all(save_root, cleanup_error);
+    if (!check(
+            loaded &&
+                loaded_world.playerInventory().items().size() ==
+                    saved_world.playerInventory().items().size() &&
+                loaded_world.playerBelt().items().size() ==
+                    saved_world.playerBelt().items().size() &&
+                loaded_world.playerInventory().itemAt(0, 0) &&
+                loaded_world.playerInventory()
+                        .itemAt(0, 0)
+                        ->definition_id == 0 &&
+                loaded_world.playerInventory().itemAt(1, 3) &&
+                loaded_world.playerInventory()
+                        .itemAt(1, 3)
+                        ->definition_id == 10000000 &&
+                loaded_world.playerBelt().itemAt(3, 0) &&
+                loaded_world.playerBelt()
+                        .itemAt(3, 0)
+                        ->definition_id == 0 &&
+                loaded_world.playerBelt().itemAt(3, 1) &&
+                loaded_world.playerBelt()
+                        .itemAt(3, 1)
+                        ->definition_id == 10000000 &&
+                loaded_world.playerEquipment().item(
+                    osf::EquipmentSlot::body) &&
+                loaded_world.playerEquipment()
+                        .item(osf::EquipmentSlot::body)
+                        ->category == 1 &&
+                loaded_world.playerEquipment()
+                        .item(osf::EquipmentSlot::body)
+                        ->definition_id == 0,
+            "World loading discarded backpack, belt, or equipped items.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    return true;
+#else
+    return true;
+#endif
+}
+
 bool testRetailRemoteTown() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -592,9 +691,53 @@ bool testRetailRemoteTown() {
             world.npcs()[6].id() == 10003 &&
             world.npcs()[6].resourceId() == 1000001 &&
             world.npcs()[6].name() == "Harley",
-        "WorldScene did not build the Remote Town people table.")) {
+            "WorldScene did not build the Remote Town people table.")) {
         return false;
     }
+
+    bool initial_medicine_layout = true;
+    for (std::int32_t row = 0; row < 4; ++row) {
+        const osf::InventoryItem* bag_tablet =
+            world.playerInventory().itemAt(0, row);
+        const osf::InventoryItem* bag_capsule =
+            world.playerInventory().itemAt(1, row);
+        const osf::InventoryItem* belt_tablet =
+            world.playerBelt().itemAt(row, 0);
+        const osf::InventoryItem* belt_capsule =
+            world.playerBelt().itemAt(row, 1);
+        initial_medicine_layout =
+            initial_medicine_layout &&
+            bag_tablet &&
+            bag_tablet->category == 3 &&
+            bag_tablet->definition_id == 0 &&
+            bag_capsule &&
+            bag_capsule->category == 3 &&
+            bag_capsule->definition_id == 10000000 &&
+            belt_tablet &&
+            belt_tablet->definition_id == 0 &&
+            belt_capsule &&
+            belt_capsule->definition_id == 10000000;
+    }
+    const osf::InventoryItem* initial_armor =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    if (!check(
+            initial_armor &&
+                initial_armor->category == 1 &&
+                initial_armor->definition_id == 0 &&
+                initial_armor->durability == 100 &&
+                world.playerPartEnabled(5) &&
+                world.playerInventory().items().size() == 8 &&
+                world.playerBelt().items().size() == 8 &&
+                world.playerMineCount() == 5 &&
+                initial_medicine_layout,
+            "The retail new-character item loadout differs.")) {
+        return false;
+    }
+    world.playerInventory().clear();
+    world.playerEquipment().clear();
+    world.playerBelt().clear();
+    world.refreshPlayerAppearance();
 
     const auto& remote_objects = world.objectMap().objects();
     if (!check(
@@ -862,6 +1005,15 @@ bool testRetailRemoteTown() {
                 world.groundItems()[3].green_strength == 1000 &&
                 world.groundItems()[3].blue_strength == 1000,
             "Ostare's opening quest did not create its retail ground items.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 19; ++update) {
+        world.update();
+    }
+    if (!check(
+            world.takeAudioSamples() ==
+                std::vector<std::int32_t>{15, 15, 15, 85},
+            "Ostare's scripted drops did not emit their retail landing sounds.")) {
         return false;
     }
     const osf::ItemWorldResource* item_resource =
@@ -1599,6 +1751,7 @@ int main() {
                    testConversationChoiceMarkup() &&
                    testFixture() &&
                    testMalformedData() &&
+                   testWorldItemSaveRoundTrip() &&
                    testRetailRemoteTown()
                ? 0
                : 1;

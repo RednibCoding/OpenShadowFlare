@@ -52,6 +52,14 @@ public:
     std::int32_t currentLife() const;
     std::int32_t baseMaximumMana() const;
     std::int32_t currentMana() const;
+    void setCurrentLife(std::int32_t value);
+    void setCurrentMana(std::int32_t value);
+    bool restoreLife(
+        std::int32_t amount,
+        std::int32_t maximum_percent);
+    bool restoreMana(
+        std::int32_t amount,
+        std::int32_t maximum_percent);
     std::int32_t initialParameter(std::size_t row) const;
     std::int32_t walkingSpeedTier() const;
     const std::array<std::uint8_t, retail_record_size>&

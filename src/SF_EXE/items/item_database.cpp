@@ -282,6 +282,19 @@ bool ItemDatabase::decode(
                 definition.raw_fields.size() >= 104) {
                 definition.required_level = field(100);
             }
+            if (category == 3 &&
+                definition.raw_fields.size() >= 140) {
+                definition.required_level = field(100);
+                definition.restore_life = field(108);
+                definition.restore_mana = field(112);
+                definition.restore_life_percent = field(116);
+                definition.restore_mana_percent = field(120);
+                definition.restore_companion_life = field(124);
+                definition.restore_companion_life_percent =
+                    field(128);
+                definition.consumable_effect = field(132);
+                definition.consumable_effect_value = field(136);
+            }
             if (has_equipment_fields) {
                 definition.maximum_durability = field(100);
                 for (std::size_t parameter = 0;

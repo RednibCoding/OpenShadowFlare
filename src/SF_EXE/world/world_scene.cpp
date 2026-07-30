@@ -1,4 +1,5 @@
 #include "world_scene.hpp"
+#include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 
 #include <algorithm>
@@ -56,6 +57,7 @@ void WorldScene::clear() {
     player_appearance_.clear();
     npcs_.clear();
     ground_items_.clear();
+    pending_audio_samples_.clear();
     quests_.clear();
     missions_.clear();
     item_database_.clear();
@@ -69,6 +71,7 @@ void WorldScene::clear() {
     item_world_resources_.clear();
     item_random_.seed(1);
     player_data_.clear();
+    player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
     music_track_ = -1;
@@ -163,6 +166,19 @@ const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
 
+BeltItemUseResult WorldScene::usePlayerBeltPocket(
+    std::int32_t pocket) {
+    return player_item_controller_.useBeltPocket(
+        pocket,
+        player_belt_,
+        item_database_,
+        player_data_);
+}
+
+std::int32_t WorldScene::playerMineCount() const {
+    return player_item_controller_.mineCount();
+}
+
 const ItemWorldResource* WorldScene::itemWorldResource(
     std::int32_t resource_id) const {
     if (resource_id < 0 ||
@@ -252,7 +268,18 @@ void WorldScene::update() {
         npc.update(ground_, object_map_);
     }
     for (GroundItem& item : ground_items_) {
-        updateGroundItem(item);
+        if (updateGroundItem(item) !=
+            GroundItemUpdateEvent::first_impact) {
+            continue;
+        }
+        const ItemDefinition* definition =
+            item_database_.find(
+                item.category,
+                item.definition_id);
+        if (definition) {
+            pending_audio_samples_.push_back(
+                retailItemLandingSound(*definition));
+        }
     }
     interaction_npc =
         pending_interaction_.kind ==
@@ -282,6 +309,12 @@ void WorldScene::update() {
             {}) <= kRetailInteractionDistance) {
         startGroundItemInteraction(interaction_item->id);
     }
+}
+
+std::vector<std::int32_t> WorldScene::takeAudioSamples() {
+    std::vector<std::int32_t> samples;
+    samples.swap(pending_audio_samples_);
+    return samples;
 }
 
 std::int32_t WorldScene::playerWorldX() const {

@@ -148,6 +148,16 @@ void AudioSystem::playGameplayMenuMove() {
     }
 }
 
+void AudioSystem::playGameplayEffect(
+    std::int32_t sample) {
+    if (initialized_ && sample >= 0) {
+        effect_audio_.play(
+            static_cast<std::size_t>(sample),
+            false,
+            effect_volume_);
+    }
+}
+
 bool AudioSystem::loadVoc(
     VocPlayer& player,
     std::string_view retail_path) {

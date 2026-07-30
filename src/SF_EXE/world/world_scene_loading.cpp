@@ -1,5 +1,9 @@
 #include "world_scene.hpp"
 
+#include "items/new_player_loadout.hpp"
+#include "retail_save_file.hpp"
+#include "retail_save_items.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <fstream>
@@ -89,6 +93,38 @@ bool WorldScene::loadInitialScenario(
             error)) {
         clear();
         return false;
+    }
+    if (player_request.source ==
+        PlayerDataSource::new_character) {
+        if (!initializeRetailNewPlayerLoadout(
+                item_database_,
+                player_inventory_,
+                player_equipment_,
+                player_belt_,
+                player_data_.level(),
+                error)) {
+            clear();
+            return false;
+        }
+        player_item_controller_.initializeNew();
+    } else {
+        std::vector<std::uint8_t> payload;
+        if (!readRetailSavePayload(
+                player_request.save_path,
+                payload,
+                error) ||
+            !restoreRetailOwnedItems(
+                payload,
+                item_database_,
+                player_data_.level(),
+                player_inventory_,
+                player_equipment_,
+                player_belt_,
+                nullptr,
+                error)) {
+            clear();
+            return false;
+        }
     }
     if (!item_inventory_patterns_.load(
             data_root,

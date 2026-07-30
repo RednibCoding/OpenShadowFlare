@@ -257,7 +257,7 @@ bool testInventoryResourcesAndRendering() {
         world,
         0);
     if (!check(
-        renderer.patterns.size() == 4 &&
+        renderer.patterns.size() == 13 &&
             renderer.rectangles.size() == 1 &&
             renderer.rectangles[0].x == 320 &&
             renderer.rectangles[0].width == 320 &&
@@ -265,16 +265,20 @@ bool testInventoryResourcesAndRendering() {
             renderer.patterns[0].index == 2 &&
             renderer.patterns[1].index == 3 &&
             renderer.patterns[2].index == 0 &&
-            renderer.patterns[3].index == 74 &&
+            renderer.patterns.back().index == 74 &&
             renderer.texts.size() == 6 &&
             renderer.texts[0].text == "Total Gold" &&
             renderer.texts[1].text == "Total Gold" &&
             renderer.texts[2].text == "0" &&
             renderer.texts[2].draw.x == 464 &&
-            renderer.texts[4].text == "0",
+            renderer.texts[4].text == "70",
         "The authored inventory frame or live values differ.")) {
         return false;
     }
+    world.playerInventory().clear();
+    world.playerEquipment().clear();
+    world.playerBelt().clear();
+    world.refreshPlayerAppearance();
 
     const osf::ItemDefinition* short_sword =
         world.itemDatabase().find(0, 0);
@@ -313,6 +317,7 @@ bool testInventoryResourcesAndRendering() {
         0);
     if (!check(
             equipped.equipment_changed &&
+                equipped.item_sound_sample == 49 &&
                 equipped.pointer_consumed &&
                 !inventory.holdingItem() &&
                 world.playerEquipment().item(
@@ -354,6 +359,7 @@ bool testInventoryResourcesAndRendering() {
         world.playerData().level());
     if (!check(
             unequipped.equipment_changed &&
+                unequipped.item_sound_sample == 48 &&
                 inventory.active() &&
                 !inventory.holdingItem() &&
                 !world.playerEquipment().item(
@@ -718,6 +724,10 @@ bool testConditionArtwork() {
                 : error.c_str())) {
         return false;
     }
+    world.playerInventory().clear();
+    world.playerEquipment().clear();
+    world.playerBelt().clear();
+    world.refreshPlayerAppearance();
 
     osf::gapi::NjpImage status;
     osf::gapi::NjpImage font;
@@ -963,6 +973,10 @@ bool testAccessoryAndBeltOwnership() {
                 : error.c_str())) {
         return false;
     }
+    world.playerInventory().clear();
+    world.playerEquipment().clear();
+    world.playerBelt().clear();
+    world.refreshPlayerAppearance();
 
     const osf::ItemDefinition* accessory =
         world.itemDatabase().find(2, 1000000);
@@ -1000,6 +1014,7 @@ bool testAccessoryAndBeltOwnership() {
             world.playerData().level());
     if (!check(
             equipped.equipment_changed &&
+                equipped.item_sound_sample == 93 &&
                 !inventory.holdingItem() &&
                 world.playerEquipment().item(
                     osf::EquipmentSlot::accessory_1),
@@ -1090,6 +1105,7 @@ bool testAccessoryAndBeltOwnership() {
             world.playerData().level());
     if (!check(
             belt_placement.pointer_consumed &&
+                belt_placement.item_sound_sample == 48 &&
                 !inventory.holdingItem() &&
                 world.playerBelt().itemAt(0, 0) &&
                 world.playerBelt().itemAt(0, 0)->definition_id ==

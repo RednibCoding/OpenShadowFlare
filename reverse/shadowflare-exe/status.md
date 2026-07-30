@@ -126,8 +126,30 @@ The HUD pockets follow `0x00445bd0` and the item tail of `0x00407170`. They
 form a separate 4-by-2 category-three owner, with row-zero origin `(357,413)`
 and row-one origin `(405,445)`. Pointer hit testing uses the exact staggered
 rectangles, complete item footprints are retained, and placing over one item
-swaps it onto the shared pointer. The `1` through `8` activation path and item
-effects are still pending.
+swaps it onto the shared pointer. `0x0044a5f0` maps keys `1` through `8` to
+the four row-zero cells followed by the four row-one cells. `0x0044a240`
+applies the decoded flat and maximum-percent player life/mana fields and
+removes the item only when a value changes. Its companion and status-effect
+branches remain pending.
+
+New-character equipment and owned items now follow `0x00440f70` as well.
+Category one definition zero is equipped in the body slot. Category-three
+definition zero fills backpack column zero and belt row zero four times;
+definition `10000000` does the same for backpack column one and belt row one.
+The separate mine counter starts at five. This initialization runs only for a
+new character, not as a fallback for the still-undecoded save payload.
+
+Inventory movement sounds follow `0x00466110`: category-two items use sample
+93, Gold uses 85, ordinary items below weight 60 use 48, and heavier ones use
+47. Equipment placement uses sample 49 except for category two, while a
+successful belt effect uses sample 16. Sounds are emitted only after the
+corresponding ownership change succeeds.
+
+Ground drops use selector two from the same routine. Their first contact with
+the ground plays sample 15 for an ordinary item, 85 for Gold, or 93 for a
+category-two item. The smaller second bounce is silent. This lives in the
+shared ground-item update path, so script-created drops and player-dropped
+items behave alike.
 
 The `X` panel follows `0x00404760`, `0x00409000`, and `0x00447970`. It owns a
 separate 9-by-10 grid whose first item cell is `(16,72)`, composes Status
@@ -238,13 +260,18 @@ The writer reproduces the `ShadowFlare0005` envelope: plain 0x160-byte menu
 record, payload size, one-byte Visual C++ `rand()` XOR key, signed-byte
 checksum, and the inverse of the executable's 256-byte substitution table.
 When rewriting an original save, it validates and decodes the payload, updates
-its repeated player record, and preserves every still-unmapped byte before
-encoding it again. New characters currently write the owned player record as
-their first payload slice. Scenario, position, inventory, equipment, and quest
-serialization still need to be added as their corresponding load paths are
-reconstructed. Writes go through a sibling temporary file and protected
-replacement so a corrupt source or failed write does not silently destroy the
-slot.
+its repeated player record, then parses the exact item prefix used by
+`0x0044b580`: eleven optional equipment records followed by backpack, belt,
+and special-item containers. The nine player equipment slots, 9-by-4
+backpack, and 4-by-2 belt now save and load their category, definition, grid
+position, Gold quantity, durability, quality, and category-sized instance
+state. The two still-unnamed equipment records, special-item container, and
+all trailing payload bytes remain byte-for-byte unchanged. Tests cover a new
+world save/load round trip and unchanged re-encoding of an original retail
+save. Scenario, position, mines, special items, quests, and the remaining
+dynamic payload still need owners. Writes go through a sibling temporary file
+and protected replacement so a corrupt source or failed write does not
+silently destroy the slot.
 
 With `Save Image at Game End` enabled, the world-only software surface is also
 captured before the HUD, conversation overlay, or Escape panel is drawn.
@@ -389,7 +416,9 @@ definition offsets `0x3c`, `0x40`, and `0x44` provide the visible part's
 default red, green, and blue strengths. The
 portable entities also reproduce the 1600 initial vertical velocity, 280
 gravity, 700 rebound, and two-bounce settle state before joining the shared
-dynamic depth pass. Unnamed definition fields remain preserved as raw bytes.
+dynamic depth pass. The first impact emits the retail selector-two item sound;
+the second impact is silent. Unnamed definition fields remain preserved as
+raw bytes.
 
 On the next click, the retained type-11 flag enters sentence six. Opcode 61 at
 `0x00433f16` reads offset `0x34` from the local player, writes level one to the

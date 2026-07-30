@@ -1,5 +1,6 @@
 #include "gameplay_inventory.hpp"
 
+#include "items/item_audio.hpp"
 #include "items/item_database.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
@@ -34,6 +35,20 @@ bool inside(
     std::int32_t bottom) {
     return x >= left && x < right &&
            y >= top && y < bottom;
+}
+
+void setMoveSound(
+    GameplayInventoryResult& result,
+    const InventoryItem& item,
+    const ItemDatabase& item_database) {
+    const ItemDefinition* definition =
+        item_database.find(
+            item.category,
+            item.definition_id);
+    if (definition) {
+        result.item_sound_sample =
+            retailItemMoveSound(*definition);
+    }
 }
 
 std::optional<EquipmentSlot> equipmentSlotAt(
@@ -180,6 +195,9 @@ GameplayInventoryResult GameplayInventory::update(
                             pocket->grid_y,
                             *definition);
                     if (placement.accepted) {
+                        result.item_sound_sample =
+                            retailItemMoveSound(
+                                *definition);
                         held_item_ = placement.held_item;
                     }
                 }
@@ -187,6 +205,12 @@ GameplayInventoryResult GameplayInventory::update(
                 held_item_ = belt.takeAt(
                     pocket->grid_x,
                     pocket->grid_y);
+                if (held_item_) {
+                    setMoveSound(
+                        result,
+                        *held_item_,
+                        item_database);
+                }
             }
             result.pointer_consumed = true;
             return result;
@@ -230,6 +254,10 @@ GameplayInventoryResult GameplayInventory::update(
                             grid_x,
                             grid_y);
                     if (placement.accepted) {
+                        setMoveSound(
+                            result,
+                            item,
+                            item_database);
                         held_item_ = placement.held_item;
                     }
                 } else if (
@@ -237,6 +265,12 @@ GameplayInventoryResult GameplayInventory::update(
                     held_item_ = special_items.take(
                         static_cast<std::size_t>(
                             hovered_special_item_index_));
+                    if (held_item_) {
+                        setMoveSound(
+                            result,
+                            *held_item_,
+                            item_database);
+                    }
                     hovered_special_item_index_ = -1;
                     item_hover_updates_ = 0;
                 }
@@ -309,6 +343,9 @@ GameplayInventoryResult GameplayInventory::update(
                             *definition,
                             player_level);
                     if (placement.accepted) {
+                        result.item_sound_sample =
+                            retailItemEquipSound(
+                                *definition);
                         held_item_ =
                             std::move(placement.held_item);
                         result.equipment_changed = true;
@@ -318,6 +355,12 @@ GameplayInventoryResult GameplayInventory::update(
                 held_item_ = equipment.take(*slot);
                 result.equipment_changed =
                     held_item_.has_value();
+                if (held_item_) {
+                    setMoveSound(
+                        result,
+                        *held_item_,
+                        item_database);
+                }
             }
             result.pointer_consumed = true;
         } else if (
@@ -350,6 +393,10 @@ GameplayInventoryResult GameplayInventory::update(
                         grid_x,
                         grid_y);
                 if (placement.accepted) {
+                    setMoveSound(
+                        result,
+                        item,
+                        item_database);
                     held_item_ =
                         placement.held_item;
                 }
@@ -361,6 +408,12 @@ GameplayInventoryResult GameplayInventory::update(
             held_item_ = inventory.take(
                 static_cast<std::size_t>(
                     hovered_item_index_));
+            if (held_item_) {
+                setMoveSound(
+                    result,
+                    *held_item_,
+                    item_database);
+            }
             hovered_item_index_ = -1;
             item_hover_updates_ = 0;
             result.pointer_consumed = true;

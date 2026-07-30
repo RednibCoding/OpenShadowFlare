@@ -238,8 +238,12 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.toggle_player_run = [&world] {
         world.togglePlayerRun();
     };
-    hooks.update_world = [&world] {
+    hooks.update_world = [&audio, &world] {
         world.update();
+        for (const std::int32_t sample :
+             world.takeAudioSamples()) {
+            audio.playGameplayEffect(sample);
+        }
     };
     return hooks;
 }

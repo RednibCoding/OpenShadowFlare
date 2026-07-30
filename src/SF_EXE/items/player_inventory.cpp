@@ -86,6 +86,19 @@ bool findPlacement(
 
 }  // namespace
 
+InventoryItem makeInventoryItem(
+    const ItemDefinition& definition,
+    std::int32_t quantity) {
+    InventoryItem item;
+    item.category = definition.category;
+    item.definition_id = definition.id;
+    item.quantity = quantity;
+    item.width = definition.inventory_width;
+    item.height = definition.inventory_height;
+    item.durability = definition.maximum_durability;
+    return item;
+}
+
 void PlayerInventory::clear() {
     items_.clear();
 }
@@ -175,6 +188,8 @@ bool PlayerInventory::add(
             width,
             height,
             durability,
+            0,
+            {},
         });
         remaining -= stack_quantity;
     }
@@ -244,6 +259,18 @@ InventoryPlacementResult PlayerInventory::place(
             *overlap.item_index));
     items_.push_back(std::move(item));
     return {true, std::move(displaced)};
+}
+
+const InventoryItem* PlayerInventory::itemAt(
+    std::int32_t grid_x,
+    std::int32_t grid_y) const {
+    for (const InventoryItem& item : items_) {
+        if (itemContainsGridCell(
+                item, grid_x, grid_y)) {
+            return &item;
+        }
+    }
+    return nullptr;
 }
 
 const std::vector<InventoryItem>&

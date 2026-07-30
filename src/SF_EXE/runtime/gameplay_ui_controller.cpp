@@ -2,6 +2,7 @@
 
 #include "core/game_config.hpp"
 #include "core/retail_random.hpp"
+#include "items/item_audio.hpp"
 #include "runtime/audio_system.hpp"
 #include "runtime/input_adapter.hpp"
 #include "states/game_state.hpp"
@@ -40,6 +41,22 @@ bool GameplayUiController::update(
     std::int32_t& shadow_opacity) {
     if (gameplay_frame.phase != GameplayPhase::world) {
         return false;
+    }
+
+    const std::int32_t belt_pocket =
+        input.gameplayBeltPocketPressed();
+    if (belt_pocket >= 0 &&
+        !world.conversationActive() &&
+        !options_.active() &&
+        !map_.active() &&
+        !mission_list_.active()) {
+        const BeltItemUseResult used =
+            world.usePlayerBeltPocket(
+                belt_pocket);
+        if (used.consumed) {
+            audio.playGameplayEffect(
+                used.sound_sample);
+        }
     }
 
     const bool inventory_was_active =
@@ -100,15 +117,32 @@ bool GameplayUiController::update(
         if (result.equipment_changed) {
             world.refreshPlayerAppearance();
         }
+        if (result.item_sound_sample >= 0) {
+            audio.playGameplayEffect(
+                result.item_sound_sample);
+        }
         if (result.world_drop_requested) {
             const InventoryItem* held_item =
                 inventory_.heldItem();
-            inventory_.completeWorldDrop(
+            const ItemDefinition* definition =
+                held_item
+                    ? world.itemDatabase().find(
+                          held_item->category,
+                          held_item->definition_id)
+                    : nullptr;
+            const bool dropped =
                 held_item &&
                 world.dropInventoryItem(
                     *held_item,
                     result.world_drop_screen_x,
-                    result.world_drop_screen_y));
+                    result.world_drop_screen_y);
+            inventory_.completeWorldDrop(
+                dropped);
+            if (dropped && definition) {
+                audio.playGameplayEffect(
+                    retailItemMoveSound(
+                        *definition));
+            }
         }
         const std::int32_t camera_anchor_x =
             inventory_.active()
@@ -235,6 +269,10 @@ bool GameplayUiController::update(
             writeRetailSave(
                 player.save_path,
                 world.playerData(),
+                world.itemDatabase(),
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerBelt(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);

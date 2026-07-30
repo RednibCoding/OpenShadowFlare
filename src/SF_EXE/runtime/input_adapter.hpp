@@ -7,6 +7,7 @@
 
 #include "lwl.h"
 
+#include <array>
 #include <cstdint>
 
 namespace osf::runtime {
@@ -36,6 +37,7 @@ public:
     bool gameplayMapPressed() const;
     bool gameplayInventoryPressed() const;
     bool gameplaySpecialItemsPressed() const;
+    std::int32_t gameplayBeltPocketPressed() const;
     bool upHeld() const;
     bool downHeld() const;
     bool leftHeld() const;
@@ -67,6 +69,7 @@ private:
     bool map_held_ = false;
     bool inventory_held_ = false;
     bool special_items_held_ = false;
+    std::array<bool, 8> belt_pocket_held_{};
     bool run_toggle_pressed_ = false;
     bool gameplay_options_pressed_ = false;
     bool gameplay_help_pressed_ = false;
@@ -74,6 +77,7 @@ private:
     bool gameplay_map_pressed_ = false;
     bool gameplay_inventory_pressed_ = false;
     bool gameplay_special_items_pressed_ = false;
+    std::int32_t gameplay_belt_pocket_pressed_ = -1;
 };
 
 }  // namespace osf::runtime

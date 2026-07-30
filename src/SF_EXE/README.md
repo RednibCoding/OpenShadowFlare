@@ -117,7 +117,8 @@ both messages in the original no-new-information response. The item records
 are resolved through the retail `Item.Ibn` database and drawn from the
 separate `Character/ITEM` CAF, NJP, and SDW ground resources—not their larger
 inventory icons. They also follow the original two-bounce drop arc before
-settling into the world depth pass. CAF chart palettes and the default RGB
+settling into the world depth pass, with the matching item sound on the first
+impact and a silent second bounce. CAF chart palettes and the default RGB
 strengths stored in `Item.Ibn` supply their original ground colors. The
 format and interpreter architecture are documented in
 [`documentation/script-engine.md`](../../documentation/script-engine.md).
@@ -146,7 +147,11 @@ of gameplay simulation are still in progress.
 The inventory is a live panel rather than a mock-up. Items keep their original
 multi-cell sizes, can be picked up, moved, swapped, dropped, and equipped in
 the five ordinary slots and four accessory cells. Category-three items can
-also be carried in the HUD's staggered two-row belt. `X` opens the separate
+also be carried in the HUD's staggered two-row belt; keys `1` through `8` use
+those pockets. A fresh hero starts with the original Leather Cloth, four
+Tablets and four Capsules in both the backpack and belt, and five mines.
+Inventory movement, equipment, world drops, and medicine use play the
+corresponding retail effects. `X` opens the separate
 9-by-10 special-item panel on the left and shifts the live world view to the
 right, just like the original. Hovering a backpack, equipped, or special item
 opens the small retail information overlay after its original short delay.
@@ -162,13 +167,13 @@ Gameplay now owns a real `PlayerData` record rather than storing level on the
 movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
 new male and female characters receive the thirteen values from retail tables
 901 and 900. A selected save contributes its complete plain 0x160-byte player
-record, including unknown bytes that later inventory, equipment, and
-progression slices will need. The in-game save actions now write the retail
-envelope and preserve the unknown dynamic payload of an existing save while
-updating its repeated player record. When the matching option is enabled, the
-same action captures the world without the HUD or menu and writes the retail
-391×114 preview bitmap used by Load Game. Full dynamic-state decoding and
-serialization are still pending.
+record. The in-game save actions also decode the retail item stream and
+round-trip equipped items, the backpack, and the belt without replacing the
+unknown equipment, special-item, or trailing state in an original save. When
+the matching option is enabled, the same action captures the world without
+the HUD or menu and writes the retail 391×114 preview bitmap used by Load
+Game. Scenario position, quests, mines, companions, and the remaining dynamic
+state are still pending.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

@@ -19,6 +19,7 @@
 #include "player_appearance.hpp"
 #include "player_actor.hpp"
 #include "player_data.hpp"
+#include "player_item_controller.hpp"
 #include "quest_state.hpp"
 #include "scenario_data.hpp"
 #include "script/scenario_script_runtime.hpp"
@@ -64,6 +65,9 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
+    BeltItemUseResult usePlayerBeltPocket(
+        std::int32_t pocket);
+    std::int32_t playerMineCount() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
@@ -114,6 +118,7 @@ public:
     void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
     void update();
+    std::vector<std::int32_t> takeAudioSamples();
     std::int32_t playerWorldX() const;
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
@@ -175,6 +180,7 @@ private:
     PlayerAppearance player_appearance_;
     std::vector<NpcActor> npcs_;
     std::vector<GroundItem> ground_items_;
+    std::vector<std::int32_t> pending_audio_samples_;
     QuestState quests_;
     MissionCatalog missions_;
     ItemDatabase item_database_;
@@ -189,6 +195,7 @@ private:
         item_world_resources_;
     RetailRandom item_random_;
     PlayerData player_data_;
+    PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t music_track_ = -1;
