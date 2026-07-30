@@ -315,12 +315,16 @@ int main() {
                 restored_inventory.items().size() == 2 &&
                 restored_inventory.itemAt(4, 0) &&
                 restored_inventory.itemAt(4, 0)->category == 0 &&
+                restored_inventory.itemAt(4, 0)->identified == 1 &&
                 restored_inventory.gold() == 250 &&
                 restored_equipment.item(
                     osf::EquipmentSlot::body) &&
                 restored_equipment
                         .item(osf::EquipmentSlot::body)
                         ->definition_id == 0 &&
+                restored_equipment
+                        .item(osf::EquipmentSlot::body)
+                        ->identified == 1 &&
                 restored_belt.itemAt(2, 0) &&
                 restored_belt.itemAt(2, 0)->category == 3 &&
                 restored_belt.itemAt(2, 0)->definition_id == 0 &&

@@ -19,7 +19,7 @@ struct InventoryItem {
     std::int32_t width = 1;
     std::int32_t height = 1;
     std::int32_t durability = -1;
-    std::int32_t quality = 0;
+    std::int32_t identified = 0;
     // Preserves the category-specific retail instance fields that have not
     // been named yet. Save/load patches the fields represented above.
     std::vector<std::uint8_t> retail_state;
@@ -68,7 +68,8 @@ private:
         std::int32_t quantity,
         std::int32_t width,
         std::int32_t height,
-        std::int32_t durability);
+        std::int32_t durability,
+        std::int32_t identified);
 
     std::vector<InventoryItem> items_;
 };

@@ -46,7 +46,7 @@ struct ItemDefinition {
     std::int32_t secondary_appearance_red_strength = 1000;
     std::int32_t secondary_appearance_green_strength = 1000;
     std::int32_t secondary_appearance_blue_strength = 1000;
-    bool suppresses_off_hand_appearance = false;
+    bool suppresses_off_hand = false;
     std::int32_t restore_life = 0;
     std::int32_t restore_mana = 0;
     std::int32_t restore_life_percent = 0;

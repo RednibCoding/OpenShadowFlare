@@ -165,12 +165,12 @@ bool decodeItem(
     std::string* error) {
     std::int32_t category = -1;
     std::int32_t definition_id = -1;
-    std::int32_t quality = 0;
+    std::int32_t identified = 0;
     std::int32_t grid_x = 0;
     std::int32_t grid_y = 0;
     if (!cursor.readI32(category) ||
         !cursor.readI32(definition_id) ||
-        !cursor.readI32(quality) ||
+        !cursor.readI32(identified) ||
         (has_grid_position &&
          (!cursor.readI32(grid_x) ||
           !cursor.readI32(grid_y)))) {
@@ -231,7 +231,7 @@ bool decodeItem(
     *item = makeInventoryItem(*definition, quantity);
     item->grid_x = grid_x;
     item->grid_y = grid_y;
-    item->quality = quality;
+    item->identified = identified;
     item->retail_state = std::move(state);
     if (category == 0 || category == 1) {
         item->durability =
@@ -470,12 +470,12 @@ std::vector<std::uint8_t> encodedState(
             : std::vector<std::uint8_t>(state_size);
     if (item.category == 0 || item.category == 1) {
         writeStateI32(state, 47u * 4u, item.durability);
-        writeStateI32(state, 48u * 4u, item.quality);
+        writeStateI32(state, 48u * 4u, item.identified);
         if (item.retail_state.size() != state_size) {
             writeStateI32(state, 49u * 4u, -1);
         }
     } else if (item.category == 2) {
-        writeStateI32(state, 47u * 4u, item.quality);
+        writeStateI32(state, 47u * 4u, item.identified);
     } else if (item.category == 4) {
         writeStateI32(state, 0, item.quantity);
     }
@@ -506,7 +506,7 @@ bool encodeItem(
     }
     appendI32(bytes, item.category);
     appendI32(bytes, item.definition_id);
-    appendI32(bytes, item.quality);
+    appendI32(bytes, item.identified);
     if (include_grid_position) {
         appendI32(bytes, item.grid_x);
         appendI32(bytes, item.grid_y);

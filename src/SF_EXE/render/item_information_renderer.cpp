@@ -22,8 +22,8 @@ constexpr std::int32_t kInformationPadding = 4;
 constexpr std::int32_t kBackgroundOpacity = 600;
 constexpr std::int32_t kBorderOpacity = 500;
 
-gapi::Color informationColor(std::int32_t quality) {
-    switch (quality) {
+gapi::Color informationColor(std::int32_t variant) {
+    switch (variant) {
     case 1:
         return {192, 128, 128, 255};
     case 2:
@@ -153,7 +153,7 @@ void renderItemInformation(
         {
             text_x,
             text_y,
-            informationColor(item->quality),
+            informationColor(definition->variant),
         });
 }
 

@@ -368,11 +368,23 @@ metadata, and presentation actions 10 and 11 all keep retail ordering and
 random draws. Effect requests also distinguish a real combat packet pointer
 from the null pointers used by receiver-side visuals.
 
-Player and companion receivers remain separate and still need barriers, life
-and mana, durability, statuses, reflection, and death behavior. The enemy
-result also stays passive until movement consumption, world effect ownership,
-audio playback, network transport, kill accounting, death completion, drops,
-and the complete live AI update can be attached together.
+The player profile feeding the shared damage function is reconstructed too.
+It carries the character number and three already-derived combat values, then
+builds all eight elemental affinities from the retail two-dimensional anchor
+formula. Equipment combines definition and rolled instance values, a
+two-handed main weapon suppresses the off hand, accessories use their rolled
+values, and identified multi-cell category-two backpack items provide their
+passive values. Every channel clamps to `-10..10`. The trace also corrected
+two adjacent mistakes: saved item metadata is an identified flag rather than
+the tooltip color tier, and the two-handed weapon classifier uses raw weapon
+field `0xcc`, not the unrelated field at `0xdc`.
+
+The player receiver itself and companion receivers remain separate and still
+need barriers, life and mana, durability, statuses, reflection, and death
+behavior. The enemy result also stays passive until movement consumption,
+world effect ownership, audio playback, network transport, kill accounting,
+death completion, drops, and the complete live AI update can be attached
+together.
 
 The marker-to-sample lookup is reconstructed separately. It checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback
@@ -699,7 +711,7 @@ successful belt use plays its own medicine sound.
 Those owned items now survive the real `.Ssv` path. The obfuscated payload's
 retail item prefix restores and rewrites all nine player equipment slots, the
 backpack, belt, and Special Item owner, including exact grid placement, Gold
-quantities, durability, quality, and preserved instance bytes. Unknown
+quantities, durability, identified state, and preserved instance bytes. Unknown
 equipment records and the rest of an original save remain untouched until
 their owners are reconstructed. The counted transport flags following the
 owned-item prefix are also restored against Table 40, while new saves without
@@ -716,7 +728,7 @@ backpack, equipment, or special item for the same short delay as retail draws
 its name,
 non-zero combat values, durability, weight, required level, condition-adjusted
 sale price, and all eight elemental values. It uses the original six-pixel
-text grid, stat order, quality colors, pointer-relative position, and screen
+text grid, stat order, definition-variant colors, pointer-relative position, and screen
 edge clamping, including the padded translucent black backing and faint white
 frame. The values come from `Item.Ibn`; the Dagger, for example, shows the same
 10 attack, 120 hit rate, 50 attack speed, 300 durability, and 100 sale price as

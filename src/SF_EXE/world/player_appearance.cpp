@@ -80,7 +80,7 @@ void PlayerAppearance::refresh(
             main_hand->secondary_appearance_blue_strength);
     }
     if (!main_hand ||
-        !main_hand->suppresses_off_hand_appearance) {
+        !main_hand->suppresses_off_hand) {
         enablePrimary(
             definitionForSlot(EquipmentSlot::off_hand));
     }

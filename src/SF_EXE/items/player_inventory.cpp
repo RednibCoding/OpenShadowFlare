@@ -15,6 +15,14 @@ namespace {
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
 
+std::int32_t initiallyIdentified(
+    const ItemDefinition& definition) {
+    return definition.variant != 1 &&
+                   definition.variant != 2
+        ? 1
+        : 0;
+}
+
 bool findPlacement(
     const std::vector<InventoryItem>& items,
     std::int32_t width,
@@ -96,6 +104,7 @@ InventoryItem makeInventoryItem(
     item.width = definition.inventory_width;
     item.height = definition.inventory_height;
     item.durability = definition.maximum_durability;
+    item.identified = initiallyIdentified(definition);
     return item;
 }
 
@@ -113,7 +122,8 @@ bool PlayerInventory::add(
         quantity,
         1,
         1,
-        -1);
+        -1,
+        0);
 }
 
 bool PlayerInventory::add(
@@ -125,7 +135,8 @@ bool PlayerInventory::add(
         quantity,
         definition.inventory_width,
         definition.inventory_height,
-        definition.maximum_durability);
+        definition.maximum_durability,
+        initiallyIdentified(definition));
 }
 
 bool PlayerInventory::add(
@@ -134,7 +145,8 @@ bool PlayerInventory::add(
     std::int32_t quantity,
     std::int32_t width,
     std::int32_t height,
-    std::int32_t durability) {
+    std::int32_t durability,
+    std::int32_t identified) {
     if (quantity <= 0) {
         return false;
     }
@@ -188,7 +200,7 @@ bool PlayerInventory::add(
             width,
             height,
             durability,
-            0,
+            identified,
             {},
         });
         remaining -= stack_quantity;

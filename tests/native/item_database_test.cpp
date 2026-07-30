@@ -125,7 +125,7 @@ bool testRetailDatabase() {
                 short_sword->appearance_green_strength == 1000 &&
                 short_sword->appearance_blue_strength == 1000 &&
                 short_sword->secondary_appearance_part == -1 &&
-                !short_sword->suppresses_off_hand_appearance &&
+                !short_sword->suppresses_off_hand &&
             dagger &&
                 dagger->base_price == 400 &&
                 dagger->maximum_durability == 300 &&

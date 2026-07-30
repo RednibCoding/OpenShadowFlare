@@ -41,6 +41,9 @@ The first game-core slice covers:
 - the passive enemy damage receiver, including local and network ownership,
   reaction tables, life attribution, reflection, packet effects, audio and
   status requests, kill metadata, and death presentation selection
+- the player combat defense profile, including the two-dimensional elemental
+  anchors, equipment and rolled-item contributions, identified backpack
+  passives, two-handed off-hand suppression, and final affinity clamps
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
 - the initial `00000000` scenario's fixed MCT header and entry-point table
@@ -271,7 +274,7 @@ its repeated player record, then parses the exact item prefix used by
 `0x0044b580`: eleven optional equipment records followed by backpack, belt,
 and special-item containers. The nine player equipment slots, 9-by-4
 backpack, 4-by-2 belt, and 9-by-10 Special Item container now save and load
-their category, definition, grid position, Gold quantity, durability, quality,
+their category, definition, grid position, Gold quantity, durability, identified state,
 and category-sized instance state. The two still-unnamed equipment records
 and all trailing payload bytes remain byte-for-byte unchanged. The loader also
 skips the first counted flag array after the items and restores the following
@@ -814,6 +817,22 @@ Clicking the live world with an item follows the branch at `0x00441d96`.
 the drop is placed exactly 200 world units away on that direction's axes. It
 then re-enters the same ground-item resource, CAF, color, bounce, depth, hover,
 and pickup path as scenario-created items.
+
+The player-side 14-word receiver profile is reconstructed from `0x00443cb0`,
+`0x0044fba0`, `0x0044fca0`, and `0x0044fe30`. It carries family zero,
+character number, and the three derived attack/defense values, followed by
+eight elemental affinities. The base values use the retail Fire through Metal
+anchors and truncating distance formula. Main hand, helmet, body, boots,
+optional off hand, four accessories, and identified multi-cell category-two
+backpack items contribute their exact definition and/or rolled instance
+values before the final `-10..10` clamp.
+
+The same trace names item instance words 39 through 46 as the rolled elemental
+values and runtime `+0x1c` as the identified flag. Item name color instead
+comes from the definition variant. `0x004672f0` also proves that subtype one,
+subtype three, or weapon field `0xcc` suppresses the off hand; field `0xdc`
+does not. The portable item owner, save round trip, tooltip, player appearance,
+and combat profile now share those meanings.
 
 This is still not complete gameplay. Enemy AI and combat, dynamic collision
 for enemy movement, remaining script commands and operand domains, alternate

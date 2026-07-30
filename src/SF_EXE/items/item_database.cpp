@@ -322,10 +322,10 @@ bool ItemDatabase::decode(
                     definition.appearance_red_strength = field(172);
                     definition.appearance_green_strength = field(176);
                     definition.appearance_blue_strength = field(180);
-                    definition.suppresses_off_hand_appearance =
+                    definition.suppresses_off_hand =
                         definition.subtype == 1 ||
                         definition.subtype == 3 ||
-                        field(220) != 0;
+                        field(204) != 0;
                 } else {
                     definition.appearance_part = field(152);
                     definition.appearance_red_strength = field(156);

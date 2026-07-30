@@ -604,6 +604,41 @@ keeps those contributions available for combat, updates the visible 30 weight
 immediately, and rebuilds the player part mask without making the item panel
 own world rendering state.
 
+The player receiver at `0x00443cb0` builds its 14-word defense profile just
+before calling the shared damage routine. Word zero is the player family,
+word one is the character number, words two through four are the already
+derived attack, physical defense, and magical defense, and words five through
+twelve are Fire, Water, Earth, Thunder, Holy, Dark, Gel, and Metal. Retail
+does not write word 13 for this family, and none of its family-zero damage
+branches read it. The portable snapshot clears it rather than carrying an
+uninitialized stack value.
+
+`0x0044fba0` derives the eight base affinities from a two-dimensional player
+value. Its anchors are `(0,20000)`, `(0,-20000)`, `(-20000,0)`, `(20000,0)`,
+`(14140,-14140)`, `(-14140,14140)`, `(-14140,-14140)`, and
+`(14140,14140)`. Each result is
+`(20000 - trunc(distance)) / 2000`, with signed division toward zero.
+`0x0044fca0` then adds item contributions with 32-bit wrapping and clamps each
+final value to `-10..10`.
+
+`0x0044fe30` supplies those item values from the main hand, helmet, body,
+boots, optional off hand, and four accessories. Weapons and armor combine the
+definition's eight base values with instance words 39 through 46. Accessories
+use only those rolled instance words. An identified category-two backpack
+item also contributes when its inventory width is not one; ordinary one-cell
+accessories in the backpack do not. A main-hand weapon classified as
+two-handed suppresses the off hand here as well as in player drawing.
+`0x004672f0` proves that classifier uses weapon subtype one or three and the
+weapon field at raw offset `0xcc`; the previously suspected field at `0xdc`
+is unrelated.
+
+The third value in each serialized item header and runtime offset `+0x1c` is
+the identified flag, not an item-quality tier. The same flag is mirrored in
+instance word 48 for weapons and armor and word 47 for accessories. New
+variant-one and variant-two definitions begin unidentified; the other
+variants begin identified. Tooltip color comes from the definition's variant,
+so loading an identified ordinary item cannot accidentally recolor its name.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
@@ -623,8 +658,8 @@ OpenShadowFlare now writes that envelope and performs the inverse operation
 when preserving an existing save. It also follows the retail variable-sized
 item stream to restore and rewrite the nine known equipment slots, backpack,
 the belt, and the 9-by-10 Special Item owner. Grid positions, Gold quantities,
-durability, quality, and all still-unnamed instance bytes survive the round
-trip. The extra equipment records and unknown trailing payload bytes remain
+durability, identified state, and all still-unnamed instance bytes survive
+the round trip. The extra equipment records and unknown trailing payload bytes remain
 untouched. Loading also walks the next counted state array and restores the 51
 transport flags against Table 40. The rest of the dynamic payload is still
 pending.
