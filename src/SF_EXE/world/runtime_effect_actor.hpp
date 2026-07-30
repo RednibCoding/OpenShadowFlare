@@ -3,15 +3,19 @@
 
 #include "combat_packet.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "runtime_effect_target.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace osf {
 
 class EffectVisualResource;
+class RetailRandom;
 
 struct RuntimeEffectActorSpawnRequest {
+    std::int32_t actor_identifier = -1;
     std::int32_t controller_effect_number = -1;
     std::int32_t resource_id = -1;
     std::int32_t owner_kind = 0;
@@ -31,6 +35,10 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t target_collision_start = -1;
     std::int32_t target_collision_end = -1;
     bool process_every_target = false;
+    bool expire_on_target = false;
+    bool remember_targets = false;
+    RuntimeEffectAudioPair target_audio;
+    RuntimeEffectAudioPair environment_audio;
     std::int32_t animation_chart = 0;
     std::int32_t animation_direction = 8;
     std::int32_t animation_speed = 1000;
@@ -44,6 +52,9 @@ struct RuntimeEffectActorUpdate {
     bool target_collision_active = false;
     bool environment_collision = false;
     bool expired = false;
+    std::vector<RuntimeEffectTargetContact>
+        target_contacts;
+    std::vector<RuntimeEffectAudioRequest> audio;
 };
 
 class RuntimeEffectActor {
@@ -54,6 +65,11 @@ public:
     RuntimeEffectActorUpdate update(
         const GroundMap& ground,
         const ObjectMap& objects);
+    RuntimeEffectActorUpdate update(
+        const GroundMap& ground,
+        const ObjectMap& objects,
+        const std::vector<RuntimeEffectTargetSnapshot>& targets,
+        RetailRandom& random);
 
     std::int32_t controllerEffectNumber() const;
     std::int32_t resourceId() const;
@@ -70,6 +86,9 @@ public:
     std::int32_t lifetime() const;
     bool visible() const;
     bool expired() const;
+    bool hasPacket() const;
+    const CombatPacket& packet() const;
+    std::size_t rememberedTargetCount() const;
     bool partEnabled(std::size_t part) const;
     const gapi::NjpImage& patterns() const;
     const gapi::CafAnimation& animation() const;
@@ -84,6 +103,7 @@ private:
     std::int32_t movement_counter_ = 0;
     std::int32_t lifetime_ = -1;
     bool expired_ = false;
+    RuntimeEffectTargetMemory target_memory_;
     const EffectVisualResource* visual_ = nullptr;
 };
 

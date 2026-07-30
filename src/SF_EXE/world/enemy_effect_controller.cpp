@@ -118,6 +118,10 @@ RuntimeEffectActorSpawnRequest childActor(
     };
     actor.expire_on_environment_collision = true;
     actor.target_collision_start = 0;
+    actor.expire_on_target = true;
+    actor.remember_targets =
+        request.constructor_value_22 == 1;
+    actor.target_audio = {0, 20};
     actor.animation_direction =
         retailDirectionForAngle(
             request.direction_radians);

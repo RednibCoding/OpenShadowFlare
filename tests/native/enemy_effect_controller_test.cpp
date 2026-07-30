@@ -110,6 +110,10 @@ bool testTypeOneZeroDelay() {
                 child.expire_on_environment_collision &&
                 child.target_collision_start == 0 &&
                 child.target_collision_end == -1 &&
+                child.expire_on_target &&
+                !child.remember_targets &&
+                child.target_audio.bank == 0 &&
+                child.target_audio.sample == 20 &&
                 child.animation_chart == 0 &&
                 child.animation_direction == 1 &&
                 child.has_packet &&
@@ -132,6 +136,7 @@ bool testTypeOneZeroDelay() {
 bool testTypeTwoDelayedReresolution() {
     osf::CombatEffectSpawnRequest request =
         requestFor(10002, 2);
+    request.constructor_value_22 = 1;
     request.direction_radians =
         3.14159265358979323846 / 2.0;
 
@@ -179,6 +184,7 @@ bool testTypeTwoDelayedReresolution() {
             third.actor_spawns[0].position.x == 300 &&
             third.actor_spawns[0].position.y == 220 &&
             third.actor_spawns[0].animation_direction == 3 &&
+            third.actor_spawns[0].remember_targets &&
             third.audio_count == 1 &&
             third.audio[0].sample == 94 &&
             third.audio[0].position.x == 300 &&

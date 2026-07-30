@@ -1,4 +1,5 @@
 #include "resources/effect_visual_resource.hpp"
+#include "core/retail_random.hpp"
 #include "world/enemy_effect_controller.hpp"
 #include "world/movement_controller.hpp"
 #include "world/runtime_effect_actor.hpp"
@@ -256,6 +257,7 @@ bool testEnvironmentCollisionAndExpiry() {
         controller.update({true, {-180, 0}});
     osf::RuntimeEffectActorSpawnRequest request =
         controller_update.actor_spawns[1];
+    request.environment_audio = {3, 77};
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000010, visual)) {
@@ -273,6 +275,11 @@ bool testEnvironmentCollisionAndExpiry() {
                 second.intended_position.x == 60 &&
                 second.environment_collision &&
                 second.expired &&
+                second.audio.size() == 1 &&
+                second.audio[0].sound.bank == 3 &&
+                second.audio[0].sound.sample == 77 &&
+                second.audio[0].position.x == 0 &&
+                second.audio[0].position.y == 0 &&
                 actor.position().x == 49,
             "The forward actor did not stop at the last free "
             "point and expire on static contact.")) {
@@ -325,6 +332,131 @@ bool testInclusiveTargetWindow() {
     return true;
 }
 
+bool testTargetQueryPrecedesMovement() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.actor_identifier = 50000017;
+    request.resource_id = 10000010;
+    request.collide_with_environment = false;
+    request.travel_speed = 10;
+    request.target_mask = 1;
+    request.target_collision_start = 1;
+    request.target_collision_end = 1;
+    request.animation_direction = 1;
+    request.has_packet = true;
+    request.packet.write(1, 3);
+    request.packet.write(36, 1000);
+
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind =
+        osf::RuntimeEffectTargetKind::player;
+    target.character_number = 0;
+    target.identifier = 701;
+    target.current_life = 100;
+
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(request, visual),
+            "The target-query runtime actor did not "
+            "initialize.")) {
+        return false;
+    }
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    osf::RetailRandom random(1);
+    const std::vector<osf::RuntimeEffectTargetSnapshot>
+        targets{target};
+    const auto first =
+        actor.update(ground, objects, targets, random);
+    const auto second =
+        actor.update(ground, objects, targets, random);
+    const auto third =
+        actor.update(ground, objects, targets, random);
+    if (!check(
+            !first.target_collision_active &&
+                first.target_contacts.empty(),
+            "The runtime actor opened its target window before "
+            "the authored start update.")) {
+        return false;
+    }
+    if (!check(
+            second.target_collision_active &&
+                second.target_contacts.size() == 1,
+            "The runtime actor did not query the target at its "
+            "pre-movement position.")) {
+        return false;
+    }
+    return check(
+        second.target_contacts[0].identifier == 701 &&
+            second.target_contacts[0].impact_origin.x == 0 &&
+            second.target_contacts[0].impact_origin.y == 0 &&
+            second.target_contacts[0].receiver_action ==
+                osf::RuntimeEffectReceiverAction::apply_packet &&
+            actor.hasPacket() &&
+            actor.packet()[36] == 1000 &&
+            actor.position().x == 20 &&
+            !third.target_collision_active &&
+            third.target_contacts.empty(),
+        "The runtime actor changed receiver dispatch, movement, "
+        "or the inclusive target-window end.");
+}
+
+bool testObjectAndBlockedStartAudioOrder() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.actor_identifier = 50000017;
+    request.resource_id = 10000010;
+    request.position = {100, 0};
+    request.target_mask = 0x10;
+    request.target_collision_start = 0;
+    request.expire_on_environment_collision = true;
+    request.environment_audio = {3, 77};
+    request.animation_direction = 1;
+
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind =
+        osf::RuntimeEffectTargetKind::scenario_object;
+    target.character_number = 17000001;
+    target.identifier = 801;
+    target.position = {100, 0};
+
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(request, visual),
+            "The blocked-start runtime actor did not "
+            "initialize.")) {
+        return false;
+    }
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects =
+        oneBlockingObject(100, 0);
+    osf::RetailRandom random(1);
+    const auto update = actor.update(
+        ground,
+        objects,
+        {target},
+        random);
+    return check(
+        update.target_contacts.size() == 1 &&
+            update.environment_collision &&
+            update.expired &&
+            update.audio.size() == 2 &&
+            update.audio[0].sound.bank == 3 &&
+            update.audio[0].sound.sample == 77 &&
+            update.audio[1].sound.bank == 3 &&
+            update.audio[1].sound.sample == 77 &&
+            update.audio[0].position.x == 100 &&
+            update.audio[1].position.x == 100,
+        "Object contact followed by a blocked static start did "
+        "not preserve the retail two-callback audio order.");
+}
+
 bool testSpecialEnvironmentFiltering() {
     const osf::GroundMap ground =
         oneSpecialBlockingGround();
@@ -374,6 +506,8 @@ int main() {
         !testForwardMovementAndInterpolation() ||
         !testEnvironmentCollisionAndExpiry() ||
         !testInclusiveTargetWindow() ||
+        !testTargetQueryPrecedesMovement() ||
+        !testObjectAndBlockedStartAudioOrder() ||
         !testSpecialEnvironmentFiltering()) {
         return 1;
     }

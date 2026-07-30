@@ -147,6 +147,7 @@ add_library(
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
   world/runtime_effect_actor.cpp
+  world/runtime_effect_target.cpp
   world/scenario_data.cpp
   world/scenario_entity_state.cpp
   world/scenario_object_actor.cpp

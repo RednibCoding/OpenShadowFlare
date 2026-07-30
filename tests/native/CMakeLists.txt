@@ -625,6 +625,35 @@ if(TARGET sf_game_core)
     COMMAND runtime_effect_actor_test)
 
   add_executable(
+    runtime_effect_target_test
+    runtime_effect_target_test.cpp
+  )
+  target_link_libraries(
+    runtime_effect_target_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    runtime_effect_target_test PRIVATE cxx_std_17)
+  set_target_properties(
+    runtime_effect_target_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      runtime_effect_target_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      runtime_effect_target_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME runtime_effect_target
+    COMMAND runtime_effect_target_test)
+
+  add_executable(
     enemy_direct_impact_test
     enemy_direct_impact_test.cpp
   )

@@ -1289,13 +1289,33 @@ creates both actors in one update, a negative delay remains active, missing
 owners resolve from zero, and omitted origin or judgement pointers do not leak
 stale values.
 
-`RuntimeEffectActor` now ports the next shared part: chart-zero source lifetime,
-free movement from the immutable spawn point, the zero-distance first update,
-retail integer projection, static OBL/GND sweeping, the special-environment
-exclusion bit, contact expiry, inclusive target-window timing, CAF frame
-scaling, and interpolated render snapshots. Target selection and receiver
-dispatch are still passive, so the actors are not attached to live enemies
-yet.
+`RuntimeEffectActor` now ports the next shared parts: chart-zero source
+lifetime, free movement from the immutable spawn point, the zero-distance
+first update, retail integer projection, static OBL/GND sweeping, the
+special-environment exclusion bit, contact expiry, inclusive target-window
+timing, CAF frame scaling, and interpolated render snapshots.
+
+The target query is deliberately separate from the movement sweep. At the
+start of an active collision-window update it intersects the actor's current
+judgement rectangle with dynamic objects in display-query order. Mask bits
+`1`, `2`, `4`, `8`, and `16` select players, locally owned companions,
+enemies, NPCs, and scenario objects. Exact identity, life, owner, active,
+display, runtime-state, and self filters run before either every eligible
+target is processed or the first nearest position wins a strict distance tie.
+
+Players, companions, and enemies use packet word 1 to select physical or
+magical evasion and packet word 36 as hit rating. The `20..98` chance consumes
+one retail random value per processed target even without a receiver packet.
+The optional repeat list records an identity before that roll, including a
+miss, and stops growing at 500 entries. Typed packet/miss requests preserve
+the receiver boundary. Target and object sound pairs share the original
+once-per-update guard, including the distinct NPC multi-target spatial mode,
+while static contact uses the actor's pre-movement position.
+
+This common behavior is still passive at the world boundary. The next slice
+will own the live controller and actor lists, construct target snapshots from
+the real world owners, apply the typed receiver requests, queue their sounds,
+and render the two type-1/type-2 actor resources.
 
 ## Enemy kill rewards
 

@@ -912,10 +912,21 @@ its first passive slice: chart-zero source lifetime, forward movement from the
 spawn point, the zero-distance first update, static collision, contact expiry,
 special-ground filtering, and inclusive target-window timing.
 
-The next slice is target filtering, hit bookkeeping, evasion, receiver
-dispatch, and configured positional audio. Types 1 and 2 should only be
-connected to live enemy attacks once that common path can carry their actual
-hit and sound behavior.
+The common target half is reconstructed now too. The actor queries its current
+position before movement, preserves display-query order, handles all five mask
+families, chooses either every eligible target or the first nearest target,
+and keeps the retail 500-identity repeat-hit list. Physical and magical
+evasion consume the portable Visual C++ random stream in retail order, misses
+remain remembered, and typed receiver and positional-audio requests retain
+the original once-per-update sound guard and NPC mode.
+
+The next slice is the live owner for type-1 and type-2 controllers and runtime
+actors. It must build snapshots from the actual player and Wasteland enemies,
+apply successful and missed receiver requests, queue both configured sound
+fields at the actor position, render both actor resources, and remove each
+controller and actor on its own lifetime. A shipped live enemy case should
+prove damage, sound, visuals, repeat-hit behavior, and save ownership together
+before these two effect types are called complete.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

@@ -74,8 +74,21 @@ packet copying, projection, and positional samples. Its actor outputs are
 paired with a passive `RuntimeEffectActor` that now covers source-animation
 lifetime, free forward movement, static collision and special-ground
 filtering, contact expiry, chart-zero frame timing, and the inclusive target
-window. Target filtering and receiver dispatch are still needed before either
-effect is attached to live enemies. The other ten specialized controllers
+window.
+
+The common target path is portable too. It queries overlap at the current
+position before movement, filters the five target bits and exact identities,
+keeps living/current/local/active/display state, and preserves strict
+first-nearest or query-order multi-target processing. The optional 500-entry
+identity list records player, companion, and enemy contacts before the hit
+roll, so misses cannot be retried. Packet word 1 selects physical or magical
+evasion, word 36 supplies hit rating, and the Visual C++ random stream feeds
+the `20..98` check. Typed receiver/miss requests and the two configured audio
+pairs preserve the retail one-sound guard and NPC multi-target mode.
+
+The world still needs to own and render these controllers and actors, build
+their live target snapshots, and apply those receiver requests before types 1
+and 2 are attached to enemy attacks. The other ten specialized controllers
 also remain to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
