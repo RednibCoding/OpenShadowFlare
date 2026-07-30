@@ -342,6 +342,33 @@ if(TARGET sf_game_core)
     COMMAND enemy_ai_action_test)
 
   add_executable(
+    enemy_target_selector_test
+    enemy_target_selector_test.cpp
+  )
+  target_link_libraries(
+    enemy_target_selector_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    enemy_target_selector_test PRIVATE cxx_std_17)
+  set_target_properties(
+    enemy_target_selector_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      enemy_target_selector_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      enemy_target_selector_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME enemy_target_selector
+    COMMAND enemy_target_selector_test)
+
+  add_executable(
     movement_destination_test
     movement_destination_test.cpp
   )

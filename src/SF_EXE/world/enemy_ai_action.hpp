@@ -1,27 +1,14 @@
 #ifndef OPENSHADOWFLARE_ENEMY_AI_ACTION_HPP
 #define OPENSHADOWFLARE_ENEMY_AI_ACTION_HPP
 
+#include "enemy_target_selector.hpp"
 #include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_destination_selector.hpp"
 
 #include <cstdint>
-#include <functional>
 
 namespace osf {
-
-struct EnemyAiTarget {
-    bool found = false;
-    MovementTargetKind kind = MovementTargetKind::none;
-    std::int32_t identifier = -1;
-};
-
-using EnemyAiTargetSearch =
-    std::function<EnemyAiTarget(
-        std::int32_t minimum_distance,
-        std::int32_t maximum_distance)>;
-using EnemyAiDefaultTargetSearch =
-    std::function<EnemyAiTarget()>;
 
 struct EnemyAiActionContext {
     WorldPosition spawn_position;
@@ -30,8 +17,8 @@ struct EnemyAiActionContext {
     std::int32_t presentation_action = 7;
     WorldPosition walk_point;
     std::int32_t walk_point_speed = 0;
-    EnemyAiTargetSearch target_in_range;
-    EnemyAiDefaultTargetSearch default_target;
+    EnemyTargetSearch target_in_range;
+    EnemyDefaultTargetSearch default_target;
 };
 
 struct EnemyAiActionUpdate {

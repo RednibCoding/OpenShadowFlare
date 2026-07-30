@@ -157,7 +157,7 @@ bool testRetailConditions() {
             std::int32_t maximum) {
             queried_minimum = minimum;
             queried_maximum = maximum;
-            return false;
+            return osf::EnemyAiTarget{};
         };
     osf::RetailRandom random;
     osf::EnemyAiSelection selection =
@@ -176,7 +176,11 @@ bool testRetailConditions() {
     context.current_life = 20;
     context.target_in_range =
         [](std::int32_t, std::int32_t) {
-            return true;
+            return osf::EnemyAiTarget{
+                true,
+                osf::MovementTargetKind::player,
+                0,
+                0};
         };
     selection = osf::evaluateEnemyAiEvent(
         *control, 11, context, random);
@@ -190,7 +194,7 @@ bool testRetailConditions() {
     context.current_life = 25;
     context.target_in_range =
         [](std::int32_t, std::int32_t) {
-            return false;
+            return osf::EnemyAiTarget{};
         };
     selection = osf::evaluateEnemyAiEvent(
         *control, 11, context, random);
@@ -228,7 +232,7 @@ bool testDefaultEventFallback() {
     context.maximum_life = 100;
     context.target_in_range =
         [](std::int32_t, std::int32_t) {
-            return false;
+            return osf::EnemyAiTarget{};
         };
     osf::RetailRandom random;
     const osf::EnemyAiSelection fallback =
@@ -333,7 +337,7 @@ bool testRetailDefaultEvent() {
     context.maximum_life = 1;
     context.target_in_range =
         [](std::int32_t, std::int32_t) {
-            return false;
+            return osf::EnemyAiTarget{};
         };
     osf::RetailRandom random;
     const osf::EnemyAiSelection selection =

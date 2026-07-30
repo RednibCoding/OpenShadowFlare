@@ -381,10 +381,21 @@ distance limits, parameter zero supplies priority, and parameter two supplies
 weight. Its temporary linked list reverses file order and retains a later
 lower-priority candidate until another new maximum clears the list; the
 portable path preserves that retail quirk. Events 1 through 10, 16, and 17
-fall back to event zero when nothing is selected. Live attachment remains
-pending until `0x00459500` target lookup, enemy life fields, selected-action
-storage, and the native action dispatcher can be connected without a partial
+fall back to event zero when nothing is selected. Enemy life fields, target
+lookup, and the native action dispatcher are now reconstructed behind this
+boundary. Live attachment still waits for selected-action storage and
+complete movement/presentation consumers so it cannot expose a partial
 behavior path.
+
+Target lookup itself is pinned at both native entry points. `0x00459500`
+checks the four player slots first, accepting active state exactly one and
+choosing the first nearest same-scenario actor inside inclusive bounds. Only
+when no player qualifies does it inspect companion character numbers
+`16000000` through `16000003`, requiring the script-active bit, owner mode
+zero, and optional positive life. `0x004593f0` is the default path: it accepts
+any nonzero player active state and its type-five companion fallback does not
+repeat the script-active test. Both measure judgement-rectangle distance,
+prefer every player over every companion, and preserve first-entry ties.
 
 The first native dispatcher pair is reconstructed separately. `0x0045c350`
 implements action zero as a timed idle: AID parameter one is its duration,

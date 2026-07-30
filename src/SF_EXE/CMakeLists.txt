@@ -110,6 +110,7 @@ add_library(
   world/enemy_actor.cpp
   world/enemy_ai_action.cpp
   world/enemy_ai_evaluator.cpp
+  world/enemy_target_selector.cpp
   world/ground_item.cpp
   world/map_exploration.cpp
   world/mission_catalog.cpp

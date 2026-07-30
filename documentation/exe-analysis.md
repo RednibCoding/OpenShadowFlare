@@ -185,7 +185,22 @@ minimum and maximum in conditions one and two; condition three enables the
 same kind of inclusive range around target distance using conditions four and
 five. A bound of `-1` is open. The target query at `0x00459500` searches the
 four player slots and then companion character numbers `16000000` through
-`16000003`.
+`16000003`. A player is eligible only when its active state is exactly one,
+it belongs to the enemy's scenario, and—when requested—its life is positive.
+The nearest eligible player wins, with the lower slot winning a tie. The
+companion pass only runs when no player qualified. It requires the actor's
+script-active bit, positive life when requested, and zero in the owning
+player's companion-mode field. Companions use the same strict-nearer tie rule.
+All distance tests use the two judgement rectangles, not actor origins.
+
+The default lookup at `0x004593f0` is deliberately separate. It still prefers
+any eligible player over every companion, but accepts any nonzero player
+active state and searches all type-five companion actors in scenario order.
+Its companion path does not repeat the script-active-bit test, though it still
+requires owner mode zero and optional positive life. The portable enemy target
+selector keeps both entry points behind one typed query result so the event
+evaluator and native movement/presentation actions cannot disagree about
+target kind, identifier, or measured distance.
 
 Eligible actions are copied into a temporary linked list at position zero.
 Finding a priority above the current maximum clears that list first, but a
@@ -194,8 +209,10 @@ in reverse file order and may include those later lower-priority candidates.
 This is observable data behavior: 33 priority decreases exist inside the
 shipped event buckets. If no action is chosen, requested events 1 through 10,
 16, and 17 retry event zero. The portable event evaluator preserves this path
-as a deterministic unit, but does not update a live enemy until the remaining
-actor fields and native action dispatcher have been traced.
+as a deterministic unit. Its target-condition callback now consumes the same
+typed result as the action dispatcher. Live enemy updates remain off until
+selected-action storage and the complete movement/presentation consumers can
+be connected without a partial behavior path.
 
 The native dispatcher at `0x00459340` sends selected action zero to
 `0x0045c350` and action one to `0x0045c3c0`. Action zero resets its elapsed

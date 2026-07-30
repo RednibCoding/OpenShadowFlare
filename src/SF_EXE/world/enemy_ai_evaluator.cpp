@@ -21,9 +21,13 @@ bool eligible(
     const EnemyAiEvaluationContext& context) {
     if (action.conditions[kTargetConditionEnabled] == 1 &&
         (!context.target_in_range ||
-         !context.target_in_range(
-             action.conditions[kMinimumTargetDistance],
-             action.conditions[kMaximumTargetDistance]))) {
+         !context
+              .target_in_range(
+                  action.conditions[
+                      kMinimumTargetDistance],
+                  action.conditions[
+                      kMaximumTargetDistance])
+              .found)) {
         return false;
     }
 

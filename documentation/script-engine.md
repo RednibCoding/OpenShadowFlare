@@ -98,8 +98,9 @@ the proven filtering, candidate-list quirk, weighted draw, and event-zero
 fallback without putting runtime policy into the data library.
 
 It is deliberately not connected to live enemies yet. Enemy life fields,
-target querying, selected-action storage, and the native action dispatcher
-must be reconstructed together before evaluation can safely alter an actor.
+target querying, and the native action dispatcher are reconstructed behind
+that boundary; selected-action storage and presentation completion still need
+to land alongside live movement before evaluation can safely alter an actor.
 AI lists, probabilities, and condition values must come from `Control.aid`,
 not from NPC-specific C++ branches.
 
@@ -128,6 +129,15 @@ rectangle-edge projection. Target modes use judgement-bound distance, retain
 their old destination until the authored refresh interval, and preserve both
 percentage and angle random draws. It only chooses the next destination;
 collision and stepping stay in the movement controller.
+
+Target acquisition is shared too. The ranged query checks the four player
+slots first and only searches companion character numbers `16000000` through
+`16000003` when no player qualifies. Each group chooses the first actor at the
+nearest judgement-bound distance, and `-1` leaves a distance end open. The
+default query has its own retail activity rules but keeps the same
+player-before-companion priority. Both return one typed target record used by
+the evaluator and dispatcher; scripts and individual enemies do not maintain
+parallel target lists.
 
 Actions two through seven are the two three-variant animated action families.
 Their native handlers map them directly to presentation actions one through

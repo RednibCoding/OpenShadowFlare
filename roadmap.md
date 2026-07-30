@@ -274,9 +274,10 @@ library. It applies the proven life-percentage and target-range conditions,
 preserves retail's reverse temporary-list order and later-lower-priority quirk,
 draws with parameter two as the weight, and falls back to event zero for the
 same event set as retail. It is not attached to live enemies yet: doing that
-before their life fields, target query, selected-action state, and native
-action dispatcher are all present would create a convincing but incomplete
-behavior path.
+before selected-action storage and complete movement/presentation consumers
+are present would create a convincing but incomplete behavior path. Enemy
+life, target queries, and the native dispatcher are now ready behind that
+boundary.
 
 The live actor now has the initializer fields needed by those next steps.
 Pre-controller MCT values 1 through 4 are the spawn-relative patrol rectangle,
@@ -305,6 +306,16 @@ behavior. It emits a destination only; collision and stepping continue to
 belong to the shared movement controller. Presentation-side targeting,
 damage, animation completion, and live enemy attachment still have to land
 together before this code drives a live enemy.
+
+The two retail target searches are reconstructed as one shared service with
+separate ranged and default entry points. Both search player slots before
+companions regardless of distance and preserve strict-nearer tie ordering.
+The ranged path uses active-state-one same-scenario players followed by the
+four exact companion character numbers, inclusive judgement-bound limits,
+optional living checks, script activity, and owner mode. The default path
+keeps its looser nonzero player state and does not apply the companion
+script-active gate. The evaluator and dispatcher now consume the same typed
+target result rather than maintaining look-alike boolean queries.
 
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small

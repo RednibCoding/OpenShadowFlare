@@ -135,8 +135,8 @@ decoded once when a world starts, and every shipped MCT enemy name resolves to
 the exact list and stable index used by retail. The executable-owned event
 evaluator now reproduces the confirmed life and target conditions, retail
 candidate ordering, weighted choice, and event-zero fallback. It remains
-dormant until live target search and the movement/presentation consumers can
-be connected as one complete behavior slice.
+dormant until selected-action state and the complete movement/presentation
+consumers can be connected as one behavior slice.
 
 The first dispatcher unit is ready behind the same boundary. Native actions
 zero and one reproduce authored waiting and bounded patrol cycles, including
@@ -156,6 +156,13 @@ otherwise surprising no-step result of non-player retreat mode. Collision and
 path advancement remain the movement controller's job. The complete enemy
 dispatcher still stays behind the live boundary until movement and
 presentation can be attached without a partial behavior path.
+
+Enemy target acquisition has the same kind of boundary. Its ranged and
+default entry points preserve the retail player-before-companion priority,
+nearest and tie rules, judgement-bound distances, activity/life gates, and
+the four exact companion IDs. The event evaluator and action dispatcher
+consume one typed target result, so a later live hookup cannot silently use
+different eligibility logic for conditions and movement.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
