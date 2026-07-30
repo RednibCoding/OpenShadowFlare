@@ -31,6 +31,10 @@
 #include <string.h>
 #include <time.h>
 
+/* Autorelease-pool runtime entry points (stable ObjC runtime ABI). */
+extern void *objc_autoreleasePoolPush(void);
+extern void objc_autoreleasePoolPop(void *pool);
+
 /*
  * Keep the backend buildable with a standard macOS C toolchain without making
  * CoreGraphics headers part of LWL's public/build interface. These are the
@@ -199,7 +203,14 @@ static CGPoint msg_point(id obj, const char *name) {
 }
 
 static CGRect msg_rect(id obj, const char *name) {
+#if defined(__x86_64__)
+  CGRect result;
+  ((void (*)(CGRect *, id, SEL)) objc_msgSend_stret)(
+    &result, obj, sel_registerName(name));
+  return result;
+#else
   return ((CGRect (*)(id, SEL)) objc_msgSend)(obj, sel_registerName(name));
+#endif
 }
 
 static id msg_id_ulong(id obj, const char *name, LwlNSUInteger arg) {
@@ -772,6 +783,8 @@ static bool translate_event(LwlWindow *window, id event, LwlEvent *out) {
 bool lwl_poll_event(LwlWindow *window, LwlEvent *event) {
   if (queue_pop(window, event)) { return true; }
 
+  void *pool = objc_autoreleasePoolPush();
+  bool got = false;
   id app = msg_id((id) objc_getClass("NSApplication"), "sharedApplication");
   for (;;) {
     id ns_event = ((id (*)(id, SEL, LwlNSUInteger, id, id, BOOL)) objc_msgSend)(
@@ -781,19 +794,22 @@ bool lwl_poll_event(LwlWindow *window, LwlEvent *event) {
       nil,
       ns_string("kCFRunLoopDefaultMode"),
       YES);
-    if (!ns_event) { return false; }
+    if (!ns_event) { break; }
     if (msg_id(ns_event, "window") != window->ns_window) {
       msg_void_id(app, "sendEvent:", ns_event);
       continue;
     }
-    if (translate_event(window, ns_event, event)) { return true; }
+    if (translate_event(window, ns_event, event)) { got = true; break; }
     msg_void_id(app, "sendEvent:", ns_event);
   }
+  objc_autoreleasePoolPop(pool);
+  return got;
 }
 
 bool lwl_wait_event(LwlWindow *window, double timeout_seconds) {
   if (window->queue_head != window->queue_tail) { return true; }
 
+  void *pool = objc_autoreleasePoolPush();
   id date = nil;
   if (timeout_seconds < 0.0) {
     date = msg_id((id) objc_getClass("NSDate"), "distantFuture");
@@ -812,7 +828,9 @@ bool lwl_wait_event(LwlWindow *window, double timeout_seconds) {
     date,
     ns_string("kCFRunLoopDefaultMode"),
     NO);
-  return event != nil;
+  bool has_event = event != nil;
+  objc_autoreleasePoolPop(pool);
+  return has_event;
 }
 
 char* lwl_clipboard_get(LwlWindow *window) {
