@@ -189,17 +189,17 @@ bool WorldScene::dropInventoryItem(
     }
 
     const std::size_t first_item =
-        ground_items_.size();
+        scenario_world_.groundItems().size();
     const std::int32_t first_id =
         next_ground_item_id_;
     if (!createGroundItem(
-            ground_items_,
+            scenario_world_.groundItems(),
             item.category,
             item.definition_id,
             drop_position,
             item.quantity) ||
         !prepareGroundItems(first_item)) {
-        ground_items_.resize(first_item);
+        scenario_world_.groundItems().resize(first_item);
         next_ground_item_id_ = first_id;
         return false;
     }
@@ -236,7 +236,8 @@ bool WorldScene::activateTransportDestination(
     // local player zero, so Remote Town's table value 50 selects MCT
     // entry 200.
     const ScenarioEntry* entry =
-        scenario_.findEntry(destination->entry * 4);
+        scenario_world_.data().findEntry(
+            destination->entry * 4);
     if (!entry) {
         return false;
     }
@@ -245,7 +246,8 @@ bool WorldScene::activateTransportDestination(
     player_.relocate(
         {entry->world_x, entry->world_y},
         entry->direction);
-    map_exploration_.reveal(player_.position());
+    scenario_world_.mapExploration().reveal(
+        player_.position());
     return true;
 }
 
@@ -359,11 +361,11 @@ const gapi::NjpImage& WorldScene::speechPatterns() const {
 
 const gapi::NjpImage&
 WorldScene::mapOverviewPatterns() const {
-    return map_overview_patterns_;
+    return scenario_world_.mapOverviewPatterns();
 }
 
 const MapExploration& WorldScene::mapExploration() const {
-    return map_exploration_;
+    return scenario_world_.mapExploration();
 }
 
 void WorldScene::advanceConversation() {
@@ -373,7 +375,7 @@ void WorldScene::advanceConversation() {
     const script::StepResult result =
         scenario_script_.resume();
     if (result != script::StepResult::waiting_for_message) {
-        for (NpcActor& npc : npcs_) {
+        for (NpcActor& npc : scenario_world_.people()) {
             npc.endInteraction();
         }
     }
@@ -389,7 +391,7 @@ void WorldScene::chooseConversationOption(
     const script::StepResult result =
         scenario_script_.resume(option);
     if (result != script::StepResult::waiting_for_message) {
-        for (NpcActor& npc : npcs_) {
+        for (NpcActor& npc : scenario_world_.people()) {
             npc.endInteraction();
         }
     }
@@ -440,11 +442,11 @@ WorldScene::pointerCandidatesAtScreenPosition(
         };
     std::vector<WorldPointerCandidate> candidates;
     candidates.reserve(
-        scenario_objects_.size() +
-        npcs_.size() +
-        ground_items_.size());
+        scenario_world_.objects().size() +
+        scenario_world_.people().size() +
+        scenario_world_.groundItems().size());
     for (const ScenarioObjectActor& object :
-         scenario_objects_) {
+         scenario_world_.objects()) {
         if (!object.visible() ||
             !object.pointerEnabled() ||
             !object.drawEnabled()) {
@@ -527,7 +529,7 @@ WorldScene::pointerCandidatesAtScreenPosition(
             pointerDistanceSquared(object.position()),
         });
     }
-    for (const NpcActor& npc : npcs_) {
+    for (const NpcActor& npc : scenario_world_.people()) {
         if (!npc.visible() || !npc.pointerEnabled()) {
             continue;
         }
@@ -571,7 +573,8 @@ WorldScene::pointerCandidatesAtScreenPosition(
             pointerDistanceSquared(npc.position()),
         });
     }
-    for (const GroundItem& item : ground_items_) {
+    for (const GroundItem& item :
+         scenario_world_.groundItems()) {
         const ItemWorldResource* resource =
             itemWorldResource(item.resource_id);
         const auto part_enabled = [](std::size_t) {
@@ -623,100 +626,116 @@ WorldScene::pointerCandidatesAtScreenPosition(
 
 NpcActor* WorldScene::findScriptNpc(
     std::int32_t character_number) {
+    std::vector<NpcActor>& people =
+        scenario_world_.people();
     const auto found = std::find_if(
-        npcs_.begin(),
-        npcs_.end(),
+        people.begin(),
+        people.end(),
         [character_number](const NpcActor& npc) {
             return 12000000 + npc.id() ==
                    character_number;
         });
-    return found == npcs_.end() ? nullptr : &*found;
+    return found == people.end() ? nullptr : &*found;
 }
 
 const NpcActor* WorldScene::findScriptNpc(
     std::int32_t character_number) const {
+    const std::vector<NpcActor>& people =
+        scenario_world_.people();
     const auto found = std::find_if(
-        npcs_.begin(),
-        npcs_.end(),
+        people.begin(),
+        people.end(),
         [character_number](const NpcActor& npc) {
             return 12000000 + npc.id() ==
                    character_number;
         });
-    return found == npcs_.end() ? nullptr : &*found;
+    return found == people.end() ? nullptr : &*found;
 }
 
 ScenarioObjectActor* WorldScene::findScriptObject(
     std::int32_t character_number) {
+    std::vector<ScenarioObjectActor>& objects =
+        scenario_world_.objects();
     const auto found = std::find_if(
-        scenario_objects_.begin(),
-        scenario_objects_.end(),
+        objects.begin(),
+        objects.end(),
         [character_number](const ScenarioObjectActor& object) {
             return object.characterNumber() ==
                    character_number;
         });
-    return found == scenario_objects_.end()
+    return found == objects.end()
                ? nullptr
                : &*found;
 }
 
 const ScenarioObjectActor* WorldScene::findScriptObject(
     std::int32_t character_number) const {
+    const std::vector<ScenarioObjectActor>& objects =
+        scenario_world_.objects();
     const auto found = std::find_if(
-        scenario_objects_.begin(),
-        scenario_objects_.end(),
+        objects.begin(),
+        objects.end(),
         [character_number](const ScenarioObjectActor& object) {
             return object.characterNumber() ==
                    character_number;
         });
-    return found == scenario_objects_.end()
+    return found == objects.end()
                ? nullptr
                : &*found;
 }
 
 NpcActor* WorldScene::findNpc(std::int32_t id) {
+    std::vector<NpcActor>& people =
+        scenario_world_.people();
     const auto found = std::find_if(
-        npcs_.begin(),
-        npcs_.end(),
+        people.begin(),
+        people.end(),
         [id](const NpcActor& npc) {
             return npc.id() == id;
         });
-    return found == npcs_.end() ? nullptr : &*found;
+    return found == people.end() ? nullptr : &*found;
 }
 
 ScenarioObjectActor* WorldScene::findScenarioObject(
     std::int32_t id) {
+    std::vector<ScenarioObjectActor>& objects =
+        scenario_world_.objects();
     const auto found = std::find_if(
-        scenario_objects_.begin(),
-        scenario_objects_.end(),
+        objects.begin(),
+        objects.end(),
         [id](const ScenarioObjectActor& object) {
             return object.id() == id;
         });
-    return found == scenario_objects_.end()
+    return found == objects.end()
         ? nullptr
         : &*found;
 }
 
 GroundItem* WorldScene::findGroundItem(std::int32_t id) {
+    std::vector<GroundItem>& ground_items =
+        scenario_world_.groundItems();
     const auto found = std::find_if(
-        ground_items_.begin(),
-        ground_items_.end(),
+        ground_items.begin(),
+        ground_items.end(),
         [id](const GroundItem& item) {
             return item.id == id;
         });
-    return found == ground_items_.end()
+    return found == ground_items.end()
         ? nullptr
         : &*found;
 }
 
 bool WorldScene::startGroundItemInteraction(
     std::int32_t item_id) {
+    std::vector<GroundItem>& ground_items =
+        scenario_world_.groundItems();
     const auto found = std::find_if(
-        ground_items_.begin(),
-        ground_items_.end(),
+        ground_items.begin(),
+        ground_items.end(),
         [item_id](const GroundItem& item) {
             return item.id == item_id;
         });
-    if (found == ground_items_.end()) {
+    if (found == ground_items.end()) {
         pending_interaction_ = {};
         return false;
     }
@@ -736,7 +755,7 @@ bool WorldScene::startGroundItemInteraction(
             pointer_.target().id == item_id) {
             pointer_.clearSelection();
         }
-        ground_items_.erase(found);
+        ground_items.erase(found);
     }
     return true;
 }

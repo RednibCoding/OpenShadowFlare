@@ -36,6 +36,7 @@ public:
     bool load(
         const std::filesystem::path& path,
         std::string* error = nullptr);
+    void adopt(script::ScriptData data);
     void clear();
 
     script::StepResult startStatus(

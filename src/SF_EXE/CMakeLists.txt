@@ -123,6 +123,7 @@ add_library(
   world/scenario_data.cpp
   world/scenario_entity_state.cpp
   world/scenario_object_actor.cpp
+  world/scenario_world.cpp
   world/transport_catalog.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp

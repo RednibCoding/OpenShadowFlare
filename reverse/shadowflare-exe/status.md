@@ -576,9 +576,14 @@ The portable fresh-world path accepts scenario ID, entry value, and local
 player explicitly. The first cross-map fixture is Table 40 row one: scenario
 6, entry 4, key 16. It loads Wasteland of Pillars, `Map\f00_07.map`, position
 `(35105,-6156)`, direction 7, BGM 1, 35 type-zero objects, and two PEOPLE
-records. Live persistent-owner migration and the later loading presentation
-remain pending. All 51 Table 40 rows are also checked against their shipped
-scenario directory and single-player MCT entry.
+records. Its map-local MCT, SCS, collision, patterns, overview, exploration,
+actors, and ground items now share one `ScenarioWorld` lifetime. Player data,
+all four item owners, quests, missions, transports, and common resources live
+outside that boundary. Script data is adopted only after the full scenario
+owner succeeds, leaving the callback-bearing interpreter runtime in place.
+Live transaction wiring and the later loading presentation remain pending.
+All 51 Table 40 rows are also checked against their shipped scenario directory
+and single-player MCT entry.
 
 Periodic status kind five executes independent scenario callbacks. Remote
 Town sentences 158, 173, 188, and 203 read player-record offset `0x140`

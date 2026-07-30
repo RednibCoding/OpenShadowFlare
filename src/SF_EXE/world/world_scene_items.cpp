@@ -33,22 +33,24 @@ bool WorldScene::ensureItemWorldResource(
 
 bool WorldScene::prepareGroundItems(
     std::size_t first_item) {
-    if (first_item > ground_items_.size()) {
+    std::vector<GroundItem>& ground_items =
+        scenario_world_.groundItems();
+    if (first_item > ground_items.size()) {
         return false;
     }
     const std::int32_t first_id =
         next_ground_item_id_;
     for (std::size_t index = first_item;
-         index < ground_items_.size();
+         index < ground_items.size();
          ++index) {
-        GroundItem& item = ground_items_[index];
+        GroundItem& item = ground_items[index];
         const ItemDefinition* definition =
             item_database_.find(
                 item.category, item.definition_id);
         if (!definition ||
             !ensureItemWorldResource(
                 definition->ground_resource_id)) {
-            ground_items_.resize(first_item);
+            ground_items.resize(first_item);
             next_ground_item_id_ = first_id;
             return false;
         }

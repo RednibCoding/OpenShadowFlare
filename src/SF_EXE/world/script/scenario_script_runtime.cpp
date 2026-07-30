@@ -55,6 +55,12 @@ bool ScenarioScriptRuntime::load(
     return true;
 }
 
+void ScenarioScriptRuntime::adopt(script::ScriptData data) {
+    clear();
+    data_ = std::move(data);
+    interpreter_.bind(&data_);
+}
+
 void ScenarioScriptRuntime::clear() {
     interpreter_.bind(nullptr);
     data_.clear();

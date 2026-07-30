@@ -211,6 +211,15 @@ report an error. A catalog regression also checks every one of Table 40's 51
 rows against its shipped decimal scenario directory and single-player MCT
 entry key.
 
+The scenario-local half of the world now has one explicit owner. `ScenarioWorld`
+loads and releases the MCT, SCS data, map collision, map patterns, overview,
+exploration mask, dynamic objects, PEOPLE actors, and ground items together.
+The player record, equipment, backpack, belt, Special Items, item definitions,
+quests, missions, and transport flags stay outside that owner. Script data is
+handed into the existing interpreter runtime after a complete scenario has
+loaded, so its callbacks never point into a temporary or moved runtime. This
+is the transaction boundary the live map-change path will use.
+
 The next slices identified the three resource preload lists, the variable
 common entity record, and the complete object and `PEOPLE` group shapes.
 Remote Town's seven objects and seven people now decode with their retail
@@ -238,8 +247,8 @@ transition path around `0x00426200`:
   validates and skips;
 - identify the final unnamed PEOPLE-tail value and connect it if it affects
   portable state;
-- preserve the now-general scenario/entry selection while moving a live
-  player's persistent owners through a transition;
+- use the scenario-local transaction owner to move a live player between maps
+  without clearing persistent player, item, quest, mission, or transport state;
 - load GND, OBL, LST, NJP, SDW, and CAF resources through reusable code;
 - preserve the original pattern-number relationships across those files;
 - represent dynamic entities separately from static OBL scenery;

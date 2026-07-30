@@ -450,8 +450,17 @@ rebuilds map and dynamic resources, loads that scenario's `Scenario.Njp`, and
 then applies the entry. The portable fresh-world loader now accepts the first
 three values explicitly and resolves scenario directories with the retail
 decimal `%08d` spelling. Scenario 6, entry value 4 is covered against MCT key
-16. Moving an already-live player's persistent owners through the teardown
-and reproducing the later loading screen remain the next transition slice.
+16.
+
+Portable ownership now follows the teardown boundary visible in this routine.
+`ScenarioWorld` owns the current MCT and SCS data, GND and OBL state, map
+patterns and overview, exploration mask, scenario objects, PEOPLE actors, and
+ground items. Player data, equipped and carried items, belt contents, Special
+Items, quests, missions, transport flags, and common resources stay in
+`WorldScene`. A scenario is prepared as a temporary complete owner and only
+then handed to the interpreter runtime, whose callbacks remain at a stable
+address. Moving an already-live player through this transaction and
+reproducing the later loading screen remain the next transition slice.
 
 The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
 flag `0x0048ce48`, the same one-page Special Item owner handled by

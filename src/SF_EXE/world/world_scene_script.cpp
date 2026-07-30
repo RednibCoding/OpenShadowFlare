@@ -109,9 +109,11 @@ bool WorldScene::executeScriptNativeCommand(
         if (arguments.size() < 6) {
             return false;
         }
-        const std::size_t first_item = ground_items_.size();
+        std::vector<GroundItem>& ground_items =
+            scenario_world_.groundItems();
+        const std::size_t first_item = ground_items.size();
         if (!createGroundItems(
-                ground_items_,
+                ground_items,
                 item_random_,
                 arguments[0],
                 arguments[1],

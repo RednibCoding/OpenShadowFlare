@@ -22,8 +22,7 @@
 #include "player_data.hpp"
 #include "player_item_controller.hpp"
 #include "quest_state.hpp"
-#include "scenario_data.hpp"
-#include "scenario_object_actor.hpp"
+#include "scenario_world.hpp"
 #include "script/scenario_script_runtime.hpp"
 #include "transport_catalog.hpp"
 #include "world_pointer.hpp"
@@ -45,12 +44,6 @@ enum class GameplayServiceKind {
 struct GameplayServiceRequest {
     GameplayServiceKind kind = GameplayServiceKind::none;
     std::int32_t argument = 0;
-};
-
-struct ScenarioStart {
-    std::int32_t scenario_id = 0;
-    std::int32_t entry_value = 0;
-    std::int32_t local_player_number = 0;
 };
 
 class WorldScene {
@@ -208,23 +201,13 @@ private:
     NpcActor* findNpc(std::int32_t id);
     GroundItem* findGroundItem(std::int32_t id);
 
-    ScenarioData scenario_;
+    ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
     WorldPointer pointer_;
     WorldPointerTarget pending_interaction_;
-    GroundMap ground_;
-    ObjectMap object_map_;
-    std::vector<std::unique_ptr<gapi::NjpImage>> map_patterns_;
     CharacterVisualResource player_visual_;
-    ObjectVisualResources object_visuals_;
-    PeopleVisualResources people_visuals_;
     gapi::NjpImage speech_patterns_;
-    gapi::NjpImage map_overview_patterns_;
-    MapExploration map_exploration_;
     PlayerAppearance player_appearance_;
-    std::vector<ScenarioObjectActor> scenario_objects_;
-    std::vector<NpcActor> npcs_;
-    std::vector<GroundItem> ground_items_;
     std::vector<std::int32_t> pending_audio_samples_;
     QuestState quests_;
     MissionCatalog missions_;
@@ -237,7 +220,6 @@ private:
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
     std::filesystem::path data_root_;
-    std::int32_t scenario_id_ = -1;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;
     RetailRandom item_random_;
@@ -245,7 +227,6 @@ private:
     PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;
-    std::int32_t music_track_ = -1;
     std::int32_t next_ground_item_id_ = 0;
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;

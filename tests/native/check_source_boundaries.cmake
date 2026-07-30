@@ -240,6 +240,23 @@ if(executable_cmake MATCHES
     "Platform or library linker policy escaped the CMake adapters")
 endif()
 
+file(READ "${portable_root}/world/world_scene.hpp" world_scene_header)
+foreach(escaped_scenario_owner IN ITEMS
+    "ScenarioData scenario_"
+    "GroundMap ground_"
+    "ObjectMap object_map_"
+    "ObjectVisualResources object_visuals_"
+    "PeopleVisualResources people_visuals_"
+    "map_overview_patterns_"
+    "map_exploration_"
+    "scenario_objects_"
+    "ground_items_")
+  if(world_scene_header MATCHES "${escaped_scenario_owner}")
+    message(FATAL_ERROR
+      "Scenario-local ownership escaped ScenarioWorld: ${escaped_scenario_owner}")
+  endif()
+endforeach()
+
 file(READ "${portable_root}/runtime/main.cpp" main_source)
 if(main_source MATCHES "class[ \t\r\n]+Runtime")
   message(FATAL_ERROR

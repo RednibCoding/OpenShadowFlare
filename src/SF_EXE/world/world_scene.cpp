@@ -47,23 +47,13 @@ WorldScene::WorldScene()
 
 
 void WorldScene::clear() {
-    scenario_.clear();
+    scenario_world_.clear();
     scenario_script_.clear();
     pointer_.reset();
     pending_interaction_ = {};
-    ground_.clear();
-    object_map_.clear();
-    map_patterns_.clear();
     player_visual_.clear();
-    object_visuals_.clear();
-    people_visuals_.clear();
     speech_patterns_.clear();
-    map_overview_patterns_.clear();
-    map_exploration_.clear();
     player_appearance_.clear();
-    scenario_objects_.clear();
-    npcs_.clear();
-    ground_items_.clear();
     pending_audio_samples_.clear();
     quests_.clear();
     missions_.clear();
@@ -76,14 +66,12 @@ void WorldScene::clear() {
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
     data_root_.clear();
-    scenario_id_ = -1;
     item_world_resources_.clear();
     item_random_.seed(1);
     player_data_.clear();
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
-    music_track_ = -1;
     next_ground_item_id_ = 0;
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
@@ -91,16 +79,16 @@ void WorldScene::clear() {
 }
 
 const GroundMap& WorldScene::ground() const {
-    return ground_;
+    return scenario_world_.ground();
 }
 
 const ObjectMap& WorldScene::objectMap() const {
-    return object_map_;
+    return scenario_world_.objectMap();
 }
 
 const std::vector<std::unique_ptr<gapi::NjpImage>>&
 WorldScene::mapPatterns() const {
-    return map_patterns_;
+    return scenario_world_.mapPatterns();
 }
 
 const gapi::NjpImage& WorldScene::playerPatterns() const {
@@ -117,11 +105,11 @@ const gapi::CafAnimation& WorldScene::playerAnimation() const {
 
 const std::vector<ScenarioObjectActor>&
 WorldScene::scenarioObjects() const {
-    return scenario_objects_;
+    return scenario_world_.objects();
 }
 
 const std::vector<NpcActor>& WorldScene::npcs() const {
-    return npcs_;
+    return scenario_world_.people();
 }
 
 const TransportCatalog& WorldScene::transports() const {
@@ -129,7 +117,7 @@ const TransportCatalog& WorldScene::transports() const {
 }
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
-    return ground_items_;
+    return scenario_world_.groundItems();
 }
 
 const QuestState& WorldScene::quests() const {
@@ -286,10 +274,11 @@ void WorldScene::update() {
         kNoMovementBlockerId + 1;
     std::vector<MovementBlocker> actor_blockers;
     actor_blockers.reserve(
-        scenario_objects_.size() + npcs_.size() +
+        scenario_world_.objects().size() +
+        scenario_world_.people().size() +
         (has_player_ ? 1u : 0u));
     for (const ScenarioObjectActor& object :
-         scenario_objects_) {
+         scenario_world_.objects()) {
         if (!object.judgementEnabled()) {
             continue;
         }
@@ -300,12 +289,14 @@ void WorldScene::update() {
         });
     }
     std::vector<std::size_t> npc_blocker_indices(
-        npcs_.size(), actor_blockers.size());
+        scenario_world_.people().size(),
+        actor_blockers.size());
     constexpr std::size_t no_blocker =
         static_cast<std::size_t>(-1);
-    for (const NpcActor& npc : npcs_) {
+    for (const NpcActor& npc : scenario_world_.people()) {
         const std::size_t index =
-            static_cast<std::size_t>(&npc - npcs_.data());
+            static_cast<std::size_t>(
+                &npc - scenario_world_.people().data());
         if (!npc.judgementEnabled()) {
             npc_blocker_indices[index] = no_blocker;
             continue;
@@ -319,8 +310,11 @@ void WorldScene::update() {
     }
     if (has_player_) {
         player_.update(
-            ground_, object_map_, &actor_blockers);
-        map_exploration_.reveal(player_.position());
+            scenario_world_.ground(),
+            scenario_world_.objectMap(),
+            &actor_blockers);
+        scenario_world_.mapExploration().reveal(
+            player_.position());
         actor_blockers.push_back({
             player_blocker_id,
             player_.position(),
@@ -328,22 +322,24 @@ void WorldScene::update() {
         });
     }
     for (ScenarioObjectActor& object :
-         scenario_objects_) {
+         scenario_world_.objects()) {
         object.update();
     }
     for (std::size_t index = 0;
-         index < npcs_.size();
+         index < scenario_world_.people().size();
          ++index) {
-        NpcActor& npc = npcs_[index];
+        NpcActor& npc = scenario_world_.people()[index];
         npc.update(
-            ground_, object_map_, &actor_blockers);
+            scenario_world_.ground(),
+            scenario_world_.objectMap(),
+            &actor_blockers);
         if (npc_blocker_indices[index] != no_blocker) {
             actor_blockers[
                 npc_blocker_indices[index]].position =
                 npc.position();
         }
     }
-    for (GroundItem& item : ground_items_) {
+    for (GroundItem& item : scenario_world_.groundItems()) {
         if (updateGroundItem(item) !=
             GroundItemUpdateEvent::first_impact) {
             continue;
@@ -479,15 +475,15 @@ const ObjectBounds& WorldScene::playerJudgement() const {
 }
 
 std::int32_t WorldScene::musicTrack() const {
-    return music_track_;
+    return scenario_world_.musicTrack();
 }
 
 const ScenarioData& WorldScene::scenario() const {
-    return scenario_;
+    return scenario_world_.data();
 }
 
 std::int32_t WorldScene::scenarioId() const {
-    return scenario_id_;
+    return scenario_world_.id();
 }
 
 const script::ScriptData& WorldScene::scenarioScript() const {
