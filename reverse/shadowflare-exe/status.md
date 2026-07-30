@@ -356,8 +356,15 @@ zero and advances one frame per active-map update. Enemies join the ordinary
 shadow/visible depth passes and their enabled judgement rectangles block the
 player. The catalog also contains 34 invisible, non-colliding `Enemy Hole`
 actors with resource `-1`; these remain live script/AI identities without a
-fabricated visual. The AI event interpreter, movement actions, health, combat,
+fabricated visual. Live AI selection, movement actions, life changes, combat,
 death, and drops are not inferred by this initial actor slice.
+
+The loader rearrangement now has three more named consumers. Pre-AI MCT values
+1 through 4 become the spawn-relative patrol rectangle read by `0x0045c3c0`.
+Pre-AI value 8 is copied twice, initializing both current life at runtime
+`+0xd4` and maximum life at `+0xe4`. Post-AI value 54 becomes the
+thousandths-based movement speed scale at `+0x1dc`. `EnemyActor` owns those
+typed values while preserving both complete raw blocks for later work.
 
 The global AI catalog now has its portable owner too. `0x004127d0` loads
 `Control.aid` before scenario actors are created; the preserved version-one

@@ -51,6 +51,10 @@ public:
     const std::string& aiControlName() const;
     const AiControlList* aiControl() const;
     std::int32_t aiControlIndex() const;
+    const ObjectBounds& patrolBounds() const;
+    std::int32_t currentLife() const;
+    std::int32_t maximumLife() const;
+    std::int32_t movementSpeedScale() const;
     bool partEnabled(std::size_t part) const;
     std::int32_t partRedStrength(
         std::size_t part) const;
@@ -80,6 +84,10 @@ private:
     std::string ai_control_name_;
     const AiControlList* ai_control_ = nullptr;
     std::int32_t ai_control_index_ = -1;
+    ObjectBounds patrol_bounds_;
+    std::int32_t current_life_ = 0;
+    std::int32_t maximum_life_ = 0;
+    std::int32_t movement_speed_scale_ = 0;
     ScenarioEntityState state_;
     std::vector<std::int32_t> part_visibility_;
     std::vector<std::int16_t> red_strength_;

@@ -657,6 +657,18 @@ bool testFixture() {
             enemy->ai_control_name == "Test Chase" &&
             enemy->post_ai_values.front() == 11 &&
             enemy->post_ai_values.back() == 286 &&
+            enemy->patrol_left ==
+                enemy->pre_ai_values[1] &&
+            enemy->patrol_top ==
+                enemy->pre_ai_values[2] &&
+            enemy->patrol_right ==
+                enemy->pre_ai_values[3] &&
+            enemy->patrol_bottom ==
+                enemy->pre_ai_values[4] &&
+            enemy->maximum_life ==
+                enemy->pre_ai_values[8] &&
+            enemy->movement_speed_scale ==
+                enemy->post_ai_values[54] &&
             scenario.items().size() == 1 &&
             item &&
             item->id == 7 &&
@@ -1144,6 +1156,13 @@ bool testGeneralScenarioStart() {
                 wasteland.aiControlDatabase().indexOf(
                     first_enemy.aiControl()) ==
                     first_enemy.aiControlIndex() &&
+                first_enemy.patrolBounds().left == -800 &&
+                first_enemy.patrolBounds().top == -800 &&
+                first_enemy.patrolBounds().right == 799 &&
+                first_enemy.patrolBounds().bottom == 799 &&
+                first_enemy.currentLife() == 400 &&
+                first_enemy.maximumLife() == 400 &&
+                first_enemy.movementSpeedScale() == 3000 &&
                 first_enemy.visible() &&
                 first_enemy.pointerEnabled() &&
                 first_enemy.judgementEnabled() &&

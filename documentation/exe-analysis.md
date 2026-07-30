@@ -162,6 +162,14 @@ AI-list slot to `-1`. The default action selected by the constructor is action
 seven; `0x0045b600` renders CAF chart zero using the MCT direction and advances
 its frame counter on every active-map update.
 
+The first four patrol bounds consumed by native AI action one come from
+pre-controller values 1 through 4 and are added to the enemy's spawn
+position. Pre-controller value 8 is intentionally duplicated by the loader:
+it initializes both current life at `+0xd4` and maximum life at `+0xe4`.
+Post-controller value 54 becomes the movement-speed scale at `+0x1dc`.
+Movement actions calculate `AID parameter 3 * scale / 1000`, using integer
+arithmetic before passing the result to the shared movement controller.
+
 `0x004127d0` loads the global `System/Game/Parameter/Control.aid` catalog
 before scenarios create enemies. Its version-one file contains 64 named lists,
 18 event buckets per list, and 1,338 action records. The scenario loader uses

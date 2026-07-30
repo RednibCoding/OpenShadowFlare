@@ -117,8 +117,13 @@ identity, state, bounds, name, direction, CAF part data, AI-control name, and
 `Character/ENEMY` visual are owned by `ScenarioWorld`. The proven default
 action draws CAF chart zero and advances its idle frame at gameplay cadence,
 and enabled enemy judgement rectangles already block the player. AI event
-selection, enemy movement, health, attacks, drops, and combat are deliberately
-still pending rather than approximated.
+selection attachment, enemy movement, life changes, attacks, drops, and combat
+are deliberately still pending rather than approximated.
+
+The actor also owns the first fields proven beyond that common boundary:
+spawn-relative patrol bounds, current and maximum life initialized from the
+same MCT value, and the per-enemy movement-speed scale. The surrounding MCT
+values remain raw until their actual consumers are reconstructed.
 
 Retail's resource-less `Enemy Hole` records live in the same actor collection.
 They keep their script and AI identity but have no fabricated visual or

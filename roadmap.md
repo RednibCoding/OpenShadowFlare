@@ -278,6 +278,12 @@ before their life fields, target query, selected-action state, and native
 action dispatcher are all present would create a convincing but incomplete
 behavior path.
 
+The live actor now has the initializer fields needed by those next steps.
+Pre-controller MCT values 1 through 4 are the spawn-relative patrol rectangle,
+value 8 initializes both current and maximum life, and post-controller value
+54 scales AID movement speed in thousandths. All other initializer words stay
+indexed until another executable consumer proves them.
+
 Ostare's first type-one behavior is covered too. The people tail gives him a
 30-update idle pause, a 30-update walking limit, speed 10, and a small
 spawn-relative movement rectangle. He now alternates chart-zero idling with a

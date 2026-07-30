@@ -72,6 +72,16 @@ bool EnemyActor::initialize(
     ai_control_name_ = enemy.ai_control_name;
     ai_control_ = &ai_control;
     ai_control_index_ = ai_control_index;
+    patrol_bounds_ = {
+        enemy.patrol_left,
+        enemy.patrol_top,
+        enemy.patrol_right,
+        enemy.patrol_bottom,
+    };
+    current_life_ = enemy.maximum_life;
+    maximum_life_ = enemy.maximum_life;
+    movement_speed_scale_ =
+        enemy.movement_speed_scale;
 
     const std::size_t part_count =
         visual
@@ -108,6 +118,10 @@ void EnemyActor::clear() {
     ai_control_name_.clear();
     ai_control_ = nullptr;
     ai_control_index_ = -1;
+    patrol_bounds_ = {};
+    current_life_ = 0;
+    maximum_life_ = 0;
+    movement_speed_scale_ = 0;
     state_.clear();
     part_visibility_.clear();
     red_strength_.clear();
@@ -192,6 +206,22 @@ const AiControlList* EnemyActor::aiControl() const {
 
 std::int32_t EnemyActor::aiControlIndex() const {
     return ai_control_index_;
+}
+
+const ObjectBounds& EnemyActor::patrolBounds() const {
+    return patrol_bounds_;
+}
+
+std::int32_t EnemyActor::currentLife() const {
+    return current_life_;
+}
+
+std::int32_t EnemyActor::maximumLife() const {
+    return maximum_life_;
+}
+
+std::int32_t EnemyActor::movementSpeedScale() const {
+    return movement_speed_scale_;
 }
 
 bool EnemyActor::partEnabled(std::size_t part) const {

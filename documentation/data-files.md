@@ -199,6 +199,14 @@ name, and optional CAF part table, and resolves the common resource through
 block; one slot in its stack block is not initialized. That rearrangement is
 documented before assigning gameplay names to the individual values.
 
+The first consumer-backed fields are now named. Pre-AI values 1 through 4
+become the left, top, right, and bottom offsets of the patrol rectangle used
+by native AI action one. Pre-AI value 8 is copied into both runtime current
+life at `+0xd4` and maximum life at `+0xe4`. Post-AI value 54 reaches
+`+0x1dc`; movement actions multiply their authored AID speed by this value and
+divide by 1,000. The raw arrays remain available so this partial naming does
+not discard or reshuffle any unclassified field.
+
 There is one deliberate resource-less enemy form. Thirty-four records named
 `Enemy Hole` use resource `-1` and initial state `{0, 1, 0}`. They are retained
 as invisible, non-colliding script/AI actors without trying to load or invent

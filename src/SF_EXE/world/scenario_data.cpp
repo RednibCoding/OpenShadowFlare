@@ -361,6 +361,12 @@ bool readScenarioEnemy(
     enemy.pre_ai_values = pre_ai_values;
     enemy.ai_control_name = std::move(ai_control_name);
     enemy.post_ai_values = post_ai_values;
+    enemy.patrol_left = pre_ai_values[1];
+    enemy.patrol_top = pre_ai_values[2];
+    enemy.patrol_right = pre_ai_values[3];
+    enemy.patrol_bottom = pre_ai_values[4];
+    enemy.maximum_life = pre_ai_values[8];
+    enemy.movement_speed_scale = post_ai_values[54];
     return true;
 }
 

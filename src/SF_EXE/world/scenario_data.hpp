@@ -73,10 +73,18 @@ struct ScenarioPerson : ScenarioEntity {
 struct ScenarioEnemy : ScenarioEntity {
     // Retail keeps a fixed 32-byte AI-control name between two still mostly
     // unnamed parameter blocks, resolves that name through RKC_RPG_AICONTROL,
-    // then rearranges the values into its runtime enemy initializer.
+    // then rearranges the values into its runtime enemy initializer. Keep
+    // every raw value while exposing only fields proven by executable
+    // consumers.
     std::array<std::int32_t, 15> pre_ai_values{};
     std::string ai_control_name;
     std::array<std::int32_t, 56> post_ai_values{};
+    std::int32_t patrol_left = 0;
+    std::int32_t patrol_top = 0;
+    std::int32_t patrol_right = 0;
+    std::int32_t patrol_bottom = 0;
+    std::int32_t maximum_life = 0;
+    std::int32_t movement_speed_scale = 0;
 };
 
 struct ScenarioItem : ScenarioEntity {
