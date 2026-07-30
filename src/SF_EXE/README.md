@@ -138,6 +138,13 @@ candidate ordering, weighted choice, and event-zero fallback. It remains
 dormant until the live enemy life/target inputs and native action dispatcher
 can be connected as one complete behavior slice.
 
+The first dispatcher unit is ready behind the same boundary. Native actions
+zero and one reproduce authored waiting and bounded patrol cycles, including
+their holding/completion events, inclusive random destinations, movement
+versus idle counters, speed scaling, presentation requests, and the shipped
+zero-duration patrol case. Unsupported action numbers are explicitly left
+dormant instead of being approximated.
+
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,
 and their script-controlled visibility and judgement state decides whether

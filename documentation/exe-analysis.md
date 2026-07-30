@@ -197,6 +197,22 @@ shipped event buckets. If no action is chosen, requested events 1 through 10,
 as a deterministic unit, but does not update a live enemy until the remaining
 actor fields and native action dispatcher have been traced.
 
+The native dispatcher at `0x00459340` sends selected action zero to
+`0x0045c350` and action one to `0x0045c3c0`. Action zero resets its elapsed
+counter on entry, requests presentation action seven when necessary, uses AID
+parameter one as an inclusive duration, and exposes event 11 until it returns
+to event zero. Action one builds an absolute patrol rectangle by adding the
+four MCT offsets to the spawn position. It starts movement-controller mode
+three for AID parameter-four updates, waits parameter-five updates, and repeats
+until parameter-one total updates have elapsed. Its holding event is 12 and
+its completion event is one.
+
+Movement-controller mode three at `0x00454310` chooses each X and Y coordinate
+with a separate `rand() % inclusive_size` draw on its first active update.
+With a zero update limit it exits before either draw. The passive portable
+controller reproduces this event, counter, presentation, speed, and random
+contract without yet changing a live enemy.
+
 Gameplay pointer selection starts at `0x0040ede0`, which asks `0x004165d0` to
 collect the current display objects inside the configured pointer square. A
 candidate must have an opaque pixel from a visible NJP part in that inclusive

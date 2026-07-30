@@ -103,6 +103,24 @@ must be reconstructed together before evaluation can safely alter an actor.
 AI lists, probabilities, and condition values must come from `Control.aid`,
 not from NPC-specific C++ branches.
 
+The first two native action handlers are reconstructed behind that live
+boundary. Action zero at `0x0045c350` holds the normal idle presentation,
+uses parameter one as its duration, reports event 11 while waiting, and
+returns to event zero at the inclusive duration boundary. Action one at
+`0x0045c3c0` alternates a bounded patrol and pause: parameter one limits the
+whole action, parameter three is movement speed, parameters four and five are
+movement and idle update counts, and parameter six selects the walk chart.
+While it remains active it reports event 12, then returns to event one.
+
+The patrol destination is chosen independently on both axes from the
+inclusive spawn-relative MCT rectangle. Effective speed is parameter three
+times the enemy's MCT speed scale divided by 1,000. A zero movement duration
+still enters and immediately leaves the walk presentation but does not choose
+a destination or consume random state. The shipped database contains 61 wait
+actions and 92 patrol actions, including six of those zero-duration patrols.
+This passive controller remains dormant until the rest of the native action
+dispatcher can be connected without leaving an enemy in an unsupported state.
+
 ### What is not a script
 
 Several other binary files are essential to gameplay but should not be routed

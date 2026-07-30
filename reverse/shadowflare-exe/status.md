@@ -386,6 +386,21 @@ pending until `0x00459500` target lookup, enemy life fields, selected-action
 storage, and the native action dispatcher can be connected without a partial
 behavior path.
 
+The first native dispatcher pair is reconstructed separately. `0x0045c350`
+implements action zero as a timed idle: AID parameter one is its duration,
+event 11 holds it active, and event zero is restored when the counter reaches
+that duration. `0x0045c3c0` implements action one as a patrol inside the four
+spawn-relative MCT bounds. AID parameter three is multiplied by the MCT speed
+scale and divided by 1,000; parameters four and five control moving and idle
+updates, and parameter six chooses the walking chart. Event 12 holds the
+action and event one ends it.
+
+Mode three in `0x00454310` draws the patrol X and Y independently from
+inclusive ranges on its first active update. A zero movement limit returns
+before either draw. The portable controller pins all 61 shipped wait actions,
+all 92 patrol actions, and the six zero-duration patrol cases, but stays
+dormant while action numbers 2 through 11 remain unimplemented.
+
 Remote Town's object group contains local IDs `0`, `200` through `204`, and
 `300`, using `Character\OBJECT` resources 8, 15, and 14. Record 300 is named
 `Warehouse`. `0x0045dd00` maps the 13-value tail into the type-zero runtime
