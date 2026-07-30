@@ -265,6 +265,41 @@ std::int32_t PlayerData::baseWeightCapacity() const {
     return initialParameter(4);
 }
 
+std::int32_t PlayerData::basePhysicalAttack() const {
+    return initialParameter(5);
+}
+
+std::int32_t PlayerData::basePhysicalDefense() const {
+    return initialParameter(6);
+}
+
+std::int32_t PlayerData::baseHitRate() const {
+    return initialParameter(9);
+}
+
+std::int32_t PlayerData::baseEvasionRate() const {
+    return initialParameter(10);
+}
+
+std::int32_t PlayerData::elementX() const {
+    return readI32(0x64);
+}
+
+std::int32_t PlayerData::elementY() const {
+    return readI32(0x68);
+}
+
+std::array<std::int32_t, 17>
+PlayerData::combatPacketStateWords() const {
+    std::array<std::int32_t, 17> words{};
+    for (std::size_t index = 0;
+         index < words.size();
+         ++index) {
+        words[index] = readI32(0x6c + index * 4);
+    }
+    return words;
+}
+
 std::int32_t PlayerData::walkingSpeedTier() const {
     // FUN_00450d40 uses the second initial parameter, adds 32, divides by
     // 32, and clamps the resulting movement tier to the retail 0..9 range.

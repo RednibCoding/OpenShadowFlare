@@ -802,8 +802,30 @@ male and female chart 5 fixtures have ten attack frames, the marker on frame
 counter five, the weapon actions at counter six, and input stays locked until
 the last recovery frame has been presented. The world rechecks the retained
 enemy's life, visibility, pointer state, and inclusive range before exposing
-the impact event. Applying that event to the enemy damage receiver is the next
-combat slice; this checkpoint deliberately does not subtract life early.
+the impact event.
+
+That impact now reaches the retail combat path. The player's derived hit rate
+is checked against the enemy's MCT evasion value with the shared `20..98`
+clamp before the 77-word packet is built. Attack, physical defense, level,
+element affinities, persistent packet state, weapon reaction values,
+reflection, effect number, and weapon identity occupy the same words as
+`0x00439140` and `0x00435e60`. The ordinary and subtype-8/9 effect draws,
+reflection draw, enemy receiver draws, and final durability draw keep their
+retail order.
+
+A hit now goes through the already reconstructed enemy receiver instead of a
+second damage formula. Its returned life, attribution, reaction, event, and
+death state are committed to the live enemy; sample 6 and receiver-owned
+samples reach the world audio queue. An equipped weapon makes the retail
+30-percent durability roll only after the receiver returns. Broken weapons
+still weigh the same and remain equipped, but no longer contribute their base
+stats or elemental strengths. A live retail-world regression clicks a real
+enemy and requires the CAF marker to lower its life and queue sample 6.
+
+The next combat slice should make the receiver's presentation state visible:
+reconstruct enemy hit and death CAF actions, apply any authored reaction
+movement, and attach the configured hit-effect requests without folding those
+concerns into the damage formula.
 
 ### 5. Skills, magic, status, and the remaining game screens
 

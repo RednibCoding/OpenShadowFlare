@@ -1,16 +1,14 @@
 #include "enemy_direct_impact.hpp"
 
+#include "combat_hit_chance.hpp"
 #include "core/retail_random.hpp"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
 namespace osf {
 namespace {
 
-constexpr std::int32_t kMinimumHitChance = 20;
-constexpr std::int32_t kMaximumHitChance = 98;
 constexpr std::int32_t kHitAudioSample = 6;
 constexpr std::int32_t kHitEvent = 17;
 constexpr std::int32_t kDefaultTargetKind = 19;
@@ -133,10 +131,8 @@ bool enemyDirectImpactUsesSpecialEffect(
 std::int32_t retailEnemyHitChance(
     std::int32_t attack_value,
     std::int32_t defense_value) {
-    return std::clamp(
-        attack_value - defense_value,
-        kMinimumHitChance,
-        kMaximumHitChance);
+    return retailCombatHitChance(
+        attack_value, defense_value);
 }
 
 EnemyDirectImpactResult resolveEnemyDirectImpact(

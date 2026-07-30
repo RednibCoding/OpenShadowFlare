@@ -1,4 +1,6 @@
 #include "world_scene.hpp"
+
+#include "player_attack_impact.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 
@@ -943,7 +945,7 @@ void WorldScene::handlePlayerAttackEvent(
     if (!event.impact_due || event.target_id < 0) {
         return;
     }
-    const EnemyActor* enemy = findEnemy(event.target_id);
+    EnemyActor* enemy = findEnemy(event.target_id);
     if (!enemy ||
         classifyPlayerAttackTarget(
             player_.position(),
@@ -954,6 +956,71 @@ void WorldScene::handlePlayerAttackEvent(
     }
     pending_player_attack_impact_target_id_ =
         event.target_id;
+    applyPlayerAttackImpact(*enemy);
+}
+
+void WorldScene::applyPlayerAttackImpact(
+    EnemyActor& enemy) {
+    const PlayerAttackImpactStats stats =
+        buildPlayerAttackImpactStats(
+            scenario_world_.localPlayerNumber(),
+            player_data_,
+            player_equipment_,
+            player_inventory_,
+            item_database_);
+    EnemyDamageReceiverContext context;
+    context.local_player_slot =
+        scenario_world_.localPlayerNumber();
+    context.local_player_available = true;
+    context.source_player_available = true;
+    context.source_player_position =
+        player_.position();
+    const InventoryItem* main_hand =
+        player_equipment_.item(
+            EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerAttackApplicationResult application =
+        resolvePlayerAttackAgainstEnemy(
+            {
+                stats,
+                enemy.id(),
+                enemy.physicalEvasion(),
+            },
+            enemy.damageReceiverState(
+                scenario_world_.id()),
+            player_.position(),
+            context,
+            definition,
+            parameter_tables_,
+            item_random_);
+    if (!application.impact.valid ||
+        !application.impact.apply_damage) {
+        return;
+    }
+    if (application.receiver.valid &&
+        application.receiver.accepted) {
+        enemy.applyDamageReceiverState(
+            application.receiver.state);
+        pending_audio_samples_.insert(
+            pending_audio_samples_.end(),
+            application.receiver.audio_samples.begin(),
+            application.receiver.audio_samples.end());
+    }
+    if (application.impact.post_hit_audio_sample >= 0) {
+        pending_audio_samples_.push_back(
+            application.impact.post_hit_audio_sample);
+    }
+
+    if (application.durability.lose_durability &&
+        !player_equipment_.decreaseDurability(
+            EquipmentSlot::main_hand, 1)) {
+        refreshPlayerAppearance();
+    }
 }
 
 GroundItem* WorldScene::findScriptGroundItem(

@@ -111,6 +111,7 @@ add_library(
   world/actor_direction.cpp
   world/companion_damage_receiver.cpp
   world/combat_damage.cpp
+  world/combat_hit_chance.cpp
   world/enemy_actor.cpp
   world/enemy_ai_action.cpp
   world/enemy_ai_evaluator.cpp
@@ -129,6 +130,7 @@ add_library(
   world/player_appearance.cpp
   world/player_actor.cpp
   world/player_attack_action.cpp
+  world/player_attack_impact.cpp
   world/player_attack_target.cpp
   world/player_combat_defense.cpp
   world/player_damage_receiver.cpp

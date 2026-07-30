@@ -64,6 +64,14 @@ public:
     std::int32_t companionType() const;
     std::int32_t baseAttackSpeed() const;
     std::int32_t baseWeightCapacity() const;
+    std::int32_t basePhysicalAttack() const;
+    std::int32_t basePhysicalDefense() const;
+    std::int32_t baseHitRate() const;
+    std::int32_t baseEvasionRate() const;
+    std::int32_t elementX() const;
+    std::int32_t elementY() const;
+    std::array<std::int32_t, 17>
+        combatPacketStateWords() const;
     std::int32_t walkingSpeedTier() const;
     const std::array<std::uint8_t, retail_record_size>&
         retailRecord() const;
