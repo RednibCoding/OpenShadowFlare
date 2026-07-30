@@ -1,24 +1,18 @@
 #ifndef OPENSHADOWFLARE_ENEMY_AI_ACTION_HPP
 #define OPENSHADOWFLARE_ENEMY_AI_ACTION_HPP
 
-#include "core/retail_random.hpp"
 #include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "movement_destination_selector.hpp"
 
 #include <cstdint>
 #include <functional>
 
 namespace osf {
 
-enum class EnemyAiTargetKind : std::int32_t {
-    none = -1,
-    player = 0,
-    scenario_actor = 1,
-};
-
 struct EnemyAiTarget {
     bool found = false;
-    EnemyAiTargetKind kind = EnemyAiTargetKind::none;
+    MovementTargetKind kind = MovementTargetKind::none;
     std::int32_t identifier = -1;
 };
 
@@ -40,38 +34,12 @@ struct EnemyAiActionContext {
     EnemyAiDefaultTargetSearch default_target;
 };
 
-enum class EnemyAiMovementMode : std::int32_t {
-    none = -1,
-    fixed_point = 0,
-    approach_scenario_actor = 1,
-    retreat_from_scenario_actor = 2,
-    patrol = 3,
-    approach_player = 4,
-    retreat_from_player = 5,
-};
-
-struct EnemyAiMovementRequest {
-    bool begin = false;
-    EnemyAiMovementMode mode =
-        EnemyAiMovementMode::none;
-    WorldPosition destination;
-    EnemyAiTargetKind target_kind =
-        EnemyAiTargetKind::none;
-    std::int32_t target_identifier = -1;
-    std::int32_t speed = 0;
-    std::int32_t stop_distance = 0;
-    std::int32_t duration = 0;
-    std::int32_t animation_chart = 0;
-    std::int32_t random_turn_chance = 0;
-    std::int32_t target_refresh_interval = 0;
-};
-
 struct EnemyAiActionUpdate {
     bool handled = false;
     std::int32_t event_number = -1;
     std::int32_t requested_presentation_action = -1;
     bool clear_current_presentation = false;
-    EnemyAiMovementRequest movement;
+    MovementDestinationRequest movement;
 };
 
 class EnemyAiActionController {
@@ -79,8 +47,7 @@ public:
     void reset();
     void select(const AiActionData& action);
     EnemyAiActionUpdate update(
-        const EnemyAiActionContext& context,
-        RetailRandom& random);
+        const EnemyAiActionContext& context);
 
     std::int32_t currentAction() const;
     std::int32_t eventNumber() const;

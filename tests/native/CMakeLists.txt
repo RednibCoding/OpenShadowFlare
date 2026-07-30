@@ -341,6 +341,33 @@ if(TARGET sf_game_core)
     NAME enemy_ai_action
     COMMAND enemy_ai_action_test)
 
+  add_executable(
+    movement_destination_test
+    movement_destination_test.cpp
+  )
+  target_link_libraries(
+    movement_destination_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    movement_destination_test PRIVATE cxx_std_17)
+  set_target_properties(
+    movement_destination_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      movement_destination_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      movement_destination_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME movement_destination
+    COMMAND movement_destination_test)
+
   add_executable(player_data_test player_data_test.cpp)
   target_link_libraries(
     player_data_test

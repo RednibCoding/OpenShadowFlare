@@ -397,9 +397,11 @@ action and event one ends it.
 
 Mode three in `0x00454310` draws the patrol X and Y independently from
 inclusive ranges on its first active update. A zero movement limit returns
-before either draw. The portable controller pins all 61 shipped wait actions,
-all 92 patrol actions, and the six zero-duration patrol cases, but stays
-dormant while later presentation-side behavior remains incomplete.
+before either draw. The portable action controller emits the rectangle and
+duration without consuming random state; the separate destination selector
+owns those draws. All 61 shipped wait actions, all 92 patrol actions, and the
+six zero-duration patrol cases are pinned, but stay dormant while later
+presentation-side behavior remains incomplete.
 
 The three short dispatch handlers after patrol are pinned too. `0x0045c560`
 maps AI actions two through four onto presentation actions one through three,
@@ -465,12 +467,19 @@ resolves that resource to `Character/PEOPLE/00000013`, loads its NJP, SDW, and
 CAF, and runs it at the 30 Hz game cadence. The people tail supplies speed 10,
 a 30-update walk limit, a 30-update idle pause, and a spawn-relative rectangle
 from (`-437`, `-223`) to (`269`, `231`). The type-one update at `0x0045d150`
-starts movement after that pause; movement-controller mode three chooses an
+starts movement after that pause; destination-selector mode three chooses an
 inclusive random point in the rectangle, and `0x0045d9f0` selects CAF chart
 one until arrival or the walk limit. The first tested draw uses shadow pattern
 280 and visible patterns 1744 and 1784 at the retail starting camera anchor.
 Actor shadows and visible cells share the depth-sorted world passes with the
 player and static OBL scenery.
+
+The selector at `0x00454310` is covered independently for all seven retail
+modes. It preserves fixed points, inclusive patrol draws and exact duration,
+player/scenario-actor approach and retreat bounds, refresh cadence and random
+turn consumption, rectangle-edge projection, signed midpoint rounding, and
+the native mode-two no-step quirk. It only selects destinations; the movement
+controller at `0x00454930` still owns collision and stepping.
 
 The same scenario's `Scenario.Scs` is now decoded in full: version `000`, 66
 temporary flags, no network flags, 61 bitwise-inverted messages, 23 status

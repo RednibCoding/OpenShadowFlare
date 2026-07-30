@@ -114,6 +114,7 @@ add_library(
   world/map_exploration.cpp
   world/mission_catalog.cpp
   world/movement_controller.cpp
+  world/movement_destination_selector.cpp
   world/npc_actor.cpp
   world/player_appearance.cpp
   world/player_actor.cpp

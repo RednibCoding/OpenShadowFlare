@@ -121,6 +121,14 @@ actions and 92 patrol actions, including six of those zero-duration patrols.
 This controller remains dormant until its movement and presentation requests
 have complete live consumers.
 
+The destination selector below the dispatcher is a shared native game
+service, not another script interpreter. Its seven modes cover fixed points,
+bounded patrol, player or scenario-actor approach and retreat, and
+rectangle-edge projection. Target modes use judgement-bound distance, retain
+their old destination until the authored refresh interval, and preserve both
+percentage and angle random draws. It only chooses the next destination;
+collision and stepping stay in the movement controller.
+
 Actions two through seven are the two three-variant animated action families.
 Their native handlers map them directly to presentation actions one through
 six, clear the old presentation, and reset the action counter on entry. The

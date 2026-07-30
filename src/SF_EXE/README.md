@@ -140,15 +140,22 @@ be connected as one complete behavior slice.
 
 The first dispatcher unit is ready behind the same boundary. Native actions
 zero and one reproduce authored waiting and bounded patrol cycles, including
-their holding/completion events, inclusive random destinations, movement
-versus idle counters, speed scaling, presentation requests, and the shipped
-zero-duration patrol case. Actions two through seven preserve the native
-mapping to presentation actions one through six and their entry-only reset
-behavior. Action eight preserves the active presentation. Actions nine and
-ten emit typed target retreat/approach movement with exact mode, distance,
-timing, and event rules. Action eleven emits the fixed-point walk using the
-AI list's speed. The full dispatcher stays behind the live boundary until
-those requests have complete movement and presentation consumers.
+their holding/completion events, movement versus idle counters, speed
+scaling, presentation requests, and the shipped zero-duration patrol case.
+Actions two through seven preserve the native mapping to presentation actions
+one through six and their entry-only reset behavior. Action eight preserves
+the active presentation. Actions nine and ten emit typed target
+retreat/approach requests with exact mode, distance, timing, and event rules.
+Action eleven emits the fixed-point walk using the AI list's speed.
+
+The shared movement-destination selector consumes those requests separately.
+All seven retail modes are covered: fixed points, actor and player approach or
+retreat, bounded patrol, and rectangle-edge projection. It owns the exact
+target-refresh cadence, random-turn draws, signed midpoint rounding, and the
+otherwise surprising no-step result of non-player retreat mode. Collision and
+path advancement remain the movement controller's job. The complete enemy
+dispatcher still stays behind the live boundary until movement and
+presentation can be attached without a partial behavior path.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

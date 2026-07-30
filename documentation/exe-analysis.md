@@ -610,11 +610,32 @@ the MCT. The first record creates Ostare through the type-one path constructed
 at `0x0045d020`. `0x0045d620` draws idle chart zero using MCT direction 7 and
 advances its frame counter once per game update. After the tail's 30-update
 pause, `0x0045d150` starts movement-controller mode three. That mode chooses an
-inclusive random point inside the spawn-relative rectangle, while
+inclusive random point inside the spawn-relative rectangle through the shared
+selector at `0x00454310`, while
 `0x0045d9f0` draws chart one and moves at 10 world units per update until
 arrival or the tail's 30-update limit. The MCT's custom mask disables parts 4
 and 5, leaving the shadow and two visible frame-zero cells rather than drawing
 every CAF layer.
+
+`0x00454310` handles seven destination modes before the collision and stepping
+code at `0x00454930`:
+
+- mode 0 keeps a fixed point;
+- modes 1 and 4 approach a scenario actor or player;
+- modes 2 and 5 retreat from a scenario actor or player;
+- mode 3 chooses independent inclusive X and Y coordinates in a rectangle;
+- mode 6 projects toward the edge of a rectangle after a 30-degree rotation.
+
+The target modes compare judgement bounds rather than actor origins. A zero
+refresh interval becomes one; otherwise the old destination is retained until
+the authored interval. Every refresh consumes the percentage draw, including
+a zero-percent turn chance. A successful turn consumes a second draw and
+rotates by `rand() % 2001 - 1000` steps of 0.0010471973333333333 radians.
+Retreat selects a point one unit beyond the stop distance. Mode 2 then returns
+no movement despite updating that stored point, a native quirk preserved by
+the portable selector. Mode 6 uses signed floor midpoint rounding and native
+truncate-to-zero projections. Destination selection remains separate from
+collision, path stepping, and animation.
 
 All seven Remote Town records use this type-one PEOPLE class, but the two tail
 flags produce different behavior. Only Ostare enables autonomous wandering.

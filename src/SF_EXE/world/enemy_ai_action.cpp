@@ -37,22 +37,6 @@ constexpr std::size_t kTargetConditionEnabled = 3;
 constexpr std::size_t kMinimumTargetDistance = 4;
 constexpr std::size_t kMaximumTargetDistance = 5;
 
-bool inclusiveRange(
-    std::int32_t minimum,
-    std::int32_t maximum,
-    std::int32_t& range) {
-    const std::int64_t calculated =
-        static_cast<std::int64_t>(maximum) -
-        minimum + 1;
-    if (calculated <= 0 ||
-        calculated >
-            std::numeric_limits<std::int32_t>::max()) {
-        return false;
-    }
-    range = static_cast<std::int32_t>(calculated);
-    return true;
-}
-
 bool absoluteRange(
     std::int32_t origin,
     std::int32_t minimum_offset,
@@ -101,9 +85,9 @@ bool scaledSpeed(
 
 bool validTarget(const EnemyAiTarget& target) {
     return !target.found ||
-           target.kind == EnemyAiTargetKind::player ||
+           target.kind == MovementTargetKind::player ||
            target.kind ==
-               EnemyAiTargetKind::scenario_actor;
+               MovementTargetKind::scenario_actor;
 }
 
 }  // namespace
@@ -124,8 +108,7 @@ void EnemyAiActionController::select(
 }
 
 EnemyAiActionUpdate EnemyAiActionController::update(
-    const EnemyAiActionContext& context,
-    RetailRandom& random) {
+    const EnemyAiActionContext& context) {
     EnemyAiActionUpdate result;
     const std::int32_t action_number =
         action_.action_number;
@@ -201,8 +184,6 @@ EnemyAiActionUpdate EnemyAiActionController::update(
             std::int32_t maximum_x = 0;
             std::int32_t minimum_y = 0;
             std::int32_t maximum_y = 0;
-            std::int32_t horizontal_range = 0;
-            std::int32_t vertical_range = 0;
             std::int32_t speed = 0;
             if (!scaledSpeed(
                     action_.parameters[kMovementSpeed],
@@ -211,42 +192,29 @@ EnemyAiActionUpdate EnemyAiActionController::update(
                 result.handled = false;
                 return result;
             }
-            result.movement.begin = true;
             result.movement.mode =
-                EnemyAiMovementMode::patrol;
-            result.movement.destination =
-                context.spawn_position;
-            if (movement_duration != 0) {
-                if (!absoluteRange(
-                        context.spawn_position.x,
-                        context.patrol_bounds.left,
-                        context.patrol_bounds.right,
-                        minimum_x,
-                        maximum_x) ||
-                    !absoluteRange(
-                        context.spawn_position.y,
-                        context.patrol_bounds.top,
-                        context.patrol_bounds.bottom,
-                        minimum_y,
-                        maximum_y) ||
-                    !inclusiveRange(
-                        minimum_x,
-                        maximum_x,
-                        horizontal_range) ||
-                    !inclusiveRange(
-                        minimum_y,
-                        maximum_y,
-                        vertical_range)) {
-                    result.handled = false;
-                    return result;
-                }
-                result.movement.destination = {
-                    minimum_x +
-                        random.next() % horizontal_range,
-                    minimum_y +
-                        random.next() % vertical_range,
-                };
+                MovementDestinationMode::patrol;
+            if (!absoluteRange(
+                    context.spawn_position.x,
+                    context.patrol_bounds.left,
+                    context.patrol_bounds.right,
+                    minimum_x,
+                    maximum_x) ||
+                !absoluteRange(
+                    context.spawn_position.y,
+                    context.patrol_bounds.top,
+                    context.patrol_bounds.bottom,
+                    minimum_y,
+                    maximum_y)) {
+                result.handled = false;
+                return result;
             }
+            result.movement.destination_bounds = {
+                minimum_x,
+                minimum_y,
+                maximum_x,
+                maximum_y,
+            };
             result.movement.speed = speed;
             result.movement.duration =
                 movement_duration;
@@ -310,23 +278,20 @@ EnemyAiActionUpdate EnemyAiActionController::update(
             if (!target.found) {
                 event_number_ = completion_event;
             } else {
-                result.movement.begin = true;
                 result.movement.mode =
                     action_number == kRetreatAction
                     ? (target.kind ==
-                               EnemyAiTargetKind::player
-                           ? EnemyAiMovementMode::
+                               MovementTargetKind::player
+                           ? MovementDestinationMode::
                                  retreat_from_player
-                           : EnemyAiMovementMode::
+                           : MovementDestinationMode::
                                  retreat_from_scenario_actor)
                     : (target.kind ==
-                               EnemyAiTargetKind::player
-                           ? EnemyAiMovementMode::
+                               MovementTargetKind::player
+                           ? MovementDestinationMode::
                                  approach_player
-                           : EnemyAiMovementMode::
+                           : MovementDestinationMode::
                                  approach_scenario_actor);
-                result.movement.target_kind =
-                    target.kind;
                 result.movement.target_identifier =
                     target.identifier;
                 result.movement.speed = speed;
@@ -374,9 +339,8 @@ EnemyAiActionUpdate EnemyAiActionController::update(
                     result.handled = false;
                     return result;
                 }
-                result.movement.begin = true;
                 result.movement.mode =
-                    EnemyAiMovementMode::fixed_point;
+                    MovementDestinationMode::fixed_point;
                 result.movement.destination =
                     context.walk_point;
                 result.movement.speed = speed;
