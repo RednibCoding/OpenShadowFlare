@@ -178,6 +178,13 @@ std::int32_t retailPlayerAttackSpeedTier(
     return std::clamp(table_value + 1, 0, 9);
 }
 
+double retailPlayerMeleeAttackAnimationSpeed(
+    std::int32_t attack_speed_tier) {
+    return kAttackSpeedFactors[
+        static_cast<std::size_t>(
+            std::clamp(attack_speed_tier, 0, 9))];
+}
+
 bool PlayerAttackActionController::start(
     PlayerAttackAction action,
     std::int32_t target_id,
@@ -222,10 +229,12 @@ PlayerAttackActionEvent PlayerAttackActionController::update(
     }
 
     const double factor =
-        (rangedAction(action_)
-             ? kRangedAttackSpeedFactors
-             : kAttackSpeedFactors)[
-            static_cast<std::size_t>(attack_speed_tier_)];
+        rangedAction(action_)
+            ? kRangedAttackSpeedFactors[
+                  static_cast<std::size_t>(
+                      attack_speed_tier_)]
+            : retailPlayerMeleeAttackAnimationSpeed(
+                  attack_speed_tier_);
     if (usesBasicCounterOrder(action_)) {
         displayed_frame_ = static_cast<std::int32_t>(
             static_cast<double>(action_counter_) * factor);

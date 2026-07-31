@@ -2147,3 +2147,37 @@ delay it re-resolves the live hero and places resource 10000070 180 units along
 the stored direction. That actor travels straight with 80-unit bounds and
 expires on scenery or first contact. Sample 22 is emitted at launch; the
 actor's bank-zero sample 20 and spell practice occur only on contact.
+
+## Sonic Blade cast
+
+`0x0043e5e0` dispatches spell fifteen as action 37, but it does not use the
+ordinary Table 20 casting timeline. `0x00449a40` first requires an equipped
+main-hand item whose subtype is zero, three, or one. Invalid and empty hands
+consume the pointed command without deducting MP or entering the action. The
+three accepted subtypes select CAF pairs 5/6, 15/16, and 19/20, and
+`0x00450c60` supplies the same ten attack-speed tiers as weapon attacks.
+
+Action entry creates effect 21025 with owner kind one, the player source,
+player judgement, direction eight, no packet, and constructor field 21 set to
+200. The common one-pass handler maps it to resource 11000100. The action then
+scans every newly crossed first-chart frame for status `0x40`. While a weapon
+still exists, a marker re-resolves the selected enemy angle, plays sample 154,
+and constructs effect 10015 with target mask `0x14`, Table 17 parameter-three
+speed, height 200, player judgement, hard-coded delay one, and Table 17
+parameter four in constructor field 22. Action counter six independently
+plays selector-four weapon audio. Recovery runs to the final frame of the
+selected second chart.
+
+The family-zero packet uses physical type zero and subtype zero. Damage is
+`Table17[15, level, 0] * physical attack / 100`, clamped to one, while word
+five uses physical defense. Word 32 is Table 17 parameter five, word 34 is
+21024, word 72 is one, and word 73 is fifteen. The accuracy field preserves a
+retail oddity: Table 17 parameter one is added to magical hit rate even though
+the packet is physical.
+
+Effect 10015 enters the generic actor initializer with resource 10000090. A
+live owner projects its origin 200 units along the stored angle. The actor
+uses `[-80,-80,79,79]` bounds, display height 155, a fixed seven-update
+lifetime, directional chart zero, straight Table 17 travel, scenery and
+first-target expiry, and bank-zero contact sample 20. Its copied packet enters
+the ordinary receiver-time damage and spell-practice path.

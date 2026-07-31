@@ -65,6 +65,7 @@ public:
         std::int32_t spell,
         std::int32_t target_character_number,
         WorldPosition aim_position,
+        PlayerSpellAnimationVariant animation_variant,
         std::int32_t speed_tier,
         const TableData* speed_table,
         const gapi::CafAnimation& animation);

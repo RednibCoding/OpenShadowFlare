@@ -243,9 +243,16 @@ subtype-two packet. Effect 10014 owns its delayed straight
 resource-10000070 projectile, including the 180-unit launch offset, scenery
 and target expiry, samples 22 and 20, and receiver-time practice.
 
-The next spell checkpoint is Sonic Blade action 37. Its command, weapon
-restrictions, packet, effect ownership, presentation, audio, collision, and
-practice need an end-to-end retail trace.
+Sonic Blade is complete. Action 37 accepts only equipped weapon subtypes zero,
+three, and one, then uses their ordinary 5/6, 15/16, and 19/20 attack chart
+pairs at the retail attack-speed rate. Effect 21025 supplies the immediate
+charge pass. A first-chart `0x40` marker launches resource 10000090 through
+effect 10015 with its seven-update lifetime, samples 154 and 20, and exact
+physical packet; the normal weapon sample still occurs at action counter six.
+
+The next spell checkpoint is Mud Javelin action 38. Its separate Table 20
+timing, packet, effect ownership, and presentation still need an end-to-end
+retail trace.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1375,7 +1382,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Medusa action 36 are complete;
+- Berserker action 30 through Sonic Blade action 37 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

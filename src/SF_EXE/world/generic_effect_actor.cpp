@@ -39,6 +39,19 @@ bool commonProjectileEffect(std::int32_t effect_number) {
            effect_number == 7;
 }
 
+std::int32_t effectResource(std::int32_t effect_number) {
+    if (effect_number == 10015) {
+        return 10000090;
+    }
+    if (effect_number < 0 ||
+        static_cast<std::size_t>(effect_number) >=
+            kEffectResources.size()) {
+        return -1;
+    }
+    return kEffectResources[
+        static_cast<std::size_t>(effect_number)];
+}
+
 }  // namespace
 
 bool buildGenericEffectActor(
@@ -46,20 +59,20 @@ bool buildGenericEffectActor(
     WorldPosition resolved_source,
     RuntimeEffectActorSpawnRequest& actor) {
     actor = {};
+    const bool sonic_blade =
+        request.effect_number == 10015;
     if (!request.valid ||
-        !commonProjectileEffect(request.effect_number) ||
-        request.effect_number < 0 ||
-        static_cast<std::size_t>(request.effect_number) >=
-            kEffectResources.size()) {
+        (!commonProjectileEffect(request.effect_number) &&
+         !sonic_blade)) {
         return false;
     }
 
     actor.controller_effect_number =
         request.effect_number;
-    actor.resource_id =
-        kEffectResources[
-            static_cast<std::size_t>(
-                request.effect_number)];
+    actor.resource_id = effectResource(request.effect_number);
+    if (actor.resource_id < 0) {
+        return false;
+    }
     actor.owner_kind = request.owner_kind;
     actor.source_character_number =
         request.source_character_number;
@@ -87,10 +100,17 @@ bool buildGenericEffectActor(
                   origin,
                   request.direction_radians,
                   request.constructor_value_21);
-    actor.judgement = {-30, -30, 30, 30};
+    // FUN_0042a300 gives effect 10015 its own geometry and fixed clock;
+    // the other supported effects use the common projectile descriptor.
+    actor.judgement =
+        sonic_blade
+            ? ObjectBounds{-80, -80, 79, 79}
+            : ObjectBounds{-30, -30, 30, 30};
     actor.display_height =
-        request.constructor_value_7;
-    actor.lifetime = -1;
+        sonic_blade
+            ? 155
+            : request.constructor_value_7;
+    actor.lifetime = sonic_blade ? 7 : -1;
     actor.collide_with_environment = true;
     actor.expire_on_environment_collision = true;
     actor.target_collision_start = 0;

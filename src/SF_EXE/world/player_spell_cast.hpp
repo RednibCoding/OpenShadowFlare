@@ -15,6 +15,7 @@ class RetailRandom;
 struct PlayerSpellCastStats {
     std::int32_t source_character_number = -1;
     std::int32_t player_level = 1;
+    std::int32_t physical_attack = 0;
     std::int32_t magical_attack = 0;
     std::int32_t physical_defense = 0;
     std::int32_t magical_defense = 0;
@@ -35,6 +36,10 @@ struct PlayerSpellCastInput {
 
 bool playerSpellRequiresCharacterTarget(
     std::int32_t spell);
+
+CombatEffectSpawnRequest buildPlayerSonicBladeCharge(
+    std::int32_t source_character_number,
+    ObjectBounds source_judgement);
 
 CombatEffectSpawnRequest buildPlayerSpellCast(
     std::int32_t spell,

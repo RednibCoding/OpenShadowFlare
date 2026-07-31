@@ -27,12 +27,21 @@ enum class PlayerSpellAction : std::int32_t {
     dread_deathscythe = 34,
     lightning_storm = 35,
     medusa = 36,
+    sonic_blade = 37,
+};
+
+enum class PlayerSpellAnimationVariant {
+    standard,
+    sonic_blade_subtype_0,
+    sonic_blade_subtype_3,
+    sonic_blade_subtype_1,
 };
 
 struct PlayerSpellAnimationTiming {
     std::int32_t first_chart = -1;
     std::int32_t recovery_chart = -1;
     std::int32_t first_frame_count = 0;
+    std::int32_t recovery_frame_count = 0;
     std::vector<std::int16_t> first_frame_statuses;
 };
 
@@ -43,7 +52,9 @@ struct PlayerSpellActionEvent {
     std::int32_t aim_world_x = 0;
     std::int32_t aim_world_y = 0;
     std::int32_t effect_delay = 0;
+    bool charge_visual_due = false;
     bool cast_due = false;
+    bool swing_sound_due = false;
     bool completed = false;
 };
 
@@ -52,15 +63,26 @@ bool buildPlayerSpellAnimationTiming(
     PlayerSpellAction action,
     std::int32_t direction,
     PlayerSpellAnimationTiming& timing);
+bool buildPlayerSpellAnimationTiming(
+    const gapi::CafAnimation& animation,
+    PlayerSpellAction action,
+    PlayerSpellAnimationVariant variant,
+    std::int32_t direction,
+    PlayerSpellAnimationTiming& timing);
 
 bool playerSpellActionForSpell(
     std::int32_t spell,
     PlayerSpellAction& action);
+bool playerSonicBladeAnimationVariant(
+    std::int32_t weapon_subtype,
+    PlayerSpellAnimationVariant& variant);
 
 double retailPlayerSpellAnimationSpeed(
     std::int32_t spell,
     std::int32_t speed_tier,
     const TableData* speed_table);
+double retailPlayerSonicBladeAnimationSpeed(
+    std::int32_t speed_tier);
 
 class PlayerSpellActionController {
 public:

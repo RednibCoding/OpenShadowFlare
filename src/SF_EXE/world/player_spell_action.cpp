@@ -1,5 +1,7 @@
 #include "player_spell_action.hpp"
 
+#include "player_attack_action.hpp"
+
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 
@@ -33,7 +35,21 @@ struct SpellCharts {
     std::int32_t recovery = -1;
 };
 
-SpellCharts chartsForAction(PlayerSpellAction action) {
+SpellCharts chartsForAction(
+    PlayerSpellAction action,
+    PlayerSpellAnimationVariant variant) {
+    if (action == PlayerSpellAction::sonic_blade) {
+        switch (variant) {
+        case PlayerSpellAnimationVariant::sonic_blade_subtype_0:
+            return {5, 6};
+        case PlayerSpellAnimationVariant::sonic_blade_subtype_3:
+            return {15, 16};
+        case PlayerSpellAnimationVariant::sonic_blade_subtype_1:
+            return {19, 20};
+        case PlayerSpellAnimationVariant::standard:
+            return {};
+        }
+    }
     switch (action) {
     case PlayerSpellAction::plasma:
     case PlayerSpellAction::ice_blast:
@@ -51,6 +67,8 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
     case PlayerSpellAction::dread_deathscythe:
     case PlayerSpellAction::medusa:
         return {13, 14};
+    case PlayerSpellAction::sonic_blade:
+        return {};
     }
     return {};
 }
@@ -60,7 +78,13 @@ bool dispatchesAtEffectMarker(
     return action == PlayerSpellAction::heal ||
            action == PlayerSpellAction::moon ||
            action == PlayerSpellAction::berserker ||
-           action == PlayerSpellAction::energy_shield;
+           action == PlayerSpellAction::energy_shield ||
+           action == PlayerSpellAction::sonic_blade;
+}
+
+bool allowsRepeatedEffectMarkers(
+    PlayerSpellAction action) {
+    return action == PlayerSpellAction::sonic_blade;
 }
 
 bool frameHasEffectStatus(
@@ -135,7 +159,29 @@ bool playerSpellActionForSpell(
     case 14:
         action = PlayerSpellAction::medusa;
         return true;
+    case 15:
+        action = PlayerSpellAction::sonic_blade;
+        return true;
     default:
+        return false;
+    }
+}
+
+bool playerSonicBladeAnimationVariant(
+    std::int32_t weapon_subtype,
+    PlayerSpellAnimationVariant& variant) {
+    switch (weapon_subtype) {
+    case 0:
+        variant = PlayerSpellAnimationVariant::sonic_blade_subtype_0;
+        return true;
+    case 3:
+        variant = PlayerSpellAnimationVariant::sonic_blade_subtype_3;
+        return true;
+    case 1:
+        variant = PlayerSpellAnimationVariant::sonic_blade_subtype_1;
+        return true;
+    default:
+        variant = PlayerSpellAnimationVariant::standard;
         return false;
     }
 }
@@ -145,8 +191,22 @@ bool buildPlayerSpellAnimationTiming(
     PlayerSpellAction action,
     std::int32_t direction,
     PlayerSpellAnimationTiming& timing) {
+    return buildPlayerSpellAnimationTiming(
+        animation,
+        action,
+        PlayerSpellAnimationVariant::standard,
+        direction,
+        timing);
+}
+
+bool buildPlayerSpellAnimationTiming(
+    const gapi::CafAnimation& animation,
+    PlayerSpellAction action,
+    PlayerSpellAnimationVariant variant,
+    std::int32_t direction,
+    PlayerSpellAnimationTiming& timing) {
     timing = {};
-    const SpellCharts charts = chartsForAction(action);
+    const SpellCharts charts = chartsForAction(action, variant);
     if (charts.first < 0 ||
         charts.recovery < 0 ||
         direction < 0 ||
@@ -174,6 +234,8 @@ bool buildPlayerSpellAnimationTiming(
     timing.first_chart = charts.first;
     timing.recovery_chart = charts.recovery;
     timing.first_frame_count = first_direction.frame_count;
+    timing.recovery_frame_count =
+        recovery_direction.frame_count;
     if (!first_direction.parts.empty()) {
         const std::vector<gapi::CafCell>& cells =
             first_direction.parts.front();
@@ -201,6 +263,12 @@ double retailPlayerSpellAnimationSpeed(
            0.001;
 }
 
+double retailPlayerSonicBladeAnimationSpeed(
+    std::int32_t speed_tier) {
+    return retailPlayerMeleeAttackAnimationSpeed(
+        speed_tier);
+}
+
 bool PlayerSpellActionController::start(
     PlayerSpellAction action,
     std::int32_t spell,
@@ -215,7 +283,9 @@ bool PlayerSpellActionController::start(
     if (spell < 0 ||
         timing.first_frame_count <= 0 ||
         timing.first_chart < 0 ||
-        timing.recovery_chart < 0) {
+        timing.recovery_chart < 0 ||
+        (action == PlayerSpellAction::sonic_blade &&
+         timing.recovery_frame_count <= 0)) {
         return false;
     }
 
@@ -238,6 +308,11 @@ bool PlayerSpellActionController::start(
         std::trunc(
             static_cast<double>(effect_frame) /
             animation_speed_));
+    if (action_ == PlayerSpellAction::sonic_blade) {
+        // FUN_0043e5e0 constructs effect 10015 directly from the CAF
+        // marker and passes one as the effect delay.
+        effect_delay_ = 1;
+    }
     action_counter_ = 0;
     displayed_frame_ = 0;
     last_effect_scan_frame_ = 0;
@@ -252,16 +327,18 @@ bool PlayerSpellActionController::start(
     selectRenderedFrame();
 
     if (event) {
-        *event = {
-            action_,
-            spell_,
-            target_character_number_,
-            aim_world_x_,
-            aim_world_y_,
-            effect_delay_,
-            cast_dispatched_,
-            false,
-        };
+        *event = {};
+        event->action = action_;
+        event->spell = spell_;
+        event->target_character_number =
+            target_character_number_;
+        event->aim_world_x = aim_world_x_;
+        event->aim_world_y = aim_world_y_;
+        event->effect_delay = effect_delay_;
+        event->charge_visual_due =
+            action_ == PlayerSpellAction::sonic_blade;
+        event->cast_due = initial_marker ||
+            (!dispatchesAtEffectMarker(action_));
     }
     return true;
 }
@@ -279,11 +356,19 @@ PlayerSpellActionController::update(
 
     const std::int32_t previous_displayed_frame =
         displayed_frame_;
-    displayed_frame_ = static_cast<std::int32_t>(
-        std::trunc(
-            static_cast<double>(action_counter_) *
-            animation_speed_));
-    ++action_counter_;
+    if (action_ == PlayerSpellAction::sonic_blade) {
+        ++action_counter_;
+        displayed_frame_ = static_cast<std::int32_t>(
+            std::trunc(
+                static_cast<double>(action_counter_) *
+                animation_speed_));
+    } else {
+        displayed_frame_ = static_cast<std::int32_t>(
+            std::trunc(
+                static_cast<double>(action_counter_) *
+                animation_speed_));
+        ++action_counter_;
+    }
     selectRenderedFrame();
 
     PlayerSpellActionEvent event;
@@ -294,7 +379,8 @@ PlayerSpellActionController::update(
     event.aim_world_x = aim_world_x_;
     event.aim_world_y = aim_world_y_;
     event.effect_delay = effect_delay_;
-    if (!cast_dispatched_ &&
+    if ((!cast_dispatched_ ||
+         allowsRepeatedEffectMarkers(action_)) &&
         dispatchesAtEffectMarker(action_) &&
         displayed_frame_ < timing_.first_frame_count) {
         const std::int32_t first_frame =
@@ -315,9 +401,19 @@ PlayerSpellActionController::update(
                 last_effect_scan_frame_,
                 displayed_frame_);
     }
-    if (displayed_frame_ >=
-        timing_.first_frame_count - 1 +
-            completion_increment_) {
+    event.swing_sound_due =
+        action_ == PlayerSpellAction::sonic_blade &&
+        action_counter_ == 6;
+    const bool sonic_complete =
+        action_ == PlayerSpellAction::sonic_blade &&
+        animation_chart_ == timing_.recovery_chart &&
+        animation_frame_ ==
+            timing_.recovery_frame_count - 1;
+    if (sonic_complete ||
+        (action_ != PlayerSpellAction::sonic_blade &&
+         displayed_frame_ >=
+             timing_.first_frame_count - 1 +
+                 completion_increment_)) {
         event.completed = true;
         active_ = false;
     }
@@ -391,8 +487,11 @@ void PlayerSpellActionController::refreshSpeed(
     const TableData* speed_table) {
     speed_tier_ = std::clamp(speed_tier, 0, 9);
     animation_speed_ =
-        retailPlayerSpellAnimationSpeed(
-            spell_, speed_tier_, speed_table);
+        action_ == PlayerSpellAction::sonic_blade
+            ? retailPlayerSonicBladeAnimationSpeed(
+                  speed_tier_)
+            : retailPlayerSpellAnimationSpeed(
+                  spell_, speed_tier_, speed_table);
     completion_increment_ =
         animation_speed_ > 0.0
             ? std::max<std::int32_t>(
@@ -409,6 +508,13 @@ void PlayerSpellActionController::selectRenderedFrame() {
         animation_chart_ = timing_.first_chart;
         animation_frame_ = std::max(
             displayed_frame_, 0);
+        return;
+    }
+    if (action_ == PlayerSpellAction::sonic_blade) {
+        animation_chart_ = timing_.recovery_chart;
+        animation_frame_ = std::min(
+            displayed_frame_ - timing_.first_frame_count,
+            timing_.recovery_frame_count - 1);
         return;
     }
     // FUN_00439730 selects chart fourteen after the casting chart, but

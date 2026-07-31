@@ -370,6 +370,29 @@ front of the hero. The projectile uses 80-unit bounds, moves straight, and
 expires on scenery or its first target. Sample 22 plays at launch, sample 20
 plays on contact, and a successful receiver contact trains spell fourteen.
 
+### Sonic Blade
+
+Sonic Blade is the first spell whose action is driven by the equipped weapon.
+It still needs a pointed living enemy and pays the ordinary Table 16 MP cost,
+but an empty hand or any weapon other than subtype zero, three, or one rejects
+the cast without spending MP. Those three subtypes use CAF chart pairs 5/6,
+15/16, and 19/20 respectively, with the normal attack-speed tiers rather than
+Table 20's casting-speed factors.
+
+Action 37 immediately shows effect 21025 from resource 11000100. Each newly
+crossed first-chart `0x40` marker plays sample 154 and launches effect 10015,
+whose resource-10000090 blade begins 200 world units in front of the hero. It
+travels at Table 17's speed with `[-80,-80,79,79]` bounds, display height 155,
+and a fixed seven-update lifetime, ending on scenery or its first target.
+Contact plays sample 20 and trains spell fifteen. Action counter six also
+plays the equipped weapon's normal attack sample.
+
+Unlike the preceding spells, its family-zero packet is physical type zero.
+Damage is Table 17 parameter zero percent of the hero's physical attack, with
+a minimum of one; word five uses physical defense, word 34 is presentation
+21024, and word 72 is one. Retail still adds the hero's magical hit rate to
+Table 17 parameter one for the packet accuracy value.
+
 ## Character Stats
 
 ### Primary Stats
