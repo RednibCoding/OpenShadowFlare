@@ -49,7 +49,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 96px 16px 24px;
+  padding: 24px;
   background:
     radial-gradient(
       80% 55% at 50% -10%,
@@ -63,6 +63,10 @@ body {
     ),
     linear-gradient(180deg, #10131d 0%, #0a0d15 50%, #05070c 100%);
   font-family: system-ui, 'Segoe UI', sans-serif;
+}
+
+body:has(.app > #game:not([hidden])) {
+  align-items: flex-start;
 }
 
 .sf-panel {
