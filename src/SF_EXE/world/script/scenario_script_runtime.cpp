@@ -42,6 +42,13 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
               return hooks_.query_value &&
                      hooks_.query_value(query, value);
           },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& distance) {
+              return hooks_.measure_character_distance &&
+                     hooks_.measure_character_distance(
+                         character_number, distance);
+          },
       }) {}
 
 bool ScenarioScriptRuntime::load(

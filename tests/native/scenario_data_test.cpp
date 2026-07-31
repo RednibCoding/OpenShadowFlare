@@ -2094,6 +2094,59 @@ bool testLiveScenarioTransition() {
         return false;
     }
 
+    world.update();
+    if (!check(
+            world.transports().enabled(1) &&
+                world.retailSaveProgress().transport_flags[1] == 1,
+            "Standing on the Wasteland transport did not unlock its "
+            "Table 40 destination.")) {
+        return false;
+    }
+
+    const std::filesystem::path transport_save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_transport_unlock_save_test";
+    const std::filesystem::path transport_save =
+        transport_save_root / "Save" / "0000.Ssv";
+    std::error_code transport_cleanup_error;
+    std::filesystem::remove_all(
+        transport_save_root, transport_cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                transport_save,
+                world.playerData(),
+                world.itemDatabase(),
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerBelt(),
+                world.playerSpecialItems(),
+                world.retailSaveProgress(),
+                world.playerMagic(),
+                0x47,
+                &error),
+            "The unlocked transport state could not be saved.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::PlayerLoadRequest transport_player;
+    transport_player.source =
+        osf::PlayerDataSource::retail_save;
+    transport_player.save_path = transport_save;
+    osf::WorldScene restored_transport;
+    const bool restored_transport_loaded =
+        restored_transport.loadInitialScenario(
+            data_root, transport_player, &error);
+    std::filesystem::remove_all(
+        transport_save_root, transport_cleanup_error);
+    if (!check(
+            restored_transport_loaded &&
+                restored_transport.transports().enabled(1),
+            "The Wasteland transport unlock did not survive a save and "
+            "load round trip.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
     const osf::WorldPosition first_enemy_position =
         world.enemies().front().position();
     const std::int32_t first_enemy_character =

@@ -480,6 +480,53 @@ bool WorldScene::queryScriptValue(
     return false;
 }
 
+bool WorldScene::measureScriptCharacterDistance(
+    std::int32_t character_number,
+    std::int32_t& distance) const {
+    if (!has_player_) {
+        return false;
+    }
+
+    WorldPosition position;
+    const ObjectBounds* judgement = nullptr;
+    if (!scriptCharacterBounds(
+            character_number, position, judgement)) {
+        return false;
+    }
+
+    distance = distanceBetweenBounds(
+        player_.position(),
+        player_.judgement(),
+        position,
+        *judgement);
+    return true;
+}
+
+bool WorldScene::scriptCharacterBounds(
+    std::int32_t character_number,
+    WorldPosition& position,
+    const ObjectBounds*& judgement) const {
+    judgement = nullptr;
+    if (const ScenarioObjectActor* object =
+            findScriptObject(character_number)) {
+        position = object->position();
+        judgement = &object->judgement();
+    } else if (const NpcActor* npc =
+                   findScriptNpc(character_number)) {
+        position = npc->position();
+        judgement = &npc->judgement();
+    } else if (const EnemyActor* enemy =
+                   findScriptEnemy(character_number)) {
+        position = enemy->position();
+        judgement = &enemy->judgement();
+    } else if (const GroundItem* item =
+                   findScriptGroundItem(character_number)) {
+        position = item->position;
+        judgement = &item->judgement;
+    }
+    return judgement != nullptr;
+}
+
 void WorldScene::runScenarioContactTriggers() {
     if (!has_player_ || scenario_script_.messageActive()) {
         return;
@@ -494,24 +541,10 @@ void WorldScene::runScenarioContactTriggers() {
 
         WorldPosition position;
         const ObjectBounds* judgement = nullptr;
-        if (const ScenarioObjectActor* object =
-                findScriptObject(status.character_number)) {
-            position = object->position();
-            judgement = &object->judgement();
-        } else if (const NpcActor* npc =
-                       findScriptNpc(status.character_number)) {
-            position = npc->position();
-            judgement = &npc->judgement();
-        } else if (const EnemyActor* enemy =
-                       findScriptEnemy(status.character_number)) {
-            position = enemy->position();
-            judgement = &enemy->judgement();
-        } else if (const GroundItem* item =
-                       findScriptGroundItem(status.character_number)) {
-            position = item->position;
-            judgement = &item->judgement;
-        }
-        if (!judgement ||
+        if (!scriptCharacterBounds(
+                status.character_number,
+                position,
+                judgement) ||
             !boundsIntersect(
                 player_position,
                 player_judgement,

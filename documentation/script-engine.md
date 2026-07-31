@@ -241,9 +241,16 @@ Kind `5` is a periodic scenario update. Remote Town has five such records.
 Four keep the town companion actors in sync with the local player's saved
 companion type. The player-owned dog is disabled and the other three are
 enabled. Each status is an independent callback, so one unsupported periodic
-branch must not prevent the later records from updating their actors. The
-fifth Remote Town record drives a separate distance/effect path whose native
-commands are not portable yet.
+branch must not prevent the later records from updating their actors.
+
+The remaining record is the world-teleporter activation loop. Opcode `34`
+measures the judgement-rectangle distance from the local hero to script object
+`10000202`. A zero result means the rectangles overlap. That branch writes
+`1` to operand type `10`, using the matching Table 40 row as its operand value,
+and therefore permanently adds the location to the transport list. The same
+shape appears throughout the scenario scripts for all 51 transport rows. Its
+nearby fade and visual-packet opcodes are still only partly reconstructed, but
+they do not own the unlock.
 
 ## Interpreter architecture
 
@@ -262,6 +269,7 @@ hooks:
 - read or write an external operand domain;
 - perform a native actor/game command;
 - answer a typed query about game-owned state;
+- measure the local hero's judgement distance from a script character;
 - present a decoded message.
 
 This keeps the old DLL boundary visible without pretending that the original
@@ -291,12 +299,15 @@ interactions are portable so far.
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
+| 16 | `0x00417260` | Ask the world to play an authored sample, optionally range-limited at its evaluated position |
 | 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
+| 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; argument zero is the Warehouse/Special Item owner |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |

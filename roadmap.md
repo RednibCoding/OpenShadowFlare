@@ -804,6 +804,11 @@ world view keeps updating and accepts world input while the left panel owns
 its clicks. Remote Town starts with only its own row enabled, exactly as a new
 retail character does.
 
+The matching discovery path is live too. Periodic status-kind-5 sentences use
+opcode 34 to measure the hero against each teleporter's hidden activation
+object. Overlap enables that scenario's Table 40 row, immediately adds it to
+the compact transport list, and survives the normal save/load round trip.
+
 The named Warehouse object follows the same pointer and range path. Its
 status-zero sentence reaches opcode 41 with argument zero and toggles the
 existing 9-by-10 Special Item owner instead of creating a second warehouse

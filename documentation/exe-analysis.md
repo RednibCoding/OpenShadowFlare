@@ -1028,6 +1028,16 @@ entry 50. The same-scenario branch at `0x00426200` combines that entry value
 with local player zero as `entry * 4`, selecting MCT entry key 200 at
 `(94685,-2756)`, direction 7.
 
+Destinations are discovered by a separate periodic script path rather than by
+clicking object 200. Each teleporter's status-kind-5 sentence runs opcode 34
+at `0x004337b5`. The handler resolves its first operand as a scenario character
+and calls the common `0x004143c0` judgement-rectangle distance routine against
+the local player. It writes that exact distance to the second operand. When it
+is zero, the authored sentence assigns one to its type-10 operand, whose value
+is the destination's Table 40 row. The portable interpreter now follows that
+same path, and the existing save extension retains the resulting 51-row flag
+array.
+
 The complete `0x00426200` call takes player number, scenario ID, entry value,
 an auxiliary transition flag, an optional explicit position, and an entry-key
 player override. With a nonnegative entry value, both the same-scenario fast

@@ -158,6 +158,7 @@ bool testRetailRemoteTown() {
             }
             return false;
         },
+        {},
     });
     interpreter.bind(&script);
     if (!check(
@@ -608,6 +609,7 @@ bool testRetailOutdoorChestScript() {
             value = 0;
             return true;
         },
+        {},
     });
     interpreter.bind(&script);
     const osf::script::StepResult result =
@@ -685,6 +687,7 @@ bool testRetailRedGoblinDeathStatus() {
             value = 0;
             return true;
         },
+        {},
     });
     interpreter.bind(&script);
     return check(

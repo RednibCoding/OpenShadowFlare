@@ -274,6 +274,13 @@ private:
     bool queryScriptValue(
         script::ValueQuery query,
         std::int32_t& value) const;
+    bool measureScriptCharacterDistance(
+        std::int32_t character_number,
+        std::int32_t& distance) const;
+    bool scriptCharacterBounds(
+        std::int32_t character_number,
+        WorldPosition& position,
+        const ObjectBounds*& judgement) const;
     void runScenarioContactTriggers();
     bool processPendingScriptTravel();
     WorldPointerTarget pointerTargetAtScreenPosition(

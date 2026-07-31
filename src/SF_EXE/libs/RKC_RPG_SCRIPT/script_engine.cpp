@@ -335,6 +335,22 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(1);
     case 24:
         return executeNative(3);
+    case 34: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t distance = 0;
+        if (!hooks_.measure_character_distance ||
+            !hooks_.measure_character_distance(
+                readOperand(command.operands[0]), distance)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[1], distance)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 17:
     case 21:
         return executeNative(2);

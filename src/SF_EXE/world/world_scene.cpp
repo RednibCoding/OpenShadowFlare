@@ -46,6 +46,12 @@ WorldScene::WorldScene()
               std::int32_t& value) {
               return queryScriptValue(query, value);
           },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& distance) {
+              return measureScriptCharacterDistance(
+                  character_number, distance);
+          },
       }) {}
 
 
