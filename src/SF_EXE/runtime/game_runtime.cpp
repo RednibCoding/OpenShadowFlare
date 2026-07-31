@@ -341,6 +341,7 @@ private:
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
             const bool notice_consumed =
+                !gameplayUi_.options().active() &&
                 osf::dismissPlayerLevelUpNoticeAtPointer(
                     input_.menu()
                         .pointer_primary_pressed,

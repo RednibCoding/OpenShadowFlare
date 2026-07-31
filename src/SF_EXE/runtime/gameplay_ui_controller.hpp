@@ -55,6 +55,17 @@ public:
     const GameplayTransport& transport() const;
 
 private:
+    bool updateOptions(
+        InputAdapter& input,
+        WorldScene& world,
+        AudioSystem& audio,
+        GameConfig& game_config,
+        bool& config_dirty,
+        RetailRandom& random,
+        PlayerLoadRequest& player,
+        RetailSavePreview& save_preview,
+        std::int32_t& shadow_opacity);
+
     void applyConfig(
         const GameConfig& config,
         WorldScene& world,

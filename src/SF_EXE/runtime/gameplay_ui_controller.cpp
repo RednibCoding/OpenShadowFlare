@@ -141,6 +141,22 @@ bool GameplayUiController::update(
         return true;
     }
 
+    // The options and confirmation pages are modal. Process them before
+    // inventory, status, magic, and other panels so an open panel cannot
+    // claim a click intended for the confirmation dialog.
+    if (updateOptions(
+            input,
+            world,
+            audio,
+            game_config,
+            config_dirty,
+            random,
+            player,
+            save_preview,
+            shadow_opacity)) {
+        return true;
+    }
+
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
@@ -583,6 +599,19 @@ bool GameplayUiController::update(
         return true;
     }
 
+    return false;
+}
+
+bool GameplayUiController::updateOptions(
+    InputAdapter& input,
+    WorldScene& world,
+    AudioSystem& audio,
+    GameConfig& game_config,
+    bool& config_dirty,
+    RetailRandom& random,
+    PlayerLoadRequest& player,
+    RetailSavePreview& save_preview,
+    std::int32_t& shadow_opacity) {
     const bool was_active = options_.active();
     const bool toggle =
         input.gameplayOptionsPressed() &&
@@ -668,7 +697,8 @@ bool GameplayUiController::update(
     return was_active ||
            options_.active() ||
            (input.gameplayOptionsPressed() &&
-            !world.conversationActive());
+            !world.conversationActive()) ||
+           input.gameplayHelpPressed();
 }
 
 const GameplayOptionsMenu&

@@ -129,6 +129,45 @@ if(TARGET sf_game_core)
     NAME gameplay_magic
     COMMAND gameplay_magic_test)
 
+  add_executable(
+    gameplay_ui_controller_test
+    gameplay_ui_controller_test.cpp
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_ui_controller.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/input_adapter.cpp"
+  )
+  target_link_libraries(
+    gameplay_ui_controller_test
+    PRIVATE
+      OpenShadowFlare::GameCore
+      OpenShadowFlare::RKC_DSOUND
+      Lal::Lal
+      Lwl::Lwl
+  )
+  target_compile_features(
+    gameplay_ui_controller_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gameplay_ui_controller_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    gameplay_ui_controller_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      gameplay_ui_controller_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_ui_controller_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME gameplay_ui_controller
+    COMMAND gameplay_ui_controller_test)
+
   add_executable(movement_test movement_test.cpp)
   target_link_libraries(
     movement_test
