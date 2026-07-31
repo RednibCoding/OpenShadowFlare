@@ -1634,3 +1634,21 @@ units around the hero. Those blades travel straight with 50-unit bounds and a
 90-update lifetime, replace packet presentations with directional 21021 and
 21022, expire on scenery or first contact, play sample 94 at the final spawn
 and sample 20 on contact, and train spell twelve through the receiver.
+
+## Lightning Storm cast
+
+`FUN_0043b950` runs spell thirteen as action 35 on CAF charts 11 and 12 with
+Table 20 row thirteen. Its command requires a pointed living enemy to set the
+angle, while effect 10013 deliberately receives source `-1`, target mask four,
+target `-1`, zero travel values, the fixed hero origin, no source judgement,
+marker delay, effective level, and constructor field 22. The family-zero
+subtype-zero packet keeps the actual player source, combines Table 17 with
+magical attack and hit rate, uses physical defense, presentation 20005, and
+spell thirteen.
+
+`FUN_0042e240` uses Table 204 to attempt four radial shells at radii 350, 550,
+750, and 950, four updates apart. Each ray has an independent permanent
+placement cutoff. A clear ray consumes a random chart and creates resources
+10000030, 10000031, and 10000032; only the first applies the packet in its
+100-unit area. Sample 21 plays once per attempted shell, the controller ends
+at delay plus 16, and successful receiver contacts train Lightning Storm.

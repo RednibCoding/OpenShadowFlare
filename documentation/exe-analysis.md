@@ -2104,3 +2104,26 @@ straight with 50-unit bounds, a 90-update lifetime, scenery and first-target
 expiry, and optional hit memory from constructor field 22. Their packet
 replaces words 34/35 and 74/75 with directional presentations 21021 and 21022.
 Sample 94 plays at the final launch; sample 20 and practice belong to contact.
+
+## Lightning Storm cast
+
+`0x0043b950` dispatches spell thirteen as action 35 on CAF charts 11 and 12
+with Table 20 row thirteen. The retail pointed-spell switch requires a living
+enemy and stores its angle, but the effect-10013 request passes source identity
+`-1`, target mask four, target identity `-1`, zero travel values, the stored
+angle, an explicit pointer to the hero position, no source judgement, the
+marker delay, effective level, and Table 17 parameter four.
+
+The copied packet retains the real player source. It is family zero, subtype
+zero, adds Table 17 parameter zero to magical attack and parameter one to
+magical hit rate, carries physical defense in word five, presentation 20005
+in word 34, zero in word 72, and spell thirteen in word 73.
+
+`0x0042e240` reads the effective-level ray count from Table 204. It attempts
+four radial shells, four updates apart, at `350 + shell * 200` from the fixed
+origin. Each ray independently latches failed placement, consumes one retail
+random draw for the resource-10000030 chart while clear, and also creates
+resources 10000031 and 10000032. Only the first resource processes every
+target in its 100-unit update-zero area. Sample 21 plays once per shell at the
+last radial position, even if that final ray is blocked. The controller ends
+at marker delay plus 16; packet contact owns spell practice.

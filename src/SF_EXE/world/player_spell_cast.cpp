@@ -28,6 +28,8 @@ struct PlayerSpellDescriptor {
     bool use_physical_defense = false;
     bool random_ordinary_impact = false;
     std::int32_t packet_value_72 = 0;
+    bool use_player_effect_source = true;
+    bool use_target_identifier = true;
 };
 
 bool playerSpellDescriptor(
@@ -130,6 +132,24 @@ bool playerSpellDescriptor(
             0,
         };
         return true;
+    case 13:
+        descriptor = {
+            10013,
+            0,
+            20005,
+            4,
+            true,
+            false,
+            true,
+            false,
+            true,
+            true,
+            false,
+            0,
+            false,
+            false,
+        };
+        return true;
     default:
         return false;
     }
@@ -175,10 +195,14 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
     request.effect_number = descriptor.effect_number;
     request.owner_kind = kPlayerOwnerKind;
     request.source_character_number =
-        input.stats.source_character_number;
+        descriptor.use_player_effect_source
+            ? input.stats.source_character_number
+            : -1;
     request.target_kind = descriptor.target_mask;
     request.target_identifier =
-        input.target_character_number;
+        descriptor.use_target_identifier
+            ? input.target_character_number
+            : -1;
     request.constructor_value_6 =
         descriptor.use_table_travel_speed
             ? retailEffectParameter(

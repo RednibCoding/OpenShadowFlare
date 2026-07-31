@@ -337,6 +337,25 @@ updates and expire on scenery or their first target. Their packet carries the
 directional 21021 and 21022 presentations. The final launch plays sample 94,
 contacts play sample 20, and successful contacts train spell twelve.
 
+### Lightning Storm
+
+Lightning Storm still requires a pointed enemy, but only to choose the cast
+direction. Action 35 uses CAF charts 11 and 12. Effect 10013 receives a fixed
+hero origin and deliberately stores `-1` for both its source and target
+identities; damage ownership remains in the copied player packet.
+
+That family-zero subtype-zero packet uses magical attack and hit rate,
+physical defense, presentation 20005, and the spell's Table 17 banks. Table
+204 determines how many rays form each circle. Starting 350 world units from
+the origin, four circles are attempted four updates apart at radii 350, 550,
+750, and 950.
+
+Every clear ray creates resources 10000030, 10000031, and 10000032. Only the
+first layer applies the packet in its 100-unit area, using a randomized chart.
+Each ray remembers its own scenery obstruction, so a blocked direction stops
+on later circles without suppressing the others. Sample 21 plays once per
+attempted circle, and successful contacts train spell thirteen.
+
 ## Character Stats
 
 ### Primary Stats

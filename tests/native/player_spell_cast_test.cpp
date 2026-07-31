@@ -68,6 +68,8 @@ struct ExpectedSpellCast {
     bool use_physical_defense = false;
     bool random_ordinary_impact = false;
     std::int32_t packet_value_72 = 0;
+    bool use_player_effect_source = true;
+    bool use_target_identifier = true;
 };
 
 bool testRetailAction(
@@ -246,11 +248,15 @@ bool testRetailPacket(
             request.effect_number ==
                 expected.effect_number &&
             request.owner_kind == 1 &&
-            request.source_character_number == 0 &&
+            request.source_character_number ==
+                (expected.use_player_effect_source
+                     ? 0
+                     : -1) &&
             request.target_kind ==
                 expected.target_mask &&
             request.target_identifier ==
-                (expected.requires_target
+                (expected.use_target_identifier &&
+                         expected.requires_target
                      ? 14000316
                      : -1) &&
             request.constructor_value_6 ==
@@ -1015,10 +1021,10 @@ bool testShippedWorldCast(
             contact_input.target_character_number =
                 target_character_number;
             contact_input.source_position =
-                spell == 3 || spell == 10
+                spell == 3 || spell == 10 || spell == 13
                     ? osf::WorldPosition{
                           current_target->position().x -
-                              250,
+                              (spell == 13 ? 350 : 250),
                           current_target->position().y}
                     : current_target->position();
             contact_input.target_position =
@@ -1041,7 +1047,7 @@ bool testShippedWorldCast(
                 contact.constructor_value_6 = 0;
                 contact.has_explicit_origin = true;
                 contact.origin =
-                    spell == 10
+                    spell == 10 || spell == 13
                         ? contact_input.source_position
                         : current_target->position();
             }
@@ -2621,7 +2627,29 @@ int main() {
             13,
             10000081,
             94) ||
-        !testTargetedSpellInsufficientMana(game_root, 12)) {
+        !testTargetedSpellInsufficientMana(game_root, 12) ||
+        !testRetailAction(
+            animation,
+            tables,
+            13,
+            osf::PlayerSpellAction::lightning_storm,
+            11,
+            12) ||
+        !testRetailPacket(
+            tables,
+            13,
+            {
+                10013, 0, 20005, 4,
+                true, false, true, false, true, true,
+                false, 0, false, false,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            13,
+            11,
+            10000030,
+            21) ||
+        !testTargetedSpellInsufficientMana(game_root, 13)) {
         return 1;
     }
 #endif
