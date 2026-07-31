@@ -311,7 +311,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10021;
+    request.effect_number = 10022;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -2128,6 +2128,462 @@ bool testTypeSixteenProjectileExplosion() {
         "camera beyond retail's 3000-unit boundary.");
 }
 
+bool testTypeTwentyOneTrackedStages() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The type-twenty-one count table could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10021, 2);
+    request.constructor_value_17 = 30;
+    osf::EnemyEffectController controller;
+    if (!check(
+            controller.initialize(request, &tables),
+            "A valid type-twenty-one request was rejected.")) {
+        return false;
+    }
+
+    const auto source = controller.update(
+        {{true, {100, 200}}, nullptr, {}, {}, {}});
+    if (!check(
+            source.actor_spawn_count == 1 &&
+                source.audio_count == 0 &&
+                !source.expired &&
+                source.actor_spawns[0].resource_id ==
+                    11000210 &&
+                source.actor_spawns[0].position.x == 100 &&
+                source.actor_spawns[0].position.y == 200 &&
+                source.actor_spawns[0].judgement.left == 22 &&
+                source.actor_spawns[0].judgement.top == 32 &&
+                source.actor_spawns[0].judgement.right == 22 &&
+                source.actor_spawns[0].judgement.bottom == 32 &&
+                source.actor_spawns[0].lifetime_from_animation &&
+                source.actor_spawns[0].animation_chart == 0 &&
+                source.actor_spawns[0].animation_direction == 8 &&
+                !source.actor_spawns[0].has_packet,
+            "Type twenty one did not create its retail source "
+            "point animation on update zero.")) {
+        return false;
+    }
+
+    const auto waiting = controller.update(
+        {{true, {200, 300}}, nullptr, {}, {}, {}});
+    if (!check(
+            waiting.actor_spawn_count == 0 &&
+                waiting.audio_count == 0 &&
+                controller.counter() == 2,
+            "Type twenty one launched before its authored "
+            "delay.")) {
+        return false;
+    }
+
+    const osf::WorldPosition launch_source{300, 400};
+    const auto launch = controller.update(
+        {{true, launch_source}, nullptr, {}, {}, {}});
+    if (!check(
+            launch.actor_spawn_count == 5 &&
+                launch.audio_count == 1 &&
+                launch.audio[0].sample == 19,
+            "Table 207 did not produce the shipped five-ray "
+            "type-twenty-one launch.")) {
+        return false;
+    }
+    constexpr double full_circle =
+        6.283184;
+    for (std::size_t index = 0;
+         index < launch.actor_spawn_count;
+         ++index) {
+        const double direction =
+            -static_cast<double>(index) *
+            full_circle / 5.0;
+        const osf::WorldPosition expected{
+            launch_source.x +
+                static_cast<std::int32_t>(
+                    std::cos(direction) * 180.0),
+            launch_source.y -
+                static_cast<std::int32_t>(
+                    std::sin(direction) * 180.0),
+        };
+        const auto& projectile =
+            launch.actor_spawns[index];
+        if (!check(
+                projectile.resource_id == 10000100 &&
+                    projectile.owner_kind == 4 &&
+                    projectile.source_character_number ==
+                        14000042 &&
+                    projectile.target_mask == 1 &&
+                    projectile.target_identifier == 3 &&
+                    std::abs(
+                        projectile.direction_radians -
+                        direction) < 0.000001 &&
+                    projectile.home_toward_target &&
+                    projectile.homing_turn_speed == 20 &&
+                    projectile.travel_speed == 73 &&
+                    projectile.position.x == expected.x &&
+                    projectile.position.y == expected.y &&
+                    projectile.judgement.left == -80 &&
+                    projectile.judgement.top == -80 &&
+                    projectile.judgement.right == 79 &&
+                    projectile.judgement.bottom == 79 &&
+                    projectile.display_height == 250 &&
+                    projectile.lifetime_from_animation &&
+                    projectile.expire_on_environment_collision &&
+                    projectile.target_collision_start == 0 &&
+                    projectile.target_collision_end == -1 &&
+                    projectile.expire_on_target &&
+                    !projectile.remember_targets &&
+                    projectile.target_audio.bank == 0 &&
+                    projectile.target_audio.sample == 20 &&
+                    projectile.animation_chart == 0 &&
+                    projectile.animation_direction == 8 &&
+                    projectile.animation_speed == 2433 &&
+                    projectile.track_for_controller &&
+                    projectile.controller_tracking_index ==
+                        static_cast<std::int32_t>(index) &&
+                    projectile.has_packet &&
+                    projectile.packet[34] == 21013,
+                "A type-twenty-one ray differs from the retail "
+                "homing projectile descriptor.")) {
+            return false;
+        }
+        controller.bindSpawnedActor(
+            50000100 +
+                static_cast<std::int32_t>(index),
+            {
+                true,
+                {
+                    1000 +
+                        static_cast<std::int32_t>(index) * 100,
+                    2000 +
+                        static_cast<std::int32_t>(index) * 100,
+                },
+            },
+            static_cast<std::int32_t>(index));
+    }
+    if (!check(
+            launch.audio[0].position.x ==
+                launch.actor_spawns[4].position.x &&
+                launch.audio[0].position.y ==
+                    launch.actor_spawns[4].position.y,
+            "The type-twenty-one launch sample was not placed "
+            "at the final ray.")) {
+        return false;
+    }
+
+    osf::EnemyEffectControllerContext live_context;
+    live_context.resolve_actor =
+        [](std::int32_t actor_identifier) {
+            const std::int32_t index =
+                actor_identifier - 50000100;
+            return index >= 0 && index < 5
+                ? osf::EnemyEffectControllerSource{
+                      true,
+                      {1100 + index * 100,
+                       2100 + index * 100}}
+                : osf::EnemyEffectControllerSource{};
+        };
+    const auto tracked =
+        controller.update(live_context);
+    if (!check(
+            tracked.actor_spawn_count == 0 &&
+                tracked.audio_count == 0 &&
+                controller.counter() == 4,
+            "Type twenty one did not refresh each live ray "
+            "independently.")) {
+        return false;
+    }
+
+    osf::EnemyEffectControllerContext missing_context;
+    missing_context.resolve_actor =
+        [](std::int32_t) {
+            return osf::EnemyEffectControllerSource{};
+        };
+    const auto first_stage =
+        controller.update(missing_context);
+    if (!check(
+            first_stage.actor_spawn_count == 5 &&
+                first_stage.audio_count == 5 &&
+                !first_stage.expired,
+            "Missing type-twenty-one rays did not enter their "
+            "first stage immediately.")) {
+        return false;
+    }
+    for (std::size_t index = 0; index < 5; ++index) {
+        const auto& actor =
+            first_stage.actor_spawns[index];
+        if (!check(
+                actor.resource_id == 12000000 &&
+                    actor.position.x ==
+                        1100 +
+                            static_cast<std::int32_t>(index) *
+                                100 &&
+                    actor.position.y ==
+                        2100 +
+                            static_cast<std::int32_t>(index) *
+                                100 &&
+                    actor.judgement.left == -240 &&
+                    actor.judgement.top == -240 &&
+                    actor.judgement.right == 239 &&
+                    actor.judgement.bottom == 239 &&
+                    actor.lifetime_from_animation &&
+                    actor.target_collision_start == -1 &&
+                    actor.target_collision_end == -1 &&
+                    actor.process_every_target &&
+                    actor.animation_chart == 0 &&
+                    actor.animation_direction == 8 &&
+                    actor.has_packet &&
+                    actor.packet[32] == 0 &&
+                    actor.packet[34] == 20000 &&
+                    first_stage.audio[index].sample == 19,
+                "The first type-twenty-one stage lost its "
+                "position, visual, packet rewrite, or sound.")) {
+            return false;
+        }
+    }
+
+    const auto advanceToNextStage =
+        [&controller, &missing_context]() {
+            for (std::int32_t update = 0;
+                 update < 3;
+                 ++update) {
+                const auto idle =
+                    controller.update(missing_context);
+                if (idle.actor_spawn_count != 0 ||
+                    idle.audio_count != 0 ||
+                    idle.expired) {
+                    return osf::EnemyEffectControllerUpdate{};
+                }
+            }
+            return controller.update(missing_context);
+        };
+
+    const auto second_stage =
+        advanceToNextStage();
+    if (!check(
+            second_stage.actor_spawn_count == 5 &&
+                second_stage.audio_count == 5 &&
+                second_stage.actor_spawns[0].resource_id ==
+                    11000033 &&
+                second_stage.actor_spawns[0]
+                        .target_collision_start == 0 &&
+                second_stage.actor_spawns[0]
+                        .target_collision_end == 0 &&
+                second_stage.actor_spawns[0].packet[32] == 1 &&
+                second_stage.actor_spawns[0].packet[34] ==
+                    21013,
+            "The second type-twenty-one stage did not open its "
+            "one-update 21013 packet window.")) {
+        return false;
+    }
+
+    const auto third_stage =
+        advanceToNextStage();
+    if (!check(
+            third_stage.actor_spawn_count == 15 &&
+                third_stage.audio_count == 5,
+            "The third type-twenty-one stage did not create all "
+            "three visual layers for every ray.")) {
+        return false;
+    }
+    for (std::size_t index = 0; index < 5; ++index) {
+        const std::size_t base = index * 3;
+        if (!check(
+                third_stage.actor_spawns[base].resource_id ==
+                    10000030 &&
+                    third_stage.actor_spawns[base + 1]
+                            .resource_id == 10000031 &&
+                    third_stage.actor_spawns[base + 2]
+                            .resource_id == 10000032 &&
+                    third_stage.actor_spawns[base]
+                            .process_every_target &&
+                    !third_stage.actor_spawns[base + 1]
+                             .process_every_target &&
+                    !third_stage.actor_spawns[base + 2]
+                             .process_every_target &&
+                    third_stage.actor_spawns[base].packet[32] ==
+                        2 &&
+                    third_stage.actor_spawns[base].packet[34] ==
+                        20005,
+                "A third-stage radial layer differs from the "
+                "retail three-resource packet sequence.")) {
+            return false;
+        }
+    }
+
+    missing_context.observer =
+        {true, {1100, 5100}};
+    const auto fourth_stage =
+        advanceToNextStage();
+    if (!check(
+            fourth_stage.actor_spawn_count == 5 &&
+                fourth_stage.audio_count == 10 &&
+                fourth_stage.camera_shake &&
+                fourth_stage.camera_shake_duration == 8 &&
+                fourth_stage.camera_shake_magnitude == 6 &&
+                fourth_stage.expired &&
+                !controller.active(),
+            "The fourth type-twenty-one stage did not finish "
+            "with its sounds and inclusive camera shake.")) {
+        return false;
+    }
+    for (std::size_t index = 0; index < 5; ++index) {
+        const auto& actor =
+            fourth_stage.actor_spawns[index];
+        if (!check(
+                actor.resource_id == 10000060 &&
+                    actor.target_collision_start == 0 &&
+                    actor.target_collision_end == 0 &&
+                    actor.packet[32] == 3 &&
+                    actor.packet[34] == 21000 &&
+                    fourth_stage.audio[index * 2].sample == 22 &&
+                    fourth_stage.audio[index * 2 + 1].sample ==
+                        19,
+                "The final type-twenty-one stage lost its "
+                "21000 packet or paired samples.")) {
+            return false;
+        }
+    }
+
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = {700, 900};
+    request.constructor_value_12 = 0;
+    if (!check(
+            controller.initialize(request, &tables),
+            "The fixed-origin type-twenty-one request was "
+            "rejected.")) {
+        return false;
+    }
+    const auto fixed = controller.update(
+        {{true, {1, 2}}, nullptr, {}, {}, {}});
+    if (!check(
+            fixed.actor_spawn_count == 6 &&
+                fixed.actor_spawns[0].position.x == 700 &&
+                fixed.actor_spawns[0].position.y == 900,
+            "The fixed-origin type-twenty-one launch lost its "
+            "source or five rays.")) {
+        return false;
+    }
+    for (std::size_t index = 1;
+         index < fixed.actor_spawn_count;
+         ++index) {
+        if (!check(
+                fixed.actor_spawns[index].position.x == 700 &&
+                    fixed.actor_spawns[index].position.y == 900,
+                "A fixed-origin type-twenty-one ray was "
+                "incorrectly projected by 180 units.")) {
+            return false;
+        }
+    }
+
+    request.owner_kind = 4;
+    request.has_explicit_origin = false;
+    request.constructor_value_12 = 0;
+    request.constructor_value_17 = 10;
+    if (!check(
+            controller.initialize(request, &tables),
+            "The three-ray type-twenty-one request was "
+            "rejected.")) {
+        return false;
+    }
+    const auto three_ray_launch = controller.update(
+        {{true, {100, 200}}, nullptr, {}, {}, {}});
+    if (!check(
+            three_ray_launch.actor_spawn_count == 4,
+            "Table 207 subtype ten did not create one source "
+            "and three rays.")) {
+        return false;
+    }
+    for (std::int32_t index = 0; index < 3; ++index) {
+        controller.bindSpawnedActor(
+            50000200 + index,
+            {true, {2000 + index * 100, 3000}},
+            index);
+    }
+    osf::EnemyEffectControllerContext partial_context;
+    partial_context.resolve_actor =
+        [](std::int32_t actor_identifier) {
+            return actor_identifier == 50000200
+                ? osf::EnemyEffectControllerSource{
+                      true, {2100, 3100}}
+                : osf::EnemyEffectControllerSource{};
+        };
+    const auto partial_missing =
+        controller.update(partial_context);
+    if (!check(
+            partial_missing.actor_spawn_count == 2 &&
+                partial_missing.actor_spawns[0].position.x ==
+                    2100 &&
+                partial_missing.actor_spawns[1].position.x ==
+                    2200,
+            "Type twenty one did not begin stages only for the "
+            "two missing rays.")) {
+        return false;
+    }
+    partial_context.resolve_actor =
+        [](std::int32_t) {
+            return osf::EnemyEffectControllerSource{};
+        };
+    const auto final_missing =
+        controller.update(partial_context);
+    if (!check(
+            final_missing.actor_spawn_count == 1 &&
+                final_missing.actor_spawns[0].position.x ==
+                    2100 &&
+                final_missing.actor_spawns[0].position.y ==
+                    3100,
+            "The last live type-twenty-one ray did not retain "
+            "its independently refreshed position.")) {
+        return false;
+    }
+
+    request.constructor_value_12 = -1;
+    request.constructor_value_17 = 1;
+    if (!check(
+            controller.initialize(request, &tables),
+            "A negative-delay type-twenty-one request was "
+            "rejected.")) {
+        return false;
+    }
+    const auto negative = controller.update(
+        {{true, {100, 200}}, nullptr, {}, {}, {}});
+    if (!check(
+            negative.actor_spawn_count == 2 &&
+                negative.actor_spawns[0].resource_id ==
+                    11000210 &&
+                negative.actor_spawns[1].resource_id ==
+                    12000000 &&
+                negative.audio_count == 1 &&
+                negative.audio[0].sample == 19 &&
+                !negative.expired,
+            "A negative type-twenty-one delay did not preserve "
+            "retail's source-plus-missing-ray first update.")) {
+        return false;
+    }
+
+    request.constructor_value_12 = 0;
+    request.constructor_value_17 = 31;
+    return check(
+        !controller.initialize(request, &tables),
+        "An out-of-range Table 207 subtype created a "
+        "type-twenty-one controller.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -2143,7 +2599,8 @@ int main() {
         !testTypeTwelveWarningAndProjectileFans() ||
         !testTypeThirteenRadialWaves() ||
         !testTypeFourteenProjectile() ||
-        !testTypeSixteenProjectileExplosion()) {
+        !testTypeSixteenProjectileExplosion() ||
+        !testTypeTwentyOneTrackedStages()) {
         return 1;
     }
     return 0;

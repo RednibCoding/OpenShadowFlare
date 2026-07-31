@@ -48,6 +48,7 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t additional_display_status = 0;
     bool visible = true;
     bool track_for_controller = false;
+    std::int32_t controller_tracking_index = -1;
     bool has_packet = false;
     CombatPacket packet;
 };

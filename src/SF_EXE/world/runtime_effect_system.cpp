@@ -206,7 +206,8 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                 if (request.track_for_controller) {
                     entry.controller.bindSpawnedActor(
                         request.actor_identifier,
-                        spawned_actor);
+                        spawned_actor,
+                        request.controller_tracking_index);
                 }
                 continue;
             }
@@ -219,7 +220,8 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
             if (request.track_for_controller) {
                 entry.controller.bindSpawnedActor(
                     request.actor_identifier,
-                    spawned_actor);
+                    spawned_actor,
+                    request.controller_tracking_index);
             }
         }
     }

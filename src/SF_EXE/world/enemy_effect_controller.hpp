@@ -29,7 +29,7 @@ struct EnemyEffectControllerUpdate {
     std::array<RuntimeEffectActorSpawnRequest, 32>
         actor_spawns;
     std::size_t actor_spawn_count = 0;
-    std::array<PositionalEffectAudioRequest, 2>
+    std::array<PositionalEffectAudioRequest, 16>
         audio;
     std::size_t audio_count = 0;
     bool camera_shake = false;
@@ -85,7 +85,8 @@ public:
         const EnemyEffectControllerContext& context);
     void bindSpawnedActor(
         std::int32_t actor_identifier,
-        const EnemyEffectControllerSource& actor);
+        const EnemyEffectControllerSource& actor,
+        std::int32_t tracking_index = 0);
 
     bool active() const;
     std::int32_t counter() const;
@@ -103,6 +104,15 @@ private:
     WorldPosition type_five_position_;
     std::int32_t tracked_actor_identifier_ = -1;
     WorldPosition tracked_actor_position_;
+    std::int32_t type_twenty_one_actor_count_ = 0;
+    std::array<std::int32_t, 5>
+        type_twenty_one_actor_identifiers_{};
+    std::array<WorldPosition, 5>
+        type_twenty_one_actor_positions_{};
+    std::array<std::int32_t, 5>
+        type_twenty_one_stages_{};
+    std::array<std::int32_t, 5>
+        type_twenty_one_stage_counters_{};
     bool active_ = false;
 };
 

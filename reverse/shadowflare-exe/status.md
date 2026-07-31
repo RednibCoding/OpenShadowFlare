@@ -186,6 +186,25 @@ eight-update, magnitude-six camera shake, then the controller expires.
 Goliate's second effect variant in `04050002` supplies the shipped subtype-ten
 live case.
 
+Type 21 at `0x0042eeb0` reads one, three, or five radial rays from Table 207.
+Update zero creates source resource `11000210`. At the authored delay it
+launches resource `10000100` at evenly spaced subtractive angles, projecting
+180 units from a live owner or retaining an owner-kind-zero explicit origin.
+The rays use 80-unit bounds, authored speed and height, twenty-degree homing,
+speed-scaled animation, a full chart-zero lifetime, static and first-target
+expiry, the copied packet, contact sample 20, and one launch sample 19.
+
+Every returned actor identity and last position is tracked separately. After
+a ray disappears, four stages appear at four-update intervals with 240-unit
+bounds. Resources `12000000`, `11000033`, `10000030`, and `10000060` rewrite
+packet words 32/34 to `0/20000`, `1/21013`, `2/20005`, and `3/21000`.
+Stages two and four process every overlapping target on update zero; stages
+one and three are visual. Stage three adds resources `10000031` and
+`10000032`. Every primary stage plays sample 19, while the final stage also
+plays sample 22 and requests the nearby eight-update, magnitude-six camera
+shake. The controller ends only after all rays finish. Arc Angel's third
+attack in `99000036` supplies the shipped subtype-30 five-ray live case.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -202,8 +221,8 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 through 5, types 10 through 14, and type 16. Focused tests cover zero,
-positive, and negative delays,
+of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
+cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
 random chart, and persistent obstruction. Its actor outputs are
@@ -230,8 +249,9 @@ resources, audio, damage, cleanup, and unchanged item ownership. Scenario
 two launch sounds, contact sample 20, camera shake, and item ownership. The
 type-5 sequence is covered by enemy 48 in `04060004`, including its
 resource-driven timing, three visuals, six pulses, area damage, camera shake,
-cleanup, and item ownership. The final specialized controller remains
-to be reconstructed. Mapping
+cleanup, and item ownership. Arc Angel in `99000036` covers type 21's source,
+five tracked rays, four stages, two packet windows, layered render, audio,
+camera shake, cleanup, and item ownership. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 

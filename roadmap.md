@@ -98,9 +98,6 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller type 21 with one
-  shipped family at a time, with both passive timing coverage and a live actor
-  using each one;
 - finish ranged player actions and projectiles without bypassing the common
   effect actors;
 - attach companion targeting and attacks to the same receiver and reward
@@ -1106,7 +1103,27 @@ jolt. Goliate's second effect variant in Goliate's Mansion B3F (`04050002`)
 supplies the shipped live projectile, follow-up position, render, damage,
 audio, camera, cleanup, and item-identity regression.
 
-Type 21 remains.
+Type 21 completes the specialized enemy-effect controllers. Update zero
+creates source resource `11000210`. At the authored delay, Table 207 chooses
+one, three, or five evenly spaced resource-`10000100` rays. A live owner
+launches each ray 180 units out; owner kind zero keeps the explicit origin.
+The rays use 80-unit bounds, twenty-degree homing turns, speed-scaled
+animation, their full chart-zero lifetime, static and first-target expiry,
+contact sample 20, and one sample 19 at the final launch point.
+
+The controller tracks every ray separately. Once a ray disappears, its saved
+position advances through four stages at four-update intervals. Resources
+`12000000`, `11000033`, `10000030`, and `10000060` rewrite packet words 32
+and 34 to `{0,20000}`, `{1,21013}`, `{2,20005}`, and `{3,21000}`. The odd
+stages are visual; the even stages apply their packet to every overlapping
+target on update zero. Stage three also creates the matching `10000031` and
+`10000032` visual layers. Every stage plays sample 19. The last also plays
+sample 22 and requests the nearby eight-update, six-pixel camera jolt.
+
+Arc Angel's third attack in scenario `99000036` supplies the shipped
+subtype-30 five-ray regression. It covers the source, launch, independent
+tracking, all four timed stages, three-layer render, both damage windows,
+audio, camera motion, controller cleanup, and adjacent item ownership.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1135,9 +1152,8 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller type 21, then the ranged player
-actions and companion attacks, keeping one
-shipped live encounter beside each passive reconstruction.
+finish. It should move to ranged player actions and companion attacks, keeping
+one shipped live encounter beside each passive reconstruction.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,

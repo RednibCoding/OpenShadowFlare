@@ -1516,6 +1516,43 @@ same eight-update, magnitude-six camera shake as the other area families, and
 the controller then expires. Goliate's second effect variant in Goliate's
 Mansion B3F (`04050002`) supplies the shipped subtype-ten live case.
 
+Type 21 (`0x0042eeb0`) reads its ray count from Table 207 row zero at
+`subtype - 1`; the shipped ranges produce one, three, or five rays. Update
+zero creates source resource `11000210` at the resolved owner with the
+source rectangle's lower-right point plus one as its judgement. When the
+counter reaches the authored delay, resource `10000100` is launched once per
+ray at `stored angle - index * (6.283184 / count)`. Nonzero owners resolve
+and project each launch point 180 units; owner kind zero uses the explicit
+origin directly.
+
+Each ray uses `[-80,-80,79,79]` bounds, constructor value six for travel
+speed, constructor value seven for display height, the homing movement mode
+with a twenty-degree turn, and animation speed `travel speed * 1000 / 30`.
+Its lifetime is the complete chart-zero/direction-eight animation. Static
+contact or the first eligible target expires it. The copied packet uses
+contact sample 20, and sample 19 plays once at the final ray's launch point.
+The controller stores every returned actor identity and refreshes each saved
+position independently until that actor disappears.
+
+A missing ray enters a four-stage sequence at its last position. One stage is
+created every four controller updates with `[-240,-240,239,239]` bounds and a
+complete chart-zero/direction-eight lifetime:
+
+- stage one uses resource `12000000` and rewrites packet words 32/34 to
+  `0/20000`;
+- stage two uses resource `11000033`, rewrites them to `1/21013`, and applies
+  the packet to every overlapping target on update zero;
+- stage three uses resource `10000030` and `2/20005`, with visual companions
+  `10000031` and `10000032`;
+- stage four uses resource `10000060` and `3/21000`, with the same update-zero
+  all-target packet window as stage two.
+
+Every primary stage plays sample 19. Stage four also plays sample 22 and, for
+a local player no farther than 3000 units away, requests an eight-update,
+magnitude-six camera shake. The controller expires only after every ray has
+entered stage five. Arc Angel's third attack in scenario `99000036` is the
+shipped subtype-30 five-ray live case.
+
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
 first update, retail integer projection, static OBL/GND sweeping, the

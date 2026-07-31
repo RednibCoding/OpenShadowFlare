@@ -2168,6 +2168,253 @@ bool testShippedLiveTypeSixteen(
         "or adjacent item identity.");
 }
 
+bool testShippedLiveTypeTwentyOne(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-twenty-one parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectFinale";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {99000036, 0, 0},
+                &error),
+            "The shipped type-twenty-one Arc Angel scenario "
+            "could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::EnemyActor* source =
+        findEnemy(world, 0);
+    if (!check(
+            source &&
+                source->name() == "Arc Angel" &&
+                source->presentationProfile()
+                        .effect_type[2] == 21 &&
+                source->presentationProfile()
+                        .effect_subtype[2] == 30,
+            "Scenario 99000036 no longer contains its shipped "
+            "type-twenty-one Arc Angel variant.")) {
+        return false;
+    }
+
+    const osf::WorldPosition player_position{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(
+            world, *source, tables, {}, 2);
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = player_position;
+    request.packet.write(4, 1);
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    const std::int32_t camera_y =
+        world.cameraScreenY();
+    if (!check(
+            request.valid &&
+                request.effect_number == 10021 &&
+                request.constructor_value_12 == 0 &&
+                request.constructor_value_17 == 30 &&
+                request.constructor_value_6 > 0 &&
+                body_before,
+            "The Arc Angel did not resolve a valid "
+            "type-twenty-one request or ownership fixture.")) {
+        return false;
+    }
+
+    world.queueCombatEffect(request);
+    world.update();
+    const std::vector<std::int32_t> launch_audio =
+        world.takeAudioSamples();
+    const auto countResource =
+        [&world](std::int32_t resource_id) {
+            return std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [resource_id](
+                    const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == resource_id;
+                });
+        };
+    if (!check(
+            world.runtimeEffectControllerCount() == 1 &&
+                countResource(11000210) == 1 &&
+                countResource(10000100) == 5 &&
+                containsSample(launch_audio, 19),
+            "The live Arc Angel launch lost its source, five "
+            "tracked rays, or sample 19.")) {
+        return false;
+    }
+    for (const osf::RuntimeEffectActor& actor :
+         world.runtimeEffects()) {
+        if (actor.resourceId() == 10000100 &&
+            !check(
+                actor.position().x == player_position.x &&
+                    actor.position().y == player_position.y &&
+                    actor.hasPacket(),
+                "A fixed-origin live Arc Angel ray was "
+                "projected or lost its packet.")) {
+            return false;
+        }
+    }
+
+    world.update();
+    const std::vector<std::int32_t> projectile_audio =
+        world.takeAudioSamples();
+    const std::int32_t life_after_projectiles =
+        world.playerData().currentLife();
+    if (!check(
+            life_after_projectiles < life_before &&
+                containsSample(projectile_audio, 20) &&
+                world.runtimeEffectControllerCount() == 1,
+            "The live Arc Angel rays did not pass through the "
+            "ordinary player receiver before their stages.")) {
+        return false;
+    }
+
+    world.update();
+    const std::vector<std::int32_t> first_stage_audio =
+        world.takeAudioSamples();
+    if (!check(
+            countResource(12000000) == 5 &&
+                containsSample(first_stage_audio, 19) &&
+                world.runtimeEffectControllerCount() == 1,
+            "The live Arc Angel rays did not become five "
+            "first-stage actors at their final positions.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 0;
+         update_number < 4;
+         ++update_number) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        if (update_number == 3 &&
+            !check(
+                countResource(11000033) == 5 &&
+                    containsSample(audio, 19),
+                "The live Arc Angel second stage did not appear "
+                "after exactly four controller updates.")) {
+            return false;
+        }
+    }
+    world.update();
+    const std::vector<std::int32_t> second_impact_audio =
+        world.takeAudioSamples();
+    const std::int32_t life_after_second_stage =
+        world.playerData().currentLife();
+    if (!check(
+            life_after_second_stage <
+                life_after_projectiles &&
+                containsSample(second_impact_audio, 20),
+            "The live Arc Angel second stage did not apply its "
+            "update-zero area packet and contact sound.")) {
+        return false;
+    }
+
+    bool rendered_third_stage = false;
+    for (std::int32_t update_number = 0;
+         update_number < 2;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    world.update();
+    const std::vector<std::int32_t> third_stage_audio =
+        world.takeAudioSamples();
+    world.update();
+    world.takeAudioSamples();
+    rendered_third_stage =
+        renderedRuntimeResource(world, 10000030) &&
+        renderedRuntimeResource(world, 10000031) &&
+        renderedRuntimeResource(world, 10000032);
+    if (!check(
+            countResource(10000030) >= 5 &&
+                countResource(10000031) >= 5 &&
+                countResource(10000032) >= 5 &&
+                rendered_third_stage &&
+                containsSample(third_stage_audio, 19),
+            "The live Arc Angel third stage did not render all "
+            "three retail layers.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 0;
+         update_number < 2;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    world.update();
+    const std::vector<std::int32_t> final_stage_audio =
+        world.takeAudioSamples();
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                countResource(10000060) >= 5 &&
+                containsSample(final_stage_audio, 22) &&
+                containsSample(final_stage_audio, 19) &&
+                world.cameraScreenY() == camera_y,
+            "The live Arc Angel final stage lost its actors, "
+            "paired sounds, cleanup, or zero-offset shake "
+            "update.")) {
+        return false;
+    }
+
+    world.update();
+    const std::vector<std::int32_t> final_impact_audio =
+        world.takeAudioSamples();
+    const osf::InventoryItem* body_after =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    return check(
+        world.playerData().currentLife() <
+                life_after_second_stage &&
+            containsSample(final_impact_audio, 20) &&
+            world.cameraScreenY() == camera_y - 6 &&
+            sameItems(
+                world.playerInventory().items(),
+                inventory_before) &&
+            sameItems(
+                world.playerBelt().items(),
+                belt_before) &&
+            body_after &&
+            body_after->category == body_copy.category &&
+            body_after->definition_id ==
+                body_copy.definition_id,
+        "The live Arc Angel final packet, camera jolt, or "
+        "adjacent item ownership differs from retail.");
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -2277,6 +2524,7 @@ int main() {
                    testShippedLiveTypeThirteen(data_root) &&
                    testShippedLiveTypeFourteen(data_root) &&
                    testShippedLiveTypeSixteen(data_root) &&
+                   testShippedLiveTypeTwentyOne(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;
