@@ -2,6 +2,7 @@
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "world/actor_direction.hpp"
 #include "world/player_data.hpp"
+#include "world/player_energy_shield.hpp"
 #include "world/player_heal_spell.hpp"
 #include "world/player_moon_spell.hpp"
 #include "world/player_resource_rate.hpp"
@@ -19,6 +20,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 
 namespace {
@@ -769,6 +771,58 @@ bool testRetailBerserkerRules(
         !berserker.toggle(201, level, tables) &&
             !berserker.active(),
         "The second Berserker marker did not toggle the spell off.");
+}
+
+bool testRetailEnergyShieldRules(
+    const osf::TableDatabase& tables) {
+    osf::PlayerEnergyShield shield;
+    if (!check(
+            !shield.toggle(0) &&
+                !shield.active() &&
+                shield.toggle(1) &&
+                shield.active(),
+            "Energy Shield did not preserve its retail zero-MP "
+            "activation guard.")) {
+        return false;
+    }
+    const std::int32_t frame_before = shield.auraFrame();
+    shield.updateAura(false);
+    const std::int32_t hidden_frame = shield.auraFrame();
+    shield.updateAura(true);
+    if (!check(
+            hidden_frame == frame_before &&
+                shield.auraFrame() == frame_before + 1,
+            "Energy Shield did not advance its aura only while displayed.")) {
+        return false;
+    }
+
+    osf::PlayerMagic magic;
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[9] = 3;
+    magic.restore(magic_state);
+    const bool hero_training =
+        osf::trainEnergyShieldOnOwnedKill(
+            magic, shield, 0, 0, tables);
+    const bool companion_training =
+        osf::trainEnergyShieldOnOwnedKill(
+            magic, shield, 10, 0, tables);
+    const std::int32_t owned_experience =
+        magic.experience(9);
+    const bool foreign_training =
+        osf::trainEnergyShieldOnOwnedKill(
+            magic, shield, 1, 0, tables);
+    return check(
+        hero_training && companion_training &&
+            !foreign_training &&
+            magic.experience(9) == owned_experience &&
+            !shield.toggle(1) && !shield.active() &&
+            !shield.deactivate(),
+        "Energy Shield practice or toggle-off behavior differs from "
+        "retail local-owner rules.");
 }
 
 bool testShippedWorldCast(
@@ -1932,6 +1986,227 @@ bool testShippedBerserkerCast(
         "the base player profile.");
 }
 
+bool testShippedEnergyShieldCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 9;
+    osf::PlayerLoadRequest player;
+    player.name = "EnergyShieldLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(game_root, player, &error),
+            "Remote Town could not prepare the Energy Shield fixture.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Energy Shield fixture could not select the spell.")) {
+        return false;
+    }
+
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            mana_before > parameters.mana_cost &&
+                world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                !world.playerEnergyShieldActive() &&
+                world.playerEnergyShieldVisual() == nullptr &&
+                world.playerAnimationChart() == 11 &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost,
+            "Energy Shield resolved before its retail CAF marker or "
+            "lost its targetless action and MP cost.")) {
+        return false;
+    }
+
+    for (std::int32_t update = 0;
+         update < 100 && !world.playerEnergyShieldActive();
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (!check(
+            world.playerEnergyShieldActive() &&
+                world.playerEnergyShieldVisual() != nullptr,
+            "The Energy Shield marker did not enable its Powerup aura.")) {
+        return false;
+    }
+    const std::int32_t frame_before =
+        world.playerEnergyShieldFrame();
+    world.update();
+    world.takeAudioSamples();
+    if (!check(
+            world.playerEnergyShieldFrame() > frame_before,
+            "The active Energy Shield Powerup animation did not advance.")) {
+        return false;
+    }
+
+    while (world.playerSpellActive()) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (!check(
+            world.playerData().currentMana() >=
+                    parameters.mana_cost &&
+                world.commandPlayerMagic(400, 240),
+            "The active Energy Shield could not start its toggle-off cast.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 && world.playerEnergyShieldActive();
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (!check(
+            !world.playerEnergyShieldActive(),
+            "The second Energy Shield marker did not toggle it off.")) {
+        return false;
+    }
+
+    while (world.playerSpellActive()) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    osf::PlayerData exact_mana_player;
+    if (!check(
+            exact_mana_player.initializeNew(
+                "EnergyShieldExact",
+                0,
+                world.parameterTables(),
+                &error),
+            "The exact-cost Energy Shield player could not be prepared.")) {
+        return false;
+    }
+    exact_mana_player.setCurrentMana(parameters.mana_cost);
+    const auto unique =
+        std::chrono::high_resolution_clock::now()
+            .time_since_epoch()
+            .count();
+    const std::filesystem::path save_path =
+        std::filesystem::temp_directory_path() /
+        ("openshadowflare-energy-shield-" +
+         std::to_string(unique) + ".sav");
+    std::error_code cleanup_error;
+    std::filesystem::remove(save_path, cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                exact_mana_player,
+                0x5a,
+                &error),
+            "The exact-cost Energy Shield save could not be written.")) {
+        return false;
+    }
+    osf::PlayerLoadRequest exact_request;
+    exact_request.source = osf::PlayerDataSource::retail_save;
+    exact_request.save_path = save_path;
+    osf::WorldScene exact_world;
+    const bool exact_loaded = exact_world.loadInitialScenario(
+        game_root, exact_request, &error);
+    std::filesystem::remove(save_path, cleanup_error);
+    if (!check(
+            exact_loaded,
+            "The exact-cost Energy Shield save could not be loaded.")) {
+        return false;
+    }
+    exact_world.playerMagic().restore(magic_state);
+    exact_world.playerMagic().selectSpell(spell);
+    if (!check(
+            exact_world.commandPlayerMagic(400, 240) &&
+                exact_world.playerData().currentMana() == 0,
+            "The exact-cost Energy Shield command was not accepted.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 && exact_world.playerSpellActive();
+         ++update) {
+        exact_world.update();
+        exact_world.takeAudioSamples();
+    }
+    if (!check(
+            !exact_world.playerEnergyShieldActive(),
+            "Energy Shield activated after its cast consumed the last MP.")) {
+        return false;
+    }
+
+    osf::WorldScene shutdown_world;
+    if (!check(
+            shutdown_world.loadInitialScenario(
+                game_root, player, &error),
+            "The Energy Shield shutdown fixture could not be loaded.")) {
+        return false;
+    }
+    shutdown_world.playerMagic().restore(magic_state);
+    shutdown_world.playerMagic().selectSpell(spell);
+    if (!check(
+            shutdown_world.commandPlayerMagic(400, 240),
+            "Energy Shield could not be recast for its shutdown check.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 && !shutdown_world.playerEnergyShieldActive();
+         ++update) {
+        shutdown_world.update();
+        shutdown_world.takeAudioSamples();
+    }
+    const osf::InventoryItem* body =
+        shutdown_world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::ItemDefinition* body_definition =
+        body
+            ? shutdown_world.itemDatabase().find(
+                  body->category, body->definition_id)
+            : nullptr;
+    std::optional<osf::InventoryItem> draining_body =
+        shutdown_world.playerEquipment().take(
+            osf::EquipmentSlot::body);
+    if (draining_body) {
+        draining_body->retail_state.resize(200u);
+    }
+    if (!check(
+            shutdown_world.playerEnergyShieldActive() &&
+                body_definition && draining_body &&
+                writeRetailItemWord(*draining_body, 18, -10000) &&
+                shutdown_world.playerEquipment().place(
+                    osf::EquipmentSlot::body,
+                    *draining_body,
+                    *body_definition,
+                    shutdown_world.playerData().level()).accepted,
+            "The zero-MP Energy Shield shutdown fixture could not be "
+            "prepared.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 4 && shutdown_world.playerEnergyShieldActive();
+         ++update) {
+        shutdown_world.update();
+        shutdown_world.takeAudioSamples();
+    }
+    return check(
+        shutdown_world.playerData().currentMana() == 0 &&
+            !shutdown_world.playerEnergyShieldActive(),
+        "Energy Shield did not shut off when the player reached zero MP.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -2159,7 +2434,18 @@ int main() {
             true) ||
         !testRetailBerserkerRules(game_root, tables) ||
         !testShippedBerserkerCast(game_root) ||
-        !testGroundSpellInsufficientMana(game_root, 8)) {
+        !testGroundSpellInsufficientMana(game_root, 8) ||
+        !testRetailAction(
+            animation,
+            tables,
+            9,
+            osf::PlayerSpellAction::energy_shield,
+            11,
+            12,
+            true) ||
+        !testRetailEnergyShieldRules(tables) ||
+        !testShippedEnergyShieldCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 9)) {
         return 1;
     }
 #endif

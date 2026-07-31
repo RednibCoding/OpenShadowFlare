@@ -42,15 +42,17 @@ ScreenPosition toScreen(
     return calculateRealPosition({world_x, world_y});
 }
 
-void renderPlayerBerserkerPass(
+void renderPlayerPowerupPass(
     gapi::Backend& renderer,
     const WorldScene& world,
+    const EffectVisualResource* visual,
+    bool active,
+    std::int32_t frame,
+    CharacterColorStrength color,
     std::int32_t camera_x,
     std::int32_t camera_y,
     double interpolation) {
-    const EffectVisualResource* visual =
-        world.playerBerserkerVisual();
-    if (!world.playerBerserkerActive() || !visual ||
+    if (!active || !visual ||
         visual->animation().charts().empty()) {
         return;
     }
@@ -67,13 +69,12 @@ void renderPlayerBerserkerPass(
         world.playerRenderPosition(interpolation),
         0,
         8,
-        world.playerBerserkerFrame() %
-            direction.frame_count,
+        frame % direction.frame_count,
         [visual](std::size_t part) {
             return part < visual->animation().maxPartCount();
         },
-        [](std::size_t) {
-            return CharacterColorStrength{1000, 200, 200};
+        [color](std::size_t) {
+            return color;
         },
         camera_x,
         camera_y,
@@ -116,9 +117,23 @@ void renderPlayerPass(
         shadow,
         shadow_opacity);
     if (!shadow) {
-        renderPlayerBerserkerPass(
+        renderPlayerPowerupPass(
             renderer,
             world,
+            world.playerBerserkerVisual(),
+            world.playerBerserkerActive(),
+            world.playerBerserkerFrame(),
+            {1000, 200, 200},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerEnergyShieldVisual(),
+            world.playerEnergyShieldActive(),
+            world.playerEnergyShieldFrame(),
+            {1000, 1000, 300},
             camera_x,
             camera_y,
             interpolation);

@@ -77,7 +77,7 @@ Complete spell list (from 0x00407a60 MagicWindowDisplay):
 | Spell | Stat Display | Description |
 |-------|--------------|-------------|
 | Heal | Heal % | HP restoration |
-| Energy Shield | Shield % | Damage reduction |
+| Energy Shield | Shield % | Routes ordinary damage to MP and changes physical defense |
 | Magic Shield | Def % | Defense boost |
 | Berserker | Attack % | Attack boost |
 | Moon | (none) | Increases companion stats while active |
@@ -256,6 +256,28 @@ While active, `Player/Common/Powerup.Caf` and `.Njp` loop over the hero using
 chart zero, direction eight, and red/green/blue strengths 1000/200/200. Kills
 credited to either the local hero or owned companion train Berserker through
 the companion-spell practice mode.
+
+### Energy Shield
+
+Energy Shield is another targetless self-cast. It enters action 31, uses CAF
+charts 11 and 12 with Table 20 row nine, and pays the normal Table 16 MP cost
+when the action begins. The live shield toggles only when chart 11 crosses a
+`0x40` marker. An inactive cast cannot turn it on if that up-front cost used
+the player's last MP; an active cast still turns it off normally.
+
+The shield does not have a separate hit-point pool or a Table 202. While it is
+active, the Table 17 value for spell nine scales the physical-defense value
+used for ordinary damage. That damage is then subtracted from MP instead of
+HP. Damage beyond the remaining MP does not spill into HP: MP becomes zero,
+and later ordinary hits reach HP. Effect-family damage bypasses Energy Shield
+and continues to use HP.
+
+Reaching zero MP turns the live shield off on the player update. Its active
+state and animation frame are runtime-only and are not saved. The aura reuses
+`Player/Common/Powerup.Caf` and `.Njp` after the Berserker pass, with chart
+zero, direction eight, and strengths 1000/1000/300. Any kill credited to the
+local hero slot while it is active trains spell nine, whether the hero or the
+owned companion dealt the final blow.
 
 ## Character Stats
 

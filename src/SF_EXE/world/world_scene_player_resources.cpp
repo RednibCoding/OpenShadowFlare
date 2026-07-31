@@ -68,6 +68,9 @@ void WorldScene::updatePlayerResourceRates() {
     if (shutdown.berserker_deactivated) {
         refreshPlayerRuntimeProfile();
     }
+    if (player_data_.currentMana() == 0) {
+        player_energy_shield_.deactivate();
+    }
 }
 
 }  // namespace osf

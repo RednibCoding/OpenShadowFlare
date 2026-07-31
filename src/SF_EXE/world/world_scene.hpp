@@ -28,6 +28,7 @@
 #include "player_attack_target.hpp"
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
+#include "player_energy_shield.hpp"
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
 #include "player_magic.hpp"
@@ -112,6 +113,9 @@ public:
     bool playerBerserkerActive() const;
     const EffectVisualResource* playerBerserkerVisual() const;
     std::int32_t playerBerserkerFrame() const;
+    bool playerEnergyShieldActive() const;
+    const EffectVisualResource* playerEnergyShieldVisual() const;
+    std::int32_t playerEnergyShieldFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -356,7 +360,7 @@ private:
     CharacterVisualResources companion_visuals_{"PARTNER"};
     CompanionActor companion_;
     EffectVisualResources effect_visuals_;
-    EffectVisualResource player_berserker_visual_;
+    EffectVisualResource player_powerup_visual_;
     EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
@@ -389,6 +393,7 @@ private:
     PlayerMagic player_magic_;
     PlayerSustainedSpell player_moon_spell_;
     PlayerSustainedSpell player_berserker_spell_;
+    PlayerEnergyShield player_energy_shield_;
     PlayerResourceRateController player_life_rate_;
     PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;

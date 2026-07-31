@@ -28,6 +28,12 @@ void WorldScene::accountEnemyKill(
         enemy.defeat_source_character_number,
         scenario_world_.localPlayerNumber(),
         parameter_tables_);
+    trainEnergyShieldOnOwnedKill(
+        player_magic_,
+        player_energy_shield_,
+        enemy.defeat_source_character_number,
+        scenario_world_.localPlayerNumber(),
+        parameter_tables_);
     if (!accounting.level_gained) {
         return;
     }
@@ -70,6 +76,10 @@ WorldScene::playerDamageReceiverState() const {
     state.equipment = player_equipment_;
     state.inventory = player_inventory_;
     state.special_items = player_special_items_;
+    state.spell_levels = player_magic_.state().levels;
+    state.selected_magic = player_magic_.selectedSpell();
+    state.energy_shield_active =
+        player_energy_shield_.active();
 
     const PlayerDamagePresentation presentation =
         player_.damagePresentation();

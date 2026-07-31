@@ -2010,3 +2010,28 @@ direction eight, the player position, runtime frame `+0x15f4`, full opacity,
 and RGB strengths 1000/200/200. The frame advances on every active update.
 The same locally owned kill test used by Moon trains spell eight while
 Berserker is active.
+
+## Energy Shield cast and damage routing
+
+`0x0043d670` dispatches spell nine as action 31. It uses CAF charts 11 and 12,
+Table 20 row nine, and the normal targetless command-time MP cost. Like Moon
+and Berserker, it scans every newly displayed chart-11 frame for status
+`0x40`. At the marker, runtime flag `+0x15ec` toggles off when already set. An
+inactive flag is set only if current MP at `+0x1ac` is nonzero, which matters
+when the up-front cast cost consumed the last point.
+
+Energy Shield has no Table 202 and does not store an effective level. The
+player damage receiver at `0x00443cb0` resolves spell nine's effective level
+when a packet arrives. For a locally owned player, an active shield and a
+non-effect-family packet scale physical defense by Table 17 row nine before
+the common damage calculation. The resulting damage is subtracted from MP
+instead of HP while MP remains. It does not spill through when damage exceeds
+the remaining MP; the next ordinary packet reaches HP. Family-three effect
+packets always bypass Energy Shield.
+
+`0x00443490` clears `+0x15ec` whenever MP is zero. The same local kill-owner
+checks used by Moon and Berserker call spell-nine companion-mode practice
+while the flag is active. `0x00444be0` draws animation block 500, mapped to
+`Player/Common/Powerup.Caf` and `.Njp`, after the Berserker pass. It uses chart
+zero, direction eight, runtime frame `+0x15f8`, full opacity, and RGB strengths
+1000/1000/300.

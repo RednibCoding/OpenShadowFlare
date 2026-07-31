@@ -1562,3 +1562,23 @@ resource list to `Player/Common/Powerup.Caf` and `.Njp`, at the hero with
 chart zero, direction eight, RGB 1000/200/200, and runtime frame `+0x15f4`.
 Locally owned kills are recognized by source character number modulo ten;
 while active they train Moon and Berserker for either hero or companion kills.
+
+## Energy Shield toggle
+
+`FUN_0043d670` runs Energy Shield action 31 on CAF charts 11 and 12 with Table
+20 row nine. The ordinary targetless command pays its Table 16 cost first.
+Each newly crossed chart-11 status-`0x40` marker toggles runtime flag `+0x15ec`,
+but activation is refused if the up-front cost left current MP at zero.
+
+There is no Table 202 or separate shield pool. `FUN_00443cb0` resolves spell
+nine's current effective level on each locally owned hit. For ordinary packet
+families, Table 17 row nine scales physical defense and the resulting damage
+is routed wholly to MP while any remains. Excess damage does not spill into
+HP; later ordinary damage reaches HP once MP is empty. Effect-family packets
+bypass Energy Shield. `FUN_00443490` clears the flag at zero MP.
+
+`FUN_00444be0` reuses player common animation block 500, mapped to
+`Player/Common/Powerup.Caf` and `.Njp`, with chart zero, direction eight,
+runtime frame `+0x15f8`, and RGB 1000/1000/300. It is drawn after Berserker's
+red Powerup pass. The same modulo-ten local kill ownership test trains spell
+nine for hero and companion kills while the shield is active.

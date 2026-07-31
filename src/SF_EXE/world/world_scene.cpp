@@ -59,7 +59,7 @@ void WorldScene::clear() {
     companion_visuals_.clear();
     companion_.clear();
     effect_visuals_.clear();
-    player_berserker_visual_.clear();
+    player_powerup_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
@@ -89,6 +89,7 @@ void WorldScene::clear() {
     player_magic_.clear();
     player_moon_spell_.clear();
     player_berserker_spell_.clear();
+    player_energy_shield_.clear();
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
@@ -203,13 +204,28 @@ bool WorldScene::playerBerserkerActive() const {
 
 const EffectVisualResource*
 WorldScene::playerBerserkerVisual() const {
-    return player_berserker_visual_.animation().charts().empty()
+    return player_powerup_visual_.animation().charts().empty()
         ? nullptr
-        : &player_berserker_visual_;
+        : &player_powerup_visual_;
 }
 
 std::int32_t WorldScene::playerBerserkerFrame() const {
     return player_berserker_spell_.auraFrame();
+}
+
+bool WorldScene::playerEnergyShieldActive() const {
+    return player_energy_shield_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerEnergyShieldVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerEnergyShieldFrame() const {
+    return player_energy_shield_.auraFrame();
 }
 
 std::size_t
@@ -378,6 +394,7 @@ void WorldScene::update() {
         companionMoonAuraVisible());
     player_berserker_spell_.updateAura(
         has_player_);
+    player_energy_shield_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);

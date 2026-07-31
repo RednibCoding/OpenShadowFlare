@@ -151,6 +151,7 @@ add_library(
   world/player_combat_defense.cpp
   world/player_damage_receiver.cpp
   world/player_data.cpp
+  world/player_energy_shield.cpp
   world/player_heal_spell.cpp
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp

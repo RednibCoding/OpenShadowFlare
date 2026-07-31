@@ -21,6 +21,7 @@ enum class PlayerSpellAction : std::int32_t {
     heal = 28,
     moon = 29,
     berserker = 30,
+    energy_shield = 31,
 };
 
 struct PlayerSpellAnimationTiming {

@@ -1052,11 +1052,20 @@ void WorldScene::handlePlayerSpellEvent(
             201,
             parameters.effective_level,
             parameter_tables_);
-        player_berserker_visual_.load(
+        player_powerup_visual_.load(
             data_root_ / "Player" / "Common",
             "Powerup",
             nullptr);
         refreshPlayerRuntimeProfile();
+        return;
+    }
+    if (event.spell == 9) {
+        player_energy_shield_.toggle(
+            player_data_.currentMana());
+        player_powerup_visual_.load(
+            data_root_ / "Player" / "Common",
+            "Powerup",
+            nullptr);
         return;
     }
     const bool requires_target =

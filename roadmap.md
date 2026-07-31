@@ -206,10 +206,17 @@ items, with the separate retail life remainder and living-player clamp. This
 also fixes Moon practice to use retail's local kill-owner test instead of
 requiring the companion to land the final hit.
 
-The next spell checkpoint is Energy Shield action 31. Its sustained state can
-reuse the proven cadence and ownership boundary, but the shield value, damage
-interception, visual, shutdown rules, and Table 202 data still need a direct
-retail trace.
+Energy Shield is complete. Action 31 toggles its runtime flag at the chart-11
+marker after paying the ordinary cast cost, but cannot activate when that cost
+used the last MP. It has no Table 202 or separate pool: Table 17 scales the
+physical-defense input, ordinary damage is routed to MP without spillover,
+and effect-family damage still reaches HP. Zero MP shuts it off, owned kills
+train it, and the yellow `Player/Common/Powerup` pass follows the hero after
+Berserker's red pass.
+
+The next spell checkpoint is Earth Spear action 32. It returns to the attack
+spell path, so its target command, packet fields, effect controller, contact
+behavior, audio, practice, and live presentation need to be traced together.
 
 ## Completed foundation: make Remote Town feel like a game
 
