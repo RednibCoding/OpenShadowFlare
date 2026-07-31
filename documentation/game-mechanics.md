@@ -318,6 +318,25 @@ hero, turn toward the selected enemy in 20-degree steps, and live for at most
 last projectile spawn plays sample 19; each contact uses sample 20 and trains
 Flame Strike through the ordinary receiver path.
 
+### Dread Deathscythe
+
+Dread Deathscythe is another pointed-enemy spell, using action 34 and CAF
+charts 13 and 14. Its effect-10012 request carries Table 17 travel speed,
+display height 200, the selected target, the aim direction, the hero judgement
+rectangle, the marker delay, effective level, and constructor field 22.
+
+The family-zero packet changes to subtype one and presentation 21013 while
+retaining magical attack, magical defense, and magical hit rate. Resource
+11000027 appears at the hero immediately. Table 204 then determines a fan of
+resource-10000080 warning blades spread around the target direction; the
+shipped table's final column controls the width calculation.
+
+At the marker delay those warnings are replaced by resource-10000081 blades,
+starting 180 world units from the hero. They travel straight for at most 90
+updates and expire on scenery or their first target. Their packet carries the
+directional 21021 and 21022 presentations. The final launch plays sample 94,
+contacts play sample 20, and successful contacts train spell twelve.
+
 ## Character Stats
 
 ### Primary Stats

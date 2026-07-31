@@ -226,9 +226,15 @@ the cast through the player boundary and uses Table 204 for its full-circle
 homing fan, including the source visual, authored delay, travel, turning,
 collision expiry, samples 19 and 20, and receiver-time practice.
 
-The next spell checkpoint is Dread Deathscythe action 34. Its target rules,
-packet differences, effect-10012 fan, presentation, audio, collision, and
-practice need an end-to-end retail trace.
+Dread Deathscythe is complete. Action 34 keeps the pointed command but sends
+the exact subtype-one packet to effect 10012. Table 204 owns its warning fan
+and straight projectile fan, including retail spread math, even-count offset,
+directional dual presentations, scenery and target expiry, samples 94 and 20,
+and receiver-time practice.
+
+The next spell checkpoint is Lightning Storm action 35. Its ground or target
+command, packet, effect-10013 radial waves, placement cutoff, presentation,
+audio, collision, and practice need to be traced together.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1358,7 +1364,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Flame Strike action 33 are complete;
+- Berserker action 30 through Dread Deathscythe action 34 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

@@ -2083,3 +2083,24 @@ home toward the selected target with turn value 20, use 80-unit bounds and a
 90-update lifetime, and expire on scenery or first contact. Sample 19 comes
 from the last spawn and sample 20 from contact. The ordinary packet receiver
 awards practice only after a successful hit.
+
+## Dread Deathscythe cast
+
+`0x0043c490` dispatches spell twelve as action 34 on CAF charts 13 and 14 with
+Table 20 row twelve. Its pointed command and effect-10012 constructor match
+Flame Strike's selected target, direction, Table 17 travel speed, height 200,
+player judgement, marker delay, effective level, and constructor field 22.
+
+The packet is family zero, subtype one. Table 17 parameter zero is added to
+magical attack, parameter one to magical hit rate, word five carries magical
+defense, word 34 begins as 21013, word 72 is zero, and word 73 is spell twelve.
+
+The handler at `0x0042db10` creates source resource 11000027 and a
+Table-204-sized resource-10000080 warning fan on update zero. Table 204 column
+29 supplies the spread divisor for the retail `count * 2.5132736 / divisor`
+calculation, including the even-count half-step. At the marker delay it emits
+resource-10000081 projectiles 180 units from the live hero. They travel
+straight with 50-unit bounds, a 90-update lifetime, scenery and first-target
+expiry, and optional hit memory from constructor field 22. Their packet
+replaces words 34/35 and 74/75 with directional presentations 21021 and 21022.
+Sample 94 plays at the final launch; sample 20 and practice belong to contact.
