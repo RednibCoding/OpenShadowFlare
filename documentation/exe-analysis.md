@@ -896,9 +896,37 @@ four and plays sample 119; stage two only changes the reaction stage. The two
 configured packet effects and the 20-percent random hit effect instead use
 owner kind two. That otherwise easy-to-miss constructor difference is
 preserved in the portable request. Death action six and default event four are
-selected after those common effects. The actor owner now exists, while
-receiver mutation, effect allocation, and audio playback remain part of the
-attack-and-damage slice.
+selected after those common effects. The live world now applies the returned
+state, queues those effects through the common effect owner, plays the returned
+audio, and lets both direct enemy impacts and category-50000000 runtime actors
+target the companion.
+
+`0x004616d0` presents surviving hits with PARTNER chart three. It scales the
+display frame over the receiver duration, holds frame zero for reaction stage
+two, and applies the same diminishing collision-aware 120-unit impulse used by
+the other actor families when displacement is not suppressed. The final
+update releases action five back to idle action two.
+
+`0x00461990` presents death with PARTNER chart four in direction eight. Its
+first update creates effect 21010 with a random direction and writes a
+persistent respawn countdown: 900 gameplay updates normally, or 600 when the
+backpack contains category-four definition `98000002`. The item is checked but
+not consumed. The final chart frame is held, then opacity fades over 60
+updates. While the saved countdown is nonzero the actor remains invisible and
+non-colliding.
+
+When that countdown reaches zero, the owner restores companion life to its
+table-backed maximum, places it at the player, and requests action eight.
+`0x004610b0` plays PARTNER chart seven in direction eight; reaching its last
+frame releases the lock and returns the companion to ordinary owner AI.
+
+Enemy death accounting at `0x004134a0` awards one companion experience point
+when the defeat source belongs to the local slot and the companion is alive
+below its cap. The cap is `player level / 3 + 2`, limited to 35. The point is
+awarded before the player's own level threshold is applied. `0x00412e20` then
+uses the possibly new player level for that cap and table `800 + companion
+type` row 18 for each companion threshold. A gained level rebuilds the summed
+profile and restores full companion life; experience is cleared at the cap.
 
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the

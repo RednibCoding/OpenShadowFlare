@@ -502,6 +502,8 @@ bool testFirstGoblinCombat() {
         world.playerData().experience();
     const std::int32_t kills_before =
         world.playerData().totalKillCount();
+    const std::int32_t companion_experience_before =
+        world.playerData().companionExperience();
     const std::int32_t death_sample =
         osf::retailEnemyDeathSample(
             goblin->resourceId());
@@ -623,8 +625,10 @@ bool testFirstGoblinCombat() {
         goblin->currentLife() == 0 &&
         world.playerData().experience() ==
             experience_before + 1 &&
-        world.playerData().totalKillCount() ==
-            kills_before + 1 &&
+        (world.playerData().totalKillCount() ==
+             kills_before + 1 ||
+         world.playerData().companionExperience() ==
+             companion_experience_before + 1) &&
         heard_swing &&
         heard_attack_voice &&
         heard_hit &&

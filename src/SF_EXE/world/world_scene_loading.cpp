@@ -222,6 +222,9 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
+    if (player_data_.companionRespawnCounter() > 0) {
+        companion_.beginDefeatedWait();
+    }
     player_.setMovementPace(
         saved_running ? MovementPace::run : MovementPace::walk);
     scenario_world_.mapExploration().reveal(

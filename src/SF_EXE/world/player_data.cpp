@@ -440,6 +440,78 @@ std::int32_t PlayerData::companionExperience() const {
     return readI32(0x148);
 }
 
+std::int32_t PlayerData::companionRespawnCounter() const {
+    return readI32(0x14c);
+}
+
+void PlayerData::setCompanionRespawnCounter(
+    std::int32_t value) {
+    writeI32(0x14c, std::max<std::int32_t>(value, 0));
+}
+
+void PlayerData::awardCompanionKillExperience(
+    std::int32_t source_character_number,
+    std::int32_t local_player_slot,
+    bool companion_alive) {
+    const std::int32_t level_cap =
+        std::min<std::int32_t>(
+            level() / 3 + 2, 35);
+    std::int32_t companion_experience =
+        companionExperience();
+    if (source_character_number >= 0 &&
+        source_character_number % 10 ==
+            local_player_slot) {
+        if (companion_alive &&
+            companionLevel() < level_cap) {
+            companion_experience =
+                retailAdd(companion_experience, 1);
+        } else {
+            companion_experience = 0;
+        }
+    }
+    writeI32(0x148, companion_experience);
+}
+
+bool PlayerData::applyCompanionLevelThreshold(
+    const TableDatabase& tables) {
+    const std::int32_t level_cap =
+        std::min<std::int32_t>(
+            level() / 3 + 2, 35);
+    std::int32_t companion_level =
+        companionLevel();
+    std::int32_t companion_experience =
+        companionExperience();
+    const TableData* progression =
+        tables.find(800 + companionType());
+    bool level_gained = false;
+    while (progression &&
+           companion_level >= 1 &&
+           progression->contains(
+               18, companion_level - 1)) {
+        const std::int32_t threshold =
+            progression->value(
+                18, companion_level - 1);
+        if (threshold > companion_experience) {
+            break;
+        }
+        if (companion_level >= level_cap) {
+            companion_experience = 0;
+            break;
+        }
+        companion_experience =
+            retailSubtract(
+                companion_experience, threshold);
+        ++companion_level;
+        level_gained = true;
+    }
+    if (companion_level == level_cap) {
+        companion_experience = 0;
+    }
+    writeI32(0x144, companion_level);
+    writeI32(0x148, companion_experience);
+    return level_gained;
+}
+
 std::int32_t PlayerData::baseAttackSpeed() const {
     // FUN_00440f70 stores table 900/901 row zero at runtime offset
     // 0x38 (persistent record offset 0x28). FUN_0044ea60 copies it to

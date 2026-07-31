@@ -40,6 +40,11 @@ EnemyEffectControllerSource WorldScene::runtimeEffectSource(
                 : WorldPosition{},
         };
     }
+    if (hasCompanion() &&
+        source_character_number ==
+            companion_.characterNumber()) {
+        return {true, companion_.position()};
+    }
     if (const EnemyActor* enemy =
             findScriptEnemy(source_character_number)) {
         return {true, enemy->position()};
@@ -60,6 +65,7 @@ WorldScene::runtimeEffectTargets() const {
     std::vector<RuntimeEffectTargetSnapshot> targets;
     targets.reserve(
         (has_player_ ? 1u : 0u) +
+        (hasCompanion() ? 1u : 0u) +
         scenario_world_.objects().size() +
         scenario_world_.people().size() +
         scenario_world_.enemies().size());
@@ -82,6 +88,22 @@ WorldScene::runtimeEffectTargets() const {
             player_data_.baseMagicalEvasionRate() +
             player_equipment_.derivedParameterBonus(
                 7, item_database_);
+        targets.push_back(target);
+    }
+    if (hasCompanion()) {
+        RuntimeEffectTargetSnapshot target;
+        target.kind = RuntimeEffectTargetKind::companion;
+        target.character_number =
+            companion_.characterNumber();
+        target.identifier = companion_.characterNumber();
+        target.position = companion_.position();
+        target.judgement = companion_.judgement();
+        target.current_life = companion_.currentLife();
+        target.active = companion_.currentLife() > 0;
+        target.physical_evasion =
+            companion_.profile().physical_evasion;
+        target.magical_evasion =
+            companion_.profile().magical_evasion;
         targets.push_back(target);
     }
 
@@ -150,6 +172,17 @@ void WorldScene::applyRuntimeEffectDispatch(
                 dispatch.packet,
                 dispatch.contact.impact_origin,
                 dispatch.source_character_number);
+        }
+        return;
+    }
+    if (dispatch.contact.kind ==
+        RuntimeEffectTargetKind::companion) {
+        if (hasCompanion() &&
+            dispatch.contact.identifier ==
+                companion_.characterNumber()) {
+            applyCompanionDamagePacket(
+                dispatch.packet,
+                dispatch.contact.impact_origin);
         }
         return;
     }
@@ -223,6 +256,16 @@ void WorldScene::spawnRuntimeMiss(
         }
         position = player_.position();
         judgement = player_.judgement();
+    } else if (
+        contact.kind ==
+            RuntimeEffectTargetKind::companion) {
+        if (!hasCompanion() ||
+            contact.identifier !=
+                companion_.characterNumber()) {
+            return;
+        }
+        position = companion_.position();
+        judgement = companion_.judgement();
     } else if (
         contact.kind == RuntimeEffectTargetKind::enemy) {
         const EnemyActor* enemy =

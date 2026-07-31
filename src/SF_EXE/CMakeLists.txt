@@ -117,6 +117,7 @@ add_library(
   world/companion_attack_impact.cpp
   world/companion_damage_receiver.cpp
   world/companion_profile.cpp
+  world/companion_respawn.cpp
   world/companion_target_selector.cpp
   world/combat_damage.cpp
   world/combat_effect_actor.cpp

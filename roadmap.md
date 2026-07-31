@@ -35,7 +35,8 @@ The portable executable already has a solid front half:
 - ordinary melee and basic ranged combat through death, rewards, and pickup
 - the player's table-backed owned companion, including its PARTNER visual,
   depth sorting, collision, scenario travel, retail follow distances, enemy
-  acquisition, and ordinary melee attack
+  acquisition, ordinary melee attack, damage reactions, death, timed revival,
+  and capped table-backed progression
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -95,17 +96,17 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: take combat beyond the first Goblin
+## Current milestone: skills, magic, and status effects
 
-The ordinary and basic ranged encounters are now proven in the live outdoor
-map, all the way from targeting through pickup and save/reload. The next useful
-combat work is the behavior that cannot be exercised by either solo fight:
-
-- finish companion damage reception, hit/death presentation, revival, and
-  progression on the live owned-companion actor. Its autonomous target
-  acquisition, approach, and ordinary chart-five attack are now complete;
-- keep checking item state, audio, experience, and saving beside each change
-  so a new combat path cannot silently damage adjacent ownership.
+The ordinary melee, basic ranged, and owned-companion encounter paths are now
+proven in the live outdoor world. The companion can acquire and attack enemies,
+be selected by enemy direct attacks and runtime effects, play its retail hit
+and death charts, fade out, wait 900 updates (or 600 while the authored
+backpack item is present), and revive beside its owner through chart seven.
+Kills credited to the owner or companion add one companion experience point,
+use table row 18 for level thresholds, obey the player-level cap, rebuild the
+table-backed profile, and fully heal on a level gain. The defeated countdown,
+level, and experience stay in the retail player record and survive saving.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
@@ -116,8 +117,12 @@ cannot preserve a dead actor. Saves made by older builds which already contain
 zero life are repaired through the same revive reset when they enter the
 world.
 
-Once those are solid, the next large player-facing milestone is skills, magic,
-status effects, and their remaining HUD and assignment screens.
+The next useful player-facing work is the first complete skill or spell path:
+decode its authored data, selection and mana rules, live effect, status
+changes, audio, HUD feedback, and save ownership together. The Moon spell is
+a useful companion-facing case later in that milestone, but the first slice
+should be chosen from retail evidence rather than from which visual looks
+easiest.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -428,12 +433,20 @@ The owned companion uses a third receiver at retail address `0x0045f9f0`,
 not either of those paths. Its family-one profile, owner-slot life mutation,
 actions 7/8/10 rejection, tables 24 and 25 reaction, action-five hit stages,
 action-six death, distinct effect owner kinds, sample 119, event four, and
-random draws are reconstructed separately. The enemy result is now attached
-to the live actor, including reaction displacement, hit/death presentation,
-common world effects, and audio. Player and companion results remain passive
-until their own live state, effect, equipment, and networking owners can be
-attached without skipping side effects. Kill accounting, experience, and
-drops remain a separate enemy-death slice.
+random draws are reconstructed separately. All three passive calculations are
+attached to their own live actors. Companion action five uses PARTNER chart
+three and its collision-aware impulse; action six uses chart four direction
+eight, creates effect 21010, holds its final frame, and fades over 60 updates.
+The persistent countdown then starts action eight at the player's position,
+restores maximum life, and plays chart seven direction eight before ordinary
+AI resumes.
+
+Enemy kill accounting also preserves the companion side of `0x004134a0`.
+Eligible owner or companion kills add one point, table `800 + type` row 18
+provides each threshold, and the cap is `player level / 3 + 2` up to 35. The
+kill point is awarded before player leveling while companion thresholds are
+applied afterward, so a shared leveling kill uses retail's new player-level
+cap.
 
 The marker-to-sample lookup checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback
@@ -1172,17 +1185,18 @@ environment collision, evasion, sample 20, receiver packet, homing, piercing
 memory, and first-target expiry. The family-zero packet preserves player
 attribution even for explicit-origin shots. Job-five history supplies the
 off-job physical-attack scale, and a complete fan costs one point of main-hand
-durability. Passive tests cover every pattern and effect selector; a shipped
-live encounter covers the CAF, projectile render owner, damage, launch/contact
-audio, no-approach targeting, and durability.
+durability. Passive tests cover every pattern, effect selector, contact, and
+receiver handoff; a shipped live encounter covers the CAF, projectile render
+owner, launch audio, no-approach targeting, and durability without requiring
+a straight projectile to hit an enemy moving around the companion.
 
 Retail contains no subtype-four weapon record to exercise action 19. Action
 20's 33-percent action-21 redirect also depends on the not-yet-reconstructed
 increased-power state. Those two facts are recorded rather than filled with
 made-up behavior.
 
-The next combat work is companion targeting and attacks, keeping one shipped
-live case beside each passive reconstruction and sharing the existing
+The next combat work belongs to skills, magic, and status effects, keeping one
+shipped live case beside each passive reconstruction and sharing the existing
 receiver, effect, reward, audio, and persistence owners.
 
 The owned-companion foundation is complete. `0x004501c0` creates character
@@ -1197,10 +1211,10 @@ The default follow half of `0x004622b0` is live too. A companion idles inside
 below 600, runs at 600 or farther, and snaps to the player plus `(200,200)`
 only at 4000 or farther. It uses PARTNER charts zero, one, and two, routes
 through the common movement owner, participates in normal depth sorting and
-actor collision, and is relocated with the player on scenario changes. The
-remaining half of that routine is the 1200-unit enemy search which hands off
-to attack mode; that is the next slice rather than a fake attack bolted onto
-the follower.
+actor collision, and is relocated with the player on scenario changes. Its
+1200-unit living-enemy search, attack-mode approach, chart-five marker timing,
+enemy receiver handoff, damage lifecycle, and progression are now live as
+separate companion concerns rather than shortcuts in the follower.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,

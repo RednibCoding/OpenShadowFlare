@@ -302,8 +302,10 @@ portable save/load. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
 Game. Confirmed return-to-title and exit actions still complete when a map,
-warehouse, special-item, or inventory panel is open. Scenario position,
-mines, companions, and the remaining dynamic state are still pending.
+warehouse, special-item, or inventory panel is open. Scenario position, mines,
+script-created world actors, and the remaining dynamic state are still
+pending. Companion type, level, experience, and its defeated countdown
+already live in the preserved player record.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

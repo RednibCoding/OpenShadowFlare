@@ -3,6 +3,8 @@
 #include "actor_direction.hpp"
 #include "resources/character_visual_resource.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace osf {
@@ -15,6 +17,12 @@ constexpr std::int32_t kCompanionRunDistance = 600;
 constexpr std::int32_t kCompanionTeleportDistance = 4000;
 constexpr std::int32_t kCompanionCloseLinger = 5;
 constexpr std::int32_t kCompanionTeleportOffset = 200;
+constexpr std::int32_t kHitChart = 3;
+constexpr std::int32_t kDeathChart = 4;
+constexpr std::int32_t kReviveChart = 7;
+constexpr std::int32_t kSpecialDirection = 8;
+constexpr std::int32_t kHitDisplacement = 120;
+constexpr std::int32_t kDeathFadeUpdates = 60;
 
 std::int32_t chartForMotion(CompanionMotion motion) {
     switch (motion) {
@@ -24,10 +32,33 @@ std::int32_t chartForMotion(CompanionMotion motion) {
         return 2;
     case CompanionMotion::attacking:
         return 5;
+    case CompanionMotion::reacting:
+        return kHitChart;
+    case CompanionMotion::defeated:
+        return kDeathChart;
+    case CompanionMotion::reviving:
+        return kReviveChart;
     case CompanionMotion::idle:
     default:
         return 0;
     }
+}
+
+std::int32_t frameCount(
+    const gapi::CafAnimation& animation,
+    std::int32_t chart,
+    std::int32_t direction) {
+    if (chart < 0 || direction < 0 ||
+        direction >= 9 ||
+        static_cast<std::size_t>(chart) >=
+            animation.charts().size()) {
+        return 0;
+    }
+    return animation.charts()[
+               static_cast<std::size_t>(chart)]
+        .directions[
+            static_cast<std::size_t>(direction)]
+        .frame_count;
 }
 
 }  // namespace
@@ -52,6 +83,7 @@ bool CompanionActor::initialize(
     previous_position_ = position;
     direction_ = direction;
     current_life_ = profile.maximum_life;
+    draw_opacity_ = 1000;
     visual_ = &visual;
     return true;
 }
@@ -66,6 +98,17 @@ void CompanionActor::clear() {
     action_counter_ = 0;
     close_linger_counter_ = 0;
     current_life_ = 0;
+    presentation_action_ = 2;
+    presentation_counter_ = 0;
+    presentation_animation_frame_ = 0;
+    action_lock_ = 0;
+    reaction_duration_ = 0;
+    reaction_stage_ = 0;
+    reaction_displacement_suppressed_ = false;
+    reaction_additive_ = 0;
+    reaction_angle_ = 0.0;
+    event_number_ = 0;
+    draw_opacity_ = 1000;
     combat_target_character_number_ = -1;
     movement_controller_.reset();
     attack_action_.cancel();
@@ -83,6 +126,9 @@ void CompanionActor::relocate(
     movement_controller_.reset();
     attack_action_.cancel();
     selectMotion(CompanionMotion::idle);
+    if (current_life_ <= 0) {
+        beginDefeatedWait();
+    }
 }
 
 void CompanionActor::updateFollow(
@@ -246,6 +292,250 @@ void CompanionActor::leaveCombat() {
     selectMotion(CompanionMotion::idle);
 }
 
+CompanionPresentationUpdate
+CompanionActor::updateDamagePresentation(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    const std::vector<MovementBlocker>*
+        dynamic_blockers) {
+    CompanionPresentationUpdate result;
+    if (!valid()) {
+        return result;
+    }
+    previous_position_ = position_;
+    if (presentation_action_ == 5) {
+        result.handled = true;
+        selectMotion(CompanionMotion::reacting);
+        reaction_duration_ =
+            std::max<std::int32_t>(
+                reaction_duration_, 1);
+        const std::int32_t count =
+            std::max<std::int32_t>(
+                frameCount(
+                    visual_->animation(),
+                    kHitChart,
+                    direction_),
+                1);
+        presentation_animation_frame_ =
+            presentation_counter_ * count /
+            reaction_duration_;
+        if (presentation_counter_ ==
+            reaction_duration_ - 1) {
+            presentation_animation_frame_ = count - 1;
+        }
+        if (reaction_stage_ == 2) {
+            presentation_animation_frame_ = 0;
+        }
+        presentation_animation_frame_ =
+            std::clamp(
+                presentation_animation_frame_,
+                0,
+                count - 1);
+
+        if (!reaction_displacement_suppressed_ &&
+            reaction_additive_ == 0) {
+            const std::int32_t distance =
+                (reaction_duration_ -
+                 presentation_counter_) *
+                kHitDisplacement /
+                reaction_duration_;
+            const WorldPosition destination{
+                position_.x +
+                    static_cast<std::int32_t>(
+                        std::cos(reaction_angle_) *
+                        distance),
+                position_.y -
+                    static_cast<std::int32_t>(
+                        std::sin(reaction_angle_) *
+                        distance),
+            };
+            position_ = advanceMovement(
+                ground,
+                objects,
+                judgement_,
+                position_,
+                destination,
+                distance,
+                dynamic_blockers,
+                movementBlockerId())
+                            .position;
+        }
+        if (presentation_counter_ ==
+            reaction_duration_ - 1) {
+            presentation_action_ = 2;
+            action_lock_ = 0;
+            reaction_duration_ = 0;
+            selectMotion(CompanionMotion::idle);
+        } else {
+            ++presentation_counter_;
+        }
+        if (reaction_additive_ != 0) {
+            --reaction_additive_;
+        }
+        return result;
+    }
+
+    if (presentation_action_ == 6) {
+        result.handled = true;
+        selectMotion(CompanionMotion::defeated);
+        if (presentation_counter_ == 0) {
+            result.death_started = true;
+            draw_opacity_ = 1000;
+        }
+        const std::int32_t count =
+            std::max<std::int32_t>(
+                frameCount(
+                    visual_->animation(),
+                    kDeathChart,
+                    kSpecialDirection),
+                1);
+        presentation_animation_frame_ =
+            std::min(
+                presentation_counter_, count - 1);
+        if (presentation_counter_ >=
+            count + kDeathFadeUpdates - 1) {
+            draw_opacity_ =
+                std::max<std::int32_t>(
+                    ((count - presentation_counter_) +
+                     (kDeathFadeUpdates - 1)) *
+                            1000 /
+                            kDeathFadeUpdates +
+                        1000,
+                    0);
+        }
+        ++presentation_counter_;
+        return result;
+    }
+
+    if (presentation_action_ == 8) {
+        result.handled = true;
+        selectMotion(CompanionMotion::reviving);
+        const std::int32_t count =
+            std::max<std::int32_t>(
+                frameCount(
+                    visual_->animation(),
+                    kReviveChart,
+                    kSpecialDirection),
+                1);
+        presentation_animation_frame_ =
+            std::min(
+                presentation_counter_, count - 1);
+        if (presentation_counter_ == count - 1) {
+            presentation_action_ = 2;
+            action_lock_ = 0;
+            combat_target_character_number_ = -1;
+            selectMotion(CompanionMotion::idle);
+            result.revive_completed = true;
+        }
+        ++presentation_counter_;
+        return result;
+    }
+    return result;
+}
+
+CompanionDamageReceiverState
+CompanionActor::damageReceiverState() const {
+    CompanionDamageReceiverState state;
+    state.character_number = characterNumber();
+    state.position = position_;
+    state.judgement = judgement_;
+    state.current_life = current_life_;
+    state.maximum_life = profile_.maximum_life;
+    state.native_element = profile_.native_element;
+    state.physical_defense =
+        profile_.physical_defense;
+    state.magical_defense =
+        profile_.magical_defense;
+    state.presentation_action = presentation_action_;
+    state.presentation_counter =
+        presentation_counter_;
+    state.action_lock = action_lock_;
+    state.reaction_duration = reaction_duration_;
+    state.reaction_stage = reaction_stage_;
+    state.reaction_motion =
+        reaction_displacement_suppressed_;
+    state.reaction_additive = reaction_additive_;
+    state.reaction_angle = reaction_angle_;
+    state.direction = direction_;
+    state.event_number = event_number_;
+    return state;
+}
+
+void CompanionActor::applyDamageReceiverState(
+    const CompanionDamageReceiverState& state) {
+    if (state.character_number != characterNumber()) {
+        return;
+    }
+    current_life_ = state.current_life;
+    presentation_action_ = state.presentation_action;
+    presentation_counter_ = state.presentation_counter;
+    action_lock_ = state.action_lock;
+    reaction_duration_ = state.reaction_duration;
+    reaction_stage_ = state.reaction_stage;
+    reaction_displacement_suppressed_ =
+        state.reaction_motion;
+    reaction_additive_ = state.reaction_additive;
+    reaction_angle_ = state.reaction_angle;
+    direction_ = state.direction;
+    event_number_ = state.event_number;
+    if (presentation_action_ == 5 ||
+        presentation_action_ == 6) {
+        attack_action_.cancel();
+        movement_controller_.reset();
+        combat_target_character_number_ = -1;
+        selectMotion(
+            presentation_action_ == 5
+                ? CompanionMotion::reacting
+                : CompanionMotion::defeated);
+    }
+}
+
+void CompanionActor::beginDefeatedWait() {
+    if (!valid()) {
+        return;
+    }
+    current_life_ = 0;
+    presentation_action_ = 6;
+    presentation_counter_ = 5000;
+    presentation_animation_frame_ = 0;
+    action_lock_ = 1;
+    draw_opacity_ = 0;
+    attack_action_.cancel();
+    movement_controller_.reset();
+    combat_target_character_number_ = -1;
+    selectMotion(CompanionMotion::defeated);
+}
+
+void CompanionActor::beginRevive(
+    WorldPosition owner_position) {
+    if (!valid()) {
+        return;
+    }
+    position_ = owner_position;
+    previous_position_ = owner_position;
+    current_life_ = profile_.maximum_life;
+    presentation_action_ = 8;
+    presentation_counter_ = 0;
+    presentation_animation_frame_ = 0;
+    action_lock_ = 1;
+    draw_opacity_ = 1000;
+    attack_action_.cancel();
+    movement_controller_.reset();
+    combat_target_character_number_ = -1;
+    selectMotion(CompanionMotion::reviving);
+}
+
+void CompanionActor::applyLevelProfile(
+    const CompanionProfile& profile) {
+    if (!valid() ||
+        profile.type != profile_.type ||
+        profile.resource_id != profile_.resource_id) {
+        return;
+    }
+    profile_ = profile;
+    current_life_ = profile_.maximum_life;
+}
+
 bool CompanionActor::valid() const {
     return visual_ != nullptr && owner_slot_ >= 0;
 }
@@ -290,11 +580,31 @@ std::int32_t CompanionActor::animationChart() const {
     return chartForMotion(motion_);
 }
 
+std::int32_t CompanionActor::animationDirection() const {
+    return motion_ == CompanionMotion::defeated ||
+                   motion_ == CompanionMotion::reviving
+        ? kSpecialDirection
+        : direction_;
+}
+
 std::int32_t CompanionActor::animationFrame() const {
     if (motion_ == CompanionMotion::attacking) {
         return attack_action_.animationFrame();
     }
+    if (motion_ == CompanionMotion::reacting ||
+        motion_ == CompanionMotion::defeated ||
+        motion_ == CompanionMotion::reviving) {
+        return presentation_animation_frame_;
+    }
     return action_counter_;
+}
+
+std::int32_t CompanionActor::drawOpacity() const {
+    return draw_opacity_;
+}
+
+std::int32_t CompanionActor::presentationAction() const {
+    return presentation_action_;
 }
 
 std::int32_t CompanionActor::currentLife() const {
@@ -348,7 +658,7 @@ const gapi::CafAnimation& CompanionActor::animation() const {
 }
 
 bool CompanionActor::visible() const {
-    return valid();
+    return valid() && draw_opacity_ > 0;
 }
 
 bool CompanionActor::judgementEnabled() const {

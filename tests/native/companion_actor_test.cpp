@@ -7,6 +7,7 @@
 #include "world/companion_attack_action.hpp"
 #include "world/companion_attack_impact.hpp"
 #include "world/companion_profile.hpp"
+#include "world/companion_respawn.hpp"
 #include "world/companion_target_selector.hpp"
 #include "world/world_scene.hpp"
 
@@ -73,6 +74,19 @@ bool check(bool condition, const char* message) {
 }  // namespace
 
 int main() {
+    osf::PlayerInventory ordinary_inventory;
+    osf::PlayerInventory quick_inventory;
+    if (!check(
+            quick_inventory.add(4, 98000002) &&
+                osf::retailCompanionRespawnUpdates(
+                ordinary_inventory) == 900 &&
+                osf::retailCompanionRespawnUpdates(
+                    quick_inventory) == 600,
+            "The companion respawn delay did not honor the retail "
+            "backpack item check.")) {
+        return 1;
+    }
+
     const std::filesystem::path data_root =
         std::filesystem::path(
             OPENSHADOWFLARE_SOURCE_DIR) /
@@ -414,6 +428,109 @@ int main() {
             actor.position().x == distant_owner.x + 200 &&
                 actor.position().y == distant_owner.y + 200,
             "The retail out-of-range companion catch-up was lost.")) {
+        return 1;
+    }
+
+    osf::CompanionDamageReceiverState hit =
+        actor.damageReceiverState();
+    hit.current_life = hit.maximum_life - 1;
+    hit.presentation_action = 5;
+    hit.presentation_counter = 0;
+    hit.action_lock = 1;
+    hit.reaction_duration = 4;
+    hit.reaction_motion = true;
+    actor.applyDamageReceiverState(hit);
+    bool hit_chart_seen = false;
+    for (int update = 0; update < 4; ++update) {
+        const osf::CompanionPresentationUpdate presentation =
+            actor.updateDamagePresentation(
+                world.ground(), world.objectMap());
+        hit_chart_seen =
+            hit_chart_seen ||
+            (presentation.handled &&
+             actor.animationChart() == 3);
+    }
+    if (!check(
+            hit_chart_seen &&
+                actor.presentationAction() == 2 &&
+                actor.currentLife() ==
+                    actor.maximumLife() - 1,
+            "The companion chart-three hit reaction did not scale "
+            "and unlock at its receiver duration.")) {
+        return 1;
+    }
+
+    osf::CompanionDamageReceiverState defeated =
+        actor.damageReceiverState();
+    defeated.current_life = 0;
+    defeated.presentation_action = 6;
+    defeated.presentation_counter = 0;
+    defeated.action_lock = 1;
+    actor.applyDamageReceiverState(defeated);
+    const osf::CompanionPresentationUpdate death_start =
+        actor.updateDamagePresentation(
+            world.ground(), world.objectMap());
+    if (!check(
+            death_start.handled &&
+                death_start.death_started &&
+                actor.animationChart() == 4 &&
+                actor.animationDirection() == 8 &&
+                !actor.judgementEnabled(),
+            "The companion did not enter its retail locked chart-four "
+            "death presentation.")) {
+        return 1;
+    }
+    for (int update = 0;
+         update < 200 && actor.visible();
+         ++update) {
+        actor.updateDamagePresentation(
+            world.ground(), world.objectMap());
+    }
+    if (!check(
+            !actor.visible() &&
+                actor.drawOpacity() == 0,
+            "The defeated companion did not hold and fade over its "
+            "retail chart-four lifetime.")) {
+        return 1;
+    }
+
+    actor.beginRevive(origin);
+    bool revive_completed = false;
+    for (int update = 0;
+         update < 200 && !revive_completed;
+         ++update) {
+        revive_completed =
+            actor.updateDamagePresentation(
+                world.ground(), world.objectMap())
+                .revive_completed;
+    }
+    if (!check(
+            revive_completed &&
+                actor.presentationAction() == 2 &&
+                actor.currentLife() == actor.maximumLife() &&
+                actor.position().x == origin.x &&
+                actor.position().y == origin.y &&
+                actor.visible(),
+            "The companion did not revive at its owner through "
+            "PARTNER chart seven with full life.")) {
+        return 1;
+    }
+
+    osf::CompanionProfile kerberos_level_two;
+    if (!check(
+            osf::decodeCompanionProfile(
+                tables, 0, 2, kerberos_level_two, &error),
+            "Kerberos' level-two profile could not be decoded.")) {
+        return 1;
+    }
+    actor.applyLevelProfile(kerberos_level_two);
+    if (!check(
+            actor.profile().level == 2 &&
+                actor.maximumLife() >
+                    kerberos.maximum_life &&
+                actor.currentLife() == actor.maximumLife(),
+            "A companion level-up did not rebuild its table profile "
+            "and fully heal the live actor.")) {
         return 1;
     }
 

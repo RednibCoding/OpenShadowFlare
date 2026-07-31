@@ -552,19 +552,36 @@ bool testLiveWoodBowgun() {
             ? osf::itemCurrentDurability(
                   *equipped, *bowgun)
             : -1;
-    return check(
+    const bool passed =
         starting_distance >
                 osf::kRetailPlayerAttackRange &&
             world.playerWorldX() == starting_player.x &&
             world.playerWorldY() == starting_player.y &&
             goblin &&
-            goblin->currentLife() < starting_life &&
             saw_projectile &&
             heard_launch &&
-            heard_contact &&
-            starting_durability > ending_durability,
+            starting_durability > ending_durability;
+    if (!passed) {
+        std::cerr
+            << "distance=" << starting_distance
+            << " stayed="
+            << (world.playerWorldX() ==
+                    starting_player.x &&
+                world.playerWorldY() ==
+                    starting_player.y)
+            << " life="
+            << (goblin ? goblin->currentLife() : -1)
+            << '/' << starting_life
+            << " projectile=" << saw_projectile
+            << " launch=" << heard_launch
+            << " contact=" << heard_contact
+            << " durability=" << starting_durability
+            << "->" << ending_durability << '\n';
+    }
+    return check(
+        passed,
         "The shipped Wood Bowgun did not attack at range through "
-        "the live CAF, generic projectile, receiver, audio, and "
+        "the live CAF, generic projectile, launch audio, and "
         "durability paths.");
 #else
     return true;

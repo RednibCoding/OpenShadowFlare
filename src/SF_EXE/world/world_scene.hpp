@@ -296,6 +296,9 @@ private:
     void applyEnemyDirectImpact(
         EnemyActor& enemy,
         const EnemyDirectImpactResult& impact);
+    bool applyCompanionDamagePacket(
+        const CombatPacket& packet,
+        WorldPosition impact_origin);
     bool applyPlayerDamagePacket(
         const CombatPacket& packet,
         WorldPosition impact_origin,

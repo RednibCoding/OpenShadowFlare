@@ -1,6 +1,7 @@
 #include "world_scene.hpp"
 
 #include "companion_attack_impact.hpp"
+#include "companion_respawn.hpp"
 #include "companion_target_selector.hpp"
 #include "movement_controller.hpp"
 
@@ -14,6 +15,7 @@ constexpr std::int32_t kOwnerDisengageDistance = 1500;
 constexpr std::int32_t kCompanionAttackRange = 159;
 constexpr std::int32_t kCompanionImpactRange = 150;
 constexpr std::int32_t kCompanionSwingSample = 95;
+constexpr std::int32_t kCompanionDeathEffect = 21010;
 
 std::vector<CompanionEnemyTargetState> enemyTargets(
     const std::vector<EnemyActor>& enemies) {
@@ -32,10 +34,54 @@ std::vector<CompanionEnemyTargetState> enemyTargets(
     return targets;
 }
 
+CombatEffectSpawnRequest companionDeathEffect(
+    const CompanionActor& companion,
+    std::int32_t direction) {
+    CombatEffectSpawnRequest request;
+    request.valid = true;
+    request.effect_number = kCompanionDeathEffect;
+    request.owner_kind = 2;
+    request.source_character_number =
+        companion.characterNumber();
+    request.target_kind = 0;
+    request.target_identifier = 0;
+    request.has_source_judgement = true;
+    request.source_judgement = companion.judgement();
+    request.packet_kind = direction;
+    request.instance_identifier = -1;
+    request.constructor_value_21 = 200;
+    return request;
+}
+
 }  // namespace
 
 void WorldScene::updateCompanionActor(
     const std::vector<MovementBlocker>& blockers) {
+    if (player_data_.companionRespawnCounter() > 0) {
+        player_data_.setCompanionRespawnCounter(
+            player_data_.companionRespawnCounter() - 1);
+        if (player_data_.companionRespawnCounter() == 0) {
+            companion_.beginRevive(player_.position());
+        }
+    }
+    const CompanionPresentationUpdate presentation =
+        companion_.updateDamagePresentation(
+            scenario_world_.ground(),
+            scenario_world_.objectMap(),
+            &blockers);
+    if (presentation.handled) {
+        if (presentation.death_started) {
+            queueCombatEffect(
+                companionDeathEffect(
+                    companion_,
+                    item_random_.next() % 8));
+            player_data_.setCompanionRespawnCounter(
+                retailCompanionRespawnUpdates(
+                    player_inventory_));
+        }
+        return;
+    }
+
     if (companion_.attackActive()) {
         const CompanionActorUpdate update =
             companion_.updateAttack();

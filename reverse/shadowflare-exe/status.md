@@ -250,6 +250,24 @@ five attack, owner companion level, native element, random effect
 approach, both markers, the enemy receiver, and actual damage outside Remote
 Town.
 
+The rest of the owned-companion combat lifecycle is live too. `0x004616d0`
+scales PARTNER chart three across the receiver duration and applies its
+collision-aware diminishing 120-unit hit impulse. `0x00461990` locks chart
+four direction eight, creates effect 21010, holds the final frame, fades over
+60 updates, and writes the saved 900-update respawn countdown. A category-four
+definition `98000002` anywhere in the backpack shortens that countdown to 600
+without being consumed. At zero, life is restored to the table maximum at the
+player position and `0x004610b0` plays chart seven direction eight before
+returning to ordinary owner AI.
+
+`0x004134a0` awards one companion point for a local-slot owner or companion
+kill while the companion is alive below its cap. The player threshold is
+processed between that award and `0x00412e20`, so companion leveling sees the
+new player level from the same kill. Table `800 + type` row 18 supplies each
+threshold, the cap is `player level / 3 + 2` up to 35, and a level rebuilds
+the summed profile and restores full life. The 0x160-byte player record keeps
+the companion type, level, experience, and defeated countdown.
+
 The portable `EnemyEffectController` now covers the complete controller half
 of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
 cover zero, positive, and negative delays,
@@ -329,9 +347,10 @@ The first game-core slice covers:
 - the passive player damage receiver, including local life and mana ownership,
   three shield paths, revival, equipment durability, reflection, hit reaction,
   configured effects, audio requests, training, and death presentation
-- the owned-companion damage receiver, including its family-one profile,
-  player-slot ownership, excluded actions, reaction tables and stages,
-  effect-owner distinctions, sample 119, and death action
+- the live owned-companion damage lifecycle, including its family-one
+  receiver, player-slot ownership, excluded actions, reaction tables and
+  stages, effect-owner distinctions, sample 119, chart-three hit reaction,
+  chart-four death fade, saved countdown, chart-seven revival, and progression
 - gameplay entry and its retail loading-screen sub-state
 - portable RCLIB-L decoding shared by NJP and ground-map data
 - the initial `00000000` scenario's fixed MCT header and entry-point table

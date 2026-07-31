@@ -84,6 +84,14 @@ public:
     std::int32_t companionType() const;
     std::int32_t companionLevel() const;
     std::int32_t companionExperience() const;
+    std::int32_t companionRespawnCounter() const;
+    void setCompanionRespawnCounter(std::int32_t value);
+    void awardCompanionKillExperience(
+        std::int32_t source_character_number,
+        std::int32_t local_player_slot,
+        bool companion_alive);
+    bool applyCompanionLevelThreshold(
+        const TableDatabase& tables);
     std::int32_t baseAttackSpeed() const;
     std::int32_t baseWeightCapacity() const;
     std::int32_t basePhysicalAttack() const;

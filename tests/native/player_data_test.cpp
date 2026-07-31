@@ -262,6 +262,7 @@ int main() {
     std::error_code cleanup_error;
     std::filesystem::remove_all(
         new_save_root, cleanup_error);
+    male.setCompanionRespawnCounter(600);
     if (!check(
             osf::writeRetailSave(
                 new_save_path, male, 0x34, &error),
@@ -275,9 +276,11 @@ int main() {
             new_save_round_trip.loadRetailSave(
                 new_save_path, &error) &&
                 new_save_round_trip.retailRecord() ==
-                    male.retailRecord(),
+                    male.retailRecord() &&
+                new_save_round_trip.companionRespawnCounter() ==
+                    600,
             "A newly created save did not preserve its player "
-            "record.")) {
+            "record or companion respawn countdown.")) {
         std::cerr << error << '\n';
         return 1;
     }

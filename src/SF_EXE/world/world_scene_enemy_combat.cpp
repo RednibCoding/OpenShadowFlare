@@ -15,7 +15,19 @@ void WorldScene::accountEnemyKill(
             experience_reward,
             scenario_world_.localPlayerNumber(),
             main_hand_subtype,
-            parameter_tables_);
+            parameter_tables_,
+            hasCompanion() &&
+                companion_.currentLife() > 0);
+    if (accounting.companion_level_gained) {
+        CompanionProfile profile;
+        if (decodeCompanionProfile(
+                parameter_tables_,
+                player_data_.companionType(),
+                player_data_.companionLevel(),
+                profile)) {
+            companion_.applyLevelProfile(profile);
+        }
+    }
     if (!accounting.level_gained) {
         return;
     }
@@ -106,23 +118,67 @@ void WorldScene::applyEnemyDirectImpact(
     EnemyActor& enemy,
     const EnemyDirectImpactResult& impact) {
     if (!impact.valid ||
-        !impact.apply_damage ||
-        impact.target.kind !=
-            MovementTargetKind::player ||
-        impact.target.identifier !=
-            scenario_world_.localPlayerNumber()) {
+        !impact.apply_damage) {
         return;
     }
-    if (!applyPlayerDamagePacket(
+    bool accepted = false;
+    if (impact.target.kind ==
+            MovementTargetKind::player &&
+        impact.target.identifier ==
+            scenario_world_.localPlayerNumber()) {
+        accepted = applyPlayerDamagePacket(
             impact.packet,
             impact.damage_origin,
-            enemy.characterNumber())) {
+            enemy.characterNumber());
+    } else if (
+        impact.target.kind ==
+            MovementTargetKind::scenario_actor &&
+        hasCompanion() &&
+        impact.target.identifier ==
+            companion_.characterNumber()) {
+        accepted = applyCompanionDamagePacket(
+            impact.packet,
+            impact.damage_origin);
+    }
+    if (!accepted) {
         return;
     }
     if (impact.post_hit_audio_sample >= 0) {
         pending_audio_samples_.push_back(
             impact.post_hit_audio_sample);
     }
+}
+
+bool WorldScene::applyCompanionDamagePacket(
+    const CombatPacket& packet,
+    WorldPosition impact_origin) {
+    if (!hasCompanion()) {
+        return false;
+    }
+    CompanionDamageReceiverContext context;
+    context.local_player_slot =
+        scenario_world_.localPlayerNumber();
+    const CompanionDamageReceiverResult receiver =
+        resolveCompanionDamage(
+            companion_.damageReceiverState(),
+            packet,
+            impact_origin,
+            context,
+            parameter_tables_,
+            item_random_);
+    if (!receiver.valid || !receiver.accepted) {
+        return false;
+    }
+    companion_.applyDamageReceiverState(receiver.state);
+    pending_audio_samples_.insert(
+        pending_audio_samples_.end(),
+        receiver.audio_samples.begin(),
+        receiver.audio_samples.end());
+    for (const CombatEffectSpawnRequest& effect :
+         receiver.effects) {
+        queueCombatEffect(effect);
+    }
+    return true;
 }
 
 bool WorldScene::applyPlayerDamagePacket(
@@ -244,6 +300,23 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
             target.bounds = player_.judgement();
         }
     }
+    if (hasCompanion()) {
+        EnemyCompanionTargetState target;
+        target.present = true;
+        target.character_number =
+            companion_.characterNumber();
+        target.scenario_id = scenario_world_.id();
+        target.script_active = true;
+        target.attack_target_enabled = true;
+        target.current_life =
+            companion_.currentLife();
+        target.combat_defense =
+            companion_.profile().physical_evasion;
+        target.owner_mode = 0;
+        target.position = companion_.position();
+        target.bounds = companion_.judgement();
+        targets.companions.push_back(target);
+    }
 
     const EnemyTargetSearch target_in_range =
         [&targets](
@@ -282,6 +355,17 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
         [this](
             MovementTargetKind kind,
             std::int32_t identifier) {
+            if (kind ==
+                    MovementTargetKind::scenario_actor &&
+                hasCompanion() &&
+                identifier ==
+                    companion_.characterNumber()) {
+                return MovementTargetState{
+                    companion_.currentLife() > 0,
+                    companion_.position(),
+                    companion_.judgement(),
+                };
+            }
             if (kind != MovementTargetKind::player ||
                 !has_player_ ||
                 identifier !=

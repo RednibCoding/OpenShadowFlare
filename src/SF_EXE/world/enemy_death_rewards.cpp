@@ -158,7 +158,8 @@ EnemyKillAccountingResult accountRetailEnemyKill(
     std::int32_t experience_reward,
     std::int32_t local_player_slot,
     std::int32_t main_hand_subtype,
-    const TableDatabase& tables) {
+    const TableDatabase& tables,
+    bool companion_alive) {
     EnemyKillAccountingResult result;
     const std::array<std::int32_t, 13> parameters_before =
         playerParameters(player);
@@ -199,6 +200,10 @@ EnemyKillAccountingResult accountRetailEnemyKill(
                 : 8u;
         player.addKillCount(kind);
     }
+    player.awardCompanionKillExperience(
+        enemy.defeat_source_character_number,
+        local_player_slot,
+        companion_alive);
     result.level_gained =
         player.applyLevelThreshold(tables);
     if (result.level_gained) {
@@ -224,6 +229,8 @@ EnemyKillAccountingResult accountRetailEnemyKill(
         }
         result.audio_samples.push_back(63);
     }
+    result.companion_level_gained =
+        player.applyCompanionLevelThreshold(tables);
     return result;
 }
 

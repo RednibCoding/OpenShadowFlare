@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_COMPANION_ACTOR_HPP
 
 #include "companion_attack_action.hpp"
+#include "companion_damage_receiver.hpp"
 #include "companion_profile.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
@@ -23,12 +24,21 @@ enum class CompanionMotion {
     walking,
     running,
     attacking,
+    reacting,
+    defeated,
+    reviving,
 };
 
 struct CompanionActorUpdate {
     bool impact_due = false;
     bool swing_sound_due = false;
     bool attack_completed = false;
+};
+
+struct CompanionPresentationUpdate {
+    bool handled = false;
+    bool death_started = false;
+    bool revive_completed = false;
 };
 
 class CompanionActor {
@@ -63,6 +73,20 @@ public:
         std::int32_t target_character_number);
     CompanionActorUpdate updateAttack();
     void leaveCombat();
+    CompanionPresentationUpdate
+    updateDamagePresentation(
+        const GroundMap& ground,
+        const ObjectMap& objects,
+        const std::vector<MovementBlocker>*
+            dynamic_blockers = nullptr);
+    CompanionDamageReceiverState
+        damageReceiverState() const;
+    void applyDamageReceiverState(
+        const CompanionDamageReceiverState& state);
+    void beginDefeatedWait();
+    void beginRevive(WorldPosition owner_position);
+    void applyLevelProfile(
+        const CompanionProfile& profile);
 
     bool valid() const;
     std::int32_t characterNumber() const;
@@ -74,7 +98,10 @@ public:
     std::int32_t direction() const;
     CompanionMotion motion() const;
     std::int32_t animationChart() const;
+    std::int32_t animationDirection() const;
     std::int32_t animationFrame() const;
+    std::int32_t drawOpacity() const;
+    std::int32_t presentationAction() const;
     std::int32_t currentLife() const;
     std::int32_t maximumLife() const;
     std::int32_t combatTargetCharacterNumber() const;
@@ -102,6 +129,17 @@ private:
     std::int32_t action_counter_ = 0;
     std::int32_t close_linger_counter_ = 0;
     std::int32_t current_life_ = 0;
+    std::int32_t presentation_action_ = 2;
+    std::int32_t presentation_counter_ = 0;
+    std::int32_t presentation_animation_frame_ = 0;
+    std::int32_t action_lock_ = 0;
+    std::int32_t reaction_duration_ = 0;
+    std::int32_t reaction_stage_ = 0;
+    bool reaction_displacement_suppressed_ = false;
+    std::int32_t reaction_additive_ = 0;
+    double reaction_angle_ = 0.0;
+    std::int32_t event_number_ = 0;
+    std::int32_t draw_opacity_ = 1000;
     std::int32_t combat_target_character_number_ = -1;
     MovementController movement_controller_;
     CompanionAttackActionController attack_action_;

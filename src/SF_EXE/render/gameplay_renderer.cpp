@@ -128,7 +128,7 @@ void renderCompanionPass(
         companion.shadowPatterns(),
         companion.renderPosition(interpolation),
         companion.animationChart(),
-        companion.direction(),
+        companion.animationDirection(),
         companion.animationFrame(),
         [&companion](std::size_t part) {
             return companion.partEnabled(part);
@@ -143,7 +143,9 @@ void renderCompanionPass(
         camera_x,
         camera_y,
         shadow,
-        shadow_opacity);
+        shadow_opacity,
+        0,
+        companion.drawOpacity());
 }
 
 void renderEnemyPass(
