@@ -154,6 +154,8 @@ add_library(
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
   world/player_magic.cpp
+  world/player_spell_action.cpp
+  world/player_spell_cast.cpp
   world/player_spell_parameters.cpp
   world/player_voice.cpp
   world/quest_state.cpp

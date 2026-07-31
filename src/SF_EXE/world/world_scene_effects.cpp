@@ -196,6 +196,22 @@ void WorldScene::applyRuntimeEffectDispatch(
     if (!enemy) {
         return;
     }
+    if (dispatch.packet.written_words.test(0) &&
+        dispatch.packet.written_words.test(2) &&
+        dispatch.packet.written_words.test(73) &&
+        (dispatch.packet[0] == 0 ||
+         dispatch.packet[0] == 1) &&
+        dispatch.packet[73] != -1 &&
+        dispatch.packet[2] % 10 ==
+            scenario_world_.localPlayerNumber()) {
+        // FUN_00459690 awards ordinary spell practice when a family-zero
+        // player packet reaches its target. The spell number is carried in
+        // packet word 73; companion-only spells use the separate mode.
+        player_magic_.train(
+            dispatch.packet[73],
+            false,
+            parameter_tables_);
+    }
     EnemyDamageReceiverContext context;
     context.local_player_slot =
         scenario_world_.localPlayerNumber();

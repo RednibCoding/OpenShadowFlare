@@ -533,6 +533,10 @@ std::int32_t PlayerData::basePhysicalDefense() const {
     return initialParameter(6);
 }
 
+std::int32_t PlayerData::baseMagicalAttack() const {
+    return initialParameter(7);
+}
+
 std::int32_t PlayerData::baseMagicalDefense() const {
     return initialParameter(8);
 }
@@ -543,6 +547,10 @@ std::int32_t PlayerData::baseHitRate() const {
 
 std::int32_t PlayerData::baseEvasionRate() const {
     return initialParameter(10);
+}
+
+std::int32_t PlayerData::baseMagicalHitRate() const {
+    return initialParameter(11);
 }
 
 std::int32_t PlayerData::baseMagicalEvasionRate() const {

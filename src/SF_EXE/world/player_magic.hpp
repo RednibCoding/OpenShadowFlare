@@ -7,6 +7,8 @@
 
 namespace osf {
 
+class TableDatabase;
+
 struct PlayerMagicState {
     static constexpr std::size_t spell_count = 22;
     static constexpr std::size_t bar_slot_count = 8;
@@ -38,6 +40,10 @@ public:
         std::int32_t slot,
         std::int32_t spell);
     bool clearBarSlot(std::int32_t slot);
+    bool train(
+        std::int32_t spell,
+        bool companion_mode,
+        const TableDatabase& tables);
     std::int32_t selectedSpell() const;
     bool selectSpell(std::int32_t spell);
     bool targeting() const;

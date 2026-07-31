@@ -151,6 +151,9 @@ public:
     bool commandWorldInteraction(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    bool commandPlayerMagic(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
     bool dropInventoryItem(
         const InventoryItem& item,
         std::int32_t screen_x,
@@ -196,6 +199,8 @@ public:
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
     PlayerMotion playerMotion() const;
+    bool playerSpellActive() const;
+    std::int32_t playerSpellTargetCharacterNumber() const;
     MovementPace playerMovementPace() const;
     std::int32_t playerAnimationChart() const;
     std::int32_t playerAnimationFrame() const;
@@ -278,6 +283,8 @@ private:
     std::int32_t playerAttackSpeedTier() const;
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
+    void handlePlayerSpellEvent(
+        const PlayerSpellActionEvent& event);
     void launchPlayerRangedAttack(
         const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);

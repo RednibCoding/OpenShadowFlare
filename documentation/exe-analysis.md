@@ -1802,5 +1802,40 @@ and normal targeting mutually exclusive.
 The portable `GameplayMagic` state mirrors those page, hitbox, hover, and drag
 rules but does not own spell data. It emits assignment and selection intent
 to the runtime boundary, which mutates `PlayerMagic`; this keeps persistent
-state and future casting outside the UI layer. The Status half of the tab and
-actual cast actions remain later slices.
+state and casting outside the UI layer. The Status half of the tab remains a
+later slice.
+
+## Fire Ball cast and spell practice
+
+`0x00449a40` handles a targeted player spell command. Fire Ball must have
+availability value three and a valid pointed enemy. `0x00451e60` supplies its
+effective level; Table 16 supplies the MP cost, equipped instance parameter 19
+reduces it, and the result is clamped to at least one. A selected enemy
+consumes the pointer command even when MP is insufficient. On success the
+function faces the target, selects action `spell + 22`, and deducts MP before
+the action runs.
+
+`0x00439730` dispatches Fire Ball as action 23. It selects player CAF chart 13
+then chart 14 and scales Table 20 row one by the attack-speed tier factors
+`0.6, 0.7, 0.8, 1.0, 1.15, 1.3, 1.45, 1.6, 1.75, 1.9`. The first chart-13
+frame carrying status `0x40` becomes the effect delay after division by that
+speed. The displayed frame is the truncated action counter times speed, and
+the completion allowance is at least one and otherwise truncated `7 / speed`.
+Chart 14 remains on frame zero until that threshold is reached.
+
+The action creates effect controller 10001 immediately with the marker delay;
+that owner later creates the visible resource-10000010 projectile, plays
+sample 19 at launch and sample 20 at impact, performs collision, and delivers
+the packet. The family-zero packet combines Table 17 with magical attack,
+Table 18 with magical hit rate, Table 19's element type, the player element
+and state words, and the three-column groups from Tables 70 through 78.
+Packet word 73 retains spell number one.
+
+Practice belongs to the receiver rather than the cast command.
+`0x00459690` calls `0x0044f6f0` when a family-zero or family-one packet with a
+valid spell number reaches the enemy. The latter function requires an odd
+availability value and a stored level below 20, excludes companion spells
+seven through nine in ordinary mode, adds one experience point, and compares
+against Table 27. Reaching the threshold subtracts it and raises the stored
+level once. Consequently a cancelled or missed Fire Ball does not gain
+practice, while a successful projectile contact does.

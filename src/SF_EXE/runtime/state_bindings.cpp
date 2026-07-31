@@ -229,6 +229,10 @@ GameplayStateHooks makeGameplayStateHooks(
         [&world](std::int32_t x, std::int32_t y) {
             return world.commandWorldInteraction(x, y);
         };
+    hooks.command_player_magic =
+        [&world](std::int32_t x, std::int32_t y) {
+            return world.commandPlayerMagic(x, y);
+        };
     hooks.world_interaction_pending = [&world] {
         return world.interactionPending();
     };

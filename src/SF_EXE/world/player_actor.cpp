@@ -84,6 +84,8 @@ void PlayerActor::reset(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    spell_controller_.cancel();
+    pending_spell_event_ = {};
     pending_footstep_sample_ = -1;
     pending_death_voice_request_ = false;
     respawn_requested_ = false;
@@ -110,6 +112,8 @@ void PlayerActor::relocate(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    spell_controller_.cancel();
+    pending_spell_event_ = {};
     pending_footstep_sample_ = -1;
     pending_death_voice_request_ = false;
     respawn_requested_ = false;
@@ -120,6 +124,7 @@ void PlayerActor::relocate(
 
 void PlayerActor::moveTo(WorldPosition destination) {
     if (attack_controller_.active() ||
+        spell_controller_.active() ||
         damage_presentation_.action_lock != 0) {
         return;
     }
@@ -132,6 +137,7 @@ void PlayerActor::moveTo(WorldPosition destination) {
 
 void PlayerActor::followTo(WorldPosition destination) {
     if (attack_controller_.active() ||
+        spell_controller_.active() ||
         damage_presentation_.action_lock != 0) {
         return;
     }
@@ -144,6 +150,7 @@ void PlayerActor::followTo(WorldPosition destination) {
 
 void PlayerActor::cancelMovement() {
     if (attack_controller_.active() ||
+        spell_controller_.active() ||
         damage_presentation_.action_lock != 0) {
         return;
     }
@@ -168,6 +175,7 @@ bool PlayerActor::beginAttack(
     std::int32_t attack_speed_tier,
     const gapi::CafAnimation& animation) {
     if (attack_controller_.active() ||
+        spell_controller_.active() ||
         damage_presentation_.action_lock != 0) {
         return false;
     }
@@ -196,6 +204,48 @@ bool PlayerActor::beginAttack(
         attack_controller_.animationFrame();
     motion_ = PlayerMotion::attacking;
     previous_action_ = PlayerMotion::attacking;
+    return true;
+}
+
+bool PlayerActor::beginSpellCast(
+    PlayerSpellAction action,
+    std::int32_t spell,
+    std::int32_t target_character_number,
+    std::int32_t speed_tier,
+    const TableData* speed_table,
+    const gapi::CafAnimation& animation) {
+    if (attack_controller_.active() ||
+        spell_controller_.active() ||
+        damage_presentation_.action_lock != 0) {
+        return false;
+    }
+    PlayerSpellAnimationTiming timing;
+    if (!buildPlayerSpellAnimationTiming(
+            animation,
+            action,
+            direction_,
+            timing)) {
+        return false;
+    }
+    destination_ = position_;
+    movement_controller_.reset();
+    if (!spell_controller_.start(
+            action,
+            spell,
+            target_character_number,
+            speed_tier,
+            speed_table,
+            std::move(timing),
+            &pending_spell_event_)) {
+        return false;
+    }
+    action_counter_ = 0;
+    animation_chart_ =
+        spell_controller_.animationChart();
+    animation_frame_ =
+        spell_controller_.animationFrame();
+    motion_ = PlayerMotion::casting;
+    previous_action_ = PlayerMotion::casting;
     return true;
 }
 
@@ -229,7 +279,8 @@ void PlayerActor::update(
     const ObjectMap& objects,
     const std::vector<MovementBlocker>* dynamic_blockers,
     std::int32_t attack_speed_tier,
-    const gapi::CafAnimation* animation) {
+    const gapi::CafAnimation* animation,
+    const TableData* spell_speed_table) {
     previous_position_ = position_;
     pending_footstep_sample_ = -1;
     if (damage_presentation_.action == 4) {
@@ -357,6 +408,20 @@ void PlayerActor::update(
         }
         return;
     }
+    if (spell_controller_.active()) {
+        pending_spell_event_ =
+            spell_controller_.update(
+                attack_speed_tier,
+                spell_speed_table);
+        animation_chart_ =
+            spell_controller_.animationChart();
+        animation_frame_ =
+            spell_controller_.animationFrame();
+        if (!spell_controller_.active()) {
+            motion_ = PlayerMotion::idle;
+        }
+        return;
+    }
     if (motion_ == PlayerMotion::idle) {
         if (previous_action_ != PlayerMotion::idle) {
             action_counter_ = 0;
@@ -459,6 +524,12 @@ PlayerMotion PlayerActor::motion() const {
     return motion_;
 }
 
+bool PlayerActor::actionLocked() const {
+    return attack_controller_.active() ||
+           spell_controller_.active() ||
+           damage_presentation_.action_lock != 0;
+}
+
 bool PlayerActor::attackActive() const {
     return attack_controller_.active();
 }
@@ -472,6 +543,23 @@ std::int32_t PlayerActor::attackTargetId() const {
 PlayerAttackActionEvent PlayerActor::takeAttackEvent() {
     PlayerAttackActionEvent event = pending_attack_event_;
     pending_attack_event_ = {};
+    return event;
+}
+
+bool PlayerActor::spellActive() const {
+    return spell_controller_.active();
+}
+
+std::int32_t
+PlayerActor::spellTargetCharacterNumber() const {
+    return spell_controller_.active()
+        ? spell_controller_.targetCharacterNumber()
+        : -1;
+}
+
+PlayerSpellActionEvent PlayerActor::takeSpellEvent() {
+    PlayerSpellActionEvent event = pending_spell_event_;
+    pending_spell_event_ = {};
     return event;
 }
 
@@ -504,6 +592,10 @@ PlayerActor::damagePresentation() const {
         presentation.action =
             static_cast<std::int32_t>(
                 attack_controller_.action());
+    } else if (spell_controller_.active()) {
+        presentation.action =
+            static_cast<std::int32_t>(
+                spell_controller_.action());
     } else if (motion_ == PlayerMotion::walking) {
         presentation.action = 2;
     } else if (motion_ == PlayerMotion::running) {
@@ -528,6 +620,8 @@ void PlayerActor::applyDamagePresentation(
     movement_controller_.reset();
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    spell_controller_.cancel();
+    pending_spell_event_ = {};
     respawn_requested_ = false;
     pending_respawn_request_ = false;
     action_counter_ = 0;

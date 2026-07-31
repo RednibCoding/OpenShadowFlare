@@ -4,7 +4,10 @@
 #include "actor_direction.hpp"
 #include "generic_effect_actor.hpp"
 #include "player_attack_impact.hpp"
+#include "player_combat_defense.hpp"
 #include "player_ranged_attack.hpp"
+#include "player_spell_cast.hpp"
+#include "player_spell_parameters.hpp"
 #include "items/item_audio.hpp"
 #include "items/item_condition.hpp"
 #include "movement_controller.hpp"
@@ -23,13 +26,14 @@ namespace {
 
 constexpr std::int32_t kRetailInteractionDistance = 0x9f;
 constexpr std::int32_t kRetailHeightScale = 20;
+constexpr std::int32_t kFireBallSpell = 1;
 
 }  // namespace
 
 void WorldScene::commandPlayerMovement(
     std::int32_t screen_x,
     std::int32_t screen_y) {
-    if (!has_player_ || player_.attackActive()) {
+    if (!has_player_ || player_.actionLocked()) {
         return;
     }
     pending_interaction_ = {};
@@ -42,7 +46,7 @@ void WorldScene::commandPlayerMovement(
 }
 
 void WorldScene::cancelPlayerMovement() {
-    if (player_.attackActive()) {
+    if (player_.actionLocked()) {
         return;
     }
     pending_interaction_ = {};
@@ -77,7 +81,7 @@ bool WorldScene::commandWorldInteraction(
     std::int32_t screen_x,
     std::int32_t screen_y) {
     if (!has_player_ ||
-        player_.attackActive() ||
+        player_.actionLocked() ||
         scenario_script_.messageActive()) {
         return false;
     }
@@ -148,11 +152,74 @@ bool WorldScene::commandWorldInteraction(
     return startNpcInteraction(*selected);
 }
 
+bool WorldScene::commandPlayerMagic(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_ ||
+        player_.actionLocked() ||
+        scenario_script_.messageActive() ||
+        player_magic_.selectedSpell() !=
+            kFireBallSpell ||
+        !player_magic_.learned(kFireBallSpell)) {
+        return false;
+    }
+
+    const WorldPointerTarget target =
+        pointerTargetAtScreenPosition(screen_x, screen_y);
+    if (target.kind != WorldPointerTargetKind::enemy) {
+        return false;
+    }
+    EnemyActor* enemy = findEnemy(target.id);
+    if (!enemy ||
+        classifyPlayerAttackTarget(
+            player_.position(),
+            player_.judgement(),
+            attackTargetSnapshot(*enemy)) ==
+            PlayerAttackTargetDisposition::rejected) {
+        return false;
+    }
+
+    // The selected target consumes the secondary click even when there is
+    // not enough MP. FUN_00449a40 clears the retail pointer selection on
+    // that path without entering action 23.
+    pointer_.clearSelection();
+    pending_interaction_ = {};
+    player_attack_target_.cancel();
+    const PlayerSpellParameters parameters =
+        playerSpellParameters(
+            player_magic_,
+            kFireBallSpell,
+            player_equipment_,
+            item_database_,
+            parameter_tables_);
+    if (player_data_.currentMana() <
+        parameters.mana_cost) {
+        return true;
+    }
+
+    player_.cancelMovement();
+    player_.faceToward(enemy->position());
+    if (!player_.beginSpellCast(
+            PlayerSpellAction::fire_ball,
+            kFireBallSpell,
+            enemy->characterNumber(),
+            playerAttackSpeedTier(),
+            parameter_tables_.find(20),
+            player_visual_.animation())) {
+        return true;
+    }
+    player_data_.setCurrentMana(
+        player_data_.currentMana() -
+        parameters.mana_cost);
+    handlePlayerSpellEvent(player_.takeSpellEvent());
+    return true;
+}
+
 bool WorldScene::dropInventoryItem(
     const InventoryItem& item,
     std::int32_t screen_x,
     std::int32_t screen_y) {
-    if (!has_player_ || player_.attackActive()) {
+    if (!has_player_ || player_.actionLocked()) {
         return false;
     }
 
@@ -237,7 +304,7 @@ bool WorldScene::interactionPending() const {
                WorldPointerTargetKind::none ||
            player_attack_target_.approachTargetId() >= 0 ||
            player_attack_target_.readyTargetId() >= 0 ||
-           player_.attackActive();
+           player_.actionLocked();
 }
 
 GameplayServiceRequest
@@ -861,7 +928,7 @@ PlayerAttackTargetSnapshot WorldScene::attackTargetSnapshot(
 }
 
 bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
-    if (player_.attackActive()) {
+    if (player_.actionLocked()) {
         return false;
     }
     const InventoryItem* main_hand =
@@ -896,6 +963,80 @@ bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
         return true;
     }
     return readyPlayerAttack(enemy);
+}
+
+void WorldScene::handlePlayerSpellEvent(
+    const PlayerSpellActionEvent& event) {
+    if (!event.cast_due ||
+        event.spell != kFireBallSpell) {
+        return;
+    }
+    const EnemyActor* target =
+        findScriptEnemy(
+            event.target_character_number);
+    if (!target) {
+        return;
+    }
+
+    PlayerCombatDefenseSnapshot affinity_source;
+    affinity_source.character_number =
+        scenario_world_.localPlayerNumber();
+    affinity_source.attack =
+        player_data_.basePhysicalAttack() +
+        player_equipment_.derivedParameterBonus(
+            0, item_database_);
+    affinity_source.physical_defense =
+        player_data_.basePhysicalDefense() +
+        player_equipment_.derivedParameterBonus(
+            2, item_database_);
+    affinity_source.magical_defense =
+        player_data_.baseMagicalDefense() +
+        player_equipment_.derivedParameterBonus(
+            6, item_database_);
+    affinity_source.element_x = player_data_.elementX();
+    affinity_source.element_y = player_data_.elementY();
+
+    PlayerSpellCastStats stats;
+    stats.source_character_number =
+        scenario_world_.localPlayerNumber();
+    stats.player_level = player_data_.level();
+    stats.magical_attack =
+        player_data_.baseMagicalAttack() +
+        player_equipment_.derivedParameterBonus(
+            4, item_database_);
+    stats.magical_defense =
+        affinity_source.magical_defense;
+    stats.magical_hit_rate =
+        player_data_.baseMagicalHitRate() +
+        player_equipment_.derivedParameterBonus(
+            5, item_database_);
+    stats.element_affinities =
+        buildPlayerElementAffinities(
+            affinity_source,
+            player_equipment_,
+            player_inventory_,
+            item_database_);
+    stats.state_words =
+        player_data_.combatPacketStateWords();
+
+    const CombatEffectSpawnRequest request =
+        buildPlayerFireBallCast(
+            {
+                stats,
+                playerSpellParameters(
+                    player_magic_,
+                    kFireBallSpell,
+                    player_equipment_,
+                    item_database_,
+                    parameter_tables_),
+                target->characterNumber(),
+                player_.position(),
+                player_.judgement(),
+                target->position(),
+                event.effect_delay,
+            },
+            parameter_tables_);
+    queueCombatEffect(request);
 }
 
 bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {

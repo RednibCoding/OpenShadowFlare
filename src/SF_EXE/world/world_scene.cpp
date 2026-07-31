@@ -505,8 +505,10 @@ void WorldScene::update() {
             scenario_world_.objectMap(),
             &actor_blockers,
             playerAttackSpeedTier(),
-            &player_visual_.animation());
+            &player_visual_.animation(),
+            parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
+        handlePlayerSpellEvent(player_.takeSpellEvent());
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {
@@ -716,6 +718,15 @@ std::int32_t WorldScene::playerDirection() const {
 
 PlayerMotion WorldScene::playerMotion() const {
     return player_.motion();
+}
+
+bool WorldScene::playerSpellActive() const {
+    return player_.spellActive();
+}
+
+std::int32_t
+WorldScene::playerSpellTargetCharacterNumber() const {
+    return player_.spellTargetCharacterNumber();
 }
 
 MovementPace WorldScene::playerMovementPace() const {

@@ -116,6 +116,22 @@ drawn as its larger MagicIcon at y=382; ordinary entries sit at y=392.
 Clicking a learned entry selects it and clears normal-attack targeting.
 Clicking the final targeting icon does the reverse.
 
+### Fire Ball
+
+With Fire Ball selected, right-clicking a pointed enemy consumes the command.
+The spell must be learned and the hero must have enough MP; the MP cost comes
+from Table 16 at the effective spell level, reduced by equipped item parameter
+19 but never below one.
+
+The hero faces the target and plays action 23, using CAF chart 13 for the cast
+and chart 14 for recovery. The chart's `0x40` marker determines the delayed
+effect launch. Effect 10001 then owns the visible projectile, launch and
+impact sounds, collision, and damage instead of the input or animation code.
+Spell experience is awarded when the family-zero spell packet successfully
+reaches a target, not when the button is pressed, so a miss does not train the
+spell. Table 27 supplies the next-level threshold, the cap is level 20, and
+only one spell level may be gained from one contact.
+
 ## Character Stats
 
 ### Primary Stats

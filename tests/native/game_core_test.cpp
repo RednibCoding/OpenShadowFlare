@@ -411,6 +411,7 @@ bool testGameplayLoadingTransition() {
     std::int32_t movementCommands = 0;
     std::int32_t movementCancels = 0;
     std::int32_t interactionCommands = 0;
+    std::int32_t magicCommands = 0;
     std::int32_t pointerUpdates = 0;
     std::int32_t pointerClears = 0;
     std::int32_t conversationAdvances = 0;
@@ -463,6 +464,11 @@ bool testGameplayLoadingTransition() {
             conversationActive = x == 300 && y == 220;
             return conversationActive;
         };
+    hooks.command_player_magic =
+        [&](std::int32_t x, std::int32_t y) {
+            ++magicCommands;
+            return x == 250 && y == 200;
+        };
     hooks.conversation_active =
         [&conversationActive] {
             return conversationActive;
@@ -510,6 +516,11 @@ bool testGameplayLoadingTransition() {
     }
     frame = state.update({false, true, 600, 460});
     state.update({false, true, 200, 450});
+    osf::GameplayFrameInput magic_cast;
+    magic_cast.pointer_x = 250;
+    magic_cast.pointer_y = 200;
+    magic_cast.pointer_secondary_pressed = true;
+    state.update(magic_cast);
     state.update({false, true, 200, 210});
     state.update({false, true, -1, 210});
     state.update({false, false, 0, 0, false, true});
@@ -538,11 +549,12 @@ bool testGameplayLoadingTransition() {
             movementX == 240 &&
             movementY == 250 &&
             interactionCommands == 4 &&
-            pointerUpdates == 12 &&
+            magicCommands == 1 &&
+            pointerUpdates == 13 &&
             pointerClears == 2 &&
             conversationAdvances == 1 &&
             conversationChoices == 1 &&
-            worldUpdates == 14 &&
+            worldUpdates == 15 &&
             runToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
 }

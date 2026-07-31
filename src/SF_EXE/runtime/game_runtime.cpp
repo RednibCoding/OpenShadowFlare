@@ -374,6 +374,7 @@ private:
                     0,
                     inventory_active ? 320 : 640,
                     400,
+                    input_.pointerSecondaryPressed(),
                 });
                 if (world_.takeScenarioChanged()) {
                     completeScenarioChange();

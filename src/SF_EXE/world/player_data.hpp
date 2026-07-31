@@ -96,9 +96,11 @@ public:
     std::int32_t baseWeightCapacity() const;
     std::int32_t basePhysicalAttack() const;
     std::int32_t basePhysicalDefense() const;
+    std::int32_t baseMagicalAttack() const;
     std::int32_t baseMagicalDefense() const;
     std::int32_t baseHitRate() const;
     std::int32_t baseEvasionRate() const;
+    std::int32_t baseMagicalHitRate() const;
     std::int32_t baseMagicalEvasionRate() const;
     std::int32_t elementX() const;
     std::int32_t elementY() const;

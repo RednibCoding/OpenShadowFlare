@@ -3,6 +3,7 @@
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
+#include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "world/player_data.hpp"
 #include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
@@ -186,6 +187,44 @@ int main() {
                 &error),
             "The retail item database could not be loaded.")) {
         std::cerr << error << '\n';
+        return 1;
+    }
+    osf::TableDatabase tables;
+    if (!check(
+            tables.load(
+                game_root / "System" / "Game" /
+                    "Parameter" / "Table.Tbd",
+                &error),
+            "The retail spell-training table could not be loaded.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    osf::PlayerMagicState training_state;
+    training_state.availability.fill(3);
+    training_state.levels.fill(1);
+    training_state.experience.fill(0);
+    training_state.experience[1] = 28;
+    training_state.bar_slots.fill(-1);
+    osf::PlayerMagic training;
+    training.restore(training_state);
+    const bool first_level =
+        training.train(1, false, tables);
+    const bool second_level =
+        training.train(1, false, tables);
+    if (!check(
+            !first_level &&
+                second_level &&
+                training.level(1) == 2 &&
+                training.experience(1) == 0 &&
+                !training.train(7, false, tables) &&
+                training.experience(7) == 0 &&
+                !training.train(1, true, tables) &&
+                training.experience(1) == 0 &&
+                !training.train(7, true, tables) &&
+                training.experience(7) == 1,
+            "Spell practice did not follow FUN_0044f6f0's "
+            "threshold and companion-mode split.")) {
         return 1;
     }
 

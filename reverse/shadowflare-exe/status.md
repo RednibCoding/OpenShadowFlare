@@ -1419,3 +1419,28 @@ Portable `GameplayMagic` owns only panel interaction state and emits typed
 intent. `PlayerMagic` remains the sole owner of availability, progression,
 saved bar assignment, current selection, and the normal-target toggle. This
 keeps the cast dispatcher and future status effects out of the UI files.
+
+## Fire Ball cast
+
+`FUN_00449a40` validates the pointed enemy and selected learned spell, derives
+the effective level through `FUN_00451e60`, reads Table 16's MP cost, applies
+equipped parameter 19 with a minimum of one, and consumes the target command
+even when mana is insufficient. Fire Ball faces the target, deducts mana, and
+enters action 23.
+
+`FUN_00439730` runs CAF chart 13 followed by chart 14. Table 20 row one is
+scaled by the ten attack-speed factors from 0.6 through 1.9. The first chart
+13 status-`0x40` frame determines effect 10001's delay, while truncated
+counter-times-speed frame selection and truncated `7 / speed` completion
+allowance preserve the retail update cadence. The effect owner—not input or
+rendering—creates resource 10000010, plays samples 19 and 20, performs
+collision, and delivers the exact family-zero packet.
+
+The packet carries player magical attack, defense and hit rate, eight element
+affinities, seventeen state words, Table 19's type, the three-column banks
+from Tables 70 through 78, and Fire Ball ID one in word 73.
+`FUN_00459690` passes that spell ID to `FUN_0044f6f0` only when the packet
+reaches an enemy. Practice therefore occurs on contact rather than cast.
+`FUN_0044f6f0` adds one point, uses Table 27 for the threshold, raises at most
+one level, caps at level 20, and keeps companion-only spells seven through
+nine out of the ordinary path.

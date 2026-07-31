@@ -1,5 +1,8 @@
 #include "player_magic.hpp"
 
+#include "core/retail_integer.hpp"
+#include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
+
 #include <algorithm>
 
 namespace osf {
@@ -102,6 +105,42 @@ bool PlayerMagic::clearBarSlot(std::int32_t slot) {
         return false;
     }
     assigned = -1;
+    return true;
+}
+
+bool PlayerMagic::train(
+    std::int32_t spell,
+    bool companion_mode,
+    const TableDatabase& tables) {
+    if (!validSpell(spell) ||
+        (availability(spell) & 1) == 0 ||
+        level(spell) >= 20 ||
+        (companion_mode
+             ? spell < 7 || spell > 9
+             : spell >= 7 && spell <= 9)) {
+        return false;
+    }
+    const TableData* thresholds = tables.find(27);
+    const std::int32_t column = level(spell) - 1;
+    if (!thresholds ||
+        !thresholds->contains(spell, column)) {
+        return false;
+    }
+
+    const std::size_t index =
+        static_cast<std::size_t>(spell);
+    state_.experience[index] =
+        retailAdd(state_.experience[index], 1);
+    const std::int32_t threshold =
+        thresholds->value(spell, column);
+    if (state_.experience[index] < threshold) {
+        return false;
+    }
+    state_.experience[index] =
+        retailSubtract(
+            state_.experience[index], threshold);
+    state_.levels[index] =
+        retailAdd(state_.levels[index], 1);
     return true;
 }
 

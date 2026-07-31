@@ -136,11 +136,20 @@ bar follows the retail left/right-panel offsets and selects either a learned
 spell or normal attack targeting. The UI state only emits intent, so saved
 spell ownership and future cast logic remain in the world boundary.
 
-The next slice is the first complete targeted cast. Fire Ball is the useful
-first case: it exercises enemy pointing, mana validation and deduction,
-player action 23, the existing effect-10001 projectile controller, impact
-damage, spell experience, audio, and persistence without needing a new
-area-effect owner first.
+The first complete targeted cast is now reconstructed. Right-clicking a
+pointed enemy with Fire Ball selected validates its learned state and MP,
+deducts the table-backed cost, locks the player in action 23, and creates the
+retail family-zero effect packet. The existing effect-10001 owner keeps
+responsibility for the delayed launch, samples 19 and 20, projectile travel,
+collision, and impact. A successful packet contact awards one practice point;
+misses and cancelled casts do not train the spell. The saved magic block
+already preserves the resulting level and experience.
+
+The next slice should generalize the proven cast path for the remaining
+single-target projectile spells. Ice Bolt is the next useful checkpoint
+because its action and packet path can reuse the new boundaries while its
+authored effect data, timing, and impact behavior must still be established
+from retail rather than inferred from Fire Ball.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1261,8 +1270,10 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - spell save ownership and the four-page Magic window are complete;
 - the eight-slot drag bar, persistent HUD selection, and normal-attack toggle
   are complete;
-- the next checkpoint is one faithful Fire Ball cast from selection through
-  impact and spell training;
+- one faithful Fire Ball cast from selection through impact and spell
+  training is complete;
+- the next checkpoint is Ice Bolt and the reusable single-target projectile
+  spell dispatch it proves;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
