@@ -35,10 +35,50 @@ in vec2 texture_coordinate;
 out vec4 fragment_color;
 uniform sampler2D surface_texture;
 
-void main() {
-    fragment_color = texture(
+const float kSharpness = 1.0;
+const float kFlatRange = 0.05;
+
+vec3 sampleAt(vec2 uv) {
+    return texture(
         surface_texture,
-        vec2(texture_coordinate.x, 1.0 - texture_coordinate.y));
+        clamp(uv, vec2(0.0), vec2(1.0))).rgb;
+}
+
+void main() {
+    vec2 texel = 1.0 / vec2(textureSize(surface_texture, 0));
+    vec2 flipped = vec2(texture_coordinate.x, 1.0 - texture_coordinate.y);
+
+    vec3 a = sampleAt(flipped + vec2(-texel.x, -texel.y));
+    vec3 b = sampleAt(flipped + vec2( 0.0,      -texel.y));
+    vec3 c = sampleAt(flipped + vec2( texel.x,  -texel.y));
+    vec3 d = sampleAt(flipped + vec2(-texel.x,   0.0));
+    vec3 e = sampleAt(flipped);
+    vec3 f = sampleAt(flipped + vec2( texel.x,   0.0));
+    vec3 g = sampleAt(flipped + vec2(-texel.x,   texel.y));
+    vec3 h = sampleAt(flipped + vec2( 0.0,       texel.y));
+    vec3 i = sampleAt(flipped + vec2( texel.x,   texel.y));
+
+    vec3 luma_weights = vec3(0.299, 0.587, 0.114);
+    float la = dot(a, luma_weights);
+    float lb = dot(b, luma_weights);
+    float lc = dot(c, luma_weights);
+    float ld = dot(d, luma_weights);
+    float lf = dot(f, luma_weights);
+    float lg = dot(g, luma_weights);
+    float lh = dot(h, luma_weights);
+    float li = dot(i, luma_weights);
+
+    float min_luma = min(min(min(min(la, lb), min(lc, ld)), min(lf, lg)), min(lh, li));
+    float max_luma = max(max(max(max(la, lb), max(lc, ld)), max(lf, lg)), max(lh, li));
+    float range = max_luma - min_luma;
+    float amount = kSharpness * smoothstep(0.0, kFlatRange, range);
+
+    vec3 lowpass = (a + c + g + i) * 0.0625
+                 + (b + d + f + h) * 0.125
+                 + e * 0.25;
+    vec3 sharpened = e + (e - lowpass) * amount;
+
+    fragment_color = vec4(clamp(sharpened, 0.0, 1.0), 1.0);
 }
 )";
 
@@ -157,9 +197,9 @@ bool LglSurfacePresenter::initialize(
     lglGenTextures(1, &texture_);
     lglBindTexture(LGL_TEXTURE_2D, texture_);
     lglTexParameteri(
-        LGL_TEXTURE_2D, LGL_TEXTURE_MIN_FILTER, LGL_NEAREST);
+        LGL_TEXTURE_2D, LGL_TEXTURE_MIN_FILTER, LGL_LINEAR);
     lglTexParameteri(
-        LGL_TEXTURE_2D, LGL_TEXTURE_MAG_FILTER, LGL_NEAREST);
+        LGL_TEXTURE_2D, LGL_TEXTURE_MAG_FILTER, LGL_LINEAR);
     lglPixelStorei(LGL_UNPACK_ALIGNMENT, 1);
     lglGenVertexArrays(1, &vertex_array_);
 
