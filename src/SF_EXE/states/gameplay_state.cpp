@@ -132,6 +132,13 @@ GameplayFrameResult GameplayState::update(
                 hooks_.toggle_player_run) {
                 hooks_.toggle_player_run();
             }
+            if (input.pointer_secondary_pressed &&
+                pointer_in_world &&
+                hooks_.command_player_magic) {
+                hooks_.command_player_magic(
+                    input.pointer_x,
+                    input.pointer_y);
+            }
             bool interaction_handled = false;
             if (!pointer_consumed &&
                 input.pointer_primary_pressed &&

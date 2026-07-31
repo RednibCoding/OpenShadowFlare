@@ -163,6 +163,57 @@ int main() {
         return 1;
     }
 
+    osf::PlayerData companion_progress;
+    if (!check(
+            companion_progress.initializeNew(
+                "Partner", 0, tables, &error),
+            "The companion progression fixture could not be "
+            "initialized.")) {
+        return 1;
+    }
+    companion_progress.awardCompanionKillExperience(
+        16000001, 0, true);
+    const bool foreign_companion_level =
+        companion_progress.applyCompanionLevelThreshold(
+            tables);
+    companion_progress.awardCompanionKillExperience(
+        16000000, 0, true);
+    companion_progress.awardCompanionKillExperience(
+        16000000, 0, false);
+    if (!check(
+            !foreign_companion_level &&
+                companion_progress.companionExperience() == 0 &&
+                !companion_progress.applyCompanionLevelThreshold(
+                    tables) &&
+                companion_progress.companionExperience() == 0,
+            "A foreign or defeated companion received retail kill "
+            "experience.")) {
+        return 1;
+    }
+    bool companion_level_gained = false;
+    for (int kill = 0; kill < 100; ++kill) {
+        companion_progress.awardCompanionKillExperience(
+            16000000, 0, true);
+        companion_level_gained =
+            companion_progress.applyCompanionLevelThreshold(
+                tables) ||
+            companion_level_gained;
+    }
+    companion_progress.awardCompanionKillExperience(
+        0, 0, true);
+    if (!check(
+            companion_level_gained &&
+                companion_progress.companionLevel() == 2 &&
+                companion_progress.companionExperience() == 0 &&
+                !companion_progress.applyCompanionLevelThreshold(
+                    tables) &&
+                companion_progress.companionLevel() == 2 &&
+                companion_progress.companionExperience() == 0,
+            "Companion row-eighteen progression or the player-level "
+            "cap differs from retail.")) {
+        return 1;
+    }
+
     osf::RetailRandom loot_random(19);
     const std::vector<osf::EnemyDeathDrop> loot =
         osf::createRetailEnemyDrops(

@@ -5,6 +5,7 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
 #include "player_attack_action.hpp"
+#include "player_spell_action.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -16,6 +17,7 @@ enum class PlayerMotion {
     walking,
     running,
     attacking,
+    casting,
     reacting,
     defeated,
 };
@@ -58,14 +60,25 @@ public:
         std::int32_t target_id,
         std::int32_t attack_speed_tier,
         const gapi::CafAnimation& animation);
+    bool beginSpellCast(
+        PlayerSpellAction action,
+        std::int32_t spell,
+        std::int32_t target_character_number,
+        WorldPosition aim_position,
+        PlayerSpellAnimationVariant animation_variant,
+        std::int32_t speed_tier,
+        const TableData* speed_table,
+        const gapi::CafAnimation& animation);
     void toggleMovementPace();
     void setMovementPace(MovementPace pace);
+    void setWalkingSpeedTier(std::int32_t tier);
     void update(
         const GroundMap& ground,
         const ObjectMap& objects,
         const std::vector<MovementBlocker>* dynamic_blockers = nullptr,
         std::int32_t attack_speed_tier = -1,
-        const gapi::CafAnimation* animation = nullptr);
+        const gapi::CafAnimation* animation = nullptr,
+        const TableData* spell_speed_table = nullptr);
 
     WorldPosition position() const;
     WorldPosition renderPosition(double alpha) const;
@@ -77,9 +90,13 @@ public:
     std::int32_t runningSpeed() const;
     MovementPace movementPace() const;
     PlayerMotion motion() const;
+    bool actionLocked() const;
     bool attackActive() const;
     std::int32_t attackTargetId() const;
     PlayerAttackActionEvent takeAttackEvent();
+    bool spellActive() const;
+    std::int32_t spellTargetCharacterNumber() const;
+    PlayerSpellActionEvent takeSpellEvent();
     std::int32_t takeFootstepSample();
     bool takeDeathVoiceRequest();
     bool takeRespawnRequest();
@@ -106,6 +123,8 @@ private:
     PlayerMotion previous_action_ = PlayerMotion::idle;
     PlayerAttackActionController attack_controller_;
     PlayerAttackActionEvent pending_attack_event_;
+    PlayerSpellActionController spell_controller_;
+    PlayerSpellActionEvent pending_spell_event_;
     std::int32_t pending_footstep_sample_ = -1;
     bool pending_death_voice_request_ = false;
     bool respawn_requested_ = false;

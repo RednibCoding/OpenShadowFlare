@@ -30,9 +30,14 @@ The portable executable already has a solid front half:
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
 - the in-game Settings, Help, Mission List, and Map screens
+- the four-page Magic window, its drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
+- the player's table-backed owned companion, including its PARTNER visual,
+  depth sorting, collision, scenario travel, retail follow distances, enemy
+  acquisition, ordinary melee attack, damage reactions, death, timed revival,
+  and capped table-backed progression
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -92,16 +97,17 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: take combat beyond the first Goblin
+## Current milestone: skills, magic, and status effects
 
-The ordinary and basic ranged encounters are now proven in the live outdoor
-map, all the way from targeting through pickup and save/reload. The next useful
-combat work is the behavior that cannot be exercised by either solo fight:
-
-- attach companion targeting and attacks to the same receiver and reward
-  owners;
-- keep checking item state, audio, experience, and saving beside each change
-  so a new combat path cannot silently damage adjacent ownership.
+The ordinary melee, basic ranged, and owned-companion encounter paths are now
+proven in the live outdoor world. The companion can acquire and attack enemies,
+be selected by enemy direct attacks and runtime effects, play its retail hit
+and death charts, fade out, wait 900 updates (or 600 while the authored
+backpack item is present), and revive beside its owner through chart seven.
+Kills credited to the owner or companion add one companion experience point,
+use table row 18 for level thresholds, obey the player-level cap, rebuild the
+table-backed profile, and fully heal on a level gain. The defeated countdown,
+level, and experience stay in the retail player record and survive saving.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
@@ -112,8 +118,162 @@ cannot preserve a dead actor. Saves made by older builds which already contain
 zero life are repaired through the same revive reset when they enter the
 world.
 
-Once those are solid, the next large player-facing milestone is skills, magic,
-status effects, and their remaining HUD and assignment screens.
+The save-owned foundation for that path is complete. `PlayerMagic` keeps the
+22 availability values, levels, and experience counters plus all eight
+magic-bar slots behind one boundary. New characters receive the retail
+`0/1/0` array defaults and empty `-1` slots. Existing retail saves restore the
+block after the three progress arrays, and new saves rewrite it without
+disturbing later unknown state.
+
+The selection side is complete too. `M` opens the authored left-hand Magic
+panel without pausing the world, shifts the camera into the visible half, and
+can stay open beside the right-hand inventory. Its four six-spell pages use
+the retail Status, MagicIcon, and MagicBarIcon artwork, availability states,
+level/experience/MP/effect rows, description tables, arrows, hit rectangles,
+and samples 57 and 58. A learned spell can be dragged into one of eight saved
+bar slots; assigning it elsewhere removes the old copy. The bottom gameplay
+bar follows the retail left/right-panel offsets and selects either a learned
+spell or normal attack targeting. The UI state only emits intent, so saved
+spell ownership and future cast logic remain in the world boundary.
+
+The first complete targeted cast is now reconstructed. Right-clicking a
+pointed enemy with Fire Ball selected validates its learned state and MP,
+deducts the table-backed cost, locks the player in action 23, and creates the
+retail family-zero effect packet. The existing effect-10001 owner keeps
+responsibility for the delayed launch, samples 19 and 20, projectile travel,
+collision, and impact. A successful packet contact awards one practice point;
+misses and cancelled casts do not train the spell. The saved magic block
+already preserves the resulting level and experience.
+
+The targeted cast path now supports Ice Bolt too. It reuses the command and
+action boundaries without pretending the spells are identical: action 24
+uses Table 20 row two, effect 10002, packet subtype one, impact presentation
+21013, resource 10000040, and launch sample 94. Both spells share only the
+parts retail actually shares, and both have live shipped-world coverage from
+selection through contact-time practice.
+
+Plasma is complete as the first multi-wave cast. Action 25 uses player CAF
+charts 11 and 12, Table 20 row three, and a family-zero packet whose defense
+field and presentation differ from the two projectiles. Effect 10003 receives
+the hero origin and target angle, then owns the Table 205 wave count, four
+update spacing, 250-plus-200-unit placement, permanent obstruction cutoff,
+randomized primary charts, three visual layers, sample 21, area contacts, and
+receiver-time practice.
+
+The ground/self casting command and Hell Fire are complete. Retail does not
+route every spell through pointed-enemy selection: the ordinary world-click
+path validates the selected spell, saves the cursor angle and ground
+coordinates, and enters `spell + 22` with no character target. Hell Fire now
+uses that path as action 26, including its warning, delayed two-layer burst,
+area contacts, samples, camera shake, and receiver-time practice.
+
+Ice Blast is complete too. It continues the targetless ground command as
+action 27 but uses CAF charts 11 and 12, Table 20 row five, effect 10005,
+packet subtype one, and presentation 21013. Retail analysis showed that the
+click controls facing only: effect 10005 captures the hero on update three,
+then runs its three authored layers, area contact, camera shake, and six pulse
+sounds around that position.
+
+Heal is complete as the first restorative spell. Action 28 stays on the
+targetless command but resolves at the chart-11 `0x40` marker instead of
+queuing an attack controller immediately. It always shows effect 21020 and
+resource 11000060; missing HP restores the Table 17 percentage, plays sample
+17, and trains the spell, while full HP still spends MP and shows the visual
+without restoration, audio, or practice.
+
+Moon is complete as the first sustained companion spell. Action 29 toggles at
+the chart-11 marker and keeps its state in the live player rather than the save
+record. While active, Table 200 supplies its maximum-MP drain and thirteen
+companion stat percentages. Resource 11000040 follows a living companion and
+pauses during its defeated and revival presentations. Kills owned by the
+local hero slot, whether dealt by the hero or companion, train Moon while it
+is active.
+
+Berserker is complete as the first sustained player spell. Action 30 toggles
+at the same authored chart marker but keeps its own Table 201 level and MP
+rate. Its twelve percentage rows are applied after equipment to the one
+derived player profile used by movement, action timing, physical and magical
+combat, hit checks, and defense. The shipped table boosts speed and offense,
+reduces physical defense and evasion, and leaves maximum life and mana alone.
+The red `Player/Common/Powerup` animation follows the hero while active.
+
+Moon and Berserker feed one retail-style mana-rate controller. Their rates
+are added before maximum MP is scaled every third update, they share the one
+fractional remainder, and zero MP switches both off before rebuilding player
+and companion profiles. The same resource boundary now includes equipped
+life/MP rate parameters and the two authored five-point recovery special
+items, with the separate retail life remainder and living-player clamp. This
+also fixes Moon practice to use retail's local kill-owner test instead of
+requiring the companion to land the final hit.
+
+Energy Shield is complete. Action 31 toggles its runtime flag at the chart-11
+marker after paying the ordinary cast cost, but cannot activate when that cost
+used the last MP. It has no Table 202 or separate pool: Table 17 scales the
+physical-defense input, ordinary damage is routed to MP without spillover,
+and effect-family damage still reaches HP. Zero MP shuts it off, owned kills
+train it, and the yellow `Player/Common/Powerup` pass follows the hero after
+Berserker's red pass.
+
+Earth Spear is complete. Action 32 returns to the pointed-enemy path and sends
+its exact subtype-three packet, fixed cast origin, and target angle to effect
+10010. Table 206 drives the eight-update stone-ridge line, including authored
+spacing, placement collision, first-wave cutoff, area contacts, sample 22,
+camera shake, random ordinary impact presentation, and receiver-time practice.
+
+Flame Strike is complete. Action 33 uses the pointed-enemy command, charts 13
+and 14, and its exact magical subtype-zero packet. Effect 10011 now receives
+the cast through the player boundary and uses Table 204 for its full-circle
+homing fan, including the source visual, authored delay, travel, turning,
+collision expiry, samples 19 and 20, and receiver-time practice.
+
+Dread Deathscythe is complete. Action 34 keeps the pointed command but sends
+the exact subtype-one packet to effect 10012. Table 204 owns its warning fan
+and straight projectile fan, including retail spread math, even-count offset,
+directional dual presentations, scenery and target expiry, samples 94 and 20,
+and receiver-time practice.
+
+Lightning Storm is complete. Action 35 uses a pointed enemy only for its angle
+and sends effect 10013 a fixed hero origin with anonymous effect identities,
+while its packet keeps the real player source. Table 204 drives four radial
+shells with independent obstruction cutoffs, all three visual layers, random
+primary charts, area contacts, sample 21, and receiver-time practice.
+
+Medusa is complete. Action 36 uses the pointed-enemy path and exact
+subtype-two packet. Effect 10014 owns its delayed straight
+resource-10000070 projectile, including the 180-unit launch offset, scenery
+and target expiry, samples 22 and 20, and receiver-time practice.
+
+Sonic Blade is complete. Action 37 accepts only equipped weapon subtypes zero,
+three, and one, then uses their ordinary 5/6, 15/16, and 19/20 attack chart
+pairs at the retail attack-speed rate. Effect 21025 supplies the immediate
+charge pass. A first-chart `0x40` marker launches resource 10000090 through
+effect 10015 with its seven-update lifetime, samples 154 and 20, and exact
+physical packet; the normal weapon sample still occurs at action counter six.
+
+Mud Javelin is complete. Action 38 returns to the normal Table 20 casting
+timeline on charts 13 and 14. Its effect-10016 request carries the pointed
+enemy, the exact magical subtype-three packet, and the retail randomized hit
+presentation. Resource 10000110 owns the tracked projectile and sample 19;
+resource 10000111 owns the finishing area burst, sample 22, and camera shake.
+
+Identify is complete. Action 39 uses charts 11 and 12 and shows one-pass
+effect 21028/resource 11000230 at entry. Its `0x40` marker opens Inventory on
+the independent right side and changes the common cursor into the retail
+Identify pointer. Only an unidentified backpack item completes the command;
+the item flag and its retail save mirror change together, one practice point
+is awarded, and right-click or closing Inventory cancels the mode. Recasting
+while it is already active does not spend MP again.
+
+Magic Shield is complete. Action 40 toggles its runtime flag at the chart-11
+marker and drives the authored resource-11000240 player aura. Effect-family
+hits use the retail reduction, practice threshold, effect 21029, sample 60,
+selected-magic MP-cost quirk, equipment discount, and immediate empty-MP
+shutdown. Ordinary scenario travel preserves the live shield while death and
+a fresh game clear it.
+
+The next spell checkpoint is Counter Burst action 41. Its cast toggle,
+resource lifetime, mutual exclusion with Magic Shield, receiver reflection,
+MP charge, training, and hit presentation need to form one tested path.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -424,12 +584,20 @@ The owned companion uses a third receiver at retail address `0x0045f9f0`,
 not either of those paths. Its family-one profile, owner-slot life mutation,
 actions 7/8/10 rejection, tables 24 and 25 reaction, action-five hit stages,
 action-six death, distinct effect owner kinds, sample 119, event four, and
-random draws are reconstructed separately. The enemy result is now attached
-to the live actor, including reaction displacement, hit/death presentation,
-common world effects, and audio. Player and companion results remain passive
-until their own live state, effect, equipment, and networking owners can be
-attached without skipping side effects. Kill accounting, experience, and
-drops remain a separate enemy-death slice.
+random draws are reconstructed separately. All three passive calculations are
+attached to their own live actors. Companion action five uses PARTNER chart
+three and its collision-aware impulse; action six uses chart four direction
+eight, creates effect 21010, holds its final frame, and fades over 60 updates.
+The persistent countdown then starts action eight at the player's position,
+restores maximum life, and plays chart seven direction eight before ordinary
+AI resumes.
+
+Enemy kill accounting also preserves the companion side of `0x004134a0`.
+Eligible owner or companion kills add one point, table `800 + type` row 18
+provides each threshold, and the cap is `player level / 3 + 2` up to 35. The
+kill point is awarded before player leveling while companion thresholds are
+applied afterward, so a shared leveling kill uses retail's new player-level
+cap.
 
 The marker-to-sample lookup checks the exact
 25-by-3-by-10 resource override table first, then the three ten-chart fallback
@@ -1168,18 +1336,36 @@ environment collision, evasion, sample 20, receiver packet, homing, piercing
 memory, and first-target expiry. The family-zero packet preserves player
 attribution even for explicit-origin shots. Job-five history supplies the
 off-job physical-attack scale, and a complete fan costs one point of main-hand
-durability. Passive tests cover every pattern and effect selector; a shipped
-live encounter covers the CAF, projectile render owner, damage, launch/contact
-audio, no-approach targeting, and durability.
+durability. Passive tests cover every pattern, effect selector, contact, and
+receiver handoff; a shipped live encounter covers the CAF, projectile render
+owner, launch audio, no-approach targeting, and durability without requiring
+a straight projectile to hit an enemy moving around the companion.
 
 Retail contains no subtype-four weapon record to exercise action 19. Action
 20's 33-percent action-21 redirect also depends on the not-yet-reconstructed
 increased-power state. Those two facts are recorded rather than filled with
 made-up behavior.
 
-The next combat work is companion targeting and attacks, keeping one shipped
-live case beside each passive reconstruction and sharing the existing
+The next combat work belongs to skills, magic, and status effects, keeping one
+shipped live case beside each passive reconstruction and sharing the existing
 receiver, effect, reward, audio, and persistence owners.
+
+The owned-companion foundation is complete. `0x004501c0` creates character
+`16000000 + player slot` at the player's scenario entry and takes its name,
+PARTNER resource, and RGB strengths from Table 60. Tables 800 through 805 are
+summed through the saved companion level for movement and combat values.
+Kerberos therefore starts with the retail level-one profile rather than a
+copy of a town NPC.
+
+The default follow half of `0x004622b0` is live too. A companion idles inside
+160 judgement units, waits five updates before leaving that close band, walks
+below 600, runs at 600 or farther, and snaps to the player plus `(200,200)`
+only at 4000 or farther. It uses PARTNER charts zero, one, and two, routes
+through the common movement owner, participates in normal depth sorting and
+actor collision, and is relocated with the player on scenario changes. Its
+1200-unit living-enemy search, attack-mode approach, chart-five marker timing,
+enemy receiver handoff, damage lifecycle, and progression are now live as
+separate companion concerns rather than shortcuts in the follower.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,
@@ -1205,7 +1391,20 @@ allows items to move between the Warehouse and backpack.
 
 Once the ordinary combat loop is reliable, add the systems that modify it:
 
-- skill and spell databases;
+- spell save ownership and the four-page Magic window are complete;
+- the eight-slot drag bar, persistent HUD selection, and normal-attack toggle
+  are complete;
+- one faithful Fire Ball cast from selection through impact and spell
+  training is complete;
+- Fire Ball and Ice Bolt prove the reusable single-target projectile spell
+  dispatch;
+- Plasma's action-25 multi-wave area-effect path is complete;
+- the ground/self casting command and Hell Fire action 26 are complete;
+- Ice Blast action 27 and effect 10005 are complete;
+- Heal action 28 and its marker-time restorative path are complete;
+- Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
+- Berserker action 30 through Magic Shield action 40 are complete;
+- skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
 - character status and detailed stat panels;

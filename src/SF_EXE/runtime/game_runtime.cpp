@@ -125,9 +125,13 @@ public:
                 1, "System\\Common\\Pattern\\Font01.njp") ||
             !frontendAssets_.loadPattern(
                 2,
-                "System\\Common\\Pattern\\Waiting.njp")) {
+                "System\\Common\\Pattern\\Waiting.njp") ||
+            !frontendAssets_.loadPattern(
+                3,
+                "System\\Common\\Pattern\\System.njp")) {
             return false;
         }
+        lwl_window_set_cursor_visible(window_, false);
         gameState_.transition(osf::GameState::title);
         return true;
     }
@@ -195,11 +199,14 @@ private:
                 gameplayUi_.options(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
+                gameplayUi_.magic(),
                 gameplayUi_.missionList(),
                 gameplayUi_.transport(),
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
+                input_.menu().pointer_x,
+                input_.menu().pointer_y,
             },
             interpolation);
 
@@ -349,6 +356,8 @@ private:
                 const bool special_items_active =
                     gameplayUi_.inventory()
                         .specialItemsActive();
+                const bool magic_active =
+                    gameplayUi_.magic().active();
                 const bool transport_active =
                     gameplayUi_.transport().active();
                 gameplayFrame_ = gameplayState_.update({
@@ -363,6 +372,7 @@ private:
                         !notice_consumed,
                     input_.runTogglePressed(),
                     map_active ||
+                            magic_active ||
                             special_items_active ||
                             transport_active
                         ? 320
@@ -370,6 +380,7 @@ private:
                     0,
                     inventory_active ? 320 : 640,
                     400,
+                    input_.pointerSecondaryPressed(),
                 });
                 if (world_.takeScenarioChanged()) {
                     completeScenarioChange();

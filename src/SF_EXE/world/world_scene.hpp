@@ -18,6 +18,7 @@
 #include "resources/object_visual_resource.hpp"
 #include "ground_item.hpp"
 #include "combat_effect_actor.hpp"
+#include "companion_actor.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
 #include "miss_effect_actor.hpp"
@@ -27,8 +28,15 @@
 #include "player_attack_target.hpp"
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
+#include "player_energy_shield.hpp"
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
+#include "player_magic_shield.hpp"
+#include "player_magic.hpp"
+#include "player_moon_spell.hpp"
+#include "player_resource_rate.hpp"
+#include "player_runtime_profile.hpp"
+#include "player_sustained_spell.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
@@ -52,6 +60,7 @@ enum class GameplayServiceKind {
     none,
     transport,
     toggle_special_items,
+    identify_item,
 };
 
 struct GameplayServiceRequest {
@@ -91,12 +100,27 @@ public:
         scenarioObjects() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<EnemyActor>& enemies() const;
+    bool hasCompanion() const;
+    const CompanionActor& companion() const;
     const std::vector<CombatEffectActor>&
         combatEffects() const;
     const std::vector<RuntimeEffectActor>&
         runtimeEffects() const;
     const std::vector<MissEffectActor>&
         missEffects() const;
+    bool companionMoonAuraVisible() const;
+    const EffectVisualResource* companionMoonAuraVisual() const;
+    std::int32_t companionMoonAuraFrame() const;
+    bool playerMoonActive() const;
+    bool playerBerserkerActive() const;
+    const EffectVisualResource* playerBerserkerVisual() const;
+    std::int32_t playerBerserkerFrame() const;
+    bool playerEnergyShieldActive() const;
+    const EffectVisualResource* playerEnergyShieldVisual() const;
+    std::int32_t playerEnergyShieldFrame() const;
+    bool playerMagicShieldActive() const;
+    const EffectVisualResource* playerMagicShieldVisual() const;
+    std::int32_t playerMagicShieldFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -114,11 +138,19 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
+    PlayerRuntimeProfile playerRuntimeProfile() const;
+    PlayerMagic& playerMagic();
+    const PlayerMagic& playerMagic() const;
+    const TableDatabase& parameterTables() const;
     std::int32_t playerExperienceThreshold() const;
     PlayerItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);
     PlayerItemUseResult usePlayerInventoryItem(
         std::int32_t item_index);
+    bool playerIdentifyModeActive() const;
+    bool identifyPlayerInventoryItem(
+        std::int32_t item_index);
+    void cancelPlayerIdentifyMode();
     std::int32_t playerMineCount() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
@@ -142,6 +174,9 @@ public:
     void configurePointer(
         const WorldPointerConfiguration& configuration);
     bool commandWorldInteraction(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    bool commandPlayerMagic(
         std::int32_t screen_x,
         std::int32_t screen_y);
     bool dropInventoryItem(
@@ -189,6 +224,8 @@ public:
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
     PlayerMotion playerMotion() const;
+    bool playerSpellActive() const;
+    std::int32_t playerSpellTargetCharacterNumber() const;
     MovementPace playerMovementPace() const;
     std::int32_t playerAnimationChart() const;
     std::int32_t playerAnimationFrame() const;
@@ -271,6 +308,8 @@ private:
     std::int32_t playerAttackSpeedTier() const;
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
+    void handlePlayerSpellEvent(
+        const PlayerSpellActionEvent& event);
     void launchPlayerRangedAttack(
         const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);
@@ -284,12 +323,18 @@ private:
     EnemyActorUpdate updateEnemyActor(
         EnemyActor& enemy,
         const std::vector<MovementBlocker>& blockers);
+    void updateCompanionActor(
+        const std::vector<MovementBlocker>& blockers);
+    void applyCompanionAttackImpact();
     PlayerDamageReceiverState playerDamageReceiverState() const;
     void applyPlayerDamageReceiverState(
         const PlayerDamageReceiverState& state);
     void applyEnemyDirectImpact(
         EnemyActor& enemy,
         const EnemyDirectImpactResult& impact);
+    bool applyCompanionDamagePacket(
+        const CombatPacket& packet,
+        WorldPosition impact_origin);
     bool applyPlayerDamagePacket(
         const CombatPacket& packet,
         WorldPosition impact_origin,
@@ -311,6 +356,10 @@ private:
     void updateRuntimeEffects();
     void queueRuntimeEffectAudio(
         const RuntimeEffectAudioRequest& request);
+    void refreshCompanionRuntimeProfile(bool level_gained = false);
+    void refreshPlayerRuntimeProfile();
+    void updatePlayerResourceRates();
+    void deactivatePlayerPowerupsForRespawn();
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -318,7 +367,10 @@ private:
     WorldPointerTarget pending_interaction_;
     PlayerAttackTargetController player_attack_target_;
     CharacterVisualResource player_visual_;
+    CharacterVisualResources companion_visuals_{"PARTNER"};
+    CompanionActor companion_;
     EffectVisualResources effect_visuals_;
+    EffectVisualResource player_powerup_visual_;
     EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
@@ -348,6 +400,13 @@ private:
         item_world_resources_;
     RetailRandom item_random_;
     PlayerData player_data_;
+    PlayerMagic player_magic_;
+    PlayerSustainedSpell player_moon_spell_;
+    PlayerSustainedSpell player_berserker_spell_;
+    PlayerEnergyShield player_energy_shield_;
+    PlayerMagicShield player_magic_shield_;
+    PlayerResourceRateController player_life_rate_;
+    PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;
@@ -362,6 +421,7 @@ private:
     ScenarioStart pending_script_travel_;
     bool script_travel_pending_ = false;
     bool scenario_changed_ = false;
+    bool player_identify_mode_active_ = false;
 };
 
 }  // namespace osf

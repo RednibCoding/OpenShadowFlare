@@ -15,7 +15,25 @@ void WorldScene::accountEnemyKill(
             experience_reward,
             scenario_world_.localPlayerNumber(),
             main_hand_subtype,
-            parameter_tables_);
+            parameter_tables_,
+            hasCompanion() &&
+                companion_.currentLife() > 0);
+    if (accounting.companion_level_gained) {
+        refreshCompanionRuntimeProfile(true);
+    }
+    trainActiveSustainedSpellsOnOwnedKill(
+        player_magic_,
+        player_moon_spell_,
+        player_berserker_spell_,
+        enemy.defeat_source_character_number,
+        scenario_world_.localPlayerNumber(),
+        parameter_tables_);
+    trainEnergyShieldOnOwnedKill(
+        player_magic_,
+        player_energy_shield_,
+        enemy.defeat_source_character_number,
+        scenario_world_.localPlayerNumber(),
+        parameter_tables_);
     if (!accounting.level_gained) {
         return;
     }
@@ -31,21 +49,17 @@ void WorldScene::accountEnemyKill(
 
 PlayerDamageReceiverState
 WorldScene::playerDamageReceiverState() const {
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
     PlayerDamageReceiverState state;
     state.defense.character_number =
         scenario_world_.localPlayerNumber();
     state.defense.attack =
-        player_data_.basePhysicalAttack() +
-        player_equipment_.derivedParameterBonus(
-            0, item_database_);
+        profile.physical_attack;
     state.defense.physical_defense =
-        player_data_.basePhysicalDefense() +
-        player_equipment_.derivedParameterBonus(
-            2, item_database_);
+        profile.physical_defense;
     state.defense.magical_defense =
-        player_data_.baseMagicalDefense() +
-        player_equipment_.derivedParameterBonus(
-            6, item_database_);
+        profile.magical_defense;
     state.defense.element_x = player_data_.elementX();
     state.defense.element_y = player_data_.elementY();
     state.position = player_.position();
@@ -54,14 +68,20 @@ WorldScene::playerDamageReceiverState() const {
         scenario_world_.localPlayerNumber();
     state.level = player_data_.level();
     state.maximum_life =
-        player_data_.baseMaximumLife();
+        profile.maximum_life;
     state.current_life = player_data_.currentLife();
     state.maximum_mana =
-        player_data_.baseMaximumMana();
+        profile.maximum_mana;
     state.current_mana = player_data_.currentMana();
     state.equipment = player_equipment_;
     state.inventory = player_inventory_;
     state.special_items = player_special_items_;
+    state.spell_levels = player_magic_.state().levels;
+    state.selected_magic = player_magic_.selectedSpell();
+    state.energy_shield_active =
+        player_energy_shield_.active();
+    state.magic_shield_active =
+        player_magic_shield_.active();
 
     const PlayerDamagePresentation presentation =
         player_.damagePresentation();
@@ -83,11 +103,15 @@ WorldScene::playerDamageReceiverState() const {
 
 void WorldScene::applyPlayerDamageReceiverState(
     const PlayerDamageReceiverState& state) {
-    player_data_.setCurrentLife(state.current_life);
-    player_data_.setCurrentMana(state.current_mana);
+    player_data_.setCurrentLife(
+        state.current_life, state.maximum_life);
+    player_data_.setCurrentMana(
+        state.current_mana, state.maximum_mana);
     player_equipment_ = state.equipment;
     player_inventory_ = state.inventory;
     player_special_items_ = state.special_items;
+    player_magic_shield_.restoreActive(
+        state.magic_shield_active);
     player_.applyDamagePresentation({
         state.presentation_action,
         state.presentation_counter,
@@ -106,23 +130,67 @@ void WorldScene::applyEnemyDirectImpact(
     EnemyActor& enemy,
     const EnemyDirectImpactResult& impact) {
     if (!impact.valid ||
-        !impact.apply_damage ||
-        impact.target.kind !=
-            MovementTargetKind::player ||
-        impact.target.identifier !=
-            scenario_world_.localPlayerNumber()) {
+        !impact.apply_damage) {
         return;
     }
-    if (!applyPlayerDamagePacket(
+    bool accepted = false;
+    if (impact.target.kind ==
+            MovementTargetKind::player &&
+        impact.target.identifier ==
+            scenario_world_.localPlayerNumber()) {
+        accepted = applyPlayerDamagePacket(
             impact.packet,
             impact.damage_origin,
-            enemy.characterNumber())) {
+            enemy.characterNumber());
+    } else if (
+        impact.target.kind ==
+            MovementTargetKind::scenario_actor &&
+        hasCompanion() &&
+        impact.target.identifier ==
+            companion_.characterNumber()) {
+        accepted = applyCompanionDamagePacket(
+            impact.packet,
+            impact.damage_origin);
+    }
+    if (!accepted) {
         return;
     }
     if (impact.post_hit_audio_sample >= 0) {
         pending_audio_samples_.push_back(
             impact.post_hit_audio_sample);
     }
+}
+
+bool WorldScene::applyCompanionDamagePacket(
+    const CombatPacket& packet,
+    WorldPosition impact_origin) {
+    if (!hasCompanion()) {
+        return false;
+    }
+    CompanionDamageReceiverContext context;
+    context.local_player_slot =
+        scenario_world_.localPlayerNumber();
+    const CompanionDamageReceiverResult receiver =
+        resolveCompanionDamage(
+            companion_.damageReceiverState(),
+            packet,
+            impact_origin,
+            context,
+            parameter_tables_,
+            item_random_);
+    if (!receiver.valid || !receiver.accepted) {
+        return false;
+    }
+    companion_.applyDamageReceiverState(receiver.state);
+    pending_audio_samples_.insert(
+        pending_audio_samples_.end(),
+        receiver.audio_samples.begin(),
+        receiver.audio_samples.end());
+    for (const CombatEffectSpawnRequest& effect :
+         receiver.effects) {
+        queueCombatEffect(effect);
+    }
+    return true;
 }
 
 bool WorldScene::applyPlayerDamagePacket(
@@ -167,6 +235,13 @@ bool WorldScene::applyPlayerDamagePacket(
     for (const CombatEffectSpawnRequest& effect :
          receiver.effects) {
         queueCombatEffect(effect);
+    }
+    for (const PlayerSpellTrainingRequest& training :
+         receiver.spell_training) {
+        player_magic_.train(
+            training.spell_number,
+            training.mode != 0,
+            parameter_tables_);
     }
     if (receiver.equipment_sync_requested ||
         receiver.derived_values_refresh_requested) {
@@ -223,6 +298,8 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
     targets.position = enemy.position();
     targets.bounds = enemy.judgement();
     if (has_player_) {
+        const PlayerRuntimeProfile profile =
+            playerRuntimeProfile();
         const std::int32_t slot =
             scenario_world_.localPlayerNumber();
         if (slot >= 0 &&
@@ -237,12 +314,27 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
             target.current_life =
                 player_data_.currentLife();
             target.combat_defense =
-                player_data_.baseEvasionRate() +
-                player_equipment_.derivedParameterBonus(
-                    3, item_database_);
+                profile.physical_evasion;
             target.position = player_.position();
             target.bounds = player_.judgement();
         }
+    }
+    if (hasCompanion()) {
+        EnemyCompanionTargetState target;
+        target.present = true;
+        target.character_number =
+            companion_.characterNumber();
+        target.scenario_id = scenario_world_.id();
+        target.script_active = true;
+        target.attack_target_enabled = true;
+        target.current_life =
+            companion_.currentLife();
+        target.combat_defense =
+            companion_.profile().physical_evasion;
+        target.owner_mode = 0;
+        target.position = companion_.position();
+        target.bounds = companion_.judgement();
+        targets.companions.push_back(target);
     }
 
     const EnemyTargetSearch target_in_range =
@@ -282,6 +374,17 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
         [this](
             MovementTargetKind kind,
             std::int32_t identifier) {
+            if (kind ==
+                    MovementTargetKind::scenario_actor &&
+                hasCompanion() &&
+                identifier ==
+                    companion_.characterNumber()) {
+                return MovementTargetState{
+                    companion_.currentLife() > 0,
+                    companion_.position(),
+                    companion_.judgement(),
+                };
+            }
             if (kind != MovementTargetKind::player ||
                 !has_player_ ||
                 identifier !=

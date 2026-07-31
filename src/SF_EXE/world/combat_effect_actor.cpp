@@ -9,14 +9,14 @@
 namespace osf {
 namespace {
 
-constexpr std::int32_t kFirstHitEffect = 21000;
-constexpr std::int32_t kLastSupportedHitEffect = 21014;
+constexpr std::int32_t kFirstSimpleEffect = 21000;
+constexpr std::int32_t kLastSimpleEffect = 21020;
 constexpr std::int32_t kFixedEffectDuration = 120;
 constexpr std::int32_t kFixedEffectFadeStart = 90;
 constexpr std::int32_t kFixedEffectStrength = 500;
 
-constexpr std::array<std::int32_t, 15>
-    kHitEffectResources{{
+constexpr std::array<std::int32_t, 21>
+    kSimpleEffectResources{{
         11000000,
         11000001,
         11000002,
@@ -32,6 +32,12 @@ constexpr std::array<std::int32_t, 15>
         11000025,
         11000026,
         11000027,
+        -1,
+        -1,
+        -1,
+        -1,
+        11000050,
+        11000060,
     }};
 
 bool fixedDurationEffect(std::int32_t effect_number) {
@@ -57,13 +63,23 @@ const gapi::CafDirection* selectedDirection(
 
 std::int32_t retailCombatEffectResourceId(
     std::int32_t effect_number) {
-    if (effect_number < kFirstHitEffect ||
-        effect_number > kLastSupportedHitEffect) {
+    switch (effect_number) {
+    case 21025:
+        return 11000100;
+    case 21028:
+        return 11000230;
+    case 21029:
+        return 11000241;
+    default:
+        break;
+    }
+    if (effect_number < kFirstSimpleEffect ||
+        effect_number > kLastSimpleEffect) {
         return -1;
     }
-    return kHitEffectResources[
+    return kSimpleEffectResources[
         static_cast<std::size_t>(
-            effect_number - kFirstHitEffect)];
+            effect_number - kFirstSimpleEffect)];
 }
 
 bool CombatEffectActor::initialize(

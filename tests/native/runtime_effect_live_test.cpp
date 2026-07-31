@@ -276,7 +276,7 @@ bool testShippedLiveProjectile(
         return false;
     }
 
-    const osf::CombatEffectSpawnRequest request =
+    osf::CombatEffectSpawnRequest request =
         shippedEffectRequest(world, *source, tables);
     const std::int32_t life_before =
         world.playerData().currentLife();
@@ -411,6 +411,46 @@ bool testShippedLiveProjectile(
                     body_copy),
             "The shipped projectile was not rendered, heard, "
             "received as damage, or preserved item ownership.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest companion_request = request;
+    companion_request.target_kind = 2;
+    companion_request.target_identifier =
+        world.companion().characterNumber();
+    companion_request.constructor_value_20 = 1;
+    companion_request.packet.write(36, 100000);
+    world.queueCombatEffect(companion_request);
+    for (std::int32_t update = 0;
+         update < 100 &&
+         world.companion().currentLife() > 0;
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    world.update();
+    world.takeAudioSamples();
+    const bool companion_death_complete =
+        world.companion().currentLife() <= 0 &&
+                world.playerData().companionRespawnCounter() ==
+                    900 &&
+                world.companion().presentationAction() == 6;
+    if (!companion_death_complete) {
+        std::cerr
+            << "companion life="
+            << world.companion().currentLife()
+            << " action="
+            << world.companion().presentationAction()
+            << " respawn="
+            << world.playerData().companionRespawnCounter()
+            << " runtime=" << world.runtimeEffects().size()
+            << '\n';
+    }
+    if (!check(
+            companion_death_complete,
+            "A lethal shipped runtime effect did not enter the "
+            "live companion receiver, death, and respawn-countdown "
+            "path.")) {
         return false;
     }
 

@@ -135,6 +135,7 @@ bool restoreRetailProgress(
     const std::vector<std::uint8_t>& payload,
     std::size_t owned_items_end,
     RetailSaveProgress& progress,
+    std::size_t* serialized_end,
     std::string* error) {
     if (owned_items_end > payload.size()) {
         setError(
@@ -143,6 +144,9 @@ bool restoreRetailProgress(
         return false;
     }
     if (owned_items_end == payload.size()) {
+        if (serialized_end) {
+            *serialized_end = owned_items_end;
+        }
         if (error) {
             error->clear();
         }
@@ -178,6 +182,9 @@ bool restoreRetailProgress(
         restored.running = payload[start + 16] != 0;
     }
     progress = std::move(restored);
+    if (serialized_end) {
+        *serialized_end = offset;
+    }
     if (error) {
         error->clear();
     }
@@ -188,6 +195,7 @@ bool replaceRetailProgress(
     std::vector<std::uint8_t>& payload,
     std::size_t owned_items_end,
     const RetailSaveProgress& progress,
+    std::size_t* serialized_end,
     std::string* error) {
     if (owned_items_end > payload.size()) {
         setError(
@@ -245,8 +253,18 @@ bool replaceRetailProgress(
             static_cast<std::ptrdiff_t>(old_progress_end),
         payload.begin() +
             static_cast<std::ptrdiff_t>(suffix_end));
+    const std::size_t new_progress_end =
+        owned_items_end +
+        12u +
+        (progress.scenario_flags.size() +
+         progress.transport_flags.size() +
+         progress.quest_flags.size()) *
+            4u;
     appendPortableExtension(replacement, progress.running);
     payload = std::move(replacement);
+    if (serialized_end) {
+        *serialized_end = new_progress_end;
+    }
     if (error) {
         error->clear();
     }
@@ -261,7 +279,11 @@ bool restoreRetailTransportFlags(
     RetailSaveProgress progress;
     progress.transport_flags = flags;
     if (!restoreRetailProgress(
-            payload, owned_items_end, progress, error)) {
+            payload,
+            owned_items_end,
+            progress,
+            nullptr,
+            error)) {
         return false;
     }
     if (progress.transport_flags.size() != flags.size()) {

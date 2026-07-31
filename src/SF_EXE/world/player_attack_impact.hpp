@@ -13,6 +13,7 @@ class ItemDatabase;
 class PlayerData;
 class PlayerEquipment;
 class PlayerInventory;
+struct PlayerRuntimeProfile;
 class RetailRandom;
 class TableDatabase;
 struct ItemDefinition;
@@ -40,6 +41,13 @@ PlayerAttackImpactStats buildPlayerAttackImpactStats(
     const PlayerEquipment& equipment,
     const PlayerInventory& inventory,
     const ItemDatabase& items);
+PlayerAttackImpactStats buildPlayerAttackImpactStats(
+    std::int32_t source_character_number,
+    const PlayerData& player,
+    const PlayerEquipment& equipment,
+    const PlayerInventory& inventory,
+    const ItemDatabase& items,
+    const PlayerRuntimeProfile& profile);
 
 CombatPacket buildPlayerAttackPacket(
     const PlayerAttackImpactStats& stats,

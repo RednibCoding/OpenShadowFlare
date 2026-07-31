@@ -88,4 +88,16 @@ PlayerSpecialItems::items() const {
     return items_;
 }
 
+bool PlayerSpecialItems::contains(
+    std::int32_t category,
+    std::int32_t definition_id) const {
+    return std::any_of(
+        items_.begin(),
+        items_.end(),
+        [category, definition_id](const InventoryItem& item) {
+            return item.category == category &&
+                   item.definition_id == definition_id;
+        });
+}
+
 }  // namespace osf

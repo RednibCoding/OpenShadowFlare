@@ -262,6 +262,7 @@ int main() {
     std::error_code cleanup_error;
     std::filesystem::remove_all(
         new_save_root, cleanup_error);
+    male.setCompanionRespawnCounter(600);
     if (!check(
             osf::writeRetailSave(
                 new_save_path, male, 0x34, &error),
@@ -275,9 +276,11 @@ int main() {
             new_save_round_trip.loadRetailSave(
                 new_save_path, &error) &&
                 new_save_round_trip.retailRecord() ==
-                    male.retailRecord(),
+                    male.retailRecord() &&
+                new_save_round_trip.companionRespawnCounter() ==
+                    600,
             "A newly created save did not preserve its player "
-            "record.")) {
+            "record or companion respawn countdown.")) {
         std::cerr << error << '\n';
         return 1;
     }
@@ -403,6 +406,66 @@ int main() {
                 restored_special_items.items()[0].grid_y == 2,
             "Backpack, equipment, belt, or special-item ownership did not "
             "survive a save/load round trip.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    const osf::ItemDefinition* unknown_sword =
+        items.find(0, 10);
+    osf::PlayerInventory identified_inventory;
+    osf::PlayerEquipment empty_equipment;
+    osf::PlayerBelt empty_belt;
+    osf::PlayerSpecialItems empty_special_items;
+    const std::filesystem::path identify_save_path =
+        new_save_root / "Save" / "0001.Ssv";
+    if (!check(
+            unknown_sword &&
+                unknown_sword->variant == 1 &&
+                identified_inventory.add(*unknown_sword) &&
+                identified_inventory.items()[0].identified == 0 &&
+                identified_inventory.identify(0) &&
+                osf::writeRetailSave(
+                    identify_save_path,
+                    male,
+                    items,
+                    identified_inventory,
+                    empty_equipment,
+                    empty_belt,
+                    empty_special_items,
+                    0x34,
+                    &error),
+            "An Identify-mutated item could not be written to a retail "
+            "save.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::vector<std::uint8_t> identify_payload;
+    osf::PlayerInventory restored_identified_inventory;
+    if (!check(
+            osf::readRetailSavePayload(
+                identify_save_path,
+                identify_payload,
+                &error) &&
+                osf::restoreRetailOwnedItems(
+                    identify_payload,
+                    items,
+                    male.level(),
+                    restored_identified_inventory,
+                    empty_equipment,
+                    empty_belt,
+                    empty_special_items,
+                    nullptr,
+                    &error) &&
+                restored_identified_inventory.items().size() == 1 &&
+                restored_identified_inventory.items()[0].definition_id ==
+                    unknown_sword->id &&
+                restored_identified_inventory.items()[0].identified == 1 &&
+                restored_identified_inventory.items()[0]
+                        .retail_state.size() >= 49u * 4u &&
+                restored_identified_inventory.items()[0]
+                        .retail_state[48u * 4u] == 1,
+            "The Identify flag or its raw retail word did not survive "
+            "save and load.")) {
         std::cerr << error << '\n';
         return 1;
     }

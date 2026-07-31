@@ -6,6 +6,7 @@
 namespace osf {
 
 class PlayerData;
+struct PlayerRuntimeProfile;
 enum class MovementPace;
 
 namespace gapi {
@@ -26,6 +27,7 @@ struct GameplayHudValues {
 
 GameplayHudValues gameplayHudValues(
     const PlayerData& player,
+    const PlayerRuntimeProfile& profile,
     MovementPace movement_pace,
     std::int32_t experience_threshold);
 

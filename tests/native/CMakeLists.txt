@@ -44,6 +44,91 @@ if(TARGET sf_game_core)
 
   add_test(NAME game_core COMMAND game_core_test)
 
+  add_executable(player_magic_test player_magic_test.cpp)
+  target_link_libraries(
+    player_magic_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(player_magic_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_magic_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_magic_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_magic_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_magic_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME player_magic COMMAND player_magic_test)
+
+  add_executable(
+    player_spell_cast_test
+    player_spell_cast_test.cpp
+  )
+  target_link_libraries(
+    player_spell_cast_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_spell_cast_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_spell_cast_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_spell_cast_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_spell_cast_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_spell_cast_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME player_spell_cast
+    COMMAND player_spell_cast_test)
+
+  add_executable(
+    gameplay_magic_test
+    gameplay_magic_test.cpp
+  )
+  target_link_libraries(
+    gameplay_magic_test
+    PRIVATE
+      OpenShadowFlare::States
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    gameplay_magic_test PRIVATE cxx_std_17)
+  set_target_properties(
+    gameplay_magic_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      gameplay_magic_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_magic_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME gameplay_magic
+    COMMAND gameplay_magic_test)
+
   add_executable(movement_test movement_test.cpp)
   target_link_libraries(
     movement_test
@@ -922,6 +1007,40 @@ if(TARGET sf_game_core)
   add_test(
     NAME companion_damage_receiver
     COMMAND companion_damage_receiver_test)
+
+  add_executable(
+    companion_actor_test
+    companion_actor_test.cpp
+  )
+  target_link_libraries(
+    companion_actor_test
+    PRIVATE
+      OpenShadowFlare::Render
+  )
+  target_compile_features(
+    companion_actor_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    companion_actor_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    companion_actor_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      companion_actor_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      companion_actor_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME companion_actor
+    COMMAND companion_actor_test)
 
   add_executable(
     enemy_damage_receiver_test

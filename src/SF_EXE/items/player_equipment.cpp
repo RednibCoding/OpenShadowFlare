@@ -155,7 +155,16 @@ std::int32_t PlayerEquipment::derivedParameterBonus(
     if (parameter >= ItemDefinition::derived_parameter_count) {
         return 0;
     }
-    std::int32_t bonus = 0;
+    return derivedParameterBonuses(database)[parameter];
+}
+
+PlayerEquipment::DerivedParameterBonuses
+PlayerEquipment::derivedParameterBonuses(
+    const ItemDatabase& database) const {
+    static_assert(
+        derived_parameter_count ==
+        ItemDefinition::derived_parameter_count);
+    DerivedParameterBonuses bonuses{};
     const bool suppress_off_hand =
         offHandIsSuppressed(*this, database);
     for (std::size_t index = 0;
@@ -178,13 +187,17 @@ std::int32_t PlayerEquipment::derivedParameterBonus(
                 equipped->category,
                 equipped->definition_id);
         if (definition) {
-            bonus = wrappedAdd(
-                bonus,
-                definition
-                    ->derived_parameter_bonuses[parameter]);
+            for (std::size_t parameter = 0;
+                 parameter < bonuses.size();
+                 ++parameter) {
+                bonuses[parameter] = wrappedAdd(
+                    bonuses[parameter],
+                    definition->derived_parameter_bonuses[
+                        parameter]);
+            }
         }
     }
-    return bonus;
+    return bonuses;
 }
 
 std::int32_t PlayerEquipment::instanceParameterBonus(

@@ -3,6 +3,7 @@
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
 #include "retail_save_items.hpp"
+#include "retail_save_magic.hpp"
 #include "retail_save_progress.hpp"
 
 #include <limits>
@@ -73,7 +74,12 @@ bool WorldScene::loadInitialScenario(
             return false;
         }
         player_item_controller_.initializeNew();
+        player_magic_.initializeNew();
     } else {
+        // Older portable saves ended after the progress extension. Seed the
+        // retail new-character defaults before optionally restoring the
+        // magic stream so those saves remain valid.
+        player_magic_.initializeNew();
         std::vector<std::uint8_t> payload;
         std::size_t owned_items_end = 0;
         if (!readRetailSavePayload(
@@ -99,8 +105,19 @@ bool WorldScene::loadInitialScenario(
             quests_.states(),
             false,
         };
+        std::size_t progress_end = owned_items_end;
         if (!restoreRetailProgress(
-                payload, owned_items_end, progress, error)) {
+                payload,
+                owned_items_end,
+                progress,
+                &progress_end,
+                error) ||
+            !restoreRetailMagic(
+                payload,
+                progress_end,
+                player_magic_,
+                nullptr,
+                error)) {
             clear();
             return false;
         }
@@ -154,6 +171,26 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    CompanionProfile companion_profile;
+    if (!decodeCompanionProfile(
+            parameter_tables_,
+            player_data_.companionType(),
+            player_data_.companionLevel(),
+            companion_profile,
+            error)) {
+        clear();
+        return false;
+    }
+    const CharacterVisualResource* companion_visual =
+        companion_visuals_.load(
+            data_root,
+            companion_profile.resource_id,
+            error);
+    if (!companion_visual) {
+        clear();
+        return false;
+    }
+
     RetailRandom prepared_item_random = item_random_;
     ScenarioWorld prepared_scenario;
     if (!prepared_scenario.load(
@@ -190,6 +227,21 @@ bool WorldScene::loadInitialScenario(
         },
         scenario_world_.entry().direction,
         player_data_.walkingSpeedTier());
+    if (!companion_.initialize(
+            companion_profile,
+            *companion_visual,
+            scenario_world_.localPlayerNumber(),
+            player_.position(),
+            player_.direction())) {
+        setError(
+            error,
+            "The owned companion could not be initialized.");
+        clear();
+        return false;
+    }
+    if (player_data_.companionRespawnCounter() > 0) {
+        companion_.beginDefeatedWait();
+    }
     player_.setMovementPace(
         saved_running ? MovementPace::run : MovementPace::walk);
     scenario_world_.mapExploration().reveal(
@@ -240,12 +292,15 @@ ScenarioTravelResult WorldScene::transitionScenario(
         camera_shake_counter_ = -1;
         camera_shake_duration_ = 0;
         camera_shake_magnitude_ = 0;
+        player_identify_mode_active_ = false;
         pointer_.clearSelection();
         scenario_world_.setEntry(
             start.entry_value, *entry);
         player_.relocate(
             {entry->world_x, entry->world_y},
             entry->direction);
+        companion_.relocate(
+            player_.position(), player_.direction());
         scenario_world_.mapExploration().reveal(
             player_.position());
         if (error) {
@@ -287,6 +342,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    player_identify_mode_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;
     next_ground_item_id_ =
@@ -299,6 +355,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
             scenario_world_.entry().world_y,
         },
         scenario_world_.entry().direction);
+    companion_.relocate(
+        player_.position(), player_.direction());
     scenario_world_.mapExploration().reveal(
         player_.position());
     if (error) {

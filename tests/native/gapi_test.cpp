@@ -6,6 +6,7 @@
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/loading_renderer.hpp"
+#include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
 
 #include <array>
@@ -660,6 +661,24 @@ bool testInitialLoadingPackets() {
         "The initial loading artwork or confirmation arrow differs.");
 }
 
+bool testSystemCursorPackets() {
+    osf::gapi::NjpImage system_patterns;
+    RecordingBackend backend;
+    osf::renderSystemCursor(
+        backend, system_patterns, 123, 234, false);
+    osf::renderSystemCursor(
+        backend, system_patterns, 321, 432, true);
+    return check(
+        backend.patterns.size() == 2 &&
+            backend.patterns[0].index == 0 &&
+            backend.patterns[0].draw.x == 123 &&
+            backend.patterns[0].draw.y == 234 &&
+            backend.patterns[1].index == 1 &&
+            backend.patterns[1].draw.x == 321 &&
+            backend.patterns[1].draw.y == 432,
+        "The normal or Identify system cursor draw packet differs.");
+}
+
 }  // namespace
 
 int main() {
@@ -670,6 +689,7 @@ int main() {
         !testMutableBitmapMask() ||
         !testCafAndTitleAnimation() ||
         !testInitialLoadingPackets() ||
+        !testSystemCursorPackets() ||
         !testGameplayHudPackets()) {
         return 1;
     }

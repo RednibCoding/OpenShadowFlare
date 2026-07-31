@@ -52,6 +52,8 @@ std::int32_t retailPlayerAttackSpeedTier(
     std::int32_t equipped_weight,
     std::int32_t weight_capacity,
     const TableData* speed_table);
+double retailPlayerMeleeAttackAnimationSpeed(
+    std::int32_t attack_speed_tier);
 class PlayerAttackActionController {
 public:
     bool start(

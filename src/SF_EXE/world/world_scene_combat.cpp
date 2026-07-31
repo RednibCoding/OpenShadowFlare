@@ -72,6 +72,11 @@ WorldPosition WorldScene::combatEffectOrigin(
     if (request.owner_kind == 1 && has_player_) {
         return player_.position();
     }
+    if (hasCompanion() &&
+        request.source_character_number ==
+            companion_.characterNumber()) {
+        return companion_.position();
+    }
     if (const EnemyActor* enemy =
             findScriptEnemy(
                 request.source_character_number)) {

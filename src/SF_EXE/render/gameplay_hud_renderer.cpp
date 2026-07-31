@@ -4,6 +4,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "world/player_actor.hpp"
 #include "world/player_data.hpp"
+#include "world/player_runtime_profile.hpp"
 
 #include <algorithm>
 #include <array>
@@ -62,14 +63,15 @@ void drawLevel(
 
 GameplayHudValues gameplayHudValues(
     const PlayerData& player,
+    const PlayerRuntimeProfile& profile,
     MovementPace movement_pace,
     std::int32_t experience_threshold) {
     return {
         player.level(),
         player.currentLife(),
-        player.baseMaximumLife(),
+        profile.maximum_life,
         player.currentMana(),
-        player.baseMaximumMana(),
+        profile.maximum_mana,
         player.experience(),
         experience_threshold,
         movement_pace == MovementPace::run,

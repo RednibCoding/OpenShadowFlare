@@ -88,6 +88,7 @@ add_library(
   osf_states STATIC
   states/game_state.cpp
   states/gameplay_inventory.cpp
+  states/gameplay_magic.cpp
   states/gameplay_map.cpp
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
@@ -112,7 +113,13 @@ target_link_libraries(
 add_library(
   osf_world STATIC
   world/actor_direction.cpp
+  world/companion_actor.cpp
+  world/companion_attack_action.cpp
+  world/companion_attack_impact.cpp
   world/companion_damage_receiver.cpp
+  world/companion_profile.cpp
+  world/companion_respawn.cpp
+  world/companion_target_selector.cpp
   world/combat_damage.cpp
   world/combat_effect_actor.cpp
   world/combat_hit_chance.cpp
@@ -144,12 +151,24 @@ add_library(
   world/player_combat_defense.cpp
   world/player_damage_receiver.cpp
   world/player_data.cpp
+  world/player_energy_shield.cpp
+  world/player_heal_spell.cpp
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
+  world/player_magic_shield.cpp
+  world/player_magic.cpp
+  world/player_moon_spell.cpp
+  world/player_resource_rate.cpp
+  world/player_runtime_profile.cpp
+  world/player_spell_action.cpp
+  world/player_spell_cast.cpp
+  world/player_spell_parameters.cpp
+  world/player_sustained_spell.cpp
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
   world/retail_save_items.cpp
+  world/retail_save_magic.cpp
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
   world/runtime_effect_actor.cpp
@@ -163,12 +182,16 @@ add_library(
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
+  world/world_scene_companion_combat.cpp
   world/world_scene_combat.cpp
   world/world_scene_enemy_combat.cpp
   world/world_scene_effects.cpp
   world/world_scene_interaction.cpp
   world/world_scene_items.cpp
   world/world_scene_loading.cpp
+  world/world_scene_moon.cpp
+  world/world_scene_player_profile.cpp
+  world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)
@@ -212,6 +235,7 @@ add_library(
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp
   render/gameplay_map_renderer.cpp
+  render/gameplay_magic_renderer.cpp
   render/gameplay_mission_list_renderer.cpp
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
@@ -220,6 +244,7 @@ add_library(
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/player_level_up_notice_renderer.cpp
+  render/system_cursor_renderer.cpp
   render/title_renderer.cpp
 )
 add_library(OpenShadowFlare::Render ALIAS osf_render)

@@ -28,12 +28,26 @@ std::int32_t gameplayCameraAnchorX(
     return left_panel_active ? 480 : 160;
 }
 
+GameplayMagicModel gameplayMagicModel(
+    const PlayerMagic& magic) {
+    GameplayMagicModel model;
+    model.availability =
+        magic.state().availability;
+    model.bar_slots =
+        magic.state().bar_slots;
+    model.selected_spell =
+        magic.selectedSpell();
+    model.targeting = magic.targeting();
+    return model;
+}
+
 }  // namespace
 
 void GameplayUiController::reset() {
     options_.close();
     inventory_.close();
     map_.close();
+    magic_.close();
     mission_list_.close();
     transport_.close();
     pending_action_ = GameplayOptionsAction::none;
@@ -82,8 +96,27 @@ bool GameplayUiController::update(
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
+        if (service.kind ==
+            GameplayServiceKind::identify_item) {
+            if (!inventory_.active()) {
+                inventory_.open();
+            }
+            const bool left_panel_active =
+                magic_.active() ||
+                map_.active() ||
+                mission_list_.active() ||
+                transport_.active() ||
+                inventory_.specialItemsActive();
+            world.setCameraAnchor(
+                gameplayCameraAnchorX(
+                    left_panel_active,
+                    inventory_.active()),
+                240);
+            return false;
+        }
         options_.close();
         map_.close();
+        magic_.close();
         mission_list_.close();
         world.cancelPlayerMovement();
         if (service.kind == GameplayServiceKind::transport) {
@@ -166,6 +199,82 @@ bool GameplayUiController::update(
         }
     }
 
+    const bool magic_was_active = magic_.active();
+    const bool magic_toggle =
+        input.gameplayMagicPressed() &&
+        (!world.conversationActive() ||
+         magic_was_active) &&
+        !options_.active();
+    if (magic_toggle && !magic_was_active) {
+        map_.close();
+        mission_list_.close();
+        transport_.close();
+        inventory_.closeSpecialItems();
+        world.cancelPlayerMovement();
+    } else if (
+        magic_was_active &&
+        (input.gameplayMapPressed() ||
+         input.gameplayMissionListPressed() ||
+         input.gameplaySpecialItemsPressed())) {
+        magic_.close();
+    }
+    const bool other_left_panel_active =
+        map_.active() ||
+        mission_list_.active() ||
+        transport_.active() ||
+        inventory_.specialItemsActive();
+    const GameplayMagicResult magic_result =
+        magic_.update(
+            {
+                magic_toggle,
+                magic_was_active &&
+                    (input.gameplayOptionsPressed() ||
+                     (input.pointerSecondaryPressed() &&
+                      input.menu().pointer_y < 412)),
+                input.menu().pointer_primary_pressed,
+                input.pointerPrimaryDown(),
+                input.menu().pointer_x,
+                input.menu().pointer_y,
+                magic_.active() ||
+                    other_left_panel_active,
+                inventory_.active(),
+            },
+            gameplayMagicModel(
+                world.playerMagic()));
+    if (magic_result.assign_bar_slot >= 0) {
+        world.playerMagic().assignBarSlot(
+            magic_result.assign_bar_slot,
+            magic_result.assign_spell);
+    }
+    if (magic_result.select_spell != -2) {
+        world.playerMagic().selectSpell(
+            magic_result.select_spell);
+    }
+    if (magic_result.toggle_targeting) {
+        world.playerMagic().setTargeting(
+            !world.playerMagic().targeting());
+    }
+    if (magic_result.play_pick_sound) {
+        audio.playGameplayEffect(57);
+    }
+    if (magic_result.play_move_sound) {
+        audio.playGameplayEffect(58);
+    }
+    if (magic_result.pointer_consumed) {
+        const bool left_panel_active =
+            magic_.active() ||
+            map_.active() ||
+            mission_list_.active() ||
+            transport_.active() ||
+            inventory_.specialItemsActive();
+        world.setCameraAnchor(
+            gameplayCameraAnchorX(
+                left_panel_active,
+                inventory_.active()),
+            240);
+        return true;
+    }
+
     const bool inventory_was_active =
         inventory_.anyItemPanelActive();
     const bool inventory_hud_toggle =
@@ -210,6 +319,8 @@ bool GameplayUiController::update(
         special_items_toggle ||
         inventory_.holdingItem() ||
         belt_pointer_pressed) {
+        const bool identification_was_active =
+            world.playerIdentifyModeActive();
         const GameplayInventoryResult result =
             inventory_.update(
                 {
@@ -222,6 +333,7 @@ bool GameplayUiController::update(
                     input.menu().pointer_y,
                     special_items_toggle,
                     input.pointerSecondaryPressed(),
+                    identification_was_active,
                 },
                 world.playerInventory(),
                 world.playerEquipment(),
@@ -229,6 +341,17 @@ bool GameplayUiController::update(
                 world.playerSpecialItems(),
                 world.itemDatabase(),
                 world.playerData().level());
+        if (result.cancel_identification_requested) {
+            world.cancelPlayerIdentifyMode();
+        } else if (
+            result.inventory_item_identify_requested >= 0) {
+            world.identifyPlayerInventoryItem(
+                result.inventory_item_identify_requested);
+        }
+        if (identification_was_active &&
+            !inventory_.active()) {
+            world.cancelPlayerIdentifyMode();
+        }
         PlayerItemUseResult used;
         if (result.inventory_item_use_requested >= 0) {
             used = world.usePlayerInventoryItem(
@@ -275,6 +398,7 @@ bool GameplayUiController::update(
         }
         const bool left_panel_active =
             inventory_.specialItemsActive() ||
+            magic_.active() ||
             map_.active() ||
             mission_list_.active() ||
             transport_.active();
@@ -402,6 +526,7 @@ bool GameplayUiController::update(
                 world.playerBelt(),
                 world.playerSpecialItems(),
                 world.retailSaveProgress(),
+                world.playerMagic(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);
@@ -447,6 +572,10 @@ GameplayUiController::inventory() const {
 
 const GameplayMap& GameplayUiController::map() const {
     return map_;
+}
+
+const GameplayMagic& GameplayUiController::magic() const {
+    return magic_;
 }
 
 const GameplayMissionList&

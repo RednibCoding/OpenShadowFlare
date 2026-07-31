@@ -56,7 +56,10 @@ void WorldScene::clear() {
     pending_interaction_ = {};
     player_attack_target_.cancel();
     player_visual_.clear();
+    companion_visuals_.clear();
+    companion_.clear();
     effect_visuals_.clear();
+    player_powerup_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
@@ -83,6 +86,13 @@ void WorldScene::clear() {
     item_world_resources_.clear();
     item_random_.seed(1);
     player_data_.clear();
+    player_magic_.clear();
+    player_moon_spell_.clear();
+    player_berserker_spell_.clear();
+    player_energy_shield_.clear();
+    player_magic_shield_.clear();
+    player_life_rate_.clear();
+    player_mana_rate_.clear();
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
@@ -97,6 +107,7 @@ void WorldScene::clear() {
     pending_script_travel_ = {};
     script_travel_pending_ = false;
     scenario_changed_ = false;
+    player_identify_mode_active_ = false;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -143,6 +154,14 @@ WorldScene::enemies() const {
     return scenario_world_.enemies();
 }
 
+bool WorldScene::hasCompanion() const {
+    return companion_.valid();
+}
+
+const CompanionActor& WorldScene::companion() const {
+    return companion_;
+}
+
 const std::vector<CombatEffectActor>&
 WorldScene::combatEffects() const {
     return combat_effects_;
@@ -156,6 +175,72 @@ WorldScene::runtimeEffects() const {
 const std::vector<MissEffectActor>&
 WorldScene::missEffects() const {
     return miss_effects_;
+}
+
+bool WorldScene::companionMoonAuraVisible() const {
+    if (!player_moon_spell_.active() ||
+        !hasCompanion() || companion_.currentLife() <= 0) {
+        return false;
+    }
+    const std::int32_t action =
+        companion_.presentationAction();
+    return action != 7 && action != 8 && action != 10;
+}
+
+const EffectVisualResource*
+WorldScene::companionMoonAuraVisual() const {
+    return effect_visuals_.find(11000040);
+}
+
+std::int32_t WorldScene::companionMoonAuraFrame() const {
+    return player_moon_spell_.auraFrame();
+}
+
+bool WorldScene::playerMoonActive() const {
+    return player_moon_spell_.active();
+}
+
+bool WorldScene::playerBerserkerActive() const {
+    return player_berserker_spell_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerBerserkerVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerBerserkerFrame() const {
+    return player_berserker_spell_.auraFrame();
+}
+
+bool WorldScene::playerEnergyShieldActive() const {
+    return player_energy_shield_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerEnergyShieldVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerEnergyShieldFrame() const {
+    return player_energy_shield_.auraFrame();
+}
+
+bool WorldScene::playerMagicShieldActive() const {
+    return player_magic_shield_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerMagicShieldVisual() const {
+    return effect_visuals_.find(11000240);
+}
+
+std::int32_t WorldScene::playerMagicShieldFrame() const {
+    return player_magic_shield_.auraFrame();
 }
 
 std::size_t
@@ -238,6 +323,18 @@ const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
 
+PlayerMagic& WorldScene::playerMagic() {
+    return player_magic_;
+}
+
+const PlayerMagic& WorldScene::playerMagic() const {
+    return player_magic_;
+}
+
+const TableDatabase& WorldScene::parameterTables() const {
+    return parameter_tables_;
+}
+
 PlayerItemUseResult WorldScene::usePlayerBeltPocket(
     std::int32_t pocket) {
     return player_item_controller_.useBeltPocket(
@@ -308,6 +405,18 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    // FUN_00443490 drops Magic Shield at the start of the next player
+    // update when no mana remains. Keeping this before the cast action lets
+    // an exact-cost activation show its marker frame once, as in retail.
+    if (player_data_.currentMana() == 0) {
+        player_magic_shield_.deactivate();
+    }
+    player_moon_spell_.updateAura(
+        companionMoonAuraVisible());
+    player_berserker_spell_.updateAura(
+        has_player_);
+    player_energy_shield_.updateAura(has_player_);
+    player_magic_shield_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -421,7 +530,8 @@ void WorldScene::update() {
         scenario_world_.objects().size() +
         scenario_world_.people().size() +
         scenario_world_.enemies().size() +
-        (has_player_ ? 1u : 0u));
+        (has_player_ ? 1u : 0u) +
+        (hasCompanion() ? 1u : 0u));
     for (const ScenarioObjectActor& object :
          scenario_world_.objects()) {
         if (!object.judgementEnabled()) {
@@ -474,14 +584,20 @@ void WorldScene::update() {
             enemy.judgement(),
         });
     }
+    std::size_t companion_blocker_index = no_blocker;
     if (has_player_) {
+        player_.setWalkingSpeedTier(
+            playerRuntimeProfile().walkingSpeedTier());
         player_.update(
             scenario_world_.ground(),
             scenario_world_.objectMap(),
             &actor_blockers,
             playerAttackSpeedTier(),
-            &player_visual_.animation());
+            &player_visual_.animation(),
+            parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
+        handlePlayerSpellEvent(player_.takeSpellEvent());
+        updatePlayerResourceRates();
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {
@@ -494,6 +610,7 @@ void WorldScene::update() {
                     player_data_.gender()));
         }
         if (player_.takeRespawnRequest()) {
+            deactivatePlayerPowerupsForRespawn();
             player_data_.restoreForRespawn();
             const ScenarioTravelResult respawn =
                 transitionScenario({
@@ -513,6 +630,18 @@ void WorldScene::update() {
             player_.judgement(),
         });
     }
+    // The retail owner is allowed to step out of its companion's
+    // overlapping spawn position. Other actors still treat the companion
+    // as a normal category-five judgement object.
+    if (hasCompanion() &&
+        companion_.judgementEnabled()) {
+        companion_blocker_index = actor_blockers.size();
+        actor_blockers.push_back({
+            companion_.movementBlockerId(),
+            companion_.position(),
+            companion_.judgement(),
+        });
+    }
     for (ScenarioObjectActor& object :
          scenario_world_.objects()) {
         object.update();
@@ -529,6 +658,14 @@ void WorldScene::update() {
             actor_blockers[
                 npc_blocker_indices[index]].position =
                 npc.position();
+        }
+    }
+    if (hasCompanion() && has_player_) {
+        updateCompanionActor(actor_blockers);
+        if (companion_blocker_index != no_blocker) {
+            actor_blockers[
+                companion_blocker_index].position =
+                companion_.position();
         }
     }
     for (std::size_t index = 0;
@@ -671,6 +808,15 @@ std::int32_t WorldScene::playerDirection() const {
 
 PlayerMotion WorldScene::playerMotion() const {
     return player_.motion();
+}
+
+bool WorldScene::playerSpellActive() const {
+    return player_.spellActive();
+}
+
+std::int32_t
+WorldScene::playerSpellTargetCharacterNumber() const {
+    return player_.spellTargetCharacterNumber();
 }
 
 MovementPace WorldScene::playerMovementPace() const {

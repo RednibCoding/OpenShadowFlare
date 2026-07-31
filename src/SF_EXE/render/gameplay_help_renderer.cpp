@@ -84,6 +84,44 @@ void drawPlayerPreview(
         1000);
 }
 
+void drawCompanionPreview(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t animation_counter) {
+    if (!world.hasCompanion()) {
+        return;
+    }
+
+    const CompanionActor& companion = world.companion();
+    const WorldPosition position =
+        companion.renderPosition(1.0);
+    const ScreenPosition screen =
+        calculateRealPosition(position);
+    renderCharacterAnimationPass(
+        renderer,
+        companion.animation(),
+        companion.patterns(),
+        companion.shadowPatterns(),
+        position,
+        7,
+        companion.direction(),
+        animation_counter,
+        [&companion](std::size_t part) {
+            return companion.partEnabled(part);
+        },
+        [&companion](std::size_t part) {
+            return CharacterColorStrength{
+                companion.partRedStrength(part),
+                companion.partGreenStrength(part),
+                companion.partBlueStrength(part),
+            };
+        },
+        screen.x - 212,
+        screen.y - 158,
+        false,
+        1000);
+}
+
 void drawCloseControl(
     gapi::Backend& renderer,
     const gapi::NjpImage& status_patterns,
@@ -149,6 +187,7 @@ void renderGameplayHelp(
     renderer.drawPattern(status_patterns, 66, {64, 70});
     drawPreviewFrame(renderer);
     drawPlayerPreview(renderer, world, animation_counter);
+    drawCompanionPreview(renderer, world, animation_counter);
 
     drawText(
         renderer,

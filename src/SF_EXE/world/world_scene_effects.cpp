@@ -40,6 +40,11 @@ EnemyEffectControllerSource WorldScene::runtimeEffectSource(
                 : WorldPosition{},
         };
     }
+    if (hasCompanion() &&
+        source_character_number ==
+            companion_.characterNumber()) {
+        return {true, companion_.position()};
+    }
     if (const EnemyActor* enemy =
             findScriptEnemy(source_character_number)) {
         return {true, enemy->position()};
@@ -60,11 +65,14 @@ WorldScene::runtimeEffectTargets() const {
     std::vector<RuntimeEffectTargetSnapshot> targets;
     targets.reserve(
         (has_player_ ? 1u : 0u) +
+        (hasCompanion() ? 1u : 0u) +
         scenario_world_.objects().size() +
         scenario_world_.people().size() +
         scenario_world_.enemies().size());
 
     if (has_player_) {
+        const PlayerRuntimeProfile profile =
+            playerRuntimeProfile();
         RuntimeEffectTargetSnapshot target;
         target.kind = RuntimeEffectTargetKind::player;
         target.character_number =
@@ -74,14 +82,24 @@ WorldScene::runtimeEffectTargets() const {
         target.position = player_.position();
         target.judgement = player_.judgement();
         target.current_life = player_data_.currentLife();
+        target.physical_evasion = profile.physical_evasion;
+        target.magical_evasion = profile.magical_evasion;
+        targets.push_back(target);
+    }
+    if (hasCompanion()) {
+        RuntimeEffectTargetSnapshot target;
+        target.kind = RuntimeEffectTargetKind::companion;
+        target.character_number =
+            companion_.characterNumber();
+        target.identifier = companion_.characterNumber();
+        target.position = companion_.position();
+        target.judgement = companion_.judgement();
+        target.current_life = companion_.currentLife();
+        target.active = companion_.currentLife() > 0;
         target.physical_evasion =
-            player_data_.baseEvasionRate() +
-            player_equipment_.derivedParameterBonus(
-                3, item_database_);
+            companion_.profile().physical_evasion;
         target.magical_evasion =
-            player_data_.baseMagicalEvasionRate() +
-            player_equipment_.derivedParameterBonus(
-                7, item_database_);
+            companion_.profile().magical_evasion;
         targets.push_back(target);
     }
 
@@ -153,6 +171,17 @@ void WorldScene::applyRuntimeEffectDispatch(
         }
         return;
     }
+    if (dispatch.contact.kind ==
+        RuntimeEffectTargetKind::companion) {
+        if (hasCompanion() &&
+            dispatch.contact.identifier ==
+                companion_.characterNumber()) {
+            applyCompanionDamagePacket(
+                dispatch.packet,
+                dispatch.contact.impact_origin);
+        }
+        return;
+    }
     if (dispatch.contact.kind !=
         RuntimeEffectTargetKind::enemy) {
         return;
@@ -162,6 +191,22 @@ void WorldScene::applyRuntimeEffectDispatch(
         findScriptEnemy(dispatch.contact.identifier);
     if (!enemy) {
         return;
+    }
+    if (dispatch.packet.written_words.test(0) &&
+        dispatch.packet.written_words.test(2) &&
+        dispatch.packet.written_words.test(73) &&
+        (dispatch.packet[0] == 0 ||
+         dispatch.packet[0] == 1) &&
+        dispatch.packet[73] != -1 &&
+        dispatch.packet[2] % 10 ==
+            scenario_world_.localPlayerNumber()) {
+        // FUN_00459690 awards ordinary spell practice when a family-zero
+        // player packet reaches its target. The spell number is carried in
+        // packet word 73; companion-only spells use the separate mode.
+        player_magic_.train(
+            dispatch.packet[73],
+            false,
+            parameter_tables_);
     }
     EnemyDamageReceiverContext context;
     context.local_player_slot =
@@ -223,6 +268,16 @@ void WorldScene::spawnRuntimeMiss(
         }
         position = player_.position();
         judgement = player_.judgement();
+    } else if (
+        contact.kind ==
+            RuntimeEffectTargetKind::companion) {
+        if (!hasCompanion() ||
+            contact.identifier !=
+                companion_.characterNumber()) {
+            return;
+        }
+        position = companion_.position();
+        judgement = companion_.judgement();
     } else if (
         contact.kind == RuntimeEffectTargetKind::enemy) {
         const EnemyActor* enemy =

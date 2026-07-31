@@ -824,6 +824,49 @@ same order as retail. The result deliberately leaves live state mutation,
 effect ownership, audio playback, and equipment synchronization to later
 world owners.
 
+The owned companion is created by `0x004501c0` as category `40000000` with
+character number `16000000 + player slot`. Table 60 supplies its name,
+PARTNER resource number, and three draw strengths. `0x004136f0` then sums
+each parameter column from zero through `saved companion level - 1` in table
+`800 + companion type`; it does not substitute the PEOPLE record for the
+matching dog in town. The initializer uses judgement
+`[-80,-80,79,79]`, starts at the player's position, and retains the player as
+its owner. The portable profile and actor preserve all six shipped companion
+rows and all three PARTNER resource directories.
+
+The ordinary owner mode in `0x004622b0` measures judgement-bound distance to
+the player. Below 160 the companion requests idle action two and refreshes a
+five-update linger. From 160 through 599 it starts action three at
+`table row 1 / 5` after that linger. At 600 or farther it starts or promotes
+the route to action four at `table row 2 / 5`. Distances of 4000 or more snap
+the actor to the player position plus `(200,200)`. Actions two, three, and
+four render PARTNER charts zero, one, and two. The other opening branch
+searches for a type-two target within 1200 and enters companion attack mode;
+the portable actor now follows that handoff too.
+
+Attack mode `0x00462610` drops back to ordinary owner mode when the companion
+is more than 1499 judgement units from its player. Otherwise it repeats the
+nearest living type-two search within 1200. A target beyond the fixed
+159-unit attack range starts the common collision-aware run route at
+`table row 2 / 5`; a target inside it is faced and requests presentation
+action one.
+
+Presentation action one is `0x0045fff0`, which uses PARTNER chart five. Its
+speed tier is signed `table row 0 / 32`, not parameter row 17, and the ten
+frame factors are `0.2` through `1.1` in steps of `0.1`. Each update scans
+every newly crossed part-zero CAF cell. Status `0x400` plays sample 95;
+status `0x40` repeats an exact-facing living type-two search inside 150
+judgement units. Its presentation lock suppresses further AI decisions until
+the chart reaches its last frame, even if the selected target disappears in
+the meantime. The hit check compares companion row six with the enemy's
+physical evasion. A miss creates the normal MISS actor. A hit sends the
+family-one packet with the companion character number, row-five physical
+attack, owner-stored companion level, native element, and a random effect
+from 21000 through 21003, then plays sample 44. The live path hands that
+packet to the existing enemy receiver, so reaction, attribution, effects,
+death, player experience, and drops remain owned by the same systems as a
+player hit.
+
 The player's owned companion does not reuse either receiver. Its virtual
 callback is `0x0045f9f0`, selected from the type-five companion vtable at
 `0x00476e38`. It rejects companions with no life and presentation actions
@@ -853,9 +896,37 @@ four and plays sample 119; stage two only changes the reaction stage. The two
 configured packet effects and the 20-percent random hit effect instead use
 owner kind two. That otherwise easy-to-miss constructor difference is
 preserved in the portable request. Death action six and default event four are
-selected after those common effects. As with the other receivers, live actor
-mutation, effect allocation, and audio playback remain consumers for the
-later complete combat loop.
+selected after those common effects. The live world now applies the returned
+state, queues those effects through the common effect owner, plays the returned
+audio, and lets both direct enemy impacts and category-50000000 runtime actors
+target the companion.
+
+`0x004616d0` presents surviving hits with PARTNER chart three. It scales the
+display frame over the receiver duration, holds frame zero for reaction stage
+two, and applies the same diminishing collision-aware 120-unit impulse used by
+the other actor families when displacement is not suppressed. The final
+update releases action five back to idle action two.
+
+`0x00461990` presents death with PARTNER chart four in direction eight. Its
+first update creates effect 21010 with a random direction and writes a
+persistent respawn countdown: 900 gameplay updates normally, or 600 when the
+backpack contains category-four definition `98000002`. The item is checked but
+not consumed. The final chart frame is held, then opacity fades over 60
+updates. While the saved countdown is nonzero the actor remains invisible and
+non-colliding.
+
+When that countdown reaches zero, the owner restores companion life to its
+table-backed maximum, places it at the player, and requests action eight.
+`0x004610b0` plays PARTNER chart seven in direction eight; reaching its last
+frame releases the lock and returns the companion to ordinary owner AI.
+
+Enemy death accounting at `0x004134a0` awards one companion experience point
+when the defeat source belongs to the local slot and the companion is alive
+below its cap. The cap is `player level / 3 + 2`, limited to 35. The point is
+awarded before the player's own level threshold is applied. `0x00412e20` then
+uses the possibly new player level for that cap and table `800 + companion
+type` row 18 for each companion threshold. A gained level rebuilds the summed
+profile and restores full companion life; experience is cleared at the cap.
 
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
@@ -878,9 +949,18 @@ item stream to restore and rewrite the nine known equipment slots, backpack,
 the belt, and the 9-by-10 Special Item owner. Grid positions, Gold quantities,
 durability, identified state, and all still-unnamed instance bytes survive
 the round trip. The extra equipment records and unknown trailing payload bytes remain
-untouched. Loading also walks the next counted state array and restores the 51
-transport flags against Table 40. The rest of the dynamic payload is still
-pending.
+untouched. Loading also restores the following counted scenario, transport,
+and quest/conversation arrays, validating the 51 transport values against
+Table 40. The rest of the dynamic payload is still pending.
+
+The three counted scenario, transport, and quest arrays are immediately
+followed by the player's magic owner. Retail writes count `22`, then 22
+32-bit availability values from runtime `+0x1440`, 22 levels from `+0x1498`,
+22 experience values from `+0x14f0`, and the eight global magic-bar spell IDs
+at `0x0048d508`. `0x00440f70` initializes those arrays to zero, one, and zero
+respectively and leaves every bar slot at `-1`; only availability value three
+is treated as learned. The portable save path now restores and replaces this
+exact section while retaining all later unknown bytes.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
@@ -1134,8 +1214,9 @@ Opening Help from the settings row also starts the common modal-tab animator
 at `0x004088b0`. Status patterns 27 through 30 slide the `CLOSE` tab from
 y=413 to y=393 and then pulse in the retail eight-phase order. Escape or a
 click above y=412 closes Help. The `H` shortcut opens the same reference page
-directly. The companion preview is conditional in retail; the portable
-renderer will add it when the player-owned companion system exists.
+directly. The conditional companion branch now draws the real owned PARTNER
+actor at `(212,158)` with chart seven and the same animation counter as the
+player preview.
 
 The Map row at y=270 and the `N` shortcut switch to `0x0040d4d0`. The screen
 keeps the right half of the world visible and clips its own content to
@@ -1681,3 +1762,501 @@ stored initial position is interpolated to x `640 - width`, y 1, after which
 it remains in the upper-right until expiry. `0x00451cb0` ignores notice clicks
 for the first 30 updates. A later click inside the notice releases it and
 consumes the input before ordinary world interaction.
+
+## Magic window and gameplay bar
+
+`0x00407a60` draws the Magic half-panel only while its active flag is set.
+Status pattern 6 supplies the complete 320-by-416 frame. The page value at
+application offset `+0xa93c` selects six consecutive spells, with icon rows
+starting at y=59 and advancing by 48. Status pattern 32 draws each empty
+32-by-32 well at x=24, y=`row - 3`. Availability value `3` draws
+`MagicIcon.njp` pattern `spell + 2` at x=27; value `1` draws the same authored
+icon dimly. Only odd availability states receive the name and table-backed
+level, experience, MP, and effect text.
+
+The displayed spell level comes from `0x00451e60`: Increased Power adds two,
+the stored value is clamped to 1 through 20, the derived magic-level modifier
+is added, and the result is clamped to 1 through 30. Selector 2 of
+`0x00417410` reads MP from Table 16, after which equipped instance parameter
+19 lowers the result to a minimum of one. Selector 0 reads the displayed
+effect from Table 17. Table 27 supplies the next experience threshold; stored
+level 20 prints `Max`. Hovering x=60..227 over the name line concatenates
+Table `600 + spell` into the pointer-centered help owner.
+
+Status patterns 69 and 70 are the previous/next arrows. Their pointer
+rectangles are x=16..48 and x=270..304 at y=335..351. The panel's eight
+large-icon slots begin at x=32, y=359, while input uses the encompassing
+32-pixel cells beginning at x=29, y=356. `0x00447790` picks learned page and
+bar entries with sample 57. On release, `0x00404e40` removes every existing
+copy of that spell, assigns the destination slot, and plays sample 58.
+
+`0x00404ee0` draws the always-available gameplay bar. Its start is x=224 in
+the full view, x=344 beside a left panel, and x=124 beside a right panel.
+A four-pixel gap precedes slots zero and four. Empty and ordinary entries use
+16-by-16 MagicBarIcon patterns at y=392; the selected spell expands to its
+26/27-pixel MagicIcon at y=382, which also shifts later entries. The final
+icon selects normal attack targeting. `0x00447570` applies the same dynamic
+rectangles, selects a learned spell with sample 58, and makes spell selection
+and normal targeting mutually exclusive.
+
+The portable `GameplayMagic` state mirrors those page, hitbox, hover, and drag
+rules but does not own spell data. It emits assignment and selection intent
+to the runtime boundary, which mutates `PlayerMagic`; this keeps persistent
+state and casting outside the UI layer. The Status half of the tab remains a
+later slice.
+
+## Fire Ball cast and spell practice
+
+`0x00449a40` handles a targeted player spell command. Fire Ball must have
+availability value three and a valid pointed enemy. `0x00451e60` supplies its
+effective level; Table 16 supplies the MP cost, equipped instance parameter 19
+reduces it, and the result is clamped to at least one. A selected enemy
+consumes the pointer command even when MP is insufficient. On success the
+function faces the target, selects action `spell + 22`, and deducts MP before
+the action runs.
+
+`0x00439730` dispatches Fire Ball as action 23. It selects player CAF chart 13
+then chart 14 and scales Table 20 row one by the attack-speed tier factors
+`0.6, 0.7, 0.8, 1.0, 1.15, 1.3, 1.45, 1.6, 1.75, 1.9`. The first chart-13
+frame carrying status `0x40` becomes the effect delay after division by that
+speed. The displayed frame is the truncated action counter times speed, and
+the completion allowance is at least one and otherwise truncated `7 / speed`.
+Chart 14 remains on frame zero until that threshold is reached.
+
+The action creates effect controller 10001 immediately with the marker delay;
+that owner later creates the visible resource-10000010 projectile, plays
+sample 19 at launch and sample 20 at impact, performs collision, and delivers
+the packet. The family-zero packet combines Table 17 with magical attack,
+Table 18 with magical hit rate, Table 19's element type, the player element
+and state words, and the three-column groups from Tables 70 through 78.
+Packet word 73 retains spell number one.
+
+Practice belongs to the receiver rather than the cast command.
+`0x00459690` calls `0x0044f6f0` when a family-zero or family-one packet with a
+valid spell number reaches the enemy. The latter function requires an odd
+availability value and a stored level below 20, excludes companion spells
+seven through nine in ordinary mode, adds one experience point, and compares
+against Table 27. Reaching the threshold subtracts it and raises the stored
+level once. Consequently a cancelled or missed Fire Ball does not gain
+practice, while a successful projectile contact does.
+
+## Ice Bolt and the targeted-spell boundary
+
+Ice Bolt proves which parts of Fire Ball are common and which remain authored
+spell data. `0x00449a40` gives spell two action 24 after the same learned,
+pointed-enemy, and mana checks. `0x0043ae10` uses CAF charts 13 and 14 and the
+same ten speed-tier factors, but it reads Table 20 row two and builds effect
+10002 rather than effect 10001.
+
+Its family-zero packet carries subtype one in word 3, presentation 21013 in
+word 34, and spell two in word 73. All level-dependent damage, hit, type,
+movement, and element-bank values are read using row two. The controller
+arguments otherwise preserve the pointed target, source judgement, 200
+display height, Table 35 travel speed, marker-derived delay, and Table 21
+target-memory value.
+
+Effect 10002 creates source resource 11000027 on update zero. At the delayed
+marker it resolves the hero again, projects the launch point 180 world units
+along the stored angle, and creates resource 10000040 with
+`[-50,-50,50,50]` collision bounds, Table 35 travel speed, environment and
+first-target expiry, and the copied packet. Sample 94 plays at launch and
+sample 20 at contact. The portable player-spell builder now selects these
+retail descriptors while the already shared effect owner retains projectile
+timing, movement, audio, and collision.
+
+## Plasma cast
+
+Plasma remains in `0x00449a40`'s pointed-enemy whitelist and enters action 25.
+`0x0043a840` reads Table 20 row three, but unlike Fire Ball and Ice Bolt it
+uses CAF charts 11 and 12. The first chart's status-`0x40` frame still supplies
+the effect delay through the common truncated counter and speed calculation.
+
+Its family-zero packet sets word 3 to zero, word 34 to presentation 20005,
+and word 73 to spell three. Packet word 5 uses the player's derived physical
+defense rather than magical defense. The effect request uses target mask four,
+keeps the pointed enemy identity and angle, supplies the hero's current
+position as an explicit origin, leaves travel speed and display height zero,
+and places the effective spell level in constructor argument 17.
+
+Effect 10003 reads Table 205 row zero at `effective level - 1`. Beginning at
+the marker delay, it attempts one wave every four updates at distance
+`250 + wave * 200` along the stored angle. Placement uses
+`[-100,-100,100,100]` against the map and solid scenario objects. One failed
+placement latches an obstruction flag and suppresses all later waves.
+
+A clear wave consumes one random value for the primary chart and creates
+resources 10000030, 10000031, and 10000032. Only the first layer has an
+update-zero all-target collision window; the other two are visual. Sample 21
+plays at the wave position. The portable player action now constructs this
+request, while the existing effect-10003 owner continues to own all wave
+placement, random ordering, rendering, audio, contact, and expiry.
+
+## Ground/self spell command and Hell Fire
+
+The ordinary secondary-click branch in `0x00441c00` handles spells which do
+not require a pointed character. It performs the same learned-state,
+restriction, effective-level, and MP-cost checks as the targeted command, but
+stores the clicked world angle and position, enters action `spell + 22` with
+character target `-1`, faces the click, and deducts MP. The portable command
+keeps that aim point in the action event even though Hell Fire itself does not
+use it; later ground spells can therefore reconstruct their own placement
+without recovering cursor state from the UI.
+
+`0x00439d10` dispatches Hell Fire as action 26. It uses player CAF charts 13
+and 14, Table 20 row four, the common ten casting-speed factors, and the first
+status-`0x40` marker for effect delay. Its family-zero packet uses subtype
+zero, magical defense, presentation 20001, spell four, and the row-four
+values from Tables 17 through 19 and 70 through 78.
+
+Effect request 10004 has owner kind one, target mask four, target `-1`, zero
+direction, travel speed, and display height, no explicit origin, and the
+player judgement rectangle as its source area. The existing effect owner
+shows warning resource 10000002, then creates the two resource-10000000
+layers and plays samples 29 and 23 at the marker delay. Its invisible area
+expands the source judgement by 150 units, applies the packet to every valid
+target, plays sample 20 on contact, and shakes the camera for eight updates.
+Practice remains receiver-owned, exactly like the targeted spells.
+
+## Ice Blast cast
+
+Ice Blast continues the same targetless secondary-click command as Hell Fire.
+The clicked world point controls the hero's facing only; `0x0043b3f0` does not
+pass the aim position, a direction, a character target, or an explicit effect
+origin. Action 27 uses CAF charts 11 and 12, Table 20 row five, and the common
+speed-tier and status-`0x40` marker timing.
+
+Its family-zero packet uses subtype one, magical defense, presentation 21013,
+spell five, and the row-five values from Tables 17 through 19 and 70 through
+78. Effect request 10005 has owner kind one, target mask four, target `-1`,
+the player's judgement rectangle, zero travel and direction values, and Table
+21 row five in its final constructor value.
+
+The already reconstructed `0x0042cd70` owner captures the hero's current
+position on update three and creates resource 10000051 there. That resource's
+chart-zero frame count schedules resource 10000050, then an invisible area
+packet four updates later. The contact area expands the player judgement by
+150 units, plays sample 20 per target, and shakes a nearby camera for eight
+updates. Resource 10000052 follows at frame-count plus 15 with display status
+`0x80`; sample 22 pulses six times before the controller expires at
+frame-count plus 22. Successful packet receivers award Ice Blast practice.
+
+## Heal cast
+
+Heal remains on the targetless secondary-click command and enters action 28,
+but `0x0043ca60` does not build a family-zero combat packet. It uses CAF
+charts 11 and 12 and Table 20 row six. Unlike the five attack spells, the
+action scans every newly displayed chart-11 frame and resolves the cast only
+when it crosses status `0x40`; no delayed controller is queued at command
+time.
+
+At the marker it always creates simple effect 21020 with owner kind one,
+source judgement, packet direction eight, and no combat packet. The common
+one-pass owner maps that effect to Character OPTION resource 11000060 and
+holds it at the hero for one CAF pass.
+
+If current HP differs from maximum HP, the action restores Table 17 row six
+percent of maximum HP, capped at the missing amount. It then calls the normal
+spell-training function and plays sample 17. At full HP the command still
+spends MP and the marker still creates the visual, but it restores nothing,
+plays no sample 17, and awards no practice. The portable Heal resolver owns
+those restorative rules separately from the attack-spell packet builder.
+
+## Moon and the sustained-spell boundary
+
+`0x0043d290` dispatches spell seven as action 29 with CAF charts 11 and 12,
+Table 20 row seven, and the common casting-speed factors. At each newly crossed
+chart-11 status-`0x40` marker it toggles runtime rate `+0x15e4`: activation
+stores the effective level at `+0x15e8` and reads Table 200 row zero, while a
+second cast writes zero. The companion profile rebuild then applies Table 200
+rows 1 through 13. Resource 11000040 is rendered at the living companion.
+
+The kill paths at `0x00440860`, `0x00441e20`, and `0x00459690` do not require
+the companion itself to deal the last hit. While Moon is active, any defeat
+source whose character number modulo ten equals the local player slot calls
+the companion-mode practice function for spell seven.
+
+## Berserker cast and shared mana drain
+
+`0x0043ceb0` dispatches spell eight as action 30. It uses CAF charts 11 and 12,
+Table 20 row eight, the ordinary targetless command and MP cost, and scans all
+new chart-11 frames for status `0x40`. At the marker an inactive cast stores
+the effective level at runtime `+0x15e0` and Table 201 row zero at `+0x15dc`;
+an active cast clears that rate. Both branches call `0x00450080` and
+`0x00452910` to rebuild the player and companion runtime values.
+
+`0x0044ea60` applies Table 201 rows 1 through 12 after base and equipment
+contributions. They modify attack speed, walking speed, maximum HP, maximum
+MP, physical attack, physical defense, hit rate, physical evasion, magical
+attack, magical defense, magical hit rate, and magical evasion. Speed fields
+are clamped to 0..255 and the remaining values to at least one. The shipped
+table leaves both maximum-pool rows at zero, boosts speed and offense, and
+reduces physical defense and evasion.
+
+`0x0044f2f0` proves that sustained spells share one resource owner rather than
+running independent timers. Equipped instance parameter 17 supplies the life
+rate and parameter 18 supplies the mana rate; special-item definitions
+98000003 and 98000004 add five to the respective rate. Moon `+0x15e4` and
+Berserker `+0x15dc` are then added to the mana side. Every third global update
+the function scales maximum HP and MP, retaining separate signed fractional
+remainders at `+0x1638` and `+0x163c`. Life recovery only runs for a living
+hero and never lowers HP below one; mana may reach zero. The player update
+then clears both spell rates at zero MP and rebuilds both profiles. Neither
+rate nor its effective level is part of the persistent 0x160-byte character
+record.
+
+`0x00444960` renders player common animation block 500, which the retail data
+list maps to `Player/Common/Powerup.Caf` and `.Njp`. It uses chart zero,
+direction eight, the player position, runtime frame `+0x15f4`, full opacity,
+and RGB strengths 1000/200/200. The frame advances on every active update.
+The same locally owned kill test used by Moon trains spell eight while
+Berserker is active.
+
+## Energy Shield cast and damage routing
+
+`0x0043d670` dispatches spell nine as action 31. It uses CAF charts 11 and 12,
+Table 20 row nine, and the normal targetless command-time MP cost. Like Moon
+and Berserker, it scans every newly displayed chart-11 frame for status
+`0x40`. At the marker, runtime flag `+0x15ec` toggles off when already set. An
+inactive flag is set only if current MP at `+0x1ac` is nonzero, which matters
+when the up-front cast cost consumed the last point.
+
+Energy Shield has no Table 202 and does not store an effective level. The
+player damage receiver at `0x00443cb0` resolves spell nine's effective level
+when a packet arrives. For a locally owned player, an active shield and a
+non-effect-family packet scale physical defense by Table 17 row nine before
+the common damage calculation. The resulting damage is subtracted from MP
+instead of HP while MP remains. It does not spill through when damage exceeds
+the remaining MP; the next ordinary packet reaches HP. Family-three effect
+packets always bypass Energy Shield.
+
+`0x00443490` clears `+0x15ec` whenever MP is zero. The same local kill-owner
+checks used by Moon and Berserker call spell-nine companion-mode practice
+while the flag is active. `0x00444be0` draws animation block 500, mapped to
+`Player/Common/Powerup.Caf` and `.Njp`, after the Berserker pass. It uses chart
+zero, direction eight, runtime frame `+0x15f8`, full opacity, and RGB strengths
+1000/1000/300.
+
+## Magic Shield cast and hit charging
+
+`0x00440180` dispatches spell eighteen as action 40 on CAF charts 11 and 12
+with Table 20 row eighteen. The targetless input branch validates the learned
+spell and pays its normal Table 16 cost before entering the action. A newly
+crossed first-chart status-`0x40` marker toggles runtime flag `+0x1628`, resets
+aura frame `+0x162c`, clears Counter Burst flag `+0x1630` and its frame
+`+0x1634`, rebuilds derived values, and sends the multiplayer state update.
+There is no action-entry visual or sample. Unlike Energy Shield, this marker
+does not reject activation after an exact-cost command leaves MP at zero;
+`0x00443490` clears the flag at the start of the following player update.
+
+The player receiver at `0x00443cb0` only applies Magic Shield to family-three
+effect packets owned by the local player. Table 17 row eighteen parameter zero
+reduces the resolved damage, which is forced to at least one. Post-reduction
+damage of at least 20 trains spell eighteen. Every intercepted packet also
+creates effect 21029/resource 11000241 and plays sample 60.
+
+The receiver's MP charge has a retail quirk: it reads parameter two from the
+currently selected magic row, but at Magic Shield's effective level. Equipped
+instance parameter 19 reduces that value and the result is clamped to at least
+one. If the charge leaves less than one MP, the receiver clamps MP to zero and
+clears `+0x1628` immediately. Non-effect packet families bypass all of this.
+
+`0x00444a20` draws resource 11000240 at the player using chart zero, direction
+eight, runtime frame `+0x162c`, full opacity, and RGB strengths
+1000/1000/1000. The state remains live across ordinary scenario relocation,
+is absent from the disk character record, and is cleared with the other player
+powerups on death. Multiplayer live-state packets do include the runtime flag.
+
+## Earth Spear cast
+
+`0x0043e000` dispatches spell ten as action 32. It requires the pointed living
+character selected by the secondary-click path, uses CAF charts 11 and 12 and
+Table 20 row ten, and pays the ordinary Table 16 MP cost. The action stores the
+hero position as an explicit origin and the angle to the selected target, but
+passes zero travel speed because effect 10010 owns a fixed wave line rather
+than a projectile.
+
+The family-zero packet has subtype three. Its damage is Table 17 row ten plus
+the player's magical attack, word five carries physical defense, its hit value
+is the Table 17 value plus magical hit rate, word 72 is one, and word 73 is
+spell ten. The impact presentation consumes one `rand()` draw and selects
+21000 through 21003. The effect request retains target mask four, constructor
+effective level, and the action marker delay.
+
+The existing controller at `0x0042e7e0` reads the wave count from Table 206.
+Every eight updates it projects a placement from the fixed origin at
+`wave * 300 + 250`, creates resource 10000060 with a 150-unit area packet,
+plays sample 22, and requests eight updates of magnitude-six camera shake when
+nearby. A blocked first placement suppresses every later wave; a blocked later
+placement ends the line after its already-created waves. Packet contact uses
+the normal receiver-time practice path.
+
+## Flame Strike cast
+
+`0x0043beb0` dispatches spell eleven as action 33 on CAF charts 13 and 14 with
+Table 20 row eleven. The pointed command supplies a living enemy character.
+On action entry the cast computes its marker delay, resolves the direction to
+that character, and creates effect 10011 with owner kind one, target mask
+0x14, the selected identity, Table 17 parameter three as travel speed,
+display height 200, the player judgement, effective level, and Table 17
+parameter four in constructor field 22.
+
+The family-zero subtype-zero packet adds Table 17 parameter zero to magical
+attack and parameter one to magical hit rate. Word five carries magical
+defense, word 34 is presentation 20000, word 72 is zero, and word 73 identifies
+spell eleven. No random draw occurs while building the cast.
+
+The existing effect-10011 handler at `0x0042d6e0` creates source resource
+10000012 on update zero. At the marker delay it reads Table 204 for the
+effective-level projectile count and divides retail's 6.283184 full circle
+between them. Resource-10000010 children start 180 units from the live hero,
+home toward the selected target with turn value 20, use 80-unit bounds and a
+90-update lifetime, and expire on scenery or first contact. Sample 19 comes
+from the last spawn and sample 20 from contact. The ordinary packet receiver
+awards practice only after a successful hit.
+
+## Dread Deathscythe cast
+
+`0x0043c490` dispatches spell twelve as action 34 on CAF charts 13 and 14 with
+Table 20 row twelve. Its pointed command and effect-10012 constructor match
+Flame Strike's selected target, direction, Table 17 travel speed, height 200,
+player judgement, marker delay, effective level, and constructor field 22.
+
+The packet is family zero, subtype one. Table 17 parameter zero is added to
+magical attack, parameter one to magical hit rate, word five carries magical
+defense, word 34 begins as 21013, word 72 is zero, and word 73 is spell twelve.
+
+The handler at `0x0042db10` creates source resource 11000027 and a
+Table-204-sized resource-10000080 warning fan on update zero. Table 204 column
+29 supplies the spread divisor for the retail `count * 2.5132736 / divisor`
+calculation, including the even-count half-step. At the marker delay it emits
+resource-10000081 projectiles 180 units from the live hero. They travel
+straight with 50-unit bounds, a 90-update lifetime, scenery and first-target
+expiry, and optional hit memory from constructor field 22. Their packet
+replaces words 34/35 and 74/75 with directional presentations 21021 and 21022.
+Sample 94 plays at the final launch; sample 20 and practice belong to contact.
+
+## Lightning Storm cast
+
+`0x0043b950` dispatches spell thirteen as action 35 on CAF charts 11 and 12
+with Table 20 row thirteen. The retail pointed-spell switch requires a living
+enemy and stores its angle, but the effect-10013 request passes source identity
+`-1`, target mask four, target identity `-1`, zero travel values, the stored
+angle, an explicit pointer to the hero position, no source judgement, the
+marker delay, effective level, and Table 17 parameter four.
+
+The copied packet retains the real player source. It is family zero, subtype
+zero, adds Table 17 parameter zero to magical attack and parameter one to
+magical hit rate, carries physical defense in word five, presentation 20005
+in word 34, zero in word 72, and spell thirteen in word 73.
+
+`0x0042e240` reads the effective-level ray count from Table 204. It attempts
+four radial shells, four updates apart, at `350 + shell * 200` from the fixed
+origin. Each ray independently latches failed placement, consumes one retail
+random draw for the resource-10000030 chart while clear, and also creates
+resources 10000031 and 10000032. Only the first resource processes every
+target in its 100-unit update-zero area. Sample 21 plays once per shell at the
+last radial position, even if that final ray is blocked. The controller ends
+at marker delay plus 16; packet contact owns spell practice.
+
+## Medusa cast
+
+`0x0043da20` dispatches spell fourteen as action 36 on CAF charts 13 and 14
+with Table 20 row fourteen. The pointed command resolves the selected living
+enemy and sends effect 10014 owner kind one, the player source, target mask
+0x14, target identity, Table 17 parameter-three travel speed, height 200,
+target direction, player judgement, marker delay, and Table 17 parameter four.
+Constructor effective level remains zero.
+
+The family-zero packet has subtype two. It adds Table 17 parameter zero to
+magical attack and parameter one to magical hit rate, uses magical defense in
+word five, presentation 21019 in word 34, zero in word 72, and spell fourteen
+in word 73.
+
+The effect-10014 handler at `0x0042e5c0` has no source visual. At the marker
+delay it re-resolves the live hero and places resource 10000070 180 units along
+the stored direction. That actor travels straight with 80-unit bounds and
+expires on scenery or first contact. Sample 22 is emitted at launch; the
+actor's bank-zero sample 20 and spell practice occur only on contact.
+
+## Sonic Blade cast
+
+`0x0043e5e0` dispatches spell fifteen as action 37, but it does not use the
+ordinary Table 20 casting timeline. `0x00449a40` first requires an equipped
+main-hand item whose subtype is zero, three, or one. Invalid and empty hands
+consume the pointed command without deducting MP or entering the action. The
+three accepted subtypes select CAF pairs 5/6, 15/16, and 19/20, and
+`0x00450c60` supplies the same ten attack-speed tiers as weapon attacks.
+
+Action entry creates effect 21025 with owner kind one, the player source,
+player judgement, direction eight, no packet, and constructor field 21 set to
+200. The common one-pass handler maps it to resource 11000100. The action then
+scans every newly crossed first-chart frame for status `0x40`. While a weapon
+still exists, a marker re-resolves the selected enemy angle, plays sample 154,
+and constructs effect 10015 with target mask `0x14`, Table 17 parameter-three
+speed, height 200, player judgement, hard-coded delay one, and Table 17
+parameter four in constructor field 22. Action counter six independently
+plays selector-four weapon audio. Recovery runs to the final frame of the
+selected second chart.
+
+The family-zero packet uses physical type zero and subtype zero. Damage is
+`Table17[15, level, 0] * physical attack / 100`, clamped to one, while word
+five uses physical defense. Word 32 is Table 17 parameter five, word 34 is
+21024, word 72 is one, and word 73 is fifteen. The accuracy field preserves a
+retail oddity: Table 17 parameter one is added to magical hit rate even though
+the packet is physical.
+
+Effect 10015 enters the generic actor initializer with resource 10000090. A
+live owner projects its origin 200 units along the stored angle. The actor
+uses `[-80,-80,79,79]` bounds, display height 155, a fixed seven-update
+lifetime, directional chart zero, straight Table 17 travel, scenery and
+first-target expiry, and bank-zero contact sample 20. Its copied packet enters
+the ordinary receiver-time damage and spell-practice path.
+
+## Mud Javelin cast
+
+`0x0043ecf0` dispatches spell sixteen as action 38 on CAF charts 13 and 14
+with Table 20 row sixteen. The pointed command requires a living enemy but no
+particular weapon. Action entry sends effect 10016 the player source, target
+mask `0x14`, selected target, Table 17 parameter-three travel speed, height
+200, target angle, player judgement, the chart-marker delay, and Table 17
+parameter four. Constructor effective level remains zero.
+
+The family-zero packet has magical type three and subtype three. Table 17
+parameter zero is added to magical attack, parameter one to magical hit rate,
+word five carries magical defense, word 32 carries parameter five, and word 34
+uses one retail random draw to select 21000 through 21003. Word 72 is zero,
+word 73 is sixteen, and the normal Table 70 through 78 banks are copied.
+
+The existing effect handler at `0x0042ea50` launches resource 10000110 when
+the marker delay expires, with 80-unit bounds, packet contact, and sample 19.
+It tracks the projectile's runtime identity and last position until removal,
+then creates resource 10000111 there. On that burst's fifth update the packet
+is applied to every target in its 240-unit area, sample 22 plays, nearby camera
+shake is requested, and the controller ends. Receiver contact owns spell
+practice.
+
+## Identify cast and item mode
+
+`0x0043f8d0` dispatches spell seventeen as action 39 on CAF charts 11 and 12
+with Table 20 row seventeen. Action entry creates one-pass effect 21028 with
+owner kind one, the local player source and judgement, no target or packet,
+packet kind eight, instance minus one, and constructor field 21 set to 200.
+The common effect path maps it to resource 11000230.
+
+At each newly crossed first-chart status-`0x40` marker, the local player sets
+the Identify input flag and requests the right-side Inventory panel. A second
+Identify command while that flag is set is consumed before MP is charged.
+`0x004087b0` draws `System/Common/Pattern/System.njp` pattern zero for the
+normal pointer and pattern one at the same pointer coordinates for Identify.
+
+The Identify branch in `0x00446320` only accepts an unidentified backpack
+item while no item is held. It sets the instance's identified flag, calls
+`0x0044f6f0` for one spell-seventeen practice event, and clears the input flag
+without closing Inventory. Already identified items leave the mode active.
+Equipment, belt, and special-item storage never enter this branch. Secondary
+click or closing the panel clears the mode without changing an item.
+
+The item database name is the identified display name, while its description
+is the base name shown before identification. Unidentified information hides
+all values. The saved instance mirrors the identified value at raw word 48
+for category-zero and category-one items, and word 47 for category-two items.

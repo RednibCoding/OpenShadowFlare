@@ -25,6 +25,7 @@ struct EnemyKillAccountingResult {
     std::int32_t experience_awarded = 0;
     bool direct_local_kill = false;
     bool level_gained = false;
+    bool companion_level_gained = false;
     std::string level_up_notice;
     std::int32_t level_up_notice_counter = 0;
     std::vector<std::int32_t> audio_samples;
@@ -36,7 +37,8 @@ EnemyKillAccountingResult accountRetailEnemyKill(
     std::int32_t experience_reward,
     std::int32_t local_player_slot,
     std::int32_t main_hand_subtype,
-    const TableDatabase& tables);
+    const TableDatabase& tables,
+    bool companion_alive = false);
 
 std::vector<EnemyDeathDrop> createRetailEnemyDrops(
     std::int32_t loot_table_row,

@@ -72,7 +72,13 @@ public:
     std::int32_t baseMaximumMana() const;
     std::int32_t currentMana() const;
     void setCurrentLife(std::int32_t value);
+    void setCurrentLife(
+        std::int32_t value,
+        std::int32_t maximum_life);
     void setCurrentMana(std::int32_t value);
+    void setCurrentMana(
+        std::int32_t value,
+        std::int32_t maximum_mana);
     void restoreForRespawn();
     bool restoreLife(
         std::int32_t amount,
@@ -82,13 +88,25 @@ public:
         std::int32_t maximum_percent);
     std::int32_t initialParameter(std::size_t row) const;
     std::int32_t companionType() const;
+    std::int32_t companionLevel() const;
+    std::int32_t companionExperience() const;
+    std::int32_t companionRespawnCounter() const;
+    void setCompanionRespawnCounter(std::int32_t value);
+    void awardCompanionKillExperience(
+        std::int32_t source_character_number,
+        std::int32_t local_player_slot,
+        bool companion_alive);
+    bool applyCompanionLevelThreshold(
+        const TableDatabase& tables);
     std::int32_t baseAttackSpeed() const;
     std::int32_t baseWeightCapacity() const;
     std::int32_t basePhysicalAttack() const;
     std::int32_t basePhysicalDefense() const;
+    std::int32_t baseMagicalAttack() const;
     std::int32_t baseMagicalDefense() const;
     std::int32_t baseHitRate() const;
     std::int32_t baseEvasionRate() const;
+    std::int32_t baseMagicalHitRate() const;
     std::int32_t baseMagicalEvasionRate() const;
     std::int32_t elementX() const;
     std::int32_t elementY() const;

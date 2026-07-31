@@ -142,6 +142,24 @@ GameplayStateHooks makeGameplayStateHooks(
             assets.releasePattern(7);
             return false;
         }
+        if (!assets.loadPattern(
+                9, "System\\Game\\Pattern\\MagicIcon.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            assets.releasePattern(8);
+            return false;
+        }
+        if (!assets.loadPattern(
+                10,
+                "System\\Game\\Pattern\\MagicBarIcon.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            assets.releasePattern(8);
+            assets.releasePattern(9);
+            return false;
+        }
         return true;
     };
     hooks.release_interface = [&assets] {
@@ -149,6 +167,8 @@ GameplayStateHooks makeGameplayStateHooks(
         assets.releasePattern(6);
         assets.releasePattern(7);
         assets.releasePattern(8);
+        assets.releasePattern(9);
+        assets.releasePattern(10);
     };
     hooks.prepare_world =
         [&data_root, &player, &world] {
@@ -208,6 +228,10 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.command_world_interaction =
         [&world](std::int32_t x, std::int32_t y) {
             return world.commandWorldInteraction(x, y);
+        };
+    hooks.command_player_magic =
+        [&world](std::int32_t x, std::int32_t y) {
+            return world.commandPlayerMagic(x, y);
         };
     hooks.world_interaction_pending = [&world] {
         return world.interactionPending();

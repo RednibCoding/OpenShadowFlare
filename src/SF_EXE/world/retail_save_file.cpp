@@ -1,7 +1,9 @@
 #include "retail_save_file.hpp"
 
 #include "player_data.hpp"
+#include "player_magic.hpp"
 #include "retail_save_items.hpp"
+#include "retail_save_magic.hpp"
 #include "retail_save_progress.hpp"
 #include "items/player_special_items.hpp"
 
@@ -243,6 +245,7 @@ bool writeRetailSaveImpl(
     const PlayerBelt* belt,
     const PlayerSpecialItems* special_items,
     const RetailSaveProgress* progress,
+    const PlayerMagic* magic,
     std::uint8_t xor_key,
     std::string* error) {
     if (!player.valid()) {
@@ -300,12 +303,24 @@ bool writeRetailSaveImpl(
              error))) {
         return false;
     }
+    std::size_t progress_end = owned_items_end;
     if (progress &&
         (!item_database ||
          !replaceRetailProgress(
              payload,
              owned_items_end,
              *progress,
+             &progress_end,
+             error))) {
+        return false;
+    }
+    if (magic &&
+        (!progress ||
+         !replaceRetailMagic(
+             payload,
+             progress_end,
+             *magic,
+             nullptr,
              error))) {
         return false;
     }
@@ -390,6 +405,7 @@ bool writeRetailSave(
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
         xor_key,
         error);
 }
@@ -412,6 +428,7 @@ bool writeRetailSave(
         &equipment,
         &belt,
         &special_items,
+        nullptr,
         nullptr,
         xor_key,
         error);
@@ -437,6 +454,33 @@ bool writeRetailSave(
         &belt,
         &special_items,
         &progress,
+        nullptr,
+        xor_key,
+        error);
+}
+
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    const ItemDatabase& item_database,
+    const PlayerInventory& inventory,
+    const PlayerEquipment& equipment,
+    const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
+    const RetailSaveProgress& progress,
+    const PlayerMagic& magic,
+    std::uint8_t xor_key,
+    std::string* error) {
+    return writeRetailSaveImpl(
+        path,
+        player,
+        &item_database,
+        &inventory,
+        &equipment,
+        &belt,
+        &special_items,
+        &progress,
+        &magic,
         xor_key,
         error);
 }

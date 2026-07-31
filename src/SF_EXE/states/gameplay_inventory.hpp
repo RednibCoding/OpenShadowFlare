@@ -19,6 +19,7 @@ struct GameplayInventoryInput {
     std::int32_t pointer_y = 0;
     bool special_toggle_pressed = false;
     bool pointer_secondary_pressed = false;
+    bool identification_active = false;
 };
 
 struct GameplayInventoryResult {
@@ -27,6 +28,8 @@ struct GameplayInventoryResult {
     bool equipment_changed = false;
     std::int32_t inventory_item_use_requested = -1;
     std::int32_t belt_pocket_use_requested = -1;
+    std::int32_t inventory_item_identify_requested = -1;
+    bool cancel_identification_requested = false;
     std::int32_t world_drop_screen_x = 0;
     std::int32_t world_drop_screen_y = 0;
     std::int32_t item_sound_sample = -1;

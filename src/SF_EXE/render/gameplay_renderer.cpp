@@ -32,12 +32,54 @@ struct WorldDrawEntry {
     const CombatEffectActor* effect = nullptr;
     const RuntimeEffectActor* runtime_effect = nullptr;
     const MissEffectActor* miss_effect = nullptr;
+    const CompanionActor* companion = nullptr;
+    bool companion_moon_aura = false;
 };
 
 ScreenPosition toScreen(
     std::int32_t world_x,
     std::int32_t world_y) {
     return calculateRealPosition({world_x, world_y});
+}
+
+void renderPlayerPowerupPass(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const EffectVisualResource* visual,
+    bool active,
+    std::int32_t frame,
+    CharacterColorStrength color,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    if (!active || !visual ||
+        visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world.playerRenderPosition(interpolation),
+        0,
+        8,
+        frame % direction.frame_count,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [color](std::size_t) {
+            return color;
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
 }
 
 void renderPlayerPass(
@@ -74,6 +116,38 @@ void renderPlayerPass(
         camera_y,
         shadow,
         shadow_opacity);
+    if (!shadow) {
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerBerserkerVisual(),
+            world.playerBerserkerActive(),
+            world.playerBerserkerFrame(),
+            {1000, 200, 200},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerEnergyShieldVisual(),
+            world.playerEnergyShieldActive(),
+            world.playerEnergyShieldFrame(),
+            {1000, 1000, 300},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerMagicShieldVisual(),
+            world.playerMagicShieldActive(),
+            world.playerMagicShieldFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+    }
 }
 
 void renderNpcPass(
@@ -110,6 +184,81 @@ void renderNpcPass(
         camera_y,
         shadow,
         shadow_opacity);
+}
+
+void renderCompanionPass(
+    gapi::Backend& renderer,
+    const CompanionActor& companion,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity,
+    double interpolation) {
+    renderCharacterAnimationPass(
+        renderer,
+        companion.animation(),
+        companion.patterns(),
+        companion.shadowPatterns(),
+        companion.renderPosition(interpolation),
+        companion.animationChart(),
+        companion.animationDirection(),
+        companion.animationFrame(),
+        [&companion](std::size_t part) {
+            return companion.partEnabled(part);
+        },
+        [&companion](std::size_t part) {
+            return CharacterColorStrength{
+                companion.partRedStrength(part),
+                companion.partGreenStrength(part),
+                companion.partBlueStrength(part),
+            };
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity,
+        0,
+        companion.drawOpacity());
+}
+
+void renderCompanionMoonAura(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    const EffectVisualResource* visual =
+        world.companionMoonAuraVisual();
+    if (!visual || visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    const std::int32_t frame =
+        world.companionMoonAuraFrame() %
+        direction.frame_count;
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world.companion().renderPosition(interpolation),
+        0,
+        8,
+        frame,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
 }
 
 void renderEnemyPass(
@@ -484,6 +633,30 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
         });
     }
+    if (world.hasCompanion() &&
+        world.companion().visible()) {
+        WorldDrawEntry entry;
+        entry.companion = &world.companion();
+        entry.order = {
+            entries.size(),
+            world.companion().renderPosition(interpolation),
+            world.companion().judgement(),
+            0,
+        };
+        entries.push_back(entry);
+    }
+    if (!shadow && world.companionMoonAuraVisible() &&
+        world.companionMoonAuraVisual()) {
+        WorldDrawEntry entry;
+        entry.companion_moon_aura = true;
+        entry.order = {
+            entries.size(),
+            world.companion().renderPosition(interpolation),
+            {1, 1, 1, 1},
+            0,
+        };
+        entries.push_back(entry);
+    }
     for (const NpcActor& npc : world.npcs()) {
         if (!npc.visible()) {
             continue;
@@ -756,6 +929,15 @@ void drawWorldEntry(
             shadow,
             shadow_opacity,
             interpolation);
+    } else if (entry.companion) {
+        renderCompanionPass(
+            renderer,
+            *entry.companion,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity,
+            interpolation);
     } else if (entry.npc) {
         renderNpcPass(
             renderer,
@@ -806,6 +988,13 @@ void drawWorldEntry(
             *entry.miss_effect,
             camera_x,
             camera_y);
+    } else if (entry.companion_moon_aura) {
+        renderCompanionMoonAura(
+            renderer,
+            world,
+            camera_x,
+            camera_y,
+            interpolation);
     }
 }
 

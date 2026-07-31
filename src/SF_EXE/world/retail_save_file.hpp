@@ -13,6 +13,7 @@ class PlayerBelt;
 class PlayerData;
 class PlayerEquipment;
 class PlayerInventory;
+class PlayerMagic;
 class PlayerSpecialItems;
 struct RetailSaveProgress;
 
@@ -45,6 +46,18 @@ bool writeRetailSave(
     const PlayerBelt& belt,
     const PlayerSpecialItems& special_items,
     const RetailSaveProgress& progress,
+    std::uint8_t xor_key,
+    std::string* error = nullptr);
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    const ItemDatabase& item_database,
+    const PlayerInventory& inventory,
+    const PlayerEquipment& equipment,
+    const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
+    const RetailSaveProgress& progress,
+    const PlayerMagic& magic,
     std::uint8_t xor_key,
     std::string* error = nullptr);
 
