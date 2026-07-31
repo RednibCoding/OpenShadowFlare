@@ -23,18 +23,20 @@ bool check(bool condition, const char* message) {
 
 bool testRetailAction(
     const osf::gapi::CafAnimation& animation,
-    const osf::TableDatabase& tables) {
+    const osf::TableDatabase& tables,
+    std::int32_t spell,
+    osf::PlayerSpellAction spell_action) {
     osf::PlayerSpellAnimationTiming timing;
     if (!check(
             osf::buildPlayerSpellAnimationTiming(
                 animation,
-                osf::PlayerSpellAction::fire_ball,
+                spell_action,
                 0,
                 timing) &&
                 timing.first_chart == 13 &&
                 timing.recovery_chart == 14 &&
                 timing.first_frame_count > 0,
-            "The retail Fire Ball CAF charts could not be decoded.")) {
+            "The retail targeted-spell CAF charts could not be decoded.")) {
         return false;
     }
 
@@ -49,22 +51,30 @@ bool testRetailAction(
     }
     const double speed =
         osf::retailPlayerSpellAnimationSpeed(
-            1, 5, tables.find(20));
+            spell, 5, tables.find(20));
+    const osf::TableData* speed_table = tables.find(20);
+    const double expected_speed =
+        speed_table && speed_table->contains(spell, 0)
+            ? static_cast<double>(
+                  speed_table->value(spell, 0)) *
+                  1.3 * 0.001
+            : 0.0;
     osf::PlayerSpellActionController action;
     osf::PlayerSpellActionEvent event;
     if (!check(
             marker >= 0 &&
-                std::abs(speed - 1.3) < 0.000001 &&
+                std::abs(speed - expected_speed) < 0.000001 &&
                 action.start(
-                    osf::PlayerSpellAction::fire_ball,
-                    1,
+                    spell_action,
+                    spell,
                     14000316,
                     5,
                     tables.find(20),
                     timing,
                     &event) &&
                 event.cast_due &&
-                event.spell == 1 &&
+                event.action == spell_action &&
+                event.spell == spell &&
                 event.target_character_number == 14000316 &&
                 event.effect_delay ==
                     static_cast<std::int32_t>(
@@ -73,7 +83,7 @@ bool testRetailAction(
                             speed)) &&
                 action.animationChart() == 13 &&
                 action.animationFrame() == 0,
-            "Fire Ball did not enter action 23 with the retail "
+            "The targeted spell did not enter its action with the retail "
             "speed or effect delay.")) {
         return false;
     }
@@ -108,12 +118,17 @@ bool testRetailAction(
             !action.active() &&
             action.animationChart() == 14 &&
             action.animationFrame() == 0,
-        "Action 23 did not preserve the retail counter and "
+        "The spell action did not preserve the retail counter and "
         "chart-fourteen completion behavior.");
 }
 
-bool testRetailPacket(const osf::TableDatabase& tables) {
-    osf::PlayerFireBallCastInput input;
+bool testRetailPacket(
+    const osf::TableDatabase& tables,
+    std::int32_t spell,
+    std::int32_t effect_number,
+    std::int32_t packet_subtype,
+    std::int32_t impact_effect) {
+    osf::PlayerTargetedSpellCastInput input;
     input.stats.source_character_number = 0;
     input.stats.player_level = 7;
     input.stats.magical_attack = 12;
@@ -136,19 +151,27 @@ bool testRetailPacket(const osf::TableDatabase& tables) {
     input.effect_delay = 5;
 
     const osf::CombatEffectSpawnRequest request =
-        osf::buildPlayerFireBallCast(input, tables);
-    return check(
+        osf::buildPlayerTargetedSpellCast(
+            spell, input, tables);
+    const osf::TableData* hit_table = tables.find(18);
+    const std::int32_t expected_hit =
+        hit_table && hit_table->contains(spell, 0)
+            ? hit_table->value(spell, 0)
+            : -1;
+    const bool passed =
         request.valid &&
-            request.effect_number == 10001 &&
+            request.effect_number == effect_number &&
             request.owner_kind == 1 &&
             request.source_character_number == 0 &&
             request.target_kind == 0x14 &&
             request.target_identifier == 14000316 &&
-            request.constructor_value_6 == 91 &&
+            request.constructor_value_6 ==
+                tables.find(35)->value(spell, 0) &&
             request.constructor_value_7 == 200 &&
             request.constructor_value_12 == 5 &&
             request.constructor_value_17 == 0 &&
-            request.constructor_value_22 == 0 &&
+            request.constructor_value_22 ==
+                tables.find(21)->value(spell, 0) &&
             std::abs(request.direction_radians) < 0.000001 &&
             request.has_source_judgement &&
             request.source_judgement.left == -80 &&
@@ -156,34 +179,104 @@ bool testRetailPacket(const osf::TableDatabase& tables) {
             request.packet[0] == 0 &&
             request.packet[1] == 3 &&
             request.packet[2] == 0 &&
-            request.packet[3] == 0 &&
-            request.packet[4] == 52 &&
+            request.packet[3] == packet_subtype &&
+            request.packet[4] ==
+                input.parameters.effect_value + 12 &&
             request.packet[5] == 13 &&
             request.packet[6] == 1 &&
             request.packet[13] == 8 &&
             request.packet[14] == 100 &&
             request.packet[30] == 116 &&
             request.packet[31] == 7 &&
-            request.packet[32] == 0 &&
-            request.packet[34] == 20000 &&
+            request.packet[32] ==
+                tables.find(19)->value(spell, 0) &&
+            request.packet[34] == impact_effect &&
             request.packet[35] == 8 &&
-            request.packet[36] == 74 &&
-            request.packet[45] == 1 &&
-            request.packet[54] == 10 &&
-            request.packet[63] == 1 &&
+            request.packet[36] ==
+                expected_hit + 14 &&
+            request.packet[45] ==
+                tables.find(70)->value(spell, 2) &&
+            request.packet[54] ==
+                tables.find(70)->value(spell, 0) &&
+            request.packet[63] ==
+                tables.find(70)->value(spell, 1) &&
             request.packet[72] == 0 &&
-            request.packet[73] == 1 &&
+            request.packet[73] == spell &&
             request.packet[74] == -1 &&
             request.packet[75] == 8 &&
-            request.packet[76] == 0,
-        "The family-zero Fire Ball packet or controller arguments "
-        "differ from FUN_00439730.");
+            request.packet[76] == 0;
+    if (!passed) {
+        std::cerr
+            << "spell=" << spell
+            << " meta="
+            << request.valid
+            << ',' << request.owner_kind
+            << ',' << request.source_character_number
+            << ',' << request.target_kind
+            << ',' << request.target_identifier
+            << " effect=" << request.effect_number
+            << " c6=" << request.constructor_value_6
+            << '/'
+            << tables.find(35)->value(spell, 0)
+            << " c7=" << request.constructor_value_7
+            << " c12=" << request.constructor_value_12
+            << " c17=" << request.constructor_value_17
+            << " c22=" << request.constructor_value_22
+            << '/'
+            << tables.find(21)->value(spell, 0)
+            << " dir=" << request.direction_radians
+            << " judgement="
+            << request.has_source_judgement
+            << ',' << request.source_judgement.left
+            << " has-packet=" << request.has_packet
+            << " head=" << request.packet[0]
+            << ',' << request.packet[1]
+            << ',' << request.packet[2]
+            << " p3=" << request.packet[3]
+            << " p4=" << request.packet[4]
+            << '/'
+            << input.parameters.effect_value + 12
+            << " p5=" << request.packet[5]
+            << " p6=" << request.packet[6]
+            << " p13=" << request.packet[13]
+            << " p14=" << request.packet[14]
+            << " p30=" << request.packet[30]
+            << " p31=" << request.packet[31]
+            << " p32=" << request.packet[32]
+            << '/'
+            << tables.find(19)->value(spell, 0)
+            << " p34=" << request.packet[34]
+            << " p36=" << request.packet[36]
+            << '/' << expected_hit + 14
+            << " p45=" << request.packet[45]
+            << '/'
+            << tables.find(70)->value(spell, 2)
+            << " p54=" << request.packet[54]
+            << '/'
+            << tables.find(70)->value(spell, 0)
+            << " p63=" << request.packet[63]
+            << '/'
+            << tables.find(70)->value(spell, 1)
+            << " p73=" << request.packet[73]
+            << " tail=" << request.packet[72]
+            << ',' << request.packet[74]
+            << ',' << request.packet[75]
+            << ',' << request.packet[76]
+            << '\n';
+    }
+    return check(
+        passed,
+        "The family-zero targeted-spell packet or controller arguments "
+        "differ from its retail action.");
 }
 
 bool testShippedWorldCast(
-    const std::filesystem::path& game_root) {
+    const std::filesystem::path& game_root,
+    std::int32_t spell,
+    std::int32_t projectile_resource,
+    std::int32_t launch_sample) {
     osf::PlayerLoadRequest player;
-    player.name = "FireBallLive";
+    player.name = "SpellLive";
     osf::WorldScene world;
     std::string error;
     if (!check(
@@ -192,7 +285,7 @@ bool testShippedWorldCast(
                 player,
                 {3000507, 3, 0},
                 &error),
-            "The shipped Fire Ball scenario could not be loaded.")) {
+            "The shipped spell scenario could not be loaded.")) {
         std::cerr << error << '\n';
         return false;
     }
@@ -202,11 +295,12 @@ bool testShippedWorldCast(
     magic_state.levels.fill(1);
     magic_state.experience.fill(0);
     magic_state.bar_slots.fill(-1);
-    magic_state.availability[1] = 3;
+    magic_state.availability[
+        static_cast<std::size_t>(spell)] = 3;
     world.playerMagic().restore(magic_state);
     if (!check(
-            world.playerMagic().selectSpell(1),
-            "The live Fire Ball fixture could not select the spell.")) {
+            world.playerMagic().selectSpell(spell),
+            "The live targeted-spell fixture could not select the spell.")) {
         return false;
     }
 
@@ -249,7 +343,7 @@ bool testShippedWorldCast(
     if (!check(
             target && pointer_x >= 0 && pointer_y >= 0,
             "No shipped on-screen enemy could be picked for "
-            "Fire Ball.")) {
+            "the targeted spell.")) {
         return false;
     }
 
@@ -268,7 +362,7 @@ bool testShippedWorldCast(
     const osf::PlayerSpellParameters parameters =
         osf::playerSpellParameters(
             world.playerMagic(),
-            1,
+            spell,
             world.playerEquipment(),
             world.itemDatabase(),
             world.parameterTables());
@@ -283,8 +377,8 @@ bool testShippedWorldCast(
                 world.playerData().currentMana() ==
                     mana_before - parameters.mana_cost &&
                 world.runtimeEffectControllerCount() == 1,
-            "The shipped right-click did not enter action 23, "
-            "deduct MP, and queue effect 10001.")) {
+            "The shipped right-click did not enter the retail spell "
+            "action, deduct MP, and queue its effect.")) {
         return false;
     }
 
@@ -299,15 +393,20 @@ bool testShippedWorldCast(
             world.takeAudioSamples();
         saw_launch_audio =
             saw_launch_audio ||
-            std::find(audio.begin(), audio.end(), 19) !=
+            std::find(
+                audio.begin(),
+                audio.end(),
+                launch_sample) !=
                 audio.end();
         saw_projectile =
             saw_projectile ||
             std::any_of(
                 world.runtimeEffects().begin(),
                 world.runtimeEffects().end(),
-                [](const osf::RuntimeEffectActor& actor) {
-                    return actor.resourceId() == 10000010;
+                [projectile_resource](
+                    const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() ==
+                        projectile_resource;
                 });
         const auto found = std::find_if(
             world.enemies().begin(),
@@ -334,7 +433,7 @@ bool testShippedWorldCast(
         if (current_target == world.enemies().end()) {
             applied_damage = true;
         } else {
-            osf::PlayerFireBallCastInput contact_input;
+            osf::PlayerTargetedSpellCastInput contact_input;
             contact_input.stats.source_character_number = 0;
             contact_input.stats.player_level = 1;
             contact_input.stats.magical_attack = 10;
@@ -349,7 +448,8 @@ bool testShippedWorldCast(
             contact_input.target_position =
                 current_target->position();
             osf::CombatEffectSpawnRequest contact =
-                osf::buildPlayerFireBallCast(
+                osf::buildPlayerTargetedSpellCast(
+                    spell,
                     contact_input,
                     world.parameterTables());
             // Keep this receiver regression deterministic: the controller
@@ -387,7 +487,7 @@ bool testShippedWorldCast(
         saw_projectile &&
         saw_launch_audio &&
         applied_damage &&
-        world.playerMagic().experience(1) == 1;
+        world.playerMagic().experience(spell) == 1;
     if (!passed) {
         std::cerr
             << "target=" << target_character_number
@@ -400,7 +500,7 @@ bool testShippedWorldCast(
             << " audio=" << saw_launch_audio
             << " damage=" << applied_damage
             << " practice="
-            << world.playerMagic().experience(1)
+            << world.playerMagic().experience(spell)
             << " controllers="
             << world.runtimeEffectControllerCount()
             << " actors=" << world.runtimeEffects().size()
@@ -408,7 +508,7 @@ bool testShippedWorldCast(
     }
     return check(
         passed,
-        "The shipped Fire Ball projectile did not render, sound, "
+        "The shipped targeted spell did not render, sound, "
         "damage, and award one practice point.");
 }
 
@@ -439,9 +539,30 @@ int main() {
         std::cerr << error << '\n';
         return 1;
     }
-    if (!testRetailAction(animation, tables) ||
-        !testRetailPacket(tables) ||
-        !testShippedWorldCast(game_root)) {
+    if (!testRetailAction(
+            animation,
+            tables,
+            1,
+            osf::PlayerSpellAction::fire_ball) ||
+        !testRetailPacket(
+            tables, 1, 10001, 0, 20000) ||
+        !testShippedWorldCast(
+            game_root,
+            1,
+            10000010,
+            19) ||
+        !testRetailAction(
+            animation,
+            tables,
+            2,
+            osf::PlayerSpellAction::ice_bolt) ||
+        !testRetailPacket(
+            tables, 2, 10002, 1, 21013) ||
+        !testShippedWorldCast(
+            game_root,
+            2,
+            10000040,
+            94)) {
         return 1;
     }
 #endif

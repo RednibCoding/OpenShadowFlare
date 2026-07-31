@@ -1839,3 +1839,27 @@ seven through nine in ordinary mode, adds one experience point, and compares
 against Table 27. Reaching the threshold subtracts it and raises the stored
 level once. Consequently a cancelled or missed Fire Ball does not gain
 practice, while a successful projectile contact does.
+
+## Ice Bolt and the targeted-spell boundary
+
+Ice Bolt proves which parts of Fire Ball are common and which remain authored
+spell data. `0x00449a40` gives spell two action 24 after the same learned,
+pointed-enemy, and mana checks. `0x0043ae10` uses CAF charts 13 and 14 and the
+same ten speed-tier factors, but it reads Table 20 row two and builds effect
+10002 rather than effect 10001.
+
+Its family-zero packet carries subtype one in word 3, presentation 21013 in
+word 34, and spell two in word 73. All level-dependent damage, hit, type,
+movement, and element-bank values are read using row two. The controller
+arguments otherwise preserve the pointed target, source judgement, 200
+display height, Table 35 travel speed, marker-derived delay, and Table 21
+target-memory value.
+
+Effect 10002 creates source resource 11000027 on update zero. At the delayed
+marker it resolves the hero again, projects the launch point 180 world units
+along the stored angle, and creates resource 10000040 with
+`[-50,-50,50,50]` collision bounds, Table 35 travel speed, environment and
+first-target expiry, and the copied packet. Sample 94 plays at launch and
+sample 20 at contact. The portable targeted-spell builder now selects these
+retail descriptors while the already shared effect owner retains projectile
+timing, movement, audio, and collision.

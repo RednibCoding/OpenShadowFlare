@@ -132,6 +132,17 @@ reaches a target, not when the button is pressed, so a miss does not train the
 spell. Table 27 supplies the next-level threshold, the cap is level 20, and
 only one spell level may be gained from one contact.
 
+### Ice Bolt
+
+Ice Bolt uses the same pointed-enemy command and chart-13/chart-14 player
+casting shell as Fire Ball, but its authored payload is separate. It enters
+action 24, reads Table 20 row two, creates effect 10002, marks packet subtype
+one, and requests impact presentation 21013. After the CAF marker delay,
+effect 10002 places resource 10000040 180 world units in front of the hero,
+launches it with 50-unit collision bounds, and plays sample 94. Impact still
+uses sample 20 and awards Ice Bolt practice only when its packet reaches an
+enemy.
+
 ## Character Stats
 
 ### Primary Stats

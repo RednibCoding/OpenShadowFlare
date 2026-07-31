@@ -10,10 +10,29 @@
 namespace osf {
 namespace {
 
-constexpr std::int32_t kFireBallSpell = 1;
-constexpr std::int32_t kFireBallEffect = 10001;
 constexpr std::int32_t kPlayerOwnerKind = 1;
 constexpr std::int32_t kEnemyAndObjectTargetMask = 0x14;
+
+struct TargetedSpellDescriptor {
+    std::int32_t effect_number = -1;
+    std::int32_t packet_subtype = 0;
+    std::int32_t impact_effect = -1;
+};
+
+bool targetedSpellDescriptor(
+    std::int32_t spell,
+    TargetedSpellDescriptor& descriptor) {
+    switch (spell) {
+    case 1:
+        descriptor = {10001, 0, 20000};
+        return true;
+    case 2:
+        descriptor = {10002, 1, 21013};
+        return true;
+    default:
+        return false;
+    }
+}
 
 std::int32_t tableValue(
     const TableDatabase& tables,
@@ -28,18 +47,21 @@ std::int32_t tableValue(
 
 }  // namespace
 
-CombatEffectSpawnRequest buildPlayerFireBallCast(
-    const PlayerFireBallCastInput& input,
+CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
+    std::int32_t spell,
+    const PlayerTargetedSpellCastInput& input,
     const TableDatabase& tables) {
     CombatEffectSpawnRequest request;
+    TargetedSpellDescriptor descriptor;
     if (input.stats.source_character_number < 0 ||
         input.target_character_number < 0 ||
-        input.parameters.effective_level < 1) {
+        input.parameters.effective_level < 1 ||
+        !targetedSpellDescriptor(spell, descriptor)) {
         return request;
     }
 
     request.valid = true;
-    request.effect_number = kFireBallEffect;
+    request.effect_number = descriptor.effect_number;
     request.owner_kind = kPlayerOwnerKind;
     request.source_character_number =
         input.stats.source_character_number;
@@ -49,7 +71,7 @@ CombatEffectSpawnRequest buildPlayerFireBallCast(
     request.constructor_value_6 =
         retailEffectParameter(
             tables,
-            kFireBallSpell,
+            spell,
             input.parameters.effective_level,
             3);
     request.constructor_value_7 = 200;
@@ -76,7 +98,7 @@ CombatEffectSpawnRequest buildPlayerFireBallCast(
     request.constructor_value_22 =
         retailEffectParameter(
             tables,
-            kFireBallSpell,
+            spell,
             input.parameters.effective_level,
             4);
 
@@ -85,7 +107,7 @@ CombatEffectSpawnRequest buildPlayerFireBallCast(
     packet.write(1, 3);
     packet.write(
         2, input.stats.source_character_number);
-    packet.write(3, 0);
+    packet.write(3, descriptor.packet_subtype);
     packet.write(
         4,
         input.parameters.effect_value +
@@ -112,17 +134,17 @@ CombatEffectSpawnRequest buildPlayerFireBallCast(
     const std::int32_t type_value =
         retailEffectParameter(
             tables,
-            kFireBallSpell,
+            spell,
             input.parameters.effective_level,
             5);
     packet.write(32, type_value);
-    packet.write(34, 20000);
+    packet.write(34, descriptor.impact_effect);
     packet.write(35, 8);
     packet.write(
         36,
         retailEffectParameter(
             tables,
-            kFireBallSpell,
+            spell,
             input.parameters.effective_level,
             1) +
             input.stats.magical_hit_rate);
@@ -147,25 +169,25 @@ CombatEffectSpawnRequest buildPlayerFireBallCast(
             tableValue(
                 tables,
                 table_number,
-                kFireBallSpell,
+                spell,
                 first_column));
         packet.write(
             63 + table_index,
             tableValue(
                 tables,
                 table_number,
-                kFireBallSpell,
+                spell,
                 first_column + 1));
         packet.write(
             45 + table_index,
             tableValue(
                 tables,
                 table_number,
-                kFireBallSpell,
+                spell,
                 first_column + 2));
     }
     packet.write(72, 0);
-    packet.write(73, kFireBallSpell);
+    packet.write(73, spell);
     packet.write(74, -1);
     packet.write(75, 8);
     packet.write(76, 0);

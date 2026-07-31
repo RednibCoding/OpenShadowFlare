@@ -14,6 +14,7 @@ class CafAnimation;
 
 enum class PlayerSpellAction : std::int32_t {
     fire_ball = 23,
+    ice_bolt = 24,
 };
 
 struct PlayerSpellAnimationTiming {
@@ -37,6 +38,10 @@ bool buildPlayerSpellAnimationTiming(
     PlayerSpellAction action,
     std::int32_t direction,
     PlayerSpellAnimationTiming& timing);
+
+bool playerSpellActionForSpell(
+    std::int32_t spell,
+    PlayerSpellAction& action);
 
 double retailPlayerSpellAnimationSpeed(
     std::int32_t spell,

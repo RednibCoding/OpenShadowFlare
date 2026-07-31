@@ -26,7 +26,6 @@ namespace {
 
 constexpr std::int32_t kRetailInteractionDistance = 0x9f;
 constexpr std::int32_t kRetailHeightScale = 20;
-constexpr std::int32_t kFireBallSpell = 1;
 
 }  // namespace
 
@@ -157,10 +156,14 @@ bool WorldScene::commandPlayerMagic(
     std::int32_t screen_y) {
     if (!has_player_ ||
         player_.actionLocked() ||
-        scenario_script_.messageActive() ||
-        player_magic_.selectedSpell() !=
-            kFireBallSpell ||
-        !player_magic_.learned(kFireBallSpell)) {
+        scenario_script_.messageActive()) {
+        return false;
+    }
+    const std::int32_t spell =
+        player_magic_.selectedSpell();
+    PlayerSpellAction action;
+    if (!player_magic_.learned(spell) ||
+        !playerSpellActionForSpell(spell, action)) {
         return false;
     }
 
@@ -181,14 +184,14 @@ bool WorldScene::commandPlayerMagic(
 
     // The selected target consumes the secondary click even when there is
     // not enough MP. FUN_00449a40 clears the retail pointer selection on
-    // that path without entering action 23.
+    // that path without entering the spell's player action.
     pointer_.clearSelection();
     pending_interaction_ = {};
     player_attack_target_.cancel();
     const PlayerSpellParameters parameters =
         playerSpellParameters(
             player_magic_,
-            kFireBallSpell,
+            spell,
             player_equipment_,
             item_database_,
             parameter_tables_);
@@ -200,8 +203,8 @@ bool WorldScene::commandPlayerMagic(
     player_.cancelMovement();
     player_.faceToward(enemy->position());
     if (!player_.beginSpellCast(
-            PlayerSpellAction::fire_ball,
-            kFireBallSpell,
+            action,
+            spell,
             enemy->characterNumber(),
             playerAttackSpeedTier(),
             parameter_tables_.find(20),
@@ -968,7 +971,7 @@ bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
 void WorldScene::handlePlayerSpellEvent(
     const PlayerSpellActionEvent& event) {
     if (!event.cast_due ||
-        event.spell != kFireBallSpell) {
+        event.spell < 0) {
         return;
     }
     const EnemyActor* target =
@@ -1020,12 +1023,13 @@ void WorldScene::handlePlayerSpellEvent(
         player_data_.combatPacketStateWords();
 
     const CombatEffectSpawnRequest request =
-        buildPlayerFireBallCast(
+        buildPlayerTargetedSpellCast(
+            event.spell,
             {
                 stats,
                 playerSpellParameters(
                     player_magic_,
-                    kFireBallSpell,
+                    event.spell,
                     player_equipment_,
                     item_database_,
                     parameter_tables_),

@@ -21,7 +21,7 @@ struct PlayerSpellCastStats {
     std::array<std::int32_t, 17> state_words{};
 };
 
-struct PlayerFireBallCastInput {
+struct PlayerTargetedSpellCastInput {
     PlayerSpellCastStats stats;
     PlayerSpellParameters parameters;
     std::int32_t target_character_number = -1;
@@ -31,8 +31,9 @@ struct PlayerFireBallCastInput {
     std::int32_t effect_delay = 0;
 };
 
-CombatEffectSpawnRequest buildPlayerFireBallCast(
-    const PlayerFireBallCastInput& input,
+CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
+    std::int32_t spell,
+    const PlayerTargetedSpellCastInput& input,
     const TableDatabase& tables);
 
 }  // namespace osf

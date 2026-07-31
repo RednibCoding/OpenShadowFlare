@@ -145,11 +145,17 @@ collision, and impact. A successful packet contact awards one practice point;
 misses and cancelled casts do not train the spell. The saved magic block
 already preserves the resulting level and experience.
 
-The next slice should generalize the proven cast path for the remaining
-single-target projectile spells. Ice Bolt is the next useful checkpoint
-because its action and packet path can reuse the new boundaries while its
-authored effect data, timing, and impact behavior must still be established
-from retail rather than inferred from Fire Ball.
+The targeted cast path now supports Ice Bolt too. It reuses the command and
+action boundaries without pretending the spells are identical: action 24
+uses Table 20 row two, effect 10002, packet subtype one, impact presentation
+21013, resource 10000040, and launch sample 94. Both spells share only the
+parts retail actually shares, and both have live shipped-world coverage from
+selection through contact-time practice.
+
+Plasma is the next checkpoint. Its action 25 leads into effect 10003's
+multi-wave area owner, so it will prove that target placement, obstruction,
+randomized wave visuals, repeated area contacts, audio, and practice remain
+outside the common player casting shell.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1272,8 +1278,9 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
   are complete;
 - one faithful Fire Ball cast from selection through impact and spell
   training is complete;
-- the next checkpoint is Ice Bolt and the reusable single-target projectile
-  spell dispatch it proves;
+- Fire Ball and Ice Bolt prove the reusable single-target projectile spell
+  dispatch;
+- the next checkpoint is Plasma and its multi-wave area-effect path;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

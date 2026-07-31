@@ -1444,3 +1444,20 @@ reaches an enemy. Practice therefore occurs on contact rather than cast.
 `FUN_0044f6f0` adds one point, uses Table 27 for the threshold, raises at most
 one level, caps at level 20, and keeps companion-only spells seven through
 nine out of the ordinary path.
+
+## Ice Bolt cast
+
+`FUN_0043ae10` is spell two's action 24 dispatcher. It shares CAF charts 13
+and 14 and the ten casting-speed factors with Fire Ball, but reads Table 20
+row two. Its effect-10002 packet sets word 3 to subtype one, word 34 to
+presentation 21013, and word 73 to spell two; every table-backed value uses
+row two.
+
+Effect controller 10002 creates source resource 11000027 immediately. At the
+marker-derived delay it re-resolves the hero, projects 180 world units along
+the target angle, and launches resource 10000040 with 50-unit bounds, sample
+94, environment and first-target expiry, and the copied packet. Contact uses
+sample 20 and enters the same receiver-time practice path as Fire Ball.
+Portable player input, action timing, packet construction, effect dispatch,
+audio, damage, and practice are covered together in a shipped-world
+regression.

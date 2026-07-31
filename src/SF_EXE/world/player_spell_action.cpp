@@ -36,6 +36,7 @@ struct SpellCharts {
 SpellCharts chartsForAction(PlayerSpellAction action) {
     switch (action) {
     case PlayerSpellAction::fire_ball:
+    case PlayerSpellAction::ice_bolt:
         return {13, 14};
     }
     return {};
@@ -55,6 +56,21 @@ std::int32_t firstEffectFrame(
 }
 
 }  // namespace
+
+bool playerSpellActionForSpell(
+    std::int32_t spell,
+    PlayerSpellAction& action) {
+    switch (spell) {
+    case 1:
+        action = PlayerSpellAction::fire_ball;
+        return true;
+    case 2:
+        action = PlayerSpellAction::ice_bolt;
+        return true;
+    default:
+        return false;
+    }
+}
 
 bool buildPlayerSpellAnimationTiming(
     const gapi::CafAnimation& animation,
