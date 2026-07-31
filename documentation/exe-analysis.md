@@ -1361,12 +1361,13 @@ uses chart one's frame count as its lifetime.
 That delayed update also plays positional samples 29 and 23 and creates an
 invisible one-update actor. Its judgement expands every source edge by 150,
 its collision window is update zero only, and it passes the copied packet to
-every eligible target. The controller expires immediately after those three
-actors have been handed to the runtime list. When the local player is less
-than 3001 world units from the resolved source, the same update requests mode
-zero camera shake: duration eight and magnitude six. `0x00412690` stores the
-request and `0x00412720` alternates a zero/six vertical world offset until the
-eighth update, after which the camera is steady again.
+every eligible target while using the common bank-zero contact sample 20.
+The controller expires immediately after those three actors have been handed
+to the runtime list. When the local player is less than 3001 world units from
+the resolved source, the same update requests mode zero camera shake:
+duration eight and magnitude six. `0x00412690` stores the request and
+`0x00412720` alternates a zero/six vertical world offset until the eighth
+update, after which the camera is steady again.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance

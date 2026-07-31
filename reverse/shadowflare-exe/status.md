@@ -77,10 +77,10 @@ chart one. Both use display height 200.
 The same delayed update plays samples 29 and 23 and creates a third, invisible
 actor with the source judgement expanded by 150 on all sides. That actor has
 a one-update lifetime, an update-zero collision window, processes every
-eligible target, and carries the copied packet. A local player at a strict
-distance below 3001 also starts camera shake mode zero for eight updates at
-magnitude six. `0x00412720` alternates vertical offsets zero and six before
-clearing the request at counter eight.
+eligible target, carries the copied packet, and uses bank-zero contact sample
+20. A local player at a strict distance below 3001 also starts camera shake
+mode zero for eight updates at magnitude six. `0x00412720` alternates vertical
+offsets zero and six before clearing the request at counter eight.
 
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
@@ -122,8 +122,8 @@ target snapshots, and applies their receiver requests. Shipped regressions
 cover type 2 in `03000507` and the type-3 Plasma Bat in `00010001`, including
 resources, audio, damage, cleanup, and unchanged item ownership. Scenario
 `01000004` covers type 4's warning, paired burst charts, invisible damage,
-two sounds, camera shake, and item ownership. The other eight specialized
-controllers remain to be reconstructed. Mapping
+two launch sounds, contact sample 20, camera shake, and item ownership. The
+other eight specialized controllers remain to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 

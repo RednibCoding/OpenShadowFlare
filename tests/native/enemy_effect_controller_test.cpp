@@ -447,6 +447,8 @@ bool testTypeFourWarningBurstAndCameraShake() {
                 damage.target_collision_start == 0 &&
                 damage.target_collision_end == 0 &&
                 damage.process_every_target &&
+                damage.target_audio.bank == 0 &&
+                damage.target_audio.sample == 20 &&
                 !damage.visible &&
                 damage.has_packet &&
                 damage.packet[34] == 21013,

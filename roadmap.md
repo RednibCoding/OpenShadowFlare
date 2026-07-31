@@ -1007,9 +1007,10 @@ burst, the source is resolved again and resource `10000000` is created twice:
 chart one at the upper judgement corner and chart zero at the lower corner,
 with both lifetimes taken from chart one. Samples 29 and 23 play together, an
 invisible one-update actor applies the copied packet across the source bounds
-expanded by 150, and a player within 3001 world units receives the exact
-eight-update, six-pixel alternating vertical camera jolt. Scenario `01000004`
-provides the shipped live render, damage, audio, camera, and ownership case.
+expanded by 150 and plays contact sample 20. A player within 3001 world units
+receives the exact eight-update, six-pixel alternating vertical camera jolt.
+Scenario `01000004` provides the shipped live render, damage, launch and
+contact audio, camera, and ownership case.
 Types 5, 10, 11, 12, 13, 14, 16, and 21 still need the same
 controller-by-controller work.
 

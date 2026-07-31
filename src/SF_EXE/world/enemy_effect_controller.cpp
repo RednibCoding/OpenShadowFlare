@@ -256,6 +256,7 @@ RuntimeEffectActorSpawnRequest typeFourDamageActor(
     actor.target_collision_start = 0;
     actor.target_collision_end = 0;
     actor.process_every_target = true;
+    actor.target_audio = {0, 20};
     actor.animation_chart = 0;
     actor.animation_direction = 8;
     actor.visible = false;
