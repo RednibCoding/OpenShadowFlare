@@ -23,6 +23,8 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t target_mask = 0;
     std::int32_t target_identifier = 0;
     bool exact_target_only = false;
+    bool home_toward_target = false;
+    std::int32_t homing_turn_speed = 0;
     double direction_radians = 0.0;
     std::int32_t travel_speed = 0;
     WorldPosition position;
@@ -30,6 +32,7 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t display_height = 0;
     std::int32_t lifetime = -1;
     bool lifetime_from_animation = false;
+    std::int32_t lifetime_animation_chart = -1;
     bool collide_with_environment = true;
     bool expire_on_environment_collision = false;
     std::int32_t target_collision_start = -1;
@@ -42,7 +45,10 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t animation_chart = 0;
     std::int32_t animation_direction = 8;
     std::int32_t animation_speed = 1000;
+    std::int32_t additional_display_status = 0;
     bool visible = true;
+    bool track_for_controller = false;
+    std::int32_t controller_tracking_index = -1;
     bool has_packet = false;
     CombatPacket packet;
 };
@@ -62,6 +68,9 @@ public:
     bool initialize(
         const RuntimeEffectActorSpawnRequest& request,
         const EffectVisualResource& visual);
+    bool initialize(
+        const RuntimeEffectActorSpawnRequest& request,
+        const EffectVisualResource* visual);
     RuntimeEffectActorUpdate update(
         const GroundMap& ground,
         const ObjectMap& objects);
@@ -72,6 +81,7 @@ public:
         RetailRandom& random);
 
     std::int32_t controllerEffectNumber() const;
+    std::int32_t actorIdentifier() const;
     std::int32_t resourceId() const;
     std::int32_t ownerKind() const;
     std::int32_t sourceCharacterNumber() const;
@@ -83,6 +93,7 @@ public:
     std::int32_t animationDirection() const;
     std::int32_t animationFrame() const;
     std::int32_t displayHeight() const;
+    std::int32_t additionalDisplayStatus() const;
     std::int32_t counter() const;
     std::int32_t movementCounter() const;
     std::int32_t lifetime() const;
@@ -90,6 +101,7 @@ public:
     bool expired() const;
     bool hasUpdated() const;
     bool targetCollisionActive() const;
+    bool needsTargetSnapshots() const;
     bool hasPacket() const;
     const CombatPacket& packet() const;
     std::size_t rememberedTargetCount() const;
@@ -106,6 +118,9 @@ private:
     std::int32_t counter_ = 0;
     std::int32_t movement_counter_ = 0;
     std::int32_t lifetime_ = -1;
+    double direction_radians_ = 0.0;
+    std::int32_t animation_direction_ = 8;
+    bool homing_active_ = false;
     bool expired_ = false;
     bool has_updated_ = false;
     RuntimeEffectTargetMemory target_memory_;

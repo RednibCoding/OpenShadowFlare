@@ -63,6 +63,7 @@ public:
         const TableDatabase& tables) const;
     std::int32_t totalKillCount() const;
     std::int32_t killCount(std::size_t kind) const;
+    std::int32_t jobLevel(std::int32_t job) const;
     void addExperience(std::int32_t amount);
     void addKillCount(std::size_t kind);
     bool applyLevelThreshold(const TableDatabase& tables);

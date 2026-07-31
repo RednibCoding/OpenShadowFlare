@@ -237,6 +237,9 @@ ScenarioTravelResult WorldScene::transitionScenario(
         combat_effects_.clear();
         runtime_effects_.clear();
         miss_effects_.clear();
+        camera_shake_counter_ = -1;
+        camera_shake_duration_ = 0;
+        camera_shake_magnitude_ = 0;
         pointer_.clearSelection();
         scenario_world_.setEntry(
             start.entry_value, *entry);
@@ -280,6 +283,9 @@ ScenarioTravelResult WorldScene::transitionScenario(
     combat_effects_.clear();
     runtime_effects_.clear();
     miss_effects_.clear();
+    camera_shake_counter_ = -1;
+    camera_shake_duration_ = 0;
+    camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;

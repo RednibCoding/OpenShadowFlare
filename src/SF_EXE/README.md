@@ -125,11 +125,11 @@ state, bounds, name, direction, CAF part data, AI-control name, and
 `Character/ENEMY` visual are owned by `ScenarioWorld`. Patrol, targeting,
 movement, direct attacks, hit reactions, death, experience, Gold, and item
 drops all pass through their reconstructed owners. Effect attacks no longer
-turn straight into a flat animation either: the first two retail controller
-families create their separate source and moving actors, apply collision
-packets to live targets, play positional launch and impact sounds, and render
-their OPTION CAF resources in the ordinary depth list. A miss uses the
-original bouncing and fading OPTION 11000011 `MISS` pattern.
+turn straight into a flat animation either: all twelve specialized retail
+controller families create their timed source, moving, and follow-up actors,
+apply collision packets to live targets, play positional sounds, and render
+their OPTION resources in the ordinary depth list. A miss uses the original
+bouncing and fading OPTION 11000011 `MISS` pattern.
 
 The first complete outdoor encounter is covered as one player-visible path,
 not as a collection of disconnected combat helpers. The level-one Goblin
@@ -144,6 +144,13 @@ and stops blocking movement as soon as death starts. Loot uses the separate
 retail loot-level field and Table 31's fixed-item rule, so early enemies no
 longer select equipment merely because its required-level field happened to
 fit a misread table column.
+
+The first ranged-player path is live too. A Wood Bowgun uses its retail
+chart-10 timing, launch sound, Item.Ibn effect and spread fields, common
+category-50000000 projectile actor, receiver packet, impact sound, and one
+durability point per complete shot. The same data path covers straight and
+homing one-, two-, three-, five-, and seven-shot patterns without adding a
+bowgun-only damage shortcut.
 
 Player death also completes its retail recovery path. The last death frame
 stays on screen for 120 game updates, ordinary menus remain locked, and the
@@ -169,33 +176,22 @@ Retail's resource-less `Enemy Hole` records live in the same actor collection.
 They keep their script and AI identity but have no fabricated visual or
 collision.
 
-The global `Control.aid` owner now lives in the portable
-`RKC_RPG_AICONTROL` library. Its 64 lists and 1,338 action candidates are
-decoded once when a world starts, and every shipped MCT enemy name resolves to
-the exact list and stable index used by retail. The executable-owned event
-evaluator now reproduces the confirmed life and target conditions, retail
-candidate ordering, weighted choice, and event-zero fallback. It remains
-dormant until selected-action state and the complete movement/presentation
-consumers can be connected as one behavior slice.
-
-The first dispatcher unit is ready behind the same boundary. Native actions
-zero and one reproduce authored waiting and bounded patrol cycles, including
-their holding/completion events, movement versus idle counters, speed
-scaling, presentation requests, and the shipped zero-duration patrol case.
-Actions two through seven preserve the native mapping to presentation actions
-one through six and their entry-only reset behavior. Action eight preserves
-the active presentation. Actions nine and ten emit typed target
-retreat/approach requests with exact mode, distance, timing, and event rules.
-Action eleven emits the fixed-point walk using the AI list's speed.
+The global `Control.aid` owner lives in the portable `RKC_RPG_AICONTROL`
+library. Its 64 lists and 1,338 action candidates are decoded once when a world
+starts, and every shipped MCT enemy name resolves to the exact list and stable
+index used by retail. The live executable-owned dispatcher reproduces the
+confirmed life and target conditions, candidate ordering, weighted choice,
+event-zero fallback, waiting, patrol, approach, retreat, direct attacks, and
+effect attacks.
 
 The shared movement-destination selector consumes those requests separately.
 All seven retail modes are covered: fixed points, actor and player approach or
 retreat, bounded patrol, and rectangle-edge projection. It owns the exact
 target-refresh cadence, random-turn draws, signed midpoint rounding, and the
 otherwise surprising no-step result of non-player retreat mode. Collision and
-path advancement remain the movement controller's job. The complete enemy
-dispatcher still stays behind the live boundary until movement and
-presentation can be attached without a partial behavior path.
+path advancement remain the movement controller's job. The live dispatcher
+feeds that selector and the existing collision controller, so AI intent,
+movement, and presentation continue to have separate owners.
 
 Enemy target acquisition has the same kind of boundary. Its ranged and
 default entry points preserve the retail player-before-companion priority,
@@ -214,9 +210,9 @@ The enemy receiver preserves MCT defense and reaction values, local/client
 damage ownership, attribution, hit and death presentations, reflection,
 configured and random effects, status requests, audio samples, and kill
 metadata. Common receiver effects now become depth-sorted world actors through
-the executable-owned `Character/OPTION` resource cache. Networking, specialized
-effect families, kill accounting, experience, drops, and the live enemy attack
-dispatcher still need their own complete slices.
+the executable-owned `Character/OPTION` resource cache. The live path also
+owns specialized effect families, kill accounting, experience, and drops;
+networking remains later work.
 
 The seven type-zero MCT objects have a separate actor path as well. Their
 `Character/OBJECT` resources can be static NJP/SDW pairs or CAF animations,

@@ -578,7 +578,8 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 entries.size(),
                 effect.renderPosition(interpolation),
                 effect.judgement(),
-                0,
+                static_cast<std::int16_t>(
+                    effect.additionalDisplayStatus()),
             };
             entries.push_back(entry);
         }

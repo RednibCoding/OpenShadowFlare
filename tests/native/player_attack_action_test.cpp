@@ -79,12 +79,27 @@ bool testActionSelectionAndAudio() {
         return false;
     }
     weapon.subtype = 4;
-    return check(
+    if (!check(
         osf::retailPlayerAttackAction(&weapon) ==
                 osf::PlayerAttackAction::ranged_19 &&
-            !osf::playerAttackActionIsSupported(
+            osf::playerAttackActionIsSupported(
+                osf::PlayerAttackAction::ranged_19) &&
+            osf::playerAttackActionIsRanged(
                 osf::PlayerAttackAction::ranged_19),
-        "The still-deferred ranged action was treated as melee.");
+        "Weapon subtype four did not select supported ranged action "
+        "nineteen.")) {
+        return false;
+    }
+    weapon.subtype = 5;
+    return check(
+        osf::retailPlayerAttackAction(&weapon) ==
+                osf::PlayerAttackAction::ranged_20 &&
+            osf::playerAttackActionIsSupported(
+                osf::PlayerAttackAction::ranged_20) &&
+            osf::playerAttackActionIsRanged(
+                osf::PlayerAttackAction::ranged_20),
+        "Weapon subtype five did not select supported ranged action "
+        "twenty.");
 }
 
 bool testBasicActionTiming() {
@@ -249,6 +264,87 @@ bool testPlayerMovementLock(
         "The player did not unlock cleanly after attack recovery.");
 }
 
+bool testRangedActionTiming(
+    const osf::gapi::CafAnimation& animation) {
+    osf::PlayerAttackAnimationTiming timing;
+    if (!check(
+            osf::buildPlayerAttackAnimationTiming(
+                animation,
+                osf::PlayerAttackAction::ranged_20,
+                1,
+                timing) &&
+                timing.first_chart == 10 &&
+                timing.recovery_chart == -1 &&
+                timing.first_frame_count == 17 &&
+                timing.recovery_frame_count == 0,
+            "Retail ranged action twenty did not select its single "
+            "chart-ten animation.")) {
+        return false;
+    }
+
+    std::int32_t marker = -1;
+    for (std::size_t index = 0;
+         index < timing.first_frame_statuses.size();
+         ++index) {
+        if ((timing.first_frame_statuses[index] & 0x40) != 0) {
+            marker = static_cast<std::int32_t>(index);
+            break;
+        }
+    }
+    osf::PlayerAttackActionController attack;
+    if (!check(
+            marker >= 0 &&
+                attack.start(
+                    osf::PlayerAttackAction::ranged_20,
+                    44,
+                    5,
+                    timing),
+            "The retail ranged CAF marker or action start is missing.")) {
+        return false;
+    }
+    std::int32_t marker_update = -1;
+    std::int32_t sound_update = -1;
+    std::int32_t completion_update = -1;
+    for (std::int32_t update = 1;
+         update <= timing.first_frame_count + 2;
+         ++update) {
+        const osf::PlayerAttackActionEvent event =
+            attack.update();
+        if (event.impact_due) {
+            marker_update = update;
+        }
+        if (event.swing_sound_due) {
+            sound_update = update;
+        }
+        if (event.completed) {
+            completion_update = update;
+            break;
+        }
+    }
+    const bool faithful =
+        marker == 3 &&
+            marker_update == 4 &&
+            sound_update == 6 &&
+            completion_update == 17 &&
+            attack.animationChart() == 10 &&
+            attack.animationFrame() ==
+                timing.first_frame_count - 1;
+    if (!faithful) {
+        std::cerr
+            << "marker=" << marker
+            << " marker update=" << marker_update
+            << " sound update=" << sound_update
+            << " completion update=" << completion_update
+            << " frame count=" << timing.first_frame_count
+            << " final frame=" << attack.animationFrame()
+            << '\n';
+    }
+    return check(
+        faithful,
+        "Ranged chart-ten marker, sample-three counter, or completion "
+        "timing differs.");
+}
+
 bool testRetailDeathHold(
     const osf::gapi::CafAnimation& animation) {
     const std::int32_t death_frames =
@@ -343,6 +439,9 @@ bool testRetailAssetsAndSpeedTable() {
     if (!testPlayerMovementLock(animation)) {
         return false;
     }
+    if (!testRangedActionTiming(animation)) {
+        return false;
+    }
     if (!testRetailDeathHold(animation)) {
         return false;
     }
@@ -363,6 +462,9 @@ bool testRetailAssetsAndSpeedTable() {
         std::cerr << error << '\n';
         return false;
     }
+    if (!testRangedActionTiming(female_animation)) {
+        return false;
+    }
 
     osf::TableDatabase tables;
     osf::PlayerData player;
@@ -381,12 +483,15 @@ bool testRetailAssetsAndSpeedTable() {
             tables.find(4));
     if (!check(
         tier == 5 &&
+            player.jobLevel(16) == 1 &&
+            player.jobLevel(5) == 0 &&
             osf::retailPlayerAttackSpeedTier(
                 player.baseAttackSpeed(),
                 player.baseWeightCapacity() + 1,
                 player.baseWeightCapacity(),
                 tables.find(4)) == 0,
-        "The new-character or overweight retail attack-speed tier differs.")) {
+        "The new-character job history or retail attack-speed tier "
+        "differs.")) {
         return false;
     }
 

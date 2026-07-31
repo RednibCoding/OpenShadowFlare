@@ -115,6 +115,45 @@ PlayerAttackImpactStats buildPlayerAttackImpactStats(
     return stats;
 }
 
+CombatPacket buildPlayerAttackPacket(
+    const PlayerAttackImpactStats& stats,
+    std::int32_t hit_effect,
+    RetailRandom& random) {
+    CombatPacket packet;
+    initializePacketDefaults(packet);
+    packet.write(2, stats.source_character_number);
+    packet.write(4, stats.physical_attack);
+    packet.write(5, stats.physical_defense);
+    for (std::size_t index = 0;
+         index < stats.element_affinities.size();
+         ++index) {
+        packet.write(
+            index + 6,
+            stats.element_affinities[index]);
+    }
+    for (std::size_t index = 0;
+         index < stats.state_words.size();
+         ++index) {
+        packet.write(index + 14, stats.state_words[index]);
+    }
+    packet.write(31, stats.level);
+    packet.write(34, hit_effect);
+    packet.write(36, stats.hit_rate);
+    const std::int32_t reflection_roll =
+        random.next() % 100;
+    packet.write(
+        39,
+        reflection_roll < stats.reflection_chance
+            ? stats.reflection_percent
+            : 0);
+    packet.write(
+        40, stats.suppress_reaction_displacement);
+    packet.write(42, stats.reaction_chance_modifier);
+    packet.write(44, stats.reaction_duration_modifier);
+    packet.write(74, stats.weapon_identifier);
+    return packet;
+}
+
 PlayerAttackImpactResult resolvePlayerAttackImpact(
     const PlayerAttackImpactInput& input,
     RetailRandom& random) {
@@ -134,47 +173,10 @@ PlayerAttackImpactResult resolvePlayerAttackImpact(
         return result;
     }
 
-    initializePacketDefaults(result.packet);
-    result.packet.write(
-        2, input.stats.source_character_number);
-    result.packet.write(
-        4, input.stats.physical_attack);
-    result.packet.write(
-        5, input.stats.physical_defense);
-    for (std::size_t index = 0;
-         index < input.stats.element_affinities.size();
-         ++index) {
-        result.packet.write(
-            index + 6,
-            input.stats.element_affinities[index]);
-    }
-    for (std::size_t index = 0;
-         index < input.stats.state_words.size();
-         ++index) {
-        result.packet.write(
-            index + 14,
-            input.stats.state_words[index]);
-    }
-    result.packet.write(31, input.stats.level);
-    result.packet.write(
-        34, random.next() % 4 + kHitEffectBase);
-    const std::int32_t reflection_roll =
-        random.next() % 100;
-    result.packet.write(
-        39,
-        reflection_roll <
-                input.stats.reflection_chance
-            ? input.stats.reflection_percent
-            : 0);
-    result.packet.write(
-        40,
-        input.stats.suppress_reaction_displacement);
-    result.packet.write(
-        42,
-        input.stats.reaction_chance_modifier);
-    result.packet.write(
-        44,
-        input.stats.reaction_duration_modifier);
+    const std::int32_t first_effect =
+        random.next() % 4 + kHitEffectBase;
+    result.packet = buildPlayerAttackPacket(
+        input.stats, first_effect, random);
     if (input.stats.weapon_subtype == 8 ||
         input.stats.weapon_subtype == 9) {
         result.packet.write(

@@ -32,7 +32,7 @@ The portable executable already has a solid front half:
 - the in-game Settings, Help, Mission List, and Map screens
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
-- the ordinary player/enemy combat loop through death, rewards, and pickup
+- ordinary melee and basic ranged combat through death, rewards, and pickup
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -94,15 +94,10 @@ simulation runs.
 
 ## Current milestone: take combat beyond the first Goblin
 
-The ordinary encounter is now proven in the live outdoor map, all the way from
-targeting through pickup and save/reload. The next useful combat work is the
-behavior that cannot be exercised by that first sword fight:
+The ordinary and basic ranged encounters are now proven in the live outdoor
+map, all the way from targeting through pickup and save/reload. The next useful
+combat work is the behavior that cannot be exercised by either solo fight:
 
-- finish effect-controller types 4, 5, 10, 11, 12, 13, 14, 16, and 21 one
-  shipped family at a time, with both passive timing coverage and a live actor
-  using each one;
-- finish ranged player actions and projectiles without bypassing the common
-  effect actors;
 - attach companion targeting and attacks to the same receiver and reward
   owners;
 - keep checking item state, audio, experience, and saving beside each change
@@ -999,8 +994,134 @@ permanently stops after the first blocked position. Every clear wave creates
 the retail `10000030/31/32` layers and sample 21; only the random-chart first
 layer applies the packet on update zero. Scenario `00010001` provides the
 shipped live regression for rendering, player damage, controller cleanup, and
-unchanged item ownership. Types 4, 5, 10, 11, 12, 13, 14, 16, and 21 still
-need the same controller-by-controller work.
+unchanged item ownership.
+
+Type 4 is complete too. Its moving-source warning appears on update three as
+resource `10000002` in retail display class two. At the authored update-ten
+burst, the source is resolved again and resource `10000000` is created twice:
+chart one at the upper judgement corner and chart zero at the lower corner,
+with both lifetimes taken from chart one. Samples 29 and 23 play together, an
+invisible one-update actor applies the copied packet across the source bounds
+expanded by 150 and plays contact sample 20. A player within 3001 world units
+receives the exact eight-update, six-pixel alternating vertical camera jolt.
+Scenario `01000004` provides the shipped live render, damage, launch and
+contact audio, camera, and ownership case.
+Type 5 is complete now. Update three captures the moving source once and
+creates resource `10000051`; the rest of the sequence stays at that position.
+The first resource's real chart-zero frame count schedules resource
+`10000050`, the area packet four updates later, resource `10000052` another
+eleven updates after that, and controller expiry at frame-count plus 22. The
+area packet shares type 4's 150-unit expansion, contact sample 20, and nearby
+camera jolt. Six sample-22 pulses land at offsets 6, 9, 12, 15, 18, and 21.
+The final visual uses retail display class two. Enemy 48 in scenario
+`04060004` supplies the shipped live case and proves all three visuals,
+damage, launch and contact audio, cleanup, and unchanged item ownership.
+
+Type 10 is complete too. Table 206 supplies five waves for shipped subtype
+20. Starting at its authored delay, the controller projects one attempt every
+eight updates from the stored impact point, beginning 250 units out and adding
+300 units each time. Each clear 150-unit placement creates resource
+`10000060`, applies the copied packet to every overlapping target on update
+zero, plays sample 22, and requests the familiar eight-by-six camera shake
+when the player is within the strict 3001-unit range. The first blocked
+placement permanently suppresses that and every later wave, while the
+controller still runs through its complete Table 206 timeline. Enemy 26 in
+scenario `04060004` provides the shipped live render, damage, audio, camera,
+blocked-tail, cleanup, and item-identity regression.
+
+Type 11 is complete now. It creates resource `10000012` at the source on
+update zero, then reads Table 204 at the authored delay and distributes two
+through eight resource-`10000010` actors around retail's slightly truncated
+full circle. Live owners place each actor 180 units out; fixed-origin owners
+start every actor at the supplied point. The children keep the unusual
+`[-80,-80,79,79]` bounds, 90-update lifetime, contact sample 20, static
+collision expiry, copied packet, and homing movement mode with its
+20-degree-per-update turn limit. Sample 19 plays once at the last child's
+spawn position before the controller expires.
+
+The common runtime actor now owns that homing behavior. It looks up the live
+player or scenario target, turns by the shortest retail angle, moves from its
+current position instead of replaying a line from its start, updates its CAF
+direction, stops steering after it passes the target, and permanently falls
+back to straight travel when the target disappears. A shipped subtype-ten
+enemy from Tower of Ordeal scenario 15 supplies the live source, radial
+render, impact, audio, lifetime, and item-identity regression.
+
+Type 12 is complete now. It creates resource `11000027` at the source and a
+Table 204 warning fan on update zero. The warning actors use resource
+`10000080`, sit 150 units from a live owner, and retain the subtype as their
+lifetime. At delay ten the controller re-resolves the owner and emits the
+same fan at radius 180 using moving resource `10000081`.
+Those projectiles live for 90 updates, expire on static or target contact,
+carry sample 20, and rewrite packet pairs 34/35 and 74/75 to the retail
+directional effects `21021` and `21022`. Sample 94 plays once at the final
+projectile. A shipped subtype-ten Dread Wisp from `North of The Remains of
+The Dead` (`03010003`) supplies the live warning, launch, render, damage,
+audio, cleanup, and item-identity regression.
+
+Type 13 is complete now. Table 204 supplies the number of points in each
+shell. Beginning at the authored delay, the controller emits four shells,
+four updates apart, at radii 350, 550, 750, and 950 around the fixed impact
+origin. Every clear point creates the same three resources as type 3:
+`10000030`, `10000031`, and `10000032`. Only the first layer uses a random
+chart and applies the copied packet; sample 21 plays once per shell at its
+last radial point.
+
+Unlike the earlier one-direction wave controllers, every radial direction
+has its own obstruction latch. A blocked ray remains suppressed in later
+shells without stopping the others. Lightning Gargoyle 11 in Ancient Ruins
+B1F (`03140000`) supplies the shipped subtype-20 live render, damage, audio,
+cleanup, and item-identity regression.
+
+Type 14 is complete now. It has no source or warning visual. At the authored
+delay it resolves a live owner and launches resource `10000070` from 180
+units along the stored angle. The projectile keeps the familiar 50-unit
+bounds, authored speed and display height, copied packet, static and first
+target expiry, and contact sample 20. Sample 22 plays at launch and the
+controller ends immediately.
+
+Owner kind zero is the deliberate exception: it starts directly at the
+supplied origin without the 180-unit projection. Rechecking that branch also
+fixed the same old edge case in types 1 and 2. Stone Wisp 2 in Ancient Ruins
+B1F (`03140000`) supplies the shipped subtype-one live render, packet, launch
+and impact audio, damage, cleanup, and item-identity regression.
+
+Type 16 is complete now. At the authored delay it launches resource
+`10000110`, stores that actor's real runtime identity, and follows its current
+position while it remains in the world. The projectile uses 80-unit bounds,
+the authored speed and display height, static and first-target expiry, contact
+sample 20, and launch sample 19.
+
+Once the projectile is removed, the controller creates resource `10000111`
+at its last recorded position and ends. This second actor uses 240-unit
+bounds, its full chart-zero lifetime, and applies the copied packet to every
+overlapping target only on update five. Sample 22 plays when it appears, and
+a player within 3000 units receives the usual eight-update, six-pixel camera
+jolt. Goliate's second effect variant in Goliate's Mansion B3F (`04050002`)
+supplies the shipped live projectile, follow-up position, render, damage,
+audio, camera, cleanup, and item-identity regression.
+
+Type 21 completes the specialized enemy-effect controllers. Update zero
+creates source resource `11000210`. At the authored delay, Table 207 chooses
+one, three, or five evenly spaced resource-`10000100` rays. A live owner
+launches each ray 180 units out; owner kind zero keeps the explicit origin.
+The rays use 80-unit bounds, twenty-degree homing turns, speed-scaled
+animation, their full chart-zero lifetime, static and first-target expiry,
+contact sample 20, and one sample 19 at the final launch point.
+
+The controller tracks every ray separately. Once a ray disappears, its saved
+position advances through four stages at four-update intervals. Resources
+`12000000`, `11000033`, `10000030`, and `10000060` rewrite packet words 32
+and 34 to `{0,20000}`, `{1,21013}`, `{2,20005}`, and `{3,21000}`. The odd
+stages are visual; the even stages apply their packet to every overlapping
+target on update zero. Stage three also creates the matching `10000031` and
+`10000032` visual layers. Every stage plays sample 19. The last also plays
+sample 22 and requests the nearby eight-update, six-pixel camera jolt.
+
+Arc Angel's third attack in scenario `99000036` supplies the shipped
+subtype-30 five-ray regression. It covers the source, launch, independent
+tracking, all four timed stages, three-layer render, both damage windows,
+audio, camera motion, controller cleanup, and adjacent item ownership.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1028,10 +1149,37 @@ Gold Find, stacking, and save path remain covered by their deterministic
 reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
-The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 4, 5, 10, 11, 12, 13, 14,
-16, and 21, then the ranged player actions and companion attacks, keeping one
-shipped live encounter beside each passive reconstruction.
+The standard ranged-player path is complete now. A shipped Wood Bowgun starts
+action 20 at any pointer-visible enemy distance, holds the player in CAF chart
+10, launches on its authored frame-three marker, and plays sample 3 at counter
+six. Ranged animation uses its own ten speed factors from 0.3 through 2.0 and
+ends on chart 10's final frame without a melee recovery chart.
+
+Item.Ibn drives the projectile rather than a weapon-name switch. Its effect
+selector chooses generic actor type 1, 0, 4, or 5; its pattern selects the
+straight or homing one-, two-, three-, five-, or seven-shot layout; and its
+remaining fields provide travel speed and piercing. Double Bowgun creates two
+explicit launch points at minus and plus eight degrees while keeping the shots
+parallel. The wider fans use the original 8-, 10-, or 15-degree spacing.
+
+These projectiles enter the same category-50000000 actor system as enemy
+effects, with retail bounds, projected or explicit origins, target mask,
+environment collision, evasion, sample 20, receiver packet, homing, piercing
+memory, and first-target expiry. The family-zero packet preserves player
+attribution even for explicit-origin shots. Job-five history supplies the
+off-job physical-attack scale, and a complete fan costs one point of main-hand
+durability. Passive tests cover every pattern and effect selector; a shipped
+live encounter covers the CAF, projectile render owner, damage, launch/contact
+audio, no-approach targeting, and durability.
+
+Retail contains no subtype-four weapon record to exercise action 19. Action
+20's 33-percent action-21 redirect also depends on the not-yet-reconstructed
+increased-power state. Those two facts are recorded rather than filled with
+made-up behavior.
+
+The next combat work is companion targeting and attacks, keeping one shipped
+live case beside each passive reconstruction and sharing the existing
+receiver, effect, reward, audio, and persistence owners.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,

@@ -63,6 +63,10 @@ struct ItemDefinition {
     std::int32_t secondary_appearance_green_strength = 1000;
     std::int32_t secondary_appearance_blue_strength = 1000;
     bool suppresses_off_hand = false;
+    std::int32_t ranged_effect_selector = -1;
+    std::int32_t ranged_pattern = -1;
+    std::int32_t ranged_travel_speed = 0;
+    bool ranged_pierces_targets = false;
     std::int32_t restore_life = 0;
     std::int32_t restore_mana = 0;
     std::int32_t restore_life_percent = 0;

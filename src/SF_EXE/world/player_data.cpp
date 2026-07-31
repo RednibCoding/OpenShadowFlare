@@ -213,6 +213,27 @@ std::int32_t PlayerData::killCount(
         : 0;
 }
 
+std::int32_t PlayerData::jobLevel(
+    std::int32_t job_value) const {
+    std::int32_t count = 0;
+    const std::int32_t history_count =
+        std::clamp(
+            level(), 0,
+            static_cast<std::int32_t>(kJobHistoryCount));
+    for (std::int32_t index = 0;
+         index < history_count;
+         ++index) {
+        if (static_cast<std::int8_t>(
+                record_[
+                    kJobHistoryOffset +
+                    static_cast<std::size_t>(index)]) ==
+            job_value) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 void PlayerData::addExperience(std::int32_t amount) {
     writeI32(
         kExperienceOffset,

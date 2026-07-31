@@ -271,6 +271,8 @@ private:
     std::int32_t playerAttackSpeedTier() const;
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
+    void launchPlayerRangedAttack(
+        const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);
     void accountEnemyKill(
         const EnemyDamageReceiverState& enemy,
@@ -353,6 +355,9 @@ private:
     std::int32_t next_ground_item_id_ = 0;
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;
+    std::int32_t camera_shake_counter_ = -1;
+    std::int32_t camera_shake_duration_ = 0;
+    std::int32_t camera_shake_magnitude_ = 0;
     GameplayServiceRequest gameplay_service_request_;
     ScenarioStart pending_script_travel_;
     bool script_travel_pending_ = false;

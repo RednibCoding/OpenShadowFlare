@@ -16,6 +16,27 @@ namespace {
 
 constexpr std::int32_t kRuntimeEffectCharacterBase = 50000000;
 
+std::int32_t animationLength(
+    const EffectVisualResource* visual,
+    std::int32_t chart,
+    std::int32_t direction) {
+    if (!visual ||
+        chart < 0 ||
+        direction < 0 ||
+        static_cast<std::size_t>(chart) >=
+            visual->animation().charts().size() ||
+        static_cast<std::size_t>(direction) >=
+            visual->animation()
+                .charts()[static_cast<std::size_t>(chart)]
+                .directions.size()) {
+        return 0;
+    }
+    return visual->animation()
+        .charts()[static_cast<std::size_t>(chart)]
+        .directions[static_cast<std::size_t>(direction)]
+        .frame_count;
+}
+
 void appendAudio(
     std::vector<RuntimeEffectAudioRequest>& destination,
     std::vector<RuntimeEffectAudioRequest> source) {
@@ -29,6 +50,7 @@ void appendAudio(
 
 void RuntimeEffectSystem::clear() {
     controllers_.clear();
+    pending_actors_.clear();
     actors_.clear();
     next_actor_id_ = 0;
 }
@@ -45,6 +67,16 @@ bool RuntimeEffectSystem::queue(
         request.owner_kind,
         request.source_character_number,
     });
+    return true;
+}
+
+bool RuntimeEffectSystem::queueActor(
+    RuntimeEffectActorSpawnRequest request) {
+    if (request.resource_id < 0 &&
+        request.visible) {
+        return false;
+    }
+    pending_actors_.push_back(std::move(request));
     return true;
 }
 
@@ -69,10 +101,32 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
             }),
         actors_.end());
 
+    for (RuntimeEffectActorSpawnRequest& request :
+         pending_actors_) {
+        request.actor_identifier =
+            retailAdd(
+                kRuntimeEffectCharacterBase,
+                next_actor_id_);
+        next_actor_id_ =
+            retailAdd(next_actor_id_, 1);
+        const EffectVisualResource* visual =
+            request.resource_id >= 0
+                ? context.resolve_visual(request.resource_id)
+                : nullptr;
+        if (request.resource_id >= 0 && !visual) {
+            continue;
+        }
+        RuntimeEffectActor actor;
+        if (actor.initialize(request, visual)) {
+            actors_.push_back(std::move(actor));
+        }
+    }
+    pending_actors_.clear();
+
     for (RuntimeEffectActor& actor : actors_) {
         const std::vector<RuntimeEffectTargetSnapshot>
             targets =
-                actor.targetCollisionActive()
+                actor.needsTargetSnapshots()
                     ? context.provide_targets()
                     : std::vector<
                           RuntimeEffectTargetSnapshot>{};
@@ -119,7 +173,41 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                 source,
                 context.random,
                 context.placement_is_clear,
+                context.provide_observer
+                    ? context.provide_observer()
+                    : EnemyEffectControllerSource{},
+                [&context](
+                    std::int32_t resource_id,
+                    std::int32_t chart,
+                    std::int32_t direction) {
+                    return animationLength(
+                        context.resolve_visual(
+                            resource_id),
+                        chart,
+                        direction);
+                },
+                [this](std::int32_t actor_identifier) {
+                    const auto actor = std::find_if(
+                        actors_.begin(),
+                        actors_.end(),
+                        [actor_identifier](
+                            const RuntimeEffectActor& candidate) {
+                            return candidate.actorIdentifier() ==
+                                actor_identifier;
+                        });
+                    return actor != actors_.end()
+                        ? EnemyEffectControllerSource{
+                              true, actor->position()}
+                        : EnemyEffectControllerSource{};
+                },
             });
+        if (update.camera_shake) {
+            result.camera_shake = true;
+            result.camera_shake_duration =
+                update.camera_shake_duration;
+            result.camera_shake_magnitude =
+                update.camera_shake_magnitude;
+        }
         for (std::size_t index = 0;
              index < update.audio_count;
              ++index) {
@@ -141,14 +229,32 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
             next_actor_id_ =
                 retailAdd(next_actor_id_, 1);
             const EffectVisualResource* visual =
-                context.resolve_visual(
-                    request.resource_id);
-            if (!visual) {
+                request.resource_id >= 0
+                    ? context.resolve_visual(
+                          request.resource_id)
+                    : nullptr;
+            EnemyEffectControllerSource spawned_actor;
+            if (request.resource_id >= 0 &&
+                !visual) {
+                if (request.track_for_controller) {
+                    entry.controller.bindSpawnedActor(
+                        request.actor_identifier,
+                        spawned_actor,
+                        request.controller_tracking_index);
+                }
                 continue;
             }
             RuntimeEffectActor actor;
-            if (actor.initialize(request, *visual)) {
+            if (actor.initialize(request, visual)) {
+                spawned_actor = {
+                    true, actor.position()};
                 actors_.push_back(std::move(actor));
+            }
+            if (request.track_for_controller) {
+                entry.controller.bindSpawnedActor(
+                    request.actor_identifier,
+                    spawned_actor,
+                    request.controller_tracking_index);
             }
         }
     }

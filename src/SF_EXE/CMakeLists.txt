@@ -127,6 +127,7 @@ add_library(
   world/enemy_presentation.cpp
   world/enemy_presentation_audio.cpp
   world/enemy_target_selector.cpp
+  world/generic_effect_actor.cpp
   world/ground_item.cpp
   world/map_exploration.cpp
   world/miss_effect_actor.cpp
@@ -139,6 +140,7 @@ add_library(
   world/player_attack_action.cpp
   world/player_attack_impact.cpp
   world/player_attack_target.cpp
+  world/player_ranged_attack.cpp
   world/player_combat_defense.cpp
   world/player_damage_receiver.cpp
   world/player_data.cpp

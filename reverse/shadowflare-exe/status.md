@@ -46,8 +46,9 @@ resource `10000012` at the current source actor and type 2 creates resource
 `11000027`. Both are ordinary source animations whose positive judgement
 edges come from the source bounds plus one. When the controller counter
 reaches constructor argument 12, it resolves the source position again,
-projects a point exactly 180 world units along the stored angle, and creates a
-second runtime actor there. Type 1 uses resource `10000010` and positional
+projects a point exactly 180 world units along the stored angle for nonzero
+owners, and creates a second runtime actor there. Owner kind zero leaves that
+child at the supplied explicit origin. Type 1 uses resource `10000010` and positional
 sample 19; type 2 uses resource `10000040` and positional sample 94. The
 second actor has `[-50,-50,50,50]` bounds, chart-zero timing, the copied combat
 packet, and contact expiry. Only then does the controller return zero.
@@ -66,6 +67,144 @@ target with the copied packet. The other two are chart-zero visual layers.
 Sample 21 plays once at the wave position. The controller expires at
 `delay + wave count * 4`, separately from all three actors' CAF lifetimes.
 
+Type 4 at `0x0042a860` re-resolves its source twice. Update three creates
+resource `10000002` at the current source with the complete source judgement,
+chart zero, direction eight, and additional display status `0x80`. At the
+authored delay it resolves the source again and creates resource `10000000`
+twice at the upper and lower opposite judgement corners. The first draws
+chart one. The second draws chart zero but still derives its lifetime from
+chart one. Both use display height 200.
+
+The same delayed update plays samples 29 and 23 and creates a third, invisible
+actor with the source judgement expanded by 150 on all sides. That actor has
+a one-update lifetime, an update-zero collision window, processes every
+eligible target, carries the copied packet, and uses bank-zero contact sample
+20. A local player at a strict distance below 3001 also starts camera shake
+mode zero for eight updates at magnitude six. `0x00412720` alternates vertical
+offsets zero and six before clearing the request at counter eight.
+
+Type 5 at `0x0042cd70` captures its source on update three and creates
+resource `10000051`. That captured position is retained even if the source
+moves afterward. The maximum frame count of chart zero, direction eight in
+that resource becomes the controller's clock; constructor delay ten is not
+used by this handler.
+
+At the frame count, resource `10000050` appears with display height 200. At
+frame-count plus four, an invisible one-update packet actor expands the
+original source judgement by 150, plays contact sample 20, and requests the
+same nearby eight-by-six camera shake as type 4. Resource `10000052` follows
+at frame-count plus 15 with display height 200 and additional status `0x80`.
+All three visible actors use a lower-right-plus-one point judgement, chart
+zero, direction eight, and their own complete CAF lifetime. Sample 22 plays
+at offsets 6, 9, 12, 15, 18, and 21. The controller expires at frame-count
+plus 22.
+
+Type 10 at `0x0042e7e0` reads Table 206 row zero at `subtype - 1` and attempts
+one wave every eight updates after the authored delay. Wave positions advance
+from the fixed impact origin at radii `wave * 300 + 250`, with
+`[-150,-150,150,150]` placement bounds. The first failed placement
+permanently suppresses that and every later wave.
+
+Each clear wave creates resource `10000060` with chart zero, direction eight,
+and a complete animation lifetime. Its update-zero collision processes every
+eligible target with the copied packet, while sample 22 and the nearby
+eight-update, magnitude-six camera shake originate at the wave position. The
+controller expires at `delay + Table206Value * 8`. Passive coverage proves
+the complete unobstructed and blocked timelines; enemy 26 in Devil's Castle
+2F supplies the shipped live render, damage, audio, camera, blocked-tail, and
+cleanup case.
+
+Type 11 at `0x0042d6e0` creates resource `10000012` at the source on update
+zero. At the authored delay, Table 204 row zero at `subtype - 1` supplies two
+through eight radial children. Their angles are
+`stored_angle - index * (6.283184 / count)`. Nonzero owners re-resolve the
+source and start each child 180 units along its angle; owner kind zero starts
+every child at the stored explicit origin.
+
+The children use resource `10000010`, homing mode one, turn value 20,
+`[-80,-80,79,79]` bounds, a 90-update lifetime, chart zero, direction derived
+from travel, static-contact expiry, target-contact expiry, the copied packet,
+and bank-zero sample 20. Sample 19 plays once at the final child's spawn
+position, then the controller expires. The shared runtime actor now preserves
+current-position homing, the retail shortest-angle turn, passed-target
+behavior, and permanent straight travel after a missing or dead target.
+Tower of Ordeal scenario 15 supplies the shipped subtype-ten live case.
+
+Type 12 at `0x0042db10` creates resource `11000027` at the source plus a
+Table-204-sized resource-`10000080` warning fan on update zero. Column 29
+supplies the divisor for retail's `count * 2.5132736 / divisor` spread, with
+its extra half-spacing correction for even counts. Live owners project the
+warning actors 150 units; fixed-origin owners leave them at the supplied
+point. Their subtype is also their explicit lifetime.
+
+At the authored delay, the controller re-resolves the source and creates the
+same fan from resource `10000081`, projected 180 units for live owners. These
+actors move straight rather than home, use 50-unit bounds, a 90-update
+lifetime, static and first-target expiry, optional hit memory, and sample 20.
+Each copied packet replaces words 34/35 with `21021` and its direction and
+words 74/75 with `21022` and the same direction. Sample 94 plays at the last
+projectile before immediate controller expiry. Dread Wisp 24 in `North of The
+Remains of The Dead` (`03010003`) supplies the shipped subtype-ten live case.
+
+Type 13 at `0x0042e240` reads Table 204 at `subtype - 1` and attempts four
+radial shells, four updates apart, at radii 350, 550, 750, and 950 from the
+fixed impact origin. Angles advance positively through retail's `6.283184`
+full circle. Each of the table's at most eight rays has an independent
+permanent placement-obstruction flag, so one blocked direction does not stop
+the other directions.
+
+Every clear point consumes one random chart and creates resources `10000030`,
+`10000031`, and `10000032`. As in type 3, only the first layer processes every
+overlapping target on update zero with the copied packet. Sample 21 plays once
+per attempted shell at its final radial position, including when that final
+ray is blocked. The controller expires at the authored delay plus 16.
+Lightning Gargoyle 11 in `03140000` supplies the shipped subtype-20 live case.
+
+Type 14 at `0x0042e5c0` has no source visual. At the authored delay it resolves
+a nonzero owner, projects 180 units along the stored angle, and creates
+resource `10000070`. Owner kind zero uses the explicit origin without that
+projection. The actor moves at constructor value six, uses constructor value
+seven as display height, and keeps 50-unit bounds, chart-zero directional
+drawing, static and first-target expiry, optional target memory, the copied
+packet, and contact sample 20. Sample 22 plays at launch and the controller
+expires immediately. Stone Wisp 2 in `03140000` supplies the shipped
+subtype-one live case.
+
+Type 16 at `0x0042ea50` launches resource `10000110` at the authored delay.
+It uses the same live-owner 180-unit projection and fixed-origin exception as
+type 14, with 80-unit bounds, authored speed and display height, directional
+chart zero, static and first-target expiry, optional target memory, the copied
+packet, contact sample 20, and launch sample 19.
+
+The controller stores the returned runtime actor identity and refreshes its
+saved x/y position on every later update. After that actor disappears,
+resource `10000111` is created at the last saved position. Its 240-unit
+bounds process every eligible target with the copied packet only on update
+five, while the visual lives for its complete chart-zero animation. Sample 22
+plays at creation. A player no farther than 3000 units receives the familiar
+eight-update, magnitude-six camera shake, then the controller expires.
+Goliate's second effect variant in `04050002` supplies the shipped subtype-ten
+live case.
+
+Type 21 at `0x0042eeb0` reads one, three, or five radial rays from Table 207.
+Update zero creates source resource `11000210`. At the authored delay it
+launches resource `10000100` at evenly spaced subtractive angles, projecting
+180 units from a live owner or retaining an owner-kind-zero explicit origin.
+The rays use 80-unit bounds, authored speed and height, twenty-degree homing,
+speed-scaled animation, a full chart-zero lifetime, static and first-target
+expiry, the copied packet, contact sample 20, and one launch sample 19.
+
+Every returned actor identity and last position is tracked separately. After
+a ray disappears, four stages appear at four-update intervals with 240-unit
+bounds. Resources `12000000`, `11000033`, `10000030`, and `10000060` rewrite
+packet words 32/34 to `0/20000`, `1/21013`, `2/20005`, and `3/21000`.
+Stages two and four process every overlapping target on update zero; stages
+one and three are visual. Stage three adds resources `10000031` and
+`10000032`. Every primary stage plays sample 19, while the final stage also
+plays sample 22 and requests the nearby eight-update, magnitude-six camera
+shake. The controller ends only after all rays finish. Arc Angel's third
+attack in `99000036` supplies the shipped subtype-30 five-ray live case.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -82,7 +221,8 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1, 2, and 3. Focused tests cover zero, positive, and negative delays,
+of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
+cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
 random chart, and persistent obstruction. Its actor outputs are
@@ -104,8 +244,14 @@ pairs preserve the retail one-sound guard and NPC multi-target mode.
 The world owns and renders these controllers and actors, builds their live
 target snapshots, and applies their receiver requests. Shipped regressions
 cover type 2 in `03000507` and the type-3 Plasma Bat in `00010001`, including
-resources, audio, damage, cleanup, and unchanged item ownership. The other
-nine specialized controllers remain to be reconstructed. Mapping
+resources, audio, damage, cleanup, and unchanged item ownership. Scenario
+`01000004` covers type 4's warning, paired burst charts, invisible damage,
+two launch sounds, contact sample 20, camera shake, and item ownership. The
+type-5 sequence is covered by enemy 48 in `04060004`, including its
+resource-driven timing, three visuals, six pulses, area damage, camera shake,
+cleanup, and item ownership. Arc Angel in `99000036` covers type 21's source,
+five tracked rays, four stages, two packet windows, layered render, audio,
+camera shake, cleanup, and item ownership. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 
@@ -1165,3 +1311,24 @@ The Warehouse's opcode 41 owner stays on the left while backpack and equipment
 stay on the right, and the camera remains centered when both are open. The
 same camera policy applies to a left map with the right inventory. Item
 transfers between Warehouse and backpack are exercised in both directions.
+
+Player ranged action 20 now follows `FUN_00437fe0` through a shipped Wood
+Bowgun encounter. Chart 10 has 17 frames, launches from its frame-three
+`0x40` marker, plays sample 3 at counter six, and uses the ten ranged frame
+factors from 0.3 through 2.0. Raw Item.Ibn weapon fields `0xb8`, `0xbc`,
+`0xc0`, and `0xc8` select the generic effect family, one/two/three/five/seven
+shot pattern, travel speed, and target piercing. The two-shot pattern places
+parallel projectiles at explicit minus/plus-eight-degree origins; the other
+straight and homing fans use their authored angular spreads.
+
+Ranged physical attack keeps full strength in job five and otherwise uses the
+job-five history count from `FUN_00450f80`, scaled from 40 through 90 percent.
+The common family-zero packet now carries hit rate in word 36 for effect-actor
+evasion. Reflection and hit-effect random draws stay in native order, the
+whole fan costs one weapon durability, and explicit-origin projectiles keep
+player kill attribution through their packet. Generic effect types 0, 1, 4,
+and 5 enter the existing category-50000000 owner with 30-unit bounds, static
+and target collision, sample 20, optional homing, and optional remembered
+targets. Retail ships no subtype-four weapon record, and action 20's
+increased-power redirect to action 21 remains with the later status/skill
+work.

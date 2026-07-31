@@ -34,6 +34,8 @@ using RuntimeEffectVisualResolver =
 using RuntimeEffectReceiver =
     std::function<void(
         const RuntimeEffectReceiverDispatch& dispatch)>;
+using RuntimeEffectObserverProvider =
+    std::function<EnemyEffectControllerSource()>;
 
 struct RuntimeEffectSystemContext {
     const GroundMap* ground = nullptr;
@@ -44,11 +46,15 @@ struct RuntimeEffectSystemContext {
     RuntimeEffectVisualResolver resolve_visual;
     RuntimeEffectReceiver receive;
     EnemyEffectPlacementTest placement_is_clear;
+    RuntimeEffectObserverProvider provide_observer;
 };
 
 struct RuntimeEffectSystemUpdate {
     std::vector<RuntimeEffectReceiverDispatch> dispatches;
     std::vector<RuntimeEffectAudioRequest> audio;
+    bool camera_shake = false;
+    std::int32_t camera_shake_duration = 0;
+    std::int32_t camera_shake_magnitude = 0;
 };
 
 class RuntimeEffectSystem {
@@ -57,6 +63,8 @@ public:
     bool queue(
         const CombatEffectSpawnRequest& request,
         const TableDatabase* tables = nullptr);
+    bool queueActor(
+        RuntimeEffectActorSpawnRequest request);
     RuntimeEffectSystemUpdate update(
         const RuntimeEffectSystemContext& context);
 
@@ -71,6 +79,8 @@ private:
     };
 
     std::vector<ControllerEntry> controllers_;
+    std::vector<RuntimeEffectActorSpawnRequest>
+        pending_actors_;
     std::vector<RuntimeEffectActor> actors_;
     std::int32_t next_actor_id_ = 0;
 };

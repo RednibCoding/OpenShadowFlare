@@ -1,5 +1,6 @@
 #include "runtime_effect_actor.hpp"
 
+#include "actor_direction.hpp"
 #include "core/retail_random.hpp"
 #include "core/retail_integer.hpp"
 #include "movement_controller.hpp"
@@ -64,19 +65,106 @@ bool collisionWindowActive(
             counter <= request.target_collision_end);
 }
 
+double normalizedRetailAngle(double angle) {
+    while (angle < 0.0) {
+        angle += kRetailFullCircleRadians;
+    }
+    while (angle > kRetailFullCircleRadians) {
+        angle -= kRetailFullCircleRadians;
+    }
+    return angle;
+}
+
+bool livingHomingTarget(
+    const RuntimeEffectTargetSnapshot& target) {
+    if (!target.present || !target.same_scenario) {
+        return false;
+    }
+    if (target.kind == RuntimeEffectTargetKind::player ||
+        target.kind == RuntimeEffectTargetKind::companion ||
+        target.kind == RuntimeEffectTargetKind::enemy) {
+        return target.current_life > 0 &&
+               (target.kind !=
+                    RuntimeEffectTargetKind::enemy ||
+                target.active);
+    }
+    return true;
+}
+
+const RuntimeEffectTargetSnapshot* homingTarget(
+    const RuntimeEffectActorSpawnRequest& request,
+    const std::vector<RuntimeEffectTargetSnapshot>& targets) {
+    const auto found = std::find_if(
+        targets.begin(),
+        targets.end(),
+        [&request](
+            const RuntimeEffectTargetSnapshot& target) {
+            if (!livingHomingTarget(target)) {
+                return false;
+            }
+            if (request.target_mask == 1) {
+                return target.kind ==
+                           RuntimeEffectTargetKind::player &&
+                       target.character_number ==
+                           request.target_identifier;
+            }
+            return target.kind !=
+                       RuntimeEffectTargetKind::player &&
+                   target.identifier ==
+                       request.target_identifier;
+        });
+    return found != targets.end() ? &*found : nullptr;
+}
+
+bool targetNotPassed(
+    WorldPosition start,
+    WorldPosition current,
+    WorldPosition target) {
+    return (start.x > target.x) !=
+               (target.x > current.x) ||
+           (start.y > target.y) !=
+               (target.y > current.y);
+}
+
 }  // namespace
 
 bool RuntimeEffectActor::initialize(
     const RuntimeEffectActorSpawnRequest& request,
     const EffectVisualResource& visual) {
+    return initialize(request, &visual);
+}
+
+bool RuntimeEffectActor::initialize(
+    const RuntimeEffectActorSpawnRequest& request,
+    const EffectVisualResource* visual) {
     *this = {};
-    const gapi::CafDirection* direction =
-        selectedDirection(
-            visual,
-            request.animation_chart,
-            request.animation_direction);
-    if (request.resource_id < 0 ||
-        !direction || direction->frame_count < 1) {
+    const bool invisible_without_resource =
+        !request.visible && request.resource_id < 0;
+    const std::int32_t lifetime_chart =
+        request.lifetime_animation_chart >= 0
+            ? request.lifetime_animation_chart
+            : request.animation_chart;
+    const gapi::CafDirection* lifetime_direction =
+        visual
+            ? selectedDirection(
+                  *visual,
+                  lifetime_chart,
+                  request.animation_direction)
+            : nullptr;
+    const gapi::CafDirection* display_direction =
+        visual
+            ? selectedDirection(
+                  *visual,
+                  request.animation_chart,
+                  request.animation_direction)
+            : nullptr;
+    if ((!invisible_without_resource &&
+         (request.resource_id < 0 ||
+          !display_direction ||
+          display_direction->frame_count < 1)) ||
+        (request.lifetime_from_animation &&
+         (!lifetime_direction ||
+          lifetime_direction->frame_count < 1))) {
         return false;
     }
 
@@ -86,9 +174,12 @@ bool RuntimeEffectActor::initialize(
     previous_position_ = request.position;
     lifetime_ =
         request.lifetime_from_animation
-            ? direction->frame_count
+            ? lifetime_direction->frame_count
             : request.lifetime;
-    visual_ = &visual;
+    direction_radians_ = request.direction_radians;
+    animation_direction_ = request.animation_direction;
+    homing_active_ = request.home_toward_target;
+    visual_ = visual;
     return true;
 }
 
@@ -110,13 +201,70 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
     RetailRandom& random) {
     RuntimeEffectActorUpdate result;
     result.intended_position = position_;
-    if (expired_ || !visual_) {
+    if (expired_ || (request_.visible && !visual_)) {
         result.expired = true;
         return result;
     }
 
     previous_position_ = position_;
     has_updated_ = true;
+    if (request_.home_toward_target) {
+        if (homing_active_) {
+            const RuntimeEffectTargetSnapshot* target =
+                homingTarget(request_, targets);
+            if (!target) {
+                homing_active_ = false;
+            } else if (targetNotPassed(
+                           start_position_,
+                           position_,
+                           target->position)) {
+                const double desired =
+                    std::atan2(
+                        static_cast<double>(
+                            position_.y -
+                            target->position.y),
+                        static_cast<double>(
+                            target->position.x -
+                            position_.x));
+                const double difference =
+                    normalizedRetailAngle(
+                        desired - direction_radians_);
+                const double turn =
+                    static_cast<double>(
+                        request_.homing_turn_speed) *
+                    kRetailRadiansPerDegree;
+                if (difference <= turn ||
+                    kRetailFullCircleRadians - turn <=
+                        difference) {
+                    direction_radians_ = desired;
+                } else if (
+                    difference <=
+                        kRetailHalfCircleRadians) {
+                    direction_radians_ += turn;
+                } else {
+                    direction_radians_ -= turn;
+                }
+            }
+        }
+        result.intended_position =
+            projectedPosition(
+                position_,
+                direction_radians_,
+                request_.travel_speed);
+    } else {
+        const std::int32_t distance =
+            retailMultiply(
+                request_.travel_speed,
+                movement_counter_);
+        result.intended_position =
+            projectedPosition(
+                start_position_,
+                direction_radians_,
+                distance);
+        movement_counter_ =
+            retailAdd(movement_counter_, 1);
+    }
+
     result.target_collision_active =
         collisionWindowActive(request_, counter_);
     if (result.target_collision_active) {
@@ -164,18 +312,6 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
         }
     }
 
-    const std::int32_t distance =
-        retailMultiply(
-            request_.travel_speed,
-            movement_counter_);
-    result.intended_position =
-        projectedPosition(
-            start_position_,
-            request_.direction_radians,
-            distance);
-    movement_counter_ =
-        retailAdd(movement_counter_, 1);
-
     if (request_.collide_with_environment) {
         const WorldPosition collision_audio_position =
             position_;
@@ -215,25 +351,32 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
         position_ = result.intended_position;
     }
 
-    const gapi::CafChart* chart =
-        selectedChart(
-            *visual_, request_.animation_chart);
-    const gapi::CafDirection* direction =
-        selectedDirection(
-            *visual_,
-            request_.animation_chart,
-            request_.animation_direction);
-    animation_frame_ =
-        retailMultiply(
-            request_.animation_speed,
-            counter_) /
-        1000;
-    if (chart && direction &&
-        (chart->status & 1) == 0) {
-        animation_frame_ = std::min(
-            animation_frame_,
-            static_cast<std::int32_t>(
-                direction->frame_count - 1));
+    if (visual_) {
+        if (request_.home_toward_target) {
+            animation_direction_ =
+                retailDirectionForAngle(
+                    direction_radians_);
+        }
+        const gapi::CafChart* chart =
+            selectedChart(
+                *visual_, request_.animation_chart);
+        const gapi::CafDirection* direction =
+            selectedDirection(
+                *visual_,
+                request_.animation_chart,
+                animation_direction_);
+        animation_frame_ =
+            retailMultiply(
+                request_.animation_speed,
+                counter_) /
+            1000;
+        if (chart && direction &&
+            (chart->status & 1) == 0) {
+            animation_frame_ = std::min(
+                animation_frame_,
+                static_cast<std::int32_t>(
+                    direction->frame_count - 1));
+        }
     }
 
     counter_ = retailAdd(counter_, 1);
@@ -248,6 +391,10 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
 std::int32_t
 RuntimeEffectActor::controllerEffectNumber() const {
     return request_.controller_effect_number;
+}
+
+std::int32_t RuntimeEffectActor::actorIdentifier() const {
+    return request_.actor_identifier;
 }
 
 std::int32_t RuntimeEffectActor::resourceId() const {
@@ -288,7 +435,7 @@ std::int32_t RuntimeEffectActor::animationChart() const {
 
 std::int32_t
 RuntimeEffectActor::animationDirection() const {
-    return request_.animation_direction;
+    return animation_direction_;
 }
 
 std::int32_t RuntimeEffectActor::animationFrame() const {
@@ -297,6 +444,11 @@ std::int32_t RuntimeEffectActor::animationFrame() const {
 
 std::int32_t RuntimeEffectActor::displayHeight() const {
     return request_.display_height;
+}
+
+std::int32_t
+RuntimeEffectActor::additionalDisplayStatus() const {
+    return request_.additional_display_status;
 }
 
 std::int32_t RuntimeEffectActor::counter() const {
@@ -325,8 +477,15 @@ bool RuntimeEffectActor::hasUpdated() const {
 
 bool RuntimeEffectActor::targetCollisionActive() const {
     return !expired_ &&
-           visual_ &&
+           (visual_ || !request_.visible) &&
            collisionWindowActive(request_, counter_);
+}
+
+bool RuntimeEffectActor::needsTargetSnapshots() const {
+    return targetCollisionActive() ||
+           (!expired_ &&
+            request_.home_toward_target &&
+            homing_active_);
 }
 
 bool RuntimeEffectActor::hasPacket() const {
@@ -350,12 +509,14 @@ bool RuntimeEffectActor::partEnabled(
 
 const gapi::NjpImage&
 RuntimeEffectActor::patterns() const {
-    return visual_->patterns();
+    static const gapi::NjpImage empty;
+    return visual_ ? visual_->patterns() : empty;
 }
 
 const gapi::CafAnimation&
 RuntimeEffectActor::animation() const {
-    return visual_->animation();
+    static const gapi::CafAnimation empty;
+    return visual_ ? visual_->animation() : empty;
 }
 
 }  // namespace osf

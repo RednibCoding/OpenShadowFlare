@@ -1,5 +1,6 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
+#include "core/retail_integer.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
@@ -89,6 +90,9 @@ void WorldScene::clear() {
     next_ground_item_id_ = 0;
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
+    camera_shake_counter_ = -1;
+    camera_shake_duration_ = 0;
+    camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
     pending_script_travel_ = {};
     script_travel_pending_ = false;
@@ -304,6 +308,14 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    if (camera_shake_counter_ >= 0) {
+        camera_shake_counter_ =
+            retailAdd(camera_shake_counter_, 1);
+        if (camera_shake_counter_ >=
+            camera_shake_duration_) {
+            camera_shake_counter_ = -1;
+        }
+    }
     pending_player_attack_impact_target_id_ = -1;
     level_up_notice_.update();
     std::vector<EnemyActor>& live_enemies =
@@ -698,7 +710,12 @@ std::int32_t WorldScene::cameraScreenX() const {
 std::int32_t WorldScene::cameraScreenY() const {
     const ScreenPosition position =
         calculateRealPosition(player_.position());
-    return position.y - camera_anchor_y_;
+    const std::int32_t shake_y =
+        camera_shake_counter_ >= 0 &&
+                (camera_shake_counter_ & 1) != 0
+            ? camera_shake_magnitude_
+            : 0;
+    return position.y - camera_anchor_y_ - shake_y;
 }
 
 std::int32_t WorldScene::renderCameraScreenX(
@@ -712,7 +729,12 @@ std::int32_t WorldScene::renderCameraScreenY(
     double alpha) const {
     const ScreenPosition position =
         calculateRealPosition(player_.renderPosition(alpha));
-    return position.y - camera_anchor_y_;
+    const std::int32_t shake_y =
+        camera_shake_counter_ >= 0 &&
+                (camera_shake_counter_ & 1) != 0
+            ? camera_shake_magnitude_
+            : 0;
+    return position.y - camera_anchor_y_ - shake_y;
 }
 
 void WorldScene::setCameraAnchor(

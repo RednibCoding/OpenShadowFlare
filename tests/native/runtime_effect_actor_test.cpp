@@ -1,9 +1,11 @@
 #include "resources/effect_visual_resource.hpp"
 #include "core/retail_random.hpp"
+#include "world/actor_direction.hpp"
 #include "world/enemy_effect_controller.hpp"
 #include "world/movement_controller.hpp"
 #include "world/runtime_effect_actor.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -147,7 +149,7 @@ bool testSourceAnimationLifetime() {
         controllerRequest(10001, 4));
     const auto controller_update =
         controller.update({
-            {true, {100, 200}}, nullptr, {}});
+            {true, {100, 200}}, nullptr, {}, {}, {}});
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000012, visual)) {
@@ -206,7 +208,7 @@ bool testForwardMovementAndInterpolation() {
         controllerRequest(10001, 0));
     const auto controller_update =
         controller.update({
-            {true, {100, 200}}, nullptr, {}});
+            {true, {100, 200}}, nullptr, {}, {}, {}});
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000010, visual)) {
@@ -251,13 +253,94 @@ bool testForwardMovementAndInterpolation() {
         "counter, or interpolated snapshots.");
 }
 
+bool testHomingMovementAndLostTargetLatch() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = 10000010;
+    request.position = {0, 0};
+    request.target_mask = 1;
+    request.target_identifier = 0;
+    request.home_toward_target = true;
+    request.homing_turn_speed = 20;
+    request.travel_speed = 100;
+    request.direction_radians = 0.0;
+    request.collide_with_environment = false;
+    request.animation_direction = 0;
+
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind =
+        osf::RuntimeEffectTargetKind::player;
+    target.character_number = 0;
+    target.identifier = 0;
+    target.position = {0, -1000};
+    target.current_life = 100;
+
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(request, visual) &&
+                actor.needsTargetSnapshots(),
+            "A homing runtime actor did not request its target "
+            "snapshot.")) {
+        return false;
+    }
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    osf::RetailRandom random(1);
+    const auto turning = actor.update(
+        ground, objects, {target}, random);
+    constexpr double first_turn =
+        20.0 * osf::kRetailRadiansPerDegree;
+    if (!check(
+            turning.intended_position.x ==
+                static_cast<std::int32_t>(
+                    std::cos(first_turn) * 100.0) &&
+                turning.intended_position.y ==
+                    -static_cast<std::int32_t>(
+                        std::sin(first_turn) * 100.0) &&
+                actor.position().x ==
+                    turning.intended_position.x &&
+                actor.position().y ==
+                    turning.intended_position.y &&
+                actor.animationDirection() ==
+                    osf::retailDirectionForAngle(
+                        first_turn) &&
+                actor.movementCounter() == 0 &&
+                actor.needsTargetSnapshots(),
+            "The homing actor did not turn by the retail "
+            "twenty-degree step and move from its current "
+            "position.")) {
+        return false;
+    }
+
+    actor.initialize(request, visual);
+    const auto without_target =
+        actor.update(ground, objects, {}, random);
+    const auto target_after_loss =
+        actor.update(
+            ground, objects, {target}, random);
+    return check(
+        without_target.intended_position.x == 100 &&
+            without_target.intended_position.y == 0 &&
+            !actor.needsTargetSnapshots() &&
+            target_after_loss.intended_position.x == 200 &&
+            target_after_loss.intended_position.y == 0 &&
+            actor.animationDirection() ==
+                osf::retailDirectionForAngle(0.0) &&
+            actor.movementCounter() == 0,
+        "A missing retail homing target did not permanently "
+        "latch straight-line movement.");
+}
+
 bool testEnvironmentCollisionAndExpiry() {
     osf::EnemyEffectController controller;
     controller.initialize(
         controllerRequest(10001, 0));
     auto controller_update =
         controller.update({
-            {true, {-180, 0}}, nullptr, {}});
+            {true, {-180, 0}}, nullptr, {}, {}, {}});
     osf::RuntimeEffectActorSpawnRequest request =
         controller_update.actor_spawns[1];
     request.environment_audio = {3, 77};
@@ -502,16 +585,103 @@ bool testSpecialEnvironmentFiltering() {
         "the retail special-ground exclusion flag.");
 }
 
+bool testSeparateLifetimeChartAndDisplayStatus() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000000, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = 10000000;
+    request.lifetime_from_animation = true;
+    request.lifetime_animation_chart = 1;
+    request.animation_chart = 0;
+    request.animation_direction = 8;
+    request.additional_display_status = 0x80;
+
+    osf::RuntimeEffectActor actor;
+    return check(
+        actor.initialize(request, visual) &&
+            actor.animationChart() == 0 &&
+            actor.lifetime() ==
+                visual.animation()
+                    .charts()[1]
+                    .directions[8]
+                    .frame_count &&
+            actor.additionalDisplayStatus() == 0x80,
+        "A runtime actor could not draw one chart while using "
+        "another chart's retail lifetime and display status.");
+}
+
+bool testInvisibleDamageActor() {
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = -1;
+    request.owner_kind = 4;
+    request.source_character_number = 14000042;
+    request.target_mask = 1;
+    request.target_identifier = 3;
+    request.position = {100, 200};
+    request.judgement = {-150, -150, 150, 150};
+    request.lifetime = 1;
+    request.target_collision_start = 0;
+    request.target_collision_end = 0;
+    request.process_every_target = true;
+    request.visible = false;
+    request.has_packet = true;
+    request.packet.write(1, 3);
+    request.packet.write(36, 1000);
+
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind =
+        osf::RuntimeEffectTargetKind::player;
+    target.character_number = 0;
+    target.identifier = 0;
+    target.position = {100, 200};
+    target.current_life = 100;
+
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(
+                request,
+                static_cast<
+                    const osf::EffectVisualResource*>(
+                    nullptr)),
+            "An invisible descriptor without a visual resource "
+            "was rejected.")) {
+        return false;
+    }
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    osf::RetailRandom random(1);
+    const auto update = actor.update(
+        ground, objects, {target}, random);
+    return check(
+        !actor.visible() &&
+            actor.patterns().patterns().empty() &&
+            actor.animation().charts().empty() &&
+            update.target_collision_active &&
+            update.target_contacts.size() == 1 &&
+            update.target_contacts[0].identifier == 0 &&
+            update.target_contacts[0].receiver_action ==
+                osf::RuntimeEffectReceiverAction::apply_packet &&
+            update.expired &&
+            actor.expired(),
+        "The invisible one-update actor did not dispatch its "
+        "packet without entering the renderer.");
+}
+
 }  // namespace
 
 int main() {
     if (!testSourceAnimationLifetime() ||
         !testForwardMovementAndInterpolation() ||
+        !testHomingMovementAndLostTargetLatch() ||
         !testEnvironmentCollisionAndExpiry() ||
         !testInclusiveTargetWindow() ||
         !testTargetQueryPrecedesMovement() ||
         !testObjectAndBlockedStartAudioOrder() ||
-        !testSpecialEnvironmentFiltering()) {
+        !testSpecialEnvironmentFiltering() ||
+        !testSeparateLifetimeChartAndDisplayStatus() ||
+        !testInvisibleDamageActor()) {
         return 1;
     }
     return 0;
