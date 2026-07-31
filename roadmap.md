@@ -98,7 +98,7 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller types 10, 11, 12, 13, 14, 16, and 21 one
+- finish effect-controller types 11, 12, 13, 14, 16, and 21 one
   shipped family at a time, with both passive timing coverage and a live actor
   using each one;
 - finish ranged player actions and projectiles without bypassing the common
@@ -1021,7 +1021,19 @@ camera jolt. Six sample-22 pulses land at offsets 6, 9, 12, 15, 18, and 21.
 The final visual uses retail display class two. Enemy 48 in scenario
 `04060004` supplies the shipped live case and proves all three visuals,
 damage, launch and contact audio, cleanup, and unchanged item ownership.
-Types 10, 11, 12, 13, 14, 16, and 21 remain.
+
+Type 10 is complete too. Table 206 supplies five waves for shipped subtype
+20. Starting at its authored delay, the controller projects one attempt every
+eight updates from the stored impact point, beginning 250 units out and adding
+300 units each time. Each clear 150-unit placement creates resource
+`10000060`, applies the copied packet to every overlapping target on update
+zero, plays sample 22, and requests the familiar eight-by-six camera shake
+when the player is within the strict 3001-unit range. The first blocked
+placement permanently suppresses that and every later wave, while the
+controller still runs through its complete Table 206 timeline. Enemy 26 in
+scenario `04060004` provides the shipped live render, damage, audio, camera,
+blocked-tail, cleanup, and item-identity regression.
+Types 11, 12, 13, 14, 16, and 21 remain.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1050,7 +1062,7 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 10, 11, 12, 13, 14, 16,
+finish. It should move to effect-controller types 11, 12, 13, 14, 16,
 and 21, then the ranged player actions and companion attacks, keeping one
 shipped live encounter beside each passive reconstruction.
 

@@ -98,6 +98,21 @@ zero, direction eight, and their own complete CAF lifetime. Sample 22 plays
 at offsets 6, 9, 12, 15, 18, and 21. The controller expires at frame-count
 plus 22.
 
+Type 10 at `0x0042e7e0` reads Table 206 row zero at `subtype - 1` and attempts
+one wave every eight updates after the authored delay. Wave positions advance
+from the fixed impact origin at radii `wave * 300 + 250`, with
+`[-150,-150,150,150]` placement bounds. The first failed placement
+permanently suppresses that and every later wave.
+
+Each clear wave creates resource `10000060` with chart zero, direction eight,
+and a complete animation lifetime. Its update-zero collision processes every
+eligible target with the copied packet, while sample 22 and the nearby
+eight-update, magnitude-six camera shake originate at the wave position. The
+controller expires at `delay + Table206Value * 8`. Passive coverage proves
+the complete unobstructed and blocked timelines; enemy 26 in Devil's Castle
+2F supplies the shipped live render, damage, audio, camera, blocked-tail, and
+cleanup case.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -114,7 +129,8 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 through 5. Focused tests cover zero, positive, and negative delays,
+of types 1 through 5 and type 10. Focused tests cover zero, positive, and
+negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
 random chart, and persistent obstruction. Its actor outputs are

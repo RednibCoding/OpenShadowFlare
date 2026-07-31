@@ -310,7 +310,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10010;
+    request.effect_number = 10011;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -856,6 +856,203 @@ bool testTypeThreeWaves() {
 #endif
 }
 
+bool testTypeTenWaves() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The retail type-ten wave table could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* wave_table = tables.find(206);
+    const std::int32_t wave_count =
+        wave_table ? wave_table->value(0, 19) : 0;
+    if (!check(
+            wave_count > 0,
+            "Table 206 has no shipped type-ten subtype-20 "
+            "wave count.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10010, 2);
+    request.has_explicit_origin = true;
+    request.origin = {1000, 2000};
+    request.constructor_value_17 = 20;
+    request.target_kind = 19;
+    request.target_identifier = -1;
+    request.direction_radians = 0.0;
+
+    osf::EnemyEffectController controller;
+    osf::RetailRandom random(1);
+    std::size_t placement_count = 0;
+    std::size_t actor_count = 0;
+    std::size_t audio_count = 0;
+    std::size_t shake_count = 0;
+    std::vector<std::int32_t> wave_updates;
+    std::vector<std::int32_t> wave_x;
+    if (!check(
+            controller.initialize(request, &tables),
+            "A shipped type-ten subtype was rejected.")) {
+        return false;
+    }
+
+    const std::int32_t total_updates =
+        2 + wave_count * 8;
+    for (std::int32_t update_number = 0;
+         update_number < total_updates;
+         ++update_number) {
+        const auto update = controller.update({
+            {true, {7, 9}},
+            &random,
+            [&placement_count](
+                osf::WorldPosition,
+                const osf::ObjectBounds& judgement) {
+                ++placement_count;
+                return judgement.left == -150 &&
+                       judgement.top == -150 &&
+                       judgement.right == 150 &&
+                       judgement.bottom == 150;
+            },
+            {true, {1250, 2000}},
+            {},
+        });
+        actor_count += update.actor_spawn_count;
+        audio_count += update.audio_count;
+        shake_count += update.camera_shake ? 1u : 0u;
+
+        const bool wave_update =
+            update_number >= 2 &&
+            (update_number - 2) % 8 == 0;
+        if (!wave_update) {
+            if (!check(
+                    update.actor_spawn_count == 0 &&
+                        update.audio_count == 0 &&
+                        !update.camera_shake,
+                    "Type ten emitted work between its "
+                    "eight-update waves.")) {
+                return false;
+            }
+            continue;
+        }
+
+        wave_updates.push_back(update_number);
+        const std::int32_t wave_index =
+            (update_number - 2) / 8;
+        const std::int32_t expected_x =
+            1250 + wave_index * 300;
+        const auto& actor = update.actor_spawns[0];
+        wave_x.push_back(actor.position.x);
+        if (!check(
+                update.actor_spawn_count == 1 &&
+                    update.audio_count == 1 &&
+                    update.audio[0].sample == 22 &&
+                    update.audio[0].position.x ==
+                        expected_x &&
+                    update.audio[0].position.y == 2000 &&
+                    actor.controller_effect_number == 10010 &&
+                    actor.resource_id == 10000060 &&
+                    actor.owner_kind == 4 &&
+                    actor.source_character_number ==
+                        14000042 &&
+                    actor.target_mask == 19 &&
+                    actor.target_identifier == 0 &&
+                    actor.position.x == expected_x &&
+                    actor.position.y == 2000 &&
+                    actor.judgement.left == -150 &&
+                    actor.judgement.top == -150 &&
+                    actor.judgement.right == 150 &&
+                    actor.judgement.bottom == 150 &&
+                    actor.lifetime_from_animation &&
+                    actor.target_collision_start == 0 &&
+                    actor.target_collision_end == 0 &&
+                    actor.process_every_target &&
+                    !actor.expire_on_target &&
+                    actor.animation_chart == 0 &&
+                    actor.animation_direction == 8 &&
+                    actor.has_packet &&
+                    actor.packet[34] == 21013 &&
+                    update.camera_shake ==
+                        (expected_x - 1250 < 3001) &&
+                    (!update.camera_shake ||
+                     (update.camera_shake_duration == 8 &&
+                      update.camera_shake_magnitude == 6)),
+                "A type-ten wave differs from its retail actor, "
+                "audio, placement, or camera descriptor.")) {
+            return false;
+        }
+    }
+
+    if (!check(
+            !controller.active() &&
+                controller.counter() == total_updates &&
+                placement_count ==
+                    static_cast<std::size_t>(wave_count) &&
+                actor_count ==
+                    static_cast<std::size_t>(wave_count) &&
+                audio_count ==
+                    static_cast<std::size_t>(wave_count) &&
+                shake_count ==
+                    static_cast<std::size_t>(
+                        std::min(wave_count, 11)) &&
+                random.state() == 1 &&
+                wave_updates.size() ==
+                    static_cast<std::size_t>(wave_count) &&
+                wave_x.front() == 1250 &&
+                wave_x.back() ==
+                    1250 + (wave_count - 1) * 300,
+            "Type ten did not use Table 206's delayed "
+            "eight-update advancing wave sequence.")) {
+        return false;
+    }
+
+    controller.initialize(request, &tables);
+    std::size_t blocked_placement_count = 0;
+    actor_count = 0;
+    audio_count = 0;
+    shake_count = 0;
+    for (std::int32_t update_number = 0;
+         update_number < total_updates;
+         ++update_number) {
+        const auto update = controller.update({
+            {},
+            &random,
+            [&blocked_placement_count](
+                osf::WorldPosition,
+                const osf::ObjectBounds&) {
+                ++blocked_placement_count;
+                return false;
+            },
+            {true, {1250, 2000}},
+            {},
+        });
+        actor_count += update.actor_spawn_count;
+        audio_count += update.audio_count;
+        shake_count += update.camera_shake ? 1u : 0u;
+    }
+    return check(
+        !controller.active() &&
+            blocked_placement_count ==
+                static_cast<std::size_t>(wave_count) &&
+            actor_count == 0 &&
+            audio_count == 0 &&
+            shake_count == 0 &&
+            random.state() == 1,
+        "A blocked type-ten placement did not permanently "
+        "suppress its current and later waves.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -865,7 +1062,8 @@ int main() {
         !testNegativeDelayAndRejectedRequests() ||
         !testTypeFourWarningBurstAndCameraShake() ||
         !testTypeFiveFrameCountSequence() ||
-        !testTypeThreeWaves()) {
+        !testTypeThreeWaves() ||
+        !testTypeTenWaves()) {
         return 1;
     }
     return 0;

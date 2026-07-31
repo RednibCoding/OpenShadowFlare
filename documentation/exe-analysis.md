@@ -1334,7 +1334,8 @@ enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
 `EnemyEffectController` now ports the complete controller half of types 1, 2,
-3, and 4 without pretending that every specialized family is finished. It emits the
+3, 4, 5, and 10 without pretending that every specialized family is
+finished. It emits the
 source actor on update zero, re-resolves the source at the exact authored
 delay, projects the second actor with the retail Y-axis convention, copies the
 combat packet, and places sample 19 or 94 at that second position. A zero delay
@@ -1389,6 +1390,25 @@ Sample 22 plays at the captured position at frame-count offsets 6, 9, 12, 15,
 its counter reaches frame-count plus 22. Resource `10000051`, resource
 `10000050`, resource `10000052`, and the invisible packet all remain separate
 runtime actors with their own lifetimes.
+
+Type 10 (`0x0042e7e0`) reads its wave count from Table 206 row zero at
+`subtype - 1`. Beginning at the authored delay, it attempts one wave every
+eight updates. Positions are projected along the stored direction from the
+stored impact origin at `wave * 300 + 250` world units. Every placement uses
+`[-150,-150,150,150]`; the first failed map or live-object query latches a
+stop flag which suppresses that wave and all later waves without shortening
+the controller's timeline.
+
+Each clear wave creates resource `10000060` with chart zero, direction eight,
+and that chart's complete animation lifetime. Its update-zero collision
+window processes every overlapping target selected by the request's target
+mask, uses target identifier zero, and passes along the copied combat packet.
+Sample 22 plays at the wave position. A player at a strict distance below
+3001 receives the same eight-update, magnitude-six camera shake as types 4
+and 5. The controller expires at `delay + Table206Value * 8`. Shipped enemy
+26 in Devil's Castle 2F uses type 10 subtype 20; its live regression also
+proves that the fifth attempted wave is suppressed by the scenario's
+placement data while the first four remain visible and active.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance

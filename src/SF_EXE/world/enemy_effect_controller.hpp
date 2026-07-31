@@ -72,9 +72,9 @@ public:
 private:
     CombatEffectSpawnRequest request_;
     std::int32_t counter_ = 0;
-    std::int32_t type_three_wave_count_ = 0;
-    std::int32_t type_three_wave_index_ = 0;
-    bool type_three_placement_blocked_ = false;
+    std::int32_t wave_count_ = 0;
+    std::int32_t wave_index_ = 0;
+    bool wave_placement_blocked_ = false;
     WorldPosition type_five_position_;
     bool active_ = false;
 };
