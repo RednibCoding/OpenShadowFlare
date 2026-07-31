@@ -168,15 +168,22 @@ bool GameplayUiController::update(
         transport_.active();
     if (!quest_notice_hidden &&
         input.menu().pointer_primary_pressed) {
+        const ActiveQuestShortcutLayout shortcut;
+        const bool shortcut_clicked =
+            activeQuestShortcutVisible(world.quests()) &&
+            activeQuestShortcutContains(
+                shortcut,
+                input.menu().pointer_x,
+                input.menu().pointer_y);
         QuestNoticeLayout layout;
-        if (buildQuestNoticeLayout(
-                world.quests(),
-                world.missions(),
-                layout) &&
+        const bool notice_clicked =
+            buildQuestNoticeLayout(
+                world.quests(), world.missions(), layout) &&
             questNoticeContains(
                 layout,
                 input.menu().pointer_x,
-                input.menu().pointer_y)) {
+                input.menu().pointer_y);
+        if (shortcut_clicked || notice_clicked) {
             mission_list_.open();
             world.cancelPlayerMovement();
             return true;

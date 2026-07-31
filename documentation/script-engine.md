@@ -299,10 +299,13 @@ interactions are portable so far.
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; argument zero is the Warehouse/Special Item owner |
+| 42 | opcode switch | Write the local player's current and maximum life to two operands |
+| 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
+| 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
 in the executable are:
@@ -379,7 +382,15 @@ gameplay interface reads the title from Table 41, wraps it in the retail
 Shift-JIS corner brackets, and temporarily draws it just above the lower HUD.
 The exact title rectangle is clickable and opens the Mission List. Opcode 62
 also plays retail sample 65 for an ordinary quest update and sample 66 for a
-valid first completion.
+valid first completion. While any quest remains in state one, the same retail
+function draws `StatusIcon.njp` pattern zero at `(616, 360)`. Its
+`616..639` by `368..383` shortcut stays after the timed title has faded and
+also opens the Mission List.
+
+Syria's later status-zero branch reads quest zero directly. When it is already
+active, opcodes 42, 43, and 63 compare the player's life, mana, and optional
+condition pairs before selecting the normal healing or blessing text; it does
+not offer quest zero again.
 
 The ordinary Mission List does not store another hand-written copy of this
 information. `0x0040cea0` reads the state array written by opcode 62, takes all
@@ -437,8 +448,8 @@ The currently understood domains are:
 | 7 | Script character's current world Y |
 | 8 | Current play mode (`0` single player, `1` client, `2` server) |
 | 10 | Persistent transport flags (Table 40 rows) |
-| 11 | Persistent quest and conversation flags |
-| 12 | Persistent scenario/global flags |
+| 11 | Persistent script and conversation flags |
+| 12 | Persistent quest state |
 | 13 | Local-player array |
 
 Type `5` includes three confirmed live scenario-entity ranges. A key beginning
@@ -501,6 +512,12 @@ script character number, so the renderer can anchor Syria's bubble even
 though this particular branch does not run the explicit actor-facing command
 used by Ostare and Malse. Dialogue text, actor IDs, branches, and quest IDs
 continue to come from the retail SCS.
+
+The corresponding completion is authored on the outdoor map rather than in a
+hard-coded enemy-name check. Red Goblin character `14010000` has status kind
+`4` at sentence 12. After its death animation and fade finish, the retail
+enemy owner invokes that status; its opcode 62 command changes quest zero from
+state one to state two and emits the completion cue.
 
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from

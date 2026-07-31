@@ -442,6 +442,7 @@ EnemyActorUpdate EnemyActor::update(
         if (action_counter_ >=
             frame_count + kDeathFadeUpdates - 1) {
             expired_ = true;
+            result.death_finished = true;
             result.expired = true;
             return result;
         }

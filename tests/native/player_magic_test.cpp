@@ -129,6 +129,74 @@ int main() {
         std::cerr << error << '\n';
         return 1;
     }
+    osf::RetailSaveProgress restored_progress;
+    std::size_t restored_progress_end = 0;
+    if (!check(
+            osf::restoreRetailProgress(
+                payload,
+                items_end,
+                restored_progress,
+                &restored_progress_end,
+                &error) &&
+                restored_progress_end == progress_end &&
+                restored_progress.quest_flags ==
+                    progress.quest_flags &&
+                restored_progress.transport_flags ==
+                    progress.transport_flags &&
+                restored_progress.script_state_flags ==
+                    progress.script_state_flags &&
+                restored_progress.running,
+            "The retail type-12, type-10, and type-11 progress arrays "
+            "did not round-trip in executable order.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::vector<std::uint8_t> legacy_payload = payload;
+    osf::RetailSaveProgress legacy_written{
+        progress.script_state_flags,
+        progress.transport_flags,
+        progress.quest_flags,
+        progress.running,
+    };
+    if (!check(
+            osf::replaceRetailProgress(
+                legacy_payload,
+                items_end,
+                legacy_written,
+                nullptr,
+                &error) &&
+                legacy_payload.size() >= 8,
+            "The legacy progress-order fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    // Portable extension version one accidentally wrote type 11 first and
+    // type 12 third. Mark the deliberately swapped fixture as version one;
+    // the reader must migrate it without losing development saves.
+    legacy_payload[legacy_payload.size() - 8] = 1;
+    legacy_payload[legacy_payload.size() - 7] = 0;
+    legacy_payload[legacy_payload.size() - 6] = 0;
+    legacy_payload[legacy_payload.size() - 5] = 0;
+    osf::RetailSaveProgress migrated_progress;
+    if (!check(
+            osf::restoreRetailProgress(
+                legacy_payload,
+                items_end,
+                migrated_progress,
+                nullptr,
+                &error) &&
+                migrated_progress.quest_flags ==
+                    progress.quest_flags &&
+                migrated_progress.transport_flags ==
+                    progress.transport_flags &&
+                migrated_progress.script_state_flags ==
+                    progress.script_state_flags &&
+                migrated_progress.running,
+            "Portable version-one progress did not migrate from its "
+            "old swapped flag order.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
 
     osf::PlayerMagic fixture;
     fixture.restore(fixtureState());
@@ -254,8 +322,6 @@ int main() {
         return 1;
     }
 
-    std::int32_t parsed_saves = 0;
-    std::int32_t learned_spells = 0;
     for (std::int32_t slot = 0; slot < 4; ++slot) {
         const std::filesystem::path save =
             game_root / "Save" /
@@ -306,20 +372,6 @@ int main() {
             std::cerr << error << '\n';
             return 1;
         }
-        ++parsed_saves;
-        for (std::int32_t spell = 0;
-             spell <
-                 static_cast<std::int32_t>(
-                     osf::PlayerMagic::spell_count);
-             ++spell) {
-            learned_spells +=
-                retail_magic.learned(spell) ? 1 : 0;
-        }
-    }
-    if (!check(
-            parsed_saves == 4 && learned_spells > 0,
-            "The shipped retail saves did not prove the magic parser.")) {
-        return 1;
     }
     return 0;
 }

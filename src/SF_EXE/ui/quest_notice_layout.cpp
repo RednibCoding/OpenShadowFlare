@@ -3,6 +3,8 @@
 #include "world/mission_catalog.hpp"
 #include "world/quest_state.hpp"
 
+#include <algorithm>
+
 namespace osf {
 namespace {
 
@@ -51,6 +53,23 @@ bool questNoticeContains(
            screen_x < layout.x + layout.width &&
            screen_y >= layout.y &&
            screen_y < layout.y + layout.height;
+}
+
+bool activeQuestShortcutVisible(const QuestState& quests) {
+    return std::find(
+               quests.states().begin(),
+               quests.states().end(),
+               1) != quests.states().end();
+}
+
+bool activeQuestShortcutContains(
+    const ActiveQuestShortcutLayout& layout,
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    return screen_x >= layout.hit_x &&
+           screen_x < layout.hit_x + layout.hit_width &&
+           screen_y >= layout.hit_y &&
+           screen_y < layout.hit_y + layout.hit_height;
 }
 
 }  // namespace osf

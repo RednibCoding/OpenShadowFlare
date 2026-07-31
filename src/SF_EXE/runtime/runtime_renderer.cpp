@@ -138,6 +138,7 @@ void RuntimeRenderer::render(
                 renderQuestNotice(
                     renderer_,
                     *font,
+                    context.frontend_assets.pattern(8),
                     context.world.quests(),
                     context.world.missions());
             }

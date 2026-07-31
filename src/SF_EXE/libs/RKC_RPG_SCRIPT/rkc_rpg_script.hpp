@@ -91,6 +91,12 @@ enum class ValueQuery {
     local_player_level,
     local_player_companion_type,
     play_mode,
+    local_player_current_life,
+    local_player_maximum_life,
+    local_player_current_mana,
+    local_player_maximum_mana,
+    local_player_condition_current,
+    local_player_condition_maximum,
 };
 
 struct InterpreterHooks {

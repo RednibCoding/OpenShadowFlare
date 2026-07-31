@@ -416,7 +416,7 @@ private:
     AiControlDatabase ai_control_database_;
     std::unordered_map<std::uint64_t, std::int32_t>
         script_persistent_values_;
-    std::vector<std::int32_t> scenario_flags_;
+    std::vector<std::int32_t> script_state_flags_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;

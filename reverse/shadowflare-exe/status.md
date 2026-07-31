@@ -952,6 +952,26 @@ by twelve-pixel rectangle is clickable and opens the Mission List, while the
 counter is decremented once per interface update. The two script cues call the
 ordinary sound owner with samples 65 for an update and 66 for completion.
 
+The same function scans the type-12 quest array for its first state-one row
+and draws `StatusIcon.njp` pattern zero at `(616,360)`. Its exact
+`[616,640) x [368,384)` hit box opens the Mission List independently of the
+timed title, so the shortcut remains until no active quest exists.
+
+The operand arrays have now been separated at their actual retail owners.
+Type 12 is quest state, type 10 is the Table 40 transport array, and type 11
+is broader script progress such as Ostare's index-four conversation flag.
+Syria's repeat branch confirms the distinction by reading type-12 index zero.
+It uses opcodes 42 and 43 to compare current/maximum life and mana, and opcode
+63 for the optional player-condition pair, before choosing her ordinary
+healing or blessing response instead of restarting the quest.
+
+Scenario `00000001` owns the completion side. Red Goblin MCT ID `10000` maps
+to script character `14010000`; its status-kind-four sentence 12 reaches
+opcode 62 with `{0,2,1}` in single-player mode. The retail enemy lifecycle
+calls `0x004309a0` only after the death presentation and fade expire. The
+portable enemy owner now does the same, keeping the quest consequence in the
+authored SCS rather than attaching it to an enemy name.
+
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
 calls create three ordinary ground-item records plus 200 money. The portable

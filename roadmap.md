@@ -870,7 +870,12 @@ which do not run an explicit facing command. The Mission List consumes those
 quest states directly and gets its text from the retail parameter tables. The
 short-lived notice now uses the recovered bottom-right coordinates, brackets,
 shadow, exact clickable title rectangle, and the script's samples 65 and 66;
-clicking it opens the Mission List.
+clicking it opens the Mission List. The persistent StatusIcon lock shortcut is
+drawn and clickable while any quest remains active. Syria's subsequent
+interactions now read the real type-12 quest owner and follow her normal
+healing/blessing branch. Near Remote Town's authored status-kind-four callback
+also completes quest zero after Red Goblin `14010000` finishes its death
+presentation.
 
 ### 3. Items, inventory, and equipment
 
@@ -1458,7 +1463,8 @@ The envelope writer is now in place, including the random XOR byte,
 signed-byte checksum, substitution pass, and safe preservation of an existing
 unknown payload. New saves carry the player record and owned items we currently
 own. The three counted retail arrays after the item stream now preserve
-scenario flags, transport unlocks, and quest/conversation state; this is
+type-12 quest state, type-10 transport unlocks, and type-11 general script
+state; this is
 covered by saving after Ostare's opening and proving his starter reward does
 not repeat after loading. Walk/run also survives a portable round trip through
 a small versioned tail until its exact retail save owner is identified.

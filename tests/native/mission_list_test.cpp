@@ -339,11 +339,16 @@ bool testQuestNotice() {
     }
 
     osf::gapi::NjpImage font;
+    osf::gapi::NjpImage status_icons;
     RecordingBackend backend;
     osf::renderQuestNotice(
-        backend, font, quests, catalog);
+        backend, font, &status_icons, quests, catalog);
     if (!check(
-            backend.texts.size() == 2 &&
+            backend.patterns.size() == 1 &&
+                backend.patterns[0].index == 0 &&
+                backend.patterns[0].draw.x == 616 &&
+                backend.patterns[0].draw.y == 360 &&
+                backend.texts.size() == 2 &&
                 backend.texts[0].text == layout.text &&
                 backend.texts[0].draw.x == 457 &&
                 backend.texts[0].draw.y == 369 &&
@@ -354,7 +359,23 @@ bool testQuestNotice() {
                 backend.texts[1].draw.color.red == 224 &&
                 backend.texts[1].draw.color.green == 224 &&
                 backend.texts[1].draw.color.blue == 224,
-            "The quest notice shadow, color, or retail position differs.")) {
+            "The active-quest icon, notice shadow, color, or retail "
+            "position differs.")) {
+        return false;
+    }
+    const osf::ActiveQuestShortcutLayout shortcut;
+    if (!check(
+            osf::activeQuestShortcutVisible(quests) &&
+                osf::activeQuestShortcutContains(
+                    shortcut, 616, 368) &&
+                osf::activeQuestShortcutContains(
+                    shortcut, 639, 383) &&
+                !osf::activeQuestShortcutContains(
+                    shortcut, 640, 383) &&
+                !osf::activeQuestShortcutContains(
+                    shortcut, 639, 384),
+            "The active-quest shortcut hit rectangle differs from "
+            "FUN_004050f0.")) {
         return false;
     }
 
@@ -363,12 +384,25 @@ bool testQuestNotice() {
     }
     backend = {};
     osf::renderQuestNotice(
-        backend, font, quests, catalog);
-    return check(
-        backend.texts.empty() &&
+        backend, font, &status_icons, quests, catalog);
+    if (!check(
+        backend.patterns.size() == 1 &&
+            backend.patterns[0].index == 0 &&
+            backend.texts.empty() &&
             !osf::buildQuestNoticeLayout(
                 quests, catalog, layout),
-        "The expired quest notice remained visible or clickable.");
+        "The expired quest title remained visible or the active-quest "
+        "shortcut disappeared with it.")) {
+        return false;
+    }
+    quests.applyScriptUpdate(0, 2);
+    backend = {};
+    osf::renderQuestNotice(
+        backend, font, &status_icons, quests, catalog);
+    return check(
+        !osf::activeQuestShortcutVisible(quests) &&
+            backend.patterns.empty(),
+        "The active-quest shortcut remained after quest completion.");
 }
 
 bool testOptionsEntry() {

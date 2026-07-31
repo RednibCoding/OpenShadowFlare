@@ -271,7 +271,12 @@ new-game dialogue branches from `Scenario.Scs`. Syria's callback also reaches
 the first quest-state commands: it starts quest zero and selects the matching
 retail quest notice without putting quest IDs or dialogue into `WorldScene`.
 That notice uses the table-owned title, retail sound cue, 600-update lifetime,
-bottom-right placement, and clickable Mission List shortcut.
+bottom-right placement, and clickable Mission List title. The original
+StatusIcon lock shortcut remains beside it while any quest is active and also
+opens the Mission List. Syria's repeat branch now reads the same saved quest
+state and follows her normal healing/blessing dialogue. The Red Goblin's
+authored status-kind-four death callback completes quest zero after its death
+presentation expires.
 The Mission List exposes that state through the original `Q` shortcut and
 Settings-menu row. Its 48 titles and per-mission description lines come from
 `Table.Tbd`; the portable screen keeps the retail two-page layout, closed and
@@ -319,8 +324,8 @@ selected save contributes its complete plain 0x160-byte player record. The
 in-game save actions also decode the retail item stream and
 round-trip equipped items, the backpack, and the belt without replacing the
 unknown equipment, special-item, or trailing state in an original save. The
-three retail scenario, transport, and quest/conversation flag arrays are
-restored and rewritten as well, and the selected walk/run mode survives a
+three retail quest, transport, and general script-state arrays are restored
+and rewritten in executable order, and the selected walk/run mode survives a
 portable save/load. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load

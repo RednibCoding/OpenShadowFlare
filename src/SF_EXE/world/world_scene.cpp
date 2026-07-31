@@ -81,7 +81,7 @@ void WorldScene::clear() {
     parameter_tables_.clear();
     ai_control_database_.clear();
     script_persistent_values_.clear();
-    scenario_flags_.clear();
+    script_state_flags_.clear();
     data_root_.clear();
     item_world_resources_.clear();
     item_random_.seed(1);
@@ -306,9 +306,9 @@ WorldScene::aiControlDatabase() const {
 
 RetailSaveProgress WorldScene::retailSaveProgress() const {
     return {
-        scenario_flags_,
-        transports_.enabledFlags(),
         quests_.states(),
+        transports_.enabledFlags(),
+        script_state_flags_,
         player_.movementPace() == MovementPace::run,
     };
 }
@@ -753,6 +753,16 @@ void WorldScene::update() {
                 enemy, update.effect_spawn);
         } else {
             queueCombatEffect(update.effect_spawn);
+        }
+        if (update.death_finished &&
+            scenario_script_.data().findStatus(
+                4, enemy.characterNumber())) {
+            // The retail enemy owner calls FUN_004309a0 after the death
+            // animation and fade have completed. Scenario status kind four
+            // owns authored consequences such as completing the first Red
+            // Goblin quest; ordinary enemies simply have no matching row.
+            scenario_script_.startStatus(
+                4, enemy.characterNumber());
         }
         if (enemy_blocker_indices[index] != no_blocker) {
             actor_blockers[

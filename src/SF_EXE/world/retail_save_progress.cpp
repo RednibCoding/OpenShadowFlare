@@ -15,7 +15,8 @@ constexpr std::array<std::uint8_t, 8> kExtensionSignature{{
     'O', 'S', 'F', 'S', 'T', '0', '1', '\0',
 }};
 constexpr std::uint32_t kExtensionSize = 20;
-constexpr std::uint32_t kExtensionVersion = 1;
+constexpr std::uint32_t kLegacySwappedFlagVersion = 1;
+constexpr std::uint32_t kExtensionVersion = 2;
 
 // The three flag arrays below are retail fields. The executable does not
 // serialize its live walk/run word in FUN_0044b580, so that one setting uses
@@ -93,10 +94,10 @@ bool appendFlagArray(
     return true;
 }
 
-bool hasPortableExtension(
+std::int32_t portableExtensionVersion(
     const std::vector<std::uint8_t>& payload) {
     if (payload.size() < kExtensionSize) {
-        return false;
+        return 0;
     }
     const std::size_t start =
         payload.size() - kExtensionSize;
@@ -105,16 +106,22 @@ bool hasPortableExtension(
             kExtensionSignature.end(),
             payload.begin() +
                 static_cast<std::ptrdiff_t>(start))) {
-        return false;
+        return 0;
     }
     std::size_t offset = start + kExtensionSignature.size();
     std::int32_t size = 0;
     std::int32_t version = 0;
-    return readI32(payload, offset, size) &&
-           readI32(payload, offset, version) &&
-           size == static_cast<std::int32_t>(kExtensionSize) &&
-           version ==
-               static_cast<std::int32_t>(kExtensionVersion);
+    if (!readI32(payload, offset, size) ||
+        !readI32(payload, offset, version) ||
+        size != static_cast<std::int32_t>(kExtensionSize) ||
+        (version !=
+             static_cast<std::int32_t>(
+                 kLegacySwappedFlagVersion) &&
+         version !=
+             static_cast<std::int32_t>(kExtensionVersion))) {
+        return 0;
+    }
+    return version;
 }
 
 void appendPortableExtension(
@@ -155,11 +162,13 @@ bool restoreRetailProgress(
 
     std::size_t offset = owned_items_end;
     RetailSaveProgress restored = progress;
+    std::vector<std::int32_t> first_flags;
+    std::vector<std::int32_t> third_flags;
     if (!readFlagArray(
-            payload, offset, restored.scenario_flags)) {
+            payload, offset, first_flags)) {
         setError(
             error,
-            "The retail scenario-flag stream is truncated.");
+            "The retail quest-flag stream is truncated.");
         return false;
     }
     if (!readFlagArray(
@@ -170,13 +179,27 @@ bool restoreRetailProgress(
         return false;
     }
     if (!readFlagArray(
-            payload, offset, restored.quest_flags)) {
+            payload, offset, third_flags)) {
         setError(
             error,
-            "The retail quest/conversation-flag stream is truncated.");
+            "The retail script-state stream is truncated.");
         return false;
     }
-    if (hasPortableExtension(payload)) {
+    const std::int32_t extension_version =
+        portableExtensionVersion(payload);
+    if (extension_version ==
+        static_cast<std::int32_t>(
+            kLegacySwappedFlagVersion)) {
+        // Portable version one wrote the type-11 and type-12 arrays in the
+        // opposite order. Preserve those development saves while all new
+        // output follows the retail stream.
+        restored.quest_flags = std::move(third_flags);
+        restored.script_state_flags = std::move(first_flags);
+    } else {
+        restored.quest_flags = std::move(first_flags);
+        restored.script_state_flags = std::move(third_flags);
+    }
+    if (extension_version != 0) {
         const std::size_t start =
             payload.size() - kExtensionSize;
         restored.running = payload[start + 16] != 0;
@@ -218,7 +241,7 @@ bool replaceRetailProgress(
     }
 
     std::size_t suffix_end = payload.size();
-    if (hasPortableExtension(payload)) {
+    if (portableExtensionVersion(payload) != 0) {
         suffix_end -= kExtensionSize;
     }
     if (old_progress_end > suffix_end) {
@@ -231,9 +254,9 @@ bool replaceRetailProgress(
     std::vector<std::uint8_t> replacement;
     replacement.reserve(
         payload.size() +
-        (progress.scenario_flags.size() +
+        (progress.quest_flags.size() +
          progress.transport_flags.size() +
-         progress.quest_flags.size()) *
+         progress.script_state_flags.size()) *
             4u +
         32u);
     replacement.insert(
@@ -241,9 +264,10 @@ bool replaceRetailProgress(
         payload.begin(),
         payload.begin() +
             static_cast<std::ptrdiff_t>(owned_items_end));
-    if (!appendFlagArray(replacement, progress.scenario_flags) ||
+    if (!appendFlagArray(replacement, progress.quest_flags) ||
         !appendFlagArray(replacement, progress.transport_flags) ||
-        !appendFlagArray(replacement, progress.quest_flags)) {
+        !appendFlagArray(
+            replacement, progress.script_state_flags)) {
         setError(error, "The retail progress stream is too large.");
         return false;
     }
@@ -256,9 +280,9 @@ bool replaceRetailProgress(
     const std::size_t new_progress_end =
         owned_items_end +
         12u +
-        (progress.scenario_flags.size() +
+        (progress.quest_flags.size() +
          progress.transport_flags.size() +
-         progress.quest_flags.size()) *
+         progress.script_state_flags.size()) *
             4u;
     appendPortableExtension(replacement, progress.running);
     payload = std::move(replacement);

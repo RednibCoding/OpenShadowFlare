@@ -378,6 +378,39 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 42:
+    case 43:
+    case 63: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        ValueQuery current_query =
+            ValueQuery::local_player_current_life;
+        ValueQuery maximum_query =
+            ValueQuery::local_player_maximum_life;
+        if (command.opcode == 43) {
+            current_query =
+                ValueQuery::local_player_current_mana;
+            maximum_query =
+                ValueQuery::local_player_maximum_mana;
+        } else if (command.opcode == 63) {
+            current_query =
+                ValueQuery::local_player_condition_current;
+            maximum_query =
+                ValueQuery::local_player_condition_maximum;
+        }
+        std::int32_t current = 0;
+        std::int32_t maximum = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(current_query, current) ||
+            !hooks_.query_value(maximum_query, maximum) ||
+            !writeOperand(command.operands[0], current) ||
+            !writeOperand(command.operands[1], maximum)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        return StepResult::complete;
+    }
     case 61: {
         if (command.operands.empty()) {
             return StepResult::invalid_script;

@@ -14,6 +14,7 @@ class NjpImage;
 void renderQuestNotice(
     gapi::Backend& renderer,
     const gapi::NjpImage& font,
+    const gapi::NjpImage* status_icons,
     const QuestState& quests,
     const MissionCatalog& missions);
 

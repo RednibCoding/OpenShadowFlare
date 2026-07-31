@@ -9,8 +9,17 @@ namespace osf {
 void renderQuestNotice(
     gapi::Backend& renderer,
     const gapi::NjpImage& font,
+    const gapi::NjpImage* status_icons,
     const QuestState& quests,
     const MissionCatalog& missions) {
+    if (status_icons && activeQuestShortcutVisible(quests)) {
+        const ActiveQuestShortcutLayout shortcut;
+        renderer.drawPattern(
+            *status_icons,
+            0,
+            {shortcut.pattern_x, shortcut.pattern_y});
+    }
+
     QuestNoticeLayout layout;
     if (!buildQuestNoticeLayout(
             quests, missions, layout)) {

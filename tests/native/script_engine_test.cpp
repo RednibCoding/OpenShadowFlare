@@ -1,6 +1,7 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -108,10 +109,15 @@ bool testRetailRemoteTown() {
         [&messages](const osf::script::MessageEvent& message) {
             messages.push_back(message);
         },
-        [&native_commands](
+        [&native_commands, &external_values](
             std::int32_t opcode,
             const std::vector<std::int32_t>& arguments) {
             native_commands.emplace_back(opcode, arguments);
+            if (opcode == 62 && arguments.size() >= 2) {
+                external_values.insert_or_assign(
+                    operandKey({12, arguments[0]}),
+                    arguments[1]);
+            }
             return true;
         },
         [&player_level_queries,
@@ -132,6 +138,22 @@ bool testRetailRemoteTown() {
             case osf::script::ValueQuery::play_mode:
                 ++play_mode_queries;
                 value = 0;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_current_life:
+            case osf::script::ValueQuery::
+                    local_player_maximum_life:
+            case osf::script::ValueQuery::
+                    local_player_current_mana:
+            case osf::script::ValueQuery::
+                    local_player_maximum_mana:
+                value = 100;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_condition_current:
+            case osf::script::ValueQuery::
+                    local_player_condition_maximum:
+                value = -1;
                 return true;
             }
             return false;
@@ -350,6 +372,45 @@ bool testRetailRemoteTown() {
                         std::int32_t{19},
                         std::vector<std::int32_t>{12000002}),
             "Syria's opening conversation did not release the actor.")) {
+        return false;
+    }
+    const std::size_t syria_repeat_command =
+        native_commands.size();
+    if (!check(
+            interpreter.startStatus(0, 12000002) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000038 &&
+                native_commands.size() ==
+                    syria_repeat_command + 2 &&
+                native_commands[syria_repeat_command] ==
+                    std::make_pair(
+                        std::int32_t{18},
+                        std::vector<std::int32_t>{12000002}) &&
+                native_commands[syria_repeat_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{21},
+                        std::vector<std::int32_t>{12000002, 0}) &&
+                std::none_of(
+                    native_commands.begin() +
+                        static_cast<std::ptrdiff_t>(
+                            syria_repeat_command),
+                    native_commands.end(),
+                    [](const auto& command) {
+                        return command.first == 62 ||
+                               command.first == 48;
+                    }),
+            "Syria's repeat interaction restarted the Red Goblin quest "
+            "instead of entering her normal blessing dialogue.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000002}),
+            "Syria's repeat blessing did not release the actor.")) {
         return false;
     }
 
@@ -586,11 +647,68 @@ bool testRetailOutdoorChestScript() {
 #endif
 }
 
+bool testRetailRedGoblinDeathStatus() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    osf::script::Interpreter interpreter({
+        [](const osf::script::Operand&) {
+            return std::int32_t{0};
+        },
+        {},
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery query, std::int32_t& value) {
+            if (query != osf::script::ValueQuery::play_mode) {
+                return false;
+            }
+            value = 0;
+            return true;
+        },
+    });
+    interpreter.bind(&script);
+    return check(
+        interpreter.startStatus(4, 14010000) ==
+                osf::script::StepResult::complete &&
+            native_commands ==
+                std::vector<std::pair<
+                    std::int32_t,
+                    std::vector<std::int32_t>>>{
+                    {62, {0, 2, 1}},
+                },
+        "The Red Goblin death status did not emit its authored quest "
+        "completion update.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
     return testRetailRemoteTown() &&
                    testRetailOutdoorChestScript() &&
+                   testRetailRedGoblinDeathStatus() &&
                    testMalformedScript()
                ? 0
                : 1;

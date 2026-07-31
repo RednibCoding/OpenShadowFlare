@@ -1516,9 +1516,13 @@ bool testPersistentConversationAndMovementState() {
         world.advanceConversation();
     }
     world.togglePlayerRun();
+    const osf::RetailSaveProgress live_progress =
+        world.retailSaveProgress();
     if (!check(
             !world.conversationActive() &&
-                world.quests().state(4) == 1 &&
+                world.quests().state(4) == 0 &&
+                live_progress.script_state_flags.size() > 4 &&
+                live_progress.script_state_flags[4] == 1 &&
                 world.playerMovementPace() ==
                     osf::MovementPace::run,
             "The conversation or movement state was not live before saving.")) {
@@ -1556,9 +1560,13 @@ bool testPersistentConversationAndMovementState() {
     const bool loaded =
         restored.loadInitialScenario(
             data_root, saved_player, &error);
+    const osf::RetailSaveProgress restored_progress =
+        restored.retailSaveProgress();
     const bool restored_state =
         loaded &&
-        restored.quests().state(4) == 1 &&
+        restored.quests().state(4) == 0 &&
+        restored_progress.script_state_flags.size() > 4 &&
+        restored_progress.script_state_flags[4] == 1 &&
         restored.playerMovementPace() ==
             osf::MovementPace::run &&
         restored.groundItems().empty() &&
@@ -3521,6 +3529,49 @@ bool testRetailRemoteTown() {
             !world.conversationActive() &&
                 world.conversationActorId() == -1,
             "Syria's opening conversation did not release world control.")) {
+        return false;
+    }
+    world.takeAudioSamples();
+    osf::ScreenPosition syria_repeat_pointer;
+    const bool syria_repeat_click =
+        findNpcPointerPoint(
+            world, 2, syria_repeat_pointer) &&
+        world.commandWorldInteraction(
+            syria_repeat_pointer.x,
+            syria_repeat_pointer.y);
+    updateUntilConversation(world);
+    const std::vector<std::int32_t> syria_repeat_audio =
+        world.takeAudioSamples();
+    if (!check(
+            syria_repeat_click &&
+                world.conversationActive() &&
+                world.conversationActorId() == 2 &&
+                world.conversationMessageId() == 1000038 &&
+                world.quests().state(0) == 1 &&
+                std::find(
+                    syria_repeat_audio.begin(),
+                    syria_repeat_audio.end(),
+                    65) == syria_repeat_audio.end(),
+            "Syria's repeat interaction restarted quest zero instead "
+            "of entering her normal blessing dialogue.")) {
+        std::cerr
+            << "repeat-click=" << syria_repeat_click
+            << " active=" << world.conversationActive()
+            << " actor=" << world.conversationActorId()
+            << " message=" << world.conversationMessageId()
+            << " quest=" << world.quests().state(0)
+            << " notice=" << world.quests().notice().counter
+            << " life=" << world.playerCurrentLife()
+            << '/' << world.playerRuntimeProfile().maximum_life
+            << " mana=" << world.playerCurrentMana()
+            << '/' << world.playerRuntimeProfile().maximum_mana
+            << '\n';
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive(),
+            "Syria's repeat blessing did not return world control.")) {
         return false;
     }
 

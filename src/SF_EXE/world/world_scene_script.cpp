@@ -80,16 +80,16 @@ bool WorldScene::readScriptWorldOperand(
         value = transports_.enabled(operand.value) ? 1 : 0;
         return true;
     }
-    if (operand.type == 11) {
+    if (operand.type == 12) {
         value = quests_.state(operand.value);
         return true;
     }
-    if (operand.type == 12) {
+    if (operand.type == 11) {
         value =
             operand.value >= 0 &&
                     static_cast<std::size_t>(operand.value) <
-                        scenario_flags_.size()
-                ? scenario_flags_[
+                        script_state_flags_.size()
+                ? script_state_flags_[
                       static_cast<std::size_t>(operand.value)]
                 : 0;
         return true;
@@ -187,19 +187,19 @@ bool WorldScene::writeScriptWorldOperand(
         transports_.setEnabled(operand.value, value != 0);
         return true;
     }
-    if (operand.type == 11) {
+    if (operand.type == 12) {
         return quests_.setScriptState(operand.value, value);
     }
-    if (operand.type == 12) {
+    if (operand.type == 11) {
         if (operand.value < 0) {
             return false;
         }
         const std::size_t index =
             static_cast<std::size_t>(operand.value);
-        if (index >= scenario_flags_.size()) {
-            scenario_flags_.resize(index + 1u, 0);
+        if (index >= script_state_flags_.size()) {
+            script_state_flags_.resize(index + 1u, 0);
         }
-        scenario_flags_[index] = value;
+        script_state_flags_[index] = value;
         return true;
     }
     if (operand.type == 13) {
@@ -455,6 +455,26 @@ bool WorldScene::queryScriptValue(
         return true;
     case script::ValueQuery::play_mode:
         value = 0;
+        return true;
+    case script::ValueQuery::local_player_current_life:
+        value = playerCurrentLife();
+        return true;
+    case script::ValueQuery::local_player_maximum_life:
+        value = playerRuntimeProfile().maximum_life;
+        return true;
+    case script::ValueQuery::local_player_current_mana:
+        value = playerCurrentMana();
+        return true;
+    case script::ValueQuery::local_player_maximum_mana:
+        value = playerRuntimeProfile().maximum_mana;
+        return true;
+    case script::ValueQuery::local_player_condition_current:
+    case script::ValueQuery::local_player_condition_maximum:
+        // The initial portable combat slice does not yet model the optional
+        // player condition at runtime offsets 0xf8/0xfc. Retail returns two
+        // equal -1 sentinels while it is inactive, which is the normal state
+        // exercised by Syria's repeat conversation.
+        value = -1;
         return true;
     }
     return false;

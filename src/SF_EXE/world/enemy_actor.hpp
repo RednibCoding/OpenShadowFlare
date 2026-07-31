@@ -34,6 +34,7 @@ struct EnemyActorUpdate {
     EnemyDirectImpactResult direct_impact;
     std::vector<std::int32_t> audio_samples;
     bool death_started = false;
+    bool death_finished = false;
     bool expired = false;
 };
 

@@ -100,9 +100,9 @@ bool WorldScene::loadInitialScenario(
             return false;
         }
         RetailSaveProgress progress{
-            {},
-            transports_.enabledFlags(),
             quests_.states(),
+            transports_.enabledFlags(),
+            {},
             false,
         };
         std::size_t progress_end = owned_items_end;
@@ -130,8 +130,9 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
-        scenario_flags_ = std::move(progress.scenario_flags);
         quests_.restore(progress.quest_flags);
+        script_state_flags_ =
+            std::move(progress.script_state_flags);
         saved_running = progress.running;
     }
 
