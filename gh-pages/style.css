@@ -318,7 +318,6 @@ canvas {
   box-shadow:
     inset 0 0 0 2px var(--sf-ink-deep),
     0 0 18px var(--sf-frame-soft);
-  image-rendering: pixelated;
   outline: none;
 }
 
