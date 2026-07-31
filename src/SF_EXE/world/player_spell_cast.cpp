@@ -65,6 +65,20 @@ bool playerSpellDescriptor(
             false,
         };
         return true;
+    case 5:
+        descriptor = {
+            10005,
+            1,
+            21013,
+            4,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+        };
+        return true;
     default:
         return false;
     }

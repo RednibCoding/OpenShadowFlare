@@ -167,11 +167,16 @@ coordinates, and enters `spell + 22` with no character target. Hell Fire now
 uses that path as action 26, including its warning, delayed two-layer burst,
 area contacts, samples, camera shake, and receiver-time practice.
 
-The next spell checkpoint is Ice Blast. It continues the targetless ground
-command as action 27 but uses CAF charts 11 and 12, Table 20 row five, effect
-10005, packet subtype one, and presentation 21013. This should prove that the
-saved ground aim is carried into a placed area spell rather than only a
-self-centered one.
+Ice Blast is complete too. It continues the targetless ground command as
+action 27 but uses CAF charts 11 and 12, Table 20 row five, effect 10005,
+packet subtype one, and presentation 21013. Retail analysis showed that the
+click controls facing only: effect 10005 captures the hero on update three,
+then runs its three authored layers, area contact, camera shake, and six pulse
+sounds around that position.
+
+The next spell checkpoint is Heal action 28. It begins the restorative spell
+family and needs its command ownership, receiver choice, packet semantics,
+animation, audio, and practice path traced before implementation.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1298,7 +1303,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
   dispatch;
 - Plasma's action-25 multi-wave area-effect path is complete;
 - the ground/self casting command and Hell Fire action 26 are complete;
-- the next checkpoint is Ice Blast action 27 and effect 10005;
+- Ice Blast action 27 and effect 10005 are complete;
+- the next checkpoint is Heal action 28 and its restorative receiver path;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

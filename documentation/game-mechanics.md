@@ -171,6 +171,19 @@ valid target inside the hero judgement area expanded by 150 world units.
 Contacts use sample 20, shake the camera briefly, and award Hell Fire practice
 through the same receiver-owned path as the projectile and Plasma spells.
 
+### Ice Blast
+
+Ice Blast also uses the targetless secondary-click path. The hero faces the
+clicked point, but the effect stays centered on the hero rather than being
+placed at the cursor. Action 27 uses CAF charts 11 and 12 and creates effect
+10005 with the Table 20 row-five timing and MP cost.
+
+On update three the effect captures the hero's position and starts resource
+10000051. Its authored frame count schedules the later 10000050 and 10000052
+layers, the 150-unit expanded area contact, a short camera shake, and six
+sample-22 pulses. Contact uses sample 20 and awards Ice Blast practice through
+the normal receiver path.
+
 ## Character Stats
 
 ### Primary Stats

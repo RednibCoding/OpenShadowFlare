@@ -17,6 +17,7 @@ enum class PlayerSpellAction : std::int32_t {
     ice_bolt = 24,
     plasma = 25,
     hell_fire = 26,
+    ice_blast = 27,
 };
 
 struct PlayerSpellAnimationTiming {

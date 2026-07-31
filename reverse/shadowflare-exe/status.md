@@ -1503,3 +1503,23 @@ valid targets. Contact plays sample 20, the burst shakes the camera for eight
 updates, and successful receivers award Hell Fire practice. Live coverage
 proves that pointing at an enemy still uses this ground/self command and that
 insufficient MP consumes the click without starting an action or effect.
+
+## Ice Blast cast
+
+Ice Blast uses the same targetless secondary-click command as Hell Fire. The
+click only turns the hero: `FUN_0043b3f0` passes target `-1`, direction zero,
+no explicit origin, and the player judgement rectangle. Action 27 uses CAF
+charts 11 and 12, Table 20 row five, and the shared marker-based casting
+cadence.
+
+Its family-zero packet has subtype one, magical defense in word five,
+presentation 21013, spell five, and the row-five table banks. Effect request
+10005 retains target mask four, the marker delay, packet kind eight, and Table
+21 row five in its final constructor field.
+
+The existing `FUN_0042cd70` owner captures the live hero position on update
+three and creates resource 10000051. Its chart-zero frame count schedules
+resource 10000050, the expanded one-update area packet and camera shake at
+plus four, resource 10000052 at plus 15, six sample-22 pulses, and expiry at
+plus 22. Live coverage proves the self-centered capture, all three layers,
+pulse audio, damage, receiver-time practice, and the insufficient-MP path.

@@ -144,7 +144,7 @@ bool testRetailAction(
             action.animationChart() == recovery_chart &&
             action.animationFrame() == 0,
         "The spell action did not preserve the retail counter and "
-        "chart-fourteen completion behavior.");
+        "recovery-chart completion behavior.");
 }
 
 bool testRetailPacket(
@@ -822,17 +822,242 @@ bool testShippedHellFireCast(
         "burst layers, sounds, area contact, or practice award.");
 }
 
-bool testHellFireInsufficientMana(
+bool testShippedIceBlastCast(
     const std::filesystem::path& game_root) {
-    constexpr std::int32_t spell = 4;
+    constexpr std::int32_t spell = 5;
     osf::PlayerLoadRequest player;
-    player.name = "HellFireMana";
+    player.name = "IceBlastLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                player,
+                {3000507, 3, 0},
+                &error),
+            "The shipped Ice Blast scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Ice Blast fixture could not select the spell.")) {
+        return false;
+    }
+
+    const osf::EnemyActor* pointed_enemy = nullptr;
+    std::int32_t pointer_x = -1;
+    std::int32_t pointer_y = -1;
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        const osf::ScreenPosition projected =
+            osf::calculateRealPosition(enemy.position());
+        const std::int32_t anchor_x =
+            projected.x - world.cameraScreenX();
+        const std::int32_t anchor_y =
+            projected.y - world.cameraScreenY();
+        for (std::int32_t y =
+                 std::max(0, anchor_y - 140);
+             y < std::min(400, anchor_y + 30) &&
+             pointer_x < 0;
+             ++y) {
+            for (std::int32_t x =
+                     std::max(0, anchor_x - 80);
+                 x < std::min(640, anchor_x + 81);
+                 ++x) {
+                world.updatePointerHover(x, y);
+                if (world.hoveredEnemyId() == enemy.id()) {
+                    pointed_enemy = &enemy;
+                    pointer_x = x;
+                    pointer_y = y;
+                    break;
+                }
+            }
+        }
+        if (pointed_enemy) {
+            break;
+        }
+    }
+    if (!check(
+            pointed_enemy && pointer_x >= 0,
+            "No shipped enemy could prove Ice Blast's ground command.")) {
+        return false;
+    }
+
+    const std::int32_t target_character_number =
+        pointed_enemy->characterNumber();
+    const std::int32_t target_life_before =
+        pointed_enemy->currentLife();
+    const osf::WorldPosition player_position_before{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    const osf::WorldPosition aimed_position =
+        osf::calculateWorldPosition({
+            world.cameraScreenX() + pointer_x,
+            world.cameraScreenY() + pointer_y,
+        });
+    const std::int32_t expected_direction =
+        osf::retailDirectionForVector(
+            aimed_position.x - world.playerWorldX(),
+            aimed_position.y - world.playerWorldY());
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    if (!check(
+            world.commandPlayerMagic(pointer_x, pointer_y) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerDirection() == expected_direction &&
+                world.playerMotion() ==
+                    osf::PlayerMotion::casting &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                world.runtimeEffectControllerCount() == 1,
+            "A pointed enemy incorrectly diverted Ice Blast from the "
+            "retail ground/self command.")) {
+        return false;
+    }
+
+    bool saw_first = false;
+    bool saw_second = false;
+    bool saw_third = false;
+    bool first_captured_player = false;
+    bool heard_pulse = false;
+    bool applied_damage = false;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        heard_pulse =
+            heard_pulse ||
+            std::find(audio.begin(), audio.end(), 22) !=
+                audio.end();
+        for (const osf::RuntimeEffectActor& actor :
+             world.runtimeEffects()) {
+            if (actor.resourceId() == 10000051) {
+                saw_first = true;
+                first_captured_player =
+                    first_captured_player ||
+                    (actor.position().x ==
+                         player_position_before.x &&
+                     actor.position().y ==
+                         player_position_before.y);
+            }
+            saw_second =
+                saw_second ||
+                actor.resourceId() == 10000050;
+            saw_third =
+                saw_third ||
+                actor.resourceId() == 10000052;
+        }
+        const auto target = std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [target_character_number](
+                const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() ==
+                    target_character_number;
+            });
+        applied_damage =
+            applied_damage ||
+            target == world.enemies().end() ||
+            target->currentLife() < target_life_before;
+    }
+
+    if (!applied_damage ||
+        world.playerMagic().experience(spell) < 1) {
+        const auto target = std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [target_character_number](
+                const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() ==
+                    target_character_number;
+            });
+        if (target != world.enemies().end()) {
+            osf::PlayerSpellCastInput input;
+            input.stats.source_character_number = 0;
+            input.stats.player_level = 1;
+            input.stats.magical_attack = 10;
+            input.stats.physical_defense = 10;
+            input.stats.magical_defense = 10;
+            input.stats.magical_hit_rate = 40;
+            input.parameters.effective_level = 1;
+            input.parameters.effect_value = 40;
+            input.target_character_number = -1;
+            input.source_position = target->position();
+            input.source_judgement = {};
+            input.target_position = target->position();
+            input.effect_delay = 4;
+            osf::CombatEffectSpawnRequest contact =
+                osf::buildPlayerSpellCast(
+                    spell,
+                    input,
+                    world.parameterTables());
+            contact.owner_kind = 0;
+            contact.has_explicit_origin = true;
+            contact.origin = target->position();
+            contact.packet.write(36, 100000);
+            world.queueCombatEffect(contact);
+            for (std::int32_t update = 0;
+                 update < 80 && !applied_damage;
+                 ++update) {
+                world.update();
+                world.takeAudioSamples();
+                const auto current = std::find_if(
+                    world.enemies().begin(),
+                    world.enemies().end(),
+                    [target_character_number](
+                        const osf::EnemyActor& enemy) {
+                        return enemy.characterNumber() ==
+                            target_character_number;
+                    });
+                applied_damage =
+                    current == world.enemies().end() ||
+                    current->currentLife() <
+                        target_life_before;
+            }
+        }
+    }
+
+    return check(
+        saw_first &&
+            saw_second &&
+            saw_third &&
+            first_captured_player &&
+            heard_pulse &&
+            applied_damage &&
+            world.playerMagic().experience(spell) >= 1,
+        "The shipped Ice Blast command did not preserve its "
+        "self-centered layers, pulse audio, area contact, or practice.");
+}
+
+bool testGroundSpellInsufficientMana(
+    const std::filesystem::path& game_root,
+    std::int32_t spell) {
+    osf::PlayerLoadRequest player;
+    player.name = "GroundSpellMana";
     osf::WorldScene world;
     std::string error;
     if (!check(
             world.loadInitialScenario(
                 game_root, player, &error),
-            "Remote Town could not prepare the Hell Fire MP check.")) {
+            "Remote Town could not prepare the ground-spell MP check.")) {
         std::cerr << error << '\n';
         return false;
     }
@@ -860,7 +1085,7 @@ bool testHellFireInsufficientMana(
                 world.commandPlayerMagic(400, 240) &&
                     world.playerSpellActive() &&
                     world.playerSpellTargetCharacterNumber() == -1,
-                "A valid Hell Fire MP-draining command was rejected.")) {
+                "A valid ground-spell MP-draining command was rejected.")) {
             return false;
         }
         for (std::int32_t update = 0;
@@ -871,7 +1096,7 @@ bool testHellFireInsufficientMana(
         }
         if (!check(
                 !world.playerSpellActive(),
-                "Hell Fire did not finish before the next MP check.")) {
+                "The ground spell did not finish before the next MP check.")) {
             return false;
         }
         for (std::int32_t update = 0;
@@ -895,7 +1120,7 @@ bool testHellFireInsufficientMana(
                 mana_before &&
             world.runtimeEffectControllerCount() ==
                 controllers_before,
-        "Hell Fire's insufficient-MP ground command created an "
+        "An insufficient-MP ground command created an "
         "action, effect, or mana change.");
 }
 
@@ -1001,7 +1226,23 @@ int main() {
                 false, false, false, true, false, false,
             }) ||
         !testShippedHellFireCast(game_root) ||
-        !testHellFireInsufficientMana(game_root)) {
+        !testGroundSpellInsufficientMana(game_root, 4) ||
+        !testRetailAction(
+            animation,
+            tables,
+            5,
+            osf::PlayerSpellAction::ice_blast,
+            11,
+            12) ||
+        !testRetailPacket(
+            tables,
+            5,
+            {
+                10005, 1, 21013, 4,
+                false, false, false, true, false, false,
+            }) ||
+        !testShippedIceBlastCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 5)) {
         return 1;
     }
 #endif

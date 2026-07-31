@@ -1916,3 +1916,26 @@ layers and plays samples 29 and 23 at the marker delay. Its invisible area
 expands the source judgement by 150 units, applies the packet to every valid
 target, plays sample 20 on contact, and shakes the camera for eight updates.
 Practice remains receiver-owned, exactly like the targeted spells.
+
+## Ice Blast cast
+
+Ice Blast continues the same targetless secondary-click command as Hell Fire.
+The clicked world point controls the hero's facing only; `0x0043b3f0` does not
+pass the aim position, a direction, a character target, or an explicit effect
+origin. Action 27 uses CAF charts 11 and 12, Table 20 row five, and the common
+speed-tier and status-`0x40` marker timing.
+
+Its family-zero packet uses subtype one, magical defense, presentation 21013,
+spell five, and the row-five values from Tables 17 through 19 and 70 through
+78. Effect request 10005 has owner kind one, target mask four, target `-1`,
+the player's judgement rectangle, zero travel and direction values, and Table
+21 row five in its final constructor value.
+
+The already reconstructed `0x0042cd70` owner captures the hero's current
+position on update three and creates resource 10000051 there. That resource's
+chart-zero frame count schedules resource 10000050, then an invisible area
+packet four updates later. The contact area expands the player judgement by
+150 units, plays sample 20 per target, and shakes a nearby camera for eight
+updates. Resource 10000052 follows at frame-count plus 15 with display status
+`0x80`; sample 22 pulses six times before the controller expires at
+frame-count plus 22. Successful packet receivers award Ice Blast practice.

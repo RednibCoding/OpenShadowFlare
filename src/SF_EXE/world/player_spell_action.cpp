@@ -36,6 +36,7 @@ struct SpellCharts {
 SpellCharts chartsForAction(PlayerSpellAction action) {
     switch (action) {
     case PlayerSpellAction::plasma:
+    case PlayerSpellAction::ice_blast:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -75,6 +76,9 @@ bool playerSpellActionForSpell(
         return true;
     case 4:
         action = PlayerSpellAction::hell_fire;
+        return true;
+    case 5:
+        action = PlayerSpellAction::ice_blast;
         return true;
     default:
         return false;
