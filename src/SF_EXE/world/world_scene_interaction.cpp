@@ -1131,6 +1131,13 @@ void WorldScene::handlePlayerSpellEvent(
             nullptr);
         return;
     }
+    if (event.spell == 18) {
+        player_magic_shield_.toggle();
+        effect_visuals_.load(
+            data_root_, 11000240, nullptr);
+        refreshPlayerRuntimeProfile();
+        return;
+    }
     const bool requires_target =
         playerSpellRequiresCharacterTarget(
             event.spell);

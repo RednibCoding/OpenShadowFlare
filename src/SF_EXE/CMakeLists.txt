@@ -155,6 +155,7 @@ add_library(
   world/player_heal_spell.cpp
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
+  world/player_magic_shield.cpp
   world/player_magic.cpp
   world/player_moon_spell.cpp
   world/player_resource_rate.cpp

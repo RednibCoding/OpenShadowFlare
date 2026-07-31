@@ -224,13 +224,15 @@ bool testMagicShieldCostAndTraining() {
     const std::int32_t expected_damage =
         std::max<std::int32_t>(
             (100 - reduction) * 40 / 100, 1);
-    return check(
-        result.valid &&
+    if (!check(
+            result.valid &&
             result.damage.damage == expected_damage &&
             result.state.current_life ==
                 100 - expected_damage &&
             result.state.current_mana ==
                 std::max<std::int32_t>(80 - cost, 0) &&
+            result.state.magic_shield_active ==
+                (80 - cost > 0) &&
             !result.effects.empty() &&
             result.effects.front().effect_number == 21029 &&
             !result.audio_samples.empty() &&
@@ -238,8 +240,74 @@ bool testMagicShieldCostAndTraining() {
             (expected_damage < 20 ||
              (!result.spell_training.empty() &&
               result.spell_training.front().spell_number == 18)),
-        "Magic Shield did not preserve retail reduction, mana, "
-        "training, visual, or audio behavior.");
+            "Magic Shield did not preserve retail reduction, mana, "
+            "training, visual, or audio behavior.")) {
+        return false;
+    }
+
+    osf::PlayerDamageReceiverState emptying = receiving;
+    emptying.current_mana = cost;
+    osf::RetailRandom emptying_random(7);
+    const osf::PlayerDamageReceiverResult emptying_result =
+        osf::resolvePlayerDamage(
+            emptying,
+            packet,
+            {},
+            context,
+            items,
+            tables,
+            emptying_random);
+    if (!check(
+            emptying_result.valid &&
+                emptying_result.state.current_mana == 0 &&
+                !emptying_result.state.magic_shield_active,
+            "The hit-time Magic Shield charge did not disable an empty "
+            "shield.")) {
+        return false;
+    }
+
+    osf::RetailRandom ordinary_random(7);
+    const osf::PlayerDamageReceiverResult ordinary_result =
+        osf::resolvePlayerDamage(
+            receiving,
+            directPacket(40),
+            {},
+            context,
+            items,
+            tables,
+            ordinary_random);
+    if (!check(
+            ordinary_result.valid &&
+                ordinary_result.state.current_mana == 80 &&
+                ordinary_result.state.magic_shield_active &&
+                ordinary_result.effects.empty() &&
+                ordinary_result.spell_training.empty(),
+            "Magic Shield intercepted a non-effect-family packet.")) {
+        return false;
+    }
+
+    osf::PlayerDamageReceiverState selected_cost = receiving;
+    selected_cost.selected_magic = 1;
+    const std::int32_t selected_magic_cost =
+        osf::retailEffectParameter(
+            tables, 1, 1, 2);
+    osf::RetailRandom selected_random(7);
+    const osf::PlayerDamageReceiverResult selected_result =
+        osf::resolvePlayerDamage(
+            selected_cost,
+            packet,
+            {},
+            context,
+            items,
+            tables,
+            selected_random);
+    return check(
+        selected_result.valid &&
+            selected_result.state.current_mana ==
+                std::max<std::int32_t>(
+                    80 - selected_magic_cost, 0),
+        "Magic Shield did not use the currently selected magic row for "
+        "its hit-time MP charge.");
 }
 
 bool testRevivalAndDurability() {

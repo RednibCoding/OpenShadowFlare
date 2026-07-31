@@ -80,6 +80,8 @@ WorldScene::playerDamageReceiverState() const {
     state.selected_magic = player_magic_.selectedSpell();
     state.energy_shield_active =
         player_energy_shield_.active();
+    state.magic_shield_active =
+        player_magic_shield_.active();
 
     const PlayerDamagePresentation presentation =
         player_.damagePresentation();
@@ -108,6 +110,8 @@ void WorldScene::applyPlayerDamageReceiverState(
     player_equipment_ = state.equipment;
     player_inventory_ = state.inventory;
     player_special_items_ = state.special_items;
+    player_magic_shield_.restoreActive(
+        state.magic_shield_active);
     player_.applyDamagePresentation({
         state.presentation_action,
         state.presentation_counter,
@@ -231,6 +235,13 @@ bool WorldScene::applyPlayerDamagePacket(
     for (const CombatEffectSpawnRequest& effect :
          receiver.effects) {
         queueCombatEffect(effect);
+    }
+    for (const PlayerSpellTrainingRequest& training :
+         receiver.spell_training) {
+        player_magic_.train(
+            training.spell_number,
+            training.mode != 0,
+            parameter_tables_);
     }
     if (receiver.equipment_sync_requested ||
         receiver.derived_values_refresh_requested) {

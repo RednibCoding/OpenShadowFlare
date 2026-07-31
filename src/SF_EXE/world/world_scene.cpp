@@ -90,6 +90,7 @@ void WorldScene::clear() {
     player_moon_spell_.clear();
     player_berserker_spell_.clear();
     player_energy_shield_.clear();
+    player_magic_shield_.clear();
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
@@ -227,6 +228,19 @@ WorldScene::playerEnergyShieldVisual() const {
 
 std::int32_t WorldScene::playerEnergyShieldFrame() const {
     return player_energy_shield_.auraFrame();
+}
+
+bool WorldScene::playerMagicShieldActive() const {
+    return player_magic_shield_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerMagicShieldVisual() const {
+    return effect_visuals_.find(11000240);
+}
+
+std::int32_t WorldScene::playerMagicShieldFrame() const {
+    return player_magic_shield_.auraFrame();
 }
 
 std::size_t
@@ -391,11 +405,18 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    // FUN_00443490 drops Magic Shield at the start of the next player
+    // update when no mana remains. Keeping this before the cast action lets
+    // an exact-cost activation show its marker frame once, as in retail.
+    if (player_data_.currentMana() == 0) {
+        player_magic_shield_.deactivate();
+    }
     player_moon_spell_.updateAura(
         companionMoonAuraVisible());
     player_berserker_spell_.updateAura(
         has_player_);
     player_energy_shield_.updateAura(has_player_);
+    player_magic_shield_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -589,6 +610,7 @@ void WorldScene::update() {
                     player_data_.gender()));
         }
         if (player_.takeRespawnRequest()) {
+            deactivatePlayerPowerupsForRespawn();
             player_data_.restoreForRespawn();
             const ScenarioTravelResult respawn =
                 transitionScenario({

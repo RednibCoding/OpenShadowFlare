@@ -31,6 +31,7 @@
 #include "player_energy_shield.hpp"
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
+#include "player_magic_shield.hpp"
 #include "player_magic.hpp"
 #include "player_moon_spell.hpp"
 #include "player_resource_rate.hpp"
@@ -117,6 +118,9 @@ public:
     bool playerEnergyShieldActive() const;
     const EffectVisualResource* playerEnergyShieldVisual() const;
     std::int32_t playerEnergyShieldFrame() const;
+    bool playerMagicShieldActive() const;
+    const EffectVisualResource* playerMagicShieldVisual() const;
+    std::int32_t playerMagicShieldFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -355,6 +359,7 @@ private:
     void refreshCompanionRuntimeProfile(bool level_gained = false);
     void refreshPlayerRuntimeProfile();
     void updatePlayerResourceRates();
+    void deactivatePlayerPowerupsForRespawn();
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -399,6 +404,7 @@ private:
     PlayerSustainedSpell player_moon_spell_;
     PlayerSustainedSpell player_berserker_spell_;
     PlayerEnergyShield player_energy_shield_;
+    PlayerMagicShield player_magic_shield_;
     PlayerResourceRateController player_life_rate_;
     PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;

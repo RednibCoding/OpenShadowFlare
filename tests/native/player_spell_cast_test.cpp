@@ -8,6 +8,7 @@
 #include "world/player_data.hpp"
 #include "world/player_energy_shield.hpp"
 #include "world/player_heal_spell.hpp"
+#include "world/player_magic_shield.hpp"
 #include "world/player_moon_spell.hpp"
 #include "world/player_resource_rate.hpp"
 #include "world/player_runtime_profile.hpp"
@@ -1101,6 +1102,43 @@ bool testRetailEnergyShieldRules(
             !shield.deactivate(),
         "Energy Shield practice or toggle-off behavior differs from "
         "retail local-owner rules.");
+}
+
+bool testRetailMagicShieldRules() {
+    osf::PlayerMagicShield shield;
+    if (!check(
+            shield.toggle() &&
+                shield.active() &&
+                shield.auraFrame() == 0,
+            "Magic Shield did not toggle on and reset its retail aura "
+            "counter.")) {
+        return false;
+    }
+    shield.updateAura(false);
+    const std::int32_t hidden_frame = shield.auraFrame();
+    shield.updateAura(true);
+    if (!check(
+            hidden_frame == 0 &&
+                shield.auraFrame() == 1,
+            "Magic Shield advanced its aura while it was not displayed.")) {
+        return false;
+    }
+    shield.restoreActive(false);
+    if (!check(
+            !shield.active() &&
+                shield.auraFrame() == 1,
+            "Damage-time Magic Shield shutdown changed its aura counter.")) {
+        return false;
+    }
+    shield.restoreActive(true);
+    return check(
+        !shield.toggle() &&
+            !shield.active() &&
+            shield.auraFrame() == 0 &&
+            !shield.deactivate() &&
+            osf::retailCombatEffectResourceId(21029) == 11000241,
+        "Magic Shield toggle-off or hit-effect resource mapping differs "
+        "from retail.");
 }
 
 bool testShippedWorldCast(
@@ -2855,6 +2893,129 @@ bool testShippedIdentifyCast(
         "An insufficient-MP Identify command created an action or mode.");
 }
 
+bool testShippedMagicShieldCast(
+    const std::filesystem::path& game_root) {
+    osf::PlayerLoadRequest player;
+    player.name = "MagicShieldLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root, player, &error),
+            "Remote Town could not prepare Magic Shield.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[18] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(18),
+            "Magic Shield could not be selected.")) {
+        return false;
+    }
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            18,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t maximum_mana =
+        world.playerRuntimeProfile().maximum_mana;
+    const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
+        maximum_mana, maximum_mana);
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                world.playerMotion() == osf::PlayerMotion::casting &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                !world.playerMagicShieldActive(),
+            "Magic Shield did not enter action 40 with its retail MP "
+            "charge.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 &&
+         (world.playerSpellActive() ||
+          !world.playerMagicShieldActive());
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            world.playerMagicShieldActive() &&
+                !world.playerSpellActive() &&
+                world.playerMagicShieldVisual() &&
+                !world.playerMagicShieldVisual()
+                     ->animation().charts().empty() &&
+                world.transitionScenario({0, 0, 0}) ==
+                    osf::ScenarioTravelResult::relocated &&
+                world.playerMagicShieldActive(),
+            "Magic Shield did not activate at its marker, load resource "
+            "11000240, or survive ordinary scenario relocation.")) {
+        return false;
+    }
+
+    const std::int32_t mana_before_toggle_off =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240),
+            "The active Magic Shield could not begin its toggle-off cast.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 &&
+         (world.playerSpellActive() ||
+          world.playerMagicShieldActive());
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            !world.playerMagicShieldActive() &&
+                !world.playerSpellActive() &&
+                world.playerData().currentMana() ==
+                    mana_before_toggle_off - parameters.mana_cost,
+            "Magic Shield did not charge MP again and toggle off at its "
+            "marker.")) {
+        return false;
+    }
+
+    const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
+        parameters.mana_cost, maximum_mana);
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerData().currentMana() == 0,
+            "The exact-cost Magic Shield cast was rejected.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 &&
+         !world.playerMagicShieldActive();
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            world.playerMagicShieldActive(),
+            "An exact-cost Magic Shield cast did not expose its marker "
+            "frame.")) {
+        return false;
+    }
+    world.update();
+    return check(
+        !world.playerMagicShieldActive(),
+        "Zero mana did not disable Magic Shield on the next player "
+        "update.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -3347,6 +3508,19 @@ int main() {
             true,
             21028) ||
         !testShippedIdentifyCast(game_root)) {
+        return 1;
+    }
+    if (!testRetailMagicShieldRules() ||
+        !testRetailAction(
+            animation,
+            tables,
+            18,
+            osf::PlayerSpellAction::magic_shield,
+            11,
+            12,
+            true) ||
+        !testShippedMagicShieldCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 18)) {
         return 1;
     }
 #endif

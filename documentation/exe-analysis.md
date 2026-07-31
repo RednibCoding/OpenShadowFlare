@@ -2036,6 +2036,36 @@ while the flag is active. `0x00444be0` draws animation block 500, mapped to
 zero, direction eight, runtime frame `+0x15f8`, full opacity, and RGB strengths
 1000/1000/300.
 
+## Magic Shield cast and hit charging
+
+`0x00440180` dispatches spell eighteen as action 40 on CAF charts 11 and 12
+with Table 20 row eighteen. The targetless input branch validates the learned
+spell and pays its normal Table 16 cost before entering the action. A newly
+crossed first-chart status-`0x40` marker toggles runtime flag `+0x1628`, resets
+aura frame `+0x162c`, clears Counter Burst flag `+0x1630` and its frame
+`+0x1634`, rebuilds derived values, and sends the multiplayer state update.
+There is no action-entry visual or sample. Unlike Energy Shield, this marker
+does not reject activation after an exact-cost command leaves MP at zero;
+`0x00443490` clears the flag at the start of the following player update.
+
+The player receiver at `0x00443cb0` only applies Magic Shield to family-three
+effect packets owned by the local player. Table 17 row eighteen parameter zero
+reduces the resolved damage, which is forced to at least one. Post-reduction
+damage of at least 20 trains spell eighteen. Every intercepted packet also
+creates effect 21029/resource 11000241 and plays sample 60.
+
+The receiver's MP charge has a retail quirk: it reads parameter two from the
+currently selected magic row, but at Magic Shield's effective level. Equipped
+instance parameter 19 reduces that value and the result is clamped to at least
+one. If the charge leaves less than one MP, the receiver clamps MP to zero and
+clears `+0x1628` immediately. Non-effect packet families bypass all of this.
+
+`0x00444a20` draws resource 11000240 at the player using chart zero, direction
+eight, runtime frame `+0x162c`, full opacity, and RGB strengths
+1000/1000/1000. The state remains live across ordinary scenario relocation,
+is absent from the disk character record, and is cleared with the other player
+powerups on death. Multiplayer live-state packets do include the runtime flag.
+
 ## Earth Spear cast
 
 `0x0043e000` dispatches spell ten as action 32. It requires the pointed living

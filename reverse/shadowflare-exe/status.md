@@ -1583,6 +1583,28 @@ runtime frame `+0x15f8`, and RGB 1000/1000/300. It is drawn after Berserker's
 red Powerup pass. The same modulo-ten local kill ownership test trains spell
 nine for hero and companion kills while the shield is active.
 
+## Magic Shield toggle and receiver path
+
+`FUN_00440180` runs Magic Shield action 40 on CAF charts 11 and 12 with Table
+20 row eighteen. Its targetless command pays the normal Table 16 cost. A newly
+crossed chart-11 status-`0x40` marker toggles runtime flag `+0x1628`, resets
+aura frame `+0x162c`, and clears Counter Burst flag/frame `+0x1630/+0x1634`.
+The marker may briefly activate at zero MP after an exact-cost cast;
+`FUN_00443490` clears it at the beginning of the next player update.
+
+`FUN_00443cb0` applies the shield only to local family-three effect packets.
+Table 17 spell eighteen parameter zero reduces resolved damage with a
+minimum-one result. A post-reduction value of at least 20 trains the spell.
+Each intercepted hit creates effect 21029/resource 11000241 and plays sample
+60, then charges MP from parameter two of the currently selected magic row at
+Magic Shield's effective level. Equipped instance parameter 19 reduces that
+charge, whose minimum is one. Emptying MP clears the shield immediately.
+
+`FUN_00444a20` loops resource 11000240 at the player with chart zero,
+direction eight, frame `+0x162c`, and RGB 1000/1000/1000. The live flag and
+frame survive normal scenario travel, are not part of the disk save, and are
+cleared with the other player powerups on death.
+
 ## Earth Spear cast
 
 `FUN_0043e000` runs Earth Spear action 32 on CAF charts 11 and 12 with Table

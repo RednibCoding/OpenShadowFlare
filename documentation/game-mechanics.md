@@ -78,7 +78,7 @@ Complete spell list (from 0x00407a60 MagicWindowDisplay):
 |-------|--------------|-------------|
 | Heal | Heal % | HP restoration |
 | Energy Shield | Shield % | Routes ordinary damage to MP and changes physical defense |
-| Magic Shield | Def % | Defense boost |
+| Magic Shield | Def % | Reduces effect-family damage and charges MP on each shielded hit |
 | Berserker | Attack % | Attack boost |
 | Moon | (none) | Increases companion stats while active |
 | Transport | (none) | Teleportation |
@@ -278,6 +278,35 @@ state and animation frame are runtime-only and are not saved. The aura reuses
 zero, direction eight, and strengths 1000/1000/300. Any kill credited to the
 local hero slot while it is active trains spell nine, whether the hero or the
 owned companion dealt the final blow.
+
+### Magic Shield
+
+Magic Shield is a targetless self-cast on action 40. It uses CAF charts 11
+and 12 with Table 20 row eighteen, pays the ordinary Table 16 MP cost when
+the command begins, and toggles its runtime flag at a newly crossed chart-11
+`0x40` marker. Unlike Energy Shield, an exact-cost cast may turn Magic Shield
+on for that marker update at zero MP; the next player update turns it off.
+Casting it again while active pays the command cost again and toggles it off.
+
+The shield only intercepts effect-family damage packets. Table 17 spell
+eighteen parameter zero reduces the already-resolved damage, with a minimum
+of one point. Every intercepted hit creates effect 21029, which is the
+one-pass resource 11000241, and plays sample 60. Damage of at least 20 after
+the reduction awards Magic Shield practice.
+
+Each shielded hit also charges MP. Retail gets the base cost from the
+currently selected magic row at Magic Shield's effective level, then subtracts
+equipped instance parameter 19 and clamps the result to at least one. This
+means changing the selected spell can change Magic Shield's hit cost. A hit
+that empties MP disables the shield immediately; otherwise a zero-MP player
+loses it at the start of the next player update.
+
+Resource 11000240 loops at the hero with chart zero, direction eight, and
+normal 1000/1000/1000 color strengths. Its active flag and animation frame
+survive ordinary scenario travel during the same game, but are not written to
+the retail character save and are cleared by death. Magic Shield and Counter
+Burst are mutually exclusive in retail; their marker actions clear the other
+live flag.
 
 ### Earth Spear
 

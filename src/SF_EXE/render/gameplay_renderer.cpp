@@ -137,6 +137,16 @@ void renderPlayerPass(
             camera_x,
             camera_y,
             interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerMagicShieldVisual(),
+            world.playerMagicShieldActive(),
+            world.playerMagicShieldFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
     }
 }
 

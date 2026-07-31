@@ -73,4 +73,19 @@ void WorldScene::updatePlayerResourceRates() {
     }
 }
 
+void WorldScene::deactivatePlayerPowerupsForRespawn() {
+    const bool moon_changed =
+        player_moon_spell_.deactivate();
+    const bool berserker_changed =
+        player_berserker_spell_.deactivate();
+    player_energy_shield_.deactivate();
+    player_magic_shield_.deactivate();
+    if (moon_changed) {
+        refreshCompanionRuntimeProfile();
+    }
+    if (berserker_changed) {
+        refreshPlayerRuntimeProfile();
+    }
+}
+
 }  // namespace osf

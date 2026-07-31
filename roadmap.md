@@ -264,10 +264,16 @@ the item flag and its retail save mirror change together, one practice point
 is awarded, and right-click or closing Inventory cancels the mode. Recasting
 while it is already active does not spend MP again.
 
-The next spell checkpoint is Magic Shield action 40. Its cast action, active
-flag, incoming-damage mana routing, zero-MP shutdown, and player aura need to
-be joined into one tested lifetime rather than reconstructed as unrelated
-pieces.
+Magic Shield is complete. Action 40 toggles its runtime flag at the chart-11
+marker and drives the authored resource-11000240 player aura. Effect-family
+hits use the retail reduction, practice threshold, effect 21029, sample 60,
+selected-magic MP-cost quirk, equipment discount, and immediate empty-MP
+shutdown. Ordinary scenario travel preserves the live shield while death and
+a fresh game clear it.
+
+The next spell checkpoint is Counter Burst action 41. Its cast toggle,
+resource lifetime, mutual exclusion with Magic Shield, receiver reflection,
+MP charge, training, and hit presentation need to form one tested path.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1397,7 +1403,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Identify action 39 are complete;
+- Berserker action 30 through Magic Shield action 40 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
