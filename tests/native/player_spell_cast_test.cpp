@@ -1,5 +1,6 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
+#include "core/retail_random.hpp"
 #include "world/actor_direction.hpp"
 #include "world/player_data.hpp"
 #include "world/player_energy_shield.hpp"
@@ -65,6 +66,8 @@ struct ExpectedSpellCast {
     bool use_source_judgement = true;
     bool constructor_uses_level = false;
     bool use_physical_defense = false;
+    bool random_ordinary_impact = false;
+    std::int32_t packet_value_72 = 0;
 };
 
 bool testRetailAction(
@@ -223,9 +226,16 @@ bool testRetailPacket(
             : osf::WorldPosition{400, 500};
     input.effect_delay = 5;
 
+    osf::RetailRandom packet_random(0x1234u);
+    osf::RetailRandom expected_random(0x1234u);
     const osf::CombatEffectSpawnRequest request =
         osf::buildPlayerSpellCast(
-            spell, input, tables);
+            spell,
+            input,
+            tables,
+            expected.random_ordinary_impact
+                ? &packet_random
+                : nullptr);
     const osf::TableData* hit_table = tables.find(18);
     const std::int32_t expected_hit =
         hit_table && hit_table->contains(spell, 0)
@@ -288,7 +298,9 @@ bool testRetailPacket(
             request.packet[32] ==
                 tables.find(19)->value(spell, 0) &&
             request.packet[34] ==
-                expected.impact_effect &&
+                (expected.random_ordinary_impact
+                     ? expected_random.next() % 4 + 21000
+                     : expected.impact_effect) &&
             request.packet[35] == 8 &&
             request.packet[36] ==
                 expected_hit + 14 &&
@@ -298,7 +310,8 @@ bool testRetailPacket(
                 tables.find(70)->value(spell, 0) &&
             request.packet[63] ==
                 tables.find(70)->value(spell, 1) &&
-            request.packet[72] == 0 &&
+            request.packet[72] ==
+                expected.packet_value_72 &&
             request.packet[73] == spell &&
             request.packet[74] == -1 &&
             request.packet[75] == 8 &&
@@ -1002,7 +1015,7 @@ bool testShippedWorldCast(
             contact_input.target_character_number =
                 target_character_number;
             contact_input.source_position =
-                spell == 3
+                spell == 3 || spell == 10
                     ? osf::WorldPosition{
                           current_target->position().x -
                               250,
@@ -1010,11 +1023,13 @@ bool testShippedWorldCast(
                     : current_target->position();
             contact_input.target_position =
                 current_target->position();
+            osf::RetailRandom contact_random(1);
             osf::CombatEffectSpawnRequest contact =
                 osf::buildPlayerSpellCast(
                     spell,
                     contact_input,
-                    world.parameterTables());
+                    world.parameterTables(),
+                    &contact_random);
             contact.constructor_value_12 = 0;
             if (spell != 3) {
                 // Keep this receiver regression deterministic: the
@@ -1026,7 +1041,9 @@ bool testShippedWorldCast(
                 contact.constructor_value_6 = 0;
                 contact.has_explicit_origin = true;
                 contact.origin =
-                    current_target->position();
+                    spell == 10
+                        ? contact_input.source_position
+                        : current_target->position();
             }
             contact.packet.write(36, 100000);
             world.queueCombatEffect(contact);
@@ -2284,6 +2301,99 @@ bool testGroundSpellInsufficientMana(
         "action, effect, or mana change.");
 }
 
+bool testTargetedSpellInsufficientMana(
+    const std::filesystem::path& game_root,
+    std::int32_t spell) {
+    osf::PlayerLoadRequest player;
+    player.name = "TargetSpellMana";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                player,
+                {3000507, 3, 0},
+                &error),
+            "The targeted-spell MP fixture could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!world.playerMagic().selectSpell(spell)) {
+        return false;
+    }
+
+    std::int32_t pointer_x = -1;
+    std::int32_t pointer_y = -1;
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        const osf::ScreenPosition projected =
+            osf::calculateRealPosition(enemy.position());
+        const std::int32_t anchor_x =
+            projected.x - world.cameraScreenX();
+        const std::int32_t anchor_y =
+            projected.y - world.cameraScreenY();
+        if (anchor_x < -80 || anchor_x > 720 ||
+            anchor_y < -160 || anchor_y > 440) {
+            continue;
+        }
+        for (std::int32_t y = std::max(0, anchor_y - 140);
+             y < std::min(400, anchor_y + 30) && pointer_x < 0;
+             ++y) {
+            for (std::int32_t x = std::max(0, anchor_x - 80);
+                 x < std::min(640, anchor_x + 81);
+                 ++x) {
+                world.updatePointerHover(x, y);
+                if (world.hoveredEnemyId() == enemy.id()) {
+                    pointer_x = x;
+                    pointer_y = y;
+                    break;
+                }
+            }
+        }
+        if (pointer_x >= 0) {
+            break;
+        }
+    }
+    if (!check(
+            pointer_x >= 0 && pointer_y >= 0,
+            "No shipped enemy could prepare the targeted-spell "
+            "MP check.")) {
+        return false;
+    }
+
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    // PlayerData is deliberately exposed read-only by WorldScene. The
+    // underlying scene is mutable here; lower only this fixture's MP so the
+    // command guard can be exercised without changing the runtime API.
+    const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
+        std::max(0, parameters.mana_cost - 1));
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    const std::size_t controllers_before =
+        world.runtimeEffectControllerCount();
+    return check(
+        mana_before < parameters.mana_cost &&
+            world.commandPlayerMagic(pointer_x, pointer_y) &&
+            !world.playerSpellActive() &&
+            world.playerData().currentMana() == mana_before &&
+            world.runtimeEffectControllerCount() == controllers_before,
+        "An insufficient-MP targeted command created an "
+        "action, effect, or mana change.");
+}
+
 }  // namespace
 
 int main() {
@@ -2445,7 +2555,29 @@ int main() {
             true) ||
         !testRetailEnergyShieldRules(tables) ||
         !testShippedEnergyShieldCast(game_root) ||
-        !testGroundSpellInsufficientMana(game_root, 9)) {
+        !testGroundSpellInsufficientMana(game_root, 9) ||
+        !testRetailAction(
+            animation,
+            tables,
+            10,
+            osf::PlayerSpellAction::earth_spear,
+            11,
+            12) ||
+        !testRetailPacket(
+            tables,
+            10,
+            {
+                10010, 0, -1, 4,
+                true, false, true, false, true, true,
+                true, 1,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            10,
+            11,
+            10000060,
+            22) ||
+        !testTargetedSpellInsufficientMana(game_root, 10)) {
         return 1;
     }
 #endif

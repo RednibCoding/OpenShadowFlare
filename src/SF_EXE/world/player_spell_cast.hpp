@@ -10,6 +10,7 @@
 namespace osf {
 
 class TableDatabase;
+class RetailRandom;
 
 struct PlayerSpellCastStats {
     std::int32_t source_character_number = -1;
@@ -38,7 +39,8 @@ bool playerSpellRequiresCharacterTarget(
 CombatEffectSpawnRequest buildPlayerSpellCast(
     std::int32_t spell,
     const PlayerSpellCastInput& input,
-    const TableDatabase& tables);
+    const TableDatabase& tables,
+    RetailRandom* random = nullptr);
 
 }  // namespace osf
 

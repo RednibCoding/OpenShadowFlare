@@ -41,6 +41,7 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
     case PlayerSpellAction::moon:
     case PlayerSpellAction::berserker:
     case PlayerSpellAction::energy_shield:
+    case PlayerSpellAction::earth_spear:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -114,6 +115,9 @@ bool playerSpellActionForSpell(
         return true;
     case 9:
         action = PlayerSpellAction::energy_shield;
+        return true;
+    case 10:
+        action = PlayerSpellAction::earth_spear;
         return true;
     default:
         return false;

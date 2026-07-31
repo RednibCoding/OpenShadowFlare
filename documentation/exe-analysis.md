@@ -2035,3 +2035,27 @@ while the flag is active. `0x00444be0` draws animation block 500, mapped to
 `Player/Common/Powerup.Caf` and `.Njp`, after the Berserker pass. It uses chart
 zero, direction eight, runtime frame `+0x15f8`, full opacity, and RGB strengths
 1000/1000/300.
+
+## Earth Spear cast
+
+`0x0043e000` dispatches spell ten as action 32. It requires the pointed living
+character selected by the secondary-click path, uses CAF charts 11 and 12 and
+Table 20 row ten, and pays the ordinary Table 16 MP cost. The action stores the
+hero position as an explicit origin and the angle to the selected target, but
+passes zero travel speed because effect 10010 owns a fixed wave line rather
+than a projectile.
+
+The family-zero packet has subtype three. Its damage is Table 17 row ten plus
+the player's magical attack, word five carries physical defense, its hit value
+is the Table 17 value plus magical hit rate, word 72 is one, and word 73 is
+spell ten. The impact presentation consumes one `rand()` draw and selects
+21000 through 21003. The effect request retains target mask four, constructor
+effective level, and the action marker delay.
+
+The existing controller at `0x0042e7e0` reads the wave count from Table 206.
+Every eight updates it projects a placement from the fixed origin at
+`wave * 300 + 250`, creates resource 10000060 with a 150-unit area packet,
+plays sample 22, and requests eight updates of magnitude-six camera shake when
+nearby. A blocked first placement suppresses every later wave; a blocked later
+placement ends the line after its already-created waves. Packet contact uses
+the normal receiver-time practice path.

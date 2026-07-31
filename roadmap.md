@@ -214,9 +214,15 @@ and effect-family damage still reaches HP. Zero MP shuts it off, owned kills
 train it, and the yellow `Player/Common/Powerup` pass follows the hero after
 Berserker's red pass.
 
-The next spell checkpoint is Earth Spear action 32. It returns to the attack
-spell path, so its target command, packet fields, effect controller, contact
-behavior, audio, practice, and live presentation need to be traced together.
+Earth Spear is complete. Action 32 returns to the pointed-enemy path and sends
+its exact subtype-three packet, fixed cast origin, and target angle to effect
+10010. Table 206 drives the eight-update stone-ridge line, including authored
+spacing, placement collision, first-wave cutoff, area contacts, sample 22,
+camera shake, random ordinary impact presentation, and receiver-time practice.
+
+The next spell checkpoint is Flame Strike action 33. Its command target,
+packet, effect ownership, presentation timing, audio, collision, and practice
+need the same end-to-end retail trace before implementation.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1346,7 +1352,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- the next checkpoint is Berserker action 30;
+- Berserker action 30, Energy Shield action 31, and Earth Spear action 32 are
+  complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

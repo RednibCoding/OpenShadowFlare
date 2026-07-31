@@ -1582,3 +1582,21 @@ bypass Energy Shield. `FUN_00443490` clears the flag at zero MP.
 runtime frame `+0x15f8`, and RGB 1000/1000/300. It is drawn after Berserker's
 red Powerup pass. The same modulo-ten local kill ownership test trains spell
 nine for hero and companion kills while the shield is active.
+
+## Earth Spear cast
+
+`FUN_0043e000` runs Earth Spear action 32 on CAF charts 11 and 12 with Table
+20 row ten. It requires the selected living character, pays the ordinary
+Table 16 cost, and sends effect 10010 the hero's cast-time origin and fixed
+direction to that target. Constructor travel values six and seven remain
+zero; the effect is a placed wave line rather than a moving projectile.
+
+The family-zero subtype-three packet combines Table 17 row ten with magical
+attack and magical hit rate, carries physical defense in word five, chooses
+ordinary presentation 21000 through 21003 with one retail random draw, writes
+one to word 72, and identifies spell ten in word 73. The previously
+reconstructed `FUN_0042e7e0` controller uses Table 206, tries resource
+10000060 every eight updates at `wave * 300 + 250`, applies its packet in a
+150-unit area, plays sample 22, and requests nearby camera shake. A blocked
+first placement suppresses the whole line. Successful receiver contacts
+award Earth Spear practice.
