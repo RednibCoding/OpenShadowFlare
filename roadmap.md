@@ -220,9 +220,15 @@ its exact subtype-three packet, fixed cast origin, and target angle to effect
 spacing, placement collision, first-wave cutoff, area contacts, sample 22,
 camera shake, random ordinary impact presentation, and receiver-time practice.
 
-The next spell checkpoint is Flame Strike action 33. Its command target,
-packet, effect ownership, presentation timing, audio, collision, and practice
-need the same end-to-end retail trace before implementation.
+Flame Strike is complete. Action 33 uses the pointed-enemy command, charts 13
+and 14, and its exact magical subtype-zero packet. Effect 10011 now receives
+the cast through the player boundary and uses Table 204 for its full-circle
+homing fan, including the source visual, authored delay, travel, turning,
+collision expiry, samples 19 and 20, and receiver-time practice.
+
+The next spell checkpoint is Dread Deathscythe action 34. Its target rules,
+packet differences, effect-10012 fan, presentation, audio, collision, and
+practice need an end-to-end retail trace.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1352,8 +1358,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30, Energy Shield action 31, and Earth Spear action 32 are
-  complete;
+- Berserker action 30 through Flame Strike action 33 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

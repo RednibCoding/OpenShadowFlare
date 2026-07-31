@@ -299,6 +299,25 @@ its 150-unit area. If the first placement is blocked by scenery, retail
 suppresses it and every later ridge; after a ridge has appeared, a later
 blocked placement only ends the remaining line.
 
+### Flame Strike
+
+Flame Strike is a pointed-enemy cast on action 33 and CAF charts 13 and 14.
+It pays the normal MP cost and creates effect 10011 immediately, carrying the
+selected enemy, the cast direction, the hero's judgement rectangle, Table 17
+travel speed, and the chart marker as its launch delay.
+
+Its family-zero subtype-zero packet uses magical attack, magical defense, and
+magical hit rate with the spell's Table 17 values. Presentation 20000 is used
+on contact, and the effective spell level is passed to the controller.
+
+Resource 10000012 appears at the hero when the controller starts. At the
+authored delay, Table 204 selects between two and eight resource-10000010
+projectiles arranged around a full circle. They begin 180 world units from the
+hero, turn toward the selected enemy in 20-degree steps, and live for at most
+90 updates. Scenery or the first target ends an individual projectile. The
+last projectile spawn plays sample 19; each contact uses sample 20 and trains
+Flame Strike through the ordinary receiver path.
+
 ## Character Stats
 
 ### Primary Stats

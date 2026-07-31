@@ -2059,3 +2059,27 @@ plays sample 22, and requests eight updates of magnitude-six camera shake when
 nearby. A blocked first placement suppresses every later wave; a blocked later
 placement ends the line after its already-created waves. Packet contact uses
 the normal receiver-time practice path.
+
+## Flame Strike cast
+
+`0x0043beb0` dispatches spell eleven as action 33 on CAF charts 13 and 14 with
+Table 20 row eleven. The pointed command supplies a living enemy character.
+On action entry the cast computes its marker delay, resolves the direction to
+that character, and creates effect 10011 with owner kind one, target mask
+0x14, the selected identity, Table 17 parameter three as travel speed,
+display height 200, the player judgement, effective level, and Table 17
+parameter four in constructor field 22.
+
+The family-zero subtype-zero packet adds Table 17 parameter zero to magical
+attack and parameter one to magical hit rate. Word five carries magical
+defense, word 34 is presentation 20000, word 72 is zero, and word 73 identifies
+spell eleven. No random draw occurs while building the cast.
+
+The existing effect-10011 handler at `0x0042d6e0` creates source resource
+10000012 on update zero. At the marker delay it reads Table 204 for the
+effective-level projectile count and divides retail's 6.283184 full circle
+between them. Resource-10000010 children start 180 units from the live hero,
+home toward the selected target with turn value 20, use 80-unit bounds and a
+90-update lifetime, and expire on scenery or first contact. Sample 19 comes
+from the last spawn and sample 20 from contact. The ordinary packet receiver
+awards practice only after a successful hit.

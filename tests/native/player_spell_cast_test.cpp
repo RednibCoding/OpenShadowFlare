@@ -2577,7 +2577,29 @@ int main() {
             11,
             10000060,
             22) ||
-        !testTargetedSpellInsufficientMana(game_root, 10)) {
+        !testTargetedSpellInsufficientMana(game_root, 10) ||
+        !testRetailAction(
+            animation,
+            tables,
+            11,
+            osf::PlayerSpellAction::flame_strike,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            11,
+            {
+                10011, 0, 20000, 0x14,
+                true, true, false, true, true, false,
+                false, 0,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            11,
+            13,
+            10000010,
+            19) ||
+        !testTargetedSpellInsufficientMana(game_root, 11)) {
         return 1;
     }
 #endif
