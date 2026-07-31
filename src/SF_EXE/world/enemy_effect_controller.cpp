@@ -19,6 +19,7 @@ constexpr std::int32_t kTypeFiveEffect = 10005;
 constexpr std::int32_t kTypeTenEffect = 10010;
 constexpr std::int32_t kTypeElevenEffect = 10011;
 constexpr std::int32_t kTypeTwelveEffect = 10012;
+constexpr std::int32_t kTypeThirteenEffect = 10013;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
@@ -73,6 +74,10 @@ constexpr std::int32_t kTypeTwelveProjectileLifetime = 90;
 constexpr double kTypeTwelveSpreadRadians = 2.5132736;
 constexpr std::int32_t kTypeTwelveFirstImpactEffect = 21021;
 constexpr std::int32_t kTypeTwelveSecondImpactEffect = 21022;
+constexpr std::int32_t kTypeThirteenFirstRadius = 350;
+constexpr std::int32_t kTypeThirteenRadiusStep = 200;
+constexpr std::int32_t kTypeThirteenWavePeriod = 4;
+constexpr std::int32_t kTypeThirteenLifetime = 16;
 
 bool supportedEffect(std::int32_t effect_number) {
     return effect_number == kTypeOneEffect ||
@@ -82,7 +87,8 @@ bool supportedEffect(std::int32_t effect_number) {
            effect_number == kTypeFiveEffect ||
            effect_number == kTypeTenEffect ||
            effect_number == kTypeElevenEffect ||
-           effect_number == kTypeTwelveEffect;
+           effect_number == kTypeTwelveEffect ||
+           effect_number == kTypeThirteenEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -534,7 +540,8 @@ bool EnemyEffectController::initialize(
             wave_table->value(0, column);
     }
     if (request.effect_number == kTypeElevenEffect ||
-        request.effect_number == kTypeTwelveEffect) {
+        request.effect_number == kTypeTwelveEffect ||
+        request.effect_number == kTypeThirteenEffect) {
         const TableData* count_table =
             tables
                 ? tables->find(
@@ -549,6 +556,12 @@ bool EnemyEffectController::initialize(
         }
         radial_actor_count_ =
             count_table->value(0, column);
+        if (radial_actor_count_ < 0 ||
+            static_cast<std::size_t>(
+                radial_actor_count_) >
+                radial_placement_blocked_.size()) {
+            return false;
+        }
         if (request.effect_number == kTypeTwelveEffect) {
             if (!count_table->contains(0, 29)) {
                 return false;
@@ -723,6 +736,108 @@ EnemyEffectController::update(
                 retailMultiply(
                     wave_count_,
                     kTypeTenWavePeriod))) {
+            active_ = false;
+            result.expired = true;
+        }
+        return result;
+    }
+
+    if (request_.effect_number == kTypeThirteenEffect) {
+        if (request_.constructor_value_12 <= counter_ &&
+            retailSubtract(
+                counter_,
+                request_.constructor_value_12) %
+                    kTypeThirteenWavePeriod ==
+                0) {
+            const double angle_step =
+                radial_actor_count_ > 0
+                    ? kRetailFullCircleRadians /
+                          static_cast<double>(
+                              radial_actor_count_)
+                    : 0.0;
+            WorldPosition audio_position =
+                request_.has_explicit_origin
+                    ? request_.origin
+                    : WorldPosition{};
+            for (std::int32_t index = 0;
+                 index < radial_actor_count_;
+                 ++index) {
+                const double direction =
+                    request_.direction_radians +
+                    static_cast<double>(index) *
+                        angle_step;
+                const std::int32_t distance =
+                    retailAdd(
+                        retailMultiply(
+                            wave_index_,
+                            kTypeThirteenRadiusStep),
+                        kTypeThirteenFirstRadius);
+                const WorldPosition position =
+                    projectedPosition(
+                        request_.has_explicit_origin
+                            ? request_.origin
+                            : WorldPosition{},
+                        direction,
+                        distance);
+                const ObjectBounds judgement{
+                    -kTypeThreeRadius,
+                    -kTypeThreeRadius,
+                    kTypeThreeRadius,
+                    kTypeThreeRadius,
+                };
+                if (context.placement_is_clear &&
+                    !context.placement_is_clear(
+                        position, judgement)) {
+                    radial_placement_blocked_[
+                        static_cast<std::size_t>(index)] =
+                        true;
+                }
+                if (!radial_placement_blocked_[
+                        static_cast<std::size_t>(index)]) {
+                    const std::int32_t chart =
+                        context.random
+                            ? context.random->next() % 4
+                            : 0;
+                    result.actor_spawns[
+                        result.actor_spawn_count++] =
+                        typeThreeActor(
+                            request_,
+                            position,
+                            kTypeThreeFirstResource,
+                            chart,
+                            true);
+                    result.actor_spawns[
+                        result.actor_spawn_count++] =
+                        typeThreeActor(
+                            request_,
+                            position,
+                            kTypeThreeSecondResource,
+                            0,
+                            false);
+                    result.actor_spawns[
+                        result.actor_spawn_count++] =
+                        typeThreeActor(
+                            request_,
+                            position,
+                            kTypeThreeThirdResource,
+                            0,
+                            false);
+                }
+                audio_position = position;
+            }
+            result.audio[result.audio_count++] = {
+                kTypeThreeAudioSample,
+                audio_position,
+            };
+            wave_index_ =
+                retailAdd(wave_index_, 1);
+        }
+
+        counter_ = retailAdd(counter_, 1);
+        if (counter_ ==
+            retailAdd(
+                request_.constructor_value_12,
+                kTypeThirteenLifetime)) {
             active_ = false;
             result.expired = true;
         }

@@ -77,6 +77,7 @@ private:
     std::int32_t radial_actor_count_ = 0;
     std::int32_t radial_spread_divisor_ = 0;
     bool wave_placement_blocked_ = false;
+    std::array<bool, 8> radial_placement_blocked_{};
     WorldPosition type_five_position_;
     bool active_ = false;
 };

@@ -98,7 +98,7 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller types 13, 14, 16, and 21 one
+- finish effect-controller types 14, 16, and 21 one
   shipped family at a time, with both passive timing coverage and a live actor
   using each one;
 - finish ranged player actions and projectiles without bypassing the common
@@ -1064,7 +1064,21 @@ projectile. A shipped subtype-ten Dread Wisp from `North of The Remains of
 The Dead` (`03010003`) supplies the live warning, launch, render, damage,
 audio, cleanup, and item-identity regression.
 
-Types 13, 14, 16, and 21 remain.
+Type 13 is complete now. Table 204 supplies the number of points in each
+shell. Beginning at the authored delay, the controller emits four shells,
+four updates apart, at radii 350, 550, 750, and 950 around the fixed impact
+origin. Every clear point creates the same three resources as type 3:
+`10000030`, `10000031`, and `10000032`. Only the first layer uses a random
+chart and applies the copied packet; sample 21 plays once per shell at its
+last radial point.
+
+Unlike the earlier one-direction wave controllers, every radial direction
+has its own obstruction latch. A blocked ray remains suppressed in later
+shells without stopping the others. Lightning Gargoyle 11 in Ancient Ruins
+B1F (`03140000`) supplies the shipped subtype-20 live render, damage, audio,
+cleanup, and item-identity regression.
+
+Types 14, 16, and 21 remain.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1093,7 +1107,7 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 13, 14, 16,
+finish. It should move to effect-controller types 14, 16,
 and 21, then the ranged player actions and companion attacks, keeping one
 shipped live encounter beside each passive reconstruction.
 

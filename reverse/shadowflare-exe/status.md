@@ -145,6 +145,20 @@ words 74/75 with `21022` and the same direction. Sample 94 plays at the last
 projectile before immediate controller expiry. Dread Wisp 24 in `North of The
 Remains of The Dead` (`03010003`) supplies the shipped subtype-ten live case.
 
+Type 13 at `0x0042e240` reads Table 204 at `subtype - 1` and attempts four
+radial shells, four updates apart, at radii 350, 550, 750, and 950 from the
+fixed impact origin. Angles advance positively through retail's `6.283184`
+full circle. Each of the table's at most eight rays has an independent
+permanent placement-obstruction flag, so one blocked direction does not stop
+the other directions.
+
+Every clear point consumes one random chart and creates resources `10000030`,
+`10000031`, and `10000032`. As in type 3, only the first layer processes every
+overlapping target on update zero with the copied packet. Sample 21 plays once
+per attempted shell at its final radial position, including when that final
+ray is blocked. The controller expires at the authored delay plus 16.
+Lightning Gargoyle 11 in `03140000` supplies the shipped subtype-20 live case.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -161,7 +175,7 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 through 5 and types 10 through 12. Focused tests cover zero,
+of types 1 through 5 and types 10 through 13. Focused tests cover zero,
 positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
@@ -189,7 +203,7 @@ resources, audio, damage, cleanup, and unchanged item ownership. Scenario
 two launch sounds, contact sample 20, camera shake, and item ownership. The
 type-5 sequence is covered by enemy 48 in `04060004`, including its
 resource-driven timing, three visuals, six pulses, area damage, camera shake,
-cleanup, and item ownership. The other four specialized controllers remain
+cleanup, and item ownership. The other three specialized controllers remain
 to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.

@@ -1464,6 +1464,24 @@ spawn position and the controller expires. A zero delay therefore emits the
 source plus both complete fans on update zero. Dread Wisp 24 in `North of The
 Remains of The Dead` (`03010003`) provides the shipped subtype-ten live case.
 
+Type 13 (`0x0042e240`) reads its radial count from Table 204 row zero at
+`subtype - 1`. Beginning at the authored delay, it attempts four shells at
+four-update intervals. Shell radii are `wave * 200 + 350`; each point uses
+the angle `stored_angle + index * (6.283184 / count)` from the stored explicit
+impact origin and placement bounds `[-100,-100,100,100]`.
+
+Retail stores one obstruction flag for each of the eight possible Table 204
+points. A failed map or live-object placement permanently suppresses only that
+ray in this and later shells. Every clear point consumes one `rand() % 4` and
+creates resources `10000030`, `10000031`, and `10000032` together, with the
+same descriptors as type 3: only the random-chart first layer has an
+update-zero all-target collision window, while the two chart-zero layers are
+visual. Sample 21 plays once after every shell at the final radial position,
+even if that point's obstruction flag is set. The controller increments its
+shell radius after each attempt and expires exactly at `delay + 16`.
+Lightning Gargoyle 11 in Ancient Ruins B1F (`03140000`) supplies the shipped
+subtype-20 live case.
+
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
 first update, retail integer projection, static OBL/GND sweeping, the

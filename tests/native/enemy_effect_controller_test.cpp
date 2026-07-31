@@ -311,7 +311,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10013;
+    request.effect_number = 10014;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -1565,6 +1565,267 @@ bool testTypeTwelveWarningAndProjectileFans() {
 #endif
 }
 
+bool testTypeThirteenRadialWaves() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The retail type-thirteen count table could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* count_table =
+        tables.find(204);
+    const std::int32_t actor_count =
+        count_table ? count_table->value(0, 9) : 0;
+    if (!check(
+            actor_count == 3,
+            "Table 204's shipped subtype-ten type-thirteen "
+            "radial count changed.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10013, 2);
+    request.constructor_value_17 = 10;
+    request.direction_radians = 0.25;
+    request.has_explicit_origin = true;
+    request.origin = {1000, 2000};
+
+    osf::EnemyEffectController controller;
+    osf::EnemyEffectController missing_tables;
+    if (!check(
+            controller.initialize(request, &tables) &&
+                !missing_tables.initialize(request),
+            "Type thirteen did not require and accept its "
+            "shipped Table 204 entry.")) {
+        return false;
+    }
+
+    osf::RetailRandom random(1);
+    osf::RetailRandom expected_random(1);
+    std::size_t placement_count = 0;
+    const double angle_step =
+        osf::kRetailFullCircleRadians /
+        static_cast<double>(actor_count);
+    for (std::int32_t update_number = 0;
+         update_number < 18;
+         ++update_number) {
+        const bool pulse =
+            update_number >= 2 &&
+            (update_number - 2) % 4 == 0;
+        const std::int32_t wave =
+            pulse ? (update_number - 2) / 4 : -1;
+        const auto update = controller.update(
+            {
+                {},
+                &random,
+                [&placement_count](
+                    osf::WorldPosition,
+                    const osf::ObjectBounds& judgement) {
+                    ++placement_count;
+                    return judgement.left == -100 &&
+                           judgement.top == -100 &&
+                           judgement.right == 100 &&
+                           judgement.bottom == 100;
+                },
+                {},
+                {},
+            });
+        if (!check(
+                update.actor_spawn_count ==
+                        (pulse ? 9u : 0u) &&
+                    update.audio_count ==
+                        (pulse ? 1u : 0u) &&
+                    update.expired ==
+                        (update_number == 17),
+                "Type thirteen lost its delay, four-update "
+                "pulse cadence, or delay-plus-sixteen "
+                "lifetime.")) {
+            return false;
+        }
+        if (!pulse) {
+            continue;
+        }
+
+        const std::int32_t radius =
+            wave * 200 + 350;
+        osf::WorldPosition last_position;
+        for (std::int32_t index = 0;
+             index < actor_count;
+             ++index) {
+            const double direction =
+                request.direction_radians +
+                static_cast<double>(index) *
+                    angle_step;
+            const osf::WorldPosition expected{
+                request.origin.x +
+                    static_cast<std::int32_t>(
+                        std::cos(direction) * radius),
+                request.origin.y -
+                    static_cast<std::int32_t>(
+                        std::sin(direction) * radius),
+            };
+            last_position = expected;
+            const std::int32_t expected_chart =
+                expected_random.next() % 4;
+            const std::size_t base =
+                static_cast<std::size_t>(index) * 3;
+            const auto& damaging =
+                update.actor_spawns[base];
+            const auto& second =
+                update.actor_spawns[base + 1];
+            const auto& third =
+                update.actor_spawns[base + 2];
+            if (!check(
+                    damaging.controller_effect_number ==
+                            10013 &&
+                        damaging.resource_id == 10000030 &&
+                        damaging.owner_kind == 4 &&
+                        damaging.source_character_number ==
+                            14000042 &&
+                        damaging.target_mask == 1 &&
+                        damaging.target_identifier == 0 &&
+                        damaging.position.x == expected.x &&
+                        damaging.position.y == expected.y &&
+                        damaging.judgement.left == -100 &&
+                        damaging.judgement.top == -100 &&
+                        damaging.judgement.right == 100 &&
+                        damaging.judgement.bottom == 100 &&
+                        damaging.lifetime_from_animation &&
+                        damaging.target_collision_start == 0 &&
+                        damaging.target_collision_end == 0 &&
+                        damaging.process_every_target &&
+                        damaging.animation_chart ==
+                            expected_chart &&
+                        damaging.animation_direction == 8 &&
+                        damaging.has_packet &&
+                        damaging.packet[34] == 21013 &&
+                        second.resource_id == 10000031 &&
+                        second.position.x == expected.x &&
+                        second.position.y == expected.y &&
+                        second.lifetime_from_animation &&
+                        second.target_collision_start == -1 &&
+                        !second.process_every_target &&
+                        second.animation_chart == 0 &&
+                        second.animation_direction == 8 &&
+                        second.has_packet &&
+                        third.resource_id == 10000032 &&
+                        third.position.x == expected.x &&
+                        third.position.y == expected.y &&
+                        third.lifetime_from_animation &&
+                        third.target_collision_start == -1 &&
+                        !third.process_every_target &&
+                        third.animation_chart == 0 &&
+                        third.animation_direction == 8 &&
+                        third.has_packet,
+                    "A type-thirteen radial point differs from "
+                    "its retail three-layer descriptor.")) {
+                return false;
+            }
+        }
+        if (!check(
+                update.audio[0].sample == 21 &&
+                    update.audio[0].position.x ==
+                        last_position.x &&
+                    update.audio[0].position.y ==
+                        last_position.y,
+                "Type thirteen did not place sample 21 at the "
+                "last point of its radial shell.")) {
+            return false;
+        }
+    }
+    if (!check(
+            !controller.active() &&
+                controller.counter() == 18 &&
+                placement_count == 12 &&
+                random.state() == expected_random.state(),
+            "Type thirteen did not test every radial point or "
+            "consume one random chart per clear point.")) {
+        return false;
+    }
+
+    request.constructor_value_12 = 0;
+    osf::EnemyEffectController blocked;
+    blocked.initialize(request, &tables);
+    osf::RetailRandom blocked_random(1);
+    osf::RetailRandom blocked_expected(1);
+    std::size_t blocked_placement_count = 0;
+    std::size_t blocked_actor_count = 0;
+    std::size_t blocked_audio_count = 0;
+    for (std::int32_t update_number = 0;
+         update_number < 16;
+         ++update_number) {
+        const auto update = blocked.update(
+            {
+                {},
+                &blocked_random,
+                [&blocked_placement_count, actor_count](
+                    osf::WorldPosition,
+                    const osf::ObjectBounds&) {
+                    const std::size_t call =
+                        blocked_placement_count++;
+                    const std::size_t wave =
+                        call /
+                        static_cast<std::size_t>(actor_count);
+                    const std::size_t ray =
+                        call %
+                        static_cast<std::size_t>(actor_count);
+                    return !(wave >= 1 && ray == 0);
+                },
+                {},
+                {},
+            });
+        blocked_actor_count += update.actor_spawn_count;
+        blocked_audio_count += update.audio_count;
+        if (update_number % 4 == 0) {
+            const std::int32_t clear_rays =
+                update_number == 0 ? 3 : 2;
+            for (std::int32_t index = 0;
+                 index < clear_rays;
+                 ++index) {
+                blocked_expected.next();
+            }
+        }
+    }
+    if (!check(
+            !blocked.active() &&
+                blocked_placement_count == 12 &&
+                blocked_actor_count == 27 &&
+                blocked_audio_count == 4 &&
+                blocked_random.state() ==
+                    blocked_expected.state(),
+            "A blocked type-thirteen ray did not latch "
+            "independently while the other rays and shell "
+            "sounds continued.")) {
+        return false;
+    }
+
+    request.constructor_value_17 = 30;
+    osf::EnemyEffectController maximum;
+    if (!maximum.initialize(request, &tables)) {
+        return false;
+    }
+    const auto maximum_update =
+        maximum.update({{}, nullptr, {}, {}, {}});
+    return check(
+        maximum_update.actor_spawn_count == 24 &&
+            maximum_update.audio_count == 1 &&
+            !maximum_update.expired,
+        "Type thirteen did not retain all eight Table 204 rays "
+        "within one three-layer shell.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1577,7 +1838,8 @@ int main() {
         !testTypeThreeWaves() ||
         !testTypeTenWaves() ||
         !testTypeElevenRadialActors() ||
-        !testTypeTwelveWarningAndProjectileFans()) {
+        !testTypeTwelveWarningAndProjectileFans() ||
+        !testTypeThirteenRadialWaves()) {
         return 1;
     }
     return 0;

@@ -1633,6 +1633,195 @@ bool testShippedLiveTypeTwelve(
         "identity.");
 }
 
+bool testShippedLiveTypeThirteen(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-thirteen parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* count_table =
+        tables.find(204);
+    const std::int32_t actor_count =
+        count_table ? count_table->value(0, 19) : 0;
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectShell";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {3140000, 0, 0},
+                &error),
+            "The shipped type-thirteen effect scenario could "
+            "not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::EnemyActor* source =
+        findEnemy(world, 11);
+    if (!check(
+            source &&
+                source->name() == "Lightning Gargoyle" &&
+                source->presentationProfile()
+                        .effect_type[0] == 13 &&
+                source->presentationProfile()
+                        .effect_subtype[0] == 20 &&
+                actor_count > 0,
+            "Ancient Ruins B1F no longer contains enemy 11's "
+            "shipped type-thirteen family.")) {
+        return false;
+    }
+
+    const osf::WorldPosition player_position{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(world, *source, tables);
+    request.direction_radians = 0.0;
+    request.has_explicit_origin = true;
+    request.origin = {
+        player_position.x - 350,
+        player_position.y,
+    };
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    if (!check(
+            request.valid &&
+                request.effect_number == 10013 &&
+                request.constructor_value_12 == 0 &&
+                request.constructor_value_17 == 20 &&
+                request.has_explicit_origin &&
+                body_before,
+            "The shipped Lightning Gargoyle did not resolve a "
+            "valid type-thirteen request or starter ownership "
+            "fixture.")) {
+        return false;
+    }
+
+    world.queueCombatEffect(request);
+    world.update();
+    const std::vector<std::int32_t> first_audio =
+        world.takeAudioSamples();
+    const std::size_t first_layer_count =
+        static_cast<std::size_t>(
+            std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == 10000030;
+                }));
+    const std::size_t second_layer_count =
+        static_cast<std::size_t>(
+            std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == 10000031;
+                }));
+    const std::size_t third_layer_count =
+        static_cast<std::size_t>(
+            std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == 10000032;
+                }));
+    if (!check(
+            world.runtimeEffectControllerCount() == 1 &&
+                first_layer_count >= 1 &&
+                first_layer_count == second_layer_count &&
+                first_layer_count == third_layer_count &&
+                first_layer_count <=
+                    static_cast<std::size_t>(actor_count) &&
+                containsSample(first_audio, 21),
+            "The live type-thirteen first shell lost its "
+            "three-layer points, sample 21, or controller.")) {
+        return false;
+    }
+
+    world.update();
+    world.takeAudioSamples();
+    const bool rendered_first =
+        renderedRuntimeResource(world, 10000030);
+    const bool rendered_second =
+        renderedRuntimeResource(world, 10000031);
+    const bool rendered_third =
+        renderedRuntimeResource(world, 10000032);
+    const bool damage_received =
+        world.playerData().currentLife() < life_before;
+
+    std::size_t shell_audio_count = 1;
+    for (std::int32_t update_number = 2;
+         update_number < 16;
+         ++update_number) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        if (containsSample(audio, 21)) {
+            ++shell_audio_count;
+        }
+    }
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                shell_audio_count == 4,
+            "The shipped type-thirteen controller did not emit "
+            "four shell sounds and clean itself up after "
+            "sixteen updates.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 0;
+         update_number < 120;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    const osf::InventoryItem* body_after =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    return check(
+        rendered_first &&
+            rendered_second &&
+            rendered_third &&
+            damage_received &&
+            world.runtimeEffects().empty() &&
+            sameItems(
+                world.playerInventory().items(),
+                inventory_before) &&
+            sameItems(
+                world.playerBelt().items(),
+                belt_before) &&
+            body_after &&
+            body_after->category == body_copy.category &&
+            body_after->definition_id ==
+                body_copy.definition_id,
+        "The shipped type-thirteen shells lost rendering, "
+        "damage, actor cleanup, or adjacent item identity.");
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -1739,6 +1928,7 @@ int main() {
                    testShippedLiveTypeTen(data_root) &&
                    testShippedLiveTypeEleven(data_root) &&
                    testShippedLiveTypeTwelve(data_root) &&
+                   testShippedLiveTypeThirteen(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;
