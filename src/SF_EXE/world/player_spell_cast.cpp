@@ -150,6 +150,22 @@ bool playerSpellDescriptor(
             false,
         };
         return true;
+    case 14:
+        descriptor = {
+            10014,
+            2,
+            21019,
+            kEnemyAndObjectTargetMask,
+            true,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            0,
+        };
+        return true;
     default:
         return false;
     }

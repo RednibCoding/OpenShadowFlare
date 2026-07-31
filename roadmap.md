@@ -238,9 +238,14 @@ while its packet keeps the real player source. Table 204 drives four radial
 shells with independent obstruction cutoffs, all three visual layers, random
 primary charts, area contacts, sample 21, and receiver-time practice.
 
-The next spell checkpoint is Medusa action 36. Its command restrictions,
-packet or direct status behavior, effect ownership, presentation, audio, and
-practice need a fresh retail trace.
+Medusa is complete. Action 36 uses the pointed-enemy path and exact
+subtype-two packet. Effect 10014 owns its delayed straight
+resource-10000070 projectile, including the 180-unit launch offset, scenery
+and target expiry, samples 22 and 20, and receiver-time practice.
+
+The next spell checkpoint is Sonic Blade action 37. Its command, weapon
+restrictions, packet, effect ownership, presentation, audio, collision, and
+practice need an end-to-end retail trace.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1370,7 +1375,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Lightning Storm action 35 are complete;
+- Berserker action 30 through Medusa action 36 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

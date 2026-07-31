@@ -2127,3 +2127,23 @@ resources 10000031 and 10000032. Only the first resource processes every
 target in its 100-unit update-zero area. Sample 21 plays once per shell at the
 last radial position, even if that final ray is blocked. The controller ends
 at marker delay plus 16; packet contact owns spell practice.
+
+## Medusa cast
+
+`0x0043da20` dispatches spell fourteen as action 36 on CAF charts 13 and 14
+with Table 20 row fourteen. The pointed command resolves the selected living
+enemy and sends effect 10014 owner kind one, the player source, target mask
+0x14, target identity, Table 17 parameter-three travel speed, height 200,
+target direction, player judgement, marker delay, and Table 17 parameter four.
+Constructor effective level remains zero.
+
+The family-zero packet has subtype two. It adds Table 17 parameter zero to
+magical attack and parameter one to magical hit rate, uses magical defense in
+word five, presentation 21019 in word 34, zero in word 72, and spell fourteen
+in word 73.
+
+The effect-10014 handler at `0x0042e5c0` has no source visual. At the marker
+delay it re-resolves the live hero and places resource 10000070 180 units along
+the stored direction. That actor travels straight with 80-unit bounds and
+expires on scenery or first contact. Sample 22 is emitted at launch; the
+actor's bank-zero sample 20 and spell practice occur only on contact.

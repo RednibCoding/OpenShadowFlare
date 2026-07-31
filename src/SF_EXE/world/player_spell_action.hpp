@@ -26,6 +26,7 @@ enum class PlayerSpellAction : std::int32_t {
     flame_strike = 33,
     dread_deathscythe = 34,
     lightning_storm = 35,
+    medusa = 36,
 };
 
 struct PlayerSpellAnimationTiming {

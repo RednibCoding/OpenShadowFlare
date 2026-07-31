@@ -356,6 +356,20 @@ Each ray remembers its own scenery obstruction, so a blocked direction stops
 on later circles without suppressing the others. Sample 21 plays once per
 attempted circle, and successful contacts train spell thirteen.
 
+### Medusa
+
+Medusa returns to a single pointed projectile. Action 36 uses CAF charts 13
+and 14, requires a living enemy, and passes effect 10014 the Table 17 travel
+speed, height 200, target identity, aim direction, hero judgement rectangle,
+and chart-marker delay.
+
+Its family-zero packet uses subtype two, magical attack, magical defense,
+magical hit rate, and presentation 21019. Effect 10014 has no separate source
+visual. At the authored delay it starts resource 10000070 180 world units in
+front of the hero. The projectile uses 80-unit bounds, moves straight, and
+expires on scenery or its first target. Sample 22 plays at launch, sample 20
+plays on contact, and a successful receiver contact trains spell fourteen.
+
 ## Character Stats
 
 ### Primary Stats

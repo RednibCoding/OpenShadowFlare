@@ -1652,3 +1652,18 @@ placement cutoff. A clear ray consumes a random chart and creates resources
 10000030, 10000031, and 10000032; only the first applies the packet in its
 100-unit area. Sample 21 plays once per attempted shell, the controller ends
 at delay plus 16, and successful receiver contacts train Lightning Storm.
+
+## Medusa cast
+
+`FUN_0043da20` runs spell fourteen as action 36 on CAF charts 13 and 14 with
+Table 20 row fourteen. Its pointed effect-10014 request carries the player
+source, target mask 0x14, selected enemy, Table 17 travel speed, height 200,
+direction, player judgement, marker delay, and constructor field 22. The
+family-zero subtype-two packet uses magical attack, magical defense, magical
+hit rate, presentation 21019, and spell fourteen.
+
+`FUN_0042e5c0` creates no source visual. At the delay it re-resolves the hero,
+starts resource 10000070 180 units along the stored direction, and plays
+sample 22. The straight projectile uses 80-unit bounds and expires on scenery
+or first target. Contact plays sample 20 and trains Medusa through the normal
+receiver.
