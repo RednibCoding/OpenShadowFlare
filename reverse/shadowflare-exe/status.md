@@ -1634,3 +1634,58 @@ units around the hero. Those blades travel straight with 50-unit bounds and a
 90-update lifetime, replace packet presentations with directional 21021 and
 21022, expire on scenery or first contact, play sample 94 at the final spawn
 and sample 20 on contact, and train spell twelve through the receiver.
+
+## Lightning Storm cast
+
+`FUN_0043b950` runs spell thirteen as action 35 on CAF charts 11 and 12 with
+Table 20 row thirteen. Its command requires a pointed living enemy to set the
+angle, while effect 10013 deliberately receives source `-1`, target mask four,
+target `-1`, zero travel values, the fixed hero origin, no source judgement,
+marker delay, effective level, and constructor field 22. The family-zero
+subtype-zero packet keeps the actual player source, combines Table 17 with
+magical attack and hit rate, uses physical defense, presentation 20005, and
+spell thirteen.
+
+`FUN_0042e240` uses Table 204 to attempt four radial shells at radii 350, 550,
+750, and 950, four updates apart. Each ray has an independent permanent
+placement cutoff. A clear ray consumes a random chart and creates resources
+10000030, 10000031, and 10000032; only the first applies the packet in its
+100-unit area. Sample 21 plays once per attempted shell, the controller ends
+at delay plus 16, and successful receiver contacts train Lightning Storm.
+
+## Medusa cast
+
+`FUN_0043da20` runs spell fourteen as action 36 on CAF charts 13 and 14 with
+Table 20 row fourteen. Its pointed effect-10014 request carries the player
+source, target mask 0x14, selected enemy, Table 17 travel speed, height 200,
+direction, player judgement, marker delay, and constructor field 22. The
+family-zero subtype-two packet uses magical attack, magical defense, magical
+hit rate, presentation 21019, and spell fourteen.
+
+`FUN_0042e5c0` creates no source visual. At the delay it re-resolves the hero,
+starts resource 10000070 180 units along the stored direction, and plays
+sample 22. The straight projectile uses 80-unit bounds and expires on scenery
+or first target. Contact plays sample 20 and trains Medusa through the normal
+receiver.
+
+## Sonic Blade cast
+
+`FUN_00449a40` accepts spell fifteen only with an equipped main-hand subtype
+zero, three, or one. The invalid-weapon path consumes the pointed command but
+does not spend MP or enter action 37. `FUN_0043e5e0` uses the corresponding
+CAF pairs 5/6, 15/16, and 19/20 with the attack-speed tier from
+`FUN_00450c60`, rather than Table 20's spell timing.
+
+Action entry creates effect 21025/resource 11000100 at the player. Every newly
+crossed first-chart status-`0x40` marker re-resolves the selected target angle,
+plays sample 154, and creates effect 10015 with Table 17 travel speed,
+hard-coded delay one, and constructor field 22. Its physical type-zero packet
+uses Table 17 parameter zero percent of physical attack, physical defense,
+magical hit rate, presentation 21024, flag 72, and spell fifteen. Counter six
+also plays the equipped weapon's selector-four sample.
+
+`FUN_0042a300` maps effect 10015 to resource 10000090 and projects a live owner
+200 units forward. The straight actor has `[-80,-80,79,79]` bounds, display
+height 155, lifetime seven, scenery and first-target expiry, and sample 20 on
+contact. Successful packet delivery trains Sonic Blade through the common
+receiver.

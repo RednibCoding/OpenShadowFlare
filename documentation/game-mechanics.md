@@ -337,6 +337,62 @@ updates and expire on scenery or their first target. Their packet carries the
 directional 21021 and 21022 presentations. The final launch plays sample 94,
 contacts play sample 20, and successful contacts train spell twelve.
 
+### Lightning Storm
+
+Lightning Storm still requires a pointed enemy, but only to choose the cast
+direction. Action 35 uses CAF charts 11 and 12. Effect 10013 receives a fixed
+hero origin and deliberately stores `-1` for both its source and target
+identities; damage ownership remains in the copied player packet.
+
+That family-zero subtype-zero packet uses magical attack and hit rate,
+physical defense, presentation 20005, and the spell's Table 17 banks. Table
+204 determines how many rays form each circle. Starting 350 world units from
+the origin, four circles are attempted four updates apart at radii 350, 550,
+750, and 950.
+
+Every clear ray creates resources 10000030, 10000031, and 10000032. Only the
+first layer applies the packet in its 100-unit area, using a randomized chart.
+Each ray remembers its own scenery obstruction, so a blocked direction stops
+on later circles without suppressing the others. Sample 21 plays once per
+attempted circle, and successful contacts train spell thirteen.
+
+### Medusa
+
+Medusa returns to a single pointed projectile. Action 36 uses CAF charts 13
+and 14, requires a living enemy, and passes effect 10014 the Table 17 travel
+speed, height 200, target identity, aim direction, hero judgement rectangle,
+and chart-marker delay.
+
+Its family-zero packet uses subtype two, magical attack, magical defense,
+magical hit rate, and presentation 21019. Effect 10014 has no separate source
+visual. At the authored delay it starts resource 10000070 180 world units in
+front of the hero. The projectile uses 80-unit bounds, moves straight, and
+expires on scenery or its first target. Sample 22 plays at launch, sample 20
+plays on contact, and a successful receiver contact trains spell fourteen.
+
+### Sonic Blade
+
+Sonic Blade is the first spell whose action is driven by the equipped weapon.
+It still needs a pointed living enemy and pays the ordinary Table 16 MP cost,
+but an empty hand or any weapon other than subtype zero, three, or one rejects
+the cast without spending MP. Those three subtypes use CAF chart pairs 5/6,
+15/16, and 19/20 respectively, with the normal attack-speed tiers rather than
+Table 20's casting-speed factors.
+
+Action 37 immediately shows effect 21025 from resource 11000100. Each newly
+crossed first-chart `0x40` marker plays sample 154 and launches effect 10015,
+whose resource-10000090 blade begins 200 world units in front of the hero. It
+travels at Table 17's speed with `[-80,-80,79,79]` bounds, display height 155,
+and a fixed seven-update lifetime, ending on scenery or its first target.
+Contact plays sample 20 and trains spell fifteen. Action counter six also
+plays the equipped weapon's normal attack sample.
+
+Unlike the preceding spells, its family-zero packet is physical type zero.
+Damage is Table 17 parameter zero percent of the hero's physical attack, with
+a minimum of one; word five uses physical defense, word 34 is presentation
+21024, and word 72 is one. Retail still adds the hero's magical hit rate to
+Table 17 parameter one for the packet accuracy value.
+
 ## Character Stats
 
 ### Primary Stats

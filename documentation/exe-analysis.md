@@ -2104,3 +2104,80 @@ straight with 50-unit bounds, a 90-update lifetime, scenery and first-target
 expiry, and optional hit memory from constructor field 22. Their packet
 replaces words 34/35 and 74/75 with directional presentations 21021 and 21022.
 Sample 94 plays at the final launch; sample 20 and practice belong to contact.
+
+## Lightning Storm cast
+
+`0x0043b950` dispatches spell thirteen as action 35 on CAF charts 11 and 12
+with Table 20 row thirteen. The retail pointed-spell switch requires a living
+enemy and stores its angle, but the effect-10013 request passes source identity
+`-1`, target mask four, target identity `-1`, zero travel values, the stored
+angle, an explicit pointer to the hero position, no source judgement, the
+marker delay, effective level, and Table 17 parameter four.
+
+The copied packet retains the real player source. It is family zero, subtype
+zero, adds Table 17 parameter zero to magical attack and parameter one to
+magical hit rate, carries physical defense in word five, presentation 20005
+in word 34, zero in word 72, and spell thirteen in word 73.
+
+`0x0042e240` reads the effective-level ray count from Table 204. It attempts
+four radial shells, four updates apart, at `350 + shell * 200` from the fixed
+origin. Each ray independently latches failed placement, consumes one retail
+random draw for the resource-10000030 chart while clear, and also creates
+resources 10000031 and 10000032. Only the first resource processes every
+target in its 100-unit update-zero area. Sample 21 plays once per shell at the
+last radial position, even if that final ray is blocked. The controller ends
+at marker delay plus 16; packet contact owns spell practice.
+
+## Medusa cast
+
+`0x0043da20` dispatches spell fourteen as action 36 on CAF charts 13 and 14
+with Table 20 row fourteen. The pointed command resolves the selected living
+enemy and sends effect 10014 owner kind one, the player source, target mask
+0x14, target identity, Table 17 parameter-three travel speed, height 200,
+target direction, player judgement, marker delay, and Table 17 parameter four.
+Constructor effective level remains zero.
+
+The family-zero packet has subtype two. It adds Table 17 parameter zero to
+magical attack and parameter one to magical hit rate, uses magical defense in
+word five, presentation 21019 in word 34, zero in word 72, and spell fourteen
+in word 73.
+
+The effect-10014 handler at `0x0042e5c0` has no source visual. At the marker
+delay it re-resolves the live hero and places resource 10000070 180 units along
+the stored direction. That actor travels straight with 80-unit bounds and
+expires on scenery or first contact. Sample 22 is emitted at launch; the
+actor's bank-zero sample 20 and spell practice occur only on contact.
+
+## Sonic Blade cast
+
+`0x0043e5e0` dispatches spell fifteen as action 37, but it does not use the
+ordinary Table 20 casting timeline. `0x00449a40` first requires an equipped
+main-hand item whose subtype is zero, three, or one. Invalid and empty hands
+consume the pointed command without deducting MP or entering the action. The
+three accepted subtypes select CAF pairs 5/6, 15/16, and 19/20, and
+`0x00450c60` supplies the same ten attack-speed tiers as weapon attacks.
+
+Action entry creates effect 21025 with owner kind one, the player source,
+player judgement, direction eight, no packet, and constructor field 21 set to
+200. The common one-pass handler maps it to resource 11000100. The action then
+scans every newly crossed first-chart frame for status `0x40`. While a weapon
+still exists, a marker re-resolves the selected enemy angle, plays sample 154,
+and constructs effect 10015 with target mask `0x14`, Table 17 parameter-three
+speed, height 200, player judgement, hard-coded delay one, and Table 17
+parameter four in constructor field 22. Action counter six independently
+plays selector-four weapon audio. Recovery runs to the final frame of the
+selected second chart.
+
+The family-zero packet uses physical type zero and subtype zero. Damage is
+`Table17[15, level, 0] * physical attack / 100`, clamped to one, while word
+five uses physical defense. Word 32 is Table 17 parameter five, word 34 is
+21024, word 72 is one, and word 73 is fifteen. The accuracy field preserves a
+retail oddity: Table 17 parameter one is added to magical hit rate even though
+the packet is physical.
+
+Effect 10015 enters the generic actor initializer with resource 10000090. A
+live owner projects its origin 200 units along the stored angle. The actor
+uses `[-80,-80,79,79]` bounds, display height 155, a fixed seven-update
+lifetime, directional chart zero, straight Table 17 travel, scenery and
+first-target expiry, and bank-zero contact sample 20. Its copied packet enters
+the ordinary receiver-time damage and spell-practice path.

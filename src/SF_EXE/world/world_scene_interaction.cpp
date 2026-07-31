@@ -208,6 +208,28 @@ bool WorldScene::commandPlayerMagic(
         return true;
     }
 
+    PlayerSpellAnimationVariant animation_variant =
+        PlayerSpellAnimationVariant::standard;
+    if (action == PlayerSpellAction::sonic_blade) {
+        // The retail pointed-spell switch performs this gate after its MP
+        // check and before deducting the cost or entering action 37.
+        const InventoryItem* main_hand =
+            player_equipment_.item(
+                EquipmentSlot::main_hand);
+        const ItemDefinition* definition =
+            main_hand
+                ? item_database_.find(
+                      main_hand->category,
+                      main_hand->definition_id)
+                : nullptr;
+        if (!definition ||
+            !playerSonicBladeAnimationVariant(
+                definition->subtype,
+                animation_variant)) {
+            return true;
+        }
+    }
+
     player_.cancelMovement();
     const WorldPosition facing_position =
         enemy
@@ -222,6 +244,7 @@ bool WorldScene::commandPlayerMagic(
             spell,
             enemy ? enemy->characterNumber() : -1,
             facing_position,
+            animation_variant,
             playerAttackSpeedTier(),
             parameter_tables_.find(20),
             player_visual_.animation())) {
@@ -986,8 +1009,34 @@ bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
 
 void WorldScene::handlePlayerSpellEvent(
     const PlayerSpellActionEvent& event) {
-    if (!event.cast_due ||
-        event.spell < 0) {
+    if (event.spell < 0) {
+        return;
+    }
+    if (event.charge_visual_due &&
+        event.spell == 15) {
+        queueCombatEffect(
+            buildPlayerSonicBladeCharge(
+                scenario_world_.localPlayerNumber(),
+                player_.judgement()));
+    }
+    if (event.swing_sound_due &&
+        event.spell == 15) {
+        const InventoryItem* main_hand =
+            player_equipment_.item(
+                EquipmentSlot::main_hand);
+        const ItemDefinition* definition =
+            main_hand
+                ? item_database_.find(
+                      main_hand->category,
+                      main_hand->definition_id)
+                : nullptr;
+        const std::int32_t sample =
+            retailItemAttackSound(definition);
+        if (sample >= 0) {
+            pending_audio_samples_.push_back(sample);
+        }
+    }
+    if (!event.cast_due) {
         return;
     }
     if (event.spell == 6) {
@@ -1098,6 +1147,7 @@ void WorldScene::handlePlayerSpellEvent(
     stats.source_character_number =
         scenario_world_.localPlayerNumber();
     stats.player_level = player_data_.level();
+    stats.physical_attack = profile.physical_attack;
     stats.magical_attack =
         profile.magical_attack;
     stats.physical_defense =
@@ -1131,14 +1181,32 @@ void WorldScene::handlePlayerSpellEvent(
                     : -1,
                 player_.position(),
                 player_.judgement(),
-                {
-                    event.aim_world_x,
-                    event.aim_world_y,
-                },
+                target
+                    ? target->position()
+                    : WorldPosition{
+                          event.aim_world_x,
+                          event.aim_world_y,
+                      },
                 event.effect_delay,
             },
             parameter_tables_,
             &item_random_);
+    if (event.spell == 15) {
+        const InventoryItem* main_hand =
+            player_equipment_.item(
+                EquipmentSlot::main_hand);
+        if (!main_hand) {
+            return;
+        }
+        RuntimeEffectActorSpawnRequest actor;
+        if (buildGenericEffectActor(
+                request, player_.position(), actor) &&
+            runtime_effects_.queueActor(
+                std::move(actor))) {
+            pending_audio_samples_.push_back(154);
+        }
+        return;
+    }
     queueCombatEffect(request);
 }
 

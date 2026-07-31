@@ -14,6 +14,11 @@ namespace {
 constexpr std::int32_t kPlayerOwnerKind = 1;
 constexpr std::int32_t kEnemyAndObjectTargetMask = 0x14;
 
+enum class PlayerSpellDamageModel {
+    magical_flat,
+    physical_percent,
+};
+
 struct PlayerSpellDescriptor {
     std::int32_t effect_number = -1;
     std::int32_t packet_subtype = 0;
@@ -28,6 +33,12 @@ struct PlayerSpellDescriptor {
     bool use_physical_defense = false;
     bool random_ordinary_impact = false;
     std::int32_t packet_value_72 = 0;
+    bool use_player_effect_source = true;
+    bool use_target_identifier = true;
+    std::int32_t packet_type = 3;
+    PlayerSpellDamageModel damage_model =
+        PlayerSpellDamageModel::magical_flat;
+    std::int32_t constructor_delay_override = -1;
 };
 
 bool playerSpellDescriptor(
@@ -130,6 +141,61 @@ bool playerSpellDescriptor(
             0,
         };
         return true;
+    case 13:
+        descriptor = {
+            10013,
+            0,
+            20005,
+            4,
+            true,
+            false,
+            true,
+            false,
+            true,
+            true,
+            false,
+            0,
+            false,
+            false,
+        };
+        return true;
+    case 14:
+        descriptor = {
+            10014,
+            2,
+            21019,
+            kEnemyAndObjectTargetMask,
+            true,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            0,
+        };
+        return true;
+    case 15:
+        descriptor.effect_number = 10015;
+        descriptor.packet_subtype = 0;
+        descriptor.impact_effect = 21024;
+        descriptor.target_mask =
+            kEnemyAndObjectTargetMask;
+        descriptor.requires_target = true;
+        descriptor.use_table_travel_speed = true;
+        descriptor.use_explicit_origin = false;
+        descriptor.use_source_judgement = true;
+        descriptor.constructor_uses_level = false;
+        descriptor.use_physical_defense = true;
+        descriptor.random_ordinary_impact = false;
+        descriptor.packet_value_72 = 1;
+        descriptor.use_player_effect_source = true;
+        descriptor.use_target_identifier = true;
+        descriptor.packet_type = 0;
+        descriptor.damage_model =
+            PlayerSpellDamageModel::physical_percent;
+        descriptor.constructor_delay_override = 1;
+        return true;
     default:
         return false;
     }
@@ -155,6 +221,34 @@ bool playerSpellRequiresCharacterTarget(
            descriptor.requires_target;
 }
 
+CombatEffectSpawnRequest buildPlayerSonicBladeCharge(
+    std::int32_t source_character_number,
+    ObjectBounds source_judgement) {
+    CombatEffectSpawnRequest request;
+    if (source_character_number < 0) {
+        return request;
+    }
+    request.valid = true;
+    request.effect_number = 21025;
+    request.owner_kind = kPlayerOwnerKind;
+    request.source_character_number =
+        source_character_number;
+    request.target_kind = 0;
+    request.target_identifier = -1;
+    request.constructor_value_6 = 0;
+    request.constructor_value_7 = 0;
+    request.direction_radians = 0.0;
+    request.has_source_judgement = true;
+    request.source_judgement = source_judgement;
+    request.constructor_value_12 = 0;
+    request.has_packet = false;
+    request.packet_kind = 8;
+    request.instance_identifier = -1;
+    request.constructor_value_21 = 200;
+    request.constructor_value_22 = 0;
+    return request;
+}
+
 CombatEffectSpawnRequest buildPlayerSpellCast(
     std::int32_t spell,
     const PlayerSpellCastInput& input,
@@ -175,10 +269,14 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
     request.effect_number = descriptor.effect_number;
     request.owner_kind = kPlayerOwnerKind;
     request.source_character_number =
-        input.stats.source_character_number;
+        descriptor.use_player_effect_source
+            ? input.stats.source_character_number
+            : -1;
     request.target_kind = descriptor.target_mask;
     request.target_identifier =
-        input.target_character_number;
+        descriptor.use_target_identifier
+            ? input.target_character_number
+            : -1;
     request.constructor_value_6 =
         descriptor.use_table_travel_speed
             ? retailEffectParameter(
@@ -207,7 +305,9 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
             input.source_judgement;
     }
     request.constructor_value_12 =
-        input.effect_delay;
+        descriptor.constructor_delay_override >= 0
+            ? descriptor.constructor_delay_override
+            : input.effect_delay;
     request.has_packet = true;
     request.packet_kind = 8;
     request.instance_identifier = -1;
@@ -229,14 +329,18 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
 
     CombatPacket& packet = request.packet;
     packet.write(0, 0);
-    packet.write(1, 3);
+    packet.write(1, descriptor.packet_type);
     packet.write(
         2, input.stats.source_character_number);
     packet.write(3, descriptor.packet_subtype);
     packet.write(
         4,
-        input.parameters.effect_value +
-            input.stats.magical_attack);
+        descriptor.damage_model ==
+                PlayerSpellDamageModel::physical_percent
+            ? input.parameters.effect_value *
+                  input.stats.physical_attack / 100
+            : input.parameters.effect_value +
+                  input.stats.magical_attack);
     if (packet[4] < 1) {
         packet.write(4, 1);
     }

@@ -212,6 +212,7 @@ bool PlayerActor::beginSpellCast(
     std::int32_t spell,
     std::int32_t target_character_number,
     WorldPosition aim_position,
+    PlayerSpellAnimationVariant animation_variant,
     std::int32_t speed_tier,
     const TableData* speed_table,
     const gapi::CafAnimation& animation) {
@@ -222,9 +223,10 @@ bool PlayerActor::beginSpellCast(
     }
     PlayerSpellAnimationTiming timing;
     if (!buildPlayerSpellAnimationTiming(
-            animation,
-            action,
-            direction_,
+        animation,
+        action,
+        animation_variant,
+        direction_,
             timing)) {
         return false;
     }

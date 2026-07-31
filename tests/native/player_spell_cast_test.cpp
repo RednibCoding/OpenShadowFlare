@@ -1,7 +1,10 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "core/retail_random.hpp"
+#include "items/item_audio.hpp"
 #include "world/actor_direction.hpp"
+#include "world/combat_effect_actor.hpp"
+#include "world/generic_effect_actor.hpp"
 #include "world/player_data.hpp"
 #include "world/player_energy_shield.hpp"
 #include "world/player_heal_spell.hpp"
@@ -16,6 +19,7 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -68,6 +72,11 @@ struct ExpectedSpellCast {
     bool use_physical_defense = false;
     bool random_ordinary_impact = false;
     std::int32_t packet_value_72 = 0;
+    bool use_player_effect_source = true;
+    bool use_target_identifier = true;
+    std::int32_t packet_type = 3;
+    bool physical_percent_damage = false;
+    std::int32_t constructor_delay_override = -1;
 };
 
 bool testRetailAction(
@@ -195,6 +204,127 @@ bool testRetailAction(
         "recovery-chart completion behavior.");
 }
 
+bool testRetailSonicBladeAction(
+    const osf::gapi::CafAnimation& animation,
+    const osf::TableDatabase& tables) {
+    struct VariantExpectation {
+        std::int32_t subtype;
+        osf::PlayerSpellAnimationVariant variant;
+        std::int32_t first_chart;
+        std::int32_t recovery_chart;
+    };
+    constexpr std::array<VariantExpectation, 3> variants{{
+        {0,
+         osf::PlayerSpellAnimationVariant::sonic_blade_subtype_0,
+         5,
+         6},
+        {3,
+         osf::PlayerSpellAnimationVariant::sonic_blade_subtype_3,
+         15,
+         16},
+        {1,
+         osf::PlayerSpellAnimationVariant::sonic_blade_subtype_1,
+         19,
+         20},
+    }};
+
+    for (const VariantExpectation& expected : variants) {
+        osf::PlayerSpellAnimationVariant selected;
+        osf::PlayerSpellAnimationTiming timing;
+        if (!check(
+                osf::playerSonicBladeAnimationVariant(
+                    expected.subtype, selected) &&
+                    selected == expected.variant &&
+                    osf::buildPlayerSpellAnimationTiming(
+                        animation,
+                        osf::PlayerSpellAction::sonic_blade,
+                        selected,
+                        0,
+                        timing) &&
+                    timing.first_chart == expected.first_chart &&
+                    timing.recovery_chart ==
+                        expected.recovery_chart &&
+                    timing.first_frame_count > 0 &&
+                    timing.recovery_frame_count > 0,
+                "A supported Sonic Blade weapon did not select its "
+                "retail CAF chart pair.")) {
+            return false;
+        }
+
+        osf::PlayerSpellActionController action;
+        osf::PlayerSpellActionEvent event;
+        if (!check(
+                action.start(
+                    osf::PlayerSpellAction::sonic_blade,
+                    15,
+                    14000316,
+                    400,
+                    200,
+                    5,
+                    tables.find(20),
+                    timing,
+                    &event) &&
+                    event.charge_visual_due &&
+                    !event.cast_due &&
+                    event.effect_delay == 1 &&
+                    action.animationChart() ==
+                        expected.first_chart &&
+                    std::abs(
+                        osf::retailPlayerSonicBladeAnimationSpeed(5) -
+                        1.1) < 0.000001,
+                "Sonic Blade did not enter with its charge visual, "
+                "attack speed, and marker-owned projectile.")) {
+            return false;
+        }
+
+        bool saw_marker = false;
+        bool saw_swing_sound = false;
+        bool saw_recovery = false;
+        std::int32_t marker_count = 0;
+        for (std::int32_t update = 0;
+             update < 100 && action.active();
+             ++update) {
+            event = action.update(5, tables.find(20));
+            if (event.cast_due) {
+                saw_marker = true;
+                ++marker_count;
+                if (!check(
+                        action.animationChart() ==
+                            expected.first_chart,
+                        "Sonic Blade dispatched outside its first-chart "
+                        "CAF marker.")) {
+                    return false;
+                }
+            }
+            saw_swing_sound =
+                saw_swing_sound || event.swing_sound_due;
+            saw_recovery =
+                saw_recovery ||
+                action.animationChart() ==
+                    expected.recovery_chart;
+        }
+        if (!check(
+                saw_marker && marker_count >= 1 &&
+                    saw_swing_sound && saw_recovery &&
+                    !action.active() &&
+                    action.animationChart() ==
+                        expected.recovery_chart &&
+                    action.animationFrame() ==
+                        timing.recovery_frame_count - 1,
+                "Sonic Blade did not launch, sound, recover, and finish "
+                "on the retail weapon-animation timeline.")) {
+            return false;
+        }
+    }
+
+    osf::PlayerSpellAnimationVariant rejected;
+    return check(
+        !osf::playerSonicBladeAnimationVariant(-1, rejected) &&
+            !osf::playerSonicBladeAnimationVariant(2, rejected) &&
+            !osf::playerSonicBladeAnimationVariant(4, rejected),
+        "Sonic Blade accepted an empty, armor, or ranged weapon subtype.");
+}
+
 bool testRetailPacket(
     const osf::TableDatabase& tables,
     std::int32_t spell,
@@ -202,6 +332,7 @@ bool testRetailPacket(
     osf::PlayerSpellCastInput input;
     input.stats.source_character_number = 0;
     input.stats.player_level = 7;
+    input.stats.physical_attack = 80;
     input.stats.magical_attack = 12;
     input.stats.physical_defense = 11;
     input.stats.magical_defense = 13;
@@ -246,11 +377,15 @@ bool testRetailPacket(
             request.effect_number ==
                 expected.effect_number &&
             request.owner_kind == 1 &&
-            request.source_character_number == 0 &&
+            request.source_character_number ==
+                (expected.use_player_effect_source
+                     ? 0
+                     : -1) &&
             request.target_kind ==
                 expected.target_mask &&
             request.target_identifier ==
-                (expected.requires_target
+                (expected.use_target_identifier &&
+                         expected.requires_target
                      ? 14000316
                      : -1) &&
             request.constructor_value_6 ==
@@ -261,7 +396,10 @@ bool testRetailPacket(
                 (expected.use_table_travel_speed
                      ? 200
                      : 0) &&
-            request.constructor_value_12 == 5 &&
+            request.constructor_value_12 ==
+                (expected.constructor_delay_override >= 0
+                     ? expected.constructor_delay_override
+                     : 5) &&
             request.constructor_value_17 ==
                 (expected.constructor_uses_level
                      ? 1
@@ -280,12 +418,14 @@ bool testRetailPacket(
              request.source_judgement.left == -80) &&
             request.has_packet &&
             request.packet[0] == 0 &&
-            request.packet[1] == 3 &&
+            request.packet[1] == expected.packet_type &&
             request.packet[2] == 0 &&
             request.packet[3] ==
                 expected.packet_subtype &&
             request.packet[4] ==
-                input.parameters.effect_value + 12 &&
+                (expected.physical_percent_damage
+                     ? input.parameters.effect_value * 80 / 100
+                     : input.parameters.effect_value + 12) &&
             request.packet[5] ==
                 (expected.use_physical_defense
                      ? 11
@@ -351,7 +491,9 @@ bool testRetailPacket(
             << " p3=" << request.packet[3]
             << " p4=" << request.packet[4]
             << '/'
-            << input.parameters.effect_value + 12
+            << (expected.physical_percent_damage
+                    ? input.parameters.effect_value * 80 / 100
+                    : input.parameters.effect_value + 12)
             << " p5=" << request.packet[5]
             << " p6=" << request.packet[6]
             << " p13=" << request.packet[13]
@@ -384,6 +526,126 @@ bool testRetailPacket(
         passed,
         "The player-spell packet or controller arguments "
         "differ from its retail action.");
+}
+
+bool testRetailSonicBladeEffects(
+    const osf::TableDatabase& tables) {
+    const osf::CombatEffectSpawnRequest charge =
+        osf::buildPlayerSonicBladeCharge(
+            0, {-80, -80, 79, 79});
+    if (!check(
+            charge.valid &&
+                charge.effect_number == 21025 &&
+                charge.owner_kind == 1 &&
+                charge.source_character_number == 0 &&
+                charge.target_kind == 0 &&
+                charge.target_identifier == -1 &&
+                charge.has_source_judgement &&
+                charge.source_judgement.left == -80 &&
+                !charge.has_packet &&
+                charge.packet_kind == 8 &&
+                charge.constructor_value_21 == 200 &&
+                osf::retailCombatEffectResourceId(21025) ==
+                    11000100,
+            "Sonic Blade's action-entry charge visual differs from "
+            "retail effect 21025.")) {
+        return false;
+    }
+
+    osf::PlayerSpellCastInput input;
+    input.stats.source_character_number = 0;
+    input.stats.player_level = 7;
+    input.stats.physical_attack = 80;
+    input.stats.magical_attack = 12;
+    input.stats.physical_defense = 11;
+    input.stats.magical_defense = 13;
+    input.stats.magical_hit_rate = 14;
+    input.parameters.effective_level = 1;
+    input.parameters.effect_value = 40;
+    input.target_character_number = 14000316;
+    input.source_position = {100, 200};
+    input.source_judgement = {-80, -80, 79, 79};
+    input.target_position = {400, 200};
+    input.effect_delay = 99;
+    const osf::CombatEffectSpawnRequest projectile =
+        osf::buildPlayerSpellCast(
+            15, input, tables);
+    osf::RuntimeEffectActorSpawnRequest actor;
+    if (!check(
+        projectile.valid &&
+            projectile.constructor_value_12 == 1 &&
+            osf::buildGenericEffectActor(
+                projectile, input.source_position, actor) &&
+            actor.controller_effect_number == 10015 &&
+            actor.resource_id == 10000090 &&
+            actor.position.x == 300 &&
+            actor.position.y == 200 &&
+            actor.judgement.left == -80 &&
+            actor.judgement.top == -80 &&
+            actor.judgement.right == 79 &&
+            actor.judgement.bottom == 79 &&
+            actor.display_height == 155 &&
+            actor.lifetime == 7 &&
+            actor.travel_speed ==
+                tables.find(35)->value(15, 0) &&
+            actor.collide_with_environment &&
+            actor.expire_on_environment_collision &&
+            actor.target_collision_start == 0 &&
+            actor.expire_on_target &&
+            actor.target_audio.bank == 0 &&
+            actor.target_audio.sample == 20 &&
+            actor.animation_direction == 1 &&
+            actor.has_packet &&
+            actor.packet[1] == 0 &&
+            actor.packet[4] == 32 &&
+            actor.packet[5] == 11 &&
+            actor.packet[34] == 21024 &&
+            actor.packet[72] == 1 &&
+            actor.packet[73] == 15,
+        "Sonic Blade's marker projectile lost its retail resource, "
+        "geometry, lifetime, collision, audio, or physical packet.")) {
+        return false;
+    }
+
+    osf::RuntimeEffectActorSpawnRequest contact_actor = actor;
+    contact_actor.resource_id = -1;
+    contact_actor.visible = false;
+    contact_actor.collide_with_environment = false;
+    contact_actor.travel_speed = 0;
+    contact_actor.position = {400, 200};
+    contact_actor.packet.write(36, 100000);
+    osf::RuntimeEffectActor runtime_actor;
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind = osf::RuntimeEffectTargetKind::enemy;
+    target.character_number = 14000316;
+    target.identifier = 14000316;
+    target.position = contact_actor.position;
+    target.judgement = {-80, -80, 79, 79};
+    target.current_life = 100;
+    target.physical_evasion = 0;
+    osf::RetailRandom random(1);
+    osf::GroundMap ground;
+    osf::ObjectMap objects;
+    if (!check(
+            runtime_actor.initialize(contact_actor, nullptr),
+            "The deterministic Sonic Blade contact fixture could not "
+            "initialize.")) {
+        return false;
+    }
+    const osf::RuntimeEffectActorUpdate contact =
+        runtime_actor.update(
+            ground, objects, {target}, random);
+    return check(
+        contact.target_contacts.size() == 1 &&
+            contact.target_contacts.front().identifier == 14000316 &&
+            contact.target_contacts.front().receiver_action ==
+                osf::RuntimeEffectReceiverAction::apply_packet &&
+            contact.audio.size() == 1 &&
+            contact.audio.front().sound.bank == 0 &&
+            contact.audio.front().sound.sample == 20 &&
+            contact.expired,
+        "Sonic Blade did not apply its physical packet, contact sample, "
+        "and first-target expiry at collision time.");
 }
 
 bool testRetailHealResolution(
@@ -1015,10 +1277,10 @@ bool testShippedWorldCast(
             contact_input.target_character_number =
                 target_character_number;
             contact_input.source_position =
-                spell == 3 || spell == 10
+                spell == 3 || spell == 10 || spell == 13
                     ? osf::WorldPosition{
                           current_target->position().x -
-                              250,
+                              (spell == 13 ? 350 : 250),
                           current_target->position().y}
                     : current_target->position();
             contact_input.target_position =
@@ -1041,7 +1303,7 @@ bool testShippedWorldCast(
                 contact.constructor_value_6 = 0;
                 contact.has_explicit_origin = true;
                 contact.origin =
-                    spell == 10
+                    spell == 10 || spell == 13
                         ? contact_input.source_position
                         : current_target->position();
             }
@@ -1112,6 +1374,231 @@ bool testShippedWorldCast(
         passed,
         "The shipped targeted spell did not render, sound, "
         "damage, and award one practice point.");
+}
+
+bool testShippedSonicBladeCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 15;
+    osf::PlayerLoadRequest player;
+    player.name = "SonicBladeLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                player,
+                {3000507, 3, 0},
+                &error),
+            "The shipped Sonic Blade scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Sonic Blade fixture could not select the spell.")) {
+        return false;
+    }
+
+    const osf::EnemyActor* target = nullptr;
+    std::int32_t pointer_x = -1;
+    std::int32_t pointer_y = -1;
+    std::int64_t target_distance_squared =
+        std::numeric_limits<std::int64_t>::max();
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        const osf::ScreenPosition projected =
+            osf::calculateRealPosition(enemy.position());
+        const std::int32_t anchor_x =
+            projected.x - world.cameraScreenX();
+        const std::int32_t anchor_y =
+            projected.y - world.cameraScreenY();
+        if (anchor_x < -80 || anchor_x > 720 ||
+            anchor_y < -160 || anchor_y > 440) {
+            continue;
+        }
+        std::int32_t candidate_x = -1;
+        std::int32_t candidate_y = -1;
+        for (std::int32_t y = std::max(0, anchor_y - 140);
+             y < std::min(400, anchor_y + 30) && candidate_x < 0;
+             ++y) {
+            for (std::int32_t x = std::max(0, anchor_x - 80);
+                 x < std::min(640, anchor_x + 81);
+                 ++x) {
+                world.updatePointerHover(x, y);
+                if (world.hoveredEnemyId() == enemy.id()) {
+                    candidate_x = x;
+                    candidate_y = y;
+                    break;
+                }
+            }
+        }
+        if (candidate_x >= 0) {
+            const std::int64_t dx =
+                static_cast<std::int64_t>(enemy.position().x) -
+                world.playerWorldX();
+            const std::int64_t dy =
+                static_cast<std::int64_t>(enemy.position().y) -
+                world.playerWorldY();
+            const std::int64_t distance_squared =
+                dx * dx + dy * dy;
+            if (distance_squared < target_distance_squared) {
+                target = &enemy;
+                pointer_x = candidate_x;
+                pointer_y = candidate_y;
+                target_distance_squared = distance_squared;
+            }
+        }
+    }
+    if (!check(
+            target && pointer_x >= 0 && pointer_y >= 0,
+            "No shipped enemy could prepare the Sonic Blade command.")) {
+        return false;
+    }
+
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_without_weapon =
+        world.playerData().currentMana();
+    if (!check(
+            !world.playerEquipment().item(
+                osf::EquipmentSlot::main_hand) &&
+                world.commandPlayerMagic(pointer_x, pointer_y) &&
+                !world.playerSpellActive() &&
+                world.playerData().currentMana() ==
+                    mana_without_weapon &&
+                world.combatEffects().empty() &&
+                world.runtimeEffects().empty(),
+            "An unarmed Sonic Blade command spent MP or created an "
+            "action/effect.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* weapon = nullptr;
+    for (const osf::ItemDefinition& definition :
+         world.itemDatabase().definitions(0)) {
+        if (definition.subtype == 0 &&
+            definition.required_level <=
+                world.playerData().level()) {
+            weapon = &definition;
+            break;
+        }
+    }
+    if (!check(
+            weapon &&
+                world.playerEquipment()
+                    .place(
+                        osf::EquipmentSlot::main_hand,
+                        osf::makeInventoryItem(*weapon),
+                        *weapon,
+                        world.playerData().level())
+                    .accepted,
+            "A retail subtype-zero weapon could not prepare Sonic Blade.")) {
+        return false;
+    }
+    world.refreshPlayerAppearance();
+
+    const std::int32_t target_character_number =
+        target->characterNumber();
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    const std::int32_t weapon_sample =
+        osf::retailItemAttackSound(weapon);
+    if (!check(
+            world.commandPlayerMagic(pointer_x, pointer_y) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() ==
+                    target_character_number &&
+                world.playerAnimationChart() == 5 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                world.runtimeEffectControllerCount() == 0,
+            "The equipped Sonic Blade command did not enter action 37 "
+            "with its weapon chart and retail MP cost.")) {
+        return false;
+    }
+
+    bool saw_charge = false;
+    bool saw_projectile = false;
+    bool heard_launch = false;
+    bool heard_weapon = false;
+    bool saw_recovery = false;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        heard_launch =
+            heard_launch ||
+            std::find(audio.begin(), audio.end(), 154) !=
+                audio.end();
+        heard_weapon =
+            heard_weapon ||
+            std::find(
+                audio.begin(), audio.end(), weapon_sample) !=
+                audio.end();
+        saw_charge =
+            saw_charge ||
+            std::any_of(
+                world.combatEffects().begin(),
+                world.combatEffects().end(),
+                [](const osf::CombatEffectActor& effect) {
+                    return effect.effectNumber() == 21025 &&
+                           effect.resourceId() == 11000100;
+                });
+        saw_projectile =
+            saw_projectile ||
+            std::any_of(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.controllerEffectNumber() == 10015 &&
+                           actor.resourceId() == 10000090 &&
+                           actor.displayHeight() == 155 &&
+                           actor.lifetime() == 7;
+                });
+        saw_recovery =
+            saw_recovery || world.playerAnimationChart() == 6;
+        if (!world.playerSpellActive() &&
+            world.runtimeEffects().empty() &&
+            world.combatEffects().empty()) {
+            break;
+        }
+    }
+
+    const bool passed =
+        saw_charge && saw_projectile && heard_launch &&
+        heard_weapon && saw_recovery &&
+        !world.playerSpellActive();
+    if (!passed) {
+        std::cerr
+            << "charge=" << saw_charge
+            << " projectile=" << saw_projectile
+            << " launch=" << heard_launch
+            << " weapon=" << heard_weapon
+            << " recovery=" << saw_recovery
+            << " active=" << world.playerSpellActive()
+            << " effects=" << world.runtimeEffects().size()
+            << ',' << world.combatEffects().size()
+            << " distance2=" << target_distance_squared
+            << " speed="
+            << world.parameterTables().find(35)->value(15, 0)
+            << '\n';
+    }
+    return check(
+        passed,
+        "The shipped Sonic Blade action did not show its charge and "
+        "projectile, play both sounds, and recover.");
 }
 
 bool testShippedHellFireCast(
@@ -2621,7 +3108,65 @@ int main() {
             13,
             10000081,
             94) ||
-        !testTargetedSpellInsufficientMana(game_root, 12)) {
+        !testTargetedSpellInsufficientMana(game_root, 12) ||
+        !testRetailAction(
+            animation,
+            tables,
+            13,
+            osf::PlayerSpellAction::lightning_storm,
+            11,
+            12) ||
+        !testRetailPacket(
+            tables,
+            13,
+            {
+                10013, 0, 20005, 4,
+                true, false, true, false, true, true,
+                false, 0, false, false,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            13,
+            11,
+            10000030,
+            21) ||
+        !testTargetedSpellInsufficientMana(game_root, 13) ||
+        !testRetailAction(
+            animation,
+            tables,
+            14,
+            osf::PlayerSpellAction::medusa,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            14,
+            {
+                10014, 2, 21019, 0x14,
+                true, true, false, true, false, false,
+                false, 0,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            14,
+            13,
+            10000070,
+            22) ||
+        !testTargetedSpellInsufficientMana(game_root, 14)) {
+        return 1;
+    }
+    if (!testRetailSonicBladeAction(animation, tables) ||
+        !testRetailPacket(
+            tables,
+            15,
+            {
+                10015, 0, 21024, 0x14,
+                true, true, false, true, false, true,
+                false, 1, true, true, 0, true, 1,
+            }) ||
+        !testRetailSonicBladeEffects(tables) ||
+        !testShippedSonicBladeCast(game_root) ||
+        !testTargetedSpellInsufficientMana(game_root, 15)) {
         return 1;
     }
 #endif
