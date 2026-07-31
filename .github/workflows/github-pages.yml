@@ -44,8 +44,8 @@ jobs:
         run: |
           mkdir -p build/gh-pages
           cp -a gh-pages/. build/gh-pages/
-          cp build/wasm/release/src/SF_EXE/ShadowFlare_rebuilt.js build/gh-pages/assets/
-          cp build/wasm/release/src/SF_EXE/ShadowFlare_rebuilt.wasm build/gh-pages/assets/
+          cp build/wasm/release/src/SF_EXE/assets/ShadowFlare_rebuilt.js build/gh-pages/assets/
+          cp build/wasm/release/src/SF_EXE/assets/ShadowFlare_rebuilt.wasm build/gh-pages/assets/
           touch build/gh-pages/.nojekyll
 
       - name: Verify the Pages artifact
