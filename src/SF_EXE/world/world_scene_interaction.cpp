@@ -209,7 +209,8 @@ bool WorldScene::commandPlayerMagic(
             player_equipment_,
             item_database_,
             parameter_tables_);
-    if (player_data_.currentMana() <
+    if (!player_infinite_mana_ &&
+        player_data_.currentMana() <
         parameters.mana_cost) {
         return true;
     }
@@ -256,9 +257,11 @@ bool WorldScene::commandPlayerMagic(
             player_visual_.animation())) {
         return true;
     }
-    player_data_.setCurrentMana(
-        player_data_.currentMana() -
-        parameters.mana_cost);
+    if (!player_infinite_mana_) {
+        player_data_.setCurrentMana(
+            player_data_.currentMana() -
+            parameters.mana_cost);
+    }
     handlePlayerSpellEvent(player_.takeSpellEvent());
     return true;
 }
@@ -1124,7 +1127,7 @@ void WorldScene::handlePlayerSpellEvent(
     }
     if (event.spell == 9) {
         player_energy_shield_.toggle(
-            player_data_.currentMana());
+            playerCurrentMana());
         player_powerup_visual_.load(
             data_root_ / "Player" / "Common",
             "Powerup",

@@ -18,6 +18,7 @@ class GameplayMap;
 class GameplayMagic;
 class GameplayMissionList;
 class GameplayOptionsMenu;
+class GameplayStatus;
 class GameplayTransport;
 struct GameplayFrameResult;
 class RetailSavePreview;
@@ -42,6 +43,7 @@ struct RuntimeRenderContext {
     const GameplayInventory& gameplay_inventory;
     const GameplayMap& gameplay_map;
     const GameplayMagic& gameplay_magic;
+    const GameplayStatus& gameplay_status;
     const GameplayMissionList& gameplay_mission_list;
     const GameplayTransport& gameplay_transport;
     const GameConfig& game_config;

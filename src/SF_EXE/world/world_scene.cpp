@@ -109,6 +109,8 @@ void WorldScene::clear() {
     script_travel_pending_ = false;
     scenario_changed_ = false;
     player_identify_mode_active_ = false;
+    player_infinite_life_ = false;
+    player_infinite_mana_ = false;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -337,6 +339,33 @@ const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
 
+void WorldScene::configurePlayerDebugResources(
+    bool infinite_life,
+    bool infinite_mana) {
+    player_infinite_life_ = infinite_life;
+    player_infinite_mana_ = infinite_mana;
+}
+
+bool WorldScene::playerInfiniteLife() const {
+    return player_infinite_life_;
+}
+
+bool WorldScene::playerInfiniteMana() const {
+    return player_infinite_mana_;
+}
+
+std::int32_t WorldScene::playerCurrentLife() const {
+    return player_infinite_life_
+        ? playerRuntimeProfile().maximum_life
+        : player_data_.currentLife();
+}
+
+std::int32_t WorldScene::playerCurrentMana() const {
+    return player_infinite_mana_
+        ? playerRuntimeProfile().maximum_mana
+        : player_data_.currentMana();
+}
+
 PlayerMagic& WorldScene::playerMagic() {
     return player_magic_;
 }
@@ -423,7 +452,7 @@ void WorldScene::update() {
     // next player update when no mana remains. Keeping this before the cast
     // action lets an exact-cost activation show its marker frame once, as in
     // retail.
-    if (player_data_.currentMana() == 0) {
+    if (playerCurrentMana() == 0) {
         player_magic_shield_.deactivate();
         player_counter_burst_.deactivate();
     }

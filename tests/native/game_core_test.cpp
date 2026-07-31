@@ -803,11 +803,33 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 300, 166});
+        {false, false, true, 400, 150});
+    if (!check(
+            menu.infiniteLifeEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug infinite-HP toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 166});
+    if (!check(
+            menu.infiniteManaEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug infinite-MP toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 300, 198});
     if (!check(
             !menu.active() &&
                 menu.fpsCounterEnabled() &&
                 menu.allSpellsEnabled() &&
+                menu.infiniteLifeEnabled() &&
+                menu.infiniteManaEnabled() &&
                 result.play_confirm_sound,
             "The debug CLOSE row changed settings or failed to close.")) {
         return false;
@@ -818,6 +840,8 @@ bool testGameplayDebugMenu() {
         !menu.active() &&
             menu.fpsCounterEnabled() &&
             menu.allSpellsEnabled() &&
+            menu.infiniteLifeEnabled() &&
+            menu.infiniteManaEnabled() &&
             result.play_confirm_sound,
         "Escape did not close the debug menu while retaining its runtime "
         "settings.");

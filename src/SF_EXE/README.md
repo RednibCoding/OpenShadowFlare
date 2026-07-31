@@ -62,10 +62,17 @@ broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 
 For reconstruction testing, `F12` opens a separate debug menu in the same
-visual style without changing the retail Escape menu. Its FPS counter and
-temporary All Spells override are independent toggles. The override affects
-the live Magic window and bar only: it does not grant spell progress or write
-debug-only availability and bar assignments into the character save.
+visual style without changing the retail Escape menu. Its FPS counter, All
+Spells, Infinite HP, and Infinite MP entries are independent runtime toggles.
+The spell override affects the live Magic window and bar only, while the
+resource overrides are applied at the combat and spell-cost boundaries. None
+of them changes the character's saved progress or resource values.
+
+`S` opens the live Status tab on the left; `M` opens Magic. They are the two
+tabs of the same authored window and can also be switched by clicking their
+headings. Status shows the saved character identity, current and derived
+physical and magical values, and the eight elemental affinities. Like Magic,
+it keeps the world running and can stay open beside Inventory.
 
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio

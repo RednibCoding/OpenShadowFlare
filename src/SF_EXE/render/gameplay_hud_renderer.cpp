@@ -65,12 +65,14 @@ GameplayHudValues gameplayHudValues(
     const PlayerData& player,
     const PlayerRuntimeProfile& profile,
     MovementPace movement_pace,
-    std::int32_t experience_threshold) {
+    std::int32_t experience_threshold,
+    std::int32_t current_life,
+    std::int32_t current_mana) {
     return {
         player.level(),
-        player.currentLife(),
+        current_life,
         profile.maximum_life,
-        player.currentMana(),
+        current_mana,
         profile.maximum_mana,
         player.experience(),
         experience_threshold,

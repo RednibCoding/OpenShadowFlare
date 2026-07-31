@@ -39,6 +39,7 @@ struct GameplayMagicResult {
     std::int32_t assign_spell = -1;
     std::int32_t select_spell = -2;
     bool toggle_targeting = false;
+    bool switch_to_status = false;
 };
 
 struct MagicBarSlotRegion {

@@ -204,6 +204,7 @@ private:
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
                 gameplayUi_.magic(),
+                gameplayUi_.status(),
                 gameplayUi_.missionList(),
                 gameplayUi_.transport(),
                 gameConfig_,
@@ -374,6 +375,8 @@ private:
                         .specialItemsActive();
                 const bool magic_active =
                     gameplayUi_.magic().active();
+                const bool status_active =
+                    gameplayUi_.status().active();
                 const bool transport_active =
                     gameplayUi_.transport().active();
                 gameplayFrame_ = gameplayState_.update({
@@ -389,6 +392,7 @@ private:
                     input_.runTogglePressed(),
                     map_active ||
                             magic_active ||
+                            status_active ||
                             special_items_active ||
                             transport_active
                         ? 320

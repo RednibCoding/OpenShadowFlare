@@ -60,6 +60,7 @@ void GameplayUiController::reset() {
     inventory_.close();
     map_.close();
     magic_.close();
+    status_.close();
     mission_list_.close();
     transport_.close();
     pending_action_ = GameplayOptionsAction::none;
@@ -84,6 +85,9 @@ bool GameplayUiController::update(
 
     world.playerMagic().setAllSpellsAvailable(
         debug_.allSpellsEnabled());
+    world.configurePlayerDebugResources(
+        debug_.infiniteLifeEnabled(),
+        debug_.infiniteManaEnabled());
 
     // Retail routes a dead player directly through its locked death action.
     // Menus cannot pause that action or expose save commands before revival.
@@ -125,6 +129,9 @@ bool GameplayUiController::update(
             });
         world.playerMagic().setAllSpellsAvailable(
             debug_.allSpellsEnabled());
+        world.configurePlayerDebugResources(
+            debug_.infiniteLifeEnabled(),
+            debug_.infiniteManaEnabled());
         if (result.play_click_sound) {
             audio.playOptionsClick();
         }
@@ -144,6 +151,7 @@ bool GameplayUiController::update(
             }
             const bool left_panel_active =
                 magic_.active() ||
+                status_.active() ||
                 map_.active() ||
                 mission_list_.active() ||
                 transport_.active() ||
@@ -158,6 +166,7 @@ bool GameplayUiController::update(
         options_.close();
         map_.close();
         magic_.close();
+        status_.close();
         mission_list_.close();
         world.cancelPlayerMovement();
         if (service.kind == GameplayServiceKind::transport) {
@@ -240,6 +249,60 @@ bool GameplayUiController::update(
         }
     }
 
+    const bool status_was_active = status_.active();
+    const bool status_hud_toggle =
+        input.menu().pointer_primary_pressed &&
+        input.menu().pointer_x >= 524 &&
+        input.menu().pointer_x < 584 &&
+        input.menu().pointer_y >= 440 &&
+        input.menu().pointer_y < 464;
+    const bool status_toggle =
+        (input.gameplayStatusPressed() ||
+         status_hud_toggle) &&
+        (!world.conversationActive() ||
+         status_was_active) &&
+        !options_.active();
+    if (status_toggle && !status_was_active) {
+        map_.close();
+        magic_.close();
+        mission_list_.close();
+        transport_.close();
+        inventory_.closeSpecialItems();
+        world.cancelPlayerMovement();
+    } else if (
+        status_was_active &&
+        (input.gameplayMagicPressed() ||
+         input.gameplayMapPressed() ||
+         input.gameplayMissionListPressed() ||
+         input.gameplaySpecialItemsPressed())) {
+        status_.close();
+    }
+    const GameplayStatusResult status_result =
+        status_.update({
+            status_toggle,
+            status_was_active &&
+                (input.gameplayOptionsPressed() ||
+                 (input.pointerSecondaryPressed() &&
+                  input.menu().pointer_y < 412)),
+            input.menu().pointer_primary_pressed,
+            input.menu().pointer_x,
+            input.menu().pointer_y,
+        });
+    if (status_result.switch_to_magic) {
+        magic_.open();
+    }
+    if (status_result.play_move_sound) {
+        audio.playGameplayEffect(58);
+    }
+    if (status_result.pointer_consumed) {
+        world.setCameraAnchor(
+            gameplayCameraAnchorX(
+                status_.active() || magic_.active(),
+                inventory_.active()),
+            240);
+        return true;
+    }
+
     const bool magic_was_active = magic_.active();
     const bool magic_toggle =
         input.gameplayMagicPressed() &&
@@ -248,6 +311,7 @@ bool GameplayUiController::update(
         !options_.active();
     if (magic_toggle && !magic_was_active) {
         map_.close();
+        status_.close();
         mission_list_.close();
         transport_.close();
         inventory_.closeSpecialItems();
@@ -260,6 +324,7 @@ bool GameplayUiController::update(
         magic_.close();
     }
     const bool other_left_panel_active =
+        status_.active() ||
         map_.active() ||
         mission_list_.active() ||
         transport_.active() ||
@@ -295,6 +360,9 @@ bool GameplayUiController::update(
         world.playerMagic().setTargeting(
             !world.playerMagic().targeting());
     }
+    if (magic_result.switch_to_status) {
+        status_.open();
+    }
     if (magic_result.play_pick_sound) {
         audio.playGameplayEffect(57);
     }
@@ -304,6 +372,7 @@ bool GameplayUiController::update(
     if (magic_result.pointer_consumed) {
         const bool left_panel_active =
             magic_.active() ||
+            status_.active() ||
             map_.active() ||
             mission_list_.active() ||
             transport_.active() ||
@@ -440,6 +509,7 @@ bool GameplayUiController::update(
         const bool left_panel_active =
             inventory_.specialItemsActive() ||
             magic_.active() ||
+            status_.active() ||
             map_.active() ||
             mission_list_.active() ||
             transport_.active();
@@ -622,6 +692,10 @@ const GameplayMap& GameplayUiController::map() const {
 
 const GameplayMagic& GameplayUiController::magic() const {
     return magic_;
+}
+
+const GameplayStatus& GameplayUiController::status() const {
+    return status_;
 }
 
 const GameplayMissionList&

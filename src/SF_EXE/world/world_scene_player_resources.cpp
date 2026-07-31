@@ -30,7 +30,7 @@ void WorldScene::updatePlayerResourceRates() {
             life_rate,
             1,
             player_data_.currentLife() > 0);
-    if (life_update.changed) {
+    if (!player_infinite_life_ && life_update.changed) {
         player_data_.setCurrentLife(
             life_update.value, profile.maximum_life);
     }
@@ -52,14 +52,14 @@ void WorldScene::updatePlayerResourceRates() {
             profile.maximum_mana,
             mana_rate,
             0);
-    if (mana_update.changed) {
+    if (!player_infinite_mana_ && mana_update.changed) {
         player_data_.setCurrentMana(
             mana_update.value, profile.maximum_mana);
     }
 
     const PlayerSustainedSpellShutdown shutdown =
         deactivateSustainedSpellsAtZeroMana(
-            player_data_.currentMana(),
+            playerCurrentMana(),
             player_moon_spell_,
             player_berserker_spell_);
     if (shutdown.moon_deactivated) {
@@ -68,7 +68,7 @@ void WorldScene::updatePlayerResourceRates() {
     if (shutdown.berserker_deactivated) {
         refreshPlayerRuntimeProfile();
     }
-    if (player_data_.currentMana() == 0) {
+    if (playerCurrentMana() == 0) {
         player_energy_shield_.deactivate();
     }
 }

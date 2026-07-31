@@ -30,7 +30,8 @@ The portable executable already has a solid front half:
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
 - the in-game Settings, Help, Mission List, and Map screens
-- the four-page Magic window, its drag-and-drop bar, and live spell selection
+- the shared Status/Magic window, derived character values, elemental display,
+  four spell pages, drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
@@ -125,9 +126,11 @@ magic-bar slots behind one boundary. New characters receive the retail
 block after the three progress arrays, and new saves rewrite it without
 disturbing later unknown state.
 
-The selection side is complete too. `M` opens the authored left-hand Magic
-panel without pausing the world, shifts the camera into the visible half, and
-can stay open beside the right-hand inventory. Its four six-spell pages use
+The selection side is complete too. `S` and `M` open the two tabs of the
+authored left-hand Status/Magic panel without pausing the world, shift the
+camera into the visible half, and can stay open beside the right-hand
+inventory. Status uses pattern 5 for the saved identity, current and derived
+stats, elemental affinities and marker. Magic's four six-spell pages use
 the retail Status, MagicIcon, and MagicBarIcon artwork, availability states,
 level/experience/MP/effect rows, description tables, arrows, hit rectangles,
 and samples 57 and 58. A learned spell can be dragged into one of eight saved
@@ -280,10 +283,10 @@ discount, and empty-MP shutdown. Ordinary travel preserves the runtime state;
 death and a fresh game clear it.
 
 The portable testing path now has its own F12 debug menu instead of changing
-the retail Escape menu. The FPS counter and All Spells override are separate,
-runtime-only switches. Debug availability and bar assignments never enter the
-retail magic save record, so testing an unfinished spell cannot silently grant
-it to a character.
+the retail Escape menu. The FPS counter, All Spells, Infinite HP, and Infinite
+MP overrides are separate runtime-only switches. Debug availability, bar
+assignments, and effective resource pools never enter the retail save record,
+so testing unfinished combat cannot silently change a character.
 
 The next spell checkpoint is Explosion action 42 (`FUN_0043fcc0`). Its cast,
 packet, effect controller, visuals, audio, collision, and practice path still
@@ -1421,7 +1424,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
-- character status and detailed stat panels;
+- the character Status tab and its detailed derived values are complete;
 - skill assignment and quick slots;
 - map and the remaining modal screens;
 - the in-game sound, display, input, and gameplay settings.

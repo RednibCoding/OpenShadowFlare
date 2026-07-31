@@ -7,6 +7,7 @@
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
+#include "states/gameplay_status.hpp"
 #include "states/gameplay_transport.hpp"
 
 #include <cstdint>
@@ -49,6 +50,7 @@ public:
     const GameplayInventory& inventory() const;
     const GameplayMap& map() const;
     const GameplayMagic& magic() const;
+    const GameplayStatus& status() const;
     const GameplayMissionList& missionList() const;
     const GameplayTransport& transport() const;
 
@@ -64,6 +66,7 @@ private:
     GameplayInventory inventory_;
     GameplayMap map_;
     GameplayMagic magic_;
+    GameplayStatus status_;
     GameplayMissionList mission_list_;
     GameplayTransport transport_;
     GameplayOptionsAction pending_action_ =

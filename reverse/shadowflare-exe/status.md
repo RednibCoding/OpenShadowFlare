@@ -1420,6 +1420,26 @@ intent. `PlayerMagic` remains the sole owner of availability, progression,
 saved bar assignment, current selection, and the normal-target toggle. This
 keeps the cast dispatcher and future status effects out of the UI files.
 
+## Character Status tab
+
+`FUN_00405750` is the other half of the same live left-hand window. Status.njp
+pattern 5 supplies its frame and labels; pattern 6 remains the Magic tab.
+The executable places job and name at x 22 and 92, level and experience at the
+right edge, followed by current/maximum HP, weight, physical attack and
+defense, hit and evasion, walking and attack speed, current/maximum MP, and
+the four magical values. `FUN_00405590` right-aligns digits in eight-pixel
+steps and uses grey for base values, red for a reduction, and gold for an
+increase.
+
+`FUN_0044fba0` measures the saved elemental x/y point against the eight
+20,000-unit anchors. `FUN_0044fca0` adds the equipment and carried-item
+strengths from `FUN_0044fe30`, clamps every result to -10..10, and selects
+Status patterns 36 through 56 at successive 16-pixel rows. Pattern 57 places
+the diagram marker at `x * 48 / 20000 + 80`,
+`330 - y * 48 / 20000`. The portable Status state owns only tab and dismissal
+input; all displayed values remain in PlayerData, the runtime profile, and the
+existing element-affinity calculation.
+
 ## Fire Ball cast
 
 `FUN_00449a40` validates the pointed enemy and selected learned spell, derives

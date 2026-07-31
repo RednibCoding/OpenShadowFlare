@@ -1803,7 +1803,18 @@ The portable `GameplayMagic` state mirrors those page, hitbox, hover, and drag
 rules but does not own spell data. It emits assignment and selection intent
 to the runtime boundary, which mutates `PlayerMagic`; this keeps persistent
 state and casting outside the UI layer. The Status half of the tab remains a
-later slice.
+separate `GameplayStatus` interaction state but shares this left-panel owner.
+
+`0x00405750` draws Status.njp pattern 5. It overlays job and name at x=22 and
+x=92, level and experience on the right, then current/maximum HP, weight,
+physical attack/defense, hit/evasion, walking/attack speed, current/maximum MP,
+and the four magical values at the executable's eight-pixel right-aligned
+coordinates. Derived values are neutral grey when unchanged, red when below
+base, and gold when above it. `0x0044fca0` combines the saved elemental point
+with equipped and carried-item strengths, clamps all eight affinities to
+-10..10, and selects Status patterns 36..56. Pattern 57 places the marker from
+the saved x/y axes. `S`, the HUD Status label, and the top tabs switch the
+live window without pausing the right-hand world view.
 
 ## Fire Ball cast and spell practice
 

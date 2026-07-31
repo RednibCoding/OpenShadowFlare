@@ -143,6 +143,13 @@ public:
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     PlayerRuntimeProfile playerRuntimeProfile() const;
+    void configurePlayerDebugResources(
+        bool infinite_life,
+        bool infinite_mana);
+    bool playerInfiniteLife() const;
+    bool playerInfiniteMana() const;
+    std::int32_t playerCurrentLife() const;
+    std::int32_t playerCurrentMana() const;
     PlayerMagic& playerMagic();
     const PlayerMagic& playerMagic() const;
     const TableDatabase& parameterTables() const;
@@ -427,6 +434,8 @@ private:
     bool script_travel_pending_ = false;
     bool scenario_changed_ = false;
     bool player_identify_mode_active_ = false;
+    bool player_infinite_life_ = false;
+    bool player_infinite_mana_ = false;
 };
 
 }  // namespace osf

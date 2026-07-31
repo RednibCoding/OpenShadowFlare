@@ -28,9 +28,10 @@ into a bug, please tell us on
 we can look into it.
 
 While testing in-game, press `F12` for the debug menu. It can show the FPS
-counter and temporarily unlock every spell, which is handy for checking the
-parts that are currently being reconstructed. These debug switches do not
-grant spell progress in your save.
+counter, temporarily unlock every spell, and provide infinite HP or MP, which
+is handy for checking the parts that are currently being reconstructed. These
+debug switches do not grant spell progress or replace the saved resource
+values in your character.
 
 ## Table of Contents
 

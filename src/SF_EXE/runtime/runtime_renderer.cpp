@@ -12,6 +12,7 @@
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/gameplay_status_renderer.hpp"
 #include "render/gameplay_transport_renderer.hpp"
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
@@ -26,6 +27,7 @@
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
+#include "states/gameplay_status.hpp"
 #include "states/gameplay_transport.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
@@ -106,22 +108,6 @@ void RuntimeRenderer::render(
                 interpolation,
                 context.game_config.semi_transparent_objects);
             context.save_preview.capture(renderer_.surface());
-            const auto* bar =
-                context.frontend_assets.pattern(5);
-            if (bar) {
-                renderGameplayHud(
-                    renderer_,
-                    *bar,
-                    gameplayHudValues(
-                        context.world.playerData(),
-                        context.world.playerRuntimeProfile(),
-                        context.world.playerMovementPace(),
-                        context.world
-                            .playerExperienceThreshold()));
-                renderGameplayBeltItems(
-                    renderer_,
-                    context.world);
-            }
             if (!context.gameplay_debug.active() &&
                 !context.gameplay_options.active() &&
                 !context.gameplay_mission_list.active() &&
@@ -141,22 +127,6 @@ void RuntimeRenderer::render(
                 context.frontend_assets.pattern(9);
             const auto* magic_bar_icons =
                 context.frontend_assets.pattern(10);
-            if (magic_icons && magic_bar_icons) {
-                const bool left_panel_active =
-                    context.gameplay_magic.active() ||
-                    context.gameplay_map.active() ||
-                    context.gameplay_mission_list.active() ||
-                    context.gameplay_transport.active() ||
-                    context.gameplay_inventory
-                        .specialItemsActive();
-                renderGameplayMagicBar(
-                    renderer_,
-                    *magic_icons,
-                    *magic_bar_icons,
-                    left_panel_active,
-                    context.gameplay_inventory.active(),
-                    context.world);
-            }
             const auto* status =
                 context.frontend_assets.pattern(6);
             if (status && font) {
@@ -184,6 +154,14 @@ void RuntimeRenderer::render(
                         *font,
                         context.gameplay_transport,
                         context.world.transports());
+                } else if (
+                    context.gameplay_status.active()) {
+                    renderGameplayStatusPanel(
+                        renderer_,
+                        *status,
+                        *font,
+                        context.gameplay_status,
+                        context.world);
                 } else if (
                     context.gameplay_magic.active() &&
                     magic_icons) {
@@ -243,23 +221,61 @@ void RuntimeRenderer::render(
                             context.world,
                             context.gameplay_counter);
                     }
-                    renderHeldInventoryItem(
+                }
+            }
+            const auto* bar =
+                context.frontend_assets.pattern(5);
+            if (bar) {
+                renderGameplayHud(
+                    renderer_,
+                    *bar,
+                    gameplayHudValues(
+                        context.world.playerData(),
+                        context.world.playerRuntimeProfile(),
+                        context.world.playerMovementPace(),
+                        context.world
+                            .playerExperienceThreshold(),
+                        context.world.playerCurrentLife(),
+                        context.world.playerCurrentMana()));
+                renderGameplayBeltItems(
+                    renderer_,
+                    context.world);
+            }
+            if (magic_icons && magic_bar_icons) {
+                const bool left_panel_active =
+                    context.gameplay_magic.active() ||
+                    context.gameplay_status.active() ||
+                    context.gameplay_map.active() ||
+                    context.gameplay_mission_list.active() ||
+                    context.gameplay_transport.active() ||
+                    context.gameplay_inventory
+                        .specialItemsActive();
+                renderGameplayMagicBar(
+                    renderer_,
+                    *magic_icons,
+                    *magic_bar_icons,
+                    left_panel_active,
+                    context.gameplay_inventory.active(),
+                    context.world);
+            }
+            if (status && font &&
+                !context.gameplay_debug.active()) {
+                renderHeldInventoryItem(
+                    renderer_,
+                    *status,
+                    context.gameplay_inventory,
+                    context.world,
+                    context.gameplay_counter);
+                renderItemInformation(
+                    renderer_,
+                    *font,
+                    context.gameplay_inventory,
+                    context.world);
+                if (magic_icons) {
+                    renderHeldMagic(
                         renderer_,
-                        *status,
-                        context.gameplay_inventory,
-                        context.world,
-                        context.gameplay_counter);
-                    renderItemInformation(
-                        renderer_,
-                        *font,
-                        context.gameplay_inventory,
-                        context.world);
-                    if (magic_icons) {
-                        renderHeldMagic(
-                            renderer_,
-                            *magic_icons,
-                            context.gameplay_magic);
-                    }
+                        *magic_icons,
+                        context.gameplay_magic);
                 }
             }
             if (font &&

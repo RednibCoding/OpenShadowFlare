@@ -93,6 +93,7 @@ add_library(
   states/gameplay_map.cpp
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
+  states/gameplay_status.cpp
   states/gameplay_state.cpp
   states/gameplay_transport.cpp
   states/save_slot.cpp
@@ -243,6 +244,7 @@ add_library(
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp
+  render/gameplay_status_renderer.cpp
   render/gameplay_transport_renderer.cpp
   render/item_information_renderer.cpp
   render/loading_renderer.cpp

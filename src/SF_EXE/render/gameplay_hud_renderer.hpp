@@ -29,7 +29,9 @@ GameplayHudValues gameplayHudValues(
     const PlayerData& player,
     const PlayerRuntimeProfile& profile,
     MovementPace movement_pace,
-    std::int32_t experience_threshold);
+    std::int32_t experience_threshold,
+    std::int32_t current_life,
+    std::int32_t current_mana);
 
 std::int32_t gameplayHudBarWidth(
     std::int32_t current,

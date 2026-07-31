@@ -28,6 +28,8 @@ public:
     bool active() const;
     bool fpsCounterEnabled() const;
     bool allSpellsEnabled() const;
+    bool infiniteLifeEnabled() const;
+    bool infiniteManaEnabled() const;
     std::int32_t pointerX() const;
     std::int32_t pointerY() const;
 
@@ -35,6 +37,8 @@ private:
     bool active_ = false;
     bool fps_counter_enabled_ = false;
     bool all_spells_enabled_ = false;
+    bool infinite_life_enabled_ = false;
+    bool infinite_mana_enabled_ = false;
     std::int32_t pointer_x_ = 0;
     std::int32_t pointer_y_ = 0;
 };

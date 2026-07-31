@@ -99,6 +99,7 @@ GameplayMagicResult GameplayMagic::update(
                 input.pointer_x,
                 input.pointer_y)) {
             close();
+            result.switch_to_status = true;
             result.play_move_sound = true;
             return result;
         }

@@ -50,6 +50,16 @@ This was discovered at function 0x00405750, which displays:
 - "Effect of Water\n    Defense              %+d%%"
 - etc.
 
+### Status window
+
+`S` opens Status on the left without pausing the world. Status and Magic are
+two tabs of the same window, and either tab can remain open beside Inventory.
+The Status tab shows the character's name, class, level, experience, current
+and maximum HP/MP, weight, physical and magical combat values, movement and
+attack speed, and the eight elemental affinities. Grey values match the saved
+base stat, red values are lower, and gold values are higher. The elemental
+diagram uses the saved x/y alignment point plus equipment and item bonuses.
+
 ## Spells/Skills
 
 Complete spell list (from 0x00407a60 MagicWindowDisplay):
