@@ -39,6 +39,7 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
     case PlayerSpellAction::ice_blast:
     case PlayerSpellAction::heal:
     case PlayerSpellAction::moon:
+    case PlayerSpellAction::berserker:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -51,7 +52,8 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
 bool dispatchesAtEffectMarker(
     PlayerSpellAction action) {
     return action == PlayerSpellAction::heal ||
-           action == PlayerSpellAction::moon;
+           action == PlayerSpellAction::moon ||
+           action == PlayerSpellAction::berserker;
 }
 
 bool frameHasEffectStatus(
@@ -104,6 +106,9 @@ bool playerSpellActionForSpell(
         return true;
     case 7:
         action = PlayerSpellAction::moon;
+        return true;
+    case 8:
+        action = PlayerSpellAction::berserker;
         return true;
     default:
         return false;

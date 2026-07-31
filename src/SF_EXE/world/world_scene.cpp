@@ -59,6 +59,7 @@ void WorldScene::clear() {
     companion_visuals_.clear();
     companion_.clear();
     effect_visuals_.clear();
+    player_berserker_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
@@ -87,6 +88,9 @@ void WorldScene::clear() {
     player_data_.clear();
     player_magic_.clear();
     player_moon_spell_.clear();
+    player_berserker_spell_.clear();
+    player_life_rate_.clear();
+    player_mana_rate_.clear();
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
@@ -191,6 +195,21 @@ std::int32_t WorldScene::companionMoonAuraFrame() const {
 
 bool WorldScene::playerMoonActive() const {
     return player_moon_spell_.active();
+}
+
+bool WorldScene::playerBerserkerActive() const {
+    return player_berserker_spell_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerBerserkerVisual() const {
+    return player_berserker_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_berserker_visual_;
+}
+
+std::int32_t WorldScene::playerBerserkerFrame() const {
+    return player_berserker_spell_.auraFrame();
 }
 
 std::size_t
@@ -357,6 +376,8 @@ void WorldScene::togglePlayerRun() {
 void WorldScene::update() {
     player_moon_spell_.updateAura(
         companionMoonAuraVisible());
+    player_berserker_spell_.updateAura(
+        has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -526,6 +547,8 @@ void WorldScene::update() {
     }
     std::size_t companion_blocker_index = no_blocker;
     if (has_player_) {
+        player_.setWalkingSpeedTier(
+            playerRuntimeProfile().walkingSpeedTier());
         player_.update(
             scenario_world_.ground(),
             scenario_world_.objectMap(),
@@ -535,7 +558,7 @@ void WorldScene::update() {
             parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
         handlePlayerSpellEvent(player_.takeSpellEvent());
-        updatePlayerMoonSpell();
+        updatePlayerResourceRates();
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {

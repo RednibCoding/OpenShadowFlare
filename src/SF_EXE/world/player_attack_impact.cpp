@@ -10,6 +10,7 @@
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "player_combat_defense.hpp"
 #include "player_data.hpp"
+#include "player_runtime_profile.hpp"
 
 #include <array>
 #include <cstddef>
@@ -59,18 +60,20 @@ PlayerAttackImpactStats buildPlayerAttackImpactStats(
     const PlayerInventory& inventory,
     const ItemDatabase& items) {
     PlayerAttackImpactStats stats;
+    const PlayerEquipment::DerivedParameterBonuses bonuses =
+        equipment.derivedParameterBonuses(items);
     stats.source_character_number =
         source_character_number;
     stats.level = player.level();
     stats.physical_attack = retailAdd(
         player.basePhysicalAttack(),
-        equipment.derivedParameterBonus(0, items));
+        bonuses[0]);
     stats.physical_defense = retailAdd(
         player.basePhysicalDefense(),
-        equipment.derivedParameterBonus(2, items));
+        bonuses[2]);
     stats.hit_rate = retailAdd(
         player.baseHitRate(),
-        equipment.derivedParameterBonus(1, items));
+        bonuses[1]);
     stats.state_words =
         player.combatPacketStateWords();
 
@@ -112,6 +115,26 @@ PlayerAttackImpactStats buildPlayerAttackImpactStats(
             ? 1
             : 0;
     }
+    return stats;
+}
+
+PlayerAttackImpactStats buildPlayerAttackImpactStats(
+    std::int32_t source_character_number,
+    const PlayerData& player,
+    const PlayerEquipment& equipment,
+    const PlayerInventory& inventory,
+    const ItemDatabase& items,
+    const PlayerRuntimeProfile& profile) {
+    PlayerAttackImpactStats stats =
+        buildPlayerAttackImpactStats(
+            source_character_number,
+            player,
+            equipment,
+            inventory,
+            items);
+    stats.physical_attack = profile.physical_attack;
+    stats.physical_defense = profile.physical_defense;
+    stats.hit_rate = profile.hit_rate;
     return stats;
 }
 

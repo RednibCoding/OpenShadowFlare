@@ -21,11 +21,13 @@ void WorldScene::accountEnemyKill(
     if (accounting.companion_level_gained) {
         refreshCompanionRuntimeProfile(true);
     }
-    if (player_moon_spell_.active() && hasCompanion() &&
-        enemy.defeat_source_character_number ==
-            companion_.characterNumber()) {
-        player_magic_.train(7, true, parameter_tables_);
-    }
+    trainActiveSustainedSpellsOnOwnedKill(
+        player_magic_,
+        player_moon_spell_,
+        player_berserker_spell_,
+        enemy.defeat_source_character_number,
+        scenario_world_.localPlayerNumber(),
+        parameter_tables_);
     if (!accounting.level_gained) {
         return;
     }
@@ -41,21 +43,17 @@ void WorldScene::accountEnemyKill(
 
 PlayerDamageReceiverState
 WorldScene::playerDamageReceiverState() const {
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
     PlayerDamageReceiverState state;
     state.defense.character_number =
         scenario_world_.localPlayerNumber();
     state.defense.attack =
-        player_data_.basePhysicalAttack() +
-        player_equipment_.derivedParameterBonus(
-            0, item_database_);
+        profile.physical_attack;
     state.defense.physical_defense =
-        player_data_.basePhysicalDefense() +
-        player_equipment_.derivedParameterBonus(
-            2, item_database_);
+        profile.physical_defense;
     state.defense.magical_defense =
-        player_data_.baseMagicalDefense() +
-        player_equipment_.derivedParameterBonus(
-            6, item_database_);
+        profile.magical_defense;
     state.defense.element_x = player_data_.elementX();
     state.defense.element_y = player_data_.elementY();
     state.position = player_.position();
@@ -64,10 +62,10 @@ WorldScene::playerDamageReceiverState() const {
         scenario_world_.localPlayerNumber();
     state.level = player_data_.level();
     state.maximum_life =
-        player_data_.baseMaximumLife();
+        profile.maximum_life;
     state.current_life = player_data_.currentLife();
     state.maximum_mana =
-        player_data_.baseMaximumMana();
+        profile.maximum_mana;
     state.current_mana = player_data_.currentMana();
     state.equipment = player_equipment_;
     state.inventory = player_inventory_;
@@ -93,8 +91,10 @@ WorldScene::playerDamageReceiverState() const {
 
 void WorldScene::applyPlayerDamageReceiverState(
     const PlayerDamageReceiverState& state) {
-    player_data_.setCurrentLife(state.current_life);
-    player_data_.setCurrentMana(state.current_mana);
+    player_data_.setCurrentLife(
+        state.current_life, state.maximum_life);
+    player_data_.setCurrentMana(
+        state.current_mana, state.maximum_mana);
     player_equipment_ = state.equipment;
     player_inventory_ = state.inventory;
     player_special_items_ = state.special_items;
@@ -277,6 +277,8 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
     targets.position = enemy.position();
     targets.bounds = enemy.judgement();
     if (has_player_) {
+        const PlayerRuntimeProfile profile =
+            playerRuntimeProfile();
         const std::int32_t slot =
             scenario_world_.localPlayerNumber();
         if (slot >= 0 &&
@@ -291,9 +293,7 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
             target.current_life =
                 player_data_.currentLife();
             target.combat_defense =
-                player_data_.baseEvasionRate() +
-                player_equipment_.derivedParameterBonus(
-                    3, item_database_);
+                profile.physical_evasion;
             target.position = player_.position();
             target.bounds = player_.judgement();
         }

@@ -184,16 +184,32 @@ without restoration, audio, or practice.
 Moon is complete as the first sustained companion spell. Action 29 toggles at
 the chart-11 marker and keeps its state in the live player rather than the save
 record. While active, Table 200 supplies its maximum-MP drain and thirteen
-companion stat percentages. The calculation keeps retail's three-update
-cadence and fractional remainder, switches itself off at zero MP, and
-recomputes the companion without healing it. Resource 11000040 follows a
-living companion and pauses during its defeated and revival presentations.
-Companion kills train Moon while it is active.
+companion stat percentages. Resource 11000040 follows a living companion and
+pauses during its defeated and revival presentations. Kills owned by the
+local hero slot, whether dealt by the hero or companion, train Moon while it
+is active.
 
-The next spell checkpoint is Berserker action 30. It is another sustained
-spell, but its player-side attack change, activation restrictions, MP drain,
-training event, and presentation need their own retail trace rather than
-being inferred from Moon.
+Berserker is complete as the first sustained player spell. Action 30 toggles
+at the same authored chart marker but keeps its own Table 201 level and MP
+rate. Its twelve percentage rows are applied after equipment to the one
+derived player profile used by movement, action timing, physical and magical
+combat, hit checks, and defense. The shipped table boosts speed and offense,
+reduces physical defense and evasion, and leaves maximum life and mana alone.
+The red `Player/Common/Powerup` animation follows the hero while active.
+
+Moon and Berserker feed one retail-style mana-rate controller. Their rates
+are added before maximum MP is scaled every third update, they share the one
+fractional remainder, and zero MP switches both off before rebuilding player
+and companion profiles. The same resource boundary now includes equipped
+life/MP rate parameters and the two authored five-point recovery special
+items, with the separate retail life remainder and living-player clamp. This
+also fixes Moon practice to use retail's local kill-owner test instead of
+requiring the companion to land the final hit.
+
+The next spell checkpoint is Energy Shield action 31. Its sustained state can
+reuse the proven cadence and ownership boundary, but the shield value, damage
+interception, visual, shutdown rules, and Table 202 data still need a direct
+retail trace.
 
 ## Completed foundation: make Remote Town feel like a game
 

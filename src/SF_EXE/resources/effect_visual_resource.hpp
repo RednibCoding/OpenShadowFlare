@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace osf {
@@ -16,6 +17,10 @@ class EffectVisualResource {
 public:
     bool load(
         const std::filesystem::path& directory,
+        std::string* error = nullptr);
+    bool load(
+        const std::filesystem::path& directory,
+        std::string_view stem,
         std::string* error = nullptr);
     void clear();
 

@@ -42,6 +42,45 @@ ScreenPosition toScreen(
     return calculateRealPosition({world_x, world_y});
 }
 
+void renderPlayerBerserkerPass(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    const EffectVisualResource* visual =
+        world.playerBerserkerVisual();
+    if (!world.playerBerserkerActive() || !visual ||
+        visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world.playerRenderPosition(interpolation),
+        0,
+        8,
+        world.playerBerserkerFrame() %
+            direction.frame_count,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{1000, 200, 200};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
+}
+
 void renderPlayerPass(
     gapi::Backend& renderer,
     const WorldScene& world,
@@ -76,6 +115,14 @@ void renderPlayerPass(
         camera_y,
         shadow,
         shadow_opacity);
+    if (!shadow) {
+        renderPlayerBerserkerPass(
+            renderer,
+            world,
+            camera_x,
+            camera_y,
+            interpolation);
+    }
 }
 
 void renderNpcPass(

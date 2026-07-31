@@ -221,7 +221,41 @@ the companion's current HP instead of treating the change as a heal.
 Resource 11000040 loops at the companion while Moon is active. It is hidden
 while the companion is dead, defeated, or reviving, and its animation counter
 continues from where it stopped once the companion can be shown again. A kill
-made by the companion while Moon is active awards one point of Moon practice.
+credited to the local player slot while Moon is active awards one point of
+Moon practice. Retail uses the source character number modulo ten, so both the
+hero and the owned companion can supply that kill.
+
+### Berserker
+
+Berserker is a targetless self-cast that enters action 30 with CAF charts 11
+and 12 and Table 20 row eight. It pays the normal Table 16 MP cost when the
+action begins, then toggles at chart 11's `0x40` marker. Its live effective
+level and active state are not written to the character save.
+
+Table 201 row zero is Berserker's continuing MP rate. Berserker and Moon do
+not have separate drain clocks: retail adds both rates, applies the total to
+maximum MP every third game update, and carries one shared fractional
+remainder. Reaching zero MP disables both sustained spells and rebuilds the
+affected player and companion values.
+
+That same update also includes equipped rolled parameter 18 and a five-point
+bonus from special item 98000004. Its life-side partner uses equipped rolled
+parameter 17 or special item 98000003, keeps a separate remainder, and clamps
+a living hero to at least one HP. Both rates use the same three-update cadence.
+
+Rows 1 through 12 modify the player's attack speed, walking speed, maximum
+HP, maximum MP, physical attack, physical defense, hit rate, physical
+evasion, magical attack, magical defense, magical hit rate, and magical
+evasion. The percentages are applied after ordinary equipment contributions.
+Speeds are clamped to 0..255 and the remaining values to at least one. In the
+shipped Table 201 the maximum-pool rows are zero; offense and speed rise while
+physical defense and evasion fall. Integer percentage calculations truncate,
+so a small base value does not necessarily gain a whole point.
+
+While active, `Player/Common/Powerup.Caf` and `.Njp` loop over the hero using
+chart zero, direction eight, and red/green/blue strengths 1000/200/200. Kills
+credited to either the local hero or owned companion train Berserker through
+the companion-spell practice mode.
 
 ## Character Stats
 

@@ -356,21 +356,33 @@ std::int32_t PlayerData::currentMana() const {
 }
 
 void PlayerData::setCurrentLife(std::int32_t value) {
+    setCurrentLife(value, baseMaximumLife());
+}
+
+void PlayerData::setCurrentLife(
+    std::int32_t value,
+    std::int32_t maximum_life) {
     writeI32(
         0x34,
         std::clamp(
             value,
             0,
-            std::max(0, baseMaximumLife())));
+            std::max(0, maximum_life)));
 }
 
 void PlayerData::setCurrentMana(std::int32_t value) {
+    setCurrentMana(value, baseMaximumMana());
+}
+
+void PlayerData::setCurrentMana(
+    std::int32_t value,
+    std::int32_t maximum_mana) {
     writeI32(
         0x3c,
         std::clamp(
             value,
             0,
-            std::max(0, baseMaximumMana())));
+            std::max(0, maximum_mana)));
 }
 
 void PlayerData::restoreForRespawn() {

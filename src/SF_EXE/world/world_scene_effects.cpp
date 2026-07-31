@@ -71,6 +71,8 @@ WorldScene::runtimeEffectTargets() const {
         scenario_world_.enemies().size());
 
     if (has_player_) {
+        const PlayerRuntimeProfile profile =
+            playerRuntimeProfile();
         RuntimeEffectTargetSnapshot target;
         target.kind = RuntimeEffectTargetKind::player;
         target.character_number =
@@ -80,14 +82,8 @@ WorldScene::runtimeEffectTargets() const {
         target.position = player_.position();
         target.judgement = player_.judgement();
         target.current_life = player_data_.currentLife();
-        target.physical_evasion =
-            player_data_.baseEvasionRate() +
-            player_equipment_.derivedParameterBonus(
-                3, item_database_);
-        target.magical_evasion =
-            player_data_.baseMagicalEvasionRate() +
-            player_equipment_.derivedParameterBonus(
-                7, item_database_);
+        target.physical_evasion = profile.physical_evasion;
+        target.magical_evasion = profile.magical_evasion;
         targets.push_back(target);
     }
     if (hasCompanion()) {

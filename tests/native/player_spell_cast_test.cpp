@@ -4,9 +4,12 @@
 #include "world/player_data.hpp"
 #include "world/player_heal_spell.hpp"
 #include "world/player_moon_spell.hpp"
+#include "world/player_resource_rate.hpp"
+#include "world/player_runtime_profile.hpp"
 #include "world/player_spell_action.hpp"
 #include "world/player_spell_cast.hpp"
 #include "world/player_spell_parameters.hpp"
+#include "world/player_sustained_spell.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/world_scene.hpp"
 
@@ -25,6 +28,28 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool writeRetailItemWord(
+    osf::InventoryItem& item,
+    std::size_t word,
+    std::int32_t value) {
+    const std::size_t offset = word * 4u;
+    if (offset > item.retail_state.size() ||
+        item.retail_state.size() - offset < 4u) {
+        return false;
+    }
+    const std::uint32_t encoded =
+        static_cast<std::uint32_t>(value);
+    item.retail_state[offset] =
+        static_cast<std::uint8_t>(encoded);
+    item.retail_state[offset + 1] =
+        static_cast<std::uint8_t>(encoded >> 8u);
+    item.retail_state[offset + 2] =
+        static_cast<std::uint8_t>(encoded >> 16u);
+    item.retail_state[offset + 3] =
+        static_cast<std::uint8_t>(encoded >> 24u);
+    return true;
 }
 
 struct ExpectedSpellCast {
@@ -428,9 +453,9 @@ bool testRetailMoonRules(
         return false;
     }
 
-    osf::PlayerMoonSpell moon;
+    osf::PlayerSustainedSpell moon;
     if (!check(
-            moon.toggle(level, tables) &&
+            moon.toggle(200, level, tables) &&
                 moon.active() &&
                 moon.effectiveLevel() == level &&
                 moon.manaChangeRate() ==
@@ -502,14 +527,18 @@ bool testRetailMoonRules(
     std::int32_t mana = 160;
     bool drained = false;
     bool deactivated = false;
+    osf::PlayerResourceRateController mana_rate;
     for (std::int32_t update = 0;
          update < 20000 && !deactivated;
          ++update) {
-        const osf::PlayerMoonManaUpdate result =
-            moon.updateMana(mana, 160);
-        drained = drained || result.mana < mana;
-        mana = result.mana;
-        deactivated = result.deactivated;
+        const osf::PlayerResourceRateUpdate result =
+            mana_rate.update(
+                mana, 160, moon.manaChangeRate(), 0);
+        drained = drained || result.value < mana;
+        mana = result.value;
+        if (mana == 0) {
+            deactivated = moon.deactivate();
+        }
     }
     if (!check(
             drained && deactivated && mana == 0 && !moon.active(),
@@ -518,8 +547,228 @@ bool testRetailMoonRules(
         return false;
     }
     return check(
-        moon.toggle(level, tables) && moon.active(),
+        moon.toggle(200, level, tables) && moon.active(),
         "Moon could not be activated again after automatic shutdown.");
+}
+
+bool testRetailBerserkerRules(
+    const std::filesystem::path& game_root,
+    const osf::TableDatabase& tables) {
+    constexpr std::int32_t level = 1;
+    const osf::TableData* berserker_table = tables.find(201);
+    if (!check(
+            berserker_table &&
+                berserker_table->contains(12, level - 1),
+            "The retail Berserker parameter table could not be read.")) {
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "BerserkerRules";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(game_root, player, &error),
+            "Remote Town could not prepare the Berserker rules fixture.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerSustainedSpell inactive;
+    const osf::PlayerRuntimeProfile base =
+        osf::buildPlayerRuntimeProfile(
+            world.playerData(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            inactive,
+            tables);
+    osf::PlayerSustainedSpell berserker;
+    if (!check(
+            berserker.toggle(201, level, tables) &&
+                berserker.active() &&
+                berserker.effectiveLevel() == level &&
+                berserker.manaChangeRate() ==
+                    berserker_table->value(0, level - 1),
+            "Berserker did not activate with its retail Table 201 rate.")) {
+        return false;
+    }
+    const osf::PlayerRuntimeProfile modified =
+        osf::buildPlayerRuntimeProfile(
+            world.playerData(),
+            world.playerEquipment(),
+            world.itemDatabase(),
+            berserker,
+            tables);
+    const auto adjusted =
+        [berserker_table](
+            std::int32_t value,
+            std::int32_t row) {
+            return value +
+                   berserker_table->value(row, 0) * value /
+                       100;
+        };
+    if (!check(
+            modified.attack_speed_raw ==
+                    std::clamp(adjusted(
+                        base.attack_speed_raw, 1), 0, 255) &&
+                modified.walking_speed_raw ==
+                    std::clamp(adjusted(
+                        base.walking_speed_raw, 2), 0, 255) &&
+                modified.maximum_life ==
+                    std::max(adjusted(base.maximum_life, 3), 1) &&
+                modified.maximum_mana ==
+                    std::max(adjusted(base.maximum_mana, 4), 1) &&
+                modified.physical_attack ==
+                    std::max(adjusted(base.physical_attack, 5), 1) &&
+                modified.physical_defense ==
+                    std::max(adjusted(base.physical_defense, 6), 1) &&
+                modified.hit_rate ==
+                    std::max(adjusted(base.hit_rate, 7), 1) &&
+                modified.physical_evasion ==
+                    std::max(adjusted(base.physical_evasion, 8), 1) &&
+                modified.magical_attack ==
+                    std::max(adjusted(base.magical_attack, 9), 1) &&
+                modified.magical_defense ==
+                    std::max(adjusted(base.magical_defense, 10), 1) &&
+                modified.magical_hit_rate ==
+                    std::max(adjusted(base.magical_hit_rate, 11), 1) &&
+                modified.magical_evasion ==
+                    std::max(adjusted(base.magical_evasion, 12), 1),
+            "Berserker did not apply all twelve retail player modifiers.")) {
+        return false;
+    }
+
+    osf::PlayerSustainedSpell moon;
+    moon.toggle(200, level, tables);
+    osf::PlayerResourceRateController mana_rate;
+    std::int32_t mana = 160;
+    bool drained = false;
+    for (std::int32_t update = 0;
+         update < 200 && !drained;
+         ++update) {
+        const osf::PlayerResourceRateUpdate result =
+            mana_rate.update(
+                mana,
+                160,
+                moon.manaChangeRate() +
+                    berserker.manaChangeRate(),
+                0);
+        drained = result.value < mana;
+        mana = result.value;
+    }
+    if (!check(
+            drained && mana_rate.updateCounter() > 1,
+            "Moon and Berserker did not share the retail MP accumulator.")) {
+        return false;
+    }
+
+    osf::PlayerResourceRateController life_rate;
+    const osf::PlayerResourceRateUpdate first_life =
+        life_rate.update(80, 100, 100, 1);
+    const osf::PlayerResourceRateUpdate second_life =
+        life_rate.update(first_life.value, 100, 100, 1);
+    const osf::PlayerResourceRateUpdate third_life =
+        life_rate.update(second_life.value, 100, 100, 1);
+    const osf::PlayerResourceRateUpdate fourth_life =
+        life_rate.update(third_life.value, 100, 100, 1);
+    osf::PlayerResourceRateController defeated_life_rate;
+    const osf::PlayerResourceRateUpdate defeated_life =
+        defeated_life_rate.update(0, 100, 100, 1, false);
+    osf::PlayerResourceRateController draining_life_rate;
+    const osf::PlayerResourceRateUpdate minimum_life =
+        draining_life_rate.update(1, 100, -100, 1);
+    if (!check(
+            first_life.value == 81 && first_life.changed &&
+                second_life.value == 81 &&
+                third_life.value == 81 &&
+                fourth_life.value == 82 &&
+                defeated_life.value == 0 &&
+                minimum_life.value == 1,
+            "The retail life-rate cadence or living-player clamps differ.")) {
+        return false;
+    }
+
+    const osf::InventoryItem* starter_body =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::ItemDefinition* starter_body_definition =
+        starter_body
+            ? world.itemDatabase().find(
+                  starter_body->category,
+                  starter_body->definition_id)
+            : nullptr;
+    osf::PlayerEquipment rate_equipment;
+    osf::InventoryItem rate_item =
+        starter_body ? *starter_body : osf::InventoryItem{};
+    rate_item.retail_state.resize(200u);
+    if (!check(
+            starter_body_definition &&
+                writeRetailItemWord(rate_item, 17, 35) &&
+                writeRetailItemWord(rate_item, 18, -25) &&
+                rate_equipment.place(
+                    osf::EquipmentSlot::body,
+                    rate_item,
+                    *starter_body_definition,
+                    world.playerData().level()).accepted &&
+                rate_equipment.instanceParameterBonus(
+                    17, world.itemDatabase()) == 35 &&
+                rate_equipment.instanceParameterBonus(
+                    18, world.itemDatabase()) == -25,
+            "Equipped rolled parameters 17 and 18 did not map to the "
+            "retail life and mana rates.")) {
+        return false;
+    }
+
+    const osf::PlayerSustainedSpellShutdown shutdown =
+        osf::deactivateSustainedSpellsAtZeroMana(
+            0, moon, berserker);
+    if (!check(
+            shutdown.moon_deactivated &&
+                shutdown.berserker_deactivated &&
+                !moon.active() && !berserker.active(),
+            "Zero MP did not switch off both retail sustained spells.")) {
+        return false;
+    }
+    moon.toggle(200, level, tables);
+    berserker.toggle(201, level, tables);
+
+    osf::PlayerMagic magic;
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[7] = 3;
+    magic_state.availability[8] = 3;
+    magic.restore(magic_state);
+    const osf::PlayerSustainedSpellTraining hero_training =
+        osf::trainActiveSustainedSpellsOnOwnedKill(
+            magic, moon, berserker, 0, 0, tables);
+    const osf::PlayerSustainedSpellTraining companion_training =
+        osf::trainActiveSustainedSpellsOnOwnedKill(
+            magic, moon, berserker, 10, 0, tables);
+    const std::int32_t moon_after_owned = magic.experience(7);
+    const std::int32_t berserker_after_owned = magic.experience(8);
+    const osf::PlayerSustainedSpellTraining foreign_training =
+        osf::trainActiveSustainedSpellsOnOwnedKill(
+            magic, moon, berserker, 1, 0, tables);
+    if (!check(
+            hero_training.moon_trained &&
+                hero_training.berserker_trained &&
+                companion_training.moon_trained &&
+                companion_training.berserker_trained &&
+                !foreign_training.moon_trained &&
+                !foreign_training.berserker_trained &&
+                magic.experience(7) == moon_after_owned &&
+                magic.experience(8) == berserker_after_owned,
+            "Sustained-spell practice did not follow retail local-owner "
+            "kill attribution.")) {
+        return false;
+    }
+    return check(
+        !berserker.toggle(201, level, tables) &&
+            !berserker.active(),
+        "The second Berserker marker did not toggle the spell off.");
 }
 
 bool testShippedWorldCast(
@@ -1476,8 +1725,9 @@ bool testShippedMoonCast(
             break;
         }
     }
-    osf::PlayerMoonSpell expected_moon;
+    osf::PlayerSustainedSpell expected_moon;
     expected_moon.toggle(
+        200,
         parameters.effective_level,
         world.parameterTables());
     const osf::CompanionProfile expected =
@@ -1557,6 +1807,129 @@ bool testShippedMoonCast(
             restored.parameter_17 == base.parameter_17,
         "The second Moon marker did not remove its aura and restore "
         "the base companion profile.");
+}
+
+bool testShippedBerserkerCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 8;
+    osf::PlayerLoadRequest player;
+    player.name = "BerserkerLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(game_root, player, &error),
+            "Remote Town could not prepare the Berserker fixture.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Berserker fixture could not select the spell.")) {
+        return false;
+    }
+
+    const osf::PlayerRuntimeProfile base =
+        world.playerRuntimeProfile();
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                !world.playerBerserkerActive() &&
+                world.playerBerserkerVisual() == nullptr &&
+                world.playerAnimationChart() == 11 &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost,
+            "Berserker resolved before its retail CAF marker or lost "
+            "its targetless action and MP cost.")) {
+        return false;
+    }
+
+    bool activated = false;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        world.takeAudioSamples();
+        if (world.playerBerserkerActive()) {
+            activated = true;
+            break;
+        }
+    }
+    const osf::PlayerRuntimeProfile active =
+        world.playerRuntimeProfile();
+    if (!check(
+            activated &&
+                world.playerBerserkerVisual() != nullptr &&
+                active.attack_speed_raw > base.attack_speed_raw &&
+                active.walking_speed_raw > base.walking_speed_raw &&
+                active.magical_attack > base.magical_attack &&
+                active.physical_defense < base.physical_defense &&
+                active.physical_evasion < base.physical_evasion,
+            "The Berserker marker did not enable its Powerup visual and "
+            "Table 201 runtime profile.")) {
+        return false;
+    }
+    const std::int32_t frame_before =
+        world.playerBerserkerFrame();
+    world.update();
+    world.takeAudioSamples();
+    if (!check(
+            world.playerBerserkerFrame() > frame_before,
+            "The active Berserker Powerup animation did not advance.")) {
+        return false;
+    }
+
+    while (world.playerSpellActive()) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (!check(
+            world.playerData().currentMana() >=
+                    parameters.mana_cost &&
+                world.commandPlayerMagic(400, 240),
+            "The active Berserker spell could not start its toggle-off "
+            "cast.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 && world.playerBerserkerActive();
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    const osf::PlayerRuntimeProfile restored =
+        world.playerRuntimeProfile();
+    return check(
+        !world.playerBerserkerActive() &&
+            restored.attack_speed_raw == base.attack_speed_raw &&
+            restored.walking_speed_raw == base.walking_speed_raw &&
+            restored.maximum_life == base.maximum_life &&
+            restored.maximum_mana == base.maximum_mana &&
+            restored.physical_attack == base.physical_attack &&
+            restored.physical_defense == base.physical_defense &&
+            restored.hit_rate == base.hit_rate &&
+            restored.physical_evasion == base.physical_evasion &&
+            restored.magical_attack == base.magical_attack &&
+            restored.magical_defense == base.magical_defense &&
+            restored.magical_hit_rate == base.magical_hit_rate &&
+            restored.magical_evasion == base.magical_evasion,
+        "The second Berserker marker did not remove its aura and restore "
+        "the base player profile.");
 }
 
 bool testGroundSpellInsufficientMana(
@@ -1775,7 +2148,18 @@ int main() {
             12,
             true) ||
         !testRetailMoonRules(tables) ||
-        !testShippedMoonCast(game_root)) {
+        !testShippedMoonCast(game_root) ||
+        !testRetailAction(
+            animation,
+            tables,
+            8,
+            osf::PlayerSpellAction::berserker,
+            11,
+            12,
+            true) ||
+        !testRetailBerserkerRules(game_root, tables) ||
+        !testShippedBerserkerCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 8)) {
         return 1;
     }
 #endif

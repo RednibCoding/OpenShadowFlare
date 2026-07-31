@@ -24,12 +24,22 @@ std::string resourceDirectory(std::int32_t resource_id) {
 bool EffectVisualResource::load(
     const std::filesystem::path& directory,
     std::string* error) {
+    return load(directory, "Animation", error);
+}
+
+bool EffectVisualResource::load(
+    const std::filesystem::path& directory,
+    std::string_view stem,
+    std::string* error) {
     clear();
     std::string resource_error;
+    const std::string filename_stem(stem);
     if (!patterns_.load(
-            directory / "Animation.Njp", &resource_error) ||
+            directory / (filename_stem + ".Njp"),
+            &resource_error) ||
         !animation_.load(
-            directory / "Animation.Caf", &resource_error)) {
+            directory / (filename_stem + ".Caf"),
+            &resource_error)) {
         setError(error, resource_error);
         clear();
         return false;

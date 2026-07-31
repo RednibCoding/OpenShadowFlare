@@ -1539,3 +1539,26 @@ restores Table 17 row six percent of maximum HP capped to the missing amount,
 calls `FUN_0044f6f0` for spell six, and plays sample 17. Full HP still permits
 the cast and visual after paying MP, but skips restoration, audio, and
 practice. Live coverage proves both marker-time branches and insufficient MP.
+
+## Moon and Berserker sustained spells
+
+`FUN_0043d290` runs Moon action 29 and `FUN_0043ceb0` runs Berserker action
+30. Both use CAF charts 11 and 12, the corresponding Table 20 speed row, and
+toggle only when a newly crossed chart-11 frame carries status `0x40`. Moon
+stores Table 200 row zero at runtime `+0x15e4`; Berserker stores Table 201 row
+zero at `+0x15dc`. Their effective levels remain separate and neither live
+state is persisted in the 0x160-byte save record.
+
+`FUN_0044ea60` applies Berserker's Table 201 rows 1 through 12 after equipment
+to attack speed, walking speed, both maximum pools, and all eight ordinary
+physical and magical combat values. `FUN_0044f2f0` reads equipped rolled
+parameters 17 and 18 as life and mana rates, adds five for special items
+98000003 and 98000004, then adds Moon and Berserker to mana. Both resources
+update every third tick with separate remainders at `+0x1638` and `+0x163c`.
+Zero MP clears both spell rates and rebuilds the player and companion profiles.
+
+`FUN_00444960` draws common player animation block 500, mapped by the retail
+resource list to `Player/Common/Powerup.Caf` and `.Njp`, at the hero with
+chart zero, direction eight, RGB 1000/200/200, and runtime frame `+0x15f4`.
+Locally owned kills are recognized by source character number modulo ten;
+while active they train Moon and Berserker for either hero or companion kills.

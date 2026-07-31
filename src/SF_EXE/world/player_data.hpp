@@ -72,7 +72,13 @@ public:
     std::int32_t baseMaximumMana() const;
     std::int32_t currentMana() const;
     void setCurrentLife(std::int32_t value);
+    void setCurrentLife(
+        std::int32_t value,
+        std::int32_t maximum_life);
     void setCurrentMana(std::int32_t value);
+    void setCurrentMana(
+        std::int32_t value,
+        std::int32_t maximum_mana);
     void restoreForRespawn();
     bool restoreLife(
         std::int32_t amount,

@@ -25,17 +25,4 @@ void WorldScene::refreshCompanionRuntimeProfile(
     }
 }
 
-void WorldScene::updatePlayerMoonSpell() {
-    const PlayerMoonManaUpdate update =
-        player_moon_spell_.updateMana(
-            player_data_.currentMana(),
-            player_data_.baseMaximumMana());
-    if (update.changed) {
-        player_data_.setCurrentMana(update.mana);
-    }
-    if (update.deactivated) {
-        refreshCompanionRuntimeProfile();
-    }
-}
-
 }  // namespace osf
