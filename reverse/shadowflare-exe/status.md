@@ -1708,3 +1708,20 @@ resource 10000111 at the last position. The burst applies the packet to every
 target in its 240-unit area on update five, plays sample 22, requests nearby
 camera shake, and ends. Successful contacts train Mud Javelin through the
 common receiver.
+
+## Identify cast and item mode
+
+`FUN_0043f8d0` runs spell seventeen as action 39 on CAF charts 11 and 12 with
+Table 20 row seventeen. Entry creates effect 21028/resource 11000230 as a
+one-pass player-owned visual. The first newly crossed status-`0x40` marker
+sets the local Identify mode and requests Inventory on the right. Repeating
+the spell while the mode is active is consumed before another MP charge.
+
+The Identify branch in `FUN_00446320` only accepts an unidentified backpack
+item while the pointer holds nothing. It changes the instance flag, mirrors
+the retail save word, trains spell seventeen once through `FUN_0044f6f0`, and
+leaves Inventory open. Known items and non-backpack storage do nothing;
+secondary click or panel close cancels the mode. `FUN_004087b0` draws pattern
+one from `System.njp` instead of the normal pattern zero while the mode is
+active. Unidentified tooltips use the item description as their base name and
+hide all instance values.

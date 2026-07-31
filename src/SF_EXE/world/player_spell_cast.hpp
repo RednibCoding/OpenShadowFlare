@@ -37,7 +37,8 @@ struct PlayerSpellCastInput {
 bool playerSpellRequiresCharacterTarget(
     std::int32_t spell);
 
-CombatEffectSpawnRequest buildPlayerSonicBladeCharge(
+CombatEffectSpawnRequest buildPlayerSpellEntryVisual(
+    std::int32_t effect_number,
     std::int32_t source_character_number,
     ObjectBounds source_judgement);
 

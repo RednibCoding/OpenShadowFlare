@@ -414,6 +414,27 @@ update it applies the packet to every target in its 240-unit area, plays sample
 22, and requests the nearby camera shake. Successful receiver contacts train
 spell sixteen.
 
+### Identify
+
+Identify is a self-cast with action 39, CAF charts 11 and 12, and the casting
+rate from Table 20 row seventeen. Starting the cast shows effect 21028 from
+resource 11000230. When the first-chart `0x40` marker is crossed, the Inventory
+panel opens on the right and the normal system cursor changes to its authored
+Identify pattern.
+
+While this mode is active, only an unidentified item in the backpack can be
+chosen. Equipment, belt items, special items, an item currently held by the
+pointer, and already identified items are ignored. A successful choice marks
+the item as identified, reveals its full name and values, gives Identify one
+practice point, and leaves Inventory open. Right-clicking or closing Inventory
+cancels the mode. Casting Identify again while it is already waiting for an
+item is consumed without another MP charge or casting action.
+
+The identified bit belongs to the item instance and is saved with it. Retail
+mirrors it in word 48 for weapons and armor and word 47 for accessories.
+Before identification, the tooltip uses the item's base description as its
+name and does not expose the hidden values.
+
 ## Character Stats
 
 ### Primary Stats

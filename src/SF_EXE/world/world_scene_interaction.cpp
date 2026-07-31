@@ -168,6 +168,12 @@ bool WorldScene::commandPlayerMagic(
         return false;
     }
 
+    if (spell == 17 &&
+        player_identify_mode_active_) {
+        pointer_.clearSelection();
+        return true;
+    }
+
     EnemyActor* enemy = nullptr;
     const bool requires_target =
         playerSpellRequiresCharacterTarget(spell);
@@ -1012,10 +1018,10 @@ void WorldScene::handlePlayerSpellEvent(
     if (event.spell < 0) {
         return;
     }
-    if (event.charge_visual_due &&
-        event.spell == 15) {
+    if (event.entry_visual_effect_number >= 0) {
         queueCombatEffect(
-            buildPlayerSonicBladeCharge(
+            buildPlayerSpellEntryVisual(
+                event.entry_visual_effect_number,
                 scenario_world_.localPlayerNumber(),
                 player_.judgement()));
     }
@@ -1037,6 +1043,14 @@ void WorldScene::handlePlayerSpellEvent(
         }
     }
     if (!event.cast_due) {
+        return;
+    }
+    if (event.spell == 17) {
+        player_identify_mode_active_ = true;
+        gameplay_service_request_ = {
+            GameplayServiceKind::identify_item,
+            0,
+        };
         return;
     }
     if (event.spell == 6) {
@@ -1208,6 +1222,27 @@ void WorldScene::handlePlayerSpellEvent(
         return;
     }
     queueCombatEffect(request);
+}
+
+bool WorldScene::playerIdentifyModeActive() const {
+    return player_identify_mode_active_;
+}
+
+bool WorldScene::identifyPlayerInventoryItem(
+    std::int32_t item_index) {
+    if (!player_identify_mode_active_ ||
+        item_index < 0 ||
+        !player_inventory_.identify(
+            static_cast<std::size_t>(item_index))) {
+        return false;
+    }
+    player_magic_.train(17, false, parameter_tables_);
+    player_identify_mode_active_ = false;
+    return true;
+}
+
+void WorldScene::cancelPlayerIdentifyMode() {
+    player_identify_mode_active_ = false;
 }
 
 bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {

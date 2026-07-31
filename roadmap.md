@@ -256,10 +256,18 @@ enemy, the exact magical subtype-three packet, and the retail randomized hit
 presentation. Resource 10000110 owns the tracked projectile and sample 19;
 resource 10000111 owns the finishing area burst, sample 22, and camera shake.
 
-The next spell checkpoint is Identify action 39. It is the first remaining
-spell whose real target is an item rather than an actor or point in the world,
-so its panel command, item-state change, action timing, and save ownership need
-to be traced together.
+Identify is complete. Action 39 uses charts 11 and 12 and shows one-pass
+effect 21028/resource 11000230 at entry. Its `0x40` marker opens Inventory on
+the independent right side and changes the common cursor into the retail
+Identify pointer. Only an unidentified backpack item completes the command;
+the item flag and its retail save mirror change together, one practice point
+is awarded, and right-click or closing Inventory cancels the mode. Recasting
+while it is already active does not spend MP again.
+
+The next spell checkpoint is Magic Shield action 40. Its cast action, active
+flag, incoming-damage mana routing, zero-MP shutdown, and player aura need to
+be joined into one tested lifetime rather than reconstructed as unrelated
+pieces.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1389,7 +1397,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Mud Javelin action 38 are complete;
+- Berserker action 30 through Identify action 39 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

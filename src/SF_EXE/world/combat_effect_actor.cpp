@@ -63,10 +63,13 @@ const gapi::CafDirection* selectedDirection(
 
 std::int32_t retailCombatEffectResourceId(
     std::int32_t effect_number) {
-    if (effect_number == 21025) {
-        // Sonic Blade's action-entry charge joins the same one-pass
-        // presentation owner even though its ID follows the old range.
+    switch (effect_number) {
+    case 21025:
         return 11000100;
+    case 21028:
+        return 11000230;
+    default:
+        break;
     }
     if (effect_number < kFirstSimpleEffect ||
         effect_number > kLastSimpleEffect) {

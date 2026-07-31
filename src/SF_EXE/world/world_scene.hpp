@@ -59,6 +59,7 @@ enum class GameplayServiceKind {
     none,
     transport,
     toggle_special_items,
+    identify_item,
 };
 
 struct GameplayServiceRequest {
@@ -142,6 +143,10 @@ public:
         std::int32_t pocket);
     PlayerItemUseResult usePlayerInventoryItem(
         std::int32_t item_index);
+    bool playerIdentifyModeActive() const;
+    bool identifyPlayerInventoryItem(
+        std::int32_t item_index);
+    void cancelPlayerIdentifyMode();
     std::int32_t playerMineCount() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
@@ -410,6 +415,7 @@ private:
     ScenarioStart pending_script_travel_;
     bool script_travel_pending_ = false;
     bool scenario_changed_ = false;
+    bool player_identify_mode_active_ = false;
 };
 
 }  // namespace osf

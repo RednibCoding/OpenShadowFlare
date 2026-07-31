@@ -59,6 +59,7 @@ SpellCharts chartsForAction(
     case PlayerSpellAction::energy_shield:
     case PlayerSpellAction::earth_spear:
     case PlayerSpellAction::lightning_storm:
+    case PlayerSpellAction::identify:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -80,6 +81,7 @@ bool dispatchesAtEffectMarker(
            action == PlayerSpellAction::moon ||
            action == PlayerSpellAction::berserker ||
            action == PlayerSpellAction::energy_shield ||
+           action == PlayerSpellAction::identify ||
            action == PlayerSpellAction::sonic_blade;
 }
 
@@ -165,6 +167,9 @@ bool playerSpellActionForSpell(
         return true;
     case 16:
         action = PlayerSpellAction::mud_javelin;
+        return true;
+    case 17:
+        action = PlayerSpellAction::identify;
         return true;
     default:
         return false;
@@ -339,8 +344,12 @@ bool PlayerSpellActionController::start(
         event->aim_world_x = aim_world_x_;
         event->aim_world_y = aim_world_y_;
         event->effect_delay = effect_delay_;
-        event->charge_visual_due =
-            action_ == PlayerSpellAction::sonic_blade;
+        event->entry_visual_effect_number =
+            action_ == PlayerSpellAction::sonic_blade
+                ? 21025
+                : action_ == PlayerSpellAction::identify
+                      ? 21028
+                      : -1;
         event->cast_due = initial_marker ||
             (!dispatchesAtEffectMarker(action_));
     }

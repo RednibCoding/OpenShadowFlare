@@ -185,6 +185,38 @@ GameplayInventoryResult GameplayInventory::update(
         }
         return result;
     }
+    if (input.identification_active &&
+        input.pointer_secondary_pressed) {
+        result.pointer_consumed = true;
+        result.cancel_identification_requested = true;
+        return result;
+    }
+    if (input.identification_active &&
+        input.pointer_primary_pressed) {
+        result.pointer_consumed = true;
+        if (active_ &&
+            input.pointer_x >= panel_left &&
+            input.pointer_y < 412) {
+            updateHover(
+                input.pointer_x,
+                input.pointer_y,
+                inventory,
+                equipment);
+            if (!held_item_ &&
+                hovered_item_index_ >= 0 &&
+                static_cast<std::size_t>(
+                    hovered_item_index_) <
+                    inventory.items().size() &&
+                inventory.items()[
+                    static_cast<std::size_t>(
+                        hovered_item_index_)]
+                        .identified == 0) {
+                result.inventory_item_identify_requested =
+                    hovered_item_index_;
+            }
+        }
+        return result;
+    }
     if (input.pointer_primary_pressed) {
         if (const std::optional<BeltPocket> pocket =
                 beltPocketAt(

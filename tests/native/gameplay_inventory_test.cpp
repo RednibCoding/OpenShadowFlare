@@ -16,6 +16,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -1467,6 +1468,163 @@ bool testSpecialItemOwnershipAndRendering() {
         "their own owners.");
 }
 
+bool testIdentificationSelection() {
+    osf::PlayerInventory owned;
+    osf::PlayerEquipment equipment;
+    osf::PlayerBelt belt;
+    osf::PlayerSpecialItems special_items;
+    osf::ItemDatabase database;
+    osf::ItemDefinition item_definition;
+    item_definition.category = 0;
+    item_definition.id = 10;
+    item_definition.variant = 1;
+    item_definition.inventory_width = 1;
+    item_definition.inventory_height = 1;
+    item_definition.name = "Speed Short Sword";
+    item_definition.description = "Short Sword";
+    osf::InventoryItem item =
+        osf::makeInventoryItem(item_definition);
+    item.retail_state.resize(49u * 4u);
+    if (!check(
+            item.identified == 0 &&
+                owned.store(std::move(item)),
+            "The unidentified backpack fixture could not be stored.")) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.open();
+    const std::int32_t pointer_x =
+        osf::GameplayInventory::backpack_left + 8;
+    const std::int32_t pointer_y =
+        osf::GameplayInventory::backpack_top + 8;
+    const osf::GameplayInventoryResult selection =
+        inventory.update(
+            {
+                false,
+                false,
+                true,
+                pointer_x,
+                pointer_y,
+                false,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            selection.pointer_consumed &&
+                selection.inventory_item_identify_requested == 0 &&
+                !selection.cancel_identification_requested &&
+                !inventory.holdingItem() &&
+                owned.items().size() == 1 &&
+                osf::itemInformationText(
+                    owned.items()[0], item_definition) ==
+                    "[Short Sword]\n\n",
+            "Identify mode picked up the item or exposed its hidden name "
+            "and values.")) {
+        return false;
+    }
+
+    if (!check(
+            owned.identify(0) &&
+                owned.items()[0].identified == 1 &&
+                owned.items()[0].retail_state[48u * 4u] == 1 &&
+                osf::itemInformationText(
+                    owned.items()[0], item_definition)
+                    .rfind("[Speed Short Sword]\n\n", 0) == 0 &&
+                osf::itemInformationText(
+                    owned.items()[0], item_definition)
+                    .find("Durability") != std::string::npos,
+            "The identified flag did not update the item and its retail "
+            "state mirror.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult known_selection =
+        inventory.update(
+            {
+                false,
+                false,
+                true,
+                pointer_x,
+                pointer_y,
+                false,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            known_selection.pointer_consumed &&
+                known_selection.inventory_item_identify_requested == -1 &&
+                inventory.active() &&
+                !inventory.holdingItem(),
+            "Identify mode accepted an already identified item.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult outside_selection =
+        inventory.update(
+            {
+                false,
+                false,
+                true,
+                100,
+                200,
+                false,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            outside_selection.pointer_consumed &&
+                outside_selection
+                        .inventory_item_identify_requested == -1 &&
+                inventory.active(),
+            "Identify mode leaked an outside click into the world.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult cancelled =
+        inventory.update(
+            {
+                false,
+                true,
+                false,
+                100,
+                200,
+                false,
+                true,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    return check(
+        cancelled.pointer_consumed &&
+            cancelled.cancel_identification_requested &&
+            inventory.active(),
+        "Right-clicking did not cancel Identify while leaving Inventory "
+        "open.");
+}
+
 bool testSecondaryUseRequests() {
     osf::PlayerInventory owned;
     osf::PlayerEquipment equipment;
@@ -1547,6 +1705,7 @@ bool testSecondaryUseRequests() {
 
 int main() {
     return testInventoryState() &&
+                   testIdentificationSelection() &&
                    testSecondaryUseRequests() &&
                    testInventoryResourcesAndRendering() &&
                    testConditionArtwork() &&

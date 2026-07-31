@@ -237,15 +237,18 @@ bool playerSpellRequiresCharacterTarget(
            descriptor.requires_target;
 }
 
-CombatEffectSpawnRequest buildPlayerSonicBladeCharge(
+CombatEffectSpawnRequest buildPlayerSpellEntryVisual(
+    std::int32_t effect_number,
     std::int32_t source_character_number,
     ObjectBounds source_judgement) {
     CombatEffectSpawnRequest request;
-    if (source_character_number < 0) {
+    if ((effect_number != 21025 &&
+         effect_number != 21028) ||
+        source_character_number < 0) {
         return request;
     }
     request.valid = true;
-    request.effect_number = 21025;
+    request.effect_number = effect_number;
     request.owner_kind = kPlayerOwnerKind;
     request.source_character_number =
         source_character_number;

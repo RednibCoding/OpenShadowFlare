@@ -2204,3 +2204,29 @@ then creates resource 10000111 there. On that burst's fifth update the packet
 is applied to every target in its 240-unit area, sample 22 plays, nearby camera
 shake is requested, and the controller ends. Receiver contact owns spell
 practice.
+
+## Identify cast and item mode
+
+`0x0043f8d0` dispatches spell seventeen as action 39 on CAF charts 11 and 12
+with Table 20 row seventeen. Action entry creates one-pass effect 21028 with
+owner kind one, the local player source and judgement, no target or packet,
+packet kind eight, instance minus one, and constructor field 21 set to 200.
+The common effect path maps it to resource 11000230.
+
+At each newly crossed first-chart status-`0x40` marker, the local player sets
+the Identify input flag and requests the right-side Inventory panel. A second
+Identify command while that flag is set is consumed before MP is charged.
+`0x004087b0` draws `System/Common/Pattern/System.njp` pattern zero for the
+normal pointer and pattern one at the same pointer coordinates for Identify.
+
+The Identify branch in `0x00446320` only accepts an unidentified backpack
+item while no item is held. It sets the instance's identified flag, calls
+`0x0044f6f0` for one spell-seventeen practice event, and clears the input flag
+without closing Inventory. Already identified items leave the mode active.
+Equipment, belt, and special-item storage never enter this branch. Secondary
+click or closing the panel clears the mode without changing an item.
+
+The item database name is the identified display name, while its description
+is the base name shown before identification. Unidentified information hides
+all values. The saved instance mirrors the identified value at raw word 48
+for category-zero and category-one items, and word 47 for category-two items.

@@ -243,6 +243,7 @@ add_library(
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/player_level_up_notice_renderer.cpp
+  render/system_cursor_renderer.cpp
   render/title_renderer.cpp
 )
 add_library(OpenShadowFlare::Render ALIAS osf_render)
