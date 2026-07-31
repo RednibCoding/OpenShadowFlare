@@ -287,6 +287,9 @@ private:
     EnemyActorUpdate updateEnemyActor(
         EnemyActor& enemy,
         const std::vector<MovementBlocker>& blockers);
+    void updateCompanionActor(
+        const std::vector<MovementBlocker>& blockers);
+    void applyCompanionAttackImpact();
     PlayerDamageReceiverState playerDamageReceiverState() const;
     void applyPlayerDamageReceiverState(
         const PlayerDamageReceiverState& state);

@@ -76,6 +76,7 @@ bool decodeCompanionProfile(
         catalog->value(companion_type, 3);
     profile.blue_strength =
         catalog->value(companion_type, 4);
+    profile.attack_speed_rating = values[0];
     profile.native_element = values[13];
     profile.walking_speed = values[1] / 5;
     profile.running_speed = values[2] / 5;
@@ -88,7 +89,7 @@ bool decodeCompanionProfile(
     profile.magical_hit_rate = values[10];
     profile.magical_defense = values[11];
     profile.magical_evasion = values[12];
-    profile.attack_speed = values[17];
+    profile.parameter_17 = values[17];
     profile.experience_threshold = values[18];
     if (profile.name.empty() ||
         profile.resource_id < 0 ||

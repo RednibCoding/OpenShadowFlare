@@ -842,7 +842,30 @@ the route to action four at `table row 2 / 5`. Distances of 4000 or more snap
 the actor to the player position plus `(200,200)`. Actions two, three, and
 four render PARTNER charts zero, one, and two. The other opening branch
 searches for a type-two target within 1200 and enters companion attack mode;
-that attack handoff remains the next live slice.
+the portable actor now follows that handoff too.
+
+Attack mode `0x00462610` drops back to ordinary owner mode when the companion
+is more than 1499 judgement units from its player. Otherwise it repeats the
+nearest living type-two search within 1200. A target beyond the fixed
+159-unit attack range starts the common collision-aware run route at
+`table row 2 / 5`; a target inside it is faced and requests presentation
+action one.
+
+Presentation action one is `0x0045fff0`, which uses PARTNER chart five. Its
+speed tier is signed `table row 0 / 32`, not parameter row 17, and the ten
+frame factors are `0.2` through `1.1` in steps of `0.1`. Each update scans
+every newly crossed part-zero CAF cell. Status `0x400` plays sample 95;
+status `0x40` repeats an exact-facing living type-two search inside 150
+judgement units. Its presentation lock suppresses further AI decisions until
+the chart reaches its last frame, even if the selected target disappears in
+the meantime. The hit check compares companion row six with the enemy's
+physical evasion. A miss creates the normal MISS actor. A hit sends the
+family-one packet with the companion character number, row-five physical
+attack, owner-stored companion level, native element, and a random effect
+from 21000 through 21003, then plays sample 44. The live path hands that
+packet to the existing enemy receiver, so reaction, attribution, effects,
+death, player experience, and drops remain owned by the same systems as a
+player hit.
 
 The player's owned companion does not reuse either receiver. Its virtual
 callback is `0x0045f9f0`, selected from the type-five companion vtable at

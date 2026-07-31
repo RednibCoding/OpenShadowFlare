@@ -28,7 +28,8 @@ struct CompanionProfile {
     std::int32_t magical_hit_rate = 0;
     std::int32_t magical_defense = 0;
     std::int32_t magical_evasion = 0;
-    std::int32_t attack_speed = 0;
+    std::int32_t attack_speed_rating = 0;
+    std::int32_t parameter_17 = 0;
     std::int32_t experience_threshold = 0;
 };
 

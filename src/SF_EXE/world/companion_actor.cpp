@@ -3,6 +3,8 @@
 #include "actor_direction.hpp"
 #include "resources/character_visual_resource.hpp"
 
+#include <utility>
+
 namespace osf {
 namespace {
 
@@ -20,6 +22,8 @@ std::int32_t chartForMotion(CompanionMotion motion) {
         return 1;
     case CompanionMotion::running:
         return 2;
+    case CompanionMotion::attacking:
+        return 5;
     case CompanionMotion::idle:
     default:
         return 0;
@@ -62,7 +66,9 @@ void CompanionActor::clear() {
     action_counter_ = 0;
     close_linger_counter_ = 0;
     current_life_ = 0;
+    combat_target_character_number_ = -1;
     movement_controller_.reset();
+    attack_action_.cancel();
     visual_ = nullptr;
 }
 
@@ -73,7 +79,9 @@ void CompanionActor::relocate(
     previous_position_ = position;
     direction_ = direction;
     close_linger_counter_ = 0;
+    combat_target_character_number_ = -1;
     movement_controller_.reset();
+    attack_action_.cancel();
     selectMotion(CompanionMotion::idle);
 }
 
@@ -150,6 +158,94 @@ void CompanionActor::updateFollow(
     ++action_counter_;
 }
 
+void CompanionActor::updateCombatApproach(
+    WorldPosition target_position,
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    const std::vector<MovementBlocker>*
+        dynamic_blockers) {
+    if (!valid() || attack_action_.active()) {
+        return;
+    }
+    previous_position_ = position_;
+    selectMotion(CompanionMotion::running);
+    const MovementStepResult movement =
+        movement_controller_.advance(
+            ground,
+            objects,
+            judgement_,
+            position_,
+            target_position,
+            profile_.running_speed,
+            dynamic_blockers,
+            movementBlockerId());
+    if (movement.moved) {
+        direction_ = retailDirectionForVector(
+            movement.position.x - position_.x,
+            movement.position.y - position_.y);
+        position_ = movement.position;
+    }
+    ++action_counter_;
+}
+
+bool CompanionActor::beginAttack(
+    std::int32_t target_character_number,
+    WorldPosition target_position) {
+    if (!valid() ||
+        target_character_number < 0 ||
+        attack_action_.active()) {
+        return false;
+    }
+    direction_ = retailDirectionForVector(
+        target_position.x - position_.x,
+        target_position.y - position_.y);
+    CompanionAttackAnimationTiming timing;
+    if (!buildCompanionAttackAnimationTiming(
+            visual_->animation(),
+            direction_,
+            timing) ||
+        !attack_action_.start(
+            profile_.attack_speed_rating,
+            std::move(timing))) {
+        return false;
+    }
+    combat_target_character_number_ =
+        target_character_number;
+    movement_controller_.reset();
+    selectMotion(CompanionMotion::attacking);
+    return true;
+}
+
+void CompanionActor::trackCombatTarget(
+    std::int32_t target_character_number) {
+    combat_target_character_number_ =
+        target_character_number;
+}
+
+CompanionActorUpdate CompanionActor::updateAttack() {
+    CompanionActorUpdate result;
+    if (!attack_action_.active()) {
+        return result;
+    }
+    previous_position_ = position_;
+    const CompanionAttackActionEvent event =
+        attack_action_.update();
+    result.impact_due = event.impact_due;
+    result.swing_sound_due = event.swing_sound_due;
+    result.attack_completed = event.completed;
+    if (event.completed) {
+        selectMotion(CompanionMotion::idle);
+    }
+    return result;
+}
+
+void CompanionActor::leaveCombat() {
+    combat_target_character_number_ = -1;
+    attack_action_.cancel();
+    movement_controller_.reset();
+    selectMotion(CompanionMotion::idle);
+}
+
 bool CompanionActor::valid() const {
     return visual_ != nullptr && owner_slot_ >= 0;
 }
@@ -195,6 +291,9 @@ std::int32_t CompanionActor::animationChart() const {
 }
 
 std::int32_t CompanionActor::animationFrame() const {
+    if (motion_ == CompanionMotion::attacking) {
+        return attack_action_.animationFrame();
+    }
     return action_counter_;
 }
 
@@ -204,6 +303,15 @@ std::int32_t CompanionActor::currentLife() const {
 
 std::int32_t CompanionActor::maximumLife() const {
     return profile_.maximum_life;
+}
+
+std::int32_t
+CompanionActor::combatTargetCharacterNumber() const {
+    return combat_target_character_number_;
+}
+
+bool CompanionActor::attackActive() const {
+    return attack_action_.active();
 }
 
 bool CompanionActor::partEnabled(std::size_t part) const {

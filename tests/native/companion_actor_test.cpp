@@ -1,9 +1,13 @@
 #include "gapi/gapi.hpp"
+#include "core/retail_random.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "world/companion_actor.hpp"
+#include "world/companion_attack_action.hpp"
+#include "world/companion_attack_impact.hpp"
 #include "world/companion_profile.hpp"
+#include "world/companion_target_selector.hpp"
 #include "world/world_scene.hpp"
 
 #include <filesystem>
@@ -111,7 +115,8 @@ int main() {
                 kerberos.magical_hit_rate == 50 &&
                 kerberos.magical_defense == 250 &&
                 kerberos.magical_evasion == 20 &&
-                kerberos.attack_speed == 900 &&
+                kerberos.attack_speed_rating == 128 &&
+                kerberos.parameter_17 == 900 &&
                 kerberos.experience_threshold == 100,
             "Kerberos' profile does not match tables 60 and 800.")) {
         return 1;
@@ -131,7 +136,8 @@ int main() {
                 gravity.red_strength == 400 &&
                 gravity.native_element == 3 &&
                 gravity.physical_attack == 35 &&
-                gravity.attack_speed == 600 &&
+                gravity.attack_speed_rating == 160 &&
+                gravity.parameter_17 == 600 &&
                 osf::decodeCompanionProfile(
                     tables, 2, 1, dune, &error) &&
                 dune.name == "Dune" &&
@@ -228,6 +234,119 @@ int main() {
             "The passive companion actor could not be initialized.")) {
         return 1;
     }
+
+    osf::CompanionAttackAnimationTiming attack_timing;
+    if (!check(
+            osf::buildCompanionAttackAnimationTiming(
+                visual->animation(), 3, attack_timing) &&
+                attack_timing.frame_count > 1 &&
+                osf::retailCompanionAttackSpeedTier(
+                    kerberos.attack_speed_rating) == 4,
+            "The PARTNER chart-five timing or row-zero speed tier "
+            "could not be reconstructed.")) {
+        return 1;
+    }
+    osf::CompanionAttackActionController attack_action;
+    if (!check(
+            attack_action.start(
+                kerberos.attack_speed_rating,
+                attack_timing),
+            "The companion attack action did not start.")) {
+        return 1;
+    }
+    bool impact_seen = false;
+    bool swing_seen = false;
+    bool completed = false;
+    for (int update = 0;
+         update < 200 && attack_action.active();
+         ++update) {
+        const osf::CompanionAttackActionEvent event =
+            attack_action.update();
+        impact_seen = impact_seen || event.impact_due;
+        swing_seen = swing_seen || event.swing_sound_due;
+        completed = completed || event.completed;
+    }
+    if (!check(
+            impact_seen && swing_seen && completed &&
+                attack_action.animationFrame() ==
+                    attack_timing.frame_count - 1,
+            "The companion attack did not scan chart-five impact "
+            "and sample markers through its retail completion.")) {
+        return 1;
+    }
+
+    const std::vector<osf::CompanionEnemyTargetState>
+        target_fixture{
+            {20000002, {origin.x + 500, origin.y},
+             {-80, -80, 79, 79}, 100, 20, true},
+            {20000001, {origin.x + 300, origin.y},
+             {-80, -80, 79, 79}, 100, 30, true},
+            {20000003, {origin.x, origin.y + 200},
+             {-80, -80, 79, 79}, 0, 10, true},
+        };
+    const osf::CompanionEnemyTarget nearest =
+        osf::findCompanionEnemyTarget(
+            origin,
+            actor.judgement(),
+            target_fixture,
+            1200);
+    const osf::CompanionEnemyTarget forward =
+        osf::findCompanionForwardEnemyTarget(
+            origin,
+            actor.judgement(),
+            1,
+            target_fixture,
+            150);
+    if (!check(
+            nearest.found &&
+                nearest.character_number == 20000001 &&
+                nearest.physical_evasion == 30 &&
+                forward.found &&
+                forward.character_number == 20000001,
+            "Companion enemy acquisition lost nearest-target, life, "
+            "range, or exact-facing behavior.")) {
+        return 1;
+    }
+
+    osf::RetailRandom attack_random(1);
+    const osf::CompanionAttackImpactResult impact =
+        osf::resolveCompanionAttackImpact(
+            {
+                16000000,
+                kerberos.level,
+                kerberos.physical_attack,
+                kerberos.hit_rate,
+                kerberos.native_element,
+                20000001,
+                30,
+            },
+            attack_random);
+    if (!check(
+            impact.valid &&
+                impact.hit_chance == 98 &&
+                impact.hit_roll == 41 &&
+                impact.apply_damage &&
+                !impact.show_miss &&
+                impact.post_hit_audio_sample == 44 &&
+                impact.packet[0] == 1 &&
+                impact.packet[1] == 0 &&
+                impact.packet[2] == 16000000 &&
+                impact.packet[3] == 0 &&
+                impact.packet[4] == 30 &&
+                impact.packet[31] == 1 &&
+                impact.packet[32] == 0 &&
+                impact.packet[34] >= 21000 &&
+                impact.packet[34] <= 21003 &&
+                impact.packet[37] == 0 &&
+                impact.packet[38] == 1 &&
+                impact.packet[41] == -1 &&
+                impact.packet[43] == -1 &&
+                impact.packet[72] == 1 &&
+                impact.packet[74] == -1,
+            "The ordinary companion hit check, packet, effect, or "
+            "post-hit sample differs from retail.")) {
+        return 1;
+    }
     actor.updateFollow(
         origin,
         world.playerJudgement(),
@@ -308,6 +427,43 @@ int main() {
             "A scenario transition did not carry the owned companion "
             "to the player's entry.")) {
         std::cerr << error << '\n';
+        return 1;
+    }
+
+    bool attack_chart_seen = false;
+    bool swing_sample_seen = false;
+    bool hit_sample_seen = false;
+    bool enemy_damaged = false;
+    for (int update = 0;
+         update < 1200 && !enemy_damaged;
+         ++update) {
+        world.update();
+        attack_chart_seen =
+            attack_chart_seen ||
+            world.companion().animationChart() == 5;
+        for (std::int32_t sample :
+             world.takeAudioSamples()) {
+            swing_sample_seen =
+                swing_sample_seen || sample == 95;
+            hit_sample_seen =
+                hit_sample_seen || sample == 44;
+        }
+        for (const osf::EnemyActor& enemy :
+             world.enemies()) {
+            enemy_damaged =
+                enemy_damaged ||
+                (enemy.currentLife() > 0 &&
+                 enemy.currentLife() <
+                     enemy.maximumLife());
+        }
+    }
+    if (!check(
+            attack_chart_seen &&
+                swing_sample_seen &&
+                hit_sample_seen &&
+                enemy_damaged,
+            "The live owned companion did not acquire, approach, "
+            "animate, and damage an outdoor enemy with retail audio.")) {
         return 1;
     }
     return 0;

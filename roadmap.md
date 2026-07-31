@@ -34,7 +34,8 @@ The portable executable already has a solid front half:
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
 - the player's table-backed owned companion, including its PARTNER visual,
-  depth sorting, collision, scenario travel, and retail follow distances
+  depth sorting, collision, scenario travel, retail follow distances, enemy
+  acquisition, and ordinary melee attack
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -100,8 +101,9 @@ The ordinary and basic ranged encounters are now proven in the live outdoor
 map, all the way from targeting through pickup and save/reload. The next useful
 combat work is the behavior that cannot be exercised by either solo fight:
 
-- finish companion target acquisition, attacks, damage reception, death, and
-  progression on the new live owned-companion actor;
+- finish companion damage reception, hit/death presentation, revival, and
+  progression on the live owned-companion actor. Its autonomous target
+  acquisition, approach, and ordinary chart-five attack are now complete;
 - keep checking item state, audio, experience, and saving beside each change
   so a new combat path cannot silently damage adjacent ownership.
 

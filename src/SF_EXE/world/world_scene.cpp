@@ -556,12 +556,7 @@ void WorldScene::update() {
         }
     }
     if (hasCompanion() && has_player_) {
-        companion_.updateFollow(
-            player_.position(),
-            player_.judgement(),
-            scenario_world_.ground(),
-            scenario_world_.objectMap(),
-            &actor_blockers);
+        updateCompanionActor(actor_blockers);
         if (companion_blocker_index != no_blocker) {
             actor_blockers[
                 companion_blocker_index].position =

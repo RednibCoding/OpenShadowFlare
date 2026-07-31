@@ -227,14 +227,28 @@ Table `800 + companion type`. The portable actor carries all six shipped
 types and all three PARTNER resources instead of borrowing the matching
 PEOPLE actor.
 
-The follow half of `0x004622b0` is reconstructed. Judgement distance below
+The ordinary follow and combat halves of `0x004622b0` and `0x00462610` are
+reconstructed. Judgement distance below
 160 selects idle and refreshes a five-update linger; 160 through 599 walks at
 parameter row one divided by five; 600 and above runs at row two divided by
 five; and 4000 or above snaps to player position plus `(200,200)`. Those
 states use charts zero, one, and two and share normal movement, collision,
 interpolation, and display ordering. Scenario changes relocate the companion
-with its owner. The routine's 1200-unit enemy search and attack-mode handoff
-remain the next part.
+with its owner. While the owner is within 1200, the actor searches for the
+nearest living type-two actor in that range. Attack mode disengages beyond
+1499 owner units, approaches the repeated target at run speed until its
+159-unit action range, and faces it before requesting action one.
+
+Action one at `0x0045fff0` uses chart five and derives its timing tier from
+companion parameter row zero divided by 32. The ten factors are 0.2 through
+1.1. Newly crossed part-zero markers preserve sample 95 at bit `0x400` and
+the impact at bit `0x40`; the impact repeats the retail exact-facing search
+inside 150 units. It checks row-six hit rate against enemy physical evasion,
+creates MISS on failure, or sends the family-one companion packet with row
+five attack, owner companion level, native element, random effect
+21000..21003, and sample 44. A shipped live regression covers acquisition,
+approach, both markers, the enemy receiver, and actual damage outside Remote
+Town.
 
 The portable `EnemyEffectController` now covers the complete controller half
 of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
