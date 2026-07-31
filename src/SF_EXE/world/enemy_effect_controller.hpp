@@ -26,12 +26,15 @@ struct EnemyEffectControllerSource {
 };
 
 struct EnemyEffectControllerUpdate {
-    std::array<RuntimeEffectActorSpawnRequest, 3>
+    std::array<RuntimeEffectActorSpawnRequest, 4>
         actor_spawns;
     std::size_t actor_spawn_count = 0;
-    std::array<PositionalEffectAudioRequest, 1>
+    std::array<PositionalEffectAudioRequest, 2>
         audio;
     std::size_t audio_count = 0;
+    bool camera_shake = false;
+    std::int32_t camera_shake_duration = 0;
+    std::int32_t camera_shake_magnitude = 0;
     bool expired = false;
 };
 
@@ -44,6 +47,7 @@ struct EnemyEffectControllerContext {
     EnemyEffectControllerSource source;
     RetailRandom* random = nullptr;
     EnemyEffectPlacementTest placement_is_clear;
+    EnemyEffectControllerSource observer;
 };
 
 class EnemyEffectController {

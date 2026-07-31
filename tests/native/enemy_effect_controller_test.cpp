@@ -43,7 +43,7 @@ osf::CombatEffectSpawnRequest requestFor(
 osf::EnemyEffectControllerUpdate updateController(
     osf::EnemyEffectController& controller,
     osf::EnemyEffectControllerSource source) {
-    return controller.update({source, nullptr, {}});
+    return controller.update({source, nullptr, {}, {}});
 }
 
 bool testTypeOneZeroDelay() {
@@ -309,12 +309,180 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10004;
+    request.effect_number = 10005;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
         "An unimplemented specialized family entered the "
         "implemented controller owner.");
+}
+
+bool testTypeFourWarningBurstAndCameraShake() {
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10004, 10);
+    osf::EnemyEffectController controller;
+    if (!check(
+            controller.initialize(request),
+            "A valid type-four request was rejected.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 0;
+         update_number < 10;
+         ++update_number) {
+        const osf::WorldPosition source{
+            100 + update_number * 40,
+            200 + update_number * 40,
+        };
+        const auto update = controller.update({
+            {true, source},
+            nullptr,
+            {},
+            {true, {500, 3500}},
+        });
+        if (update_number == 3) {
+            const auto& warning = update.actor_spawns[0];
+            if (!check(
+                    update.actor_spawn_count == 1 &&
+                        update.audio_count == 0 &&
+                        !update.camera_shake &&
+                        !update.expired &&
+                        warning.resource_id == 10000002 &&
+                        warning.position.x == 220 &&
+                        warning.position.y == 320 &&
+                        warning.judgement.left == -20 &&
+                        warning.judgement.top == -30 &&
+                        warning.judgement.right == 21 &&
+                        warning.judgement.bottom == 31 &&
+                        warning.display_height == 0 &&
+                        warning.lifetime_from_animation &&
+                        warning.lifetime_animation_chart == 0 &&
+                        warning.animation_chart == 0 &&
+                        warning.animation_direction == 8 &&
+                        warning.additional_display_status ==
+                            0x80 &&
+                        warning.visible &&
+                        !warning.has_packet,
+                    "Type four did not create its retail "
+                    "warning actor on update three.")) {
+                return false;
+            }
+        } else if (!check(
+                       update.actor_spawn_count == 0 &&
+                           update.audio_count == 0 &&
+                           !update.camera_shake &&
+                           !update.expired,
+                       "Type four emitted work before its "
+                       "warning or authored burst update.")) {
+            return false;
+        }
+    }
+
+    const auto burst = controller.update({
+        {true, {500, 600}},
+        nullptr,
+        {},
+        {true, {500, 3500}},
+    });
+    if (!check(
+            burst.actor_spawn_count == 3 &&
+                burst.audio_count == 2 &&
+                burst.camera_shake &&
+                burst.camera_shake_duration == 8 &&
+                burst.camera_shake_magnitude == 6 &&
+                burst.expired &&
+                !controller.active(),
+            "Type four did not emit and expire its complete "
+            "delayed burst.")) {
+        return false;
+    }
+
+    const auto& first = burst.actor_spawns[0];
+    const auto& second = burst.actor_spawns[1];
+    const auto& damage = burst.actor_spawns[2];
+    if (!check(
+            first.resource_id == 10000000 &&
+                first.position.x == 500 &&
+                first.position.y == 600 &&
+                first.judgement.left == -21 &&
+                first.judgement.top == -31 &&
+                first.judgement.right == -21 &&
+                first.judgement.bottom == -31 &&
+                first.display_height == 200 &&
+                first.lifetime_from_animation &&
+                first.lifetime_animation_chart == 1 &&
+                first.animation_chart == 1 &&
+                first.animation_direction == 8 &&
+                second.resource_id == 10000000 &&
+                second.position.x == 500 &&
+                second.position.y == 600 &&
+                second.judgement.left == 22 &&
+                second.judgement.top == 32 &&
+                second.judgement.right == 22 &&
+                second.judgement.bottom == 32 &&
+                second.display_height == 200 &&
+                second.lifetime_from_animation &&
+                second.lifetime_animation_chart == 1 &&
+                second.animation_chart == 0 &&
+                second.animation_direction == 8,
+            "Type four changed one of its two differently "
+            "charted visual descriptors.")) {
+        return false;
+    }
+    if (!check(
+            damage.resource_id == -1 &&
+                damage.owner_kind == 4 &&
+                damage.source_character_number == 14000042 &&
+                damage.target_mask == 1 &&
+                damage.target_identifier == 3 &&
+                damage.position.x == 500 &&
+                damage.position.y == 600 &&
+                damage.judgement.left == -170 &&
+                damage.judgement.top == -180 &&
+                damage.judgement.right == 171 &&
+                damage.judgement.bottom == 181 &&
+                damage.display_height == 200 &&
+                damage.lifetime == 1 &&
+                !damage.lifetime_from_animation &&
+                damage.target_collision_start == 0 &&
+                damage.target_collision_end == 0 &&
+                damage.process_every_target &&
+                !damage.visible &&
+                damage.has_packet &&
+                damage.packet[34] == 21013,
+            "Type four did not preserve its invisible one-update "
+            "damage actor and copied packet.")) {
+        return false;
+    }
+    if (!check(
+            burst.audio[0].sample == 29 &&
+                burst.audio[1].sample == 23 &&
+                burst.audio[0].position.x == 500 &&
+                burst.audio[0].position.y == 600 &&
+                burst.audio[1].position.x == 500 &&
+                burst.audio[1].position.y == 600,
+            "Type four did not place samples 29 and 23 at its "
+            "re-resolved source.")) {
+        return false;
+    }
+
+    controller.initialize(request);
+    osf::EnemyEffectControllerUpdate far_burst;
+    for (std::int32_t update_number = 0;
+         update_number <= 10;
+         ++update_number) {
+        far_burst = controller.update({
+            {true, {500, 600}},
+            nullptr,
+            {},
+            {true, {500, 3601}},
+        });
+    }
+    return check(
+        far_burst.expired &&
+            !far_burst.camera_shake,
+        "Type four shook an observer outside the strict "
+        "3001-unit retail range.");
 }
 
 bool testTypeThreeWaves() {
@@ -371,6 +539,7 @@ bool testTypeThreeWaves() {
                            judgement.right == 100 &&
                            judgement.bottom == 100;
                 },
+                {},
             });
         actor_count += update.actor_spawn_count;
         audio_count += update.audio_count;
@@ -466,6 +635,7 @@ bool testTypeThreeWaves() {
                 ++blocked_placement_count;
                 return false;
             },
+            {},
         });
         actor_count += update.actor_spawn_count;
         audio_count += update.audio_count;
@@ -490,6 +660,7 @@ int main() {
         !testTypeTwoDelayedReresolution() ||
         !testFixedOriginAndMissingSource() ||
         !testNegativeDelayAndRejectedRequests() ||
+        !testTypeFourWarningBurstAndCameraShake() ||
         !testTypeThreeWaves()) {
         return 1;
     }

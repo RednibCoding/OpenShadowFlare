@@ -332,7 +332,22 @@ void WorldScene::updateRuntimeEffects() {
                 }
                 return true;
             },
+            [this] {
+                return EnemyEffectControllerSource{
+                    has_player_,
+                    has_player_
+                        ? player_.position()
+                        : WorldPosition{},
+                };
+            },
         });
+    if (update.camera_shake) {
+        camera_shake_counter_ = 0;
+        camera_shake_duration_ =
+            update.camera_shake_duration;
+        camera_shake_magnitude_ =
+            update.camera_shake_magnitude;
+    }
     for (const RuntimeEffectAudioRequest& audio :
          update.audio) {
         queueRuntimeEffectAudio(audio);

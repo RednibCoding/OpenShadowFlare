@@ -97,6 +97,7 @@ bool testControllerActorAndReceiverOrder() {
             }
         },
         {},
+        {},
     };
 
     const osf::RuntimeEffectSystemUpdate first =
@@ -154,7 +155,7 @@ bool testControllerActorAndReceiverOrder() {
 
 bool testUnsupportedRequestStaysOutsideOwner() {
     osf::CombatEffectSpawnRequest unsupported = request();
-    unsupported.effect_number = 10004;
+    unsupported.effect_number = 10005;
     osf::RuntimeEffectSystem system;
     return check(
         !system.queue(unsupported) &&

@@ -147,7 +147,7 @@ bool testSourceAnimationLifetime() {
         controllerRequest(10001, 4));
     const auto controller_update =
         controller.update({
-            {true, {100, 200}}, nullptr, {}});
+            {true, {100, 200}}, nullptr, {}, {}});
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000012, visual)) {
@@ -206,7 +206,7 @@ bool testForwardMovementAndInterpolation() {
         controllerRequest(10001, 0));
     const auto controller_update =
         controller.update({
-            {true, {100, 200}}, nullptr, {}});
+            {true, {100, 200}}, nullptr, {}, {}});
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000010, visual)) {
@@ -257,7 +257,7 @@ bool testEnvironmentCollisionAndExpiry() {
         controllerRequest(10001, 0));
     auto controller_update =
         controller.update({
-            {true, {-180, 0}}, nullptr, {}});
+            {true, {-180, 0}}, nullptr, {}, {}});
     osf::RuntimeEffectActorSpawnRequest request =
         controller_update.actor_spawns[1];
     request.environment_audio = {3, 77};
@@ -502,6 +502,90 @@ bool testSpecialEnvironmentFiltering() {
         "the retail special-ground exclusion flag.");
 }
 
+bool testSeparateLifetimeChartAndDisplayStatus() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000000, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = 10000000;
+    request.lifetime_from_animation = true;
+    request.lifetime_animation_chart = 1;
+    request.animation_chart = 0;
+    request.animation_direction = 8;
+    request.additional_display_status = 0x80;
+
+    osf::RuntimeEffectActor actor;
+    return check(
+        actor.initialize(request, visual) &&
+            actor.animationChart() == 0 &&
+            actor.lifetime() ==
+                visual.animation()
+                    .charts()[1]
+                    .directions[8]
+                    .frame_count &&
+            actor.additionalDisplayStatus() == 0x80,
+        "A runtime actor could not draw one chart while using "
+        "another chart's retail lifetime and display status.");
+}
+
+bool testInvisibleDamageActor() {
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = -1;
+    request.owner_kind = 4;
+    request.source_character_number = 14000042;
+    request.target_mask = 1;
+    request.target_identifier = 3;
+    request.position = {100, 200};
+    request.judgement = {-150, -150, 150, 150};
+    request.lifetime = 1;
+    request.target_collision_start = 0;
+    request.target_collision_end = 0;
+    request.process_every_target = true;
+    request.visible = false;
+    request.has_packet = true;
+    request.packet.write(1, 3);
+    request.packet.write(36, 1000);
+
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind =
+        osf::RuntimeEffectTargetKind::player;
+    target.character_number = 0;
+    target.identifier = 0;
+    target.position = {100, 200};
+    target.current_life = 100;
+
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(
+                request,
+                static_cast<
+                    const osf::EffectVisualResource*>(
+                    nullptr)),
+            "An invisible descriptor without a visual resource "
+            "was rejected.")) {
+        return false;
+    }
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    osf::RetailRandom random(1);
+    const auto update = actor.update(
+        ground, objects, {target}, random);
+    return check(
+        !actor.visible() &&
+            actor.patterns().patterns().empty() &&
+            actor.animation().charts().empty() &&
+            update.target_collision_active &&
+            update.target_contacts.size() == 1 &&
+            update.target_contacts[0].identifier == 0 &&
+            update.target_contacts[0].receiver_action ==
+                osf::RuntimeEffectReceiverAction::apply_packet &&
+            update.expired &&
+            actor.expired(),
+        "The invisible one-update actor did not dispatch its "
+        "packet without entering the renderer.");
+}
+
 }  // namespace
 
 int main() {
@@ -511,7 +595,9 @@ int main() {
         !testInclusiveTargetWindow() ||
         !testTargetQueryPrecedesMovement() ||
         !testObjectAndBlockedStartAudioOrder() ||
-        !testSpecialEnvironmentFiltering()) {
+        !testSpecialEnvironmentFiltering() ||
+        !testSeparateLifetimeChartAndDisplayStatus() ||
+        !testInvisibleDamageActor()) {
         return 1;
     }
     return 0;

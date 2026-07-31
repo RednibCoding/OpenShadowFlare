@@ -98,7 +98,7 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller types 4, 5, 10, 11, 12, 13, 14, 16, and 21 one
+- finish effect-controller types 5, 10, 11, 12, 13, 14, 16, and 21 one
   shipped family at a time, with both passive timing coverage and a live actor
   using each one;
 - finish ranged player actions and projectiles without bypassing the common
@@ -999,8 +999,19 @@ permanently stops after the first blocked position. Every clear wave creates
 the retail `10000030/31/32` layers and sample 21; only the random-chart first
 layer applies the packet on update zero. Scenario `00010001` provides the
 shipped live regression for rendering, player damage, controller cleanup, and
-unchanged item ownership. Types 4, 5, 10, 11, 12, 13, 14, 16, and 21 still
-need the same controller-by-controller work.
+unchanged item ownership.
+
+Type 4 is complete too. Its moving-source warning appears on update three as
+resource `10000002` in retail display class two. At the authored update-ten
+burst, the source is resolved again and resource `10000000` is created twice:
+chart one at the upper judgement corner and chart zero at the lower corner,
+with both lifetimes taken from chart one. Samples 29 and 23 play together, an
+invisible one-update actor applies the copied packet across the source bounds
+expanded by 150, and a player within 3001 world units receives the exact
+eight-update, six-pixel alternating vertical camera jolt. Scenario `01000004`
+provides the shipped live render, damage, audio, camera, and ownership case.
+Types 5, 10, 11, 12, 13, 14, 16, and 21 still need the same
+controller-by-controller work.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1029,8 +1040,8 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 4, 5, 10, 11, 12, 13, 14,
-16, and 21, then the ranged player actions and companion attacks, keeping one
+finish. It should move to effect-controller types 5, 10, 11, 12, 13, 14, 16,
+and 21, then the ranged player actions and companion attacks, keeping one
 shipped live encounter beside each passive reconstruction.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must

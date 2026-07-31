@@ -14,6 +14,7 @@ namespace {
 constexpr std::int32_t kTypeOneEffect = 10001;
 constexpr std::int32_t kTypeTwoEffect = 10002;
 constexpr std::int32_t kTypeThreeEffect = 10003;
+constexpr std::int32_t kTypeFourEffect = 10004;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
@@ -21,9 +22,13 @@ constexpr std::int32_t kTypeTwoChildResource = 10000040;
 constexpr std::int32_t kTypeThreeFirstResource = 10000030;
 constexpr std::int32_t kTypeThreeSecondResource = 10000031;
 constexpr std::int32_t kTypeThreeThirdResource = 10000032;
+constexpr std::int32_t kTypeFourWarningResource = 10000002;
+constexpr std::int32_t kTypeFourBurstResource = 10000000;
 constexpr std::int32_t kTypeOneAudioSample = 19;
 constexpr std::int32_t kTypeTwoAudioSample = 94;
 constexpr std::int32_t kTypeThreeAudioSample = 21;
+constexpr std::int32_t kTypeFourFirstAudioSample = 29;
+constexpr std::int32_t kTypeFourSecondAudioSample = 23;
 constexpr std::int32_t kChildDistance = 180;
 constexpr std::int32_t kChildRadius = 50;
 constexpr std::int32_t kTypeThreeFirstRadius = 250;
@@ -31,11 +36,18 @@ constexpr std::int32_t kTypeThreeRadiusStep = 200;
 constexpr std::int32_t kTypeThreeWavePeriod = 4;
 constexpr std::int32_t kTypeThreeRadius = 100;
 constexpr std::int32_t kTypeThreeWaveTable = 205;
+constexpr std::int32_t kTypeFourWarningUpdate = 3;
+constexpr std::int32_t kTypeFourDisplayHeight = 200;
+constexpr std::int32_t kTypeFourDamageExpansion = 150;
+constexpr std::int32_t kTypeFourShakeRange = 3001;
+constexpr std::int32_t kTypeFourShakeDuration = 8;
+constexpr std::int32_t kTypeFourShakeMagnitude = 6;
 
 bool supportedEffect(std::int32_t effect_number) {
     return effect_number == kTypeOneEffect ||
            effect_number == kTypeTwoEffect ||
-           effect_number == kTypeThreeEffect;
+           effect_number == kTypeThreeEffect ||
+           effect_number == kTypeFourEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -178,6 +190,90 @@ RuntimeEffectActorSpawnRequest typeThreeActor(
     return actor;
 }
 
+RuntimeEffectActorSpawnRequest typeFourVisual(
+    const CombatEffectSpawnRequest& request,
+    WorldPosition position,
+    ObjectBounds judgement,
+    std::int32_t resource_id,
+    std::int32_t chart,
+    std::int32_t lifetime_chart,
+    std::int32_t display_height,
+    std::int32_t additional_status) {
+    RuntimeEffectActorSpawnRequest actor;
+    actor.controller_effect_number =
+        request.effect_number;
+    actor.resource_id = resource_id;
+    actor.owner_kind = request.owner_kind;
+    actor.source_character_number =
+        request.source_character_number;
+    actor.position = position;
+    actor.judgement = judgement;
+    actor.display_height = display_height;
+    actor.lifetime_from_animation = true;
+    actor.lifetime_animation_chart =
+        lifetime_chart;
+    actor.animation_chart = chart;
+    actor.animation_direction = 8;
+    actor.additional_display_status =
+        additional_status;
+    return actor;
+}
+
+RuntimeEffectActorSpawnRequest typeFourDamageActor(
+    const CombatEffectSpawnRequest& request,
+    WorldPosition position) {
+    const ObjectBounds source =
+        request.has_source_judgement
+            ? request.source_judgement
+            : ObjectBounds{};
+    RuntimeEffectActorSpawnRequest actor;
+    actor.controller_effect_number =
+        request.effect_number;
+    actor.resource_id = -1;
+    actor.owner_kind = request.owner_kind;
+    actor.source_character_number =
+        request.source_character_number;
+    actor.target_mask = request.target_kind;
+    actor.target_identifier =
+        request.target_identifier;
+    actor.position = position;
+    actor.judgement = {
+        retailSubtract(
+            source.left,
+            kTypeFourDamageExpansion),
+        retailSubtract(
+            source.top,
+            kTypeFourDamageExpansion),
+        retailAdd(
+            source.right,
+            kTypeFourDamageExpansion),
+        retailAdd(
+            source.bottom,
+            kTypeFourDamageExpansion),
+    };
+    actor.display_height = kTypeFourDisplayHeight;
+    actor.lifetime = 1;
+    actor.target_collision_start = 0;
+    actor.target_collision_end = 0;
+    actor.process_every_target = true;
+    actor.animation_chart = 0;
+    actor.animation_direction = 8;
+    actor.visible = false;
+    actor.has_packet = request.has_packet;
+    actor.packet = request.packet;
+    return actor;
+}
+
+std::int32_t positionDistance(
+    WorldPosition first,
+    WorldPosition second) {
+    return static_cast<std::int32_t>(
+        std::trunc(
+            std::hypot(
+                static_cast<double>(first.x) - second.x,
+                static_cast<double>(first.y) - second.y)));
+}
+
 }  // namespace
 
 bool EnemyEffectController::initialize(
@@ -296,6 +392,98 @@ EnemyEffectController::update(
             active_ = false;
             result.expired = true;
         }
+        return result;
+    }
+
+    if (request_.effect_number == kTypeFourEffect) {
+        if (counter_ == kTypeFourWarningUpdate) {
+            const ObjectBounds judgement =
+                request_.has_source_judgement
+                    ? request_.source_judgement
+                    : ObjectBounds{};
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                typeFourVisual(
+                    request_,
+                    resolvedPosition(
+                        request_, context.source),
+                    judgement,
+                    kTypeFourWarningResource,
+                    0,
+                    0,
+                    0,
+                    0x80);
+        }
+
+        if (counter_ == request_.constructor_value_12) {
+            const WorldPosition position =
+                resolvedPosition(
+                    request_, context.source);
+            const ObjectBounds source =
+                request_.has_source_judgement
+                    ? request_.source_judgement
+                    : ObjectBounds{};
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                typeFourVisual(
+                    request_,
+                    position,
+                    {
+                        retailSubtract(source.left, 1),
+                        retailSubtract(source.top, 1),
+                        retailSubtract(source.left, 1),
+                        retailSubtract(source.top, 1),
+                    },
+                    kTypeFourBurstResource,
+                    1,
+                    1,
+                    kTypeFourDisplayHeight,
+                    0);
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                typeFourVisual(
+                    request_,
+                    position,
+                    {
+                        retailAdd(source.right, 1),
+                        retailAdd(source.bottom, 1),
+                        retailAdd(source.right, 1),
+                        retailAdd(source.bottom, 1),
+                    },
+                    kTypeFourBurstResource,
+                    0,
+                    1,
+                    kTypeFourDisplayHeight,
+                    0);
+            result.audio[result.audio_count++] = {
+                kTypeFourFirstAudioSample,
+                position,
+            };
+            result.audio[result.audio_count++] = {
+                kTypeFourSecondAudioSample,
+                position,
+            };
+            if (context.observer.found &&
+                positionDistance(
+                    context.observer.position,
+                    position) <
+                    kTypeFourShakeRange) {
+                result.camera_shake = true;
+                result.camera_shake_duration =
+                    kTypeFourShakeDuration;
+                result.camera_shake_magnitude =
+                    kTypeFourShakeMagnitude;
+            }
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                typeFourDamageActor(
+                    request_, position);
+            active_ = false;
+            result.expired = true;
+            return result;
+        }
+
+        counter_ = retailAdd(counter_, 1);
         return result;
     }
 

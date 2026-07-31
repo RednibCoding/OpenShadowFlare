@@ -66,6 +66,22 @@ target with the copied packet. The other two are chart-zero visual layers.
 Sample 21 plays once at the wave position. The controller expires at
 `delay + wave count * 4`, separately from all three actors' CAF lifetimes.
 
+Type 4 at `0x0042a860` re-resolves its source twice. Update three creates
+resource `10000002` at the current source with the complete source judgement,
+chart zero, direction eight, and additional display status `0x80`. At the
+authored delay it resolves the source again and creates resource `10000000`
+twice at the upper and lower opposite judgement corners. The first draws
+chart one. The second draws chart zero but still derives its lifetime from
+chart one. Both use display height 200.
+
+The same delayed update plays samples 29 and 23 and creates a third, invisible
+actor with the source judgement expanded by 150 on all sides. That actor has
+a one-update lifetime, an update-zero collision window, processes every
+eligible target, and carries the copied packet. A local player at a strict
+distance below 3001 also starts camera shake mode zero for eight updates at
+magnitude six. `0x00412720` alternates vertical offsets zero and six before
+clearing the request at counter eight.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -82,7 +98,7 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1, 2, and 3. Focused tests cover zero, positive, and negative delays,
+of types 1, 2, 3, and 4. Focused tests cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
 random chart, and persistent obstruction. Its actor outputs are
@@ -104,8 +120,10 @@ pairs preserve the retail one-sound guard and NPC multi-target mode.
 The world owns and renders these controllers and actors, builds their live
 target snapshots, and applies their receiver requests. Shipped regressions
 cover type 2 in `03000507` and the type-3 Plasma Bat in `00010001`, including
-resources, audio, damage, cleanup, and unchanged item ownership. The other
-nine specialized controllers remain to be reconstructed. Mapping
+resources, audio, damage, cleanup, and unchanged item ownership. Scenario
+`01000004` covers type 4's warning, paired burst charts, invisible damage,
+two sounds, camera shake, and item ownership. The other eight specialized
+controllers remain to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 

@@ -1334,7 +1334,7 @@ enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
 `EnemyEffectController` now ports the complete controller half of types 1, 2,
-and 3 without pretending that every specialized family is finished. It emits the
+3, and 4 without pretending that every specialized family is finished. It emits the
 source actor on update zero, re-resolves the source at the exact authored
 delay, projects the second actor with the retail Y-axis convention, copies the
 combat packet, and places sample 19 or 94 at that second position. A zero delay
@@ -1348,6 +1348,25 @@ sample 21. Passive timing and obstruction tests are paired with the shipped
 Plasma Bat in scenario `00010001`; the live case renders all three resources,
 passes the first layer through the ordinary player receiver, and preserves
 the player's item owners.
+
+Type 4 (`0x0042a860`) follows the source rather than storing a fixed origin.
+On update three it resolves the source position and creates resource
+`10000002` with the source judgement, chart zero, direction eight, and
+additional display status `0x80`. On the authored delay, which is ten for the
+shipped request, it resolves the source again. Resource `10000000` is then
+created at each opposite judgement corner with display height 200: the first
+actor draws chart one, while the second draws chart zero but deliberately
+uses chart one's frame count as its lifetime.
+
+That delayed update also plays positional samples 29 and 23 and creates an
+invisible one-update actor. Its judgement expands every source edge by 150,
+its collision window is update zero only, and it passes the copied packet to
+every eligible target. The controller expires immediately after those three
+actors have been handed to the runtime list. When the local player is less
+than 3001 world units from the resolved source, the same update requests mode
+zero camera shake: duration eight and magnitude six. `0x00412690` stores the
+request and `0x00412720` alternates a zero/six vertical world offset until the
+eighth update, after which the camera is steady again.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
@@ -1372,10 +1391,12 @@ the receiver boundary. Target and object sound pairs share the original
 once-per-update guard, including the distinct NPC multi-target spatial mode,
 while static contact uses the actor's pre-movement position.
 
-This common behavior is still passive at the world boundary. The next slice
-will own the live controller and actor lists, construct target snapshots from
-the real world owners, apply the typed receiver requests, queue their sounds,
-and render the two type-1/type-2 actor resources.
+The live world owner now constructs target snapshots, applies typed receiver
+requests, queues positional sounds, and renders the runtime actor resources.
+Its type-4 support also keeps invisible packet actors outside the renderer,
+honors a lifetime chart separate from the displayed chart, carries additional
+display status into the retail sort classes, and applies the short camera
+shake without changing the portable presentation backend.
 
 ## Enemy kill rewards
 

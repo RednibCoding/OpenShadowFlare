@@ -587,6 +587,219 @@ bool testShippedLiveTypeThree(
         "Table 205's twenty updates.");
 }
 
+bool testShippedLiveTypeFour(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-four parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectQuake";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {1000004, 0, 0},
+                &error),
+            "The shipped type-four effect scenario could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto source = std::find_if(
+        world.enemies().begin(),
+        world.enemies().end(),
+        [](const osf::EnemyActor& enemy) {
+            return enemy.presentationProfile()
+                       .effect_type[0] == 4;
+        });
+    if (!check(
+            source != world.enemies().end(),
+            "Scenario 01000004 no longer contains its shipped "
+            "type-four enemy family.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(world, *source, tables);
+    request.owner_kind = 1;
+    request.source_character_number = 0;
+    request.packet.write(2, source->characterNumber());
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    const std::int32_t camera_y =
+        world.cameraScreenY();
+    if (!check(
+            request.valid &&
+                request.effect_number == 10004 &&
+                request.constructor_value_12 == 10 &&
+                body_before,
+            "The shipped enemy did not resolve a valid "
+            "type-four request or starter ownership fixture.")) {
+        return false;
+    }
+
+    world.queueCombatEffect(request);
+    for (std::int32_t update_number = 0;
+         update_number <= 3;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    const auto warning = std::find_if(
+        world.runtimeEffects().begin(),
+        world.runtimeEffects().end(),
+        [](const osf::RuntimeEffectActor& actor) {
+            return actor.resourceId() == 10000002;
+        });
+    if (!check(
+            warning != world.runtimeEffects().end() &&
+                warning->additionalDisplayStatus() == 0x80 &&
+                warning->animationChart() == 0 &&
+                world.runtimeEffectControllerCount() == 1,
+            "The shipped type-four controller did not create its "
+            "warning actor on update three.")) {
+        return false;
+    }
+
+    world.update();
+    world.takeAudioSamples();
+    const osf::RuntimeEffectActor* warning_actor =
+        nullptr;
+    for (const osf::RuntimeEffectActor& actor :
+         world.runtimeEffects()) {
+        if (actor.resourceId() == 10000002) {
+            warning_actor = &actor;
+            break;
+        }
+    }
+    RecordingBackend warning_backend;
+    osf::renderWorldGeometry(warning_backend, world);
+    if (!check(
+            warning_actor &&
+                std::any_of(
+                    warning_backend.patterns.begin(),
+                    warning_backend.patterns.end(),
+                    [warning_actor](
+                        const RecordingBackend::PatternCall&
+                            call) {
+                        return call.image ==
+                               &warning_actor->patterns();
+                    }),
+            "The live type-four warning actor did not enter the "
+            "world renderer.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 5;
+         update_number < 10;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    world.update();
+    const std::vector<std::int32_t> burst_audio =
+        world.takeAudioSamples();
+    const auto first_burst = std::find_if(
+        world.runtimeEffects().begin(),
+        world.runtimeEffects().end(),
+        [](const osf::RuntimeEffectActor& actor) {
+            return actor.resourceId() == 10000000 &&
+                   actor.animationChart() == 1;
+        });
+    const auto second_burst = std::find_if(
+        world.runtimeEffects().begin(),
+        world.runtimeEffects().end(),
+        [](const osf::RuntimeEffectActor& actor) {
+            return actor.resourceId() == 10000000 &&
+                   actor.animationChart() == 0;
+        });
+    const auto invisible = std::find_if(
+        world.runtimeEffects().begin(),
+        world.runtimeEffects().end(),
+        [](const osf::RuntimeEffectActor& actor) {
+            return actor.resourceId() == -1;
+        });
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                first_burst != world.runtimeEffects().end() &&
+                second_burst != world.runtimeEffects().end() &&
+                invisible != world.runtimeEffects().end() &&
+                !invisible->visible() &&
+                invisible->hasPacket() &&
+                containsSample(burst_audio, 29) &&
+                containsSample(burst_audio, 23) &&
+                world.cameraScreenY() == camera_y,
+            "The shipped type-four burst lost one of its actors, "
+            "sounds, or zero-offset first shake update.")) {
+        return false;
+    }
+
+    world.update();
+    world.takeAudioSamples();
+    if (!check(
+            world.cameraScreenY() == camera_y - 6 &&
+                world.playerData().currentLife() < life_before &&
+                sameItems(
+                    world.playerInventory().items(),
+                    inventory_before) &&
+                sameItems(
+                    world.playerBelt().items(),
+                    belt_before) &&
+                world.playerEquipment().item(
+                    osf::EquipmentSlot::body) &&
+                sameItem(
+                    *world.playerEquipment().item(
+                        osf::EquipmentSlot::body),
+                    body_copy),
+            "The live type-four damage actor, first camera jolt, "
+            "or adjacent item ownership differs.")) {
+        return false;
+    }
+
+    for (std::int32_t shake_counter = 2;
+         shake_counter <= 8;
+         ++shake_counter) {
+        world.update();
+        world.takeAudioSamples();
+        const std::int32_t expected =
+            shake_counter < 8 &&
+                    (shake_counter & 1) != 0
+                ? camera_y - 6
+                : camera_y;
+        if (!check(
+                world.cameraScreenY() == expected,
+                "The live type-four camera jolt did not alternate "
+                "for exactly eight retail updates.")) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -688,6 +901,7 @@ int main() {
     return testMissBounceAndFade(data_root) &&
                    testShippedLiveProjectile(data_root) &&
                    testShippedLiveTypeThree(data_root) &&
+                   testShippedLiveTypeFour(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;

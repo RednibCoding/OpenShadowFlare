@@ -119,7 +119,17 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                 source,
                 context.random,
                 context.placement_is_clear,
+                context.provide_observer
+                    ? context.provide_observer()
+                    : EnemyEffectControllerSource{},
             });
+        if (update.camera_shake) {
+            result.camera_shake = true;
+            result.camera_shake_duration =
+                update.camera_shake_duration;
+            result.camera_shake_magnitude =
+                update.camera_shake_magnitude;
+        }
         for (std::size_t index = 0;
              index < update.audio_count;
              ++index) {
@@ -141,13 +151,16 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
             next_actor_id_ =
                 retailAdd(next_actor_id_, 1);
             const EffectVisualResource* visual =
-                context.resolve_visual(
-                    request.resource_id);
-            if (!visual) {
+                request.resource_id >= 0
+                    ? context.resolve_visual(
+                          request.resource_id)
+                    : nullptr;
+            if (request.resource_id >= 0 &&
+                !visual) {
                 continue;
             }
             RuntimeEffectActor actor;
-            if (actor.initialize(request, *visual)) {
+            if (actor.initialize(request, visual)) {
                 actors_.push_back(std::move(actor));
             }
         }

@@ -30,6 +30,7 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t display_height = 0;
     std::int32_t lifetime = -1;
     bool lifetime_from_animation = false;
+    std::int32_t lifetime_animation_chart = -1;
     bool collide_with_environment = true;
     bool expire_on_environment_collision = false;
     std::int32_t target_collision_start = -1;
@@ -42,6 +43,7 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t animation_chart = 0;
     std::int32_t animation_direction = 8;
     std::int32_t animation_speed = 1000;
+    std::int32_t additional_display_status = 0;
     bool visible = true;
     bool has_packet = false;
     CombatPacket packet;
@@ -62,6 +64,9 @@ public:
     bool initialize(
         const RuntimeEffectActorSpawnRequest& request,
         const EffectVisualResource& visual);
+    bool initialize(
+        const RuntimeEffectActorSpawnRequest& request,
+        const EffectVisualResource* visual);
     RuntimeEffectActorUpdate update(
         const GroundMap& ground,
         const ObjectMap& objects);
@@ -83,6 +88,7 @@ public:
     std::int32_t animationDirection() const;
     std::int32_t animationFrame() const;
     std::int32_t displayHeight() const;
+    std::int32_t additionalDisplayStatus() const;
     std::int32_t counter() const;
     std::int32_t movementCounter() const;
     std::int32_t lifetime() const;

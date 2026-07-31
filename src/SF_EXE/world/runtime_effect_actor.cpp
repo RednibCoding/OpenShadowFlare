@@ -69,14 +69,40 @@ bool collisionWindowActive(
 bool RuntimeEffectActor::initialize(
     const RuntimeEffectActorSpawnRequest& request,
     const EffectVisualResource& visual) {
+    return initialize(request, &visual);
+}
+
+bool RuntimeEffectActor::initialize(
+    const RuntimeEffectActorSpawnRequest& request,
+    const EffectVisualResource* visual) {
     *this = {};
-    const gapi::CafDirection* direction =
-        selectedDirection(
-            visual,
-            request.animation_chart,
-            request.animation_direction);
-    if (request.resource_id < 0 ||
-        !direction || direction->frame_count < 1) {
+    const bool invisible_without_resource =
+        !request.visible && request.resource_id < 0;
+    const std::int32_t lifetime_chart =
+        request.lifetime_animation_chart >= 0
+            ? request.lifetime_animation_chart
+            : request.animation_chart;
+    const gapi::CafDirection* lifetime_direction =
+        visual
+            ? selectedDirection(
+                  *visual,
+                  lifetime_chart,
+                  request.animation_direction)
+            : nullptr;
+    const gapi::CafDirection* display_direction =
+        visual
+            ? selectedDirection(
+                  *visual,
+                  request.animation_chart,
+                  request.animation_direction)
+            : nullptr;
+    if ((!invisible_without_resource &&
+         (request.resource_id < 0 ||
+          !display_direction ||
+          display_direction->frame_count < 1)) ||
+        (request.lifetime_from_animation &&
+         (!lifetime_direction ||
+          lifetime_direction->frame_count < 1))) {
         return false;
     }
 
@@ -86,9 +112,9 @@ bool RuntimeEffectActor::initialize(
     previous_position_ = request.position;
     lifetime_ =
         request.lifetime_from_animation
-            ? direction->frame_count
+            ? lifetime_direction->frame_count
             : request.lifetime;
-    visual_ = &visual;
+    visual_ = visual;
     return true;
 }
 
@@ -110,7 +136,7 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
     RetailRandom& random) {
     RuntimeEffectActorUpdate result;
     result.intended_position = position_;
-    if (expired_ || !visual_) {
+    if (expired_ || (request_.visible && !visual_)) {
         result.expired = true;
         return result;
     }
@@ -215,25 +241,27 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
         position_ = result.intended_position;
     }
 
-    const gapi::CafChart* chart =
-        selectedChart(
-            *visual_, request_.animation_chart);
-    const gapi::CafDirection* direction =
-        selectedDirection(
-            *visual_,
-            request_.animation_chart,
-            request_.animation_direction);
-    animation_frame_ =
-        retailMultiply(
-            request_.animation_speed,
-            counter_) /
-        1000;
-    if (chart && direction &&
-        (chart->status & 1) == 0) {
-        animation_frame_ = std::min(
-            animation_frame_,
-            static_cast<std::int32_t>(
-                direction->frame_count - 1));
+    if (visual_) {
+        const gapi::CafChart* chart =
+            selectedChart(
+                *visual_, request_.animation_chart);
+        const gapi::CafDirection* direction =
+            selectedDirection(
+                *visual_,
+                request_.animation_chart,
+                request_.animation_direction);
+        animation_frame_ =
+            retailMultiply(
+                request_.animation_speed,
+                counter_) /
+            1000;
+        if (chart && direction &&
+            (chart->status & 1) == 0) {
+            animation_frame_ = std::min(
+                animation_frame_,
+                static_cast<std::int32_t>(
+                    direction->frame_count - 1));
+        }
     }
 
     counter_ = retailAdd(counter_, 1);
@@ -299,6 +327,11 @@ std::int32_t RuntimeEffectActor::displayHeight() const {
     return request_.display_height;
 }
 
+std::int32_t
+RuntimeEffectActor::additionalDisplayStatus() const {
+    return request_.additional_display_status;
+}
+
 std::int32_t RuntimeEffectActor::counter() const {
     return counter_;
 }
@@ -325,7 +358,7 @@ bool RuntimeEffectActor::hasUpdated() const {
 
 bool RuntimeEffectActor::targetCollisionActive() const {
     return !expired_ &&
-           visual_ &&
+           (visual_ || !request_.visible) &&
            collisionWindowActive(request_, counter_);
 }
 
@@ -350,12 +383,14 @@ bool RuntimeEffectActor::partEnabled(
 
 const gapi::NjpImage&
 RuntimeEffectActor::patterns() const {
-    return visual_->patterns();
+    static const gapi::NjpImage empty;
+    return visual_ ? visual_->patterns() : empty;
 }
 
 const gapi::CafAnimation&
 RuntimeEffectActor::animation() const {
-    return visual_->animation();
+    static const gapi::CafAnimation empty;
+    return visual_ ? visual_->animation() : empty;
 }
 
 }  // namespace osf
