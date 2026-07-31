@@ -1311,3 +1311,24 @@ The Warehouse's opcode 41 owner stays on the left while backpack and equipment
 stay on the right, and the camera remains centered when both are open. The
 same camera policy applies to a left map with the right inventory. Item
 transfers between Warehouse and backpack are exercised in both directions.
+
+Player ranged action 20 now follows `FUN_00437fe0` through a shipped Wood
+Bowgun encounter. Chart 10 has 17 frames, launches from its frame-three
+`0x40` marker, plays sample 3 at counter six, and uses the ten ranged frame
+factors from 0.3 through 2.0. Raw Item.Ibn weapon fields `0xb8`, `0xbc`,
+`0xc0`, and `0xc8` select the generic effect family, one/two/three/five/seven
+shot pattern, travel speed, and target piercing. The two-shot pattern places
+parallel projectiles at explicit minus/plus-eight-degree origins; the other
+straight and homing fans use their authored angular spreads.
+
+Ranged physical attack keeps full strength in job five and otherwise uses the
+job-five history count from `FUN_00450f80`, scaled from 40 through 90 percent.
+The common family-zero packet now carries hit rate in word 36 for effect-actor
+evasion. Reflection and hit-effect random draws stay in native order, the
+whole fan costs one weapon durability, and explicit-origin projectiles keep
+player kill attribution through their packet. Generic effect types 0, 1, 4,
+and 5 enter the existing category-50000000 owner with 30-unit bounds, static
+and target collision, sample 20, optional homing, and optional remembered
+targets. Retail ships no subtype-four weapon record, and action 20's
+increased-power redirect to action 21 remains with the later status/skill
+work.

@@ -50,6 +50,7 @@ void appendAudio(
 
 void RuntimeEffectSystem::clear() {
     controllers_.clear();
+    pending_actors_.clear();
     actors_.clear();
     next_actor_id_ = 0;
 }
@@ -66,6 +67,16 @@ bool RuntimeEffectSystem::queue(
         request.owner_kind,
         request.source_character_number,
     });
+    return true;
+}
+
+bool RuntimeEffectSystem::queueActor(
+    RuntimeEffectActorSpawnRequest request) {
+    if (request.resource_id < 0 &&
+        request.visible) {
+        return false;
+    }
+    pending_actors_.push_back(std::move(request));
     return true;
 }
 
@@ -89,6 +100,28 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                        actor.hasUpdated();
             }),
         actors_.end());
+
+    for (RuntimeEffectActorSpawnRequest& request :
+         pending_actors_) {
+        request.actor_identifier =
+            retailAdd(
+                kRuntimeEffectCharacterBase,
+                next_actor_id_);
+        next_actor_id_ =
+            retailAdd(next_actor_id_, 1);
+        const EffectVisualResource* visual =
+            request.resource_id >= 0
+                ? context.resolve_visual(request.resource_id)
+                : nullptr;
+        if (request.resource_id >= 0 && !visual) {
+            continue;
+        }
+        RuntimeEffectActor actor;
+        if (actor.initialize(request, visual)) {
+            actors_.push_back(std::move(actor));
+        }
+    }
+    pending_actors_.clear();
 
     for (RuntimeEffectActor& actor : actors_) {
         const std::vector<RuntimeEffectTargetSnapshot>

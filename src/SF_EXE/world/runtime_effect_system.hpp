@@ -63,6 +63,8 @@ public:
     bool queue(
         const CombatEffectSpawnRequest& request,
         const TableDatabase* tables = nullptr);
+    bool queueActor(
+        RuntimeEffectActorSpawnRequest request);
     RuntimeEffectSystemUpdate update(
         const RuntimeEffectSystemContext& context);
 
@@ -77,6 +79,8 @@ private:
     };
 
     std::vector<ControllerEntry> controllers_;
+    std::vector<RuntimeEffectActorSpawnRequest>
+        pending_actors_;
     std::vector<RuntimeEffectActor> actors_;
     std::int32_t next_actor_id_ = 0;
 };

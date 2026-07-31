@@ -32,7 +32,7 @@ The portable executable already has a solid front half:
 - the in-game Settings, Help, Mission List, and Map screens
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
-- the ordinary player/enemy combat loop through death, rewards, and pickup
+- ordinary melee and basic ranged combat through death, rewards, and pickup
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -94,12 +94,10 @@ simulation runs.
 
 ## Current milestone: take combat beyond the first Goblin
 
-The ordinary encounter is now proven in the live outdoor map, all the way from
-targeting through pickup and save/reload. The next useful combat work is the
-behavior that cannot be exercised by that first sword fight:
+The ordinary and basic ranged encounters are now proven in the live outdoor
+map, all the way from targeting through pickup and save/reload. The next useful
+combat work is the behavior that cannot be exercised by either solo fight:
 
-- finish ranged player actions and projectiles without bypassing the common
-  effect actors;
 - attach companion targeting and attacks to the same receiver and reward
   owners;
 - keep checking item state, audio, experience, and saving beside each change
@@ -1151,9 +1149,37 @@ Gold Find, stacking, and save path remain covered by their deterministic
 reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
-The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to ranged player actions and companion attacks, keeping
-one shipped live encounter beside each passive reconstruction.
+The standard ranged-player path is complete now. A shipped Wood Bowgun starts
+action 20 at any pointer-visible enemy distance, holds the player in CAF chart
+10, launches on its authored frame-three marker, and plays sample 3 at counter
+six. Ranged animation uses its own ten speed factors from 0.3 through 2.0 and
+ends on chart 10's final frame without a melee recovery chart.
+
+Item.Ibn drives the projectile rather than a weapon-name switch. Its effect
+selector chooses generic actor type 1, 0, 4, or 5; its pattern selects the
+straight or homing one-, two-, three-, five-, or seven-shot layout; and its
+remaining fields provide travel speed and piercing. Double Bowgun creates two
+explicit launch points at minus and plus eight degrees while keeping the shots
+parallel. The wider fans use the original 8-, 10-, or 15-degree spacing.
+
+These projectiles enter the same category-50000000 actor system as enemy
+effects, with retail bounds, projected or explicit origins, target mask,
+environment collision, evasion, sample 20, receiver packet, homing, piercing
+memory, and first-target expiry. The family-zero packet preserves player
+attribution even for explicit-origin shots. Job-five history supplies the
+off-job physical-attack scale, and a complete fan costs one point of main-hand
+durability. Passive tests cover every pattern and effect selector; a shipped
+live encounter covers the CAF, projectile render owner, damage, launch/contact
+audio, no-approach targeting, and durability.
+
+Retail contains no subtype-four weapon record to exercise action 19. Action
+20's 33-percent action-21 redirect also depends on the not-yet-reconstructed
+increased-power state. Those two facts are recorded rather than filled with
+made-up behavior.
+
+The next combat work is companion targeting and attacks, keeping one shipped
+live case beside each passive reconstruction and sharing the existing
+receiver, effect, reward, audio, and persistence owners.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,

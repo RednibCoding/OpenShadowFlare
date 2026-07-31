@@ -27,6 +27,19 @@ constexpr std::array<double, 10> kAttackSpeedFactors{{
     1.5,
 }};
 
+constexpr std::array<double, 10> kRangedAttackSpeedFactors{{
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.8,
+    1.0,
+    1.2,
+    1.4,
+    1.7,
+    2.0,
+}};
+
 struct AttackCharts {
     std::int32_t first = -1;
     std::int32_t recovery = -1;
@@ -43,17 +56,24 @@ AttackCharts chartsForAction(PlayerAttackAction action) {
         return {19, 20};
     case PlayerAttackAction::ranged_19:
     case PlayerAttackAction::ranged_20:
-        return {};
+        return {10, -1};
     }
     return {};
 }
 
 bool usesBasicCounterOrder(PlayerAttackAction action) {
-    return action == PlayerAttackAction::basic;
+    return action == PlayerAttackAction::basic ||
+           action == PlayerAttackAction::ranged_19 ||
+           action == PlayerAttackAction::ranged_20;
+}
+
+bool rangedAction(PlayerAttackAction action) {
+    return action == PlayerAttackAction::ranged_19 ||
+           action == PlayerAttackAction::ranged_20;
 }
 
 std::int32_t swingSoundCounter(PlayerAttackAction action) {
-    return usesBasicCounterOrder(action) ? 5 : 6;
+    return action == PlayerAttackAction::basic ? 5 : 6;
 }
 
 }  // namespace
@@ -81,7 +101,12 @@ PlayerAttackAction retailPlayerAttackAction(
 
 bool playerAttackActionIsSupported(PlayerAttackAction action) {
     const AttackCharts charts = chartsForAction(action);
-    return charts.first >= 0 && charts.recovery >= 0;
+    return charts.first >= 0 &&
+           (charts.recovery >= 0 || rangedAction(action));
+}
+
+bool playerAttackActionIsRanged(PlayerAttackAction action) {
+    return rangedAction(action);
 }
 
 bool buildPlayerAttackAnimationTiming(
@@ -92,12 +117,9 @@ bool buildPlayerAttackAnimationTiming(
     timing = {};
     const AttackCharts charts = chartsForAction(action);
     if (charts.first < 0 ||
-        charts.recovery < 0 ||
         direction < 0 ||
         direction >= 9 ||
         static_cast<std::size_t>(charts.first) >=
-            animation.charts().size() ||
-        static_cast<std::size_t>(charts.recovery) >=
             animation.charts().size()) {
         return false;
     }
@@ -106,20 +128,29 @@ bool buildPlayerAttackAnimationTiming(
         animation.charts()[
             static_cast<std::size_t>(charts.first)]
             .directions[static_cast<std::size_t>(direction)];
-    const gapi::CafDirection& recovery_direction =
-        animation.charts()[
-            static_cast<std::size_t>(charts.recovery)]
-            .directions[static_cast<std::size_t>(direction)];
-    if (first_direction.frame_count <= 0 ||
-        recovery_direction.frame_count <= 0) {
+    if (first_direction.frame_count <= 0) {
         return false;
     }
 
     timing.first_chart = charts.first;
     timing.recovery_chart = charts.recovery;
     timing.first_frame_count = first_direction.frame_count;
-    timing.recovery_frame_count =
-        recovery_direction.frame_count;
+    if (charts.recovery >= 0) {
+        if (static_cast<std::size_t>(charts.recovery) >=
+            animation.charts().size()) {
+            return false;
+        }
+        const gapi::CafDirection& recovery_direction =
+            animation.charts()[
+                static_cast<std::size_t>(charts.recovery)]
+                .directions[
+                    static_cast<std::size_t>(direction)];
+        if (recovery_direction.frame_count <= 0) {
+            return false;
+        }
+        timing.recovery_frame_count =
+            recovery_direction.frame_count;
+    }
     if (!first_direction.parts.empty()) {
         const std::vector<gapi::CafCell>& cells =
             first_direction.parts.front();
@@ -157,7 +188,8 @@ bool PlayerAttackActionController::start(
     if (target_id < 0 ||
         !playerAttackActionIsSupported(action) ||
         timing.first_frame_count <= 0 ||
-        timing.recovery_frame_count <= 0) {
+        (!rangedAction(action) &&
+         timing.recovery_frame_count <= 0)) {
         return false;
     }
 
@@ -190,7 +222,9 @@ PlayerAttackActionEvent PlayerAttackActionController::update(
     }
 
     const double factor =
-        kAttackSpeedFactors[
+        (rangedAction(action_)
+             ? kRangedAttackSpeedFactors
+             : kAttackSpeedFactors)[
             static_cast<std::size_t>(attack_speed_tier_)];
     if (usesBasicCounterOrder(action_)) {
         displayed_frame_ = static_cast<std::int32_t>(
@@ -206,9 +240,15 @@ PlayerAttackActionEvent PlayerAttackActionController::update(
     PlayerAttackActionEvent event = eventForCurrentFrame();
     event.swing_sound_due =
         action_counter_ == swingSoundCounter(action_);
-    if (animation_chart_ == timing_.recovery_chart &&
-        animation_frame_ ==
-            timing_.recovery_frame_count - 1) {
+    const bool final_frame =
+        rangedAction(action_)
+            ? animation_chart_ == timing_.first_chart &&
+                  animation_frame_ ==
+                      timing_.first_frame_count - 1
+            : animation_chart_ == timing_.recovery_chart &&
+                  animation_frame_ ==
+                      timing_.recovery_frame_count - 1;
+    if (final_frame) {
         event.completed = true;
         active_ = false;
     }
@@ -288,6 +328,12 @@ PlayerAttackActionController::eventForCurrentFrame() {
 void PlayerAttackActionController::selectRenderedFrame() {
     animation_chart_ = timing_.first_chart;
     animation_frame_ = displayed_frame_;
+    if (rangedAction(action_)) {
+        animation_frame_ = std::min(
+            animation_frame_,
+            timing_.first_frame_count - 1);
+        return;
+    }
     if (animation_frame_ >= timing_.first_frame_count) {
         animation_frame_ -= timing_.first_frame_count;
         animation_chart_ = timing_.recovery_chart;

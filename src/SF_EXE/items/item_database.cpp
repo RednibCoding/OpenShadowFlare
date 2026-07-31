@@ -329,6 +329,11 @@ bool ItemDatabase::decode(
                     definition.appearance_red_strength = field(172);
                     definition.appearance_green_strength = field(176);
                     definition.appearance_blue_strength = field(180);
+                    definition.ranged_effect_selector = field(184);
+                    definition.ranged_pattern = field(188);
+                    definition.ranged_travel_speed = field(192);
+                    definition.ranged_pierces_targets =
+                        field(200) == 1;
                     definition.suppresses_off_hand =
                         definition.subtype == 1 ||
                         definition.subtype == 3 ||

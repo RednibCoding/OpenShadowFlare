@@ -271,6 +271,8 @@ private:
     std::int32_t playerAttackSpeedTier() const;
     void handlePlayerAttackEvent(
         const PlayerAttackActionEvent& event);
+    void launchPlayerRangedAttack(
+        const PlayerAttackActionEvent& event);
     void applyPlayerAttackImpact(EnemyActor& enemy);
     void accountEnemyKill(
         const EnemyDamageReceiverState& enemy,

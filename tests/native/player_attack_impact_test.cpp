@@ -84,6 +84,7 @@ bool testHitPacketAndRandomOrder() {
                 result.packet[31] == 7 &&
                 result.packet[34] == 21005 &&
                 result.packet[35] == 8 &&
+                result.packet[36] == 120 &&
                 result.packet[37] == 0 &&
                 result.packet[38] == 1 &&
                 result.packet[39] == 25 &&
@@ -103,11 +104,11 @@ bool testHitPacketAndRandomOrder() {
         return false;
     }
     return check(
-        result.packet.written_words.test(6) &&
+            result.packet.written_words.test(6) &&
             result.packet.written_words.test(30) &&
             !result.packet.written_words.test(32) &&
             !result.packet.written_words.test(33) &&
-            !result.packet.written_words.test(36),
+            result.packet.written_words.test(36),
         "The player packet initialized words that retail leaves "
         "outside this attack path.");
 }

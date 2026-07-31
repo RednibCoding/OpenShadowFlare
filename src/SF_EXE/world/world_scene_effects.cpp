@@ -169,9 +169,14 @@ void WorldScene::applyRuntimeEffectDispatch(
     context.local_player_available = has_player_;
     context.source_player_available =
         has_player_ &&
-        dispatch.owner_kind == 1 &&
-        dispatch.source_character_number ==
-            scenario_world_.localPlayerNumber();
+        ((dispatch.owner_kind == 1 &&
+          dispatch.source_character_number ==
+              scenario_world_.localPlayerNumber()) ||
+         (dispatch.packet.written_words.test(0) &&
+          dispatch.packet.written_words.test(2) &&
+          dispatch.packet[0] == 0 &&
+          dispatch.packet[2] ==
+              scenario_world_.localPlayerNumber()));
     context.source_player_position =
         has_player_
             ? player_.position()

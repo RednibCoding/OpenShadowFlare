@@ -41,6 +41,7 @@ struct PlayerAttackActionEvent {
 PlayerAttackAction retailPlayerAttackAction(
     const ItemDefinition* main_hand);
 bool playerAttackActionIsSupported(PlayerAttackAction action);
+bool playerAttackActionIsRanged(PlayerAttackAction action);
 bool buildPlayerAttackAnimationTiming(
     const gapi::CafAnimation& animation,
     PlayerAttackAction action,

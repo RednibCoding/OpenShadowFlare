@@ -165,11 +165,87 @@ bool testUnsupportedRequestStaysOutsideOwner() {
         "implemented controller owner.");
 }
 
+bool testDirectActorQueue() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(
+            OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::EffectVisualResources visuals;
+    std::string visual_error;
+    osf::RetailRandom random(1);
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    osf::RuntimeEffectSystem system;
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = 0;
+    request.position = {0, 0};
+    request.direction_radians = 0.0;
+    request.travel_speed = 100;
+    request.judgement = {-30, -30, 30, 30};
+    request.lifetime = -1;
+    request.animation_direction = 1;
+
+    const osf::RuntimeEffectSystemContext context{
+        &ground,
+        &objects,
+        &random,
+        {},
+        [] {
+            return std::vector<
+                osf::RuntimeEffectTargetSnapshot>{};
+        },
+        [&visuals, &data_root, &visual_error](
+            std::int32_t resource_id) {
+            return visuals.load(
+                data_root,
+                resource_id,
+                &visual_error);
+        },
+        {},
+        {},
+        {},
+    };
+    if (!check(
+            system.queueActor(request) &&
+                system.update(context).dispatches.empty() &&
+                visual_error.empty() &&
+                system.actors().size() == 1 &&
+                system.actors()[0].actorIdentifier() ==
+                    50000000 &&
+                system.actors()[0].hasUpdated() &&
+                system.actors()[0].position().x == 0,
+            "A directly queued generic actor did not receive a "
+            "runtime identity and join the current actor phase.")) {
+        return false;
+    }
+    system.update(context);
+    if (!check(
+            system.actors().size() == 1 &&
+                system.actors()[0].position().x == 100,
+            "A directly queued generic actor skipped its retail "
+            "zero-distance first update or later movement.")) {
+        return false;
+    }
+    system.clear();
+    request.resource_id = -1;
+    request.visible = true;
+    return check(
+        system.actors().empty() &&
+            !system.queueActor(request),
+        "Clearing the runtime effect system retained a direct actor "
+        "or accepted a visible actor without a resource.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
     if (!testControllerActorAndReceiverOrder() ||
-        !testUnsupportedRequestStaysOutsideOwner()) {
+        !testUnsupportedRequestStaysOutsideOwner() ||
+        !testDirectActorQueue()) {
         return 1;
     }
     return 0;

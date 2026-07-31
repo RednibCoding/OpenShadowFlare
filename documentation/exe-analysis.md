@@ -513,12 +513,11 @@ target controller now owns the approach-to-ready transition and cancels it if
 the enemy disappears, dies, becomes hidden, or loses pointer status. CAF
 attack startup and the impact marker are owned separately from that approach.
 
-`0x00450630` chooses the ordinary player action from the equipped main-hand
+`0x00450630` chooses the player attack action from the equipped main-hand
 instance's subtype. No main hand, or a subtype outside the five explicit
 branches, selects action 7. Subtype 0 selects action 8, subtype 3 selects
 action 9, subtype 1 selects action 10, and subtypes 4 and 5 select the
-separate actions 19 and 20. The portable ordinary-action checkpoint implements
-7 through 10 and recognizes 19/20 without pretending they use a melee chart.
+separate actions 19 and 20.
 
 Action 7 at `0x00439140` and actions 8 through 10 at `0x00435e60` share the
 same authored timing contract. Action 7 and action 8 use CAF charts 5 then 6;
@@ -548,7 +547,58 @@ clamps within the recovery chart, and unlocks on its final frame. The shipped
 male and female chart-5 data both contain ten first frames with the marker at
 frame 7 and nine chart-6 recovery frames. The portable world validates the
 retained target again at the marker before publishing the typed impact event;
-the next combat checkpoint owns packet construction and enemy mutation.
+the receiver owner then handles packet construction and enemy mutation.
+
+Actions 19 and 20 share `0x00437fe0`. They use player CAF chart 10 without a
+recovery chart, calculate the displayed frame before incrementing the action
+counter, and use a separate factor table: `0.3`, `0.4`, `0.5`, `0.6`, `0.8`,
+`1.0`, `1.2`, `1.4`, `1.7`, and `2.0`. Both shipped male and female chart-10
+fixtures contain 17 frames with the `0x40` launch marker on frame 3. Sample 3
+is requested at counter 6 and the final frame ends the action. Retail has no
+shipped subtype-four Item.Ibn record, so action 19's data-dependent projectile
+branch remains without a real fixture rather than being guessed.
+
+The ordinary action-20 path reads five adjacent fields from its equipped
+category-zero record. Raw offsets `0xb8`, `0xbc`, `0xc0`, and `0xc8` become
+the generic effect selector, spread pattern, travel speed, and piercing flag;
+the intervening `0xc4` field is zero in every shipped record and has no proven
+consumer here. The effect selectors map `0..3` to generic actor types
+`1, 0, 4, 5`. Selector zero rolls impact effect `21000..21003`; the others
+roll `21007..21009`.
+
+Spread values `0..8` create one straight shot, two parallel shots, one homing
+shot, straight or homing 3-way fans, straight or homing 5-way fans, and
+straight or homing 7-way fans. The 3-way angles are `0, -15, +15`; the 5-way
+angles are `0, -10, +10, -20, +20`; and the 7-way angles are
+`0, -8, +8, -16, +16, -24, +24` degrees. Double Bowgun is deliberately
+different: it computes two explicit origins 200 units from the player at
+minus and plus eight degrees, but both actors keep the unmodified target
+angle and therefore fly in parallel.
+
+Every non-double request retains the player as owner, projects its origin 200
+units from the player, targets enemies and scenario objects with mask `20`,
+uses 30-unit judgement bounds and display height 350, and enters the ordinary
+category-50000000 actor list. Double shots use owner kind zero solely to keep
+their explicit origins; their family-zero packet still identifies the local
+player for receiver attribution. The generic actor performs physical evasion,
+static and target collision, contact sample 20, first-target expiry, optional
+target memory for piercing, and homing when requested. This is the same actor
+owner used by reconstructed enemy effects, not a player-only damage shortcut.
+
+The family-zero packet is built before the projectile exists.
+`0x00450f80` counts job-history bytes matching ranged job 5 through the
+current level. A player currently in job 5 keeps 100 percent physical attack;
+other jobs use `jobLevel * 50 / 30 + 40` percent, capped at 90, with a minimum
+result of one. Packet word 36 carries the derived hit rate consumed by the
+effect actor. Equipment reflection consumes the first random draw and the
+projectile's hit-effect choice consumes the next. The shot requires nonzero
+current weapon durability and subtracts one durability after creating the
+complete fan, not once per projectile.
+
+`0x00437fe0` can redirect action 20 into action 21 for a ranged-job player
+while the retail increased-power state is active. That state and action 21
+belong to the later skill/status slice; the ordinary action-20 path does not
+invent a placeholder for them.
 
 The portable first pickup checkpoint keeps that separation. `WorldScene`
 owns the stable ground entity and pending approach, while `PlayerInventory`

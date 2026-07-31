@@ -35,7 +35,9 @@ public:
     PlayerAttackTargetDisposition command(
         WorldPosition player_position,
         const ObjectBounds& player_judgement,
-        const PlayerAttackTargetSnapshot& target);
+        const PlayerAttackTargetSnapshot& target,
+        std::int32_t attack_range =
+            kRetailPlayerAttackRange);
     PlayerAttackTargetDisposition refresh(
         WorldPosition player_position,
         const ObjectBounds& player_judgement,
@@ -51,6 +53,8 @@ public:
 private:
     std::int32_t approach_target_id_ = -1;
     std::int32_t ready_target_id_ = -1;
+    std::int32_t attack_range_ =
+        kRetailPlayerAttackRange;
 };
 
 }  // namespace osf

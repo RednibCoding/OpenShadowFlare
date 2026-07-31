@@ -1,15 +1,21 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 
+#include "actor_direction.hpp"
+#include "generic_effect_actor.hpp"
 #include "player_attack_impact.hpp"
+#include "player_ranged_attack.hpp"
 #include "items/item_audio.hpp"
+#include "items/item_condition.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <utility>
 
 namespace osf {
@@ -858,11 +864,27 @@ bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
     if (player_.attackActive()) {
         return false;
     }
+    const InventoryItem* main_hand =
+        player_equipment_.item(
+            EquipmentSlot::main_hand);
+    const ItemDefinition* main_hand_definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerAttackAction action =
+        retailPlayerAttackAction(main_hand_definition);
+    const std::int32_t attack_range =
+        playerAttackActionIsRanged(action)
+            ? std::numeric_limits<std::int32_t>::max()
+            : kRetailPlayerAttackRange;
     const PlayerAttackTargetDisposition disposition =
         player_attack_target_.command(
             player_.position(),
             player_.judgement(),
-            attackTargetSnapshot(enemy));
+            attackTargetSnapshot(enemy),
+            attack_range);
     if (disposition ==
         PlayerAttackTargetDisposition::rejected) {
         return false;
@@ -877,16 +899,6 @@ bool WorldScene::commandPlayerAttack(EnemyActor& enemy) {
 }
 
 bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
-    if (classifyPlayerAttackTarget(
-            player_.position(),
-            player_.judgement(),
-            attackTargetSnapshot(enemy)) !=
-        PlayerAttackTargetDisposition::ready) {
-        return false;
-    }
-    pending_interaction_ = {};
-    player_.cancelMovement();
-    player_.faceToward(enemy.position());
     const InventoryItem* main_hand =
         player_equipment_.item(EquipmentSlot::main_hand);
     const ItemDefinition* main_hand_definition =
@@ -897,6 +909,21 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
             : nullptr;
     const PlayerAttackAction action =
         retailPlayerAttackAction(main_hand_definition);
+    const std::int32_t attack_range =
+        playerAttackActionIsRanged(action)
+            ? std::numeric_limits<std::int32_t>::max()
+            : kRetailPlayerAttackRange;
+    if (classifyPlayerAttackTarget(
+            player_.position(),
+            player_.judgement(),
+            attackTargetSnapshot(enemy),
+            attack_range) !=
+        PlayerAttackTargetDisposition::ready) {
+        return false;
+    }
+    pending_interaction_ = {};
+    player_.cancelMovement();
+    player_.faceToward(enemy.position());
     if (!playerAttackActionIsSupported(action)) {
         player_attack_target_.cancel();
         return false;
@@ -940,9 +967,15 @@ void WorldScene::handlePlayerAttackEvent(
                       main_hand->definition_id)
                 : nullptr;
         pending_audio_samples_.push_back(
-            retailItemAttackSound(definition));
+            playerAttackActionIsRanged(event.action)
+                ? 3
+                : retailItemAttackSound(definition));
     }
     if (!event.impact_due || event.target_id < 0) {
+        return;
+    }
+    if (playerAttackActionIsRanged(event.action)) {
+        launchPlayerRangedAttack(event);
         return;
     }
     if (event.action != PlayerAttackAction::basic) {
@@ -962,6 +995,82 @@ void WorldScene::handlePlayerAttackEvent(
     pending_player_attack_impact_target_id_ =
         event.target_id;
     applyPlayerAttackImpact(*enemy);
+}
+
+void WorldScene::launchPlayerRangedAttack(
+    const PlayerAttackActionEvent& event) {
+    const InventoryItem* main_hand =
+        player_equipment_.item(
+            EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    if (!main_hand || !definition ||
+        itemCurrentDurability(
+            *main_hand, *definition) == 0) {
+        return;
+    }
+
+    const EnemyActor* target =
+        findEnemy(event.target_id);
+    WorldPosition target_position;
+    if (target) {
+        target_position = target->position();
+        player_.faceToward(target_position);
+    } else {
+        const double direction =
+            retailAngleForDirection(
+                player_.direction());
+        target_position = {
+            player_.position().x +
+                static_cast<std::int32_t>(
+                    std::cos(direction) * 1000.0),
+            player_.position().y -
+                static_cast<std::int32_t>(
+                    std::sin(direction) * 1000.0),
+        };
+    }
+
+    const PlayerRangedAttackResult ranged =
+        resolvePlayerRangedAttack(
+            {
+                scenario_world_.localPlayerNumber(),
+                player_.position(),
+                target_position,
+                event.target_id,
+                player_data_.job(),
+                player_data_.jobLevel(5),
+                buildPlayerAttackImpactStats(
+                    scenario_world_.localPlayerNumber(),
+                    player_data_,
+                    player_equipment_,
+                    player_inventory_,
+                    item_database_),
+                definition,
+            },
+            item_random_);
+    if (!ranged.valid) {
+        return;
+    }
+    for (const CombatEffectSpawnRequest& projectile :
+         ranged.projectiles) {
+        RuntimeEffectActorSpawnRequest actor;
+        if (buildGenericEffectActor(
+                projectile,
+                player_.position(),
+                actor)) {
+            runtime_effects_.queueActor(
+                std::move(actor));
+        }
+    }
+    if (ranged.consume_durability &&
+        !player_equipment_.decreaseDurability(
+            EquipmentSlot::main_hand, 1)) {
+        refreshPlayerAppearance();
+    }
 }
 
 void WorldScene::applyPlayerAttackImpact(

@@ -27,13 +27,16 @@ PlayerAttackTargetDisposition classifyPlayerAttackTarget(
 PlayerAttackTargetDisposition PlayerAttackTargetController::command(
     WorldPosition player_position,
     const ObjectBounds& player_judgement,
-    const PlayerAttackTargetSnapshot& target) {
+    const PlayerAttackTargetSnapshot& target,
+    std::int32_t attack_range) {
     cancel();
+    attack_range_ = attack_range;
     const PlayerAttackTargetDisposition disposition =
         classifyPlayerAttackTarget(
             player_position,
             player_judgement,
-            target);
+            target,
+            attack_range_);
     if (disposition ==
         PlayerAttackTargetDisposition::approach) {
         approach_target_id_ = target.id;
@@ -59,7 +62,8 @@ PlayerAttackTargetDisposition PlayerAttackTargetController::refresh(
         classifyPlayerAttackTarget(
             player_position,
             player_judgement,
-            *target);
+            *target,
+            attack_range_);
     if (disposition ==
         PlayerAttackTargetDisposition::ready) {
         ready_target_id_ = approach_target_id_;
@@ -96,6 +100,7 @@ PlayerAttackTargetController::takeReadyTargetId() {
 void PlayerAttackTargetController::cancel() {
     approach_target_id_ = -1;
     ready_target_id_ = -1;
+    attack_range_ = kRetailPlayerAttackRange;
 }
 
 std::int32_t

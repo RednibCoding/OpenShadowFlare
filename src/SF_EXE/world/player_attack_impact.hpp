@@ -41,6 +41,11 @@ PlayerAttackImpactStats buildPlayerAttackImpactStats(
     const PlayerInventory& inventory,
     const ItemDatabase& items);
 
+CombatPacket buildPlayerAttackPacket(
+    const PlayerAttackImpactStats& stats,
+    std::int32_t hit_effect,
+    RetailRandom& random);
+
 struct PlayerAttackImpactInput {
     PlayerAttackImpactStats stats;
     std::int32_t target_id = -1;
