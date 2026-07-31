@@ -469,8 +469,8 @@ bool testLiveWorldMutationAndAudio() {
     const std::int32_t initial_life = enemyLife();
     bool hit = false;
     bool heard_hit = false;
-    bool saw_hit_effect = false;
-    bool hit_effect_owned_by_enemy = false;
+    bool saw_death_splatter = false;
+    bool death_splatter_owned_by_enemy = false;
     for (std::int32_t attempt = 0;
          attempt < 10 && !hit;
          ++attempt) {
@@ -509,18 +509,18 @@ bool testLiveWorldMutationAndAudio() {
             for (const osf::CombatEffectActor& effect :
                  world.combatEffects()) {
                 if (effect.effectNumber() < 21000 ||
-                    effect.effectNumber() > 21006) {
+                    effect.effectNumber() > 21003) {
                     continue;
                 }
-                if (!saw_hit_effect &&
+                if (!saw_death_splatter &&
                     enemy_now != world.enemies().end()) {
-                    hit_effect_owned_by_enemy =
+                    death_splatter_owned_by_enemy =
                         effect.position().x ==
                             enemy_now->position().x &&
                         effect.position().y ==
                             enemy_now->position().y;
                 }
-                saw_hit_effect = true;
+                saw_death_splatter = true;
             }
             if (impact_seen &&
                 world.playerMotion() ==
@@ -530,15 +530,18 @@ bool testLiveWorldMutationAndAudio() {
         }
         hit = enemyLife() < initial_life;
     }
+    const std::int32_t final_life = enemyLife();
+    const bool lethal = final_life == 0;
     return check(
         hit &&
             heard_hit &&
-            saw_hit_effect &&
-            hit_effect_owned_by_enemy &&
-            enemyLife() >= 0 &&
-            enemyLife() < initial_life,
-        "The live CAF impact did not mutate enemy life, own its "
-        "hit effect, and queue the retail post-hit sample.");
+            saw_death_splatter == lethal &&
+            (!lethal ||
+             death_splatter_owned_by_enemy) &&
+            final_life >= 0 &&
+            final_life < initial_life,
+        "The live CAF impact did not mutate enemy life, gate its "
+        "death splatter, or queue the retail post-hit sample.");
 #else
     return true;
 #endif

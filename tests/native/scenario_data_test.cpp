@@ -1705,7 +1705,7 @@ bool testGeneralScenarioStart() {
     const std::size_t belt_before_enemy_ai =
         wasteland.playerBelt().items().size();
     bool heard_enemy_hit = false;
-    bool saw_player_hit_effect = false;
+    bool saw_player_death_splatter = false;
     for (std::int32_t update = 0;
          update < 300 &&
          wasteland.playerData().currentLife() ==
@@ -1719,21 +1719,24 @@ bool testGeneralScenarioStart() {
             std::find(
                 samples.begin(), samples.end(), 6) !=
                 samples.end();
-        saw_player_hit_effect =
-            saw_player_hit_effect ||
+        saw_player_death_splatter =
+            saw_player_death_splatter ||
             std::any_of(
                 wasteland.combatEffects().begin(),
                 wasteland.combatEffects().end(),
                 [](const osf::CombatEffectActor& effect) {
                     return effect.effectNumber() >= 21000 &&
-                           effect.effectNumber() <= 21014;
+                           effect.effectNumber() <= 21003;
                 });
     }
+    const bool player_defeated =
+        wasteland.playerData().currentLife() < 1;
     if (!check(
             wasteland.playerData().currentLife() <
                     life_before_enemy_ai &&
                 heard_enemy_hit &&
-                saw_player_hit_effect &&
+                saw_player_death_splatter ==
+                    player_defeated &&
                 wasteland.playerInventory().items().size() ==
                     inventory_before_enemy_ai &&
                 wasteland.playerBelt().items().size() ==
@@ -1746,7 +1749,8 @@ bool testGeneralScenarioStart() {
                      osf::PlayerMotion::defeated),
             "A live Wasteland enemy did not approach, complete its "
             "authored attack presentation, pass damage through the "
-            "player receiver, and publish its effect and sample.")) {
+            "player receiver, gate its death splatter, and publish "
+            "its sample.")) {
         return false;
     }
     const std::int32_t damaged_life =

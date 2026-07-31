@@ -1022,7 +1022,11 @@ values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
 effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Lethal hits also update persistent kill and
+run at the live boundary. Packet effects 21000 through 21003 are gated to
+lethal hits for players, companions, and enemies. Their ordinary CAF owner
+expires after one pass; the separate fixed-lifetime death effect advances to
+its last frame normally, holds it, and fades during updates 91 through 119.
+Lethal hits also update persistent kill and
 experience fields, apply novice level growth, create Table 30/31 item rolls
 and Gold Find-scaled money through the full ground-item owner, and preserve
 their constructor state through pickup and saving.

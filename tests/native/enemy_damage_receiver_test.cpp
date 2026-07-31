@@ -278,6 +278,47 @@ bool testDeathAndPlayerStatuses() {
         "death state, or the four ordered player status requests.");
 }
 
+bool testDeathSplatterGate() {
+    const osf::TableDatabase tables = retailTables();
+    osf::CombatPacket splatter = packet();
+    splatter.write(34, 21000);
+
+    osf::RetailRandom living_random(1);
+    const osf::EnemyDamageReceiverResult living =
+        osf::resolveEnemyDamage(
+            state(),
+            splatter,
+            {},
+            {},
+            tables,
+            living_random);
+    if (!check(
+            living.valid &&
+                living.state.current_life > 0 &&
+                living.effects.empty(),
+            "A surviving enemy emitted the death splatter.")) {
+        return false;
+    }
+
+    osf::EnemyDamageReceiverState dying = state();
+    dying.current_life = 100;
+    osf::RetailRandom dying_random(1);
+    const osf::EnemyDamageReceiverResult death =
+        osf::resolveEnemyDamage(
+            dying,
+            splatter,
+            {},
+            {},
+            tables,
+            dying_random);
+    return check(
+        death.valid &&
+            death.kill_requested &&
+            death.effects.size() == 1 &&
+            death.effects.front().effect_number == 21000,
+        "A lethal enemy hit did not emit its death splatter.");
+}
+
 bool testOrdinaryHitReaction() {
     const osf::TableDatabase tables = retailTables();
     osf::EnemyDamageReceiverState reacting = state();
@@ -499,6 +540,7 @@ int main() {
                    testLocalDamageAndNetworkOwnership() &&
                    testZeroBaseDamageStillCompletesReceiver() &&
                    testDeathAndPlayerStatuses() &&
+                   testDeathSplatterGate() &&
                    testOrdinaryHitReaction() &&
                    testEffectReactionOverride() &&
                    testReflectionAndPacketEffects() &&

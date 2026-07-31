@@ -106,13 +106,13 @@ bool testEffectResourceMappingAndLifetime(
     }
     if (!check(
             ordinary_updates == ordinary_frames,
-            "An ordinary hit effect did not live for exactly one "
-            "CAF pass.")) {
+            "An ordinary effect did not live for exactly one CAF "
+            "pass.")) {
         return false;
     }
 
     const osf::EffectVisualResource* timed =
-        resources.load(data_root, 11000024, &error);
+        resources.load(data_root, 11000023, &error);
     if (!check(
             timed != nullptr,
             "The retail timed hit-effect resource could not be "
@@ -120,7 +120,7 @@ bool testEffectResourceMappingAndLifetime(
         std::cerr << error << '\n';
         return false;
     }
-    request.effect_number = 21011;
+    request.effect_number = 21010;
     request.packet_kind = 0;
     request.constructor_value_7 = 0;
     if (!check(
@@ -131,14 +131,29 @@ bool testEffectResourceMappingAndLifetime(
             "strength.")) {
         return false;
     }
-    for (std::int32_t update = 0;
+    const std::int32_t timed_frames =
+        timed->animation()
+            .charts()
+            .front()
+            .directions[0]
+            .frame_count;
+    actor.update();
+    if (!check(
+            actor.animationFrame() == 1,
+            "The timed death effect stretched its CAF over its "
+            "120-update owner lifetime.")) {
+        return false;
+    }
+    for (std::int32_t update = 1;
          update < 90;
          ++update) {
         actor.update();
     }
     if (!check(
             !actor.expired() &&
-                actor.drawStrength() == 500,
+                actor.drawStrength() == 500 &&
+                actor.animationFrame() ==
+                    timed_frames - 1,
             "The timed hit effect faded before update 91.")) {
         return false;
     }

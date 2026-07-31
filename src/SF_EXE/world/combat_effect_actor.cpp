@@ -118,11 +118,7 @@ void CombatEffectActor::update() {
         expired_ = true;
         return;
     }
-    animation_frame_ =
-        fixed_duration_
-            ? counter_ * direction->frame_count /
-                  duration_
-            : counter_;
+    animation_frame_ = counter_;
     animation_frame_ = std::clamp(
         animation_frame_,
         0,

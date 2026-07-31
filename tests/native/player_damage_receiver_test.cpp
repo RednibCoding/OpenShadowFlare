@@ -430,6 +430,53 @@ bool testDeathWithoutRevival() {
         "presentation and event.");
 }
 
+bool testDeathSplatterGate() {
+    const osf::TableDatabase tables = retailTables();
+    const osf::ItemDatabase items;
+    osf::PlayerDamageReceiverContext context;
+    context.local_player_character_number = 3;
+    osf::CombatPacket splatter = directPacket(10);
+    splatter.write(34, 21000);
+
+    osf::RetailRandom living_random(2);
+    const osf::PlayerDamageReceiverResult living =
+        osf::resolvePlayerDamage(
+            state(),
+            splatter,
+            {},
+            context,
+            items,
+            tables,
+            living_random);
+    if (!check(
+            living.valid &&
+                living.state.current_life > 0 &&
+                living.effects.empty(),
+            "A surviving hero emitted the death splatter.")) {
+        return false;
+    }
+
+    osf::PlayerDamageReceiverState dying = state();
+    dying.current_life = 5;
+    osf::RetailRandom dying_random(2);
+    const osf::PlayerDamageReceiverResult death =
+        osf::resolvePlayerDamage(
+            dying,
+            splatter,
+            {},
+            context,
+            items,
+            tables,
+            dying_random);
+    return check(
+        death.valid &&
+            death.state.current_life < 1 &&
+            death.state.presentation_action == 5 &&
+            death.effects.size() == 1 &&
+            death.effects.front().effect_number == 21000,
+        "A lethal player hit did not emit its death splatter.");
+}
+
 }  // namespace
 
 int main() {
@@ -438,7 +485,8 @@ int main() {
         !testRevivalAndDurability() ||
         !testEquipmentReflection() ||
         !testCounterBurstAndReaction() ||
-        !testDeathWithoutRevival()) {
+        !testDeathWithoutRevival() ||
+        !testDeathSplatterGate()) {
         return 1;
     }
     return 0;

@@ -117,11 +117,14 @@ bool testLocalOwnershipAndDeath() {
     const osf::TableDatabase tables = retailTables();
     osf::CompanionDamageReceiverContext local;
     local.local_player_slot = 3;
+    osf::CombatPacket living_packet =
+        directPacket(25);
+    living_packet.write(34, 21000);
     osf::RetailRandom local_random(2);
     const osf::CompanionDamageReceiverResult local_result =
         osf::resolveCompanionDamage(
             state(),
-            directPacket(25),
+            living_packet,
             {},
             local,
             tables,
@@ -129,8 +132,10 @@ bool testLocalOwnershipAndDeath() {
     if (!check(
             local_result.valid &&
                 local_result.accepted &&
-                local_result.state.current_life == 75,
-            "The owning player slot did not apply companion damage.")) {
+                local_result.state.current_life == 75 &&
+                local_result.effects.empty(),
+            "The owning player slot did not apply companion damage "
+            "or emitted a splatter while the companion survived.")) {
         return false;
     }
 
@@ -174,11 +179,14 @@ bool testLocalOwnershipAndDeath() {
 
     osf::CompanionDamageReceiverState dying = state();
     dying.current_life = 5;
+    osf::CombatPacket lethal_packet =
+        directPacket(10);
+    lethal_packet.write(34, 21000);
     osf::RetailRandom death_random(3);
     const osf::CompanionDamageReceiverResult death =
         osf::resolveCompanionDamage(
             dying,
-            directPacket(10),
+            lethal_packet,
             {},
             local,
             tables,
@@ -189,8 +197,11 @@ bool testLocalOwnershipAndDeath() {
             death.state.presentation_action == 6 &&
             death.state.presentation_counter == 0 &&
             death.state.action_lock == 1 &&
-            death.state.event_number == 4,
-        "Lethal companion damage did not select action six.");
+            death.state.event_number == 4 &&
+            death.effects.size() == 1 &&
+            death.effects.front().effect_number == 21000,
+        "Lethal companion damage did not select action six and "
+        "emit its death splatter.");
 }
 
 bool testReactionStageAndEffectOwnership() {

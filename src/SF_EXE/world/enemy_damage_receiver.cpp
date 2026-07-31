@@ -1,6 +1,7 @@
 #include "enemy_damage_receiver.hpp"
 
 #include "actor_direction.hpp"
+#include "combat_effect_number.hpp"
 #include "core/retail_integer.hpp"
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
@@ -448,7 +449,9 @@ void addPacketEffects(
         state.reaction_stage = 2;
     }
 
-    if (packet[34] != -1) {
+    if (packet[34] != -1 &&
+        (!isDeathSplatterEffect(packet[34]) ||
+         state.current_life < 1)) {
         result.effects.push_back(
             configuredEffect(
                 state, packet[34], packet[35]));

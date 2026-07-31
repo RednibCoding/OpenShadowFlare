@@ -356,7 +356,11 @@ Receiver visuals now cross a world-owned effect boundary as well.
 resolved position. The specialized `0x0042cba0` path used by 21010 through
 21012 instead lasts 120 updates at initial strength 500 and fades during its
 last 30. These visual actors participate in normal world depth sorting and do
-not own damage. Reflection, staged-reaction, projectile, and spell effect
+not own damage. The four 21000 through 21003 splatter variants are only
+presented when their impact is lethal. CAF frames still advance once per game
+update: the fixed-lifetime death effect reaches its last authored frame
+normally, holds there, and only fades during the final 30 updates. Reflection,
+staged-reaction, projectile, and spell effect
 dispatchers remain separate follow-up branches. Network transport, experience
 accounting, and drops remain outside this receiver/presentation boundary.
 
