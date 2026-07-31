@@ -151,12 +151,18 @@ add_library(
   world/player_combat_defense.cpp
   world/player_damage_receiver.cpp
   world/player_data.cpp
+  world/player_energy_shield.cpp
+  world/player_heal_spell.cpp
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
   world/player_magic.cpp
+  world/player_moon_spell.cpp
+  world/player_resource_rate.cpp
+  world/player_runtime_profile.cpp
   world/player_spell_action.cpp
   world/player_spell_cast.cpp
   world/player_spell_parameters.cpp
+  world/player_sustained_spell.cpp
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
@@ -182,6 +188,9 @@ add_library(
   world/world_scene_interaction.cpp
   world/world_scene_items.cpp
   world/world_scene_loading.cpp
+  world/world_scene_moon.cpp
+  world/world_scene_player_profile.cpp
+  world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)

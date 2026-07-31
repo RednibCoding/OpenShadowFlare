@@ -1916,3 +1916,122 @@ layers and plays samples 29 and 23 at the marker delay. Its invisible area
 expands the source judgement by 150 units, applies the packet to every valid
 target, plays sample 20 on contact, and shakes the camera for eight updates.
 Practice remains receiver-owned, exactly like the targeted spells.
+
+## Ice Blast cast
+
+Ice Blast continues the same targetless secondary-click command as Hell Fire.
+The clicked world point controls the hero's facing only; `0x0043b3f0` does not
+pass the aim position, a direction, a character target, or an explicit effect
+origin. Action 27 uses CAF charts 11 and 12, Table 20 row five, and the common
+speed-tier and status-`0x40` marker timing.
+
+Its family-zero packet uses subtype one, magical defense, presentation 21013,
+spell five, and the row-five values from Tables 17 through 19 and 70 through
+78. Effect request 10005 has owner kind one, target mask four, target `-1`,
+the player's judgement rectangle, zero travel and direction values, and Table
+21 row five in its final constructor value.
+
+The already reconstructed `0x0042cd70` owner captures the hero's current
+position on update three and creates resource 10000051 there. That resource's
+chart-zero frame count schedules resource 10000050, then an invisible area
+packet four updates later. The contact area expands the player judgement by
+150 units, plays sample 20 per target, and shakes a nearby camera for eight
+updates. Resource 10000052 follows at frame-count plus 15 with display status
+`0x80`; sample 22 pulses six times before the controller expires at
+frame-count plus 22. Successful packet receivers award Ice Blast practice.
+
+## Heal cast
+
+Heal remains on the targetless secondary-click command and enters action 28,
+but `0x0043ca60` does not build a family-zero combat packet. It uses CAF
+charts 11 and 12 and Table 20 row six. Unlike the five attack spells, the
+action scans every newly displayed chart-11 frame and resolves the cast only
+when it crosses status `0x40`; no delayed controller is queued at command
+time.
+
+At the marker it always creates simple effect 21020 with owner kind one,
+source judgement, packet direction eight, and no combat packet. The common
+one-pass owner maps that effect to Character OPTION resource 11000060 and
+holds it at the hero for one CAF pass.
+
+If current HP differs from maximum HP, the action restores Table 17 row six
+percent of maximum HP, capped at the missing amount. It then calls the normal
+spell-training function and plays sample 17. At full HP the command still
+spends MP and the marker still creates the visual, but it restores nothing,
+plays no sample 17, and awards no practice. The portable Heal resolver owns
+those restorative rules separately from the attack-spell packet builder.
+
+## Moon and the sustained-spell boundary
+
+`0x0043d290` dispatches spell seven as action 29 with CAF charts 11 and 12,
+Table 20 row seven, and the common casting-speed factors. At each newly crossed
+chart-11 status-`0x40` marker it toggles runtime rate `+0x15e4`: activation
+stores the effective level at `+0x15e8` and reads Table 200 row zero, while a
+second cast writes zero. The companion profile rebuild then applies Table 200
+rows 1 through 13. Resource 11000040 is rendered at the living companion.
+
+The kill paths at `0x00440860`, `0x00441e20`, and `0x00459690` do not require
+the companion itself to deal the last hit. While Moon is active, any defeat
+source whose character number modulo ten equals the local player slot calls
+the companion-mode practice function for spell seven.
+
+## Berserker cast and shared mana drain
+
+`0x0043ceb0` dispatches spell eight as action 30. It uses CAF charts 11 and 12,
+Table 20 row eight, the ordinary targetless command and MP cost, and scans all
+new chart-11 frames for status `0x40`. At the marker an inactive cast stores
+the effective level at runtime `+0x15e0` and Table 201 row zero at `+0x15dc`;
+an active cast clears that rate. Both branches call `0x00450080` and
+`0x00452910` to rebuild the player and companion runtime values.
+
+`0x0044ea60` applies Table 201 rows 1 through 12 after base and equipment
+contributions. They modify attack speed, walking speed, maximum HP, maximum
+MP, physical attack, physical defense, hit rate, physical evasion, magical
+attack, magical defense, magical hit rate, and magical evasion. Speed fields
+are clamped to 0..255 and the remaining values to at least one. The shipped
+table leaves both maximum-pool rows at zero, boosts speed and offense, and
+reduces physical defense and evasion.
+
+`0x0044f2f0` proves that sustained spells share one resource owner rather than
+running independent timers. Equipped instance parameter 17 supplies the life
+rate and parameter 18 supplies the mana rate; special-item definitions
+98000003 and 98000004 add five to the respective rate. Moon `+0x15e4` and
+Berserker `+0x15dc` are then added to the mana side. Every third global update
+the function scales maximum HP and MP, retaining separate signed fractional
+remainders at `+0x1638` and `+0x163c`. Life recovery only runs for a living
+hero and never lowers HP below one; mana may reach zero. The player update
+then clears both spell rates at zero MP and rebuilds both profiles. Neither
+rate nor its effective level is part of the persistent 0x160-byte character
+record.
+
+`0x00444960` renders player common animation block 500, which the retail data
+list maps to `Player/Common/Powerup.Caf` and `.Njp`. It uses chart zero,
+direction eight, the player position, runtime frame `+0x15f4`, full opacity,
+and RGB strengths 1000/200/200. The frame advances on every active update.
+The same locally owned kill test used by Moon trains spell eight while
+Berserker is active.
+
+## Energy Shield cast and damage routing
+
+`0x0043d670` dispatches spell nine as action 31. It uses CAF charts 11 and 12,
+Table 20 row nine, and the normal targetless command-time MP cost. Like Moon
+and Berserker, it scans every newly displayed chart-11 frame for status
+`0x40`. At the marker, runtime flag `+0x15ec` toggles off when already set. An
+inactive flag is set only if current MP at `+0x1ac` is nonzero, which matters
+when the up-front cast cost consumed the last point.
+
+Energy Shield has no Table 202 and does not store an effective level. The
+player damage receiver at `0x00443cb0` resolves spell nine's effective level
+when a packet arrives. For a locally owned player, an active shield and a
+non-effect-family packet scale physical defense by Table 17 row nine before
+the common damage calculation. The resulting damage is subtracted from MP
+instead of HP while MP remains. It does not spill through when damage exceeds
+the remaining MP; the next ordinary packet reaches HP. Family-three effect
+packets always bypass Energy Shield.
+
+`0x00443490` clears `+0x15ec` whenever MP is zero. The same local kill-owner
+checks used by Moon and Berserker call spell-nine companion-mode practice
+while the flag is active. `0x00444be0` draws animation block 500, mapped to
+`Player/Common/Powerup.Caf` and `.Njp`, after the Berserker pass. It uses chart
+zero, direction eight, runtime frame `+0x15f8`, full opacity, and RGB strengths
+1000/1000/300.

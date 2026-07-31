@@ -87,6 +87,8 @@ public:
     void beginRevive(WorldPosition owner_position);
     void applyLevelProfile(
         const CompanionProfile& profile);
+    void applyRuntimeProfile(
+        const CompanionProfile& profile);
 
     bool valid() const;
     std::int32_t characterNumber() const;

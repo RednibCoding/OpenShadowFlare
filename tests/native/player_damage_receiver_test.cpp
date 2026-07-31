@@ -125,6 +125,55 @@ bool testOwnershipAndEnergyShield() {
         return false;
     }
 
+    osf::PlayerDamageReceiverState low_mana = receiving;
+    low_mana.current_mana = 10;
+    osf::RetailRandom overflow_random(1);
+    const osf::PlayerDamageReceiverResult overflow =
+        osf::resolvePlayerDamage(
+            low_mana,
+            directPacket(25),
+            {},
+            local,
+            items,
+            tables,
+            overflow_random);
+    osf::RetailRandom empty_random(1);
+    const osf::PlayerDamageReceiverResult after_empty =
+        osf::resolvePlayerDamage(
+            overflow.state,
+            directPacket(25),
+            {},
+            local,
+            items,
+            tables,
+            empty_random);
+    osf::CombatPacket effect = directPacket(25);
+    effect.write(1, 3);
+    osf::RetailRandom effect_random(1);
+    const osf::PlayerDamageReceiverResult effect_result =
+        osf::resolvePlayerDamage(
+            receiving,
+            effect,
+            {},
+            local,
+            items,
+            tables,
+            effect_random);
+    if (!check(
+            overflow.valid &&
+                overflow.state.current_life == 100 &&
+                overflow.state.current_mana == 0 &&
+                after_empty.valid &&
+                after_empty.state.current_life == 75 &&
+                after_empty.state.current_mana == 0 &&
+                effect_result.valid &&
+                effect_result.state.current_life == 75 &&
+                effect_result.state.current_mana == 80,
+            "Energy Shield did not preserve retail no-spillover, "
+            "empty-mana, or effect-family routing.")) {
+        return false;
+    }
+
     osf::PlayerDamageReceiverContext remote;
     remote.local_player_character_number = 9;
     osf::RetailRandom remote_random(1);

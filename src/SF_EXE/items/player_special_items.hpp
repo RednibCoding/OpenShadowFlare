@@ -24,6 +24,9 @@ public:
         std::size_t item_index);
 
     const std::vector<InventoryItem>& items() const;
+    bool contains(
+        std::int32_t category,
+        std::int32_t definition_id) const;
 
 private:
     std::vector<InventoryItem> items_;

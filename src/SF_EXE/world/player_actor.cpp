@@ -266,6 +266,12 @@ void PlayerActor::toggleMovementPace() {
     }
 }
 
+void PlayerActor::setWalkingSpeedTier(std::int32_t tier) {
+    walking_speed_tier_ = std::clamp(tier, 0, 9);
+    walking_speed_ = walkingSpeedForTier(walking_speed_tier_);
+    running_speed_ = walking_speed_ * 2;
+}
+
 void PlayerActor::setMovementPace(MovementPace pace) {
     movement_pace_ = pace;
     if (motion_ == PlayerMotion::walking ||

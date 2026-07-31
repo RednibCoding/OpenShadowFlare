@@ -536,6 +536,18 @@ void CompanionActor::applyLevelProfile(
     current_life_ = profile_.maximum_life;
 }
 
+void CompanionActor::applyRuntimeProfile(
+    const CompanionProfile& profile) {
+    if (!valid() ||
+        profile.type != profile_.type ||
+        profile.resource_id != profile_.resource_id) {
+        return;
+    }
+    profile_ = profile;
+    current_life_ = std::clamp(
+        current_life_, 0, profile_.maximum_life);
+}
+
 bool CompanionActor::valid() const {
     return visual_ != nullptr && owner_slot_ >= 0;
 }

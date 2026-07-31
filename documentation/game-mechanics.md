@@ -77,7 +77,7 @@ Complete spell list (from 0x00407a60 MagicWindowDisplay):
 | Spell | Stat Display | Description |
 |-------|--------------|-------------|
 | Heal | Heal % | HP restoration |
-| Energy Shield | Shield % | Damage reduction |
+| Energy Shield | Shield % | Routes ordinary damage to MP and changes physical defense |
 | Magic Shield | Def % | Defense boost |
 | Berserker | Attack % | Attack boost |
 | Moon | (none) | Increases companion stats while active |
@@ -170,6 +170,114 @@ visual layers, plays samples 29 and 23, and applies the spell packet to every
 valid target inside the hero judgement area expanded by 150 world units.
 Contacts use sample 20, shake the camera briefly, and award Hell Fire practice
 through the same receiver-owned path as the projectile and Plasma spells.
+
+### Ice Blast
+
+Ice Blast also uses the targetless secondary-click path. The hero faces the
+clicked point, but the effect stays centered on the hero rather than being
+placed at the cursor. Action 27 uses CAF charts 11 and 12 and creates effect
+10005 with the Table 20 row-five timing and MP cost.
+
+On update three the effect captures the hero's position and starts resource
+10000051. Its authored frame count schedules the later 10000050 and 10000052
+layers, the 150-unit expanded area contact, a short camera shake, and six
+sample-22 pulses. Contact uses sample 20 and awards Ice Blast practice through
+the normal receiver path.
+
+### Heal
+
+Heal is a self-cast on the targetless secondary-click path. It enters action
+28 with CAF charts 11 and 12, but waits for the chart-11 `0x40` marker before
+doing anything. At that marker it always shows effect 21020, which uses
+resource 11000060 at the hero for one animation pass.
+
+When HP is missing, Heal restores the Table 17 row-six percentage of maximum
+HP, capped at the amount missing, plays sample 17, and awards one practice
+point. Casting at full HP still consumes the normal Table 16 MP cost and shows
+the visual, but does not play sample 17 or train the spell.
+
+### Moon
+
+Moon is a targetless self-cast that enters action 29 with CAF charts 11 and
+12. The normal Table 16 MP cost is paid when the action begins. At chart 11's
+`0x40` marker the spell toggles: an inactive Moon turns on at its current
+effective level, while an active Moon turns off.
+
+While it is active, Table 200 row zero is added to the hero's mental recovery
+rate. Retail applies that rate to maximum MP every third game update and keeps
+the sub-point remainder between updates. Moon turns itself off as soon as MP
+reaches zero. This live toggle, its effective level, and its remainder are not
+part of the character save record, though they remain active when moving from
+one scenario to another during the same game.
+
+Rows 1 through 13 of Table 200 modify the companion's attack speed, walking
+speed, running speed, physical attack, maximum HP, hit rate, physical defense,
+physical evasion, magical attack, magical hit rate, magical evasion, magical
+defense, and parameter 17. Each value is a percentage of the companion's base
+value at the Moon level. Speed values are clamped to 0..255; the remaining
+combat values are kept at one or higher. Recomputing these bonuses preserves
+the companion's current HP instead of treating the change as a heal.
+
+Resource 11000040 loops at the companion while Moon is active. It is hidden
+while the companion is dead, defeated, or reviving, and its animation counter
+continues from where it stopped once the companion can be shown again. A kill
+credited to the local player slot while Moon is active awards one point of
+Moon practice. Retail uses the source character number modulo ten, so both the
+hero and the owned companion can supply that kill.
+
+### Berserker
+
+Berserker is a targetless self-cast that enters action 30 with CAF charts 11
+and 12 and Table 20 row eight. It pays the normal Table 16 MP cost when the
+action begins, then toggles at chart 11's `0x40` marker. Its live effective
+level and active state are not written to the character save.
+
+Table 201 row zero is Berserker's continuing MP rate. Berserker and Moon do
+not have separate drain clocks: retail adds both rates, applies the total to
+maximum MP every third game update, and carries one shared fractional
+remainder. Reaching zero MP disables both sustained spells and rebuilds the
+affected player and companion values.
+
+That same update also includes equipped rolled parameter 18 and a five-point
+bonus from special item 98000004. Its life-side partner uses equipped rolled
+parameter 17 or special item 98000003, keeps a separate remainder, and clamps
+a living hero to at least one HP. Both rates use the same three-update cadence.
+
+Rows 1 through 12 modify the player's attack speed, walking speed, maximum
+HP, maximum MP, physical attack, physical defense, hit rate, physical
+evasion, magical attack, magical defense, magical hit rate, and magical
+evasion. The percentages are applied after ordinary equipment contributions.
+Speeds are clamped to 0..255 and the remaining values to at least one. In the
+shipped Table 201 the maximum-pool rows are zero; offense and speed rise while
+physical defense and evasion fall. Integer percentage calculations truncate,
+so a small base value does not necessarily gain a whole point.
+
+While active, `Player/Common/Powerup.Caf` and `.Njp` loop over the hero using
+chart zero, direction eight, and red/green/blue strengths 1000/200/200. Kills
+credited to either the local hero or owned companion train Berserker through
+the companion-spell practice mode.
+
+### Energy Shield
+
+Energy Shield is another targetless self-cast. It enters action 31, uses CAF
+charts 11 and 12 with Table 20 row nine, and pays the normal Table 16 MP cost
+when the action begins. The live shield toggles only when chart 11 crosses a
+`0x40` marker. An inactive cast cannot turn it on if that up-front cost used
+the player's last MP; an active cast still turns it off normally.
+
+The shield does not have a separate hit-point pool or a Table 202. While it is
+active, the Table 17 value for spell nine scales the physical-defense value
+used for ordinary damage. That damage is then subtracted from MP instead of
+HP. Damage beyond the remaining MP does not spill into HP: MP becomes zero,
+and later ordinary hits reach HP. Effect-family damage bypasses Energy Shield
+and continues to use HP.
+
+Reaching zero MP turns the live shield off on the player update. Its active
+state and animation frame are runtime-only and are not saved. The aura reuses
+`Player/Common/Powerup.Caf` and `.Njp` after the Berserker pass, with chart
+zero, direction eight, and strengths 1000/1000/300. Any kill credited to the
+local hero slot while it is active trains spell nine, whether the hero or the
+owned companion dealt the final blow.
 
 ## Character Stats
 

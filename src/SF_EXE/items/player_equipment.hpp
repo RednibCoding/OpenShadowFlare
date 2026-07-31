@@ -35,6 +35,10 @@ class PlayerEquipment {
 public:
     static constexpr std::size_t slot_count =
         static_cast<std::size_t>(EquipmentSlot::count);
+    static constexpr std::size_t derived_parameter_count = 10;
+    using DerivedParameterBonuses = std::array<
+        std::int32_t,
+        derived_parameter_count>;
 
     void clear();
 
@@ -53,6 +57,8 @@ public:
         const ItemDatabase& database) const;
     std::int32_t derivedParameterBonus(
         std::size_t parameter,
+        const ItemDatabase& database) const;
+    DerivedParameterBonuses derivedParameterBonuses(
         const ItemDatabase& database) const;
     std::int32_t instanceParameterBonus(
         std::size_t parameter,

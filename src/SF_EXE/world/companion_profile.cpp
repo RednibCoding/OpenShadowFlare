@@ -78,8 +78,10 @@ bool decodeCompanionProfile(
         catalog->value(companion_type, 4);
     profile.attack_speed_rating = values[0];
     profile.native_element = values[13];
-    profile.walking_speed = values[1] / 5;
-    profile.running_speed = values[2] / 5;
+    profile.walking_speed_raw = values[1];
+    profile.running_speed_raw = values[2];
+    profile.walking_speed = profile.walking_speed_raw / 5;
+    profile.running_speed = profile.running_speed_raw / 5;
     profile.maximum_life = values[3];
     profile.physical_attack = values[5];
     profile.hit_rate = values[6];

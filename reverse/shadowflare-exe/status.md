@@ -1503,3 +1503,82 @@ valid targets. Contact plays sample 20, the burst shakes the camera for eight
 updates, and successful receivers award Hell Fire practice. Live coverage
 proves that pointing at an enemy still uses this ground/self command and that
 insufficient MP consumes the click without starting an action or effect.
+
+## Ice Blast cast
+
+Ice Blast uses the same targetless secondary-click command as Hell Fire. The
+click only turns the hero: `FUN_0043b3f0` passes target `-1`, direction zero,
+no explicit origin, and the player judgement rectangle. Action 27 uses CAF
+charts 11 and 12, Table 20 row five, and the shared marker-based casting
+cadence.
+
+Its family-zero packet has subtype one, magical defense in word five,
+presentation 21013, spell five, and the row-five table banks. Effect request
+10005 retains target mask four, the marker delay, packet kind eight, and Table
+21 row five in its final constructor field.
+
+The existing `FUN_0042cd70` owner captures the live hero position on update
+three and creates resource 10000051. Its chart-zero frame count schedules
+resource 10000050, the expanded one-update area packet and camera shake at
+plus four, resource 10000052 at plus 15, six sample-22 pulses, and expiry at
+plus 22. Live coverage proves the self-centered capture, all three layers,
+pulse audio, damage, receiver-time practice, and the insufficient-MP path.
+
+## Heal cast
+
+Heal stays on `FUN_00441c00`'s targetless secondary-click path and enters
+action 28. `FUN_0043ca60` uses CAF charts 11 and 12 and Table 20 row six, but
+does not create an attack packet or delayed effect controller. It scans every
+newly displayed chart-11 frame and resolves only when status `0x40` is
+crossed.
+
+The marker always creates effect 21020 with owner kind one, source judgement,
+packet direction eight, and no packet. `FUN_0042b860` maps it to resource
+11000060 at the hero for one CAF pass. If HP is below maximum, the action
+restores Table 17 row six percent of maximum HP capped to the missing amount,
+calls `FUN_0044f6f0` for spell six, and plays sample 17. Full HP still permits
+the cast and visual after paying MP, but skips restoration, audio, and
+practice. Live coverage proves both marker-time branches and insufficient MP.
+
+## Moon and Berserker sustained spells
+
+`FUN_0043d290` runs Moon action 29 and `FUN_0043ceb0` runs Berserker action
+30. Both use CAF charts 11 and 12, the corresponding Table 20 speed row, and
+toggle only when a newly crossed chart-11 frame carries status `0x40`. Moon
+stores Table 200 row zero at runtime `+0x15e4`; Berserker stores Table 201 row
+zero at `+0x15dc`. Their effective levels remain separate and neither live
+state is persisted in the 0x160-byte save record.
+
+`FUN_0044ea60` applies Berserker's Table 201 rows 1 through 12 after equipment
+to attack speed, walking speed, both maximum pools, and all eight ordinary
+physical and magical combat values. `FUN_0044f2f0` reads equipped rolled
+parameters 17 and 18 as life and mana rates, adds five for special items
+98000003 and 98000004, then adds Moon and Berserker to mana. Both resources
+update every third tick with separate remainders at `+0x1638` and `+0x163c`.
+Zero MP clears both spell rates and rebuilds the player and companion profiles.
+
+`FUN_00444960` draws common player animation block 500, mapped by the retail
+resource list to `Player/Common/Powerup.Caf` and `.Njp`, at the hero with
+chart zero, direction eight, RGB 1000/200/200, and runtime frame `+0x15f4`.
+Locally owned kills are recognized by source character number modulo ten;
+while active they train Moon and Berserker for either hero or companion kills.
+
+## Energy Shield toggle
+
+`FUN_0043d670` runs Energy Shield action 31 on CAF charts 11 and 12 with Table
+20 row nine. The ordinary targetless command pays its Table 16 cost first.
+Each newly crossed chart-11 status-`0x40` marker toggles runtime flag `+0x15ec`,
+but activation is refused if the up-front cost left current MP at zero.
+
+There is no Table 202 or separate shield pool. `FUN_00443cb0` resolves spell
+nine's current effective level on each locally owned hit. For ordinary packet
+families, Table 17 row nine scales physical defense and the resulting damage
+is routed wholly to MP while any remains. Excess damage does not spill into
+HP; later ordinary damage reaches HP once MP is empty. Effect-family packets
+bypass Energy Shield. `FUN_00443490` clears the flag at zero MP.
+
+`FUN_00444be0` reuses player common animation block 500, mapped to
+`Player/Common/Powerup.Caf` and `.Njp`, with chart zero, direction eight,
+runtime frame `+0x15f8`, and RGB 1000/1000/300. It is drawn after Berserker's
+red Powerup pass. The same modulo-ten local kill ownership test trains spell
+nine for hero and companion kills while the shield is active.

@@ -111,6 +111,7 @@ void RuntimeRenderer::render(
                     *bar,
                     gameplayHudValues(
                         context.world.playerData(),
+                        context.world.playerRuntimeProfile(),
                         context.world.playerMovementPace(),
                         context.world
                             .playerExperienceThreshold()));

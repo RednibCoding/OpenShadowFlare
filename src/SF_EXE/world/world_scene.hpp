@@ -28,9 +28,14 @@
 #include "player_attack_target.hpp"
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
+#include "player_energy_shield.hpp"
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
 #include "player_magic.hpp"
+#include "player_moon_spell.hpp"
+#include "player_resource_rate.hpp"
+#include "player_runtime_profile.hpp"
+#include "player_sustained_spell.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
@@ -101,6 +106,16 @@ public:
         runtimeEffects() const;
     const std::vector<MissEffectActor>&
         missEffects() const;
+    bool companionMoonAuraVisible() const;
+    const EffectVisualResource* companionMoonAuraVisual() const;
+    std::int32_t companionMoonAuraFrame() const;
+    bool playerMoonActive() const;
+    bool playerBerserkerActive() const;
+    const EffectVisualResource* playerBerserkerVisual() const;
+    std::int32_t playerBerserkerFrame() const;
+    bool playerEnergyShieldActive() const;
+    const EffectVisualResource* playerEnergyShieldVisual() const;
+    std::int32_t playerEnergyShieldFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -118,6 +133,7 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
+    PlayerRuntimeProfile playerRuntimeProfile() const;
     PlayerMagic& playerMagic();
     const PlayerMagic& playerMagic() const;
     const TableDatabase& parameterTables() const;
@@ -331,6 +347,9 @@ private:
     void updateRuntimeEffects();
     void queueRuntimeEffectAudio(
         const RuntimeEffectAudioRequest& request);
+    void refreshCompanionRuntimeProfile(bool level_gained = false);
+    void refreshPlayerRuntimeProfile();
+    void updatePlayerResourceRates();
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -341,6 +360,7 @@ private:
     CharacterVisualResources companion_visuals_{"PARTNER"};
     CompanionActor companion_;
     EffectVisualResources effect_visuals_;
+    EffectVisualResource player_powerup_visual_;
     EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
@@ -371,6 +391,11 @@ private:
     RetailRandom item_random_;
     PlayerData player_data_;
     PlayerMagic player_magic_;
+    PlayerSustainedSpell player_moon_spell_;
+    PlayerSustainedSpell player_berserker_spell_;
+    PlayerEnergyShield player_energy_shield_;
+    PlayerResourceRateController player_life_rate_;
+    PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;

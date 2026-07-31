@@ -167,11 +167,56 @@ coordinates, and enters `spell + 22` with no character target. Hell Fire now
 uses that path as action 26, including its warning, delayed two-layer burst,
 area contacts, samples, camera shake, and receiver-time practice.
 
-The next spell checkpoint is Ice Blast. It continues the targetless ground
-command as action 27 but uses CAF charts 11 and 12, Table 20 row five, effect
-10005, packet subtype one, and presentation 21013. This should prove that the
-saved ground aim is carried into a placed area spell rather than only a
-self-centered one.
+Ice Blast is complete too. It continues the targetless ground command as
+action 27 but uses CAF charts 11 and 12, Table 20 row five, effect 10005,
+packet subtype one, and presentation 21013. Retail analysis showed that the
+click controls facing only: effect 10005 captures the hero on update three,
+then runs its three authored layers, area contact, camera shake, and six pulse
+sounds around that position.
+
+Heal is complete as the first restorative spell. Action 28 stays on the
+targetless command but resolves at the chart-11 `0x40` marker instead of
+queuing an attack controller immediately. It always shows effect 21020 and
+resource 11000060; missing HP restores the Table 17 percentage, plays sample
+17, and trains the spell, while full HP still spends MP and shows the visual
+without restoration, audio, or practice.
+
+Moon is complete as the first sustained companion spell. Action 29 toggles at
+the chart-11 marker and keeps its state in the live player rather than the save
+record. While active, Table 200 supplies its maximum-MP drain and thirteen
+companion stat percentages. Resource 11000040 follows a living companion and
+pauses during its defeated and revival presentations. Kills owned by the
+local hero slot, whether dealt by the hero or companion, train Moon while it
+is active.
+
+Berserker is complete as the first sustained player spell. Action 30 toggles
+at the same authored chart marker but keeps its own Table 201 level and MP
+rate. Its twelve percentage rows are applied after equipment to the one
+derived player profile used by movement, action timing, physical and magical
+combat, hit checks, and defense. The shipped table boosts speed and offense,
+reduces physical defense and evasion, and leaves maximum life and mana alone.
+The red `Player/Common/Powerup` animation follows the hero while active.
+
+Moon and Berserker feed one retail-style mana-rate controller. Their rates
+are added before maximum MP is scaled every third update, they share the one
+fractional remainder, and zero MP switches both off before rebuilding player
+and companion profiles. The same resource boundary now includes equipped
+life/MP rate parameters and the two authored five-point recovery special
+items, with the separate retail life remainder and living-player clamp. This
+also fixes Moon practice to use retail's local kill-owner test instead of
+requiring the companion to land the final hit.
+
+Energy Shield is complete. Action 31 toggles its runtime flag at the chart-11
+marker after paying the ordinary cast cost, but cannot activate when that cost
+used the last MP. It has no Table 202 or separate pool: Table 17 scales the
+physical-defense input, ordinary damage is routed to MP without spillover,
+and effect-family damage still reaches HP. Zero MP shuts it off, owned kills
+train it, and the yellow `Player/Common/Powerup` pass follows the hero after
+Berserker's red pass.
+
+The next spell checkpoint is Earth Spear action 32. It returns to the attack
+spell path, so its target command, packet fields, effect controller, contact
+behavior, audio, practice, and live presentation need to be traced together.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1298,7 +1343,10 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
   dispatch;
 - Plasma's action-25 multi-wave area-effect path is complete;
 - the ground/self casting command and Hell Fire action 26 are complete;
-- the next checkpoint is Ice Blast action 27 and effect 10005;
+- Ice Blast action 27 and effect 10005 are complete;
+- Heal action 28 and its marker-time restorative path are complete;
+- Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
+- the next checkpoint is Berserker action 30;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

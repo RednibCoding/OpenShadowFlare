@@ -70,6 +70,7 @@ public:
         const gapi::CafAnimation& animation);
     void toggleMovementPace();
     void setMovementPace(MovementPace pace);
+    void setWalkingSpeedTier(std::int32_t tier);
     void update(
         const GroundMap& ground,
         const ObjectMap& objects,

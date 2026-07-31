@@ -59,6 +59,7 @@ void WorldScene::clear() {
     companion_visuals_.clear();
     companion_.clear();
     effect_visuals_.clear();
+    player_powerup_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
@@ -86,6 +87,11 @@ void WorldScene::clear() {
     item_random_.seed(1);
     player_data_.clear();
     player_magic_.clear();
+    player_moon_spell_.clear();
+    player_berserker_spell_.clear();
+    player_energy_shield_.clear();
+    player_life_rate_.clear();
+    player_mana_rate_.clear();
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
@@ -167,6 +173,59 @@ WorldScene::runtimeEffects() const {
 const std::vector<MissEffectActor>&
 WorldScene::missEffects() const {
     return miss_effects_;
+}
+
+bool WorldScene::companionMoonAuraVisible() const {
+    if (!player_moon_spell_.active() ||
+        !hasCompanion() || companion_.currentLife() <= 0) {
+        return false;
+    }
+    const std::int32_t action =
+        companion_.presentationAction();
+    return action != 7 && action != 8 && action != 10;
+}
+
+const EffectVisualResource*
+WorldScene::companionMoonAuraVisual() const {
+    return effect_visuals_.find(11000040);
+}
+
+std::int32_t WorldScene::companionMoonAuraFrame() const {
+    return player_moon_spell_.auraFrame();
+}
+
+bool WorldScene::playerMoonActive() const {
+    return player_moon_spell_.active();
+}
+
+bool WorldScene::playerBerserkerActive() const {
+    return player_berserker_spell_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerBerserkerVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerBerserkerFrame() const {
+    return player_berserker_spell_.auraFrame();
+}
+
+bool WorldScene::playerEnergyShieldActive() const {
+    return player_energy_shield_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerEnergyShieldVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerEnergyShieldFrame() const {
+    return player_energy_shield_.auraFrame();
 }
 
 std::size_t
@@ -331,6 +390,11 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    player_moon_spell_.updateAura(
+        companionMoonAuraVisible());
+    player_berserker_spell_.updateAura(
+        has_player_);
+    player_energy_shield_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -500,6 +564,8 @@ void WorldScene::update() {
     }
     std::size_t companion_blocker_index = no_blocker;
     if (has_player_) {
+        player_.setWalkingSpeedTier(
+            playerRuntimeProfile().walkingSpeedTier());
         player_.update(
             scenario_world_.ground(),
             scenario_world_.objectMap(),
@@ -509,6 +575,7 @@ void WorldScene::update() {
             parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
         handlePlayerSpellEvent(player_.takeSpellEvent());
+        updatePlayerResourceRates();
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {

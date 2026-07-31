@@ -5,6 +5,7 @@
 #include "generic_effect_actor.hpp"
 #include "player_attack_impact.hpp"
 #include "player_combat_defense.hpp"
+#include "player_heal_spell.hpp"
 #include "player_ranged_attack.hpp"
 #include "player_spell_cast.hpp"
 #include "player_spell_parameters.hpp"
@@ -989,6 +990,84 @@ void WorldScene::handlePlayerSpellEvent(
         event.spell < 0) {
         return;
     }
+    if (event.spell == 6) {
+        const PlayerSpellParameters parameters =
+            playerSpellParameters(
+                player_magic_,
+                event.spell,
+                player_equipment_,
+                item_database_,
+                parameter_tables_);
+        const PlayerHealSpellResolution resolution =
+            resolvePlayerHealSpell({
+                scenario_world_.localPlayerNumber(),
+                player_data_.currentLife(),
+                playerRuntimeProfile().maximum_life,
+                parameters.effect_value,
+                player_.judgement(),
+            });
+        if (!resolution.valid) {
+            return;
+        }
+        queueCombatEffect(resolution.visual);
+        if (resolution.award_practice) {
+            player_data_.setCurrentLife(
+                resolution.restored_life,
+                playerRuntimeProfile().maximum_life);
+            player_magic_.train(
+                event.spell,
+                false,
+                parameter_tables_);
+            pending_audio_samples_.push_back(
+                resolution.audio_sample);
+        }
+        return;
+    }
+    if (event.spell == 7) {
+        const PlayerSpellParameters parameters =
+            playerSpellParameters(
+                player_magic_,
+                event.spell,
+                player_equipment_,
+                item_database_,
+                parameter_tables_);
+        player_moon_spell_.toggle(
+            200,
+            parameters.effective_level,
+            parameter_tables_);
+        effect_visuals_.load(
+            data_root_, 11000040, nullptr);
+        refreshCompanionRuntimeProfile();
+        return;
+    }
+    if (event.spell == 8) {
+        const PlayerSpellParameters parameters =
+            playerSpellParameters(
+                player_magic_,
+                event.spell,
+                player_equipment_,
+                item_database_,
+                parameter_tables_);
+        player_berserker_spell_.toggle(
+            201,
+            parameters.effective_level,
+            parameter_tables_);
+        player_powerup_visual_.load(
+            data_root_ / "Player" / "Common",
+            "Powerup",
+            nullptr);
+        refreshPlayerRuntimeProfile();
+        return;
+    }
+    if (event.spell == 9) {
+        player_energy_shield_.toggle(
+            player_data_.currentMana());
+        player_powerup_visual_.load(
+            data_root_ / "Player" / "Common",
+            "Powerup",
+            nullptr);
+        return;
+    }
     const bool requires_target =
         playerSpellRequiresCharacterTarget(
             event.spell);
@@ -1001,21 +1080,17 @@ void WorldScene::handlePlayerSpellEvent(
         return;
     }
 
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
     PlayerCombatDefenseSnapshot affinity_source;
     affinity_source.character_number =
         scenario_world_.localPlayerNumber();
     affinity_source.attack =
-        player_data_.basePhysicalAttack() +
-        player_equipment_.derivedParameterBonus(
-            0, item_database_);
+        profile.physical_attack;
     affinity_source.physical_defense =
-        player_data_.basePhysicalDefense() +
-        player_equipment_.derivedParameterBonus(
-            2, item_database_);
+        profile.physical_defense;
     affinity_source.magical_defense =
-        player_data_.baseMagicalDefense() +
-        player_equipment_.derivedParameterBonus(
-            6, item_database_);
+        profile.magical_defense;
     affinity_source.element_x = player_data_.elementX();
     affinity_source.element_y = player_data_.elementY();
 
@@ -1024,17 +1099,13 @@ void WorldScene::handlePlayerSpellEvent(
         scenario_world_.localPlayerNumber();
     stats.player_level = player_data_.level();
     stats.magical_attack =
-        player_data_.baseMagicalAttack() +
-        player_equipment_.derivedParameterBonus(
-            4, item_database_);
+        profile.magical_attack;
     stats.physical_defense =
         affinity_source.physical_defense;
     stats.magical_defense =
         affinity_source.magical_defense;
     stats.magical_hit_rate =
-        player_data_.baseMagicalHitRate() +
-        player_equipment_.derivedParameterBonus(
-            5, item_database_);
+        profile.magical_hit_rate;
     stats.element_affinities =
         buildPlayerElementAffinities(
             affinity_source,
@@ -1115,14 +1186,12 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
 }
 
 std::int32_t WorldScene::playerAttackSpeedTier() const {
-    const std::int32_t attack_speed =
-        player_data_.baseAttackSpeed() +
-        player_equipment_.derivedParameterBonus(
-            8, item_database_);
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
     return retailPlayerAttackSpeedTier(
-        attack_speed,
+        profile.attack_speed_raw,
         player_equipment_.totalWeight(item_database_),
-        player_data_.baseWeightCapacity(),
+        profile.weight_capacity,
         parameter_tables_.find(4));
 }
 
@@ -1220,7 +1289,8 @@ void WorldScene::launchPlayerRangedAttack(
                     player_data_,
                     player_equipment_,
                     player_inventory_,
-                    item_database_),
+                    item_database_,
+                    playerRuntimeProfile()),
                 definition,
             },
             item_random_);
@@ -1253,7 +1323,8 @@ void WorldScene::applyPlayerAttackImpact(
             player_data_,
             player_equipment_,
             player_inventory_,
-            item_database_);
+            item_database_,
+            playerRuntimeProfile());
     EnemyDamageReceiverContext context;
     context.local_player_slot =
         scenario_world_.localPlayerNumber();

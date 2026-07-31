@@ -17,6 +17,11 @@ enum class PlayerSpellAction : std::int32_t {
     ice_bolt = 24,
     plasma = 25,
     hell_fire = 26,
+    ice_blast = 27,
+    heal = 28,
+    moon = 29,
+    berserker = 30,
+    energy_shield = 31,
 };
 
 struct PlayerSpellAnimationTiming {
@@ -96,6 +101,8 @@ private:
     double animation_speed_ = 1.0;
     std::int32_t completion_increment_ = 1;
     std::int32_t effect_delay_ = 0;
+    std::int32_t last_effect_scan_frame_ = -1;
+    bool cast_dispatched_ = false;
     std::int32_t action_counter_ = 0;
     std::int32_t displayed_frame_ = 0;
     std::int32_t animation_chart_ = 0;
