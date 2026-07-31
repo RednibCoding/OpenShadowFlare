@@ -856,6 +856,17 @@ Character animation frames - loaded via `RKC_RPGSCRN_CHARANIM::ReadCafFile()`
 
 Player animations use format: `%s\Animation.Caf`
 
+Each CAF cell stores a status, draw priority, transparency value, and NJP
+pattern number. Two status bits directly affect rendering:
+
+- `0x08` requests a shadow pass from the matching SDW resource. The normal NJP
+  cell is still drawn as well; this bit does not turn the cell into a
+  shadow-only cell.
+- `0x10` selects additive blending. Retail forwards it through the UPDIB
+  packet flags to the DIB additive blitter, using the cell transparency as
+  the blend amount. Title steam, Transport, and many spell effects rely on
+  this bit for their glow and see-through appearance.
+
 ## Configuration
 
 ### SFlare.Cfg

@@ -3,6 +3,7 @@
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "render/character_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/loading_renderer.hpp"
@@ -175,7 +176,8 @@ std::vector<std::uint8_t> makeBitmapFixture() {
     return bytes;
 }
 
-std::vector<std::uint8_t> makeCafFixture() {
+std::vector<std::uint8_t> makeCafFixture(
+    std::int16_t cell_status = 16) {
     std::vector<std::uint8_t> bytes;
     const char header[16] = "CHRAnimation002";
     appendBytes(bytes, header, sizeof(header));
@@ -188,11 +190,11 @@ std::vector<std::uint8_t> makeCafFixture() {
     appendI32(bytes, 1);
     appendI16(bytes, 2);
     appendI32(bytes, 2);
-    appendI16(bytes, 16);
+    appendI16(bytes, cell_status);
     appendI16(bytes, 1000);
     appendI32(bytes, 4);
     appendI16(bytes, 0);
-    appendI16(bytes, 16);
+    appendI16(bytes, cell_status);
     appendI16(bytes, 750);
     appendI32(bytes, 7);
     appendI16(bytes, 0);
@@ -348,6 +350,23 @@ bool testNjpAndSoftwareBackend() {
             blended.green == 20 &&
             blended.blue == 30,
             "GAPI pattern opacity did not blend portably.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend additiveBackend(1, 1);
+    additiveBackend.beginFrame({20, 40, 60, 255});
+    osf::gapi::PatternDraw additiveDraw{
+        0, 0, 1000, 1000, 1000, 500};
+    additiveDraw.blend_mode =
+        osf::gapi::PatternBlendMode::additive;
+    additiveBackend.drawPattern(image, 0, additiveDraw);
+    const osf::gapi::Color added =
+        additiveBackend.surface().pixels[0];
+    if (!check(
+            added.red == 70 &&
+                added.green == 40 &&
+                added.blue == 60,
+            "GAPI additive sprite blending differs from retail.")) {
         return false;
     }
 
@@ -629,8 +648,70 @@ bool testCafAndTitleAnimation() {
             backend.patterns[4].index == 7 &&
             backend.patterns[4].draw.x == 562 &&
             backend.patterns[4].draw.y == 60 &&
-            backend.patterns[4].draw.brightness == 600,
+            backend.patterns[4].draw.brightness == 800 &&
+            backend.patterns[4].draw.opacity == 750 &&
+            backend.patterns[4].draw.blend_mode ==
+                osf::gapi::PatternBlendMode::additive,
         "The title steam CAF frame or retail draw packet differs.");
+}
+
+bool testCafCharacterDrawModes() {
+    osf::gapi::CafAnimation animation;
+    std::string error;
+    if (!check(
+            animation.decode(makeCafFixture(8), &error),
+            error.c_str())) {
+        return false;
+    }
+
+    osf::gapi::NjpImage patterns;
+    osf::gapi::NjpImage shadows;
+    RecordingBackend backend;
+    const auto enabled = [](std::size_t) {
+        return true;
+    };
+    const auto color = [](std::size_t) {
+        return osf::CharacterColorStrength{};
+    };
+    osf::renderCharacterAnimationPass(
+        backend,
+        animation,
+        patterns,
+        shadows,
+        {0, 0},
+        0,
+        8,
+        1,
+        enabled,
+        color,
+        0,
+        0,
+        false,
+        500);
+    osf::renderCharacterAnimationPass(
+        backend,
+        animation,
+        patterns,
+        shadows,
+        {0, 0},
+        0,
+        8,
+        1,
+        enabled,
+        color,
+        0,
+        0,
+        true,
+        500);
+    return check(
+        backend.patterns.size() == 2 &&
+            backend.patterns[0].index == 7 &&
+            backend.patterns[0].draw.opacity == 750 &&
+            backend.patterns[0].draw.blend_mode ==
+                osf::gapi::PatternBlendMode::normal &&
+            backend.patterns[1].index == 7 &&
+            backend.patterns[1].draw.opacity == 500,
+        "A shadow-enabled CAF cell did not keep its normal pass.");
 }
 
 bool testInitialLoadingPackets() {
@@ -688,6 +769,7 @@ int main() {
         !testBitmapAndTextDrawing() ||
         !testMutableBitmapMask() ||
         !testCafAndTitleAnimation() ||
+        !testCafCharacterDrawModes() ||
         !testInitialLoadingPackets() ||
         !testSystemCursorPackets() ||
         !testGameplayHudPackets()) {

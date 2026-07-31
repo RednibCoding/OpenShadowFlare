@@ -2880,7 +2880,7 @@ bool testRetailRemoteTown() {
     renderer.shadows = &world.npcs()[0].shadowPatterns();
     osf::renderWorld(renderer, world, 500);
     if (!check(
-            renderer.calls.size() == 3 &&
+            renderer.calls.size() == 4 &&
                 renderer.calls[0].shadow &&
                 renderer.calls[0].pattern == 280 &&
                 renderer.calls[0].draw.x == 747 &&
@@ -2890,7 +2890,9 @@ bool testRetailRemoteTown() {
                 renderer.calls[1].pattern == 1744 &&
                 renderer.calls[1].draw.red_strength == 1000 &&
                 !renderer.calls[2].shadow &&
-                renderer.calls[2].pattern == 1784,
+                renderer.calls[2].pattern == 1784 &&
+                !renderer.calls[3].shadow &&
+                renderer.calls[3].pattern == 280,
             "Ostare's idle frame, part mask, shadow, or placement differs.")) {
         return false;
     }
@@ -2935,10 +2937,13 @@ bool testRetailRemoteTown() {
     osf::renderWorld(renderer, world, 500, &font);
     if (!check(
             world.hoveredNpcId() == 0 &&
-                renderer.calls.size() == 3 &&
+                renderer.calls.size() == 4 &&
                 renderer.calls[1].draw.red_strength == 1300 &&
                 renderer.calls[1].draw.green_strength == 1300 &&
                 renderer.calls[1].draw.blue_strength == 1300 &&
+                renderer.calls[3].draw.red_strength == 1300 &&
+                renderer.calls[3].draw.green_strength == 1300 &&
+                renderer.calls[3].draw.blue_strength == 1300 &&
                 renderer.rectangles.size() == 5 &&
                 renderer.rectangles[0].x == 725 &&
                 renderer.rectangles[0].y == 187 &&
@@ -3158,7 +3163,7 @@ bool testRetailRemoteTown() {
             item_resource &&
                 item_resource->patterns().palettes().size() > 72 &&
                 item_resource->shadowPatterns().palettes().size() == 1 &&
-                renderer.item_calls.size() == 8 &&
+                renderer.item_calls.size() == 12 &&
                 renderer.item_calls[0].shadow &&
                 renderer.item_calls[0].pattern == 36 &&
                 renderer.item_calls[0].draw.palette == -1 &&
@@ -3172,32 +3177,56 @@ bool testRetailRemoteTown() {
                 renderer.item_calls[3].pattern == 30 &&
                 renderer.item_calls[3].draw.palette == -1 &&
                 !renderer.item_calls[4].shadow &&
-                renderer.item_calls[4].pattern == 113 &&
-                renderer.item_calls[4].draw.palette == 72 &&
+                renderer.item_calls[4].pattern == 36 &&
+                renderer.item_calls[4].draw.palette == 73 &&
                 renderer.item_calls[4].draw.x ==
                     renderer.item_calls[0].draw.x &&
                 renderer.item_calls[4].draw.y ==
                     renderer.item_calls[0].draw.y &&
-                renderer.item_calls[5].pattern == 77 &&
-                renderer.item_calls[5].draw.palette == 0 &&
+                renderer.item_calls[5].pattern == 113 &&
+                renderer.item_calls[5].draw.palette == 72 &&
                 renderer.item_calls[5].draw.x ==
-                    renderer.item_calls[1].draw.x &&
+                    renderer.item_calls[0].draw.x &&
                 renderer.item_calls[5].draw.y ==
-                    renderer.item_calls[1].draw.y &&
-                renderer.item_calls[6].pattern == 82 &&
-                renderer.item_calls[6].draw.palette == 10 &&
-                renderer.item_calls[6].draw.red_strength == 900 &&
-                renderer.item_calls[6].draw.green_strength == 800 &&
-                renderer.item_calls[6].draw.blue_strength == 500 &&
+                    renderer.item_calls[0].draw.y &&
+                renderer.item_calls[6].pattern == 0 &&
+                renderer.item_calls[6].draw.palette == 1 &&
                 renderer.item_calls[6].draw.x ==
-                    renderer.item_calls[2].draw.x &&
+                    renderer.item_calls[1].draw.x &&
                 renderer.item_calls[6].draw.y ==
-                    renderer.item_calls[2].draw.y &&
-                renderer.item_calls[7].pattern == 107 &&
-                renderer.item_calls[7].draw.palette == 60 &&
+                    renderer.item_calls[1].draw.y &&
+                renderer.item_calls[7].pattern == 77 &&
+                renderer.item_calls[7].draw.palette == 0 &&
                 renderer.item_calls[7].draw.x ==
-                    renderer.item_calls[3].draw.x &&
+                    renderer.item_calls[1].draw.x &&
                 renderer.item_calls[7].draw.y ==
+                    renderer.item_calls[1].draw.y &&
+                renderer.item_calls[8].pattern == 5 &&
+                renderer.item_calls[8].draw.palette == 11 &&
+                renderer.item_calls[8].draw.x ==
+                    renderer.item_calls[2].draw.x &&
+                renderer.item_calls[8].draw.y ==
+                    renderer.item_calls[2].draw.y &&
+                renderer.item_calls[9].pattern == 82 &&
+                renderer.item_calls[9].draw.palette == 10 &&
+                renderer.item_calls[9].draw.red_strength == 900 &&
+                renderer.item_calls[9].draw.green_strength == 800 &&
+                renderer.item_calls[9].draw.blue_strength == 500 &&
+                renderer.item_calls[9].draw.x ==
+                    renderer.item_calls[2].draw.x &&
+                renderer.item_calls[9].draw.y ==
+                    renderer.item_calls[2].draw.y &&
+                renderer.item_calls[10].pattern == 30 &&
+                renderer.item_calls[10].draw.palette == 61 &&
+                renderer.item_calls[10].draw.x ==
+                    renderer.item_calls[3].draw.x &&
+                renderer.item_calls[10].draw.y ==
+                    renderer.item_calls[3].draw.y &&
+                renderer.item_calls[11].pattern == 107 &&
+                renderer.item_calls[11].draw.palette == 60 &&
+                renderer.item_calls[11].draw.x ==
+                    renderer.item_calls[3].draw.x &&
+                renderer.item_calls[11].draw.y ==
                     renderer.item_calls[3].draw.y,
             "Ostare's drops do not use the retail ground CAF or depth order.")) {
         return false;

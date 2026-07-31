@@ -366,7 +366,9 @@ void renderRuntimeEffect(
         camera_y,
         false,
         0,
-        effect.displayHeight() / 10);
+        effect.displayHeight() / 10,
+        1000,
+        effect.additionalDisplayStatus());
 }
 
 void renderPlayerTransport(
@@ -403,10 +405,13 @@ void renderPlayerTransport(
                 1000,
                 1000,
                 1000,
+                beam.strength,
                 1000,
-                beam.strength,
-                beam.strength,
-                beam.strength,
+                1000,
+                1000,
+                -1,
+                {},
+                gapi::PatternBlendMode::additive,
             });
     }
     if (!transport.centerVisible() ||
@@ -502,6 +507,12 @@ void renderScenarioObjectPass(
                     ? 1000
                     : object.blueDrawStrength() +
                           (hovered ? 300 : 0),
+                -1,
+                {},
+                !shadow &&
+                    (object.displayStatus() & 0x10) != 0
+                    ? gapi::PatternBlendMode::additive
+                    : gapi::PatternBlendMode::normal,
             });
         return;
     }
@@ -537,7 +548,8 @@ void renderScenarioObjectPass(
         shadow,
         shadow_opacity,
         object.displayHeight(),
-        object.drawStrength());
+        object.drawStrength(),
+        object.displayStatus());
 }
 
 const gapi::NjpImage* objectImage(
@@ -626,7 +638,12 @@ void drawMapObject(
                    1000),
          shadow ? 1000 : object.red_strength,
          shadow ? 1000 : object.green_strength,
-         shadow ? 1000 : object.blue_strength});
+         shadow ? 1000 : object.blue_strength,
+         -1,
+         {},
+         !shadow && (object.status & 0x10) != 0
+             ? gapi::PatternBlendMode::additive
+             : gapi::PatternBlendMode::normal});
 }
 
 std::vector<WorldDrawEntry> collectWorldEntries(
