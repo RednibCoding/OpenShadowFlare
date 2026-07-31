@@ -1496,6 +1496,26 @@ Sample 22 plays at the launch point and the controller returns zero on that
 same update. Stone Wisp 2 in Ancient Ruins B1F (`03140000`) supplies the
 shipped subtype-one live case.
 
+Type 16 (`0x0042ea50`) launches resource `10000110` when its counter equals
+the authored delay. Nonzero owners are resolved and projected 180 units along
+the stored angle; owner kind zero uses the explicit origin directly. The
+actor moves at constructor value six, uses constructor value seven as display
+height, has `[-80,-80,79,79]` bounds, chart-zero directional drawing, static
+and first-target expiry, optional previous-target memory, the copied packet,
+and contact sample 20. Sample 19 plays at launch.
+
+The controller keeps the returned category-50000000 actor identity plus its
+latest x/y position. On every later update it looks that identity up and
+refreshes the stored position. Once the actor no longer exists, resource
+`10000111` is created at the last recorded position with
+`[-240,-240,239,239]` bounds, direction eight, and a complete chart-zero
+lifetime. Its copied packet processes every eligible overlapping target only
+on update five, with contact sample 20. Sample 22 plays when the explosion is
+created. A local player at an inclusive distance of 3000 or less receives the
+same eight-update, magnitude-six camera shake as the other area families, and
+the controller then expires. Goliate's second effect variant in Goliate's
+Mansion B3F (`04050002`) supplies the shipped subtype-ten live case.
+
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
 first update, retail integer projection, static OBL/GND sweeping, the

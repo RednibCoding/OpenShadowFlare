@@ -85,7 +85,8 @@ osf::CombatEffectSpawnRequest shippedEffectRequest(
     const osf::WorldScene& world,
     const osf::EnemyActor& enemy,
     const osf::TableDatabase& tables,
-    osf::EnemyAiTarget selected_target = {}) {
+    osf::EnemyAiTarget selected_target = {},
+    std::size_t variant = 0) {
     const osf::EnemyPresentationProfile& profile =
         enemy.presentationProfile();
     const osf::WorldPosition source = enemy.position();
@@ -103,10 +104,10 @@ osf::CombatEffectSpawnRequest shippedEffectRequest(
             source,
             enemy.judgement(),
             direction,
-            profile.effect_type[0],
-            profile.effect_subtype[0],
-            profile.effect_parameter[0],
-            profile.effect_additive[0],
+            profile.effect_type[variant],
+            profile.effect_subtype[variant],
+            profile.effect_parameter[variant],
+            profile.effect_additive[variant],
             profile.packet_word_31,
             selected_target,
         },
@@ -1965,6 +1966,208 @@ bool testShippedLiveTypeFourteen(
         "cleanup or adjacent item identity.");
 }
 
+bool testShippedLiveTypeSixteen(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-sixteen parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectBlast";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {4050002, 0, 0},
+                &error),
+            "The shipped type-sixteen effect scenario could "
+            "not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::EnemyActor* source =
+        findEnemy(world, 10000);
+    if (!check(
+            source &&
+                source->name() == "Goliate" &&
+                source->presentationProfile()
+                        .effect_type[1] == 16 &&
+                source->presentationProfile()
+                        .effect_subtype[1] == 10,
+            "Goliate's Mansion B3F no longer contains the "
+            "shipped type-sixteen Goliate variant.")) {
+        return false;
+    }
+
+    const osf::WorldPosition player_position{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(
+            world, *source, tables, {}, 1);
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = player_position;
+    request.packet.write(4, 1);
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    const std::int32_t camera_y =
+        world.cameraScreenY();
+    if (!check(
+            request.valid &&
+                request.effect_number == 10016 &&
+                request.constructor_value_12 == 0 &&
+                request.constructor_value_17 == 10 &&
+                request.constructor_value_6 > 0 &&
+                request.packet[34] == 20000 &&
+                body_before,
+            "Goliate did not resolve a valid type-sixteen "
+            "request or starter ownership fixture.")) {
+        return false;
+    }
+
+    world.queueCombatEffect(request);
+    world.update();
+    const std::vector<std::int32_t> launch_audio =
+        world.takeAudioSamples();
+    if (!check(
+            world.runtimeEffectControllerCount() == 1 &&
+                world.runtimeEffects().size() == 1 &&
+                world.runtimeEffects()[0].resourceId() ==
+                    10000110 &&
+                world.runtimeEffects()[0].position().x ==
+                    player_position.x &&
+                world.runtimeEffects()[0].position().y ==
+                    player_position.y &&
+                world.runtimeEffects()[0].hasPacket() &&
+                containsSample(launch_audio, 19),
+            "The live type-sixteen launch lost its tracked "
+            "projectile, fixed origin, packet, or sample 19.")) {
+        return false;
+    }
+
+    world.update();
+    const std::vector<std::int32_t> projectile_audio =
+        world.takeAudioSamples();
+    const std::int32_t life_after_projectile =
+        world.playerData().currentLife();
+    if (!check(
+            life_after_projectile < life_before &&
+                containsSample(projectile_audio, 20) &&
+                world.runtimeEffectControllerCount() == 1,
+            "The tracked type-sixteen projectile did not hit "
+            "the player before its controller follow-up.")) {
+        return false;
+    }
+
+    world.update();
+    const std::vector<std::int32_t> explosion_audio =
+        world.takeAudioSamples();
+    const auto explosion = std::find_if(
+        world.runtimeEffects().begin(),
+        world.runtimeEffects().end(),
+        [](const osf::RuntimeEffectActor& actor) {
+            return actor.resourceId() == 10000111;
+        });
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                explosion != world.runtimeEffects().end() &&
+                explosion->position().x ==
+                    player_position.x &&
+                explosion->position().y ==
+                    player_position.y &&
+                explosion->judgement().left == -240 &&
+                explosion->judgement().right == 239 &&
+                explosion->hasPacket() &&
+                containsSample(explosion_audio, 22) &&
+                world.cameraScreenY() == camera_y,
+            "The live type-sixteen follow-up lost its last "
+            "projectile position, explosion, sample 22, or "
+            "zero-offset shake update.")) {
+        return false;
+    }
+
+    bool rendered_explosion = false;
+    bool heard_explosion_impact = false;
+    for (std::int32_t update_number = 0;
+         update_number <= 5;
+         ++update_number) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        rendered_explosion =
+            rendered_explosion ||
+            renderedRuntimeResource(world, 10000111);
+        heard_explosion_impact =
+            heard_explosion_impact ||
+            containsSample(audio, 20);
+        if (update_number == 0 &&
+            !check(
+                world.cameraScreenY() == camera_y - 6,
+                "The live type-sixteen explosion did not apply "
+                "its first camera jolt.")) {
+            return false;
+        }
+    }
+    if (!check(
+            rendered_explosion &&
+                heard_explosion_impact &&
+                world.playerData().currentLife() <
+                    life_after_projectile,
+            "The type-sixteen explosion did not render or apply "
+            "its update-five area packet and contact sound.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 0;
+         update_number < 120;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    const osf::InventoryItem* body_after =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    return check(
+        world.runtimeEffects().empty() &&
+            sameItems(
+                world.playerInventory().items(),
+                inventory_before) &&
+            sameItems(
+                world.playerBelt().items(),
+                belt_before) &&
+            body_after &&
+            body_after->category == body_copy.category &&
+            body_after->definition_id ==
+                body_copy.definition_id,
+        "The shipped type-sixteen sequence lost actor cleanup "
+        "or adjacent item identity.");
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -2073,6 +2276,7 @@ int main() {
                    testShippedLiveTypeTwelve(data_root) &&
                    testShippedLiveTypeThirteen(data_root) &&
                    testShippedLiveTypeFourteen(data_root) &&
+                   testShippedLiveTypeSixteen(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;

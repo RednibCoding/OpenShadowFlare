@@ -98,7 +98,7 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller types 16 and 21 one
+- finish effect-controller type 21 with one
   shipped family at a time, with both passive timing coverage and a live actor
   using each one;
 - finish ranged player actions and projectiles without bypassing the common
@@ -1091,7 +1091,22 @@ fixed the same old edge case in types 1 and 2. Stone Wisp 2 in Ancient Ruins
 B1F (`03140000`) supplies the shipped subtype-one live render, packet, launch
 and impact audio, damage, cleanup, and item-identity regression.
 
-Types 16 and 21 remain.
+Type 16 is complete now. At the authored delay it launches resource
+`10000110`, stores that actor's real runtime identity, and follows its current
+position while it remains in the world. The projectile uses 80-unit bounds,
+the authored speed and display height, static and first-target expiry, contact
+sample 20, and launch sample 19.
+
+Once the projectile is removed, the controller creates resource `10000111`
+at its last recorded position and ends. This second actor uses 240-unit
+bounds, its full chart-zero lifetime, and applies the copied packet to every
+overlapping target only on update five. Sample 22 plays when it appears, and
+a player within 3000 units receives the usual eight-update, six-pixel camera
+jolt. Goliate's second effect variant in Goliate's Mansion B3F (`04050002`)
+supplies the shipped live projectile, follow-up position, render, damage,
+audio, camera, cleanup, and item-identity regression.
+
+Type 21 remains.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1120,8 +1135,8 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 16 and 21,
-then the ranged player actions and companion attacks, keeping one
+finish. It should move to effect-controller type 21, then the ranged player
+actions and companion attacks, keeping one
 shipped live encounter beside each passive reconstruction.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must

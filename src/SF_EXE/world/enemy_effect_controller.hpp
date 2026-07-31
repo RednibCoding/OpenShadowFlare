@@ -47,14 +47,33 @@ using EnemyEffectAnimationLengthResolver =
         std::int32_t resource_id,
         std::int32_t chart,
         std::int32_t direction)>;
+using EnemyEffectActorResolver =
+    std::function<EnemyEffectControllerSource(
+        std::int32_t actor_identifier)>;
 
 struct EnemyEffectControllerContext {
+    EnemyEffectControllerContext(
+        EnemyEffectControllerSource source_value = {},
+        RetailRandom* random_value = nullptr,
+        EnemyEffectPlacementTest placement_value = {},
+        EnemyEffectControllerSource observer_value = {},
+        EnemyEffectAnimationLengthResolver
+            animation_length_value = {},
+        EnemyEffectActorResolver actor_value = {})
+        : source(source_value),
+          random(random_value),
+          placement_is_clear(placement_value),
+          observer(observer_value),
+          resolve_animation_length(animation_length_value),
+          resolve_actor(actor_value) {}
+
     EnemyEffectControllerSource source;
     RetailRandom* random = nullptr;
     EnemyEffectPlacementTest placement_is_clear;
     EnemyEffectControllerSource observer;
     EnemyEffectAnimationLengthResolver
         resolve_animation_length;
+    EnemyEffectActorResolver resolve_actor;
 };
 
 class EnemyEffectController {
@@ -64,6 +83,9 @@ public:
         const TableDatabase* tables = nullptr);
     EnemyEffectControllerUpdate update(
         const EnemyEffectControllerContext& context);
+    void bindSpawnedActor(
+        std::int32_t actor_identifier,
+        const EnemyEffectControllerSource& actor);
 
     bool active() const;
     std::int32_t counter() const;
@@ -79,6 +101,8 @@ private:
     bool wave_placement_blocked_ = false;
     std::array<bool, 8> radial_placement_blocked_{};
     WorldPosition type_five_position_;
+    std::int32_t tracked_actor_identifier_ = -1;
+    WorldPosition tracked_actor_position_;
     bool active_ = false;
 };
 

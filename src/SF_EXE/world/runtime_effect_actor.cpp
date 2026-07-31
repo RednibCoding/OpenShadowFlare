@@ -393,6 +393,10 @@ RuntimeEffectActor::controllerEffectNumber() const {
     return request_.controller_effect_number;
 }
 
+std::int32_t RuntimeEffectActor::actorIdentifier() const {
+    return request_.actor_identifier;
+}
+
 std::int32_t RuntimeEffectActor::resourceId() const {
     return request_.resource_id;
 }

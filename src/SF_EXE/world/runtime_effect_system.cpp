@@ -153,6 +153,20 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                         chart,
                         direction);
                 },
+                [this](std::int32_t actor_identifier) {
+                    const auto actor = std::find_if(
+                        actors_.begin(),
+                        actors_.end(),
+                        [actor_identifier](
+                            const RuntimeEffectActor& candidate) {
+                            return candidate.actorIdentifier() ==
+                                actor_identifier;
+                        });
+                    return actor != actors_.end()
+                        ? EnemyEffectControllerSource{
+                              true, actor->position()}
+                        : EnemyEffectControllerSource{};
+                },
             });
         if (update.camera_shake) {
             result.camera_shake = true;
@@ -186,13 +200,26 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                     ? context.resolve_visual(
                           request.resource_id)
                     : nullptr;
+            EnemyEffectControllerSource spawned_actor;
             if (request.resource_id >= 0 &&
                 !visual) {
+                if (request.track_for_controller) {
+                    entry.controller.bindSpawnedActor(
+                        request.actor_identifier,
+                        spawned_actor);
+                }
                 continue;
             }
             RuntimeEffectActor actor;
             if (actor.initialize(request, visual)) {
+                spawned_actor = {
+                    true, actor.position()};
                 actors_.push_back(std::move(actor));
+            }
+            if (request.track_for_controller) {
+                entry.controller.bindSpawnedActor(
+                    request.actor_identifier,
+                    spawned_actor);
             }
         }
     }

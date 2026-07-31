@@ -311,7 +311,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10016;
+    request.effect_number = 10021;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -1935,6 +1935,199 @@ bool testTypeFourteenProjectile() {
         "incorrectly projected 180 units.");
 }
 
+bool testTypeSixteenProjectileExplosion() {
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10016, 2);
+    request.constructor_value_22 = 1;
+
+    osf::EnemyEffectController controller;
+    if (!check(
+            controller.initialize(request),
+            "A valid type-sixteen request was rejected.")) {
+        return false;
+    }
+    const auto first =
+        updateController(
+            controller, {true, {100, 200}});
+    const auto second =
+        updateController(
+            controller, {true, {200, 300}});
+    if (!check(
+            first.actor_spawn_count == 0 &&
+                first.audio_count == 0 &&
+                second.actor_spawn_count == 0 &&
+                second.audio_count == 0 &&
+                controller.counter() == 2,
+            "Type sixteen created a source actor or launched "
+            "before its authored delay.")) {
+        return false;
+    }
+
+    const auto launch =
+        updateController(
+            controller, {true, {300, 400}});
+    if (!check(
+            launch.actor_spawn_count == 1 &&
+                launch.audio_count == 1 &&
+                !launch.expired &&
+                controller.active() &&
+                controller.counter() == 3,
+            "Type sixteen did not launch one tracked projectile "
+            "while retaining its controller.")) {
+        return false;
+    }
+    const auto& projectile =
+        launch.actor_spawns[0];
+    if (!check(
+            projectile.controller_effect_number == 10016 &&
+                projectile.resource_id == 10000110 &&
+                projectile.owner_kind == 4 &&
+                projectile.source_character_number ==
+                    14000042 &&
+                projectile.target_mask == 1 &&
+                projectile.target_identifier == 3 &&
+                projectile.direction_radians == 0.0 &&
+                projectile.travel_speed == 73 &&
+                projectile.position.x == 480 &&
+                projectile.position.y == 400 &&
+                projectile.judgement.left == -80 &&
+                projectile.judgement.top == -80 &&
+                projectile.judgement.right == 79 &&
+                projectile.judgement.bottom == 79 &&
+                projectile.display_height == 250 &&
+                projectile.lifetime == -1 &&
+                !projectile.lifetime_from_animation &&
+                projectile.expire_on_environment_collision &&
+                projectile.target_collision_start == 0 &&
+                projectile.target_collision_end == -1 &&
+                projectile.expire_on_target &&
+                projectile.remember_targets &&
+                projectile.target_audio.bank == 0 &&
+                projectile.target_audio.sample == 20 &&
+                projectile.animation_chart == 0 &&
+                projectile.animation_direction == 1 &&
+                projectile.track_for_controller &&
+                projectile.has_packet &&
+                projectile.packet[34] == 21013 &&
+                launch.audio[0].sample == 19 &&
+                launch.audio[0].position.x == 480 &&
+                launch.audio[0].position.y == 400,
+            "The type-sixteen projectile differs from its "
+            "retail tracked moving descriptor.")) {
+        return false;
+    }
+
+    controller.bindSpawnedActor(
+        50000042, {true, {480, 400}});
+    std::int32_t resolver_calls = 0;
+    osf::EnemyEffectControllerContext context;
+    context.resolve_actor =
+        [&resolver_calls](
+            std::int32_t actor_identifier) {
+            ++resolver_calls;
+            return actor_identifier == 50000042
+                ? osf::EnemyEffectControllerSource{
+                      true, {600, 700}}
+                : osf::EnemyEffectControllerSource{};
+        };
+    const auto tracked = controller.update(context);
+    if (!check(
+            tracked.actor_spawn_count == 0 &&
+                tracked.audio_count == 0 &&
+                !tracked.expired &&
+                controller.counter() == 4 &&
+                resolver_calls == 1,
+            "Type sixteen did not retain the live projectile's "
+            "latest position.")) {
+        return false;
+    }
+
+    context.resolve_actor =
+        [&resolver_calls](std::int32_t actor_identifier) {
+            ++resolver_calls;
+            return osf::EnemyEffectControllerSource{
+                actor_identifier != 50000042, {}};
+        };
+    context.observer = {true, {3600, 700}};
+    const auto explosion = controller.update(context);
+    if (!check(
+            explosion.actor_spawn_count == 1 &&
+                explosion.audio_count == 1 &&
+                explosion.camera_shake &&
+                explosion.camera_shake_duration == 8 &&
+                explosion.camera_shake_magnitude == 6 &&
+                explosion.expired &&
+                !controller.active() &&
+                resolver_calls == 2,
+            "Type sixteen did not replace its missing "
+            "projectile with the explosion, sound, and "
+            "inclusive 3000-unit camera shake.")) {
+        return false;
+    }
+    const auto& burst = explosion.actor_spawns[0];
+    if (!check(
+            burst.controller_effect_number == 10016 &&
+                burst.resource_id == 10000111 &&
+                burst.owner_kind == 4 &&
+                burst.source_character_number == 14000042 &&
+                burst.target_mask == 1 &&
+                burst.target_identifier == 3 &&
+                burst.travel_speed == 0 &&
+                burst.position.x == 600 &&
+                burst.position.y == 700 &&
+                burst.judgement.left == -240 &&
+                burst.judgement.top == -240 &&
+                burst.judgement.right == 239 &&
+                burst.judgement.bottom == 239 &&
+                burst.display_height == 0 &&
+                burst.lifetime_from_animation &&
+                burst.target_collision_start == 5 &&
+                burst.target_collision_end == 5 &&
+                burst.process_every_target &&
+                !burst.expire_on_target &&
+                burst.target_audio.bank == 0 &&
+                burst.target_audio.sample == 20 &&
+                burst.animation_chart == 0 &&
+                burst.animation_direction == 8 &&
+                !burst.track_for_controller &&
+                burst.has_packet &&
+                burst.packet[34] == 21013 &&
+                explosion.audio[0].sample == 22 &&
+                explosion.audio[0].position.x == 600 &&
+                explosion.audio[0].position.y == 700,
+            "The type-sixteen explosion differs from its "
+            "retail delayed area descriptor.")) {
+        return false;
+    }
+
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = {700, 900};
+    request.constructor_value_12 = 0;
+    controller.initialize(request);
+    const auto fixed =
+        updateController(
+            controller, {true, {1, 2}});
+    controller.bindSpawnedActor(
+        50000043, {true, {700, 900}});
+    osf::EnemyEffectControllerContext far_context;
+    far_context.resolve_actor =
+        [](std::int32_t) {
+            return osf::EnemyEffectControllerSource{};
+        };
+    far_context.observer = {true, {3701, 900}};
+    const auto far = controller.update(far_context);
+    return check(
+        fixed.actor_spawn_count == 1 &&
+            fixed.actor_spawns[0].position.x == 700 &&
+            fixed.actor_spawns[0].position.y == 900 &&
+            far.actor_spawn_count == 1 &&
+            far.expired &&
+            !far.camera_shake,
+        "Type sixteen projected a fixed origin or shook the "
+        "camera beyond retail's 3000-unit boundary.");
+}
+
 }  // namespace
 
 int main() {
@@ -1949,7 +2142,8 @@ int main() {
         !testTypeElevenRadialActors() ||
         !testTypeTwelveWarningAndProjectileFans() ||
         !testTypeThirteenRadialWaves() ||
-        !testTypeFourteenProjectile()) {
+        !testTypeFourteenProjectile() ||
+        !testTypeSixteenProjectileExplosion()) {
         return 1;
     }
     return 0;

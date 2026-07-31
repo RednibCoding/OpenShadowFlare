@@ -47,6 +47,7 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t animation_speed = 1000;
     std::int32_t additional_display_status = 0;
     bool visible = true;
+    bool track_for_controller = false;
     bool has_packet = false;
     CombatPacket packet;
 };
@@ -79,6 +80,7 @@ public:
         RetailRandom& random);
 
     std::int32_t controllerEffectNumber() const;
+    std::int32_t actorIdentifier() const;
     std::int32_t resourceId() const;
     std::int32_t ownerKind() const;
     std::int32_t sourceCharacterNumber() const;

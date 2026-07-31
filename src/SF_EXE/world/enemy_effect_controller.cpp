@@ -21,6 +21,7 @@ constexpr std::int32_t kTypeElevenEffect = 10011;
 constexpr std::int32_t kTypeTwelveEffect = 10012;
 constexpr std::int32_t kTypeThirteenEffect = 10013;
 constexpr std::int32_t kTypeFourteenEffect = 10014;
+constexpr std::int32_t kTypeSixteenEffect = 10016;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
@@ -37,6 +38,8 @@ constexpr std::int32_t kTypeTenResource = 10000060;
 constexpr std::int32_t kTypeTwelveWarningResource = 10000080;
 constexpr std::int32_t kTypeTwelveProjectileResource = 10000081;
 constexpr std::int32_t kTypeFourteenProjectileResource = 10000070;
+constexpr std::int32_t kTypeSixteenProjectileResource = 10000110;
+constexpr std::int32_t kTypeSixteenExplosionResource = 10000111;
 constexpr std::int32_t kTypeOneAudioSample = 19;
 constexpr std::int32_t kTypeTwoAudioSample = 94;
 constexpr std::int32_t kTypeThreeAudioSample = 21;
@@ -80,6 +83,9 @@ constexpr std::int32_t kTypeThirteenFirstRadius = 350;
 constexpr std::int32_t kTypeThirteenRadiusStep = 200;
 constexpr std::int32_t kTypeThirteenWavePeriod = 4;
 constexpr std::int32_t kTypeThirteenLifetime = 16;
+constexpr std::int32_t kTypeSixteenProjectileRadius = 80;
+constexpr std::int32_t kTypeSixteenExplosionRadius = 240;
+constexpr std::int32_t kTypeSixteenExplosionCollisionUpdate = 5;
 
 bool supportedEffect(std::int32_t effect_number) {
     return effect_number == kTypeOneEffect ||
@@ -91,7 +97,8 @@ bool supportedEffect(std::int32_t effect_number) {
            effect_number == kTypeElevenEffect ||
            effect_number == kTypeTwelveEffect ||
            effect_number == kTypeThirteenEffect ||
-           effect_number == kTypeFourteenEffect;
+           effect_number == kTypeFourteenEffect ||
+           effect_number == kTypeSixteenEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -383,6 +390,84 @@ RuntimeEffectActorSpawnRequest typeThreeActor(
     actor.target_collision_end = 0;
     actor.process_every_target = damaging_layer;
     actor.animation_chart = animation_chart;
+    actor.animation_direction = 8;
+    actor.has_packet = request.has_packet;
+    actor.packet = request.packet;
+    return actor;
+}
+
+RuntimeEffectActorSpawnRequest typeSixteenProjectileActor(
+    const CombatEffectSpawnRequest& request,
+    WorldPosition position) {
+    RuntimeEffectActorSpawnRequest actor;
+    actor.controller_effect_number =
+        request.effect_number;
+    actor.resource_id =
+        kTypeSixteenProjectileResource;
+    actor.owner_kind = request.owner_kind;
+    actor.source_character_number =
+        request.source_character_number;
+    actor.target_mask = request.target_kind;
+    actor.target_identifier =
+        request.target_identifier;
+    actor.direction_radians =
+        request.direction_radians;
+    actor.travel_speed =
+        request.constructor_value_6;
+    actor.position = position;
+    actor.judgement = {
+        -kTypeSixteenProjectileRadius,
+        -kTypeSixteenProjectileRadius,
+        kTypeSixteenProjectileRadius - 1,
+        kTypeSixteenProjectileRadius - 1,
+    };
+    actor.display_height =
+        request.constructor_value_7;
+    actor.expire_on_environment_collision = true;
+    actor.target_collision_start = 0;
+    actor.expire_on_target = true;
+    actor.remember_targets =
+        request.constructor_value_22 == 1;
+    actor.target_audio = {0, 20};
+    actor.animation_chart = 0;
+    actor.animation_direction =
+        retailDirectionForAngle(
+            request.direction_radians);
+    actor.track_for_controller = true;
+    actor.has_packet = request.has_packet;
+    actor.packet = request.packet;
+    return actor;
+}
+
+RuntimeEffectActorSpawnRequest typeSixteenExplosionActor(
+    const CombatEffectSpawnRequest& request,
+    WorldPosition position) {
+    RuntimeEffectActorSpawnRequest actor;
+    actor.controller_effect_number =
+        request.effect_number;
+    actor.resource_id =
+        kTypeSixteenExplosionResource;
+    actor.owner_kind = request.owner_kind;
+    actor.source_character_number =
+        request.source_character_number;
+    actor.target_mask = request.target_kind;
+    actor.target_identifier =
+        request.target_identifier;
+    actor.position = position;
+    actor.judgement = {
+        -kTypeSixteenExplosionRadius,
+        -kTypeSixteenExplosionRadius,
+        kTypeSixteenExplosionRadius - 1,
+        kTypeSixteenExplosionRadius - 1,
+    };
+    actor.lifetime_from_animation = true;
+    actor.target_collision_start =
+        kTypeSixteenExplosionCollisionUpdate;
+    actor.target_collision_end =
+        kTypeSixteenExplosionCollisionUpdate;
+    actor.process_every_target = true;
+    actor.target_audio = {0, 20};
+    actor.animation_chart = 0;
     actor.animation_direction = 8;
     actor.has_packet = request.has_packet;
     actor.packet = request.packet;
@@ -852,6 +937,67 @@ EnemyEffectController::update(
         return result;
     }
 
+    if (request_.effect_number == kTypeSixteenEffect) {
+        if (counter_ == request_.constructor_value_12) {
+            const WorldPosition source =
+                resolvedPosition(
+                    request_, context.source);
+            const WorldPosition position =
+                request_.owner_kind == 0
+                    ? source
+                    : projectedPosition(
+                          source,
+                          request_.direction_radians,
+                          kChildDistance);
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                typeSixteenProjectileActor(
+                    request_, position);
+            result.audio[result.audio_count++] = {
+                kTypeOneAudioSample,
+                position,
+            };
+        } else if (
+            request_.constructor_value_12 < counter_) {
+            const EnemyEffectControllerSource actor =
+                context.resolve_actor
+                    ? context.resolve_actor(
+                          tracked_actor_identifier_)
+                    : EnemyEffectControllerSource{};
+            if (actor.found) {
+                tracked_actor_position_ =
+                    actor.position;
+            } else {
+                result.actor_spawns[
+                    result.actor_spawn_count++] =
+                    typeSixteenExplosionActor(
+                        request_,
+                        tracked_actor_position_);
+                result.audio[result.audio_count++] = {
+                    kWavePulseAudioSample,
+                    tracked_actor_position_,
+                };
+                if (context.observer.found &&
+                    positionDistance(
+                        context.observer.position,
+                        tracked_actor_position_) <
+                        kNearbyShakeRange) {
+                    result.camera_shake = true;
+                    result.camera_shake_duration =
+                        kNearbyShakeDuration;
+                    result.camera_shake_magnitude =
+                        kNearbyShakeMagnitude;
+                }
+                active_ = false;
+                result.expired = true;
+                return result;
+            }
+        }
+
+        counter_ = retailAdd(counter_, 1);
+        return result;
+    }
+
     if (request_.effect_number == kTypeFourEffect) {
         if (counter_ == kTypeFourWarningUpdate) {
             const ObjectBounds judgement =
@@ -1199,6 +1345,19 @@ EnemyEffectController::update(
 
     counter_ = retailAdd(counter_, 1);
     return result;
+}
+
+void EnemyEffectController::bindSpawnedActor(
+    std::int32_t actor_identifier,
+    const EnemyEffectControllerSource& actor) {
+    if (!active_ ||
+        request_.effect_number != kTypeSixteenEffect) {
+        return;
+    }
+    tracked_actor_identifier_ = actor_identifier;
+    if (actor.found) {
+        tracked_actor_position_ = actor.position;
+    }
 }
 
 bool EnemyEffectController::active() const {
