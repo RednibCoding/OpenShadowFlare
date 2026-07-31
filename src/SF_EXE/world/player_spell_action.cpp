@@ -61,6 +61,7 @@ SpellCharts chartsForAction(
     case PlayerSpellAction::lightning_storm:
     case PlayerSpellAction::identify:
     case PlayerSpellAction::magic_shield:
+    case PlayerSpellAction::counter_burst:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -84,6 +85,7 @@ bool dispatchesAtEffectMarker(
            action == PlayerSpellAction::energy_shield ||
            action == PlayerSpellAction::identify ||
            action == PlayerSpellAction::magic_shield ||
+           action == PlayerSpellAction::counter_burst ||
            action == PlayerSpellAction::sonic_blade;
 }
 
@@ -175,6 +177,9 @@ bool playerSpellActionForSpell(
         return true;
     case 18:
         action = PlayerSpellAction::magic_shield;
+        return true;
+    case 19:
+        action = PlayerSpellAction::counter_burst;
         return true;
     default:
         return false;

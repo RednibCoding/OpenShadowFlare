@@ -2,6 +2,7 @@
 
 #include "core/game_config.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_debug_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_inventory_renderer.hpp"
@@ -19,6 +20,7 @@
 #include "runtime/frontend_assets.hpp"
 #include "states/character_select_state.hpp"
 #include "states/gameplay_inventory.hpp"
+#include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_magic.hpp"
 #include "states/gameplay_mission_list.hpp"
@@ -120,7 +122,8 @@ void RuntimeRenderer::render(
                     renderer_,
                     context.world);
             }
-            if (!context.gameplay_options.active() &&
+            if (!context.gameplay_debug.active() &&
+                !context.gameplay_options.active() &&
                 !context.gameplay_mission_list.active() &&
                 !context.gameplay_transport.active()) {
                 renderGameplayOverlay(
@@ -159,7 +162,13 @@ void RuntimeRenderer::render(
             if (status && font) {
                 const auto* map_icons =
                     context.frontend_assets.pattern(7);
-                if (context.gameplay_inventory
+                if (context.gameplay_debug.active()) {
+                    renderGameplayDebugMenu(
+                        renderer_,
+                        *status,
+                        *font,
+                        context.gameplay_debug);
+                } else if (context.gameplay_inventory
                         .specialItemsActive()) {
                     renderGameplaySpecialItems(
                         renderer_,
@@ -224,32 +233,41 @@ void RuntimeRenderer::render(
                         context.gameplay_options,
                         context.game_config);
                 }
-                if (context.gameplay_inventory.active()) {
-                    renderGameplayInventory(
+                if (!context.gameplay_debug.active()) {
+                    if (context.gameplay_inventory.active()) {
+                        renderGameplayInventory(
+                            renderer_,
+                            *status,
+                            *font,
+                            context.gameplay_inventory,
+                            context.world,
+                            context.gameplay_counter);
+                    }
+                    renderHeldInventoryItem(
                         renderer_,
                         *status,
-                        *font,
                         context.gameplay_inventory,
                         context.world,
                         context.gameplay_counter);
+                    renderItemInformation(
+                        renderer_,
+                        *font,
+                        context.gameplay_inventory,
+                        context.world);
+                    if (magic_icons) {
+                        renderHeldMagic(
+                            renderer_,
+                            *magic_icons,
+                            context.gameplay_magic);
+                    }
                 }
-                renderHeldInventoryItem(
-                    renderer_,
-                    *status,
-                    context.gameplay_inventory,
-                    context.world,
-                    context.gameplay_counter);
-                renderItemInformation(
+            }
+            if (font &&
+                context.gameplay_debug.fpsCounterEnabled()) {
+                renderGameplayDebugFps(
                     renderer_,
                     *font,
-                    context.gameplay_inventory,
-                    context.world);
-                if (magic_icons) {
-                    renderHeldMagic(
-                        renderer_,
-                        *magic_icons,
-                        context.gameplay_magic);
-                }
+                    context.frames_per_second);
             }
         }
     }

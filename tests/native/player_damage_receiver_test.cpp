@@ -484,12 +484,92 @@ bool testCounterBurstAndReaction() {
                 result.state.current_mana ==
                     std::max<std::int32_t>(
                         80 - cost, 0) &&
+                result.state.counter_burst_active ==
+                    (80 - cost > 0) &&
                 !result.effects.empty() &&
                 result.effects.front().effect_number == 21030 &&
                 !result.spell_training.empty() &&
                 result.spell_training.front().spell_number == 19,
             "Counter Burst did not add its retail reflection, "
             "mana cost, effect, and training request.")) {
+        return false;
+    }
+
+    osf::PlayerDamageReceiverState emptying = receiving;
+    emptying.current_mana = cost;
+    osf::RetailRandom emptying_random(11);
+    const osf::PlayerDamageReceiverResult emptying_result =
+        osf::resolvePlayerDamage(
+            emptying,
+            reflected,
+            {},
+            context,
+            items,
+            tables,
+            emptying_random);
+    if (!check(
+            emptying_result.valid &&
+                emptying_result.reflection.valid &&
+                emptying_result.state.current_mana == 0 &&
+                !emptying_result.state.counter_burst_active,
+            "The hit-time Counter Burst charge did not disable an empty "
+            "counter.")) {
+        return false;
+    }
+
+    osf::PlayerDamageReceiverContext missing_target = context;
+    missing_target.reflection_target.found = false;
+    missing_target.reflection_target.active_value = 0;
+    osf::RetailRandom missing_random(11);
+    const osf::PlayerDamageReceiverResult missing_result =
+        osf::resolvePlayerDamage(
+            receiving,
+            reflected,
+            {},
+            missing_target,
+            items,
+            tables,
+            missing_random);
+    if (!check(
+            missing_result.valid &&
+                !missing_result.reflection.valid &&
+                missing_result.state.current_mana == 80 &&
+                missing_result.state.counter_burst_active &&
+                missing_result.spell_training.empty() &&
+                std::none_of(
+                    missing_result.effects.begin(),
+                    missing_result.effects.end(),
+                    [](const osf::CombatEffectSpawnRequest& effect) {
+                        return effect.effect_number == 21030;
+                    }),
+            "Counter Burst charged or trained without a live type-two "
+            "reflection target.")) {
+        return false;
+    }
+
+    osf::PlayerDamageReceiverState selected_cost = receiving;
+    selected_cost.selected_magic = 1;
+    const std::int32_t selected_magic_cost =
+        osf::retailEffectParameter(
+            tables, 1, 1, 2);
+    osf::RetailRandom selected_random(11);
+    const osf::PlayerDamageReceiverResult selected_result =
+        osf::resolvePlayerDamage(
+            selected_cost,
+            reflected,
+            {},
+            context,
+            items,
+            tables,
+            selected_random);
+    if (!check(
+            selected_result.valid &&
+                selected_result.reflection.valid &&
+                selected_result.state.current_mana ==
+                    std::max<std::int32_t>(
+                        80 - selected_magic_cost, 0),
+            "Counter Burst did not use the currently selected magic row "
+            "for its hit-time MP charge.")) {
         return false;
     }
 

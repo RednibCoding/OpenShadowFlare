@@ -91,6 +91,7 @@ void WorldScene::clear() {
     player_berserker_spell_.clear();
     player_energy_shield_.clear();
     player_magic_shield_.clear();
+    player_counter_burst_.clear();
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
@@ -241,6 +242,19 @@ WorldScene::playerMagicShieldVisual() const {
 
 std::int32_t WorldScene::playerMagicShieldFrame() const {
     return player_magic_shield_.auraFrame();
+}
+
+bool WorldScene::playerCounterBurstActive() const {
+    return player_counter_burst_.active();
+}
+
+const EffectVisualResource*
+WorldScene::playerCounterBurstVisual() const {
+    return effect_visuals_.find(11000250);
+}
+
+std::int32_t WorldScene::playerCounterBurstFrame() const {
+    return player_counter_burst_.auraFrame();
 }
 
 std::size_t
@@ -405,11 +419,13 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
-    // FUN_00443490 drops Magic Shield at the start of the next player
-    // update when no mana remains. Keeping this before the cast action lets
-    // an exact-cost activation show its marker frame once, as in retail.
+    // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
+    // next player update when no mana remains. Keeping this before the cast
+    // action lets an exact-cost activation show its marker frame once, as in
+    // retail.
     if (player_data_.currentMana() == 0) {
         player_magic_shield_.deactivate();
+        player_counter_burst_.deactivate();
     }
     player_moon_spell_.updateAura(
         companionMoonAuraVisible());
@@ -417,6 +433,7 @@ void WorldScene::update() {
         has_player_);
     player_energy_shield_.updateAura(has_player_);
     player_magic_shield_.updateAura(has_player_);
+    player_counter_burst_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);

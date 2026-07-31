@@ -61,6 +61,12 @@ with the authored preview, text layout, and animated close tab. The
 broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 
+For reconstruction testing, `F12` opens a separate debug menu in the same
+visual style without changing the retail Escape menu. Its FPS counter and
+temporary All Spells override are independent toggles. The override affects
+the live Magic window and bar only: it does not grant spell progress or write
+debug-only availability and bar assignments into the character save.
+
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
 cues, smoke timing, and delayed New Game, Continue, and Exit actions all

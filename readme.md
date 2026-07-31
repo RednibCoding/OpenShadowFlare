@@ -27,6 +27,11 @@ into a bug, please tell us on
 [GitHub](https://github.com/RednibCoding/OpenShadowFlare/issues) or Discord so
 we can look into it.
 
+While testing in-game, press `F12` for the debug menu. It can show the FPS
+counter and temporarily unlock every spell, which is handy for checking the
+parts that are currently being reconstructed. These debug switches do not
+grant spell progress in your save.
+
 ## Table of Contents
 
 - [Introduction](#introduction)

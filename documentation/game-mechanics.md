@@ -308,6 +308,34 @@ the retail character save and are cleared by death. Magic Shield and Counter
 Burst are mutually exclusive in retail; their marker actions clear the other
 live flag.
 
+### Counter Burst
+
+Counter Burst is the matching targetless toggle on action 41. It uses CAF
+charts 11 and 12 with Table 20 row nineteen and pays the normal command-time
+MP cost. Its chart-11 `0x40` marker toggles Counter Burst, resets its own aura
+frame, and clears Magic Shield. An exact-cost activation can be visible for
+that marker update before the next zero-MP player update turns it off.
+
+The spell only reacts to a reflectable packet from a living enemy that still
+exists in the current scenario. Its Table 17 parameter-zero percentage is
+added to any successful equipment reflection percentage. The returned packet
+uses the resolved incoming damage, applies the combined percentage, halves
+the result for the retail source value 100, and keeps at least one point of
+damage. Counter Burst uses effect 21030/resource 11000251 and sample 60; a
+post-resolution incoming hit of at least 20 also trains spell nineteen.
+
+Each successful Counter Burst reflection charges MP through the same retail
+quirk as Magic Shield: parameter two comes from the currently selected magic
+row at Counter Burst's effective level, equipped instance parameter 19 lowers
+it, and the result cannot be less than one. A missing or dead source produces
+no reflection, effect, practice, or MP charge. Emptying MP disables the spell
+immediately.
+
+Resource 11000250 loops at the hero using chart zero, direction eight, and
+1000/1000/1000 color strengths. Retail draws it after Magic Shield and before
+the Berserker and Energy Shield passes. The runtime flag and frame survive
+ordinary scenario travel, are not saved to disk, and are cleared on death.
+
 ### Earth Spear
 
 Earth Spear returns to the pointed-enemy command path. It enters action 32 on

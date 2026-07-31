@@ -1133,8 +1133,17 @@ void WorldScene::handlePlayerSpellEvent(
     }
     if (event.spell == 18) {
         player_magic_shield_.toggle();
+        player_counter_burst_.deactivate();
         effect_visuals_.load(
             data_root_, 11000240, nullptr);
+        refreshPlayerRuntimeProfile();
+        return;
+    }
+    if (event.spell == 19) {
+        player_counter_burst_.toggle();
+        player_magic_shield_.deactivate();
+        effect_visuals_.load(
+            data_root_, 11000250, nullptr);
         refreshPlayerRuntimeProfile();
         return;
     }

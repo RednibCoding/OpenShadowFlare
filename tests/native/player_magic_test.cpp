@@ -81,6 +81,32 @@ int main() {
         return 1;
     }
 
+    fresh.setAllSpellsAvailable(true);
+    if (!check(
+            fresh.allSpellsAvailable() &&
+                fresh.learned(19) &&
+                fresh.assignBarSlot(0, 19) &&
+                fresh.barSlot(0) == 19 &&
+                fresh.selectSpell(19) &&
+                fresh.state().availability[19] == 0 &&
+                fresh.state().bar_slots[0] == -1,
+            "The temporary all-spells override changed the saved magic "
+            "state or did not expose Counter Burst.")) {
+        return 1;
+    }
+    fresh.setAllSpellsAvailable(false);
+    if (!check(
+            !fresh.allSpellsAvailable() &&
+                !fresh.learned(19) &&
+                fresh.barSlot(0) == -1 &&
+                fresh.selectedSpell() == -1 &&
+                fresh.state().availability[19] == 0 &&
+                fresh.state().bar_slots[0] == -1,
+            "Disabling the all-spells override leaked its selection or "
+            "temporary bar into normal play.")) {
+        return 1;
+    }
+
     std::vector<std::uint8_t> payload(
         osf::PlayerData::retail_record_size, 0x5a);
     const std::size_t items_end = payload.size();

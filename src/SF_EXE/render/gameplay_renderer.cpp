@@ -120,6 +120,26 @@ void renderPlayerPass(
         renderPlayerPowerupPass(
             renderer,
             world,
+            world.playerMagicShieldVisual(),
+            world.playerMagicShieldActive(),
+            world.playerMagicShieldFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerCounterBurstVisual(),
+            world.playerCounterBurstActive(),
+            world.playerCounterBurstFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
             world.playerBerserkerVisual(),
             world.playerBerserkerActive(),
             world.playerBerserkerFrame(),
@@ -134,16 +154,6 @@ void renderPlayerPass(
             world.playerEnergyShieldActive(),
             world.playerEnergyShieldFrame(),
             {1000, 1000, 300},
-            camera_x,
-            camera_y,
-            interpolation);
-        renderPlayerPowerupPass(
-            renderer,
-            world,
-            world.playerMagicShieldVisual(),
-            world.playerMagicShieldActive(),
-            world.playerMagicShieldFrame(),
-            {},
             camera_x,
             camera_y,
             interpolation);

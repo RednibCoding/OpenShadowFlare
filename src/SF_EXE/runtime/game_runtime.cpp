@@ -142,6 +142,9 @@ public:
         renderedFrames_ = 0;
         previousTime_ = lwl_time_seconds();
         nextFrame_ = previousTime_;
+        fpsWindowStart_ = previousTime_;
+        fpsWindowFrames_ = 0;
+        framesPerSecond_ = 0;
         gameAccumulator_ = kGameStep;
     }
 
@@ -197,6 +200,7 @@ private:
                 frontendAssets_,
                 savePreview_,
                 gameplayUi_.options(),
+                gameplayUi_.debug(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
                 gameplayUi_.magic(),
@@ -205,12 +209,24 @@ private:
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
+                framesPerSecond_,
                 input_.menu().pointer_x,
                 input_.menu().pointer_y,
             },
             interpolation);
 
         ++renderedFrames_;
+        ++fpsWindowFrames_;
+        const double fps_elapsed =
+            currentTime - fpsWindowStart_;
+        if (fps_elapsed >= 0.5) {
+            framesPerSecond_ = static_cast<std::int32_t>(
+                static_cast<double>(fpsWindowFrames_) /
+                    fps_elapsed +
+                0.5);
+            fpsWindowStart_ = currentTime;
+            fpsWindowFrames_ = 0;
+        }
         if (smokeTest_ && renderedFrames_ >= 3) {
             running_ = false;
         }
@@ -434,6 +450,9 @@ private:
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     std::uint32_t gameplayCounter_ = 0;
+    double fpsWindowStart_ = 0.0;
+    std::uint32_t fpsWindowFrames_ = 0;
+    std::int32_t framesPerSecond_ = 0;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;

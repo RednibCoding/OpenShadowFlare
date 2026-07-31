@@ -122,10 +122,20 @@ std::vector<std::string_view> descriptionLines(
 GameplayMagicModel gameplayMagicModel(
     const PlayerMagic& magic) {
     GameplayMagicModel model;
-    model.availability =
-        magic.state().availability;
-    model.bar_slots =
-        magic.state().bar_slots;
+    for (std::size_t spell = 0;
+         spell < model.availability.size();
+         ++spell) {
+        model.availability[spell] =
+            magic.availability(
+                static_cast<std::int32_t>(spell));
+    }
+    for (std::size_t slot = 0;
+         slot < model.bar_slots.size();
+         ++slot) {
+        model.bar_slots[slot] =
+            magic.barSlot(
+                static_cast<std::int32_t>(slot));
+    }
     model.selected_spell =
         magic.selectedSpell();
     model.targeting = magic.targeting();

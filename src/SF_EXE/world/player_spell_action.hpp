@@ -31,6 +31,7 @@ enum class PlayerSpellAction : std::int32_t {
     mud_javelin = 38,
     identify = 39,
     magic_shield = 40,
+    counter_burst = 41,
 };
 
 enum class PlayerSpellAnimationVariant {

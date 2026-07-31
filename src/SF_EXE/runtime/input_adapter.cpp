@@ -98,6 +98,8 @@ bool InputAdapter::handleEvent(
             inventory_held_ = false;
         } else if (std::strcmp(event.key, "x") == 0) {
             special_items_held_ = false;
+        } else if (std::strcmp(event.key, "f12") == 0) {
+            debug_held_ = false;
         }
         return true;
     }
@@ -225,6 +227,13 @@ bool InputAdapter::handleEvent(
             gameplay_special_items_pressed_ = true;
         }
         special_items_held_ = true;
+    } else if (
+        std::strcmp(event.key, "f12") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!debug_held_) {
+            gameplay_debug_pressed_ = true;
+        }
+        debug_held_ = true;
     }
     return true;
 }
@@ -246,6 +255,7 @@ void InputAdapter::clearTransientInput() {
     character_select_.text_input.clear();
     run_toggle_pressed_ = false;
     gameplay_options_pressed_ = false;
+    gameplay_debug_pressed_ = false;
     gameplay_help_pressed_ = false;
     gameplay_mission_list_pressed_ = false;
     gameplay_map_pressed_ = false;
@@ -288,6 +298,10 @@ bool InputAdapter::runTogglePressed() const {
 
 bool InputAdapter::gameplayOptionsPressed() const {
     return gameplay_options_pressed_;
+}
+
+bool InputAdapter::gameplayDebugPressed() const {
+    return gameplay_debug_pressed_;
 }
 
 bool InputAdapter::gameplayHelpPressed() const {

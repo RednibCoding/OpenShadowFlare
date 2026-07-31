@@ -87,6 +87,7 @@ target_link_libraries(
 add_library(
   osf_states STATIC
   states/game_state.cpp
+  states/gameplay_debug_menu.cpp
   states/gameplay_inventory.cpp
   states/gameplay_magic.cpp
   states/gameplay_map.cpp
@@ -149,6 +150,7 @@ add_library(
   world/player_attack_target.cpp
   world/player_ranged_attack.cpp
   world/player_combat_defense.cpp
+  world/player_counter_burst.cpp
   world/player_damage_receiver.cpp
   world/player_data.cpp
   world/player_energy_shield.cpp
@@ -231,6 +233,7 @@ add_library(
   render/character_renderer.cpp
   render/character_select_renderer.cpp
   render/enemy_nameplate_renderer.cpp
+  render/gameplay_debug_renderer.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp

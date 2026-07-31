@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 #define OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 
+#include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_magic.hpp"
 #include "states/gameplay_map.hpp"
@@ -44,6 +45,7 @@ public:
         std::int32_t& shadow_opacity);
 
     const GameplayOptionsMenu& options() const;
+    const GameplayDebugMenu& debug() const;
     const GameplayInventory& inventory() const;
     const GameplayMap& map() const;
     const GameplayMagic& magic() const;
@@ -58,6 +60,7 @@ private:
         std::int32_t& shadow_opacity);
 
     GameplayOptionsMenu options_;
+    GameplayDebugMenu debug_;
     GameplayInventory inventory_;
     GameplayMap map_;
     GameplayMagic magic_;

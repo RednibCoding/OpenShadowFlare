@@ -5,6 +5,7 @@
 #include "world/actor_direction.hpp"
 #include "world/combat_effect_actor.hpp"
 #include "world/generic_effect_actor.hpp"
+#include "world/player_counter_burst.hpp"
 #include "world/player_data.hpp"
 #include "world/player_energy_shield.hpp"
 #include "world/player_heal_spell.hpp"
@@ -1139,6 +1140,45 @@ bool testRetailMagicShieldRules() {
             osf::retailCombatEffectResourceId(21029) == 11000241,
         "Magic Shield toggle-off or hit-effect resource mapping differs "
         "from retail.");
+}
+
+bool testRetailCounterBurstRules() {
+    osf::PlayerCounterBurst counter;
+    if (!check(
+            counter.toggle() &&
+                counter.active() &&
+                counter.auraFrame() == 0,
+            "Counter Burst did not toggle on and reset its retail aura "
+            "counter.")) {
+        return false;
+    }
+    counter.updateAura(false);
+    const std::int32_t hidden_frame = counter.auraFrame();
+    counter.updateAura(true);
+    if (!check(
+            hidden_frame == 0 &&
+                counter.auraFrame() == 1,
+            "Counter Burst advanced its aura while it was not "
+            "displayed.")) {
+        return false;
+    }
+    counter.restoreActive(false);
+    if (!check(
+            !counter.active() &&
+                counter.auraFrame() == 1,
+            "Damage-time Counter Burst shutdown changed its aura "
+            "counter.")) {
+        return false;
+    }
+    counter.restoreActive(true);
+    return check(
+        !counter.toggle() &&
+            !counter.active() &&
+            counter.auraFrame() == 0 &&
+            !counter.deactivate() &&
+            osf::retailCombatEffectResourceId(21030) == 11000251,
+        "Counter Burst toggle-off or hit-effect resource mapping "
+        "differs from retail.");
 }
 
 bool testShippedWorldCast(
@@ -3016,6 +3056,183 @@ bool testShippedMagicShieldCast(
         "update.");
 }
 
+bool testShippedCounterBurstCast(
+    const std::filesystem::path& game_root) {
+    osf::PlayerLoadRequest player;
+    player.name = "CounterBurstLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root, player, &error),
+            "Remote Town could not prepare Counter Burst.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[18] = 3;
+    magic_state.availability[19] = 3;
+    world.playerMagic().restore(magic_state);
+    const osf::PlayerSpellParameters magic_parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            18,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const osf::PlayerSpellParameters counter_parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            19,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t maximum_mana =
+        world.playerRuntimeProfile().maximum_mana;
+    const auto restore_mana = [&]() {
+        const_cast<osf::PlayerData&>(world.playerData())
+            .setCurrentMana(maximum_mana, maximum_mana);
+    };
+    const auto finish_cast = [&]() {
+        for (std::int32_t update = 0;
+             update < 100 && world.playerSpellActive();
+             ++update) {
+            world.update();
+        }
+        return !world.playerSpellActive();
+    };
+
+    if (!check(
+            world.playerMagic().selectSpell(18),
+            "Magic Shield could not prepare Counter Burst's mutual "
+            "exclusion check.")) {
+        return false;
+    }
+    restore_mana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                finish_cast() &&
+                world.playerMagicShieldActive(),
+            "Magic Shield could not establish the opposing live flag.")) {
+        return false;
+    }
+
+    if (!check(
+            world.playerMagic().selectSpell(19),
+            "Counter Burst could not be selected.")) {
+        return false;
+    }
+    restore_mana();
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                world.playerMotion() == osf::PlayerMotion::casting &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - counter_parameters.mana_cost &&
+                world.playerMagicShieldActive() &&
+                !world.playerCounterBurstActive(),
+            "Counter Burst did not enter action 41 with its retail MP "
+            "charge.")) {
+        return false;
+    }
+    if (!check(
+            finish_cast() &&
+                world.playerCounterBurstActive() &&
+                !world.playerMagicShieldActive() &&
+                world.playerCounterBurstVisual() &&
+                !world.playerCounterBurstVisual()
+                     ->animation().charts().empty() &&
+                world.transitionScenario({0, 0, 0}) ==
+                    osf::ScenarioTravelResult::relocated &&
+                world.playerCounterBurstActive(),
+            "Counter Burst did not activate at its marker, exclude "
+            "Magic Shield, load resource 11000250, or survive ordinary "
+            "scenario relocation.")) {
+        return false;
+    }
+
+    restore_mana();
+    const std::int32_t mana_before_toggle_off =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                finish_cast() &&
+                !world.playerCounterBurstActive() &&
+                world.playerData().currentMana() ==
+                    mana_before_toggle_off -
+                        counter_parameters.mana_cost,
+            "Counter Burst did not charge MP again and toggle off at "
+            "its marker.")) {
+        return false;
+    }
+
+    const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
+        counter_parameters.mana_cost, maximum_mana);
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerData().currentMana() == 0,
+            "The exact-cost Counter Burst cast was rejected.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 &&
+         !world.playerCounterBurstActive();
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            world.playerCounterBurstActive(),
+            "An exact-cost Counter Burst cast did not expose its marker "
+            "frame.")) {
+        return false;
+    }
+    world.update();
+    if (!check(
+            !world.playerCounterBurstActive(),
+            "Zero mana did not disable Counter Burst on the next player "
+            "update.")) {
+        return false;
+    }
+    if (!check(
+            finish_cast(),
+            "The exact-cost Counter Burst action did not finish.")) {
+        return false;
+    }
+
+    restore_mana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                finish_cast() &&
+                world.playerCounterBurstActive(),
+            "Counter Burst could not be reactivated for the reverse "
+            "exclusion check.")) {
+        return false;
+    }
+    if (!check(
+            world.playerMagic().selectSpell(18),
+            "Magic Shield could not be reselected.")) {
+        return false;
+    }
+    restore_mana();
+    return check(
+        world.commandPlayerMagic(400, 240) &&
+            finish_cast() &&
+            world.playerMagicShieldActive() &&
+            !world.playerCounterBurstActive() &&
+            world.playerData().currentMana() ==
+                maximum_mana - magic_parameters.mana_cost,
+        "Magic Shield did not exclude an active Counter Burst at its "
+        "marker.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -3521,6 +3738,19 @@ int main() {
             true) ||
         !testShippedMagicShieldCast(game_root) ||
         !testGroundSpellInsufficientMana(game_root, 18)) {
+        return 1;
+    }
+    if (!testRetailCounterBurstRules() ||
+        !testRetailAction(
+            animation,
+            tables,
+            19,
+            osf::PlayerSpellAction::counter_burst,
+            11,
+            12,
+            true) ||
+        !testShippedCounterBurstCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 19)) {
         return 1;
     }
 #endif

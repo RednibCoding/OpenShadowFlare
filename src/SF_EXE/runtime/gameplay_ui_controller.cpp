@@ -12,6 +12,7 @@
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -31,10 +32,20 @@ std::int32_t gameplayCameraAnchorX(
 GameplayMagicModel gameplayMagicModel(
     const PlayerMagic& magic) {
     GameplayMagicModel model;
-    model.availability =
-        magic.state().availability;
-    model.bar_slots =
-        magic.state().bar_slots;
+    for (std::size_t spell = 0;
+         spell < model.availability.size();
+         ++spell) {
+        model.availability[spell] =
+            magic.availability(
+                static_cast<std::int32_t>(spell));
+    }
+    for (std::size_t slot = 0;
+         slot < model.bar_slots.size();
+         ++slot) {
+        model.bar_slots[slot] =
+            magic.barSlot(
+                static_cast<std::int32_t>(slot));
+    }
     model.selected_spell =
         magic.selectedSpell();
     model.targeting = magic.targeting();
@@ -45,6 +56,7 @@ GameplayMagicModel gameplayMagicModel(
 
 void GameplayUiController::reset() {
     options_.close();
+    debug_.close();
     inventory_.close();
     map_.close();
     magic_.close();
@@ -70,6 +82,9 @@ bool GameplayUiController::update(
         return false;
     }
 
+    world.playerMagic().setAllSpellsAvailable(
+        debug_.allSpellsEnabled());
+
     // Retail routes a dead player directly through its locked death action.
     // Menus cannot pause that action or expose save commands before revival.
     if (world.playerMotion() == PlayerMotion::defeated) {
@@ -89,6 +104,32 @@ bool GameplayUiController::update(
             game_state.transition(GameState::title);
         } else {
             running = false;
+        }
+        return true;
+    }
+
+    const bool debug_was_active = debug_.active();
+    const bool debug_toggle = input.gameplayDebugPressed();
+    if (debug_toggle && !debug_was_active) {
+        options_.close();
+        world.cancelPlayerMovement();
+    }
+    if (debug_was_active || debug_toggle) {
+        const GameplayDebugResult result =
+            debug_.update({
+                debug_toggle,
+                input.gameplayOptionsPressed(),
+                input.menu().pointer_primary_pressed,
+                input.menu().pointer_x,
+                input.menu().pointer_y,
+            });
+        world.playerMagic().setAllSpellsAvailable(
+            debug_.allSpellsEnabled());
+        if (result.play_click_sound) {
+            audio.playOptionsClick();
+        }
+        if (result.play_confirm_sound) {
+            audio.playOptionsConfirm();
         }
         return true;
     }
@@ -563,6 +604,11 @@ bool GameplayUiController::update(
 const GameplayOptionsMenu&
 GameplayUiController::options() const {
     return options_;
+}
+
+const GameplayDebugMenu&
+GameplayUiController::debug() const {
+    return debug_;
 }
 
 const GameplayInventory&

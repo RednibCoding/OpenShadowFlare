@@ -2042,8 +2042,9 @@ zero, direction eight, runtime frame `+0x15f8`, full opacity, and RGB strengths
 with Table 20 row eighteen. The targetless input branch validates the learned
 spell and pays its normal Table 16 cost before entering the action. A newly
 crossed first-chart status-`0x40` marker toggles runtime flag `+0x1628`, resets
-aura frame `+0x162c`, clears Counter Burst flag `+0x1630` and its frame
-`+0x1634`, rebuilds derived values, and sends the multiplayer state update.
+aura frame `+0x162c`, clears Counter Burst flag `+0x1630`, rebuilds derived
+values, and sends the multiplayer state update. The inactive counterpart's
+frame is not reset.
 There is no action-entry visual or sample. Unlike Energy Shield, this marker
 does not reject activation after an exact-cost command leaves MP at zero;
 `0x00443490` clears the flag at the start of the following player update.
@@ -2065,6 +2066,40 @@ eight, runtime frame `+0x162c`, full opacity, and RGB strengths
 1000/1000/1000. The state remains live across ordinary scenario relocation,
 is absent from the disk character record, and is cleared with the other player
 powerups on death. Multiplayer live-state packets do include the runtime flag.
+
+## Counter Burst cast and reflection lifetime
+
+`0x00440530` dispatches spell nineteen as action 41 on CAF charts 11 and 12
+with Table 20 row nineteen. The targetless command pays its ordinary Table 16
+cost. At a newly crossed first-chart status-`0x40` marker, runtime flag
+`+0x1630` toggles, its own aura frame `+0x1634` resets, and Magic Shield flag
+`+0x1628` clears without changing Magic Shield's old frame. The action has no
+entry effect or sample. Like Magic Shield, an exact-cost activation lasts
+through its marker update and is cleared by `0x00443490` at the start of the
+next player update.
+
+The reflection branch in `0x00443cb0` runs after local damage and revival but
+before hit reaction. Packet word 38 must enable reflection, packet word zero
+must identify a type-two source, and that living source must still resolve in
+the current scenario. Counter Burst adds Table 17 row nineteen parameter zero
+to a successful equipment reflection percentage. The returned immediate
+packet uses the post-resolution incoming damage times that combined percent,
+halves it when the source's runtime value is 100, and clamps it to at least
+one. It carries the local player identity, physical defense, level, one random
+presentation from 20015 through 20017, and the retail receiver flags.
+
+An active Counter Burst uses effect 21030/resource 11000251 and sample 60.
+Incoming damage of at least 20 trains spell nineteen. Its hit-time MP cost
+reads parameter two from the currently selected magic row at Counter Burst's
+effective level, subtracts equipped instance parameter 19, and clamps to at
+least one. Empty MP clears `+0x1630` immediately. Without a valid live source,
+none of the reflection, effect, training, or MP-charge path runs.
+
+`0x00444b00` loops resource 11000250 at the player with chart zero, direction
+eight, runtime frame `+0x1634`, full opacity, and RGB 1000/1000/1000. It is
+drawn directly after Magic Shield, before the later Berserker and Energy
+Shield passes. The live state survives scenario relocation, is absent from
+the disk save, is present in multiplayer state packets, and clears on death.
 
 ## Earth Spear cast
 

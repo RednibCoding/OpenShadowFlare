@@ -80,6 +80,7 @@ void WorldScene::deactivatePlayerPowerupsForRespawn() {
         player_berserker_spell_.deactivate();
     player_energy_shield_.deactivate();
     player_magic_shield_.deactivate();
+    player_counter_burst_.deactivate();
     if (moon_changed) {
         refreshCompanionRuntimeProfile();
     }

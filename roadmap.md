@@ -271,9 +271,23 @@ selected-magic MP-cost quirk, equipment discount, and immediate empty-MP
 shutdown. Ordinary scenario travel preserves the live shield while death and
 a fresh game clear it.
 
-The next spell checkpoint is Counter Burst action 41. Its cast toggle,
-resource lifetime, mutual exclusion with Magic Shield, receiver reflection,
-MP charge, training, and hit presentation need to form one tested path.
+Counter Burst is complete. Action 41 toggles at the chart-11 marker, resets
+its authored resource-11000250 aura, and excludes Magic Shield without
+rewinding the inactive counterpart's old frame. A valid living-enemy source
+runs the retail combined-reflection packet, effect 21030/resource 11000251,
+sample 60, training threshold, selected-magic MP-cost quirk, equipment
+discount, and empty-MP shutdown. Ordinary travel preserves the runtime state;
+death and a fresh game clear it.
+
+The portable testing path now has its own F12 debug menu instead of changing
+the retail Escape menu. The FPS counter and All Spells override are separate,
+runtime-only switches. Debug availability and bar assignments never enter the
+retail magic save record, so testing an unfinished spell cannot silently grant
+it to a character.
+
+The next spell checkpoint is Explosion action 42 (`FUN_0043fcc0`). Its cast,
+packet, effect controller, visuals, audio, collision, and practice path still
+need a complete retail trace.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1403,7 +1417,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Magic Shield action 40 are complete;
+- Berserker action 30 through Counter Burst action 41 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

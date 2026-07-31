@@ -1588,7 +1588,8 @@ nine for hero and companion kills while the shield is active.
 `FUN_00440180` runs Magic Shield action 40 on CAF charts 11 and 12 with Table
 20 row eighteen. Its targetless command pays the normal Table 16 cost. A newly
 crossed chart-11 status-`0x40` marker toggles runtime flag `+0x1628`, resets
-aura frame `+0x162c`, and clears Counter Burst flag/frame `+0x1630/+0x1634`.
+aura frame `+0x162c`, and clears Counter Burst flag `+0x1630` without changing
+the inactive counterpart's frame.
 The marker may briefly activate at zero MP after an exact-cost cast;
 `FUN_00443490` clears it at the beginning of the next player update.
 
@@ -1604,6 +1605,34 @@ charge, whose minimum is one. Emptying MP clears the shield immediately.
 direction eight, frame `+0x162c`, and RGB 1000/1000/1000. The live flag and
 frame survive normal scenario travel, are not part of the disk save, and are
 cleared with the other player powerups on death.
+
+## Counter Burst toggle and reflection
+
+`FUN_00440530` runs Counter Burst action 41 on CAF charts 11 and 12 with Table
+20 row nineteen. A targetless command pays the normal Table 16 cost. Its newly
+crossed chart-11 status-`0x40` marker toggles flag `+0x1630`, resets Counter
+Burst frame `+0x1634`, and clears Magic Shield flag `+0x1628` without resetting
+the other frame. Exact-cost activation remains visible for that marker update
+before `FUN_00443490` clears it at the next update start.
+
+The `FUN_00443cb0` reflection branch requires packet word 38, a type-two
+packet source, and a living source actor still present in the scenario. Table
+17 row nineteen parameter zero is added to successful equipment reflection.
+The returned packet scales the resolved incoming damage by that total, halves
+source value 100, clamps to one, and keeps the retail player identity, defense,
+level, randomized 20015..20017 presentation, and receiver flags.
+
+Active Counter Burst creates effect 21030/resource 11000251, plays sample 60,
+and trains spell nineteen for incoming damage at least 20. Its MP charge uses
+parameter two from the currently selected magic row at Counter Burst's
+effective level, minus equipped instance parameter 19 and with a minimum of
+one. Empty MP disables the flag immediately. An invalid source skips the
+whole Counter-specific path.
+
+`FUN_00444b00` loops resource 11000250 at the player using chart zero,
+direction eight, frame `+0x1634`, and RGB 1000/1000/1000. It draws after Magic
+Shield and before Berserker and Energy Shield. The state survives ordinary
+scenario travel, is excluded from disk saves, and clears on death.
 
 ## Earth Spear cast
 

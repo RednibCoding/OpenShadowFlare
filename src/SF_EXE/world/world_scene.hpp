@@ -26,6 +26,7 @@
 #include "player_appearance.hpp"
 #include "player_actor.hpp"
 #include "player_attack_target.hpp"
+#include "player_counter_burst.hpp"
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
 #include "player_energy_shield.hpp"
@@ -121,6 +122,9 @@ public:
     bool playerMagicShieldActive() const;
     const EffectVisualResource* playerMagicShieldVisual() const;
     std::int32_t playerMagicShieldFrame() const;
+    bool playerCounterBurstActive() const;
+    const EffectVisualResource* playerCounterBurstVisual() const;
+    std::int32_t playerCounterBurstFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -405,6 +409,7 @@ private:
     PlayerSustainedSpell player_berserker_spell_;
     PlayerEnergyShield player_energy_shield_;
     PlayerMagicShield player_magic_shield_;
+    PlayerCounterBurst player_counter_burst_;
     PlayerResourceRateController player_life_rate_;
     PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;

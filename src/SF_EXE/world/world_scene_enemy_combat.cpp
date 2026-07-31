@@ -82,6 +82,8 @@ WorldScene::playerDamageReceiverState() const {
         player_energy_shield_.active();
     state.magic_shield_active =
         player_magic_shield_.active();
+    state.counter_burst_active =
+        player_counter_burst_.active();
 
     const PlayerDamagePresentation presentation =
         player_.damagePresentation();
@@ -112,6 +114,8 @@ void WorldScene::applyPlayerDamageReceiverState(
     player_special_items_ = state.special_items;
     player_magic_shield_.restoreActive(
         state.magic_shield_active);
+    player_counter_burst_.restoreActive(
+        state.counter_burst_active);
     player_.applyDamagePresentation({
         state.presentation_action,
         state.presentation_counter,

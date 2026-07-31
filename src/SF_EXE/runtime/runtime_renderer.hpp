@@ -13,6 +13,7 @@ class CharacterSelectState;
 struct CharacterSelectFrameResult;
 struct GameConfig;
 class GameplayInventory;
+class GameplayDebugMenu;
 class GameplayMap;
 class GameplayMagic;
 class GameplayMissionList;
@@ -37,6 +38,7 @@ struct RuntimeRenderContext {
     FrontendAssets& frontend_assets;
     RetailSavePreview& save_preview;
     const GameplayOptionsMenu& gameplay_options;
+    const GameplayDebugMenu& gameplay_debug;
     const GameplayInventory& gameplay_inventory;
     const GameplayMap& gameplay_map;
     const GameplayMagic& gameplay_magic;
@@ -45,6 +47,7 @@ struct RuntimeRenderContext {
     const GameConfig& game_config;
     std::int32_t shadow_opacity = 500;
     std::uint32_t gameplay_counter = 0;
+    std::int32_t frames_per_second = 0;
     std::int32_t pointer_x = 0;
     std::int32_t pointer_y = 0;
 };
