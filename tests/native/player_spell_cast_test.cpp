@@ -86,7 +86,8 @@ bool testRetailAction(
     osf::PlayerSpellAction spell_action,
     std::int32_t first_chart,
     std::int32_t recovery_chart,
-    bool dispatch_at_marker = false) {
+    bool dispatch_at_marker = false,
+    std::int32_t entry_visual_effect_number = -1) {
     osf::PlayerSpellAnimationTiming timing;
     if (!check(
             osf::buildPlayerSpellAnimationTiming(
@@ -152,6 +153,8 @@ bool testRetailAction(
                         std::trunc(
                             static_cast<double>(marker) /
                             speed)) &&
+                event.entry_visual_effect_number ==
+                    entry_visual_effect_number &&
                 action.animationChart() == first_chart &&
                 action.animationFrame() == 0,
             "The spell did not enter its action with the retail "
@@ -264,7 +267,7 @@ bool testRetailSonicBladeAction(
                     tables.find(20),
                     timing,
                     &event) &&
-                    event.charge_visual_due &&
+                    event.entry_visual_effect_number == 21025 &&
                     !event.cast_due &&
                     event.effect_delay == 1 &&
                     action.animationChart() ==
@@ -531,8 +534,8 @@ bool testRetailPacket(
 bool testRetailSonicBladeEffects(
     const osf::TableDatabase& tables) {
     const osf::CombatEffectSpawnRequest charge =
-        osf::buildPlayerSonicBladeCharge(
-            0, {-80, -80, 79, 79});
+        osf::buildPlayerSpellEntryVisual(
+            21025, 0, {-80, -80, 79, 79});
     if (!check(
             charge.valid &&
                 charge.effect_number == 21025 &&
@@ -2711,6 +2714,147 @@ bool testShippedEnergyShieldCast(
         "Energy Shield did not shut off when the player reached zero MP.");
 }
 
+bool testShippedIdentifyCast(
+    const std::filesystem::path& game_root) {
+    osf::PlayerLoadRequest player;
+    player.name = "IdentifyLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root, player, &error),
+            "Remote Town could not prepare Identify.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    const osf::ItemDefinition* ordinary =
+        world.itemDatabase().find(0, 0);
+    const osf::ItemDefinition* unidentified =
+        world.itemDatabase().find(0, 10);
+    world.playerInventory().clear();
+    if (!check(
+            ordinary && unidentified &&
+                ordinary->variant == 0 &&
+                unidentified->variant == 1 &&
+                world.playerInventory().add(*ordinary) &&
+                world.playerInventory().add(*unidentified) &&
+                world.playerInventory().items().size() == 2 &&
+                world.playerInventory().items()[0].identified == 1 &&
+                world.playerInventory().items()[1].identified == 0,
+            "The Identify backpack fixture could not be prepared.")) {
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[17] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(17),
+            "Identify could not be selected.")) {
+        return false;
+    }
+
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            17,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerMotion() == osf::PlayerMotion::casting &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                !world.playerIdentifyModeActive(),
+            "Identify did not enter action 39 with its retail MP cost.")) {
+        return false;
+    }
+
+    bool saw_entry_visual = false;
+    bool saw_inventory_request = false;
+    for (std::int32_t update = 0;
+         update < 100 &&
+         (world.playerSpellActive() ||
+          !saw_inventory_request);
+         ++update) {
+        world.update();
+        saw_entry_visual =
+            saw_entry_visual ||
+            std::any_of(
+                world.combatEffects().begin(),
+                world.combatEffects().end(),
+                [](const osf::CombatEffectActor& effect) {
+                    return effect.effectNumber() == 21028 &&
+                           effect.resourceId() == 11000230;
+                });
+        const osf::GameplayServiceRequest service =
+            world.takeGameplayServiceRequest();
+        saw_inventory_request =
+            saw_inventory_request ||
+            service.kind ==
+                osf::GameplayServiceKind::identify_item;
+    }
+    if (!check(
+            saw_entry_visual &&
+                saw_inventory_request &&
+                world.playerIdentifyModeActive() &&
+                !world.playerSpellActive(),
+            "Identify did not show effect 21028 and enter item-selection "
+            "mode at its CAF marker.")) {
+        return false;
+    }
+
+    const std::int32_t held_mana =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                !world.playerSpellActive() &&
+                world.playerData().currentMana() == held_mana &&
+                !world.identifyPlayerInventoryItem(0) &&
+                world.playerIdentifyModeActive(),
+            "An active Identify mode repeated its cast or accepted an "
+            "already identified item.")) {
+        return false;
+    }
+
+    const std::int32_t experience_before =
+        world.playerMagic().experience(17);
+    if (!check(
+            world.identifyPlayerInventoryItem(1) &&
+                !world.playerIdentifyModeActive() &&
+                world.playerInventory().items()[1].identified == 1 &&
+                world.playerMagic().experience(17) ==
+                    experience_before + 1 &&
+                !world.identifyPlayerInventoryItem(1),
+            "Identifying a backpack item did not persist its flag and "
+            "award exactly one practice point.")) {
+        return false;
+    }
+
+    const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
+        std::max(parameters.mana_cost - 1, 0));
+    const std::int32_t insufficient_mana =
+        world.playerData().currentMana();
+    return check(
+        world.commandPlayerMagic(400, 240) &&
+            !world.playerSpellActive() &&
+            !world.playerIdentifyModeActive() &&
+            world.playerData().currentMana() ==
+                insufficient_mana,
+        "An insufficient-MP Identify command created an action or mode.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -3167,6 +3311,42 @@ int main() {
         !testRetailSonicBladeEffects(tables) ||
         !testShippedSonicBladeCast(game_root) ||
         !testTargetedSpellInsufficientMana(game_root, 15)) {
+        return 1;
+    }
+    if (!testRetailAction(
+            animation,
+            tables,
+            16,
+            osf::PlayerSpellAction::mud_javelin,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            16,
+            {
+                10016, 3, -1, 0x14,
+                true, true, false, true, false, false,
+                true, 0,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            16,
+            13,
+            10000110,
+            19) ||
+        !testTargetedSpellInsufficientMana(game_root, 16)) {
+        return 1;
+    }
+    if (!testRetailAction(
+            animation,
+            tables,
+            17,
+            osf::PlayerSpellAction::identify,
+            11,
+            12,
+            true,
+            21028) ||
+        !testShippedIdentifyCast(game_root)) {
         return 1;
     }
 #endif

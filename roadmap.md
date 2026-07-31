@@ -250,9 +250,24 @@ charge pass. A first-chart `0x40` marker launches resource 10000090 through
 effect 10015 with its seven-update lifetime, samples 154 and 20, and exact
 physical packet; the normal weapon sample still occurs at action counter six.
 
-The next spell checkpoint is Mud Javelin action 38. Its separate Table 20
-timing, packet, effect ownership, and presentation still need an end-to-end
-retail trace.
+Mud Javelin is complete. Action 38 returns to the normal Table 20 casting
+timeline on charts 13 and 14. Its effect-10016 request carries the pointed
+enemy, the exact magical subtype-three packet, and the retail randomized hit
+presentation. Resource 10000110 owns the tracked projectile and sample 19;
+resource 10000111 owns the finishing area burst, sample 22, and camera shake.
+
+Identify is complete. Action 39 uses charts 11 and 12 and shows one-pass
+effect 21028/resource 11000230 at entry. Its `0x40` marker opens Inventory on
+the independent right side and changes the common cursor into the retail
+Identify pointer. Only an unidentified backpack item completes the command;
+the item flag and its retail save mirror change together, one practice point
+is awarded, and right-click or closing Inventory cancels the mode. Recasting
+while it is already active does not spend MP again.
+
+The next spell checkpoint is Magic Shield action 40. Its cast action, active
+flag, incoming-damage mana routing, zero-MP shutdown, and player aura need to
+be joined into one tested lifetime rather than reconstructed as unrelated
+pieces.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1382,7 +1397,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Sonic Blade action 37 are complete;
+- Berserker action 30 through Identify action 39 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

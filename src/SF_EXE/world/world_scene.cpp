@@ -106,6 +106,7 @@ void WorldScene::clear() {
     pending_script_travel_ = {};
     script_travel_pending_ = false;
     scenario_changed_ = false;
+    player_identify_mode_active_ = false;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {

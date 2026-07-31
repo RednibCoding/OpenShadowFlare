@@ -1689,3 +1689,39 @@ also plays the equipped weapon's selector-four sample.
 height 155, lifetime seven, scenery and first-target expiry, and sample 20 on
 contact. Successful packet delivery trains Sonic Blade through the common
 receiver.
+
+## Mud Javelin cast
+
+`FUN_0043ecf0` runs spell sixteen as action 38 on CAF charts 13 and 14 with
+Table 20 row sixteen. Its action-entry effect-10016 request carries the player
+source, target mask 0x14, selected living enemy, Table 17 travel speed, height
+200, direction, player judgement, marker delay, and constructor field 22.
+
+The family-zero magical subtype-three packet combines Table 17 with magical
+attack and hit rate, uses magical defense, copies parameter five and the
+normal element/state banks, selects presentation 21000 through 21003 with one
+retail random draw, leaves word 72 zero, and records spell sixteen in word 73.
+
+`FUN_0042ea50` launches resource 10000110 at the marker delay with 80-unit
+bounds and sample 19. It follows that projectile until removal, then creates
+resource 10000111 at the last position. The burst applies the packet to every
+target in its 240-unit area on update five, plays sample 22, requests nearby
+camera shake, and ends. Successful contacts train Mud Javelin through the
+common receiver.
+
+## Identify cast and item mode
+
+`FUN_0043f8d0` runs spell seventeen as action 39 on CAF charts 11 and 12 with
+Table 20 row seventeen. Entry creates effect 21028/resource 11000230 as a
+one-pass player-owned visual. The first newly crossed status-`0x40` marker
+sets the local Identify mode and requests Inventory on the right. Repeating
+the spell while the mode is active is consumed before another MP charge.
+
+The Identify branch in `FUN_00446320` only accepts an unidentified backpack
+item while the pointer holds nothing. It changes the instance flag, mirrors
+the retail save word, trains spell seventeen once through `FUN_0044f6f0`, and
+leaves Inventory open. Known items and non-backpack storage do nothing;
+secondary click or panel close cancels the mode. `FUN_004087b0` draws pattern
+one from `System.njp` instead of the normal pattern zero while the mode is
+active. Unidentified tooltips use the item description as their base name and
+hide all instance values.

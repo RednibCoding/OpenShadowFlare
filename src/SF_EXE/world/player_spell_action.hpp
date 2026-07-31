@@ -28,6 +28,8 @@ enum class PlayerSpellAction : std::int32_t {
     lightning_storm = 35,
     medusa = 36,
     sonic_blade = 37,
+    mud_javelin = 38,
+    identify = 39,
 };
 
 enum class PlayerSpellAnimationVariant {
@@ -52,7 +54,7 @@ struct PlayerSpellActionEvent {
     std::int32_t aim_world_x = 0;
     std::int32_t aim_world_y = 0;
     std::int32_t effect_delay = 0;
-    bool charge_visual_due = false;
+    std::int32_t entry_visual_effect_number = -1;
     bool cast_due = false;
     bool swing_sound_due = false;
     bool completed = false;

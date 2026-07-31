@@ -125,9 +125,13 @@ public:
                 1, "System\\Common\\Pattern\\Font01.njp") ||
             !frontendAssets_.loadPattern(
                 2,
-                "System\\Common\\Pattern\\Waiting.njp")) {
+                "System\\Common\\Pattern\\Waiting.njp") ||
+            !frontendAssets_.loadPattern(
+                3,
+                "System\\Common\\Pattern\\System.njp")) {
             return false;
         }
+        lwl_window_set_cursor_visible(window_, false);
         gameState_.transition(osf::GameState::title);
         return true;
     }
@@ -201,6 +205,8 @@ private:
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
+                input_.menu().pointer_x,
+                input_.menu().pointer_y,
             },
             interpolation);
 

@@ -292,6 +292,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
         camera_shake_counter_ = -1;
         camera_shake_duration_ = 0;
         camera_shake_magnitude_ = 0;
+        player_identify_mode_active_ = false;
         pointer_.clearSelection();
         scenario_world_.setEntry(
             start.entry_value, *entry);
@@ -341,6 +342,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    player_identify_mode_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;
     next_ground_item_id_ =

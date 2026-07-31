@@ -393,6 +393,48 @@ a minimum of one; word five uses physical defense, word 34 is presentation
 21024, and word 72 is one. Retail still adds the hero's magical hit rate to
 Table 17 parameter one for the packet accuracy value.
 
+### Mud Javelin
+
+Mud Javelin returns to the ordinary pointed-spell path. Action 38 uses CAF
+charts 13 and 14 at the Table 20 row-sixteen rate, requires a living enemy,
+and creates effect 10016 as soon as the action begins. Its authored marker
+still determines when that controller launches the visible attack.
+
+The family-zero subtype-three packet adds Table 17 parameter zero to magical
+attack and parameter one to magical hit rate. It carries magical defense,
+Table 17 parameter five, and a randomly selected ordinary impact presentation
+from 21000 through 21003. The selected enemy, Table 17 travel speed, hero
+judgement rectangle, marker delay, and constructor field 22 all remain owned
+by the effect request.
+
+At the marker delay, resource 10000110 launches with 80-unit contact bounds
+and sample 19. The controller follows that projectile until it disappears,
+then places resource 10000111 at its last position. On the burst's fifth
+update it applies the packet to every target in its 240-unit area, plays sample
+22, and requests the nearby camera shake. Successful receiver contacts train
+spell sixteen.
+
+### Identify
+
+Identify is a self-cast with action 39, CAF charts 11 and 12, and the casting
+rate from Table 20 row seventeen. Starting the cast shows effect 21028 from
+resource 11000230. When the first-chart `0x40` marker is crossed, the Inventory
+panel opens on the right and the normal system cursor changes to its authored
+Identify pattern.
+
+While this mode is active, only an unidentified item in the backpack can be
+chosen. Equipment, belt items, special items, an item currently held by the
+pointer, and already identified items are ignored. A successful choice marks
+the item as identified, reveals its full name and values, gives Identify one
+practice point, and leaves Inventory open. Right-clicking or closing Inventory
+cancels the mode. Casting Identify again while it is already waiting for an
+item is consumed without another MP charge or casting action.
+
+The identified bit belongs to the item instance and is saved with it. Retail
+mirrors it in word 48 for weapons and armor and word 47 for accessories.
+Before identification, the tooltip uses the item's base description as its
+name and does not expose the hidden values.
+
 ## Character Stats
 
 ### Primary Stats

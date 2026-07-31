@@ -96,6 +96,24 @@ bool GameplayUiController::update(
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
+        if (service.kind ==
+            GameplayServiceKind::identify_item) {
+            if (!inventory_.active()) {
+                inventory_.open();
+            }
+            const bool left_panel_active =
+                magic_.active() ||
+                map_.active() ||
+                mission_list_.active() ||
+                transport_.active() ||
+                inventory_.specialItemsActive();
+            world.setCameraAnchor(
+                gameplayCameraAnchorX(
+                    left_panel_active,
+                    inventory_.active()),
+                240);
+            return false;
+        }
         options_.close();
         map_.close();
         magic_.close();
@@ -301,6 +319,8 @@ bool GameplayUiController::update(
         special_items_toggle ||
         inventory_.holdingItem() ||
         belt_pointer_pressed) {
+        const bool identification_was_active =
+            world.playerIdentifyModeActive();
         const GameplayInventoryResult result =
             inventory_.update(
                 {
@@ -313,6 +333,7 @@ bool GameplayUiController::update(
                     input.menu().pointer_y,
                     special_items_toggle,
                     input.pointerSecondaryPressed(),
+                    identification_was_active,
                 },
                 world.playerInventory(),
                 world.playerEquipment(),
@@ -320,6 +341,17 @@ bool GameplayUiController::update(
                 world.playerSpecialItems(),
                 world.itemDatabase(),
                 world.playerData().level());
+        if (result.cancel_identification_requested) {
+            world.cancelPlayerIdentifyMode();
+        } else if (
+            result.inventory_item_identify_requested >= 0) {
+            world.identifyPlayerInventoryItem(
+                result.inventory_item_identify_requested);
+        }
+        if (identification_was_active &&
+            !inventory_.active()) {
+            world.cancelPlayerIdentifyMode();
+        }
         PlayerItemUseResult used;
         if (result.inventory_item_use_requested >= 0) {
             used = world.usePlayerInventoryItem(

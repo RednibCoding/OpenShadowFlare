@@ -14,6 +14,7 @@
 #include "render/gameplay_transport_renderer.hpp"
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
+#include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "runtime/frontend_assets.hpp"
 #include "states/character_select_state.hpp"
@@ -251,6 +252,17 @@ void RuntimeRenderer::render(
                 }
             }
         }
+    }
+    const auto* system_patterns =
+        context.frontend_assets.pattern(3);
+    if (system_patterns) {
+        renderSystemCursor(
+            renderer_,
+            *system_patterns,
+            context.pointer_x,
+            context.pointer_y,
+            context.game_state == GameState::gameplay &&
+                context.world.playerIdentifyModeActive());
     }
     renderer_.endFrame();
 }

@@ -2181,3 +2181,52 @@ uses `[-80,-80,79,79]` bounds, display height 155, a fixed seven-update
 lifetime, directional chart zero, straight Table 17 travel, scenery and
 first-target expiry, and bank-zero contact sample 20. Its copied packet enters
 the ordinary receiver-time damage and spell-practice path.
+
+## Mud Javelin cast
+
+`0x0043ecf0` dispatches spell sixteen as action 38 on CAF charts 13 and 14
+with Table 20 row sixteen. The pointed command requires a living enemy but no
+particular weapon. Action entry sends effect 10016 the player source, target
+mask `0x14`, selected target, Table 17 parameter-three travel speed, height
+200, target angle, player judgement, the chart-marker delay, and Table 17
+parameter four. Constructor effective level remains zero.
+
+The family-zero packet has magical type three and subtype three. Table 17
+parameter zero is added to magical attack, parameter one to magical hit rate,
+word five carries magical defense, word 32 carries parameter five, and word 34
+uses one retail random draw to select 21000 through 21003. Word 72 is zero,
+word 73 is sixteen, and the normal Table 70 through 78 banks are copied.
+
+The existing effect handler at `0x0042ea50` launches resource 10000110 when
+the marker delay expires, with 80-unit bounds, packet contact, and sample 19.
+It tracks the projectile's runtime identity and last position until removal,
+then creates resource 10000111 there. On that burst's fifth update the packet
+is applied to every target in its 240-unit area, sample 22 plays, nearby camera
+shake is requested, and the controller ends. Receiver contact owns spell
+practice.
+
+## Identify cast and item mode
+
+`0x0043f8d0` dispatches spell seventeen as action 39 on CAF charts 11 and 12
+with Table 20 row seventeen. Action entry creates one-pass effect 21028 with
+owner kind one, the local player source and judgement, no target or packet,
+packet kind eight, instance minus one, and constructor field 21 set to 200.
+The common effect path maps it to resource 11000230.
+
+At each newly crossed first-chart status-`0x40` marker, the local player sets
+the Identify input flag and requests the right-side Inventory panel. A second
+Identify command while that flag is set is consumed before MP is charged.
+`0x004087b0` draws `System/Common/Pattern/System.njp` pattern zero for the
+normal pointer and pattern one at the same pointer coordinates for Identify.
+
+The Identify branch in `0x00446320` only accepts an unidentified backpack
+item while no item is held. It sets the instance's identified flag, calls
+`0x0044f6f0` for one spell-seventeen practice event, and clears the input flag
+without closing Inventory. Already identified items leave the mode active.
+Equipment, belt, and special-item storage never enter this branch. Secondary
+click or closing the panel clears the mode without changing an item.
+
+The item database name is the identified display name, while its description
+is the base name shown before identification. Unidentified information hides
+all values. The saved instance mirrors the identified value at raw word 48
+for category-zero and category-one items, and word 47 for category-two items.

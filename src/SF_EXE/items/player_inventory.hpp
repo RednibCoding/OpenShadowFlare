@@ -51,6 +51,7 @@ public:
     bool store(InventoryItem item);
     std::optional<InventoryItem> take(
         std::size_t item_index);
+    bool identify(std::size_t item_index);
     InventoryPlacementResult place(
         InventoryItem item,
         std::int32_t grid_x,

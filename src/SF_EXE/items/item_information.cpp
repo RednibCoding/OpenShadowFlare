@@ -63,7 +63,15 @@ std::string itemInformationText(
     const InventoryItem& item,
     const ItemDefinition& definition) {
     std::ostringstream output;
-    output << '[' << definition.name << "]\n\n";
+    output << '['
+           << (item.identified != 0
+                   ? definition.name
+                   : definition.description)
+           << "]\n\n";
+
+    if (item.identified == 0) {
+        return output.str();
+    }
 
     if (definition.category == 0 ||
         definition.category == 1) {

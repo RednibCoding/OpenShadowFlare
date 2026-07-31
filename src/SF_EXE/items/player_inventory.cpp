@@ -277,6 +277,31 @@ std::optional<InventoryItem> PlayerInventory::take(
     return item;
 }
 
+bool PlayerInventory::identify(
+    std::size_t item_index) {
+    if (item_index >= items_.size() ||
+        items_[item_index].identified != 0) {
+        return false;
+    }
+
+    InventoryItem& item = items_[item_index];
+    item.identified = 1;
+    std::size_t offset = item.retail_state.size();
+    if (item.category == 0 || item.category == 1) {
+        offset = 48u * 4u;
+    } else if (item.category == 2) {
+        offset = 47u * 4u;
+    }
+    if (offset < item.retail_state.size() &&
+        item.retail_state.size() - offset >= 4u) {
+        item.retail_state[offset] = 1;
+        item.retail_state[offset + 1u] = 0;
+        item.retail_state[offset + 2u] = 0;
+        item.retail_state[offset + 3u] = 0;
+    }
+    return true;
+}
+
 InventoryPlacementResult PlayerInventory::place(
     InventoryItem item,
     std::int32_t grid_x,
