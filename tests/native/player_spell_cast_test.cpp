@@ -1,12 +1,16 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "world/actor_direction.hpp"
+#include "world/player_data.hpp"
+#include "world/player_heal_spell.hpp"
 #include "world/player_spell_action.hpp"
 #include "world/player_spell_cast.hpp"
 #include "world/player_spell_parameters.hpp"
+#include "world/retail_save_file.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -41,7 +45,8 @@ bool testRetailAction(
     std::int32_t spell,
     osf::PlayerSpellAction spell_action,
     std::int32_t first_chart,
-    std::int32_t recovery_chart) {
+    std::int32_t recovery_chart,
+    bool dispatch_at_marker = false) {
     osf::PlayerSpellAnimationTiming timing;
     if (!check(
             osf::buildPlayerSpellAnimationTiming(
@@ -94,7 +99,8 @@ bool testRetailAction(
                     tables.find(20),
                     timing,
                     &event) &&
-                event.cast_due &&
+                event.cast_due ==
+                    !dispatch_at_marker &&
                 event.action == spell_action &&
                 event.spell == spell &&
                 event.target_character_number ==
@@ -115,10 +121,17 @@ bool testRetailAction(
 
     std::int32_t completion_update = -1;
     bool saw_recovery = false;
+    bool saw_cast = event.cast_due;
+    std::int32_t cast_frame =
+        event.cast_due ? action.displayedFrame() : -1;
     for (std::int32_t update = 1;
          update < 100 && action.active();
          ++update) {
         event = action.update(5, tables.find(20));
+        if (event.cast_due) {
+            saw_cast = true;
+            cast_frame = action.displayedFrame();
+        }
         saw_recovery =
             saw_recovery ||
             action.animationChart() == recovery_chart;
@@ -139,6 +152,10 @@ bool testRetailAction(
         1;
     return check(
         completion_update == expected_update &&
+            saw_cast &&
+            (!dispatch_at_marker ||
+             (cast_frame >= marker &&
+              cast_frame < timing.first_frame_count)) &&
             saw_recovery &&
             !action.active() &&
             action.animationChart() == recovery_chart &&
@@ -326,6 +343,78 @@ bool testRetailPacket(
         passed,
         "The player-spell packet or controller arguments "
         "differ from its retail action.");
+}
+
+bool testRetailHealResolution(
+    const osf::TableDatabase& tables) {
+    const osf::TableData* heal_table = tables.find(17);
+    if (!check(
+            heal_table && heal_table->contains(6, 0),
+            "The retail Heal percentage could not be read.")) {
+        return false;
+    }
+    const std::int32_t heal_percent =
+        heal_table->value(6, 0);
+    const osf::PlayerHealSpellResolution damaged =
+        osf::resolvePlayerHealSpell({
+            0,
+            50,
+            140,
+            heal_percent,
+            {-80, -80, 79, 79},
+        });
+    const std::int32_t expected_amount =
+        std::min(
+            heal_percent * 140 / 100,
+            90);
+    if (!check(
+            damaged.valid &&
+                damaged.healed_amount == expected_amount &&
+                damaged.restored_life ==
+                    50 + expected_amount &&
+                damaged.award_practice &&
+                damaged.audio_sample == 17 &&
+                damaged.visual.valid &&
+                damaged.visual.effect_number == 21020 &&
+                damaged.visual.owner_kind == 1 &&
+                damaged.visual.source_character_number == 0 &&
+                damaged.visual.target_kind == 0 &&
+                damaged.visual.target_identifier == 0 &&
+                damaged.visual.constructor_value_6 == 0 &&
+                damaged.visual.constructor_value_7 == 0 &&
+                damaged.visual.direction_radians == 0.0 &&
+                !damaged.visual.has_explicit_origin &&
+                damaged.visual.has_source_judgement &&
+                damaged.visual.source_judgement.left == -80 &&
+                damaged.visual.constructor_value_12 == 0 &&
+                !damaged.visual.has_packet &&
+                damaged.visual.packet_kind == 8 &&
+                damaged.visual.instance_identifier == -1 &&
+                damaged.visual.constructor_value_21 == 200 &&
+                damaged.visual.constructor_value_22 == 0,
+            "Heal did not preserve its retail percentage, visual, "
+            "audio, or practice result.")) {
+        return false;
+    }
+
+    const osf::PlayerHealSpellResolution full =
+        osf::resolvePlayerHealSpell({
+            0,
+            140,
+            140,
+            heal_percent,
+            {-80, -80, 79, 79},
+        });
+    return check(
+        full.valid &&
+            full.restored_life == 140 &&
+            full.healed_amount == 0 &&
+            !full.award_practice &&
+            full.audio_sample == -1 &&
+            full.visual.valid &&
+            full.visual.effect_number == 21020,
+        "A full-life Heal lost its visual or incorrectly produced "
+        "restoration, audio, or practice.");
 }
 
 bool testShippedWorldCast(
@@ -1047,6 +1136,179 @@ bool testShippedIceBlastCast(
         "self-centered layers, pulse audio, area contact, or practice.");
 }
 
+bool testShippedHealCast(
+    const std::filesystem::path& game_root,
+    const osf::TableDatabase& tables) {
+    constexpr std::int32_t spell = 6;
+    osf::PlayerData saved_player;
+    std::string error;
+    if (!check(
+            saved_player.initializeNew(
+                "HealLive", 0, tables, &error),
+            "The live Heal player could not be initialized.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    saved_player.setCurrentLife(
+        saved_player.baseMaximumLife() - 1);
+
+    const auto unique =
+        std::chrono::high_resolution_clock::now()
+            .time_since_epoch()
+            .count();
+    const std::filesystem::path save_path =
+        std::filesystem::temp_directory_path() /
+        ("openshadowflare-heal-" +
+         std::to_string(unique) + ".sav");
+    std::error_code cleanup_error;
+    std::filesystem::remove(save_path, cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                saved_player,
+                0x5a,
+                &error),
+            "The live Heal save fixture could not be written.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.source = osf::PlayerDataSource::retail_save;
+    player.save_path = save_path;
+    osf::WorldScene world;
+    const bool loaded = world.loadInitialScenario(
+        game_root, player, &error);
+    std::filesystem::remove(save_path, cleanup_error);
+    if (!check(
+            loaded,
+            "Remote Town could not load the damaged Heal fixture.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Heal fixture could not select the spell.")) {
+        return false;
+    }
+
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::int32_t maximum_life =
+        world.playerData().baseMaximumLife();
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    if (!check(
+            life_before == maximum_life - 1 &&
+                world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                world.playerData().currentLife() == life_before &&
+                world.playerMagic().experience(spell) == 0 &&
+                world.combatEffects().empty(),
+            "Heal resolved before its retail CAF marker or lost its "
+            "targetless action and MP cost.")) {
+        return false;
+    }
+
+    bool saw_visual = false;
+    bool heard_heal = false;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        heard_heal =
+            heard_heal ||
+            std::find(audio.begin(), audio.end(), 17) !=
+                audio.end();
+        saw_visual =
+            saw_visual ||
+            std::any_of(
+                world.combatEffects().begin(),
+                world.combatEffects().end(),
+                [](const osf::CombatEffectActor& effect) {
+                    return effect.effectNumber() == 21020 &&
+                           effect.resourceId() == 11000060;
+                });
+        if (!world.playerSpellActive() &&
+            world.combatEffects().empty()) {
+            break;
+        }
+    }
+    if (!check(
+            saw_visual &&
+                heard_heal &&
+                world.playerData().currentLife() == maximum_life &&
+                world.playerMagic().experience(spell) == 1,
+            "The shipped Heal marker did not restore life, show "
+            "resource 11000060, play sample 17, and award practice.")) {
+        return false;
+    }
+
+    const std::int32_t full_experience =
+        world.playerMagic().experience(spell);
+    const std::int32_t full_mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            full_mana_before >= parameters.mana_cost &&
+                world.commandPlayerMagic(400, 240),
+            "The full-life Heal command could not be started.")) {
+        return false;
+    }
+    bool saw_full_visual = false;
+    bool heard_full_heal = false;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        heard_full_heal =
+            heard_full_heal ||
+            std::find(audio.begin(), audio.end(), 17) !=
+                audio.end();
+        saw_full_visual =
+            saw_full_visual ||
+            std::any_of(
+                world.combatEffects().begin(),
+                world.combatEffects().end(),
+                [](const osf::CombatEffectActor& effect) {
+                    return effect.effectNumber() == 21020 &&
+                           effect.resourceId() == 11000060;
+                });
+        if (!world.playerSpellActive() &&
+            world.combatEffects().empty()) {
+            break;
+        }
+    }
+    return check(
+        world.playerData().currentMana() ==
+                full_mana_before - parameters.mana_cost &&
+            world.playerData().currentLife() == maximum_life &&
+            world.playerMagic().experience(spell) ==
+                full_experience &&
+            saw_full_visual &&
+            !heard_full_heal,
+        "A full-life Heal lost its visual or incorrectly restored, "
+        "played sample 17, or awarded practice.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -1242,7 +1504,18 @@ int main() {
                 false, false, false, true, false, false,
             }) ||
         !testShippedIceBlastCast(game_root) ||
-        !testGroundSpellInsufficientMana(game_root, 5)) {
+        !testGroundSpellInsufficientMana(game_root, 5) ||
+        !testRetailAction(
+            animation,
+            tables,
+            6,
+            osf::PlayerSpellAction::heal,
+            11,
+            12,
+            true) ||
+        !testRetailHealResolution(tables) ||
+        !testShippedHealCast(game_root, tables) ||
+        !testGroundSpellInsufficientMana(game_root, 6)) {
         return 1;
     }
 #endif

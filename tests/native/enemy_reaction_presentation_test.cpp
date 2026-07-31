@@ -56,9 +56,11 @@ bool testEffectResourceMappingAndLifetime(
     }
     if (!check(
             osf::retailCombatEffectResourceId(20999) == -1 &&
-                osf::retailCombatEffectResourceId(21015) == -1,
+                osf::retailCombatEffectResourceId(21015) == -1 &&
+                osf::retailCombatEffectResourceId(21020) ==
+                    11000060,
             "The simple effect owner accepted a specialized effect "
-            "family.")) {
+            "family or lost the Heal visual.")) {
         return false;
     }
 

@@ -37,6 +37,7 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
     switch (action) {
     case PlayerSpellAction::plasma:
     case PlayerSpellAction::ice_blast:
+    case PlayerSpellAction::heal:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -44,6 +45,22 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
         return {13, 14};
     }
     return {};
+}
+
+bool dispatchesAtEffectMarker(
+    PlayerSpellAction action) {
+    return action == PlayerSpellAction::heal;
+}
+
+bool frameHasEffectStatus(
+    const PlayerSpellAnimationTiming& timing,
+    std::int32_t frame) {
+    return frame >= 0 &&
+           static_cast<std::size_t>(frame) <
+               timing.first_frame_statuses.size() &&
+           (timing.first_frame_statuses[
+                static_cast<std::size_t>(frame)] &
+            kEffectStatus) != 0;
 }
 
 std::int32_t firstEffectFrame(
@@ -79,6 +96,9 @@ bool playerSpellActionForSpell(
         return true;
     case 5:
         action = PlayerSpellAction::ice_blast;
+        return true;
+    case 6:
+        action = PlayerSpellAction::heal;
         return true;
     default:
         return false;
@@ -185,6 +205,14 @@ bool PlayerSpellActionController::start(
             animation_speed_));
     action_counter_ = 0;
     displayed_frame_ = 0;
+    last_effect_scan_frame_ = 0;
+    cast_dispatched_ =
+        !dispatchesAtEffectMarker(action_);
+    const bool initial_marker =
+        !cast_dispatched_ &&
+        frameHasEffectStatus(timing_, 0);
+    cast_dispatched_ =
+        cast_dispatched_ || initial_marker;
     active_ = true;
     selectRenderedFrame();
 
@@ -196,7 +224,7 @@ bool PlayerSpellActionController::start(
             aim_world_x_,
             aim_world_y_,
             effect_delay_,
-            true,
+            cast_dispatched_,
             false,
         };
     }
@@ -214,6 +242,8 @@ PlayerSpellActionController::update(
         refreshSpeed(speed_tier, speed_table);
     }
 
+    const std::int32_t previous_displayed_frame =
+        displayed_frame_;
     displayed_frame_ = static_cast<std::int32_t>(
         std::trunc(
             static_cast<double>(action_counter_) *
@@ -229,6 +259,27 @@ PlayerSpellActionController::update(
     event.aim_world_x = aim_world_x_;
     event.aim_world_y = aim_world_y_;
     event.effect_delay = effect_delay_;
+    if (!cast_dispatched_ &&
+        dispatchesAtEffectMarker(action_) &&
+        displayed_frame_ < timing_.first_frame_count) {
+        const std::int32_t first_frame =
+            std::max(
+                last_effect_scan_frame_ + 1,
+                previous_displayed_frame + 1);
+        for (std::int32_t frame = first_frame;
+             frame <= displayed_frame_;
+             ++frame) {
+            if (frameHasEffectStatus(timing_, frame)) {
+                event.cast_due = true;
+                cast_dispatched_ = true;
+                break;
+            }
+        }
+        last_effect_scan_frame_ =
+            std::max(
+                last_effect_scan_frame_,
+                displayed_frame_);
+    }
     if (displayed_frame_ >=
         timing_.first_frame_count - 1 +
             completion_increment_) {
@@ -249,6 +300,8 @@ void PlayerSpellActionController::cancel() {
     animation_speed_ = 1.0;
     completion_increment_ = 1;
     effect_delay_ = 0;
+    last_effect_scan_frame_ = -1;
+    cast_dispatched_ = false;
     action_counter_ = 0;
     displayed_frame_ = 0;
     animation_chart_ = 0;

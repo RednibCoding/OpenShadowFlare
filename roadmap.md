@@ -174,9 +174,17 @@ click controls facing only: effect 10005 captures the hero on update three,
 then runs its three authored layers, area contact, camera shake, and six pulse
 sounds around that position.
 
-The next spell checkpoint is Heal action 28. It begins the restorative spell
-family and needs its command ownership, receiver choice, packet semantics,
-animation, audio, and practice path traced before implementation.
+Heal is complete as the first restorative spell. Action 28 stays on the
+targetless command but resolves at the chart-11 `0x40` marker instead of
+queuing an attack controller immediately. It always shows effect 21020 and
+resource 11000060; missing HP restores the Table 17 percentage, plays sample
+17, and trains the spell, while full HP still spends MP and shows the visual
+without restoration, audio, or practice.
+
+The next spell checkpoint is Moon action 29. It is the first sustained
+companion-stat spell, so its activation toggle, saved/runtime state,
+companion modifiers, MP behavior, visual lifetime, and cancellation rules all
+need to be traced together before implementation.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1304,7 +1312,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Plasma's action-25 multi-wave area-effect path is complete;
 - the ground/self casting command and Hell Fire action 26 are complete;
 - Ice Blast action 27 and effect 10005 are complete;
-- the next checkpoint is Heal action 28 and its restorative receiver path;
+- Heal action 28 and its marker-time restorative path are complete;
+- the next checkpoint is Moon action 29 and its companion-stat lifetime;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

@@ -1939,3 +1939,24 @@ packet four updates later. The contact area expands the player judgement by
 updates. Resource 10000052 follows at frame-count plus 15 with display status
 `0x80`; sample 22 pulses six times before the controller expires at
 frame-count plus 22. Successful packet receivers award Ice Blast practice.
+
+## Heal cast
+
+Heal remains on the targetless secondary-click command and enters action 28,
+but `0x0043ca60` does not build a family-zero combat packet. It uses CAF
+charts 11 and 12 and Table 20 row six. Unlike the five attack spells, the
+action scans every newly displayed chart-11 frame and resolves the cast only
+when it crosses status `0x40`; no delayed controller is queued at command
+time.
+
+At the marker it always creates simple effect 21020 with owner kind one,
+source judgement, packet direction eight, and no combat packet. The common
+one-pass owner maps that effect to Character OPTION resource 11000060 and
+holds it at the hero for one CAF pass.
+
+If current HP differs from maximum HP, the action restores Table 17 row six
+percent of maximum HP, capped at the missing amount. It then calls the normal
+spell-training function and plays sample 17. At full HP the command still
+spends MP and the marker still creates the visual, but it restores nothing,
+plays no sample 17, and awards no practice. The portable Heal resolver owns
+those restorative rules separately from the attack-spell packet builder.

@@ -1523,3 +1523,19 @@ resource 10000050, the expanded one-update area packet and camera shake at
 plus four, resource 10000052 at plus 15, six sample-22 pulses, and expiry at
 plus 22. Live coverage proves the self-centered capture, all three layers,
 pulse audio, damage, receiver-time practice, and the insufficient-MP path.
+
+## Heal cast
+
+Heal stays on `FUN_00441c00`'s targetless secondary-click path and enters
+action 28. `FUN_0043ca60` uses CAF charts 11 and 12 and Table 20 row six, but
+does not create an attack packet or delayed effect controller. It scans every
+newly displayed chart-11 frame and resolves only when status `0x40` is
+crossed.
+
+The marker always creates effect 21020 with owner kind one, source judgement,
+packet direction eight, and no packet. `FUN_0042b860` maps it to resource
+11000060 at the hero for one CAF pass. If HP is below maximum, the action
+restores Table 17 row six percent of maximum HP capped to the missing amount,
+calls `FUN_0044f6f0` for spell six, and plays sample 17. Full HP still permits
+the cast and visual after paying MP, but skips restoration, audio, and
+practice. Live coverage proves both marker-time branches and insufficient MP.

@@ -184,6 +184,18 @@ layers, the 150-unit expanded area contact, a short camera shake, and six
 sample-22 pulses. Contact uses sample 20 and awards Ice Blast practice through
 the normal receiver path.
 
+### Heal
+
+Heal is a self-cast on the targetless secondary-click path. It enters action
+28 with CAF charts 11 and 12, but waits for the chart-11 `0x40` marker before
+doing anything. At that marker it always shows effect 21020, which uses
+resource 11000060 at the hero for one animation pass.
+
+When HP is missing, Heal restores the Table 17 row-six percentage of maximum
+HP, capped at the amount missing, plays sample 17, and awards one practice
+point. Casting at full HP still consumes the normal Table 16 MP cost and shows
+the visual, but does not play sample 17 or train the spell.
+
 ## Character Stats
 
 ### Primary Stats

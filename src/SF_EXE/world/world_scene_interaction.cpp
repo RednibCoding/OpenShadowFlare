@@ -5,6 +5,7 @@
 #include "generic_effect_actor.hpp"
 #include "player_attack_impact.hpp"
 #include "player_combat_defense.hpp"
+#include "player_heal_spell.hpp"
 #include "player_ranged_attack.hpp"
 #include "player_spell_cast.hpp"
 #include "player_spell_parameters.hpp"
@@ -987,6 +988,38 @@ void WorldScene::handlePlayerSpellEvent(
     const PlayerSpellActionEvent& event) {
     if (!event.cast_due ||
         event.spell < 0) {
+        return;
+    }
+    if (event.spell == 6) {
+        const PlayerSpellParameters parameters =
+            playerSpellParameters(
+                player_magic_,
+                event.spell,
+                player_equipment_,
+                item_database_,
+                parameter_tables_);
+        const PlayerHealSpellResolution resolution =
+            resolvePlayerHealSpell({
+                scenario_world_.localPlayerNumber(),
+                player_data_.currentLife(),
+                player_data_.baseMaximumLife(),
+                parameters.effect_value,
+                player_.judgement(),
+            });
+        if (!resolution.valid) {
+            return;
+        }
+        queueCombatEffect(resolution.visual);
+        if (resolution.award_practice) {
+            player_data_.setCurrentLife(
+                resolution.restored_life);
+            player_magic_.train(
+                event.spell,
+                false,
+                parameter_tables_);
+            pending_audio_samples_.push_back(
+                resolution.audio_sample);
+        }
         return;
     }
     const bool requires_target =
