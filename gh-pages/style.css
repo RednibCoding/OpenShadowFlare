@@ -1,10 +1,10 @@
 :root {
   --sf-black: #0b0b0b;
   --sf-iron: #2c2c2c;
-  --sf-gold-bright: #a5dbff;
+  --sf-gold-bright: #e6cf9f;
   --sf-ivory-dim: #e5e5e5;
   --sf-text-muted: #b7b7b7;
-  --sf-button-text: #dce9f7;
+  --sf-button-text: #f0e6d4;
   --sf-panel-bg-top: #151515;
   --sf-panel-bg-mid: #121212;
   --sf-panel-bg-bot: #181818;
@@ -15,16 +15,16 @@
   --sf-ink-mid: rgba(0, 0, 0, 0.6);
   --sf-ink-deep: rgba(0, 0, 0, 0.9);
   --sf-white-faint: rgba(255, 255, 255, 0.018);
-  --sf-gold-faint: rgba(61, 124, 255, 0.12);
-  --sf-gold-soft: rgba(61, 124, 255, 0.25);
-  --sf-gold-mid: rgba(61, 124, 255, 0.45);
-  --sf-gold-glow: rgba(140, 200, 255, 0.28);
-  --sf-frame-soft: rgba(100, 170, 255, 0.18);
-  --sf-frame-strong: rgba(100, 170, 255, 0.5);
-  --sf-fire-soft: rgba(80, 140, 255, 0.18);
-  --sf-fire-faint: rgba(80, 140, 255, 0.06);
-  --sf-flame-soft: rgba(70, 130, 255, 0.18);
-  --sf-ember-faint: rgba(100, 180, 255, 0.06);
+  --sf-gold-faint: rgba(170, 110, 55, 0.08);
+  --sf-gold-soft: rgba(180, 125, 65, 0.16);
+  --sf-gold-mid: rgba(190, 130, 65, 0.3);
+  --sf-gold-glow: rgba(235, 185, 115, 0.18);
+  --sf-frame-soft: rgba(205, 155, 85, 0.12);
+  --sf-frame-strong: rgba(215, 165, 95, 0.35);
+  --sf-fire-soft: rgba(195, 135, 65, 0.12);
+  --sf-fire-faint: rgba(195, 135, 65, 0.04);
+  --sf-flame-soft: rgba(195, 135, 65, 0.12);
+  --sf-ember-faint: rgba(215, 155, 85, 0.04);
 
   --bevel: 8px;
 }
@@ -49,20 +49,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 96px 16px 24px;
+  padding: 24px;
   background:
     radial-gradient(
       80% 55% at 50% -10%,
-      rgba(90, 130, 220, 0.16),
+      rgba(170, 120, 70, 0.05),
       transparent 65%
     ),
     radial-gradient(
       120% 80% at 50% 110%,
-      rgba(40, 60, 120, 0.25),
+      rgba(80, 50, 30, 0.08),
       transparent 70%
     ),
-    linear-gradient(180deg, #10131d 0%, #0a0d15 50%, #05070c 100%);
+    linear-gradient(180deg, #1d1610 0%, #151009 50%, #0c0805 100%);
   font-family: system-ui, 'Segoe UI', sans-serif;
+}
+
+body:has(.app > #game:not([hidden])) {
+  align-items: flex-start;
 }
 
 .sf-panel {
@@ -163,53 +167,53 @@ body {
     0 0 0 4px var(--sf-ink-deep);
 }
 .sf-btn--flame {
-  --btn-bg1: rgba(96, 176, 255, 0.16);
+  --btn-bg1: rgba(210, 145, 75, 0.1);
   --btn-bg2: rgba(0, 0, 0, 0.4);
-  --btn-grad1: #122a52;
-  --btn-grad2: #060d1c;
-  --btn-border: #9fd6ff;
+  --btn-grad1: #2a1a0c;
+  --btn-grad2: #120a04;
+  --btn-border: #e8c07f;
   border: 0;
-  color: #e8f6ff;
+  color: #f6ead6;
   text-shadow:
-    0 0 8px rgba(150, 210, 255, 0.9),
-    0 0 20px rgba(90, 160, 255, 0.5);
+    0 0 8px rgba(255, 210, 145, 0.7),
+    0 0 20px rgba(225, 160, 85, 0.35);
   background:
     radial-gradient(
       120% 170% at 50% 115%,
-      rgba(110, 190, 255, 0.4),
-      rgba(140, 200, 255, 0.12) 45%,
+      rgba(230, 165, 90, 0.28),
+      rgba(245, 200, 130, 0.08) 45%,
       transparent 70%
     ),
     linear-gradient(180deg, var(--btn-bg1), var(--btn-bg2)),
     linear-gradient(var(--btn-grad1), var(--btn-grad2));
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
-    inset 0 0 18px rgba(120, 190, 255, 0.28),
-    inset 0 -6px 16px rgba(90, 160, 255, 0.18),
+    inset 0 0 18px rgba(225, 165, 95, 0.18),
+    inset 0 -6px 16px rgba(205, 140, 70, 0.12),
     0 2px 0 0 var(--sf-shadow),
     0 8px 18px var(--sf-ink-mid),
-    0 0 22px rgba(90, 160, 255, 0.45);
+    0 0 22px rgba(205, 140, 70, 0.3);
 }
 .sf-btn--flame:hover {
   background:
     radial-gradient(
       130% 180% at 50% 115%,
-      rgba(130, 205, 255, 0.5),
-      rgba(150, 210, 255, 0.16) 45%,
+      rgba(240, 175, 100, 0.34),
+      rgba(250, 210, 140, 0.1) 45%,
       transparent 72%
     ),
     linear-gradient(180deg, var(--btn-bg1), var(--btn-bg2)),
     linear-gradient(var(--btn-grad1), var(--btn-grad2));
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
-    inset 0 0 22px rgba(130, 200, 255, 0.4),
-    inset 0 -6px 18px rgba(100, 170, 255, 0.24),
+    inset 0 0 22px rgba(235, 175, 100, 0.26),
+    inset 0 -6px 18px rgba(215, 150, 80, 0.16),
     0 2px 0 0 var(--sf-shadow),
     0 10px 22px var(--sf-ink-mid),
-    0 0 30px rgba(110, 180, 255, 0.6);
+    0 0 30px rgba(220, 155, 85, 0.4);
   text-shadow:
-    0 0 12px rgba(170, 220, 255, 1),
-    0 0 26px rgba(100, 170, 255, 0.7);
+    0 0 12px rgba(255, 220, 160, 0.85),
+    0 0 26px rgba(225, 165, 95, 0.5);
 }
 
 .sf-link {
@@ -248,10 +252,19 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #e6f6ff 0%, #9fdcff 40%, #4f8cff 100%);
+  background: linear-gradient(180deg, #f3e3c0 0%, #d9b879 40%, #8a5a2b 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  filter: drop-shadow(0 0 8px var(--sf-gold-glow))
+    drop-shadow(0 0 24px var(--sf-fire-soft));
+}
+
+.start-screen__logo {
+  display: block;
+  margin: 0 auto;
+  max-width: min(280px, 80vw);
+  height: auto;
   filter: drop-shadow(0 0 8px var(--sf-gold-glow))
     drop-shadow(0 0 24px var(--sf-fire-soft));
 }
@@ -345,7 +358,7 @@ canvas {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: rgba(3, 6, 12, 0.78);
+  background: rgba(12, 8, 4, 0.78);
   backdrop-filter: blur(4px);
 }
 
@@ -380,7 +393,7 @@ canvas {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #e6f6ff 0%, #9fdcff 40%, #4f8cff 100%);
+  background: linear-gradient(180deg, #f3e3c0 0%, #d9b879 40%, #8a5a2b 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
