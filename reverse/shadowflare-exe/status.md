@@ -1461,3 +1461,21 @@ sample 20 and enters the same receiver-time practice path as Fire Ball.
 Portable player input, action timing, packet construction, effect dispatch,
 audio, damage, and practice are covered together in a shipped-world
 regression.
+
+## Plasma cast
+
+`FUN_0043a840` dispatches spell three as action 25 with CAF charts 11 and 12
+and Table 20 row three. Its packet uses physical defense in word 5,
+presentation 20005 in word 34, and spell three in word 73. Effect request
+10003 has target mask four, the pointed enemy identity and angle, the hero
+position as explicit origin, zero travel speed and display height, and the
+effective spell level in constructor argument 17.
+
+The existing type-three effect owner reads Table 205, attempts a wave every
+four updates at radii `250 + wave * 200`, and permanently suppresses the
+current and later waves after one obstructed placement. A clear wave consumes
+one random chart and creates resources 10000030, 10000031, and 10000032;
+only the first layer applies the copied packet to every overlapping enemy on
+update zero. Sample 21 plays for each clear wave. Live coverage accepts the
+retail obstruction path and separately proves a clear shipped-world wave,
+damage, audio, and Plasma practice.

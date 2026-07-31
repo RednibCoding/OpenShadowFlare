@@ -143,6 +143,20 @@ launches it with 50-unit collision bounds, and plays sample 94. Impact still
 uses sample 20 and awards Ice Bolt practice only when its packet reaches an
 enemy.
 
+### Plasma
+
+Plasma is still aimed by right-clicking an enemy, but it is not a projectile.
+The hero enters action 25 and uses CAF charts 11 and 12. Effect 10003 starts
+from the hero's position and sends waves along the target angle at radii 250,
+450, 650, and so on, with the count supplied by Table 205 at the effective
+spell level.
+
+Each clear wave creates three visual layers; the damaging layer uses a random
+chart, checks every enemy in its 100-unit area on its first update, and plays
+sample 21. If one wave position is blocked by the map or a solid scenario
+object, that wave and every later wave are suppressed. Every enemy packet
+contact can award Plasma practice through the ordinary receiver path.
+
 ## Character Stats
 
 ### Primary Stats

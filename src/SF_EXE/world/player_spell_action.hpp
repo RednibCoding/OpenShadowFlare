@@ -15,6 +15,7 @@ class CafAnimation;
 enum class PlayerSpellAction : std::int32_t {
     fire_ball = 23,
     ice_bolt = 24,
+    plasma = 25,
 };
 
 struct PlayerSpellAnimationTiming {

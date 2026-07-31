@@ -152,10 +152,20 @@ uses Table 20 row two, effect 10002, packet subtype one, impact presentation
 parts retail actually shares, and both have live shipped-world coverage from
 selection through contact-time practice.
 
-Plasma is the next checkpoint. Its action 25 leads into effect 10003's
-multi-wave area owner, so it will prove that target placement, obstruction,
-randomized wave visuals, repeated area contacts, audio, and practice remain
-outside the common player casting shell.
+Plasma is complete as the first multi-wave cast. Action 25 uses player CAF
+charts 11 and 12, Table 20 row three, and a family-zero packet whose defense
+field and presentation differ from the two projectiles. Effect 10003 receives
+the hero origin and target angle, then owns the Table 205 wave count, four
+update spacing, 250-plus-200-unit placement, permanent obstruction cutoff,
+randomized primary charts, three visual layers, sample 21, area contacts, and
+receiver-time practice.
+
+The next slice should reconstruct the ground/self casting command before
+adding another spell. Retail does not route every spell through pointed-enemy
+selection: the ordinary world-click path validates the selected spell, saves
+the cursor angle and ground coordinates, and enters `spell + 22` with no
+character target. Hell Fire is the first useful spell on that route and will
+prove the command family without weakening the targeted path.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1280,7 +1290,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
   training is complete;
 - Fire Ball and Ice Bolt prove the reusable single-target projectile spell
   dispatch;
-- the next checkpoint is Plasma and its multi-wave area-effect path;
+- Plasma's action-25 multi-wave area-effect path is complete;
+- the next checkpoint is the ground/self casting command and Hell Fire;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

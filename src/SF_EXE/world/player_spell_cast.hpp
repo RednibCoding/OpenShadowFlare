@@ -15,6 +15,7 @@ struct PlayerSpellCastStats {
     std::int32_t source_character_number = -1;
     std::int32_t player_level = 1;
     std::int32_t magical_attack = 0;
+    std::int32_t physical_defense = 0;
     std::int32_t magical_defense = 0;
     std::int32_t magical_hit_rate = 0;
     std::array<std::int32_t, 8> element_affinities{};

@@ -1007,6 +1007,8 @@ void WorldScene::handlePlayerSpellEvent(
         player_data_.baseMagicalAttack() +
         player_equipment_.derivedParameterBonus(
             4, item_database_);
+    stats.physical_defense =
+        affinity_source.physical_defense;
     stats.magical_defense =
         affinity_source.magical_defense;
     stats.magical_hit_rate =

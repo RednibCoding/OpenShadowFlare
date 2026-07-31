@@ -17,6 +17,10 @@ struct TargetedSpellDescriptor {
     std::int32_t effect_number = -1;
     std::int32_t packet_subtype = 0;
     std::int32_t impact_effect = -1;
+    std::int32_t target_mask =
+        kEnemyAndObjectTargetMask;
+    bool projectile = true;
+    bool use_physical_defense = false;
 };
 
 bool targetedSpellDescriptor(
@@ -28,6 +32,16 @@ bool targetedSpellDescriptor(
         return true;
     case 2:
         descriptor = {10002, 1, 21013};
+        return true;
+    case 3:
+        descriptor = {
+            10003,
+            0,
+            20005,
+            4,
+            false,
+            true,
+        };
         return true;
     default:
         return false;
@@ -65,32 +79,44 @@ CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
     request.owner_kind = kPlayerOwnerKind;
     request.source_character_number =
         input.stats.source_character_number;
-    request.target_kind = kEnemyAndObjectTargetMask;
+    request.target_kind = descriptor.target_mask;
     request.target_identifier =
         input.target_character_number;
     request.constructor_value_6 =
-        retailEffectParameter(
-            tables,
-            spell,
-            input.parameters.effective_level,
-            3);
-    request.constructor_value_7 = 200;
+        descriptor.projectile
+            ? retailEffectParameter(
+                  tables,
+                  spell,
+                  input.parameters.effective_level,
+                  3)
+            : 0;
+    request.constructor_value_7 =
+        descriptor.projectile ? 200 : 0;
     request.direction_radians =
         retailAngleForVector(
             input.target_position.x -
                 input.source_position.x,
             input.target_position.y -
                 input.source_position.y);
-    request.has_source_judgement = true;
-    request.source_judgement =
-        input.source_judgement;
+    request.has_explicit_origin =
+        !descriptor.projectile;
+    request.origin = input.source_position;
+    request.has_source_judgement =
+        descriptor.projectile;
+    if (request.has_source_judgement) {
+        request.source_judgement =
+            input.source_judgement;
+    }
     request.constructor_value_12 =
         input.effect_delay;
     request.has_packet = true;
     request.packet_kind = 8;
     request.instance_identifier = -1;
     request.constructor_value_16 = 0;
-    request.constructor_value_17 = 0;
+    request.constructor_value_17 =
+        descriptor.projectile
+            ? 0
+            : input.parameters.effective_level;
     request.constructor_value_18 = 0;
     request.constructor_value_19 = 0;
     request.constructor_value_20 = 0;
@@ -115,7 +141,11 @@ CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
     if (packet[4] < 1) {
         packet.write(4, 1);
     }
-    packet.write(5, input.stats.magical_defense);
+    packet.write(
+        5,
+        descriptor.use_physical_defense
+            ? input.stats.physical_defense
+            : input.stats.magical_defense);
     for (std::size_t index = 0;
          index < input.stats.element_affinities.size();
          ++index) {

@@ -1863,3 +1863,30 @@ first-target expiry, and the copied packet. Sample 94 plays at launch and
 sample 20 at contact. The portable targeted-spell builder now selects these
 retail descriptors while the already shared effect owner retains projectile
 timing, movement, audio, and collision.
+
+## Plasma cast
+
+Plasma remains in `0x00449a40`'s pointed-enemy whitelist and enters action 25.
+`0x0043a840` reads Table 20 row three, but unlike Fire Ball and Ice Bolt it
+uses CAF charts 11 and 12. The first chart's status-`0x40` frame still supplies
+the effect delay through the common truncated counter and speed calculation.
+
+Its family-zero packet sets word 3 to zero, word 34 to presentation 20005,
+and word 73 to spell three. Packet word 5 uses the player's derived physical
+defense rather than magical defense. The effect request uses target mask four,
+keeps the pointed enemy identity and angle, supplies the hero's current
+position as an explicit origin, leaves travel speed and display height zero,
+and places the effective spell level in constructor argument 17.
+
+Effect 10003 reads Table 205 row zero at `effective level - 1`. Beginning at
+the marker delay, it attempts one wave every four updates at distance
+`250 + wave * 200` along the stored angle. Placement uses
+`[-100,-100,100,100]` against the map and solid scenario objects. One failed
+placement latches an obstruction flag and suppresses all later waves.
+
+A clear wave consumes one random value for the primary chart and creates
+resources 10000030, 10000031, and 10000032. Only the first layer has an
+update-zero all-target collision window; the other two are visual. Sample 21
+plays at the wave position. The portable player action now constructs this
+request, while the existing effect-10003 owner continues to own all wave
+placement, random ordering, rendering, audio, contact, and expiry.
