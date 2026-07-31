@@ -7,7 +7,10 @@ function(osf_configure_switch_platform target)
   target_compile_definitions(${target} PRIVATE OSF_PLATFORM_SWITCH)
 
   if(COMMAND nx_create_nro)
-    nx_create_nro(${target})
+    nx_create_nro(
+      ${target}
+      ICON "${PROJECT_SOURCE_DIR}/readme/sf-logo-sm.jpg"
+    )
   else()
     message(
       WARNING

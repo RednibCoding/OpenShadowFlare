@@ -6,6 +6,7 @@
  *
  * Input maps the touchscreen to the pointer (touch = move + primary click) and
  * the gamepad to keys, so the game's mouse/keyboard-driven UI works unchanged.
+ * ZL opens the system keyboard and submits its text to the focused text field.
  * Pointer coordinates are reported in the 1280x720 surface space; the game's
  * InputAdapter maps them onto the 640x480 virtual surface with the same
  * fitViewport the presenter uses.
@@ -86,6 +87,28 @@ static void lwl_switch_push_key(LwlEventType type, const char *key) {
   }
 }
 
+static void lwl_switch_show_keyboard(void) {
+  SwkbdConfig keyboard;
+  char text[64] = {0};
+
+  if (R_FAILED(swkbdCreate(&keyboard, 0))) {
+    return;
+  }
+  swkbdConfigMakePresetUserName(&keyboard);
+  swkbdConfigSetHeaderText(&keyboard, "Character name");
+  swkbdConfigSetGuideText(&keyboard, "Enter a name for your character.");
+  swkbdConfigSetStringLenMax(&keyboard, 15);
+
+  if (R_SUCCEEDED(swkbdShow(&keyboard, text, sizeof(text))) &&
+      text[0] != '\0') {
+    LwlEvent *event = lwl_switch_push(LWL_EVENT_TEXT_INPUT);
+    if (event) {
+      strncpy(event->text, text, sizeof(event->text) - 1);
+    }
+  }
+  swkbdClose(&keyboard);
+}
+
 struct LwlSwitchKeyMapping {
   u64 mask;
   const char *key;
@@ -121,6 +144,11 @@ static void lwl_switch_sample_input(void) {
   padUpdate(&g_pad);
   pressed = padGetButtonsDown(&g_pad);
   released = padGetButtonsUp(&g_pad);
+
+  /* ZL is otherwise unused by the game's native controller mapping. */
+  if (pressed & HidNpadButton_ZL) {
+    lwl_switch_show_keyboard();
+  }
 
   /* Touchscreen -> pointer + primary button. */
   memset(&touch, 0, sizeof(touch));
