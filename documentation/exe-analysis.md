@@ -824,6 +824,26 @@ same order as retail. The result deliberately leaves live state mutation,
 effect ownership, audio playback, and equipment synchronization to later
 world owners.
 
+The owned companion is created by `0x004501c0` as category `40000000` with
+character number `16000000 + player slot`. Table 60 supplies its name,
+PARTNER resource number, and three draw strengths. `0x004136f0` then sums
+each parameter column from zero through `saved companion level - 1` in table
+`800 + companion type`; it does not substitute the PEOPLE record for the
+matching dog in town. The initializer uses judgement
+`[-80,-80,79,79]`, starts at the player's position, and retains the player as
+its owner. The portable profile and actor preserve all six shipped companion
+rows and all three PARTNER resource directories.
+
+The ordinary owner mode in `0x004622b0` measures judgement-bound distance to
+the player. Below 160 the companion requests idle action two and refreshes a
+five-update linger. From 160 through 599 it starts action three at
+`table row 1 / 5` after that linger. At 600 or farther it starts or promotes
+the route to action four at `table row 2 / 5`. Distances of 4000 or more snap
+the actor to the player position plus `(200,200)`. Actions two, three, and
+four render PARTNER charts zero, one, and two. The other opening branch
+searches for a type-two target within 1200 and enters companion attack mode;
+that attack handoff remains the next live slice.
+
 The player's owned companion does not reuse either receiver. Its virtual
 callback is `0x0045f9f0`, selected from the type-five companion vtable at
 `0x00476e38`. It rejects companions with no life and presentation actions
@@ -853,9 +873,9 @@ four and plays sample 119; stage two only changes the reaction stage. The two
 configured packet effects and the 20-percent random hit effect instead use
 owner kind two. That otherwise easy-to-miss constructor difference is
 preserved in the portable request. Death action six and default event four are
-selected after those common effects. As with the other receivers, live actor
-mutation, effect allocation, and audio playback remain consumers for the
-later complete combat loop.
+selected after those common effects. The actor owner now exists, while
+receiver mutation, effect allocation, and audio playback remain part of the
+attack-and-damage slice.
 
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
@@ -1134,8 +1154,9 @@ Opening Help from the settings row also starts the common modal-tab animator
 at `0x004088b0`. Status patterns 27 through 30 slide the `CLOSE` tab from
 y=413 to y=393 and then pulse in the retail eight-phase order. Escape or a
 click above y=412 closes Help. The `H` shortcut opens the same reference page
-directly. The companion preview is conditional in retail; the portable
-renderer will add it when the player-owned companion system exists.
+directly. The conditional companion branch now draws the real owned PARTNER
+actor at `(212,158)` with chart seven and the same animation counter as the
+player preview.
 
 The Map row at y=270 and the `N` shortcut switch to `0x0040d4d0`. The screen
 keeps the right half of the world visible and clips its own content to

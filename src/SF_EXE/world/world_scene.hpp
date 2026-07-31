@@ -18,6 +18,7 @@
 #include "resources/object_visual_resource.hpp"
 #include "ground_item.hpp"
 #include "combat_effect_actor.hpp"
+#include "companion_actor.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
 #include "miss_effect_actor.hpp"
@@ -91,6 +92,8 @@ public:
         scenarioObjects() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<EnemyActor>& enemies() const;
+    bool hasCompanion() const;
+    const CompanionActor& companion() const;
     const std::vector<CombatEffectActor>&
         combatEffects() const;
     const std::vector<RuntimeEffectActor>&
@@ -318,6 +321,8 @@ private:
     WorldPointerTarget pending_interaction_;
     PlayerAttackTargetController player_attack_target_;
     CharacterVisualResource player_visual_;
+    CharacterVisualResources companion_visuals_{"PARTNER"};
+    CompanionActor companion_;
     EffectVisualResources effect_visuals_;
     EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;

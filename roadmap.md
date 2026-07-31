@@ -33,6 +33,8 @@ The portable executable already has a solid front half:
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
+- the player's table-backed owned companion, including its PARTNER visual,
+  depth sorting, collision, scenario travel, and retail follow distances
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -98,8 +100,8 @@ The ordinary and basic ranged encounters are now proven in the live outdoor
 map, all the way from targeting through pickup and save/reload. The next useful
 combat work is the behavior that cannot be exercised by either solo fight:
 
-- attach companion targeting and attacks to the same receiver and reward
-  owners;
+- finish companion target acquisition, attacks, damage reception, death, and
+  progression on the new live owned-companion actor;
 - keep checking item state, audio, experience, and saving beside each change
   so a new combat path cannot silently damage adjacent ownership.
 
@@ -1180,6 +1182,23 @@ made-up behavior.
 The next combat work is companion targeting and attacks, keeping one shipped
 live case beside each passive reconstruction and sharing the existing
 receiver, effect, reward, audio, and persistence owners.
+
+The owned-companion foundation is complete. `0x004501c0` creates character
+`16000000 + player slot` at the player's scenario entry and takes its name,
+PARTNER resource, and RGB strengths from Table 60. Tables 800 through 805 are
+summed through the saved companion level for movement and combat values.
+Kerberos therefore starts with the retail level-one profile rather than a
+copy of a town NPC.
+
+The default follow half of `0x004622b0` is live too. A companion idles inside
+160 judgement units, waits five updates before leaving that close band, walks
+below 600, runs at 600 or farther, and snaps to the player plus `(200,200)`
+only at 4000 or farther. It uses PARTNER charts zero, one, and two, routes
+through the common movement owner, participates in normal depth sorting and
+actor collision, and is relocated with the player on scenario changes. The
+remaining half of that routine is the 1200-unit enemy search which hands off
+to attack mode; that is the next slice rather than a fake attack bolted onto
+the follower.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,

@@ -112,7 +112,9 @@ target_link_libraries(
 add_library(
   osf_world STATIC
   world/actor_direction.cpp
+  world/companion_actor.cpp
   world/companion_damage_receiver.cpp
+  world/companion_profile.cpp
   world/combat_damage.cpp
   world/combat_effect_actor.cpp
   world/combat_hit_chance.cpp

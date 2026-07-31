@@ -56,6 +56,8 @@ void WorldScene::clear() {
     pending_interaction_ = {};
     player_attack_target_.cancel();
     player_visual_.clear();
+    companion_visuals_.clear();
+    companion_.clear();
     effect_visuals_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
@@ -141,6 +143,14 @@ const std::vector<NpcActor>& WorldScene::npcs() const {
 const std::vector<EnemyActor>&
 WorldScene::enemies() const {
     return scenario_world_.enemies();
+}
+
+bool WorldScene::hasCompanion() const {
+    return companion_.valid();
+}
+
+const CompanionActor& WorldScene::companion() const {
+    return companion_;
 }
 
 const std::vector<CombatEffectActor>&
@@ -421,7 +431,8 @@ void WorldScene::update() {
         scenario_world_.objects().size() +
         scenario_world_.people().size() +
         scenario_world_.enemies().size() +
-        (has_player_ ? 1u : 0u));
+        (has_player_ ? 1u : 0u) +
+        (hasCompanion() ? 1u : 0u));
     for (const ScenarioObjectActor& object :
          scenario_world_.objects()) {
         if (!object.judgementEnabled()) {
@@ -474,6 +485,7 @@ void WorldScene::update() {
             enemy.judgement(),
         });
     }
+    std::size_t companion_blocker_index = no_blocker;
     if (has_player_) {
         player_.update(
             scenario_world_.ground(),
@@ -513,6 +525,18 @@ void WorldScene::update() {
             player_.judgement(),
         });
     }
+    // The retail owner is allowed to step out of its companion's
+    // overlapping spawn position. Other actors still treat the companion
+    // as a normal category-five judgement object.
+    if (hasCompanion() &&
+        companion_.judgementEnabled()) {
+        companion_blocker_index = actor_blockers.size();
+        actor_blockers.push_back({
+            companion_.movementBlockerId(),
+            companion_.position(),
+            companion_.judgement(),
+        });
+    }
     for (ScenarioObjectActor& object :
          scenario_world_.objects()) {
         object.update();
@@ -529,6 +553,19 @@ void WorldScene::update() {
             actor_blockers[
                 npc_blocker_indices[index]].position =
                 npc.position();
+        }
+    }
+    if (hasCompanion() && has_player_) {
+        companion_.updateFollow(
+            player_.position(),
+            player_.judgement(),
+            scenario_world_.ground(),
+            scenario_world_.objectMap(),
+            &actor_blockers);
+        if (companion_blocker_index != no_blocker) {
+            actor_blockers[
+                companion_blocker_index].position =
+                companion_.position();
         }
     }
     for (std::size_t index = 0;

@@ -32,6 +32,7 @@ struct WorldDrawEntry {
     const CombatEffectActor* effect = nullptr;
     const RuntimeEffectActor* runtime_effect = nullptr;
     const MissEffectActor* miss_effect = nullptr;
+    const CompanionActor* companion = nullptr;
 };
 
 ScreenPosition toScreen(
@@ -104,6 +105,39 @@ void renderNpcPass(
                 npc.partRedStrength(part) + hover_strength,
                 npc.partGreenStrength(part) + hover_strength,
                 npc.partBlueStrength(part) + hover_strength,
+            };
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity);
+}
+
+void renderCompanionPass(
+    gapi::Backend& renderer,
+    const CompanionActor& companion,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity,
+    double interpolation) {
+    renderCharacterAnimationPass(
+        renderer,
+        companion.animation(),
+        companion.patterns(),
+        companion.shadowPatterns(),
+        companion.renderPosition(interpolation),
+        companion.animationChart(),
+        companion.direction(),
+        companion.animationFrame(),
+        [&companion](std::size_t part) {
+            return companion.partEnabled(part);
+        },
+        [&companion](std::size_t part) {
+            return CharacterColorStrength{
+                companion.partRedStrength(part),
+                companion.partGreenStrength(part),
+                companion.partBlueStrength(part),
             };
         },
         camera_x,
@@ -484,6 +518,18 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
         });
     }
+    if (world.hasCompanion() &&
+        world.companion().visible()) {
+        WorldDrawEntry entry;
+        entry.companion = &world.companion();
+        entry.order = {
+            entries.size(),
+            world.companion().renderPosition(interpolation),
+            world.companion().judgement(),
+            0,
+        };
+        entries.push_back(entry);
+    }
     for (const NpcActor& npc : world.npcs()) {
         if (!npc.visible()) {
             continue;
@@ -751,6 +797,15 @@ void drawWorldEntry(
         renderPlayerPass(
             renderer,
             world,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity,
+            interpolation);
+    } else if (entry.companion) {
+        renderCompanionPass(
+            renderer,
+            *entry.companion,
             camera_x,
             camera_y,
             shadow,

@@ -82,6 +82,8 @@ public:
         std::int32_t maximum_percent);
     std::int32_t initialParameter(std::size_t row) const;
     std::int32_t companionType() const;
+    std::int32_t companionLevel() const;
+    std::int32_t companionExperience() const;
     std::int32_t baseAttackSpeed() const;
     std::int32_t baseWeightCapacity() const;
     std::int32_t basePhysicalAttack() const;

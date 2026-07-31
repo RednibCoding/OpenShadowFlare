@@ -924,6 +924,40 @@ if(TARGET sf_game_core)
     COMMAND companion_damage_receiver_test)
 
   add_executable(
+    companion_actor_test
+    companion_actor_test.cpp
+  )
+  target_link_libraries(
+    companion_actor_test
+    PRIVATE
+      OpenShadowFlare::Render
+  )
+  target_compile_features(
+    companion_actor_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    companion_actor_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    companion_actor_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      companion_actor_test
+      PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      companion_actor_test
+      PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME companion_actor
+    COMMAND companion_actor_test)
+
+  add_executable(
     enemy_damage_receiver_test
     enemy_damage_receiver_test.cpp
   )

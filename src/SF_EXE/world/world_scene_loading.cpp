@@ -154,6 +154,26 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    CompanionProfile companion_profile;
+    if (!decodeCompanionProfile(
+            parameter_tables_,
+            player_data_.companionType(),
+            player_data_.companionLevel(),
+            companion_profile,
+            error)) {
+        clear();
+        return false;
+    }
+    const CharacterVisualResource* companion_visual =
+        companion_visuals_.load(
+            data_root,
+            companion_profile.resource_id,
+            error);
+    if (!companion_visual) {
+        clear();
+        return false;
+    }
+
     RetailRandom prepared_item_random = item_random_;
     ScenarioWorld prepared_scenario;
     if (!prepared_scenario.load(
@@ -190,6 +210,18 @@ bool WorldScene::loadInitialScenario(
         },
         scenario_world_.entry().direction,
         player_data_.walkingSpeedTier());
+    if (!companion_.initialize(
+            companion_profile,
+            *companion_visual,
+            scenario_world_.localPlayerNumber(),
+            player_.position(),
+            player_.direction())) {
+        setError(
+            error,
+            "The owned companion could not be initialized.");
+        clear();
+        return false;
+    }
     player_.setMovementPace(
         saved_running ? MovementPace::run : MovementPace::walk);
     scenario_world_.mapExploration().reveal(
@@ -246,6 +278,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
         player_.relocate(
             {entry->world_x, entry->world_y},
             entry->direction);
+        companion_.relocate(
+            player_.position(), player_.direction());
         scenario_world_.mapExploration().reveal(
             player_.position());
         if (error) {
@@ -299,6 +333,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
             scenario_world_.entry().world_y,
         },
         scenario_world_.entry().direction);
+    companion_.relocate(
+        player_.position(), player_.direction());
     scenario_world_.mapExploration().reveal(
         player_.position());
     if (error) {

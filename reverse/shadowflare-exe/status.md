@@ -220,6 +220,22 @@ branch at `0x0045fff0` are adjacent in the executable but belong to a different
 actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
+The category-40000000 owner is now live. `0x004501c0` creates character
+`16000000 + player slot` at the player's position, takes the PARTNER resource
+and draw strengths from Table 60, and builds the level profile by summing
+Table `800 + companion type`. The portable actor carries all six shipped
+types and all three PARTNER resources instead of borrowing the matching
+PEOPLE actor.
+
+The follow half of `0x004622b0` is reconstructed. Judgement distance below
+160 selects idle and refreshes a five-update linger; 160 through 599 walks at
+parameter row one divided by five; 600 and above runs at row two divided by
+five; and 4000 or above snaps to player position plus `(200,200)`. Those
+states use charts zero, one, and two and share normal movement, collision,
+interpolation, and display ordering. Scenario changes relocate the companion
+with its owner. The routine's 1200-unit enemy search and attack-mode handoff
+remain the next part.
+
 The portable `EnemyEffectController` now covers the complete controller half
 of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
 cover zero, positive, and negative delays,
@@ -506,9 +522,9 @@ Status patterns 10 and 66 provide the authored 640-by-415 frame and the
 shadows, row spacing, and original wording. The player uses CAF chart 7 at the
 preview anchor. Help entered through Settings also runs the shared
 `0x004088b0` `CLOSE` animation with Status patterns 27 through 30; Escape or
-any click above the HUD dismisses it. Drawing the current owned companion in
-the preview waits on the companion-ownership slice rather than borrowing a
-town NPC.
+any click above the HUD dismisses it. The conditional companion branch draws
+the real owned PARTNER actor at `(212,158)` with chart seven and the shared
+preview animation counter.
 
 The Mission List follows `0x0040cea0`. Status pattern 10 supplies the authored
 640-by-415 frame, patterns 110 through 113 select either 24-entry page, and

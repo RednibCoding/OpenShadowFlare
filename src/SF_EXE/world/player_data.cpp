@@ -432,6 +432,14 @@ std::int32_t PlayerData::companionType() const {
     return readI32(0x140);
 }
 
+std::int32_t PlayerData::companionLevel() const {
+    return readI32(0x144);
+}
+
+std::int32_t PlayerData::companionExperience() const {
+    return readI32(0x148);
+}
+
 std::int32_t PlayerData::baseAttackSpeed() const {
     // FUN_00440f70 stores table 900/901 row zero at runtime offset
     // 0x38 (persistent record offset 0x28). FUN_0044ea60 copies it to
