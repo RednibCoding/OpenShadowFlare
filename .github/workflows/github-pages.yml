@@ -1,0 +1,78 @@
+name: Build and deploy WebAssembly
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up Emscripten
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: 6.0.5
+          actions-cache-folder: emsdk-cache
+
+      - name: Configure the release build
+        run: >-
+          emcmake cmake
+          -S .
+          -B build/wasm/release
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+
+      - name: Build the WebAssembly target
+        run: cmake --build build/wasm/release --parallel
+
+      - name: Assemble the Pages site
+        run: |
+          mkdir -p build/gh-pages
+          cp -a gh-pages/. build/gh-pages/
+          cp build/wasm/release/src/SF_EXE/ShadowFlare_rebuilt.js build/gh-pages/assets/
+          cp build/wasm/release/src/SF_EXE/ShadowFlare_rebuilt.wasm build/gh-pages/assets/
+          touch build/gh-pages/.nojekyll
+
+      - name: Verify the Pages artifact
+        run: |
+          test -s build/gh-pages/index.html
+          test -s build/gh-pages/assets/ShadowFlare_rebuilt.js
+          test -s build/gh-pages/assets/ShadowFlare_rebuilt.wasm
+          grep -Fq 'src="assets/ShadowFlare_rebuilt.js"' build/gh-pages/index.html
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/gh-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

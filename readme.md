@@ -250,6 +250,12 @@ python -m http.server 8080 --directory build/wasm/release/src/SF_EXE
 For an unoptimized browser build with debug information, use
 `build/wasm/debug` and `-DCMAKE_BUILD_TYPE=Debug`.
 
+The `Build and deploy WebAssembly` GitHub Actions workflow rebuilds the
+release target on every push to `master`, combines it with the page in
+`gh-pages/`, and publishes the result through GitHub Pages. The repository's
+Pages source must be set to **GitHub Actions** once under Settings → Pages.
+The same deployment can also be started manually from the Actions tab.
+
 ## Running the tests
 
 Run the build and static ABI/fidelity checks with:
