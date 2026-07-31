@@ -84,7 +84,8 @@ const osf::EnemyActor* findEnemy(
 osf::CombatEffectSpawnRequest shippedEffectRequest(
     const osf::WorldScene& world,
     const osf::EnemyActor& enemy,
-    const osf::TableDatabase& tables) {
+    const osf::TableDatabase& tables,
+    osf::EnemyAiTarget selected_target = {}) {
     const osf::EnemyPresentationProfile& profile =
         enemy.presentationProfile();
     const osf::WorldPosition source = enemy.position();
@@ -107,7 +108,7 @@ osf::CombatEffectSpawnRequest shippedEffectRequest(
             profile.effect_parameter[0],
             profile.effect_additive[0],
             profile.packet_word_31,
-            {},
+            selected_target,
         },
         tables,
         constructor_random);
@@ -1410,6 +1411,228 @@ bool testShippedLiveTypeEleven(
         "item identity.");
 }
 
+bool testShippedLiveTypeTwelve(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-twelve parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* count_table =
+        tables.find(204);
+    const std::int32_t actor_count =
+        count_table ? count_table->value(0, 9) : 0;
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectFan";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {3010003, 0, 0},
+                &error),
+            "The shipped type-twelve effect scenario could not "
+            "be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::EnemyActor* source =
+        findEnemy(world, 24);
+    if (!check(
+            source &&
+                source->presentationProfile()
+                        .effect_type[0] == 12 &&
+                source->presentationProfile()
+                        .effect_subtype[0] == 10 &&
+                actor_count == 3,
+            "North of The Remains of The Dead no longer contains "
+            "enemy 24's shipped type-twelve family.")) {
+        return false;
+    }
+
+    const osf::WorldPosition player_position{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(
+            world,
+            *source,
+            tables,
+            {
+                true,
+                osf::MovementTargetKind::player,
+                0,
+                0,
+                player_position,
+                0,
+            });
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    if (!check(
+            request.valid &&
+                request.effect_number == 10012 &&
+                request.constructor_value_12 == 10 &&
+                request.constructor_value_17 == 10 &&
+                request.owner_kind == 4 &&
+                request.target_kind == 1 &&
+                request.target_identifier == 0 &&
+                request.constructor_value_6 > 0 &&
+                body_before,
+            "The shipped enemy did not resolve a valid "
+            "type-twelve targeted request or starter ownership "
+            "fixture.")) {
+        return false;
+    }
+
+    // Keep the shipped profile and target, but place this live
+    // regression on the player so every fan child deterministically
+    // exercises the common receiver rather than depending on this
+    // late-game map's intervening collision geometry.
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = player_position;
+
+    world.queueCombatEffect(request);
+    world.update();
+    world.takeAudioSamples();
+    const std::size_t warning_count =
+        static_cast<std::size_t>(
+            std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == 10000080;
+                }));
+    if (!check(
+            world.runtimeEffectControllerCount() == 1 &&
+                world.runtimeEffects().size() ==
+                    static_cast<std::size_t>(
+                        actor_count + 1) &&
+                warning_count ==
+                    static_cast<std::size_t>(actor_count) &&
+                std::any_of(
+                    world.runtimeEffects().begin(),
+                    world.runtimeEffects().end(),
+                    [](const osf::RuntimeEffectActor& actor) {
+                        return actor.resourceId() ==
+                            11000027;
+                    }),
+            "The live type-twelve controller did not create its "
+            "source and complete warning fan.")) {
+        return false;
+    }
+
+    world.update();
+    world.takeAudioSamples();
+    const bool rendered_source =
+        renderedRuntimeResource(world, 11000027);
+    const bool rendered_warning =
+        renderedRuntimeResource(world, 10000080);
+    for (std::int32_t update_number = 2;
+         update_number < 10;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+
+    world.update();
+    const std::vector<std::int32_t> launch_audio =
+        world.takeAudioSamples();
+    const std::size_t projectile_count =
+        static_cast<std::size_t>(
+            std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == 10000081;
+                }));
+    const bool complete_projectile_packets =
+        std::all_of(
+            world.runtimeEffects().begin(),
+            world.runtimeEffects().end(),
+            [](const osf::RuntimeEffectActor& actor) {
+                return actor.resourceId() != 10000081 ||
+                       (actor.hasPacket() &&
+                        actor.packet()[34] == 21021 &&
+                        actor.packet()[74] == 21022 &&
+                        actor.packet()[35] ==
+                            actor.animationDirection() &&
+                        actor.packet()[75] ==
+                            actor.animationDirection());
+            });
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                projectile_count ==
+                    static_cast<std::size_t>(actor_count) &&
+                complete_projectile_packets &&
+                containsSample(launch_audio, 94),
+            "The live type-twelve launch lost a projectile, "
+            "packet rewrite, sample 94, or controller cleanup.")) {
+        return false;
+    }
+
+    world.update();
+    const std::vector<std::int32_t> impact_audio =
+        world.takeAudioSamples();
+    const bool rendered_projectile =
+        renderedRuntimeResource(world, 10000081);
+    const bool damage_received =
+        world.playerData().currentLife() < life_before;
+
+    for (std::int32_t update_number = 0;
+         update_number <= 91;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+
+    const osf::InventoryItem* body_after =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    return check(
+        rendered_source &&
+            rendered_warning &&
+            rendered_projectile &&
+            containsSample(impact_audio, 20) &&
+            damage_received &&
+            world.runtimeEffects().empty() &&
+            sameItems(
+                world.playerInventory().items(),
+                inventory_before) &&
+            sameItems(
+                world.playerBelt().items(),
+                belt_before) &&
+            body_after &&
+            body_after->category == body_copy.category &&
+            body_after->definition_id ==
+                body_copy.definition_id,
+        "The shipped type-twelve fan lost rendering, impact "
+        "audio, damage, lifetime cleanup, or adjacent item "
+        "identity.");
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -1515,6 +1738,7 @@ int main() {
                    testShippedLiveTypeFive(data_root) &&
                    testShippedLiveTypeTen(data_root) &&
                    testShippedLiveTypeEleven(data_root) &&
+                   testShippedLiveTypeTwelve(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;

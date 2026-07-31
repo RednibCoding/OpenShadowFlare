@@ -1334,7 +1334,7 @@ enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
 `EnemyEffectController` now ports the complete controller half of types 1, 2,
-3, 4, 5, 10, and 11 without pretending that every specialized family is
+3, 4, 5, 10, 11, and 12 without pretending that every specialized family is
 finished. It emits the
 source actor on update zero, re-resolves the source at the exact authored
 delay, projects the second actor with the retail Y-axis convention, copies the
@@ -1438,6 +1438,31 @@ current angle through retail's truncated full-circle constants. A difference
 inside 20 degrees snaps to the target; otherwise the actor turns 20 degrees
 along the shorter side. The CAF direction follows the resulting angle before
 drawing.
+
+Type 12 (`0x0042db10`) starts with resource `11000027` at the resolved source
+and reads Table 204 row zero at `subtype - 1`. Table 204 column 29 supplies
+the spread divisor, which is eight in the shipped data. On update zero the
+controller creates that many resource-`10000080` warning actors. The total
+span is `count * 2.5132736 / divisor`; odd counts are centered on the stored
+direction, while retail applies an additional `span / count / 2` offset to
+even counts. Nonzero owners place each warning 150 world units along its
+angle, while owner kind zero leaves every warning at the explicit origin.
+Warnings are stationary, use `[-50,-50,50,50]`, chart zero, their directional
+CAF row, constructor display height, and the subtype itself as their explicit
+lifetime.
+
+When the counter reaches the authored delay, retail reads the same Table 204
+values and resolves the source again. It emits the matching fan as
+resource-`10000081`, now at radius 180 for nonzero owners. These children move
+straight at constructor value six; they do not use the type-11 homing mode.
+They have the same 50-unit bounds, a 90-update lifetime, static-contact and
+first-target expiry, optional previous-target memory, and bank-zero sample 20.
+In each copied packet, the controller replaces words 34/35 with effect
+`21021` and the child's retail direction, then words 74/75 with effect
+`21022` and that direction. Sample 94 plays once at the last projectile's
+spawn position and the controller expires. A zero delay therefore emits the
+source plus both complete fans on update zero. Dread Wisp 24 in `North of The
+Remains of The Dead` (`03010003`) provides the shipped subtype-ten live case.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance

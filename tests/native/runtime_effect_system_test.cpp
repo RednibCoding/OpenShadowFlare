@@ -155,7 +155,7 @@ bool testControllerActorAndReceiverOrder() {
 
 bool testUnsupportedRequestStaysOutsideOwner() {
     osf::CombatEffectSpawnRequest unsupported = request();
-    unsupported.effect_number = 10012;
+    unsupported.effect_number = 10013;
     osf::RuntimeEffectSystem system;
     return check(
         !system.queue(unsupported) &&

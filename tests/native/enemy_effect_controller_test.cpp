@@ -311,7 +311,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10012;
+    request.effect_number = 10013;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -1255,6 +1255,316 @@ bool testTypeElevenRadialActors() {
 #endif
 }
 
+bool testTypeTwelveWarningAndProjectileFans() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The retail type-twelve count table could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* count_table =
+        tables.find(204);
+    const std::int32_t actor_count =
+        count_table ? count_table->value(0, 9) : 0;
+    const std::int32_t spread_divisor =
+        count_table ? count_table->value(0, 29) : 0;
+    if (!check(
+            actor_count == 3 &&
+                spread_divisor == 8,
+            "Table 204's type-twelve count or spread divisor "
+            "changed.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10012, 2);
+    request.constructor_value_17 = 10;
+    request.constructor_value_22 = 1;
+    request.direction_radians = 0.25;
+    request.packet.write(35, 8);
+    request.packet.write(74, -1);
+    request.packet.write(75, 8);
+
+    const auto direction_for =
+        [&request, actor_count, spread_divisor](
+            std::int32_t index) {
+            const double spread =
+                static_cast<double>(actor_count) *
+                2.5132736 /
+                static_cast<double>(spread_divisor);
+            return request.direction_radians -
+                   spread * 0.5 +
+                   static_cast<double>(
+                       1 - (actor_count & 1)) *
+                       (spread /
+                        static_cast<double>(actor_count)) *
+                       0.5 +
+                   static_cast<double>(index) * spread /
+                       static_cast<double>(actor_count - 1);
+        };
+
+    osf::EnemyEffectController controller;
+    osf::EnemyEffectController missing_tables;
+    if (!check(
+            controller.initialize(request, &tables) &&
+                !missing_tables.initialize(request),
+            "Type twelve did not require and accept its shipped "
+            "Table 204 row.")) {
+        return false;
+    }
+
+    const osf::WorldPosition first_source{100, 200};
+    const auto first =
+        updateController(
+            controller, {true, first_source});
+    if (!check(
+            first.actor_spawn_count == 4 &&
+                first.audio_count == 0 &&
+                !first.expired &&
+                first.actor_spawns[0].resource_id ==
+                    11000027 &&
+                first.actor_spawns[0].position.x == 100 &&
+                first.actor_spawns[0].position.y == 200 &&
+                first.actor_spawns[0]
+                    .lifetime_from_animation,
+            "Type twelve did not create its source and complete "
+            "warning fan on update zero.")) {
+        return false;
+    }
+    for (std::int32_t index = 0;
+         index < actor_count;
+         ++index) {
+        const double direction = direction_for(index);
+        const osf::WorldPosition expected{
+            first_source.x +
+                static_cast<std::int32_t>(
+                    std::cos(direction) * 150),
+            first_source.y -
+                static_cast<std::int32_t>(
+                    std::sin(direction) * 150),
+        };
+        const auto& actor =
+            first.actor_spawns[
+                static_cast<std::size_t>(index + 1)];
+        if (!check(
+                actor.controller_effect_number == 10012 &&
+                    actor.resource_id == 10000080 &&
+                    actor.owner_kind == 4 &&
+                    actor.source_character_number ==
+                        14000042 &&
+                    actor.target_mask == 1 &&
+                    actor.target_identifier == 3 &&
+                    std::abs(
+                        actor.direction_radians -
+                        direction) < 0.0000001 &&
+                    actor.travel_speed == 0 &&
+                    actor.position.x == expected.x &&
+                    actor.position.y == expected.y &&
+                    actor.judgement.left == -50 &&
+                    actor.judgement.top == -50 &&
+                    actor.judgement.right == 50 &&
+                    actor.judgement.bottom == 50 &&
+                    actor.display_height == 250 &&
+                    actor.lifetime == 10 &&
+                    !actor.lifetime_from_animation &&
+                    !actor.expire_on_environment_collision &&
+                    actor.target_collision_start == -1 &&
+                    actor.animation_chart == 0 &&
+                    actor.animation_direction ==
+                        osf::retailDirectionForAngle(
+                            direction) &&
+                    actor.has_packet &&
+                    actor.packet[34] == 21013 &&
+                    actor.packet[35] == 8 &&
+                    actor.packet[74] == -1 &&
+                    actor.packet[75] == 8,
+                "A type-twelve warning differs from its retail "
+                "stationary descriptor.")) {
+            return false;
+        }
+    }
+
+    const auto second =
+        updateController(
+            controller, {true, {200, 300}});
+    if (!check(
+            second.actor_spawn_count == 0 &&
+                second.audio_count == 0 &&
+                !second.expired,
+            "Type twelve launched before its authored delay.")) {
+        return false;
+    }
+
+    const osf::WorldPosition launch_source{300, 400};
+    const auto launch =
+        updateController(
+            controller, {true, launch_source});
+    if (!check(
+            launch.actor_spawn_count ==
+                static_cast<std::size_t>(actor_count) &&
+                launch.audio_count == 1 &&
+                launch.expired &&
+                !controller.active(),
+            "Type twelve did not replace its warning fan with "
+            "the complete projectile fan.")) {
+        return false;
+    }
+
+    osf::WorldPosition last_position;
+    for (std::int32_t index = 0;
+         index < actor_count;
+         ++index) {
+        const double direction = direction_for(index);
+        const std::int32_t animation_direction =
+            osf::retailDirectionForAngle(direction);
+        const osf::WorldPosition expected{
+            launch_source.x +
+                static_cast<std::int32_t>(
+                    std::cos(direction) * 180),
+            launch_source.y -
+                static_cast<std::int32_t>(
+                    std::sin(direction) * 180),
+        };
+        last_position = expected;
+        const auto& actor =
+            launch.actor_spawns[
+                static_cast<std::size_t>(index)];
+        if (!check(
+                actor.controller_effect_number == 10012 &&
+                    actor.resource_id == 10000081 &&
+                    actor.owner_kind == 4 &&
+                    actor.source_character_number ==
+                        14000042 &&
+                    actor.target_mask == 1 &&
+                    actor.target_identifier == 3 &&
+                    !actor.home_toward_target &&
+                    std::abs(
+                        actor.direction_radians -
+                        direction) < 0.0000001 &&
+                    actor.travel_speed == 73 &&
+                    actor.position.x == expected.x &&
+                    actor.position.y == expected.y &&
+                    actor.judgement.left == -50 &&
+                    actor.judgement.top == -50 &&
+                    actor.judgement.right == 50 &&
+                    actor.judgement.bottom == 50 &&
+                    actor.display_height == 250 &&
+                    actor.lifetime == 90 &&
+                    actor.expire_on_environment_collision &&
+                    actor.target_collision_start == 0 &&
+                    actor.target_collision_end == -1 &&
+                    actor.expire_on_target &&
+                    actor.remember_targets &&
+                    actor.target_audio.bank == 0 &&
+                    actor.target_audio.sample == 20 &&
+                    actor.animation_chart == 0 &&
+                    actor.animation_direction ==
+                        animation_direction &&
+                    actor.has_packet &&
+                    actor.packet[34] == 21021 &&
+                    actor.packet[35] ==
+                        animation_direction &&
+                    actor.packet[74] == 21022 &&
+                    actor.packet[75] ==
+                        animation_direction,
+                "A type-twelve projectile differs from its "
+                "retail moving descriptor or packet rewrite.")) {
+            return false;
+        }
+    }
+    if (!check(
+            launch.audio[0].sample == 94 &&
+                launch.audio[0].position.x ==
+                    last_position.x &&
+                launch.audio[0].position.y ==
+                    last_position.y,
+            "Type twelve did not place sample 94 at its last "
+            "projectile.")) {
+        return false;
+    }
+
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = {700, 900};
+    request.constructor_value_12 = 0;
+    controller.initialize(request, &tables);
+    const auto fixed =
+        updateController(
+            controller, {true, {1, 2}});
+    if (!check(
+            fixed.actor_spawn_count == 7 &&
+                fixed.audio_count == 1 &&
+                fixed.expired,
+            "A zero-delay type-twelve controller lost one of "
+            "its source, warning, or projectile actors.")) {
+        return false;
+    }
+    for (std::size_t index = 0;
+         index < fixed.actor_spawn_count;
+         ++index) {
+        if (!check(
+                fixed.actor_spawns[index].position.x == 700 &&
+                    fixed.actor_spawns[index].position.y == 900,
+                "A zero-owner type-twelve actor was incorrectly "
+                "projected away from its fixed origin.")) {
+            return false;
+        }
+    }
+
+    request.constructor_value_17 = 30;
+    controller.initialize(request, &tables);
+    const auto maximum =
+        updateController(controller, {});
+    const double maximum_spread =
+        8.0 * 2.5132736 / 8.0;
+    const double maximum_first_direction =
+        request.direction_radians -
+        maximum_spread * 0.5 +
+        maximum_spread / 8.0 * 0.5;
+    const double maximum_last_direction =
+        maximum_first_direction +
+        maximum_spread;
+    return check(
+        maximum.actor_spawn_count == 17 &&
+            maximum.audio_count == 1 &&
+            maximum.expired &&
+            std::abs(
+                maximum.actor_spawns[1]
+                        .direction_radians -
+                    maximum_first_direction) <
+                0.0000001 &&
+            std::abs(
+                maximum.actor_spawns[8]
+                        .direction_radians -
+                    maximum_last_direction) <
+                0.0000001 &&
+            std::abs(
+                maximum.actor_spawns[9]
+                        .direction_radians -
+                    maximum_first_direction) <
+                0.0000001 &&
+            std::abs(
+                maximum.actor_spawns[16]
+                        .direction_radians -
+                    maximum_last_direction) <
+                0.0000001,
+        "Type twelve did not retain the source plus both "
+        "eight-actor Table 204 fans and its even-count angle "
+        "offset.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1266,7 +1576,8 @@ int main() {
         !testTypeFiveFrameCountSequence() ||
         !testTypeThreeWaves() ||
         !testTypeTenWaves() ||
-        !testTypeElevenRadialActors()) {
+        !testTypeElevenRadialActors() ||
+        !testTypeTwelveWarningAndProjectileFans()) {
         return 1;
     }
     return 0;

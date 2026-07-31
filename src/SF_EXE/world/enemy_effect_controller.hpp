@@ -26,7 +26,7 @@ struct EnemyEffectControllerSource {
 };
 
 struct EnemyEffectControllerUpdate {
-    std::array<RuntimeEffectActorSpawnRequest, 16>
+    std::array<RuntimeEffectActorSpawnRequest, 32>
         actor_spawns;
     std::size_t actor_spawn_count = 0;
     std::array<PositionalEffectAudioRequest, 2>
@@ -75,6 +75,7 @@ private:
     std::int32_t wave_count_ = 0;
     std::int32_t wave_index_ = 0;
     std::int32_t radial_actor_count_ = 0;
+    std::int32_t radial_spread_divisor_ = 0;
     bool wave_placement_blocked_ = false;
     WorldPosition type_five_position_;
     bool active_ = false;

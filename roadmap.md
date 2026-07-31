@@ -98,7 +98,7 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller types 12, 13, 14, 16, and 21 one
+- finish effect-controller types 13, 14, 16, and 21 one
   shipped family at a time, with both passive timing coverage and a live actor
   using each one;
 - finish ranged player actions and projectiles without bypassing the common
@@ -1051,7 +1051,20 @@ direction, stops steering after it passes the target, and permanently falls
 back to straight travel when the target disappears. A shipped subtype-ten
 enemy from Tower of Ordeal scenario 15 supplies the live source, radial
 render, impact, audio, lifetime, and item-identity regression.
-Types 12, 13, 14, 16, and 21 remain.
+
+Type 12 is complete now. It creates resource `11000027` at the source and a
+Table 204 warning fan on update zero. The warning actors use resource
+`10000080`, sit 150 units from a live owner, and retain the subtype as their
+lifetime. At delay ten the controller re-resolves the owner and emits the
+same fan at radius 180 using moving resource `10000081`.
+Those projectiles live for 90 updates, expire on static or target contact,
+carry sample 20, and rewrite packet pairs 34/35 and 74/75 to the retail
+directional effects `21021` and `21022`. Sample 94 plays once at the final
+projectile. A shipped subtype-ten Dread Wisp from `North of The Remains of
+The Dead` (`03010003`) supplies the live warning, launch, render, damage,
+audio, cleanup, and item-identity regression.
+
+Types 13, 14, 16, and 21 remain.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1080,7 +1093,7 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 12, 13, 14, 16,
+finish. It should move to effect-controller types 13, 14, 16,
 and 21, then the ranged player actions and companion attacks, keeping one
 shipped live encounter beside each passive reconstruction.
 
