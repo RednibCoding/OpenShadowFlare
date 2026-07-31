@@ -74,6 +74,14 @@ headings. Status shows the saved character identity, current and derived
 physical and magical values, and the eight elemental affinities. Like Magic,
 it keeps the world running and can stay open beside Inventory.
 
+The final bar icon selects retail normal-target mode. Right-clicking the world
+with a one-handed or two-handed weapon then runs the matching three-part melee
+combo, with each CAF phase owning its own impact, short forward step, weapon
+sound, and gender-specific voice. Selecting Transport instead creates the
+original paired portal between the current field and the player's Remote Town
+entry. Its four falling layers, paused center animation, sounds, collision
+checks, and enter/leave requirement follow the retail update path.
+
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
 cues, smoke timing, and delayed New Game, Continue, and Exit actions all

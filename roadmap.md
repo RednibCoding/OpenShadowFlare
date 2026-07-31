@@ -1413,6 +1413,10 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
   are complete;
 - one faithful Fire Ball cast from selection through impact and spell
   training is complete;
+- normal-target right-click now runs the retail three-stage one-handed and
+  two-handed melee combos, including their separate voices and forward steps;
+- Transport creates its collision-checked paired field/Remote Town endpoints,
+  staggered portal presentation, sounds, and two-way scenario travel;
 - Fire Ball and Ice Bolt prove the reusable single-target projectile spell
   dispatch;
 - Plasma's action-25 multi-wave area-effect path is complete;

@@ -34,6 +34,7 @@ struct WorldDrawEntry {
     const MissEffectActor* miss_effect = nullptr;
     const CompanionActor* companion = nullptr;
     bool companion_moon_aura = false;
+    bool player_transport = false;
 };
 
 ScreenPosition toScreen(
@@ -366,6 +367,71 @@ void renderRuntimeEffect(
         false,
         0,
         effect.displayHeight() / 10);
+}
+
+void renderPlayerTransport(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    const PlayerTransportSpell& transport =
+        world.playerTransportSpell();
+    const PlayerTransportEndpoint* endpoint =
+        transport.endpoint(world.scenarioId());
+    const gapi::NjpImage* patterns =
+        world.playerTransportPatterns();
+    const EffectVisualResource* visual =
+        world.playerTransportVisual();
+    if (!endpoint || !patterns || !visual) {
+        return;
+    }
+
+    const ScreenPosition position =
+        calculateRealPosition(endpoint->position);
+    for (std::size_t index = 0;
+         index < transport.beams().size() &&
+         index < patterns->patterns().size();
+         ++index) {
+        const PlayerTransportBeam& beam =
+            transport.beams()[index];
+        renderer.drawPattern(
+            *patterns,
+            index,
+            {
+                position.x - camera_x,
+                position.y - camera_y - beam.height / 10,
+                1000,
+                1000,
+                1000,
+                1000,
+                beam.strength,
+                beam.strength,
+                beam.strength,
+            });
+    }
+    if (!transport.centerVisible() ||
+        visual->animation().charts().empty()) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        endpoint->position,
+        0,
+        8,
+        transport.animationFrame(world.scenarioId()),
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
 }
 
 void renderMissEffect(
@@ -781,6 +847,22 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             };
             entries.push_back(entry);
         }
+        const PlayerTransportSpell& transport =
+            world.playerTransportSpell();
+        const PlayerTransportEndpoint* endpoint =
+            transport.endpoint(world.scenarioId());
+        if (endpoint && world.playerTransportPatterns() &&
+            world.playerTransportVisual()) {
+            WorldDrawEntry entry;
+            entry.player_transport = true;
+            entry.order = {
+                entries.size(),
+                endpoint->position,
+                {-50, -50, 50, 50},
+                0,
+            };
+            entries.push_back(entry);
+        }
     }
 
     std::vector<DisplayOrderEntry> order;
@@ -1005,6 +1087,12 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             interpolation);
+    } else if (entry.player_transport) {
+        renderPlayerTransport(
+            renderer,
+            world,
+            camera_x,
+            camera_y);
     }
 }
 

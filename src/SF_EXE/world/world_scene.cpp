@@ -95,6 +95,7 @@ void WorldScene::clear() {
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
+    player_transport_spell_.clear();
     player_.clear();
     has_player_ = false;
     pending_player_attack_impact_target_id_ = -1;
@@ -173,6 +174,20 @@ WorldScene::combatEffects() const {
 const std::vector<RuntimeEffectActor>&
 WorldScene::runtimeEffects() const {
     return runtime_effects_.actors();
+}
+
+const PlayerTransportSpell&
+WorldScene::playerTransportSpell() const {
+    return player_transport_spell_;
+}
+
+const gapi::NjpImage* WorldScene::playerTransportPatterns() const {
+    return effect_pattern_resources_.find(10000020);
+}
+
+const EffectVisualResource*
+WorldScene::playerTransportVisual() const {
+    return effect_visuals_.find(10000020);
 }
 
 const std::vector<MissEffectActor>&
@@ -643,6 +658,10 @@ void WorldScene::update() {
             parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
         handlePlayerSpellEvent(player_.takeSpellEvent());
+        if (updatePlayerTransportContact()) {
+            return;
+        }
+        updatePlayerTransportPresentation();
         updatePlayerResourceRates();
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();

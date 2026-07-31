@@ -51,6 +51,7 @@ SpellCharts chartsForAction(
         }
     }
     switch (action) {
+    case PlayerSpellAction::transport:
     case PlayerSpellAction::plasma:
     case PlayerSpellAction::ice_blast:
     case PlayerSpellAction::heal:
@@ -124,6 +125,9 @@ bool playerSpellActionForSpell(
     std::int32_t spell,
     PlayerSpellAction& action) {
     switch (spell) {
+    case 0:
+        action = PlayerSpellAction::transport;
+        return true;
     case 1:
         action = PlayerSpellAction::fire_ball;
         return true;

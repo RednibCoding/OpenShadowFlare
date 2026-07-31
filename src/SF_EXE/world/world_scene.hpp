@@ -38,6 +38,7 @@
 #include "player_resource_rate.hpp"
 #include "player_runtime_profile.hpp"
 #include "player_sustained_spell.hpp"
+#include "player_transport_spell.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
@@ -107,6 +108,9 @@ public:
         combatEffects() const;
     const std::vector<RuntimeEffectActor>&
         runtimeEffects() const;
+    const PlayerTransportSpell& playerTransportSpell() const;
+    const gapi::NjpImage* playerTransportPatterns() const;
+    const EffectVisualResource* playerTransportVisual() const;
     const std::vector<MissEffectActor>&
         missEffects() const;
     bool companionMoonAuraVisible() const;
@@ -315,6 +319,9 @@ private:
     PlayerAttackTargetSnapshot attackTargetSnapshot(
         const EnemyActor& enemy) const;
     bool commandPlayerAttack(EnemyActor& enemy);
+    bool commandPlayerSecondaryAttack(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
     bool readyPlayerAttack(EnemyActor& enemy);
     std::int32_t playerAttackSpeedTier() const;
     void handlePlayerAttackEvent(
@@ -370,6 +377,10 @@ private:
     void refreshCompanionRuntimeProfile(bool level_gained = false);
     void refreshPlayerRuntimeProfile();
     void updatePlayerResourceRates();
+    void createPlayerTransport(WorldPosition aim_position);
+    void preparePlayerTransportEndpoint();
+    void updatePlayerTransportPresentation();
+    bool updatePlayerTransportContact();
     void deactivatePlayerPowerupsForRespawn();
 
     ScenarioWorld scenario_world_;
@@ -420,6 +431,7 @@ private:
     PlayerResourceRateController player_life_rate_;
     PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;
+    PlayerTransportSpell player_transport_spell_;
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t pending_player_attack_impact_target_id_ = -1;

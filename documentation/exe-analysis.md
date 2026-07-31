@@ -1816,6 +1816,58 @@ with equipped and carried-item strengths, clamps all eight affinities to
 the saved x/y axes. `S`, the HUD Status label, and the top tabs switch the
 live window without pausing the right-hand world view.
 
+## Normal-target melee combo
+
+The normal-target icon sets application field `+0x1288` instead of selecting
+a spell. In the secondary-click branch of `0x00441c00`, the local player stores
+the clicked world angle and position and asks `0x00450630` for the equipped
+ordinary attack. Weapon actions 8, 9, and 10 become actions 11, 12, and 13.
+There is no retained enemy target: each impact marker asks `0x004417f0` for all
+currently valid enemies inside the ordinary melee judgement range.
+
+Actions 11 and 12 begin the one-handed and two-handed three-stage chains.
+`0x004364e0` runs CAF chart 5 or 15, then hands off to action 14 or 15.
+`0x00436c20` runs chart 7 or 17 and hands off to action 17 or 18.
+`0x004372b0` runs chart 8 or 18 before returning to idle. All three stages use
+the Table-4 attack-speed tier with factors 0.8 through 1.7. Before its impact,
+each stage attempts short collision-aware forward movement in ten-unit
+increments up to the retail 61-unit cutoff. Counter six plays the equipped
+weapon sound.
+
+The three impact markers play consecutive `Voice00` samples. Raw gender one
+uses 96, 97, and 98; raw gender zero uses 99, 100, and 101. This is independent
+of whether an enemy is close enough to receive the hit. Action 13 is the
+separate heavy-weapon spin path and remains outside the portable three-stage
+controller for now.
+
+## Transport cast and paired portal
+
+Spell zero enters action 22 through the same secondary-click command, using
+CAF charts 11 and 12 and Table 20 row zero. `0x0043a260` compares the dominant
+axis of the stored click direction and tries one of four cardinal portal
+positions exactly 500 world units from the player. If that corridor is
+blocked, it tries the remaining directions in order zero through three. The
+four exact corridor rectangles are `[-80,-580,79,79]`,
+`[-80,-80,79,579]`, `[-580,-80,79,79]`, and
+`[-80,-80,579,79]`.
+
+`0x00420020` rejects a portal in the linked town scenario, stores the field
+position, and pairs it with scenario footer value zero and entry key
+`400 + local player`. The resulting entry value is 100. The endpoint uses
+resource 10000020 and an `[-80,-80,79,79]` contact rectangle. Four static
+`Pattern.njp` layers begin seven updates apart; each falls from height 300 to
+zero in steps of 50 while its strength rises from zero to 1000 in steps of
+200. The central chart-zero direction-eight animation begins after the fourth
+layer lands, waits a random 1..90 updates initially, then waits 30..89 updates
+between loops. Sample 79 starts the presentation and sample 51 starts a center
+loop.
+
+`0x00420970` requires leaving an endpoint before it can trigger again. Entering
+the field endpoint travels to the player's Remote Town entry. Entering the
+town endpoint restores the exact saved field position and consumes the pair.
+The portable single-player path follows those owners; multiplayer replication
+and the endpoint owner-name hover remain pending.
+
 ## Fire Ball cast and spell practice
 
 `0x00449a40` handles a targeted player spell command. Fire Ball must have

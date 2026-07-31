@@ -167,6 +167,7 @@ add_library(
   world/player_spell_cast.cpp
   world/player_spell_parameters.cpp
   world/player_sustained_spell.cpp
+  world/player_transport_spell.cpp
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
@@ -196,6 +197,7 @@ add_library(
   world/world_scene_player_profile.cpp
   world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
+  world/world_scene_transport_spell.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)
 osf_configure_game_library(osf_world)

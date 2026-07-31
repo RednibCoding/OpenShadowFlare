@@ -160,6 +160,10 @@ bool WorldScene::commandPlayerMagic(
         scenario_script_.messageActive()) {
         return false;
     }
+    if (player_magic_.targeting()) {
+        return commandPlayerSecondaryAttack(
+            screen_x, screen_y);
+    }
     const std::int32_t spell =
         player_magic_.selectedSpell();
     PlayerSpellAction action;
@@ -264,6 +268,52 @@ bool WorldScene::commandPlayerMagic(
     }
     handlePlayerSpellEvent(player_.takeSpellEvent());
     return true;
+}
+
+bool WorldScene::commandPlayerSecondaryAttack(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_ || player_.actionLocked()) {
+        return false;
+    }
+    const InventoryItem* main_hand =
+        player_equipment_.item(EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerAttackAction ordinary_action =
+        retailPlayerAttackAction(definition);
+    const WorldPosition aim = calculateWorldPosition({
+        cameraScreenX() + screen_x,
+        cameraScreenY() + screen_y,
+    });
+
+    pointer_.clearSelection();
+    pending_interaction_ = {};
+    player_attack_target_.cancel();
+    player_.cancelMovement();
+    player_.faceToward(aim);
+
+    PlayerComboAttackKind combo_kind;
+    const bool started =
+        retailPlayerComboAttackKind(
+            ordinary_action, combo_kind)
+            ? player_.beginComboAttack(
+                  combo_kind,
+                  playerAttackSpeedTier(),
+                  player_visual_.animation())
+            : player_.beginAttack(
+                  ordinary_action,
+                  -1,
+                  playerAttackSpeedTier(),
+                  player_visual_.animation());
+    if (started) {
+        handlePlayerAttackEvent(player_.takeAttackEvent());
+    }
+    return started;
 }
 
 bool WorldScene::dropInventoryItem(
@@ -1048,6 +1098,13 @@ void WorldScene::handlePlayerSpellEvent(
     if (!event.cast_due) {
         return;
     }
+    if (event.spell == 0) {
+        createPlayerTransport({
+            event.aim_world_x,
+            event.aim_world_y,
+        });
+        return;
+    }
     if (event.spell == 17) {
         player_identify_mode_active_ = true;
         gameplay_service_request_ = {
@@ -1335,19 +1392,54 @@ void WorldScene::handlePlayerAttackEvent(
                 ? 3
                 : retailItemAttackSound(definition));
     }
-    if (!event.impact_due || event.target_id < 0) {
+    if (!event.impact_due) {
         return;
     }
     if (playerAttackActionIsRanged(event.action)) {
         launchPlayerRangedAttack(event);
         return;
     }
-    if (event.action != PlayerAttackAction::basic) {
+    if (event.combo_step >= 0) {
+        pending_audio_samples_.push_back(
+            retailPlayerComboVoiceSample(
+                player_data_.gender(), event.combo_step));
+    } else if (event.action != PlayerAttackAction::basic) {
         pending_audio_samples_.push_back(
             retailPlayerAttackVoiceSample(
                 player_data_.gender()));
     }
+    if (event.combo_step >= 0) {
+        for (EnemyActor& candidate :
+             scenario_world_.enemies()) {
+            if (classifyPlayerAttackTarget(
+                    player_.position(),
+                    player_.judgement(),
+                    attackTargetSnapshot(candidate)) !=
+                PlayerAttackTargetDisposition::ready) {
+                continue;
+            }
+            pending_player_attack_impact_target_id_ =
+                candidate.id();
+            applyPlayerAttackImpact(candidate);
+        }
+        return;
+    }
     EnemyActor* enemy = findEnemy(event.target_id);
+    if (!enemy && event.target_id == -1) {
+        auto found = std::find_if(
+            scenario_world_.enemies().begin(),
+            scenario_world_.enemies().end(),
+            [this](const EnemyActor& candidate) {
+                return classifyPlayerAttackTarget(
+                           player_.position(),
+                           player_.judgement(),
+                           attackTargetSnapshot(candidate)) ==
+                       PlayerAttackTargetDisposition::ready;
+            });
+        enemy = found == scenario_world_.enemies().end()
+            ? nullptr
+            : &*found;
+    }
     if (!enemy ||
         classifyPlayerAttackTarget(
             player_.position(),
@@ -1356,8 +1448,7 @@ void WorldScene::handlePlayerAttackEvent(
             PlayerAttackTargetDisposition::ready) {
         return;
     }
-    pending_player_attack_impact_target_id_ =
-        event.target_id;
+    pending_player_attack_impact_target_id_ = enemy->id();
     applyPlayerAttackImpact(*enemy);
 }
 

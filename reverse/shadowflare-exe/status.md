@@ -1420,6 +1420,31 @@ intent. `PlayerMagic` remains the sole owner of availability, progression,
 saved bar assignment, current selection, and the normal-target toggle. This
 keeps the cast dispatcher and future status effects out of the UI files.
 
+## Normal-target combo and Transport
+
+The final HUD icon is now live gameplay rather than selection-only state.
+`FUN_00441c00` turns equipped actions eight and nine into the targetless
+right-click actions eleven and twelve. `FUN_004364e0`, `FUN_00436c20`, and
+`FUN_004372b0` form the complete three-stage chain: charts 5/7/8 for a
+one-handed weapon and 15/17/18 for a two-handed weapon. Every stage scans its
+own CAF impact marker, performs its collision-aware forward step, plays one
+weapon swing sound, hits all valid nearby enemies, and uses consecutive male
+samples 96..98 or female samples 99..101. Native coverage starts this through
+the actual normal-target secondary-click command as well as the isolated
+retail CAF controller.
+
+Spell zero now reaches action 22. `FUN_0043a260` uses Table 20 row zero and
+the clicked dominant axis, tries the exact 500-unit cardinal offsets and four
+retail corridor rectangles, and falls back through the other directions when
+blocked. `FUN_00420020` owns the paired field and Remote Town endpoints, the
+four seven-update-staggered falling patterns, the delayed central animation,
+and samples 79 and 51. `FUN_00420970` enforces exit before re-entry, sends the
+field endpoint to player entry value 100 in the linked town, and sends the
+town endpoint back to the exact field position before consuming it. The live
+test covers right-click cast entry, placement, resource loading, presentation,
+and endpoint contact state. Multiplayer replication and the owner-name hover
+are still open.
+
 ## Character Status tab
 
 `FUN_00405750` is the other half of the same live left-hand window. Status.njp
