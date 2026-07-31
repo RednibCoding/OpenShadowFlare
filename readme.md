@@ -17,6 +17,16 @@ properly.
 
 [![Join us on Discord](readme/discord.png)](https://discord.gg/4F2dMu5qwQ)
 
+Want to see the latest progress? You can
+[try the recent development build in your browser](https://rednibcoding.github.io/OpenShadowFlare/).
+It uses your own ShadowFlare game files locally; they are not uploaded.
+
+Just keep in mind that this is a live development build, not a finished
+release. Things may still be incomplete or occasionally break. If you run
+into a bug, please tell us on
+[GitHub](https://github.com/RednibCoding/OpenShadowFlare/issues) or Discord so
+we can look into it.
+
 ## Table of Contents
 
 - [Introduction](#introduction)
