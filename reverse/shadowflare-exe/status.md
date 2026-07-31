@@ -1600,3 +1600,37 @@ reconstructed `FUN_0042e7e0` controller uses Table 206, tries resource
 150-unit area, plays sample 22, and requests nearby camera shake. A blocked
 first placement suppresses the whole line. Successful receiver contacts
 award Earth Spear practice.
+
+## Flame Strike cast
+
+`FUN_0043beb0` runs Flame Strike action 33 on CAF charts 13 and 14 with Table
+20 row eleven. The pointed command supplies the selected living enemy. The
+action passes effect 10011 its direction, target identity, player judgement,
+Table 17 travel speed, height 200, marker delay, effective level, and
+constructor field 22.
+
+Its family-zero subtype-zero packet combines Table 17 with magical attack and
+magical hit rate, carries magical defense in word five, presentation 20000 in
+word 34, zero in word 72, and spell eleven in word 73. `FUN_0042d6e0` creates
+resource 10000012 at the hero, then uses Table 204 to launch two through eight
+resource-10000010 children around the full circle at the authored delay. They
+start 180 units out, home with turn value 20, expire after 90 updates or on
+scenery/target contact, play sample 19 on the final spawn and sample 20 on
+contact, and train Flame Strike through the receiver.
+
+## Dread Deathscythe cast
+
+`FUN_0043c490` runs spell twelve as action 34 on CAF charts 13 and 14 with
+Table 20 row twelve. It sends effect 10012 the pointed target, direction,
+Table 17 travel speed, height 200, player judgement, marker delay, effective
+level, and constructor field 22. Its family-zero subtype-one packet uses
+magical attack, magical defense, magical hit rate, initial presentation 21013,
+zero in word 72, and spell twelve in word 73.
+
+`FUN_0042db10` creates source resource 11000027 and the Table-204-sized
+resource-10000080 warning fan immediately. Column 29 controls its retail
+2.5132736-radian spread. At the delay it launches resource 10000081 from 180
+units around the hero. Those blades travel straight with 50-unit bounds and a
+90-update lifetime, replace packet presentations with directional 21021 and
+21022, expire on scenery or first contact, play sample 94 at the final spawn
+and sample 20 on contact, and train spell twelve through the receiver.

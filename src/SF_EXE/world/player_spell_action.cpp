@@ -46,6 +46,8 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
     case PlayerSpellAction::hell_fire:
+    case PlayerSpellAction::flame_strike:
+    case PlayerSpellAction::dread_deathscythe:
         return {13, 14};
     }
     return {};
@@ -118,6 +120,12 @@ bool playerSpellActionForSpell(
         return true;
     case 10:
         action = PlayerSpellAction::earth_spear;
+        return true;
+    case 11:
+        action = PlayerSpellAction::flame_strike;
+        return true;
+    case 12:
+        action = PlayerSpellAction::dread_deathscythe;
         return true;
     default:
         return false;
