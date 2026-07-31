@@ -55,6 +55,9 @@ public:
     const GameplayTransport& transport() const;
 
 private:
+    bool gameplayPanelsActive() const;
+    void closeGameplayPanels();
+
     bool updateOptions(
         InputAdapter& input,
         WorldScene& world,

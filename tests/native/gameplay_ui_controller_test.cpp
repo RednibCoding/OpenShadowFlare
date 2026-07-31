@@ -106,7 +106,6 @@ bool openSaveConfirmation(
     osf::WorldScene& world,
     osf::PlayerLoadRequest& player,
     bool exit_game) {
-    fixture.pressKey("i", world, player);
     fixture.pressKey("escape", world, player);
     fixture.click(
         300,
@@ -114,14 +113,77 @@ bool openSaveConfirmation(
         world,
         player);
     return check(
-        fixture.controller.inventory().active() &&
+        !fixture.controller.inventory().active() &&
             fixture.controller.options().page() ==
                 (exit_game
                      ? osf::GameplayOptionsPage::
                            exit_game_confirmation
                      : osf::GameplayOptionsPage::
                            return_to_title_confirmation),
-        "The save confirmation did not open over the inventory panel.");
+        "The save confirmation did not open from Settings.");
+}
+
+bool testEscapeClosesPanelsBeforeSettings() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    if (!std::filesystem::is_directory(
+            data_root / "Scenario" / "00000000")) {
+        return true;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "Escape Panels";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, &error),
+            "The Escape-panel fixture could not load Remote Town.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    Fixture fixture;
+    fixture.pressKey("n", world, player);
+    fixture.pressKey("i", world, player);
+    if (!check(
+            fixture.controller.map().active() &&
+                fixture.controller.inventory().active() &&
+                !fixture.controller.options().active(),
+            "The independent Map and Inventory panels did not open.")) {
+        return false;
+    }
+
+    fixture.pressKey("escape", world, player);
+    if (!check(
+            !fixture.controller.map().active() &&
+                !fixture.controller.inventory().active() &&
+                !fixture.controller.magic().active() &&
+                !fixture.controller.status().active() &&
+                !fixture.controller.missionList().active() &&
+                !fixture.controller.transport().active() &&
+                !fixture.controller.options().active(),
+            "Escape opened Settings instead of closing the visible "
+            "gameplay panels.")) {
+        return false;
+    }
+
+    fixture.pressKey("escape", world, player);
+    if (!check(
+            fixture.controller.options().active(),
+            "Escape did not open Settings after all gameplay panels "
+            "were closed.")) {
+        return false;
+    }
+    fixture.pressKey("escape", world, player);
+    return check(
+        !fixture.controller.options().active(),
+        "Escape did not close Settings once it was the active menu.");
+#else
+    return true;
+#endif
 }
 
 bool testSaveTransitionsOwnModalInput() {
@@ -192,5 +254,8 @@ bool testSaveTransitionsOwnModalInput() {
 }  // namespace
 
 int main() {
-    return testSaveTransitionsOwnModalInput() ? 0 : 1;
+    return testEscapeClosesPanelsBeforeSettings() &&
+                   testSaveTransitionsOwnModalInput()
+               ? 0
+               : 1;
 }

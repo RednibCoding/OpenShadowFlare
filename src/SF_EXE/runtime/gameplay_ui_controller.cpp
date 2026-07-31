@@ -67,6 +67,24 @@ void GameplayUiController::reset() {
     pending_action_ = GameplayOptionsAction::none;
 }
 
+bool GameplayUiController::gameplayPanelsActive() const {
+    return inventory_.anyItemPanelActive() ||
+           map_.active() ||
+           magic_.active() ||
+           status_.active() ||
+           mission_list_.active() ||
+           transport_.active();
+}
+
+void GameplayUiController::closeGameplayPanels() {
+    inventory_.close();
+    map_.close();
+    magic_.close();
+    status_.close();
+    mission_list_.close();
+    transport_.close();
+}
+
 bool GameplayUiController::update(
     const GameplayFrameResult& gameplay_frame,
     InputAdapter& input,
@@ -139,6 +157,18 @@ bool GameplayUiController::update(
         if (result.play_confirm_sound) {
             audio.playOptionsConfirm();
         }
+        return true;
+    }
+
+    // Escape belongs to the visible gameplay panels before it belongs to
+    // Settings. Left and right panels can be open together, so one press
+    // closes the complete panel pair and a later press opens Settings.
+    if (input.gameplayOptionsPressed() &&
+        !options_.active() &&
+        gameplayPanelsActive()) {
+        closeGameplayPanels();
+        world.cancelPlayerIdentifyMode();
+        world.setCameraAnchor(320, 240);
         return true;
     }
 

@@ -329,8 +329,8 @@ and rewritten in executable order, and the selected walk/run mode survives a
 portable save/load. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
-Game. Confirmed return-to-title and exit actions still complete when a map,
-warehouse, special-item, or inventory panel is open. Scenario position, mines,
+Game. Escape closes any visible left- and right-hand gameplay panels first;
+only the following press opens Settings. Scenario position, mines,
 script-created world actors, and the remaining dynamic state are still
 pending. Companion type, level, experience, and its defeated countdown
 already live in the preserved player record.

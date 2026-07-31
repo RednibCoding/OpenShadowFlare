@@ -705,11 +705,13 @@ reordering, and the original effect/BGM slider scale. Pointer, shadow,
 occluding-object, and audio changes apply while the panel is open, and changed
 settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
 intentionally blank, but its space remains so none of the following rows move.
+When a left-hand panel, right-hand panel, or both are visible, Escape closes
+that complete gameplay-panel set and restores the centered camera instead.
+Only another press with no gameplay panel left open reaches Settings.
 Save and Return and Save and Exit now open their original confirmation states,
 write the retail save envelope, and only leave gameplay after a successful
-write. Their deferred transition runs before either independently open side
-panel can consume the next UI update. With `Save Image at Game End` enabled,
-they also write the paired
+write. Their deferred transition runs before the next UI update can consume
+more input. With `Save Image at Game End` enabled, they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
 drawn. Help now opens its original full-width reference screen from either the
 menu row or `H`, including the animated player preview and the menu-owned
