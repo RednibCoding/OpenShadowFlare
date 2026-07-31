@@ -35,6 +35,23 @@ bool testQuestUpdates() {
             "The retail quest notice values were not stored.")) {
         return false;
     }
+    quests.updateNotice();
+    if (!check(
+            quests.notice().quest_id == 1 &&
+                quests.notice().counter == 599,
+            "The retail quest notice countdown did not advance.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 599; ++update) {
+        quests.updateNotice();
+    }
+    quests.updateNotice();
+    if (!check(
+            quests.notice().quest_id == 1 &&
+                quests.notice().counter == 0,
+            "The retail quest notice countdown did not stop at zero.")) {
+        return false;
+    }
     if (!check(
             quests.applyScriptUpdate(1, 2) &&
                 quests.state(1) == 2 &&

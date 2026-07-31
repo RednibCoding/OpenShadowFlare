@@ -32,6 +32,7 @@ public:
     void initialize(std::size_t count);
     void restore(const std::vector<std::int32_t>& states);
     void selectNotice(std::int32_t quest_id);
+    void updateNotice();
 
     std::int32_t state(std::int32_t quest_id) const;
     bool completionLatched(std::int32_t quest_id) const;

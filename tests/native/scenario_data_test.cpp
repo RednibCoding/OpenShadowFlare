@@ -3050,6 +3050,7 @@ bool testRetailRemoteTown() {
         return false;
     }
     world.advanceConversation();
+    world.takeAudioSamples();
     if (!check(
             world.conversationActive() &&
                 world.conversationActorId() == 0 &&
@@ -3496,6 +3497,8 @@ bool testRetailRemoteTown() {
         return false;
     }
     world.advanceConversation();
+    const std::vector<std::int32_t> quest_audio =
+        world.takeAudioSamples();
     if (!check(
             world.conversationActive() &&
                 world.conversationActorId() == 2 &&
@@ -3504,8 +3507,13 @@ bool testRetailRemoteTown() {
                 world.quests().lastCue() ==
                     osf::QuestCue::updated &&
                 world.quests().notice().quest_id == 0 &&
-                world.quests().notice().counter == 600,
-            "Syria's callback did not apply its retail quest update.")) {
+                world.quests().notice().counter == 600 &&
+                std::find(
+                    quest_audio.begin(),
+                    quest_audio.end(),
+                    65) != quest_audio.end(),
+            "Syria's callback did not apply its retail quest update, "
+            "notice, and sample 65 cue.")) {
         return false;
     }
     world.advanceConversation();

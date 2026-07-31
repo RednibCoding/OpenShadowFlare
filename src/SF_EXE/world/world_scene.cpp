@@ -488,6 +488,7 @@ void WorldScene::update() {
     }
     pending_player_attack_impact_target_id_ = -1;
     level_up_notice_.update();
+    quests_.updateNotice();
     std::vector<EnemyActor>& live_enemies =
         scenario_world_.enemies();
     live_enemies.erase(

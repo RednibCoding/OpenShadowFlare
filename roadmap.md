@@ -867,9 +867,10 @@ new-game branch and reaches opcodes 62 and 48, which now update world-owned
 quest state and select the retail 600-count quest notice. Message events retain
 their script character number, so actor bubbles stay anchored even on branches
 which do not run an explicit facing command. The Mission List consumes those
-quest states directly and gets its text from the retail parameter tables.
-The short-lived 600-count notice and cue audio are still pending; neither has
-been guessed.
+quest states directly and gets its text from the retail parameter tables. The
+short-lived notice now uses the recovered bottom-right coordinates, brackets,
+shadow, exact clickable title rectangle, and the script's samples 65 and 66;
+clicking it opens the Mission List.
 
 ### 3. Items, inventory, and equipment
 

@@ -944,8 +944,13 @@ latches completion, requires old state one, writes state two, and sends event
 `0x42`. The optional server broadcast remains outside the current
 single-player slice. Syria exercises `{quest 0, state 1, no broadcast}`.
 `0x00433868` then stores quest zero as the selected notice and writes `600` to
-the adjacent counter. The counter's consumer and the two cue sounds remain to
-be traced.
+the adjacent counter. `0x004050f0` consumes that state: it gets the title from
+Table 41, wraps it in the Shift-JIS corner brackets at `0x0047d530`, and draws
+it in strength 224 at y 368 with a one-pixel black shadow. The encoded text is
+right-aligned to x 612 in the normal HUD layout. Its exact six-pixel-per-byte
+by twelve-pixel rectangle is clickable and opens the Mission List, while the
+counter is decremented once per interface update. The two script cues call the
+ordinary sound owner with samples 65 for an update and 66 for completion.
 
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10

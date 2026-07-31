@@ -221,6 +221,7 @@ add_library(
   ui/conversation_layout.cpp
   ui/player_level_up_notice_input.cpp
   ui/player_level_up_notice_layout.cpp
+  ui/quest_notice_layout.cpp
 )
 add_library(OpenShadowFlare::Ui ALIAS osf_ui)
 osf_configure_game_library(osf_ui)
@@ -251,6 +252,7 @@ add_library(
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/player_level_up_notice_renderer.cpp
+  render/quest_notice_renderer.cpp
   render/system_cursor_renderer.cpp
   render/title_renderer.cpp
 )

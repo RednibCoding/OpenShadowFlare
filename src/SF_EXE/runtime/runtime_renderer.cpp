@@ -16,6 +16,7 @@
 #include "render/gameplay_transport_renderer.hpp"
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
+#include "render/quest_notice_renderer.hpp"
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "runtime/frontend_assets.hpp"
@@ -122,6 +123,23 @@ void RuntimeRenderer::render(
                     context.world.renderCameraScreenY(
                         interpolation),
                     interpolation);
+            }
+            const bool quest_notice_hidden =
+                context.world.conversationActive() ||
+                context.gameplay_debug.active() ||
+                context.gameplay_options.active() ||
+                context.gameplay_inventory.anyItemPanelActive() ||
+                context.gameplay_map.active() ||
+                context.gameplay_magic.active() ||
+                context.gameplay_status.active() ||
+                context.gameplay_mission_list.active() ||
+                context.gameplay_transport.active();
+            if (font && !quest_notice_hidden) {
+                renderQuestNotice(
+                    renderer_,
+                    *font,
+                    context.world.quests(),
+                    context.world.missions());
             }
             const auto* magic_icons =
                 context.frontend_assets.pattern(9);

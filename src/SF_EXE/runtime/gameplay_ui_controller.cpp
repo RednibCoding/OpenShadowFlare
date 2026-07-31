@@ -7,6 +7,7 @@
 #include "runtime/input_adapter.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
+#include "ui/quest_notice_layout.hpp"
 #include "world/player_data.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_preview.hpp"
@@ -155,6 +156,31 @@ bool GameplayUiController::update(
             save_preview,
             shadow_opacity)) {
         return true;
+    }
+
+    const bool quest_notice_hidden =
+        world.conversationActive() ||
+        inventory_.anyItemPanelActive() ||
+        map_.active() ||
+        magic_.active() ||
+        status_.active() ||
+        mission_list_.active() ||
+        transport_.active();
+    if (!quest_notice_hidden &&
+        input.menu().pointer_primary_pressed) {
+        QuestNoticeLayout layout;
+        if (buildQuestNoticeLayout(
+                world.quests(),
+                world.missions(),
+                layout) &&
+            questNoticeContains(
+                layout,
+                input.menu().pointer_x,
+                input.menu().pointer_y)) {
+            mission_list_.open();
+            world.cancelPlayerMovement();
+            return true;
+        }
     }
 
     const GameplayServiceRequest service =

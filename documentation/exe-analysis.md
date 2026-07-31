@@ -48,6 +48,7 @@ Total: 258 RKC DLL imports
 | 0x00402900 | RightClickHandler - Right/middle mouse |
 | 0x00402920 | PaintInitialLoadingScreen - cached loading page and overlay |
 | 0x004030F0 | RenderWorld - ground, shadow, and depth-sorted object passes |
+| 0x004050F0 | RenderQuestNotice - timed title and Mission List shortcut |
 | 0x0040CEA0 | RenderMissionList - two pages, script state, and detail panel |
 | 0x004023d0 | UpdateGameState - Game state machine (switches on state 0/1/2) |
 | 0x00401b90 | Shutdown - Cleanup all subsystems |

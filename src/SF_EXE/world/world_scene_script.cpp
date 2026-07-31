@@ -393,8 +393,17 @@ bool WorldScene::executeScriptNativeCommand(
         // Argument two requests the retail server broadcast when a quest is
         // completed. The initial scenario is strictly single-player, but the
         // interpreter still evaluates and preserves that argument.
-        return quests_.applyScriptUpdate(
-            arguments[0], arguments[1]);
+        if (!quests_.applyScriptUpdate(
+                arguments[0], arguments[1])) {
+            return false;
+        }
+        const QuestCue cue = quests_.lastCue();
+        if (cue == QuestCue::updated) {
+            pending_audio_samples_.push_back(65);
+        } else if (cue == QuestCue::completed) {
+            pending_audio_samples_.push_back(66);
+        }
+        return true;
     }
 
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||

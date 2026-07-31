@@ -375,8 +375,11 @@ values; they do not live in the DLL-derived interpreter.
 Opcode 48 evaluates one quest ID, stores it as the selected quest notice, and
 sets the adjacent counter to `600`. Syria's first new-game conversation
 executes opcode 62 with `{0, 1, 0}` and then opcode 48 with `{0}`. The
-consumer of that counter still needs to be traced before it is decremented or
-rendered.
+gameplay interface reads the title from Table 41, wraps it in the retail
+Shift-JIS corner brackets, and temporarily draws it just above the lower HUD.
+The exact title rectangle is clickable and opens the Mission List. Opcode 62
+also plays retail sample 65 for an ordinary quest update and sample 66 for a
+valid first completion.
 
 The ordinary Mission List does not store another hand-written copy of this
 information. `0x0040cea0` reads the state array written by opcode 62, takes all

@@ -270,6 +270,8 @@ Malse and Syria can be selected just like Ostare and run their actual
 new-game dialogue branches from `Scenario.Scs`. Syria's callback also reaches
 the first quest-state commands: it starts quest zero and selects the matching
 retail quest notice without putting quest IDs or dialogue into `WorldScene`.
+That notice uses the table-owned title, retail sound cue, 600-update lifetime,
+bottom-right placement, and clickable Mission List shortcut.
 The Mission List exposes that state through the original `Q` shortcut and
 Settings-menu row. Its 48 titles and per-mission description lines come from
 `Table.Tbd`; the portable screen keeps the retail two-page layout, closed and
