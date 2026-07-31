@@ -35,6 +35,7 @@ public:
     bool gameplayHelpPressed() const;
     bool gameplayMissionListPressed() const;
     bool gameplayMapPressed() const;
+    bool gameplayMagicPressed() const;
     bool gameplayInventoryPressed() const;
     bool gameplaySpecialItemsPressed() const;
     std::int32_t gameplayBeltPocketPressed() const;
@@ -67,6 +68,7 @@ private:
     bool help_held_ = false;
     bool mission_list_held_ = false;
     bool map_held_ = false;
+    bool magic_held_ = false;
     bool inventory_held_ = false;
     bool special_items_held_ = false;
     std::array<bool, 8> belt_pocket_held_{};
@@ -75,6 +77,7 @@ private:
     bool gameplay_help_pressed_ = false;
     bool gameplay_mission_list_pressed_ = false;
     bool gameplay_map_pressed_ = false;
+    bool gameplay_magic_pressed_ = false;
     bool gameplay_inventory_pressed_ = false;
     bool gameplay_special_items_pressed_ = false;
     std::int32_t gameplay_belt_pocket_pressed_ = -1;

@@ -1762,3 +1762,45 @@ stored initial position is interpolated to x `640 - width`, y 1, after which
 it remains in the upper-right until expiry. `0x00451cb0` ignores notice clicks
 for the first 30 updates. A later click inside the notice releases it and
 consumes the input before ordinary world interaction.
+
+## Magic window and gameplay bar
+
+`0x00407a60` draws the Magic half-panel only while its active flag is set.
+Status pattern 6 supplies the complete 320-by-416 frame. The page value at
+application offset `+0xa93c` selects six consecutive spells, with icon rows
+starting at y=59 and advancing by 48. Status pattern 32 draws each empty
+32-by-32 well at x=24, y=`row - 3`. Availability value `3` draws
+`MagicIcon.njp` pattern `spell + 2` at x=27; value `1` draws the same authored
+icon dimly. Only odd availability states receive the name and table-backed
+level, experience, MP, and effect text.
+
+The displayed spell level comes from `0x00451e60`: Increased Power adds two,
+the stored value is clamped to 1 through 20, the derived magic-level modifier
+is added, and the result is clamped to 1 through 30. Selector 2 of
+`0x00417410` reads MP from Table 16, after which equipped instance parameter
+19 lowers the result to a minimum of one. Selector 0 reads the displayed
+effect from Table 17. Table 27 supplies the next experience threshold; stored
+level 20 prints `Max`. Hovering x=60..227 over the name line concatenates
+Table `600 + spell` into the pointer-centered help owner.
+
+Status patterns 69 and 70 are the previous/next arrows. Their pointer
+rectangles are x=16..48 and x=270..304 at y=335..351. The panel's eight
+large-icon slots begin at x=32, y=359, while input uses the encompassing
+32-pixel cells beginning at x=29, y=356. `0x00447790` picks learned page and
+bar entries with sample 57. On release, `0x00404e40` removes every existing
+copy of that spell, assigns the destination slot, and plays sample 58.
+
+`0x00404ee0` draws the always-available gameplay bar. Its start is x=224 in
+the full view, x=344 beside a left panel, and x=124 beside a right panel.
+A four-pixel gap precedes slots zero and four. Empty and ordinary entries use
+16-by-16 MagicBarIcon patterns at y=392; the selected spell expands to its
+26/27-pixel MagicIcon at y=382, which also shifts later entries. The final
+icon selects normal attack targeting. `0x00447570` applies the same dynamic
+rectangles, selects a learned spell with sample 58, and makes spell selection
+and normal targeting mutually exclusive.
+
+The portable `GameplayMagic` state mirrors those page, hitbox, hover, and drag
+rules but does not own spell data. It emits assignment and selection intent
+to the runtime boundary, which mutates `PlayerMagic`; this keeps persistent
+state and future casting outside the UI layer. The Status half of the tab and
+actual cast actions remain later slices.

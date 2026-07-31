@@ -249,8 +249,16 @@ const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
 
+PlayerMagic& WorldScene::playerMagic() {
+    return player_magic_;
+}
+
 const PlayerMagic& WorldScene::playerMagic() const {
     return player_magic_;
+}
+
+const TableDatabase& WorldScene::parameterTables() const {
+    return parameter_tables_;
 }
 
 PlayerItemUseResult WorldScene::usePlayerBeltPocket(

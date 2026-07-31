@@ -1389,3 +1389,33 @@ and target collision, sample 20, optional homing, and optional remembered
 targets. Retail ships no subtype-four weapon record, and action 20's
 increased-power redirect to action 21 remains with the later status/skill
 work.
+
+## Magic window and selection
+
+`FUN_00407a60` uses Status pattern 6 as the complete Magic frame and displays
+six spells from the current zero-through-three page. Each row starts at y=59
+and advances by 48. Status pattern 32 is the empty well; availability 3 draws
+the learned `MagicIcon` pattern at `spell + 2`, while availability 1 draws it
+dimly. Odd availability states show the spell name and values from Tables 16,
+17, and 27. Hovering the name line builds its help text from Table
+`600 + spell`.
+
+`FUN_00447790` proves the pick cells are x=24..56 with y=56 plus 48 per row.
+The previous and next page cells are x=16..48 and x=270..304 at y=335..351.
+The eight assignment cells begin at x=29, y=356 and advance by 32.
+Picking a learned spell plays sample 57. `FUN_00404e40` handles release:
+it removes every other occurrence, assigns the destination slot, and plays
+sample 58.
+
+`FUN_00404ee0` draws the separate live gameplay bar at x=224, x=344 beside a
+left panel, or x=124 beside a right panel. Slots are normally 16 pixels wide,
+with an extra four pixels before slots zero and four. The selected spell uses
+its large MagicIcon at y=382 and grows to 26 pixels, moving every later hit
+rectangle; other spells and empty slots use MagicBarIcon at y=392.
+`FUN_00447570` selects a learned entry or the final normal-target icon and
+clears the other mode.
+
+Portable `GameplayMagic` owns only panel interaction state and emits typed
+intent. `PlayerMagic` remains the sole owner of availability, progression,
+saved bar assignment, current selection, and the normal-target toggle. This
+keeps the cast dispatcher and future status effects out of the UI files.

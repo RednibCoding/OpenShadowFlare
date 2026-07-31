@@ -91,6 +91,31 @@ Each spell has:
 - **MP** - Mana cost
 - **Effect %** - Heal%, Def%, Shield%, Attack%, RefPer% (reflection percent)
 
+### Magic window and bar
+
+`M` opens the Magic window on the left without pausing gameplay. The camera
+moves right so the player stays centered in the uncovered half; Inventory can
+remain open on the other side.
+
+The window shows six spells at a time across four pages. Availability value
+`3` is a learned, usable spell, value `1` is shown dimly, and the other states
+leave an empty slot. The large icon is `MagicIcon.njp` pattern `spell + 2`.
+Each visible learned row shows its stored level and experience, Table 27's
+next threshold, Table 16's MP cost, and the relevant Table 17 effect.
+Hovering the spell name uses Table 600 through 621 for the help text.
+
+Dragging either a learned page icon or an occupied window-bar slot onto one
+of the eight slots assigns it there. A spell can only appear once, so moving
+it clears the old slot first. Picking an icon plays sample 57; page changes
+and successful bar changes play sample 58.
+
+The small bar above the HUD uses `MagicBarIcon.njp`. It starts at x=224 in a
+full world view, x=344 with a left panel, and x=124 with a right panel, adding
+the retail four-pixel gap before slots one and five. The selected spell is
+drawn as its larger MagicIcon at y=382; ordinary entries sit at y=392.
+Clicking a learned entry selects it and clears normal-attack targeting.
+Clicking the final targeting icon does the reverse.
+
 ## Character Stats
 
 ### Primary Stats

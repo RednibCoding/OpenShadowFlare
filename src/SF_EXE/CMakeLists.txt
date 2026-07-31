@@ -88,6 +88,7 @@ add_library(
   osf_states STATIC
   states/game_state.cpp
   states/gameplay_inventory.cpp
+  states/gameplay_magic.cpp
   states/gameplay_map.cpp
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
@@ -153,6 +154,7 @@ add_library(
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
   world/player_magic.cpp
+  world/player_spell_parameters.cpp
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
@@ -221,6 +223,7 @@ add_library(
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp
   render/gameplay_map_renderer.cpp
+  render/gameplay_magic_renderer.cpp
   render/gameplay_mission_list_renderer.cpp
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp

@@ -30,6 +30,7 @@ The portable executable already has a solid front half:
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
 - the in-game Settings, Help, Mission List, and Map screens
+- the four-page Magic window, its drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
@@ -117,20 +118,29 @@ cannot preserve a dead actor. Saves made by older builds which already contain
 zero life are repaired through the same revive reset when they enter the
 world.
 
-The next useful player-facing work is the first complete skill or spell path:
-decode its authored data, selection and mana rules, live effect, status
-changes, audio, HUD feedback, and save ownership together. The Moon spell is
-a useful companion-facing case later in that milestone, but the first slice
-should be chosen from retail evidence rather than from which visual looks
-easiest.
-
 The save-owned foundation for that path is complete. `PlayerMagic` keeps the
 22 availability values, levels, and experience counters plus all eight
 magic-bar slots behind one boundary. New characters receive the retail
 `0/1/0` array defaults and empty `-1` slots. Existing retail saves restore the
 block after the three progress arrays, and new saves rewrite it without
-disturbing later unknown state. The next slice is the Magic panel and spell
-selection path, followed by the first complete targeted cast.
+disturbing later unknown state.
+
+The selection side is complete too. `M` opens the authored left-hand Magic
+panel without pausing the world, shifts the camera into the visible half, and
+can stay open beside the right-hand inventory. Its four six-spell pages use
+the retail Status, MagicIcon, and MagicBarIcon artwork, availability states,
+level/experience/MP/effect rows, description tables, arrows, hit rectangles,
+and samples 57 and 58. A learned spell can be dragged into one of eight saved
+bar slots; assigning it elsewhere removes the old copy. The bottom gameplay
+bar follows the retail left/right-panel offsets and selects either a learned
+spell or normal attack targeting. The UI state only emits intent, so saved
+spell ownership and future cast logic remain in the world boundary.
+
+The next slice is the first complete targeted cast. Fire Ball is the useful
+first case: it exercises enemy pointing, mana validation and deduction,
+player action 23, the existing effect-10001 projectile controller, impact
+damage, spell experience, audio, and persistence without needing a new
+area-effect owner first.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1248,7 +1258,12 @@ allows items to move between the Warehouse and backpack.
 
 Once the ordinary combat loop is reliable, add the systems that modify it:
 
-- skill and spell databases;
+- spell save ownership and the four-page Magic window are complete;
+- the eight-slot drag bar, persistent HUD selection, and normal-attack toggle
+  are complete;
+- the next checkpoint is one faithful Fire Ball cast from selection through
+  impact and spell training;
+- skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
 - character status and detailed stat panels;

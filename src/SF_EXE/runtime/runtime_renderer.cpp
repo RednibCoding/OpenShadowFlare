@@ -6,6 +6,7 @@
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_inventory_renderer.hpp"
 #include "render/gameplay_map_renderer.hpp"
+#include "render/gameplay_magic_renderer.hpp"
 #include "render/gameplay_mission_list_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "render/gameplay_overlay_renderer.hpp"
@@ -18,6 +19,7 @@
 #include "states/character_select_state.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_map.hpp"
+#include "states/gameplay_magic.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
@@ -130,6 +132,26 @@ void RuntimeRenderer::render(
                         interpolation),
                     interpolation);
             }
+            const auto* magic_icons =
+                context.frontend_assets.pattern(9);
+            const auto* magic_bar_icons =
+                context.frontend_assets.pattern(10);
+            if (magic_icons && magic_bar_icons) {
+                const bool left_panel_active =
+                    context.gameplay_magic.active() ||
+                    context.gameplay_map.active() ||
+                    context.gameplay_mission_list.active() ||
+                    context.gameplay_transport.active() ||
+                    context.gameplay_inventory
+                        .specialItemsActive();
+                renderGameplayMagicBar(
+                    renderer_,
+                    *magic_icons,
+                    *magic_bar_icons,
+                    left_panel_active,
+                    context.gameplay_inventory.active(),
+                    context.world);
+            }
             const auto* status =
                 context.frontend_assets.pattern(6);
             if (status && font) {
@@ -151,6 +173,16 @@ void RuntimeRenderer::render(
                         *font,
                         context.gameplay_transport,
                         context.world.transports());
+                } else if (
+                    context.gameplay_magic.active() &&
+                    magic_icons) {
+                    renderGameplayMagicPanel(
+                        renderer_,
+                        *status,
+                        *magic_icons,
+                        *font,
+                        context.gameplay_magic,
+                        context.world);
                 } else if (
                     context.gameplay_map.active() &&
                     map_icons) {
@@ -210,6 +242,12 @@ void RuntimeRenderer::render(
                     *font,
                     context.gameplay_inventory,
                     context.world);
+                if (magic_icons) {
+                    renderHeldMagic(
+                        renderer_,
+                        *magic_icons,
+                        context.gameplay_magic);
+                }
             }
         }
     }

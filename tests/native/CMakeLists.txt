@@ -69,6 +69,34 @@ if(TARGET sf_game_core)
 
   add_test(NAME player_magic COMMAND player_magic_test)
 
+  add_executable(
+    gameplay_magic_test
+    gameplay_magic_test.cpp
+  )
+  target_link_libraries(
+    gameplay_magic_test
+    PRIVATE
+      OpenShadowFlare::States
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    gameplay_magic_test PRIVATE cxx_std_17)
+  set_target_properties(
+    gameplay_magic_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      gameplay_magic_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_magic_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME gameplay_magic
+    COMMAND gameplay_magic_test)
+
   add_executable(movement_test movement_test.cpp)
   target_link_libraries(
     movement_test

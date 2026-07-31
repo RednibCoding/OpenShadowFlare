@@ -92,6 +92,8 @@ bool InputAdapter::handleEvent(
             mission_list_held_ = false;
         } else if (std::strcmp(event.key, "n") == 0) {
             map_held_ = false;
+        } else if (std::strcmp(event.key, "m") == 0) {
+            magic_held_ = false;
         } else if (std::strcmp(event.key, "i") == 0) {
             inventory_held_ = false;
         } else if (std::strcmp(event.key, "x") == 0) {
@@ -203,6 +205,13 @@ bool InputAdapter::handleEvent(
         }
         map_held_ = true;
     } else if (
+        std::strcmp(event.key, "m") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!magic_held_) {
+            gameplay_magic_pressed_ = true;
+        }
+        magic_held_ = true;
+    } else if (
         std::strcmp(event.key, "i") == 0 &&
         current_state == GameState::gameplay) {
         if (!inventory_held_) {
@@ -240,6 +249,7 @@ void InputAdapter::clearTransientInput() {
     gameplay_help_pressed_ = false;
     gameplay_mission_list_pressed_ = false;
     gameplay_map_pressed_ = false;
+    gameplay_magic_pressed_ = false;
     gameplay_inventory_pressed_ = false;
     gameplay_special_items_pressed_ = false;
     gameplay_belt_pocket_pressed_ = -1;
@@ -290,6 +300,10 @@ bool InputAdapter::gameplayMissionListPressed() const {
 
 bool InputAdapter::gameplayMapPressed() const {
     return gameplay_map_pressed_;
+}
+
+bool InputAdapter::gameplayMagicPressed() const {
+    return gameplay_magic_pressed_;
 }
 
 bool InputAdapter::gameplayInventoryPressed() const {

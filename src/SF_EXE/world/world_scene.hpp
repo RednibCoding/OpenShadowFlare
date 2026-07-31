@@ -118,7 +118,9 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
+    PlayerMagic& playerMagic();
     const PlayerMagic& playerMagic() const;
+    const TableDatabase& parameterTables() const;
     std::int32_t playerExperienceThreshold() const;
     PlayerItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);

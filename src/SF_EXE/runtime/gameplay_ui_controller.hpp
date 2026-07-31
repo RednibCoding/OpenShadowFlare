@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 
 #include "states/gameplay_inventory.hpp"
+#include "states/gameplay_magic.hpp"
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
@@ -45,6 +46,7 @@ public:
     const GameplayOptionsMenu& options() const;
     const GameplayInventory& inventory() const;
     const GameplayMap& map() const;
+    const GameplayMagic& magic() const;
     const GameplayMissionList& missionList() const;
     const GameplayTransport& transport() const;
 
@@ -58,6 +60,7 @@ private:
     GameplayOptionsMenu options_;
     GameplayInventory inventory_;
     GameplayMap map_;
+    GameplayMagic magic_;
     GameplayMissionList mission_list_;
     GameplayTransport transport_;
     GameplayOptionsAction pending_action_ =

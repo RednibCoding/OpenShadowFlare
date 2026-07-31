@@ -14,6 +14,7 @@ struct CharacterSelectFrameResult;
 struct GameConfig;
 class GameplayInventory;
 class GameplayMap;
+class GameplayMagic;
 class GameplayMissionList;
 class GameplayOptionsMenu;
 class GameplayTransport;
@@ -38,6 +39,7 @@ struct RuntimeRenderContext {
     const GameplayOptionsMenu& gameplay_options;
     const GameplayInventory& gameplay_inventory;
     const GameplayMap& gameplay_map;
+    const GameplayMagic& gameplay_magic;
     const GameplayMissionList& gameplay_mission_list;
     const GameplayTransport& gameplay_transport;
     const GameConfig& game_config;

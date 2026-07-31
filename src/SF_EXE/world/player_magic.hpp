@@ -34,12 +34,22 @@ public:
     std::int32_t level(std::int32_t spell) const;
     std::int32_t experience(std::int32_t spell) const;
     std::int32_t barSlot(std::int32_t slot) const;
+    bool assignBarSlot(
+        std::int32_t slot,
+        std::int32_t spell);
+    bool clearBarSlot(std::int32_t slot);
+    std::int32_t selectedSpell() const;
+    bool selectSpell(std::int32_t spell);
+    bool targeting() const;
+    void setTargeting(bool targeting);
 
 private:
     static bool validSpell(std::int32_t spell);
     static bool validBarSlot(std::int32_t slot);
 
     PlayerMagicState state_;
+    std::int32_t selected_spell_ = -1;
+    bool targeting_ = false;
 };
 
 }  // namespace osf
