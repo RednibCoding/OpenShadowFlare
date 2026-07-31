@@ -12,180 +12,131 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OpenShadowFlare</title>
-    <style>
-      :root {
-        color-scheme: dark;
-      }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 16px;
-        padding: 24px 16px 40px;
-        background: #14110d;
-        color: #e7ddc9;
-        font-family: system-ui, 'Segoe UI', sans-serif;
-      }
-      h1 {
-        margin: 0;
-        font-size: 20px;
-        letter-spacing: 0.04em;
-      }
-      #panel {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: center;
-        justify-content: center;
-        max-width: 680px;
-      }
-      button {
-        font: inherit;
-        padding: 8px 18px;
-        border-radius: 6px;
-        border: 1px solid #6b5a3a;
-        background: #2a2417;
-        color: #f2e8d2;
-        cursor: pointer;
-      }
-      button:disabled {
-        opacity: 0.45;
-        cursor: default;
-      }
-      #status {
-        min-height: 1.2em;
-        font-size: 14px;
-        color: #b8ad95;
-      }
-      canvas {
-        width: 640px;
-        height: 480px;
-        max-width: 100%;
-        background: #000;
-        border: 1px solid #3a3324;
-        image-rendering: pixelated;
-        outline: none;
-      }
-      #log {
-        width: 640px;
-        max-width: 100%;
-        height: 120px;
-        overflow: auto;
-        margin: 0;
-        padding: 8px;
-        font-size: 11px;
-        line-height: 1.4;
-        background: #0c0a07;
-        border: 1px solid #2a2417;
-        white-space: pre-wrap;
-        color: #9c927b;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>OpenShadowFlare</h1>
-    <div id="panel">
-      <input
-        type="file"
-        id="folder"
-        webkitdirectory
-        directory
-        multiple
-        aria-label="ShadowFlare install folder"
-      />
-      <button id="start" disabled>Start game</button>
+    <main class="app">
+      <h1 class="start-screen__title">OpenShadowFlare</h1>
+
+      <section
+        id="start"
+        class="start-screen sf-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Start screen"
+      >
+        <p class="start-screen__description">
+          Web build of
+          <a
+            class="sf-link"
+            href="https://github.com/RednibCoding/OpenShadowFlare"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            OpenShadowFlare
+          </a>
+          , a community effort to preserve and rebuild ShadowFlare. The game
+          engine runs here in the browser via WebAssembly.
+        </p>
+
+        <p class="start-screen__description">
+          OpenShadowFlare uses the original ShadowFlare data files. Select your
+          ShadowFlare install folder below to start playing. The files are read
+          locally by the browser.
+        </p>
+
+        <button
+          type="button"
+          id="recent"
+          class="start-screen__button sf-btn"
+          hidden
+        >
+          Load Recent Files
+        </button>
+
+        <button
+          type="button"
+          id="pick"
+          class="start-screen__button sf-btn sf-btn--flame"
+        >
+          Select Game Folder
+        </button>
+        <input
+          type="file"
+          id="folder"
+          webkitdirectory
+          directory
+          multiple
+          hidden
+        />
+
+        <p class="start-screen__fine-print">
+          This is a live development build, not a finished release. Found a bug?
+          Let us know on
+          <a
+            class="sf-link"
+            href="https://github.com/RednibCoding/OpenShadowFlare/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+          or
+          <a
+            class="sf-link"
+            href="https://discord.gg/4F2dMu5qwQ"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Discord
+          </a>
+          .
+        </p>
+      </section>
+
+      <div id="game" class="game" hidden>
+        <canvas id="canvas" width="640" height="480" tabindex="-1"></canvas>
+        <pre id="log" aria-live="polite"></pre>
+      </div>
+    </main>
+
+    <div
+      id="error-dialog"
+      class="sf-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="error-dialog-title"
+      aria-describedby="error-dialog-message"
+      hidden
+    >
+      <div class="sf-dialog__box">
+        <h2 id="error-dialog-title" class="sf-dialog__title">
+          Folder not recognized
+        </h2>
+        <p id="error-dialog-message" class="sf-dialog__message">
+          The folder you selected doesn't appear to contain a valid ShadowFlare
+          installation. Pick the folder that holds the original .exe game file.
+        </p>
+        <div class="sf-dialog__actions">
+          <button
+            type="button"
+            id="error-dialog-pick"
+            class="sf-dialog__button sf-btn sf-btn--flame"
+          >
+            Choose another folder
+          </button>
+          <button
+            type="button"
+            id="error-dialog-back"
+            class="sf-dialog__button sf-btn"
+          >
+            Back to start
+          </button>
+        </div>
+      </div>
     </div>
-    <div id="status">Waiting for a game folder&hellip;</div>
-    <canvas id="canvas" width="640" height="480" tabindex="-1"></canvas>
-    <pre id="log" aria-live="polite"></pre>
 
     <script src="assets/ShadowFlare_rebuilt.js"></script>
-    <script>
-      'use strict'
-      const folderInput = document.getElementById('folder')
-      const startButton = document.getElementById('start')
-      const statusEl = document.getElementById('status')
-      const logEl = document.getElementById('log')
-      const canvas = document.getElementById('canvas')
-      canvas.addEventListener('contextmenu', (e) => e.preventDefault())
-      let pickedFiles = []
-
-      function setStatus(text) {
-        statusEl.textContent = text
-      }
-
-      function appendLog(text) {
-        logEl.textContent += text + '\n'
-        logEl.scrollTop = logEl.scrollHeight
-      }
-
-      folderInput.addEventListener('change', (event) => {
-        pickedFiles = Array.from(event.target.files || [])
-        startButton.disabled = pickedFiles.length === 0
-        setStatus(
-          pickedFiles.length
-            ? `Selected ${pickedFiles.length} files. Click "Start game".`
-            : 'Waiting for a game folder…'
-        )
-      })
-
-      startButton.addEventListener('click', startGame)
-
-      async function startGame() {
-        startButton.disabled = true
-        folderInput.disabled = true
-        setStatus('Loading engine…')
-
-        let ModuleInstance
-        try {
-          ModuleInstance = await ShadowFlareModule({
-            canvas,
-            noInitialRun: true,
-            print: appendLog,
-            printErr: (text) => appendLog('[stderr] ' + text)
-          })
-        } catch (error) {
-          setStatus('Could not load the engine. See the log below.')
-          appendLog(String(error))
-          return
-        }
-
-        const FS = ModuleInstance.FS
-        setStatus(`Mounting ${pickedFiles.length} game files…`)
-
-        for (const file of pickedFiles) {
-          const relative = file.webkitRelativePath || file.name
-          const slash = relative.indexOf('/')
-          const inner = slash >= 0 ? relative.slice(slash + 1) : relative
-          const destination = '/game/' + inner
-          const directory = destination.slice(0, destination.lastIndexOf('/'))
-          try {
-            FS.mkdirTree(directory)
-            const bytes = new Uint8Array(await file.arrayBuffer())
-            FS.writeFile(destination, bytes)
-          } catch (error) {
-            appendLog('[mount] ' + destination + ': ' + error)
-          }
-        }
-
-        setStatus('Starting game…')
-        try {
-          FS.chdir('/game')
-        } catch (error) {
-          appendLog('[chdir] ' + error)
-        }
-
-        canvas.focus()
-        try {
-          ModuleInstance.callMain([])
-          setStatus('Running. Click the canvas and play.')
-        } catch (error) {
-          setStatus('The game exited. See the log below.')
-          appendLog(String(error))
-        }
-      }
-    </script>
+    <script src="app.js"></script>
   </body>
 </html>
