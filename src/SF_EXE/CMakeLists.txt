@@ -155,6 +155,7 @@ add_library(
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
   world/player_magic.cpp
+  world/player_moon_spell.cpp
   world/player_spell_action.cpp
   world/player_spell_cast.cpp
   world/player_spell_parameters.cpp
@@ -183,6 +184,7 @@ add_library(
   world/world_scene_interaction.cpp
   world/world_scene_items.cpp
   world/world_scene_loading.cpp
+  world/world_scene_moon.cpp
   world/world_scene_script.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)

@@ -19,14 +19,12 @@ void WorldScene::accountEnemyKill(
             hasCompanion() &&
                 companion_.currentLife() > 0);
     if (accounting.companion_level_gained) {
-        CompanionProfile profile;
-        if (decodeCompanionProfile(
-                parameter_tables_,
-                player_data_.companionType(),
-                player_data_.companionLevel(),
-                profile)) {
-            companion_.applyLevelProfile(profile);
-        }
+        refreshCompanionRuntimeProfile(true);
+    }
+    if (player_moon_spell_.active() && hasCompanion() &&
+        enemy.defeat_source_character_number ==
+            companion_.characterNumber()) {
+        player_magic_.train(7, true, parameter_tables_);
     }
     if (!accounting.level_gained) {
         return;

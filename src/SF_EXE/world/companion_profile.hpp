@@ -17,6 +17,8 @@ struct CompanionProfile {
     std::int32_t green_strength = 1000;
     std::int32_t blue_strength = 1000;
     std::int32_t native_element = 0;
+    std::int32_t walking_speed_raw = 0;
+    std::int32_t running_speed_raw = 0;
     std::int32_t walking_speed = 0;
     std::int32_t running_speed = 0;
     std::int32_t maximum_life = 0;

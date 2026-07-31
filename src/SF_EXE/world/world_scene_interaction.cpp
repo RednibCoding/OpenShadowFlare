@@ -1022,6 +1022,22 @@ void WorldScene::handlePlayerSpellEvent(
         }
         return;
     }
+    if (event.spell == 7) {
+        const PlayerSpellParameters parameters =
+            playerSpellParameters(
+                player_magic_,
+                event.spell,
+                player_equipment_,
+                item_database_,
+                parameter_tables_);
+        player_moon_spell_.toggle(
+            parameters.effective_level,
+            parameter_tables_);
+        effect_visuals_.load(
+            data_root_, 11000040, nullptr);
+        refreshCompanionRuntimeProfile();
+        return;
+    }
     const bool requires_target =
         playerSpellRequiresCharacterTarget(
             event.spell);

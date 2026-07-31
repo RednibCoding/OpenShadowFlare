@@ -86,6 +86,7 @@ void WorldScene::clear() {
     item_random_.seed(1);
     player_data_.clear();
     player_magic_.clear();
+    player_moon_spell_.clear();
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
@@ -167,6 +168,29 @@ WorldScene::runtimeEffects() const {
 const std::vector<MissEffectActor>&
 WorldScene::missEffects() const {
     return miss_effects_;
+}
+
+bool WorldScene::companionMoonAuraVisible() const {
+    if (!player_moon_spell_.active() ||
+        !hasCompanion() || companion_.currentLife() <= 0) {
+        return false;
+    }
+    const std::int32_t action =
+        companion_.presentationAction();
+    return action != 7 && action != 8 && action != 10;
+}
+
+const EffectVisualResource*
+WorldScene::companionMoonAuraVisual() const {
+    return effect_visuals_.find(11000040);
+}
+
+std::int32_t WorldScene::companionMoonAuraFrame() const {
+    return player_moon_spell_.auraFrame();
+}
+
+bool WorldScene::playerMoonActive() const {
+    return player_moon_spell_.active();
 }
 
 std::size_t
@@ -331,6 +355,8 @@ void WorldScene::togglePlayerRun() {
 }
 
 void WorldScene::update() {
+    player_moon_spell_.updateAura(
+        companionMoonAuraVisible());
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -509,6 +535,7 @@ void WorldScene::update() {
             parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
         handlePlayerSpellEvent(player_.takeSpellEvent());
+        updatePlayerMoonSpell();
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {

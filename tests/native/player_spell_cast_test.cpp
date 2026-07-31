@@ -3,6 +3,7 @@
 #include "world/actor_direction.hpp"
 #include "world/player_data.hpp"
 #include "world/player_heal_spell.hpp"
+#include "world/player_moon_spell.hpp"
 #include "world/player_spell_action.hpp"
 #include "world/player_spell_cast.hpp"
 #include "world/player_spell_parameters.hpp"
@@ -415,6 +416,110 @@ bool testRetailHealResolution(
             full.visual.effect_number == 21020,
         "A full-life Heal lost its visual or incorrectly produced "
         "restoration, audio, or practice.");
+}
+
+bool testRetailMoonRules(
+    const osf::TableDatabase& tables) {
+    constexpr std::int32_t level = 1;
+    const osf::TableData* moon_table = tables.find(200);
+    if (!check(
+            moon_table && moon_table->contains(13, level - 1),
+            "The retail Moon parameter table could not be read.")) {
+        return false;
+    }
+
+    osf::PlayerMoonSpell moon;
+    if (!check(
+            moon.toggle(level, tables) &&
+                moon.active() &&
+                moon.effectiveLevel() == level &&
+                moon.manaChangeRate() ==
+                    moon_table->value(0, level - 1) &&
+                moon.manaChangeRate() < 0,
+            "Moon did not activate with its retail Table 200 rate.")) {
+        return false;
+    }
+
+    osf::CompanionProfile base;
+    base.attack_speed_rating = 90;
+    base.walking_speed_raw = 105;
+    base.running_speed_raw = 155;
+    base.walking_speed = 21;
+    base.running_speed = 31;
+    base.physical_attack = 40;
+    base.maximum_life = 120;
+    base.hit_rate = 50;
+    base.physical_defense = 30;
+    base.physical_evasion = 25;
+    base.magical_attack = 20;
+    base.magical_hit_rate = 35;
+    base.magical_defense = 15;
+    base.magical_evasion = 18;
+    base.parameter_17 = 12;
+    const osf::CompanionProfile modified =
+        osf::applyPlayerMoonCompanionModifiers(
+            base, moon, tables);
+    const auto adjusted =
+        [moon_table](std::int32_t value, std::int32_t row) {
+            return value +
+                   moon_table->value(row, 0) * value / 100;
+        };
+    if (!check(
+            modified.attack_speed_rating ==
+                    std::clamp(adjusted(90, 1), 0, 255) &&
+                modified.walking_speed_raw ==
+                    std::clamp(adjusted(105, 2), 0, 255) &&
+                modified.running_speed_raw ==
+                    std::clamp(adjusted(155, 3), 0, 255) &&
+                modified.walking_speed ==
+                    modified.walking_speed_raw / 5 &&
+                modified.running_speed ==
+                    modified.running_speed_raw / 5 &&
+                modified.physical_attack ==
+                    std::max(adjusted(40, 4), 1) &&
+                modified.maximum_life ==
+                    std::max(adjusted(120, 5), 1) &&
+                modified.hit_rate ==
+                    std::max(adjusted(50, 6), 1) &&
+                modified.physical_defense ==
+                    std::max(adjusted(30, 7), 1) &&
+                modified.physical_evasion ==
+                    std::max(adjusted(25, 8), 1) &&
+                modified.magical_attack ==
+                    std::max(adjusted(20, 9), 1) &&
+                modified.magical_hit_rate ==
+                    std::max(adjusted(35, 10), 1) &&
+                modified.magical_evasion ==
+                    std::max(adjusted(18, 11), 1) &&
+                modified.magical_defense ==
+                    std::max(adjusted(15, 12), 1) &&
+                modified.parameter_17 ==
+                    std::max(adjusted(12, 13), 1),
+            "Moon did not apply the thirteen retail companion modifiers.")) {
+        return false;
+    }
+
+    std::int32_t mana = 160;
+    bool drained = false;
+    bool deactivated = false;
+    for (std::int32_t update = 0;
+         update < 20000 && !deactivated;
+         ++update) {
+        const osf::PlayerMoonManaUpdate result =
+            moon.updateMana(mana, 160);
+        drained = drained || result.mana < mana;
+        mana = result.mana;
+        deactivated = result.deactivated;
+    }
+    if (!check(
+            drained && deactivated && mana == 0 && !moon.active(),
+            "Moon did not drain MP on the retail three-update cadence "
+            "or switch off at zero.")) {
+        return false;
+    }
+    return check(
+        moon.toggle(level, tables) && moon.active(),
+        "Moon could not be activated again after automatic shutdown.");
 }
 
 bool testShippedWorldCast(
@@ -1309,6 +1414,151 @@ bool testShippedHealCast(
         "played sample 17, or awarded practice.");
 }
 
+bool testShippedMoonCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 7;
+    osf::PlayerLoadRequest player;
+    player.name = "MoonLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root, player, &error),
+            "Remote Town could not prepare the Moon fixture.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Moon fixture could not select the spell.")) {
+        return false;
+    }
+
+    const osf::CompanionProfile base =
+        world.companion().profile();
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                !world.playerMoonActive() &&
+                !world.companionMoonAuraVisible() &&
+                world.playerAnimationChart() == 11 &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost,
+            "Moon resolved before its retail CAF marker or lost its "
+            "targetless action and MP cost.")) {
+        return false;
+    }
+
+    bool activated = false;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        world.takeAudioSamples();
+        if (world.playerMoonActive()) {
+            activated = true;
+            break;
+        }
+    }
+    osf::PlayerMoonSpell expected_moon;
+    expected_moon.toggle(
+        parameters.effective_level,
+        world.parameterTables());
+    const osf::CompanionProfile expected =
+        osf::applyPlayerMoonCompanionModifiers(
+            base, expected_moon, world.parameterTables());
+    const osf::CompanionProfile active =
+        world.companion().profile();
+    if (!check(
+            activated &&
+                world.companionMoonAuraVisible() &&
+                world.companionMoonAuraVisual() != nullptr &&
+                active.attack_speed_rating ==
+                    expected.attack_speed_rating &&
+                active.walking_speed_raw ==
+                    expected.walking_speed_raw &&
+                active.running_speed_raw ==
+                    expected.running_speed_raw &&
+                active.maximum_life == expected.maximum_life &&
+                active.physical_attack ==
+                    expected.physical_attack &&
+                active.hit_rate == expected.hit_rate &&
+                active.physical_defense ==
+                    expected.physical_defense &&
+                active.physical_evasion ==
+                    expected.physical_evasion &&
+                active.magical_attack ==
+                    expected.magical_attack &&
+                active.magical_hit_rate ==
+                    expected.magical_hit_rate &&
+                active.magical_defense ==
+                    expected.magical_defense &&
+                active.magical_evasion ==
+                    expected.magical_evasion &&
+                active.parameter_17 == expected.parameter_17,
+            "The Moon marker did not enable its companion aura and "
+            "Table 200 runtime profile.")) {
+        return false;
+    }
+
+    while (world.playerSpellActive()) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (!check(
+            world.playerData().currentMana() >=
+                    parameters.mana_cost &&
+                world.commandPlayerMagic(400, 240),
+            "The active Moon spell could not start its toggle-off cast.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 && world.playerMoonActive();
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    const osf::CompanionProfile restored =
+        world.companion().profile();
+    return check(
+        !world.playerMoonActive() &&
+            !world.companionMoonAuraVisible() &&
+            restored.attack_speed_rating ==
+                base.attack_speed_rating &&
+            restored.walking_speed_raw ==
+                base.walking_speed_raw &&
+            restored.running_speed_raw ==
+                base.running_speed_raw &&
+            restored.maximum_life == base.maximum_life &&
+            restored.physical_attack == base.physical_attack &&
+            restored.hit_rate == base.hit_rate &&
+            restored.physical_defense == base.physical_defense &&
+            restored.physical_evasion == base.physical_evasion &&
+            restored.magical_attack == base.magical_attack &&
+            restored.magical_hit_rate == base.magical_hit_rate &&
+            restored.magical_defense == base.magical_defense &&
+            restored.magical_evasion == base.magical_evasion &&
+            restored.parameter_17 == base.parameter_17,
+        "The second Moon marker did not remove its aura and restore "
+        "the base companion profile.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -1515,7 +1765,17 @@ int main() {
             true) ||
         !testRetailHealResolution(tables) ||
         !testShippedHealCast(game_root, tables) ||
-        !testGroundSpellInsufficientMana(game_root, 6)) {
+        !testGroundSpellInsufficientMana(game_root, 6) ||
+        !testRetailAction(
+            animation,
+            tables,
+            7,
+            osf::PlayerSpellAction::moon,
+            11,
+            12,
+            true) ||
+        !testRetailMoonRules(tables) ||
+        !testShippedMoonCast(game_root)) {
         return 1;
     }
 #endif

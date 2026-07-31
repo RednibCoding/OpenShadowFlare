@@ -31,6 +31,7 @@
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
 #include "player_magic.hpp"
+#include "player_moon_spell.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
@@ -101,6 +102,10 @@ public:
         runtimeEffects() const;
     const std::vector<MissEffectActor>&
         missEffects() const;
+    bool companionMoonAuraVisible() const;
+    const EffectVisualResource* companionMoonAuraVisual() const;
+    std::int32_t companionMoonAuraFrame() const;
+    bool playerMoonActive() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -331,6 +336,8 @@ private:
     void updateRuntimeEffects();
     void queueRuntimeEffectAudio(
         const RuntimeEffectAudioRequest& request);
+    void refreshCompanionRuntimeProfile(bool level_gained = false);
+    void updatePlayerMoonSpell();
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
@@ -371,6 +378,7 @@ private:
     RetailRandom item_random_;
     PlayerData player_data_;
     PlayerMagic player_magic_;
+    PlayerMoonSpell player_moon_spell_;
     PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;

@@ -196,6 +196,33 @@ HP, capped at the amount missing, plays sample 17, and awards one practice
 point. Casting at full HP still consumes the normal Table 16 MP cost and shows
 the visual, but does not play sample 17 or train the spell.
 
+### Moon
+
+Moon is a targetless self-cast that enters action 29 with CAF charts 11 and
+12. The normal Table 16 MP cost is paid when the action begins. At chart 11's
+`0x40` marker the spell toggles: an inactive Moon turns on at its current
+effective level, while an active Moon turns off.
+
+While it is active, Table 200 row zero is added to the hero's mental recovery
+rate. Retail applies that rate to maximum MP every third game update and keeps
+the sub-point remainder between updates. Moon turns itself off as soon as MP
+reaches zero. This live toggle, its effective level, and its remainder are not
+part of the character save record, though they remain active when moving from
+one scenario to another during the same game.
+
+Rows 1 through 13 of Table 200 modify the companion's attack speed, walking
+speed, running speed, physical attack, maximum HP, hit rate, physical defense,
+physical evasion, magical attack, magical hit rate, magical evasion, magical
+defense, and parameter 17. Each value is a percentage of the companion's base
+value at the Moon level. Speed values are clamped to 0..255; the remaining
+combat values are kept at one or higher. Recomputing these bonuses preserves
+the companion's current HP instead of treating the change as a heal.
+
+Resource 11000040 loops at the companion while Moon is active. It is hidden
+while the companion is dead, defeated, or reviving, and its animation counter
+continues from where it stopped once the companion can be shown again. A kill
+made by the companion while Moon is active awards one point of Moon practice.
+
 ## Character Stats
 
 ### Primary Stats

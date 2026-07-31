@@ -181,10 +181,19 @@ resource 11000060; missing HP restores the Table 17 percentage, plays sample
 17, and trains the spell, while full HP still spends MP and shows the visual
 without restoration, audio, or practice.
 
-The next spell checkpoint is Moon action 29. It is the first sustained
-companion-stat spell, so its activation toggle, saved/runtime state,
-companion modifiers, MP behavior, visual lifetime, and cancellation rules all
-need to be traced together before implementation.
+Moon is complete as the first sustained companion spell. Action 29 toggles at
+the chart-11 marker and keeps its state in the live player rather than the save
+record. While active, Table 200 supplies its maximum-MP drain and thirteen
+companion stat percentages. The calculation keeps retail's three-update
+cadence and fractional remainder, switches itself off at zero MP, and
+recomputes the companion without healing it. Resource 11000040 follows a
+living companion and pauses during its defeated and revival presentations.
+Companion kills train Moon while it is active.
+
+The next spell checkpoint is Berserker action 30. It is another sustained
+spell, but its player-side attack change, activation restrictions, MP drain,
+training event, and presentation need their own retail trace rather than
+being inferred from Moon.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1313,7 +1322,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - the ground/self casting command and Hell Fire action 26 are complete;
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
-- the next checkpoint is Moon action 29 and its companion-stat lifetime;
+- Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
+- the next checkpoint is Berserker action 30;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
