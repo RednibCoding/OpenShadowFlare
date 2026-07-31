@@ -23,6 +23,8 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t target_mask = 0;
     std::int32_t target_identifier = 0;
     bool exact_target_only = false;
+    bool home_toward_target = false;
+    std::int32_t homing_turn_speed = 0;
     double direction_radians = 0.0;
     std::int32_t travel_speed = 0;
     WorldPosition position;
@@ -96,6 +98,7 @@ public:
     bool expired() const;
     bool hasUpdated() const;
     bool targetCollisionActive() const;
+    bool needsTargetSnapshots() const;
     bool hasPacket() const;
     const CombatPacket& packet() const;
     std::size_t rememberedTargetCount() const;
@@ -112,6 +115,9 @@ private:
     std::int32_t counter_ = 0;
     std::int32_t movement_counter_ = 0;
     std::int32_t lifetime_ = -1;
+    double direction_radians_ = 0.0;
+    std::int32_t animation_direction_ = 8;
+    bool homing_active_ = false;
     bool expired_ = false;
     bool has_updated_ = false;
     RuntimeEffectTargetMemory target_memory_;

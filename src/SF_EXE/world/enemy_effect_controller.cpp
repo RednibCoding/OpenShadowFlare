@@ -17,6 +17,7 @@ constexpr std::int32_t kTypeThreeEffect = 10003;
 constexpr std::int32_t kTypeFourEffect = 10004;
 constexpr std::int32_t kTypeFiveEffect = 10005;
 constexpr std::int32_t kTypeTenEffect = 10010;
+constexpr std::int32_t kTypeElevenEffect = 10011;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
@@ -44,6 +45,7 @@ constexpr std::int32_t kTypeThreeWavePeriod = 4;
 constexpr std::int32_t kTypeThreeRadius = 100;
 constexpr std::int32_t kTypeThreeWaveTable = 205;
 constexpr std::int32_t kTypeTenWaveTable = 206;
+constexpr std::int32_t kTypeElevenCountTable = 204;
 constexpr std::int32_t kTypeFourWarningUpdate = 3;
 constexpr std::int32_t kTypeFourDisplayHeight = 200;
 constexpr std::int32_t kAreaDamageExpansion = 150;
@@ -60,6 +62,9 @@ constexpr std::int32_t kTypeTenFirstRadius = 250;
 constexpr std::int32_t kTypeTenRadiusStep = 300;
 constexpr std::int32_t kTypeTenWavePeriod = 8;
 constexpr std::int32_t kTypeTenRadius = 150;
+constexpr std::int32_t kTypeElevenRadius = 80;
+constexpr std::int32_t kTypeElevenLifetime = 90;
+constexpr std::int32_t kTypeElevenTurnSpeed = 20;
 
 bool supportedEffect(std::int32_t effect_number) {
     return effect_number == kTypeOneEffect ||
@@ -67,7 +72,8 @@ bool supportedEffect(std::int32_t effect_number) {
            effect_number == kTypeThreeEffect ||
            effect_number == kTypeFourEffect ||
            effect_number == kTypeFiveEffect ||
-           effect_number == kTypeTenEffect;
+           effect_number == kTypeTenEffect ||
+           effect_number == kTypeElevenEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -108,9 +114,9 @@ RuntimeEffectActorSpawnRequest sourceActor(
     actor.controller_effect_number =
         request.effect_number;
     actor.resource_id =
-        request.effect_number == kTypeOneEffect
-            ? kTypeOneSourceResource
-            : kTypeTwoSourceResource;
+        request.effect_number == kTypeTwoEffect
+            ? kTypeTwoSourceResource
+            : kTypeOneSourceResource;
     actor.owner_kind = request.owner_kind;
     actor.source_character_number =
         request.source_character_number;
@@ -171,6 +177,48 @@ RuntimeEffectActorSpawnRequest childActor(
     actor.animation_direction =
         retailDirectionForAngle(
             request.direction_radians);
+    actor.has_packet = request.has_packet;
+    actor.packet = request.packet;
+    return actor;
+}
+
+RuntimeEffectActorSpawnRequest typeElevenActor(
+    const CombatEffectSpawnRequest& request,
+    WorldPosition position,
+    double direction_radians) {
+    RuntimeEffectActorSpawnRequest actor;
+    actor.controller_effect_number =
+        request.effect_number;
+    actor.resource_id = kTypeOneChildResource;
+    actor.owner_kind = request.owner_kind;
+    actor.source_character_number =
+        request.source_character_number;
+    actor.target_mask = request.target_kind;
+    actor.target_identifier =
+        request.target_identifier;
+    actor.home_toward_target = true;
+    actor.homing_turn_speed =
+        kTypeElevenTurnSpeed;
+    actor.direction_radians = direction_radians;
+    actor.travel_speed =
+        request.constructor_value_6;
+    actor.position = position;
+    actor.judgement = {
+        -kTypeElevenRadius,
+        -kTypeElevenRadius,
+        kTypeElevenRadius - 1,
+        kTypeElevenRadius - 1,
+    };
+    actor.display_height =
+        request.constructor_value_7;
+    actor.lifetime = kTypeElevenLifetime;
+    actor.expire_on_environment_collision = true;
+    actor.target_collision_start = 0;
+    actor.expire_on_target = true;
+    actor.target_audio = {0, 20};
+    actor.animation_chart = 0;
+    actor.animation_direction =
+        retailDirectionForAngle(direction_radians);
     actor.has_packet = request.has_packet;
     actor.packet = request.packet;
     return actor;
@@ -367,6 +415,22 @@ bool EnemyEffectController::initialize(
         }
         wave_count_ =
             wave_table->value(0, column);
+    }
+    if (request.effect_number == kTypeElevenEffect) {
+        const TableData* count_table =
+            tables
+                ? tables->find(
+                      kTypeElevenCountTable)
+                : nullptr;
+        const std::int32_t column =
+            retailSubtract(
+                request.constructor_value_17, 1);
+        if (!count_table ||
+            !count_table->contains(0, column)) {
+            return false;
+        }
+        radial_actor_count_ =
+            count_table->value(0, column);
     }
     request_ = request;
     type_five_position_ =
@@ -738,6 +802,50 @@ EnemyEffectController::update(
                 request_,
                 resolvedPosition(
                     request_, context.source));
+    }
+
+    if (request_.effect_number ==
+            kTypeElevenEffect &&
+        counter_ == request_.constructor_value_12) {
+        const WorldPosition source =
+            resolvedPosition(
+                request_, context.source);
+        WorldPosition audio_position = source;
+        const double angle_step =
+            radial_actor_count_ > 0
+                ? kRetailFullCircleRadians /
+                      static_cast<double>(
+                          radial_actor_count_)
+                : 0.0;
+        for (std::int32_t index = 0;
+             index < radial_actor_count_;
+             ++index) {
+            const double direction =
+                request_.direction_radians -
+                static_cast<double>(index) *
+                    angle_step;
+            const WorldPosition position =
+                request_.owner_kind == 0
+                    ? source
+                    : projectedPosition(
+                          source,
+                          direction,
+                          kChildDistance);
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                typeElevenActor(
+                    request_,
+                    position,
+                    direction);
+            audio_position = position;
+        }
+        result.audio[result.audio_count++] = {
+            kTypeOneAudioSample,
+            audio_position,
+        };
+        active_ = false;
+        result.expired = true;
+        return result;
     }
 
     if (counter_ == request_.constructor_value_12) {

@@ -1334,7 +1334,7 @@ enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
 `EnemyEffectController` now ports the complete controller half of types 1, 2,
-3, 4, 5, and 10 without pretending that every specialized family is
+3, 4, 5, 10, and 11 without pretending that every specialized family is
 finished. It emits the
 source actor on update zero, re-resolves the source at the exact authored
 delay, projects the second actor with the retail Y-axis convention, copies the
@@ -1409,6 +1409,35 @@ and 5. The controller expires at `delay + Table206Value * 8`. Shipped enemy
 26 in Devil's Castle 2F uses type 10 subtype 20; its live regression also
 proves that the fifth attempted wave is suppressed by the scenario's
 placement data while the first four remain visible and active.
+
+Type 11 (`0x0042d6e0`) creates the same resource-`10000012` source visual as
+type 1 on update zero. At the authored delay it reads Table 204 row zero at
+`subtype - 1`, divides retail's `6.283184` full-circle constant by that count,
+and emits one resource-`10000010` actor for each angle
+`stored_angle - index * step`. Nonzero owners are resolved again for every
+child and place it 180 world units along that angle. Owner kind zero instead
+uses the stored explicit origin for every child without the 180-unit
+projection.
+
+Each child uses homing mode one and a turn value of 20, carries the requested
+target kind and identity, moves at constructor value six, and draws chart
+zero while updating its direction from the current travel angle. Its bounds
+are `[-80,-80,79,79]`, its explicit lifetime is 90 updates, and it expires on
+either static collision or its first target. The copied packet and bank-zero
+sample 20 use a collision window beginning at update zero with no authored
+end. After the loop, sample 19 plays once at the final child's initial
+position and the controller expires. Table 204's shipped rows produce two
+through eight children.
+
+The common actor homing branch starts from the actor's current position each
+update. It resolves target kind one through the live player slots and other
+kinds through the scenario actor list, rejects missing or dead targets, and
+permanently disables steering after the first failed lookup. While the target
+has not been passed on both axes, the desired angle is compared with the
+current angle through retail's truncated full-circle constants. A difference
+inside 20 degrees snaps to the target; otherwise the actor turns 20 degrees
+along the shorter side. The CAF direction follows the resulting angle before
+drawing.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance

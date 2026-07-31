@@ -1,9 +1,11 @@
 #include "resources/effect_visual_resource.hpp"
 #include "core/retail_random.hpp"
+#include "world/actor_direction.hpp"
 #include "world/enemy_effect_controller.hpp"
 #include "world/movement_controller.hpp"
 #include "world/runtime_effect_actor.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -249,6 +251,87 @@ bool testForwardMovementAndInterpolation() {
             !actor.expired(),
         "The forward actor did not use its start point, speed, "
         "counter, or interpolated snapshots.");
+}
+
+bool testHomingMovementAndLostTargetLatch() {
+    osf::EffectVisualResource visual;
+    if (!loadVisual(10000010, visual)) {
+        return false;
+    }
+    osf::RuntimeEffectActorSpawnRequest request;
+    request.resource_id = 10000010;
+    request.position = {0, 0};
+    request.target_mask = 1;
+    request.target_identifier = 0;
+    request.home_toward_target = true;
+    request.homing_turn_speed = 20;
+    request.travel_speed = 100;
+    request.direction_radians = 0.0;
+    request.collide_with_environment = false;
+    request.animation_direction = 0;
+
+    osf::RuntimeEffectTargetSnapshot target;
+    target.kind =
+        osf::RuntimeEffectTargetKind::player;
+    target.character_number = 0;
+    target.identifier = 0;
+    target.position = {0, -1000};
+    target.current_life = 100;
+
+    osf::RuntimeEffectActor actor;
+    if (!check(
+            actor.initialize(request, visual) &&
+                actor.needsTargetSnapshots(),
+            "A homing runtime actor did not request its target "
+            "snapshot.")) {
+        return false;
+    }
+    const osf::GroundMap ground;
+    const osf::ObjectMap objects;
+    osf::RetailRandom random(1);
+    const auto turning = actor.update(
+        ground, objects, {target}, random);
+    constexpr double first_turn =
+        20.0 * osf::kRetailRadiansPerDegree;
+    if (!check(
+            turning.intended_position.x ==
+                static_cast<std::int32_t>(
+                    std::cos(first_turn) * 100.0) &&
+                turning.intended_position.y ==
+                    -static_cast<std::int32_t>(
+                        std::sin(first_turn) * 100.0) &&
+                actor.position().x ==
+                    turning.intended_position.x &&
+                actor.position().y ==
+                    turning.intended_position.y &&
+                actor.animationDirection() ==
+                    osf::retailDirectionForAngle(
+                        first_turn) &&
+                actor.movementCounter() == 0 &&
+                actor.needsTargetSnapshots(),
+            "The homing actor did not turn by the retail "
+            "twenty-degree step and move from its current "
+            "position.")) {
+        return false;
+    }
+
+    actor.initialize(request, visual);
+    const auto without_target =
+        actor.update(ground, objects, {}, random);
+    const auto target_after_loss =
+        actor.update(
+            ground, objects, {target}, random);
+    return check(
+        without_target.intended_position.x == 100 &&
+            without_target.intended_position.y == 0 &&
+            !actor.needsTargetSnapshots() &&
+            target_after_loss.intended_position.x == 200 &&
+            target_after_loss.intended_position.y == 0 &&
+            actor.animationDirection() ==
+                osf::retailDirectionForAngle(0.0) &&
+            actor.movementCounter() == 0,
+        "A missing retail homing target did not permanently "
+        "latch straight-line movement.");
 }
 
 bool testEnvironmentCollisionAndExpiry() {
@@ -591,6 +674,7 @@ bool testInvisibleDamageActor() {
 int main() {
     if (!testSourceAnimationLifetime() ||
         !testForwardMovementAndInterpolation() ||
+        !testHomingMovementAndLostTargetLatch() ||
         !testEnvironmentCollisionAndExpiry() ||
         !testInclusiveTargetWindow() ||
         !testTargetQueryPrecedesMovement() ||

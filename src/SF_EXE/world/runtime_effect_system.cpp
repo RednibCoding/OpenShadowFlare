@@ -93,7 +93,7 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
     for (RuntimeEffectActor& actor : actors_) {
         const std::vector<RuntimeEffectTargetSnapshot>
             targets =
-                actor.targetCollisionActive()
+                actor.needsTargetSnapshots()
                     ? context.provide_targets()
                     : std::vector<
                           RuntimeEffectTargetSnapshot>{};

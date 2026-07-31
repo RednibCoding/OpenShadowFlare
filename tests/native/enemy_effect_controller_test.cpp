@@ -1,5 +1,6 @@
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
+#include "world/actor_direction.hpp"
 #include "world/enemy_effect_controller.hpp"
 
 #include <cmath>
@@ -310,7 +311,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10011;
+    request.effect_number = 10012;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -1053,6 +1054,207 @@ bool testTypeTenWaves() {
 #endif
 }
 
+bool testTypeElevenRadialActors() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The retail type-eleven count table could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* count_table =
+        tables.find(204);
+    const std::int32_t actor_count =
+        count_table ? count_table->value(0, 9) : 0;
+    if (!check(
+            actor_count == 3,
+            "Table 204's shipped subtype-ten radial count "
+            "changed.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10011, 2);
+    request.constructor_value_17 = 10;
+    request.target_kind = 1;
+    request.target_identifier = 3;
+    request.direction_radians = 0.25;
+
+    osf::EnemyEffectController controller;
+    osf::EnemyEffectController missing_tables;
+    if (!check(
+            controller.initialize(request, &tables) &&
+                !missing_tables.initialize(request),
+            "Type eleven did not require and accept its shipped "
+            "Table 204 entry.")) {
+        return false;
+    }
+
+    const auto first = updateController(
+        controller, {true, {100, 200}});
+    if (!check(
+            first.actor_spawn_count == 1 &&
+                first.audio_count == 0 &&
+                !first.expired &&
+                first.actor_spawns[0].resource_id ==
+                    10000012 &&
+                first.actor_spawns[0].position.x == 100 &&
+                first.actor_spawns[0].position.y == 200 &&
+                first.actor_spawns[0]
+                    .lifetime_from_animation,
+            "Type eleven did not emit its source animation on "
+            "update zero.")) {
+        return false;
+    }
+    const auto second = updateController(
+        controller, {true, {200, 300}});
+    if (!check(
+            second.actor_spawn_count == 0 &&
+                second.audio_count == 0 &&
+                !second.expired,
+            "Type eleven ignored its authored radial delay.")) {
+        return false;
+    }
+
+    const osf::WorldPosition source{300, 400};
+    const auto burst =
+        updateController(
+            controller, {true, source});
+    if (!check(
+            burst.actor_spawn_count ==
+                static_cast<std::size_t>(actor_count) &&
+                burst.audio_count == 1 &&
+                burst.expired &&
+                !controller.active(),
+            "Type eleven did not emit and expire its complete "
+            "Table 204 radial burst.")) {
+        return false;
+    }
+
+    osf::WorldPosition last_position;
+    for (std::int32_t index = 0;
+         index < actor_count;
+         ++index) {
+        const double direction =
+            request.direction_radians -
+            static_cast<double>(index) *
+                (osf::kRetailFullCircleRadians /
+                 static_cast<double>(actor_count));
+        const osf::WorldPosition expected{
+            source.x +
+                static_cast<std::int32_t>(
+                    std::cos(direction) * 180),
+            source.y -
+                static_cast<std::int32_t>(
+                    std::sin(direction) * 180),
+        };
+        last_position = expected;
+        const auto& actor =
+            burst.actor_spawns[
+                static_cast<std::size_t>(index)];
+        if (!check(
+                actor.controller_effect_number == 10011 &&
+                    actor.resource_id == 10000010 &&
+                    actor.owner_kind == 4 &&
+                    actor.source_character_number ==
+                        14000042 &&
+                    actor.target_mask == 1 &&
+                    actor.target_identifier == 3 &&
+                    actor.home_toward_target &&
+                    actor.homing_turn_speed == 20 &&
+                    std::abs(
+                        actor.direction_radians -
+                        direction) < 0.0000001 &&
+                    actor.travel_speed == 73 &&
+                    actor.position.x == expected.x &&
+                    actor.position.y == expected.y &&
+                    actor.judgement.left == -80 &&
+                    actor.judgement.top == -80 &&
+                    actor.judgement.right == 79 &&
+                    actor.judgement.bottom == 79 &&
+                    actor.display_height == 250 &&
+                    actor.lifetime == 90 &&
+                    !actor.lifetime_from_animation &&
+                    actor.expire_on_environment_collision &&
+                    actor.target_collision_start == 0 &&
+                    actor.target_collision_end == -1 &&
+                    actor.expire_on_target &&
+                    !actor.remember_targets &&
+                    actor.target_audio.bank == 0 &&
+                    actor.target_audio.sample == 20 &&
+                    actor.animation_chart == 0 &&
+                    actor.animation_direction ==
+                        osf::retailDirectionForAngle(
+                            direction) &&
+                    actor.has_packet &&
+                    actor.packet[34] == 21013,
+                "A type-eleven radial child differs from its "
+                "retail homing descriptor.")) {
+            return false;
+        }
+    }
+    if (!check(
+            burst.audio[0].sample == 19 &&
+                burst.audio[0].position.x ==
+                    last_position.x &&
+                burst.audio[0].position.y ==
+                    last_position.y,
+            "Type eleven did not place its single sample 19 at "
+            "the last radial child.")) {
+        return false;
+    }
+
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = {700, 900};
+    request.constructor_value_12 = 0;
+    controller.initialize(request, &tables);
+    const auto fixed =
+        updateController(
+            controller, {true, {1, 2}});
+    if (!check(
+            fixed.actor_spawn_count == 4 &&
+                fixed.actor_spawns[0].position.x == 700 &&
+                fixed.actor_spawns[0].position.y == 900,
+            "A zero-owner type-eleven burst lost its fixed "
+            "source actor.")) {
+        return false;
+    }
+    for (std::size_t index = 1;
+         index < fixed.actor_spawn_count;
+         ++index) {
+        if (!check(
+                fixed.actor_spawns[index].position.x == 700 &&
+                    fixed.actor_spawns[index].position.y == 900,
+                "A zero-owner type-eleven radial child was "
+                "incorrectly projected 180 units.")) {
+            return false;
+        }
+    }
+
+    request.constructor_value_17 = 30;
+    controller.initialize(request, &tables);
+    const auto maximum =
+        updateController(controller, {});
+    return check(
+        maximum.actor_spawn_count == 9 &&
+            maximum.audio_count == 1 &&
+            maximum.expired,
+        "Type eleven did not retain the source plus all eight "
+        "Table 204 subtype-thirty radial actors.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1063,7 +1265,8 @@ int main() {
         !testTypeFourWarningBurstAndCameraShake() ||
         !testTypeFiveFrameCountSequence() ||
         !testTypeThreeWaves() ||
-        !testTypeTenWaves()) {
+        !testTypeTenWaves() ||
+        !testTypeElevenRadialActors()) {
         return 1;
     }
     return 0;

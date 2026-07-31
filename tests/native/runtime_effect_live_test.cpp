@@ -1244,6 +1244,172 @@ bool testShippedLiveTypeTen(
         "cleanup, or adjacent item identity.");
 }
 
+bool testShippedLiveTypeEleven(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-eleven parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::TableData* count_table =
+        tables.find(204);
+    const std::int32_t actor_count =
+        count_table ? count_table->value(0, 9) : 0;
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectRadial";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {99000015, 0, 0},
+                &error),
+            "The shipped type-eleven effect scenario could not "
+            "be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::EnemyActor* source =
+        findEnemy(world, 13);
+    if (!check(
+            source &&
+                source->presentationProfile()
+                        .effect_type[0] == 11 &&
+                source->presentationProfile()
+                        .effect_subtype[0] == 10 &&
+                actor_count == 3,
+            "Tower of Ordeal scenario 15 no longer contains "
+            "enemy 13's shipped type-eleven family.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(world, *source, tables);
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    if (!check(
+            request.valid &&
+                request.effect_number == 10011 &&
+                request.constructor_value_12 == 0 &&
+                request.constructor_value_17 == 10 &&
+                request.owner_kind == 4 &&
+                request.target_kind == 19 &&
+                request.target_identifier == -1 &&
+                request.constructor_value_6 > 0 &&
+                body_before,
+            "The shipped enemy did not resolve a valid "
+            "type-eleven request or starter ownership "
+            "fixture.")) {
+        return false;
+    }
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = {
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+
+    world.queueCombatEffect(request);
+    world.update();
+    const std::vector<std::int32_t> launch_audio =
+        world.takeAudioSamples();
+    const std::size_t child_count =
+        static_cast<std::size_t>(
+            std::count_if(
+                world.runtimeEffects().begin(),
+                world.runtimeEffects().end(),
+                [](const osf::RuntimeEffectActor& actor) {
+                    return actor.resourceId() == 10000010;
+                }));
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                world.runtimeEffects().size() ==
+                    static_cast<std::size_t>(
+                        actor_count + 1) &&
+                child_count ==
+                    static_cast<std::size_t>(actor_count) &&
+                std::any_of(
+                    world.runtimeEffects().begin(),
+                    world.runtimeEffects().end(),
+                    [](const osf::RuntimeEffectActor& actor) {
+                        return actor.resourceId() ==
+                            10000012;
+                    }) &&
+                containsSample(launch_audio, 19),
+            "The live type-eleven controller did not create its "
+            "source, three radial children, sample 19, and "
+            "immediate cleanup.")) {
+        return false;
+    }
+
+    bool rendered_source = false;
+    bool rendered_child = false;
+    bool heard_impact = false;
+    bool damage_received = false;
+    for (std::int32_t update_number = 0;
+         update_number <= 91;
+         ++update_number) {
+        world.update();
+        const std::vector<std::int32_t> samples =
+            world.takeAudioSamples();
+        heard_impact =
+            heard_impact || containsSample(samples, 20);
+        damage_received =
+            damage_received ||
+            world.playerData().currentLife() < life_before;
+        rendered_source =
+            rendered_source ||
+            renderedRuntimeResource(world, 10000012);
+        rendered_child =
+            rendered_child ||
+            renderedRuntimeResource(world, 10000010);
+    }
+
+    const osf::InventoryItem* body_after =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    return check(
+        rendered_source &&
+            rendered_child &&
+            heard_impact &&
+            damage_received &&
+            world.runtimeEffects().empty() &&
+            sameItems(
+                world.playerInventory().items(),
+                inventory_before) &&
+            sameItems(
+                world.playerBelt().items(),
+                belt_before) &&
+            body_after &&
+            body_after->category == body_copy.category &&
+            body_after->definition_id ==
+                body_copy.definition_id,
+        "The shipped type-eleven radial actors lost rendering, "
+        "impact audio, damage, lifetime cleanup, or adjacent "
+        "item identity.");
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -1348,6 +1514,7 @@ int main() {
                    testShippedLiveTypeFour(data_root) &&
                    testShippedLiveTypeFive(data_root) &&
                    testShippedLiveTypeTen(data_root) &&
+                   testShippedLiveTypeEleven(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;

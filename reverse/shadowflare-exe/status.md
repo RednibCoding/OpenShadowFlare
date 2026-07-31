@@ -113,6 +113,22 @@ the complete unobstructed and blocked timelines; enemy 26 in Devil's Castle
 2F supplies the shipped live render, damage, audio, camera, blocked-tail, and
 cleanup case.
 
+Type 11 at `0x0042d6e0` creates resource `10000012` at the source on update
+zero. At the authored delay, Table 204 row zero at `subtype - 1` supplies two
+through eight radial children. Their angles are
+`stored_angle - index * (6.283184 / count)`. Nonzero owners re-resolve the
+source and start each child 180 units along its angle; owner kind zero starts
+every child at the stored explicit origin.
+
+The children use resource `10000010`, homing mode one, turn value 20,
+`[-80,-80,79,79]` bounds, a 90-update lifetime, chart zero, direction derived
+from travel, static-contact expiry, target-contact expiry, the copied packet,
+and bank-zero sample 20. Sample 19 plays once at the final child's spawn
+position, then the controller expires. The shared runtime actor now preserves
+current-position homing, the retail shortest-angle turn, passed-target
+behavior, and permanent straight travel after a missing or dead target.
+Tower of Ordeal scenario 15 supplies the shipped subtype-ten live case.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -129,8 +145,8 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 through 5 and type 10. Focused tests cover zero, positive, and
-negative delays,
+of types 1 through 5, type 10, and type 11. Focused tests cover zero,
+positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
 random chart, and persistent obstruction. Its actor outputs are

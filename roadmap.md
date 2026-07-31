@@ -98,7 +98,7 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish effect-controller types 11, 12, 13, 14, 16, and 21 one
+- finish effect-controller types 12, 13, 14, 16, and 21 one
   shipped family at a time, with both passive timing coverage and a live actor
   using each one;
 - finish ranged player actions and projectiles without bypassing the common
@@ -1033,7 +1033,25 @@ placement permanently suppresses that and every later wave, while the
 controller still runs through its complete Table 206 timeline. Enemy 26 in
 scenario `04060004` provides the shipped live render, damage, audio, camera,
 blocked-tail, cleanup, and item-identity regression.
-Types 11, 12, 13, 14, 16, and 21 remain.
+
+Type 11 is complete now. It creates resource `10000012` at the source on
+update zero, then reads Table 204 at the authored delay and distributes two
+through eight resource-`10000010` actors around retail's slightly truncated
+full circle. Live owners place each actor 180 units out; fixed-origin owners
+start every actor at the supplied point. The children keep the unusual
+`[-80,-80,79,79]` bounds, 90-update lifetime, contact sample 20, static
+collision expiry, copied packet, and homing movement mode with its
+20-degree-per-update turn limit. Sample 19 plays once at the last child's
+spawn position before the controller expires.
+
+The common runtime actor now owns that homing behavior. It looks up the live
+player or scenario target, turns by the shortest retail angle, moves from its
+current position instead of replaying a line from its start, updates its CAF
+direction, stops steering after it passes the target, and permanently falls
+back to straight travel when the target disappears. A shipped subtype-ten
+enemy from Tower of Ordeal scenario 15 supplies the live source, radial
+render, impact, audio, lifetime, and item-identity regression.
+Types 12, 13, 14, 16, and 21 remain.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1062,7 +1080,7 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to effect-controller types 11, 12, 13, 14, 16,
+finish. It should move to effect-controller types 12, 13, 14, 16,
 and 21, then the ranged player actions and companion attacks, keeping one
 shipped live encounter beside each passive reconstruction.
 
