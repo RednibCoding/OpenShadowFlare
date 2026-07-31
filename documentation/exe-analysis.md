@@ -1334,14 +1334,14 @@ enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
 `EnemyEffectController` now ports the complete controller half of types 1, 2,
-3, 4, 5, 10, 11, and 12 without pretending that every specialized family is
-finished. It emits the
-source actor on update zero, re-resolves the source at the exact authored
-delay, projects the second actor with the retail Y-axis convention, copies the
-combat packet, and places sample 19 or 94 at that second position. A zero delay
-creates both actors in one update, a negative delay remains active, missing
-owners resolve from zero, and omitted origin or judgement pointers do not leak
-stale values.
+3, 4, 5, 10, 11, 12, 13, and 14 without pretending that every specialized
+family is finished. For types 1 and 2 it emits the source actor on update
+zero, re-resolves the source at the exact authored delay, projects the second
+actor with the retail Y-axis convention, copies the combat packet, and places
+sample 19 or 94 at that second position. A zero delay creates both actors in
+one update, a negative delay remains active, missing owners resolve from zero,
+and owner kind zero leaves the child at its explicit origin without
+projection. Omitted origin or judgement pointers do not leak stale values.
 
 The same owner now keeps type 3's table-driven wave counter, fixed origin,
 persistent placement stop, random damaging chart, two visual companions, and
@@ -1481,6 +1481,20 @@ even if that point's obstruction flag is set. The controller increments its
 shell radius after each attempt and expires exactly at `delay + 16`.
 Lightning Gargoyle 11 in Ancient Ruins B1F (`03140000`) supplies the shipped
 subtype-20 live case.
+
+Type 14 (`0x0042e5c0`) creates no source or warning actor. When its counter
+equals the authored delay, it resolves a nonzero owner and projects the launch
+point 180 units along the stored angle. Owner kind zero instead uses the
+explicit origin directly. Resource `10000070` moves at constructor value six,
+uses constructor value seven as display height, and derives its chart-zero CAF
+direction from the travel angle.
+
+The projectile has `[-50,-50,50,50]` bounds, no explicit lifetime, static and
+first-target expiry, the requested target mask and identifier, optional
+previous-target memory, the copied packet, and bank-zero contact sample 20.
+Sample 22 plays at the launch point and the controller returns zero on that
+same update. Stone Wisp 2 in Ancient Ruins B1F (`03140000`) supplies the
+shipped subtype-one live case.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance

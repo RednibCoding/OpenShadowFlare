@@ -1822,6 +1822,149 @@ bool testShippedLiveTypeThirteen(
         "damage, actor cleanup, or adjacent item identity.");
 }
 
+bool testShippedLiveTypeFourteen(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-fourteen parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectStone";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {3140000, 0, 0},
+                &error),
+            "The shipped type-fourteen effect scenario could "
+            "not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::EnemyActor* source =
+        findEnemy(world, 2);
+    if (!check(
+            source &&
+                source->name() == "Stone Wisp" &&
+                source->presentationProfile()
+                        .effect_type[0] == 14 &&
+                source->presentationProfile()
+                        .effect_subtype[0] == 1,
+            "Ancient Ruins B1F no longer contains enemy 2's "
+            "shipped type-fourteen family.")) {
+        return false;
+    }
+
+    const osf::WorldPosition player_position{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(world, *source, tables);
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = player_position;
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    const osf::InventoryItem* body_before =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    const osf::InventoryItem body_copy =
+        body_before
+            ? *body_before
+            : osf::InventoryItem{};
+    if (!check(
+            request.valid &&
+                request.effect_number == 10014 &&
+                request.constructor_value_12 == 0 &&
+                request.constructor_value_17 == 1 &&
+                request.constructor_value_6 > 0 &&
+                request.packet[3] == 2 &&
+                request.packet[34] == 21019 &&
+                body_before,
+            "The shipped Stone Wisp did not resolve a valid "
+            "type-fourteen request or starter ownership "
+            "fixture.")) {
+        return false;
+    }
+
+    world.queueCombatEffect(request);
+    world.update();
+    const std::vector<std::int32_t> launch_audio =
+        world.takeAudioSamples();
+    if (!check(
+            world.runtimeEffectControllerCount() == 0 &&
+                world.runtimeEffects().size() == 1 &&
+                world.runtimeEffects()[0].resourceId() ==
+                    10000070 &&
+                world.runtimeEffects()[0].hasPacket() &&
+                world.runtimeEffects()[0].packet()[34] ==
+                    21019 &&
+                containsSample(launch_audio, 22),
+            "The live type-fourteen launch lost resource "
+            "10000070, its packet, sample 22, or immediate "
+            "controller cleanup.")) {
+        return false;
+    }
+
+    world.update();
+    const std::vector<std::int32_t> impact_audio =
+        world.takeAudioSamples();
+    const bool rendered =
+        renderedRuntimeResource(world, 10000070);
+    const bool damage_received =
+        world.playerData().currentLife() < life_before;
+    if (!check(
+            rendered &&
+                damage_received &&
+                containsSample(impact_audio, 20),
+            "The shipped type-fourteen projectile was not "
+            "rendered, received as damage, or paired with "
+            "sample 20.")) {
+        return false;
+    }
+
+    for (std::int32_t update_number = 0;
+         update_number < 120;
+         ++update_number) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    const osf::InventoryItem* body_after =
+        world.playerEquipment().item(
+            osf::EquipmentSlot::body);
+    return check(
+        world.runtimeEffects().empty() &&
+            sameItems(
+                world.playerInventory().items(),
+                inventory_before) &&
+            sameItems(
+                world.playerBelt().items(),
+                belt_before) &&
+            body_after &&
+            body_after->category == body_copy.category &&
+            body_after->definition_id ==
+                body_copy.definition_id,
+        "The shipped type-fourteen projectile lost actor "
+        "cleanup or adjacent item identity.");
+}
+
 bool testLiveMissPresentation(
     const std::filesystem::path& data_root) {
     osf::TableDatabase tables;
@@ -1929,6 +2072,7 @@ int main() {
                    testShippedLiveTypeEleven(data_root) &&
                    testShippedLiveTypeTwelve(data_root) &&
                    testShippedLiveTypeThirteen(data_root) &&
+                   testShippedLiveTypeFourteen(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;

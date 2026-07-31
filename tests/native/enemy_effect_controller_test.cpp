@@ -226,10 +226,10 @@ bool testFixedOriginAndMissingSource() {
     if (!check(
             fixed.actor_spawns[0].position.x == 700 &&
                 fixed.actor_spawns[0].position.y == 900 &&
-                fixed.actor_spawns[1].position.x == 880 &&
+                fixed.actor_spawns[1].position.x == 700 &&
                 fixed.actor_spawns[1].position.y == 900,
-            "An owner-kind-zero controller ignored its stored "
-            "origin.")) {
+            "An owner-kind-zero controller projected its child "
+            "away from the stored origin.")) {
         return false;
     }
 
@@ -311,7 +311,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10014;
+    request.effect_number = 10016;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -1826,6 +1826,115 @@ bool testTypeThirteenRadialWaves() {
 #endif
 }
 
+bool testTypeFourteenProjectile() {
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10014, 2);
+    request.constructor_value_22 = 1;
+    request.direction_radians =
+        3.14159265358979323846 / 2.0;
+
+    osf::EnemyEffectController controller;
+    if (!check(
+            controller.initialize(request),
+            "A valid type-fourteen request was rejected.")) {
+        return false;
+    }
+    const auto first =
+        updateController(
+            controller, {true, {100, 200}});
+    const auto second =
+        updateController(
+            controller, {true, {200, 300}});
+    if (!check(
+            first.actor_spawn_count == 0 &&
+                first.audio_count == 0 &&
+                !first.expired &&
+                second.actor_spawn_count == 0 &&
+                second.audio_count == 0 &&
+                !second.expired,
+            "Type fourteen created a source actor or launched "
+            "before its authored delay.")) {
+        return false;
+    }
+
+    const auto launch =
+        updateController(
+            controller, {true, {300, 400}});
+    if (!check(
+            launch.actor_spawn_count == 1 &&
+                launch.audio_count == 1 &&
+                launch.expired &&
+                !controller.active(),
+            "Type fourteen did not launch once and immediately "
+            "remove its controller.")) {
+        return false;
+    }
+    const auto& actor = launch.actor_spawns[0];
+    if (!check(
+            actor.controller_effect_number == 10014 &&
+                actor.resource_id == 10000070 &&
+                actor.owner_kind == 4 &&
+                actor.source_character_number ==
+                    14000042 &&
+                actor.target_mask == 1 &&
+                actor.target_identifier == 3 &&
+                actor.travel_speed == 73 &&
+                actor.display_height == 250 &&
+                actor.direction_radians ==
+                    request.direction_radians &&
+                actor.position.x == 300 &&
+                actor.position.y == 220 &&
+                actor.judgement.left == -50 &&
+                actor.judgement.top == -50 &&
+                actor.judgement.right == 50 &&
+                actor.judgement.bottom == 50 &&
+                actor.lifetime == -1 &&
+                !actor.lifetime_from_animation &&
+                actor.expire_on_environment_collision &&
+                actor.target_collision_start == 0 &&
+                actor.target_collision_end == -1 &&
+                actor.expire_on_target &&
+                actor.remember_targets &&
+                actor.target_audio.bank == 0 &&
+                actor.target_audio.sample == 20 &&
+                actor.animation_chart == 0 &&
+                actor.animation_direction == 3 &&
+                actor.has_packet &&
+                actor.packet[2] == 14000042 &&
+                actor.packet[34] == 21013,
+            "The type-fourteen projectile differs from its "
+            "retail moving descriptor.")) {
+        return false;
+    }
+    if (!check(
+            launch.audio[0].sample == 22 &&
+                launch.audio[0].position.x == 300 &&
+                launch.audio[0].position.y == 220,
+            "Type fourteen did not place sample 22 at its "
+            "projectile.")) {
+        return false;
+    }
+
+    request.owner_kind = 0;
+    request.has_explicit_origin = true;
+    request.origin = {700, 900};
+    request.constructor_value_12 = 0;
+    controller.initialize(request);
+    const auto fixed =
+        updateController(
+            controller, {true, {1, 2}});
+    return check(
+        fixed.actor_spawn_count == 1 &&
+            fixed.audio_count == 1 &&
+            fixed.expired &&
+            fixed.actor_spawns[0].position.x == 700 &&
+            fixed.actor_spawns[0].position.y == 900 &&
+            fixed.audio[0].position.x == 700 &&
+            fixed.audio[0].position.y == 900,
+        "A fixed-origin type-fourteen projectile was "
+        "incorrectly projected 180 units.");
+}
+
 }  // namespace
 
 int main() {
@@ -1839,7 +1948,8 @@ int main() {
         !testTypeTenWaves() ||
         !testTypeElevenRadialActors() ||
         !testTypeTwelveWarningAndProjectileFans() ||
-        !testTypeThirteenRadialWaves()) {
+        !testTypeThirteenRadialWaves() ||
+        !testTypeFourteenProjectile()) {
         return 1;
     }
     return 0;

@@ -46,8 +46,9 @@ resource `10000012` at the current source actor and type 2 creates resource
 `11000027`. Both are ordinary source animations whose positive judgement
 edges come from the source bounds plus one. When the controller counter
 reaches constructor argument 12, it resolves the source position again,
-projects a point exactly 180 world units along the stored angle, and creates a
-second runtime actor there. Type 1 uses resource `10000010` and positional
+projects a point exactly 180 world units along the stored angle for nonzero
+owners, and creates a second runtime actor there. Owner kind zero leaves that
+child at the supplied explicit origin. Type 1 uses resource `10000010` and positional
 sample 19; type 2 uses resource `10000040` and positional sample 94. The
 second actor has `[-50,-50,50,50]` bounds, chart-zero timing, the copied combat
 packet, and contact expiry. Only then does the controller return zero.
@@ -159,6 +160,16 @@ per attempted shell at its final radial position, including when that final
 ray is blocked. The controller expires at the authored delay plus 16.
 Lightning Gargoyle 11 in `03140000` supplies the shipped subtype-20 live case.
 
+Type 14 at `0x0042e5c0` has no source visual. At the authored delay it resolves
+a nonzero owner, projects 180 units along the stored angle, and creates
+resource `10000070`. Owner kind zero uses the explicit origin without that
+projection. The actor moves at constructor value six, uses constructor value
+seven as display height, and keeps 50-unit bounds, chart-zero directional
+drawing, static and first-target expiry, optional target memory, the copied
+packet, and contact sample 20. Sample 22 plays at launch and the controller
+expires immediately. Stone Wisp 2 in `03140000` supplies the shipped
+subtype-one live case.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -175,7 +186,7 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 through 5 and types 10 through 13. Focused tests cover zero,
+of types 1 through 5 and types 10 through 14. Focused tests cover zero,
 positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
@@ -203,7 +214,7 @@ resources, audio, damage, cleanup, and unchanged item ownership. Scenario
 two launch sounds, contact sample 20, camera shake, and item ownership. The
 type-5 sequence is covered by enemy 48 in `04060004`, including its
 resource-driven timing, three visuals, six pulses, area damage, camera shake,
-cleanup, and item ownership. The other three specialized controllers remain
+cleanup, and item ownership. The other two specialized controllers remain
 to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.

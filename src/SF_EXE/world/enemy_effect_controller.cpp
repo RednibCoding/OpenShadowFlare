@@ -20,6 +20,7 @@ constexpr std::int32_t kTypeTenEffect = 10010;
 constexpr std::int32_t kTypeElevenEffect = 10011;
 constexpr std::int32_t kTypeTwelveEffect = 10012;
 constexpr std::int32_t kTypeThirteenEffect = 10013;
+constexpr std::int32_t kTypeFourteenEffect = 10014;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
@@ -35,6 +36,7 @@ constexpr std::int32_t kTypeFiveThirdResource = 10000052;
 constexpr std::int32_t kTypeTenResource = 10000060;
 constexpr std::int32_t kTypeTwelveWarningResource = 10000080;
 constexpr std::int32_t kTypeTwelveProjectileResource = 10000081;
+constexpr std::int32_t kTypeFourteenProjectileResource = 10000070;
 constexpr std::int32_t kTypeOneAudioSample = 19;
 constexpr std::int32_t kTypeTwoAudioSample = 94;
 constexpr std::int32_t kTypeThreeAudioSample = 21;
@@ -88,7 +90,8 @@ bool supportedEffect(std::int32_t effect_number) {
            effect_number == kTypeTenEffect ||
            effect_number == kTypeElevenEffect ||
            effect_number == kTypeTwelveEffect ||
-           effect_number == kTypeThirteenEffect;
+           effect_number == kTypeThirteenEffect ||
+           effect_number == kTypeFourteenEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -161,10 +164,15 @@ RuntimeEffectActorSpawnRequest childActor(
     RuntimeEffectActorSpawnRequest actor;
     actor.controller_effect_number =
         request.effect_number;
-    actor.resource_id =
-        request.effect_number == kTypeOneEffect
-            ? kTypeOneChildResource
-            : kTypeTwoChildResource;
+    if (request.effect_number == kTypeOneEffect) {
+        actor.resource_id = kTypeOneChildResource;
+    } else if (
+        request.effect_number == kTypeFourteenEffect) {
+        actor.resource_id =
+            kTypeFourteenProjectileResource;
+    } else {
+        actor.resource_id = kTypeTwoChildResource;
+    }
     actor.owner_kind = request.owner_kind;
     actor.source_character_number =
         request.source_character_number;
@@ -1038,7 +1046,8 @@ EnemyEffectController::update(
         return result;
     }
 
-    if (counter_ == 0) {
+    if (counter_ == 0 &&
+        request_.effect_number != kTypeFourteenEffect) {
         result.actor_spawns[
             result.actor_spawn_count++] =
             sourceActor(
@@ -1161,19 +1170,26 @@ EnemyEffectController::update(
     }
 
     if (counter_ == request_.constructor_value_12) {
+        const WorldPosition source =
+            resolvedPosition(
+                request_, context.source);
         const WorldPosition position =
-            projectedPosition(
-                resolvedPosition(
-                    request_, context.source),
-                request_.direction_radians,
-                kChildDistance);
+            request_.owner_kind == 0
+                ? source
+                : projectedPosition(
+                      source,
+                      request_.direction_radians,
+                      kChildDistance);
         result.actor_spawns[
             result.actor_spawn_count++] =
             childActor(request_, position);
         result.audio[result.audio_count++] = {
             request_.effect_number == kTypeOneEffect
                 ? kTypeOneAudioSample
-                : kTypeTwoAudioSample,
+                : request_.effect_number ==
+                          kTypeFourteenEffect
+                      ? kWavePulseAudioSample
+                      : kTypeTwoAudioSample,
             position,
         };
         active_ = false;
