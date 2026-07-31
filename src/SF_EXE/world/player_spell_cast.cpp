@@ -13,19 +13,23 @@ namespace {
 constexpr std::int32_t kPlayerOwnerKind = 1;
 constexpr std::int32_t kEnemyAndObjectTargetMask = 0x14;
 
-struct TargetedSpellDescriptor {
+struct PlayerSpellDescriptor {
     std::int32_t effect_number = -1;
     std::int32_t packet_subtype = 0;
     std::int32_t impact_effect = -1;
     std::int32_t target_mask =
         kEnemyAndObjectTargetMask;
-    bool projectile = true;
+    bool requires_target = true;
+    bool use_table_travel_speed = true;
+    bool use_explicit_origin = false;
+    bool use_source_judgement = true;
+    bool constructor_uses_level = false;
     bool use_physical_defense = false;
 };
 
-bool targetedSpellDescriptor(
+bool playerSpellDescriptor(
     std::int32_t spell,
-    TargetedSpellDescriptor& descriptor) {
+    PlayerSpellDescriptor& descriptor) {
     switch (spell) {
     case 1:
         descriptor = {10001, 0, 20000};
@@ -39,8 +43,26 @@ bool targetedSpellDescriptor(
             0,
             20005,
             4,
+            true,
             false,
             true,
+            false,
+            true,
+            true,
+        };
+        return true;
+    case 4:
+        descriptor = {
+            10004,
+            0,
+            20001,
+            4,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
         };
         return true;
     default:
@@ -61,16 +83,24 @@ std::int32_t tableValue(
 
 }  // namespace
 
-CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
+bool playerSpellRequiresCharacterTarget(
+    std::int32_t spell) {
+    PlayerSpellDescriptor descriptor;
+    return playerSpellDescriptor(spell, descriptor) &&
+           descriptor.requires_target;
+}
+
+CombatEffectSpawnRequest buildPlayerSpellCast(
     std::int32_t spell,
-    const PlayerTargetedSpellCastInput& input,
+    const PlayerSpellCastInput& input,
     const TableDatabase& tables) {
     CombatEffectSpawnRequest request;
-    TargetedSpellDescriptor descriptor;
+    PlayerSpellDescriptor descriptor;
     if (input.stats.source_character_number < 0 ||
-        input.target_character_number < 0 ||
         input.parameters.effective_level < 1 ||
-        !targetedSpellDescriptor(spell, descriptor)) {
+        !playerSpellDescriptor(spell, descriptor) ||
+        (descriptor.requires_target &&
+         input.target_character_number < 0)) {
         return request;
     }
 
@@ -83,7 +113,7 @@ CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
     request.target_identifier =
         input.target_character_number;
     request.constructor_value_6 =
-        descriptor.projectile
+        descriptor.use_table_travel_speed
             ? retailEffectParameter(
                   tables,
                   spell,
@@ -91,18 +121,20 @@ CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
                   3)
             : 0;
     request.constructor_value_7 =
-        descriptor.projectile ? 200 : 0;
+        descriptor.use_table_travel_speed ? 200 : 0;
     request.direction_radians =
-        retailAngleForVector(
-            input.target_position.x -
-                input.source_position.x,
-            input.target_position.y -
-                input.source_position.y);
+        descriptor.requires_target
+            ? retailAngleForVector(
+                  input.target_position.x -
+                      input.source_position.x,
+                  input.target_position.y -
+                      input.source_position.y)
+            : 0.0;
     request.has_explicit_origin =
-        !descriptor.projectile;
+        descriptor.use_explicit_origin;
     request.origin = input.source_position;
     request.has_source_judgement =
-        descriptor.projectile;
+        descriptor.use_source_judgement;
     if (request.has_source_judgement) {
         request.source_judgement =
             input.source_judgement;
@@ -114,9 +146,9 @@ CombatEffectSpawnRequest buildPlayerTargetedSpellCast(
     request.instance_identifier = -1;
     request.constructor_value_16 = 0;
     request.constructor_value_17 =
-        descriptor.projectile
-            ? 0
-            : input.parameters.effective_level;
+        descriptor.constructor_uses_level
+            ? input.parameters.effective_level
+            : 0;
     request.constructor_value_18 = 0;
     request.constructor_value_19 = 0;
     request.constructor_value_20 = 0;

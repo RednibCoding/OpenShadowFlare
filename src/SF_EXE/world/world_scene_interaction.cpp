@@ -167,24 +167,31 @@ bool WorldScene::commandPlayerMagic(
         return false;
     }
 
-    const WorldPointerTarget target =
-        pointerTargetAtScreenPosition(screen_x, screen_y);
-    if (target.kind != WorldPointerTargetKind::enemy) {
-        return false;
-    }
-    EnemyActor* enemy = findEnemy(target.id);
-    if (!enemy ||
-        classifyPlayerAttackTarget(
-            player_.position(),
-            player_.judgement(),
-            attackTargetSnapshot(*enemy)) ==
-            PlayerAttackTargetDisposition::rejected) {
-        return false;
+    EnemyActor* enemy = nullptr;
+    const bool requires_target =
+        playerSpellRequiresCharacterTarget(spell);
+    if (requires_target) {
+        const WorldPointerTarget target =
+            pointerTargetAtScreenPosition(
+                screen_x, screen_y);
+        if (target.kind !=
+            WorldPointerTargetKind::enemy) {
+            return false;
+        }
+        enemy = findEnemy(target.id);
+        if (!enemy ||
+            classifyPlayerAttackTarget(
+                player_.position(),
+                player_.judgement(),
+                attackTargetSnapshot(*enemy)) ==
+                PlayerAttackTargetDisposition::rejected) {
+            return false;
+        }
     }
 
-    // The selected target consumes the secondary click even when there is
-    // not enough MP. FUN_00449a40 clears the retail pointer selection on
-    // that path without entering the spell's player action.
+    // Both retail command paths consume the secondary click before their
+    // mana check. Pointed spells retain the selected character, while
+    // ground/self spells enter the action with character -1.
     pointer_.clearSelection();
     pending_interaction_ = {};
     player_attack_target_.cancel();
@@ -201,11 +208,19 @@ bool WorldScene::commandPlayerMagic(
     }
 
     player_.cancelMovement();
-    player_.faceToward(enemy->position());
+    const WorldPosition facing_position =
+        enemy
+            ? enemy->position()
+            : calculateWorldPosition({
+                  cameraScreenX() + screen_x,
+                  cameraScreenY() + screen_y,
+              });
+    player_.faceToward(facing_position);
     if (!player_.beginSpellCast(
             action,
             spell,
-            enemy->characterNumber(),
+            enemy ? enemy->characterNumber() : -1,
+            facing_position,
             playerAttackSpeedTier(),
             parameter_tables_.find(20),
             player_visual_.animation())) {
@@ -974,10 +989,15 @@ void WorldScene::handlePlayerSpellEvent(
         event.spell < 0) {
         return;
     }
+    const bool requires_target =
+        playerSpellRequiresCharacterTarget(
+            event.spell);
     const EnemyActor* target =
-        findScriptEnemy(
-            event.target_character_number);
-    if (!target) {
+        requires_target
+            ? findScriptEnemy(
+                  event.target_character_number)
+            : nullptr;
+    if (requires_target && !target) {
         return;
     }
 
@@ -1025,7 +1045,7 @@ void WorldScene::handlePlayerSpellEvent(
         player_data_.combatPacketStateWords();
 
     const CombatEffectSpawnRequest request =
-        buildPlayerTargetedSpellCast(
+        buildPlayerSpellCast(
             event.spell,
             {
                 stats,
@@ -1035,10 +1055,15 @@ void WorldScene::handlePlayerSpellEvent(
                     player_equipment_,
                     item_database_,
                     parameter_tables_),
-                target->characterNumber(),
+                target
+                    ? target->characterNumber()
+                    : -1,
                 player_.position(),
                 player_.judgement(),
-                target->position(),
+                {
+                    event.aim_world_x,
+                    event.aim_world_y,
+                },
                 event.effect_delay,
             },
             parameter_tables_);

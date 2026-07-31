@@ -157,6 +157,20 @@ sample 21. If one wave position is blocked by the map or a solid scenario
 object, that wave and every later wave are suppressed. Every enemy packet
 contact can award Plasma practice through the ordinary receiver path.
 
+### Hell Fire
+
+Hell Fire uses the ground/self secondary-click path rather than requiring an
+enemy under the pointer. The clicked point decides which way the hero faces,
+but the spell itself erupts around the hero. It enters action 26, uses CAF
+charts 13 and 14, consumes the Table 16 MP cost, and creates effect 10004 at
+the chart's cast marker.
+
+The effect first shows its warning layer. At the delayed burst it creates two
+visual layers, plays samples 29 and 23, and applies the spell packet to every
+valid target inside the hero judgement area expanded by 150 world units.
+Contacts use sample 20, shake the camera briefly, and award Hell Fire practice
+through the same receiver-owned path as the projectile and Plasma spells.
+
 ## Character Stats
 
 ### Primary Stats

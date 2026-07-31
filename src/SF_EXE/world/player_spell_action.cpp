@@ -39,6 +39,7 @@ SpellCharts chartsForAction(PlayerSpellAction action) {
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
+    case PlayerSpellAction::hell_fire:
         return {13, 14};
     }
     return {};
@@ -71,6 +72,9 @@ bool playerSpellActionForSpell(
         return true;
     case 3:
         action = PlayerSpellAction::plasma;
+        return true;
+    case 4:
+        action = PlayerSpellAction::hell_fire;
         return true;
     default:
         return false;
@@ -142,13 +146,14 @@ bool PlayerSpellActionController::start(
     PlayerSpellAction action,
     std::int32_t spell,
     std::int32_t target_character_number,
+    std::int32_t aim_world_x,
+    std::int32_t aim_world_y,
     std::int32_t speed_tier,
     const TableData* speed_table,
     PlayerSpellAnimationTiming timing,
     PlayerSpellActionEvent* event) {
     cancel();
     if (spell < 0 ||
-        target_character_number < 0 ||
         timing.first_frame_count <= 0 ||
         timing.first_chart < 0 ||
         timing.recovery_chart < 0) {
@@ -159,6 +164,8 @@ bool PlayerSpellActionController::start(
     spell_ = spell;
     target_character_number_ =
         target_character_number;
+    aim_world_x_ = aim_world_x;
+    aim_world_y_ = aim_world_y;
     timing_ = std::move(timing);
     refreshSpeed(speed_tier, speed_table);
     if (animation_speed_ <= 0.0) {
@@ -182,6 +189,8 @@ bool PlayerSpellActionController::start(
             action_,
             spell_,
             target_character_number_,
+            aim_world_x_,
+            aim_world_y_,
             effect_delay_,
             true,
             false,
@@ -213,6 +222,8 @@ PlayerSpellActionController::update(
     event.spell = spell_;
     event.target_character_number =
         target_character_number_;
+    event.aim_world_x = aim_world_x_;
+    event.aim_world_y = aim_world_y_;
     event.effect_delay = effect_delay_;
     if (displayed_frame_ >=
         timing_.first_frame_count - 1 +
@@ -228,6 +239,8 @@ void PlayerSpellActionController::cancel() {
     action_ = PlayerSpellAction::fire_ball;
     spell_ = -1;
     target_character_number_ = -1;
+    aim_world_x_ = 0;
+    aim_world_y_ = 0;
     speed_tier_ = 0;
     animation_speed_ = 1.0;
     completion_increment_ = 1;

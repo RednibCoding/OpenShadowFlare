@@ -211,6 +211,7 @@ bool PlayerActor::beginSpellCast(
     PlayerSpellAction action,
     std::int32_t spell,
     std::int32_t target_character_number,
+    WorldPosition aim_position,
     std::int32_t speed_tier,
     const TableData* speed_table,
     const gapi::CafAnimation& animation) {
@@ -233,6 +234,8 @@ bool PlayerActor::beginSpellCast(
             action,
             spell,
             target_character_number,
+            aim_position.x,
+            aim_position.y,
             speed_tier,
             speed_table,
             std::move(timing),

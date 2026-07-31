@@ -1479,3 +1479,27 @@ only the first layer applies the copied packet to every overlapping enemy on
 update zero. Sample 21 plays for each clear wave. Live coverage accepts the
 retail obstruction path and separately proves a clear shipped-world wave,
 damage, audio, and Plasma practice.
+
+## Ground/self spell command and Hell Fire
+
+The ordinary secondary-click branch in `FUN_00441c00` handles selected spells
+which do not require a character target. It validates availability,
+restrictions, effective level, and MP, stores the clicked world angle and
+position, faces that point, enters `spell + 22` with target `-1`, and deducts
+the cost. The portable action event preserves the ground aim separately from
+the optional character identity so later spells do not have to reconstruct
+UI cursor state.
+
+`FUN_00439d10` dispatches Hell Fire as action 26 with CAF charts 13 and 14,
+Table 20 row four, and the common marker-based casting cadence. Its
+family-zero packet uses magical defense, presentation 20001, and spell four.
+Effect request 10004 keeps target `-1`, target mask four, zero direction and
+travel values, no explicit origin, and the source judgement rectangle.
+
+The existing type-four effect owner shows resource 10000002 before the cast
+marker. At the delay it creates two resource-10000000 layers, plays samples
+29 and 23, expands the source area by 150 units, and applies the packet to all
+valid targets. Contact plays sample 20, the burst shakes the camera for eight
+updates, and successful receivers award Hell Fire practice. Live coverage
+proves that pointing at an enemy still uses this ground/self command and that
+insufficient MP consumes the click without starting an action or effect.

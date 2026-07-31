@@ -160,12 +160,18 @@ update spacing, 250-plus-200-unit placement, permanent obstruction cutoff,
 randomized primary charts, three visual layers, sample 21, area contacts, and
 receiver-time practice.
 
-The next slice should reconstruct the ground/self casting command before
-adding another spell. Retail does not route every spell through pointed-enemy
-selection: the ordinary world-click path validates the selected spell, saves
-the cursor angle and ground coordinates, and enters `spell + 22` with no
-character target. Hell Fire is the first useful spell on that route and will
-prove the command family without weakening the targeted path.
+The ground/self casting command and Hell Fire are complete. Retail does not
+route every spell through pointed-enemy selection: the ordinary world-click
+path validates the selected spell, saves the cursor angle and ground
+coordinates, and enters `spell + 22` with no character target. Hell Fire now
+uses that path as action 26, including its warning, delayed two-layer burst,
+area contacts, samples, camera shake, and receiver-time practice.
+
+The next spell checkpoint is Ice Blast. It continues the targetless ground
+command as action 27 but uses CAF charts 11 and 12, Table 20 row five, effect
+10005, packet subtype one, and presentation 21013. This should prove that the
+saved ground aim is carried into a placed area spell rather than only a
+self-centered one.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1291,7 +1297,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Fire Ball and Ice Bolt prove the reusable single-target projectile spell
   dispatch;
 - Plasma's action-25 multi-wave area-effect path is complete;
-- the next checkpoint is the ground/self casting command and Hell Fire;
+- the ground/self casting command and Hell Fire action 26 are complete;
+- the next checkpoint is Ice Blast action 27 and effect 10005;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

@@ -16,6 +16,7 @@ enum class PlayerSpellAction : std::int32_t {
     fire_ball = 23,
     ice_bolt = 24,
     plasma = 25,
+    hell_fire = 26,
 };
 
 struct PlayerSpellAnimationTiming {
@@ -29,6 +30,8 @@ struct PlayerSpellActionEvent {
     PlayerSpellAction action = PlayerSpellAction::fire_ball;
     std::int32_t spell = -1;
     std::int32_t target_character_number = -1;
+    std::int32_t aim_world_x = 0;
+    std::int32_t aim_world_y = 0;
     std::int32_t effect_delay = 0;
     bool cast_due = false;
     bool completed = false;
@@ -55,6 +58,8 @@ public:
         PlayerSpellAction action,
         std::int32_t spell,
         std::int32_t target_character_number,
+        std::int32_t aim_world_x,
+        std::int32_t aim_world_y,
         std::int32_t speed_tier,
         const TableData* speed_table,
         PlayerSpellAnimationTiming timing,
@@ -85,6 +90,8 @@ private:
         PlayerSpellAction::fire_ball;
     std::int32_t spell_ = -1;
     std::int32_t target_character_number_ = -1;
+    std::int32_t aim_world_x_ = 0;
+    std::int32_t aim_world_y_ = 0;
     std::int32_t speed_tier_ = 0;
     double animation_speed_ = 1.0;
     std::int32_t completion_increment_ = 1;

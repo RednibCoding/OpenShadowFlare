@@ -1860,7 +1860,7 @@ marker it resolves the hero again, projects the launch point 180 world units
 along the stored angle, and creates resource 10000040 with
 `[-50,-50,50,50]` collision bounds, Table 35 travel speed, environment and
 first-target expiry, and the copied packet. Sample 94 plays at launch and
-sample 20 at contact. The portable targeted-spell builder now selects these
+sample 20 at contact. The portable player-spell builder now selects these
 retail descriptors while the already shared effect owner retains projectile
 timing, movement, audio, and collision.
 
@@ -1890,3 +1890,29 @@ update-zero all-target collision window; the other two are visual. Sample 21
 plays at the wave position. The portable player action now constructs this
 request, while the existing effect-10003 owner continues to own all wave
 placement, random ordering, rendering, audio, contact, and expiry.
+
+## Ground/self spell command and Hell Fire
+
+The ordinary secondary-click branch in `0x00441c00` handles spells which do
+not require a pointed character. It performs the same learned-state,
+restriction, effective-level, and MP-cost checks as the targeted command, but
+stores the clicked world angle and position, enters action `spell + 22` with
+character target `-1`, faces the click, and deducts MP. The portable command
+keeps that aim point in the action event even though Hell Fire itself does not
+use it; later ground spells can therefore reconstruct their own placement
+without recovering cursor state from the UI.
+
+`0x00439d10` dispatches Hell Fire as action 26. It uses player CAF charts 13
+and 14, Table 20 row four, the common ten casting-speed factors, and the first
+status-`0x40` marker for effect delay. Its family-zero packet uses subtype
+zero, magical defense, presentation 20001, spell four, and the row-four
+values from Tables 17 through 19 and 70 through 78.
+
+Effect request 10004 has owner kind one, target mask four, target `-1`, zero
+direction, travel speed, and display height, no explicit origin, and the
+player judgement rectangle as its source area. The existing effect owner
+shows warning resource 10000002, then creates the two resource-10000000
+layers and plays samples 29 and 23 at the marker delay. Its invisible area
+expands the source judgement by 150 units, applies the packet to every valid
+target, plays sample 20 on contact, and shakes the camera for eight updates.
+Practice remains receiver-owned, exactly like the targeted spells.

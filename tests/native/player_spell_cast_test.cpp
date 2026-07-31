@@ -1,5 +1,6 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
+#include "world/actor_direction.hpp"
 #include "world/player_spell_action.hpp"
 #include "world/player_spell_cast.hpp"
 #include "world/player_spell_parameters.hpp"
@@ -21,6 +22,19 @@ bool check(bool condition, const char* message) {
     return condition;
 }
 
+struct ExpectedSpellCast {
+    std::int32_t effect_number = -1;
+    std::int32_t packet_subtype = 0;
+    std::int32_t impact_effect = -1;
+    std::int32_t target_mask = 0;
+    bool requires_target = true;
+    bool use_table_travel_speed = true;
+    bool use_explicit_origin = false;
+    bool use_source_judgement = true;
+    bool constructor_uses_level = false;
+    bool use_physical_defense = false;
+};
+
 bool testRetailAction(
     const osf::gapi::CafAnimation& animation,
     const osf::TableDatabase& tables,
@@ -38,7 +52,7 @@ bool testRetailAction(
                 timing.first_chart == first_chart &&
                 timing.recovery_chart == recovery_chart &&
                 timing.first_frame_count > 0,
-            "The retail targeted-spell CAF charts could not be decoded.")) {
+            "The retail player-spell CAF charts could not be decoded.")) {
         return false;
     }
 
@@ -63,13 +77,19 @@ bool testRetailAction(
             : 0.0;
     osf::PlayerSpellActionController action;
     osf::PlayerSpellActionEvent event;
+    const std::int32_t target_character_number =
+        osf::playerSpellRequiresCharacterTarget(spell)
+            ? 14000316
+            : -1;
     if (!check(
             marker >= 0 &&
                 std::abs(speed - expected_speed) < 0.000001 &&
                 action.start(
                     spell_action,
                     spell,
-                    14000316,
+                    target_character_number,
+                    400,
+                    200,
                     5,
                     tables.find(20),
                     timing,
@@ -77,7 +97,10 @@ bool testRetailAction(
                 event.cast_due &&
                 event.action == spell_action &&
                 event.spell == spell &&
-                event.target_character_number == 14000316 &&
+                event.target_character_number ==
+                    target_character_number &&
+                event.aim_world_x == 400 &&
+                event.aim_world_y == 200 &&
                 event.effect_delay ==
                     static_cast<std::int32_t>(
                         std::trunc(
@@ -85,7 +108,7 @@ bool testRetailAction(
                             speed)) &&
                 action.animationChart() == first_chart &&
                 action.animationFrame() == 0,
-            "The targeted spell did not enter its action with the retail "
+            "The spell did not enter its action with the retail "
             "speed or effect delay.")) {
         return false;
     }
@@ -127,13 +150,8 @@ bool testRetailAction(
 bool testRetailPacket(
     const osf::TableDatabase& tables,
     std::int32_t spell,
-    std::int32_t effect_number,
-    std::int32_t packet_subtype,
-    std::int32_t impact_effect,
-    std::int32_t target_mask,
-    bool projectile,
-    bool physical_defense) {
-    osf::PlayerTargetedSpellCastInput input;
+    const ExpectedSpellCast& expected) {
+    osf::PlayerSpellCastInput input;
     input.stats.source_character_number = 0;
     input.stats.player_level = 7;
     input.stats.magical_attack = 12;
@@ -150,14 +168,18 @@ bool testRetailPacket(
     }
     input.parameters.effective_level = 1;
     input.parameters.effect_value = 40;
-    input.target_character_number = 14000316;
+    input.target_character_number =
+        expected.requires_target ? 14000316 : -1;
     input.source_position = {100, 200};
     input.source_judgement = {-80, -80, 79, 79};
-    input.target_position = {400, 200};
+    input.target_position =
+        expected.requires_target
+            ? osf::WorldPosition{400, 200}
+            : osf::WorldPosition{400, 500};
     input.effect_delay = 5;
 
     const osf::CombatEffectSpawnRequest request =
-        osf::buildPlayerTargetedSpellCast(
+        osf::buildPlayerSpellCast(
             spell, input, tables);
     const osf::TableData* hit_table = tables.find(18);
     const std::int32_t expected_hit =
@@ -166,41 +188,53 @@ bool testRetailPacket(
             : -1;
     const bool passed =
         request.valid &&
-            request.effect_number == effect_number &&
+            request.effect_number ==
+                expected.effect_number &&
             request.owner_kind == 1 &&
             request.source_character_number == 0 &&
-            request.target_kind == target_mask &&
-            request.target_identifier == 14000316 &&
+            request.target_kind ==
+                expected.target_mask &&
+            request.target_identifier ==
+                (expected.requires_target
+                     ? 14000316
+                     : -1) &&
             request.constructor_value_6 ==
-                (projectile
+                (expected.use_table_travel_speed
                      ? tables.find(35)->value(spell, 0)
                      : 0) &&
             request.constructor_value_7 ==
-                (projectile ? 200 : 0) &&
+                (expected.use_table_travel_speed
+                     ? 200
+                     : 0) &&
             request.constructor_value_12 == 5 &&
             request.constructor_value_17 ==
-                (projectile ? 0 : 1) &&
+                (expected.constructor_uses_level
+                     ? 1
+                     : 0) &&
             request.constructor_value_22 ==
                 tables.find(21)->value(spell, 0) &&
             std::abs(request.direction_radians) < 0.000001 &&
             request.has_explicit_origin ==
-                !projectile &&
+                expected.use_explicit_origin &&
             (!request.has_explicit_origin ||
              (request.origin.x == 100 &&
               request.origin.y == 200)) &&
             request.has_source_judgement ==
-                projectile &&
+                expected.use_source_judgement &&
             (!request.has_source_judgement ||
              request.source_judgement.left == -80) &&
             request.has_packet &&
             request.packet[0] == 0 &&
             request.packet[1] == 3 &&
             request.packet[2] == 0 &&
-            request.packet[3] == packet_subtype &&
+            request.packet[3] ==
+                expected.packet_subtype &&
             request.packet[4] ==
                 input.parameters.effect_value + 12 &&
             request.packet[5] ==
-                (physical_defense ? 11 : 13) &&
+                (expected.use_physical_defense
+                     ? 11
+                     : 13) &&
             request.packet[6] == 1 &&
             request.packet[13] == 8 &&
             request.packet[14] == 100 &&
@@ -208,7 +242,8 @@ bool testRetailPacket(
             request.packet[31] == 7 &&
             request.packet[32] ==
                 tables.find(19)->value(spell, 0) &&
-            request.packet[34] == impact_effect &&
+            request.packet[34] ==
+                expected.impact_effect &&
             request.packet[35] == 8 &&
             request.packet[36] ==
                 expected_hit + 14 &&
@@ -235,7 +270,7 @@ bool testRetailPacket(
             << " effect=" << request.effect_number
             << " c6=" << request.constructor_value_6
             << '/'
-            << (projectile
+            << (expected.use_table_travel_speed
                     ? tables.find(35)->value(spell, 0)
                     : 0)
             << " c7=" << request.constructor_value_7
@@ -289,7 +324,7 @@ bool testRetailPacket(
     }
     return check(
         passed,
-        "The family-zero targeted-spell packet or controller arguments "
+        "The player-spell packet or controller arguments "
         "differ from its retail action.");
 }
 
@@ -458,7 +493,7 @@ bool testShippedWorldCast(
         if (current_target == world.enemies().end()) {
             applied_damage = true;
         } else {
-            osf::PlayerTargetedSpellCastInput contact_input;
+            osf::PlayerSpellCastInput contact_input;
             contact_input.stats.source_character_number = 0;
             contact_input.stats.player_level = 1;
             contact_input.stats.magical_attack = 10;
@@ -479,7 +514,7 @@ bool testShippedWorldCast(
             contact_input.target_position =
                 current_target->position();
             osf::CombatEffectSpawnRequest contact =
-                osf::buildPlayerTargetedSpellCast(
+                osf::buildPlayerSpellCast(
                     spell,
                     contact_input,
                     world.parameterTables());
@@ -565,6 +600,305 @@ bool testShippedWorldCast(
         "damage, and award one practice point.");
 }
 
+bool testShippedHellFireCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 4;
+    osf::PlayerLoadRequest player;
+    player.name = "HellFireLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                player,
+                {3000507, 3, 0},
+                &error),
+            "The shipped Hell Fire scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell),
+            "The live Hell Fire fixture could not select the spell.")) {
+        return false;
+    }
+
+    const osf::EnemyActor* pointed_enemy = nullptr;
+    std::int32_t pointer_x = -1;
+    std::int32_t pointer_y = -1;
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        const osf::ScreenPosition projected =
+            osf::calculateRealPosition(enemy.position());
+        const std::int32_t anchor_x =
+            projected.x - world.cameraScreenX();
+        const std::int32_t anchor_y =
+            projected.y - world.cameraScreenY();
+        for (std::int32_t y =
+                 std::max(0, anchor_y - 140);
+             y < std::min(400, anchor_y + 30) &&
+             pointer_x < 0;
+             ++y) {
+            for (std::int32_t x =
+                     std::max(0, anchor_x - 80);
+                 x < std::min(640, anchor_x + 81);
+                 ++x) {
+                world.updatePointerHover(x, y);
+                if (world.hoveredEnemyId() == enemy.id()) {
+                    pointed_enemy = &enemy;
+                    pointer_x = x;
+                    pointer_y = y;
+                    break;
+                }
+            }
+        }
+        if (pointed_enemy) {
+            break;
+        }
+    }
+    if (!check(
+            pointed_enemy && pointer_x >= 0,
+            "No shipped enemy could prove Hell Fire's ground command.")) {
+        return false;
+    }
+
+    const std::int32_t target_character_number =
+        pointed_enemy->characterNumber();
+    const std::int32_t target_life_before =
+        pointed_enemy->currentLife();
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    const osf::WorldPosition aimed_position =
+        osf::calculateWorldPosition({
+            world.cameraScreenX() + pointer_x,
+            world.cameraScreenY() + pointer_y,
+        });
+    const std::int32_t expected_direction =
+        osf::retailDirectionForVector(
+            aimed_position.x - world.playerWorldX(),
+            aimed_position.y - world.playerWorldY());
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    if (!check(
+            world.commandPlayerMagic(pointer_x, pointer_y) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerDirection() ==
+                    expected_direction &&
+                world.playerMotion() ==
+                    osf::PlayerMotion::casting &&
+                world.playerAnimationChart() == 13 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                world.runtimeEffectControllerCount() == 1,
+            "A pointed enemy incorrectly diverted Hell Fire from the "
+            "retail ground/self command.")) {
+        return false;
+    }
+
+    bool saw_warning = false;
+    bool saw_first_burst = false;
+    bool saw_second_burst = false;
+    bool saw_first_audio = false;
+    bool saw_second_audio = false;
+    bool applied_damage = false;
+    for (std::int32_t update = 0; update < 80; ++update) {
+        world.update();
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        saw_first_audio =
+            saw_first_audio ||
+            std::find(audio.begin(), audio.end(), 29) !=
+                audio.end();
+        saw_second_audio =
+            saw_second_audio ||
+            std::find(audio.begin(), audio.end(), 23) !=
+                audio.end();
+        for (const osf::RuntimeEffectActor& actor :
+             world.runtimeEffects()) {
+            saw_warning =
+                saw_warning ||
+                actor.resourceId() == 10000002;
+            saw_first_burst =
+                saw_first_burst ||
+                (actor.resourceId() == 10000000 &&
+                 actor.animationChart() == 1);
+            saw_second_burst =
+                saw_second_burst ||
+                (actor.resourceId() == 10000000 &&
+                 actor.animationChart() == 0);
+        }
+        const auto target = std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [target_character_number](
+                const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() ==
+                    target_character_number;
+            });
+        applied_damage =
+            applied_damage ||
+            target == world.enemies().end() ||
+            target->currentLife() < target_life_before;
+    }
+
+    if (!applied_damage ||
+        world.playerMagic().experience(spell) < 1) {
+        const auto target = std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [target_character_number](
+                const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() ==
+                    target_character_number;
+            });
+        if (target != world.enemies().end()) {
+            osf::PlayerSpellCastInput input;
+            input.stats.source_character_number = 0;
+            input.stats.player_level = 1;
+            input.stats.magical_attack = 10;
+            input.stats.physical_defense = 10;
+            input.stats.magical_defense = 10;
+            input.stats.magical_hit_rate = 40;
+            input.parameters.effective_level = 1;
+            input.parameters.effect_value = 40;
+            input.target_character_number = -1;
+            input.source_position = target->position();
+            input.source_judgement = {};
+            input.target_position = target->position();
+            input.effect_delay = 4;
+            osf::CombatEffectSpawnRequest contact =
+                osf::buildPlayerSpellCast(
+                    spell,
+                    input,
+                    world.parameterTables());
+            contact.owner_kind = 0;
+            contact.has_explicit_origin = true;
+            contact.origin = target->position();
+            contact.packet.write(36, 100000);
+            world.queueCombatEffect(contact);
+            for (std::int32_t update = 0;
+                 update < 8 && !applied_damage;
+                 ++update) {
+                world.update();
+                world.takeAudioSamples();
+                const auto current = std::find_if(
+                    world.enemies().begin(),
+                    world.enemies().end(),
+                    [target_character_number](
+                        const osf::EnemyActor& enemy) {
+                        return enemy.characterNumber() ==
+                            target_character_number;
+                    });
+                applied_damage =
+                    current == world.enemies().end() ||
+                    current->currentLife() <
+                        target_life_before;
+            }
+        }
+    }
+
+    return check(
+        saw_warning &&
+            saw_first_burst &&
+            saw_second_burst &&
+            saw_first_audio &&
+            saw_second_audio &&
+            applied_damage &&
+            world.playerMagic().experience(spell) >= 1,
+        "The shipped Hell Fire command did not preserve its warning, "
+        "burst layers, sounds, area contact, or practice award.");
+}
+
+bool testHellFireInsufficientMana(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 4;
+    osf::PlayerLoadRequest player;
+    player.name = "HellFireMana";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root, player, &error),
+            "Remote Town could not prepare the Hell Fire MP check.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!world.playerMagic().selectSpell(spell)) {
+        return false;
+    }
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    while (world.playerData().currentMana() >=
+           parameters.mana_cost) {
+        if (!check(
+                world.commandPlayerMagic(400, 240) &&
+                    world.playerSpellActive() &&
+                    world.playerSpellTargetCharacterNumber() == -1,
+                "A valid Hell Fire MP-draining command was rejected.")) {
+            return false;
+        }
+        for (std::int32_t update = 0;
+             update < 100 && world.playerSpellActive();
+             ++update) {
+            world.update();
+            world.takeAudioSamples();
+        }
+        if (!check(
+                !world.playerSpellActive(),
+                "Hell Fire did not finish before the next MP check.")) {
+            return false;
+        }
+        for (std::int32_t update = 0;
+             update < 40 &&
+             world.runtimeEffectControllerCount() != 0;
+             ++update) {
+            world.update();
+            world.takeAudioSamples();
+        }
+    }
+
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    const std::size_t controllers_before =
+        world.runtimeEffectControllerCount();
+    return check(
+        mana_before < parameters.mana_cost &&
+            world.commandPlayerMagic(400, 240) &&
+            !world.playerSpellActive() &&
+            world.playerData().currentMana() ==
+                mana_before &&
+            world.runtimeEffectControllerCount() ==
+                controllers_before,
+        "Hell Fire's insufficient-MP ground command created an "
+        "action, effect, or mana change.");
+}
+
 }  // namespace
 
 int main() {
@@ -602,12 +936,10 @@ int main() {
         !testRetailPacket(
             tables,
             1,
-            10001,
-            0,
-            20000,
-            0x14,
-            true,
-            false) ||
+            {
+                10001, 0, 20000, 0x14,
+                true, true, false, true, false, false,
+            }) ||
         !testShippedWorldCast(
             game_root,
             1,
@@ -624,12 +956,10 @@ int main() {
         !testRetailPacket(
             tables,
             2,
-            10002,
-            1,
-            21013,
-            0x14,
-            true,
-            false) ||
+            {
+                10002, 1, 21013, 0x14,
+                true, true, false, true, false, false,
+            }) ||
         !testShippedWorldCast(
             game_root,
             2,
@@ -646,18 +976,32 @@ int main() {
         !testRetailPacket(
             tables,
             3,
-            10003,
-            0,
-            20005,
-            4,
-            false,
-            true) ||
+            {
+                10003, 0, 20005, 4,
+                true, false, true, false, true, true,
+            }) ||
         !testShippedWorldCast(
             game_root,
             3,
             11,
             10000030,
-            21)) {
+            21) ||
+        !testRetailAction(
+            animation,
+            tables,
+            4,
+            osf::PlayerSpellAction::hell_fire,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            4,
+            {
+                10004, 0, 20001, 4,
+                false, false, false, true, false, false,
+            }) ||
+        !testShippedHellFireCast(game_root) ||
+        !testHellFireInsufficientMana(game_root)) {
         return 1;
     }
 #endif
