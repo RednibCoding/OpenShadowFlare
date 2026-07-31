@@ -141,6 +141,18 @@ Each spell has:
 - Effect of Mine (damage)
 - Number of Mines (available)
 - Effect of Stamina Medicine (+%)
+
+## Player Death and Recovery
+
+Without a revival item, lethal damage selects player action 5. Retail locks
+ordinary input, plays animation chart 4 in direction 8, and holds its final
+frame for 120 game updates. It then returns the hero to the current scenario
+entry with the transition's revive flag set. The revive reset fills both HP
+and MP to their current maximums and clears the death action.
+
+This means death is not a normal state that can be saved from the settings
+menu. A zero-life save produced by an older portable build is an invalid
+state, not ordinary retail save behavior.
 - Effect of Mental Medicine (+%)
 
 ## Attack Modes

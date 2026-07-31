@@ -255,6 +255,13 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
                 maximum,
                 EnemyTargetLifeRequirement::living);
         };
+    const bool ai_active =
+        findEnemyTargetInRange(
+            targets,
+            0,
+            kRetailEnemyActivationDistance,
+            EnemyTargetLifeRequirement::living)
+            .found;
     const EnemyDefaultTargetSearch default_target =
         [&targets] {
             return findDefaultEnemyTarget(
@@ -294,6 +301,7 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
         &blockers,
         &parameter_tables_,
         &item_random_,
+        ai_active,
         target_in_range,
         default_target,
         direct_target,

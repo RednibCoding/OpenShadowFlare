@@ -8,7 +8,6 @@ namespace osf {
 
 enum class GameplayPhase {
     loading,
-    scenario_loading,
     world,
 };
 
@@ -63,8 +62,6 @@ public:
 
     void enter();
     void leave();
-    GameplayFrameResult beginScenarioLoading();
-    GameplayFrameResult finishScenarioLoading();
     GameplayFrameResult update(
         const GameplayFrameInput& input = {});
 

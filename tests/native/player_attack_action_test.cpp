@@ -7,6 +7,7 @@
 #include "world/player_attack_action.hpp"
 #include "world/player_attack_target.hpp"
 #include "world/player_data.hpp"
+#include "world/player_voice.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -41,7 +42,11 @@ bool testActionSelectionAndAudio() {
             osf::retailPlayerAttackAction(nullptr) ==
                     osf::PlayerAttackAction::basic &&
                 osf::retailItemAttackSound(nullptr) == 1 &&
-                osf::retailItemAttackSound(&weapon) == 1,
+                osf::retailItemAttackSound(&weapon) == 1 &&
+                osf::retailPlayerAttackVoiceSample(0) == 99 &&
+                osf::retailPlayerAttackVoiceSample(1) == 96 &&
+                osf::retailPlayerDeathVoiceSample(0) == 14 &&
+                osf::retailPlayerDeathVoiceSample(1) == 13,
             "The empty-hand action or light attack sound differs.")) {
         return false;
     }
@@ -244,6 +249,54 @@ bool testPlayerMovementLock(
         "The player did not unlock cleanly after attack recovery.");
 }
 
+bool testRetailDeathHold(
+    const osf::gapi::CafAnimation& animation) {
+    const std::int32_t death_frames =
+        animation.charts()[4].directions[8].frame_count;
+    if (!check(
+            death_frames > 0,
+            "The retail death chart has no frames.")) {
+        return false;
+    }
+
+    osf::PlayerActor player;
+    player.reset({100, 200}, 1, 5);
+    player.applyDamagePresentation({
+        5, 0, 1, 0, 0, false, 0, 0.0, 1, 4,
+    });
+    osf::GroundMap ground;
+    osf::ObjectMap objects;
+    std::int32_t death_voice_requests = 0;
+    for (std::int32_t update = 0;
+         update < death_frames + 119;
+         ++update) {
+        player.update(
+            ground, objects, nullptr, -1, &animation);
+        if (player.takeDeathVoiceRequest()) {
+            ++death_voice_requests;
+        }
+        if (player.takeRespawnRequest()) {
+            return check(
+                false,
+                "The player requested revival before the retail "
+                "120-update final-frame hold completed.");
+        }
+    }
+    player.update(ground, objects, nullptr, -1, &animation);
+    if (player.takeDeathVoiceRequest()) {
+        ++death_voice_requests;
+    }
+    return check(
+        player.motion() == osf::PlayerMotion::defeated &&
+            player.animationChart() == 4 &&
+            player.animationFrame() == death_frames - 1 &&
+            death_voice_requests == 1 &&
+            player.takeRespawnRequest() &&
+            !player.takeRespawnRequest(),
+        "The player death action did not publish one revival request "
+        "after the retail final-frame hold.");
+}
+
 bool testRetailAssetsAndSpeedTable() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path source_root =
@@ -288,6 +341,9 @@ bool testRetailAssetsAndSpeedTable() {
         return false;
     }
     if (!testPlayerMovementLock(animation)) {
+        return false;
+    }
+    if (!testRetailDeathHold(animation)) {
         return false;
     }
     osf::gapi::CafAnimation female_animation;

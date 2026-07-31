@@ -145,6 +145,12 @@ retail loot-level field and Table 31's fixed-item rule, so early enemies no
 longer select equipment merely because its required-level field happened to
 fit a misread table column.
 
+Player death also completes its retail recovery path. The last death frame
+stays on screen for 120 game updates, ordinary menus remain locked, and the
+hero then returns to the current scenario entry with full life and mana. Older
+portable saves which accidentally stored a zero-life hero are repaired by
+that same revive reset when the world loads.
+
 Outdoor chests and crates now complete their original scenario-script path:
 the closed object is hidden, its open partner appears, the positional opening
 sound plays, and opcode 24 creates the authored Table 30 loot. Level gains
@@ -269,8 +275,11 @@ the five ordinary slots and four accessory cells. Category-three items can
 also be carried in the HUD's staggered two-row belt; keys `1` through `8` use
 those pockets. A fresh hero starts with the original Leather Cloth, four
 Tablets and four Capsules in both the backpack and belt, and five mines.
-Inventory movement, equipment, world drops, and medicine use play the
-corresponding retail effects. `X` opens the separate
+Right-clicking a Tablet or Capsule in either owner uses it when the matching
+life or mana pool is not already full. Inventory movement, equipment, world
+drops, and medicine use play the corresponding retail effects. A ground item
+that cannot fit in the backpack repeats its original bounce and landing sound
+instead of silently ignoring the pickup. `X` opens the separate
 9-by-10 special-item panel on the left and shifts the live world view to the
 right, just like the original. Hovering a backpack, equipped, or special item
 opens the small retail information overlay after its original short delay.
@@ -285,14 +294,20 @@ being carried by the pointer.
 Gameplay now owns a real `PlayerData` record rather than storing level on the
 movement actor. The portable `RKC_RPG_TABLE` library decodes `Table.Tbd`, and
 new male and female characters receive the thirteen values from retail tables
-901 and 900. A selected save contributes its complete plain 0x160-byte player
-record. The in-game save actions also decode the retail item stream and
+900 and 901. Gender keeps the original saved encoding (`0` female, `1` male)
+all the way from character selection through resources and voice playback. A
+selected save contributes its complete plain 0x160-byte player record. The
+in-game save actions also decode the retail item stream and
 round-trip equipped items, the backpack, and the belt without replacing the
-unknown equipment, special-item, or trailing state in an original save. When
+unknown equipment, special-item, or trailing state in an original save. The
+three retail scenario, transport, and quest/conversation flag arrays are
+restored and rewritten as well, and the selected walk/run mode survives a
+portable save/load. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
-Game. Scenario position, quests, mines, companions, and the remaining dynamic
-state are still pending.
+Game. Confirmed return-to-title and exit actions still complete when a map,
+warehouse, special-item, or inventory panel is open. Scenario position,
+mines, companions, and the remaining dynamic state are still pending.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

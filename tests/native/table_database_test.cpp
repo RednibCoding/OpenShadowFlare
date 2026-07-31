@@ -39,18 +39,22 @@ int main() {
         return 1;
     }
 
-    const osf::TableData* female = tables.find(900);
-    const osf::TableData* male = tables.find(901);
+    const osf::TableData* male = tables.find(900);
+    const osf::TableData* female = tables.find(901);
     const osf::TableData* transport = tables.find(40);
+    const osf::TableData* effect_waves = tables.find(205);
     if (!check(
             tables.tables().size() == 138 &&
-                female && male && transport &&
+                female && male && transport && effect_waves &&
                 female->rowCount() == 13 &&
                 female->columnCount() == 5 &&
                 male->rowCount() == 13 &&
                 male->columnCount() == 5 &&
                 transport->rowCount() == 51 &&
                 transport->columnCount() == 3 &&
+                effect_waves->rowCount() == 1 &&
+                effect_waves->columnCount() == 30 &&
+                effect_waves->value(0, 19) == 5 &&
                 transport->text(0, 0) == "Remote Town" &&
                 transport->value(0, 1) == 0 &&
                 transport->value(0, 2) == 50,
@@ -60,12 +64,12 @@ int main() {
     if (!check(
             female->value(0, 0) == 100 &&
                 female->value(1, 0) == 128 &&
-                female->value(2, 0) == 150 &&
-                female->value(3, 0) == 150 &&
+                female->value(2, 0) == 140 &&
+                female->value(3, 0) == 160 &&
                 male->value(0, 0) == 100 &&
                 male->value(1, 0) == 128 &&
-                male->value(2, 0) == 140 &&
-                male->value(3, 0) == 160,
+                male->value(2, 0) == 150 &&
+                male->value(3, 0) == 150,
             "The retail new-character parameters changed.")) {
         return 1;
     }

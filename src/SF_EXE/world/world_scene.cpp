@@ -2,6 +2,7 @@
 #include "enemy_death_rewards.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
+#include "player_voice.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -76,6 +77,7 @@ void WorldScene::clear() {
     parameter_tables_.clear();
     ai_control_database_.clear();
     script_persistent_values_.clear();
+    scenario_flags_.clear();
     data_root_.clear();
     item_world_resources_.clear();
     item_random_.seed(1);
@@ -182,6 +184,15 @@ WorldScene::aiControlDatabase() const {
     return ai_control_database_;
 }
 
+RetailSaveProgress WorldScene::retailSaveProgress() const {
+    return {
+        scenario_flags_,
+        transports_.enabledFlags(),
+        quests_.states(),
+        player_.movementPace() == MovementPace::run,
+    };
+}
+
 PlayerEquipment& WorldScene::playerEquipment() {
     return player_equipment_;
 }
@@ -223,11 +234,20 @@ const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
 
-BeltItemUseResult WorldScene::usePlayerBeltPocket(
+PlayerItemUseResult WorldScene::usePlayerBeltPocket(
     std::int32_t pocket) {
     return player_item_controller_.useBeltPocket(
         pocket,
         player_belt_,
+        item_database_,
+        player_data_);
+}
+
+PlayerItemUseResult WorldScene::usePlayerInventoryItem(
+    std::int32_t item_index) {
+    return player_item_controller_.useInventoryItem(
+        item_index,
+        player_inventory_,
         item_database_,
         player_data_);
 }
@@ -285,12 +305,7 @@ void WorldScene::togglePlayerRun() {
 
 void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
-    if (level_up_notice_.counter > 0) {
-        --level_up_notice_.counter;
-        if (level_up_notice_.counter == 0) {
-            level_up_notice_.text.clear();
-        }
-    }
+    level_up_notice_.update();
     std::vector<EnemyActor>& live_enemies =
         scenario_world_.enemies();
     live_enemies.erase(
@@ -455,6 +470,29 @@ void WorldScene::update() {
             playerAttackSpeedTier(),
             &player_visual_.animation());
         handlePlayerAttackEvent(player_.takeAttackEvent());
+        const std::int32_t footstep_sample =
+            player_.takeFootstepSample();
+        if (footstep_sample >= 0) {
+            pending_audio_samples_.push_back(
+                footstep_sample);
+        }
+        if (player_.takeDeathVoiceRequest()) {
+            pending_audio_samples_.push_back(
+                retailPlayerDeathVoiceSample(
+                    player_data_.gender()));
+        }
+        if (player_.takeRespawnRequest()) {
+            player_data_.restoreForRespawn();
+            const ScenarioTravelResult respawn =
+                transitionScenario({
+                    scenario_world_.id(),
+                    scenario_world_.entryValue(),
+                    scenario_world_.localPlayerNumber(),
+                });
+            if (respawn != ScenarioTravelResult::failed) {
+                return;
+            }
+        }
         scenario_world_.mapExploration().reveal(
             player_.position());
         actor_blockers.push_back({
@@ -601,6 +639,10 @@ std::vector<std::int32_t> WorldScene::takeAudioSamples() {
 const PlayerLevelUpNotice&
 WorldScene::levelUpNotice() const {
     return level_up_notice_;
+}
+
+void WorldScene::dismissLevelUpNotice() {
+    level_up_notice_.dismiss();
 }
 
 std::int32_t WorldScene::playerWorldX() const {

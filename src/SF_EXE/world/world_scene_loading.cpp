@@ -58,6 +58,8 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    quests_.initialize(missions_.missions().size());
+    bool saved_running = false;
     if (player_request.source ==
         PlayerDataSource::new_character) {
         if (!initializeRetailNewPlayerLoadout(
@@ -91,18 +93,19 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
-        std::vector<std::int32_t> transport_flags =
-            transports_.enabledFlags();
-        if (!restoreRetailTransportFlags(
-                payload,
-                owned_items_end,
-                transport_flags,
-                error)) {
+        RetailSaveProgress progress{
+            {},
+            transports_.enabledFlags(),
+            quests_.states(),
+            false,
+        };
+        if (!restoreRetailProgress(
+                payload, owned_items_end, progress, error)) {
             clear();
             return false;
         }
         if (!transports_.restoreEnabledFlags(
-                transport_flags)) {
+                progress.transport_flags)) {
             setError(
                 error,
                 "The saved transport state does not match the "
@@ -110,6 +113,9 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
+        scenario_flags_ = std::move(progress.scenario_flags);
+        quests_.restore(progress.quest_flags);
+        saved_running = progress.running;
     }
 
     if (!item_inventory_patterns_.load(data_root, error) ||
@@ -121,8 +127,20 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    // Retail never reaches a normal save action while dead: its locked
+    // death action completes a revive transition first. Repair saves made
+    // by older portable builds that could persist that impossible state.
+    if (player_request.source ==
+            PlayerDataSource::retail_save &&
+        player_data_.currentLife() <= 0) {
+        player_data_.restoreForRespawn();
+    }
+
     const char* player_directory =
-        player_data_.gender() == 1 ? "Female" : "Male";
+        player_data_.gender() ==
+                playerGenderValue(PlayerGender::male)
+            ? "Male"
+            : "Female";
     const std::filesystem::path player_root =
         data_root / "Player" / player_directory;
     std::string player_error;
@@ -172,6 +190,8 @@ bool WorldScene::loadInitialScenario(
         },
         scenario_world_.entry().direction,
         player_data_.walkingSpeedTier());
+    player_.setMovementPace(
+        saved_running ? MovementPace::run : MovementPace::walk);
     scenario_world_.mapExploration().reveal(
         player_.position());
     has_player_ = true;
@@ -218,6 +238,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
         runtime_effects_.clear();
         miss_effects_.clear();
         pointer_.clearSelection();
+        scenario_world_.setEntry(
+            start.entry_value, *entry);
         player_.relocate(
             {entry->world_x, entry->world_y},
             entry->direction);

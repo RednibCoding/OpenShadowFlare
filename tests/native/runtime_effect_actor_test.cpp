@@ -146,7 +146,8 @@ bool testSourceAnimationLifetime() {
     controller.initialize(
         controllerRequest(10001, 4));
     const auto controller_update =
-        controller.update({true, {100, 200}});
+        controller.update({
+            {true, {100, 200}}, nullptr, {}});
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000012, visual)) {
@@ -204,7 +205,8 @@ bool testForwardMovementAndInterpolation() {
     controller.initialize(
         controllerRequest(10001, 0));
     const auto controller_update =
-        controller.update({true, {100, 200}});
+        controller.update({
+            {true, {100, 200}}, nullptr, {}});
 
     osf::EffectVisualResource visual;
     if (!loadVisual(10000010, visual)) {
@@ -254,7 +256,8 @@ bool testEnvironmentCollisionAndExpiry() {
     controller.initialize(
         controllerRequest(10001, 0));
     auto controller_update =
-        controller.update({true, {-180, 0}});
+        controller.update({
+            {true, {-180, 0}}, nullptr, {}});
     osf::RuntimeEffectActorSpawnRequest request =
         controller_update.actor_spawns[1];
     request.environment_audio = {3, 77};

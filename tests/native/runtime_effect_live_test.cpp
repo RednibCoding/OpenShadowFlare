@@ -421,7 +421,10 @@ bool testShippedLiveProjectile(
     return check(
         loaded &&
             restored.playerData().currentLife() ==
-                damaged_life &&
+                (damaged_life > 0
+                     ? damaged_life
+                     : restored.playerData()
+                           .baseMaximumLife()) &&
             sameItems(
                 restored.playerInventory().items(),
                 inventory_before) &&
@@ -434,8 +437,154 @@ bool testShippedLiveProjectile(
                 *restored.playerEquipment().item(
                     osf::EquipmentSlot::body),
                 body_copy),
-        "Saving after the live projectile discarded damage or "
-        "owned items.");
+        "Saving after the live projectile discarded live damage, "
+        "dead-state recovery, or owned items.");
+}
+
+bool testShippedLiveTypeThree(
+    const std::filesystem::path& data_root) {
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" / "Parameter" /
+                    "Table.Tbd",
+                &error),
+            "The type-three parameter tables could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "EffectRing";
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {10001, 0, 0},
+                &error),
+            "The shipped Plasma Bat scenario could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto source = std::find_if(
+        world.enemies().begin(),
+        world.enemies().end(),
+        [](const osf::EnemyActor& enemy) {
+            const auto& profile =
+                enemy.presentationProfile();
+            return profile.effect_type[0] == 3 &&
+                   profile.effect_subtype[0] == 20;
+        });
+    if (!check(
+            source != world.enemies().end(),
+            "Scenario 00010001 no longer contains its shipped "
+            "type-three Plasma Bat.")) {
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        shippedEffectRequest(world, *source, tables);
+    const osf::WorldPosition player_position{
+        world.playerWorldX(),
+        world.playerWorldY(),
+    };
+    request.direction_radians = 0.0;
+    request.has_explicit_origin = true;
+    request.origin = {
+        player_position.x - 250,
+        player_position.y,
+    };
+    request.packet.write(36, 100000);
+    const std::int32_t life_before =
+        world.playerData().currentLife();
+    const std::vector<osf::InventoryItem>
+        inventory_before =
+            world.playerInventory().items();
+    const std::vector<osf::InventoryItem> belt_before =
+        world.playerBelt().items();
+    if (!check(
+            request.valid &&
+                request.effect_number == 10003 &&
+                request.constructor_value_17 == 20 &&
+                world.runtimeEffectControllerCount() == 0,
+            "The shipped Plasma Bat did not resolve its type-three "
+            "controller request.")) {
+        return false;
+    }
+
+    world.queueCombatEffect(request);
+    world.update();
+    const std::vector<std::int32_t> launch_audio =
+        world.takeAudioSamples();
+    if (!check(
+            world.runtimeEffectControllerCount() == 1 &&
+                world.runtimeEffects().size() == 3 &&
+                containsSample(launch_audio, 21) &&
+                world.runtimeEffects()[0].resourceId() ==
+                    10000030 &&
+                world.runtimeEffects()[0].animationChart() >= 0 &&
+                world.runtimeEffects()[0].animationChart() < 4 &&
+                world.runtimeEffects()[0].hasPacket() &&
+                world.runtimeEffects()[1].resourceId() ==
+                    10000031 &&
+                world.runtimeEffects()[1].hasPacket() &&
+                world.runtimeEffects()[2].resourceId() ==
+                    10000032 &&
+                world.runtimeEffects()[2].hasPacket(),
+            "The live type-three controller did not create its "
+            "three-layer first wave and sample 21.")) {
+        return false;
+    }
+
+    world.update();
+    world.takeAudioSamples();
+    RecordingBackend backend;
+    osf::renderWorldGeometry(backend, world);
+    const bool rendered =
+        std::any_of(
+            world.runtimeEffects().begin(),
+            world.runtimeEffects().end(),
+            [&backend](const osf::RuntimeEffectActor& actor) {
+                return std::any_of(
+                    backend.patterns.begin(),
+                    backend.patterns.end(),
+                    [&actor](
+                        const RecordingBackend::PatternCall&
+                            call) {
+                        return call.image ==
+                               &actor.patterns();
+                    });
+            });
+
+    if (!check(
+            rendered &&
+                world.playerData().currentLife() <
+                    life_before &&
+                sameItems(
+                    world.playerInventory().items(),
+                    inventory_before) &&
+                sameItems(
+                    world.playerBelt().items(),
+                    belt_before),
+            "The live type-three wave was not rendered, received "
+            "as damage, or preserved item ownership.")) {
+        return false;
+    }
+
+    for (std::int32_t update = 2;
+         update < 20;
+         ++update) {
+        world.update();
+        world.takeAudioSamples();
+    }
+    return check(
+        world.runtimeEffectControllerCount() == 0,
+        "The shipped type-three controller did not expire after "
+        "Table 205's twenty updates.");
 }
 
 bool testLiveMissPresentation(
@@ -538,6 +687,7 @@ int main() {
     }
     return testMissBounceAndFade(data_root) &&
                    testShippedLiveProjectile(data_root) &&
+                   testShippedLiveTypeThree(data_root) &&
                    testLiveMissPresentation(data_root)
                ? 0
                : 1;

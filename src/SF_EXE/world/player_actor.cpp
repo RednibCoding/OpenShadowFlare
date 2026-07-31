@@ -84,6 +84,10 @@ void PlayerActor::reset(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    pending_footstep_sample_ = -1;
+    pending_death_voice_request_ = false;
+    respawn_requested_ = false;
+    pending_respawn_request_ = false;
     movement_controller_.reset();
     damage_presentation_ = {};
 }
@@ -106,6 +110,10 @@ void PlayerActor::relocate(
     previous_action_ = PlayerMotion::idle;
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    pending_footstep_sample_ = -1;
+    pending_death_voice_request_ = false;
+    respawn_requested_ = false;
+    pending_respawn_request_ = false;
     movement_controller_.reset();
     damage_presentation_ = {};
 }
@@ -205,6 +213,17 @@ void PlayerActor::toggleMovementPace() {
     }
 }
 
+void PlayerActor::setMovementPace(MovementPace pace) {
+    movement_pace_ = pace;
+    if (motion_ == PlayerMotion::walking ||
+        motion_ == PlayerMotion::running) {
+        motion_ =
+            movement_pace_ == MovementPace::run
+                ? PlayerMotion::running
+                : PlayerMotion::walking;
+    }
+}
+
 void PlayerActor::update(
     const GroundMap& ground,
     const ObjectMap& objects,
@@ -212,6 +231,7 @@ void PlayerActor::update(
     std::int32_t attack_speed_tier,
     const gapi::CafAnimation* animation) {
     previous_position_ = position_;
+    pending_footstep_sample_ = -1;
     if (damage_presentation_.action == 4) {
         constexpr std::int32_t kHitChart = 3;
         constexpr std::int32_t kHitDisplacement = 120;
@@ -291,6 +311,11 @@ void PlayerActor::update(
     if (damage_presentation_.action == 5) {
         constexpr std::int32_t kDeathChart = 4;
         constexpr std::int32_t kDeathDirection = 8;
+        if (damage_presentation_.counter == 0) {
+            // FUN_00435b60 plays the gender-specific voice before advancing
+            // the first frame of the locked death presentation.
+            pending_death_voice_request_ = true;
+        }
         damage_presentation_.action_lock = 1;
         motion_ = PlayerMotion::defeated;
         animation_chart_ = kDeathChart;
@@ -311,6 +336,13 @@ void PlayerActor::update(
             damage_presentation_.counter,
             count - 1);
         ++damage_presentation_.counter;
+        // FUN_00435b60 holds the final death frame for 120 updates before
+        // requesting a scenario-entry transition with revival enabled.
+        if (!respawn_requested_ &&
+            damage_presentation_.counter >= count + 120) {
+            respawn_requested_ = true;
+            pending_respawn_request_ = true;
+        }
         return;
     }
     if (attack_controller_.active()) {
@@ -347,6 +379,12 @@ void PlayerActor::update(
     animation_frame_ = animationFrameForSpeed(
         action_counter_, walking_speed_tier_);
     previous_action_ = moving_action;
+    const std::int32_t footstep_interval =
+        moving_action == PlayerMotion::running ? 8 : 12;
+    if (action_counter_ % footstep_interval == 0) {
+        // FUN_004351f0 and FUN_00435530 both play Voice00 sample zero.
+        pending_footstep_sample_ = 0;
+    }
 
     if (position_.x == destination_.x &&
         position_.y == destination_.y) {
@@ -437,6 +475,24 @@ PlayerAttackActionEvent PlayerActor::takeAttackEvent() {
     return event;
 }
 
+std::int32_t PlayerActor::takeFootstepSample() {
+    const std::int32_t sample = pending_footstep_sample_;
+    pending_footstep_sample_ = -1;
+    return sample;
+}
+
+bool PlayerActor::takeDeathVoiceRequest() {
+    const bool requested = pending_death_voice_request_;
+    pending_death_voice_request_ = false;
+    return requested;
+}
+
+bool PlayerActor::takeRespawnRequest() {
+    const bool requested = pending_respawn_request_;
+    pending_respawn_request_ = false;
+    return requested;
+}
+
 PlayerDamagePresentation
 PlayerActor::damagePresentation() const {
     PlayerDamagePresentation presentation =
@@ -472,6 +528,8 @@ void PlayerActor::applyDamagePresentation(
     movement_controller_.reset();
     attack_controller_.cancel();
     pending_attack_event_ = {};
+    respawn_requested_ = false;
+    pending_respawn_request_ = false;
     action_counter_ = 0;
     motion_ =
         presentation.action == 4

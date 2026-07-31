@@ -414,6 +414,8 @@ bool testLiveWorldMutationAndAudio() {
     osf::WorldScene world;
     osf::PlayerLoadRequest player;
     player.name = "Impact";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
     std::string error;
     if (!check(
             world.loadInitialScenario(
@@ -425,6 +427,23 @@ bool testLiveWorldMutationAndAudio() {
         std::cerr << error << '\n';
         return false;
     }
+    const osf::ItemDefinition* starter_sword =
+        world.itemDatabase().find(0, 0);
+    if (!check(
+            starter_sword &&
+                world.playerEquipment()
+                    .place(
+                        osf::EquipmentSlot::main_hand,
+                        osf::makeInventoryItem(
+                            *starter_sword),
+                        *starter_sword,
+                        world.playerData().level())
+                    .accepted,
+            "The live player-impact fixture could not equip its "
+            "retail starter sword.")) {
+        return false;
+    }
+    world.refreshPlayerAppearance();
 
     std::int32_t enemy_id = -1;
     osf::ScreenPosition pointer;
@@ -450,8 +469,8 @@ bool testLiveWorldMutationAndAudio() {
     const std::int32_t initial_life = enemyLife();
     bool hit = false;
     bool heard_hit = false;
-    bool saw_hit_effect = false;
-    bool hit_effect_owned_by_enemy = false;
+    bool saw_hit_splatter = false;
+    bool hit_splatter_owned_by_enemy = false;
     for (std::int32_t attempt = 0;
          attempt < 10 && !hit;
          ++attempt) {
@@ -490,18 +509,18 @@ bool testLiveWorldMutationAndAudio() {
             for (const osf::CombatEffectActor& effect :
                  world.combatEffects()) {
                 if (effect.effectNumber() < 21000 ||
-                    effect.effectNumber() > 21006) {
+                    effect.effectNumber() > 21003) {
                     continue;
                 }
-                if (!saw_hit_effect &&
+                if (!saw_hit_splatter &&
                     enemy_now != world.enemies().end()) {
-                    hit_effect_owned_by_enemy =
+                    hit_splatter_owned_by_enemy =
                         effect.position().x ==
                             enemy_now->position().x &&
                         effect.position().y ==
                             enemy_now->position().y;
                 }
-                saw_hit_effect = true;
+                saw_hit_splatter = true;
             }
             if (impact_seen &&
                 world.playerMotion() ==
@@ -511,15 +530,16 @@ bool testLiveWorldMutationAndAudio() {
         }
         hit = enemyLife() < initial_life;
     }
+    const std::int32_t final_life = enemyLife();
     return check(
         hit &&
             heard_hit &&
-            saw_hit_effect &&
-            hit_effect_owned_by_enemy &&
-            enemyLife() >= 0 &&
-            enemyLife() < initial_life,
+            saw_hit_splatter &&
+            hit_splatter_owned_by_enemy &&
+            final_life >= 0 &&
+            final_life < initial_life,
         "The live CAF impact did not mutate enemy life, own its "
-        "hit effect, and queue the retail post-hit sample.");
+        "ordinary splatter, and queue the retail post-hit sample.");
 #else
     return true;
 #endif

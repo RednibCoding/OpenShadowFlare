@@ -1034,6 +1034,7 @@ void renderWorld(
         renderer,
         world,
         font,
+        nullptr,
         camera_x,
         camera_y,
         interpolation);

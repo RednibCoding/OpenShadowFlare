@@ -206,11 +206,15 @@ bool testMovementAndAnimation() {
     player.moveTo({100, 0});
     for (std::int32_t frame = 0; frame < 5; ++frame) {
         player.update(ground, objects);
+        const std::int32_t footstep =
+            player.takeFootstepSample();
         if (player.animationChart() != 1 ||
-            player.animationFrame() != frame) {
+            player.animationFrame() != frame ||
+            footstep != (frame == 0 ? 0 : -1)) {
             return check(
                 false,
-                "Walking did not use retail CAF chart/frame timing.");
+                "Walking did not use retail CAF timing or its "
+                "first Voice00 footstep.");
         }
     }
     if (!check(
@@ -238,6 +242,38 @@ bool testMovementAndAnimation() {
         player.animationChart() == 0 &&
             player.animationFrame() == 0,
         "The player did not return to idle after arriving.");
+}
+
+bool testFootstepCadence() {
+    osf::GroundMap ground;
+    osf::ObjectMap objects;
+    osf::PlayerActor player;
+    player.reset({0, 0}, 1, 5);
+    player.moveTo({10000, 0});
+    std::vector<std::int32_t> walking_steps;
+    for (std::int32_t update = 0; update < 25; ++update) {
+        player.update(ground, objects);
+        if (player.takeFootstepSample() == 0) {
+            walking_steps.push_back(update);
+        }
+    }
+    player.reset({0, 0}, 1, 5);
+    player.toggleMovementPace();
+    player.moveTo({10000, 0});
+    std::vector<std::int32_t> running_steps;
+    for (std::int32_t update = 0; update < 17; ++update) {
+        player.update(ground, objects);
+        if (player.takeFootstepSample() == 0) {
+            running_steps.push_back(update);
+        }
+    }
+    return check(
+        walking_steps ==
+                std::vector<std::int32_t>({0, 12, 24}) &&
+            running_steps ==
+                std::vector<std::int32_t>({0, 8, 16}),
+        "Player footsteps differ from the retail 12-update walk "
+        "and 8-update run cadence.");
 }
 
 bool testWalkRunToggle() {
@@ -824,6 +860,7 @@ int main() {
         !testRetailRectangleDistance() ||
         !testRenderInterpolation() ||
         !testMovementAndAnimation() ||
+        !testFootstepCadence() ||
         !testWalkRunToggle() ||
         !testObjectJudgement() ||
         !testDiagonalContact() ||

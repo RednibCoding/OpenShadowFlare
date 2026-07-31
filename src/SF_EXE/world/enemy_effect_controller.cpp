@@ -2,6 +2,8 @@
 
 #include "actor_direction.hpp"
 #include "core/retail_integer.hpp"
+#include "core/retail_random.hpp"
+#include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -11,18 +13,29 @@ namespace {
 
 constexpr std::int32_t kTypeOneEffect = 10001;
 constexpr std::int32_t kTypeTwoEffect = 10002;
+constexpr std::int32_t kTypeThreeEffect = 10003;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
 constexpr std::int32_t kTypeTwoChildResource = 10000040;
+constexpr std::int32_t kTypeThreeFirstResource = 10000030;
+constexpr std::int32_t kTypeThreeSecondResource = 10000031;
+constexpr std::int32_t kTypeThreeThirdResource = 10000032;
 constexpr std::int32_t kTypeOneAudioSample = 19;
 constexpr std::int32_t kTypeTwoAudioSample = 94;
+constexpr std::int32_t kTypeThreeAudioSample = 21;
 constexpr std::int32_t kChildDistance = 180;
 constexpr std::int32_t kChildRadius = 50;
+constexpr std::int32_t kTypeThreeFirstRadius = 250;
+constexpr std::int32_t kTypeThreeRadiusStep = 200;
+constexpr std::int32_t kTypeThreeWavePeriod = 4;
+constexpr std::int32_t kTypeThreeRadius = 100;
+constexpr std::int32_t kTypeThreeWaveTable = 205;
 
 bool supportedEffect(std::int32_t effect_number) {
     return effect_number == kTypeOneEffect ||
-           effect_number == kTypeTwoEffect;
+           effect_number == kTypeTwoEffect ||
+           effect_number == kTypeThreeEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -40,18 +53,19 @@ WorldPosition resolvedPosition(
 
 WorldPosition projectedPosition(
     WorldPosition position,
-    double direction_radians) {
+    double direction_radians,
+    std::int32_t distance) {
     return {
         retailAdd(
             position.x,
             static_cast<std::int32_t>(
                 std::cos(direction_radians) *
-                kChildDistance)),
+                distance)),
         retailSubtract(
             position.y,
             static_cast<std::int32_t>(
                 std::sin(direction_radians) *
-                kChildDistance)),
+                distance)),
     };
 }
 
@@ -130,14 +144,64 @@ RuntimeEffectActorSpawnRequest childActor(
     return actor;
 }
 
+RuntimeEffectActorSpawnRequest typeThreeActor(
+    const CombatEffectSpawnRequest& request,
+    WorldPosition position,
+    std::int32_t resource_id,
+    std::int32_t animation_chart,
+    bool damaging_layer) {
+    RuntimeEffectActorSpawnRequest actor;
+    actor.controller_effect_number =
+        request.effect_number;
+    actor.resource_id = resource_id;
+    actor.owner_kind = request.owner_kind;
+    actor.source_character_number =
+        request.source_character_number;
+    actor.target_mask = request.target_kind;
+    actor.target_identifier = 0;
+    actor.position = position;
+    actor.judgement = {
+        -kTypeThreeRadius,
+        -kTypeThreeRadius,
+        kTypeThreeRadius,
+        kTypeThreeRadius,
+    };
+    actor.lifetime_from_animation = true;
+    actor.target_collision_start =
+        damaging_layer ? 0 : -1;
+    actor.target_collision_end = 0;
+    actor.process_every_target = damaging_layer;
+    actor.animation_chart = animation_chart;
+    actor.animation_direction = 8;
+    actor.has_packet = request.has_packet;
+    actor.packet = request.packet;
+    return actor;
+}
+
 }  // namespace
 
 bool EnemyEffectController::initialize(
-    const CombatEffectSpawnRequest& request) {
+    const CombatEffectSpawnRequest& request,
+    const TableDatabase* tables) {
     *this = {};
     if (!request.valid ||
         !supportedEffect(request.effect_number)) {
         return false;
+    }
+    if (request.effect_number == kTypeThreeEffect) {
+        const TableData* wave_table =
+            tables
+                ? tables->find(kTypeThreeWaveTable)
+                : nullptr;
+        const std::int32_t column =
+            retailSubtract(
+                request.constructor_value_17, 1);
+        if (!wave_table ||
+            !wave_table->contains(0, column)) {
+            return false;
+        }
+        type_three_wave_count_ =
+            wave_table->value(0, column);
     }
     request_ = request;
     active_ = true;
@@ -146,10 +210,92 @@ bool EnemyEffectController::initialize(
 
 EnemyEffectControllerUpdate
 EnemyEffectController::update(
-    const EnemyEffectControllerSource& source) {
+    const EnemyEffectControllerContext& context) {
     EnemyEffectControllerUpdate result;
     if (!active_) {
         result.expired = true;
+        return result;
+    }
+
+    if (request_.effect_number == kTypeThreeEffect) {
+        if (request_.constructor_value_12 <= counter_ &&
+            retailSubtract(
+                counter_,
+                request_.constructor_value_12) %
+                    kTypeThreeWavePeriod ==
+                0) {
+            const std::int32_t distance =
+                retailAdd(
+                    retailMultiply(
+                        type_three_wave_index_,
+                        kTypeThreeRadiusStep),
+                    kTypeThreeFirstRadius);
+            const WorldPosition position =
+                projectedPosition(
+                    request_.has_explicit_origin
+                        ? request_.origin
+                        : WorldPosition{},
+                    request_.direction_radians,
+                    distance);
+            const ObjectBounds judgement{
+                -kTypeThreeRadius,
+                -kTypeThreeRadius,
+                kTypeThreeRadius,
+                kTypeThreeRadius,
+            };
+            if (context.placement_is_clear &&
+                !context.placement_is_clear(
+                    position, judgement)) {
+                type_three_placement_blocked_ = true;
+            }
+            if (!type_three_placement_blocked_) {
+                const std::int32_t chart =
+                    context.random
+                        ? context.random->next() % 4
+                        : 0;
+                result.actor_spawns[
+                    result.actor_spawn_count++] =
+                    typeThreeActor(
+                        request_,
+                        position,
+                        kTypeThreeFirstResource,
+                        chart,
+                        true);
+                result.actor_spawns[
+                    result.actor_spawn_count++] =
+                    typeThreeActor(
+                        request_,
+                        position,
+                        kTypeThreeSecondResource,
+                        0,
+                        false);
+                result.actor_spawns[
+                    result.actor_spawn_count++] =
+                    typeThreeActor(
+                        request_,
+                        position,
+                        kTypeThreeThirdResource,
+                        0,
+                        false);
+                result.audio[result.audio_count++] = {
+                    kTypeThreeAudioSample,
+                    position,
+                };
+            }
+            type_three_wave_index_ =
+                retailAdd(type_three_wave_index_, 1);
+        }
+
+        counter_ = retailAdd(counter_, 1);
+        if (counter_ ==
+            retailAdd(
+                request_.constructor_value_12,
+                retailMultiply(
+                    type_three_wave_count_,
+                    kTypeThreeWavePeriod))) {
+            active_ = false;
+            result.expired = true;
+        }
         return result;
     }
 
@@ -158,14 +304,17 @@ EnemyEffectController::update(
             result.actor_spawn_count++] =
             sourceActor(
                 request_,
-                resolvedPosition(request_, source));
+                resolvedPosition(
+                    request_, context.source));
     }
 
     if (counter_ == request_.constructor_value_12) {
         const WorldPosition position =
             projectedPosition(
-                resolvedPosition(request_, source),
-                request_.direction_radians);
+                resolvedPosition(
+                    request_, context.source),
+                request_.direction_radians,
+                kChildDistance);
         result.actor_spawns[
             result.actor_spawn_count++] =
             childActor(request_, position);

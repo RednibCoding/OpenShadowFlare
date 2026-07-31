@@ -572,6 +572,11 @@ if(TARGET sf_game_core)
   )
   target_compile_features(
     enemy_effect_controller_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    enemy_effect_controller_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
   set_target_properties(
     enemy_effect_controller_test
     PROPERTIES CXX_EXTENSIONS OFF)

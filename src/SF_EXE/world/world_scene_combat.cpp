@@ -58,7 +58,8 @@ void WorldScene::handleEnemyDeathStart(
 void WorldScene::queueCombatEffect(
     const CombatEffectSpawnRequest& request) {
     if (request.valid &&
-        !runtime_effects_.queue(request)) {
+        !runtime_effects_.queue(
+            request, &parameter_tables_)) {
         pending_combat_effects_.push_back(request);
     }
 }

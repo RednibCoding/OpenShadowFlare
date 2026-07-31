@@ -35,11 +35,6 @@ bool decodeEntityStateKey(
     return false;
 }
 
-bool isPersistentScriptOperand(
-    const script::Operand& operand) {
-    return operand.type >= 10 && operand.type <= 13;
-}
-
 std::uint64_t scriptOperandKey(
     const script::Operand& operand) {
     return
@@ -81,13 +76,32 @@ std::int32_t scriptAudioDistance(
 bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t& value) const {
-    if (isPersistentScriptOperand(operand)) {
+    if (operand.type == 10) {
+        value = transports_.enabled(operand.value) ? 1 : 0;
+        return true;
+    }
+    if (operand.type == 11) {
+        value = quests_.state(operand.value);
+        return true;
+    }
+    if (operand.type == 12) {
+        value =
+            operand.value >= 0 &&
+                    static_cast<std::size_t>(operand.value) <
+                        scenario_flags_.size()
+                ? scenario_flags_[
+                      static_cast<std::size_t>(operand.value)]
+                : 0;
+        return true;
+    }
+    if (operand.type == 13) {
         const auto found =
             script_persistent_values_.find(
                 scriptOperandKey(operand));
-        value = found == script_persistent_values_.end()
-            ? 0
-            : found->second;
+        value =
+            found == script_persistent_values_.end()
+                ? 0
+                : found->second;
         return true;
     }
     if (operand.type == 5) {
@@ -164,7 +178,31 @@ bool WorldScene::readScriptWorldOperand(
 bool WorldScene::writeScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t value) {
-    if (isPersistentScriptOperand(operand)) {
+    if (operand.type == 10) {
+        if (operand.value < 0 ||
+            static_cast<std::size_t>(operand.value) >=
+                transports_.enabledFlags().size()) {
+            return false;
+        }
+        transports_.setEnabled(operand.value, value != 0);
+        return true;
+    }
+    if (operand.type == 11) {
+        return quests_.setScriptState(operand.value, value);
+    }
+    if (operand.type == 12) {
+        if (operand.value < 0) {
+            return false;
+        }
+        const std::size_t index =
+            static_cast<std::size_t>(operand.value);
+        if (index >= scenario_flags_.size()) {
+            scenario_flags_.resize(index + 1u, 0);
+        }
+        scenario_flags_[index] = value;
+        return true;
+    }
+    if (operand.type == 13) {
         script_persistent_values_.insert_or_assign(
             scriptOperandKey(operand), value);
         return true;

@@ -12,6 +12,8 @@
 namespace osf {
 
 constexpr std::size_t kEnemyPlayerTargetCount = 4;
+constexpr std::int32_t kRetailEnemyActivationDistance =
+    5000;
 constexpr std::int32_t kFirstCompanionCharacterNumber =
     16000000;
 constexpr std::size_t kEnemyCompanionTargetCount = 4;

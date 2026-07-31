@@ -28,7 +28,9 @@
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
 #include "player_item_controller.hpp"
+#include "player_level_up_notice.hpp"
 #include "quest_state.hpp"
+#include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
 #include "script/scenario_script_runtime.hpp"
@@ -55,15 +57,6 @@ enum class GameplayServiceKind {
 struct GameplayServiceRequest {
     GameplayServiceKind kind = GameplayServiceKind::none;
     std::int32_t argument = 0;
-};
-
-struct PlayerLevelUpNotice {
-    std::string text;
-    std::int32_t counter = 0;
-
-    bool active() const {
-        return counter > 0 && !text.empty();
-    }
 };
 
 enum class ScenarioTravelResult {
@@ -122,8 +115,10 @@ public:
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     std::int32_t playerExperienceThreshold() const;
-    BeltItemUseResult usePlayerBeltPocket(
+    PlayerItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);
+    PlayerItemUseResult usePlayerInventoryItem(
+        std::int32_t item_index);
     std::int32_t playerMineCount() const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
@@ -189,6 +184,7 @@ public:
     void update();
     std::vector<std::int32_t> takeAudioSamples();
     const PlayerLevelUpNotice& levelUpNotice() const;
+    void dismissLevelUpNotice();
     std::int32_t playerWorldX() const;
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
@@ -211,6 +207,7 @@ public:
     const ScenarioData& scenario() const;
     std::int32_t scenarioId() const;
     const script::ScriptData& scenarioScript() const;
+    RetailSaveProgress retailSaveProgress() const;
 
 private:
     bool readScriptWorldOperand(
@@ -343,6 +340,7 @@ private:
     AiControlDatabase ai_control_database_;
     std::unordered_map<std::uint64_t, std::int32_t>
         script_persistent_values_;
+    std::vector<std::int32_t> scenario_flags_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;

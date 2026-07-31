@@ -4,6 +4,7 @@
 #include "player_attack_impact.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
+#include "player_voice.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -946,7 +947,8 @@ void WorldScene::handlePlayerAttackEvent(
     }
     if (event.action != PlayerAttackAction::basic) {
         pending_audio_samples_.push_back(
-            player_data_.gender() == 1 ? 96 : 99);
+            retailPlayerAttackVoiceSample(
+                player_data_.gender()));
     }
     EnemyActor* enemy = findEnemy(event.target_id);
     if (!enemy ||
@@ -1133,17 +1135,28 @@ bool WorldScene::startGroundItemInteraction(
         item_database_.find(
             found->item.category,
             found->item.definition_id);
-    if (definition &&
-        player_inventory_.store(found->item)) {
-        pending_audio_samples_.push_back(
-            retailItemMoveSound(*definition));
+    if (!definition ||
+        !player_inventory_.store(found->item)) {
+        // The single-player failure tail of FUN_004526a0 recreates the
+        // concrete item as a mode-zero world drop. Its ordinary first-impact
+        // update supplies the audible feedback; there is no pickup sound.
+        restartGroundItemDrop(*found);
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&
             pointer_.target().id == item_id) {
             pointer_.clearSelection();
         }
-        ground_items.erase(found);
+        return true;
     }
+
+    pending_audio_samples_.push_back(
+        retailItemMoveSound(*definition));
+    if (pointer_.target().kind ==
+            WorldPointerTargetKind::ground_item &&
+        pointer_.target().id == item_id) {
+        pointer_.clearSelection();
+    }
+    ground_items.erase(found);
     return true;
 }
 

@@ -43,6 +43,7 @@ struct EnemyActorUpdateContext {
     const std::vector<MovementBlocker>* dynamic_blockers = nullptr;
     const TableDatabase* parameter_tables = nullptr;
     RetailRandom* random = nullptr;
+    bool ai_active = true;
     EnemyTargetSearch target_in_range;
     EnemyDefaultTargetSearch default_target;
     EnemyDirectImpactTargetSearch direct_impact_target;

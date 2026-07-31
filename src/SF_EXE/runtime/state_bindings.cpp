@@ -135,12 +135,20 @@ GameplayStateHooks makeGameplayStateHooks(
             assets.releasePattern(6);
             return false;
         }
+        if (!assets.loadPattern(
+                8, "System\\Game\\Pattern\\StatusIcon.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            return false;
+        }
         return true;
     };
     hooks.release_interface = [&assets] {
         assets.releasePattern(5);
         assets.releasePattern(6);
         assets.releasePattern(7);
+        assets.releasePattern(8);
     };
     hooks.prepare_world =
         [&data_root, &player, &world] {

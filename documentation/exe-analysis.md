@@ -101,14 +101,18 @@ the world ready, the label is replaced by a 16-pixel horizontally moving
 arrow; Return or a click in its bottom-right rectangle continues into the
 world.
 
-`0x00417bd0` is a different loading presenter used later in gameplay. It draws
+`0x00417bd0` is not the ordinary map loading screen. It is a later
+story/briefing visual presenter: it selects the Epilogue artwork from
 `Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
-rendered frames, and uses `WaitIcon.njp`. The standard path is live in the
-portable runtime: the background and icon receive the same 0-to-1000 RGB
-strength ramp, while the icon moves between x=590, 598, and 606 in three
-five-frame phases at y=440. The game simulation and input stay stopped for
-those 120 presentation frames. The nonzero alternate-visual selector still
-needs to be tied to its owner.
+rendered frames, and animates `WaitIcon.njp`. The owner of its nonzero visual
+selector still needs to be tied down. The portable runtime no longer calls
+this routine after every map change.
+
+Retail's ordinary map transition remains black with the crossed-swords
+`Waiting.njp` image and its `LOADING` plate only while loading is in progress.
+The portable scenario transaction is currently synchronous and completes
+between presented frames, so a fast transition goes directly to the new map
+instead of manufacturing a fixed delay.
 
 The initial scenario map is loaded by the large transition routine at
 `0x00426200`. The `f00_01.Lst` indices are preserved across ground and object
@@ -352,7 +356,12 @@ Receiver visuals now cross a world-owned effect boundary as well.
 resolved position. The specialized `0x0042cba0` path used by 21010 through
 21012 instead lasts 120 updates at initial strength 500 and fades during its
 last 30. These visual actors participate in normal world depth sorting and do
-not own damage. Reflection, staged-reaction, projectile, and spell effect
+not own damage. The four 21000 through 21003 variants are the ordinary
+splatter selected by direct hit packets and play for both surviving and lethal
+hits. Enemy death separately creates effect 21010. CAF frames advance once per
+game update: that fixed-lifetime death effect reaches its last authored frame,
+holds there, and only fades during the final 30 updates. Reflection,
+staged-reaction, projectile, and spell effect
 dispatchers remain separate follow-up branches. Network transport, experience
 accounting, and drops remain outside this receiver/presentation boundary.
 
@@ -661,7 +670,8 @@ record fields are name at `0x00`, gender at `0x18`, the save-menu job value at
 `0x1c`, and level at `0x24`.
 
 New characters obtain thirteen values from `Table.Tbd`. The selected table is
-`0x385 - gender`, which is table 901 for male and 900 for female. The values
+`0x385 - gender`. The saved field uses zero for female and one for male, so
+this selects table 901 for female and table 900 for male. The values
 are stored in a slightly shuffled part of the record because current life and
 current mana sit beside their base maxima. Runtime `+0x40/+0x44` are base
 maximum and current life, while `+0x48/+0x4c` are base maximum and current
@@ -936,8 +946,9 @@ zero. The handler stores both values in the pending transition record, enables
 the request, and resets the explicit-position selector to `-1`. The portable
 world defers the actual transaction until the interpreter has returned, then
 publishes one scenario-change event to the runtime. This keeps the SCS owner
-valid during command execution and lets the runtime enter the existing
-120-render-frame loading phase before accepting more simulation or input.
+valid during command execution. Once that synchronous transaction has
+finished, the runtime resets map-local UI and camera state, changes music, and
+presents the new world immediately.
 
 Scenario 1 is `Near the Remote Town`, map `f00_02`, music track 1. Entry key
 zero places the local player at `(90581,5288)`, direction 7, with the camera
@@ -1275,6 +1286,26 @@ sample 19; type 2 uses resource `10000040` and sample 94. Both use
 when their static environment sweep collides. The controller expires after
 creating the child, independently of both visual actors.
 
+Type 3 is the first staged area controller. `0x0042b540` reads row zero and
+column `subtype - 1` from Table 205; shipped Plasma Bat subtype 20 resolves to
+five waves. Beginning at constructor delay 12, one wave is attempted every
+four updates. Its position is projected from the stored impact origin, not
+the enemy's later position, at radius `wave * 200 + 250` along the stored
+angle. A `[-100,-100,100,100]` judgement check includes map collision and
+live type-zero scenario objects. The first failed placement sets a persistent
+stop flag, suppressing that wave and every later wave without consuming a
+random value.
+
+Each clear wave consumes one `rand() % 4` chart choice and creates resources
+`10000030`, `10000031`, and `10000032` at the same position. The first actor
+uses that random chart, applies the copied packet to every overlapping target
+only on its first update, and does not expire after the first target. The
+other two use chart zero and are visual layers without an active collision
+window. All three use direction eight, their selected chart's full lifetime,
+and the same 100-unit judgement. Positional sample 21 is emitted once per
+clear wave. The controller remains alive until `delay + Table205Value * 4`,
+independently of the actors it has already created.
+
 `0x00429dd0` creates those children in the category-50000000 actor family.
 `0x0045e1a0` installs a 126-word descriptor, and `0x0045e1e0` owns their
 common update. That update supports homing, free, and owner-attached movement;
@@ -1302,14 +1333,21 @@ renderable state that can move, collide, and dispatch an impact. Treating an
 enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
-`EnemyEffectController` now ports the complete controller half of types 1 and
-2 without pretending that their runtime actors are finished. It emits the
+`EnemyEffectController` now ports the complete controller half of types 1, 2,
+and 3 without pretending that every specialized family is finished. It emits the
 source actor on update zero, re-resolves the source at the exact authored
 delay, projects the second actor with the retail Y-axis convention, copies the
 combat packet, and places sample 19 or 94 at that second position. A zero delay
 creates both actors in one update, a negative delay remains active, missing
 owners resolve from zero, and omitted origin or judgement pointers do not leak
 stale values.
+
+The same owner now keeps type 3's table-driven wave counter, fixed origin,
+persistent placement stop, random damaging chart, two visual companions, and
+sample 21. Passive timing and obstruction tests are paired with the shipped
+Plasma Bat in scenario `00010001`; the live case renders all three resources,
+passes the first layer through the ordinary player receiver, and preserves
+the player's item owners.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
@@ -1373,3 +1411,17 @@ world units on y. Both paths create complete owned item instances through the
 ordinary ground-item owner. The next PRNG draw then chooses death effect
 21010's direction, and the first bounce produces the existing category
 landing sound.
+
+## Level-up notice
+
+`0x00450fb0` creates the level-growth text as an auto-sized text owner with
+four pixels of padding. Flag `0x80` centers its rectangle in the 640 by 416
+play area; its background is black at opacity 250 and its text color is
+`224,224,224`. `0x00451a40` draws a separate one-pixel white frame at opacity
+500 and counts down the 900-update lifetime.
+
+The notice stays centered through counter 840. During the next ten updates its
+stored initial position is interpolated to x `640 - width`, y 1, after which
+it remains in the upper-right until expiry. `0x00451cb0` ignores notice clicks
+for the first 30 updates. A later click inside the notice releases it and
+consumes the input before ordinary world interaction.

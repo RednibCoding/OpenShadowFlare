@@ -8,8 +8,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 
 namespace osf {
+
+class RetailRandom;
+class TableDatabase;
 
 struct PositionalEffectAudioRequest {
     std::int32_t sample = -1;
@@ -22,7 +26,7 @@ struct EnemyEffectControllerSource {
 };
 
 struct EnemyEffectControllerUpdate {
-    std::array<RuntimeEffectActorSpawnRequest, 2>
+    std::array<RuntimeEffectActorSpawnRequest, 3>
         actor_spawns;
     std::size_t actor_spawn_count = 0;
     std::array<PositionalEffectAudioRequest, 1>
@@ -31,12 +35,24 @@ struct EnemyEffectControllerUpdate {
     bool expired = false;
 };
 
+using EnemyEffectPlacementTest =
+    std::function<bool(
+        WorldPosition position,
+        const ObjectBounds& judgement)>;
+
+struct EnemyEffectControllerContext {
+    EnemyEffectControllerSource source;
+    RetailRandom* random = nullptr;
+    EnemyEffectPlacementTest placement_is_clear;
+};
+
 class EnemyEffectController {
 public:
     bool initialize(
-        const CombatEffectSpawnRequest& request);
+        const CombatEffectSpawnRequest& request,
+        const TableDatabase* tables = nullptr);
     EnemyEffectControllerUpdate update(
-        const EnemyEffectControllerSource& source);
+        const EnemyEffectControllerContext& context);
 
     bool active() const;
     std::int32_t counter() const;
@@ -45,6 +61,9 @@ public:
 private:
     CombatEffectSpawnRequest request_;
     std::int32_t counter_ = 0;
+    std::int32_t type_three_wave_count_ = 0;
+    std::int32_t type_three_wave_index_ = 0;
+    bool type_three_placement_blocked_ = false;
     bool active_ = false;
 };
 

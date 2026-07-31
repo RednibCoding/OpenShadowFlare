@@ -87,7 +87,11 @@ int main() {
 
     osf::PlayerData male;
     if (!check(
-            male.initializeNew("Mina", 0, tables, &error),
+            male.initializeNew(
+                "Mina",
+                osf::playerGenderValue(osf::PlayerGender::male),
+                tables,
+                &error),
             "A new male character could not be initialized.")) {
         std::cerr << error << '\n';
         return 1;
@@ -95,18 +99,17 @@ int main() {
     if (!check(
             male.valid() &&
                 male.name() == "Mina" &&
-                male.gender() == 0 &&
+                male.gender() == 1 &&
                 male.job() == 0x10 &&
                 male.level() == 1 &&
-                male.baseMaximumLife() == 140 &&
-                male.currentLife() == 140 &&
-                male.baseMaximumMana() == 160 &&
-                male.currentMana() == 160 &&
-                male.initialParameter(1) == 128 &&
+                male.baseMaximumLife() == 150 &&
+                male.currentLife() == 150 &&
+                male.baseMaximumMana() == 150 &&
+                male.currentMana() == 150 &&
                 male.baseMagicalEvasionRate() ==
                     male.initialParameter(12) &&
                 male.walkingSpeedTier() == 5,
-            "The male record does not match table 901 and FUN_00440f70.")) {
+            "The male record does not match table 900 and FUN_00440f70.")) {
         return 1;
     }
 
@@ -164,15 +167,15 @@ int main() {
     belt_player.setCurrentMana(0);
     if (!check(
             belt_player.restoreLife(0, 10) &&
-                belt_player.currentLife() == 14 &&
+                belt_player.currentLife() == 15 &&
                 belt_player.restoreMana(0, 10) &&
-                belt_player.currentMana() == 16,
+                belt_player.currentMana() == 15,
             "Percentage life or mana restoration differs.")) {
         return 1;
     }
     belt_player.setCurrentLife(
         belt_player.baseMaximumLife() - 10);
-    const osf::BeltItemUseResult tablet_use =
+    const osf::PlayerItemUseResult tablet_use =
         item_controller.useBeltPocket(
             0,
             belt,
@@ -180,7 +183,7 @@ int main() {
             belt_player);
     belt_player.setCurrentMana(
         belt_player.baseMaximumMana() - 10);
-    const osf::BeltItemUseResult capsule_use =
+    const osf::PlayerItemUseResult capsule_use =
         item_controller.useBeltPocket(
             4,
             belt,
@@ -198,6 +201,56 @@ int main() {
                 belt_player.currentMana() ==
                     belt_player.baseMaximumMana(),
             "Tablet/Capsule use or the 1-8 belt mapping differs.")) {
+        return 1;
+    }
+
+    osf::PlayerInventory medicine_inventory;
+    if (!check(
+            medicine_inventory.add(*tablet) &&
+                medicine_inventory.add(*capsule),
+            "The backpack medicine fixture could not be prepared.")) {
+        return 1;
+    }
+    osf::PlayerData inventory_player = male;
+    if (!check(
+            !item_controller
+                 .useInventoryItem(
+                     0,
+                     medicine_inventory,
+                     items,
+                     inventory_player)
+                 .consumed &&
+                medicine_inventory.items().size() == 2,
+            "A backpack Tablet was consumed while life was full.")) {
+        return 1;
+    }
+    inventory_player.setCurrentLife(
+        inventory_player.baseMaximumLife() - 10);
+    const osf::PlayerItemUseResult inventory_tablet_use =
+        item_controller.useInventoryItem(
+            0,
+            medicine_inventory,
+            items,
+            inventory_player);
+    inventory_player.setCurrentMana(
+        inventory_player.baseMaximumMana() - 10);
+    const osf::PlayerItemUseResult inventory_capsule_use =
+        item_controller.useInventoryItem(
+            0,
+            medicine_inventory,
+            items,
+            inventory_player);
+    if (!check(
+            inventory_tablet_use.consumed &&
+                inventory_tablet_use.sound_sample == 16 &&
+                inventory_capsule_use.consumed &&
+                inventory_capsule_use.sound_sample == 16 &&
+                medicine_inventory.items().empty() &&
+                inventory_player.currentLife() ==
+                    inventory_player.baseMaximumLife() &&
+                inventory_player.currentMana() ==
+                    inventory_player.baseMaximumMana(),
+            "Right-click backpack medicine use differs from belt use.")) {
         return 1;
     }
 
@@ -356,7 +409,7 @@ int main() {
 
     const std::filesystem::path retail_save_fixture =
         std::string(OPENSHADOWFLARE_SOURCE_DIR) +
-        "/tmp/ShadowFlare/Save/0003.Ssv";
+        "/tmp/ShadowFlare/Save/0000.Ssv";
     if (std::filesystem::exists(retail_save_fixture)) {
         osf::PlayerData retail_fixture_player;
         std::vector<std::uint8_t> retail_fixture_payload;
@@ -487,14 +540,29 @@ int main() {
 
     osf::PlayerData female;
     if (!check(
-            female.initializeNew("Faye", 1, tables, &error) &&
-                female.gender() == 1 &&
-                female.baseMaximumLife() == 150 &&
-                female.currentLife() == 150 &&
-                female.baseMaximumMana() == 150 &&
-                female.currentMana() == 150 &&
+            female.initializeNew(
+                "Faye",
+                osf::playerGenderValue(osf::PlayerGender::female),
+                tables,
+                &error) &&
+                female.gender() == 0 &&
+                female.baseMaximumLife() == 140 &&
+                female.currentLife() == 140 &&
+                female.baseMaximumMana() == 160 &&
+                female.currentMana() == 160 &&
                 female.walkingSpeedTier() == 5,
-            "The female record does not match table 900.")) {
+            "The female record does not match table 901.")) {
+        return 1;
+    }
+    female.setCurrentLife(1);
+    female.setCurrentMana(2);
+    female.restoreForRespawn();
+    if (!check(
+            female.currentLife() == female.baseMaximumLife() &&
+                female.currentMana() ==
+                    female.baseMaximumMana(),
+            "The retail revive reset did not restore both player "
+            "resource pools.")) {
         return 1;
     }
 

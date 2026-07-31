@@ -52,6 +52,20 @@ sample 19; type 2 uses resource `10000040` and positional sample 94. The
 second actor has `[-50,-50,50,50]` bounds, chart-zero timing, the copied combat
 packet, and contact expiry. Only then does the controller return zero.
 
+The third branch is table-driven. `0x0042b540` reads Table 205 row zero at
+`subtype - 1`; Plasma Bat subtype 20 yields five waves. From the stored impact
+origin it attempts a wave every four updates at radii 250, 450, 650, 850, and
+1050. The placement query uses `[-100,-100,100,100]`, ordinary map collision,
+and dynamic type-zero scenario objects. A failed query permanently suppresses
+that and every later wave.
+
+A clear wave consumes one `rand() % 4` and creates resources `10000030`,
+`10000031`, and `10000032` together. Only the first actor uses the random
+chart and an update-zero collision window; it processes every overlapping
+target with the copied packet. The other two are chart-zero visual layers.
+Sample 21 plays once at the wave position. The controller expires at
+`delay + wave count * 4`, separately from all three actors' CAF lifetimes.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -68,9 +82,10 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 and 2. Focused tests cover zero, positive, and negative delays,
+of types 1, 2, and 3. Focused tests cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
-packet copying, projection, and positional samples. Its actor outputs are
+packet copying, projection, positional samples, Table 205 wave timing, the
+random chart, and persistent obstruction. Its actor outputs are
 paired with a passive `RuntimeEffectActor` that now covers source-animation
 lifetime, free forward movement, static collision and special-ground
 filtering, contact expiry, chart-zero frame timing, and the inclusive target
@@ -86,10 +101,11 @@ evasion, word 36 supplies hit rating, and the Visual C++ random stream feeds
 the `20..98` check. Typed receiver/miss requests and the two configured audio
 pairs preserve the retail one-sound guard and NPC multi-target mode.
 
-The world still needs to own and render these controllers and actors, build
-their live target snapshots, and apply those receiver requests before types 1
-and 2 are attached to enemy attacks. The other ten specialized controllers
-also remain to be reconstructed. Mapping
+The world owns and renders these controllers and actors, builds their live
+target snapshots, and applies their receiver requests. Shipped regressions
+cover type 2 in `03000507` and the type-3 Plasma Bat in `00010001`, including
+resources, audio, damage, cleanup, and unchanged item ownership. The other
+nine specialized controllers remain to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 
@@ -234,8 +250,10 @@ rectangles, complete item footprints are retained, and placing over one item
 swaps it onto the shared pointer. `0x0044a5f0` maps keys `1` through `8` to
 the four row-zero cells followed by the four row-one cells. `0x0044a240`
 applies the decoded flat and maximum-percent player life/mana fields and
-removes the item only when a value changes. Its companion and status-effect
-branches remain pending.
+removes the item only when a value changes. The same path handles a secondary
+click on medicine in either the backpack or belt, so a Tablet at full life or
+a Capsule at full mana stays in its owner and produces no use sound. Its
+companion and status-effect branches remain pending.
 
 New-character equipment and owned items now follow `0x00440f70` as well.
 Category one definition zero is equipped in the body slot. Category-three
@@ -252,6 +270,12 @@ corresponding ownership change succeeds. The success tail of
 `0x00449ef0` also calls selector zero after a picked-up world item has entered
 the player owner, so ground pickup uses the same category-and-weight sample
 instead of being silent.
+
+If that owner rejects the item because no backpack footprint is available,
+the single-player tail of `0x004526a0` recreates the same concrete instance as
+a mode-zero world drop. The portable ground actor keeps its position and item
+state while resetting height, velocity, gravity, and bounce state. It then
+plays selector two at first impact instead of pretending the click was lost.
 
 Ground drops use selector two from the same routine. Their first contact with
 the ground plays sample 15 for an ordinary item, 85 for Gold, or 93 for a
@@ -296,7 +320,11 @@ element arrays begin at offsets 208 and 168. Quality zero through three uses
 the retail gray, muted red, pale blue, and blue text colors. Category-four
 definition zero takes the executable's shorter branch: Gold shows its stack
 amount in the exact `Price                     :%9d` row, producing the wide
-three-line panel instead of a name-only box.
+three-line panel instead of a name-only box. The other formatter branches are
+preserved too: category two shows weight, required level, and sale price;
+category three consumables such as Tablet show sale price; and non-Gold
+category-four items show sale price. One-cell items therefore keep the
+authored-width information panel rather than collapsing to a name-only box.
 
 The condition corner in `0x00465cb0` is reconstructed for backpack, equipped,
 and pointer-held gear. Categories zero and one compare current and maximum
@@ -320,6 +348,11 @@ screen-mode row is hidden and the LWL window stays windowed, but y=86 remains
 empty so every later row keeps its retail coordinate. Mission and Map now
 open their own screens from the original rows: Mission is modal, while Map
 leaves the right-hand world viewport live.
+
+The two confirmed save actions defer their final transition for the retail
+saving frame, then process it before any independently open Map, Warehouse,
+Special Item, or Inventory panel. Those panels can no longer consume every
+following UI update and strand the saving confirmation on screen.
 
 The Help row and `H` shortcut now open the screen drawn by `0x0040e710`.
 Status patterns 10 and 66 provide the authored 640-by-415 frame and the
@@ -729,8 +762,9 @@ default red, green, and blue strengths. The
 portable entities also reproduce the 1600 initial vertical velocity, 280
 gravity, 700 rebound, and two-bounce settle state before joining the shared
 dynamic depth pass. The first impact emits the retail selector-two item sound;
-the second impact is silent. Unnamed definition fields remain preserved as
-raw bytes.
+the second impact is silent. A pickup rejected by the full backpack restarts
+this same mode-zero presentation and sound. Unnamed definition fields remain
+preserved as raw bytes.
 
 The loader's separate MCT item branch sets initialization mode one. Those
 actors use script character number `18000000 + local ID`, copy the three
@@ -796,7 +830,10 @@ Walk is executable action 2 and CAF chart 1 at `0x004351f0`; run is action 3
 and CAF chart 2 at `0x00435530`. The `R` binding now toggles the persistent
 movement mode on its key-down edge. Switching while already moving resets the
 animation counter and immediately changes both the chart and the movement
-step, as the retail action transition does.
+step, as the retail action transition does. Those same routines play
+`Voice00.Voc` sample zero on action-counter zero and then every 12 walking
+updates or eight running updates. The cadence is fixed rather than randomly
+selecting several footstep samples.
 
 GND loading now includes the second, 852-by-852 Remote Town judgement plane.
 The portable RKC_RPGSCRN boundary checks its bit-zero blockers and the
@@ -886,10 +923,12 @@ Live travel now uses the boundary: the same-scenario branch only relocates,
 while a changed scenario prepares every new local owner before commit. A
 failed load leaves the old map, script, player, items, missions, quests, and
 transport flags usable. Success clears stale local interaction/audio state,
-adopts the new SCS, relocates, changes BGM, and holds gameplay during the
-standard `Waiting.njp` pattern 4 plus `WaitIcon.njp` 120-render-frame fade.
-The icon uses x positions 590/598/606 in five-frame phases at y=440, matching
-`0x00417bd0`. The alternate `VisualNN` selector remains pending. All 51
+adopts the new SCS, relocates, and changes BGM. It then presents the new map
+immediately because the synchronous load has already completed. The previous
+120-frame Epilogue fade was removed after a closer trace showed that
+`0x00417bd0` owns story/briefing visuals rather than ordinary map loading.
+Retail's black crossed-swords screen exists only while loading work is
+pending. The alternate `VisualNN` selector remains pending. All 51
 Table 40 rows are also checked against their shipped scenario directory and
 single-player MCT entry.
 
@@ -963,7 +1002,21 @@ the distinct counter order, chart pairs, sound counters, movement lock, and
 recovery completion. `0x00450c60` supplies Table 4's attack-speed tier and
 overweight fallback. The CAF part-zero `0x40` marker is retained as a typed
 impact event and revalidated against the live enemy before later damage code
-may consume it.
+may consume it. Character selection and the saved player record use the retail
+encoding directly: zero is female and one is male. `0x00435e60` therefore
+plays sample 96 for male and sample 99 for female without a second runtime
+translation.
+
+The first update of the death action uses that same field directly.
+`0x00435b60` plays `14 - raw gender`, so male queues Voice00 sample 13 and
+female queues sample 14 exactly once before chart four advances.
+
+Enemy hover labels now follow the type-two branch in `0x0040ee70`. A
+name-sized dark frame contains a translucent red life fill proportional to
+current over maximum life, the remaining width stays black, and
+`StatusIcon.njp` pattern `native element + 3` supplies the colored dot before
+the name. This replaces the generic PEOPLE-style label previously used for
+enemies.
 
 Player impact delivery is now reconstructed through the live actor boundary.
 `0x00413e00` uses derived hit rate at player `+0x1bc` against enemy pre-AI
@@ -985,7 +1038,11 @@ values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
 effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Lethal hits also update persistent kill and
+run at the live boundary. Packet effects 21000 through 21003 are ordinary
+impact splatters and play for both surviving and lethal hits. Their one-pass
+CAF owner is separate from enemy death effect 21010, which reaches its last
+frame normally, holds it, and fades during updates 91 through 119.
+Lethal hits also update persistent kill and
 experience fields, apply novice level growth, create Table 30/31 item rolls
 and Gold Find-scaled money through the full ground-item owner, and preserve
 their constructor state through pickup and saving.
@@ -998,6 +1055,17 @@ and effect presentations hold the presentation lock; otherwise queued
 presentation `+0x1f8` replaces current `+0x1f4`, and the counters advance
 after dispatch. The portable actor keeps that order instead of polling an
 independent behavior tree.
+
+The living-target search at the top of `0x00458f70` uses the inclusive
+`0..5000` judgement-distance window. Without such a target, the ordinary
+single-player path resets the actor to idle instead of continuing AID patrol
+work across the whole map. The portable dispatcher now has the same activation
+gate. Movement intent and visible motion are kept separate as well: the shared
+controller can retain its obstacle-edge state after a blocked probe, but chart
+one is only submitted on an update where the enemy's world position actually
+changed. A controller request that becomes inactive returns the actor to idle
+so action ten can publish its completion event and the AID table can recheck
+the direct-attack range.
 
 Patrol, approach, retreat, wait, and walk-point actions now feed the existing
 movement destination selector and shared collision controller. In particular,
@@ -1082,9 +1150,15 @@ Level growth now publishes the native feedback as part of kill accounting.
 Strength, Attack, Defense, Hit Rate, Evasion Rate, Magical Attack, Magical
 Defense, Magical Hit Rate, and Magical Evasion Rate order. It keeps the notice
 for 900 updates and plays sample 63; reaching level five plays sample 64 just
-before it. The portable overlay uses the same fixed-width text and thin
-half-opacity white frame while later job selection and skill unlocks remain
-outside this slice.
+before it. `FUN_00450fb0` creates an auto-sized text owner with four pixels of
+padding, black opacity 250, and centered flag `0x80`, which centers it in the
+640 by 416 play area. `FUN_00451a40` holds that position for 60 updates, slides
+it to x `640 - width`, y 1 over ten updates, then leaves it there until update
+900. It adds the separate thin white frame at opacity 500.
+`FUN_00451cb0` only accepts clicks after the first 30 updates and dismisses a
+click inside the current rectangle before it can reach world movement. The
+portable notice now follows those same drawing, timing, and input rules while
+later job selection and skill unlocks remain outside this slice.
 
 Gameplay panels are independent owners on opposite sides of the world view.
 The Warehouse's opcode 41 owner stays on the left while backpack and equipment

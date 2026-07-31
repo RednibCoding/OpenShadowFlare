@@ -98,16 +98,24 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish the remaining enemy effect-controller families one shipped family at
-  a time, with both passive timing coverage and a live actor using each one;
-- reconstruct player death, its final presentation, and the original recovery
-  or menu path;
+- finish effect-controller types 4, 5, 10, 11, 12, 13, 14, 16, and 21 one
+  shipped family at a time, with both passive timing coverage and a live actor
+  using each one;
 - finish ranged player actions and projectiles without bypassing the common
   effect actors;
 - attach companion targeting and attacks to the same receiver and reward
   owners;
 - keep checking item state, audio, experience, and saving beside each change
   so a new combat path cannot silently damage adjacent ownership.
+
+Player death and recovery are now reconstructed. Retail locks ordinary input,
+plays chart four facing direction eight, holds its final frame for 120 game
+updates, then returns the hero to the current scenario entry through a revive
+transition. That transition restores both life and mana to their maximums.
+The portable menus no longer interrupt that locked action, so Save & Exit
+cannot preserve a dead actor. Saves made by older builds which already contain
+zero life are repaired through the same revive reset when they enter the
+world.
 
 Once those are solid, the next large player-facing milestone is skills, magic,
 status effects, and their remaining HUD and assignment screens.
@@ -251,8 +259,12 @@ prepared before it replaces the old map, then its script data is adopted by
 the stable interpreter runtime. Failed preparation leaves the current map,
 script, player, inventory, equipment, belt, Special Items, missions, quests,
 and transport flags untouched. Successful changes restart the scenario's BGM
-and run the later `Waiting.njp`/`WaitIcon.njp` presentation for 120 rendered
-frames while gameplay input and simulation are held.
+and return directly to the new world once its synchronous load is complete.
+An earlier pass had mistaken the Epilogue/`VisualNN` presenter at `0x00417bd0`
+for the ordinary map loader and held it on screen for 120 frames. Retail only
+shows its black crossed-swords loading image while work is actually pending;
+the current synchronous portable load is normally too quick to expose an
+intermediate frame.
 
 The next slices identified the three resource preload lists, the variable
 common entity record, and all four entity-group shapes. Objects and `PEOPLE`
@@ -410,7 +422,8 @@ local ownership, Increased Power, Energy Shield, Magic Shield, life and mana
 routing, the category-four revival item, exact helmet/body/off-hand/boots
 durability checks, equipment and Counter Burst reflection, tables 25 and 26
 reaction selection, packet effects, training, audio, death action, and random
-draw ordering.
+draw ordering. The attached death presentation plays its retail gender voice
+once on the first action update: sample 13 for male and sample 14 for female.
 
 The owned companion uses a third receiver at retail address `0x0045f9f0`,
 not either of those paths. Its family-one profile, owner-slot life mutation,
@@ -453,9 +466,8 @@ transition path around `0x00426200`:
   target, and selected-action state, then implement its native movement
   actions on top of the shared movement controller;
 - release the old scenario in the same order the original does;
-- identify the condition and sequence for the alternate `VisualNN.njp`
-  artwork in `0x00417bd0`; its standard `Waiting.njp`/`WaitIcon.njp` path is
-  reconstructed;
+- identify the story/briefing owner that requests the Epilogue and alternate
+  `VisualNN.njp` artwork rendered by `0x00417bd0`;
 - support returning to the title cleanly when loading fails.
 
 Remote Town should then be one input to the loader, not a special hard-coded
@@ -515,7 +527,9 @@ settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
 intentionally blank, but its space remains so none of the following rows move.
 Save and Return and Save and Exit now open their original confirmation states,
 write the retail save envelope, and only leave gameplay after a successful
-write. With `Save Image at Game End` enabled, they also write the paired
+write. Their deferred transition runs before either independently open side
+panel can consume the next UI update. With `Save Image at Game End` enabled,
+they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
 drawn. Help now opens its original full-width reference screen from either the
 menu row or `H`, including the animated player preview and the menu-owned
@@ -700,11 +714,15 @@ distant clicks approach through the shared movement controller, then ownership
 moves into `PlayerInventory` before the world entity is erased. Gold fills
 existing stacks up to the retail 10,000 limit. Scripted and player-created
 drops also play their category-specific retail sound on the first ground
-impact.
+impact. If a clicked item cannot fit in the backpack, it stays on the ground
+and visibly repeats that two-bounce drop and first-impact sound, matching the
+retail failed-pickup feedback.
 
 The real 9-by-4 backpack grid is now in place. Width and height come from
 `Item.Ibn`, placement respects multi-cell footprints, and a full inventory
-rejects a pickup without losing or partly inserting it. The authored right
+rejects a pickup without losing or partly inserting it; the retained world
+item restarts its drop presentation instead of appearing unresponsive. The
+authored right
 panel stays open over a live left-hand world view, with its original camera
 anchor, input boundary, gender silhouette, gold and equipped-weight values,
 Close tab, and `Item0000.njp` through `Item0013.njp` artwork. `I` and the HUD
@@ -736,14 +754,16 @@ footprints, uses the retail staggered screen origins, and supports pointer
 pickup and swapping even while the main inventory is closed. The `1` through
 `8` shortcuts address its four upper pockets followed by its four lower
 pockets. Tablets restore life, Capsules restore mana, and an item is removed
-only when it actually changes the target, matching the executable.
+only when it actually changes the target, matching the executable. A
+right-click uses those medicines directly from either the backpack or belt;
+full life or mana leaves the corresponding item untouched.
 
 A new character now receives the loadout built by `0x00440f70`: Leather Cloth
 in the body slot, four Tablets and four Capsules in the first two backpack
 columns, the same four-plus-four medicine layout in the belt, and five mines
 in the player's separate mine counter. Moving, swapping, equipping, and
 dropping owned items also use the retail category/weight sound selection;
-successful belt use plays its own medicine sound.
+successful medicine use plays its own sound.
 
 Those owned items now survive the real `.Ssv` path. The obfuscated payload's
 retail item prefix restores and rewrites all nine player equipment slots, the
@@ -770,7 +790,11 @@ edge clamping, including the padded translucent black backing and faint white
 frame. The values come from `Item.Ibn`; the Dagger, for example, shows the same
 10 attack, 120 hit rate, 50 attack speed, 300 durability, and 100 sale price as
 retail. Gold follows its separate retail branch and shows the stack amount in
-the wide Price row rather than collapsing to a name-only tooltip.
+the wide Price row rather than collapsing to a name-only tooltip. The other
+small-item branches now follow `0x00409a60` as well: category-two items show
+weight, required level, and sale price, while category-three consumables such
+as Tablet show sale price. Their one-cell icons therefore keep the original
+wide information panel.
 
 The retail condition warning is now shared by backpack, equipment, and held
 items. Weapons and armor below ten percent durability blink `Status.njp`
@@ -899,6 +923,12 @@ approach, retreat, wait, and walk-point requests all use the existing
 destination selector and movement controller, including live actor blockers.
 The Wasteland fixture proves that an authored event-zero patrol turns into an
 approach and ordinary attack rather than relying on a test-only enemy.
+The dispatcher's opening target search is part of that loop too: living
+enemies only run autonomous AID work while a living target is within 5000
+judgement units. Enemies outside that range return to idle instead of marching
+through the same patrol cycle off-screen. A blocked movement request may keep
+its obstacle-following state, but the renderer only shows the walk chart on an
+update that actually changed the actor's position.
 
 Direct enemy impacts now pass through the reconstructed player receiver. The
 live receiver snapshot uses the named player base rows and matching equipment
@@ -907,12 +937,11 @@ Returned life, mana, backpack, equipment, Special Items, reaction state,
 durability changes, effects, reflection, and audio are committed in retail
 order; the separate belt remains untouched. Player actions four and five show
 the hit and death CAF presentations and interrupt movement or attacks. A live
-regression waits
-for a Wasteland enemy to damage the player, requires its hit effect and sound,
-then saves and reloads the damaged character to make sure no owned items are
-lost as an accidental side effect.
+regression waits for a Wasteland enemy to damage the player, requires its hit
+sound and ordinary impact splatter, then saves and reloads the damaged
+character to make sure no owned items are lost as an accidental side effect.
 
-The next combat slice should finish enemy effect attacks. Actions four through
+The next combat slices should finish enemy effect attacks. Actions four through
 six already evaluate their authored data and create typed effect requests.
 The executable trace now also proves that these requests enter a controller
 list first and that a controller may create several category-50000000 actors
@@ -961,9 +990,17 @@ three-bounce height controller and ten-step opacity fade. A shipped
 `03000507` enemy regression proves type 2's source and forward resources,
 samples 94 and 20, player damage, rendering, independent cleanup, unchanged
 starter items, and save/reload ownership. A separate low-hit live case proves
-the MISS path. Types 1 and 2 can therefore be treated as complete; the other
-specialized effect families still need the same controller-by-controller
-work.
+the MISS path. Types 1 and 2 can therefore be treated as complete.
+
+Type 3 is complete now as well. Plasma Bat subtype 20 reads five waves from
+Table 205, expands them every four updates from the stored impact origin,
+checks each 100-unit placement against the map and live scenario objects, and
+permanently stops after the first blocked position. Every clear wave creates
+the retail `10000030/31/32` layers and sample 21; only the random-chart first
+layer applies the packet on update zero. Scenario `00010001` provides the
+shipped live regression for rendering, player damage, controller cleanup, and
+unchanged item ownership. Types 4, 5, 10, 11, 12, 13, 14, 16, and 21 still
+need the same controller-by-controller work.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -992,9 +1029,9 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to the remaining effect-controller families, player
-death and recovery, then the ranged player actions and companion attacks,
-keeping one shipped live encounter beside each passive reconstruction.
+finish. It should move to effect-controller types 4, 5, 10, 11, 12, 13, 14,
+16, and 21, then the ranged player actions and companion attacks, keeping one
+shipped live encounter beside each passive reconstruction.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,
@@ -1007,6 +1044,11 @@ late-game equipment through a column mix-up.
 The nearby outdoor containers run their shipped scripts all the way through
 the positional opening sound and Table 30 loot command. Level gains publish
 the original changed-stat text for 900 updates and play their retail samples.
+The notice starts centered with its black translucent fill and white frame,
+slides to the upper-right after 840 updates, and consumes a dismissing click
+only after its first 30 updates. Ordinary `21000..21003` impact splatters play
+on every hit, while the separate bloody `21010` presentation remains tied to
+death and keeps its own 120-update hold-and-fade lifetime.
 The Warehouse and map remain left-side owners while Inventory remains an
 independent right-side owner; opening both keeps the world camera centered and
 allows items to move between the Warehouse and backpack.
@@ -1045,11 +1087,16 @@ That means:
 
 The envelope writer is now in place, including the random XOR byte,
 signed-byte checksum, substitution pass, and safe preservation of an existing
-unknown payload. New saves carry the player record we currently own. Writing
-also captures the retail-sized paired preview from the world-only render when
-the option is enabled. Saving is not complete yet: each persistent gameplay
-owner still has to contribute its real payload fields, and loading must restore
-those fields before OpenShadowFlare can claim full round-trip compatibility.
+unknown payload. New saves carry the player record and owned items we currently
+own. The three counted retail arrays after the item stream now preserve
+scenario flags, transport unlocks, and quest/conversation state; this is
+covered by saving after Ostare's opening and proving his starter reward does
+not repeat after loading. Walk/run also survives a portable round trip through
+a small versioned tail until its exact retail save owner is identified.
+Writing captures the retail-sized paired preview from the world-only render
+when the option is enabled. Saving is not complete yet: the remaining
+persistent gameplay owners still have to contribute their real payload fields
+before OpenShadowFlare can claim full round-trip compatibility.
 
 ### 7. Play through Episode 1
 

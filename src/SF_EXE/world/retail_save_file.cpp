@@ -2,6 +2,7 @@
 
 #include "player_data.hpp"
 #include "retail_save_items.hpp"
+#include "retail_save_progress.hpp"
 #include "items/player_special_items.hpp"
 
 #include <algorithm>
@@ -241,6 +242,7 @@ bool writeRetailSaveImpl(
     const PlayerEquipment* equipment,
     const PlayerBelt* belt,
     const PlayerSpecialItems* special_items,
+    const RetailSaveProgress* progress,
     std::uint8_t xor_key,
     std::string* error) {
     if (!player.valid()) {
@@ -283,6 +285,7 @@ bool writeRetailSaveImpl(
         payload.resize(record.size());
     }
     std::copy(record.begin(), record.end(), payload.begin());
+    std::size_t owned_items_end = 0;
     if (item_database &&
         (!inventory || !equipment || !belt ||
          !special_items ||
@@ -293,7 +296,16 @@ bool writeRetailSaveImpl(
              *equipment,
              *belt,
              *special_items,
-             nullptr,
+             &owned_items_end,
+             error))) {
+        return false;
+    }
+    if (progress &&
+        (!item_database ||
+         !replaceRetailProgress(
+             payload,
+             owned_items_end,
+             *progress,
              error))) {
         return false;
     }
@@ -377,6 +389,7 @@ bool writeRetailSave(
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
         xor_key,
         error);
 }
@@ -399,6 +412,31 @@ bool writeRetailSave(
         &equipment,
         &belt,
         &special_items,
+        nullptr,
+        xor_key,
+        error);
+}
+
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    const ItemDatabase& item_database,
+    const PlayerInventory& inventory,
+    const PlayerEquipment& equipment,
+    const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
+    const RetailSaveProgress& progress,
+    std::uint8_t xor_key,
+    std::string* error) {
+    return writeRetailSaveImpl(
+        path,
+        player,
+        &item_database,
+        &inventory,
+        &equipment,
+        &belt,
+        &special_items,
+        &progress,
         xor_key,
         error);
 }

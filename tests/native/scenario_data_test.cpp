@@ -3,8 +3,11 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "ui/conversation_layout.hpp"
+#include "ui/player_level_up_notice_input.hpp"
+#include "ui/player_level_up_notice_layout.hpp"
+#include "render/enemy_nameplate_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
-#include "render/loading_renderer.hpp"
+#include "render/player_level_up_notice_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "world/ground_item.hpp"
 #include "world/enemy_effect_impact.hpp"
@@ -207,6 +210,21 @@ bool testGroundItemCreation() {
             "A new ground item did not begin its retail drop arc.")) {
         return false;
     }
+    osf::GroundItem restarted = bouncing;
+    restarted.height = 400;
+    restarted.vertical_velocity = -80;
+    restarted.vertical_gravity = 100;
+    restarted.bounce_state = 2;
+    osf::restartGroundItemDrop(restarted);
+    if (!check(
+            restarted.height == 0 &&
+                restarted.vertical_velocity == 1600 &&
+                restarted.vertical_gravity == 280 &&
+                restarted.bounce_state == 0,
+            "Restarting a rejected pickup did not restore the "
+            "mode-zero drop state.")) {
+        return false;
+    }
     std::int32_t impact_count = 0;
     for (std::int32_t update = 1; update < 19; ++update) {
         if (osf::updateGroundItem(bouncing) ==
@@ -306,12 +324,11 @@ public:
     const osf::gapi::NjpImage* speech = nullptr;
     const osf::gapi::NjpImage* item_patterns = nullptr;
     const osf::gapi::NjpImage* item_shadows = nullptr;
-    const osf::gapi::NjpImage* loading = nullptr;
-    const osf::gapi::NjpImage* wait_icon = nullptr;
+    const osf::gapi::NjpImage* status_icons = nullptr;
     std::vector<NpcPatternCall> calls;
     std::vector<NpcPatternCall> speech_calls;
     std::vector<NpcPatternCall> item_calls;
-    std::vector<NpcPatternCall> loading_calls;
+    std::vector<NpcPatternCall> status_icon_calls;
     std::vector<TextCall> text_calls;
     std::vector<osf::gapi::RectangleDraw> rectangles;
 
@@ -331,11 +348,9 @@ public:
             item_calls.push_back({false, pattern, draw});
         } else if (&image == item_shadows) {
             item_calls.push_back({true, pattern, draw});
-        } else if (
-            &image == loading ||
-            &image == wait_icon) {
-            loading_calls.push_back(
-                {&image == wait_icon, pattern, draw});
+        } else if (&image == status_icons) {
+            status_icon_calls.push_back(
+                {false, pattern, draw});
         }
         return true;
     }
@@ -363,40 +378,162 @@ public:
     void endFrame() override {}
 };
 
-bool testScenarioLoadingPresentation() {
-    osf::gapi::NjpImage loading;
-    osf::gapi::NjpImage wait_icon;
-    NpcRecordingBackend backend;
-    backend.loading = &loading;
-    backend.wait_icon = &wait_icon;
-    osf::renderScenarioLoadingScreen(
-        backend, loading, wait_icon, 60);
+bool testPlayerLevelUpNoticeLayout() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::gapi::NjpImage font;
+    std::string error;
     if (!check(
-            backend.loading_calls.size() == 2 &&
-                !backend.loading_calls[0].shadow &&
-                backend.loading_calls[0].pattern == 4 &&
-                backend.loading_calls[0].draw.x == 0 &&
-                backend.loading_calls[0].draw.y == 0 &&
-                backend.loading_calls[0].draw.red_strength == 500 &&
-                backend.loading_calls[0].draw.green_strength == 500 &&
-                backend.loading_calls[0].draw.blue_strength == 500 &&
-                backend.loading_calls[1].shadow &&
-                backend.loading_calls[1].pattern == 0 &&
-                backend.loading_calls[1].draw.x == 590 &&
-                backend.loading_calls[1].draw.y == 440 &&
-                backend.loading_calls[1].draw.red_strength == 500,
-            "The later retail loading screen packets or fade differ.")) {
+            font.load(
+                data_root / "System" / "Common" / "Pattern" /
+                    "Font01.njp",
+                &error),
+            "The level-up notice fixture could not load Font01.")) {
+        std::cerr << error << '\n';
         return false;
     }
-    backend.loading_calls.clear();
-    osf::renderScenarioLoadingScreen(
-        backend, loading, wait_icon, 70);
+
+    osf::PlayerLevelUpNotice notice{"Level 2", 900};
+    osf::PlayerLevelUpNoticeLayout centered;
+    if (!check(
+            osf::buildPlayerLevelUpNoticeLayout(
+                notice, font, centered) &&
+                centered.x ==
+                    (640 - centered.width) / 2 &&
+                centered.y ==
+                    (416 - centered.height) / 2 &&
+                centered.text_x == centered.x + 4 &&
+                centered.text_y == centered.y + 4 &&
+                !notice.dismissible() &&
+                !osf::playerLevelUpNoticeAcceptsPointer(
+                    notice,
+                    centered.x,
+                    centered.y,
+                    &font),
+            "The level-up notice lost its retail centered geometry "
+            "or initial click guard.")) {
+        return false;
+    }
+    NpcRecordingBackend renderer;
+    osf::renderPlayerLevelUpNotice(
+        renderer, notice, font);
+    if (!check(
+            renderer.rectangles.size() == 5 &&
+                renderer.rectangles[0].x == centered.x &&
+                renderer.rectangles[0].y == centered.y &&
+                renderer.rectangles[0].width ==
+                    centered.width &&
+                renderer.rectangles[0].height ==
+                    centered.height &&
+                renderer.rectangles[0].color.red == 0 &&
+                renderer.rectangles[0].color.green == 0 &&
+                renderer.rectangles[0].color.blue == 0 &&
+                renderer.rectangles[0].opacity == 250 &&
+                renderer.rectangles[1].opacity == 500 &&
+                renderer.text_calls.size() == 1 &&
+                renderer.text_calls[0].draw.x ==
+                    centered.text_x &&
+                renderer.text_calls[0].draw.y ==
+                    centered.text_y,
+            "The level-up notice lost its faded background, frame, "
+            "padding, or text placement.")) {
+        return false;
+    }
+
+    notice.counter = 839;
+    osf::PlayerLevelUpNoticeLayout sliding;
+    if (!check(
+            osf::buildPlayerLevelUpNoticeLayout(
+                notice, font, sliding) &&
+                sliding.x > centered.x &&
+                sliding.y < centered.y &&
+                notice.dismissible() &&
+                osf::playerLevelUpNoticeAcceptsPointer(
+                    notice,
+                    sliding.x,
+                    sliding.y,
+                    &font),
+            "The level-up notice did not begin its ten-update "
+            "upper-right slide.")) {
+        return false;
+    }
+
+    notice.counter = 830;
+    osf::PlayerLevelUpNoticeLayout parked;
+    if (!check(
+            osf::buildPlayerLevelUpNoticeLayout(
+                notice, font, parked) &&
+                parked.x == 640 - parked.width &&
+                parked.y == 1 &&
+                osf::playerLevelUpNoticeContains(
+                    parked, parked.x, parked.y) &&
+                !osf::playerLevelUpNoticeContains(
+                    parked,
+                    parked.x + parked.width,
+                    parked.y),
+            "The level-up notice did not finish at the exact retail "
+            "upper-right position or bounds.")) {
+        return false;
+    }
+
+    notice.counter = 1;
+    notice.update();
     return check(
-        backend.loading_calls.size() == 2 &&
-            backend.loading_calls[1].draw.x == 606 &&
-            backend.loading_calls[0].draw.red_strength == 583 &&
-            backend.loading_calls[1].draw.red_strength == 583,
-        "The retail WaitIcon phase or 120-update fade differs.");
+        !notice.active() && notice.text.empty(),
+        "The level-up notice did not release itself at update 900.");
+#else
+    return true;
+#endif
+}
+
+bool testEnemyNameplatePresentation() {
+    osf::gapi::NjpImage font;
+    osf::gapi::NjpImage status_icons;
+    NpcRecordingBackend renderer;
+    renderer.status_icons = &status_icons;
+    osf::renderEnemyNameplate(
+        renderer,
+        font,
+        &status_icons,
+        {
+            "Goblin",
+            {224, 224, 224, 255},
+            25,
+            100,
+            2,
+            100,
+            50,
+        });
+    return check(
+        renderer.rectangles.size() == 3 &&
+            renderer.rectangles[0].x == 71 &&
+            renderer.rectangles[0].y == 47 &&
+            renderer.rectangles[0].width == 56 &&
+            renderer.rectangles[0].height == 18 &&
+            renderer.rectangles[0].opacity == 800 &&
+            renderer.rectangles[1].x == 72 &&
+            renderer.rectangles[1].width == 13 &&
+            renderer.rectangles[1].height == 16 &&
+            renderer.rectangles[1].color.red == 128 &&
+            renderer.rectangles[1].color.green == 32 &&
+            renderer.rectangles[1].opacity == 500 &&
+            renderer.rectangles[2].x == 85 &&
+            renderer.rectangles[2].width == 41 &&
+            renderer.text_calls.size() == 2 &&
+            renderer.text_calls[0].text ==
+                std::string("\x81\x40Goblin") &&
+            renderer.text_calls[0].draw.x == 77 &&
+            renderer.text_calls[0].draw.y == 51 &&
+            renderer.text_calls[1].draw.x == 76 &&
+            renderer.text_calls[1].draw.y == 50 &&
+            renderer.status_icon_calls.size() == 1 &&
+            renderer.status_icon_calls[0].pattern == 5 &&
+            renderer.status_icon_calls[0].draw.x == 74 &&
+            renderer.status_icon_calls[0].draw.y == 51,
+        "Enemy hover did not reproduce the retail health bar, "
+        "element icon, or name placement.");
 }
 
 void writeI32(
@@ -1348,6 +1485,178 @@ bool testWorldItemSaveRoundTrip() {
 #endif
 }
 
+bool testPersistentConversationAndMovementState() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    std::string error;
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Progress";
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, &error),
+            "The persistent-state fixture world could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::ScreenPosition ostare_pointer;
+    if (!check(
+            findNpcPointerPoint(world, 0, ostare_pointer) &&
+                world.commandWorldInteraction(
+                    ostare_pointer.x, ostare_pointer.y) &&
+                updateUntilConversation(world) &&
+                world.conversationMessageId() == 1000000,
+            "Ostare's first conversation could not be prepared for saving.")) {
+        return false;
+    }
+    for (std::int32_t message = 0; message < 5; ++message) {
+        world.advanceConversation();
+    }
+    world.togglePlayerRun();
+    if (!check(
+            !world.conversationActive() &&
+                world.quests().state(4) == 1 &&
+                world.playerMovementPace() ==
+                    osf::MovementPace::run,
+            "The conversation or movement state was not live before saving.")) {
+        return false;
+    }
+
+    const std::filesystem::path save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_progress_save_test";
+    const std::filesystem::path save_path =
+        save_root / "Save" / "0000.Ssv";
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(save_root, cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                world.playerData(),
+                world.itemDatabase(),
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerBelt(),
+                world.playerSpecialItems(),
+                world.retailSaveProgress(),
+                0x6d,
+                &error),
+            "The conversation and movement state could not be saved.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest saved_player;
+    saved_player.source = osf::PlayerDataSource::retail_save;
+    saved_player.save_path = save_path;
+    osf::WorldScene restored;
+    const bool loaded =
+        restored.loadInitialScenario(
+            data_root, saved_player, &error);
+    const bool restored_state =
+        loaded &&
+        restored.quests().state(4) == 1 &&
+        restored.playerMovementPace() ==
+            osf::MovementPace::run &&
+        restored.groundItems().empty() &&
+        findNpcPointerPoint(restored, 0, ostare_pointer) &&
+        restored.commandWorldInteraction(
+            ostare_pointer.x, ostare_pointer.y) &&
+        updateUntilConversation(restored) &&
+        restored.conversationMessageId() == 1000005 &&
+        restored.groundItems().empty();
+    std::filesystem::remove_all(save_root, cleanup_error);
+    if (!check(
+            restored_state,
+            "Saved quest/conversation state repeated Ostare's starter "
+            "drop or lost the run/walk choice.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    return true;
+#else
+    return true;
+#endif
+}
+
+bool testLegacyDeadSaveRecovery() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    std::string error;
+    osf::TableDatabase tables;
+    osf::ItemDatabase items;
+    osf::PlayerData dead_player;
+    if (!check(
+            tables.load(
+                data_root / "System" / "Game" /
+                    "Parameter" / "Table.Tbd",
+                &error) &&
+                items.load(
+                    data_root / "System" / "Game" /
+                        "Parameter" / "Item.Ibn",
+                    &error) &&
+                dead_player.initializeNew(
+                    "DeadSave", 0, tables, &error),
+            "The dead-save recovery fixture could not be prepared.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    dead_player.setCurrentLife(0);
+    dead_player.setCurrentMana(1);
+
+    const std::filesystem::path save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_dead_save_recovery_test";
+    const std::filesystem::path save_path =
+        save_root / "Save" / "0000.Ssv";
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(save_root, cleanup_error);
+    const osf::PlayerInventory inventory;
+    const osf::PlayerEquipment equipment;
+    const osf::PlayerBelt belt;
+    const osf::PlayerSpecialItems special_items;
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                dead_player,
+                items,
+                inventory,
+                equipment,
+                belt,
+                special_items,
+                0x52,
+                &error),
+            "The legacy zero-life save fixture could not be written.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLoadRequest request;
+    request.source = osf::PlayerDataSource::retail_save;
+    request.save_path = save_path;
+    osf::WorldScene world;
+    const bool loaded =
+        world.loadInitialScenario(data_root, request, &error);
+    std::filesystem::remove_all(save_root, cleanup_error);
+    return check(
+        loaded &&
+            world.playerData().currentLife() ==
+                world.playerData().baseMaximumLife() &&
+            world.playerData().currentMana() ==
+                world.playerData().baseMaximumMana() &&
+            world.playerMotion() == osf::PlayerMotion::idle,
+        "A save made by the old portable dead-state bug did not "
+        "enter town through the retail revive reset.");
+#else
+    return true;
+#endif
+}
+
 bool testGeneralScenarioStart() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -1481,21 +1790,24 @@ bool testGeneralScenarioStart() {
         first_enemy.position();
     wasteland.update();
     if (!check(
-            wasteland.enemies().front().animationChart() == 1 &&
+            wasteland.enemies().front().animationChart() == 0 &&
                 wasteland.enemies().front().animationFrame() == 0 &&
-                (wasteland.enemies().front().position().x !=
-                     enemy_position.x ||
-                 wasteland.enemies().front().position().y !=
-                     enemy_position.y),
-            "The first enemy did not evaluate event zero and enter "
-            "its authored retail patrol.")) {
+                wasteland.enemies().front().position().x ==
+                    enemy_position.x &&
+                wasteland.enemies().front().position().y ==
+                    enemy_position.y,
+            "An enemy outside the retail activation range began "
+            "its authored patrol.")) {
         return false;
     }
     wasteland.update();
     if (!check(
-            wasteland.enemies().front().animationChart() == 1 &&
-                wasteland.enemies().front().animationFrame() == 1,
-            "The live enemy patrol did not continue on the shared "
+            wasteland.enemies().front().animationChart() == 0 &&
+                wasteland.enemies().front().position().x ==
+                    enemy_position.x &&
+                wasteland.enemies().front().position().y ==
+                    enemy_position.y,
+            "The inactive enemy did not remain idle on the shared "
             "active-map cadence.")) {
         return false;
     }
@@ -1506,7 +1818,7 @@ bool testGeneralScenarioStart() {
     const std::size_t belt_before_enemy_ai =
         wasteland.playerBelt().items().size();
     bool heard_enemy_hit = false;
-    bool saw_player_hit_effect = false;
+    bool saw_player_hit_splatter = false;
     for (std::int32_t update = 0;
          update < 300 &&
          wasteland.playerData().currentLife() ==
@@ -1520,21 +1832,21 @@ bool testGeneralScenarioStart() {
             std::find(
                 samples.begin(), samples.end(), 6) !=
                 samples.end();
-        saw_player_hit_effect =
-            saw_player_hit_effect ||
+        saw_player_hit_splatter =
+            saw_player_hit_splatter ||
             std::any_of(
                 wasteland.combatEffects().begin(),
                 wasteland.combatEffects().end(),
                 [](const osf::CombatEffectActor& effect) {
                     return effect.effectNumber() >= 21000 &&
-                           effect.effectNumber() <= 21014;
+                           effect.effectNumber() <= 21003;
                 });
     }
     if (!check(
             wasteland.playerData().currentLife() <
                     life_before_enemy_ai &&
                 heard_enemy_hit &&
-                saw_player_hit_effect &&
+                saw_player_hit_splatter &&
                 wasteland.playerInventory().items().size() ==
                     inventory_before_enemy_ai &&
                 wasteland.playerBelt().items().size() ==
@@ -1547,7 +1859,8 @@ bool testGeneralScenarioStart() {
                      osf::PlayerMotion::defeated),
             "A live Wasteland enemy did not approach, complete its "
             "authored attack presentation, pass damage through the "
-            "player receiver, and publish its effect and sample.")) {
+            "player receiver, and publish its impact splatter and "
+            "sample.")) {
         return false;
     }
     const std::int32_t damaged_life =
@@ -2808,9 +3121,17 @@ bool testRetailRemoteTown() {
     for (std::int32_t update = 0; update < 19; ++update) {
         world.update();
     }
+    const std::vector<std::int32_t> drop_samples =
+        world.takeAudioSamples();
     if (!check(
-            world.takeAudioSamples() ==
-                std::vector<std::int32_t>{15, 15, 15, 85},
+            std::count(
+                drop_samples.begin(),
+                drop_samples.end(),
+                15) == 3 &&
+                std::count(
+                    drop_samples.begin(),
+                    drop_samples.end(),
+                    85) == 1,
             "Ostare's scripted drops did not emit their retail landing sounds.")) {
         return false;
     }
@@ -2975,10 +3296,76 @@ bool testRetailRemoteTown() {
             "Ground-item hover feedback differs from retail.")) {
         return false;
     }
+    const osf::ItemDefinition* pickup_blocker =
+        world.itemDatabase().find(3, 0);
+    if (!check(
+            pickup_blocker &&
+                world.playerInventory().add(
+                    *pickup_blocker,
+                    osf::PlayerInventory::grid_width *
+                        osf::PlayerInventory::grid_height),
+            "The full-backpack pickup fixture could not be prepared.")) {
+        return false;
+    }
     const bool short_sword_click =
         world.commandWorldInteraction(
             short_sword_pointer.x,
             short_sword_pointer.y);
+    for (std::int32_t update = 0;
+         update < 2000 &&
+         world.groundItems().front().bounce_state == 2;
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            short_sword_click &&
+                world.groundItems().size() == 4 &&
+                world.groundItems().front().id ==
+                    short_sword_id &&
+                world.groundItems().front().bounce_state == 0 &&
+                world.groundItems().front().height == 0 &&
+                world.groundItems().front().vertical_velocity == 1600 &&
+                world.playerInventory().items().size() ==
+                    static_cast<std::size_t>(
+                        osf::PlayerInventory::grid_width *
+                        osf::PlayerInventory::grid_height),
+            "A full backpack did not leave the clicked item on the "
+            "ground and restart its retail drop animation.")) {
+        return false;
+    }
+    world.playerInventory().clear();
+    bool heard_rejected_pickup_landing = false;
+    for (std::int32_t update = 0;
+         update < 40 &&
+         world.groundItems().front().bounce_state != 2;
+         ++update) {
+        world.update();
+        const std::vector<std::int32_t> samples =
+            world.takeAudioSamples();
+        heard_rejected_pickup_landing =
+            heard_rejected_pickup_landing ||
+            std::find(
+                samples.begin(), samples.end(), 15) !=
+                samples.end();
+    }
+    if (!check(
+            world.groundItems().front().bounce_state == 2 &&
+                heard_rejected_pickup_landing,
+            "The rejected pickup did not complete its bounce and "
+            "play the Short Sword landing sound.")) {
+        return false;
+    }
+    if (!check(
+            findGroundItemRangeOnlyPoint(
+                world,
+                short_sword_id,
+                short_sword_pointer) &&
+                world.commandWorldInteraction(
+                    short_sword_pointer.x,
+                    short_sword_pointer.y),
+            "The settled rejected pickup could not be selected again.")) {
+        return false;
+    }
     for (std::int32_t update = 0;
          update < 2000 &&
          world.groundItems().size() == 4;
@@ -2986,8 +3373,7 @@ bool testRetailRemoteTown() {
         world.update();
     }
     if (!check(
-            short_sword_click &&
-                world.groundItems().size() == 3 &&
+            world.groundItems().size() == 3 &&
                 world.playerInventory().items().size() == 1 &&
                 world.playerInventory().items()[0].category == 0 &&
                 world.playerInventory()
@@ -3675,7 +4061,8 @@ bool testRetailRemoteTown() {
 int main() {
     return testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
-                   testScenarioLoadingPresentation() &&
+                   testPlayerLevelUpNoticeLayout() &&
+                   testEnemyNameplatePresentation() &&
                    testFixture() &&
                    testMalformedData() &&
                    testRetailScenarioCatalog() &&
@@ -3684,6 +4071,8 @@ int main() {
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&
+                   testPersistentConversationAndMovementState() &&
+                   testLegacyDeadSaveRecovery() &&
                    testRetailRemoteTown()
                ? 0
                : 1;

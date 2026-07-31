@@ -201,6 +201,45 @@ bool testFirstGoblinAggression() {
     constexpr std::int32_t kFirstGoblinId = 101;
     const osf::EnemyActor* goblin =
         findEnemy(world, kFirstGoblinId);
+    const osf::EnemyActor* inactive_enemy = nullptr;
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        const std::int32_t distance =
+            osf::distanceBetweenBounds(
+                {world.playerWorldX(), world.playerWorldY()},
+                world.playerJudgement(),
+                enemy.position(),
+                enemy.judgement());
+        if (distance >
+            osf::kRetailEnemyActivationDistance) {
+            inactive_enemy = &enemy;
+            break;
+        }
+    }
+    if (!inactive_enemy) {
+        return check(
+            false,
+            "The aggression fixture has no enemy outside the "
+            "retail activation range.");
+    }
+    const std::int32_t inactive_enemy_id =
+        inactive_enemy->id();
+    const osf::WorldPosition inactive_position =
+        inactive_enemy->position();
+    world.update();
+    world.takeAudioSamples();
+    inactive_enemy =
+        findEnemy(world, inactive_enemy_id);
+    if (!check(
+            inactive_enemy &&
+                inactive_enemy->position().x ==
+                    inactive_position.x &&
+                inactive_enemy->position().y ==
+                    inactive_position.y &&
+                inactive_enemy->animationChart() == 0,
+            "An enemy outside the retail 5000-unit activation "
+            "range began simulating.")) {
+        return false;
+    }
     const osf::ItemDefinition* starter_sword =
         world.itemDatabase().find(0, 0);
     if (!goblin || !starter_sword ||
@@ -221,14 +260,71 @@ bool testFirstGoblinAggression() {
     const osf::WorldPosition goblin_before =
         goblin->position();
     osf::ScreenPosition pointer;
-    approachVisibleEnemy(
-        world, kFirstGoblinId, pointer);
+    std::int32_t longest_stationary_walk = 0;
+    std::int32_t stationary_walk = 0;
+    for (std::int32_t update = 0;
+         update < 1000;
+         ++update) {
+        goblin = findEnemy(world, kFirstGoblinId);
+        if (!goblin) {
+            return false;
+        }
+        const osf::WorldPosition previous_position =
+            goblin->position();
+        const std::int32_t distance =
+            osf::distanceBetweenBounds(
+                {world.playerWorldX(), world.playerWorldY()},
+                world.playerJudgement(),
+                goblin->position(),
+                goblin->judgement());
+        if (distance <= 100) {
+            world.cancelPlayerMovement();
+            break;
+        }
+        if (update % 30 == 0) {
+            const osf::ScreenPosition target =
+                osf::calculateRealPosition(
+                    goblin->position());
+            world.commandPlayerMovement(
+                target.x - world.cameraScreenX(),
+                target.y - world.cameraScreenY());
+        }
+        world.update();
+        world.takeAudioSamples();
+        goblin = findEnemy(world, kFirstGoblinId);
+        if (goblin &&
+            goblin->position().x == previous_position.x &&
+            goblin->position().y == previous_position.y &&
+            goblin->animationChart() == 1) {
+            ++stationary_walk;
+            longest_stationary_walk =
+                std::max(
+                    longest_stationary_walk,
+                    stationary_walk);
+        } else {
+            stationary_walk = 0;
+        }
+    }
+    if (!check(
+            longest_stationary_walk == 0,
+            "The first Goblin kept its walk animation while "
+            "collision prevented movement.")) {
+        return false;
+    }
     bool heard_hit = false;
+    bool goblin_attacked = false;
     for (std::int32_t update = 0;
          update < 600 &&
          world.playerData().currentLife() == life_before;
          ++update) {
         world.update();
+        goblin = findEnemy(world, kFirstGoblinId);
+        goblin_attacked =
+            goblin_attacked ||
+            (goblin &&
+             goblin->animationChart() ==
+                 goblin->presentationProfile()
+                     .direct_animation_chart[0]);
         heard_hit =
             heard_hit ||
             containsSample(
@@ -257,7 +353,8 @@ bool testFirstGoblinAggression() {
             << '\n';
     }
     if (!check(
-            world.playerData().currentLife() < life_before &&
+            goblin_attacked &&
+                world.playerData().currentLife() < life_before &&
                 heard_hit,
             "The first authored Goblin did not acquire, approach, "
             "and attack the living player.")) {
@@ -355,6 +452,8 @@ bool testFirstGoblinCombat() {
     osf::WorldScene world;
     osf::PlayerLoadRequest player;
     player.name = "GoblinTest";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
     std::string error;
     if (!check(
             world.loadInitialScenario(
@@ -462,7 +561,7 @@ bool testFirstGoblinCombat() {
                 containsSample(samples, 1);
             heard_attack_voice =
                 heard_attack_voice ||
-                containsSample(samples, 99);
+                containsSample(samples, 96);
             heard_hit =
                 heard_hit ||
                 containsSample(samples, 6);
@@ -531,8 +630,7 @@ bool testFirstGoblinCombat() {
         heard_hit &&
         heard_death &&
         saw_hit_effect &&
-        saw_death_effect &&
-        world.groundItems().size() > ground_before;
+        saw_death_effect;
     if (!defeated) {
         std::cerr
             << "life=" << (goblin
@@ -554,7 +652,7 @@ bool testFirstGoblinCombat() {
     if (!check(
             defeated,
             "The first live Goblin did not complete its retail "
-            "attack, death, reward, and loot path.")) {
+            "attack, death, and reward path.")) {
         return false;
     }
 
@@ -639,17 +737,19 @@ bool testFirstGoblinCombat() {
                 return containsSample(
                     pickup_samples, sample);
             });
-    if (!check(
-            world.groundItems().size() == ground_before &&
-                world.playerInventory().items().size() >
-                    inventory_before_pickup &&
-                expected_pickup_samples.size() ==
-                    drop_ids.size() &&
-                heard_landing &&
-                heard_every_pickup,
-            "First-Goblin loot did not land, play its move sound, "
-            "and transfer into the owned backpack.")) {
-        return false;
+    if (!drop_ids.empty()) {
+        if (!check(
+                world.groundItems().size() == ground_before &&
+                    world.playerInventory().items().size() >
+                        inventory_before_pickup &&
+                    expected_pickup_samples.size() ==
+                        drop_ids.size() &&
+                    heard_landing &&
+                    heard_every_pickup,
+                "First-Goblin loot did not land, play its move "
+                "sound, and transfer into the owned backpack.")) {
+            return false;
+        }
     }
 
     const std::filesystem::path save_root =

@@ -939,7 +939,7 @@ bool testNewCharacterCreationAndModeScreens() {
     input.confirm_pressed = false;
     if (!check(
                 state.data().screen == 1 &&
-                state.data().character_gender == 1 &&
+                state.data().character_gender == 0 &&
                 state.data().name_entry_active &&
                 state.data().character_transition_counter == 1000 &&
                 result.mode_action ==
@@ -1129,7 +1129,7 @@ bool testNewCharacterRetailDrawing() {
     osf::CharacterSelectStateData data;
     data.mode = osf::CharacterSelectMode::new_character;
     data.screen = 1;
-    data.character_gender = 0;
+    data.character_gender = 1;
     data.name_entry_active = true;
 
     osf::CharacterSelectFrameResult frame;

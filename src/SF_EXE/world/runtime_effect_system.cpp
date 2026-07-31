@@ -34,9 +34,10 @@ void RuntimeEffectSystem::clear() {
 }
 
 bool RuntimeEffectSystem::queue(
-    const CombatEffectSpawnRequest& request) {
+    const CombatEffectSpawnRequest& request,
+    const TableDatabase* tables) {
     EnemyEffectController controller;
-    if (!controller.initialize(request)) {
+    if (!controller.initialize(request, tables)) {
         return false;
     }
     controllers_.push_back({
@@ -114,7 +115,11 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                       entry.source_character_number)
                 : EnemyEffectControllerSource{};
         EnemyEffectControllerUpdate update =
-            entry.controller.update(source);
+            entry.controller.update({
+                source,
+                context.random,
+                context.placement_is_clear,
+            });
         for (std::size_t index = 0;
              index < update.audio_count;
              ++index) {

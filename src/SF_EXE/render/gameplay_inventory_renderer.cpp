@@ -147,7 +147,7 @@ void renderGameplayInventory(
     renderer.drawPattern(status_patterns, 3);
     renderer.drawPattern(
         status_patterns,
-        world.playerData().gender() == 1 ? 1 : 0);
+        world.playerData().gender() == 1 ? 0 : 1);
 
     const PlayerInventory& owned = world.playerInventory();
     drawPanelText(

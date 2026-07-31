@@ -56,6 +56,29 @@ bool GameplayUiController::update(
         return false;
     }
 
+    // Retail routes a dead player directly through its locked death action.
+    // Menus cannot pause that action or expose save commands before revival.
+    if (world.playerMotion() == PlayerMotion::defeated) {
+        reset();
+        world.setCameraAnchor(320, 240);
+        return false;
+    }
+
+    // A successful save deliberately leaves the retail saving page visible
+    // for one frame. Execute its deferred transition before any independently
+    // open left or right panel can consume the following UI update.
+    if (pending_action_ != GameplayOptionsAction::none) {
+        const GameplayOptionsAction action = pending_action_;
+        pending_action_ = GameplayOptionsAction::none;
+        if (action ==
+            GameplayOptionsAction::save_and_return_to_title) {
+            game_state.transition(GameState::title);
+        } else {
+            running = false;
+        }
+        return true;
+    }
+
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
@@ -134,7 +157,7 @@ bool GameplayUiController::update(
         !options_.active() &&
         !map_.active() &&
         !mission_list_.active()) {
-        const BeltItemUseResult used =
+        const PlayerItemUseResult used =
             world.usePlayerBeltPocket(
                 belt_pocket);
         if (used.consumed) {
@@ -163,7 +186,8 @@ bool GameplayUiController::update(
          inventory_.specialItemsActive()) &&
         !options_.active();
     const bool belt_pointer_pressed =
-        input.menu().pointer_primary_pressed &&
+        (input.menu().pointer_primary_pressed ||
+         input.pointerSecondaryPressed()) &&
         !world.conversationActive() &&
         !options_.active() &&
         GameplayInventory::beltPocketAt(
@@ -197,6 +221,7 @@ bool GameplayUiController::update(
                     input.menu().pointer_x,
                     input.menu().pointer_y,
                     special_items_toggle,
+                    input.pointerSecondaryPressed(),
                 },
                 world.playerInventory(),
                 world.playerEquipment(),
@@ -204,6 +229,20 @@ bool GameplayUiController::update(
                 world.playerSpecialItems(),
                 world.itemDatabase(),
                 world.playerData().level());
+        PlayerItemUseResult used;
+        if (result.inventory_item_use_requested >= 0) {
+            used = world.usePlayerInventoryItem(
+                result.inventory_item_use_requested);
+            inventory_.completeItemUse(
+                used.consumed);
+        } else if (result.belt_pocket_use_requested >= 0) {
+            used = world.usePlayerBeltPocket(
+                result.belt_pocket_use_requested);
+        }
+        if (used.consumed) {
+            audio.playGameplayEffect(
+                used.sound_sample);
+        }
         if (result.equipment_changed) {
             world.refreshPlayerAppearance();
         }
@@ -309,18 +348,6 @@ bool GameplayUiController::update(
         return true;
     }
 
-    if (pending_action_ != GameplayOptionsAction::none) {
-        const GameplayOptionsAction action = pending_action_;
-        pending_action_ = GameplayOptionsAction::none;
-        if (action ==
-            GameplayOptionsAction::save_and_return_to_title) {
-            game_state.transition(GameState::title);
-        } else {
-            running = false;
-        }
-        return true;
-    }
-
     const bool was_active = options_.active();
     const bool toggle =
         input.gameplayOptionsPressed() &&
@@ -374,6 +401,7 @@ bool GameplayUiController::update(
                 world.playerEquipment(),
                 world.playerBelt(),
                 world.playerSpecialItems(),
+                world.retailSaveProgress(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);

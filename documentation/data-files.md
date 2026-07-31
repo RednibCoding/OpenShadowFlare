@@ -782,12 +782,13 @@ The portable `RKC_RPG_TABLE` static library keeps the numeric and string cells
 together and looks tables up by their stored number. The Episode 1 database
 contains 138 tables.
 
-`0x00440f70` uses table 901 for a new male player and table 900 for a new
-female player. Both tables have 13 rows and five columns. Column zero supplies
+`0x00440f70` stores gender as `0` for female and `1` for male. It uses table
+901 for a new female player and table 900 for a new male player. Both tables
+have 13 rows and five columns. Column zero supplies
 the initial values; the other four columns hold per-growth-step values used by
 later progression:
 
-| Row | Female table 900 | Male table 901 |
+| Row | Male table 900 | Female table 901 |
 |-----|-----------------:|---------------:|
 | 0 | 100 | 100 |
 | 1 | 128 | 128 |

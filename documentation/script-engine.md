@@ -433,7 +433,9 @@ The currently understood domains are:
 | 6 | Script character's current world X |
 | 7 | Script character's current world Y |
 | 8 | Current play mode (`0` single player, `1` client, `2` server) |
-| 10, 11, 12 | Persistent global arrays |
+| 10 | Persistent transport flags (Table 40 rows) |
+| 11 | Persistent quest and conversation flags |
+| 12 | Persistent scenario/global flags |
 | 13 | Local-player array |
 
 Type `5` includes three confirmed live scenario-entity ranges. A key beginning
@@ -448,12 +450,12 @@ when an exercised retail path gives us enough evidence.
 Temporary flags are owned directly by the interpreter and initialized from the
 SCS definitions. Persistent and game-owned domains are callbacks because their
 lifetime belongs to scenario state, save data, the player, or another portable
-DLL boundary. Types `10` through `13` now live in the persistent `WorldScene`
-owner, so replacing an MCT/SCS/map transaction does not reset their assigned
-values. Other unknown-but-valid external values still use the runtime's
-generic keyed map. That is sufficient to preserve assignments while the proper
-save and quest-state owners are reconstructed, but it is not the final
-persistence model.
+DLL boundary. Retail writes types `12`, `10`, and `11` as three counted arrays
+immediately after the owned-item stream, in that order. The reconstruction now
+restores and rewrites those arrays through their real owners. This includes
+Ostare's type-11 flag at index 4, so his opening conversation and starter drop
+do not repeat after a save/load. Type `13` is still held for the lifetime of
+the player but its later save location has not been mapped yet.
 
 ## Working conversations
 

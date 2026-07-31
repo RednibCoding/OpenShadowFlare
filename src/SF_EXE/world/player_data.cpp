@@ -60,10 +60,12 @@ bool PlayerData::initializeNew(
     std::string* error) {
     clear();
 
-    // FUN_00440f70 selects table 901 for the male record and table 900 for
-    // the female record. Other values follow the male resource path in the
-    // retail executable.
-    const std::int32_t normalized_gender = gender == 1 ? 1 : 0;
+    // FUN_00440f70 stores zero for female and one for male, then selects
+    // initial parameter table 901 or 900 respectively.
+    const std::int32_t normalized_gender =
+        gender == playerGenderValue(PlayerGender::male)
+            ? playerGenderValue(PlayerGender::male)
+            : playerGenderValue(PlayerGender::female);
     const TableData* initial_values =
         tables.find(901 - normalized_gender);
     if (!initial_values ||
@@ -348,6 +350,13 @@ void PlayerData::setCurrentMana(std::int32_t value) {
             value,
             0,
             std::max(0, baseMaximumMana())));
+}
+
+void PlayerData::restoreForRespawn() {
+    // FUN_00440c20 restores both pools when a scenario transition carries
+    // the retail revive flag.
+    setCurrentLife(baseMaximumLife());
+    setCurrentMana(baseMaximumMana());
 }
 
 bool PlayerData::restoreLife(
