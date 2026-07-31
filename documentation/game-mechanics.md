@@ -393,6 +393,27 @@ a minimum of one; word five uses physical defense, word 34 is presentation
 21024, and word 72 is one. Retail still adds the hero's magical hit rate to
 Table 17 parameter one for the packet accuracy value.
 
+### Mud Javelin
+
+Mud Javelin returns to the ordinary pointed-spell path. Action 38 uses CAF
+charts 13 and 14 at the Table 20 row-sixteen rate, requires a living enemy,
+and creates effect 10016 as soon as the action begins. Its authored marker
+still determines when that controller launches the visible attack.
+
+The family-zero subtype-three packet adds Table 17 parameter zero to magical
+attack and parameter one to magical hit rate. It carries magical defense,
+Table 17 parameter five, and a randomly selected ordinary impact presentation
+from 21000 through 21003. The selected enemy, Table 17 travel speed, hero
+judgement rectangle, marker delay, and constructor field 22 all remain owned
+by the effect request.
+
+At the marker delay, resource 10000110 launches with 80-unit contact bounds
+and sample 19. The controller follows that projectile until it disappears,
+then places resource 10000111 at its last position. On the burst's fifth
+update it applies the packet to every target in its 240-unit area, plays sample
+22, and requests the nearby camera shake. Successful receiver contacts train
+spell sixteen.
+
 ## Character Stats
 
 ### Primary Stats

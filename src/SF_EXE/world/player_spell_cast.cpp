@@ -196,6 +196,22 @@ bool playerSpellDescriptor(
             PlayerSpellDamageModel::physical_percent;
         descriptor.constructor_delay_override = 1;
         return true;
+    case 16:
+        descriptor = {
+            10016,
+            3,
+            -1,
+            kEnemyAndObjectTargetMask,
+            true,
+            true,
+            false,
+            true,
+            false,
+            false,
+            true,
+            0,
+        };
+        return true;
     default:
         return false;
     }

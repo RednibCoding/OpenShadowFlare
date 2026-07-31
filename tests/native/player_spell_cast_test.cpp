@@ -3169,6 +3169,30 @@ int main() {
         !testTargetedSpellInsufficientMana(game_root, 15)) {
         return 1;
     }
+    if (!testRetailAction(
+            animation,
+            tables,
+            16,
+            osf::PlayerSpellAction::mud_javelin,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            16,
+            {
+                10016, 3, -1, 0x14,
+                true, true, false, true, false, false,
+                true, 0,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            16,
+            13,
+            10000110,
+            19) ||
+        !testTargetedSpellInsufficientMana(game_root, 16)) {
+        return 1;
+    }
 #endif
     return 0;
 }

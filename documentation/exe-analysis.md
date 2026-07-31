@@ -2181,3 +2181,26 @@ uses `[-80,-80,79,79]` bounds, display height 155, a fixed seven-update
 lifetime, directional chart zero, straight Table 17 travel, scenery and
 first-target expiry, and bank-zero contact sample 20. Its copied packet enters
 the ordinary receiver-time damage and spell-practice path.
+
+## Mud Javelin cast
+
+`0x0043ecf0` dispatches spell sixteen as action 38 on CAF charts 13 and 14
+with Table 20 row sixteen. The pointed command requires a living enemy but no
+particular weapon. Action entry sends effect 10016 the player source, target
+mask `0x14`, selected target, Table 17 parameter-three travel speed, height
+200, target angle, player judgement, the chart-marker delay, and Table 17
+parameter four. Constructor effective level remains zero.
+
+The family-zero packet has magical type three and subtype three. Table 17
+parameter zero is added to magical attack, parameter one to magical hit rate,
+word five carries magical defense, word 32 carries parameter five, and word 34
+uses one retail random draw to select 21000 through 21003. Word 72 is zero,
+word 73 is sixteen, and the normal Table 70 through 78 banks are copied.
+
+The existing effect handler at `0x0042ea50` launches resource 10000110 when
+the marker delay expires, with 80-unit bounds, packet contact, and sample 19.
+It tracks the projectile's runtime identity and last position until removal,
+then creates resource 10000111 there. On that burst's fifth update the packet
+is applied to every target in its 240-unit area, sample 22 plays, nearby camera
+shake is requested, and the controller ends. Receiver contact owns spell
+practice.

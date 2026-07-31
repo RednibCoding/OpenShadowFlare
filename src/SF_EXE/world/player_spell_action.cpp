@@ -66,6 +66,7 @@ SpellCharts chartsForAction(
     case PlayerSpellAction::flame_strike:
     case PlayerSpellAction::dread_deathscythe:
     case PlayerSpellAction::medusa:
+    case PlayerSpellAction::mud_javelin:
         return {13, 14};
     case PlayerSpellAction::sonic_blade:
         return {};
@@ -161,6 +162,9 @@ bool playerSpellActionForSpell(
         return true;
     case 15:
         action = PlayerSpellAction::sonic_blade;
+        return true;
+    case 16:
+        action = PlayerSpellAction::mud_javelin;
         return true;
     default:
         return false;

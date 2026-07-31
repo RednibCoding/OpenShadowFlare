@@ -28,6 +28,7 @@ enum class PlayerSpellAction : std::int32_t {
     lightning_storm = 35,
     medusa = 36,
     sonic_blade = 37,
+    mud_javelin = 38,
 };
 
 enum class PlayerSpellAnimationVariant {

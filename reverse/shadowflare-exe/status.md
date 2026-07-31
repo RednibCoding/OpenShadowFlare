@@ -1689,3 +1689,22 @@ also plays the equipped weapon's selector-four sample.
 height 155, lifetime seven, scenery and first-target expiry, and sample 20 on
 contact. Successful packet delivery trains Sonic Blade through the common
 receiver.
+
+## Mud Javelin cast
+
+`FUN_0043ecf0` runs spell sixteen as action 38 on CAF charts 13 and 14 with
+Table 20 row sixteen. Its action-entry effect-10016 request carries the player
+source, target mask 0x14, selected living enemy, Table 17 travel speed, height
+200, direction, player judgement, marker delay, and constructor field 22.
+
+The family-zero magical subtype-three packet combines Table 17 with magical
+attack and hit rate, uses magical defense, copies parameter five and the
+normal element/state banks, selects presentation 21000 through 21003 with one
+retail random draw, leaves word 72 zero, and records spell sixteen in word 73.
+
+`FUN_0042ea50` launches resource 10000110 at the marker delay with 80-unit
+bounds and sample 19. It follows that projectile until removal, then creates
+resource 10000111 at the last position. The burst applies the packet to every
+target in its 240-unit area on update five, plays sample 22, requests nearby
+camera shake, and ends. Successful contacts train Mud Javelin through the
+common receiver.
