@@ -300,6 +300,38 @@ void WorldScene::updateRuntimeEffects() {
                     dispatch) {
                 applyRuntimeEffectDispatch(dispatch);
             },
+            [this](
+                WorldPosition position,
+                const ObjectBounds& judgement) {
+                if (!positionIsWalkable(
+                        scenario_world_.ground(),
+                        scenario_world_.objectMap(),
+                        position,
+                        judgement)) {
+                    return false;
+                }
+                for (const ScenarioObjectActor& object :
+                     scenario_world_.objects()) {
+                    if (!object.judgementEnabled()) {
+                        continue;
+                    }
+                    const WorldPosition other =
+                        object.position();
+                    const ObjectBounds bounds =
+                        object.judgement();
+                    if (position.x + judgement.left <=
+                            other.x + bounds.right &&
+                        other.x + bounds.left <=
+                            position.x + judgement.right &&
+                        position.y + judgement.top <=
+                            other.y + bounds.bottom &&
+                        other.y + bounds.top <=
+                            position.y + judgement.bottom) {
+                        return false;
+                    }
+                }
+                return true;
+            },
         });
     for (const RuntimeEffectAudioRequest& audio :
          update.audio) {

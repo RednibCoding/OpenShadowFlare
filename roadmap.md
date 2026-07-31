@@ -98,8 +98,9 @@ The ordinary encounter is now proven in the live outdoor map, all the way from
 targeting through pickup and save/reload. The next useful combat work is the
 behavior that cannot be exercised by that first sword fight:
 
-- finish the remaining enemy effect-controller families one shipped family at
-  a time, with both passive timing coverage and a live actor using each one;
+- finish effect-controller types 4, 5, 10, 11, 12, 13, 14, 16, and 21 one
+  shipped family at a time, with both passive timing coverage and a live actor
+  using each one;
 - finish ranged player actions and projectiles without bypassing the common
   effect actors;
 - attach companion targeting and attacks to the same receiver and reward
@@ -940,7 +941,7 @@ regression waits for a Wasteland enemy to damage the player, requires its hit
 sound and ordinary impact splatter, then saves and reloads the damaged
 character to make sure no owned items are lost as an accidental side effect.
 
-The next combat slice should finish enemy effect attacks. Actions four through
+The next combat slices should finish enemy effect attacks. Actions four through
 six already evaluate their authored data and create typed effect requests.
 The executable trace now also proves that these requests enter a controller
 list first and that a controller may create several category-50000000 actors
@@ -989,9 +990,17 @@ three-bounce height controller and ten-step opacity fade. A shipped
 `03000507` enemy regression proves type 2's source and forward resources,
 samples 94 and 20, player damage, rendering, independent cleanup, unchanged
 starter items, and save/reload ownership. A separate low-hit live case proves
-the MISS path. Types 1 and 2 can therefore be treated as complete; the other
-specialized effect families still need the same controller-by-controller
-work.
+the MISS path. Types 1 and 2 can therefore be treated as complete.
+
+Type 3 is complete now as well. Plasma Bat subtype 20 reads five waves from
+Table 205, expands them every four updates from the stored impact origin,
+checks each 100-unit placement against the map and live scenario objects, and
+permanently stops after the first blocked position. Every clear wave creates
+the retail `10000030/31/32` layers and sample 21; only the random-chart first
+layer applies the packet on update zero. Scenario `00010001` provides the
+shipped live regression for rendering, player damage, controller cleanup, and
+unchanged item ownership. Types 4, 5, 10, 11, 12, 13, 14, 16, and 21 still
+need the same controller-by-controller work.
 
 The first half of the next player-visible checkpoint is complete. Remote
 Town's invisible south-gate object uses status kind three and the retail
@@ -1020,9 +1029,9 @@ reward and owner tests because a faithful 10-percent roll must not be forced
 to succeed in this live encounter.
 
 The next combat work is no longer about proving that an ordinary encounter can
-finish. It should move to the remaining effect-controller families, then the
-ranged player actions and companion attacks, keeping one shipped live
-encounter beside each passive reconstruction.
+finish. It should move to effect-controller types 4, 5, 10, 11, 12, 13, 14,
+16, and 21, then the ranged player actions and companion attacks, keeping one
+shipped live encounter beside each passive reconstruction.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,
@@ -1035,6 +1044,11 @@ late-game equipment through a column mix-up.
 The nearby outdoor containers run their shipped scripts all the way through
 the positional opening sound and Table 30 loot command. Level gains publish
 the original changed-stat text for 900 updates and play their retail samples.
+The notice starts centered with its black translucent fill and white frame,
+slides to the upper-right after 840 updates, and consumes a dismissing click
+only after its first 30 updates. Ordinary `21000..21003` impact splatters play
+on every hit, while the separate bloody `21010` presentation remains tied to
+death and keeps its own 120-update hold-and-fade lifetime.
 The Warehouse and map remain left-side owners while Inventory remains an
 independent right-side owner; opening both keeps the world camera centered and
 allows items to move between the Warehouse and backpack.

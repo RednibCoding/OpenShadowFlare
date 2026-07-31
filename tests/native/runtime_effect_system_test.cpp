@@ -96,6 +96,7 @@ bool testControllerActorAndReceiverOrder() {
                 ++receiver_calls;
             }
         },
+        {},
     };
 
     const osf::RuntimeEffectSystemUpdate first =
@@ -153,14 +154,14 @@ bool testControllerActorAndReceiverOrder() {
 
 bool testUnsupportedRequestStaysOutsideOwner() {
     osf::CombatEffectSpawnRequest unsupported = request();
-    unsupported.effect_number = 10003;
+    unsupported.effect_number = 10004;
     osf::RuntimeEffectSystem system;
     return check(
         !system.queue(unsupported) &&
             system.controllerCount() == 0 &&
-            system.actors().empty(),
+        system.actors().empty(),
         "An unsupported specialized family entered the live "
-        "type-one/type-two owner.");
+        "implemented controller owner.");
 }
 
 }  // namespace

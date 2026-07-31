@@ -1,8 +1,13 @@
+#include "core/retail_random.hpp"
+#include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "world/enemy_effect_controller.hpp"
 
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -35,6 +40,12 @@ osf::CombatEffectSpawnRequest requestFor(
     return request;
 }
 
+osf::EnemyEffectControllerUpdate updateController(
+    osf::EnemyEffectController& controller,
+    osf::EnemyEffectControllerSource source) {
+    return controller.update({source, nullptr, {}});
+}
+
 bool testTypeOneZeroDelay() {
     osf::EnemyEffectController controller;
     const osf::CombatEffectSpawnRequest request =
@@ -50,7 +61,8 @@ bool testTypeOneZeroDelay() {
     }
 
     const osf::EnemyEffectControllerUpdate update =
-        controller.update({true, {100, 200}});
+        updateController(
+            controller, {true, {100, 200}});
     if (!check(
             update.expired &&
                 update.actor_spawn_count == 2 &&
@@ -148,7 +160,8 @@ bool testTypeTwoDelayedReresolution() {
     }
 
     const auto first =
-        controller.update({true, {100, 200}});
+        updateController(
+            controller, {true, {100, 200}});
     if (!check(
             first.actor_spawn_count == 1 &&
                 first.actor_spawns[0].resource_id ==
@@ -164,7 +177,8 @@ bool testTypeTwoDelayedReresolution() {
     }
 
     const auto second =
-        controller.update({true, {200, 300}});
+        updateController(
+            controller, {true, {200, 300}});
     if (!check(
             second.actor_spawn_count == 0 &&
                 second.audio_count == 0 &&
@@ -176,7 +190,8 @@ bool testTypeTwoDelayedReresolution() {
     }
 
     const auto third =
-        controller.update({true, {300, 400}});
+        updateController(
+            controller, {true, {300, 400}});
     return check(
         third.actor_spawn_count == 1 &&
             third.actor_spawns[0].resource_id ==
@@ -205,7 +220,7 @@ bool testFixedOriginAndMissingSource() {
     osf::EnemyEffectController controller;
     controller.initialize(request);
     const auto fixed =
-        controller.update({true, {1, 2}});
+        updateController(controller, {true, {1, 2}});
     if (!check(
             fixed.actor_spawns[0].position.x == 700 &&
                 fixed.actor_spawns[0].position.y == 900 &&
@@ -219,7 +234,8 @@ bool testFixedOriginAndMissingSource() {
     request.owner_kind = 4;
     controller.initialize(request);
     const auto missing =
-        controller.update({false, {600, 800}});
+        updateController(
+            controller, {false, {600, 800}});
     if (!check(
         missing.actor_spawns[0].position.x == 0 &&
             missing.actor_spawns[0].position.y == 0 &&
@@ -237,7 +253,8 @@ bool testFixedOriginAndMissingSource() {
     request.source_judgement = {10, 20, 30, 40};
     controller.initialize(request);
     const auto omitted =
-        controller.update({true, {700, 800}});
+        updateController(
+            controller, {true, {700, 800}});
     return check(
         omitted.actor_spawns[0].position.x == 0 &&
             omitted.actor_spawns[0].position.y == 0 &&
@@ -264,7 +281,8 @@ bool testNegativeDelayAndRejectedRequests() {
          update_number < 4;
          ++update_number) {
         const auto update =
-            controller.update({true, {10, 20}});
+            updateController(
+                controller, {true, {10, 20}});
         if (!check(
                 update.actor_spawn_count ==
                     (update_number == 0 ? 1u : 0u) &&
@@ -291,12 +309,178 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10003;
+    request.effect_number = 10004;
     return check(
         !controller.initialize(request) &&
-            controller.update({}).expired,
+            updateController(controller, {}).expired,
         "An unimplemented specialized family entered the "
-        "type-one/type-two controller.");
+        "implemented controller owner.");
+}
+
+bool testTypeThreeWaves() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    osf::TableDatabase tables;
+    std::string error;
+    if (!check(
+            tables.load(
+                std::filesystem::path(
+                    OPENSHADOWFLARE_SOURCE_DIR) /
+                    "tmp" / "ShadowFlare" / "System" /
+                    "Game" / "Parameter" / "Table.Tbd",
+                &error),
+            "The retail type-three wave table could not be "
+            "loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10003, 2);
+    request.owner_kind = 4;
+    request.has_explicit_origin = true;
+    request.origin = {1000, 2000};
+    request.constructor_value_17 = 20;
+    request.target_kind = 19;
+    request.target_identifier = -1;
+
+    osf::EnemyEffectController controller;
+    osf::RetailRandom random(1);
+    std::vector<osf::WorldPosition> placements;
+    if (!check(
+            controller.initialize(request, &tables),
+            "A shipped type-three subtype was rejected.")) {
+        return false;
+    }
+
+    std::size_t actor_count = 0;
+    std::size_t audio_count = 0;
+    std::vector<std::int32_t> wave_x;
+    for (std::int32_t update_number = 0;
+         update_number < 22;
+         ++update_number) {
+        const osf::EnemyEffectControllerUpdate update =
+            controller.update({
+                {true, {7, 9}},
+                &random,
+                [&placements](
+                    osf::WorldPosition position,
+                    const osf::ObjectBounds& judgement) {
+                    placements.push_back(position);
+                    return judgement.left == -100 &&
+                           judgement.top == -100 &&
+                           judgement.right == 100 &&
+                           judgement.bottom == 100;
+                },
+            });
+        actor_count += update.actor_spawn_count;
+        audio_count += update.audio_count;
+        if (update.actor_spawn_count != 0) {
+            wave_x.push_back(
+                update.actor_spawns[0].position.x);
+        }
+        if (update_number == 2) {
+            const auto& damaging =
+                update.actor_spawns[0];
+            const auto& second =
+                update.actor_spawns[1];
+            const auto& third =
+                update.actor_spawns[2];
+            if (!check(
+                    update.actor_spawn_count == 3 &&
+                        update.audio_count == 1 &&
+                        update.audio[0].sample == 21 &&
+                        update.audio[0].position.x == 1250 &&
+                        update.audio[0].position.y == 2000 &&
+                        damaging.resource_id == 10000030 &&
+                        damaging.owner_kind == 4 &&
+                        damaging.source_character_number ==
+                            14000042 &&
+                        damaging.target_mask == 19 &&
+                        damaging.target_identifier == 0 &&
+                        damaging.judgement.left == -100 &&
+                        damaging.judgement.top == -100 &&
+                        damaging.judgement.right == 100 &&
+                        damaging.judgement.bottom == 100 &&
+                        damaging.lifetime_from_animation &&
+                        damaging.target_collision_start == 0 &&
+                        damaging.target_collision_end == 0 &&
+                        damaging.process_every_target &&
+                        !damaging.expire_on_target &&
+                        damaging.animation_chart == 1 &&
+                        damaging.animation_direction == 8 &&
+                        damaging.has_packet &&
+                        damaging.packet[34] == 21013 &&
+                        second.resource_id == 10000031 &&
+                        second.animation_chart == 0 &&
+                        second.target_collision_start == -1 &&
+                        second.target_collision_end == 0 &&
+                        !second.process_every_target &&
+                        second.has_packet &&
+                        third.resource_id == 10000032 &&
+                        third.animation_chart == 0 &&
+                        third.target_collision_start == -1 &&
+                        third.target_collision_end == 0 &&
+                        third.has_packet,
+                    "The first type-three wave did not preserve "
+                    "its three retail actor descriptors.")) {
+                return false;
+            }
+        } else if (update_number < 2 &&
+                   !check(
+                       update.actor_spawn_count == 0 &&
+                           update.audio_count == 0,
+                       "Type three ignored its authored start "
+                       "delay.")) {
+            return false;
+        }
+    }
+
+    if (!check(
+            !controller.active() &&
+                controller.counter() == 22 &&
+                placements.size() == 5 &&
+                actor_count == 15 &&
+                audio_count == 5 &&
+                wave_x ==
+                    std::vector<std::int32_t>{
+                        1250, 1450, 1650, 1850, 2050},
+            "Type three did not use Table 205's five four-update "
+            "waves and expanding radii.")) {
+        return false;
+    }
+
+    controller.initialize(request, &tables);
+    osf::RetailRandom blocked_random(1);
+    std::size_t blocked_placement_count = 0;
+    actor_count = 0;
+    audio_count = 0;
+    for (std::int32_t update_number = 0;
+         update_number < 22;
+         ++update_number) {
+        const auto update = controller.update({
+            {},
+            &blocked_random,
+            [&blocked_placement_count](
+                osf::WorldPosition,
+                const osf::ObjectBounds&) {
+                ++blocked_placement_count;
+                return false;
+            },
+        });
+        actor_count += update.actor_spawn_count;
+        audio_count += update.audio_count;
+    }
+    return check(
+        !controller.active() &&
+            blocked_placement_count == 5 &&
+            actor_count == 0 &&
+            audio_count == 0 &&
+            blocked_random.state() == 1,
+        "A blocked type-three placement did not suppress that "
+        "wave and every later wave without consuming rand().");
+#else
+    return true;
+#endif
 }
 
 }  // namespace
@@ -305,7 +489,8 @@ int main() {
     if (!testTypeOneZeroDelay() ||
         !testTypeTwoDelayedReresolution() ||
         !testFixedOriginAndMissingSource() ||
-        !testNegativeDelayAndRejectedRequests()) {
+        !testNegativeDelayAndRejectedRequests() ||
+        !testTypeThreeWaves()) {
         return 1;
     }
     return 0;

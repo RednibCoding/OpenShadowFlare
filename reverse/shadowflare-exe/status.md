@@ -52,6 +52,20 @@ sample 19; type 2 uses resource `10000040` and positional sample 94. The
 second actor has `[-50,-50,50,50]` bounds, chart-zero timing, the copied combat
 packet, and contact expiry. Only then does the controller return zero.
 
+The third branch is table-driven. `0x0042b540` reads Table 205 row zero at
+`subtype - 1`; Plasma Bat subtype 20 yields five waves. From the stored impact
+origin it attempts a wave every four updates at radii 250, 450, 650, 850, and
+1050. The placement query uses `[-100,-100,100,100]`, ordinary map collision,
+and dynamic type-zero scenario objects. A failed query permanently suppresses
+that and every later wave.
+
+A clear wave consumes one `rand() % 4` and creates resources `10000030`,
+`10000031`, and `10000032` together. Only the first actor uses the random
+chart and an update-zero collision window; it processes every overlapping
+target with the copied packet. The other two are chart-zero visual layers.
+Sample 21 plays once at the wave position. The controller expires at
+`delay + wave count * 4`, separately from all three actors' CAF lifetimes.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -68,9 +82,10 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1 and 2. Focused tests cover zero, positive, and negative delays,
+of types 1, 2, and 3. Focused tests cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
-packet copying, projection, and positional samples. Its actor outputs are
+packet copying, projection, positional samples, Table 205 wave timing, the
+random chart, and persistent obstruction. Its actor outputs are
 paired with a passive `RuntimeEffectActor` that now covers source-animation
 lifetime, free forward movement, static collision and special-ground
 filtering, contact expiry, chart-zero frame timing, and the inclusive target
@@ -86,10 +101,11 @@ evasion, word 36 supplies hit rating, and the Visual C++ random stream feeds
 the `20..98` check. Typed receiver/miss requests and the two configured audio
 pairs preserve the retail one-sound guard and NPC multi-target mode.
 
-The world still needs to own and render these controllers and actors, build
-their live target snapshots, and apply those receiver requests before types 1
-and 2 are attached to enemy attacks. The other ten specialized controllers
-also remain to be reconstructed. Mapping
+The world owns and renders these controllers and actors, builds their live
+target snapshots, and applies their receiver requests. Shipped regressions
+cover type 2 in `03000507` and the type-3 Plasma Bat in `00010001`, including
+resources, audio, damage, cleanup, and unchanged item ownership. The other
+nine specialized controllers remain to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 

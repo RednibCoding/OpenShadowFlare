@@ -13,6 +13,7 @@ namespace osf {
 
 class EffectVisualResource;
 class RetailRandom;
+class TableDatabase;
 
 struct RuntimeEffectReceiverDispatch {
     RuntimeEffectTargetContact contact;
@@ -42,6 +43,7 @@ struct RuntimeEffectSystemContext {
     RuntimeEffectTargetProvider provide_targets;
     RuntimeEffectVisualResolver resolve_visual;
     RuntimeEffectReceiver receive;
+    EnemyEffectPlacementTest placement_is_clear;
 };
 
 struct RuntimeEffectSystemUpdate {
@@ -52,7 +54,9 @@ struct RuntimeEffectSystemUpdate {
 class RuntimeEffectSystem {
 public:
     void clear();
-    bool queue(const CombatEffectSpawnRequest& request);
+    bool queue(
+        const CombatEffectSpawnRequest& request,
+        const TableDatabase* tables = nullptr);
     RuntimeEffectSystemUpdate update(
         const RuntimeEffectSystemContext& context);
 

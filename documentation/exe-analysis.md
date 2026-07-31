@@ -1286,6 +1286,26 @@ sample 19; type 2 uses resource `10000040` and sample 94. Both use
 when their static environment sweep collides. The controller expires after
 creating the child, independently of both visual actors.
 
+Type 3 is the first staged area controller. `0x0042b540` reads row zero and
+column `subtype - 1` from Table 205; shipped Plasma Bat subtype 20 resolves to
+five waves. Beginning at constructor delay 12, one wave is attempted every
+four updates. Its position is projected from the stored impact origin, not
+the enemy's later position, at radius `wave * 200 + 250` along the stored
+angle. A `[-100,-100,100,100]` judgement check includes map collision and
+live type-zero scenario objects. The first failed placement sets a persistent
+stop flag, suppressing that wave and every later wave without consuming a
+random value.
+
+Each clear wave consumes one `rand() % 4` chart choice and creates resources
+`10000030`, `10000031`, and `10000032` at the same position. The first actor
+uses that random chart, applies the copied packet to every overlapping target
+only on its first update, and does not expire after the first target. The
+other two use chart zero and are visual layers without an active collision
+window. All three use direction eight, their selected chart's full lifetime,
+and the same 100-unit judgement. Positional sample 21 is emitted once per
+clear wave. The controller remains alive until `delay + Table205Value * 4`,
+independently of the actors it has already created.
+
 `0x00429dd0` creates those children in the category-50000000 actor family.
 `0x0045e1a0` installs a 126-word descriptor, and `0x0045e1e0` owns their
 common update. That update supports homing, free, and owner-attached movement;
@@ -1313,14 +1333,21 @@ renderable state that can move, collide, and dispatch an impact. Treating an
 enemy request as one short CAF would make the picture plausible while moving
 the actual effect, sound, and damage to the wrong update.
 
-`EnemyEffectController` now ports the complete controller half of types 1 and
-2 without pretending that their runtime actors are finished. It emits the
+`EnemyEffectController` now ports the complete controller half of types 1, 2,
+and 3 without pretending that every specialized family is finished. It emits the
 source actor on update zero, re-resolves the source at the exact authored
 delay, projects the second actor with the retail Y-axis convention, copies the
 combat packet, and places sample 19 or 94 at that second position. A zero delay
 creates both actors in one update, a negative delay remains active, missing
 owners resolve from zero, and omitted origin or judgement pointers do not leak
 stale values.
+
+The same owner now keeps type 3's table-driven wave counter, fixed origin,
+persistent placement stop, random damaging chart, two visual companions, and
+sample 21. Passive timing and obstruction tests are paired with the shipped
+Plasma Bat in scenario `00010001`; the live case renders all three resources,
+passes the first layer through the ordinary player receiver, and preserves
+the player's item owners.
 
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
