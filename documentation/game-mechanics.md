@@ -279,6 +279,26 @@ zero, direction eight, and strengths 1000/1000/300. Any kill credited to the
 local hero slot while it is active trains spell nine, whether the hero or the
 owned companion dealt the final blow.
 
+### Earth Spear
+
+Earth Spear returns to the pointed-enemy command path. It enters action 32 on
+CAF charts 11 and 12, pays the normal Table 16 cost, and creates effect 10010
+from the hero's cast-time position toward the selected enemy. The spell does
+not launch a travelling projectile.
+
+Its family-zero packet uses subtype three, the hero's physical defense and
+magical hit rate, Table 17's Earth Spear values, packet flag 72 set to one,
+and one of ordinary impact presentations 21000 through 21003. Successful
+contacts train spell ten through the common receiver path.
+
+Table 206 controls how many stone ridges are attempted. Starting 250 world
+units from the cast origin, a new resource-10000060 ridge is placed every
+eight updates with 300 units between ridges. Each clear ridge plays sample 22,
+shakes a nearby camera briefly, and applies the packet to every valid enemy in
+its 150-unit area. If the first placement is blocked by scenery, retail
+suppresses it and every later ridge; after a ridge has appeared, a later
+blocked placement only ends the remaining line.
+
 ## Character Stats
 
 ### Primary Stats

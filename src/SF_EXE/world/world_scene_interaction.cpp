@@ -1137,7 +1137,8 @@ void WorldScene::handlePlayerSpellEvent(
                 },
                 event.effect_delay,
             },
-            parameter_tables_);
+            parameter_tables_,
+            &item_random_);
     queueCombatEffect(request);
 }
 

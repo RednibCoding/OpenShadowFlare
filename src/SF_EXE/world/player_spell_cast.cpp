@@ -1,6 +1,7 @@
 #include "player_spell_cast.hpp"
 
 #include "actor_direction.hpp"
+#include "core/retail_random.hpp"
 #include "enemy_effect_impact.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 
@@ -25,6 +26,8 @@ struct PlayerSpellDescriptor {
     bool use_source_judgement = true;
     bool constructor_uses_level = false;
     bool use_physical_defense = false;
+    bool random_ordinary_impact = false;
+    std::int32_t packet_value_72 = 0;
 };
 
 bool playerSpellDescriptor(
@@ -79,6 +82,22 @@ bool playerSpellDescriptor(
             false,
         };
         return true;
+    case 10:
+        descriptor = {
+            10010,
+            0,
+            -1,
+            4,
+            true,
+            false,
+            true,
+            false,
+            true,
+            true,
+            true,
+            1,
+        };
+        return true;
     default:
         return false;
     }
@@ -107,12 +126,14 @@ bool playerSpellRequiresCharacterTarget(
 CombatEffectSpawnRequest buildPlayerSpellCast(
     std::int32_t spell,
     const PlayerSpellCastInput& input,
-    const TableDatabase& tables) {
+    const TableDatabase& tables,
+    RetailRandom* random) {
     CombatEffectSpawnRequest request;
     PlayerSpellDescriptor descriptor;
     if (input.stats.source_character_number < 0 ||
         input.parameters.effective_level < 1 ||
         !playerSpellDescriptor(spell, descriptor) ||
+        (descriptor.random_ordinary_impact && !random) ||
         (descriptor.requires_target &&
          input.target_character_number < 0)) {
         return request;
@@ -214,7 +235,11 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
             input.parameters.effective_level,
             5);
     packet.write(32, type_value);
-    packet.write(34, descriptor.impact_effect);
+    packet.write(
+        34,
+        descriptor.random_ordinary_impact
+            ? random->next() % 4 + 21000
+            : descriptor.impact_effect);
     packet.write(35, 8);
     packet.write(
         36,
@@ -262,7 +287,7 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
                 spell,
                 first_column + 2));
     }
-    packet.write(72, 0);
+    packet.write(72, descriptor.packet_value_72);
     packet.write(73, spell);
     packet.write(74, -1);
     packet.write(75, 8);
