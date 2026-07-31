@@ -1,0 +1,260 @@
+#include "items/item_database.hpp"
+#include "items/player_belt.hpp"
+#include "items/player_equipment.hpp"
+#include "items/player_inventory.hpp"
+#include "items/player_special_items.hpp"
+#include "world/player_data.hpp"
+#include "world/player_magic.hpp"
+#include "world/retail_save_file.hpp"
+#include "world/retail_save_items.hpp"
+#include "world/retail_save_magic.hpp"
+#include "world/retail_save_progress.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
+
+namespace {
+
+bool check(bool condition, const char* message) {
+    if (!condition) {
+        std::cerr << message << '\n';
+    }
+    return condition;
+}
+
+osf::PlayerMagicState fixtureState() {
+    osf::PlayerMagicState state;
+    for (std::size_t index = 0;
+         index < state.availability.size();
+         ++index) {
+        state.availability[index] =
+            index % 3u == 0u ? 3 : 0;
+        state.levels[index] =
+            static_cast<std::int32_t>(index + 1u);
+        state.experience[index] =
+            static_cast<std::int32_t>(index * 17u);
+    }
+    for (std::size_t index = 0;
+         index < state.bar_slots.size();
+         ++index) {
+        state.bar_slots[index] =
+            static_cast<std::int32_t>(index * 2u);
+    }
+    return state;
+}
+
+}  // namespace
+
+int main() {
+    osf::PlayerMagic fresh;
+    fresh.initializeNew();
+    bool initialized = true;
+    for (std::int32_t spell = 0;
+         spell <
+             static_cast<std::int32_t>(
+                 osf::PlayerMagic::spell_count);
+         ++spell) {
+        initialized =
+            initialized &&
+            fresh.availability(spell) == 0 &&
+            fresh.level(spell) == 1 &&
+            fresh.experience(spell) == 0 &&
+            !fresh.learned(spell);
+    }
+    for (std::int32_t slot = 0;
+         slot <
+             static_cast<std::int32_t>(
+                 osf::PlayerMagic::bar_slot_count);
+         ++slot) {
+        initialized =
+            initialized &&
+            fresh.barSlot(slot) == -1;
+    }
+    if (!check(
+            initialized,
+            "New-character magic does not match FUN_00440f70.")) {
+        return 1;
+    }
+
+    std::vector<std::uint8_t> payload(
+        osf::PlayerData::retail_record_size, 0x5a);
+    const std::size_t items_end = payload.size();
+    osf::RetailSaveProgress progress{
+        {1, 2, 3},
+        {4, 5},
+        {6, 7, 8, 9},
+        true,
+    };
+    std::size_t progress_end = 0;
+    std::string error;
+    if (!check(
+            osf::replaceRetailProgress(
+                payload,
+                items_end,
+                progress,
+                &progress_end,
+                &error),
+            "The progress fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    osf::PlayerMagic fixture;
+    fixture.restore(fixtureState());
+    std::size_t magic_end = 0;
+    if (!check(
+            osf::replaceRetailMagic(
+                payload,
+                progress_end,
+                fixture,
+                &magic_end,
+                &error),
+            "The retail magic fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    if (!check(
+            magic_end - progress_end ==
+                4u +
+                    osf::PlayerMagic::spell_count * 12u +
+                    osf::PlayerMagic::bar_slot_count * 4u,
+            "The retail magic stream has the wrong serialized size.")) {
+        return 1;
+    }
+
+    osf::PlayerMagic restored;
+    restored.initializeNew();
+    std::size_t restored_end = 0;
+    if (!check(
+            osf::restoreRetailMagic(
+                payload,
+                progress_end,
+                restored,
+                &restored_end,
+                &error) &&
+                restored_end == magic_end &&
+                restored.state().availability ==
+                    fixture.state().availability &&
+                restored.state().levels ==
+                    fixture.state().levels &&
+                restored.state().experience ==
+                    fixture.state().experience &&
+                restored.state().bar_slots ==
+                    fixture.state().bar_slots,
+            "The retail magic stream did not round-trip exactly.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    const osf::PlayerMagicState before_bad_restore =
+        restored.state();
+    std::vector<std::uint8_t> truncated(
+        payload.begin(),
+        payload.begin() +
+            static_cast<std::ptrdiff_t>(magic_end - 1u));
+    if (!check(
+            !osf::restoreRetailMagic(
+                truncated,
+                progress_end,
+                restored,
+                nullptr,
+                &error) &&
+                restored.state().availability ==
+                    before_bad_restore.availability &&
+                restored.state().levels ==
+                    before_bad_restore.levels &&
+                restored.state().experience ==
+                    before_bad_restore.experience &&
+                restored.state().bar_slots ==
+                    before_bad_restore.bar_slots,
+            "A truncated retail magic stream changed live state.")) {
+        return 1;
+    }
+
+    osf::ItemDatabase items;
+    const std::filesystem::path game_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    if (!check(
+            items.load(
+                game_root / "System" / "Game" /
+                    "Parameter" / "Item.Ibn",
+                &error),
+            "The retail item database could not be loaded.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    std::int32_t parsed_saves = 0;
+    std::int32_t learned_spells = 0;
+    for (std::int32_t slot = 0; slot < 4; ++slot) {
+        const std::filesystem::path save =
+            game_root / "Save" /
+            (std::string("000") +
+             static_cast<char>('0' + slot) +
+             ".Ssv");
+        std::vector<std::uint8_t> retail_payload;
+        if (!osf::readRetailSavePayload(
+                save, retail_payload, &error)) {
+            continue;
+        }
+        osf::PlayerData player;
+        osf::PlayerInventory inventory;
+        osf::PlayerEquipment equipment;
+        osf::PlayerBelt belt;
+        osf::PlayerSpecialItems special_items;
+        std::size_t retail_items_end = 0;
+        if (!player.loadRetailSave(save, &error) ||
+            !osf::restoreRetailOwnedItems(
+                retail_payload,
+                items,
+                player.level(),
+                inventory,
+                equipment,
+                belt,
+                special_items,
+                &retail_items_end,
+                &error)) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        osf::RetailSaveProgress retail_progress;
+        std::size_t retail_progress_end = 0;
+        osf::PlayerMagic retail_magic;
+        retail_magic.initializeNew();
+        if (!osf::restoreRetailProgress(
+                retail_payload,
+                retail_items_end,
+                retail_progress,
+                &retail_progress_end,
+                &error) ||
+            !osf::restoreRetailMagic(
+                retail_payload,
+                retail_progress_end,
+                retail_magic,
+                nullptr,
+                &error)) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        ++parsed_saves;
+        for (std::int32_t spell = 0;
+             spell <
+                 static_cast<std::int32_t>(
+                     osf::PlayerMagic::spell_count);
+             ++spell) {
+            learned_spells +=
+                retail_magic.learned(spell) ? 1 : 0;
+        }
+    }
+    if (!check(
+            parsed_saves == 4 && learned_spells > 0,
+            "The shipped retail saves did not prove the magic parser.")) {
+        return 1;
+    }
+    return 0;
+}

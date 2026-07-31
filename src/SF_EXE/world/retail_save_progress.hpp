@@ -21,12 +21,14 @@ bool restoreRetailProgress(
     const std::vector<std::uint8_t>& payload,
     std::size_t owned_items_end,
     RetailSaveProgress& progress,
+    std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 
 bool replaceRetailProgress(
     std::vector<std::uint8_t>& payload,
     std::size_t owned_items_end,
     const RetailSaveProgress& progress,
+    std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 
 bool restoreRetailTransportFlags(

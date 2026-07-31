@@ -949,9 +949,18 @@ item stream to restore and rewrite the nine known equipment slots, backpack,
 the belt, and the 9-by-10 Special Item owner. Grid positions, Gold quantities,
 durability, identified state, and all still-unnamed instance bytes survive
 the round trip. The extra equipment records and unknown trailing payload bytes remain
-untouched. Loading also walks the next counted state array and restores the 51
-transport flags against Table 40. The rest of the dynamic payload is still
-pending.
+untouched. Loading also restores the following counted scenario, transport,
+and quest/conversation arrays, validating the 51 transport values against
+Table 40. The rest of the dynamic payload is still pending.
+
+The three counted scenario, transport, and quest arrays are immediately
+followed by the player's magic owner. Retail writes count `22`, then 22
+32-bit availability values from runtime `+0x1440`, 22 levels from `+0x1498`,
+22 experience values from `+0x14f0`, and the eight global magic-bar spell IDs
+at `0x0048d508`. `0x00440f70` initializes those arrays to zero, one, and zero
+respectively and leaves every bar slot at `-1`; only availability value three
+is treated as learned. The portable save path now restores and replaces this
+exact section while retaining all later unknown bytes.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the

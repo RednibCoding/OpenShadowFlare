@@ -85,6 +85,7 @@ void WorldScene::clear() {
     item_world_resources_.clear();
     item_random_.seed(1);
     player_data_.clear();
+    player_magic_.clear();
     player_item_controller_.clear();
     player_.clear();
     has_player_ = false;
@@ -246,6 +247,10 @@ WorldScene::itemInventoryPatterns() const {
 
 const PlayerData& WorldScene::playerData() const {
     return player_data_;
+}
+
+const PlayerMagic& WorldScene::playerMagic() const {
+    return player_magic_;
 }
 
 PlayerItemUseResult WorldScene::usePlayerBeltPocket(

@@ -3,6 +3,7 @@
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
 #include "retail_save_items.hpp"
+#include "retail_save_magic.hpp"
 #include "retail_save_progress.hpp"
 
 #include <limits>
@@ -73,7 +74,12 @@ bool WorldScene::loadInitialScenario(
             return false;
         }
         player_item_controller_.initializeNew();
+        player_magic_.initializeNew();
     } else {
+        // Older portable saves ended after the progress extension. Seed the
+        // retail new-character defaults before optionally restoring the
+        // magic stream so those saves remain valid.
+        player_magic_.initializeNew();
         std::vector<std::uint8_t> payload;
         std::size_t owned_items_end = 0;
         if (!readRetailSavePayload(
@@ -99,8 +105,19 @@ bool WorldScene::loadInitialScenario(
             quests_.states(),
             false,
         };
+        std::size_t progress_end = owned_items_end;
         if (!restoreRetailProgress(
-                payload, owned_items_end, progress, error)) {
+                payload,
+                owned_items_end,
+                progress,
+                &progress_end,
+                error) ||
+            !restoreRetailMagic(
+                payload,
+                progress_end,
+                player_magic_,
+                nullptr,
+                error)) {
             clear();
             return false;
         }

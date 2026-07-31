@@ -44,6 +44,31 @@ if(TARGET sf_game_core)
 
   add_test(NAME game_core COMMAND game_core_test)
 
+  add_executable(player_magic_test player_magic_test.cpp)
+  target_link_libraries(
+    player_magic_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(player_magic_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_magic_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_magic_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_magic_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_magic_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(NAME player_magic COMMAND player_magic_test)
+
   add_executable(movement_test movement_test.cpp)
   target_link_libraries(
     movement_test

@@ -30,6 +30,7 @@
 #include "player_damage_receiver.hpp"
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
+#include "player_magic.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
@@ -117,6 +118,7 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
+    const PlayerMagic& playerMagic() const;
     std::int32_t playerExperienceThreshold() const;
     PlayerItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);
@@ -359,6 +361,7 @@ private:
         item_world_resources_;
     RetailRandom item_random_;
     PlayerData player_data_;
+    PlayerMagic player_magic_;
     PlayerItemController player_item_controller_;
     PlayerActor player_;
     bool has_player_ = false;

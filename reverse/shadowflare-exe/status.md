@@ -608,10 +608,18 @@ and all trailing payload bytes remain byte-for-byte unchanged. The loader also
 skips the first counted flag array after the items and restores the following
 51 transport flags against Table 40. Tests cover a new world save/load round
 trip and unchanged re-encoding of an original retail save. Scenario, position,
-mines, quests, and the remaining dynamic payload still need owners. Writes go
+mines, and the remaining dynamic payload still need owners. Writes go
 through a sibling temporary file
 and protected replacement so a corrupt source or failed write does not
 silently destroy the slot.
+
+The next reconstructed save boundary is the complete magic block.
+`0x0044b580` writes a fixed count of 22, the availability array at player
+`+0x1440`, level array at `+0x1498`, experience array at `+0x14f0`, and eight
+magic-bar IDs from `0x0048d508`. `0x00440f70` seeds the arrays with `0`, `1`,
+and `0`, while all bar slots begin at `-1`. The portable `PlayerMagic` owner
+and `restoreRetailMagic`/`replaceRetailMagic` preserve this block independently
+of actor, panel, and effect state.
 
 With `Save Image at Game End` enabled, the world-only software surface is also
 captured before the HUD, conversation overlay, or Escape panel is drawn.

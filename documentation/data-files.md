@@ -598,11 +598,23 @@ equipment records followed by backpack, belt, and special-item containers.
 Each concrete item stores category, definition ID, an instance value, optional
 grid coordinates, its category-sized state-block length, and that state block.
 The nine known player equipment slots, backpack, belt, and Special Item
-container are restored and rewritten. The extra two equipment records and
-unmapped trailing payload remain byte-for-byte preserved. After those item
-containers, loading skips the first counted flag array and restores the next
-counted array as the 51 Table 40 transport flags. Scenario position, quests,
-mines, companions, and the rest of the dynamic payload are still pending.
+container are restored and rewritten. The extra two equipment records remain
+byte-for-byte preserved. Three counted arrays follow for scenario, transport,
+and quest/conversation state. After them retail writes the spell state as:
+
+| Field | Size |
+|-------|------|
+| Spell count | 4 bytes; retail writes 22 |
+| Availability | 22 signed 32-bit values |
+| Levels | 22 signed 32-bit values |
+| Experience | 22 signed 32-bit values |
+| Magic bar | Eight signed 32-bit spell IDs |
+
+New characters begin with availability zero, level one, experience zero, and
+all bar slots set to `-1`. The Magic window and cast path only treat
+availability value `3` as learned. OpenShadowFlare restores and rewrites this
+whole section while preserving the later unmapped payload. Scenario position,
+mines, and the rest of that later state are still pending.
 
 ## Transport destination table
 

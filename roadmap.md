@@ -124,6 +124,14 @@ a useful companion-facing case later in that milestone, but the first slice
 should be chosen from retail evidence rather than from which visual looks
 easiest.
 
+The save-owned foundation for that path is complete. `PlayerMagic` keeps the
+22 availability values, levels, and experience counters plus all eight
+magic-bar slots behind one boundary. New characters receive the retail
+`0/1/0` array defaults and empty `-1` slots. Existing retail saves restore the
+block after the three progress arrays, and new saves rewrite it without
+disturbing later unknown state. The next slice is the Magic panel and spell
+selection path, followed by the first complete targeted cast.
+
 ## Completed foundation: make Remote Town feel like a game
 
 This slice touched nearly every piece the rest of gameplay will need: input,
