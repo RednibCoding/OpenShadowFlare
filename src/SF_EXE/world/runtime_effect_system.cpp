@@ -16,6 +16,27 @@ namespace {
 
 constexpr std::int32_t kRuntimeEffectCharacterBase = 50000000;
 
+std::int32_t animationLength(
+    const EffectVisualResource* visual,
+    std::int32_t chart,
+    std::int32_t direction) {
+    if (!visual ||
+        chart < 0 ||
+        direction < 0 ||
+        static_cast<std::size_t>(chart) >=
+            visual->animation().charts().size() ||
+        static_cast<std::size_t>(direction) >=
+            visual->animation()
+                .charts()[static_cast<std::size_t>(chart)]
+                .directions.size()) {
+        return 0;
+    }
+    return visual->animation()
+        .charts()[static_cast<std::size_t>(chart)]
+        .directions[static_cast<std::size_t>(direction)]
+        .frame_count;
+}
+
 void appendAudio(
     std::vector<RuntimeEffectAudioRequest>& destination,
     std::vector<RuntimeEffectAudioRequest> source) {
@@ -122,6 +143,16 @@ RuntimeEffectSystemUpdate RuntimeEffectSystem::update(
                 context.provide_observer
                     ? context.provide_observer()
                     : EnemyEffectControllerSource{},
+                [&context](
+                    std::int32_t resource_id,
+                    std::int32_t chart,
+                    std::int32_t direction) {
+                    return animationLength(
+                        context.resolve_visual(
+                            resource_id),
+                        chart,
+                        direction);
+                },
             });
         if (update.camera_shake) {
             result.camera_shake = true;

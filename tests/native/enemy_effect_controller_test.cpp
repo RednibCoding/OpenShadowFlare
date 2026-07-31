@@ -43,7 +43,8 @@ osf::CombatEffectSpawnRequest requestFor(
 osf::EnemyEffectControllerUpdate updateController(
     osf::EnemyEffectController& controller,
     osf::EnemyEffectControllerSource source) {
-    return controller.update({source, nullptr, {}, {}});
+    return controller.update(
+        {source, nullptr, {}, {}, {}});
 }
 
 bool testTypeOneZeroDelay() {
@@ -309,7 +310,7 @@ bool testNegativeDelayAndRejectedRequests() {
         return false;
     }
     request.valid = true;
-    request.effect_number = 10005;
+    request.effect_number = 10010;
     return check(
         !controller.initialize(request) &&
             updateController(controller, {}).expired,
@@ -339,6 +340,7 @@ bool testTypeFourWarningBurstAndCameraShake() {
             nullptr,
             {},
             {true, {500, 3500}},
+            {},
         });
         if (update_number == 3) {
             const auto& warning = update.actor_spawns[0];
@@ -383,6 +385,7 @@ bool testTypeFourWarningBurstAndCameraShake() {
         nullptr,
         {},
         {true, {500, 3500}},
+        {},
     });
     if (!check(
             burst.actor_spawn_count == 3 &&
@@ -478,6 +481,7 @@ bool testTypeFourWarningBurstAndCameraShake() {
             nullptr,
             {},
             {true, {500, 3601}},
+            {},
         });
     }
     return check(
@@ -485,6 +489,201 @@ bool testTypeFourWarningBurstAndCameraShake() {
             !far_burst.camera_shake,
         "Type four shook an observer outside the strict "
         "3001-unit retail range.");
+}
+
+bool testTypeFiveFrameCountSequence() {
+    osf::CombatEffectSpawnRequest request =
+        requestFor(10005, 10);
+    osf::EnemyEffectController controller;
+    if (!check(
+            controller.initialize(request),
+            "A valid type-five request was rejected.")) {
+        return false;
+    }
+
+    constexpr std::int32_t first_length = 7;
+    std::int32_t length_calls = 0;
+    std::size_t actor_count = 0;
+    std::size_t audio_count = 0;
+    std::size_t shake_count = 0;
+    std::vector<std::int32_t> audio_updates;
+    for (std::int32_t update_number = 0;
+         update_number <
+             first_length + 22;
+         ++update_number) {
+        const osf::WorldPosition source{
+            100 + update_number * 40,
+            200 + update_number * 40,
+        };
+        const auto update = controller.update({
+            {true, source},
+            nullptr,
+            {},
+            {true, {220, 3320}},
+            [&length_calls](
+                std::int32_t resource_id,
+                std::int32_t chart,
+                std::int32_t direction) {
+                ++length_calls;
+                return resource_id == 10000051 &&
+                               chart == 0 &&
+                               direction == 8
+                    ? first_length
+                    : 0;
+            },
+        });
+        actor_count += update.actor_spawn_count;
+        audio_count += update.audio_count;
+        shake_count += update.camera_shake ? 1u : 0u;
+        if (update.audio_count != 0) {
+            audio_updates.push_back(update_number);
+            if (!check(
+                    update.audio_count == 1 &&
+                        update.audio[0].sample == 22 &&
+                        update.audio[0].position.x == 220 &&
+                        update.audio[0].position.y == 320,
+                    "A type-five pulse did not keep sample 22 at "
+                    "the captured source position.")) {
+                return false;
+            }
+        }
+
+        if (update_number == 3) {
+            const auto& first = update.actor_spawns[0];
+            if (!check(
+                    update.actor_spawn_count == 1 &&
+                        first.resource_id == 10000051 &&
+                        first.position.x == 220 &&
+                        first.position.y == 320 &&
+                        first.judgement.left == 22 &&
+                        first.judgement.top == 32 &&
+                        first.judgement.right == 22 &&
+                        first.judgement.bottom == 32 &&
+                        first.display_height == 0 &&
+                        first.lifetime_from_animation &&
+                        first.lifetime_animation_chart == 0 &&
+                        first.animation_chart == 0 &&
+                        first.animation_direction == 8 &&
+                        first.additional_display_status == 0 &&
+                        !first.has_packet,
+                    "Type five did not capture its source and "
+                    "create resource 10000051 on update three.")) {
+                return false;
+            }
+        } else if (update_number == first_length) {
+            const auto& second = update.actor_spawns[0];
+            if (!check(
+                    update.actor_spawn_count == 1 &&
+                        second.resource_id == 10000050 &&
+                        second.position.x == 220 &&
+                        second.position.y == 320 &&
+                        second.judgement.left == 22 &&
+                        second.judgement.top == 32 &&
+                        second.judgement.right == 22 &&
+                        second.judgement.bottom == 32 &&
+                        second.display_height == 200 &&
+                        second.lifetime_from_animation &&
+                        second.lifetime_animation_chart == 0 &&
+                        second.animation_chart == 0 &&
+                        second.animation_direction == 8 &&
+                        second.additional_display_status == 0,
+                    "Type five used its authored delay instead "
+                    "of the first resource's frame count.")) {
+                return false;
+            }
+        } else if (
+            update_number ==
+            first_length + 4) {
+            const auto& damage = update.actor_spawns[0];
+            if (!check(
+                    update.actor_spawn_count == 1 &&
+                        update.camera_shake &&
+                        update.camera_shake_duration == 8 &&
+                        update.camera_shake_magnitude == 6 &&
+                        damage.resource_id == -1 &&
+                        damage.position.x == 220 &&
+                        damage.position.y == 320 &&
+                        damage.judgement.left == -170 &&
+                        damage.judgement.top == -180 &&
+                        damage.judgement.right == 171 &&
+                        damage.judgement.bottom == 181 &&
+                        damage.display_height == 200 &&
+                        damage.lifetime == 1 &&
+                        damage.target_collision_start == 0 &&
+                        damage.target_collision_end == 0 &&
+                        damage.process_every_target &&
+                        damage.target_audio.bank == 0 &&
+                        damage.target_audio.sample == 20 &&
+                        !damage.visible &&
+                        damage.has_packet,
+                    "Type five did not create its fixed-position "
+                    "area packet and camera shake four updates "
+                    "after the first animation.")) {
+                return false;
+            }
+        } else if (
+            update_number ==
+            first_length + 15) {
+            const auto& third = update.actor_spawns[0];
+            if (!check(
+                    update.actor_spawn_count == 1 &&
+                        third.resource_id == 10000052 &&
+                        third.position.x == 220 &&
+                        third.position.y == 320 &&
+                        third.judgement.left == 22 &&
+                        third.judgement.top == 32 &&
+                        third.judgement.right == 22 &&
+                        third.judgement.bottom == 32 &&
+                        third.display_height == 200 &&
+                        third.lifetime_from_animation &&
+                        third.lifetime_animation_chart == 0 &&
+                        third.animation_chart == 0 &&
+                        third.animation_direction == 8 &&
+                        third.additional_display_status ==
+                            0x80,
+                    "Type five did not create its display-class "
+                    "two final visual at frame-count plus 15.")) {
+                return false;
+            }
+        } else if (!check(
+                       update.actor_spawn_count == 0,
+                       "Type five emitted an actor outside its "
+                       "four retail sequence points.")) {
+            return false;
+        }
+
+        if (update_number <
+                first_length + 21 &&
+            !check(
+                !update.expired &&
+                    controller.active(),
+                "Type five expired before frame-count plus "
+                "22.")) {
+            return false;
+        }
+        if (update_number ==
+                first_length + 21 &&
+            !check(
+                update.expired &&
+                    !controller.active() &&
+                    controller.counter() ==
+                        first_length + 22,
+                "Type five did not expire immediately after its "
+                "last sound-pulse update.")) {
+            return false;
+        }
+    }
+
+    return check(
+        length_calls == first_length + 22 &&
+            actor_count == 4 &&
+            audio_count == 6 &&
+            shake_count == 1 &&
+            audio_updates ==
+                std::vector<std::int32_t>{
+                    13, 16, 19, 22, 25, 28},
+        "Type five did not follow the resource-length timeline "
+        "or six three-update sample-22 pulses.");
 }
 
 bool testTypeThreeWaves() {
@@ -541,6 +740,7 @@ bool testTypeThreeWaves() {
                            judgement.right == 100 &&
                            judgement.bottom == 100;
                 },
+                {},
                 {},
             });
         actor_count += update.actor_spawn_count;
@@ -638,6 +838,7 @@ bool testTypeThreeWaves() {
                 return false;
             },
             {},
+            {},
         });
         actor_count += update.actor_spawn_count;
         audio_count += update.audio_count;
@@ -663,6 +864,7 @@ int main() {
         !testFixedOriginAndMissingSource() ||
         !testNegativeDelayAndRejectedRequests() ||
         !testTypeFourWarningBurstAndCameraShake() ||
+        !testTypeFiveFrameCountSequence() ||
         !testTypeThreeWaves()) {
         return 1;
     }

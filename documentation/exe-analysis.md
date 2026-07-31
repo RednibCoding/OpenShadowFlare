@@ -1369,6 +1369,27 @@ duration eight and magnitude six. `0x00412690` stores the request and
 `0x00412720` alternates a zero/six vertical world offset until the eighth
 update, after which the camera is steady again.
 
+Type 5 (`0x0042cd70`) uses the animation data itself as its clock. On update
+three it resolves the source, stores that position in the controller, and
+creates resource `10000051` there with a point judgement at the source
+rectangle's lower-right edge plus one. The handler asks that resource's chart
+zero, direction eight for its maximum frame count on every update. It does
+not use constructor delay ten for the later sequence.
+
+At that frame count it creates resource `10000050` with the same point
+judgement and display height 200. Four updates later it creates the invisible
+one-update packet actor at the captured position, expanding the original
+source judgement by 150. That actor uses contact sample 20 and the same nearby
+eight-update, magnitude-six camera shake as type 4. At frame-count plus 15,
+resource `10000052` appears at height 200 with additional display status
+`0x80`.
+
+Sample 22 plays at the captured position at frame-count offsets 6, 9, 12, 15,
+18, and 21. The controller increments after that last pulse and expires when
+its counter reaches frame-count plus 22. Resource `10000051`, resource
+`10000050`, resource `10000052`, and the invisible packet all remain separate
+runtime actors with their own lifetimes.
+
 `RuntimeEffectActor` now ports the next shared parts: chart-zero source
 lifetime, free movement from the immutable spawn point, the zero-distance
 first update, retail integer projection, static OBL/GND sweeping, the

@@ -15,6 +15,7 @@ constexpr std::int32_t kTypeOneEffect = 10001;
 constexpr std::int32_t kTypeTwoEffect = 10002;
 constexpr std::int32_t kTypeThreeEffect = 10003;
 constexpr std::int32_t kTypeFourEffect = 10004;
+constexpr std::int32_t kTypeFiveEffect = 10005;
 constexpr std::int32_t kTypeOneSourceResource = 10000012;
 constexpr std::int32_t kTypeTwoSourceResource = 11000027;
 constexpr std::int32_t kTypeOneChildResource = 10000010;
@@ -24,11 +25,15 @@ constexpr std::int32_t kTypeThreeSecondResource = 10000031;
 constexpr std::int32_t kTypeThreeThirdResource = 10000032;
 constexpr std::int32_t kTypeFourWarningResource = 10000002;
 constexpr std::int32_t kTypeFourBurstResource = 10000000;
+constexpr std::int32_t kTypeFiveFirstResource = 10000051;
+constexpr std::int32_t kTypeFiveSecondResource = 10000050;
+constexpr std::int32_t kTypeFiveThirdResource = 10000052;
 constexpr std::int32_t kTypeOneAudioSample = 19;
 constexpr std::int32_t kTypeTwoAudioSample = 94;
 constexpr std::int32_t kTypeThreeAudioSample = 21;
 constexpr std::int32_t kTypeFourFirstAudioSample = 29;
 constexpr std::int32_t kTypeFourSecondAudioSample = 23;
+constexpr std::int32_t kTypeFivePulseAudioSample = 22;
 constexpr std::int32_t kChildDistance = 180;
 constexpr std::int32_t kChildRadius = 50;
 constexpr std::int32_t kTypeThreeFirstRadius = 250;
@@ -42,12 +47,19 @@ constexpr std::int32_t kTypeFourDamageExpansion = 150;
 constexpr std::int32_t kTypeFourShakeRange = 3001;
 constexpr std::int32_t kTypeFourShakeDuration = 8;
 constexpr std::int32_t kTypeFourShakeMagnitude = 6;
+constexpr std::int32_t kTypeFiveFirstUpdate = 3;
+constexpr std::int32_t kTypeFiveDamageOffset = 4;
+constexpr std::int32_t kTypeFiveThirdVisualOffset = 15;
+constexpr std::int32_t kTypeFiveLifetimeOffset = 22;
+constexpr std::int32_t kTypeFivePulsePeriod = 3;
+constexpr std::int32_t kTypeFivePulseRemainder = 2;
 
 bool supportedEffect(std::int32_t effect_number) {
     return effect_number == kTypeOneEffect ||
            effect_number == kTypeTwoEffect ||
            effect_number == kTypeThreeEffect ||
-           effect_number == kTypeFourEffect;
+           effect_number == kTypeFourEffect ||
+           effect_number == kTypeFiveEffect;
 }
 
 WorldPosition resolvedPosition(
@@ -190,7 +202,7 @@ RuntimeEffectActorSpawnRequest typeThreeActor(
     return actor;
 }
 
-RuntimeEffectActorSpawnRequest typeFourVisual(
+RuntimeEffectActorSpawnRequest stationaryVisual(
     const CombatEffectSpawnRequest& request,
     WorldPosition position,
     ObjectBounds judgement,
@@ -219,7 +231,7 @@ RuntimeEffectActorSpawnRequest typeFourVisual(
     return actor;
 }
 
-RuntimeEffectActorSpawnRequest typeFourDamageActor(
+RuntimeEffectActorSpawnRequest oneUpdateAreaDamageActor(
     const CombatEffectSpawnRequest& request,
     WorldPosition position) {
     const ObjectBounds source =
@@ -265,6 +277,19 @@ RuntimeEffectActorSpawnRequest typeFourDamageActor(
     return actor;
 }
 
+ObjectBounds sourcePointJudgement(
+    const CombatEffectSpawnRequest& request) {
+    const ObjectBounds source =
+        request.has_source_judgement
+            ? request.source_judgement
+            : ObjectBounds{};
+    const std::int32_t x =
+        retailAdd(source.right, 1);
+    const std::int32_t y =
+        retailAdd(source.bottom, 1);
+    return {x, y, x, y};
+}
+
 std::int32_t positionDistance(
     WorldPosition first,
     WorldPosition second) {
@@ -301,6 +326,10 @@ bool EnemyEffectController::initialize(
             wave_table->value(0, column);
     }
     request_ = request;
+    type_five_position_ =
+        request.has_explicit_origin
+            ? request.origin
+            : WorldPosition{};
     active_ = true;
     return true;
 }
@@ -404,7 +433,7 @@ EnemyEffectController::update(
                     : ObjectBounds{};
             result.actor_spawns[
                 result.actor_spawn_count++] =
-                typeFourVisual(
+                stationaryVisual(
                     request_,
                     resolvedPosition(
                         request_, context.source),
@@ -426,7 +455,7 @@ EnemyEffectController::update(
                     : ObjectBounds{};
             result.actor_spawns[
                 result.actor_spawn_count++] =
-                typeFourVisual(
+                stationaryVisual(
                     request_,
                     position,
                     {
@@ -442,7 +471,7 @@ EnemyEffectController::update(
                     0);
             result.actor_spawns[
                 result.actor_spawn_count++] =
-                typeFourVisual(
+                stationaryVisual(
                     request_,
                     position,
                     {
@@ -477,7 +506,7 @@ EnemyEffectController::update(
             }
             result.actor_spawns[
                 result.actor_spawn_count++] =
-                typeFourDamageActor(
+                oneUpdateAreaDamageActor(
                     request_, position);
             active_ = false;
             result.expired = true;
@@ -485,6 +514,108 @@ EnemyEffectController::update(
         }
 
         counter_ = retailAdd(counter_, 1);
+        return result;
+    }
+
+    if (request_.effect_number == kTypeFiveEffect) {
+        if (counter_ == kTypeFiveFirstUpdate) {
+            type_five_position_ =
+                resolvedPosition(
+                    request_, context.source);
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                stationaryVisual(
+                    request_,
+                    type_five_position_,
+                    sourcePointJudgement(request_),
+                    kTypeFiveFirstResource,
+                    0,
+                    0,
+                    0,
+                    0);
+        }
+
+        const std::int32_t first_length =
+            context.resolve_animation_length
+                ? context.resolve_animation_length(
+                      kTypeFiveFirstResource, 0, 8)
+                : 0;
+        if (first_length < 1) {
+            return result;
+        }
+        if (counter_ == first_length) {
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                stationaryVisual(
+                    request_,
+                    type_five_position_,
+                    sourcePointJudgement(request_),
+                    kTypeFiveSecondResource,
+                    0,
+                    0,
+                    kTypeFourDisplayHeight,
+                    0);
+        }
+        if (counter_ ==
+            retailAdd(
+                first_length,
+                kTypeFiveDamageOffset)) {
+            if (context.observer.found &&
+                positionDistance(
+                    context.observer.position,
+                    type_five_position_) <
+                    kTypeFourShakeRange) {
+                result.camera_shake = true;
+                result.camera_shake_duration =
+                    kTypeFourShakeDuration;
+                result.camera_shake_magnitude =
+                    kTypeFourShakeMagnitude;
+            }
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                oneUpdateAreaDamageActor(
+                    request_, type_five_position_);
+        }
+        if (counter_ ==
+            retailAdd(
+                first_length,
+                kTypeFiveThirdVisualOffset)) {
+            result.actor_spawns[
+                result.actor_spawn_count++] =
+                stationaryVisual(
+                    request_,
+                    type_five_position_,
+                    sourcePointJudgement(request_),
+                    kTypeFiveThirdResource,
+                    0,
+                    0,
+                    kTypeFourDisplayHeight,
+                    0x80);
+        }
+
+        const std::int32_t phase =
+            retailSubtract(counter_, first_length);
+        if (phase >= kTypeFiveDamageOffset &&
+            phase <= kTypeFiveLifetimeOffset &&
+            retailSubtract(
+                phase,
+                kTypeFiveDamageOffset) %
+                    kTypeFivePulsePeriod ==
+                kTypeFivePulseRemainder) {
+            result.audio[result.audio_count++] = {
+                kTypeFivePulseAudioSample,
+                type_five_position_,
+            };
+        }
+
+        counter_ = retailAdd(counter_, 1);
+        if (counter_ ==
+            retailAdd(
+                first_length,
+                kTypeFiveLifetimeOffset)) {
+            active_ = false;
+            result.expired = true;
+        }
         return result;
     }
 

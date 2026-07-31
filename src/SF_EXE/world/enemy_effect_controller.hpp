@@ -42,12 +42,19 @@ using EnemyEffectPlacementTest =
     std::function<bool(
         WorldPosition position,
         const ObjectBounds& judgement)>;
+using EnemyEffectAnimationLengthResolver =
+    std::function<std::int32_t(
+        std::int32_t resource_id,
+        std::int32_t chart,
+        std::int32_t direction)>;
 
 struct EnemyEffectControllerContext {
     EnemyEffectControllerSource source;
     RetailRandom* random = nullptr;
     EnemyEffectPlacementTest placement_is_clear;
     EnemyEffectControllerSource observer;
+    EnemyEffectAnimationLengthResolver
+        resolve_animation_length;
 };
 
 class EnemyEffectController {
@@ -68,6 +75,7 @@ private:
     std::int32_t type_three_wave_count_ = 0;
     std::int32_t type_three_wave_index_ = 0;
     bool type_three_placement_blocked_ = false;
+    WorldPosition type_five_position_;
     bool active_ = false;
 };
 

@@ -82,6 +82,22 @@ eligible target, carries the copied packet, and uses bank-zero contact sample
 mode zero for eight updates at magnitude six. `0x00412720` alternates vertical
 offsets zero and six before clearing the request at counter eight.
 
+Type 5 at `0x0042cd70` captures its source on update three and creates
+resource `10000051`. That captured position is retained even if the source
+moves afterward. The maximum frame count of chart zero, direction eight in
+that resource becomes the controller's clock; constructor delay ten is not
+used by this handler.
+
+At the frame count, resource `10000050` appears with display height 200. At
+frame-count plus four, an invisible one-update packet actor expands the
+original source judgement by 150, plays contact sample 20, and requests the
+same nearby eight-by-six camera shake as type 4. Resource `10000052` follows
+at frame-count plus 15 with display height 200 and additional status `0x80`.
+All three visible actors use a lower-right-plus-one point judgement, chart
+zero, direction eight, and their own complete CAF lifetime. Sample 22 plays
+at offsets 6, 9, 12, 15, 18, and 21. The controller expires at frame-count
+plus 22.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -98,7 +114,7 @@ actor class. They must not be used to interpret category-50000000 descriptor
 word 17; that word controls expiry after an environment collision.
 
 The portable `EnemyEffectController` now covers the complete controller half
-of types 1, 2, 3, and 4. Focused tests cover zero, positive, and negative delays,
+of types 1 through 5. Focused tests cover zero, positive, and negative delays,
 source re-resolution, missing and fixed owners, exact resources and bounds,
 packet copying, projection, positional samples, Table 205 wave timing, the
 random chart, and persistent obstruction. Its actor outputs are
@@ -123,7 +139,10 @@ cover type 2 in `03000507` and the type-3 Plasma Bat in `00010001`, including
 resources, audio, damage, cleanup, and unchanged item ownership. Scenario
 `01000004` covers type 4's warning, paired burst charts, invisible damage,
 two launch sounds, contact sample 20, camera shake, and item ownership. The
-other eight specialized controllers remain to be reconstructed. Mapping
+type-5 sequence is covered by enemy 48 in `04060004`, including its
+resource-driven timing, three visuals, six pulses, area damage, camera shake,
+cleanup, and item ownership. The other seven specialized controllers remain
+to be reconstructed. Mapping
 `type + 10000` directly to one OPTION resource would still lose retail timing,
 targeting, audio, and often an entire intermediate actor.
 
