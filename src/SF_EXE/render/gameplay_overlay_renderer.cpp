@@ -1,6 +1,7 @@
 #include "gameplay_overlay_renderer.hpp"
 
 #include "enemy_nameplate_renderer.hpp"
+#include "player_level_up_notice_renderer.hpp"
 #include "ui/conversation_layout.hpp"
 #include "gapi/gapi.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -360,69 +361,6 @@ void drawPointerRange(
     });
 }
 
-void drawLevelUpNotice(
-    gapi::Backend& renderer,
-    const WorldScene& world,
-    const gapi::NjpImage* font,
-    std::int32_t camera_x,
-    std::int32_t camera_y,
-    double interpolation) {
-    const PlayerLevelUpNotice& notice =
-        world.levelUpNotice();
-    if (!font || !notice.active() ||
-        font->patterns().empty()) {
-        return;
-    }
-    const ScreenPosition anchor =
-        calculateRealPosition(
-            world.playerRenderPosition(interpolation));
-    const std::int32_t x =
-        anchor.x - camera_x + 20;
-    const std::int32_t y =
-        anchor.y - camera_y - 80;
-    const gapi::NjpPattern& base_pattern =
-        font->patterns().front();
-    const std::int32_t cell_width =
-        base_pattern.width / 16;
-    const std::int32_t cell_height =
-        base_pattern.height / 16;
-    const std::int32_t width =
-        bitmapTextPixelWidth(
-            notice.text, cell_width);
-    const std::int32_t height =
-        bitmapTextLineCount(notice.text) *
-        cell_height;
-    constexpr gapi::Color kBorder{
-        255, 255, 255, 255,
-    };
-    if (width > 0 && height > 0) {
-        renderer.drawRectangle({
-            x - 1, y - 1, width + 1, 1,
-            kBorder, 1000, 500,
-        });
-        renderer.drawRectangle({
-            x - 1, y - 1, 1, height + 1,
-            kBorder, 1000, 500,
-        });
-        renderer.drawRectangle({
-            x + width - 1, y, 1, height,
-            kBorder, 1000, 500,
-        });
-        renderer.drawRectangle({
-            x, y + height - 1, width, 1,
-            kBorder, 1000, 500,
-        });
-    }
-    renderer.drawText(
-        *font,
-        notice.text,
-        {x + 1, y + 1, {0, 0, 0, 255}});
-    renderer.drawText(
-        *font,
-        notice.text,
-        {x, y, {224, 224, 224, 255}});
-}
-
 void drawConversation(
     gapi::Backend& renderer,
     const WorldScene& world,
@@ -637,13 +575,12 @@ void renderGameplayOverlay(
         camera_x,
         camera_y,
         interpolation);
-    drawLevelUpNotice(
-        renderer,
-        world,
-        font,
-        camera_x,
-        camera_y,
-        interpolation);
+    if (font) {
+        renderPlayerLevelUpNotice(
+            renderer,
+            world.levelUpNotice(),
+            *font);
+    }
     drawPointerRange(renderer, world);
 }
 

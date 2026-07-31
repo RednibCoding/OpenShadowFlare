@@ -1022,10 +1022,10 @@ values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
 effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Packet effects 21000 through 21003 are gated to
-lethal hits for players, companions, and enemies. Their ordinary CAF owner
-expires after one pass; the separate fixed-lifetime death effect advances to
-its last frame normally, holds it, and fades during updates 91 through 119.
+run at the live boundary. Packet effects 21000 through 21003 are ordinary
+impact splatters and play for both surviving and lethal hits. Their one-pass
+CAF owner is separate from enemy death effect 21010, which reaches its last
+frame normally, holds it, and fades during updates 91 through 119.
 Lethal hits also update persistent kill and
 experience fields, apply novice level growth, create Table 30/31 item rolls
 and Gold Find-scaled money through the full ground-item owner, and preserve
@@ -1134,9 +1134,15 @@ Level growth now publishes the native feedback as part of kill accounting.
 Strength, Attack, Defense, Hit Rate, Evasion Rate, Magical Attack, Magical
 Defense, Magical Hit Rate, and Magical Evasion Rate order. It keeps the notice
 for 900 updates and plays sample 63; reaching level five plays sample 64 just
-before it. The portable overlay uses the same fixed-width text and thin
-half-opacity white frame while later job selection and skill unlocks remain
-outside this slice.
+before it. `FUN_00450fb0` creates an auto-sized text owner with four pixels of
+padding, black opacity 250, and centered flag `0x80`, which centers it in the
+640 by 416 play area. `FUN_00451a40` holds that position for 60 updates, slides
+it to x `640 - width`, y 1 over ten updates, then leaves it there until update
+900. It adds the separate thin white frame at opacity 500.
+`FUN_00451cb0` only accepts clicks after the first 30 updates and dismisses a
+click inside the current rectangle before it can reach world movement. The
+portable notice now follows those same drawing, timing, and input rules while
+later job selection and skill unlocks remain outside this slice.
 
 Gameplay panels are independent owners on opposite sides of the world view.
 The Warehouse's opcode 41 owner stays on the left while backpack and equipment

@@ -937,9 +937,8 @@ durability changes, effects, reflection, and audio are committed in retail
 order; the separate belt remains untouched. Player actions four and five show
 the hit and death CAF presentations and interrupt movement or attacks. A live
 regression waits for a Wasteland enemy to damage the player, requires its hit
-sound and the correct death-only splatter gate, then saves and reloads the
-damaged character to make sure no owned items are lost as an accidental side
-effect.
+sound and ordinary impact splatter, then saves and reloads the damaged
+character to make sure no owned items are lost as an accidental side effect.
 
 The next combat slice should finish enemy effect attacks. Actions four through
 six already evaluate their authored data and create typed effect requests.

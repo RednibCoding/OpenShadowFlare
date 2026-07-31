@@ -356,10 +356,11 @@ Receiver visuals now cross a world-owned effect boundary as well.
 resolved position. The specialized `0x0042cba0` path used by 21010 through
 21012 instead lasts 120 updates at initial strength 500 and fades during its
 last 30. These visual actors participate in normal world depth sorting and do
-not own damage. The four 21000 through 21003 splatter variants are only
-presented when their impact is lethal. CAF frames still advance once per game
-update: the fixed-lifetime death effect reaches its last authored frame
-normally, holds there, and only fades during the final 30 updates. Reflection,
+not own damage. The four 21000 through 21003 variants are the ordinary
+splatter selected by direct hit packets and play for both surviving and lethal
+hits. Enemy death separately creates effect 21010. CAF frames advance once per
+game update: that fixed-lifetime death effect reaches its last authored frame,
+holds there, and only fades during the final 30 updates. Reflection,
 staged-reaction, projectile, and spell effect
 dispatchers remain separate follow-up branches. Network transport, experience
 accounting, and drops remain outside this receiver/presentation boundary.
@@ -1383,3 +1384,17 @@ world units on y. Both paths create complete owned item instances through the
 ordinary ground-item owner. The next PRNG draw then chooses death effect
 21010's direction, and the first bounce produces the existing category
 landing sound.
+
+## Level-up notice
+
+`0x00450fb0` creates the level-growth text as an auto-sized text owner with
+four pixels of padding. Flag `0x80` centers its rectangle in the 640 by 416
+play area; its background is black at opacity 250 and its text color is
+`224,224,224`. `0x00451a40` draws a separate one-pixel white frame at opacity
+500 and counts down the 900-update lifetime.
+
+The notice stays centered through counter 840. During the next ten updates its
+stored initial position is interpolated to x `640 - width`, y 1, after which
+it remains in the upper-right until expiry. `0x00451cb0` ignores notice clicks
+for the first 30 updates. A later click inside the notice releases it and
+consumes the input before ordinary world interaction.

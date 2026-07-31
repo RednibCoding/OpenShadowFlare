@@ -469,8 +469,8 @@ bool testLiveWorldMutationAndAudio() {
     const std::int32_t initial_life = enemyLife();
     bool hit = false;
     bool heard_hit = false;
-    bool saw_death_splatter = false;
-    bool death_splatter_owned_by_enemy = false;
+    bool saw_hit_splatter = false;
+    bool hit_splatter_owned_by_enemy = false;
     for (std::int32_t attempt = 0;
          attempt < 10 && !hit;
          ++attempt) {
@@ -512,15 +512,15 @@ bool testLiveWorldMutationAndAudio() {
                     effect.effectNumber() > 21003) {
                     continue;
                 }
-                if (!saw_death_splatter &&
+                if (!saw_hit_splatter &&
                     enemy_now != world.enemies().end()) {
-                    death_splatter_owned_by_enemy =
+                    hit_splatter_owned_by_enemy =
                         effect.position().x ==
                             enemy_now->position().x &&
                         effect.position().y ==
                             enemy_now->position().y;
                 }
-                saw_death_splatter = true;
+                saw_hit_splatter = true;
             }
             if (impact_seen &&
                 world.playerMotion() ==
@@ -531,17 +531,15 @@ bool testLiveWorldMutationAndAudio() {
         hit = enemyLife() < initial_life;
     }
     const std::int32_t final_life = enemyLife();
-    const bool lethal = final_life == 0;
     return check(
         hit &&
             heard_hit &&
-            saw_death_splatter == lethal &&
-            (!lethal ||
-             death_splatter_owned_by_enemy) &&
+            saw_hit_splatter &&
+            hit_splatter_owned_by_enemy &&
             final_life >= 0 &&
             final_life < initial_life,
-        "The live CAF impact did not mutate enemy life, gate its "
-        "death splatter, or queue the retail post-hit sample.");
+        "The live CAF impact did not mutate enemy life, own its "
+        "ordinary splatter, and queue the retail post-hit sample.");
 #else
     return true;
 #endif

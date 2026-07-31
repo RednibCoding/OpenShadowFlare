@@ -15,6 +15,7 @@
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
 #include "states/title_state.hpp"
+#include "ui/player_level_up_notice_input.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
@@ -315,7 +316,17 @@ private:
         }
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
-            const bool ui_consumed = gameplayUi_.update(
+            const bool notice_consumed =
+                osf::dismissPlayerLevelUpNoticeAtPointer(
+                    input_.menu()
+                        .pointer_primary_pressed,
+                    input_.menu().pointer_x,
+                    input_.menu().pointer_y,
+                    frontendAssets_.pattern(1),
+                    world_);
+            const bool ui_consumed =
+                !notice_consumed &&
+                gameplayUi_.update(
                     gameplayFrame_,
                     input_,
                     world_,
@@ -344,10 +355,12 @@ private:
                     input_.menu().confirm_pressed &&
                         !map_active,
                     input_.menu()
-                        .pointer_primary_pressed,
+                        .pointer_primary_pressed &&
+                        !notice_consumed,
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
-                    input_.pointerPrimaryDown(),
+                    input_.pointerPrimaryDown() &&
+                        !notice_consumed,
                     input_.runTogglePressed(),
                     map_active ||
                             special_items_active ||

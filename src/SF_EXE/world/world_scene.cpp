@@ -305,12 +305,7 @@ void WorldScene::togglePlayerRun() {
 
 void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
-    if (level_up_notice_.counter > 0) {
-        --level_up_notice_.counter;
-        if (level_up_notice_.counter == 0) {
-            level_up_notice_.text.clear();
-        }
-    }
+    level_up_notice_.update();
     std::vector<EnemyActor>& live_enemies =
         scenario_world_.enemies();
     live_enemies.erase(
@@ -644,6 +639,10 @@ std::vector<std::int32_t> WorldScene::takeAudioSamples() {
 const PlayerLevelUpNotice&
 WorldScene::levelUpNotice() const {
     return level_up_notice_;
+}
+
+void WorldScene::dismissLevelUpNotice() {
+    level_up_notice_.dismiss();
 }
 
 std::int32_t WorldScene::playerWorldX() const {

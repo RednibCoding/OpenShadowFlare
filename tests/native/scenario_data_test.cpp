@@ -3,8 +3,11 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "ui/conversation_layout.hpp"
+#include "ui/player_level_up_notice_input.hpp"
+#include "ui/player_level_up_notice_layout.hpp"
 #include "render/enemy_nameplate_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
+#include "render/player_level_up_notice_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "world/ground_item.hpp"
 #include "world/enemy_effect_impact.hpp"
@@ -374,6 +377,116 @@ public:
 
     void endFrame() override {}
 };
+
+bool testPlayerLevelUpNoticeLayout() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::gapi::NjpImage font;
+    std::string error;
+    if (!check(
+            font.load(
+                data_root / "System" / "Common" / "Pattern" /
+                    "Font01.njp",
+                &error),
+            "The level-up notice fixture could not load Font01.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerLevelUpNotice notice{"Level 2", 900};
+    osf::PlayerLevelUpNoticeLayout centered;
+    if (!check(
+            osf::buildPlayerLevelUpNoticeLayout(
+                notice, font, centered) &&
+                centered.x ==
+                    (640 - centered.width) / 2 &&
+                centered.y ==
+                    (416 - centered.height) / 2 &&
+                centered.text_x == centered.x + 4 &&
+                centered.text_y == centered.y + 4 &&
+                !notice.dismissible() &&
+                !osf::playerLevelUpNoticeAcceptsPointer(
+                    notice,
+                    centered.x,
+                    centered.y,
+                    &font),
+            "The level-up notice lost its retail centered geometry "
+            "or initial click guard.")) {
+        return false;
+    }
+    NpcRecordingBackend renderer;
+    osf::renderPlayerLevelUpNotice(
+        renderer, notice, font);
+    if (!check(
+            renderer.rectangles.size() == 5 &&
+                renderer.rectangles[0].x == centered.x &&
+                renderer.rectangles[0].y == centered.y &&
+                renderer.rectangles[0].width ==
+                    centered.width &&
+                renderer.rectangles[0].height ==
+                    centered.height &&
+                renderer.rectangles[0].color.red == 0 &&
+                renderer.rectangles[0].color.green == 0 &&
+                renderer.rectangles[0].color.blue == 0 &&
+                renderer.rectangles[0].opacity == 250 &&
+                renderer.rectangles[1].opacity == 500 &&
+                renderer.text_calls.size() == 1 &&
+                renderer.text_calls[0].draw.x ==
+                    centered.text_x &&
+                renderer.text_calls[0].draw.y ==
+                    centered.text_y,
+            "The level-up notice lost its faded background, frame, "
+            "padding, or text placement.")) {
+        return false;
+    }
+
+    notice.counter = 839;
+    osf::PlayerLevelUpNoticeLayout sliding;
+    if (!check(
+            osf::buildPlayerLevelUpNoticeLayout(
+                notice, font, sliding) &&
+                sliding.x > centered.x &&
+                sliding.y < centered.y &&
+                notice.dismissible() &&
+                osf::playerLevelUpNoticeAcceptsPointer(
+                    notice,
+                    sliding.x,
+                    sliding.y,
+                    &font),
+            "The level-up notice did not begin its ten-update "
+            "upper-right slide.")) {
+        return false;
+    }
+
+    notice.counter = 830;
+    osf::PlayerLevelUpNoticeLayout parked;
+    if (!check(
+            osf::buildPlayerLevelUpNoticeLayout(
+                notice, font, parked) &&
+                parked.x == 640 - parked.width &&
+                parked.y == 1 &&
+                osf::playerLevelUpNoticeContains(
+                    parked, parked.x, parked.y) &&
+                !osf::playerLevelUpNoticeContains(
+                    parked,
+                    parked.x + parked.width,
+                    parked.y),
+            "The level-up notice did not finish at the exact retail "
+            "upper-right position or bounds.")) {
+        return false;
+    }
+
+    notice.counter = 1;
+    notice.update();
+    return check(
+        !notice.active() && notice.text.empty(),
+        "The level-up notice did not release itself at update 900.");
+#else
+    return true;
+#endif
+}
 
 bool testEnemyNameplatePresentation() {
     osf::gapi::NjpImage font;
@@ -1705,7 +1818,7 @@ bool testGeneralScenarioStart() {
     const std::size_t belt_before_enemy_ai =
         wasteland.playerBelt().items().size();
     bool heard_enemy_hit = false;
-    bool saw_player_death_splatter = false;
+    bool saw_player_hit_splatter = false;
     for (std::int32_t update = 0;
          update < 300 &&
          wasteland.playerData().currentLife() ==
@@ -1719,8 +1832,8 @@ bool testGeneralScenarioStart() {
             std::find(
                 samples.begin(), samples.end(), 6) !=
                 samples.end();
-        saw_player_death_splatter =
-            saw_player_death_splatter ||
+        saw_player_hit_splatter =
+            saw_player_hit_splatter ||
             std::any_of(
                 wasteland.combatEffects().begin(),
                 wasteland.combatEffects().end(),
@@ -1729,14 +1842,11 @@ bool testGeneralScenarioStart() {
                            effect.effectNumber() <= 21003;
                 });
     }
-    const bool player_defeated =
-        wasteland.playerData().currentLife() < 1;
     if (!check(
             wasteland.playerData().currentLife() <
                     life_before_enemy_ai &&
                 heard_enemy_hit &&
-                saw_player_death_splatter ==
-                    player_defeated &&
+                saw_player_hit_splatter &&
                 wasteland.playerInventory().items().size() ==
                     inventory_before_enemy_ai &&
                 wasteland.playerBelt().items().size() ==
@@ -1749,8 +1859,8 @@ bool testGeneralScenarioStart() {
                      osf::PlayerMotion::defeated),
             "A live Wasteland enemy did not approach, complete its "
             "authored attack presentation, pass damage through the "
-            "player receiver, gate its death splatter, and publish "
-            "its sample.")) {
+            "player receiver, and publish its impact splatter and "
+            "sample.")) {
         return false;
     }
     const std::int32_t damaged_life =
@@ -3951,6 +4061,7 @@ bool testRetailRemoteTown() {
 int main() {
     return testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
+                   testPlayerLevelUpNoticeLayout() &&
                    testEnemyNameplatePresentation() &&
                    testFixture() &&
                    testMalformedData() &&

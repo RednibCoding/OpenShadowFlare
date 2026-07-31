@@ -28,6 +28,7 @@
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
 #include "player_item_controller.hpp"
+#include "player_level_up_notice.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
 #include "runtime_effect_system.hpp"
@@ -56,15 +57,6 @@ enum class GameplayServiceKind {
 struct GameplayServiceRequest {
     GameplayServiceKind kind = GameplayServiceKind::none;
     std::int32_t argument = 0;
-};
-
-struct PlayerLevelUpNotice {
-    std::string text;
-    std::int32_t counter = 0;
-
-    bool active() const {
-        return counter > 0 && !text.empty();
-    }
 };
 
 enum class ScenarioTravelResult {
@@ -192,6 +184,7 @@ public:
     void update();
     std::vector<std::int32_t> takeAudioSamples();
     const PlayerLevelUpNotice& levelUpNotice() const;
+    void dismissLevelUpNotice();
     std::int32_t playerWorldX() const;
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;

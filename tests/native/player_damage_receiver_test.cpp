@@ -430,7 +430,7 @@ bool testDeathWithoutRevival() {
         "presentation and event.");
 }
 
-bool testDeathSplatterGate() {
+bool testImpactSplatter() {
     const osf::TableDatabase tables = retailTables();
     const osf::ItemDatabase items;
     osf::PlayerDamageReceiverContext context;
@@ -451,8 +451,10 @@ bool testDeathSplatterGate() {
     if (!check(
             living.valid &&
                 living.state.current_life > 0 &&
-                living.effects.empty(),
-            "A surviving hero emitted the death splatter.")) {
+                living.effects.size() == 1 &&
+                living.effects.front().effect_number == 21000,
+            "A surviving hero lost its ordinary impact "
+            "splatter.")) {
         return false;
     }
 
@@ -474,7 +476,7 @@ bool testDeathSplatterGate() {
             death.state.presentation_action == 5 &&
             death.effects.size() == 1 &&
             death.effects.front().effect_number == 21000,
-        "A lethal player hit did not emit its death splatter.");
+        "A lethal player hit lost its ordinary impact splatter.");
 }
 
 }  // namespace
@@ -486,7 +488,7 @@ int main() {
         !testEquipmentReflection() ||
         !testCounterBurstAndReaction() ||
         !testDeathWithoutRevival() ||
-        !testDeathSplatterGate()) {
+        !testImpactSplatter()) {
         return 1;
     }
     return 0;

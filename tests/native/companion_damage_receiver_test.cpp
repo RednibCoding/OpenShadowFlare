@@ -133,9 +133,11 @@ bool testLocalOwnershipAndDeath() {
             local_result.valid &&
                 local_result.accepted &&
                 local_result.state.current_life == 75 &&
-                local_result.effects.empty(),
+                local_result.effects.size() == 1 &&
+                local_result.effects.front().effect_number ==
+                    21000,
             "The owning player slot did not apply companion damage "
-            "or emitted a splatter while the companion survived.")) {
+            "and its ordinary impact splatter.")) {
         return false;
     }
 
@@ -201,7 +203,7 @@ bool testLocalOwnershipAndDeath() {
             death.effects.size() == 1 &&
             death.effects.front().effect_number == 21000,
         "Lethal companion damage did not select action six and "
-        "emit its death splatter.");
+        "preserve its ordinary impact splatter.");
 }
 
 bool testReactionStageAndEffectOwnership() {

@@ -143,6 +143,7 @@ add_library(
   world/player_damage_receiver.cpp
   world/player_data.cpp
   world/player_item_controller.cpp
+  world/player_level_up_notice.cpp
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
@@ -188,6 +189,8 @@ target_link_libraries(
 add_library(
   osf_ui STATIC
   ui/conversation_layout.cpp
+  ui/player_level_up_notice_input.cpp
+  ui/player_level_up_notice_layout.cpp
 )
 add_library(OpenShadowFlare::Ui ALIAS osf_ui)
 osf_configure_game_library(osf_ui)
@@ -214,6 +217,7 @@ add_library(
   render/gameplay_transport_renderer.cpp
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
+  render/player_level_up_notice_renderer.cpp
   render/title_renderer.cpp
 )
 add_library(OpenShadowFlare::Render ALIAS osf_render)
