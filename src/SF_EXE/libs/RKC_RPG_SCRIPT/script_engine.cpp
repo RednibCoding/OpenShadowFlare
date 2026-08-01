@@ -406,6 +406,32 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 39: {
+        if (command.operands.size() < 3) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t lower =
+            readOperand(command.operands[0]);
+        const std::int32_t upper =
+            readOperand(command.operands[1]);
+        std::int32_t random = 0;
+        if (!hooks_.next_random ||
+            !hooks_.next_random(random)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        const std::int32_t range = wrappedArithmetic(
+            wrappedArithmetic(upper, lower, true), 1, false);
+        if (range == 0) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t value = wrappedArithmetic(
+            lower, random % range, false);
+        if (!writeOperand(command.operands[2], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 17:
     case 21:
         return executeNative(2);

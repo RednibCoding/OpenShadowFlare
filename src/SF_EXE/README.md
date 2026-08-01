@@ -269,6 +269,12 @@ visible, pointer, and judgement channels plus the separate effective override.
 Near Remote Town uses that path to swap its two overlapping authored objects;
 later scenarios can reuse the same command for visible and collidable variants.
 
+Script randomness crosses that boundary through one host callback as well.
+Opcode 39 lives in `RKC_RPG_SCRIPT`, evaluates and writes typed operands there,
+but consumes the next value from the world's shared retail random owner. That
+keeps random branching and spawn setup faithful without making the portable
+DLL library depend on world or core classes.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,

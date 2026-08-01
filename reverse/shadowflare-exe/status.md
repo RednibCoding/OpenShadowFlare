@@ -1324,6 +1324,15 @@ single-player path. The executable has direct writes but no discovered reads
 of either global. OpenShadowFlare retains the raw ID and text in the script
 owner and deliberately does not render a guessed area caption.
 
+The script's inclusive random command is reconstructed at `0x00431c43`.
+Opcode 39 evaluates lower and upper operands, calls the executable's Visual
+C++ random routine at `0x00467c6e` once, computes the signed remainder over
+`upper - lower + 1`, adds the lower bound, and writes through `0x00434920`.
+The full SCS catalog contains 611 three-operand calls in 55 scenarios: 285
+use 0..1, 41 use 20..40, and the rest include script-calculated bounds.
+The portable library obtains that one draw from the world's shared retail
+random owner through a narrow hook.
+
 The portable fresh-world path accepts scenario ID, entry value, and local
 player explicitly. The first cross-map fixture is Table 40 row one: scenario
 6, entry 4, key 16. It loads Wasteland of Pillars, `Map\f00_07.map`, position

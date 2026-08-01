@@ -65,6 +65,13 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
                      hooks_.query_item(
                          category, definition_id, present);
           },
+          [this](std::int32_t& value) {
+              if (!hooks_.next_random) {
+                  return false;
+              }
+              value = hooks_.next_random();
+              return true;
+          },
       }) {}
 
 bool ScenarioScriptRuntime::load(

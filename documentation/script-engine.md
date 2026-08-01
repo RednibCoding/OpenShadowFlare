@@ -313,6 +313,7 @@ services exercise them; unknown values still fail loudly.
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
+| 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
@@ -374,6 +375,17 @@ uses the command every update to swap objects 1030 and 1031 according to saved
 script flag 71. Every shipped opcode-56 target is a type-zero object, though
 the portable state owner keeps the same override available to every scenario
 entity class.
+
+Opcode 39 evaluates its lower bound first and its upper bound second, takes
+exactly one value from the executable's shared Visual C++ random stream, and
+writes `lower + rand() % (upper - lower + 1)` to its third operand. Both ends
+are therefore possible. The shipped scripts contain 611 calls across 55
+scenarios, and every call has exactly three operands. Of those, 285 choose
+between zero and one and 41 choose from 20 through 40; spawn setup uses the
+remaining calls with script-calculated upper bounds. The portable
+script library asks its host for the next random value, keeping the DLL
+boundary free of world ownership while still sharing the world's retail
+random sequence.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its

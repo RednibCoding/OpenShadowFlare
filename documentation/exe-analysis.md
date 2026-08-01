@@ -1140,6 +1140,17 @@ write those globals; no reader or renderer has been identified. The portable
 script owner therefore keeps the latest message ID and text as evidence-backed
 state without drawing an area banner that the known retail path does not show.
 
+Opcode 39 starts at `0x00431c43`. It evaluates operands zero and one in order,
+calls the statically linked Visual C++ `rand` routine at `0x00467c6e`, divides
+that result by the wrapped signed span `upper - lower + 1`, adds the remainder
+to the lower bound, and sends the result plus raw operand two to the common
+writer at `0x00434920`. The bounds are inclusive and exactly one random value
+is consumed. All 611 shipped calls have three operands across 55 scenarios;
+the authored corpus includes 285 0..1 choices and 41 20..40 ranges. The
+portable interpreter receives the next value through its
+host hook, which connects to the shared world random owner rather than
+creating a private script generator.
+
 The first authored cross-map path is now traced end to end. During the
 scenario update at `0x004305d0`, status kind three resolves its character to a
 live MCT entity and calls the inclusive rectangle test at `0x00414350`

@@ -37,6 +37,7 @@ struct ScenarioScriptRuntimeHooks {
         std::int32_t,
         std::int32_t,
         bool&)> query_item;
+    std::function<std::int32_t()> next_random;
 };
 
 class ScenarioScriptRuntime {

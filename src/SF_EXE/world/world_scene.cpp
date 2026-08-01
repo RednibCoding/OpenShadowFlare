@@ -66,6 +66,9 @@ WorldScene::WorldScene()
               return queryScriptItem(
                   category, definition_id, present);
           },
+          [this]() {
+              return item_random_.next();
+          },
       }) {}
 
 

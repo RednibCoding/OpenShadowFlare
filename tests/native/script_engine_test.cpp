@@ -29,6 +29,47 @@ std::uint64_t operandKey(const osf::script::Operand& operand) {
         static_cast<std::uint32_t>(operand.value);
 }
 
+void appendI32(
+    std::vector<std::uint8_t>& bytes,
+    std::int32_t value) {
+    const std::uint32_t raw = static_cast<std::uint32_t>(value);
+    for (std::uint32_t shift = 0; shift < 32; shift += 8) {
+        bytes.push_back(static_cast<std::uint8_t>(raw >> shift));
+    }
+}
+
+osf::script::ScriptData makeRandomCommandScript() {
+    std::vector<std::uint8_t> bytes{
+        'S', 'c', 'e', 'n', 'a', 'S', 'c', 'r',
+        'i', 'p', 't', 'V', '0', '0', '0', '\0',
+    };
+    appendI32(bytes, 3);
+    for (std::int32_t id = 1000000; id <= 1000002; ++id) {
+        appendI32(bytes, id);
+        appendI32(bytes, -1);
+    }
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    appendI32(bytes, 3);
+    for (std::int32_t destination = 1000000;
+         destination <= 1000002;
+         ++destination) {
+        appendI32(bytes, 39);
+        appendI32(bytes, 3);
+        appendI32(bytes, 1);
+        appendI32(bytes, 20);
+        appendI32(bytes, 1);
+        appendI32(bytes, 40);
+        appendI32(bytes, 4);
+        appendI32(bytes, destination);
+    }
+    osf::script::ScriptData script;
+    script.decode(bytes);
+    return script;
+}
+
 bool testRetailRemoteTown() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path path =
@@ -196,6 +237,7 @@ bool testRetailRemoteTown() {
                     : static_cast<std::size_t>(index)];
             return true;
         },
+        {},
         {},
         {},
     });
@@ -912,6 +954,7 @@ bool testRetailOutdoorChestScript() {
         {},
         {},
         {},
+        {},
     });
     interpreter.bind(&script);
     const osf::script::StepResult result =
@@ -992,6 +1035,7 @@ bool testRetailRedGoblinDeathStatus() {
         {},
         {},
         {},
+        {},
     });
     interpreter.bind(&script);
     return check(
@@ -1042,6 +1086,7 @@ bool testRetailGiantWarehouseScript() {
             value = 0;
             return true;
         },
+        {},
         {},
         {},
         {},
@@ -1131,6 +1176,7 @@ bool testRetailItemOwnershipCommands() {
             present = true;
             return true;
         },
+        {},
     });
     interpreter.bind(&remote_town);
     const osf::script::StepResult query_result =
@@ -1259,6 +1305,7 @@ bool testRetailJobCommands() {
         {},
         {},
         {},
+        {},
     });
     interpreter.bind(&script);
     const osf::script::StepResult query_result =
@@ -1316,6 +1363,7 @@ bool testRetailEquipmentColorCommand() {
             commands.emplace_back(opcode, arguments);
             return true;
         },
+        {},
         {},
         {},
         {},
@@ -1384,6 +1432,7 @@ bool testRetailBlackjackCommands() {
             value = 2;
             return true;
         },
+        {},
         {},
         {},
         {},
@@ -1525,6 +1574,112 @@ bool testRetailScenarioEntityOverrideCommand() {
 #endif
 }
 
+bool testRetailInclusiveRandomCommand() {
+    osf::script::ScriptData script = makeRandomCommandScript();
+    if (!check(
+            script.sentences().size() == 1,
+            "The synthetic random-command script did not decode.")) {
+        return false;
+    }
+    const std::array<std::int32_t, 3> draws{{0, 20, 21}};
+    std::size_t next_draw = 0;
+    osf::script::InterpreterHooks hooks;
+    hooks.next_random = [&draws, &next_draw](std::int32_t& value) {
+        if (next_draw >= draws.size()) {
+            return false;
+        }
+        value = draws[next_draw++];
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(0, -1) ==
+                    osf::script::StepResult::complete &&
+                next_draw == draws.size() &&
+                interpreter.readTemporaryFlag(1000000) == 20 &&
+                interpreter.readTemporaryFlag(1000001) == 40 &&
+                interpreter.readTemporaryFlag(1000002) == 20,
+            "Opcode 39 did not preserve retail inclusive bounds or "
+            "random-call order.")) {
+        return false;
+    }
+
+    osf::script::Interpreter missing_random;
+    missing_random.bind(&script);
+    return check(
+        missing_random.startSentence(0, -1) ==
+                osf::script::StepResult::unsupported_command &&
+            missing_random.unsupportedOpcode() == 39,
+        "Opcode 39 ran without an attached retail random stream.");
+}
+
+bool testRetailInclusiveRandomCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    std::size_t binary_choice_count = 0;
+    std::size_t delay_count = 0;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-39 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 39) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 3,
+                        "A shipped opcode-39 call changed shape.")) {
+                    return false;
+                }
+                ++call_count;
+                ++scenario_calls;
+                const osf::script::Operand& lower =
+                    command.operands[0];
+                const osf::script::Operand& upper =
+                    command.operands[1];
+                if (lower.type == 1 && lower.value == 0 &&
+                    upper.type == 1 && upper.value == 1) {
+                    ++binary_choice_count;
+                }
+                if (lower.type == 1 && lower.value == 20 &&
+                    upper.type == 1 && upper.value == 40) {
+                    ++delay_count;
+                }
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 611 && scenario_count == 55 &&
+            binary_choice_count == 285 && delay_count == 41,
+        "The shipped opcode-39 inventory differs from the audited retail "
+        "scripts.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1538,6 +1693,8 @@ int main() {
                    testRetailBlackjackCommands() &&
                    testRetailScenarioEntryAndCaptionCommands() &&
                    testRetailScenarioEntityOverrideCommand() &&
+                   testRetailInclusiveRandomCommand() &&
+                   testRetailInclusiveRandomCommandInventory() &&
                    testMalformedScript()
                ? 0
                : 1;

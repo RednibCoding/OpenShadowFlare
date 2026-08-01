@@ -866,6 +866,12 @@ overwriting those MCT-backed script channels. Near Remote Town now swaps its
 paired objects 1030 and 1031 from saved flag 71 on every status-kind-five pass,
 and the same common owner covers all 66 shipped calls across 13 scenarios.
 
+The shared scenario random command is no longer a gap either. Opcode 39 keeps
+the retail operand order, one-draw call order, wrapped inclusive span, and
+common destination writer. The script library receives the draw from the
+world instead of owning a second generator, so the 611 shipped spawn, branch,
+and setup calls remain in the same random sequence as native gameplay work.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover

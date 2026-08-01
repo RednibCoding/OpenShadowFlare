@@ -131,6 +131,7 @@ struct InterpreterHooks {
         std::int32_t,
         std::int32_t,
         bool&)> query_item;
+    std::function<bool(std::int32_t&)> next_random;
 };
 
 class Interpreter {
