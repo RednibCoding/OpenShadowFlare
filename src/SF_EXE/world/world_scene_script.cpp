@@ -318,6 +318,31 @@ bool WorldScene::executeScriptNativeCommand(
                player_inventory_.spendGold(arguments[0]);
     }
 
+    if (opcode == 56) {
+        if (arguments.size() != 4) {
+            return false;
+        }
+        if (ScenarioObjectActor* object =
+                findScriptObject(arguments[0])) {
+            object->setStateOverride(
+                arguments[1], arguments[2], arguments[3]);
+        } else if (NpcActor* npc =
+                       findScriptNpc(arguments[0])) {
+            npc->setStateOverride(
+                arguments[1], arguments[2], arguments[3]);
+        } else if (GroundItem* item =
+                       findScriptGroundItem(arguments[0])) {
+            item->state.setOverride(
+                arguments[1], arguments[2], arguments[3]);
+        } else if (EnemyActor* enemy =
+                       findScriptEnemy(arguments[0])) {
+            enemy->setStateOverride(
+                arguments[1], arguments[2], arguments[3]);
+        }
+        // The retail handler treats an absent target as a successful no-op.
+        return true;
+    }
+
     if (opcode == 16) {
         if (arguments.empty() || arguments[0] < 0) {
             return false;

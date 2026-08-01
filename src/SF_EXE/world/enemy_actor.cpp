@@ -705,6 +705,13 @@ void EnemyActor::setStateValue(
     state_.setValue(channel, value);
 }
 
+void EnemyActor::setStateOverride(
+    std::int32_t visible,
+    std::int32_t pointer,
+    std::int32_t judgement) {
+    state_.setOverride(visible, pointer, judgement);
+}
+
 std::int32_t EnemyActor::id() const {
     return id_;
 }

@@ -1029,6 +1029,23 @@ names and colors, label height, position, judgement, direction, initial CAF
 part overrides, optional fixed-capacity part/color arrays, and one preserved
 unknown value.
 
+Those initial three-channel values are not the only object state. Script
+opcode 56 at `0x00433a78` finds an existing scenario entity by character
+number, sets the override-present word at runtime `+0xfc`, then writes effective
+visible, pointer, and judgement values at `+0x100`, `+0x104`, and `+0x108`.
+The type-zero draw path at `0x0045ddd0` selects the override visibility when it
+is present. `0x0045e080` independently selects its pointer and collision values.
+Reads and writes through the 100-, 300-, and 200-million script keys continue
+to address the underlying MCT-backed channels.
+
+Near Remote Town's first periodic status checks persistent script flag 71. Its
+two branches use opcode 56 to alternate objects `10001030` and `10001031`,
+leaving pointer and judgement disabled for both. The objects share almost the
+same position, so treating the command as an ordinary state write would leave
+the base script variables wrong when the opposite branch runs. A scan of the
+shipped SCS catalog found 66 opcode-56 calls across 13 scenarios; every target
+is a type-zero object, including later three-part visible/collidable swaps.
+
 The object tail is `0x34` bytes. `FUN_00429600` creates its type-zero
 `0x120`-byte runtime class through `0x0045dca0`; its character number is local
 ID plus 10,000,000. The initializer at `0x0045dd00` copies the transformed

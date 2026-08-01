@@ -1269,6 +1269,20 @@ Remote Town's exact object triplets are `{0,1,0}`, `{1,1,1}`, `{1,0,0}`,
 `{0,0,0}`, `{1,0,0}`, `{1,0,0}`, and `{1,1,1}`. Its first three PEOPLE
 records start `{1,1,1}` and all four companion records start `{0,0,0}`.
 
+Opcode 56 at `0x00433a78` is a separate effective-state override. After the
+local-player ownership check it resolves the first operand as a scenario
+character, sets runtime `+0xfc` to one, and copies operands one through three
+to `+0x100`, `+0x104`, and `+0x108`. Type-zero update `0x0045ddd0` uses the
+first value for drawing and `0x0045e080` uses the other two for pointer status
+and judgement. The original 100-, 300-, and 200-million script-key values are
+not changed.
+
+Near Remote Town status kind five uses saved flag 71 to swap overlapping
+objects 1030 and 1031 between `{0,0,0}` and `{1,0,0}`. Both branches now run
+through the portable interpreter and the object state owner. The complete
+shipped call-site scan found 66 calls across 13 scenarios and only type-zero
+targets, but the override remains a property of common scenario-entity state.
+
 The type-zero object constructor at `0x0045dca0` is now represented by a
 portable actor. Resources 8 and 14 supply static `Pattern.Njp` and
 `Pattern.Sdw`; resource 15 supplies the paired `Animation.Caf` and

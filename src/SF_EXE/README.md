@@ -263,6 +263,12 @@ opcode 50 sees the correct floor and level-dependent vendor setup sees the live
 hero. Opcode 49 retains the raw authored area-caption message for inspection;
 it is not drawn because the known executable references never read that buffer.
 
+Active-map scripts can also apply retail opcode 56 without leaking object rules
+into the interpreter. The common scenario-entity state keeps its MCT-backed
+visible, pointer, and judgement channels plus the separate effective override.
+Near Remote Town uses that path to swap its two overlapping authored objects;
+later scenarios can reuse the same command for visible and collidable variants.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,

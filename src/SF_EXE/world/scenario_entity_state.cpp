@@ -19,6 +19,8 @@ bool ScenarioEntityState::initialize(
 
 void ScenarioEntityState::clear() {
     values_.fill(0);
+    override_values_.fill(0);
+    override_enabled_ = false;
 }
 
 std::int32_t ScenarioEntityState::value(
@@ -32,16 +34,37 @@ void ScenarioEntityState::setValue(
     values_[static_cast<std::size_t>(channel)] = value;
 }
 
+void ScenarioEntityState::setOverride(
+    std::int32_t visible,
+    std::int32_t pointer,
+    std::int32_t judgement) {
+    override_values_ = {visible, pointer, judgement};
+    override_enabled_ = true;
+}
+
+bool ScenarioEntityState::overrideEnabled() const {
+    return override_enabled_;
+}
+
+std::int32_t ScenarioEntityState::effectiveValue(
+    ScenarioEntityStateChannel channel) const {
+    const std::size_t index = static_cast<std::size_t>(channel);
+    return override_enabled_ ? override_values_[index] : values_[index];
+}
+
 bool ScenarioEntityState::visible() const {
-    return value(ScenarioEntityStateChannel::visible) != 0;
+    return effectiveValue(
+               ScenarioEntityStateChannel::visible) != 0;
 }
 
 bool ScenarioEntityState::pointerEnabled() const {
-    return value(ScenarioEntityStateChannel::pointer) != 0;
+    return effectiveValue(
+               ScenarioEntityStateChannel::pointer) != 0;
 }
 
 bool ScenarioEntityState::judgementEnabled() const {
-    return value(ScenarioEntityStateChannel::judgement) != 0;
+    return effectiveValue(
+               ScenarioEntityStateChannel::judgement) != 0;
 }
 
 }  // namespace osf

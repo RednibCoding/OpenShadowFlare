@@ -72,6 +72,10 @@ public:
     void setStateValue(
         ScenarioEntityStateChannel channel,
         std::int32_t value);
+    void setStateOverride(
+        std::int32_t visible,
+        std::int32_t pointer,
+        std::int32_t judgement);
 
     std::int32_t id() const;
     std::int32_t characterNumber() const;

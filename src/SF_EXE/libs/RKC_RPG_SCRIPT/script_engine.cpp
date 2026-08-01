@@ -384,6 +384,8 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(1);
     case 54:
         return executeNative(1);
+    case 56:
+        return executeNative(4);
     case 6:
         return executeNative(2);
     case 24:

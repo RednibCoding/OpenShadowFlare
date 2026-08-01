@@ -860,6 +860,12 @@ The scenario script addresses those channels through its 100-, 300-, and
 same state path: the player's own companion stays absent while the other three
 town companions become visible, selectable, and solid.
 
+The first outdoor periodic-state override is reconstructed as well. Opcode 56
+keeps its own effective visible, pointer, and judgement triplet instead of
+overwriting those MCT-backed script channels. Near Remote Town now swaps its
+paired objects 1030 and 1031 from saved flag 71 on every status-kind-five pass,
+and the same common owner covers all 66 shipped calls across 13 scenarios.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover

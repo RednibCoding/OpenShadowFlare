@@ -17,6 +17,7 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -2299,6 +2300,91 @@ bool testRetailScenarioEntryInitialization() {
 #endif
 }
 
+bool testRetailScenarioObjectOverride() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Object Override";
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, {1, 0, 0}, &error),
+            "The Near Remote Town object-override fixture could not "
+            "load.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto findObject = [&world](std::int32_t id) {
+        return std::find_if(
+            world.scenarioObjects().begin(),
+            world.scenarioObjects().end(),
+            [id](const osf::ScenarioObjectActor& object) {
+                return object.id() == id;
+            });
+    };
+    auto first = findObject(1030);
+    auto second = findObject(1031);
+    if (!check(
+            first != world.scenarioObjects().end() &&
+                second != world.scenarioObjects().end(),
+            "Near Remote Town no longer contains the retail paired "
+            "objects.")) {
+        return false;
+    }
+    const std::array<std::int32_t, 3> first_base{{
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    const std::array<std::int32_t, 3> second_base{{
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    world.update();
+    first = findObject(1030);
+    second = findObject(1031);
+    const std::array<std::int32_t, 3> first_after{{
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    const std::array<std::int32_t, 3> second_after{{
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    return check(
+        first->stateOverrideEnabled() &&
+            second->stateOverrideEnabled() &&
+            first->visible() && !first->pointerEnabled() &&
+            !first->judgementEnabled() &&
+            !second->visible() && !second->pointerEnabled() &&
+            !second->judgementEnabled() &&
+            first_after == first_base &&
+            second_after == second_base,
+        "Opcode 56 did not swap the paired objects independently of "
+        "their script-addressable base state.");
+#else
+    return true;
+#endif
+}
+
 bool testScriptedRemoteTownExit() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -4311,6 +4397,7 @@ int main() {
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
                    testRetailScenarioEntryInitialization() &&
+                   testRetailScenarioObjectOverride() &&
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&

@@ -1472,6 +1472,59 @@ bool testRetailScenarioEntryAndCaptionCommands() {
 #endif
 }
 
+bool testRetailScenarioEntityOverrideCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    osf::script::InterpreterHooks hooks;
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(2, -1) ==
+                    osf::script::StepResult::complete &&
+                calls == std::vector<NativeCall>{
+                    {56, {10001030, 0, 0, 0}},
+                    {56, {10001031, 1, 0, 0}},
+                },
+            "Opcode 56 did not evaluate Near Remote Town's first "
+            "object-override branch.")) {
+        return false;
+    }
+    calls.clear();
+    return check(
+        interpreter.startSentence(3, -1) ==
+                osf::script::StepResult::complete &&
+            calls == std::vector<NativeCall>{
+                {56, {10001030, 1, 0, 0}},
+                {56, {10001031, 0, 0, 0}},
+            },
+        "Opcode 56 did not evaluate Near Remote Town's opposite "
+        "object-override branch.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1484,6 +1537,7 @@ int main() {
                    testRetailEquipmentColorCommand() &&
                    testRetailBlackjackCommands() &&
                    testRetailScenarioEntryAndCaptionCommands() &&
+                   testRetailScenarioEntityOverrideCommand() &&
                    testMalformedScript()
                ? 0
                : 1;

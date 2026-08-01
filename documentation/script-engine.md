@@ -325,6 +325,7 @@ services exercise them; unknown values still fail loudly.
 | 53 | `0x00433923` | Write the local player's total Gold to an operand |
 | 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
 | 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
+| 56 | `0x00433a78` | Override one scenario entity's effective visible, pointer, and judgement states |
 | 58 | `0x00433b33` | Search the four automatic-item pages, backpack, and active equipment, then write zero or one |
 | 59 | `0x00433ced` | Remove the first matching item from that same retail owner order |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
@@ -362,6 +363,17 @@ Retail installs the local player and entry before running scenario status kind
 `7`. It runs that status after both a changed-map load and a same-scenario
 relocation. The portable transaction now follows that order, which also lets
 initialization scripts safely query player level before building vendor stock.
+
+Opcode 56 evaluates a character number followed by visible, pointer, and
+judgement values. The handler at `0x00433a78` finds the live entity and writes
+an enabled flag plus those three overrides at runtime offsets `+0xfc` through
+`+0x108`. It does not rewrite the three ordinary script variables. Type-zero
+object drawing at `0x0045ddd0` uses the effective visible value, while
+`0x0045e080` uses the effective pointer and judgement values. Near Remote Town
+uses the command every update to swap objects 1030 and 1031 according to saved
+script flag 71. Every shipped opcode-56 target is a type-zero object, though
+the portable state owner keeps the same override available to every scenario
+entity class.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its
