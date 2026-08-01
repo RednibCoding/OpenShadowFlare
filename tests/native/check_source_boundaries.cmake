@@ -147,12 +147,12 @@ endforeach()
 foreach(source_file IN LISTS portable_game_sources)
   file(READ "${source_file}" source_text)
   if(source_text MATCHES
-      "#[ \t]*include[ \t]*[<\"](windows\\.h|lwl\\.h|lal\\.h|lgl\\.h)[>\"]")
+      "#[ \t]*include[ \t]*[<\"](windows\\.h|lwl\\.h|lal\\.h|lgl\\.h|gsKit\\.h|dmaKit\\.h|eekernel\\.h|fileXio\\.h|audsrv\\.h)[>\"]")
     message(FATAL_ERROR
       "Platform integration escaped src/SF_EXE/runtime or libs: ${source_file}")
   endif()
   if(source_text MATCHES
-      "(^|[^A-Za-z0-9_])(_WIN32|WINAPI|HWND|lwl_|lal_|lgl_)")
+      "(^|[^A-Za-z0-9_])(_WIN32|WINAPI|HWND|lwl_|lal_|lgl_|_EE|__PS2__|PS2SDK|GSKIT)")
     message(FATAL_ERROR
       "Platform-specific code escaped src/SF_EXE/runtime or libs: ${source_file}")
   endif()
@@ -215,12 +215,12 @@ foreach(source_file IN LISTS runtime_sources)
 
   if(NOT relative_source MATCHES "^runtime/platform/")
     if(source_text MATCHES
-        "#[ \t]*include[ \t]*[<\"](emscripten[^>\"]*|jni\\.h|android/[^>\"]*)[>\"]")
+        "#[ \t]*include[ \t]*[<\"](emscripten[^>\"]*|jni\\.h|android/[^>\"]*|gsKit\\.h|dmaKit\\.h|eekernel\\.h|fileXio\\.h|audsrv\\.h)[>\"]")
       message(FATAL_ERROR
         "Platform SDK header escaped runtime/platform: ${source_file}")
     endif()
     if(source_text MATCHES
-        "(^|[^A-Za-z0-9_])(__EMSCRIPTEN__|__ANDROID__|ANDROID|JNIEnv|_WIN32|WINAPI|HWND|__ORBIS__|__PROSPERO__|__NX__|NN_NINTENDO_SDK)([^A-Za-z0-9_]|$)")
+        "(^|[^A-Za-z0-9_])(__EMSCRIPTEN__|__ANDROID__|ANDROID|JNIEnv|_WIN32|WINAPI|HWND|__ORBIS__|__PROSPERO__|__NX__|NN_NINTENDO_SDK|_EE|__PS2__|PS2SDK|GSKIT)([^A-Za-z0-9_]|$)")
       message(FATAL_ERROR
         "Platform-specific code escaped runtime/platform: ${source_file}")
     endif()

@@ -323,7 +323,7 @@ private:
         std::int32_t main_hand_subtype);
     void handleEnemyDeathStart(
         EnemyActor& enemy,
-        CombatEffectSpawnRequest effect);
+        const CombatEffectSpawnRequest& effect);
     EnemyActorUpdate updateEnemyActor(
         EnemyActor& enemy,
         const std::vector<MovementBlocker>& blockers);

@@ -8,7 +8,7 @@ namespace osf {
 
 void WorldScene::handleEnemyDeathStart(
     EnemyActor& enemy,
-    CombatEffectSpawnRequest effect) {
+    const CombatEffectSpawnRequest& effect) {
     constexpr std::int32_t kEpisodeOneMask = 1;
     const std::vector<EnemyDeathDrop> drops =
         createRetailEnemyDrops(
@@ -50,8 +50,9 @@ void WorldScene::handleEnemyDeathStart(
     // Retail creates all item and Gold instances first. Its death-effect
     // direction is the next PRNG draw after those constructors finish.
     if (effect.valid) {
-        effect.packet_kind = item_random_.next() % 8;
-        queueCombatEffect(effect);
+        CombatEffectSpawnRequest death_effect = effect;
+        death_effect.packet_kind = item_random_.next() % 8;
+        queueCombatEffect(death_effect);
     }
 }
 

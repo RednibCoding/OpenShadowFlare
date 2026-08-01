@@ -64,7 +64,7 @@ public:
         const CombatEffectSpawnRequest& request,
         const TableDatabase* tables = nullptr);
     bool queueActor(
-        RuntimeEffectActorSpawnRequest request);
+        const RuntimeEffectActorSpawnRequest& request);
     RuntimeEffectSystemUpdate update(
         const RuntimeEffectSystemContext& context);
 

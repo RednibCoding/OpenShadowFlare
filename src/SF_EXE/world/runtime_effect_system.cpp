@@ -71,12 +71,12 @@ bool RuntimeEffectSystem::queue(
 }
 
 bool RuntimeEffectSystem::queueActor(
-    RuntimeEffectActorSpawnRequest request) {
+    const RuntimeEffectActorSpawnRequest& request) {
     if (request.resource_id < 0 &&
         request.visible) {
         return false;
     }
-    pending_actors_.push_back(std::move(request));
+    pending_actors_.push_back(request);
     return true;
 }
 
