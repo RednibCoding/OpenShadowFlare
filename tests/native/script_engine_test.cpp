@@ -175,6 +175,7 @@ bool testRetailRemoteTown() {
                     local_player_spell_learned:
             case osf::script::ValueQuery::
                     local_player_job_selection:
+            case osf::script::ValueQuery::blackjack_result:
                 return false;
             }
             return false;
@@ -1333,6 +1334,88 @@ bool testRetailEquipmentColorCommand() {
 #endif
 }
 
+bool testRetailBlackjackCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "99000018" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> commands;
+    std::unordered_map<std::uint64_t, std::int32_t> values;
+    std::int32_t result_queries = 0;
+    osf::script::Interpreter interpreter({
+        [&values](const osf::script::Operand& operand) {
+            const auto found = values.find(operandKey(operand));
+            return found == values.end() ? 0 : found->second;
+        },
+        [&values](
+            const osf::script::Operand& operand,
+            std::int32_t value) {
+            values.insert_or_assign(operandKey(operand), value);
+            return true;
+        },
+        {},
+        [&commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [&result_queries](
+            osf::script::ValueQuery query,
+            std::int32_t& value) {
+            if (query !=
+                osf::script::ValueQuery::blackjack_result) {
+                return false;
+            }
+            ++result_queries;
+            value = 2;
+            return true;
+        },
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(22, -1) ==
+                    osf::script::StepResult::complete &&
+                commands.size() == 2 &&
+                commands[0].first == 54 &&
+                commands[1] ==
+                    std::make_pair(
+                        std::int32_t{73},
+                        std::vector<std::int32_t>{}),
+            "The shipped Blackjack launch did not emit opcode 73 "
+            "without operands.")) {
+        return false;
+    }
+    const osf::script::StepResult result =
+        interpreter.startSentence(31, -1);
+    return check(
+        result_queries == 1 &&
+            interpreter.readTemporaryFlag(1000004) == 2 &&
+            (result == osf::script::StepResult::complete ||
+             result ==
+                 osf::script::StepResult::waiting_for_message),
+        "Opcode 74 did not publish the dealer-win result to the "
+        "shipped outcome branch.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1343,6 +1426,7 @@ int main() {
                    testRetailItemOwnershipCommands() &&
                    testRetailJobCommands() &&
                    testRetailEquipmentColorCommand() &&
+                   testRetailBlackjackCommands() &&
                    testMalformedScript()
                ? 0
                : 1;

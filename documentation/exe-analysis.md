@@ -1901,6 +1901,48 @@ it remains in the upper-right until expiry. `0x00451cb0` ignores notice clicks
 for the first 30 updates. A later click inside the notice releases it and
 consumes the input before ordinary world interaction.
 
+## Tower of Ordeal Blackjack
+
+Script opcode 73 enters at `0x004343b0`. It closes the ordinary gameplay
+panels, initializes the executable's Blackjack state, and gives that modal
+exclusive input. Opcode 74 at `0x00434412` later writes the retained outcome:
+zero for a draw, one for a player win, or two for a dealer win. Closing the
+result starts scenario status kind 8. The shipped users are scenarios
+`99000018` and `99000023`; their SCS sentences decide what happens after each
+outcome.
+
+The modal update at `0x00403560` deals one card every 15 gameplay updates.
+The opening order is dealer, player, hidden dealer, player at counters 15,
+30, 45, and 60. Ordinary draws use `rand() % 52`; only the hidden opening
+card uses `% 53`, allowing the extra joker. A card already held by either hand
+is rejected and rerolled. Sample 44 accompanies each completed deal.
+
+Ranks use the standard `1,2,3,4,5,6,7,8,9,10,10,10,10` values. Aces and the
+joker are flexible: each becomes 11 when the remaining hand can stay at or
+below 21, otherwise one. A total above 21 is represented as `-1`. The dealer
+draws through 16 and stands at 17. Equal totals draw except at 21, where a
+two-card natural beats the same total made with more cards.
+
+The primary-button rectangles are strictly inside `(229,337)-(328,370)` for
+Hit and `(335,337)-(434,370)` for Stand, and an action is accepted only on a
+15-update boundary. A bust reveals the dealer hand immediately. The result
+stays up for 200 updates; sample 64 marks a player win, sample 65 a dealer
+win, and a draw is silent. A click after the first result update shortens the
+remaining display to one update.
+
+`0x0040da90` draws the complete modal from `Card.Njp`: board pattern 65 at
+`(32,40)`, seven stacked card backs, Status pattern 119, the title pair 55/56,
+the fixed player and companion previews, and patterns 59/60 for Hit and
+Stand. Dealer cards begin at `(182,70)` and player cards at `(158,210)`, with
+an 80-pixel spread below five cards and a compressed 240-pixel span
+afterward. Pattern 54 is the dim card/button shadow. Patterns 57 and 58 mark
+a natural or bust; patterns 61, 62, and 66 are win, lose, and draw.
+
+The portable state, renderer, audio requests, and script hook preserve those
+separate owners. Deterministic tests cover score rules, unique timed dealing,
+input phases, dealer completion, dismissal, Card.Njp placement, and the real
+scenario opcode pair.
+
 ## Magic window and gameplay bar
 
 `0x00407a60` draws the Magic half-panel only while its active flag is set.

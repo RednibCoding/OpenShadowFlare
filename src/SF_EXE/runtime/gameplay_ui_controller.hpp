@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 #define OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 
+#include "states/gameplay_blackjack.hpp"
 #include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_equipment_color.hpp"
 #include "states/gameplay_inventory.hpp"
@@ -48,6 +49,7 @@ public:
         std::int32_t& shadow_opacity);
 
     const GameplayOptionsMenu& options() const;
+    const GameplayBlackjack& blackjack() const;
     const GameplayDebugMenu& debug() const;
     const GameplayEquipmentColor& equipmentColor() const;
     const GameplayInventory& inventory() const;
@@ -81,6 +83,7 @@ private:
         std::int32_t& shadow_opacity);
 
     GameplayOptionsMenu options_;
+    GameplayBlackjack blackjack_;
     GameplayDebugMenu debug_;
     GameplayEquipmentColor equipment_color_;
     GameplayInventory inventory_;

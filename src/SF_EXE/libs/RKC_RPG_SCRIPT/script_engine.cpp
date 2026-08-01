@@ -575,6 +575,22 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 74: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::blackjack_result, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 62:
         return executeNative(3);
     case 58: {
@@ -601,11 +617,14 @@ StepResult Interpreter::execute(const Command& command) {
     case 68:
     case 70:
     case 72:
+    case 73:
     case 75:
         return executeNative(
             command.opcode == 59 || command.opcode == 75
                 ? 2
-                : (command.opcode == 72 ? 0 : 1));
+                : (command.opcode == 72 || command.opcode == 73
+                       ? 0
+                       : 1));
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;

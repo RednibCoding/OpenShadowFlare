@@ -288,8 +288,8 @@ no-ops.
 ## Commands implemented so far
 
 The retail opcode switch begins at `0x00430f80` and covers opcode values
-`0x00` through `0x4b`. Only commands reached by the working Remote Town
-interactions are portable so far.
+`0x00` through `0x4b`. Commands are made portable as real interactions and
+services exercise them; unknown values still fail loudly.
 
 | Opcode | Retail address | Current meaning |
 |---:|---:|---|
@@ -333,6 +333,8 @@ interactions are portable so far.
 | 69 | `0x0043412b` | Write whether one spell has the exact learned availability state |
 | 70 | `0x00434186` | Map the local player's saved job to the occupation-menu selection and write it |
 | 71 | `0x004341da` | Change the local player's saved job from an evaluated occupation-menu selection |
+| 73 | `0x004343b0` | Close the ordinary gameplay panels and request the executable-owned Blackjack service |
+| 74 | `0x00434412` | Write the most recent Blackjack result to an operand |
 | 75 | `0x0043443c` | Create a table-backed item and place it in its authored automatic-item page and cell when absent |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
@@ -462,6 +464,20 @@ equipment-color conversation. The interpreter asks the world for that
 service; the UI owner then snapshots the equipped weapon, shield, and body
 color fields before opening the panel. This keeps the script library unaware
 of item records, rendering, and input.
+
+Opcodes 73 and 74 form a complete asynchronous service boundary. Opcode 73
+has no operands. It closes the ordinary gameplay panels and asks the
+executable to run Blackjack; cards, input, timing, audio, and drawing do not
+belong to the interpreter. When the result display closes, the executable
+runs scenario status kind `8`. The following sentence uses opcode 74 to write
+the saved result: zero is a draw, one is a player win, and two is a dealer
+win.
+
+The shipped paths are Tower of Ordeal scenarios `99000018` and `99000023`.
+Scenario `99000018` starts the game in sentence 22 and handles the result in
+sentence 31. Scenario `99000023` continues through sentence 35. The portable
+tests load the original SCS and exercise that launch/result pair, so these
+sentence numbers and branches remain scenario data rather than C++ rules.
 
 Opcodes 22 and 23 take a script character number and write one or zero to all
 three of its live entity-state keys. Opcode 44 reads player-record offset

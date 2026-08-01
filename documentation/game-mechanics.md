@@ -740,6 +740,21 @@ retail does not multiply that field by the mine counter. Its live weight
 routine at `0x00445630` visits only the nine equipped item pointers, so mines
 do not change the inventory Weight number or attack-speed encumbrance.
 
+## Blackjack
+
+Two Tower of Ordeal scenarios launch the game's Blackjack table from their
+scenario scripts. The opening deal alternates dealer, player, dealer, player;
+the dealer's second card stays hidden until the player stands or busts. Hit
+draws another card and Stand hands play to the dealer, who draws on 16 and
+stands on 17.
+
+Number cards keep their face value and face cards are worth ten. Aces count
+as one or eleven, whichever keeps the hand valid. The hidden opening draw can
+also produce the game's joker, which follows the same flexible value rule.
+A two-card 21 beats a 21 made with more cards; otherwise equal totals draw.
+The result is handed back to the scenario script, which owns the following
+dialogue and rewards.
+
 ## Controls (from help text)
 
 ### Mouse Actions

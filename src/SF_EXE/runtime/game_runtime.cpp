@@ -200,6 +200,7 @@ private:
                 frontendAssets_,
                 savePreview_,
                 gameplayUi_.options(),
+                gameplayUi_.blackjack(),
                 gameplayUi_.debug(),
                 gameplayUi_.equipmentColor(),
                 gameplayUi_.inventory(),

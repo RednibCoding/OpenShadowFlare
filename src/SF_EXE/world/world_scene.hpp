@@ -71,6 +71,7 @@ enum class GameplayServiceKind {
     identify_item,
     vendor,
     equipment_color,
+    blackjack,
 };
 
 struct GameplayServiceRequest {
@@ -240,6 +241,7 @@ public:
     const WorldPointerConfiguration& pointerConfiguration() const;
     bool conversationActive() const;
     GameplayServiceRequest takeGameplayServiceRequest();
+    void completeBlackjack(std::int32_t result);
     ScenarioTravelResult activateTransportDestination(
         std::int32_t row,
         std::string* error = nullptr);
@@ -509,6 +511,7 @@ private:
     std::int32_t camera_shake_duration_ = 0;
     std::int32_t camera_shake_magnitude_ = 0;
     GameplayServiceRequest gameplay_service_request_;
+    std::int32_t blackjack_result_ = 0;
     ScenarioStart pending_script_travel_;
     bool script_travel_pending_ = false;
     bool scenario_changed_ = false;

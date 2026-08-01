@@ -58,6 +58,7 @@ GameplayMagicModel gameplayMagicModel(
 
 void GameplayUiController::reset() {
     options_.close();
+    blackjack_.close();
     debug_.close();
     equipment_color_.close();
     inventory_.close();
@@ -163,6 +164,25 @@ bool GameplayUiController::update(
             game_state.transition(GameState::title);
         } else {
             running = false;
+        }
+        return true;
+    }
+
+    if (blackjack_.active()) {
+        const GameplayBlackjackResult result =
+            blackjack_.update(
+                {
+                    input.pointerPrimaryDown(),
+                    input.menu().pointer_x,
+                    input.menu().pointer_y,
+                },
+                random);
+        if (result.audio_sample >= 0) {
+            audio.playGameplayEffect(result.audio_sample);
+        }
+        if (result.completed) {
+            world.completeBlackjack(
+                static_cast<std::int32_t>(result.outcome));
         }
         return true;
     }
@@ -337,6 +357,15 @@ bool GameplayUiController::update(
                     inventory_.active()),
                 240);
             return false;
+        }
+        if (service.kind == GameplayServiceKind::blackjack) {
+            closeGameplayPanels(world);
+            options_.close();
+            debug_.close();
+            blackjack_.open();
+            world.cancelPlayerMovement();
+            world.setCameraAnchor(320, 240);
+            return true;
         }
         options_.close();
         map_.close();
@@ -942,6 +971,11 @@ bool GameplayUiController::updateOptions(
 const GameplayOptionsMenu&
 GameplayUiController::options() const {
     return options_;
+}
+
+const GameplayBlackjack&
+GameplayUiController::blackjack() const {
+    return blackjack_;
 }
 
 const GameplayDebugMenu&

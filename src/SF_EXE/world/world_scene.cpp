@@ -132,6 +132,7 @@ void WorldScene::clear() {
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    blackjack_result_ = 0;
     pending_script_travel_ = {};
     script_travel_pending_ = false;
     scenario_changed_ = false;

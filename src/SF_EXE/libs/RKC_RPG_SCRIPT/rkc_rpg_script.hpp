@@ -103,6 +103,7 @@ enum class ValueQuery {
     local_player_repair_price,
     local_player_spell_learned,
     local_player_job_selection,
+    blackjack_result,
 };
 
 struct InterpreterHooks {

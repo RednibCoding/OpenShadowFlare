@@ -1597,6 +1597,28 @@ builds the presentation-20006 physical packet once, launches a randomly
 delayed resource-9000 north-east strike at every captured target, and charges
 one main-hand durability for the volley.
 
+## Tower of Ordeal Blackjack
+
+The Blackjack path is reconstructed as an executable-owned modal reached by
+the scenario interpreter. Opcode 73 at `0x004343b0` initializes the modal
+without operands. Opcode 74 at `0x00434412` writes the retained outcome using
+the retail values draw 0, player win 1, and dealer win 2. Completion invokes
+scenario status kind 8, which keeps the outcome dialogue in the shipped SCS
+files `99000018` and `99000023`.
+
+`0x00403560` owns the 15-update deal phases, unique 52-card draws, the hidden
+opening card's 53rd joker possibility, Hit/Stand rectangles, dealer draw at
+16 and stand at 17, bust reveal, and the 200-update result lifetime. The
+helper at `0x004036d0` uses the standard rank values with flexible aces and
+joker. Equal 21s use the two-card natural tie-break. Deals play sample 44;
+player and dealer wins play 64 and 65, while a draw is silent.
+
+`0x0040da90` draws the retail `Card.Njp` board, deck, hands, title, fixed hero
+and owned-companion previews, controls, deal transition, natural/bust marks,
+and outcome art over Status pattern 119. The portable state and renderer are
+kept separate from the script library and are covered by deterministic rules,
+timeline, artwork, and original-SCS tests.
+
 ## Magic window and selection
 
 `FUN_00407a60` uses Status pattern 6 as the complete Magic frame and displays

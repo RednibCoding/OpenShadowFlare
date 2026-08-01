@@ -540,6 +540,19 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
+    if (opcode == 73) {
+        if (!arguments.empty() ||
+            gameplay_service_request_.kind !=
+                GameplayServiceKind::none) {
+            return false;
+        }
+        gameplay_service_request_ = {
+            GameplayServiceKind::blackjack,
+            0,
+        };
+        return true;
+    }
+
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;
@@ -626,6 +639,9 @@ bool WorldScene::queryScriptValue(
         return false;
     case script::ValueQuery::local_player_job_selection:
         value = retailScriptJobSelection(player_data_.job());
+        return true;
+    case script::ValueQuery::blackjack_result:
+        value = blackjack_result_;
         return true;
     }
     return false;

@@ -971,6 +971,17 @@ uses opcodes 9 and 54 for mutation and payment. Item values come from Table 34
 and the executable's wrapped integer arithmetic; repaired durability and both
 alternate equipment pointers survive the retail save stream.
 
+The first Tower of Ordeal minigame service is reconstructed through the same
+boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
+result, while status kind 8 keeps the following branches in scenarios
+`99000018` and `99000023`. The executable-owned modal follows the recovered
+15-update deal cadence, unique deck and optional joker, exact Ace and natural
+rules, dealer behavior, Hit/Stand rectangles, samples, 200-update result, and
+the complete `Card.Njp` layout. Rules, timeline, renderer calls, and the real
+scenario launch/result commands have deterministic tests. Loading the Tower
+maps themselves remains a later scenario-coverage slice; this checkpoint does
+not pretend they are playable yet.
+
 ### 3. Items, inventory, and equipment
 
 Item support should use the real table data rather than a hand-written list.

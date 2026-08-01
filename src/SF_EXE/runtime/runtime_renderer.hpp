@@ -13,6 +13,7 @@ class CharacterSelectState;
 struct CharacterSelectFrameResult;
 struct GameConfig;
 class GameplayInventory;
+class GameplayBlackjack;
 class GameplayDebugMenu;
 class GameplayEquipmentColor;
 class GameplayMap;
@@ -41,6 +42,7 @@ struct RuntimeRenderContext {
     FrontendAssets& frontend_assets;
     RetailSavePreview& save_preview;
     const GameplayOptionsMenu& gameplay_options;
+    const GameplayBlackjack& gameplay_blackjack;
     const GameplayDebugMenu& gameplay_debug;
     const GameplayEquipmentColor& gameplay_equipment_color;
     const GameplayInventory& gameplay_inventory;

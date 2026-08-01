@@ -2,6 +2,7 @@
 
 #include "core/game_config.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_blackjack_renderer.hpp"
 #include "render/gameplay_debug_renderer.hpp"
 #include "render/gameplay_equipment_color_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
@@ -23,6 +24,7 @@
 #include "render/title_renderer.hpp"
 #include "runtime/frontend_assets.hpp"
 #include "states/character_select_state.hpp"
+#include "states/gameplay_blackjack.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_equipment_color.hpp"
@@ -114,6 +116,7 @@ void RuntimeRenderer::render(
                 context.game_config.semi_transparent_objects);
             context.save_preview.capture(renderer_.surface());
             if (!context.gameplay_debug.active() &&
+                !context.gameplay_blackjack.active() &&
                 !context.gameplay_equipment_color.active() &&
                 !context.gameplay_options.active() &&
                 !context.gameplay_mission_list.active() &&
@@ -132,6 +135,7 @@ void RuntimeRenderer::render(
             }
             const bool quest_notice_hidden =
                 context.world.conversationActive() ||
+                context.gameplay_blackjack.active() ||
                 context.gameplay_debug.active() ||
                 context.gameplay_equipment_color.active() ||
                 context.gameplay_options.active() ||
@@ -156,7 +160,18 @@ void RuntimeRenderer::render(
                 context.frontend_assets.pattern(10);
             const auto* status =
                 context.frontend_assets.pattern(6);
-            if (status && font) {
+            const auto* cards =
+                context.frontend_assets.pattern(11);
+            if (status && cards &&
+                context.gameplay_blackjack.active()) {
+                renderGameplayBlackjack(
+                    renderer_,
+                    *cards,
+                    *status,
+                    context.gameplay_blackjack,
+                    context.world,
+                    context.gameplay_counter);
+            } else if (status && font) {
                 const auto* map_icons =
                     context.frontend_assets.pattern(7);
                 if (context.gameplay_equipment_color.active()) {
@@ -305,7 +320,8 @@ void RuntimeRenderer::render(
                     context.world);
             }
             if (status && font &&
-                !context.gameplay_debug.active()) {
+                !context.gameplay_debug.active() &&
+                !context.gameplay_blackjack.active()) {
                 renderHeldInventoryItem(
                     renderer_,
                     *status,

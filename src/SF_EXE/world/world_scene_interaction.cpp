@@ -422,6 +422,11 @@ WorldScene::takeGameplayServiceRequest() {
     return request;
 }
 
+void WorldScene::completeBlackjack(std::int32_t result) {
+    blackjack_result_ = std::clamp(result, 0, 2);
+    scenario_script_.runStatusKind(8);
+}
+
 ScenarioTravelResult
 WorldScene::activateTransportDestination(
     std::int32_t row,

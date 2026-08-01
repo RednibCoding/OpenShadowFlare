@@ -44,6 +44,34 @@ if(TARGET sf_game_core)
 
   add_test(NAME game_core COMMAND game_core_test)
 
+  add_executable(
+    gameplay_blackjack_test
+    gameplay_blackjack_test.cpp
+  )
+  target_link_libraries(
+    gameplay_blackjack_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    gameplay_blackjack_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gameplay_blackjack_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    gameplay_blackjack_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      gameplay_blackjack_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_blackjack_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME gameplay_blackjack COMMAND gameplay_blackjack_test)
+
   add_executable(vendor_test vendor_test.cpp)
   target_link_libraries(
     vendor_test

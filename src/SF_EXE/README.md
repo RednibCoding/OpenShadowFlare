@@ -383,6 +383,13 @@ share those data-driven pages, duplicate rules, and fixed cells, and the pages
 survive at their exact post-Giant-Warehouse save boundary. Script opcode 68
 also awards its retail percentage of the current experience threshold through
 the same player growth, notice, resource refresh, and audio path used by combat.
+Tower of Ordeal's Blackjack service is connected through script opcodes 73
+and 74 as well. The modal owns the recovered deal timing, unique cards and
+joker, scoring and natural rules, dealer decisions, Hit/Stand input, original
+samples, result timing, and `Card.Njp` presentation. Closing it returns the
+retail result through status kind 8 so each scenario's SCS keeps control of
+the outcome branch. The Blackjack service can be tested independently now;
+the Tower maps which invoke it are not yet part of the playable scenario set.
 Scenario position,
 script-created world
 actors, and the remaining dynamic state are still pending. Companion type,
