@@ -43,7 +43,7 @@ void WorldPointer::configure(
     const WorldPointerConfiguration& configuration) {
     configuration_ = configuration;
     configuration_.range =
-        std::clamp(configuration_.range, 0, 4);
+        std::clamp<std::int32_t>(configuration_.range, 0, 4);
 }
 
 void WorldPointer::reset() {

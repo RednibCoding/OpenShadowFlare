@@ -140,7 +140,7 @@ bool displayAnimationIntersectsRectangle(
     if (animation.charts().empty()) {
         return false;
     }
-    chart_index = std::clamp(
+    chart_index = std::clamp<std::int32_t>(
         chart_index,
         0,
         static_cast<std::int32_t>(

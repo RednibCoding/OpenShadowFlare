@@ -211,16 +211,16 @@ foreach(source_file IN LISTS runtime_sources)
   file(RELATIVE_PATH relative_source "${portable_root}" "${source_file}")
   file(READ "${source_file}" source_text)
 
-  if(NOT relative_source MATCHES "^runtime/platform/")
+  if(NOT relative_source MATCHES "^runtime/(platform|presentation)/")
     if(source_text MATCHES
-        "#[ \t]*include[ \t]*[<\"](emscripten[^>\"]*|jni\\.h|android/[^>\"]*)[>\"]")
+        "#[ \t]*include[ \t]*[<\"](emscripten[^>\"]*|jni\\.h|android/[^>\"]*|psp[^>\"]*)[>\"]")
       message(FATAL_ERROR
-        "Platform SDK header escaped runtime/platform: ${source_file}")
+        "Platform SDK header escaped runtime/platform or runtime/presentation: ${source_file}")
     endif()
     if(source_text MATCHES
-        "(^|[^A-Za-z0-9_])(__EMSCRIPTEN__|__ANDROID__|ANDROID|JNIEnv|_WIN32|WINAPI|HWND|__ORBIS__|__PROSPERO__|__NX__|NN_NINTENDO_SDK)([^A-Za-z0-9_]|$)")
+        "(^|[^A-Za-z0-9_])(__EMSCRIPTEN__|__ANDROID__|ANDROID|JNIEnv|_WIN32|WINAPI|HWND|__ORBIS__|__PROSPERO__|__NX__|NN_NINTENDO_SDK|sce[A-Z]|PSP_[A-Za-z0-9_]*)([^A-Za-z0-9_]|$)")
       message(FATAL_ERROR
-        "Platform-specific code escaped runtime/platform: ${source_file}")
+        "Platform-specific code escaped runtime/platform or runtime/presentation: ${source_file}")
     endif()
   endif()
 

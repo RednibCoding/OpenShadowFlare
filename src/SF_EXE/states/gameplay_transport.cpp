@@ -107,7 +107,7 @@ std::int32_t GameplayTransport::page() const {
 
 std::int32_t GameplayTransport::pageCount(
     std::size_t enabled_destination_count) const {
-    return std::max(
+    return std::max<std::int32_t>(
         1,
         (static_cast<std::int32_t>(
              enabled_destination_count) +

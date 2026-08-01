@@ -62,6 +62,9 @@ elseif(APPLE)
       "${COREGRAPHICS_FRAMEWORK}"
       "${OPENGL_FRAMEWORK}"
   )
+elseif(PSP)
+  target_sources(lwl PRIVATE lwl_psp.c)
+  target_link_libraries(lwl PRIVATE pspctrl)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lwl PRIVATE lwl_x11.c)
   find_package(OpenGL REQUIRED)

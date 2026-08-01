@@ -13,7 +13,7 @@ namespace {
 std::uint8_t applyBrightness(
     std::uint8_t value,
     std::int32_t brightness) {
-    brightness = std::clamp(brightness, 0, 1000);
+    brightness = std::clamp<std::int32_t>(brightness, 0, 1000);
     return static_cast<std::uint8_t>(
         static_cast<std::int32_t>(value) * brightness / 1000);
 }
@@ -22,7 +22,7 @@ std::uint8_t applyColorStrength(
     std::uint8_t value,
     std::int32_t strength) {
     const std::int32_t amount =
-        std::clamp(strength, 0, 2000) - 1000;
+        std::clamp<std::int32_t>(strength, 0, 2000) - 1000;
     if (amount < 0) {
         return static_cast<std::uint8_t>(
             static_cast<std::int32_t>(value) +
@@ -38,7 +38,7 @@ std::uint8_t blendChannel(
     std::uint8_t destination,
     std::uint8_t source,
     std::int32_t opacity) {
-    opacity = std::clamp(opacity, 0, 1000);
+    opacity = std::clamp<std::int32_t>(opacity, 0, 1000);
     return static_cast<std::uint8_t>(
         (static_cast<std::int32_t>(source) * opacity +
          static_cast<std::int32_t>(destination) *
@@ -74,8 +74,8 @@ SoftwareBackend::SoftwareBackend(
     std::int32_t width,
     std::int32_t height,
     PresentCallback present)
-    : width_(std::max(width, 0)),
-      height_(std::max(height, 0)),
+    : width_(std::max<std::int32_t>(width, 0)),
+      height_(std::max<std::int32_t>(height, 0)),
       pixels_(
           static_cast<std::size_t>(width_) *
           static_cast<std::size_t>(height_)),
@@ -170,11 +170,11 @@ bool SoftwareBackend::drawPattern(
         }
 
         std::int32_t first_y =
-            std::max(0, -destination_y);
+            std::max<std::int32_t>(0, -destination_y);
         std::int32_t last_y =
             std::min(destination_height, height_ - destination_y);
         std::int32_t first_x =
-            std::max(0, -destination_x);
+            std::max<std::int32_t>(0, -destination_x);
         std::int32_t last_x =
             std::min(destination_width, width_ - destination_x);
         if (draw.clip.width > 0 && draw.clip.height > 0) {

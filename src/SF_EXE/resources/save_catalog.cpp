@@ -41,7 +41,10 @@ std::vector<RetailSaveSummary> loadRetailSaveCatalog(
     for (std::int32_t slot = 0; slot < 6; ++slot) {
         char filename[16]{};
         std::snprintf(
-            filename, sizeof(filename), "%04d.Ssv", slot);
+            filename,
+            sizeof(filename),
+            "%04d.Ssv",
+            static_cast<int>(slot));
         const std::filesystem::path savePath =
             game_root / "Save" / filename;
         std::ifstream stream(savePath, std::ios::binary);
@@ -59,7 +62,10 @@ std::vector<RetailSaveSummary> loadRetailSaveCatalog(
         }
 
         std::snprintf(
-            filename, sizeof(filename), "%04d.Bmp", slot);
+            filename,
+            sizeof(filename),
+            "%04d.Bmp",
+            static_cast<int>(slot));
         RetailSaveSummary summary;
         summary.slot = slot;
         summary.save_path = savePath;

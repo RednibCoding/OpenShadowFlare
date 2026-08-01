@@ -17,6 +17,23 @@ bool isSmokeTest(int argc, char** argv) {
     return false;
 }
 
+#if defined(OSF_PLATFORM_PSP)
+
+std::filesystem::path findDataRoot(int argc, char** argv) {
+    if (argc > 0 && argv && argv[0]) {
+        const std::string executable = argv[0];
+        const std::size_t separator =
+            executable.find_last_of("/\\");
+        if (separator != std::string::npos) {
+            return std::filesystem::path(
+                executable.substr(0, separator));
+        }
+    }
+    return std::filesystem::path("ms0:/PSP/GAME/OpenShadowFlare");
+}
+
+#else
+
 std::filesystem::path findDataRoot() {
     const auto isDataRoot =
         [](const std::filesystem::path& candidate) {
@@ -87,10 +104,16 @@ std::filesystem::path findDataRoot() {
     return ".";
 }
 
+#endif  // OSF_PLATFORM_PSP
+
 }  // namespace
 
 int main(int argc, char** argv) {
+#if defined(OSF_PLATFORM_PSP)
+    const std::filesystem::path dataRoot = findDataRoot(argc, argv);
+#else
     const std::filesystem::path dataRoot = findDataRoot();
+#endif
     osf::GameConfig gameConfig;
 
     // Retail ignores config-load failure and retains its constructor defaults.

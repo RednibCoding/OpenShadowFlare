@@ -224,8 +224,8 @@ void BitmapImage::fillRectangle(
         width_ <= 0 || height_ <= 0) {
         return;
     }
-    const std::int32_t left = std::clamp(x, 0, width_);
-    const std::int32_t top = std::clamp(y, 0, height_);
+    const std::int32_t left = std::clamp<std::int32_t>(x, 0, width_);
+    const std::int32_t top = std::clamp<std::int32_t>(y, 0, height_);
     const std::int64_t raw_right =
         static_cast<std::int64_t>(x) + width;
     const std::int64_t raw_bottom =

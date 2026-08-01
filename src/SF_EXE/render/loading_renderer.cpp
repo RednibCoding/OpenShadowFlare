@@ -20,7 +20,7 @@ void renderInitialLoadingScreen(
     }
 
     const std::int32_t arrow_offset =
-        std::max(counter, 0) % 16;
+        std::max<std::int32_t>(counter, 0) % 16;
     renderer.drawPattern(
         waiting, 2, {592 + arrow_offset, 450});
 }
@@ -30,8 +30,8 @@ void renderScenarioLoadingScreen(
     const gapi::NjpImage& waiting,
     const gapi::NjpImage& wait_icon,
     std::int32_t counter) {
-    const std::int32_t strength = std::clamp(
-        std::max(counter, 0) * 1000 / 120,
+    const std::int32_t strength = std::clamp<std::int32_t>(
+        std::max<std::int32_t>(counter, 0) * 1000 / 120,
         0,
         1000);
     renderer.drawPattern(
@@ -50,7 +50,7 @@ void renderScenarioLoadingScreen(
         });
 
     const std::int32_t phase =
-        std::max(counter, 0) % 15;
+        std::max<std::int32_t>(counter, 0) % 15;
     const std::int32_t offset =
         phase < 5 ? 0 : phase < 10 ? 8 : 16;
     renderer.drawPattern(

@@ -106,7 +106,7 @@ void AudioSystem::startWorldMusic(std::int32_t track) {
         path,
         sizeof(path),
         "System\\Game\\Music\\BGM%02d.Voc",
-        track);
+        static_cast<int>(track));
     if (loadVoc(world_music_, path)) {
         world_music_.play(0, true, bgm_volume_);
     }

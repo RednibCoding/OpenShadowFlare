@@ -185,19 +185,19 @@ std::int32_t PlayerData::currentMana() const {
 void PlayerData::setCurrentLife(std::int32_t value) {
     writeI32(
         0x34,
-        std::clamp(
+        std::clamp<std::int32_t>(
             value,
             0,
-            std::max(0, baseMaximumLife())));
+            std::max<std::int32_t>(0, baseMaximumLife())));
 }
 
 void PlayerData::setCurrentMana(std::int32_t value) {
     writeI32(
         0x3c,
-        std::clamp(
+        std::clamp<std::int32_t>(
             value,
             0,
-            std::max(0, baseMaximumMana())));
+            std::max<std::int32_t>(0, baseMaximumMana())));
 }
 
 bool PlayerData::restoreLife(
@@ -215,7 +215,7 @@ bool PlayerData::restoreLife(
             std::clamp<std::int64_t>(
                 restored,
                 0,
-                std::max(0, baseMaximumLife()))));
+                std::max<std::int32_t>(0, baseMaximumLife()))));
     return currentLife() != before;
 }
 
@@ -234,7 +234,7 @@ bool PlayerData::restoreMana(
             std::clamp<std::int64_t>(
                 restored,
                 0,
-                std::max(0, baseMaximumMana()))));
+                std::max<std::int32_t>(0, baseMaximumMana()))));
     return currentMana() != before;
 }
 
@@ -255,7 +255,7 @@ std::int32_t PlayerData::companionType() const {
 std::int32_t PlayerData::walkingSpeedTier() const {
     // FUN_00450d40 uses the second initial parameter, adds 32, divides by
     // 32, and clamps the resulting movement tier to the retail 0..9 range.
-    return std::clamp(
+    return std::clamp<std::int32_t>(
         (initialParameter(1) + 32) / 32,
         0,
         9);

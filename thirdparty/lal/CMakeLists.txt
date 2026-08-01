@@ -52,6 +52,9 @@ elseif(APPLE)
       "${AUDIOTOOLBOX_FRAMEWORK}"
       Threads::Threads
   )
+elseif(PSP)
+  target_sources(lal PRIVATE lal_psp.c)
+  target_link_libraries(lal PRIVATE pspaudio)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lal PRIVATE lal_alsa.c)
   find_package(ALSA REQUIRED)

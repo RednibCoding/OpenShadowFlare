@@ -645,9 +645,9 @@ std::int32_t distanceBetweenBounds(
         return 0;
     }
     if (horizontal == 0 || vertical == 0) {
-        return std::max(horizontal + vertical - 1, 0);
+        return std::max<std::int32_t>(horizontal + vertical - 1, 0);
     }
-    return std::max(
+    return std::max<std::int32_t>(
         static_cast<std::int32_t>(
             std::hypot(
                 static_cast<double>(horizontal),
@@ -670,7 +670,7 @@ MovementStepResult advanceMovement(
     }
     const WorldPosition candidate =
         movementCandidate(
-            position, destination, std::max(speed, 0));
+            position, destination, std::max<std::int32_t>(speed, 0));
     const SweepResult movement =
         sweepMovement(
             ground,

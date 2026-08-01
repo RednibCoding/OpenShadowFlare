@@ -32,7 +32,7 @@ void drawLevel(
     gapi::Backend& renderer,
     const gapi::NjpImage& patterns,
     std::int32_t level) {
-    level = std::clamp(level, 0, 999);
+    level = std::clamp<std::int32_t>(level, 0, 999);
     const std::int32_t digits =
         level > 99 ? 3 : (level > 9 ? 2 : 1);
     constexpr std::array<std::array<std::int32_t, 3>, 3>
@@ -81,7 +81,7 @@ std::int32_t gameplayHudBarWidth(
     if (current >= maximum) {
         return kRetailBarWidth;
     }
-    return std::max(
+    return std::max<std::int32_t>(
         static_cast<std::int32_t>(
             static_cast<std::int64_t>(current) *
             kRetailBarWidth / maximum),

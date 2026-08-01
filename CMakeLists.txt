@@ -6,18 +6,28 @@ project(
   LANGUAGES C CXX
 )
 
+if(PSP)
+  set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+endif()
+
 include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
+
+if(PSP)
+  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "gu")
+else()
+  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "lgl")
+endif()
 set(
   OPENSHADOWFLARE_PRESENTATION_BACKEND
-  "lgl"
+  "${OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND}"
   CACHE STRING
   "Surface presentation backend used by the portable executable"
 )
 set_property(
   CACHE OPENSHADOWFLARE_PRESENTATION_BACKEND
-  PROPERTY STRINGS lgl
+  PROPERTY STRINGS lgl gu
 )
 
 add_subdirectory(thirdparty/lwl)

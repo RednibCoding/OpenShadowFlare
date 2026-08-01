@@ -63,7 +63,7 @@ std::filesystem::path scenarioDirectory(
         directory,
         sizeof(directory),
         "%08d",
-        scenario_id);
+        static_cast<int>(scenario_id));
     return data_root / "Scenario" / directory;
 }
 

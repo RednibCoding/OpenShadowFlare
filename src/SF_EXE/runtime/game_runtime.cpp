@@ -8,6 +8,7 @@
 #include "runtime/frontend_assets.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
+#include "runtime/platform/platform_text_input.hpp"
 #include "runtime/presentation/surface_presenter.hpp"
 #include "runtime/runtime_renderer.hpp"
 #include "runtime/state_bindings.hpp"
@@ -269,9 +270,30 @@ private:
         case osf::GameState::character_select: {
             input_.characterSelect().saved_game_count =
                 frontendAssets_.savedGameCount();
+            // Feed a name captured from a platform text-input method (PSP
+            // on-screen keyboard) as if it had been typed.
+            if (!pendingCharacterName_.empty()) {
+                input_.characterSelect().text_input =
+                    pendingCharacterName_;
+                pendingCharacterName_.clear();
+            }
             characterFrame_ =
                 characterSelectState_.update(
                     input_.characterSelect());
+            // On platforms without a keyboard, open the system text-input method
+            // when name entry begins. Desktop/web return empty and keep using
+            // ordinary key events.
+            if (characterFrame_.mode_action ==
+                osf::CharacterSelectModeAction::begin_name_entry) {
+                pendingCharacterName_ =
+                    osf::runtime::openPlatformTextInput(
+                        "Enter character name",
+                        characterSelectState_.data().character_name,
+                        15);
+                // The text-input method (PSP OSK) takes over the display; restore
+                // presenter state so rendering resumes. No-op on desktop/web.
+                surfacePresenter_->reset();
+            }
             audio_.playCharacterSelectFrame(characterFrame_);
             if (characterFrame_.action ==
                 osf::CharacterSelectAction::return_to_title) {
@@ -427,6 +449,7 @@ private:
     std::int32_t scenarioLoadingRenderCounter_ = 0;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
+    std::string pendingCharacterName_;
     std::filesystem::path dataRoot_;
     osf::runtime::FrontendAssets frontendAssets_;
     std::unique_ptr<osf::runtime::SurfacePresenter>

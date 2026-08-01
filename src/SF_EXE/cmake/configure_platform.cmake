@@ -2,6 +2,9 @@ function(osf_configure_platform target)
   if(EMSCRIPTEN)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Emscripten.cmake")
     osf_configure_emscripten_platform(${target})
+  elseif(PSP)
+    include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Psp.cmake")
+    osf_configure_psp_platform(${target})
   elseif(
       WIN32
       OR APPLE

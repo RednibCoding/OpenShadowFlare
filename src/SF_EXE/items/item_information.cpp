@@ -42,13 +42,13 @@ std::int32_t itemSalePrice(
     const InventoryItem& item,
     const ItemDefinition& definition) {
     std::int64_t price =
-        std::max(definition.base_price, 0);
+        std::max<std::int32_t>(definition.base_price, 0);
     if ((definition.category == 0 ||
          definition.category == 1) &&
         definition.maximum_durability > 0) {
         price =
             price *
-            std::clamp(
+            std::clamp<std::int32_t>(
                 itemCurrentDurability(item, definition),
                 0,
                 definition.maximum_durability) /

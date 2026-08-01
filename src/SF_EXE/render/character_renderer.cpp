@@ -31,7 +31,7 @@ void renderCharacterAnimationPass(
         return;
     }
     const std::int32_t selected_chart_index =
-        std::clamp(
+        std::clamp<std::int32_t>(
             chart_index,
             0,
             static_cast<std::int32_t>(
@@ -120,10 +120,10 @@ void renderCharacterAnimationPass(
              1000,
              1000,
              shadow
-                 ? std::clamp(shadow_opacity, 0, 1000)
+                 ? std::clamp<std::int32_t>(shadow_opacity, 0, 1000)
                  : std::clamp<std::int32_t>(
                        cell->transparency *
-                           std::clamp(opacity, 0, 1000) /
+                           std::clamp<std::int32_t>(opacity, 0, 1000) /
                            1000,
                        0,
                        1000),

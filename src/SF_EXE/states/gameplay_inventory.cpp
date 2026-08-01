@@ -565,7 +565,7 @@ void GameplayInventory::updateHover(
         (next_item_index >= 0 ||
          next_equipment_slot >= 0)) {
         item_hover_updates_ =
-            std::min(item_hover_updates_ + 1, 3);
+            std::min<std::int32_t>(item_hover_updates_ + 1, 3);
     } else {
         item_hover_updates_ =
             next_item_index >= 0 ||
@@ -609,7 +609,7 @@ void GameplayInventory::updateSpecialHover(
             hovered_special_item_index_ &&
         next_special_item_index >= 0) {
         item_hover_updates_ =
-            std::min(item_hover_updates_ + 1, 3);
+            std::min<std::int32_t>(item_hover_updates_ + 1, 3);
     } else {
         item_hover_updates_ =
             next_special_item_index >= 0 ? 1 : 0;

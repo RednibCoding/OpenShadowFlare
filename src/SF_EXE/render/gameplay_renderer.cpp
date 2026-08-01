@@ -173,8 +173,8 @@ void renderScenarioObjectPass(
                 1000,
                 1000,
                 shadow
-                    ? std::clamp(shadow_opacity, 0, 1000)
-                    : std::clamp(
+                    ? std::clamp<std::int32_t>(shadow_opacity, 0, 1000)
+                    : std::clamp<std::int32_t>(
                           object.drawStrength(), 0, 1000),
                 shadow
                     ? 1000
@@ -302,7 +302,7 @@ void drawMapObject(
          1000,
          1000,
          shadow
-             ? std::clamp(shadow_opacity, 0, 1000)
+             ? std::clamp<std::int32_t>(shadow_opacity, 0, 1000)
              : std::clamp<std::int32_t>(
                    semi_transparent
                        ? std::min<std::int32_t>(
@@ -518,7 +518,7 @@ void drawGroundItem(
                 1000,
                 1000,
                 shadow
-                    ? std::clamp(
+                    ? std::clamp<std::int32_t>(
                           shadow_opacity, 0, 1000)
                     : 1000,
                 shadow
@@ -747,9 +747,9 @@ void renderWorldGeometry(
     const std::int32_t camera_y =
         world.renderCameraScreenY(interpolation);
     const std::int32_t start_x =
-        std::max(camera_x / ground.chipWidth(), 0);
+        std::max<std::int32_t>(camera_x / ground.chipWidth(), 0);
     const std::int32_t start_y =
-        std::max(camera_y / ground.chipHeight(), 0);
+        std::max<std::int32_t>(camera_y / ground.chipHeight(), 0);
     const std::int32_t end_x = std::min(
         (camera_x + kScreenWidth) / ground.chipWidth(),
         ground.width() - 1);

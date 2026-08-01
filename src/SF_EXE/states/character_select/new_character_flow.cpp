@@ -110,7 +110,7 @@ void updateNewCharacterModeImpl(
         result.mode_brightness =
             data.launch_counter == 0
                 ? kFullBrightness
-                : std::max(
+                : std::max<std::int32_t>(
                       0,
                       kFullBrightness - phase * 50);
         if (phase > 5) {

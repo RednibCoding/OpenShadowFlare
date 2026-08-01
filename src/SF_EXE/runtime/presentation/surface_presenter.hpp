@@ -21,6 +21,10 @@ public:
         std::string* error = nullptr) = 0;
     virtual void present(gapi::SurfaceView surface) = 0;
 
+    // Re-establish platform display state after an external modal takeover of the
+    // display (e.g. a system on-screen keyboard). Default: nothing to do.
+    virtual void reset() {}
+
 protected:
     SurfacePresenter() = default;
 };

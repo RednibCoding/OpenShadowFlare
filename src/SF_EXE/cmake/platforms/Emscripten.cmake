@@ -3,6 +3,7 @@ function(osf_configure_emscripten_platform target)
     ${target}
     PRIVATE
       runtime/platform/web/application_loop.cpp
+      runtime/platform/web/text_input.cpp
   )
 
   target_link_options(
