@@ -296,6 +296,7 @@ interactions are portable so far.
 | 0 | `0x00431005` | Compare two evaluated operands and call a sentence when true |
 | 1 | `0x004310a2` | Evaluate an operand and assign it to another operand |
 | 2 | `0x00431294` | Present a message, finish immediate sentence work, then wait |
+| 4 | `0x00432296` | Mark every equipped, backpack, and belt item as identified |
 | 5 | `0x0043222b` | Request one of the executable's numbered vendor inventories |
 | 6 | `0x004321e8` | Rebuild a numbered vendor inventory from a Table 32 stock profile |
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
@@ -316,6 +317,10 @@ interactions are portable so far.
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
+| 51 | `0x00432fed` | Install the twenty evaluated integer substitutions used by later message `%d` fields |
+| 53 | `0x00433923` | Write the local player's total Gold to an operand |
+| 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
+| 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
@@ -542,6 +547,18 @@ carried into the backpack or equipment slots, player items can be sold back,
 gold is debited only after a purchase lands in an owned container, and Escape
 returns an unfinished purchase to its original merchant owner. Purchase hover
 text uses `Price`; owned-item hover text keeps `Sale Price`.
+
+Malse's `Identify Items` choice is script-owned as well. Opcode 55 first scans
+the five ordinary equipment slots, four accessory slots, backpack, and belt.
+When there is something unknown, opcode 51 inserts the authored flat price of
+100 into message `1000017`; `NO` starts selected. Confirming `YES` uses opcode
+53 to check the backpack's Gold, shows message `1000015` when the player is
+short, or spends exactly 100 through opcode 54 before opcode 4 identifies all
+of those owners. Their raw instance words are updated with the live flag, so a
+normal save keeps the result. If everything is already known, the script shows
+message `1000018` without opening another panel or charging Gold. This is a
+merchant service distinct from the Identify spell, which selects one backpack
+item and trains the spell.
 
 Syria's new-game status follows messages `1000040` and `1000041`. Its callback
 starts quest zero with opcode 62 and selects that quest's notice with opcode

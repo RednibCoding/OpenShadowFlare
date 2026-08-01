@@ -527,6 +527,16 @@ mirrors it in word 48 for weapons and armor and word 47 for accessories.
 Before identification, the tooltip uses the item's base description as its
 name and does not expose the hidden values.
 
+Malse's `Identify Items` service is a separate scenario-script operation, not
+an invocation of this spell. Once his post–Red Goblin merchant menu is
+available, opcode 55 scans equipped gear, accessories, the backpack, and the
+belt for any unidentified instance. When at least one exists, the authored
+dialogue substitutes the flat 100-Gold price and selects `NO` by default. A
+confirmed purchase checks and spends the player's total Gold, then opcode 4
+identifies every eligible owned item in one pass. The script has distinct
+branches for insufficient Gold and for a character whose items are already
+identified.
+
 ## Character Stats
 
 ### Primary Stats

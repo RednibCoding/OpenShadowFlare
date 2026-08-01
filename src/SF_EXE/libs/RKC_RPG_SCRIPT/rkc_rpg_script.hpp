@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_LIBS_RKC_RPG_SCRIPT_HPP
 #define OPENSHADOWFLARE_LIBS_RKC_RPG_SCRIPT_HPP
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -97,6 +98,8 @@ enum class ValueQuery {
     local_player_maximum_mana,
     local_player_condition_current,
     local_player_condition_maximum,
+    local_player_gold,
+    local_player_has_unidentified_items,
 };
 
 struct InterpreterHooks {
@@ -160,6 +163,7 @@ private:
     std::int32_t current_character_number_ = -1;
     std::int32_t message_callback_character_number_ = -1;
     std::int32_t unsupported_opcode_ = -1;
+    std::array<std::int32_t, 20> message_parameters_{};
 };
 
 }  // namespace osf::script

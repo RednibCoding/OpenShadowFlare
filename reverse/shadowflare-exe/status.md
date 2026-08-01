@@ -954,6 +954,25 @@ the same zero-padded `Character/PEOPLE` catalog, including the shared
 messages `1000019` and `1000020`; the later quest offer stays behind the
 retail Red Goblin progression check.
 
+After quest zero completes, Malse's message `1000013` exposes Trade, Identify
+Items, Repair Items, and QUIT through the normal choice callback. Identify is
+not the spell's one-item cursor mode. Sentence 114 reaches opcode 55 at
+`0x0043397d`, which tests the five ordinary equipment pointers, four accessory
+pointers, and the two item containers at player offsets `+0x514` and `+0x51c`
+for an unidentified instance. With a match, opcode 51 at `0x00432fed` stores
+twenty evaluated message parameters; message `1000017` consumes the first one
+as the flat 100-Gold price and initially selects `NO`.
+
+The confirmation callback reaches opcode 53 at `0x00433923` for total Gold.
+Less than 100 selects message `1000015` and performs no mutation. Otherwise
+opcode 54 at `0x00433940` removes 100 Gold from the backpack owner and opcode 4
+at `0x00432296` sets identified one on all five equipment slots, four
+accessories, backpack items, and belt items. The portable owners mirror that
+change into raw word 48 for categories zero and one and word 47 for category
+two, preserving it through the existing save writer. If opcode 55 finds no
+unknown item, message `1000018` is shown and the service releases Malse without
+charging Gold. Repair is a separate opcode-52 branch and remains pending.
+
 All seven records use the same type-one PEOPLE updater. Their final tail
 values account for the visible differences: runtime offset `+0xd4` permits
 native action 21 to face its evaluated target, while the preceding loader

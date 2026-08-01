@@ -939,8 +939,12 @@ including fixed entries, weighted random definitions, normal rolled item
 instances, and the original 9-by-10 placement starts. Choosing `Trade` reaches
 opcode 5, opens that stock on the left with the normal inventory on the right,
 and supports buying, selling, gold changes, delayed price overlays, item audio,
-and returning an unfinished purchase when the panels close. Identify and
-Repair remain separate service slices behind Malse's other authored choices.
+and returning an unfinished purchase when the panels close. Identify now
+follows its separate authored branch too: it scans every retail-owned item
+container, substitutes the flat 100-Gold price into the confirmation, keeps
+`NO` selected initially, handles insufficient funds and the already-known
+case, and updates every identified instance and save mirror after payment.
+Repair remains the next service slice behind Malse's final choice.
 
 ### 3. Items, inventory, and equipment
 

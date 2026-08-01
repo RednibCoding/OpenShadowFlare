@@ -73,7 +73,6 @@ bool testRetailRemoteTown() {
             "The Remote Town script inventory differs from retail.")) {
         return false;
     }
-
     std::vector<osf::script::MessageEvent> messages;
     std::vector<std::pair<
         std::int32_t,
@@ -83,6 +82,8 @@ bool testRetailRemoteTown() {
     std::int32_t player_level_queries = 0;
     std::int32_t companion_type_queries = 0;
     std::int32_t play_mode_queries = 0;
+    std::int32_t player_gold = 200;
+    bool has_unidentified_items = true;
     osf::script::Interpreter interpreter({
         [&external_values](const osf::script::Operand& operand) {
             if (operand.type == 6 &&
@@ -122,7 +123,9 @@ bool testRetailRemoteTown() {
         },
         [&player_level_queries,
          &companion_type_queries,
-         &play_mode_queries](
+         &play_mode_queries,
+         &player_gold,
+         &has_unidentified_items](
             osf::script::ValueQuery query,
             std::int32_t& value) {
             switch (query) {
@@ -154,6 +157,13 @@ bool testRetailRemoteTown() {
             case osf::script::ValueQuery::
                     local_player_condition_maximum:
                 value = -1;
+                return true;
+            case osf::script::ValueQuery::local_player_gold:
+                value = player_gold;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_has_unidentified_items:
+                value = has_unidentified_items ? 1 : 0;
                 return true;
             }
             return false;
@@ -377,6 +387,84 @@ bool testRetailRemoteTown() {
                         std::vector<std::int32_t>{12000001}),
             "Malse's Trade choice did not open vendor inventory zero and "
             "release the actor.")) {
+        return false;
+    }
+
+    const std::size_t identify_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000017 &&
+                messages.back().text.find(
+                    "It costs 100 gold") != std::string::npos &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 1,
+            "Malse's Identify choice did not query owned items and "
+            "format its retail confirmation.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(0) ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == identify_command + 3 &&
+                native_commands[identify_command] ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{100}) &&
+                native_commands[identify_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{4},
+                        std::vector<std::int32_t>{}) &&
+                native_commands[identify_command + 2] ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Confirming Malse's Identify service did not spend 100 Gold, "
+            "identify the owned items, and release him.")) {
+        return false;
+    }
+
+    player_gold = 99;
+    const std::size_t poor_identify_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(0) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000015 &&
+                interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == poor_identify_command + 1 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's Identify confirmation did not reject a player with "
+            "less than 100 Gold before mutating items.")) {
+        return false;
+    }
+
+    has_unidentified_items = false;
+    const std::size_t no_identify_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000018 &&
+                interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == no_identify_command + 1 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's already-identified branch did not show its retail "
+            "message and leave Gold untouched.")) {
         return false;
     }
 

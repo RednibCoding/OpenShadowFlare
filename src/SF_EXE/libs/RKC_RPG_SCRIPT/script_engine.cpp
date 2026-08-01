@@ -1,6 +1,7 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <limits>
 #include <utility>
@@ -24,6 +25,47 @@ std::int32_t wrappedArithmetic(
         result += range;
     }
     return static_cast<std::int32_t>(result);
+}
+
+std::string formatMessage(
+    const std::string& message,
+    const std::array<std::int32_t, 20>& parameters) {
+    std::string formatted;
+    formatted.reserve(message.size());
+    std::size_t parameter = 0;
+    for (std::size_t index = 0; index < message.size();) {
+        if (message[index] != '%' || index + 1 >= message.size()) {
+            formatted.push_back(message[index++]);
+            continue;
+        }
+        if (message[index + 1] == '%') {
+            formatted.push_back('%');
+            index += 2;
+            continue;
+        }
+        std::size_t cursor = index + 1;
+        std::int32_t width = 0;
+        while (cursor < message.size() &&
+               std::isdigit(
+                   static_cast<unsigned char>(message[cursor]))) {
+            width = width * 10 + (message[cursor] - '0');
+            ++cursor;
+        }
+        if (cursor >= message.size() || message[cursor] != 'd' ||
+            parameter >= parameters.size()) {
+            formatted.push_back(message[index++]);
+            continue;
+        }
+        const std::string value =
+            std::to_string(parameters[parameter++]);
+        if (width > static_cast<std::int32_t>(value.size())) {
+            formatted.append(
+                static_cast<std::size_t>(width) - value.size(), ' ');
+        }
+        formatted.append(value);
+        index = cursor + 1;
+    }
+    return formatted;
 }
 
 }  // namespace
@@ -55,6 +97,7 @@ void Interpreter::reset() {
     current_character_number_ = -1;
     message_callback_character_number_ = -1;
     unsupported_opcode_ = -1;
+    message_parameters_.fill(-1);
 }
 
 StepResult Interpreter::startStatus(
@@ -277,7 +320,7 @@ StepResult Interpreter::execute(const Command& command) {
         if (hooks_.show_message) {
             hooks_.show_message({
                 message->id,
-                message->text,
+                formatMessage(message->text, message_parameters_),
                 current_character_number_,
                 selection_required,
                 initial_selection,
@@ -302,6 +345,8 @@ StepResult Interpreter::execute(const Command& command) {
     }
     case 10:
         return executeNative(6);
+    case 4:
+        return executeNative(0);
     case 16:
         return command.operands.empty()
             ? StepResult::invalid_script
@@ -330,6 +375,8 @@ StepResult Interpreter::execute(const Command& command) {
     case 37:
     case 41:
     case 48:
+        return executeNative(1);
+    case 54:
         return executeNative(1);
     case 6:
         return executeNative(2);
@@ -386,6 +433,37 @@ StepResult Interpreter::execute(const Command& command) {
             !hooks_.query_value(
                 ValueQuery::local_player_companion_type,
                 value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 51:
+        if (command.operands.size() < message_parameters_.size()) {
+            return StepResult::invalid_script;
+        }
+        for (std::size_t index = 0;
+             index < message_parameters_.size();
+             ++index) {
+            message_parameters_[index] =
+                readOperand(command.operands[index]);
+        }
+        return StepResult::complete;
+    case 53:
+    case 55: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        const ValueQuery query =
+            command.opcode == 53
+                ? ValueQuery::local_player_gold
+                : ValueQuery::local_player_has_unidentified_items;
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(query, value)) {
             unsupported_opcode_ = command.opcode;
             return StepResult::unsupported_command;
         }

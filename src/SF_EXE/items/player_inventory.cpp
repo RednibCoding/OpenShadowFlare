@@ -284,7 +284,13 @@ bool PlayerInventory::identify(
         return false;
     }
 
-    InventoryItem& item = items_[item_index];
+    return identifyInventoryItem(items_[item_index]);
+}
+
+bool identifyInventoryItem(InventoryItem& item) {
+    if (item.identified != 0) {
+        return false;
+    }
     item.identified = 1;
     std::size_t offset = item.retail_state.size();
     if (item.category == 0 || item.category == 1) {
@@ -300,6 +306,23 @@ bool PlayerInventory::identify(
         item.retail_state[offset + 3u] = 0;
     }
     return true;
+}
+
+std::int32_t PlayerInventory::identifyAll() {
+    std::int32_t identified = 0;
+    for (InventoryItem& item : items_) {
+        identified += identifyInventoryItem(item) ? 1 : 0;
+    }
+    return identified;
+}
+
+bool PlayerInventory::hasUnidentifiedItems() const {
+    return std::any_of(
+        items_.begin(),
+        items_.end(),
+        [](const InventoryItem& item) {
+            return item.identified == 0;
+        });
 }
 
 InventoryPlacementResult PlayerInventory::place(

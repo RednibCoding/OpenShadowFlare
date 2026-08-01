@@ -1625,6 +1625,79 @@ bool testIdentificationSelection() {
         "open.");
 }
 
+bool testMerchantIdentificationOwners() {
+    osf::ItemDefinition weapon;
+    weapon.category = 0;
+    weapon.id = 10;
+    weapon.variant = 1;
+    weapon.inventory_width = 1;
+    weapon.inventory_height = 1;
+    osf::InventoryItem backpack_item =
+        osf::makeInventoryItem(weapon);
+    backpack_item.retail_state.resize(49u * 4u);
+
+    osf::ItemDefinition armor;
+    armor.category = 1;
+    armor.id = 10;
+    armor.subtype = 1;
+    armor.variant = 1;
+    armor.inventory_width = 1;
+    armor.inventory_height = 1;
+    osf::InventoryItem equipped_item =
+        osf::makeInventoryItem(armor);
+    equipped_item.retail_state.resize(49u * 4u);
+
+    osf::ItemDefinition medicine;
+    medicine.category = 3;
+    medicine.id = 10;
+    medicine.variant = 1;
+    medicine.inventory_width = 1;
+    medicine.inventory_height = 1;
+
+    osf::PlayerInventory inventory;
+    osf::PlayerEquipment equipment;
+    osf::PlayerBelt belt;
+    if (!inventory.store(std::move(backpack_item)) ||
+        !equipment
+             .place(
+                 osf::EquipmentSlot::body,
+                 std::move(equipped_item),
+                 armor,
+                 1)
+             .accepted ||
+        !belt
+             .place(
+                 osf::makeInventoryItem(medicine),
+                 0,
+                 0,
+                 medicine)
+             .accepted) {
+        return false;
+    }
+
+    if (!check(
+            inventory.hasUnidentifiedItems() &&
+                equipment.hasUnidentifiedItems() &&
+                belt.hasUnidentifiedItems(),
+            "Malse's Identify scan missed an owned item container.")) {
+        return false;
+    }
+    const std::int32_t identified =
+        inventory.identifyAll() +
+        equipment.identifyAll() +
+        belt.identifyAll();
+    return check(
+        identified == 3 &&
+            !inventory.hasUnidentifiedItems() &&
+            !equipment.hasUnidentifiedItems() &&
+            !belt.hasUnidentifiedItems() &&
+            inventory.items()[0].retail_state[48u * 4u] == 1 &&
+            equipment.item(osf::EquipmentSlot::body)
+                    ->retail_state[48u * 4u] == 1,
+        "Malse's Identify mutation did not cover every owner or its retail "
+        "save mirror.");
+}
+
 bool testSecondaryUseRequests() {
     osf::PlayerInventory owned;
     osf::PlayerEquipment equipment;
@@ -1706,6 +1779,7 @@ bool testSecondaryUseRequests() {
 int main() {
     return testInventoryState() &&
                    testIdentificationSelection() &&
+                   testMerchantIdentificationOwners() &&
                    testSecondaryUseRequests() &&
                    testInventoryResourcesAndRendering() &&
                    testConditionArtwork() &&

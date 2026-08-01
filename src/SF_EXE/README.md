@@ -292,6 +292,11 @@ commands from Tables 32 and 33, with the retail fixed/random definition rules,
 rolled item instances, and 9-by-10 placement starts. Items can be bought into
 the backpack or equipment slots and sold back for gold, using the ordinary
 item sounds and delayed Price/Sale Price overlays.
+The adjacent Identify Items choice also follows the authored script: it scans
+equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
+keeps `NO` selected initially, rejects insufficient Gold, and identifies every
+owned item only after payment. The identified flags and their raw retail words
+then survive the existing save path.
 The Mission List exposes that state through the original `Q` shortcut and
 Settings-menu row. Its 48 titles and per-mission description lines come from
 `Table.Tbd`; the portable screen keeps the retail two-page layout, closed and

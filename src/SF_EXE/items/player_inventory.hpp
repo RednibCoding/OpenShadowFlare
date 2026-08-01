@@ -33,6 +33,7 @@ struct InventoryPlacementResult {
 InventoryItem makeInventoryItem(
     const ItemDefinition& definition,
     std::int32_t quantity = 1);
+bool identifyInventoryItem(InventoryItem& item);
 
 class PlayerInventory {
 public:
@@ -52,6 +53,8 @@ public:
     std::optional<InventoryItem> take(
         std::size_t item_index);
     bool identify(std::size_t item_index);
+    std::int32_t identifyAll();
+    bool hasUnidentifiedItems() const;
     InventoryPlacementResult place(
         InventoryItem item,
         std::int32_t grid_x,

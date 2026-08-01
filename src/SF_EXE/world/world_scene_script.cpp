@@ -258,6 +258,19 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 4) {
+        player_equipment_.identifyAll();
+        player_inventory_.identifyAll();
+        player_belt_.identifyAll();
+        refreshPlayerRuntimeProfile();
+        return true;
+    }
+
+    if (opcode == 54) {
+        return arguments.size() == 1 &&
+               player_inventory_.spendGold(arguments[0]);
+    }
+
     if (opcode == 16) {
         if (arguments.empty() || arguments[0] < 0) {
             return false;
@@ -507,6 +520,17 @@ bool WorldScene::queryScriptValue(
         // equal -1 sentinels while it is inactive, which is the normal state
         // exercised by Syria's repeat conversation.
         value = -1;
+        return true;
+    case script::ValueQuery::local_player_gold:
+        value = player_inventory_.gold();
+        return true;
+    case script::ValueQuery::local_player_has_unidentified_items:
+        value =
+            player_equipment_.hasUnidentifiedItems() ||
+                    player_inventory_.hasUnidentifiedItems() ||
+                    player_belt_.hasUnidentifiedItems()
+                ? 1
+                : 0;
         return true;
     }
     return false;

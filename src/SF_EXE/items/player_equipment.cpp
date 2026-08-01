@@ -3,6 +3,7 @@
 #include "item_database.hpp"
 #include "item_instance_values.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 
@@ -117,6 +118,25 @@ bool PlayerEquipment::decreaseDurability(
                 : equipped.durability - amount;
     }
     return equipped.durability != 0;
+}
+
+std::int32_t PlayerEquipment::identifyAll() {
+    std::int32_t identified = 0;
+    for (std::optional<InventoryItem>& item : slots_) {
+        if (item) {
+            identified += identifyInventoryItem(*item) ? 1 : 0;
+        }
+    }
+    return identified;
+}
+
+bool PlayerEquipment::hasUnidentifiedItems() const {
+    return std::any_of(
+        slots_.begin(),
+        slots_.end(),
+        [](const std::optional<InventoryItem>& item) {
+            return item && item->identified == 0;
+        });
 }
 
 std::int32_t PlayerEquipment::totalWeight(

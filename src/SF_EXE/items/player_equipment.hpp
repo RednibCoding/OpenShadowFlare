@@ -53,6 +53,8 @@ public:
     bool decreaseDurability(
         EquipmentSlot slot,
         std::int32_t amount);
+    std::int32_t identifyAll();
+    bool hasUnidentifiedItems() const;
     std::int32_t totalWeight(
         const ItemDatabase& database) const;
     std::int32_t derivedParameterBonus(
