@@ -121,6 +121,35 @@ int main() {
             "The male record does not match table 900 and FUN_00440f70.")) {
         return 1;
     }
+    osf::PlayerData job_player = male;
+    job_player.setJob(osf::PlayerJob::warrior);
+    if (!check(
+            osf::retailScriptJobSelection(
+                osf::playerJobValue(
+                    osf::PlayerJob::mercenary)) == 0 &&
+                osf::retailScriptJobSelection(
+                    osf::playerJobValue(
+                        osf::PlayerJob::warrior)) == 1 &&
+                osf::retailScriptJobSelection(
+                    osf::playerJobValue(
+                        osf::PlayerJob::hunter)) == 2 &&
+                osf::retailScriptJobSelection(
+                    osf::playerJobValue(
+                        osf::PlayerJob::spellcaster)) == 3 &&
+                job_player.job() ==
+                    osf::playerJobValue(
+                        osf::PlayerJob::warrior) &&
+                osf::retailJobForScriptSelection(1) ==
+                    osf::PlayerJob::warrior &&
+                osf::retailJobForScriptSelection(2) ==
+                    osf::PlayerJob::hunter &&
+                osf::retailJobForScriptSelection(3) ==
+                    osf::PlayerJob::spellcaster &&
+                !osf::retailJobForScriptSelection(0) &&
+                !osf::retailJobForScriptSelection(4),
+            "The retail script job mapping or saved job mutation differs.")) {
+        return 1;
+    }
 
     osf::ItemDatabase items;
     if (!check(

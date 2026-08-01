@@ -173,6 +173,8 @@ bool testRetailRemoteTown() {
                     local_player_repair_price:
             case osf::script::ValueQuery::
                     local_player_spell_learned:
+            case osf::script::ValueQuery::
+                    local_player_job_selection:
                 return false;
             }
             return false;
@@ -1211,6 +1213,81 @@ bool testRetailItemOwnershipCommands() {
 #endif
 }
 
+bool testRetailJobCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "03900003" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    std::int32_t job_queries = 0;
+    osf::script::Interpreter interpreter({
+        {},
+        {},
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [&job_queries](
+            osf::script::ValueQuery query,
+            std::int32_t& value) {
+            if (query != osf::script::ValueQuery::
+                    local_player_job_selection) {
+                return false;
+            }
+            ++job_queries;
+            value = 2;
+            return true;
+        },
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    const osf::script::StepResult query_result =
+        interpreter.startSentence(381, -1);
+    if (!check(
+            query_result == osf::script::StepResult::complete &&
+                job_queries == 1 &&
+                interpreter.readTemporaryFlag(1000030) == 2 &&
+                native_commands.size() == 1 &&
+                native_commands.front().first == 16,
+            "The shipped job query did not execute retail opcode 70.")) {
+        return false;
+    }
+
+    native_commands.clear();
+    interpreter.bind(&script);
+    const osf::script::StepResult change_result =
+        interpreter.startSentence(366, -1);
+    return check(
+        change_result == osf::script::StepResult::complete &&
+            !native_commands.empty() &&
+            native_commands.front() ==
+                std::make_pair(
+                    std::int32_t{71},
+                    std::vector<std::int32_t>{0}),
+        "The shipped job-change path did not emit retail opcode 71.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1219,6 +1296,7 @@ int main() {
                    testRetailRedGoblinDeathStatus() &&
                    testRetailGiantWarehouseScript() &&
                    testRetailItemOwnershipCommands() &&
+                   testRetailJobCommands() &&
                    testMalformedScript()
                ? 0
                : 1;

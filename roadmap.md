@@ -132,6 +132,12 @@ stored state for script branches. The temporary All Spells debug switch stays
 outside both operations. A shipped query-and-reward path from scenario
 `04100000` covers the interpreter, world hook, and persistent owner together.
 
+The first class-system boundary is live as well. Scenario `03900003` uses
+opcode 70 to map the saved Mercenary, Warrior, Hunter, or spellcaster job to
+its menu selection, and opcode 71 to write a chosen advanced job back to the
+same player-record field. The operation deliberately leaves level history and
+derived parameters alone, matching the executable's narrow handler.
+
 The selection side is complete too. `S` and `M` open the two tabs of the
 authored left-hand Status/Magic panel without pausing the world, shift the
 camera into the visible half, and can stay open beside the right-hand
@@ -1124,8 +1130,8 @@ assumption: elemental medicines are not timed buffs. They move the two saved
 element axes 4,000 units toward one of eight fixed anchors, while White
 Medicine resets both axes to zero. The existing Status marker, affinity
 calculation, combat packets, and save record all read those same values.
-Script-facing special-item commands are the next item checkpoint and should
-keep using these owners rather than adding parallel inventory models.
+Script-facing special-item commands now use those owners too; the remaining
+item work can extend the same model rather than adding parallel inventories.
 
 ### 4. Combat and death
 

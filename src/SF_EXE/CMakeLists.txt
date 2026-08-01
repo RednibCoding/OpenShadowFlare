@@ -162,6 +162,7 @@ add_library(
   world/player_damage_receiver.cpp
   world/player_element_condition.cpp
   world/player_data.cpp
+  world/player_job.cpp
   world/player_energy_shield.cpp
   world/player_experience_award.cpp
   world/player_heal_spell.cpp

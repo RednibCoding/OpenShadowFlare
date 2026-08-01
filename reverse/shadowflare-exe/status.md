@@ -1546,7 +1546,17 @@ it to x `640 - width`, y 1 over ten updates, then leaves it there until update
 `FUN_00451cb0` only accepts clicks after the first 30 updates and dismisses a
 click inside the current rectangle before it can reach world movement. The
 portable notice now follows those same drawing, timing, and input rules while
-later job selection and skill unlocks remain outside this slice.
+later skill unlocks remain outside this slice.
+
+The saved job's script boundary is reconstructed too. Opcode 70 at
+`0x00434186` maps raw jobs Mercenary `16`, Warrior `6`, Hunter `5`, and
+Wizard/Witch `9` to occupation-menu selections zero through three and writes
+the result to its operand. Opcode 71 at `0x004341da` accepts evaluated choices
+one through three and writes raw job `6`, `5`, or `9`; zero and out-of-range
+values leave the player unchanged. The handler touches only runtime player
+offset `+0x30`, corresponding to saved record offset `0x1c`, so existing job
+history and level-derived stats remain intact. Scenario `03900003` sentences
+366 and 381 are the shipped change/query path.
 
 Gameplay panels are independent owners on opposite sides of the world view.
 The Warehouse's opcode 41 owner stays on the left while backpack and equipment

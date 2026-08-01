@@ -558,6 +558,23 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 70: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::local_player_job_selection,
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 62:
         return executeNative(3);
     case 58: {
@@ -582,6 +599,7 @@ StepResult Interpreter::execute(const Command& command) {
     case 59:
     case 67:
     case 68:
+    case 71:
     case 75:
         return executeNative(
             command.opcode == 59 || command.opcode == 75

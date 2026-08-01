@@ -331,6 +331,8 @@ interactions are portable so far.
 | 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
 | 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
 | 69 | `0x0043412b` | Write whether one spell has the exact learned availability state |
+| 70 | `0x00434186` | Map the local player's saved job to the occupation-menu selection and write it |
+| 71 | `0x004341da` | Change the local player's saved job from an evaluated occupation-menu selection |
 | 75 | `0x0043443c` | Create a table-backed item and place it in its authored automatic-item page and cell when absent |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
@@ -444,6 +446,15 @@ the level field at offset `0x34`, and passes it to the common operand writer.
 The portable interpreter asks its host for
 `ValueQuery::local_player_level`, so player data stays game-owned rather than
 being copied into the script library.
+
+Opcodes 70 and 71 do the same for occupation changes. The saved runtime job
+values are `16` for Mercenary, `6` for Warrior, `5` for Hunter, and `9` for
+Wizard or Witch. Opcode 70 maps those to menu values zero through three;
+opcode 71 accepts only selections one through three and writes Warrior,
+Hunter, or spellcaster respectively. Invalid selections leave the record
+unchanged. Scenario `03900003` contains the one shipped query/change pair:
+its authored service remembers the current selection, changes the job after
+the player's choice, and plays the accompanying sound through opcode 16.
 
 Opcodes 22 and 23 take a script character number and write one or zero to all
 three of its live entity-state keys. Opcode 44 reads player-record offset

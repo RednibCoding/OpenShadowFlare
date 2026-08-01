@@ -79,6 +79,11 @@ that panel. Retail opcodes 67 and 69 can permanently learn a spell or query its
 exact learned state; the F12 All Spells override remains temporary and cannot
 change those scenario branches or their save data.
 
+Scenario-driven occupation changes stay in the saved player record too.
+Retail opcodes 70 and 71 translate between the authored menu choices and the
+Mercenary, Warrior, Hunter, or gender-named spellcaster job without rewriting
+the character's earlier level history.
+
 The final bar icon selects retail normal-target mode. Right-clicking the world
 with a one-handed or two-handed weapon then runs the matching three-part melee
 combo, with each CAF phase owning its own impact, short forward step, weapon

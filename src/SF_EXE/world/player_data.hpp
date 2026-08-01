@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_PLAYER_DATA_HPP
 
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
+#include "player_job.hpp"
 
 #include <array>
 #include <cstddef>
@@ -57,6 +58,7 @@ public:
     std::string name() const;
     std::int32_t gender() const;
     std::int32_t job() const;
+    void setJob(PlayerJob job);
     std::int32_t level() const;
     std::int32_t experience() const;
     std::int32_t experienceThreshold(

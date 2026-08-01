@@ -184,6 +184,10 @@ std::int32_t PlayerData::job() const {
     return readI32(0x1c);
 }
 
+void PlayerData::setJob(PlayerJob job) {
+    writeI32(0x1c, playerJobValue(job));
+}
+
 std::int32_t PlayerData::level() const {
     return readI32(0x24);
 }

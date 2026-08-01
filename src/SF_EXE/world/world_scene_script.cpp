@@ -515,6 +515,18 @@ bool WorldScene::executeScriptNativeCommand(
                player_magic_.learnPermanently(arguments[0]);
     }
 
+    if (opcode == 71) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        const std::optional<PlayerJob> job =
+            retailJobForScriptSelection(arguments[0]);
+        if (job && has_player_) {
+            player_data_.setJob(*job);
+        }
+        return true;
+    }
+
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;
@@ -599,6 +611,9 @@ bool WorldScene::queryScriptValue(
     case script::ValueQuery::local_player_repair_price:
     case script::ValueQuery::local_player_spell_learned:
         return false;
+    case script::ValueQuery::local_player_job_selection:
+        value = retailScriptJobSelection(player_data_.job());
+        return true;
     }
     return false;
 }

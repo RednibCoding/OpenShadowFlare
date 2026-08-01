@@ -102,6 +102,7 @@ enum class ValueQuery {
     local_player_has_unidentified_items,
     local_player_repair_price,
     local_player_spell_learned,
+    local_player_job_selection,
 };
 
 struct InterpreterHooks {
