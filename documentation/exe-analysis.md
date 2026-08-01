@@ -100,7 +100,9 @@ gender at `+0x18`, job at `+0x1c`, level at `+0x24`, current HP at `+0x34`,
 current MP at `+0x3c`, and experience at `+0xd8`. The row labels these as
 Level, Job, Sex, Name, HP, MP, and EXP. Job 9 is the only gendered job label
 (`Wizard` for stored gender 1, `Witch` for 0); the other shipped labels are
-Hunter, Warrior, and Mercenary.
+Hunter, Warrior, and Mercenary. Every label and padded value is submitted as a
+separate bitmap-font packet at the same origin; the leading spaces position
+the value without adding the label width a second time.
 
 The visible loading screen is a sub-state of gameplay rather than top-level
 state 1. At application startup, the game decodes `Waiting.njp` patterns 0, 1,

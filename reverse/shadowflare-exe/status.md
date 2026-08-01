@@ -390,7 +390,8 @@ The first game-core slice covers:
 - Online/Single and New/Join mode menus plus portable host-address entry
 - saved-game summary parsing, BMP previews, and Delete confirmation
 - complete saved-game row text from the player record: Level, Job, Sex, Name,
-  HP, MP, and EXP at the original cell positions
+  HP, MP, and EXP as the original separate same-origin label and padded-value
+  packets
 - software drawing with the original Select and bitmap-font pattern sheets
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables

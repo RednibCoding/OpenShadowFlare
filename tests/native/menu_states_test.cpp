@@ -1335,13 +1335,20 @@ bool testNewCharacterRetailDrawing() {
             });
     };
     return check(
-        hasText("Level.       1", 71, 200) &&
-            hasText("Job.       Mercenary", 136, 200) &&
-            hasText("Sex.     Female", 232, 200) &&
-            hasText("Name.      asof", 71, 220) &&
-            hasText("HP.    260", 71, 240) &&
-            hasText("MP.    160", 132, 240) &&
-            hasText("EXP.     18", 192, 240),
+        hasText("Level.", 71, 200) &&
+            hasText("       1", 71, 200) &&
+            hasText("Job.", 136, 200) &&
+            hasText("     Mercenary", 136, 200) &&
+            hasText("Sex.", 232, 200) &&
+            hasText("     Female", 232, 200) &&
+            hasText("Name.", 71, 220) &&
+            hasText("      asof", 71, 220) &&
+            hasText("HP.", 71, 240) &&
+            hasText("    260", 71, 240) &&
+            hasText("MP.", 132, 240) &&
+            hasText("    160", 132, 240) &&
+            hasText("EXP.", 192, 240) &&
+            hasText("     18", 192, 240),
         "The saved-character row fields or retail positions differ.");
 }
 
