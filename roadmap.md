@@ -892,6 +892,12 @@ shipped effect numbers resolve to their real OPTION resources, all 353 calls
 across 26 scenarios keep their audited shape, and Near Remote Town's first
 six placed effects now enter the ordinary depth-sorted effect pass.
 
+The basic writable arithmetic set is complete now as well. Opcodes 13 through
+15 preserve retail's wrapped multiply, signed quotient and remainder, operand
+order, and zero-divisor no-write path. Corpus coverage holds all 388 shipped
+calls across their original scenarios, giving later spawn and encounter
+sentences the calculations they expect before their native actions run.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover

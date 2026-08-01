@@ -303,6 +303,9 @@ services exercise them; unknown values still fail loudly.
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
+| 13 | `0x00431b53` | Multiply a writable operand by an evaluated value with 32-bit wrapping |
+| 14 | `0x00431b9b` | Divide a writable operand by an evaluated signed divisor |
+| 15 | `0x00431bef` | Store the signed remainder from an evaluated divisor |
 | 16 | `0x00417260` | Ask the world to play an authored sample, optionally range-limited at its evaluated position |
 | 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
@@ -388,6 +391,15 @@ remaining calls with script-calculated upper bounds. The portable
 script library asks its host for the next random value, keeping the DLL
 boundary free of world ownership while still sharing the world's retail
 random sequence.
+
+Opcodes 13, 14, and 15 continue the writable arithmetic group started by add
+and subtract. All three evaluate the destination value before the right-hand
+operand and write back through the common operand owner. Multiply keeps the
+low 32 bits of the x86 `imul`. Divide and remainder use signed `idiv`, so the
+quotient truncates toward zero and the remainder keeps the dividend's sign.
+A zero divisor returns successfully without changing the destination. The
+retail scripts contain 67 multiplies, 126 divides, and 195 remainders across
+34, 45, and 27 scenarios respectively; every destination is a temporary flag.
 
 Opcode 30 is the script-facing form of the executable's normal effect request,
 not a new scenario-actor class. All 411 shipped calls have fourteen operands,

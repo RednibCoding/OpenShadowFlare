@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <string>
@@ -65,6 +66,48 @@ osf::script::ScriptData makeRandomCommandScript() {
         appendI32(bytes, 40);
         appendI32(bytes, 4);
         appendI32(bytes, destination);
+    }
+    osf::script::ScriptData script;
+    script.decode(bytes);
+    return script;
+}
+
+osf::script::ScriptData makeArithmeticCommandScript() {
+    std::vector<std::uint8_t> bytes{
+        'S', 'c', 'e', 'n', 'a', 'S', 'c', 'r',
+        'i', 'p', 't', 'V', '0', '0', '0', '\0',
+    };
+    const std::array<std::int32_t, 4> initial_values{{
+        std::numeric_limits<std::int32_t>::max(),
+        -7,
+        -7,
+        123,
+    }};
+    appendI32(bytes, static_cast<std::int32_t>(initial_values.size()));
+    for (std::size_t index = 0;
+         index < initial_values.size(); ++index) {
+        appendI32(bytes, 1000000 + static_cast<std::int32_t>(index));
+        appendI32(bytes, initial_values[index]);
+    }
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    appendI32(bytes, 5);
+    const std::array<std::array<std::int32_t, 3>, 5> commands{{
+        {{13, 1000000, 2}},
+        {{14, 1000001, 3}},
+        {{15, 1000002, 3}},
+        {{14, 1000003, 0}},
+        {{15, 1000003, 0}},
+    }};
+    for (const auto& command : commands) {
+        appendI32(bytes, command[0]);
+        appendI32(bytes, 2);
+        appendI32(bytes, 4);
+        appendI32(bytes, command[1]);
+        appendI32(bytes, 1);
+        appendI32(bytes, command[2]);
     }
     osf::script::ScriptData script;
     script.decode(bytes);
@@ -1857,6 +1900,111 @@ bool testRetailInclusiveRandomCommand() {
         "Opcode 39 ran without an attached retail random stream.");
 }
 
+bool testRetailArithmeticCommands() {
+    osf::script::ScriptData script =
+        makeArithmeticCommandScript();
+    if (!check(
+            script.sentences().size() == 1,
+            "The synthetic arithmetic-command script did not decode.")) {
+        return false;
+    }
+    osf::script::Interpreter interpreter;
+    interpreter.bind(&script);
+    return check(
+        interpreter.startSentence(0, -1) ==
+                osf::script::StepResult::complete &&
+            interpreter.readTemporaryFlag(1000000) == -2 &&
+            interpreter.readTemporaryFlag(1000001) == -2 &&
+            interpreter.readTemporaryFlag(1000002) == -1 &&
+            interpreter.readTemporaryFlag(1000003) == 123,
+        "Opcodes 13 through 15 lost retail overflow, signed division, "
+        "remainder, or zero-divisor behavior.");
+}
+
+bool testRetailArithmeticCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::map<std::int32_t, std::size_t> call_counts;
+    std::map<std::int32_t, std::size_t> scenario_counts;
+    std::map<std::int32_t, std::map<std::string, std::size_t>>
+        operand_shapes;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the arithmetic audit.");
+        }
+        std::array<bool, 3> scenario_has_opcode{};
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode < 13 || command.opcode > 15) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 2,
+                        "A shipped arithmetic command changed shape.")) {
+                    return false;
+                }
+                ++call_counts[command.opcode];
+                scenario_has_opcode[
+                    static_cast<std::size_t>(command.opcode - 13)] = true;
+                std::string shape;
+                for (const osf::script::Operand& operand :
+                     command.operands) {
+                    shape += std::to_string(operand.type);
+                    shape += ',';
+                }
+                ++operand_shapes[command.opcode][shape];
+            }
+        }
+        for (std::size_t index = 0;
+             index < scenario_has_opcode.size(); ++index) {
+            if (scenario_has_opcode[index]) {
+                ++scenario_counts[
+                    13 + static_cast<std::int32_t>(index)];
+            }
+        }
+    }
+    return check(
+        call_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {13, 67}, {14, 126}, {15, 195},
+                } &&
+            scenario_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {13, 34}, {14, 45}, {15, 27},
+                } &&
+            operand_shapes[13] ==
+                std::map<std::string, std::size_t>{{"4,1,", 67}} &&
+            operand_shapes[14] ==
+                std::map<std::string, std::size_t>{
+                    {"4,1,", 116}, {"4,4,", 10},
+                } &&
+            operand_shapes[15] ==
+                std::map<std::string, std::size_t>{
+                    {"4,1,", 185}, {"4,4,", 10},
+                },
+        "The shipped opcode-13-through-15 inventory differs from the "
+        "audited retail scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailInclusiveRandomCommandInventory() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -1938,6 +2086,8 @@ int main() {
                    testRetailScenarioEntityOverrideCommand() &&
                    testRetailScenarioEffectCommand() &&
                    testRetailPlacedEffectCommand() &&
+                   testRetailArithmeticCommands() &&
+                   testRetailArithmeticCommandInventory() &&
                    testRetailInclusiveRandomCommand() &&
                    testRetailInclusiveRandomCommandInventory() &&
                    testMalformedScript()

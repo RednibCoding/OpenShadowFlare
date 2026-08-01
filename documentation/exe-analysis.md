@@ -1181,6 +1181,14 @@ portable interpreter receives the next value through its
 host hook, which connects to the shared world random owner rather than
 creating a private script generator.
 
+The immediately preceding arithmetic handlers complete the same writable
+operand family. Opcode 13 at `0x00431b53` keeps the low 32 bits from `imul`.
+Opcode 14 at `0x00431b9b` stores the signed `idiv` quotient, and opcode 15 at
+`0x00431bef` stores its remainder. Both division handlers test the divisor
+first and return through the successful command epilogue without writing when
+it is zero. The shipped catalog contains 67, 126, and 195 calls respectively;
+all have two operands and all destinations are temporary flags.
+
 The first authored cross-map path is now traced end to end. During the
 scenario update at `0x004305d0`, status kind three resolves its character to a
 live MCT entity and calls the inclusive rectangle test at `0x00414350`

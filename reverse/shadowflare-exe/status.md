@@ -1333,6 +1333,13 @@ use 0..1, 41 use 20..40, and the rest include script-calculated bounds.
 The portable library obtains that one draw from the world's shared retail
 random owner through a narrow hook.
 
+The neighboring writable arithmetic commands are reconstructed too. Opcode
+13 keeps the low 32 bits of signed multiplication; opcodes 14 and 15 use the
+x86 signed quotient and remainder, including truncation toward zero and the
+dividend-signed remainder. A zero divisor succeeds without changing the
+destination. The 67 multiplies, 126 divides, and 195 remainders in the shipped
+scripts all retain their two-operand shape and temporary-flag destination.
+
 Opcode 30 at `0x0043309b` now crosses the same boundary without inventing a
 second effect type. Its fourteen evaluated operands build the retail
 owner-zero request, projected origin, and selected 77-word combat-packet
