@@ -391,7 +391,8 @@ The first game-core slice covers:
 - saved-game summary parsing, BMP previews, and Delete confirmation
 - complete saved-game row text from the player record: Level, Job, Sex, Name,
   HP, MP, and EXP as the original separate same-origin label and padded-value
-  packets
+  packets, including gold labels, pale-white values, and half-intensity idle
+  rows
 - software drawing with the original Select and bitmap-font pattern sheets
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables

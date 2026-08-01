@@ -1324,32 +1324,47 @@ bool testNewCharacterRetailDrawing() {
     const auto hasText = [&backend](
                              std::string_view text,
                              std::int32_t x,
-                             std::int32_t y) {
+                             std::int32_t y,
+                             osf::gapi::Color color) {
         return std::any_of(
             backend.texts.begin(),
             backend.texts.end(),
             [=](const TextCall& call) {
                 return call.text == text &&
                        call.draw.x == x &&
-                       call.draw.y == y;
+                       call.draw.y == y &&
+                       call.draw.color.red == color.red &&
+                       call.draw.color.green == color.green &&
+                       call.draw.color.blue == color.blue &&
+                       call.draw.color.alpha == color.alpha;
             });
     };
+    constexpr osf::gapi::Color labelColor{
+        224, 192, 128, 255};
+    constexpr osf::gapi::Color valueColor{
+        224, 224, 224, 255};
     return check(
-        hasText("Level.", 71, 200) &&
-            hasText("       1", 71, 200) &&
-            hasText("Job.", 136, 200) &&
-            hasText("     Mercenary", 136, 200) &&
-            hasText("Sex.", 232, 200) &&
-            hasText("     Female", 232, 200) &&
-            hasText("Name.", 71, 220) &&
-            hasText("      asof", 71, 220) &&
-            hasText("HP.", 71, 240) &&
-            hasText("    260", 71, 240) &&
-            hasText("MP.", 132, 240) &&
-            hasText("    160", 132, 240) &&
-            hasText("EXP.", 192, 240) &&
-            hasText("     18", 192, 240),
-        "The saved-character row fields or retail positions differ.");
+        hasText("Level.", 71, 200, labelColor) &&
+            hasText("       1", 71, 200, valueColor) &&
+            hasText("Job.", 136, 200, labelColor) &&
+            hasText("     Mercenary", 136, 200, valueColor) &&
+            hasText("Sex.", 232, 200, labelColor) &&
+            hasText("     Female", 232, 200, valueColor) &&
+            hasText("Name.", 71, 220, labelColor) &&
+            hasText("      asof", 71, 220, valueColor) &&
+            hasText("HP.", 71, 240, labelColor) &&
+            hasText("    260", 71, 240, valueColor) &&
+            hasText("MP.", 132, 240, labelColor) &&
+            hasText("    160", 132, 240, valueColor) &&
+            hasText("EXP.", 192, 240, labelColor) &&
+            hasText("     18", 192, 240, valueColor) &&
+            hasText(
+                "No Data",
+                375,
+                200,
+                {112, 112, 112, 255}),
+        "The saved-character row fields, colors, or retail positions "
+        "differ.");
 }
 
 bool testGameplayOptionsDrawing() {

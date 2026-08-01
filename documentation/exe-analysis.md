@@ -102,7 +102,10 @@ Level, Job, Sex, Name, HP, MP, and EXP. Job 9 is the only gendered job label
 (`Wizard` for stored gender 1, `Witch` for 0); the other shipped labels are
 Hunter, Warrior, and Mercenary. Every label and padded value is submitted as a
 separate bitmap-font packet at the same origin; the leading spaces position
-the value without adding the label width a second time.
+the value without adding the label width a second time. At full selection
+brightness, labels use retail's gold `(224, 192, 128)` while values use pale
+white `(224, 224, 224)`. Unselected labels and values use the corresponding
+half-intensity colors; an empty slot always uses gray `(112, 112, 112)`.
 
 The visible loading screen is a sub-state of gameplay rather than top-level
 state 1. At application startup, the game decodes `Waiting.njp` patterns 0, 1,
