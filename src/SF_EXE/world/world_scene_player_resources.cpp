@@ -81,6 +81,7 @@ void WorldScene::deactivatePlayerPowerupsForRespawn() {
     player_energy_shield_.deactivate();
     player_magic_shield_.deactivate();
     player_counter_burst_.deactivate();
+    player_increased_power_.deactivate();
     if (moon_changed) {
         refreshCompanionRuntimeProfile();
     }

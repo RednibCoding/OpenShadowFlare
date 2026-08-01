@@ -23,6 +23,9 @@ struct GameplayHudValues {
     std::int32_t experience = 0;
     std::int32_t experience_threshold = 0;
     bool running = false;
+    bool increased_power_ready = false;
+    bool increased_power_activation_feedback = false;
+    std::int32_t increased_power_blink_counter = 0;
 };
 
 GameplayHudValues gameplayHudValues(
@@ -31,7 +34,10 @@ GameplayHudValues gameplayHudValues(
     MovementPace movement_pace,
     std::int32_t experience_threshold,
     std::int32_t current_life,
-    std::int32_t current_mana);
+    std::int32_t current_mana,
+    bool increased_power_ready = false,
+    bool increased_power_activation_feedback = false,
+    std::int32_t increased_power_blink_counter = 0);
 
 std::int32_t gameplayHudBarWidth(
     std::int32_t current,

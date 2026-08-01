@@ -307,11 +307,27 @@ MP overrides are separate runtime-only switches. Debug availability, bar
 assignments, and effective resource pools never enter the retail save record,
 so testing unfinished combat cannot silently change a character.
 
-That completes the retail player's 22 ordinary spell actions. The next
-skills-and-status checkpoint is the increased-power state and action-21
-ranged redirect inside `FUN_00437fe0`; it still needs a complete trace from
-the state owner through its probability, packet changes, animation, effect,
-audio, resource cost, and save lifetime before it can be enabled.
+That completes the retail player's 22 ordinary spell actions.
+
+Increased Power and its Hunter ranged redirect are complete too. Direct local
+kills charge the runtime-only state to 50, or to 30 while special item
+`98000001` is owned. P and the authored HUD cell both activate 900 updates,
+reset the charge without consuming that item, force movement speed tier nine,
+add two effective spell levels, raise the receiver's defense input by 20
+percent, block Moon, Berserker, and Energy Shield, loop the common Powerup
+aura, and play sample 76 every 15 updates. The readiness cell uses retail's
+two-frame 1000/800 pulse. Ordinary travel preserves the state; death clears
+the active timer, and neither charge nor time is written to the character
+save.
+
+While active, Hunter action 20 consumes one 33-percent random roll at action
+entry. A successful roll snapshots at most 100 living enemies whose judgement
+intersects the player's 4000-by-4000 square and enters action 21 on the same
+chart-ten timing. With no captured target it falls back to ordinary action 20
+without rerolling. Every crossed marker builds the one physical packet with
+presentation 20006 and launches an independently delayed effect-9000 diagonal
+strike at each captured character number. The complete volley costs one
+main-hand durability and keeps sample 3 at counter six.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1403,10 +1419,10 @@ receiver handoff; a shipped live encounter covers the CAF, projectile render
 owner, launch audio, no-approach targeting, and durability without requiring
 a straight projectile to hit an enemy moving around the companion.
 
-Retail contains no subtype-four weapon record to exercise action 19. Action
-20's 33-percent action-21 redirect also depends on the not-yet-reconstructed
-increased-power state. Those two facts are recorded rather than filled with
-made-up behavior.
+Retail contains no subtype-four weapon record to exercise action 19. That
+missing authored fixture remains recorded rather than filling action 19 with
+made-up projectile behavior; action 20 and its Increased-Power action-21
+redirect are both live.
 
 The next combat work belongs to skills, magic, and status effects, keeping one
 shipped live case beside each passive reconstruction and sharing the existing

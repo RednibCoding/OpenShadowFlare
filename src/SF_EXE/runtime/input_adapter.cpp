@@ -86,6 +86,8 @@ bool InputAdapter::handleEvent(
             backspace_held_ = false;
         } else if (std::strcmp(event.key, "r") == 0) {
             run_held_ = false;
+        } else if (std::strcmp(event.key, "p") == 0) {
+            increased_power_held_ = false;
         } else if (std::strcmp(event.key, "h") == 0) {
             help_held_ = false;
         } else if (std::strcmp(event.key, "q") == 0) {
@@ -188,6 +190,13 @@ bool InputAdapter::handleEvent(
         }
         run_held_ = true;
     } else if (
+        std::strcmp(event.key, "p") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!increased_power_held_) {
+            increased_power_pressed_ = true;
+        }
+        increased_power_held_ = true;
+    } else if (
         std::strcmp(event.key, "h") == 0 &&
         current_state == GameState::gameplay) {
         if (!help_held_) {
@@ -263,6 +272,7 @@ void InputAdapter::clearTransientInput() {
     character_select_.backspace_pressed = false;
     character_select_.text_input.clear();
     run_toggle_pressed_ = false;
+    increased_power_pressed_ = false;
     gameplay_options_pressed_ = false;
     gameplay_debug_pressed_ = false;
     gameplay_help_pressed_ = false;
@@ -304,6 +314,10 @@ bool InputAdapter::pointerSecondaryPressed() const {
 
 bool InputAdapter::runTogglePressed() const {
     return run_toggle_pressed_;
+}
+
+bool InputAdapter::increasedPowerPressed() const {
+    return increased_power_pressed_;
 }
 
 bool InputAdapter::gameplayOptionsPressed() const {

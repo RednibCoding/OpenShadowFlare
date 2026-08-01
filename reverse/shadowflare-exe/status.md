@@ -1411,9 +1411,21 @@ whole fan costs one weapon durability, and explicit-origin projectiles keep
 player kill attribution through their packet. Generic effect types 0, 1, 4,
 and 5 enter the existing category-50000000 owner with 30-unit bounds, static
 and target collision, sample 20, optional homing, and optional remembered
-targets. Retail ships no subtype-four weapon record, and action 20's
-increased-power redirect to action 21 remains with the later status/skill
-work.
+targets. Retail ships no subtype-four weapon record, so action 19 still has no
+authored projectile fixture. Action 20's Increased-Power redirect is now
+reconstructed. Direct local kills charge it at 50, or 30 with special item
+`98000001`; P and the HUD cell activate its runtime-only 900-update state. It
+owns the pulsing readiness cell, common Powerup aura, sample-76 cadence,
+forced speed tier, two effective spell levels, 20-percent defense input,
+three sustained-spell exclusions, death cleanup, and non-persistence.
+
+An active job-five action 20 rolls the exact 33-percent redirect once,
+captures up to 100 living enemy character numbers inside the player's
+4000-by-4000 judgement query, and falls back without rerolling when that list
+is empty. Action 21 shares chart ten, its marker and sample-three counter,
+builds the presentation-20006 physical packet once, launches a randomly
+delayed resource-9000 north-east strike at every captured target, and charges
+one main-hand durability for the volley.
 
 ## Magic window and selection
 

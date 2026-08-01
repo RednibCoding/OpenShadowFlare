@@ -266,7 +266,11 @@ void RuntimeRenderer::render(
                         context.world
                             .playerExperienceThreshold(),
                         context.world.playerCurrentLife(),
-                        context.world.playerCurrentMana()));
+                        context.world.playerCurrentMana(),
+                        context.world.playerIncreasedPowerReady(),
+                        context.world
+                            .playerIncreasedPowerActivationFeedback(),
+                        context.gameplay_counter));
                 renderGameplayBeltItems(
                     renderer_,
                     context.world);

@@ -132,6 +132,10 @@ GameplayFrameResult GameplayState::update(
                 hooks_.toggle_player_run) {
                 hooks_.toggle_player_run();
             }
+            if (input.increased_power_pressed &&
+                hooks_.activate_increased_power) {
+                hooks_.activate_increased_power();
+            }
             if (input.pointer_secondary_pressed &&
                 pointer_in_world &&
                 hooks_.command_player_magic) {

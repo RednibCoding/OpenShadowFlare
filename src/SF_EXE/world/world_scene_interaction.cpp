@@ -6,6 +6,7 @@
 #include "player_attack_impact.hpp"
 #include "player_combat_defense.hpp"
 #include "player_heal_spell.hpp"
+#include "player_increased_power_attack.hpp"
 #include "player_ranged_attack.hpp"
 #include "player_spell_cast.hpp"
 #include "player_spell_parameters.hpp"
@@ -206,13 +207,18 @@ bool WorldScene::commandPlayerMagic(
     pointer_.clearSelection();
     pending_interaction_ = {};
     player_attack_target_.cancel();
+    if (player_increased_power_.blocksSpell(spell)) {
+        return true;
+    }
     const PlayerSpellParameters parameters =
         playerSpellParameters(
             player_magic_,
             spell,
             player_equipment_,
             item_database_,
-            parameter_tables_);
+            parameter_tables_,
+            0,
+            player_increased_power_.active());
     if (!player_infinite_mana_ &&
         player_data_.currentMana() <
         parameters.mana_cost) {
@@ -1120,7 +1126,9 @@ void WorldScene::handlePlayerSpellEvent(
                 event.spell,
                 player_equipment_,
                 item_database_,
-                parameter_tables_);
+                parameter_tables_,
+                0,
+                player_increased_power_.active());
         const PlayerHealSpellResolution resolution =
             resolvePlayerHealSpell({
                 scenario_world_.localPlayerNumber(),
@@ -1153,7 +1161,9 @@ void WorldScene::handlePlayerSpellEvent(
                 event.spell,
                 player_equipment_,
                 item_database_,
-                parameter_tables_);
+                parameter_tables_,
+                0,
+                player_increased_power_.active());
         player_moon_spell_.toggle(
             200,
             parameters.effective_level,
@@ -1170,7 +1180,9 @@ void WorldScene::handlePlayerSpellEvent(
                 event.spell,
                 player_equipment_,
                 item_database_,
-                parameter_tables_);
+                parameter_tables_,
+                0,
+                player_increased_power_.active());
         player_berserker_spell_.toggle(
             201,
             parameters.effective_level,
@@ -1280,7 +1292,9 @@ void WorldScene::handlePlayerSpellEvent(
                     event.spell,
                     player_equipment_,
                     item_database_,
-                    parameter_tables_),
+                    parameter_tables_,
+                    0,
+                    player_increased_power_.active()),
                 target
                     ? target->characterNumber()
                     : -1,
@@ -1345,7 +1359,7 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
                   main_hand->category,
                   main_hand->definition_id)
             : nullptr;
-    const PlayerAttackAction action =
+    PlayerAttackAction action =
         retailPlayerAttackAction(main_hand_definition);
     const std::int32_t attack_range =
         playerAttackActionIsRanged(action)
@@ -1365,6 +1379,18 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
     if (!playerAttackActionIsSupported(action)) {
         player_attack_target_.cancel();
         return false;
+    }
+    player_increased_power_attack_targets_.clear();
+    if (player_increased_power_.redirectsRangedAttack(
+            player_data_.job(),
+            static_cast<std::int32_t>(action),
+            item_random_)) {
+        player_increased_power_attack_targets_ =
+            playerIncreasedPowerTargets();
+        if (!player_increased_power_attack_targets_.empty()) {
+            action = PlayerAttackAction::
+                increased_power_ranged_21;
+        }
     }
     if (!player_.beginAttack(
             action,
@@ -1411,7 +1437,12 @@ void WorldScene::handlePlayerAttackEvent(
         return;
     }
     if (playerAttackActionIsRanged(event.action)) {
-        launchPlayerRangedAttack(event);
+        if (event.action == PlayerAttackAction::
+                increased_power_ranged_21) {
+            launchPlayerIncreasedPowerAttack();
+        } else {
+            launchPlayerRangedAttack(event);
+        }
         return;
     }
     if (event.combo_step >= 0) {
@@ -1465,6 +1496,86 @@ void WorldScene::handlePlayerAttackEvent(
     }
     pending_player_attack_impact_target_id_ = enemy->id();
     applyPlayerAttackImpact(*enemy);
+}
+
+std::vector<std::int32_t>
+WorldScene::playerIncreasedPowerTargets() const {
+    constexpr std::int32_t kHalfExtent = 2000;
+    constexpr std::size_t kMaximumTargets = 100;
+    const WorldPosition source = player_.position();
+    const std::int32_t left = source.x - kHalfExtent;
+    const std::int32_t top = source.y - kHalfExtent;
+    const std::int32_t right = source.x + kHalfExtent;
+    const std::int32_t bottom = source.y + kHalfExtent;
+    std::vector<std::int32_t> targets;
+    targets.reserve(std::min(
+        scenario_world_.enemies().size(), kMaximumTargets));
+    for (const EnemyActor& enemy :
+         scenario_world_.enemies()) {
+        if (enemy.currentLife() <= 0) {
+            continue;
+        }
+        const WorldPosition position = enemy.position();
+        const ObjectBounds& judgement = enemy.judgement();
+        if (position.x + judgement.right < left ||
+            position.x + judgement.left > right ||
+            position.y + judgement.bottom < top ||
+            position.y + judgement.top > bottom) {
+            continue;
+        }
+        targets.push_back(enemy.characterNumber());
+        if (targets.size() == kMaximumTargets) {
+            break;
+        }
+    }
+    return targets;
+}
+
+void WorldScene::launchPlayerIncreasedPowerAttack() {
+    const InventoryItem* main_hand =
+        player_equipment_.item(
+            EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerIncreasedPowerAttackResult attack =
+        resolvePlayerIncreasedPowerAttack(
+            {
+                scenario_world_.localPlayerNumber(),
+                buildPlayerAttackImpactStats(
+                    scenario_world_.localPlayerNumber(),
+                    player_data_,
+                    player_equipment_,
+                    player_inventory_,
+                    item_database_,
+                    playerRuntimeProfile()),
+                player_increased_power_attack_targets_,
+            },
+            item_random_);
+    if (!attack.valid || !main_hand || !definition ||
+        itemCurrentDurability(
+            *main_hand, *definition) == 0) {
+        return;
+    }
+    for (const CombatEffectSpawnRequest& projectile :
+         attack.projectiles) {
+        RuntimeEffectActorSpawnRequest actor;
+        if (buildGenericEffectActor(
+                projectile,
+                player_.position(),
+                actor)) {
+            runtime_effects_.queueActor(
+                std::move(actor));
+        }
+    }
+    if (attack.consume_durability &&
+        !player_equipment_.decreaseDurability(
+            EquipmentSlot::main_hand, 1)) {
+        refreshPlayerAppearance();
+    }
 }
 
 void WorldScene::launchPlayerRangedAttack(

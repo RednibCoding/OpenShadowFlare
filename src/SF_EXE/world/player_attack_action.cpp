@@ -71,6 +71,7 @@ AttackCharts chartsForAction(PlayerAttackAction action) {
         return {19, 20};
     case PlayerAttackAction::ranged_19:
     case PlayerAttackAction::ranged_20:
+    case PlayerAttackAction::increased_power_ranged_21:
         return {10, -1};
     case PlayerAttackAction::combo_weapon_11:
     case PlayerAttackAction::combo_weapon_12:
@@ -87,12 +88,16 @@ AttackCharts chartsForAction(PlayerAttackAction action) {
 bool usesBasicCounterOrder(PlayerAttackAction action) {
     return action == PlayerAttackAction::basic ||
            action == PlayerAttackAction::ranged_19 ||
-           action == PlayerAttackAction::ranged_20;
+           action == PlayerAttackAction::ranged_20 ||
+           action ==
+               PlayerAttackAction::increased_power_ranged_21;
 }
 
 bool rangedAction(PlayerAttackAction action) {
     return action == PlayerAttackAction::ranged_19 ||
-           action == PlayerAttackAction::ranged_20;
+           action == PlayerAttackAction::ranged_20 ||
+           action ==
+               PlayerAttackAction::increased_power_ranged_21;
 }
 
 std::int32_t swingSoundCounter(PlayerAttackAction action) {

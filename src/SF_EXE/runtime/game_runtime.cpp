@@ -394,6 +394,7 @@ private:
                     input_.pointerPrimaryDown() &&
                         !notice_consumed,
                     input_.runTogglePressed(),
+                    input_.increasedPowerPressed(),
                     map_active ||
                             magic_active ||
                             status_active ||

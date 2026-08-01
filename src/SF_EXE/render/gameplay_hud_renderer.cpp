@@ -67,7 +67,10 @@ GameplayHudValues gameplayHudValues(
     MovementPace movement_pace,
     std::int32_t experience_threshold,
     std::int32_t current_life,
-    std::int32_t current_mana) {
+    std::int32_t current_mana,
+    bool increased_power_ready,
+    bool increased_power_activation_feedback,
+    std::int32_t increased_power_blink_counter) {
     return {
         player.level(),
         current_life,
@@ -77,6 +80,9 @@ GameplayHudValues gameplayHudValues(
         player.experience(),
         experience_threshold,
         movement_pace == MovementPace::run,
+        increased_power_ready,
+        increased_power_activation_feedback,
+        increased_power_blink_counter,
     };
 }
 
@@ -157,6 +163,19 @@ void renderGameplayHud(
             values.current_mana,
             values.maximum_mana));
 
+    if (values.increased_power_ready) {
+        const std::int32_t phase =
+            values.increased_power_blink_counter % 4;
+        const std::int32_t strength =
+            phase < 2 ? 1000 : 800;
+        renderer.drawPattern(
+            bar_patterns,
+            12,
+            {0, 0, 1000, 1000, 1000, 1000,
+             strength, strength, strength});
+    } else if (values.increased_power_activation_feedback) {
+        renderer.drawPattern(bar_patterns, 13);
+    }
     renderer.drawPattern(bar_patterns, 15);
     drawClippedBar(
         renderer,

@@ -483,6 +483,27 @@ bool testGameplayHudPackets() {
             20,
             25,
             true,
+            true,
+            false,
+            2,
+        });
+
+    RecordingBackend activationBackend;
+    osf::renderGameplayHud(
+        activationBackend,
+        bar,
+        {
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            1,
+            false,
+            false,
+            true,
+            0,
         });
     return check(
         osf::gameplayHudBarWidth(0, 100) == 0 &&
@@ -496,7 +517,7 @@ bool testGameplayHudPackets() {
             backend.rectangles[0].y == 412 &&
             backend.rectangles[0].width == 640 &&
             backend.rectangles[0].height == 68 &&
-            backend.patterns.size() == 10 &&
+            backend.patterns.size() == 11 &&
             backend.patterns[0].index == 7 &&
             backend.patterns[1].index == 8 &&
             backend.patterns[2].index == 10 &&
@@ -514,13 +535,23 @@ bool testGameplayHudPackets() {
             backend.patterns[7].draw.clip.x == 106 &&
             backend.patterns[7].draw.clip.y == 452 &&
             backend.patterns[7].draw.clip.width == 206 &&
-            backend.patterns[8].index == 15 &&
-            backend.patterns[9].index == 14 &&
-            backend.patterns[9].draw.clip.x == 530 &&
-            backend.patterns[9].draw.clip.y == 395 &&
-            backend.patterns[9].draw.clip.width == 87 &&
-            backend.patterns[9].draw.clip.height == 9,
-        "The gameplay HUD packets differ from FUN_004039f0.");
+            backend.patterns[8].index == 12 &&
+            backend.patterns[8].draw.red_strength == 800 &&
+            backend.patterns[8].draw.green_strength == 800 &&
+            backend.patterns[8].draw.blue_strength == 800 &&
+            backend.patterns[9].index == 15 &&
+            backend.patterns[10].index == 14 &&
+            backend.patterns[10].draw.clip.x == 530 &&
+            backend.patterns[10].draw.clip.y == 395 &&
+            backend.patterns[10].draw.clip.width == 87 &&
+            backend.patterns[10].draw.clip.height == 9,
+        "The gameplay HUD packets differ from FUN_004039f0.") &&
+        check(
+            activationBackend.patterns.size() == 8 &&
+                activationBackend.patterns[6].index == 13 &&
+                activationBackend.patterns[7].index == 15,
+            "The Increased Power activation marker differs from "
+            "FUN_004039f0.");
 }
 
 bool testTruncatedNjp() {

@@ -36,12 +36,16 @@ bool commonProjectileEffect(std::int32_t effect_number) {
            effect_number == 3 ||
            effect_number == 4 ||
            effect_number == 5 ||
-           effect_number == 7;
+           effect_number == 7 ||
+           effect_number == 9000;
 }
 
 std::int32_t effectResource(std::int32_t effect_number) {
     if (effect_number == 10015) {
         return 10000090;
+    }
+    if (effect_number == 9000) {
+        return 9000;
     }
     if (effect_number < 0 ||
         static_cast<std::size_t>(effect_number) >=
@@ -61,6 +65,8 @@ bool buildGenericEffectActor(
     actor = {};
     const bool sonic_blade =
         request.effect_number == 10015;
+    const bool increased_power =
+        request.effect_number == 9000;
     if (!request.valid ||
         (!commonProjectileEffect(request.effect_number) &&
          !sonic_blade)) {
@@ -79,9 +85,16 @@ bool buildGenericEffectActor(
     actor.target_mask = request.target_kind;
     actor.target_identifier =
         request.target_identifier;
+    actor.exact_target_only = increased_power;
     actor.home_toward_target =
         request.constructor_value_20 == 1 &&
         request.effect_number != 1;
+    actor.fixed_target_diagonal_approach =
+        increased_power;
+    actor.random_start_delay =
+        increased_power ? 15 : 0;
+    actor.target_approach_updates =
+        increased_power ? 10 : 0;
     actor.homing_turn_speed =
         actor.home_toward_target ? 360 : 0;
     actor.direction_radians =
@@ -103,24 +116,30 @@ bool buildGenericEffectActor(
     // FUN_0042a300 gives effect 10015 its own geometry and fixed clock;
     // the other supported effects use the common projectile descriptor.
     actor.judgement =
-        sonic_blade
+        increased_power
+            ? ObjectBounds{-5, -5, 5, 5}
+            : sonic_blade
             ? ObjectBounds{-80, -80, 79, 79}
             : ObjectBounds{-30, -30, 30, 30};
     actor.display_height =
         sonic_blade
             ? 155
             : request.constructor_value_7;
-    actor.lifetime = sonic_blade ? 7 : -1;
-    actor.collide_with_environment = true;
+    actor.lifetime = increased_power
+        ? 11
+        : sonic_blade ? 7 : -1;
+    actor.collide_with_environment =
+        !increased_power;
     actor.expire_on_environment_collision = true;
-    actor.target_collision_start = 0;
+    actor.target_collision_start =
+        increased_power ? 10 : 0;
     actor.expire_on_target = true;
     actor.remember_targets =
         request.constructor_value_22 == 1;
     actor.target_audio = {0, 20};
     actor.animation_chart = 0;
     actor.animation_direction =
-        request.effect_number == 1
+        request.effect_number == 1 || increased_power
             ? 8
             : request.packet_kind == 8
                 ? retailDirectionForAngle(

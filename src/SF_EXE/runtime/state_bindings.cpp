@@ -270,6 +270,9 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.toggle_player_run = [&world] {
         world.togglePlayerRun();
     };
+    hooks.activate_increased_power = [&world] {
+        world.activatePlayerIncreasedPower();
+    };
     hooks.update_world = [&audio, &world] {
         world.update();
         for (const std::int32_t sample :

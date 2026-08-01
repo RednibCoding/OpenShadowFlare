@@ -99,6 +99,7 @@ void WorldScene::clear() {
     player_energy_shield_.clear();
     player_magic_shield_.clear();
     player_counter_burst_.clear();
+    player_increased_power_.clear();
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
@@ -106,6 +107,7 @@ void WorldScene::clear() {
     player_.clear();
     has_player_ = false;
     pending_player_attack_impact_target_id_ = -1;
+    player_increased_power_attack_targets_.clear();
     next_ground_item_id_ = 0;
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
@@ -279,6 +281,31 @@ WorldScene::playerCounterBurstVisual() const {
 
 std::int32_t WorldScene::playerCounterBurstFrame() const {
     return player_counter_burst_.auraFrame();
+}
+
+bool WorldScene::playerIncreasedPowerReady() const {
+    return player_increased_power_.ready(
+        player_special_items_);
+}
+
+bool WorldScene::playerIncreasedPowerActive() const {
+    return player_increased_power_.active();
+}
+
+bool WorldScene::playerIncreasedPowerActivationFeedback() const {
+    return player_increased_power_.remainingUpdates() >
+        PlayerIncreasedPower::active_updates - 5;
+}
+
+const EffectVisualResource*
+WorldScene::playerIncreasedPowerVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerIncreasedPowerFrame() const {
+    return player_increased_power_.auraFrame();
 }
 
 std::size_t
@@ -488,6 +515,19 @@ void WorldScene::togglePlayerRun() {
     }
 }
 
+bool WorldScene::activatePlayerIncreasedPower() {
+    if (!has_player_ ||
+        !player_increased_power_.activate(
+            player_special_items_)) {
+        return false;
+    }
+    player_powerup_visual_.load(
+        data_root_ / "Player" / "Common",
+        "Powerup",
+        nullptr);
+    return true;
+}
+
 void WorldScene::update() {
     // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
     // next player update when no mana remains. Keeping this before the cast
@@ -504,6 +544,7 @@ void WorldScene::update() {
     player_energy_shield_.updateAura(has_player_);
     player_magic_shield_.updateAura(has_player_);
     player_counter_burst_.updateAura(has_player_);
+    player_increased_power_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -675,7 +716,8 @@ void WorldScene::update() {
     std::size_t companion_blocker_index = no_blocker;
     if (has_player_) {
         player_.setWalkingSpeedTier(
-            playerRuntimeProfile().walkingSpeedTier());
+            player_increased_power_.movementSpeedTier(
+                playerRuntimeProfile().walkingSpeedTier()));
         player_.update(
             scenario_world_.ground(),
             scenario_world_.objectMap(),
@@ -690,6 +732,9 @@ void WorldScene::update() {
         }
         updatePlayerTransportPresentation();
         updatePlayerResourceRates();
+        if (player_increased_power_.update()) {
+            pending_audio_samples_.push_back(76);
+        }
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {

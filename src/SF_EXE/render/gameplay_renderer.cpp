@@ -141,6 +141,16 @@ void renderPlayerPass(
         renderPlayerPowerupPass(
             renderer,
             world,
+            world.playerIncreasedPowerVisual(),
+            world.playerIncreasedPowerActive(),
+            world.playerIncreasedPowerFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
             world.playerBerserkerVisual(),
             world.playerBerserkerActive(),
             world.playerBerserkerFrame(),

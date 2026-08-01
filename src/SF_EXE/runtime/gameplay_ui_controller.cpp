@@ -209,6 +209,20 @@ bool GameplayUiController::update(
         return true;
     }
 
+    const bool increased_power_hud_click =
+        input.menu().pointer_primary_pressed &&
+        input.menu().pointer_x > 24 &&
+        input.menu().pointer_x < 59 &&
+        input.menu().pointer_y > 407 &&
+        input.menu().pointer_y < 431;
+    if (!world.conversationActive() &&
+        increased_power_hud_click &&
+        world.activatePlayerIncreasedPower()) {
+        audio.playGameplayEffect(58);
+        world.cancelPlayerMovement();
+        return true;
+    }
+
     const bool quest_notice_hidden =
         world.conversationActive() ||
         inventory_.anyItemPanelActive() ||

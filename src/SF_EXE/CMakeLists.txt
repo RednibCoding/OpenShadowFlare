@@ -159,6 +159,8 @@ add_library(
   world/player_data.cpp
   world/player_energy_shield.cpp
   world/player_heal_spell.cpp
+  world/player_increased_power.cpp
+  world/player_increased_power_attack.cpp
   world/player_item_controller.cpp
   world/player_level_up_notice.cpp
   world/player_magic_shield.cpp

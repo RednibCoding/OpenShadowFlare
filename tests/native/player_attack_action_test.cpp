@@ -106,9 +106,15 @@ bool testActionSelectionAndAudio() {
             osf::playerAttackActionIsSupported(
                 osf::PlayerAttackAction::ranged_20) &&
             osf::playerAttackActionIsRanged(
-                osf::PlayerAttackAction::ranged_20),
+                osf::PlayerAttackAction::ranged_20) &&
+            osf::playerAttackActionIsSupported(
+                osf::PlayerAttackAction::
+                    increased_power_ranged_21) &&
+            osf::playerAttackActionIsRanged(
+                osf::PlayerAttackAction::
+                    increased_power_ranged_21),
         "Weapon subtype five did not select supported ranged action "
-        "twenty.");
+        "twenty or leave its action-21 redirect supported.");
 }
 
 bool testRetailCombo(
@@ -361,10 +367,21 @@ bool testRangedActionTiming(
         }
     }
     osf::PlayerAttackActionController attack;
+    osf::PlayerAttackAnimationTiming redirected_timing;
     if (!check(
             marker >= 0 &&
+                osf::buildPlayerAttackAnimationTiming(
+                    animation,
+                    osf::PlayerAttackAction::
+                        increased_power_ranged_21,
+                    1,
+                    redirected_timing) &&
+                redirected_timing.first_chart == 10 &&
+                redirected_timing.first_frame_count ==
+                    timing.first_frame_count &&
                 attack.start(
-                    osf::PlayerAttackAction::ranged_20,
+                    osf::PlayerAttackAction::
+                        increased_power_ranged_21,
                     44,
                     5,
                     timing),

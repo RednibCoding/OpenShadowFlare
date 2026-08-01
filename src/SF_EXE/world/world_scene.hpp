@@ -31,6 +31,7 @@
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
 #include "player_energy_shield.hpp"
+#include "player_increased_power.hpp"
 #include "player_item_controller.hpp"
 #include "player_level_up_notice.hpp"
 #include "player_magic_shield.hpp"
@@ -131,6 +132,11 @@ public:
     bool playerCounterBurstActive() const;
     const EffectVisualResource* playerCounterBurstVisual() const;
     std::int32_t playerCounterBurstFrame() const;
+    bool playerIncreasedPowerReady() const;
+    bool playerIncreasedPowerActive() const;
+    bool playerIncreasedPowerActivationFeedback() const;
+    const EffectVisualResource* playerIncreasedPowerVisual() const;
+    std::int32_t playerIncreasedPowerFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
@@ -233,6 +239,7 @@ public:
     void advanceConversation();
     void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
+    bool activatePlayerIncreasedPower();
     void queueCombatEffect(
         const CombatEffectSpawnRequest& request);
     void update();
@@ -341,6 +348,9 @@ private:
         const PlayerSpellActionEvent& event);
     void launchPlayerRangedAttack(
         const PlayerAttackActionEvent& event);
+    void launchPlayerIncreasedPowerAttack();
+    std::vector<std::int32_t>
+        playerIncreasedPowerTargets() const;
     void applyPlayerAttackImpact(EnemyActor& enemy);
     void accountEnemyKill(
         const EnemyDamageReceiverState& enemy,
@@ -441,6 +451,7 @@ private:
     PlayerEnergyShield player_energy_shield_;
     PlayerMagicShield player_magic_shield_;
     PlayerCounterBurst player_counter_burst_;
+    PlayerIncreasedPower player_increased_power_;
     PlayerResourceRateController player_life_rate_;
     PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;
@@ -448,6 +459,8 @@ private:
     PlayerActor player_;
     bool has_player_ = false;
     std::int32_t pending_player_attack_impact_target_id_ = -1;
+    std::vector<std::int32_t>
+        player_increased_power_attack_targets_;
     std::int32_t next_ground_item_id_ = 0;
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;

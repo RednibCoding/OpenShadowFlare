@@ -118,7 +118,9 @@ void WorldScene::applyCompanionExplosionImpact() {
             kExplosionScalingSpell,
             player_equipment_,
             item_database_,
-            parameter_tables_);
+            parameter_tables_,
+            0,
+            player_increased_power_.active());
     CompanionExplosionPacketInput input;
     input.source_character_number =
         companion_.characterNumber();

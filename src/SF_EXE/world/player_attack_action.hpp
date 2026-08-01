@@ -27,6 +27,7 @@ enum class PlayerAttackAction : std::int32_t {
     combo_weapon_18 = 18,
     ranged_19 = 19,
     ranged_20 = 20,
+    increased_power_ranged_21 = 21,
 };
 
 enum class PlayerComboAttackKind {

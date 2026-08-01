@@ -251,11 +251,43 @@ bool testSaveTransitionsOwnModalInput() {
 #endif
 }
 
+bool testIncreasedPowerKeyEdge() {
+    osf::runtime::InputAdapter input{640, 480};
+    LwlEvent event{};
+    event.type = LWL_EVENT_KEY_DOWN;
+    std::strncpy(event.key, "p", sizeof(event.key) - 1u);
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    if (!check(
+            input.increasedPowerPressed(),
+            "P did not publish the Increased Power input edge.")) {
+        return false;
+    }
+    input.clearTransientInput();
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    if (!check(
+            !input.increasedPowerPressed(),
+            "A held P key repeated the Increased Power edge.")) {
+        return false;
+    }
+    event.type = LWL_EVENT_KEY_UP;
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    event.type = LWL_EVENT_KEY_DOWN;
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    return check(
+        input.increasedPowerPressed(),
+        "P did not re-arm after its key-up event.");
+}
+
 }  // namespace
 
 int main() {
     return testEscapeClosesPanelsBeforeSettings() &&
-                   testSaveTransitionsOwnModalInput()
+                   testSaveTransitionsOwnModalInput() &&
+                   testIncreasedPowerKeyEdge()
                ? 0
                : 1;
 }

@@ -25,6 +25,7 @@ struct GameplayFrameInput {
     std::int32_t pointer_y = 0;
     bool pointer_primary_down = false;
     bool run_toggle_pressed = false;
+    bool increased_power_pressed = false;
     std::int32_t world_view_left = 0;
     std::int32_t world_view_top = 0;
     std::int32_t world_view_right = 640;
@@ -56,6 +57,7 @@ struct GameplayStateHooks {
         choose_conversation_option;
     std::function<void()> advance_conversation;
     std::function<void()> toggle_player_run;
+    std::function<void()> activate_increased_power;
     std::function<void()> update_world;
 };
 

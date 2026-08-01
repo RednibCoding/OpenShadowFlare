@@ -23,6 +23,9 @@ void WorldScene::accountEnemyKill(
     if (accounting.companion_level_gained) {
         refreshCompanionRuntimeProfile(true);
     }
+    if (accounting.direct_local_kill) {
+        player_increased_power_.accountDirectLocalKill();
+    }
     trainActiveSustainedSpellsOnOwnedKill(
         player_magic_,
         player_moon_spell_,
@@ -94,6 +97,8 @@ WorldScene::playerDamageReceiverState() const {
         player_magic_shield_.active();
     state.counter_burst_active =
         player_counter_burst_.active();
+    state.increased_power_updates =
+        player_increased_power_.remainingUpdates();
 
     const PlayerDamagePresentation presentation =
         player_.damagePresentation();
