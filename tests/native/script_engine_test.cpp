@@ -168,6 +168,8 @@ bool testRetailRemoteTown() {
     std::int32_t player_level_queries = 0;
     std::int32_t companion_type_queries = 0;
     std::int32_t play_mode_queries = 0;
+    std::int32_t companion_status_queries = 0;
+    std::int32_t companion_status_type = -1;
     std::int32_t player_gold = 200;
     bool has_unidentified_items = true;
     std::array<std::int32_t, 6> repair_prices{{
@@ -284,6 +286,14 @@ bool testRetailRemoteTown() {
         {},
         {},
         {},
+        [&companion_status_queries, &companion_status_type](
+            std::int32_t type,
+            std::string& message) {
+            ++companion_status_queries;
+            companion_status_type = type;
+            message = "Kerberos\n\nLevel              1\n";
+            return true;
+        },
     });
     interpreter.bind(&script);
     if (!check(
@@ -857,11 +867,30 @@ bool testRetailRemoteTown() {
         return false;
     }
     if (!check(
-            interpreter.resume(3) ==
+            interpreter.resume(0) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.waitingForMessage() &&
+                messages.back().id == -1 &&
+                messages.back().text ==
+                    "Kerberos\n\nLevel              1\n" &&
+                !messages.back().selection_required &&
+                messages.back().character_number == 12010000 &&
+                companion_status_queries == 1 &&
+                companion_status_type == 0,
+            "Kerberos's Check Status choice did not run retail opcode 3.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
                     osf::script::StepResult::complete &&
                 !interpreter.waitingForMessage() &&
-                interpreter.readTemporaryFlag(1000001) == 3,
-            "Kerberos's QUIT choice was not written back to the script.")) {
+                interpreter.readTemporaryFlag(1000001) == -1 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12010000}),
+            "Closing Kerberos's status did not write its result and "
+            "release the actor through status one.")) {
         return false;
     }
 
@@ -912,7 +941,8 @@ bool testRetailRemoteTown() {
             interpreter.resume() ==
                     osf::script::StepResult::waiting_for_message &&
                 messages.back().id == 1000058 &&
-                !messages.back().selection_required,
+                !messages.back().selection_required &&
+                interpreter.readTemporaryFlag(1000001) == -1,
             "Harley's explanation did not advance to its second line.")) {
         return false;
     }
@@ -920,6 +950,7 @@ bool testRetailRemoteTown() {
             interpreter.resume() ==
                     osf::script::StepResult::complete &&
                 !interpreter.waitingForMessage() &&
+                interpreter.readTemporaryFlag(1000001) == -1 &&
                 native_commands.back() ==
                     std::make_pair(
                         std::int32_t{19},
@@ -2098,6 +2129,66 @@ bool testRetailInclusiveRandomCommandInventory() {
 #endif
 }
 
+bool testRetailCompanionStatusCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    std::map<std::int32_t, std::size_t> type_counts;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-3 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 3) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 2 &&
+                            command.operands[0].type == 1 &&
+                            command.operands[1].type == 4,
+                        "A shipped opcode-3 call changed shape.")) {
+                    return false;
+                }
+                ++call_count;
+                ++scenario_calls;
+                ++type_counts[command.operands[0].value];
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 6 && scenario_count == 3 &&
+            type_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {0, 1}, {1, 1}, {2, 1},
+                    {3, 1}, {4, 1}, {5, 1},
+                },
+        "The shipped opcode-3 inventory differs from the audited retail "
+        "scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailCompanionSwapCommandInventory() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -2176,6 +2267,7 @@ int main() {
                    testRetailArithmeticCommandInventory() &&
                    testRetailInclusiveRandomCommand() &&
                    testRetailInclusiveRandomCommandInventory() &&
+                   testRetailCompanionStatusCommandInventory() &&
                    testRetailCompanionSwapCommandInventory() &&
                    testMalformedScript()
                ? 0

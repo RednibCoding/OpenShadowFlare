@@ -302,6 +302,17 @@ new row, clears `+0x15c`, replaces the owned companion actor at the player, and
 sets its life to maximum. All six shipped types are selected by six calls in
 three scenarios.
 
+Opcode 3 at `0x0043167d` supplies the companion `Check Status` branch. It reads
+one constant companion type, uses that type's saved array level for
+`0x004136f0`, and formats the result into the normal actor speech buffer. The
+printed level and experience still come from the active record fields at
+`+0x154` and `+0x158`. Its cap is player level divided by three plus two,
+clamped to 35, with separate limit and maximum strings. The original display
+also reads profile `+0x54` under `M Defense` and `+0x44` under `M Evasion
+Rate`; these are magical hit rate and physical defense, not the fields the
+labels imply. All six shipped calls across three scenarios are covered by a
+catalog audit and live Remote Town interaction.
+
 The save path stores the current row before writing count, all levels, and all
 experiences, followed by player Land Mines at `+0x328`. The portable player and
 save owners now restore and rewrite this exact sequence, including progression

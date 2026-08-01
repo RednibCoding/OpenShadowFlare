@@ -4375,6 +4375,60 @@ bool testRetailRemoteTown() {
             "between companion choices.")) {
         return false;
     }
+    companion_world.chooseConversationOption(0);
+    if (!check(
+            companion_world.conversationActive() &&
+                !companion_world.conversationRequiresSelection() &&
+                companion_world.conversationActorId() == 10001 &&
+                companion_world.conversationText().find(
+                    "Gravity\n\nLevel") == 0 &&
+                companion_world.conversationText().find(
+                    "Attribute") != std::string::npos &&
+                companion_world.conversationText().find(
+                    "Attack Speed") != std::string::npos &&
+                companion_world.conversationText().find(
+                    "Experience") != std::string::npos,
+            "Gravity's Check Status choice did not open its retail "
+            "table-backed speech bubble.")) {
+        return false;
+    }
+    NpcRecordingBackend status_renderer;
+    status_renderer.speech = &companion_world.speechPatterns();
+    osf::renderWorld(
+        status_renderer,
+        companion_world,
+        500,
+        &font);
+    if (!check(
+            std::any_of(
+                status_renderer.text_calls.begin(),
+                status_renderer.text_calls.end(),
+                [&companion_world](const TextCall& call) {
+                    return call.text ==
+                        companion_world.conversationText();
+                }),
+            "Gravity's companion status text was not rendered in the "
+            "actor speech bubble.")) {
+        return false;
+    }
+    companion_world.advanceConversation();
+    if (!check(
+            !companion_world.conversationActive() &&
+                companion_world.conversationActorId() == -1,
+            "Closing Gravity's status did not release the actor through "
+            "the authored status-one branch.")) {
+        return false;
+    }
+    if (!check(
+            companion_world.commandWorldInteraction(
+                gravity_pointer.x,
+                gravity_pointer.y) &&
+                updateUntilConversation(companion_world, 5000) &&
+                companion_world.conversationRequiresSelection(),
+            "Gravity's companion menu could not be reopened after Check "
+            "Status.")) {
+        return false;
+    }
     const std::int32_t quit_x =
         choice_text->draw.x +
         quit->column * cell_width +

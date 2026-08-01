@@ -1,6 +1,7 @@
 #include "world_scene.hpp"
-#include "enemy_death_rewards.hpp"
+#include "companion_status_message.hpp"
 #include "core/retail_integer.hpp"
+#include "enemy_death_rewards.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
@@ -68,6 +69,15 @@ WorldScene::WorldScene()
           },
           [this]() {
               return item_random_.next();
+          },
+          [this](
+              std::int32_t companion_type,
+              std::string& message) {
+              return buildRetailCompanionStatusMessage(
+                  parameter_tables_,
+                  player_data_,
+                  companion_type,
+                  message);
           },
       }) {}
 

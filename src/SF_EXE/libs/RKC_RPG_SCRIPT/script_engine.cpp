@@ -110,7 +110,9 @@ void Interpreter::reset() {
     waiting_for_message_ = false;
     message_callback_pending_ = false;
     message_selection_pending_ = false;
+    message_result_pending_ = false;
     message_selection_operand_ = {};
+    message_result_operand_ = {};
     message_initial_selection_ = -1;
     current_character_number_ = -1;
     message_callback_character_number_ = -1;
@@ -126,7 +128,9 @@ StepResult Interpreter::startStatus(
     waiting_for_message_ = false;
     message_callback_pending_ = false;
     message_selection_pending_ = false;
+    message_result_pending_ = false;
     message_selection_operand_ = {};
+    message_result_operand_ = {};
     message_initial_selection_ = -1;
     message_callback_character_number_ = -1;
     current_character_number_ = -1;
@@ -141,7 +145,9 @@ StepResult Interpreter::startSentence(
     waiting_for_message_ = false;
     message_callback_pending_ = false;
     message_selection_pending_ = false;
+    message_result_pending_ = false;
     message_selection_operand_ = {};
+    message_result_operand_ = {};
     message_initial_selection_ = -1;
     message_callback_character_number_ = -1;
     current_character_number_ = character_number;
@@ -180,6 +186,14 @@ StepResult Interpreter::resume(std::int32_t selection) {
                    : run();
     }
     waiting_for_message_ = false;
+    if (message_result_pending_) {
+        if (!writeOperand(message_result_operand_, selection)) {
+            waiting_for_message_ = true;
+            return StepResult::waiting_for_message;
+        }
+        message_result_pending_ = false;
+        message_result_operand_ = {};
+    }
     if (message_selection_pending_) {
         const std::int32_t selected =
             selection >= 0
@@ -363,7 +377,38 @@ StepResult Interpreter::execute(const Command& command) {
             message_selection_pending_ = true;
             message_selection_operand_ = command.operands[1];
             message_initial_selection_ = initial_selection;
+        } else {
+            message_result_pending_ = true;
+            message_result_operand_ = command.operands[1];
         }
+        return StepResult::complete;
+    }
+    case 3: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::string text;
+        if (!hooks_.build_companion_status_message ||
+            !hooks_.build_companion_status_message(
+                readOperand(command.operands[0]), text)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (hooks_.show_message) {
+            hooks_.show_message({
+                -1,
+                std::move(text),
+                current_character_number_,
+                false,
+                -1,
+            });
+        }
+        waiting_for_message_ = true;
+        message_callback_pending_ = true;
+        message_callback_character_number_ =
+            current_character_number_;
+        message_result_pending_ = true;
+        message_result_operand_ = command.operands[1];
         return StepResult::complete;
     }
     case 10:

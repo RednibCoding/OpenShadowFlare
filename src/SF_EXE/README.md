@@ -422,6 +422,11 @@ active level, active experience, and its defeated countdown already live in
 the preserved player record. The following Table 60-sized save arrays retain
 level and experience for all six companions, and the scripted `Swap Dogs`
 choice rebuilds the selected PARTNER actor without hardcoded town logic.
+The companion `Check Status` branches are live too. Script opcode 3 builds the
+requested dog's profile from its saved level and the retail parameter tables,
+then shows the original multiline values in the normal actor speech bubble.
+All six shipped companion types use this shared path; even the retail screen's
+mislabeled magical-stat reads are kept faithfully.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

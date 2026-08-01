@@ -10,6 +10,7 @@
 #include "world/companion_attack_impact.hpp"
 #include "world/companion_explosion_action.hpp"
 #include "world/companion_profile.hpp"
+#include "world/companion_status_message.hpp"
 #include "world/companion_respawn.hpp"
 #include "world/companion_target_selector.hpp"
 #include "world/player_data.hpp"
@@ -222,6 +223,28 @@ int main() {
                 world.companion().animationChart() == 0,
             "The local player's owned companion was not created at "
             "the scenario entry.")) {
+        return 1;
+    }
+    std::string status_message;
+    if (!check(
+            osf::buildRetailCompanionStatusMessage(
+                tables,
+                world.playerData(),
+                0,
+                status_message,
+                &error) &&
+                status_message ==
+                    "Kerberos\n\n"
+                    "Level              1\n"
+                    "HP               400\n"
+                    "Attribute       Fire\n"
+                    "Attack            30  Defense           50\n"
+                    "Hit Rate         250  Evasion Rate      20\n"
+                    "M Defense         50  M Evasion Rate    50\n"
+                    "Attack Speed     128  Walking Speed    125\n"
+                    "Experience         0\n",
+            "Kerberos's opcode-3 status text does not match retail.")) {
+        std::cerr << error << '\n' << status_message;
         return 1;
     }
     CompanionPreviewBackend preview_backend{

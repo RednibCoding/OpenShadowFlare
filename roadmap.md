@@ -125,6 +125,13 @@ old dog and hide the newly owned one. All six shipped opcode-45 calls remain
 data-driven across their three scenarios, and a save/load regression keeps the
 selected dog and every inactive progression row intact.
 
+The companion `Check Status` choices now run opcode 3 as well. The selected
+Table 60 row and its saved level build the retail multiline status text, and
+the result stays an ordinary actor speech bubble rather than becoming a new
+menu. Closing it writes the command's result operand and follows the authored
+status-one release branch. All six calls across the three shipped scenarios
+remain script-driven, including retail's slightly odd magical-stat labels.
+
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
 updates, then returns the hero to the current scenario entry through a revive
@@ -1600,6 +1607,14 @@ PARTNER resource, and RGB strengths from Table 60. Tables 800 through 805 are
 summed through the saved companion level for movement and combat values.
 Kerberos therefore starts with the retail level-one profile rather than a
 copy of a town NPC.
+
+Script opcode 3 completes the visible `Check Status` branch for the same six
+profiles. It takes a companion type, rebuilds that row at its saved level, and
+formats the name, active level, HP, element, combat values, movement values,
+and experience state into the normal speech-bubble owner. The player-level
+cap still decides between a number, `Experience Limit`, and `Experience Max`.
+The portable formatter deliberately keeps the original executable's mislabeled
+magical-stat reads instead of silently correcting what players saw.
 
 The default follow half of `0x004622b0` is live too. A companion idles inside
 160 judgement units, waits five updates before leaving that close band, walks

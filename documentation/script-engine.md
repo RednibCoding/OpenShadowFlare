@@ -621,15 +621,32 @@ executable's message layout removes those markers, records the enclosed line
 and columns for hit testing, and writes the chosen range number before
 entering the actor's status-kind-one callback. Messages with initial option
 `-1` are chained informational speech instead: they have no selectable
-ranges and close without writing operand one. The portable interpreter and
-speech-bubble layout preserve that split.
+ranges and write `-1` to operand one when they close. The portable interpreter
+and speech-bubble layout preserve that split.
 The native Remote Town fixture walks to Gravity, opens his retail message,
 checks the initial red `QUIT` selection, moves the red highlight to
-`Check Status`, then hits the rendered `QUIT` range, writes option three, and
-verifies that the conversation releases the actor. Unselected ranges use the
-retail gray, and leaving all ranges keeps the most recent selection. This
-covers the actual world-to-render-to-interpreter path rather than only testing
-the marker parser by itself.
+`Check Status`, and opens the generated status speech before closing it through
+Gravity's authored status-one release branch. A second interaction hits the
+rendered `QUIT` range and writes option three. Unselected ranges use the retail
+gray, and leaving all ranges keeps the most recent selection. This covers the
+actual world-to-render-to-interpreter path rather than only testing the marker
+parser by itself.
+
+Opcode 3 is the companion status message. Its first operand is a constant
+companion type and its second is the writable close result. The handler at
+`0x0043167d` reads that type's saved level, rebuilds the profile from Table 60
+and table `800 + type`, and opens the resulting text through the same ordinary
+actor speech owner as opcode 2. Closing the bubble writes `-1` to the result
+and enters status kind one; the shipped companion sentences have already set
+their branch flag to two, so that callback releases the actor.
+
+There are only six opcode-3 calls in the shipped scripts, one for every
+companion type across three scenarios. The text uses the active companion's
+level and experience fields but the requested type's table-backed profile.
+The cap is `min(player level / 3 + 2, 35)`, producing `Experience Limit` at a
+non-final cap and `Experience Max` at 35. The executable also labels magical
+hit rate as `M Defense` and physical defense as `M Evasion Rate`; the portable
+formatter keeps that retail display bug.
 
 Harley's `Explanation` choice exercises the other mode-one path. Choosing
 option one shows `1000057` (“You found me finally.”), ordinary acknowledgement

@@ -479,10 +479,11 @@ markup, not part of the English message.
 
 Mode one also carries companion follow-up text with initial range `-1`.
 Those messages have no `~` spans and are acknowledged like ordinary speech;
-they do not write a choice result. Harley's `Explanation` branch uses this
-form for messages `1000057` and `1000058`, then reaches the same status-one
-release chain. A non-negative initial range is therefore part of the choice
-contract, not just a visual default.
+the empty range list makes `0x00457fa0` write `-1` through the supplied result
+pointer before the status-one callback. Harley's `Explanation` branch uses
+this form for messages `1000057` and `1000058`, then reaches the same
+status-one release chain. A non-negative initial range is therefore part of
+the choice contract, not just a visual default.
 
 Pointer handling at `0x00457fa0` replaces the current range only when
 `0x00457bb0` finds the pointer inside one of those spans. Moving away leaves
@@ -849,6 +850,23 @@ matching dog in town. The initializer uses judgement
 `[-80,-80,79,79]`, starts at the player's position, and retains the player as
 its owner. The portable profile and actor preserve all six shipped companion
 rows and all three PARTNER resource directories.
+
+Script opcode 3 enters at `0x0043167d`. It evaluates a companion type, stores
+the second operand for the eventual message-close result, reads that type's
+saved level from the Table 60-sized player array, and calls `0x00413830` plus
+`0x004136f0` to build the selected profile. The generated name and values are
+shown through the ordinary actor speech path. Its level and experience lines
+come from the active companion record at player offsets `+0x154` and `+0x158`,
+even when the requested profile belongs to another type.
+
+The experience cap is `min(player level / 3 + 2, 35)`. Reaching it prints
+`Experience Limit`, or `Experience   Max` when the cap is 35; otherwise the
+active experience value is printed. The instruction stream has a retail UI
+bug worth preserving: the `M Defense` value comes from profile offset `+0x54`
+(magical hit rate), while `M Evasion Rate` comes from `+0x44` (physical
+defense). Six shipped calls cover types zero through five once each in three
+scenarios, so the portable interpreter keeps the profile construction behind
+a typed world hook instead of learning about tables or player storage.
 
 The ordinary owner mode in `0x004622b0` measures judgement-bound distance to
 the player. Below 160 the companion requests idle action two and refreshes a

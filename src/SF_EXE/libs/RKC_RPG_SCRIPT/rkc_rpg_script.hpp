@@ -132,6 +132,9 @@ struct InterpreterHooks {
         std::int32_t,
         bool&)> query_item;
     std::function<bool(std::int32_t&)> next_random;
+    std::function<bool(
+        std::int32_t,
+        std::string&)> build_companion_status_message = {};
 };
 
 class Interpreter {
@@ -178,7 +181,9 @@ private:
     bool waiting_for_message_ = false;
     bool message_callback_pending_ = false;
     bool message_selection_pending_ = false;
+    bool message_result_pending_ = false;
     Operand message_selection_operand_;
+    Operand message_result_operand_;
     std::int32_t message_initial_selection_ = -1;
     std::int32_t current_character_number_ = -1;
     std::int32_t message_callback_character_number_ = -1;

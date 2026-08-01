@@ -130,6 +130,7 @@ add_library(
   world/companion_damage_receiver.cpp
   world/companion_explosion_action.cpp
   world/companion_profile.cpp
+  world/companion_status_message.cpp
   world/companion_respawn.cpp
   world/companion_target_selector.cpp
   world/combat_damage.cpp

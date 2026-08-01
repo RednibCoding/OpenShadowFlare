@@ -72,6 +72,13 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
               value = hooks_.next_random();
               return true;
           },
+          [this](
+              std::int32_t companion_type,
+              std::string& message) {
+              return hooks_.build_companion_status_message &&
+                     hooks_.build_companion_status_message(
+                         companion_type, message);
+          },
       }) {}
 
 bool ScenarioScriptRuntime::load(
