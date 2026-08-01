@@ -16,6 +16,17 @@ namespace {
 
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
+constexpr std::int32_t kMineCategory = 4;
+constexpr std::int32_t kMineDefinition = 1;
+
+bool belongsInBackpack(
+    std::int32_t category,
+    std::int32_t definition_id) {
+    // Retail routes Mine ownership to the player's dedicated counter before
+    // any ordinary container is considered.
+    return category != kMineCategory ||
+           definition_id != kMineDefinition;
+}
 
 std::int32_t initiallyIdentified(
     const ItemDefinition& definition) {
@@ -142,7 +153,8 @@ bool PlayerInventory::add(
 }
 
 bool PlayerInventory::store(InventoryItem item) {
-    if (item.quantity <= 0 ||
+    if (!belongsInBackpack(item.category, item.definition_id) ||
+        item.quantity <= 0 ||
         item.width <= 0 ||
         item.height <= 0) {
         return false;
@@ -205,7 +217,8 @@ bool PlayerInventory::add(
     std::int32_t height,
     std::int32_t durability,
     std::int32_t identified) {
-    if (quantity <= 0) {
+    if (!belongsInBackpack(category, definition_id) ||
+        quantity <= 0) {
         return false;
     }
 
@@ -363,6 +376,10 @@ InventoryPlacementResult PlayerInventory::place(
     InventoryItem item,
     std::int32_t grid_x,
     std::int32_t grid_y) {
+    if (!belongsInBackpack(
+            item.category, item.definition_id)) {
+        return {};
+    }
     item.grid_x = grid_x;
     item.grid_y = grid_y;
     if (!itemFitsGrid(item, grid_width, grid_height)) {

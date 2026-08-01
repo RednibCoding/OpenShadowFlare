@@ -726,11 +726,14 @@ Mine items are category four, definition one. Picking one up increments the
 separate counter while it is below the current maximum. It never enters the
 backpack. At maximum capacity the pickup is rejected through the normal world
 drop response, so the mine bounces and plays its landing sound instead of
-silently disappearing. The inventory panel shows the Mine icon whenever the
-count is nonzero, followed by the current count and the live maximum. The base
-maximum is ten; equipped instance word 84 raises it, while instance word 81
-raises mine damage. The current count is saved after the magic block in the
-retail `.Ssv` stream and survives portable save/load as well.
+silently disappearing. The backpack owner also rejects Mine instances at its
+add, automatic-store, and explicit-placement boundaries, so no alternate
+acquisition or UI path can turn that counter resource back into a grid item.
+The inventory panel shows the Mine icon whenever the count is nonzero,
+followed by the current count and the live maximum. The base maximum is ten;
+equipped instance word 84 raises it, while instance word 81 raises mine
+damage. The current count is saved after the magic block in the retail `.Ssv`
+stream and survives portable save/load as well.
 
 `Item.Ibn` gives the Mine definition the generic weight field value one, but
 retail does not multiply that field by the mine counter. Its live weight

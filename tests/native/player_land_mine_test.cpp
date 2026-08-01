@@ -117,6 +117,22 @@ bool testWorldMinePickup(
             "The retail mine definition or starter capacity differs.")) {
         return false;
     }
+    osf::PlayerInventory ownership_guard;
+    if (!check(
+            !ownership_guard.store(
+                osf::makeInventoryItem(*mine)) &&
+                !ownership_guard.add(*mine) &&
+                !ownership_guard
+                     .place(
+                         osf::makeInventoryItem(*mine),
+                         0,
+                         0)
+                     .accepted &&
+                ownership_guard.items().empty(),
+            "A Mine bypassed its dedicated counter and entered the "
+            "backpack owner.")) {
+        return false;
+    }
     const std::size_t backpack_size =
         world.playerInventory().items().size();
     for (std::int32_t pickup = 0; pickup < 5; ++pickup) {

@@ -1119,7 +1119,10 @@ sample 29, resource-1001 explosion, expanding 1002..1004 rings, and paired
 shared receiver/depth-sort boundaries. Mine pickups fill the separate counter
 up to the equipment-derived maximum and never enter the backpack. A pickup at
 capacity leaves the mine in the world through the usual bounce-and-landing
-response. The inventory's authored Mine icon and `current / maximum` readout,
+response. The backpack's add, automatic-store, and explicit-placement paths
+also reject Mine instances, preserving that ownership boundary even when a
+future acquisition path does not originate from a ground click. The
+inventory's authored Mine icon and `current / maximum` readout,
 base count, instance-word 84 capacity bonus, instance-word 81 damage bonus,
 and post-magic retail save field are all owned and tested, including older
 sparse portable saves. The generic Mine record says weight one, but retail's
