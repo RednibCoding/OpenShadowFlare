@@ -2,6 +2,7 @@
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
 #include "script/scenario_effect_command.hpp"
+#include "script/scenario_placed_effect_command.hpp"
 #include "vendor_stock_generator.hpp"
 
 #include <algorithm>
@@ -282,6 +283,16 @@ bool WorldScene::executeScriptNativeCommand(
         CombatEffectSpawnRequest request;
         if (!makeScenarioEffectRequest(
                 arguments, item_random_.next(), request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 36) {
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioPlacedEffectRequest(
+                arguments, request)) {
             return false;
         }
         queueCombatEffect(request);

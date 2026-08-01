@@ -1342,6 +1342,16 @@ presentation `21000..21003` or `21007..21009`. The request enters the existing
 scenarios retain the same shape; Near Remote Town's first periodic spawn
 sentence is covered directly.
 
+Opcode 36 at `0x0043332d` is reconstructed as the packetless sibling of that
+path. Seven evaluated operands create an owner-zero request with an explicit
+position, display height, chart direction, and `{0,0,right,bottom}` judgement;
+a negative direction becomes eight. The shared one-pass handler maps effects
+20007, 20008, and 20009 to OPTION resources 11000005, 11000006, and 11000007,
+then turns the lower-right values into point judgement
+`{right+1,bottom+1,right+1,bottom+1}`. All 353 shipped calls across 26
+scenarios retain the audited shape, and Near Remote Town's first six-effect
+periodic group runs through the live depth-sorted actor owner.
+
 The portable fresh-world path accepts scenario ID, entry value, and local
 player explicitly. The first cross-map fixture is Table 40 row one: scenario
 6, entry 4, key 16. It loads Wasteland of Pillars, `Map\f00_07.map`, position

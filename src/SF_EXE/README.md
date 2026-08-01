@@ -485,7 +485,9 @@ implementations:
 `WorldScene` is the public facade used by gameplay and rendering, but the work
 behind it is kept in focused pieces: loading, interaction, item preparation,
 script bridging, player appearance, actors, pointer selection, quests, and
-movement all have their own implementation units or objects. The executable
+movement all have their own implementation units or objects. Executable-owned
+native script actions use focused builders under `world/script/` before
+`WorldScene` hands their typed requests to the normal world owners. The
 runtime follows the same rule. Frame composition lives in `RuntimeRenderer`,
 gameplay panels in `GameplayUiController`, and state hook wiring in
 `state_bindings`; the main runtime is only responsible for lifecycle and the

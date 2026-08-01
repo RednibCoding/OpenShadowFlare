@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <iterator>
+#include <map>
 #include <numeric>
 #include <string>
 #include <unordered_map>
@@ -1672,6 +1673,150 @@ bool testRetailScenarioEffectCommand() {
 #endif
 }
 
+bool testRetailPlacedEffectCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path near_town =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(near_town)) {
+        return true;
+    }
+    osf::script::ScriptData near_town_script;
+    std::string error;
+    if (!near_town_script.load(near_town, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    osf::script::InterpreterHooks hooks;
+    hooks.read_operand = [](
+                             const osf::script::Operand& operand) {
+        if (operand.type == 6) {
+            return 111;
+        }
+        if (operand.type == 7) {
+            return 222;
+        }
+        return 0;
+    };
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&near_town_script);
+    const osf::script::StepResult near_town_result =
+        interpreter.startSentence(18, -1);
+    if (!check(
+            near_town_result ==
+                    osf::script::StepResult::complete &&
+                calls.size() == 1 && calls[0].first == 36 &&
+                calls[0].second ==
+                    std::vector<std::int32_t>{
+                        20009, 111, 222, 150, 1, 1, 1,
+                    },
+            "Opcode 36 did not evaluate Near Remote Town's second "
+            "authored effect sentence.")) {
+        return false;
+    }
+
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    std::map<std::int32_t, std::size_t> effects;
+    std::map<std::int32_t, std::size_t> directions;
+    std::map<std::int32_t, std::size_t> heights;
+    std::map<std::int32_t, std::size_t> right_bounds;
+    std::map<std::int32_t, std::size_t> bottom_bounds;
+    std::map<std::string, std::size_t> operand_shapes;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-36 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 36) {
+                    continue;
+                }
+                ++call_count;
+                ++scenario_calls;
+                std::string shape;
+                for (const osf::script::Operand& operand :
+                     command.operands) {
+                    shape += std::to_string(operand.type);
+                    shape += ',';
+                }
+                ++operand_shapes[shape];
+                if (command.operands.size() == 7 &&
+                    command.operands[0].type == 1) {
+                    ++effects[command.operands[0].value];
+                }
+                if (command.operands.size() == 7) {
+                    ++directions[command.operands[4].value];
+                    ++heights[command.operands[3].value];
+                    ++right_bounds[command.operands[5].value];
+                    ++bottom_bounds[command.operands[6].value];
+                }
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 353 && scenario_count == 26 &&
+            effects ==
+                std::map<std::int32_t, std::size_t>{
+                    {20007, 34},
+                    {20008, 34},
+                    {20009, 285},
+                } &&
+            directions ==
+                std::map<std::int32_t, std::size_t>{
+                    {-1, 68}, {1, 108}, {3, 48},
+                    {5, 48}, {7, 81},
+                } &&
+            heights ==
+                std::map<std::int32_t, std::size_t>{
+                    {0, 68}, {150, 285},
+                } &&
+            right_bounds ==
+                std::map<std::int32_t, std::size_t>{
+                    {-1, 96}, {0, 68}, {1, 189},
+                } &&
+            bottom_bounds == right_bounds &&
+            operand_shapes ==
+                std::map<std::string, std::size_t>{
+                    {"1,6,7,0,0,0,0,", 68},
+                    {"1,6,7,1,1,1,1,", 285},
+                },
+        "The shipped opcode-36 inventory differs from the audited "
+        "retail scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailInclusiveRandomCommand() {
     osf::script::ScriptData script = makeRandomCommandScript();
     if (!check(
@@ -1792,6 +1937,7 @@ int main() {
                    testRetailScenarioEntryAndCaptionCommands() &&
                    testRetailScenarioEntityOverrideCommand() &&
                    testRetailScenarioEffectCommand() &&
+                   testRetailPlacedEffectCommand() &&
                    testRetailInclusiveRandomCommand() &&
                    testRetailInclusiveRandomCommandInventory() &&
                    testMalformedScript()

@@ -313,6 +313,7 @@ services exercise them; unknown values still fail loudly.
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
+| 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
@@ -400,6 +401,22 @@ spawn sentence uses the position of object `10055000`, submits effect two,
 then follows it with a separately authored positional sound. The script
 library only evaluates the fourteen operands; the world owns packet
 construction, the random stream, and the effect runtime.
+
+Opcode 36 is the lighter packetless version used for placed scenery effects.
+Its seven operands are effect number, world X, world Y, display height,
+direction, judgement right, and judgement bottom. A negative direction becomes
+direction eight. The request has owner kind zero, an explicit origin, zero
+left/top bounds, no combat packet, and the same common constructor value 200.
+The one-pass owner adds one to the supplied lower-right coordinates and uses
+that result for all four edges of its point judgement rectangle.
+
+The shipped scripts contain 353 calls across 26 scenarios. Effects 20007 and
+20008 occur 34 times each and select OPTION resources 11000005 and 11000006;
+their omitted presentation values evaluate to height zero, direction eight,
+and zero-sized bounds. Effect 20009 occurs 285 times, selects resource
+11000007, uses height 150, and supplies directions one, three, five, or seven.
+Near Remote Town's sentence 18 is the first direct fixture, and its periodic
+status creates the six live visuals authored for that update.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its

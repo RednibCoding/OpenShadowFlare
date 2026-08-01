@@ -1076,6 +1076,22 @@ and constructor value 21 equal to 200 are fixed by the handler. The shipped
 catalog contains 411 calls in 33 scenarios and every call has exactly fourteen
 operands.
 
+The neighboring packetless placement command is opcode 36 at `0x0043332d`.
+It evaluates operands in the retail order 1, 2, 5, 6, 4, 3, then 0 and sends
+the same allocator a seven-value descriptor: effect number, explicit X/Y,
+display height, chart direction, and right/bottom judgement bounds. Negative
+directions are replaced with eight. Owner, source, target, speed, and angle
+fields are zero, instance is `-1`, constructor value 21 is 200, and the packet
+pointer is null. The judgement pointer contains `{0, 0, right, bottom}`.
+
+The common one-pass handler at `0x0042b860` uses the explicit origin for owner
+kind zero and turns the supplied lower-right bounds into the point judgement
+`{right+1,bottom+1,right+1,bottom+1}`. It runs chart zero for the selected
+direction's complete CAF lifetime. The
+effect switch maps 20007, 20008, and 20009 to OPTION resources 11000005,
+11000006, and 11000007. Those are the only opcode-36 effects in the shipped
+catalog: 353 calls in 26 scenarios, all with exactly seven operands.
+
 Object 200 and the Warehouse at local ID 300 are the first reconstructed
 type-zero pointer actions. The normal world pointer tests opaque cells in
 their static NJP or current CAF display, then uses the common judgement-box

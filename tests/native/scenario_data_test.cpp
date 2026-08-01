@@ -16,6 +16,7 @@
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
 #include "world/script/scenario_effect_command.hpp"
+#include "world/script/scenario_placed_effect_command.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>
@@ -119,6 +120,64 @@ bool testScenarioEffectCommand() {
             !osf::makeScenarioEffectRequest(
                 std::vector<std::int32_t>(13), 0, request),
         "Opcode 30 did not preserve its alternate impact family or "
+        "operand count.");
+}
+
+bool testScenarioPlacedEffectCommand() {
+    const std::vector<std::int32_t> arguments{
+        20009,
+        1234,
+        5678,
+        150,
+        -1,
+        -1,
+        1,
+    };
+    osf::CombatEffectSpawnRequest request;
+    if (!check(
+            osf::makeScenarioPlacedEffectRequest(
+                arguments, request),
+            "The retail placed-effect descriptor was rejected.")) {
+        return false;
+    }
+    if (!check(
+            request.valid && request.effect_number == 20009 &&
+                request.owner_kind == 0 &&
+                request.source_character_number == 0 &&
+                request.target_kind == 0 &&
+                request.target_identifier == 0 &&
+                request.constructor_value_6 == 0 &&
+                request.constructor_value_7 == 150 &&
+                request.direction_radians == 0.0 &&
+                request.has_explicit_origin &&
+                request.origin.x == 1234 &&
+                request.origin.y == 5678 &&
+                request.has_source_judgement &&
+                request.source_judgement.left == 0 &&
+                request.source_judgement.top == 0 &&
+                request.source_judgement.right == -1 &&
+                request.source_judgement.bottom == 1 &&
+                request.constructor_value_12 == 0 &&
+                !request.has_packet && request.packet_kind == 8 &&
+                request.instance_identifier == -1 &&
+                request.constructor_value_16 == 0 &&
+                request.constructor_value_17 == 0 &&
+                request.constructor_value_18 == 0 &&
+                request.constructor_value_19 == 0 &&
+                request.constructor_value_20 == 0 &&
+                request.constructor_value_21 == 200 &&
+                request.constructor_value_22 == 0,
+            "Opcode 36 did not reproduce the retail 22-field effect "
+            "request.")) {
+        return false;
+    }
+    return check(
+        osf::retailCombatEffectResourceId(20007) == 11000005 &&
+            osf::retailCombatEffectResourceId(20008) == 11000006 &&
+            osf::retailCombatEffectResourceId(20009) == 11000007 &&
+            !osf::makeScenarioPlacedEffectRequest(
+                std::vector<std::int32_t>(6), request),
+        "Opcode 36 did not preserve its retail OPTION resources or "
         "operand count.");
 }
 
@@ -2434,6 +2493,38 @@ bool testRetailScenarioObjectOverride() {
             osf::ScenarioEntityStateChannel::judgement),
     }};
     world.update();
+    const std::array<std::int32_t, 6> effect_directions{{
+        1, 1, 1, 5, 5, 7,
+    }};
+    const std::array<std::int32_t, 6> effect_bounds{{
+        2, 2, 2, 0, 0, 2,
+    }};
+    if (!check(
+            world.combatEffects().size() ==
+                effect_directions.size(),
+            "Near Remote Town did not create its first retail "
+            "placed-effect group.")) {
+        return false;
+    }
+    for (std::size_t index = 0;
+         index < effect_directions.size(); ++index) {
+        const osf::CombatEffectActor& effect =
+            world.combatEffects()[index];
+        const osf::ObjectBounds& bounds = effect.judgement();
+        if (!check(
+                effect.effectNumber() == 20009 &&
+                    effect.resourceId() == 11000007 &&
+                    effect.direction() == effect_directions[index] &&
+                    effect.displayHeight() == 150 &&
+                    bounds.left == effect_bounds[index] &&
+                    bounds.top == effect_bounds[index] &&
+                    bounds.right == effect_bounds[index] &&
+                    bounds.bottom == effect_bounds[index],
+                "A live opcode-36 effect lost its retail resource, "
+                "direction, height, or judgement.")) {
+            return false;
+        }
+    }
     first = findObject(1030);
     second = findObject(1031);
     const std::array<std::int32_t, 3> first_after{{
@@ -4471,6 +4562,7 @@ bool testRetailRemoteTown() {
 
 int main() {
     return testScenarioEffectCommand() &&
+                   testScenarioPlacedEffectCommand() &&
                    testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
                    testPlayerLevelUpNoticeLayout() &&

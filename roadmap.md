@@ -98,7 +98,12 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: skills, magic, and status effects
+## Current milestone: scenario coverage and the Episode 1 playthrough
+
+The player's 22 ordinary spell actions, Increased Power, and Land Mines are
+now reconstructed. Work has moved back to the script-driven scenario layer:
+each newly exercised opcode should unlock real Episode 1 behavior through the
+shared world owners, rather than adding map-specific shortcuts.
 
 The ordinary melee, basic ranged, and owned-companion encounter paths are now
 proven in the live outdoor world. The companion can acquire and attack enemies,
@@ -879,6 +884,13 @@ origin, combat-packet fields, and shared-random impact choice. This covers all
 411 shipped calls across 33 scenarios and lets Near Remote Town's authored
 spawn-and-sound sentences use the existing effect runtime instead of a
 scenario-specific visual shortcut.
+
+Its packetless sibling is connected as well. Opcode 36 evaluates seven values
+and creates the exact explicit-position one-pass request, including retail's
+negative-direction fallback and lower-right-plus-one point judgement. The three
+shipped effect numbers resolve to their real OPTION resources, all 353 calls
+across 26 scenarios keep their audited shape, and Near Remote Town's first
+six placed effects now enter the ordinary depth-sorted effect pass.
 
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
