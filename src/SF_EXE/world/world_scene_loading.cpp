@@ -194,6 +194,11 @@ bool WorldScene::loadInitialScenario(
         scenario_start.entry_value = world_state.entry_value;
     }
 
+    // Gameplay bootstrap sets runtime field +0x1288 after both the new-player
+    // and saved-player paths. It is transient UI/action state, not part of
+    // the saved spell arrays: every entry begins with normal attack selected.
+    player_magic_.setTargeting(true);
+
     if (!item_inventory_patterns_.load(data_root, error) ||
         !speech_patterns_.load(
             data_root / "System" / "Game" / "Pattern" /

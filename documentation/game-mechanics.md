@@ -143,6 +143,11 @@ drawn as its larger MagicIcon at y=382; ordinary entries sit at y=392.
 Clicking a learned entry selects it and clears normal-attack targeting.
 Clicking the final targeting icon does the reverse.
 
+Every entry into gameplay starts with that final normal-attack icon selected,
+whether the hero is new or was loaded from a save. This is transient command
+state rather than saved spell data, so a previously selected spell is not
+restored as the active command.
+
 ### Fire Ball
 
 With Fire Ball selected, right-clicking a pointed enemy consumes the command.

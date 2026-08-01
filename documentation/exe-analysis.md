@@ -2223,6 +2223,14 @@ icon selects normal attack targeting. `0x00447570` applies the same dynamic
 rectangles, selects a learned spell with sample 58, and makes spell selection
 and normal targeting mutually exclusive.
 
+Gameplay bootstrap `0x0041d970` writes one to player field `+0x1288` after
+both the new-player and saved-player initialization paths. The active spell at
+`+0x127c` is consequently left at `-1`: retail enters gameplay with the final
+normal-attack icon selected instead of restoring an active spell selection.
+This is runtime command state, separate from the saved availability, level,
+experience, and bar arrays. `WorldScene::loadInitialScenario` now applies the
+same bootstrap rule after either portable initialization path.
+
 The portable `GameplayMagic` state mirrors those page, hitbox, hover, and drag
 rules but does not own spell data. It emits assignment and selection intent
 to the runtime boundary, which mutates `PlayerMagic`; this keeps persistent

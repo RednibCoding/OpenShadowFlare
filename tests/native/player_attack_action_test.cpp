@@ -497,6 +497,13 @@ bool testLiveRightClickCombo(
         std::cerr << error << '\n';
         return false;
     }
+    if (!check(
+            world.playerMagic().targeting() &&
+                world.playerMagic().selectedSpell() == -1,
+            "Gameplay entry did not select retail's normal-attack "
+            "command.")) {
+        return false;
+    }
 
     const osf::ItemDefinition* one_handed = nullptr;
     for (const osf::ItemDefinition& definition :
@@ -519,7 +526,6 @@ bool testLiveRightClickCombo(
         return false;
     }
     world.refreshPlayerAppearance();
-    world.playerMagic().setTargeting(true);
     if (!check(
             world.commandPlayerMagic(480, 240) &&
                 world.playerMotion() == osf::PlayerMotion::attacking &&

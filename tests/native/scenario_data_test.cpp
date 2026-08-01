@@ -1662,6 +1662,8 @@ bool testWorldItemSaveRoundTrip() {
     if (!check(
             loaded &&
                 loaded_world.scenarioId() == 6 &&
+                loaded_world.playerMagic().targeting() &&
+                loaded_world.playerMagic().selectedSpell() == -1 &&
                 loaded_world.retailSaveWorldState().entry_value == 4 &&
                 loaded_world.playerWorldX() == 35105 &&
                 loaded_world.playerWorldY() == -6156 &&
@@ -1725,8 +1727,8 @@ bool testWorldItemSaveRoundTrip() {
                         .page(2)
                         .items()[0]
                         .grid_y == 0,
-            "World loading discarded backpack, belt, equipped, Warehouse, "
-            "or automatic items.")) {
+            "World loading discarded the default attack command, backpack, "
+            "belt, equipped, Warehouse, or automatic items.")) {
         std::cerr << error << '\n';
         return false;
     }
