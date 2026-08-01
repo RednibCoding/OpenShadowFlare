@@ -326,6 +326,9 @@ private:
         std::int32_t category,
         std::int32_t definition_id,
         bool& present) const;
+    bool queryScriptEnemyLifecycleState(
+        std::int32_t character_number,
+        std::int32_t& state) const;
     bool removeScriptItem(
         std::int32_t category,
         std::int32_t definition_id);

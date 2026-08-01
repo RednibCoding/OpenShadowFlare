@@ -79,6 +79,13 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
                      hooks_.build_companion_status_message(
                          companion_type, message);
           },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& state) {
+              return hooks_.query_enemy_lifecycle_state &&
+                     hooks_.query_enemy_lifecycle_state(
+                         character_number, state);
+          },
       }) {}
 
 bool ScenarioScriptRuntime::load(

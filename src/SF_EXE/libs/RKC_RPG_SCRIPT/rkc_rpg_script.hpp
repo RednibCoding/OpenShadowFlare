@@ -135,6 +135,9 @@ struct InterpreterHooks {
     std::function<bool(
         std::int32_t,
         std::string&)> build_companion_status_message = {};
+    std::function<bool(
+        std::int32_t,
+        std::int32_t&)> query_enemy_lifecycle_state = {};
 };
 
 class Interpreter {

@@ -326,6 +326,8 @@ services exercise them; unknown values still fail loudly.
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
 | 27 | `0x00432d05` | Draw an actor-anchored script message with evaluated offsets, color, and backing opacity |
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
+| 31 | `0x00432762` | Search an inclusive enemy-character range for the first registered active entry and write its absolute character number, or `-1` |
+| 32 | `0x004327c9` | Search an inclusive enemy-character range for the first registered inactive entry and write its absolute character number, or `-1` |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
 | 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
@@ -831,6 +833,22 @@ hard-coded enemy-name check. Red Goblin character `14010000` has status kind
 `4` at sentence 12. After its death animation and fade finish, the retail
 enemy owner invokes that status; its opcode 62 command changes quest zero from
 state one to state two and emits the completion cue.
+
+Enemy groups have a second script-facing state which is separate from their
+three visible, pointer, and judgement channels. Opcodes 31 and 32 evaluate an
+inclusive pair of absolute `14000000`-series character numbers and scan the
+scenario enemy registry in ascending order. Opcode 31 returns the first
+registered entry whose lifecycle value is one; opcode 32 returns the first
+whose value is zero. IDs which are not present in the current MCT are skipped,
+including for opcode 32, and either command writes `-1` when no entry matches.
+
+That lifecycle value follows the enemy owner rather than HP alone. Retail sets
+it to one when an enemy is activated and leaves it set while a zero-life enemy
+plays its death chart and 120-update fade. The death owner clears it only when
+that presentation expires, immediately before the matching status-kind-four
+callback. The portable world exposes the same lifecycle through a narrow
+interpreter hook, so group-clear and later encounter scripts do not need to
+know about `EnemyActor` or duplicate combat state.
 
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from

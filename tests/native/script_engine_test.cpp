@@ -114,6 +114,44 @@ osf::script::ScriptData makeArithmeticCommandScript() {
     return script;
 }
 
+osf::script::ScriptData makeEnemyLifecycleSearchScript() {
+    std::vector<std::uint8_t> bytes{
+        'S', 'c', 'e', 'n', 'a', 'S', 'c', 'r',
+        'i', 'p', 't', 'V', '0', '0', '0', '\0',
+    };
+    appendI32(bytes, 6);
+    for (std::int32_t index = 0; index < 6; ++index) {
+        appendI32(bytes, 1000000 + index);
+        appendI32(bytes, -1);
+    }
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    appendI32(bytes, 6);
+    const std::array<std::array<std::int32_t, 4>, 6> commands{{
+        {{31, 14000000, 14000005, 1000000}},
+        {{32, 14000000, 14000005, 1000001}},
+        {{31, 14000005, 14000005, 1000002}},
+        {{32, 14000005, 14000005, 1000003}},
+        {{31, 14000005, 14000004, 1000004}},
+        {{32, 14000002, 14000002, 1000005}},
+    }};
+    for (const auto& command : commands) {
+        appendI32(bytes, command[0]);
+        appendI32(bytes, 3);
+        appendI32(bytes, 1);
+        appendI32(bytes, command[1]);
+        appendI32(bytes, 1);
+        appendI32(bytes, command[2]);
+        appendI32(bytes, 4);
+        appendI32(bytes, command[3]);
+    }
+    osf::script::ScriptData script;
+    script.decode(bytes);
+    return script;
+}
+
 bool testRetailRemoteTown() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path path =
@@ -2115,6 +2153,145 @@ bool testRetailArithmeticCommands() {
         "remainder, or zero-divisor behavior.");
 }
 
+bool testRetailEnemyLifecycleSearchCommands() {
+    osf::script::ScriptData script =
+        makeEnemyLifecycleSearchScript();
+    if (!check(
+            script.sentences().size() == 1,
+            "The synthetic enemy-lifecycle search script did not "
+            "decode.")) {
+        return false;
+    }
+
+    const std::unordered_map<std::int32_t, std::int32_t> states{
+        {14000001, 0},
+        {14000003, 1},
+        {14000005, 0},
+    };
+    std::vector<std::int32_t> queries;
+    osf::script::InterpreterHooks hooks;
+    hooks.query_enemy_lifecycle_state =
+        [&states, &queries](
+            std::int32_t character_number,
+            std::int32_t& state) {
+            queries.push_back(character_number);
+            const auto found = states.find(character_number);
+            if (found == states.end()) {
+                return false;
+            }
+            state = found->second;
+            return true;
+        };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(0, -1) ==
+                    osf::script::StepResult::complete &&
+                interpreter.readTemporaryFlag(1000000) == 14000003 &&
+                interpreter.readTemporaryFlag(1000001) == 14000001 &&
+                interpreter.readTemporaryFlag(1000002) == -1 &&
+                interpreter.readTemporaryFlag(1000003) == 14000005 &&
+                interpreter.readTemporaryFlag(1000004) == -1 &&
+                interpreter.readTemporaryFlag(1000005) == -1 &&
+                queries == std::vector<std::int32_t>{
+                    14000000,
+                    14000001,
+                    14000002,
+                    14000003,
+                    14000000,
+                    14000001,
+                    14000005,
+                    14000005,
+                    14000002,
+                },
+            "Opcodes 31 and 32 did not preserve retail inclusive "
+            "searches, missing-entry skips, or first-match order.")) {
+        return false;
+    }
+
+    osf::script::Interpreter missing_registry;
+    missing_registry.bind(&script);
+    return check(
+        missing_registry.startSentence(0, -1) ==
+                osf::script::StepResult::unsupported_command &&
+            missing_registry.unsupportedOpcode() == 31,
+        "Opcode 31 ran without the scenario enemy registry.");
+}
+
+bool testRetailEnemyLifecycleSearchCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::map<std::int32_t, std::size_t> call_counts;
+    std::map<std::int32_t, std::size_t> scenario_counts;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the enemy-lifecycle "
+                "search audit.");
+        }
+        std::array<bool, 2> scenario_has_opcode{};
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 31 && command.opcode != 32) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 3 &&
+                            command.operands[0].type == 1 &&
+                            command.operands[1].type == 1 &&
+                            command.operands[2].type == 4 &&
+                            command.operands[0].value <=
+                                command.operands[1].value,
+                        "A shipped enemy-lifecycle search command "
+                        "changed shape or bounds.")) {
+                    return false;
+                }
+                ++call_counts[command.opcode];
+                scenario_has_opcode[
+                    static_cast<std::size_t>(command.opcode - 31)] =
+                    true;
+            }
+        }
+        for (std::size_t index = 0;
+             index < scenario_has_opcode.size();
+             ++index) {
+            if (scenario_has_opcode[index]) {
+                ++scenario_counts[
+                    31 + static_cast<std::int32_t>(index)];
+            }
+        }
+    }
+    return check(
+        call_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {31, 134}, {32, 34},
+                } &&
+            scenario_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {31, 90}, {32, 13},
+                },
+        "The shipped opcode-31-and-32 inventory differs from the "
+        "audited retail scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailArithmeticCommandInventory() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -2400,6 +2577,8 @@ int main() {
                    testRetailScenarioEffectCommand() &&
                    testRetailPlacedEffectCommand() &&
                    testRetailArithmeticCommands() &&
+                   testRetailEnemyLifecycleSearchCommands() &&
+                   testRetailEnemyLifecycleSearchCommandInventory() &&
                    testRetailArithmeticCommandInventory() &&
                    testRetailInclusiveRandomCommand() &&
                    testRetailInclusiveRandomCommandInventory() &&

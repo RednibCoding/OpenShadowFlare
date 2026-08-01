@@ -1192,6 +1192,25 @@ update outside object `10000202`; the same branch resets the sample-80 latch.
 An independently open right-side inventory remains active and the camera
 returns to its right-panel anchor.
 
+Opcodes 31 and 32 are the paired scenario-enemy registry searches at
+`0x00432762` and `0x004327c9`. Both evaluate an inclusive start and end
+character number, initialize their result to `-1`, and call the binary-search
+lookup at `0x00430770` for each number in ascending order. Missing entries are
+skipped. Opcode 31 stops at the first entry whose value at `+4` is one; opcode
+32 uses the first whose value is zero. The result is written through the third
+operand. All 134 opcode-31 calls across 90 shipped scenarios and all 34
+opcode-32 calls across 13 scenarios use the same type-one, type-one, type-four
+shape.
+
+The registry value is enemy lifecycle state, not current HP or an ordinary
+SCS flag. Enemy activation at `0x0045a140` writes one through `0x00430750`.
+The death owner at `0x0045bec0` keeps that value during chart three and its
+120-update fade, then writes zero as the enemy expires before invoking the
+status-kind-four callback at `0x004309a0`. The portable hook consequently
+reports one for a zero-life enemy until `EnemyActor::expired()` becomes true;
+only MCT enemies are registered, so an absent ID never behaves like an
+inactive enemy.
+
 The complete `0x00426200` call takes player number, scenario ID, entry value,
 an auxiliary transition flag, an optional explicit position, and an entry-key
 player override. With a nonnegative entry value, both the same-scenario fast

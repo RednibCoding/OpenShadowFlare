@@ -79,6 +79,12 @@ WorldScene::WorldScene()
                   companion_type,
                   message);
           },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& state) {
+              return queryScriptEnemyLifecycleState(
+                  character_number, state);
+          },
       }) {}
 
 

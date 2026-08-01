@@ -976,30 +976,14 @@ const ScenarioObjectActor* WorldScene::findScriptObject(
 
 EnemyActor* WorldScene::findScriptEnemy(
     std::int32_t character_number) {
-    std::vector<EnemyActor>& enemies =
-        scenario_world_.enemies();
-    const auto found = std::find_if(
-        enemies.begin(),
-        enemies.end(),
-        [character_number](const EnemyActor& enemy) {
-            return enemy.characterNumber() ==
-                   character_number;
-        });
-    return found == enemies.end() ? nullptr : &*found;
+    return scenario_world_.findEnemyByCharacterNumber(
+        character_number);
 }
 
 const EnemyActor* WorldScene::findScriptEnemy(
     std::int32_t character_number) const {
-    const std::vector<EnemyActor>& enemies =
-        scenario_world_.enemies();
-    const auto found = std::find_if(
-        enemies.begin(),
-        enemies.end(),
-        [character_number](const EnemyActor& enemy) {
-            return enemy.characterNumber() ==
-                   character_number;
-        });
-    return found == enemies.end() ? nullptr : &*found;
+    return scenario_world_.findEnemyByCharacterNumber(
+        character_number);
 }
 
 EnemyActor* WorldScene::findEnemy(std::int32_t id) {

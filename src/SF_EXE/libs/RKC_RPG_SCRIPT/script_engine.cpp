@@ -492,6 +492,44 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(3);
     case 30:
         return executeNative(14);
+    case 31:
+    case 32: {
+        if (command.operands.size() < 3) {
+            return StepResult::invalid_script;
+        }
+        if (!hooks_.query_enemy_lifecycle_state) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        const std::int32_t first =
+            readOperand(command.operands[0]);
+        const std::int32_t last =
+            readOperand(command.operands[1]);
+        const std::int32_t wanted_state =
+            command.opcode == 31 ? 1 : 0;
+        std::int32_t found_character = -1;
+        if (first <= last) {
+            std::int32_t character = first;
+            for (;;) {
+                std::int32_t state = 0;
+                if (hooks_.query_enemy_lifecycle_state(
+                        character, state) &&
+                    state == wanted_state) {
+                    found_character = character;
+                    break;
+                }
+                if (character == last) {
+                    break;
+                }
+                ++character;
+            }
+        }
+        if (!writeOperand(
+                command.operands[2], found_character)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 36:
         return executeNative(7);
     case 34: {

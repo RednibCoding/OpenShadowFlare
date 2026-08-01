@@ -197,6 +197,20 @@ bool WorldScene::readScriptWorldOperand(
     return false;
 }
 
+bool WorldScene::queryScriptEnemyLifecycleState(
+    std::int32_t character_number,
+    std::int32_t& state) const {
+    const EnemyActor* enemy =
+        findScriptEnemy(character_number);
+    if (!enemy) {
+        return false;
+    }
+    // Retail keeps the scenario registry active throughout the complete
+    // death presentation, then clears it when that presentation expires.
+    state = enemy->expired() ? 0 : 1;
+    return true;
+}
+
 bool WorldScene::writeScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t value) {

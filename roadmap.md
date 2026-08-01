@@ -924,6 +924,15 @@ order, and zero-divisor no-write path. Corpus coverage holds all 388 shipped
 calls across their original scenarios, giving later spawn and encounter
 sentences the calculations they expect before their native actions run.
 
+The paired enemy-group searches are reconstructed too. Opcodes 31 and 32 scan
+an inclusive authored range for the first registered active or inactive enemy,
+skip character numbers which do not exist in the current scenario, and write
+`-1` when there is no match. The world keeps a zero-life enemy active through
+its complete death chart and 120-update fade, just as retail does, and only
+publishes the inactive state when the actor expires. Corpus tests hold the 134
+active searches across 90 scenarios and 34 inactive searches across 13
+scenarios to their retail operand shape.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover
