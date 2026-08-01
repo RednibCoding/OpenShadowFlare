@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string_view>
 
 namespace osf {
 
@@ -20,6 +21,9 @@ constexpr std::int32_t playerJobValue(PlayerJob job) {
 std::int32_t retailScriptJobSelection(std::int32_t job);
 std::optional<PlayerJob> retailJobForScriptSelection(
     std::int32_t selection);
+std::string_view retailPlayerJobName(
+    std::int32_t job,
+    std::int32_t gender);
 
 }  // namespace osf
 

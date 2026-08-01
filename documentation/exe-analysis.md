@@ -94,6 +94,14 @@ State transitions:
 - State 1→2: Confirm a single-player or network mode
 - State 2→0: Return to menu
 
+`0x004239b0` copies each present save's plain 0x160-byte player record into the
+selection catalog. `0x00421e10` displays more than the name and level: it reads
+gender at `+0x18`, job at `+0x1c`, level at `+0x24`, current HP at `+0x34`,
+current MP at `+0x3c`, and experience at `+0xd8`. The row labels these as
+Level, Job, Sex, Name, HP, MP, and EXP. Job 9 is the only gendered job label
+(`Wizard` for stored gender 1, `Witch` for 0); the other shipped labels are
+Hunter, Warrior, and Mercenary.
+
 The visible loading screen is a sub-state of gameplay rather than top-level
 state 1. At application startup, the game decodes `Waiting.njp` patterns 0, 1,
 3, and 2 into cached DIBs. Initial single-player entry paints the Episode 1
@@ -1501,6 +1509,14 @@ need their gameplay owners.
 The executable registers `IDC_ARROW` once in the window class and contains no
 later `SetCursor` call. Hover, selection, and click state are therefore drawn
 as world feedback; the pointer itself remains the normal platform arrow.
+
+The three text buttons on the lower right are handled by `0x00445bd0`, not by
+the inventory window itself. Their inclusive rectangles are Menu
+`(589..639, 402..413)`, Status `(537..577, 420..437)`, and Item
+`(583..636, 429..448)`. Each click is consumed by the interface before world
+movement is considered. The same ownership continues through mouse release
+when an item is dropped out of the inventory; otherwise the held click becomes
+a movement command on the following update.
 
 `0x00416bb0` draws the ordinary gameplay feedback as four one-pixel lines.
 The configured range selects half-sizes `0`, `12`, `16`, `24`, or `48`; the

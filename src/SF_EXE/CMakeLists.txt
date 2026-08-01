@@ -251,8 +251,10 @@ add_library(
   osf_ui STATIC
   ui/companion_hud_input.cpp
   ui/conversation_layout.cpp
+  ui/gameplay_hud_input.cpp
   ui/player_level_up_notice_input.cpp
   ui/player_level_up_notice_layout.cpp
+  ui/pointer_input_guard.cpp
   ui/quest_notice_layout.cpp
 )
 add_library(OpenShadowFlare::Ui ALIAS osf_ui)

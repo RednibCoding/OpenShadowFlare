@@ -389,6 +389,8 @@ The first game-core slice covers:
 - new-character gender selection and portable 15-byte name entry
 - Online/Single and New/Join mode menus plus portable host-address entry
 - saved-game summary parsing, BMP previews, and Delete confirmation
+- complete saved-game row text from the player record: Level, Job, Sex, Name,
+  HP, MP, and EXP at the original cell positions
 - software drawing with the original Select and bitmap-font pattern sheets
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
@@ -462,6 +464,10 @@ rather than stretched. The HUD
 is a screen-space renderer outside the world camera and owns the lower input
 band. Retail registers the standard Windows arrow once and never calls
 `SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
+The Menu, Status, and Item labels now use `0x00445bd0`'s exact inclusive
+rectangles and open their real owners. Interface clicks are consumed before
+world commands, including every held update through release after dropping an
+inventory item onto the map.
 
 World feedback now follows `0x004165d0`, `0x0040ee70`, and `0x00416bb0`.
 Portable `RKC_RPGSCRN` tests the configured inclusive square against the

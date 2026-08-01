@@ -25,6 +25,7 @@ The portable executable already has a solid front half:
 - a backend-neutral graphics API with a 640×480 software renderer
 - the title screen, its smoke animation, music, fades, and menu sounds
 - new-character creation and the complete saved-game selection flow
+- full retail save-row summaries (Level, Job, Sex, Name, HP, MP, and EXP)
 - the original initial loading screen
 - Remote Town's ground, static objects, shadows, player sprite, and music
 - click-to-move movement, walk/run switching, matching animation, static
@@ -33,6 +34,7 @@ The portable executable already has a solid front half:
 - the shared Status/Magic window, derived character values, elemental display,
   four spell pages, drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
+- working Menu, Status, and Item HUD buttons with UI-owned item-drop clicks
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
 - the player's table-backed owned companion, including its PARTNER visual,

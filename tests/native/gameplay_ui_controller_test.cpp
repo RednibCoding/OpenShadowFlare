@@ -187,6 +187,52 @@ bool testEscapeClosesPanelsBeforeSettings() {
 #endif
 }
 
+bool testHudButtonsOpenRetailPanels() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    if (!std::filesystem::is_directory(
+            data_root / "Scenario" / "00000000")) {
+        return true;
+    }
+
+    osf::PlayerLoadRequest player;
+    player.name = "HUD Buttons";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(data_root, player, &error),
+            "The HUD-button fixture could not load Remote Town.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    Fixture fixture;
+    fixture.click(557, 428, world, player);
+    if (!check(
+            fixture.controller.status().active(),
+            "The STATUS HUD button did not open the Status panel.")) {
+        return false;
+    }
+    fixture.click(557, 428, world, player);
+    fixture.click(600, 438, world, player);
+    if (!check(
+            !fixture.controller.status().active() &&
+                fixture.controller.inventory().active(),
+            "The ITEM HUD button did not open the Inventory panel.")) {
+        return false;
+    }
+    fixture.click(610, 407, world, player);
+    return check(
+        fixture.controller.options().active() &&
+            !fixture.controller.inventory().active(),
+        "The MENU HUD button did not own input and open Settings.");
+#else
+    return true;
+#endif
+}
+
 bool testSaveTransitionsOwnModalInput() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -464,6 +510,7 @@ bool testScriptTransportClosesOutsidePoint() {
 
 int main() {
     return testEscapeClosesPanelsBeforeSettings() &&
+                   testHudButtonsOpenRetailPanels() &&
                    testSaveTransitionsOwnModalInput() &&
                    testIncreasedPowerKeyEdge() &&
                    testLandMineKeyEdge() &&

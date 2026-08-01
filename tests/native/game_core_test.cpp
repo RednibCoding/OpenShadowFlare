@@ -6,6 +6,8 @@
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 #include "ui/companion_hud_input.hpp"
+#include "ui/gameplay_hud_input.hpp"
+#include "ui/pointer_input_guard.hpp"
 
 #include <array>
 #include <cstdint>
@@ -612,6 +614,48 @@ bool testCompanionHudInput() {
         "movement.");
 }
 
+bool testGameplayHudInput() {
+    using osf::GameplayHudButton;
+    if (!check(
+            osf::gameplayHudButtonAtPointer(true, 589, 402) ==
+                    GameplayHudButton::options &&
+                osf::gameplayHudButtonAtPointer(true, 639, 413) ==
+                    GameplayHudButton::options &&
+                osf::gameplayHudButtonAtPointer(true, 537, 420) ==
+                    GameplayHudButton::status &&
+                osf::gameplayHudButtonAtPointer(true, 577, 437) ==
+                    GameplayHudButton::status &&
+                osf::gameplayHudButtonAtPointer(true, 583, 429) ==
+                    GameplayHudButton::inventory &&
+                osf::gameplayHudButtonAtPointer(true, 636, 448) ==
+                    GameplayHudButton::inventory &&
+                osf::gameplayHudButtonAtPointer(false, 600, 405) ==
+                    GameplayHudButton::none &&
+                osf::gameplayHudButtonAtPointer(true, 588, 402) ==
+                    GameplayHudButton::none &&
+                osf::gameplayHudButtonAtPointer(true, 578, 430) ==
+                    GameplayHudButton::none &&
+                osf::gameplayHudButtonAtPointer(true, 637, 440) ==
+                    GameplayHudButton::none,
+            "The lower-right HUD hitboxes differ from FUN_00445bd0.")) {
+        return false;
+    }
+
+    osf::PointerInputGuard guard;
+    guard.consumeUntilRelease(true);
+    if (!check(
+            guard.update(true) &&
+                guard.update(false) &&
+                !guard.update(false),
+            "A UI-owned pointer press leaked before its release.")) {
+        return false;
+    }
+    guard.consumeUntilRelease(false);
+    return check(
+        !guard.update(false),
+        "An already released pointer was incorrectly retained by UI.");
+}
+
 bool testGameplayClickAndHoldMovement() {
     std::int32_t movement_commands = 0;
     std::int32_t movement_cancels = 0;
@@ -912,6 +956,7 @@ int main() {
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
         !testCompanionHudInput() ||
+        !testGameplayHudInput() ||
         !testGameplayClickAndHoldMovement() ||
         !testGameplayOptionsMenu() ||
         !testGameplayDebugMenu()) {

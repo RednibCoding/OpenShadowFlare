@@ -31,4 +31,21 @@ std::optional<PlayerJob> retailJobForScriptSelection(
     }
 }
 
+std::string_view retailPlayerJobName(
+    std::int32_t job,
+    std::int32_t gender) {
+    switch (job) {
+    case playerJobValue(PlayerJob::hunter):
+        return "Hunter";
+    case playerJobValue(PlayerJob::warrior):
+        return "Warrior";
+    case playerJobValue(PlayerJob::spellcaster):
+        return gender == 1 ? "Wizard" : "Witch";
+    case playerJobValue(PlayerJob::mercenary):
+        return "Mercenary";
+    default:
+        return {};
+    }
+}
+
 }  // namespace osf
