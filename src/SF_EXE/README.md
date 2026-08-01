@@ -297,6 +297,11 @@ equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
 keeps `NO` selected initially, rejects insufficient Gold, and identifies every
 owned item only after payment. The identified flags and their raw retail words
 then survive the existing save path.
+Repair Items now follows the neighboring authored branch as well. Its seven
+live prices use the executable's Table 34 item-value formula and exact
+durability arithmetic. Active and alternate weapon sets stay in their retail
+equipment slots, backpack repair ignores non-gear categories, payment happens
+only after the script's Gold check, and repaired durability survives saving.
 The Mission List exposes that state through the original `Q` shortcut and
 Settings-menu row. Its 48 titles and per-mission description lines come from
 `Table.Tbd`; the portable screen keeps the retail two-page layout, closed and

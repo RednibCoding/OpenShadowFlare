@@ -1,6 +1,7 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <iostream>
@@ -84,6 +85,9 @@ bool testRetailRemoteTown() {
     std::int32_t play_mode_queries = 0;
     std::int32_t player_gold = 200;
     bool has_unidentified_items = true;
+    std::array<std::int32_t, 6> repair_prices{{
+        30, 10, 20, 15, 5, 40,
+    }};
     osf::script::Interpreter interpreter({
         [&external_values](const osf::script::Operand& operand) {
             if (operand.type == 6 &&
@@ -165,8 +169,26 @@ bool testRetailRemoteTown() {
                     local_player_has_unidentified_items:
                 value = has_unidentified_items ? 1 : 0;
                 return true;
+            case osf::script::ValueQuery::
+                    local_player_repair_price:
+                return false;
             }
             return false;
+        },
+        [&repair_prices](
+            osf::script::ValueQuery query,
+            std::int32_t index,
+            std::int32_t& value) {
+            if (query != osf::script::ValueQuery::
+                    local_player_repair_price ||
+                index < -1 || index > 4) {
+                return false;
+            }
+            value = repair_prices[
+                index < 0
+                    ? repair_prices.size() - 1u
+                    : static_cast<std::size_t>(index)];
+            return true;
         },
         {},
     });
@@ -426,6 +448,139 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    player_gold = 200;
+    has_unidentified_items = true;
+    const std::size_t repair_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(2) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 7 &&
+                messages.back().text.find("30 Gold") !=
+                    std::string::npos &&
+                messages.back().text.find("40 Gold") !=
+                    std::string::npos,
+            "Malse's Repair choice did not format the seven retail "
+            "repair prices.")) {
+        return false;
+    }
+    const osf::script::StepResult arms_repair_result =
+        interpreter.resume(0);
+    if (!check(
+            arms_repair_result ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                native_commands.size() == repair_command + 2 &&
+                native_commands[repair_command] ==
+                    std::make_pair(
+                        std::int32_t{9},
+                        std::vector<std::int32_t>{0}) &&
+                native_commands[repair_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{30}),
+            "Malse's Arms repair did not repair the retail equipment "
+            "group and spend its quoted Gold.")) {
+        return false;
+    }
+
+    repair_prices[1] = 0;
+    const std::size_t repaired_item_command = native_commands.size();
+    if (!check(
+            interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000016 &&
+                native_commands.size() == repaired_item_command,
+            "Malse did not reject an already repaired equipment group "
+            "without spending Gold.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014,
+            "Malse did not return from the already-repaired message.")) {
+        return false;
+    }
+
+    player_gold = 4;
+    const std::size_t poor_repair_command = native_commands.size();
+    if (!check(
+            interpreter.resume(4) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000015 &&
+                native_commands.size() == poor_repair_command,
+            "Malse repaired Leg Armor when the player could not afford "
+            "the quoted price.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014,
+            "Malse did not return from the insufficient-Gold message.")) {
+        return false;
+    }
+
+    player_gold = 200;
+    repair_prices[1] = 10;
+    const std::size_t all_repair_command = native_commands.size();
+    if (!check(
+            interpreter.resume(5) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                native_commands.size() == all_repair_command + 6 &&
+                std::equal(
+                    native_commands.begin() +
+                        static_cast<std::ptrdiff_t>(all_repair_command),
+                    native_commands.begin() +
+                        static_cast<std::ptrdiff_t>(all_repair_command + 5),
+                    std::array<std::pair<
+                        std::int32_t,
+                        std::vector<std::int32_t>>, 5>{{
+                        {9, {0}}, {9, {1}}, {9, {2}},
+                        {9, {3}}, {9, {4}},
+                    }}.begin()) &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{80}),
+            "Malse's All Equipped service did not repair every retail "
+            "group and charge their sum.")) {
+        return false;
+    }
+
+    const std::size_t backpack_repair_command = native_commands.size();
+    if (!check(
+            interpreter.resume(6) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                native_commands.size() == backpack_repair_command + 2 &&
+                native_commands[backpack_repair_command] ==
+                    std::make_pair(
+                        std::int32_t{9},
+                        std::vector<std::int32_t>{-1}) &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{40}),
+            "Malse's Non-Equipped service did not repair the backpack "
+            "and charge its quoted price.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(7) ==
+                    osf::script::StepResult::complete &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's Repair QUIT choice did not release the actor.")) {
+        return false;
+    }
     player_gold = 99;
     const std::size_t poor_identify_command = native_commands.size();
     if (!check(
@@ -748,6 +903,7 @@ bool testRetailOutdoorChestScript() {
             return true;
         },
         {},
+        {},
     });
     interpreter.bind(&script);
     const osf::script::StepResult result =
@@ -825,6 +981,7 @@ bool testRetailRedGoblinDeathStatus() {
             value = 0;
             return true;
         },
+        {},
         {},
     });
     interpreter.bind(&script);

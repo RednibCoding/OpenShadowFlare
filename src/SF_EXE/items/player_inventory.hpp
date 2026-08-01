@@ -9,6 +9,8 @@
 namespace osf {
 
 struct ItemDefinition;
+class ItemDatabase;
+class TableData;
 
 struct InventoryItem {
     std::int32_t category = -1;
@@ -55,6 +57,10 @@ public:
     bool identify(std::size_t item_index);
     std::int32_t identifyAll();
     bool hasUnidentifiedItems() const;
+    std::int32_t repairPrice(
+        const ItemDatabase& database,
+        const TableData& value_parameters) const;
+    std::int32_t repairAll(const ItemDatabase& database);
     InventoryPlacementResult place(
         InventoryItem item,
         std::int32_t grid_x,

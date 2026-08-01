@@ -944,7 +944,12 @@ follows its separate authored branch too: it scans every retail-owned item
 container, substitutes the flat 100-Gold price into the confirmation, keeps
 `NO` selected initially, handles insufficient funds and the already-known
 case, and updates every identified instance and save mirror after payment.
-Repair remains the next service slice behind Malse's final choice.
+Repair now completes Malse's final service choice. The script builds all seven
+prices through opcode 52, preserves the retail equipment groups including the
+alternate weapon set, handles zero-price and insufficient-Gold branches, and
+uses opcodes 9 and 54 for mutation and payment. Item values come from Table 34
+and the executable's wrapped integer arithmetic; repaired durability and both
+alternate equipment pointers survive the retail save stream.
 
 ### 3. Items, inventory, and equipment
 

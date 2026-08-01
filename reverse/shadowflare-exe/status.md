@@ -971,7 +971,32 @@ accessories, backpack items, and belt items. The portable owners mirror that
 change into raw word 48 for categories zero and one and word 47 for category
 two, preserving it through the existing save writer. If opcode 55 finds no
 unknown item, message `1000018` is shown and the service releases Malse without
-charging Gold. Repair is a separate opcode-52 branch and remains pending.
+charging Gold.
+
+Repair starts at sentence 117. Opcode 52 at `0x004310d7` maps selector zero to
+player pointers `+0x4f4` and `+0x50c` (active and alternate arms), one to
+`+0x4e8` (head), two to `+0x4ec` (body), three to `+0x4f8` and `+0x510`
+(active and alternate shields), four to `+0x4f0` (legs), and `-1` to the
+backpack at `+0x514`. Sentence 117 sums selectors zero through four for All
+Equipped, uses opcode 51 to substitute all seven values into message
+`1000014`, and initially selects `QUIT`. Sentence 75 maps choices to the
+individual repair branches; zero cost shows message `1000016`, insufficient
+Gold shows `1000015`, and success invokes opcode 9 at `0x0043234a` before
+opcode 54 spends the quoted amount. All Equipped invokes selectors zero
+through four; Non-Equipped invokes `-1`.
+
+`FUN_004667a0` computes one damaged item's price as
+`((maximum-current) * (FUN_004661c0(item, 0) / 10)) / maximum`, returning one
+when that division rounds to zero and returning zero for full durability.
+`FUN_00466800` restores current durability to maximum. `FUN_00467140` and
+`FUN_00467180` mutate and price only category-zero and category-one backpack
+items. The item-value path begins with the definition base price, applies
+Table 34 rows zero through seven to the absolute rolled elements and rows
+eight through 46 to the absolute 39 instance parameters, with weapon parameter
+16 using `abs(1-value)`, and preserves 32-bit wrapped arithmetic. The two
+alternate equipment pointers are part of the eleven-pointer retail save
+stream and are now retained as explicit equipment slots rather than opaque
+bytes.
 
 All seven records use the same type-one PEOPLE updater. Their final tail
 values account for the visible differences: runtime offset `+0xd4` permits

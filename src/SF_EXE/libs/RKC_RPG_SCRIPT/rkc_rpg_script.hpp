@@ -100,6 +100,7 @@ enum class ValueQuery {
     local_player_condition_maximum,
     local_player_gold,
     local_player_has_unidentified_items,
+    local_player_repair_price,
 };
 
 struct InterpreterHooks {
@@ -110,6 +111,10 @@ struct InterpreterHooks {
         std::int32_t,
         const std::vector<std::int32_t>&)> native_command;
     std::function<bool(ValueQuery, std::int32_t&)> query_value;
+    std::function<bool(
+        ValueQuery,
+        std::int32_t,
+        std::int32_t&)> query_indexed_value;
     std::function<bool(
         std::int32_t,
         std::int32_t&)> measure_character_distance;

@@ -299,6 +299,7 @@ interactions are portable so far.
 | 4 | `0x00432296` | Mark every equipped, backpack, and belt item as identified |
 | 5 | `0x0043222b` | Request one of the executable's numbered vendor inventories |
 | 6 | `0x004321e8` | Rebuild a numbered vendor inventory from a Table 32 stock profile |
+| 9 | `0x0043234a` | Repair one equipped item group, or the non-equipped backpack group for selector `-1` |
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
@@ -318,6 +319,7 @@ interactions are portable so far.
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 51 | `0x00432fed` | Install the twenty evaluated integer substitutions used by later message `%d` fields |
+| 52 | `0x004310d7` | Write the repair price for an evaluated equipment/backpack selector to an operand |
 | 53 | `0x00433923` | Write the local player's total Gold to an operand |
 | 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
 | 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
@@ -559,6 +561,22 @@ normal save keeps the result. If everything is already known, the script shows
 message `1000018` without opening another panel or charging Gold. This is a
 merchant service distinct from the Identify spell, which selects one backpack
 item and trains the spell.
+
+`Repair Items` continues through sentences 117 and 75 rather than opening a
+separate panel. Opcode 52 queries selectors zero through four for Arms, Head
+Armor, Body Armor, Shield, and Leg Armor; selector `-1` covers non-equipped
+items in the backpack. The script sums the first five values for All Equipped,
+inserts all seven prices into message `1000014`, and starts on `QUIT`.
+
+The groups come from executable ownership, not NPC-specific code. Arms include
+both active and alternate main-hand pointers, while Shield includes both
+off-hand pointers. The other three selectors address their one equipped slot.
+Non-Equipped scans only category-zero weapons and category-one armor in the
+backpack; belt and accessory items are not repairable. A zero price shows `It
+has been repaired`, insufficient Gold reuses message `1000015`, and a
+successful choice runs opcode 9 before opcode 54 spends exactly the displayed
+price. All Equipped invokes opcode 9 once for each of the five groups. Every
+branch returns to the newly priced Repair menu until `QUIT` releases Malse.
 
 Syria's new-game status follows messages `1000040` and `1000041`. Its callback
 starts quest zero with opcode 62 and selects that quest's notice with opcode

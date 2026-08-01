@@ -23,7 +23,7 @@ constexpr std::size_t kItemPayloadOffset =
     PlayerData::retail_record_size;
 constexpr std::int32_t kMaximumSerializedItems = 4096;
 
-constexpr std::array<EquipmentSlot, 9> kRetailEquipmentOrder{{
+constexpr std::array<EquipmentSlot, 11> kRetailEquipmentOrder{{
     EquipmentSlot::main_hand,
     EquipmentSlot::helmet,
     EquipmentSlot::body,
@@ -33,12 +33,11 @@ constexpr std::array<EquipmentSlot, 9> kRetailEquipmentOrder{{
     EquipmentSlot::accessory_2,
     EquipmentSlot::accessory_3,
     EquipmentSlot::accessory_4,
+    EquipmentSlot::alternate_main_hand,
+    EquipmentSlot::alternate_off_hand,
 }};
 
 struct ParsedSections {
-    bool has_item_stream = false;
-    std::size_t extra_equipment_begin = kItemPayloadOffset;
-    std::size_t extra_equipment_end = kItemPayloadOffset;
     std::size_t special_items_begin = kItemPayloadOffset;
     std::size_t special_items_end = kItemPayloadOffset;
     std::size_t end = kItemPayloadOffset;
@@ -245,13 +244,10 @@ bool skipOrRestoreEquipment(
     const ItemDatabase* item_database,
     std::int32_t player_level,
     PlayerEquipment* equipment,
-    ParsedSections& sections,
     std::string* error) {
-    for (std::size_t index = 0; index < 11; ++index) {
-        if (index == kRetailEquipmentOrder.size()) {
-            sections.extra_equipment_begin =
-                cursor.offset();
-        }
+    for (std::size_t index = 0;
+         index < kRetailEquipmentOrder.size();
+         ++index) {
         std::int32_t present = 0;
         if (!cursor.readI32(present) ||
             (present != 0 && present != 1)) {
@@ -269,9 +265,7 @@ bool skipOrRestoreEquipment(
         }
         InventoryItem item;
         InventoryItem* destination =
-            equipment && index < kRetailEquipmentOrder.size()
-                ? &item
-                : nullptr;
+            equipment ? &item : nullptr;
         if (!decodeItem(
                 cursor,
                 item_database,
@@ -300,7 +294,6 @@ bool skipOrRestoreEquipment(
             return false;
         }
     }
-    sections.extra_equipment_end = cursor.offset();
     return true;
 }
 
@@ -417,14 +410,12 @@ bool parseOwnedItems(
         return true;
     }
 
-    sections.has_item_stream = true;
     PayloadCursor cursor(payload, kItemPayloadOffset);
     if (!skipOrRestoreEquipment(
             cursor,
             item_database,
             player_level,
             equipment,
-            sections,
             error) ||
         !skipOrRestoreContainer(
             cursor,
@@ -634,19 +625,6 @@ bool replaceRetailOwnedItems(
                 error)) {
             return false;
         }
-    }
-    if (sections.has_item_stream) {
-        encoded.insert(
-            encoded.end(),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(
-                    sections.extra_equipment_begin),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(
-                    sections.extra_equipment_end));
-    } else {
-        appendI32(encoded, 0);
-        appendI32(encoded, 0);
     }
     if (!encodeContainer(
             encoded,

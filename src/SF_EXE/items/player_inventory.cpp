@@ -1,7 +1,9 @@
 #include "player_inventory.hpp"
 
+#include "item_condition.hpp"
 #include "item_database.hpp"
 #include "item_grid.hpp"
+#include "item_repair.hpp"
 
 #include <algorithm>
 #include <array>
@@ -323,6 +325,38 @@ bool PlayerInventory::hasUnidentifiedItems() const {
         [](const InventoryItem& item) {
             return item.identified == 0;
         });
+}
+
+std::int32_t PlayerInventory::repairPrice(
+    const ItemDatabase& database,
+    const TableData& value_parameters) const {
+    std::uint32_t price = 0;
+    for (const InventoryItem& item : items_) {
+        const ItemDefinition* definition =
+            database.find(item.category, item.definition_id);
+        if (definition) {
+            price += static_cast<std::uint32_t>(
+                retailItemRepairPrice(
+                    item, *definition, value_parameters));
+        }
+    }
+    return static_cast<std::int32_t>(price);
+}
+
+std::int32_t PlayerInventory::repairAll(
+    const ItemDatabase& database) {
+    std::int32_t repaired = 0;
+    for (InventoryItem& item : items_) {
+        const ItemDefinition* definition =
+            database.find(item.category, item.definition_id);
+        if (definition &&
+            itemCurrentDurability(item, *definition) !=
+                definition->maximum_durability &&
+            repairInventoryItem(item, *definition)) {
+            ++repaired;
+        }
+    }
+    return repaired;
 }
 
 InventoryPlacementResult PlayerInventory::place(

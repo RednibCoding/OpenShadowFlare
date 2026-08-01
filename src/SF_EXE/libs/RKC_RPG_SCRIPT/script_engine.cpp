@@ -370,6 +370,7 @@ StepResult Interpreter::execute(const Command& command) {
         return StepResult::complete;
     }
     case 5:
+    case 9:
     case 18:
     case 19:
     case 37:
@@ -452,6 +453,24 @@ StepResult Interpreter::execute(const Command& command) {
                 readOperand(command.operands[index]);
         }
         return StepResult::complete;
+    case 52: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_indexed_value ||
+            !hooks_.query_indexed_value(
+                ValueQuery::local_player_repair_price,
+                readOperand(command.operands[0]),
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[1], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 53:
     case 55: {
         if (command.operands.empty()) {

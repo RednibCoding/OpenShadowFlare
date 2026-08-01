@@ -50,6 +50,7 @@ add_library(
   items/item_grid.cpp
   items/item_information.cpp
   items/item_instance_factory.cpp
+  items/item_repair.cpp
   items/new_player_loadout.cpp
   items/player_belt.cpp
   items/player_equipment.cpp
@@ -63,6 +64,7 @@ target_link_libraries(
   osf_items
   PRIVATE
     OpenShadowFlare::RK_FUNCTION
+    OpenShadowFlare::RKC_RPG_TABLE
 )
 
 add_library(

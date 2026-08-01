@@ -27,6 +27,10 @@ struct ScenarioScriptRuntimeHooks {
         script::ValueQuery,
         std::int32_t&)> query_value;
     std::function<bool(
+        script::ValueQuery,
+        std::int32_t,
+        std::int32_t&)> query_indexed_value;
+    std::function<bool(
         std::int32_t,
         std::int32_t&)> measure_character_distance;
 };

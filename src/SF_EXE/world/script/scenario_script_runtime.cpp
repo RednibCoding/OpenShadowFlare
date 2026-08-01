@@ -43,6 +43,14 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
                      hooks_.query_value(query, value);
           },
           [this](
+              script::ValueQuery query,
+              std::int32_t index,
+              std::int32_t& value) {
+              return hooks_.query_indexed_value &&
+                     hooks_.query_indexed_value(
+                         query, index, value);
+          },
+          [this](
               std::int32_t character_number,
               std::int32_t& distance) {
               return hooks_.measure_character_distance &&

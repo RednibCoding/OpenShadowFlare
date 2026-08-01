@@ -292,6 +292,10 @@ private:
     bool queryScriptValue(
         script::ValueQuery query,
         std::int32_t& value) const;
+    bool queryScriptIndexedValue(
+        script::ValueQuery query,
+        std::int32_t index,
+        std::int32_t& value) const;
     bool measureScriptCharacterDistance(
         std::int32_t character_number,
         std::int32_t& distance) const;

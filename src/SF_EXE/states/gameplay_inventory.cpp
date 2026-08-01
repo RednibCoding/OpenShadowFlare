@@ -55,7 +55,7 @@ std::optional<EquipmentSlot> equipmentSlotAt(
     std::int32_t x,
     std::int32_t y) {
     for (std::size_t index = 0;
-         index < PlayerEquipment::slot_count;
+         index < PlayerEquipment::visible_slot_count;
          ++index) {
         const EquipmentSlot slot =
             static_cast<EquipmentSlot>(index);
@@ -101,6 +101,8 @@ EquipmentRegion GameplayInventory::equipmentRegion(
         return {440, 143, 1, 1};
     case EquipmentSlot::accessory_4:
         return {440, 183, 1, 1};
+    case EquipmentSlot::alternate_main_hand:
+    case EquipmentSlot::alternate_off_hand:
     case EquipmentSlot::count:
         return {};
     }

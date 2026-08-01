@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <utility>
 
 namespace osf {
@@ -70,6 +71,24 @@ std::int32_t scriptAudioDistance(
         static_cast<double>(first.y) - second.y;
     return static_cast<std::int32_t>(
         std::trunc(std::hypot(x, y)));
+}
+
+std::optional<EquipmentRepairGroup> equipmentRepairGroup(
+    std::int32_t selector) {
+    switch (selector) {
+    case 0:
+        return EquipmentRepairGroup::arms;
+    case 1:
+        return EquipmentRepairGroup::helmet;
+    case 2:
+        return EquipmentRepairGroup::body;
+    case 3:
+        return EquipmentRepairGroup::shields;
+    case 4:
+        return EquipmentRepairGroup::boots;
+    default:
+        return std::nullopt;
+    }
 }
 
 }  // namespace
@@ -262,6 +281,24 @@ bool WorldScene::executeScriptNativeCommand(
         player_equipment_.identifyAll();
         player_inventory_.identifyAll();
         player_belt_.identifyAll();
+        refreshPlayerRuntimeProfile();
+        return true;
+    }
+
+    if (opcode == 9) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        if (arguments[0] == -1) {
+            player_inventory_.repairAll(item_database_);
+        } else {
+            const std::optional<EquipmentRepairGroup> group =
+                equipmentRepairGroup(arguments[0]);
+            if (!group) {
+                return false;
+            }
+            player_equipment_.repair(*group, item_database_);
+        }
         refreshPlayerRuntimeProfile();
         return true;
     }
@@ -532,8 +569,38 @@ bool WorldScene::queryScriptValue(
                 ? 1
                 : 0;
         return true;
+    case script::ValueQuery::local_player_repair_price:
+        return false;
     }
     return false;
+}
+
+bool WorldScene::queryScriptIndexedValue(
+    script::ValueQuery query,
+    std::int32_t index,
+    std::int32_t& value) const {
+    if (!has_player_ ||
+        query != script::ValueQuery::local_player_repair_price) {
+        return false;
+    }
+    const TableData* value_parameters =
+        parameter_tables_.find(34);
+    if (!value_parameters) {
+        return false;
+    }
+    if (index == -1) {
+        value = player_inventory_.repairPrice(
+            item_database_, *value_parameters);
+        return true;
+    }
+    const std::optional<EquipmentRepairGroup> group =
+        equipmentRepairGroup(index);
+    if (!group) {
+        return false;
+    }
+    value = player_equipment_.repairPrice(
+        *group, item_database_, *value_parameters);
+    return true;
 }
 
 bool WorldScene::measureScriptCharacterDistance(

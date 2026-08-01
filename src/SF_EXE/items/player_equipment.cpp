@@ -1,7 +1,9 @@
 #include "player_equipment.hpp"
 
 #include "item_database.hpp"
+#include "item_condition.hpp"
 #include "item_instance_values.hpp"
+#include "item_repair.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -122,7 +124,10 @@ bool PlayerEquipment::decreaseDurability(
 
 std::int32_t PlayerEquipment::identifyAll() {
     std::int32_t identified = 0;
-    for (std::optional<InventoryItem>& item : slots_) {
+    for (std::size_t index = 0;
+         index < visible_slot_count;
+         ++index) {
+        std::optional<InventoryItem>& item = slots_[index];
         if (item) {
             identified += identifyInventoryItem(*item) ? 1 : 0;
         }
@@ -133,10 +138,80 @@ std::int32_t PlayerEquipment::identifyAll() {
 bool PlayerEquipment::hasUnidentifiedItems() const {
     return std::any_of(
         slots_.begin(),
-        slots_.end(),
+        slots_.begin() +
+            static_cast<std::ptrdiff_t>(visible_slot_count),
         [](const std::optional<InventoryItem>& item) {
             return item && item->identified == 0;
         });
+}
+
+std::int32_t PlayerEquipment::repairPrice(
+    EquipmentRepairGroup group,
+    const ItemDatabase& database,
+    const TableData& value_parameters) const {
+    const auto price = [this, &database, &value_parameters](
+                           EquipmentSlot slot) {
+        const InventoryItem* owned = item(slot);
+        const ItemDefinition* definition = owned
+            ? database.find(
+                  owned->category, owned->definition_id)
+            : nullptr;
+        return definition
+            ? retailItemRepairPrice(
+                  *owned, *definition, value_parameters)
+            : 0;
+    };
+    switch (group) {
+    case EquipmentRepairGroup::arms:
+        return wrappedAdd(
+            price(EquipmentSlot::main_hand),
+            price(EquipmentSlot::alternate_main_hand));
+    case EquipmentRepairGroup::helmet:
+        return price(EquipmentSlot::helmet);
+    case EquipmentRepairGroup::body:
+        return price(EquipmentSlot::body);
+    case EquipmentRepairGroup::shields:
+        return wrappedAdd(
+            price(EquipmentSlot::off_hand),
+            price(EquipmentSlot::alternate_off_hand));
+    case EquipmentRepairGroup::boots:
+        return price(EquipmentSlot::boots);
+    }
+    return 0;
+}
+
+std::int32_t PlayerEquipment::repair(
+    EquipmentRepairGroup group,
+    const ItemDatabase& database) {
+    const auto repair_slot = [this, &database](EquipmentSlot slot) {
+        std::optional<InventoryItem>& owned =
+            slots_[static_cast<std::size_t>(slot)];
+        const ItemDefinition* definition = owned
+            ? database.find(
+                  owned->category, owned->definition_id)
+            : nullptr;
+        if (!definition ||
+            itemCurrentDurability(*owned, *definition) ==
+                definition->maximum_durability) {
+            return 0;
+        }
+        return repairInventoryItem(*owned, *definition) ? 1 : 0;
+    };
+    switch (group) {
+    case EquipmentRepairGroup::arms:
+        return repair_slot(EquipmentSlot::main_hand) +
+               repair_slot(EquipmentSlot::alternate_main_hand);
+    case EquipmentRepairGroup::helmet:
+        return repair_slot(EquipmentSlot::helmet);
+    case EquipmentRepairGroup::body:
+        return repair_slot(EquipmentSlot::body);
+    case EquipmentRepairGroup::shields:
+        return repair_slot(EquipmentSlot::off_hand) +
+               repair_slot(EquipmentSlot::alternate_off_hand);
+    case EquipmentRepairGroup::boots:
+        return repair_slot(EquipmentSlot::boots);
+    }
+    return 0;
 }
 
 std::int32_t PlayerEquipment::totalWeight(
@@ -145,7 +220,7 @@ std::int32_t PlayerEquipment::totalWeight(
     const bool suppress_off_hand =
         offHandIsSuppressed(*this, database);
     for (std::size_t index = 0;
-         index < slots_.size();
+         index < visible_slot_count;
          ++index) {
         if (index ==
                 static_cast<std::size_t>(
@@ -188,7 +263,7 @@ PlayerEquipment::derivedParameterBonuses(
     const bool suppress_off_hand =
         offHandIsSuppressed(*this, database);
     for (std::size_t index = 0;
-         index < slots_.size();
+         index < visible_slot_count;
          ++index) {
         if (index ==
                 static_cast<std::size_t>(
@@ -227,7 +302,7 @@ std::int32_t PlayerEquipment::instanceParameterBonus(
     const bool suppress_off_hand =
         offHandIsSuppressed(*this, database);
     for (std::size_t index = 0;
-         index < slots_.size();
+         index < visible_slot_count;
          ++index) {
         if (index ==
                 static_cast<std::size_t>(
@@ -256,7 +331,7 @@ PlayerEquipment::conditionalInstanceParameterBonus(
     const bool suppress_off_hand =
         offHandIsSuppressed(*this, database);
     for (std::size_t index = 0;
-         index < slots_.size();
+         index < visible_slot_count;
          ++index) {
         if (index ==
                 static_cast<std::size_t>(
@@ -287,6 +362,7 @@ bool PlayerEquipment::accepts(
     const ItemDefinition& definition) {
     switch (slot) {
     case EquipmentSlot::main_hand:
+    case EquipmentSlot::alternate_main_hand:
         return definition.category == 0;
     case EquipmentSlot::accessory_1:
     case EquipmentSlot::accessory_2:
@@ -304,6 +380,7 @@ bool PlayerEquipment::accepts(
         return definition.category == 1 &&
                definition.subtype == 3;
     case EquipmentSlot::off_hand:
+    case EquipmentSlot::alternate_off_hand:
         return definition.category == 1 &&
                definition.subtype == 2;
     case EquipmentSlot::count:

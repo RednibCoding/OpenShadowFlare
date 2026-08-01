@@ -1,5 +1,6 @@
 #include "items/item_database.hpp"
 #include "items/item_instance_factory.hpp"
+#include "items/item_repair.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
@@ -294,6 +295,129 @@ int main() {
         items.find(1, 0);
     const osf::ItemDefinition* gold =
         items.find(4, 0);
+    const osf::TableData* repair_values = tables.find(34);
+    const osf::ItemDefinition* shield = nullptr;
+    for (const osf::ItemDefinition& definition :
+         items.definitions(1)) {
+        if (definition.subtype == 2 &&
+            definition.required_level <= male.level()) {
+            shield = &definition;
+            break;
+        }
+    }
+    osf::InventoryItem repair_dagger =
+        dagger
+            ? osf::makeInventoryItem(*dagger)
+            : osf::InventoryItem{};
+    if (dagger) {
+        repair_dagger.retail_state.resize(200);
+        repair_dagger.durability =
+            dagger->maximum_durability / 2;
+        writeU32(
+            repair_dagger.retail_state,
+            47u * 4u,
+            static_cast<std::uint32_t>(
+                repair_dagger.durability));
+    }
+    const std::int32_t expected_dagger_value =
+        dagger && repair_values
+            ? dagger->base_price + repair_values->value(24, 0)
+            : 0;
+    const std::int32_t expected_dagger_repair_price =
+        dagger
+            ? std::max(
+                  1,
+                  ((dagger->maximum_durability -
+                    repair_dagger.durability) *
+                   (expected_dagger_value / 10)) /
+                      dagger->maximum_durability)
+            : 0;
+    if (!check(
+            dagger && shield && repair_values &&
+                osf::retailItemValue(
+                    repair_dagger, *dagger, *repair_values) ==
+                    expected_dagger_value &&
+                osf::retailItemRepairPrice(
+                    repair_dagger, *dagger, *repair_values) ==
+                    expected_dagger_repair_price &&
+                osf::repairInventoryItem(
+                    repair_dagger, *dagger) &&
+                repair_dagger.durability ==
+                    dagger->maximum_durability &&
+                readU32(
+                    repair_dagger.retail_state,
+                    47u * 4u) ==
+                    static_cast<std::uint32_t>(
+                        dagger->maximum_durability),
+            "The retail item-value, repair-price, or durability mutation "
+            "formula differs from the executable.")) {
+        return 1;
+    }
+
+    osf::InventoryItem damaged_active = repair_dagger;
+    damaged_active.durability = dagger->maximum_durability / 2;
+    osf::InventoryItem damaged_alternate = repair_dagger;
+    damaged_alternate.durability = dagger->maximum_durability / 4;
+    osf::PlayerEquipment repair_equipment;
+    if (!check(
+            repair_equipment
+                    .place(
+                        osf::EquipmentSlot::main_hand,
+                        damaged_active,
+                        *dagger,
+                        male.level())
+                    .accepted &&
+                repair_equipment
+                    .place(
+                        osf::EquipmentSlot::alternate_main_hand,
+                        damaged_alternate,
+                        *dagger,
+                        male.level())
+                    .accepted &&
+                repair_equipment.repairPrice(
+                    osf::EquipmentRepairGroup::arms,
+                    items,
+                    *repair_values) ==
+                    osf::retailItemRepairPrice(
+                        damaged_active, *dagger, *repair_values) +
+                        osf::retailItemRepairPrice(
+                            damaged_alternate,
+                            *dagger,
+                            *repair_values) &&
+                repair_equipment.repair(
+                    osf::EquipmentRepairGroup::arms,
+                    items) == 2 &&
+                repair_equipment
+                        .item(osf::EquipmentSlot::main_hand)
+                        ->durability == dagger->maximum_durability &&
+                repair_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_main_hand)
+                        ->durability == dagger->maximum_durability,
+            "The Arms repair group did not include both retail weapon "
+            "sets.")) {
+        return 1;
+    }
+
+    osf::PlayerInventory repair_inventory;
+    const std::int32_t damaged_price =
+        osf::retailItemRepairPrice(
+            damaged_active, *dagger, *repair_values);
+    if (!check(
+            repair_inventory.store(damaged_active) &&
+                repair_inventory.add(*tablet) &&
+                repair_inventory.repairPrice(
+                    items, *repair_values) == damaged_price &&
+                repair_inventory.repairAll(items) == 1 &&
+                repair_inventory.items().size() == 2 &&
+                repair_inventory.items()[0].durability ==
+                    dagger->maximum_durability &&
+                repair_inventory.items()[1].category == 3,
+            "Non-Equipped repair did not limit itself to damaged weapons "
+            "and armor in the backpack.")) {
+        return 1;
+    }
+
     osf::PlayerInventory saved_inventory;
     osf::PlayerEquipment saved_equipment;
     osf::PlayerBelt saved_belt;
@@ -337,6 +461,20 @@ int main() {
                         osf::EquipmentSlot::body,
                         osf::makeInventoryItem(*leather_cloth),
                         *leather_cloth,
+                        male.level())
+                    .accepted &&
+                saved_equipment
+                    .place(
+                        osf::EquipmentSlot::alternate_main_hand,
+                        repair_dagger,
+                        *dagger,
+                        male.level())
+                    .accepted &&
+                saved_equipment
+                    .place(
+                        osf::EquipmentSlot::alternate_off_hand,
+                        osf::makeInventoryItem(*shield),
+                        *shield,
                         male.level())
                     .accepted &&
                 saved_belt
@@ -399,6 +537,22 @@ int main() {
                 restored_equipment
                         .item(osf::EquipmentSlot::body)
                         ->identified == 1 &&
+                restored_equipment.item(
+                    osf::EquipmentSlot::alternate_main_hand) &&
+                restored_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_main_hand)
+                        ->definition_id == dagger->id &&
+                restored_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_main_hand)
+                        ->durability == dagger->maximum_durability &&
+                restored_equipment.item(
+                    osf::EquipmentSlot::alternate_off_hand) &&
+                restored_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_off_hand)
+                        ->definition_id == shield->id &&
                 restored_belt.itemAt(2, 0) &&
                 restored_belt.itemAt(2, 0)->category == 3 &&
                 restored_belt.itemAt(2, 0)->definition_id == 0 &&

@@ -537,6 +537,23 @@ identifies every eligible owned item in one pass. The script has distinct
 branches for insufficient Gold and for a character whose items are already
 identified.
 
+### Merchant repairs
+
+Malse's post–Red Goblin menu also offers the retail Repair Items service. It
+quotes Arms, Head Armor, Body Armor, Shield, Leg Armor, All Equipped Items, and
+Non-Equipped Items without opening another inventory surface. Arms and Shield
+include both active and alternate weapon sets; Non-Equipped means repairable
+weapons and armor in the backpack only.
+
+Retail derives each price from the item's full generated value and Table 34:
+`(missing durability * (item value / 10)) / maximum durability`. Integer
+division is used throughout, and a damaged item whose result rounds to zero
+still costs one Gold. A fully repaired item contributes zero. Successful
+payment restores current durability to the definition's maximum and updates
+the same raw item-instance word written to a retail save. The script handles
+already-repaired and insufficient-Gold choices before it asks the item owners
+to mutate anything.
+
 ## Character Stats
 
 ### Primary Stats

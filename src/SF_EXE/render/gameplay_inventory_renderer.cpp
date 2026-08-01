@@ -171,7 +171,7 @@ void renderGameplayInventory(
         224);
 
     for (std::size_t index = 0;
-         index < PlayerEquipment::slot_count;
+         index < PlayerEquipment::visible_slot_count;
          ++index) {
         const EquipmentSlot slot =
             static_cast<EquipmentSlot>(index);

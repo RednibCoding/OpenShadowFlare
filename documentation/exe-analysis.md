@@ -1155,6 +1155,21 @@ evaluated target; Malse deliberately ignores that turn request. Native action
 action 19 releases it. Keeping actions 18 and 21 separate is important:
 scripts may suspend an actor without changing its direction.
 
+Malse's Repair branch also exposed the two otherwise hidden weapon-set
+pointers. Opcode 52 at `0x004310d7` prices active and alternate main hands as
+one Arms group and active and alternate off hands as one Shield group; the
+other equipped selectors each own one slot. Selector `-1` walks the backpack
+but accepts only category-zero weapons and category-one armor. Opcode 9 at
+`0x0043234a` mutates those same groups. The alternate pointers are serialized
+as entries ten and eleven of the equipment save stream, after the five visible
+gear and four accessory pointers.
+
+The per-item helper at `0x004667a0` uses the Table 34 weighted item value,
+divides it by ten, scales it by missing durability over maximum durability,
+and clamps a nonzero repair to at least one Gold. `0x00466800` restores the
+instance durability. The backpack sum and mutation loops at `0x00467180` and
+`0x00467140` deliberately ignore accessories, medicine, Gold, and belt items.
+
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
 and 1 are the base body and shadow, while equipped items select additional
