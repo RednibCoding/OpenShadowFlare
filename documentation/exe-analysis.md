@@ -1179,6 +1179,14 @@ Only then does it reach the condition/timed-effect branch. The first changed
 owner consumes the concrete backpack or belt item and plays sample 16; full or
 dead targets leave it untouched.
 
+The final branch is element alignment rather than a temporary status timer.
+White Medicine writes zero to runtime offsets `+0x74/+0x78` when needed.
+`0x0044fd10` moves those axes toward one of eight fixed element anchors by the
+definition's 4,000-unit step, snapping at the final step and using x87
+cosine/sine truncation otherwise. Those runtime fields are record offsets
+`0x64/0x68`; the Status marker, affinity builder, combat packets, and ordinary
+save stream already share them.
+
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
 and 1 are the base body and shadow, while equipped items select additional

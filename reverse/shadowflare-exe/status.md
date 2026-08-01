@@ -484,7 +484,16 @@ offset `+0x14` plus offset `+0x18` percent of maximum, clamped to maximum. This
 is the Meat family in `Item.Ibn`. A full, absent, or defeated companion does
 not consume the item. Any successful player or companion restoration jumps
 to the common sample-16/consume result before the later condition branch.
-Condition clearing and timed effects remain pending.
+The remaining condition branch is persistent, not timed. Definition effect
+`-2` clears player offsets `+0x74/+0x78`. Effects zero through seven call
+`FUN_0044fd10` at `0x0044fd10` with the definition value (4,000 for the shipped
+medicines). Its anchors are `(0,20000)`, `(0,-20000)`, `(-20000,0)`,
+`(20000,0)`, `(14140,-14140)`, `(-14140,14140)`, `(-14140,-14140)`, and
+`(14140,14140)`. It snaps when the truncated Euclidean distance is no greater
+than the step; otherwise it adds the truncated cosine/sine projection. The
+runtime offsets correspond to player-record offsets `0x64/0x68`, so normal
+retail saves preserve the result. An unchanged point does not consume the
+medicine.
 
 New-character equipment and owned items now follow `0x00440f70` as well.
 Category one definition zero is equipped in the body slot. Category-three

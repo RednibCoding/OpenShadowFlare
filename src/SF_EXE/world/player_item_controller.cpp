@@ -78,9 +78,14 @@ bool applyMedicine(
         return true;
     }
 
-    // White and elemental medicines continue into the condition/timed
-    // effect owner only after neither player nor companion restoration
-    // changed anything.
+    if (definition->consumable_effect == -2) {
+        return targets.player.clearElementCondition();
+    }
+    if (definition->consumable_effect != -1) {
+        return targets.player.applyElementMedicine(
+            definition->consumable_effect,
+            definition->consumable_effect_value);
+    }
     return false;
 }
 

@@ -566,8 +566,17 @@ Only when neither player pool changed does the command try the owned companion.
 Meat, Quality Meat, High Quality Meat, and Excellent Quality Meat restore their
 Table-backed flat companion-life values. The companion must be alive and below
 maximum life; food used on a full or defeated companion remains in its owner
-and produces no use sound. Condition-clearing and timed elemental medicines
-continue after this same priority chain and are not reconstructed yet.
+and produces no use sound. Condition and elemental medicines continue after
+this same priority chain.
+
+White Medicine resets the player's two saved element axes to `(0,0)`. Fire,
+Water, Earth, Thunder, Holy, Dark, Gel, and Metal Medicine each move that point
+4,000 units toward their fixed retail element anchor, snapping exactly to the
+anchor when it is closer than one step. These are persistent element-alignment
+changes rather than timed buffs. Using a medicine that cannot move or clear
+the point leaves the item untouched. The Status marker, eight displayed
+affinities, offensive and defensive combat calculations, and retail save all
+consume the same axes.
 
 ## Character Stats
 

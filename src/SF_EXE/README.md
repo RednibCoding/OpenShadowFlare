@@ -328,7 +328,9 @@ Right-clicking a Tablet or Capsule in either owner uses it when the matching
 life or mana pool is not already full. Meat and its stronger variants continue
 through the same command to restore a living owned companion, but are left
 alone when it is full or defeated. Equipped HP/MP bonuses scale player
-medicine just as they do in the executable. Inventory movement, equipment,
+medicine just as they do in the executable. White and elemental medicines now
+clear or move the persistent element alignment used by Status and combat;
+they are not modeled as temporary buffs. Inventory movement, equipment,
 world drops, and medicine use play the corresponding retail effects. A ground item
 that cannot fit in the backpack repeats its original bounce and landing sound
 instead of silently ignoring the pickup. `X` opens the separate

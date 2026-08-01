@@ -1081,8 +1081,13 @@ backpack/belt command as player medicine, run only after player life/mana made
 no change, restore a living owned companion, and remain unconsumed when that
 companion is full or defeated. Player medicine now also uses the executable's
 equipped life/mana restoration multipliers and live derived maximum pools.
-Condition clearing and timed elemental medicine effects are next; those paths
-should keep using these owners rather than adding parallel inventory models.
+The condition branch is complete too, and retail analysis corrected an old
+assumption: elemental medicines are not timed buffs. They move the two saved
+element axes 4,000 units toward one of eight fixed anchors, while White
+Medicine resets both axes to zero. The existing Status marker, affinity
+calculation, combat packets, and save record all read those same values.
+Script-facing special-item commands are the next item checkpoint and should
+keep using these owners rather than adding parallel inventory models.
 
 ### 4. Combat and death
 

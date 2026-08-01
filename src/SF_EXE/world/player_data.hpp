@@ -110,6 +110,10 @@ public:
     std::int32_t baseMagicalEvasionRate() const;
     std::int32_t elementX() const;
     std::int32_t elementY() const;
+    bool clearElementCondition();
+    bool applyElementMedicine(
+        std::int32_t element,
+        std::int32_t distance);
     std::array<std::int32_t, 17>
         combatPacketStateWords() const;
     std::int32_t walkingSpeedTier() const;

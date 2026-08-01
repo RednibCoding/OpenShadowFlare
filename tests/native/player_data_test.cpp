@@ -131,6 +131,10 @@ int main() {
         items.find(3, 0);
     const osf::ItemDefinition* capsule =
         items.find(3, 10000000);
+    const osf::ItemDefinition* white_medicine =
+        items.find(3, 30000000);
+    const osf::ItemDefinition* fire_medicine =
+        items.find(3, 30000001);
     osf::PlayerBelt belt;
     osf::PlayerItemController item_controller;
     const auto item_use_targets = [](osf::PlayerData& player) {
@@ -147,6 +151,8 @@ int main() {
     if (!check(
             tablet &&
                 capsule &&
+                white_medicine &&
+                fire_medicine &&
                 belt.place(
                     osf::makeInventoryItem(*tablet),
                     0,
@@ -293,6 +299,56 @@ int main() {
         return 1;
     }
 
+    osf::PlayerData condition_player = male;
+    osf::PlayerInventory condition_inventory;
+    if (!check(
+            condition_inventory.add(*fire_medicine) &&
+                condition_inventory.add(*white_medicine) &&
+                item_controller
+                    .useInventoryItem(
+                        0,
+                        condition_inventory,
+                        items,
+                        item_use_targets(condition_player))
+                    .consumed &&
+                condition_player.elementX() == 0 &&
+                condition_player.elementY() == 4000 &&
+                item_controller
+                    .useInventoryItem(
+                        0,
+                        condition_inventory,
+                        items,
+                        item_use_targets(condition_player))
+                    .consumed &&
+                condition_player.elementX() == 0 &&
+                condition_player.elementY() == 0 &&
+                condition_inventory.add(*white_medicine) &&
+                !item_controller
+                     .useInventoryItem(
+                         0,
+                         condition_inventory,
+                         items,
+                         item_use_targets(condition_player))
+                     .consumed &&
+                condition_inventory.items().size() == 1,
+            "Elemental and White Medicine did not move or clear the "
+            "saved retail condition axes transactionally.")) {
+        return 1;
+    }
+    for (int use = 0; use < 5; ++use) {
+        if (!condition_player.applyElementMedicine(0, 4000)) {
+            return 1;
+        }
+    }
+    if (!check(
+            condition_player.elementX() == 0 &&
+                condition_player.elementY() == 20000 &&
+                !condition_player.applyElementMedicine(0, 4000),
+            "Elemental Medicine did not stop exactly on its retail "
+            "element anchor.")) {
+        return 1;
+    }
+
     const std::filesystem::path new_save_root =
         std::filesystem::temp_directory_path() /
         "openshadowflare_new_save_test";
@@ -302,6 +358,11 @@ int main() {
     std::filesystem::remove_all(
         new_save_root, cleanup_error);
     male.setCompanionRespawnCounter(600);
+    if (!check(
+            male.applyElementMedicine(0, 4000),
+            "The save fixture could not acquire an elemental condition.")) {
+        return 1;
+    }
     if (!check(
             osf::writeRetailSave(
                 new_save_path, male, 0x34, &error),
@@ -316,6 +377,7 @@ int main() {
                 new_save_path, &error) &&
                 new_save_round_trip.retailRecord() ==
                     male.retailRecord() &&
+                new_save_round_trip.elementY() == 4000 &&
                 new_save_round_trip.companionRespawnCounter() ==
                     600,
             "A newly created save did not preserve its player "
