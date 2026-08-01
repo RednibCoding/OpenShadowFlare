@@ -1828,6 +1828,16 @@ life and mana, and resets experience. New-character initialization fills that
 history with novice job `0x10`, matching `0x00440f70`. The full later
 job-selection and skill-unlock branch still needs its own class-system slice.
 
+Script opcode 68 enters at `0x004342de`. It ignores a level-100 player,
+otherwise reads that same Table 13 threshold and adds
+`threshold * evaluated_argument / 100` to experience. The multiply and divide
+use a signed 64-bit intermediate. Reaching the threshold calls
+`0x00412fb0`, clears experience, rebuilds the player, and refreshes the display
+exactly like an enemy-earned level. The portable interpreter keeps the
+percentage in the script boundary and sends the award to the shared player
+experience owner, so scripted and combat level-up notices and audio cannot
+diverge.
+
 Enemy death action 11 calls `0x0045a000` before `0x0045a030`. The first uses
 MCT pre-AI value 14 as a Table 30 row. Every attempt consumes the chance draw;
 a success consumes a separate ten-slot profile draw, applies Table 31's

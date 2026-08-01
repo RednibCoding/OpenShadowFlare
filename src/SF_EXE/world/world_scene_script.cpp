@@ -497,6 +497,19 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
+    if (opcode == 68) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        const PlayerExperienceAwardResult award =
+            awardRetailPlayerExperiencePercentage(
+                player_data_,
+                arguments[0],
+                parameter_tables_);
+        presentPlayerLevelUp(award.level_up);
+        return true;
+    }
+
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;

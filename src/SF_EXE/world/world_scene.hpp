@@ -33,6 +33,7 @@
 #include "player_data.hpp"
 #include "player_damage_receiver.hpp"
 #include "player_energy_shield.hpp"
+#include "player_experience_award.hpp"
 #include "player_increased_power.hpp"
 #include "player_item_controller.hpp"
 #include "player_land_mine.hpp"
@@ -384,6 +385,8 @@ private:
         const EnemyDamageReceiverState& enemy,
         std::int32_t experience_reward,
         std::int32_t main_hand_subtype);
+    void presentPlayerLevelUp(
+        const PlayerLevelUpResult& result);
     void handleEnemyDeathStart(
         EnemyActor& enemy,
         CombatEffectSpawnRequest effect);

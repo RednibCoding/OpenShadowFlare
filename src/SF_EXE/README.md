@@ -370,7 +370,10 @@ retail and shorter portable saves. Category-four records with an authored
 page also follow retail's four private automatic-item owners rather than
 leaking into the backpack. Ground pickup and script opcodes 58, 59, and 75
 share those data-driven pages, duplicate rules, and fixed cells, and the pages
-survive at their exact post-Giant-Warehouse save boundary. Scenario position,
+survive at their exact post-Giant-Warehouse save boundary. Script opcode 68
+also awards its retail percentage of the current experience threshold through
+the same player growth, notice, resource refresh, and audio path used by combat.
+Scenario position,
 script-created world
 actors, and the remaining dynamic state are still pending. Companion type,
 level, experience, and its defeated countdown already live in the preserved

@@ -585,6 +585,14 @@ places all four automatic pages immediately after the ten Giant Warehouse
 containers; both retail fixtures and the backward-compatible portable tail
 now round-trip them byte-for-byte.
 
+The following script reward is mapped too. Opcode 68 at `0x004342de` reads
+Table 13 for the local player's current level, calculates the evaluated
+percentage with a signed 64-bit multiply and divide, and adds it to player
+experience. A threshold crossing calls the ordinary `0x00412fb0` growth path,
+clears overflow, restores resources, and produces the same level-up notice and
+samples as combat. Shipped scenario `04900001`, sentence 30 uses 50 percent
+immediately after granting the Spirit Stone through opcode 75.
+
 The inventory-panel transfer button at classifier case 10 remains pending.
 
 Category-one records place the requirement at serialized offset 148, CAF part

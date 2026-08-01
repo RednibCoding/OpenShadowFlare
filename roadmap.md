@@ -1062,6 +1062,13 @@ items are refused. All four pages follow the Giant Warehouse in original save
 payloads and use a backward-compatible late-item extension in shorter
 portable saves.
 
+Scripted experience rewards now join that path without inventing a second
+level-up system. Opcode 68 treats its argument as a percentage of the current
+Table 13 threshold, preserves retail's signed 64-bit calculation, and feeds
+the same growth, resource restoration, centered notice, and audio used by
+enemy-earned experience. The shipped Spirit Stone reward sequence is covered
+directly from scenario `04900001`.
+
 The ordinary item information display is live now. Resting the pointer over a
 backpack, equipment, or special item for the same short delay as retail draws
 its name,

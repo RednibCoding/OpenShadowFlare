@@ -163,6 +163,7 @@ add_library(
   world/player_element_condition.cpp
   world/player_data.cpp
   world/player_energy_shield.cpp
+  world/player_experience_award.cpp
   world/player_heal_spell.cpp
   world/player_increased_power.cpp
   world/player_increased_power_attack.cpp
@@ -212,6 +213,7 @@ add_library(
   world/world_scene_loading.cpp
   world/world_scene_moon.cpp
   world/world_scene_player_profile.cpp
+  world/world_scene_player_experience.cpp
   world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
   world/world_scene_script_items.cpp

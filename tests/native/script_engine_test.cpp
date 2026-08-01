@@ -1140,15 +1140,24 @@ bool testRetailItemOwnershipCommands() {
 
     native_commands.clear();
     interpreter.bind(&angel_memory);
-    interpreter.startSentence(30, -1);
+    const osf::script::StepResult grant_result =
+        interpreter.startSentence(30, -1);
     const auto granted = std::find(
         native_commands.begin(),
         native_commands.end(),
         std::pair<std::int32_t, std::vector<std::int32_t>>{
             75, {4, 98000001}});
+    const auto experience = std::find(
+        native_commands.begin(),
+        native_commands.end(),
+        std::pair<std::int32_t, std::vector<std::int32_t>>{
+            68, {50}});
     return check(
-        granted != native_commands.end(),
-        "The shipped Spirit Stone grant did not emit retail opcode 75.");
+        grant_result == osf::script::StepResult::complete &&
+            granted != native_commands.end() &&
+            experience != native_commands.end(),
+        "The shipped Spirit Stone reward did not emit retail opcodes "
+        "75 and 68.");
 #else
     return true;
 #endif

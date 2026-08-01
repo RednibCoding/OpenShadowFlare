@@ -39,17 +39,12 @@ void WorldScene::accountEnemyKill(
         enemy.defeat_source_character_number,
         scenario_world_.localPlayerNumber(),
         parameter_tables_);
-    if (!accounting.level_gained) {
-        return;
-    }
-    level_up_notice_ = {
+    presentPlayerLevelUp({
+        accounting.level_gained,
         accounting.level_up_notice,
         accounting.level_up_notice_counter,
-    };
-    pending_audio_samples_.insert(
-        pending_audio_samples_.end(),
-        accounting.audio_samples.begin(),
-        accounting.audio_samples.end());
+        accounting.audio_samples,
+    });
 }
 
 PlayerDamageReceiverState

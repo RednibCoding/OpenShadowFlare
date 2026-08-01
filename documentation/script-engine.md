@@ -328,6 +328,7 @@ interactions are portable so far.
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
 | 75 | `0x0043443c` | Create a table-backed item and place it in its authored automatic-item page and cell when absent |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
@@ -388,6 +389,15 @@ and Syria's Spirit Stone, the later orb and card sets, companion stones, and
 ordinary category-three or equipment checks. This is why the interpreter
 only evaluates operands and returns the query result: item construction,
 owner order, equipment refresh, and persistence remain executable hooks.
+
+Opcode 68 is the matching scripted reward path. Its argument is a percentage,
+not a raw experience amount. The executable reads Table 13 at `level - 1`,
+multiplies that threshold by the evaluated percentage with a signed 64-bit
+intermediate, divides by 100, and adds the result to player-record experience.
+Crossing the threshold invokes the same growth, full life/mana restoration,
+900-update notice, and samples used by combat experience. Scenario `04900001`
+sentence 30 demonstrates the real sequence: opcode 75 grants the Spirit Stone,
+opcode 68 grants 50 percent, and opcode 16 plays the authored reward sample.
 
 Opcodes 5 and 6 follow the same boundary. Scenario status kind 7 initializes
 vendor inventory zero with opcode 6 and stock profile zero (or profile 22 for
