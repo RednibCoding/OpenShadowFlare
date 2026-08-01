@@ -2,6 +2,7 @@
 #include "items/item_instance_factory.hpp"
 #include "items/item_repair.hpp"
 #include "items/player_belt.hpp"
+#include "items/player_automatic_items.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
@@ -11,6 +12,7 @@
 #include "world/player_item_controller.hpp"
 #include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
+#include "world/retail_save_automatic_items.hpp"
 #include "world/retail_save_extension.hpp"
 #include "world/retail_save_giant_warehouse.hpp"
 #include "world/retail_save_items.hpp"
@@ -395,6 +397,8 @@ int main() {
         items.find(1, 0);
     const osf::ItemDefinition* gold =
         items.find(4, 0);
+    const osf::ItemDefinition* spirit_stone =
+        items.find(4, 98000001);
     const osf::TableData* repair_values = tables.find(34);
     const osf::ItemDefinition* shield = nullptr;
     for (const osf::ItemDefinition& definition :
@@ -718,6 +722,51 @@ int main() {
         return 1;
     }
 
+    osf::PlayerAutomaticItems saved_automatic_items;
+    osf::PlayerAutomaticItems restored_automatic_items;
+    const osf::InventoryItem automatic_spirit_stone =
+        spirit_stone
+            ? osf::makeRetailInventoryItem(
+                  *spirit_stone,
+                  [&dropped_item_random]() {
+                      return dropped_item_random.next();
+                  })
+            : osf::InventoryItem{};
+    if (!check(
+            spirit_stone &&
+                saved_automatic_items.add(
+                    *spirit_stone, automatic_spirit_stone) &&
+                osf::replaceRetailAutomaticItems(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    saved_automatic_items,
+                    nullptr,
+                    &error) &&
+                osf::replaceRetailGiantWarehouse(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    saved_giant_warehouse,
+                    nullptr,
+                    &error) &&
+                osf::restoreRetailAutomaticItems(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    restored_automatic_items,
+                    nullptr,
+                    &error) &&
+                restored_automatic_items.contains(4, 98000001) &&
+                restored_automatic_items.page(2).items().size() == 1 &&
+                restored_automatic_items.page(2).items()[0].grid_x == 1 &&
+                restored_automatic_items.page(2).items()[0].grid_y == 0,
+            "Automatic item pages did not survive the portable late-item "
+            "save stream.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
     const osf::ItemDefinition* unknown_sword =
         items.find(0, 10);
     osf::PlayerInventory identified_inventory;
@@ -842,6 +891,8 @@ int main() {
         std::size_t retail_mine_end = 0;
         osf::PlayerGiantWarehouse retail_giant_warehouse;
         retail_giant_warehouse.initializeNew();
+        std::size_t retail_giant_end = retail_mine_end;
+        osf::PlayerAutomaticItems retail_automatic_items;
         if (!check(
                 osf::restoreRetailProgress(
                     retail_fixture_payload,
@@ -866,6 +917,13 @@ int main() {
                         retail_mine_end,
                         items,
                         retail_giant_warehouse,
+                        &retail_giant_end,
+                        &error) &&
+                    osf::restoreRetailAutomaticItems(
+                        retail_fixture_payload,
+                        retail_giant_end,
+                        items,
+                        retail_automatic_items,
                         nullptr,
                         &error) &&
                     retail_mine_count >= 0,
@@ -890,6 +948,30 @@ int main() {
                         retail_fixture_payload,
                 "Re-encoding unchanged retail-owned items altered "
                 "their bytes or an unowned payload section.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        std::vector<std::uint8_t> rewritten_late_items =
+            retail_fixture_payload;
+        std::size_t rewritten_giant_end = retail_mine_end;
+        if (!check(
+                osf::replaceRetailGiantWarehouse(
+                    rewritten_late_items,
+                    retail_mine_end,
+                    items,
+                    retail_giant_warehouse,
+                    &rewritten_giant_end,
+                    &error) &&
+                osf::replaceRetailAutomaticItems(
+                    rewritten_late_items,
+                    rewritten_giant_end,
+                    items,
+                    retail_automatic_items,
+                    nullptr,
+                    &error) &&
+                rewritten_late_items == retail_fixture_payload,
+            "Re-encoding the retail Giant Warehouse and four automatic "
+            "item pages altered their bytes or later state.")) {
             std::cerr << error << '\n';
             return 1;
         }

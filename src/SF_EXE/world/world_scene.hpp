@@ -6,11 +6,12 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
+#include "items/player_automatic_items.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
-#include "items/player_special_items.hpp"
 #include "items/player_giant_warehouse.hpp"
+#include "items/player_special_items.hpp"
 #include "items/vendor_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "resources/effect_pattern_resource.hpp"
@@ -156,6 +157,8 @@ public:
     const PlayerSpecialItems& playerSpecialItems() const;
     PlayerGiantWarehouse& playerGiantWarehouse();
     const PlayerGiantWarehouse& playerGiantWarehouse() const;
+    PlayerAutomaticItems& playerAutomaticItems();
+    const PlayerAutomaticItems& playerAutomaticItems() const;
     VendorInventory* vendorInventory(std::int32_t index);
     const VendorInventory* vendorInventory(std::int32_t index) const;
     const ItemInventoryResource& itemInventoryPatterns() const;
@@ -303,6 +306,16 @@ private:
     bool measureScriptCharacterDistance(
         std::int32_t character_number,
         std::int32_t& distance) const;
+    bool queryScriptItem(
+        std::int32_t category,
+        std::int32_t definition_id,
+        bool& present) const;
+    bool removeScriptItem(
+        std::int32_t category,
+        std::int32_t definition_id);
+    bool addScriptItem(
+        std::int32_t category,
+        std::int32_t definition_id);
     bool scriptCharacterBounds(
         std::int32_t character_number,
         WorldPosition& position,
@@ -450,6 +463,7 @@ private:
     PlayerInventory player_inventory_;
     PlayerSpecialItems player_special_items_;
     PlayerGiantWarehouse player_giant_warehouse_;
+    PlayerAutomaticItems player_automatic_items_;
     std::vector<VendorInventory> vendor_inventories_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;

@@ -18,6 +18,7 @@ constexpr std::array<std::uint8_t, 8> kPortableSignature{{
     'O', 'S', 'F', 'G', 'W', '0', '1', '\0',
 }};
 constexpr std::int32_t kPortableVersion = 1;
+constexpr std::int32_t kPortableVersionWithAutomaticItems = 2;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -133,7 +134,8 @@ bool retailHeaderEnd(
 
 bool portableHeaderEnd(
     const std::vector<std::uint8_t>& bytes,
-    std::size_t& flags_offset) {
+    std::size_t& flags_offset,
+    std::int32_t& version) {
     if (bytes.size() < kPortableSignature.size() + 8u ||
         !std::equal(
             kPortableSignature.begin(),
@@ -141,11 +143,11 @@ bool portableHeaderEnd(
             bytes.begin())) {
         return false;
     }
-    std::int32_t version = 0;
     std::int32_t page_count = 0;
     if (!readI32(bytes, 8u, version) ||
         !readI32(bytes, 12u, page_count) ||
-        version != kPortableVersion ||
+        (version != kPortableVersion &&
+         version != kPortableVersionWithAutomaticItems) ||
         page_count != static_cast<std::int32_t>(
                           PlayerGiantWarehouse::page_count)) {
         return false;
@@ -194,8 +196,11 @@ bool restoreRetailGiantWarehouse(
         }
     } else if (!extension.additional_state.empty()) {
         std::size_t flags_offset = 0;
+        std::int32_t portable_version = 0;
         if (!portableHeaderEnd(
-                extension.additional_state, flags_offset) ||
+                extension.additional_state,
+                flags_offset,
+                portable_version) ||
             !restorePages(
                 extension.additional_state,
                 flags_offset,
@@ -203,7 +208,9 @@ bool restoreRetailGiantWarehouse(
                 warehouse,
                 end,
                 error) ||
-            end != extension.additional_state.size()) {
+            end > extension.additional_state.size() ||
+            (portable_version == kPortableVersion &&
+             end != extension.additional_state.size())) {
             if (error && error->empty()) {
                 setError(error, "The portable Giant Warehouse stream is invalid.");
             }
@@ -273,9 +280,40 @@ bool replaceRetailGiantWarehouse(
             payload.end());
         payload = std::move(replacement);
     } else {
+        std::int32_t portable_version = kPortableVersion;
+        std::vector<std::uint8_t> preserved_state;
+        if (!extension.additional_state.empty()) {
+            std::size_t flags_offset = 0;
+            PlayerGiantWarehouse ignored;
+            std::size_t old_end = 0;
+            if (!portableHeaderEnd(
+                    extension.additional_state,
+                    flags_offset,
+                    portable_version) ||
+                !restorePages(
+                    extension.additional_state,
+                    flags_offset,
+                    item_database,
+                    ignored,
+                    old_end,
+                    error) ||
+                old_end > extension.additional_state.size()) {
+                if (error && error->empty()) {
+                    setError(
+                        error,
+                        "The existing portable Giant Warehouse stream "
+                        "is invalid.");
+                }
+                return false;
+            }
+            preserved_state.assign(
+                extension.additional_state.begin() +
+                    static_cast<std::ptrdiff_t>(old_end),
+                extension.additional_state.end());
+        }
         std::vector<std::uint8_t> state(
             kPortableSignature.begin(), kPortableSignature.end());
-        appendI32(state, kPortableVersion);
+        appendI32(state, portable_version);
         appendI32(
             state,
             static_cast<std::int32_t>(
@@ -283,6 +321,10 @@ bool replaceRetailGiantWarehouse(
         if (!appendPages(state, item_database, warehouse, error)) {
             return false;
         }
+        state.insert(
+            state.end(),
+            preserved_state.begin(),
+            preserved_state.end());
         replaceRetailSavePortableExtensionState(
             payload,
             extension.present && extension.running,

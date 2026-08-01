@@ -353,7 +353,7 @@ all the way from character selection through resources and voice playback. A
 selected save contributes its complete plain 0x160-byte player record. The
 in-game save actions also decode the retail item stream and
 round-trip equipped items, the backpack, and the belt without replacing the
-unknown equipment, special-item, or trailing state in an original save. The
+unknown trailing state in an original save. The
 three retail quest, transport, and general script-state arrays are restored
 and rewritten in executable order, and the selected walk/run mode survives a
 portable save/load. When
@@ -366,7 +366,12 @@ are live too; pickups increment that owner directly and a mine at full
 capacity stays in the world instead of leaking into the backpack. Opcode 41's
 nonzero branch now opens the Tower of Ordeal Giant Warehouse with its ten
 separately unlocked 9-by-10 pages, and all ten owners survive both original
-retail and shorter portable saves. Scenario position, script-created world
+retail and shorter portable saves. Category-four records with an authored
+page also follow retail's four private automatic-item owners rather than
+leaking into the backpack. Ground pickup and script opcodes 58, 59, and 75
+share those data-driven pages, duplicate rules, and fixed cells, and the pages
+survive at their exact post-Giant-Warehouse save boundary. Scenario position,
+script-created world
 actors, and the remaining dynamic state are still pending. Companion type,
 level, experience, and its defeated countdown already live in the preserved
 player record.

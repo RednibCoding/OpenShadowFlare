@@ -70,6 +70,12 @@ public:
         std::int32_t grid_x,
         std::int32_t grid_y) const;
     const std::vector<InventoryItem>& items() const;
+    bool contains(
+        std::int32_t category,
+        std::int32_t definition_id) const;
+    bool removeFirst(
+        std::int32_t category,
+        std::int32_t definition_id);
     std::int32_t gold() const;
     bool spendGold(std::int32_t amount);
     bool creditGold(std::int32_t amount);

@@ -219,11 +219,14 @@ bool decodeItem(
     std::int32_t quantity = 1;
     if (category == 4) {
         quantity = readStateI32(state, 0);
-        if (definition_id != 0 ||
-            quantity <= 0 ||
-            quantity >
-                PlayerInventory::maximum_gold_stack) {
-            setError(error, "A saved Gold stack is invalid.");
+        const bool valid_quantity =
+            definition_id == 0
+                ? quantity > 0 &&
+                      quantity <=
+                          PlayerInventory::maximum_gold_stack
+                : quantity == 1;
+        if (!valid_quantity) {
+            setError(error, "A saved category-four quantity is invalid.");
             return false;
         }
     }
@@ -489,9 +492,10 @@ bool encodeItem(
         item.quantity <= 0 ||
         (item.category != 4 && item.quantity != 1) ||
         (item.category == 4 &&
-         (item.definition_id != 0 ||
-          item.quantity >
-              PlayerInventory::maximum_gold_stack))) {
+         (item.definition_id == 0
+              ? item.quantity >
+                    PlayerInventory::maximum_gold_stack
+              : item.quantity != 1))) {
         setError(error, "An owned item cannot be serialized.");
         return false;
     }

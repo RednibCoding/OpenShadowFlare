@@ -621,8 +621,14 @@ retail state keep it in the versioned portable tail instead. The next retail
 fields are three still-separate world values, a literal Giant Warehouse page
 count of ten, ten page-unlock values, and ten normal 9-by-10 item containers.
 Those flags and containers are now restored and rewritten too. The currently
-selected page is UI-only and is not serialized. Scenario position and the rest
-of the later state are still pending.
+selected page is UI-only and is not serialized. Four more normal item
+containers immediately follow the Giant Warehouse
+pages. They are the automatic-item pages selected by the final category-four
+`Item.Ibn` fields and searched by script opcodes 58 and 59. OpenShadowFlare
+restores and rewrites all four at that exact boundary. Sparse portable saves
+use late-item state version two; version one saves which only carried Giant
+Warehouse data still load with four empty automatic pages. Scenario position
+and the rest of the later state are still pending.
 
 ## Transport destination table
 
@@ -705,6 +711,20 @@ known offsets are shared by all five field blocks:
 | `0x3c` | Ground sprite red strength (`1000` is unchanged) |
 | `0x40` | Ground sprite green strength (`1000` is unchanged) |
 | `0x44` | Ground sprite blue strength (`1000` is unchanged) |
+
+Category-four records use their final three words to describe automatic
+ownership:
+
+| Field offset | Meaning |
+|--------------|---------|
+| `0x58` | Automatic item page, `0` through `3`, or `-1` for the normal item path |
+| `0x5c` | Fixed grid x coordinate in that page |
+| `0x60` | Fixed grid y coordinate in that page |
+
+For example, Malse's Gem uses page zero at `(0,0)`, while Spirit Stone uses
+page two at `(1,0)`. Gold and Land Mines carry `-1` and continue through their
+separate ordinary owners. The fixed placement is data-driven; scripts only
+name the category and definition ID.
 
 Weapon records also expose the fields used by the first equipment slice:
 

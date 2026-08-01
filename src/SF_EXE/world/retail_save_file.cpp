@@ -1,9 +1,11 @@
 #include "retail_save_file.hpp"
 
+#include "items/player_automatic_items.hpp"
 #include "items/player_giant_warehouse.hpp"
 #include "items/player_special_items.hpp"
 #include "player_data.hpp"
 #include "player_magic.hpp"
+#include "retail_save_automatic_items.hpp"
 #include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
@@ -251,6 +253,7 @@ bool writeRetailSaveImpl(
     const PlayerMagic* magic,
     const std::int32_t* mine_count,
     const PlayerGiantWarehouse* giant_warehouse,
+    const PlayerAutomaticItems* automatic_items,
     std::uint8_t xor_key,
     std::string* error) {
     if (!player.valid()) {
@@ -341,6 +344,7 @@ bool writeRetailSaveImpl(
              error))) {
         return false;
     }
+    std::size_t giant_warehouse_end = mine_end;
     if (giant_warehouse &&
         (!mine_count || !item_database ||
          !replaceRetailGiantWarehouse(
@@ -348,6 +352,17 @@ bool writeRetailSaveImpl(
              mine_end,
              *item_database,
              *giant_warehouse,
+             &giant_warehouse_end,
+             error))) {
+        return false;
+    }
+    if (automatic_items &&
+        (!giant_warehouse || !item_database ||
+         !replaceRetailAutomaticItems(
+             payload,
+             giant_warehouse_end,
+             *item_database,
+             *automatic_items,
              nullptr,
              error))) {
         return false;
@@ -436,6 +451,7 @@ bool writeRetailSave(
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
         xor_key,
         error);
 }
@@ -458,6 +474,7 @@ bool writeRetailSave(
         &equipment,
         &belt,
         &special_items,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -486,6 +503,7 @@ bool writeRetailSave(
         &belt,
         &special_items,
         &progress,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -515,6 +533,7 @@ bool writeRetailSave(
         &special_items,
         &progress,
         &magic,
+        nullptr,
         nullptr,
         nullptr,
         xor_key,
@@ -533,6 +552,7 @@ bool writeRetailSave(
     const PlayerMagic& magic,
     std::int32_t mine_count,
     const PlayerGiantWarehouse& giant_warehouse,
+    const PlayerAutomaticItems& automatic_items,
     std::uint8_t xor_key,
     std::string* error) {
     return writeRetailSaveImpl(
@@ -547,6 +567,7 @@ bool writeRetailSave(
         &magic,
         &mine_count,
         &giant_warehouse,
+        &automatic_items,
         xor_key,
         error);
 }

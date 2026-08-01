@@ -1401,15 +1401,20 @@ bool testWorldItemSaveRoundTrip() {
     std::filesystem::remove_all(save_root, cleanup_error);
     const osf::ItemDefinition* special_gold =
         saved_world.itemDatabase().find(4, 0);
+    const osf::ItemDefinition* spirit_stone =
+        saved_world.itemDatabase().find(4, 98000001);
     if (!check(
-            special_gold &&
+            special_gold && spirit_stone &&
                 saved_world.playerSpecialItems()
                     .place(
                         osf::makeInventoryItem(
                             *special_gold, 125),
                         2,
                         3)
-                    .accepted,
+                    .accepted &&
+                saved_world.playerAutomaticItems().add(
+                    *spirit_stone,
+                    osf::makeInventoryItem(*spirit_stone)),
             "The special-item save fixture could not be placed.")) {
         return false;
     }
@@ -1442,6 +1447,7 @@ bool testWorldItemSaveRoundTrip() {
                 saved_world.playerMagic(),
                 saved_world.playerMineCount(),
                 saved_world.playerGiantWarehouse(),
+                saved_world.playerAutomaticItems(),
                 0x5a,
                 &error),
             "The world-owned item state could not be saved.")) {
@@ -1510,9 +1516,19 @@ bool testWorldItemSaveRoundTrip() {
                 loaded_world.playerGiantWarehouse()
                         .page(2)
                         .items()[0]
-                        .grid_y == 5,
-            "World loading discarded backpack, belt, equipped, or "
-            "Warehouse items.")) {
+                        .grid_y == 5 &&
+                loaded_world.playerAutomaticItems().contains(
+                    4, 98000001) &&
+                loaded_world.playerAutomaticItems()
+                        .page(2)
+                        .items()[0]
+                        .grid_x == 1 &&
+                loaded_world.playerAutomaticItems()
+                        .page(2)
+                        .items()[0]
+                        .grid_y == 0,
+            "World loading discarded backpack, belt, equipped, Warehouse, "
+            "or automatic items.")) {
         std::cerr << error << '\n';
         return false;
     }

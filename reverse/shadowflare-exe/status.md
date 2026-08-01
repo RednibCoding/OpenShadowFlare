@@ -564,8 +564,28 @@ input, the close cell at x272..295/y40..55, and sample 58. All ten unlock
 values and item containers follow the Land Mine field in retail saves and are
 now restored and rewritten; sparse portable saves use the backward-compatible
 version-four tail.
-The owner now restores and rewrites its exact save-payload container. The
-inventory-panel transfer button at classifier case 10 remains pending.
+The owner now restores and rewrites its exact save-payload container.
+
+The four containers at player `+0x548..+0x554` are a separate automatic item
+owner. Category-four `Item.Ibn` records supply page `-1..2` and a fixed cell in
+their last three words; the executable reserves four pages even though the
+shipped data does not currently select page three. `0x00466480` returns the
+page and `0x00466490` returns the cell. Ground pickup sends a non-negative-page
+item there instead of to backpack `+0x514`, and an existing matching item
+causes the ordinary failed-pickup drop response.
+
+Opcode 58 at `0x00433b33` searches all four automatic pages, the backpack,
+active main hand, body, active off hand, head, legs, and four accessories, in
+that order. Opcode 59 at `0x00433ced` removes the first match in the same
+order, refreshing equipment-derived state when needed. Opcode 75 at
+`0x0043443c` creates the requested definition, uses its authored page and
+cell, and inserts it only when absent. The belt, alternate arms, one-page
+Warehouse, and Giant Warehouse are intentionally excluded. The save writer
+places all four automatic pages immediately after the ten Giant Warehouse
+containers; both retail fixtures and the backward-compatible portable tail
+now round-trip them byte-for-byte.
+
+The inventory-panel transfer button at classifier case 10 remains pending.
 
 Category-one records place the requirement at serialized offset 148, CAF part
 at 152, and default RGB strengths at 156, 160, and 164. The Short Sword

@@ -1856,6 +1856,28 @@ bool WorldScene::startGroundItemInteraction(
         }
         return true;
     }
+    if (definition &&
+        definition->automatic_inventory_page >= 0) {
+        if (!player_automatic_items_.add(
+                *definition, found->item)) {
+            restartGroundItemDrop(*found);
+            if (pointer_.target().kind ==
+                    WorldPointerTargetKind::ground_item &&
+                pointer_.target().id == item_id) {
+                pointer_.clearSelection();
+            }
+            return true;
+        }
+        pending_audio_samples_.push_back(
+            retailItemMoveSound(*definition));
+        if (pointer_.target().kind ==
+                WorldPointerTargetKind::ground_item &&
+            pointer_.target().id == item_id) {
+            pointer_.clearSelection();
+        }
+        ground_items.erase(found);
+        return true;
+    }
     if (!definition ||
         !player_inventory_.store(found->item)) {
         // The single-player failure tail of FUN_004526a0 recreates the

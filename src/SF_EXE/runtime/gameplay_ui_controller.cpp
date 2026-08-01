@@ -839,6 +839,7 @@ bool GameplayUiController::updateOptions(
                 world.playerMagic(),
                 world.playerMineCount(),
                 world.playerGiantWarehouse(),
+                world.playerAutomaticItems(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);

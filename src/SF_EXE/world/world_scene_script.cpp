@@ -277,6 +277,16 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 59) {
+        return arguments.size() == 2 &&
+               removeScriptItem(arguments[0], arguments[1]);
+    }
+
+    if (opcode == 75) {
+        return arguments.size() == 2 &&
+               addScriptItem(arguments[0], arguments[1]);
+    }
+
     if (opcode == 4) {
         player_equipment_.identifyAll();
         player_inventory_.identifyAll();

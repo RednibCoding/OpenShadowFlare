@@ -2,6 +2,7 @@
 #include "items/item_database.hpp"
 #include "items/item_condition.hpp"
 #include "items/player_belt.hpp"
+#include "items/player_automatic_items.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
@@ -110,6 +111,10 @@ bool testRetailDatabase() {
         database.find(3, 30000000);
     const osf::ItemDefinition* gold =
         database.find(4, 0);
+    const osf::ItemDefinition* malse_gem =
+        database.find(4, 99000000);
+    const osf::ItemDefinition* spirit_stone =
+        database.find(4, 98000001);
     if (!check(
             short_sword &&
                 short_sword->base_price == 400 &&
@@ -153,7 +158,15 @@ bool testRetailDatabase() {
             white_medicine &&
                 white_medicine->inventory_width == 1 &&
                 white_medicine->inventory_height == 2 &&
-                white_medicine->consumable_effect == -2,
+                white_medicine->consumable_effect == -2 &&
+            malse_gem &&
+                malse_gem->automatic_inventory_page == 0 &&
+                malse_gem->automatic_inventory_x == 0 &&
+                malse_gem->automatic_inventory_y == 0 &&
+            spirit_stone &&
+                spirit_stone->automatic_inventory_page == 2 &&
+                spirit_stone->automatic_inventory_x == 1 &&
+                spirit_stone->automatic_inventory_y == 0,
             "The Short Sword equipment fields differ.")) {
         return false;
     }
@@ -327,6 +340,24 @@ bool testRetailDatabase() {
                 !special_items.place(
                     invalid_item, 1, 0).accepted,
             "The retail special-item grid or gold stacking differs.")) {
+        return false;
+    }
+    osf::PlayerAutomaticItems automatic_items;
+    if (!check(
+            malse_gem && spirit_stone &&
+                automatic_items.add(
+                    *malse_gem, makeItem(*malse_gem)) &&
+                automatic_items.add(
+                    *spirit_stone, makeItem(*spirit_stone)) &&
+                !automatic_items.add(
+                    *malse_gem, makeItem(*malse_gem)) &&
+                automatic_items.contains(4, 99000000) &&
+                automatic_items.page(0).items().front().grid_x == 0 &&
+                automatic_items.page(2).items().front().grid_x == 1 &&
+                automatic_items.removeFirst(4, 99000000) &&
+                !automatic_items.contains(4, 99000000),
+            "Authored automatic-item pages, cells, or duplicate rules "
+            "differ from Item.Ibn.")) {
         return false;
     }
     if (!checkDefinition(

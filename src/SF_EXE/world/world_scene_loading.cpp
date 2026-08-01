@@ -2,6 +2,7 @@
 
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
+#include "retail_save_automatic_items.hpp"
 #include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
@@ -140,6 +141,13 @@ bool WorldScene::loadInitialScenario(
                 mine_end,
                 item_database_,
                 player_giant_warehouse_,
+                &mine_end,
+                error) ||
+            !restoreRetailAutomaticItems(
+                payload,
+                mine_end,
+                item_database_,
+                player_automatic_items_,
                 nullptr,
                 error)) {
             clear();

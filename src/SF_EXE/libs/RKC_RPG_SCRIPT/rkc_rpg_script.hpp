@@ -118,6 +118,10 @@ struct InterpreterHooks {
     std::function<bool(
         std::int32_t,
         std::int32_t&)> measure_character_distance;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t,
+        bool&)> query_item;
 };
 
 class Interpreter {

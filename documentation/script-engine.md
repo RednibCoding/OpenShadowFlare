@@ -323,9 +323,12 @@ interactions are portable so far.
 | 53 | `0x00433923` | Write the local player's total Gold to an operand |
 | 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
 | 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
+| 58 | `0x00433b33` | Search the four automatic-item pages, backpack, and active equipment, then write zero or one |
+| 59 | `0x00433ced` | Remove the first matching item from that same retail owner order |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 75 | `0x0043443c` | Create a table-backed item and place it in its authored automatic-item page and cell when absent |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
 in the executable are:
@@ -367,6 +370,24 @@ MCT and passes argument one. The executable uses that value to select a
 different character-owned service with ten 9-by-10 pages. This remains a
 native request: the script chooses the service, while item ownership, page
 input, rendering, and persistence stay outside the interpreter.
+
+Opcodes 58, 59, and 75 expose a different item owner. Category-four
+`Item.Ibn` records can carry a page number and fixed grid cell. A non-negative
+page routes the item into one of four private player collections instead of
+the backpack; these are not the `X` Warehouse or any Giant Warehouse page.
+Opcode 75 creates the ordinary retail instance, refuses a duplicate in its
+authored page, and inserts it at that fixed cell. Opcode 58 searches all four
+pages first, then the backpack, active main hand, body, active off hand, head,
+legs, and four accessories. Opcode 59 removes in precisely that order and
+refreshes the player profile when it removes equipped gear. The belt,
+alternate weapon set, Warehouse, and Giant Warehouse are deliberately not
+part of either command.
+
+The shipped scripts use these commands for story objects such as Malse's Gem
+and Syria's Spirit Stone, the later orb and card sets, companion stones, and
+ordinary category-three or equipment checks. This is why the interpreter
+only evaluates operands and returns the query result: item construction,
+owner order, equipment refresh, and persistence remain executable hooks.
 
 Opcodes 5 and 6 follow the same boundary. Scenario status kind 7 initializes
 vendor inventory zero with opcode 6 and stock profile zero (or profile 22 for

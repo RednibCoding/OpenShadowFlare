@@ -1138,6 +1138,24 @@ pattern 74 for a disabled tab, 75 through 84 for enabled tabs, or 85 through
 94 for the selected tab at `(24 + page*24,41)`. Enabled tab clicks and the
 close cell at `(272..295,40..55)` use sample 58.
 
+The four player containers at `+0x548` through `+0x554` are neither Warehouse
+variant. Category-four item instances return their authored page through
+`0x00466480` and their fixed cell through `0x00466490`; those values come from
+the last three words of the 100-byte `Item.Ibn` record. Ground pickup routes
+an item with a non-negative page into that owner and rejects a duplicate
+instead of placing it in the backpack.
+
+Script opcode 58 at `0x00433b33` queries those four containers first, followed
+by backpack `+0x514`, main hand `+0x4f4`, body `+0x4ec`, off hand `+0x4f8`,
+head `+0x4e8`, legs `+0x4f0`, and accessories `+0x4fc..+0x508`. Opcode 59 at
+`0x00433ced` removes the first match in the same order and runs both player
+refresh paths after an equipment removal. Neither path checks the belt,
+alternate arms, `+0x51c` Warehouse, or Giant Warehouse. Opcode 75 at
+`0x0043443c` constructs the named definition, skips an existing item in its
+authored page, copies its fixed cell, and inserts it into `+0x548 + page*4`.
+The save writer serializes these four containers directly after all ten Giant
+Warehouse pages.
+
 The portable decoder also reads all seven Remote Town PEOPLE records and their
 bounded-wander tails. The first value after the bounds is copied to runtime
 offset `+0xd4` and gates native action 21's target-facing branch. The next is

@@ -52,6 +52,7 @@ add_library(
   items/item_instance_factory.cpp
   items/item_repair.cpp
   items/new_player_loadout.cpp
+  items/player_automatic_items.cpp
   items/player_belt.cpp
   items/player_equipment.cpp
   items/player_giant_warehouse.cpp
@@ -180,8 +181,9 @@ add_library(
   world/player_transport_spell.cpp
   world/player_voice.cpp
   world/quest_state.cpp
-  world/retail_save_file.cpp
+  world/retail_save_automatic_items.cpp
   world/retail_save_extension.cpp
+  world/retail_save_file.cpp
   world/retail_save_giant_warehouse.cpp
   world/retail_save_items.cpp
   world/retail_save_magic.cpp
@@ -212,6 +214,7 @@ add_library(
   world/world_scene_player_profile.cpp
   world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
+  world/world_scene_script_items.cpp
   world/world_scene_transport_spell.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)

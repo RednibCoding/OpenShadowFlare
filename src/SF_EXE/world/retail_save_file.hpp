@@ -15,6 +15,7 @@ class PlayerEquipment;
 class PlayerGiantWarehouse;
 class PlayerInventory;
 class PlayerMagic;
+class PlayerAutomaticItems;
 class PlayerSpecialItems;
 struct RetailSaveProgress;
 
@@ -73,6 +74,7 @@ bool writeRetailSave(
     const PlayerMagic& magic,
     std::int32_t mine_count,
     const PlayerGiantWarehouse& giant_warehouse,
+    const PlayerAutomaticItems& automatic_items,
     std::uint8_t xor_key,
     std::string* error = nullptr);
 

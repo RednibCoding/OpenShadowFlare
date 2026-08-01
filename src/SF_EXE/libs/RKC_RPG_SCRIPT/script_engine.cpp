@@ -542,6 +542,28 @@ StepResult Interpreter::execute(const Command& command) {
     }
     case 62:
         return executeNative(3);
+    case 58: {
+        if (command.operands.size() < 3) {
+            return StepResult::invalid_script;
+        }
+        bool present = false;
+        if (!hooks_.query_item ||
+            !hooks_.query_item(
+                readOperand(command.operands[0]),
+                readOperand(command.operands[1]),
+                present)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(
+                command.operands[2], present ? 1 : 0)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 59:
+    case 75:
+        return executeNative(2);
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;

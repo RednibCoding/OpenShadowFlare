@@ -1052,6 +1052,16 @@ Inventory-transfer paths. Original saves restore the ten owners at their
 post-mine boundary; shorter portable saves carry the same data in the
 versioned tail without breaking older save versions.
 
+The next script-facing item owner is reconstructed as well. Category-four
+records with an authored page now go into one of four fixed automatic-item
+pages instead of the backpack, whether they came from the ground or opcode 75.
+Opcodes 58 and 59 query and remove items through retail's exact page,
+backpack, and active-equipment order, including the intentional omission of
+the belt, alternate arms, Warehouse, and Giant Warehouse. Duplicate authored
+items are refused. All four pages follow the Giant Warehouse in original save
+payloads and use a backward-compatible late-item extension in shorter
+portable saves.
+
 The ordinary item information display is live now. Resting the pointer over a
 backpack, equipment, or special item for the same short delay as retail draws
 its name,

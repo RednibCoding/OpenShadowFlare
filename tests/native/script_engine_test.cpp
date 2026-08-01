@@ -191,6 +191,7 @@ bool testRetailRemoteTown() {
             return true;
         },
         {},
+        {},
     });
     interpreter.bind(&script);
     if (!check(
@@ -904,6 +905,7 @@ bool testRetailOutdoorChestScript() {
         },
         {},
         {},
+        {},
     });
     interpreter.bind(&script);
     const osf::script::StepResult result =
@@ -983,6 +985,7 @@ bool testRetailRedGoblinDeathStatus() {
         },
         {},
         {},
+        {},
     });
     interpreter.bind(&script);
     return check(
@@ -1035,6 +1038,7 @@ bool testRetailGiantWarehouseScript() {
         },
         {},
         {},
+        {},
     });
     interpreter.bind(&script);
     return check(
@@ -1051,6 +1055,105 @@ bool testRetailGiantWarehouseScript() {
 #endif
 }
 
+bool testRetailItemOwnershipCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_regular_file(
+            root / "00000000" / "Scenario.Scs") ||
+        !std::filesystem::is_regular_file(
+            root / "04900001" / "Scenario.Scs")) {
+        return true;
+    }
+
+    osf::script::ScriptData remote_town;
+    osf::script::ScriptData angel_memory;
+    std::string error;
+    if (!remote_town.load(
+            root / "00000000" / "Scenario.Scs", &error) ||
+        !angel_memory.load(
+            root / "04900001" / "Scenario.Scs", &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    std::vector<std::pair<std::int32_t, std::int32_t>> queries;
+    osf::script::Interpreter interpreter({
+        {},
+        [](const osf::script::Operand&, std::int32_t) {
+            return true;
+        },
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery, std::int32_t& value) {
+            value = 0;
+            return true;
+        },
+        {},
+        {},
+        [&queries](
+            std::int32_t category,
+            std::int32_t definition_id,
+            bool& present) {
+            queries.emplace_back(category, definition_id);
+            present = true;
+            return true;
+        },
+    });
+    interpreter.bind(&remote_town);
+    const osf::script::StepResult query_result =
+        interpreter.startSentence(36, -1);
+    const std::int32_t query_flag =
+        interpreter.readTemporaryFlag(1000005);
+    const osf::script::StepResult remove_result =
+        interpreter.startSentence(37, -1);
+    const auto removed = std::find(
+        native_commands.begin(),
+        native_commands.end(),
+        std::pair<std::int32_t, std::vector<std::int32_t>>{
+            59, {4, 99000000}});
+    if (!check(
+            query_result !=
+                    osf::script::StepResult::unsupported_command &&
+                query_result !=
+                    osf::script::StepResult::invalid_script &&
+                queries == std::vector<std::pair<
+                    std::int32_t, std::int32_t>>{{4, 99000000}} &&
+                query_flag == 1 &&
+                remove_result !=
+                    osf::script::StepResult::unsupported_command &&
+                remove_result !=
+                    osf::script::StepResult::invalid_script &&
+                removed != native_commands.end(),
+            "Remote Town's item query/remove commands differ from retail.")) {
+        return false;
+    }
+
+    native_commands.clear();
+    interpreter.bind(&angel_memory);
+    interpreter.startSentence(30, -1);
+    const auto granted = std::find(
+        native_commands.begin(),
+        native_commands.end(),
+        std::pair<std::int32_t, std::vector<std::int32_t>>{
+            75, {4, 98000001}});
+    return check(
+        granted != native_commands.end(),
+        "The shipped Spirit Stone grant did not emit retail opcode 75.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1058,6 +1161,7 @@ int main() {
                    testRetailOutdoorChestScript() &&
                    testRetailRedGoblinDeathStatus() &&
                    testRetailGiantWarehouseScript() &&
+                   testRetailItemOwnershipCommands() &&
                    testMalformedScript()
                ? 0
                : 1;

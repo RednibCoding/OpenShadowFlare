@@ -59,6 +59,13 @@ WorldScene::WorldScene()
               return measureScriptCharacterDistance(
                   character_number, distance);
           },
+          [this](
+              std::int32_t category,
+              std::int32_t definition_id,
+              bool& present) {
+              return queryScriptItem(
+                  category, definition_id, present);
+          },
       }) {}
 
 
@@ -91,6 +98,7 @@ void WorldScene::clear() {
     player_inventory_.clear();
     player_special_items_.clear();
     player_giant_warehouse_.initializeNew();
+    player_automatic_items_.clear();
     vendor_inventories_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
@@ -395,6 +403,15 @@ PlayerGiantWarehouse& WorldScene::playerGiantWarehouse() {
 const PlayerGiantWarehouse&
 WorldScene::playerGiantWarehouse() const {
     return player_giant_warehouse_;
+}
+
+PlayerAutomaticItems& WorldScene::playerAutomaticItems() {
+    return player_automatic_items_;
+}
+
+const PlayerAutomaticItems&
+WorldScene::playerAutomaticItems() const {
+    return player_automatic_items_;
 }
 
 VendorInventory* WorldScene::vendorInventory(std::int32_t index) {

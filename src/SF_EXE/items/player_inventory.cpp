@@ -428,6 +428,33 @@ PlayerInventory::items() const {
     return items_;
 }
 
+bool PlayerInventory::contains(
+    std::int32_t category,
+    std::int32_t definition_id) const {
+    return std::any_of(
+        items_.begin(), items_.end(),
+        [category, definition_id](const InventoryItem& item) {
+            return item.category == category &&
+                   item.definition_id == definition_id;
+        });
+}
+
+bool PlayerInventory::removeFirst(
+    std::int32_t category,
+    std::int32_t definition_id) {
+    const auto found = std::find_if(
+        items_.begin(), items_.end(),
+        [category, definition_id](const InventoryItem& item) {
+            return item.category == category &&
+                   item.definition_id == definition_id;
+        });
+    if (found == items_.end()) {
+        return false;
+    }
+    items_.erase(found);
+    return true;
+}
+
 std::int32_t PlayerInventory::gold() const {
     std::int64_t total = 0;
     for (const InventoryItem& item : items_) {
