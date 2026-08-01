@@ -171,6 +171,8 @@ bool testRetailRemoteTown() {
                 return true;
             case osf::script::ValueQuery::
                     local_player_repair_price:
+            case osf::script::ValueQuery::
+                    local_player_spell_learned:
                 return false;
             }
             return false;
@@ -1063,17 +1065,22 @@ bool testRetailItemOwnershipCommands() {
     if (!std::filesystem::is_regular_file(
             root / "00000000" / "Scenario.Scs") ||
         !std::filesystem::is_regular_file(
-            root / "04900001" / "Scenario.Scs")) {
+            root / "04900001" / "Scenario.Scs") ||
+        !std::filesystem::is_regular_file(
+            root / "04100000" / "Scenario.Scs")) {
         return true;
     }
 
     osf::script::ScriptData remote_town;
     osf::script::ScriptData angel_memory;
+    osf::script::ScriptData spell_reward;
     std::string error;
     if (!remote_town.load(
             root / "00000000" / "Scenario.Scs", &error) ||
         !angel_memory.load(
-            root / "04900001" / "Scenario.Scs", &error)) {
+            root / "04900001" / "Scenario.Scs", &error) ||
+        !spell_reward.load(
+            root / "04100000" / "Scenario.Scs", &error)) {
         std::cerr << error << '\n';
         return false;
     }
@@ -1082,6 +1089,7 @@ bool testRetailItemOwnershipCommands() {
         std::int32_t,
         std::vector<std::int32_t>>> native_commands;
     std::vector<std::pair<std::int32_t, std::int32_t>> queries;
+    std::vector<std::int32_t> spell_queries;
     osf::script::Interpreter interpreter({
         {},
         [](const osf::script::Operand&, std::int32_t) {
@@ -1098,7 +1106,18 @@ bool testRetailItemOwnershipCommands() {
             value = 0;
             return true;
         },
-        {},
+        [&spell_queries](
+            osf::script::ValueQuery query,
+            std::int32_t index,
+            std::int32_t& value) {
+            if (query != osf::script::ValueQuery::
+                    local_player_spell_learned) {
+                return false;
+            }
+            spell_queries.push_back(index);
+            value = 1;
+            return true;
+        },
         {},
         [&queries](
             std::int32_t category,
@@ -1152,12 +1171,41 @@ bool testRetailItemOwnershipCommands() {
         native_commands.end(),
         std::pair<std::int32_t, std::vector<std::int32_t>>{
             68, {50}});
-    return check(
-        grant_result == osf::script::StepResult::complete &&
+    if (!check(
+            grant_result == osf::script::StepResult::complete &&
             granted != native_commands.end() &&
             experience != native_commands.end(),
-        "The shipped Spirit Stone reward did not emit retail opcodes "
-        "75 and 68.");
+            "The shipped Spirit Stone reward did not emit retail opcodes "
+            "75 and 68.")) {
+        return false;
+    }
+
+    native_commands.clear();
+    interpreter.bind(&spell_reward);
+    const osf::script::StepResult query_spell_result =
+        interpreter.startSentence(3, -1);
+    const std::int32_t learned_flag =
+        interpreter.readTemporaryFlag(1000005);
+    const osf::script::StepResult learn_spell_result =
+        interpreter.startSentence(13, -1);
+    const bool emitted_learn = std::any_of(
+        native_commands.begin(),
+        native_commands.end(),
+        [](const auto& command) {
+            return command.first == 67 &&
+                   command.second.size() == 1;
+        });
+    return check(
+        query_spell_result !=
+                osf::script::StepResult::unsupported_command &&
+            query_spell_result !=
+                osf::script::StepResult::invalid_script &&
+            !spell_queries.empty() &&
+            learned_flag == 1 &&
+            learn_spell_result == osf::script::StepResult::complete &&
+            emitted_learn,
+        "The shipped spell query/reward path did not execute retail "
+        "opcodes 69 and 67.");
 #else
     return true;
 #endif

@@ -471,6 +471,24 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 69: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_indexed_value ||
+            !hooks_.query_indexed_value(
+                ValueQuery::local_player_spell_learned,
+                readOperand(command.operands[0]),
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[1], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 53:
     case 55: {
         if (command.operands.empty()) {
@@ -562,9 +580,13 @@ StepResult Interpreter::execute(const Command& command) {
         return StepResult::complete;
     }
     case 59:
+    case 67:
     case 68:
     case 75:
-        return executeNative(command.opcode == 68 ? 1 : 2);
+        return executeNative(
+            command.opcode == 59 || command.opcode == 75
+                ? 2
+                : 1);
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;

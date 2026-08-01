@@ -74,6 +74,11 @@ headings. Status shows the saved character identity, current and derived
 physical and magical values, and the eight elemental affinities. Like Magic,
 it keeps the world running and can stay open beside Inventory.
 
+Scripted spell rewards use the same saved `PlayerMagic` availability array as
+that panel. Retail opcodes 67 and 69 can permanently learn a spell or query its
+exact learned state; the F12 All Spells override remains temporary and cannot
+change those scenario branches or their save data.
+
 The final bar icon selects retail normal-target mode. Right-clicking the world
 with a one-handed or two-handed weapon then runs the matching three-part melee
 combo, with each CAF phase owning its own impact, short forward step, weapon

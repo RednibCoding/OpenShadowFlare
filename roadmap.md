@@ -126,6 +126,12 @@ magic-bar slots behind one boundary. New characters receive the retail
 block after the three progress arrays, and new saves rewrite it without
 disturbing later unknown state.
 
+Scenario spell rewards now use that owner too. Opcode 67 records the exact
+learned state in the saved availability array, while opcode 69 queries that
+stored state for script branches. The temporary All Spells debug switch stays
+outside both operations. A shipped query-and-reward path from scenario
+`04100000` covers the interpreter, world hook, and persistent owner together.
+
 The selection side is complete too. `S` and `M` open the two tabs of the
 authored left-hand Status/Magic panel without pausing the world, shift the
 camera into the visible half, and can stay open beside the right-hand

@@ -46,6 +46,22 @@ bool PlayerMagic::learned(std::int32_t spell) const {
     return availability(spell) == 3;
 }
 
+bool PlayerMagic::permanentlyLearned(
+    std::int32_t spell) const {
+    return validSpell(spell) &&
+           state_.availability[
+               static_cast<std::size_t>(spell)] == 3;
+}
+
+bool PlayerMagic::learnPermanently(std::int32_t spell) {
+    if (!validSpell(spell)) {
+        return false;
+    }
+    state_.availability[
+        static_cast<std::size_t>(spell)] = 3;
+    return true;
+}
+
 std::int32_t PlayerMagic::availability(
     std::int32_t spell) const {
     return validSpell(spell)

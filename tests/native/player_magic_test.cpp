@@ -108,6 +108,29 @@ int main() {
         return 1;
     }
 
+    fresh.setAllSpellsAvailable(true);
+    if (!check(
+            !fresh.permanentlyLearned(20) &&
+                fresh.learnPermanently(20) &&
+                fresh.permanentlyLearned(20) &&
+                fresh.state().availability[20] == 3 &&
+                !fresh.learnPermanently(-1) &&
+                !fresh.learnPermanently(
+                    static_cast<std::int32_t>(
+                        osf::PlayerMagic::spell_count)),
+            "Permanent spell learning did not update the saved retail "
+            "availability independently of the debug override.")) {
+        return 1;
+    }
+    fresh.setAllSpellsAvailable(false);
+    if (!check(
+            fresh.learned(20) &&
+                fresh.permanentlyLearned(20),
+            "A permanently learned spell disappeared with the debug "
+            "override.")) {
+        return 1;
+    }
+
     std::vector<std::uint8_t> payload(
         osf::PlayerData::retail_record_size, 0x5a);
     const std::size_t items_end = payload.size();

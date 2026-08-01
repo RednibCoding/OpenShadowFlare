@@ -729,6 +729,14 @@ and `0`, while all bar slots begin at `-1`. The portable `PlayerMagic` owner
 and `restoreRetailMagic`/`replaceRetailMagic` preserve this block independently
 of actor, panel, and effect state.
 
+The matching script ownership is confirmed. Opcode 67 at `0x004340e7` writes
+availability value three to the evaluated spell index. Opcode 69 at
+`0x0043412b` tests that stored value for exact equality with three and writes a
+boolean operand. Scenario `04100000` contains both the query branch and later
+reward. `PlayerMagic` now performs those operations on its persistent array,
+so the debug-only All Spells view cannot leak into scenario progression and a
+normal save keeps the granted spell.
+
 With `Save Image at Game End` enabled, the world-only software surface is also
 captured before the HUD, conversation overlay, or Escape panel is drawn.
 Portable `RKC_DIB` writes the retail 391-by-114, 24-bit `Save\%04d.Bmp` partner

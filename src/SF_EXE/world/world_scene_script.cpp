@@ -510,6 +510,11 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
+    if (opcode == 67) {
+        return arguments.size() == 1 &&
+               player_magic_.learnPermanently(arguments[0]);
+    }
+
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;
@@ -592,6 +597,7 @@ bool WorldScene::queryScriptValue(
                 : 0;
         return true;
     case script::ValueQuery::local_player_repair_price:
+    case script::ValueQuery::local_player_spell_learned:
         return false;
     }
     return false;
@@ -601,8 +607,21 @@ bool WorldScene::queryScriptIndexedValue(
     script::ValueQuery query,
     std::int32_t index,
     std::int32_t& value) const {
-    if (!has_player_ ||
-        query != script::ValueQuery::local_player_repair_price) {
+    if (!has_player_) {
+        return false;
+    }
+    if (query ==
+        script::ValueQuery::local_player_spell_learned) {
+        if (index < 0 ||
+            static_cast<std::size_t>(index) >=
+                PlayerMagic::spell_count) {
+            return false;
+        }
+        value = player_magic_.permanentlyLearned(index) ? 1 : 0;
+        return true;
+    }
+    if (query !=
+        script::ValueQuery::local_player_repair_price) {
         return false;
     }
     const TableData* value_parameters =

@@ -979,6 +979,14 @@ respectively and leaves every bar slot at `-1`; only availability value three
 is treated as learned. The portable save path now restores and replaces this
 exact section while retaining all later unknown bytes.
 
+Script opcodes 67 and 69 are the mutation and query paths for that array.
+`0x004340e7` evaluates a spell index and writes the exact learned value `3` at
+player `+0x1440 + index*4`. `0x0043412b` reads the same slot, compares it with
+`3`, and writes the resulting boolean to its second operand. These handlers do
+not touch spell level, practice experience, or the bar, and the portable
+runtime does not let its temporary All Spells debug override affect either
+script operation.
+
 After the magic history and Land Mine count, retail writes three 32-bit
 values for later world state, the literal page count ten, ten Giant Warehouse
 unlock values, and ten ordinary item containers. The selected page is not in

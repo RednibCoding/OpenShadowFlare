@@ -328,7 +328,9 @@ interactions are portable so far.
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
 | 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
+| 69 | `0x0043412b` | Write whether one spell has the exact learned availability state |
 | 75 | `0x0043443c` | Create a table-backed item and place it in its authored automatic-item page and cell when absent |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
@@ -398,6 +400,14 @@ Crossing the threshold invokes the same growth, full life/mana restoration,
 900-update notice, and samples used by combat experience. Scenario `04900001`
 sentence 30 demonstrates the real sequence: opcode 75 grants the Spirit Stone,
 opcode 68 grants 50 percent, and opcode 16 plays the authored reward sample.
+
+Opcodes 67 and 69 use the saved magic owner directly. Opcode 67 writes the
+exact learned value `3` to the evaluated spell slot at player `+0x1440`.
+Opcode 69 compares that same stored value with `3` and writes zero or one to
+its second operand. It deliberately ignores the runtime-only All Spells debug
+override. Shipped scenario `04100000` uses opcode 69 to branch on a reward
+spell and later opcode 67 to grant it; the normal magic save block preserves
+the result.
 
 Opcodes 5 and 6 follow the same boundary. Scenario status kind 7 initializes
 vendor inventory zero with opcode 6 and stock profile zero (or profile 22 for
