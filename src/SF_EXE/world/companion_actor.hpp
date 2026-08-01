@@ -101,6 +101,9 @@ public:
         const CompanionProfile& profile);
     void applyRuntimeProfile(
         const CompanionProfile& profile);
+    bool restoreLife(
+        std::int32_t amount,
+        std::int32_t maximum_percent);
 
     bool valid() const;
     std::int32_t characterNumber() const;

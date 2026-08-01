@@ -1170,6 +1170,15 @@ and clamps a nonzero repair to at least one Gold. `0x00466800` restores the
 instance durability. The backpack sum and mutation loops at `0x00467180` and
 `0x00467140` deliberately ignore accessories, medicine, Gold, and belt items.
 
+`0x0044a240` gives category-three item use a strict target order. It first
+tries player HP and MP, scaling both flat and maximum-percent definition values
+by 100 plus the corresponding equipped base bonus. If neither changes, it
+resolves character `16000000 + local player slot` and applies the companion
+flat/percent fields only while that actor is alive and below maximum life.
+Only then does it reach the condition/timed-effect branch. The first changed
+owner consumes the concrete backpack or belt item and plays sample 16; full or
+dead targets leave it untouched.
+
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
 and 1 are the base body and shadow, while equipped items select additional

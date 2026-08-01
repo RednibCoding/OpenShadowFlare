@@ -554,6 +554,21 @@ the same raw item-instance word written to a retail save. The script handles
 already-repaired and insufficient-Gold choices before it asks the item owners
 to mutate anything.
 
+### Medicine and companion food
+
+Category-three items in the backpack and belt share the executable's one use
+path. Player life and mana are tried first. Both flat restoration and the
+maximum-pool percentage are scaled by the matching equipped base bonus, using
+the live derived maximum HP or MP and retail's integer operation order. An item
+is consumed and sample 16 plays as soon as either player pool changes.
+
+Only when neither player pool changed does the command try the owned companion.
+Meat, Quality Meat, High Quality Meat, and Excellent Quality Meat restore their
+Table-backed flat companion-life values. The companion must be alive and below
+maximum life; food used on a full or defeated companion remains in its owner
+and produces no use sound. Condition-clearing and timed elemental medicines
+continue after this same priority chain and are not reconstructed yet.
+
 ## Character Stats
 
 ### Primary Stats

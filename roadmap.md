@@ -1075,8 +1075,14 @@ bonus, and post-magic retail save field are all owned and tested, including
 older sparse portable saves.
 
 Companion restoration, timed/status effects, and the script-facing
-special-item commands remain the next item checkpoint. Those paths should
-keep using these owners rather than adding parallel inventory models.
+special-item commands form the remaining item-use checkpoint. Companion
+restoration is now complete: Meat and its stronger definitions use the same
+backpack/belt command as player medicine, run only after player life/mana made
+no change, restore a living owned companion, and remain unconsumed when that
+companion is full or defeated. Player medicine now also uses the executable's
+equipped life/mana restoration multipliers and live derived maximum pools.
+Condition clearing and timed elemental medicine effects are next; those paths
+should keep using these owners rather than adding parallel inventory models.
 
 ### 4. Combat and death
 

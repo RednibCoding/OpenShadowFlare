@@ -133,6 +133,16 @@ int main() {
         items.find(3, 10000000);
     osf::PlayerBelt belt;
     osf::PlayerItemController item_controller;
+    const auto item_use_targets = [](osf::PlayerData& player) {
+        return osf::PlayerItemUseTargets{
+            player,
+            player.baseMaximumLife(),
+            player.baseMaximumMana(),
+            0,
+            0,
+            nullptr,
+        };
+    };
     item_controller.initializeNew();
     if (!check(
             tablet &&
@@ -161,7 +171,7 @@ int main() {
                      0,
                      belt,
                      items,
-                     belt_player)
+                     item_use_targets(belt_player))
                  .consumed &&
                 belt.itemAt(0, 0),
             "A Tablet was consumed while life was already full.")) {
@@ -184,7 +194,7 @@ int main() {
             0,
             belt,
             items,
-            belt_player);
+            item_use_targets(belt_player));
     belt_player.setCurrentMana(
         belt_player.baseMaximumMana() - 10);
     const osf::PlayerItemUseResult capsule_use =
@@ -192,7 +202,7 @@ int main() {
             4,
             belt,
             items,
-            belt_player);
+            item_use_targets(belt_player));
     if (!check(
             tablet_use.consumed &&
                 tablet_use.sound_sample == 16 &&
@@ -222,7 +232,7 @@ int main() {
                      0,
                      medicine_inventory,
                      items,
-                     inventory_player)
+                     item_use_targets(inventory_player))
                  .consumed &&
                 medicine_inventory.items().size() == 2,
             "A backpack Tablet was consumed while life was full.")) {
@@ -235,7 +245,7 @@ int main() {
             0,
             medicine_inventory,
             items,
-            inventory_player);
+            item_use_targets(inventory_player));
     inventory_player.setCurrentMana(
         inventory_player.baseMaximumMana() - 10);
     const osf::PlayerItemUseResult inventory_capsule_use =
@@ -243,7 +253,7 @@ int main() {
             0,
             medicine_inventory,
             items,
-            inventory_player);
+            item_use_targets(inventory_player));
     if (!check(
             inventory_tablet_use.consumed &&
                 inventory_tablet_use.sound_sample == 16 &&
@@ -255,6 +265,31 @@ int main() {
                 inventory_player.currentMana() ==
                     inventory_player.baseMaximumMana(),
             "Right-click backpack medicine use differs from belt use.")) {
+        return 1;
+    }
+
+    osf::PlayerInventory boosted_medicine_inventory;
+    osf::PlayerData boosted_player = male;
+    boosted_player.setCurrentLife(100, 500);
+    if (!check(
+            boosted_medicine_inventory.add(*tablet) &&
+                item_controller
+                    .useInventoryItem(
+                        0,
+                        boosted_medicine_inventory,
+                        items,
+                        {
+                            boosted_player,
+                            500,
+                            boosted_player.baseMaximumMana(),
+                            50,
+                            0,
+                            nullptr,
+                        })
+                    .consumed &&
+                boosted_player.currentLife() == 400,
+            "Equipped maximum-life bonuses did not scale medicine by "
+            "the retail order of operations.")) {
         return 1;
     }
 

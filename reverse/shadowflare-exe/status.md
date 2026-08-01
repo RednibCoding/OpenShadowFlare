@@ -473,7 +473,18 @@ applies the decoded flat and maximum-percent player life/mana fields and
 removes the item only when a value changes. The same path handles a secondary
 click on medicine in either the backpack or belt, so a Tablet at full life or
 a Capsule at full mana stays in its owner and produces no use sound. Its
-companion and status-effect branches remain pending.
+player restore amounts are multiplied by 100 plus the equipped definition
+bonuses at runtime definition offsets `+0x108` for life and `+0x114` for mana;
+both the flat amount and maximum-pool percentage use that multiplier.
+
+Only when neither player pool changes does `0x0044a240` resolve the owned
+companion as character `16000000 + local player slot`. A companion whose
+current life is positive and below maximum receives medicine definition
+offset `+0x14` plus offset `+0x18` percent of maximum, clamped to maximum. This
+is the Meat family in `Item.Ibn`. A full, absent, or defeated companion does
+not consume the item. Any successful player or companion restoration jumps
+to the common sample-16/consume result before the later condition branch.
+Condition clearing and timed effects remain pending.
 
 New-character equipment and owned items now follow `0x00440f70` as well.
 Category one definition zero is equipped in the body slot. Category-three

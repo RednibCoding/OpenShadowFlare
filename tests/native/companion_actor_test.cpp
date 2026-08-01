@@ -1,5 +1,7 @@
 #include "gapi/gapi.hpp"
 #include "core/retail_random.hpp"
+#include "items/item_database.hpp"
+#include "items/player_inventory.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
@@ -10,6 +12,8 @@
 #include "world/companion_profile.hpp"
 #include "world/companion_respawn.hpp"
 #include "world/companion_target_selector.hpp"
+#include "world/player_data.hpp"
+#include "world/player_item_controller.hpp"
 #include "world/world_scene.hpp"
 
 #include <filesystem>
@@ -632,6 +636,67 @@ int main() {
         return 1;
     }
 
+    osf::ItemDatabase item_database;
+    osf::PlayerData medicine_player;
+    const osf::ItemDefinition* meat = nullptr;
+    if (!check(
+            item_database.load(
+                data_root / "System" / "Game" /
+                    "Parameter" / "Item.Ibn",
+                &error) &&
+                (meat = item_database.find(3, 20000000)) &&
+                medicine_player.initializeNew(
+                    "Mina", 1, tables, &error),
+            "The companion medicine fixture could not be loaded.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    osf::PlayerInventory meat_inventory;
+    osf::PlayerItemController medicine_controller;
+    if (!check(
+            meat_inventory.add(*meat) &&
+                medicine_controller
+                    .useInventoryItem(
+                        0,
+                        meat_inventory,
+                        item_database,
+                        {
+                            medicine_player,
+                            medicine_player.baseMaximumLife(),
+                            medicine_player.baseMaximumMana(),
+                            0,
+                            0,
+                            &actor,
+                        })
+                    .consumed &&
+                meat_inventory.items().empty() &&
+                actor.currentLife() == actor.maximumLife(),
+            "Meat did not restore the living owned companion after the "
+            "player restoration pass changed nothing.")) {
+        return 1;
+    }
+    if (!check(
+            meat_inventory.add(*meat) &&
+                !medicine_controller
+                     .useInventoryItem(
+                         0,
+                         meat_inventory,
+                         item_database,
+                         {
+                             medicine_player,
+                             medicine_player.baseMaximumLife(),
+                             medicine_player.baseMaximumMana(),
+                             0,
+                             0,
+                             &actor,
+                         })
+                     .consumed &&
+                meat_inventory.items().size() == 1,
+            "Meat was consumed while the owned companion was already "
+            "at maximum life.")) {
+        return 1;
+    }
+
     osf::CompanionDamageReceiverState defeated =
         actor.damageReceiverState();
     defeated.current_life = 0;
@@ -660,7 +725,8 @@ int main() {
     }
     if (!check(
             !actor.visible() &&
-                actor.drawOpacity() == 0,
+                actor.drawOpacity() == 0 &&
+                !actor.restoreLife(500, 0),
             "The defeated companion did not hold and fade over its "
             "retail chart-four lifetime.")) {
         return 1;

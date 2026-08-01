@@ -325,8 +325,11 @@ also be carried in the HUD's staggered two-row belt; keys `1` through `8` use
 those pockets. A fresh hero starts with the original Leather Cloth, four
 Tablets and four Capsules in both the backpack and belt, and five mines.
 Right-clicking a Tablet or Capsule in either owner uses it when the matching
-life or mana pool is not already full. Inventory movement, equipment, world
-drops, and medicine use play the corresponding retail effects. A ground item
+life or mana pool is not already full. Meat and its stronger variants continue
+through the same command to restore a living owned companion, but are left
+alone when it is full or defeated. Equipped HP/MP bonuses scale player
+medicine just as they do in the executable. Inventory movement, equipment,
+world drops, and medicine use play the corresponding retail effects. A ground item
 that cannot fit in the backpack repeats its original bounce and landing sound
 instead of silently ignoring the pickup. `X` opens the separate
 9-by-10 special-item panel on the left and shifts the live world view to the

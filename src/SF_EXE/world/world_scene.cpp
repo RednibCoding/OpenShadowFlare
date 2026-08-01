@@ -456,20 +456,42 @@ const TableDatabase& WorldScene::parameterTables() const {
 
 PlayerItemUseResult WorldScene::usePlayerBeltPocket(
     std::int32_t pocket) {
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
+    const PlayerEquipment::DerivedParameterBonuses bonuses =
+        player_equipment_.derivedParameterBonuses(item_database_);
     return player_item_controller_.useBeltPocket(
         pocket,
         player_belt_,
         item_database_,
-        player_data_);
+        {
+            player_data_,
+            profile.maximum_life,
+            profile.maximum_mana,
+            bonuses[0],
+            bonuses[3],
+            hasCompanion() ? &companion_ : nullptr,
+        });
 }
 
 PlayerItemUseResult WorldScene::usePlayerInventoryItem(
     std::int32_t item_index) {
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
+    const PlayerEquipment::DerivedParameterBonuses bonuses =
+        player_equipment_.derivedParameterBonuses(item_database_);
     return player_item_controller_.useInventoryItem(
         item_index,
         player_inventory_,
         item_database_,
-        player_data_);
+        {
+            player_data_,
+            profile.maximum_life,
+            profile.maximum_mana,
+            bonuses[0],
+            bonuses[3],
+            hasCompanion() ? &companion_ : nullptr,
+        });
 }
 
 std::int32_t WorldScene::playerMineCount() const {

@@ -650,6 +650,27 @@ void CompanionActor::applyRuntimeProfile(
         current_life_, 0, profile_.maximum_life);
 }
 
+bool CompanionActor::restoreLife(
+    std::int32_t amount,
+    std::int32_t maximum_percent) {
+    if (!valid() || current_life_ <= 0 ||
+        current_life_ >= profile_.maximum_life) {
+        return false;
+    }
+    const std::int64_t restored =
+        static_cast<std::int64_t>(current_life_) + amount +
+        static_cast<std::int64_t>(maximum_percent) *
+            profile_.maximum_life / 100;
+    const std::int32_t next = static_cast<std::int32_t>(
+        std::clamp<std::int64_t>(
+            restored, 0, profile_.maximum_life));
+    if (next == current_life_) {
+        return false;
+    }
+    current_life_ = next;
+    return true;
+}
+
 bool CompanionActor::valid() const {
     return visual_ != nullptr && owner_slot_ >= 0;
 }
