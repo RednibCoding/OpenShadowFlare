@@ -13,6 +13,7 @@
 #include "world/enemy_effect_impact.hpp"
 #include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
+#include "world/npc_script_action.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
 #include "world/script/scenario_effect_command.hpp"
@@ -40,6 +41,43 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool testNpcScriptAction() {
+    osf::NpcScriptActionController action;
+    if (!check(
+            action.start(4, -1, -1, -1),
+            "A valid retail PEOPLE one-shot action was rejected.")) {
+        return false;
+    }
+    const osf::NpcScriptActionUpdate first = action.update(3);
+    const osf::NpcScriptActionUpdate second = action.update(3);
+    const osf::NpcScriptActionUpdate third = action.update(3);
+    if (!check(
+            first.handled && first.action == 4 && first.frame == 0 &&
+                !first.completed && second.frame == 1 &&
+                !second.completed && third.frame == 2 &&
+                third.completed && !action.active() &&
+                action.action() == 1,
+            "The PEOPLE one-shot action did not preserve its retail "
+            "first and final frames.")) {
+        return false;
+    }
+    if (!check(
+            action.start(4, 1, 1, 2),
+            "A valid retail PEOPLE repeated action was rejected.")) {
+        return false;
+    }
+    std::array<std::int32_t, 5> frames{};
+    for (std::int32_t& frame : frames) {
+        frame = action.update(4).frame;
+    }
+    return check(
+        frames == std::array<std::int32_t, 5>{0, 1, 2, 1, 2} &&
+            action.active() &&
+            !action.start(3, -1, -1, -1),
+        "The PEOPLE repeated-action restart and range validation differ "
+        "from retail.");
 }
 
 bool testScenarioEffectCommand() {
@@ -4040,6 +4078,86 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    const std::int32_t player_maximum_life =
+        world.playerRuntimeProfile().maximum_life;
+    const std::int32_t player_maximum_mana =
+        world.playerRuntimeProfile().maximum_mana;
+    osf::PlayerData& wounded_player =
+        const_cast<osf::PlayerData&>(world.playerData());
+    wounded_player.setCurrentLife(1, player_maximum_life);
+    wounded_player.setCurrentMana(1, player_maximum_mana);
+    if (!check(
+            world.hasCompanion(),
+            "The Syria recovery fixture has no owned companion.")) {
+        return false;
+    }
+    osf::CompanionActor& wounded_companion =
+        const_cast<osf::CompanionActor&>(world.companion());
+    osf::CompanionDamageReceiverState companion_state =
+        wounded_companion.damageReceiverState();
+    companion_state.current_life = 1;
+    wounded_companion.applyDamageReceiverState(companion_state);
+    world.takeAudioSamples();
+
+    osf::ScreenPosition syria_blessing_pointer;
+    const bool syria_blessing_click =
+        findNpcPointerPoint(
+            world, 2, syria_blessing_pointer) &&
+        world.commandWorldInteraction(
+            syria_blessing_pointer.x,
+            syria_blessing_pointer.y);
+    updateUntilConversation(world);
+    if (!check(
+            syria_blessing_click &&
+                world.conversationActive() &&
+                world.conversationMessageId() == 1000037,
+            "A wounded player did not reach Syria's retail recovery "
+            "message.")) {
+        return false;
+    }
+    world.advanceConversation();
+    const std::vector<std::int32_t> blessing_audio =
+        world.takeAudioSamples();
+    if (!check(
+            !world.conversationActive() &&
+                world.playerCurrentLife() == player_maximum_life &&
+                world.playerCurrentMana() == player_maximum_mana &&
+                world.companion().currentLife() ==
+                    world.companion().maximumLife() &&
+                world.npcs()[2].animationChart() == 3 &&
+                world.npcs()[2].animationFrame() == 0 &&
+                !blessing_audio.empty(),
+            "Syria's retail callback did not restore the living party, "
+            "start PEOPLE chart three, and play its authored sample.")) {
+        return false;
+    }
+
+    const osf::NpcActor& blessing_syria = world.npcs()[2];
+    const osf::gapi::CafDirection& blessing_direction =
+        blessing_syria.animation().charts()[3].directions[
+            static_cast<std::size_t>(blessing_syria.direction())];
+    for (std::int32_t update = 0;
+         update < blessing_direction.frame_count;
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            blessing_syria.animationChart() == 3 &&
+                blessing_syria.animationFrame() ==
+                    blessing_direction.frame_count - 1,
+            "Syria's one-shot blessing did not retain its retail final "
+            "CAF frame.")) {
+        return false;
+    }
+    world.update();
+    if (!check(
+            blessing_syria.animationChart() == 0 &&
+                blessing_syria.animationFrame() == 0,
+            "Syria did not return to PEOPLE idle after her one-shot "
+            "blessing.")) {
+        return false;
+    }
+
     osf::WorldScene companion_world;
     if (!check(
             companion_world.loadInitialScenario(
@@ -4734,7 +4852,8 @@ bool testRetailRemoteTown() {
 }  // namespace
 
 int main() {
-    return testScenarioEffectCommand() &&
+    return testNpcScriptAction() &&
+                   testScenarioEffectCommand() &&
                    testScenarioPlacedEffectCommand() &&
                    testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&

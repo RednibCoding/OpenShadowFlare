@@ -415,6 +415,9 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(6);
     case 4:
         return executeNative(0);
+    case 7:
+    case 8:
+        return executeNative(0);
     case 16:
         return command.operands.empty()
             ? StepResult::invalid_script
@@ -474,6 +477,8 @@ StepResult Interpreter::execute(const Command& command) {
     case 41:
     case 48:
         return executeNative(1);
+    case 20:
+        return executeNative(6);
     case 54:
         return executeNative(1);
     case 56:

@@ -155,6 +155,7 @@ add_library(
   world/movement_controller.cpp
   world/movement_destination_selector.cpp
   world/npc_actor.cpp
+  world/npc_script_action.cpp
   world/player_appearance.cpp
   world/player_actor.cpp
   world/player_attack_action.cpp

@@ -299,6 +299,8 @@ services exercise them; unknown values still fail loudly.
 | 4 | `0x00432296` | Mark every equipped, backpack, and belt item as identified |
 | 5 | `0x0043222b` | Request one of the executable's numbered vendor inventories |
 | 6 | `0x004321e8` | Rebuild a numbered vendor inventory from a Table 32 stock profile |
+| 7 | `0x0043244d` | Fully restore the local hero and a living owned companion |
+| 8 | `0x004324cf` | Fully restore the local hero's mana |
 | 9 | `0x0043234a` | Repair one equipped item group, or the non-equipped backpack group for selector `-1` |
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
@@ -310,6 +312,7 @@ services exercise them; unknown values still fail loudly.
 | 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
+| 20 | `0x00431fc9` | Start an evaluated PEOPLE animation action with one-shot or repeated frame bounds |
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
@@ -603,6 +606,25 @@ Syria's later status-zero branch reads quest zero directly. When it is already
 active, opcodes 42, 43, and 63 compare the player's life, mana, and optional
 condition pairs before selecting the normal healing or blessing text; it does
 not offer quest zero again.
+
+The wounded branch continues through the authored callback rather than a
+conversation special case. Opcode 19 first releases Syria, opcode 20 starts
+PEOPLE action four as a one-shot, opcodes 7 and 8 restore the party, and opcode
+16 plays the sample stored in temporary flag `1000061`. Action four maps to
+Syria's CAF chart three. The PEOPLE owner presents frame zero first, keeps the
+last frame for one update, and then returns to idle chart zero. Opcode 7 copies
+the hero's live derived maximum life into current life and does the same for
+the owned companion only while that companion is alive; it deliberately does
+not revive a defeated companion. Opcode 8 independently copies the live
+derived maximum mana into current mana.
+
+Opcode 20 evaluates six operands: actor, action, repeat selector, restart
+frame, end frame, and one trailing value retained by the native call. PEOPLE
+actions four through nineteen map to CAF charts three through eighteen. A
+repeat selector of `-1` plays once. Other values repeat, using the authored
+restart and end frames; `-1` means frame zero or the chart's last frame. This
+is kept in the PEOPLE action controller, not in the interpreter, because CAF
+ownership and actor update timing belong to the world.
 
 The ordinary Mission List does not store another hand-written copy of this
 information. `0x0040cea0` reads the state array written by opcode 62, takes all

@@ -135,6 +135,7 @@ void NpcActor::clear() {
     interaction_active_ = false;
     random_.seed(1);
     movement_controller_.reset();
+    script_action_.cancel();
     state_.clear();
     part_visibility_.clear();
     red_strength_.clear();
@@ -148,6 +149,32 @@ void NpcActor::update(
     const ObjectMap& objects,
     const std::vector<MovementBlocker>* dynamic_blockers) {
     previous_position_ = position_;
+    if (script_action_.active()) {
+        const std::int32_t action = script_action_.action();
+        const std::int32_t chart_index = action - 1;
+        std::int32_t frame_count = 0;
+        if (visual_ && chart_index >= 0 &&
+            static_cast<std::size_t>(chart_index) <
+                visual_->animation().charts().size()) {
+            const gapi::CafChart& chart =
+                visual_->animation().charts()[
+                    static_cast<std::size_t>(chart_index)];
+            if (direction_ >= 0 &&
+                static_cast<std::size_t>(direction_) <
+                    chart.directions.size()) {
+                frame_count = chart.directions[
+                    static_cast<std::size_t>(direction_)].frame_count;
+            }
+        }
+        const NpcScriptActionUpdate action_update =
+            script_action_.update(frame_count);
+        animation_chart_ = action_update.action - 1;
+        animation_frame_ = action_update.frame;
+        if (action_update.completed) {
+            action_counter_ = 0;
+        }
+        return;
+    }
     if (interaction_active_) {
         animation_chart_ = 0;
         animation_frame_ = action_counter_++;
@@ -219,6 +246,7 @@ void NpcActor::update(
 }
 
 void NpcActor::beginInteraction() {
+    script_action_.cancel();
     walking_ = false;
     destination_ = position_;
     action_counter_ = 0;
@@ -240,8 +268,35 @@ void NpcActor::faceToward(
 }
 
 void NpcActor::endInteraction() {
+    script_action_.cancel();
     interaction_active_ = false;
     action_counter_ = 0;
+}
+
+void NpcActor::releaseConversation() {
+    interaction_active_ = false;
+    if (!script_action_.active()) {
+        action_counter_ = 0;
+    }
+}
+
+bool NpcActor::startScriptAction(
+    std::int32_t action,
+    std::int32_t repeat,
+    std::int32_t restart_frame,
+    std::int32_t end_frame) {
+    if (!script_action_.start(
+            action, repeat, restart_frame, end_frame)) {
+        return false;
+    }
+    walking_ = false;
+    destination_ = position_;
+    movement_controller_.reset();
+    interaction_active_ = false;
+    action_counter_ = 0;
+    animation_chart_ = action - 1;
+    animation_frame_ = 0;
+    return true;
 }
 
 std::int32_t NpcActor::stateValue(

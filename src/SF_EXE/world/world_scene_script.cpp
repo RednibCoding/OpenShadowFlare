@@ -279,6 +279,31 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 7) {
+        if (!arguments.empty() || !has_player_) {
+            return false;
+        }
+        const PlayerRuntimeProfile profile =
+            playerRuntimeProfile();
+        player_data_.setCurrentLife(
+            profile.maximum_life, profile.maximum_life);
+        if (hasCompanion() && companion_.currentLife() > 0) {
+            companion_.restoreLife(0, 100);
+        }
+        return true;
+    }
+
+    if (opcode == 8) {
+        if (!arguments.empty() || !has_player_) {
+            return false;
+        }
+        const std::int32_t maximum_mana =
+            playerRuntimeProfile().maximum_mana;
+        player_data_.setCurrentMana(
+            maximum_mana, maximum_mana);
+        return true;
+    }
+
     if (opcode == 30) {
         CombatEffectSpawnRequest request;
         if (!makeScenarioEffectRequest(
@@ -605,7 +630,8 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
-    if ((opcode != 18 && opcode != 19 && opcode != 21) ||
+    if ((opcode != 18 && opcode != 19 && opcode != 20 &&
+         opcode != 21) ||
         arguments.empty()) {
         return false;
     }
@@ -616,6 +642,14 @@ bool WorldScene::executeScriptNativeCommand(
     if (opcode == 19) {
         npc->endInteraction();
         return true;
+    }
+    if (opcode == 20) {
+        return arguments.size() == 6 &&
+               npc->startScriptAction(
+                   arguments[1],
+                   arguments[2],
+                   arguments[3],
+                   arguments[4]);
     }
     if (opcode == 18) {
         npc->beginInteraction();

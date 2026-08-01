@@ -132,6 +132,15 @@ menu. Closing it writes the command's result operand and follows the authored
 status-one release branch. All six calls across the three shipped scenarios
 remain script-driven, including retail's slightly odd magical-stat labels.
 
+Syria's normal recovery callback is complete now too. The script itself
+decides whether life, mana, or the optional condition needs attention, then
+uses opcodes 20, 7, and 8 to play her resource-9 chart-three blessing and
+restore the live party pools. The hero uses the derived equipment-adjusted
+maximums; a living owned companion is fully healed, while a defeated companion
+stays defeated. PEOPLE one-shot and repeated frame ranges now have their own
+small controller, preserving the first and final frames and returning to idle
+at the retail update boundary. Her authored sample still comes from opcode 16.
+
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
 updates, then returns the hero to the current scenario entry through a revive
@@ -1011,9 +1020,11 @@ shadow, exact clickable title rectangle, and the script's samples 65 and 66;
 clicking it opens the Mission List. The persistent StatusIcon lock shortcut is
 drawn and clickable while any quest remains active. Syria's subsequent
 interactions now read the real type-12 quest owner and follow her normal
-healing/blessing branch. Near Remote Town's authored status-kind-four callback
-also completes quest zero after Red Goblin `14010000` finishes its death
-presentation.
+healing/blessing branch. A wounded branch runs the authored PEOPLE action,
+fully restores hero life and mana plus any living owned companion, plays its
+positioned sample, and returns Syria to idle after the last CAF frame. Near
+Remote Town's authored status-kind-four callback also completes quest zero
+after Red Goblin `14010000` finishes its death presentation.
 
 Malse's next authored branch is live too. Completing the Red Goblin quest is
 what advances his script into the merchant introduction and later service

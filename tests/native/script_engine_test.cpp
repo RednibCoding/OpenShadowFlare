@@ -171,6 +171,10 @@ bool testRetailRemoteTown() {
     std::int32_t companion_status_queries = 0;
     std::int32_t companion_status_type = -1;
     std::int32_t player_gold = 200;
+    std::int32_t player_current_life = 100;
+    std::int32_t player_maximum_life = 100;
+    std::int32_t player_current_mana = 100;
+    std::int32_t player_maximum_mana = 100;
     bool has_unidentified_items = true;
     std::array<std::int32_t, 6> repair_prices{{
         30, 10, 20, 15, 5, 40,
@@ -216,6 +220,10 @@ bool testRetailRemoteTown() {
          &companion_type_queries,
          &play_mode_queries,
          &player_gold,
+         &player_current_life,
+         &player_maximum_life,
+         &player_current_mana,
+         &player_maximum_mana,
          &has_unidentified_items](
             osf::script::ValueQuery query,
             std::int32_t& value) {
@@ -235,13 +243,19 @@ bool testRetailRemoteTown() {
                 return true;
             case osf::script::ValueQuery::
                     local_player_current_life:
+                value = player_current_life;
+                return true;
             case osf::script::ValueQuery::
                     local_player_maximum_life:
+                value = player_maximum_life;
+                return true;
             case osf::script::ValueQuery::
                     local_player_current_mana:
+                value = player_current_mana;
+                return true;
             case osf::script::ValueQuery::
                     local_player_maximum_mana:
-                value = 100;
+                value = player_maximum_mana;
                 return true;
             case osf::script::ValueQuery::
                     local_player_condition_current:
@@ -808,6 +822,56 @@ bool testRetailRemoteTown() {
                         std::int32_t{19},
                         std::vector<std::int32_t>{12000002}),
             "Syria's repeat blessing did not release the actor.")) {
+        return false;
+    }
+
+    player_current_life = 50;
+    player_current_mana = 75;
+    const std::size_t syria_blessing_command =
+        native_commands.size();
+    if (!check(
+            interpreter.startStatus(0, 12000002) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000037 &&
+                native_commands.size() ==
+                    syria_blessing_command + 2 &&
+                native_commands[syria_blessing_command] ==
+                    std::make_pair(
+                        std::int32_t{18},
+                        std::vector<std::int32_t>{12000002}) &&
+                native_commands[syria_blessing_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{21},
+                        std::vector<std::int32_t>{12000002, 0}),
+            "Syria did not select her retail recovery message for a "
+            "wounded player.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() ==
+                    syria_blessing_command + 7 &&
+                native_commands[syria_blessing_command + 2] ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000002}) &&
+                native_commands[syria_blessing_command + 3] ==
+                    std::make_pair(
+                        std::int32_t{20},
+                        std::vector<std::int32_t>{
+                            12000002, 4, -1, -1, -1, -1}) &&
+                native_commands[syria_blessing_command + 4] ==
+                    std::make_pair(
+                        std::int32_t{7},
+                        std::vector<std::int32_t>{}) &&
+                native_commands[syria_blessing_command + 5] ==
+                    std::make_pair(
+                        std::int32_t{8},
+                        std::vector<std::int32_t>{}) &&
+                native_commands[syria_blessing_command + 6].first == 16,
+            "Syria's callback did not emit the retail PEOPLE action, "
+            "life recovery, mana recovery, and sample commands.")) {
         return false;
     }
 

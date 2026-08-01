@@ -583,7 +583,7 @@ void WorldScene::advanceConversation() {
         scenario_script_.resume();
     if (result != script::StepResult::waiting_for_message) {
         for (NpcActor& npc : scenario_world_.people()) {
-            npc.endInteraction();
+            npc.releaseConversation();
         }
     }
 }
@@ -599,7 +599,7 @@ void WorldScene::chooseConversationOption(
         scenario_script_.resume(option);
     if (result != script::StepResult::waiting_for_message) {
         for (NpcActor& npc : scenario_world_.people()) {
-            npc.endInteraction();
+            npc.releaseConversation();
         }
     }
 }

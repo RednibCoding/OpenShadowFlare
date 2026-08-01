@@ -1346,6 +1346,28 @@ evaluated target; Malse deliberately ignores that turn request. Native action
 action 19 releases it. Keeping actions 18 and 21 separate is important:
 scripts may suspend an actor without changing its direction.
 
+Scenario opcode 20 reaches the PEOPLE virtual handler at `0x0045d480` through
+the executable switch case at `0x00431fc9`. The handler stores the evaluated
+action, clears the old action counters, and interprets its next three values as
+repeat mode, restart frame, and end frame. A repeat value of `-1` selects the
+one-shot path. Other values enable repetition; restart `-1` returns to frame
+zero and end `-1` uses the selected direction's final CAF frame. PEOPLE update
+`0x0045d850` handles actions 4 through 19 and draws chart `action - 1`. It
+presents frame zero on entry, increments once per game update, keeps the final
+one-shot frame for that update, then writes action one so the next update is
+idle. The repeated path rewinds to `restart - 1` after presenting its end
+frame, allowing the normal increment to present the restart frame next.
+
+Remote Town sentence 146 supplies `{12000002,4,-1,-1,-1,-1}`, so Syria plays
+all 111 frames of resource 9 chart three once. The following opcode handlers
+are separate from that presentation. `0x0043244d` copies the local player's
+derived maximum life at runtime `+0x1a0` to current life at `+0x1a4`, then
+looks up character `16000000 + local player number` and fully restores it only
+when its current life is positive. This heals a living owned companion without
+reviving a defeated one. `0x004324cf` copies derived maximum mana at `+0x1a8`
+to current mana at `+0x1ac`. The script then plays its authored positioned
+sample through opcode 16.
+
 Malse's Repair branch also exposed the two otherwise hidden weapon-set
 pointers. Opcode 52 at `0x004310d7` prices active and alternate main hands as
 one Arms group and active and alternate off hands as one Shield group; the
