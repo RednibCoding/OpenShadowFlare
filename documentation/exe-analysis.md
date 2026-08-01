@@ -878,6 +878,23 @@ four render PARTNER charts zero, one, and two. The other opening branch
 searches for a type-two target within 1200 and enters companion attack mode;
 the portable actor now follows that handoff too.
 
+That search only runs while the owning player's runtime field `+0x15a0` is
+zero. `0x00440f70` initializes the field to one, so the companion starts
+inactive. Inactive does not mean stationary: the same distance bands and
+follow actions still run, but autonomous acquisition is skipped. Enemy target
+selection at `0x004593f0` and `0x00459500`, as well as category-50000000
+effect contact, also requires owner mode zero. An inactive companion remains
+visible and solid and follows normally, without attacking, drawing enemy
+attention, or receiving hostile effect contact.
+
+The Space branch in `0x004429b0` and the HUD branch in `0x00445bd0` both write
+`1 - current` to `+0x15a0`. Switching to inactive clears the companion's
+pending command at `+0x184`; a presentation which is already locked can
+finish. The HUD hit box is x `0..111`, y `393..408`, using strict vertical
+comparisons. This is runtime state rather than part of the saved character
+record, so scenario transitions retain it while a newly entered game starts
+inactive.
+
 Attack mode `0x00462610` drops back to ordinary owner mode when the companion
 is more than 1499 judgement units from its player. Otherwise it repeats the
 nearest living type-two search within 1200. A target beyond the fixed
@@ -1465,13 +1482,21 @@ Patterns 7 and 8 form the fixed y=400 through y=479 bar, pattern 10 marks run
 mode, pattern 11 marks walk mode, and pattern 15 frames the experience bar.
 Patterns 19 through 28 are the level digits.
 
+When the owned companion exists, pattern 30 draws its bottom-left frame.
+Pattern 29 is clipped from the right with width
+`current life * 109 / maximum life`; an exact full value forces width 109,
+while a positive value which truncates to zero draws no fill. Below 30
+percent, the fill uses RGB strength 1500 for two of every four HUD updates and
+1000 for the other two. Pattern 31 labels owner mode zero as `ACTIVE`, while
+pattern 32 labels mode one as `INACTIVE`.
+
 Life uses patterns 0 through 2 at x=81, y=426. Mana uses patterns 3 through 5
 at x=106, y=453. Both live fills are 206 pixels wide and use
 `current * 206 / maximum`, preserving one pixel for a positive value which
 would otherwise truncate to zero. Packet clip rectangles reveal the live
 portion without scaling the artwork. The other patterns provide delayed
-damage/healing colors, particles, conditions, companion state, and later
-values which still need their gameplay owners.
+damage/healing colors, particles, conditions, and later values which still
+need their gameplay owners.
 
 The executable registers `IDC_ARROW` once in the window class and contains no
 later `SetCursor` call. Hover, selection, and click state are therefore drawn

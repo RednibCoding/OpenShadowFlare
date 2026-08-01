@@ -38,7 +38,8 @@ The portable executable already has a solid front half:
 - the player's table-backed owned companion, including its PARTNER visual,
   depth sorting, collision, scenario travel, retail follow distances, enemy
   acquisition, ordinary melee attack, damage reactions, death, timed revival,
-  and capped table-backed progression
+  capped table-backed progression, Space/HUD activity control, and the
+  original bottom-left life and active/inactive display
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -779,8 +780,18 @@ claim full save loading or writing.
 The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
 screen coordinates, digit placement, and 206-pixel life and mana calculations.
 The renderer draws those packets after the camera-driven world and before
-actor speech. The HUD owns y=400 through y=479, so clicks there no longer pass
-through as movement commands.
+actor speech. The lower interface owns y=400 through y=479, and the companion
+strip additionally owns its exact y=393 through y=408 rectangle, so those
+clicks no longer pass through as movement commands.
+
+The companion part of that layer is live as well. New play sessions start the
+owned companion inactive, matching the retail player runtime. Space or the
+exact bottom-left HUD strip toggles it. Inactive companions keep following and
+colliding, but they do not acquire targets and enemies or hostile effects do
+not select them. The HUD uses patterns 29 through 32 for the right-aligned
+109-pixel life fill, its low-health pulse, and the `ACTIVE`/`INACTIVE` label.
+The state stays intact between maps and is not written into the character
+save.
 
 The retail window class loads the ordinary system arrow and never replaces it
 with another cursor. LWL already supplies that native arrow on every desktop
@@ -833,9 +844,9 @@ The remaining layers are:
 
 The bar currently shows full new-character life and mana from `PlayerData`,
 the centered one-to-three-digit level display, and the persistent walk/run
-indicator. Damage/healing lag colors, bar particles, condition icons, a
-companion bar, and the level-up pulse can be added when the corresponding
-gameplay state exists. HUD coordinates and visibility rules must continue to
+indicator. Damage/healing lag colors, bar particles, condition icons, and
+other transient values can be added when the corresponding gameplay state
+exists. HUD coordinates and visibility rules must continue to
 come from retail draw packets; the interface stays separate from the world
 camera.
 
@@ -1654,6 +1665,13 @@ actor collision, and is relocated with the player on scenario changes. Its
 1200-unit living-enemy search, attack-mode approach, chart-five marker timing,
 enemy receiver handoff, damage lifecycle, and progression are now live as
 separate companion concerns rather than shortcuts in the follower.
+
+The player-owned mode around that AI is reconstructed too. Retail initializes
+it inactive, toggles it from Space or the bottom-left HUD strip, and clears a
+pending combat command when it becomes inactive. Follow behavior remains
+live, while autonomous acquisition and enemy/effect targeting require active
+mode. `0x004039f0` renders the matching life bar and activity label from the
+original `Bar.njp` patterns.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,

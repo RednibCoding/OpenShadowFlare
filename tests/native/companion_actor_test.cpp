@@ -212,6 +212,7 @@ int main() {
     }
     if (!check(
             world.hasCompanion() &&
+                world.ownedCompanionInactive() &&
                 world.companion().characterNumber() ==
                     16000000 &&
                 world.companion().profile().name ==
@@ -223,6 +224,19 @@ int main() {
                 world.companion().animationChart() == 0,
             "The local player's owned companion was not created at "
             "the scenario entry.")) {
+        return 1;
+    }
+    world.toggleOwnedCompanionActivity();
+    if (!check(
+            !world.ownedCompanionInactive(),
+            "The owned companion did not switch from retail's "
+            "initial inactive mode to active mode.")) {
+        return 1;
+    }
+    world.toggleOwnedCompanionActivity();
+    if (!check(
+            world.ownedCompanionInactive(),
+            "The owned companion did not return to inactive mode.")) {
         return 1;
     }
     std::string status_message;
@@ -798,6 +812,7 @@ int main() {
     if (!check(
             world.transitionScenario({1, 0, 0}, &error) ==
                 osf::ScenarioTravelResult::loaded &&
+                world.ownedCompanionInactive() &&
                 world.companion().position().x ==
                     world.playerWorldX() &&
                 world.companion().position().y ==
@@ -807,6 +822,22 @@ int main() {
         std::cerr << error << '\n';
         return 1;
     }
+
+    bool inactive_attack_seen = false;
+    for (int update = 0; update < 60; ++update) {
+        world.update();
+        inactive_attack_seen =
+            inactive_attack_seen ||
+            world.companion().attackActive() ||
+            world.companion().combatTargetCharacterNumber() >= 0;
+        world.takeAudioSamples();
+    }
+    if (!check(
+            !inactive_attack_seen,
+            "An inactive owned companion acquired an outdoor enemy.")) {
+        return 1;
+    }
+    world.toggleOwnedCompanionActivity();
 
     bool attack_chart_seen = false;
     bool swing_sample_seen = false;

@@ -275,6 +275,22 @@ five attack, owner companion level, native element, random effect
 approach, both markers, the enemy receiver, and actual damage outside Remote
 Town.
 
+Owned-companion activity follows the player runtime flag at `+0x15a0`.
+`0x00440f70` initializes it to one (`INACTIVE`). Both the Space command in
+`0x004429b0` and the x `0..111`, y `393..408` strip in `0x00445bd0` toggle it
+with `1 - current`; the pointer strip consumes its click before world movement.
+Switching inactive clears pending combat intent without interrupting a locked
+attack presentation. Inactive companions still run the normal follow bands
+and remain visible and solid, but `0x004622b0` skips autonomous acquisition
+and enemy/effect target selection rejects owner mode one.
+
+The matching HUD path in `0x004039f0` draws `Bar.njp` pattern 30, clips
+pattern 29 from the right to `life * 109 / maximum`, and uses patterns 31 and
+32 for `ACTIVE` and `INACTIVE`. A sub-30-percent fill pulses at RGB strength
+1500 for two of every four updates. The mode survives scenario transitions
+inside a play session but is deliberately absent from the save stream, as in
+retail.
+
 The rest of the owned-companion combat lifecycle is live too. `0x004616d0`
 scales PARTNER chart three across the receiver duration and applies its
 collision-aware diminishing 120-unit hit impulse. `0x00461990` locks chart
@@ -438,7 +454,9 @@ the config before creating its LWL window, just as the retail entry point does.
 
 The first gameplay HUD layer now follows `0x004039f0`. `Bar.njp` supplies the
 fixed lower interface, walk/run marker, level digits, life and mana fills, and
-the Table 13-driven 109-pixel experience fill and frame. GAPI has a general
+the Table 13-driven 109-pixel experience fill and frame. The owned companion
+uses the original bottom-left frame, reverse life fill, low-life pulse, and
+active/inactive marker. GAPI has a general
 destination clip for the live fills, so the original artwork is revealed
 rather than stretched. The HUD
 is a screen-space renderer outside the world camera and owns the lower input

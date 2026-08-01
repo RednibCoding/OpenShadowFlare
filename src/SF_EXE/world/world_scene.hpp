@@ -116,6 +116,8 @@ public:
     const std::vector<EnemyActor>& enemies() const;
     bool hasCompanion() const;
     const CompanionActor& companion() const;
+    bool ownedCompanionInactive() const;
+    void toggleOwnedCompanionActivity();
     const std::vector<CombatEffectActor>&
         combatEffects() const;
     const std::vector<RuntimeEffectActor>&
@@ -531,6 +533,7 @@ private:
     bool player_identify_mode_active_ = false;
     bool player_infinite_life_ = false;
     bool player_infinite_mana_ = false;
+    bool owned_companion_inactive_ = true;
 };
 
 }  // namespace osf

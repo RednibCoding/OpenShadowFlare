@@ -5,6 +5,7 @@
 #include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
+#include "ui/companion_hud_input.hpp"
 
 #include <array>
 #include <cstdint>
@@ -419,6 +420,7 @@ bool testGameplayLoadingTransition() {
     std::int32_t conversationChoices = 0;
     std::int32_t worldUpdates = 0;
     std::int32_t runToggles = 0;
+    std::int32_t companionToggles = 0;
     std::int32_t movementX = 0;
     std::int32_t movementY = 0;
     bool conversationActive = false;
@@ -494,6 +496,8 @@ bool testGameplayLoadingTransition() {
         };
     hooks.toggle_player_run =
         [&runToggles] { ++runToggles; };
+    hooks.toggle_companion_activity =
+        [&companionToggles] { ++companionToggles; };
     hooks.update_world =
         [&worldUpdates] { ++worldUpdates; };
     osf::GameplayState state(std::move(hooks));
@@ -524,7 +528,10 @@ bool testGameplayLoadingTransition() {
     state.update(magic_cast);
     state.update({false, true, 200, 210});
     state.update({false, true, -1, 210});
-    state.update({false, false, 0, 0, false, true});
+    osf::GameplayFrameInput mode_toggles;
+    mode_toggles.run_toggle_pressed = true;
+    mode_toggles.companion_toggle_pressed = true;
+    state.update(mode_toggles);
     state.update({false, true, 300, 220});
     state.update({false, false, 310, 220, true, true});
     state.update({true});
@@ -556,8 +563,53 @@ bool testGameplayLoadingTransition() {
             conversationAdvances == 1 &&
             conversationChoices == 1 &&
             worldUpdates == 15 &&
-            runToggles == 1,
+            runToggles == 1 &&
+            companionToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
+}
+
+bool testCompanionHudInput() {
+    if (!check(
+        osf::companionHudToggleAtPointer(true, 0, 393) &&
+            osf::companionHudToggleAtPointer(true, 111, 408) &&
+            !osf::companionHudToggleAtPointer(false, 50, 400) &&
+            !osf::companionHudToggleAtPointer(true, -1, 400) &&
+            !osf::companionHudToggleAtPointer(true, 112, 400) &&
+            !osf::companionHudToggleAtPointer(true, 50, 392) &&
+            !osf::companionHudToggleAtPointer(true, 50, 409),
+        "The companion HUD toggle rectangle differs from "
+        "FUN_00445bd0.")) {
+        return false;
+    }
+
+    std::int32_t toggles = 0;
+    std::int32_t movements = 0;
+    std::int32_t interactions = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [] { return true; };
+    hooks.toggle_companion_activity = [&] { ++toggles; };
+    hooks.command_player_movement =
+        [&](std::int32_t, std::int32_t) { ++movements; };
+    hooks.command_world_interaction =
+        [&](std::int32_t, std::int32_t) {
+            ++interactions;
+            return false;
+        };
+    osf::GameplayState state(std::move(hooks));
+    state.enter();
+    state.update();
+    state.update({false, true, 600, 460});
+    osf::GameplayFrameInput hud_click;
+    hud_click.pointer_primary_pressed = true;
+    hud_click.pointer_primary_down = true;
+    hud_click.pointer_x = 50;
+    hud_click.pointer_y = 395;
+    hud_click.companion_hud_pressed = true;
+    state.update(hud_click);
+    return check(
+        toggles == 1 && movements == 0 && interactions == 0,
+        "A companion HUD click leaked into world interaction or "
+        "movement.");
 }
 
 bool testGameplayClickAndHoldMovement() {
@@ -859,6 +911,7 @@ int main() {
         !testObjectMapDecode() ||
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
+        !testCompanionHudInput() ||
         !testGameplayClickAndHoldMovement() ||
         !testGameplayOptionsMenu() ||
         !testGameplayDebugMenu()) {

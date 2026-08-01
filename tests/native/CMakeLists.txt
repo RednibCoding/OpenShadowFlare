@@ -31,6 +31,7 @@ if(TARGET sf_game_core)
     game_core_test
     PRIVATE
       OpenShadowFlare::States
+      OpenShadowFlare::Ui
       OpenShadowFlare::RKC_RPGSCRN
   )
   target_compile_features(game_core_test PRIVATE cxx_std_17)

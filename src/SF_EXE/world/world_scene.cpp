@@ -160,6 +160,7 @@ void WorldScene::clear() {
     player_identify_mode_active_ = false;
     player_infinite_life_ = false;
     player_infinite_mana_ = false;
+    owned_companion_inactive_ = true;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -212,6 +213,23 @@ bool WorldScene::hasCompanion() const {
 
 const CompanionActor& WorldScene::companion() const {
     return companion_;
+}
+
+bool WorldScene::ownedCompanionInactive() const {
+    return owned_companion_inactive_;
+}
+
+void WorldScene::toggleOwnedCompanionActivity() {
+    if (!hasCompanion()) {
+        return;
+    }
+    owned_companion_inactive_ =
+        !owned_companion_inactive_;
+    if (owned_companion_inactive_) {
+        // Both retail toggle paths clear the pending companion command.
+        // An attack already presenting is allowed to finish normally.
+        companion_.clearCombatIntent();
+    }
 }
 
 const std::vector<CombatEffectActor>&

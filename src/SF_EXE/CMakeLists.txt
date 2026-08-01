@@ -249,6 +249,7 @@ target_link_libraries(
 
 add_library(
   osf_ui STATIC
+  ui/companion_hud_input.cpp
   ui/conversation_layout.cpp
   ui/player_level_up_notice_input.cpp
   ui/player_level_up_notice_layout.cpp

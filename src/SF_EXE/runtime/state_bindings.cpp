@@ -281,6 +281,9 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.toggle_player_run = [&world] {
         world.togglePlayerRun();
     };
+    hooks.toggle_companion_activity = [&world] {
+        world.toggleOwnedCompanionActivity();
+    };
     hooks.activate_increased_power = [&world] {
         world.activatePlayerIncreasedPower();
     };

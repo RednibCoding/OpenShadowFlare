@@ -505,6 +505,23 @@ bool testGameplayHudPackets() {
             true,
             0,
         });
+    RecordingBackend companionBackend;
+    osf::GameplayHudValues companionValues;
+    companionValues.companion_present = true;
+    companionValues.companion_current_life = 29;
+    companionValues.companion_maximum_life = 109;
+    companionValues.companion_inactive = true;
+    companionValues.animation_counter = 1;
+    osf::renderGameplayHud(
+        companionBackend,
+        bar,
+        companionValues);
+    RecordingBackend activeCompanionBackend;
+    companionValues.companion_inactive = false;
+    osf::renderGameplayHud(
+        activeCompanionBackend,
+        bar,
+        companionValues);
     return check(
         osf::gameplayHudBarWidth(0, 100) == 0 &&
             osf::gameplayHudBarWidth(1, 1000) == 1 &&
@@ -551,6 +568,28 @@ bool testGameplayHudPackets() {
                 activationBackend.patterns[6].index == 13 &&
                 activationBackend.patterns[7].index == 15,
             "The Increased Power activation marker differs from "
+            "FUN_004039f0.") &&
+        check(
+            osf::gameplayHudCompanionBarWidth(0, 109) == 0 &&
+                osf::gameplayHudCompanionBarWidth(1, 200) == 0 &&
+                osf::gameplayHudCompanionBarWidth(29, 109) == 29 &&
+                osf::gameplayHudCompanionBarWidth(109, 109) == 109 &&
+                companionBackend.patterns.size() == 8 &&
+                companionBackend.patterns[0].index == 30 &&
+                companionBackend.patterns[1].index == 29 &&
+                companionBackend.patterns[1].draw.clip.x == 81 &&
+                companionBackend.patterns[1].draw.clip.y == 396 &&
+                companionBackend.patterns[1].draw.clip.width == 29 &&
+                companionBackend.patterns[1].draw.clip.height == 11 &&
+                companionBackend.patterns[1].draw.red_strength == 1500 &&
+                companionBackend.patterns[2].index == 32 &&
+                companionBackend.patterns[3].index == 7,
+            "The companion frame, reverse life fill, low-life pulse, "
+            "or inactive marker differs from FUN_004039f0.") &&
+        check(
+            activeCompanionBackend.patterns.size() == 8 &&
+                activeCompanionBackend.patterns[2].index == 31,
+            "The active companion HUD marker differs from "
             "FUN_004039f0.");
 }
 
