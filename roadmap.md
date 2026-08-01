@@ -1026,13 +1026,14 @@ dropping owned items also use the retail category/weight sound selection;
 successful medicine use plays its own sound.
 
 Those owned items now survive the real `.Ssv` path. The obfuscated payload's
-retail item prefix restores and rewrites all nine player equipment slots, the
-backpack, belt, and Special Item owner, including exact grid placement, Gold
-quantities, durability, identified state, and preserved instance bytes. Unknown
-equipment records and the rest of an original save remain untouched until
-their owners are reconstructed. The counted transport flags following the
-owned-item prefix are also restored against Table 40, while new saves without
-that later retail section keep the new-character default.
+retail item prefix restores and rewrites all eleven player equipment slots:
+the nine visible gear/accessory pointers plus the alternate main-hand and
+off-hand set. The backpack, belt, and Special Item owner retain exact grid
+placement, Gold quantities, durability, identified state, and preserved
+instance bytes. The rest of an original save remains untouched until its
+owners are reconstructed. The counted transport flags following the owned-item
+prefix are also restored against Table 40, while new saves without that later
+retail section keep the new-character default.
 
 `X` now opens the separate special-item owner on the left. Its 9-by-10 grid,
 Status patterns 14 and 15, item origins, centered placement, swapping, Gold
