@@ -176,6 +176,7 @@ bool testRetailRemoteTown() {
     std::int32_t player_current_mana = 100;
     std::int32_t player_maximum_mana = 100;
     bool has_unidentified_items = true;
+    std::int32_t teleporter_distance = 0;
     std::array<std::int32_t, 6> repair_prices{{
         30, 10, 20, 15, 5, 40,
     }};
@@ -297,7 +298,15 @@ bool testRetailRemoteTown() {
                     : static_cast<std::size_t>(index)];
             return true;
         },
-        {},
+        [&teleporter_distance](
+            std::int32_t character_number,
+            std::int32_t& distance) {
+            if (character_number != 10000202) {
+                return false;
+            }
+            distance = teleporter_distance;
+            return true;
+        },
         {},
         {},
         [&companion_status_queries, &companion_status_type](
@@ -1032,6 +1041,69 @@ bool testRetailRemoteTown() {
                         std::vector<std::int32_t>{1, 0}),
             "The Remote Town south-gate trigger did not emit its "
             "authored scenario and entry.")) {
+        return false;
+    }
+
+    const osf::script::Message* transport_label =
+        script.findMessage(1000060);
+    const std::size_t transport_near_command =
+        native_commands.size();
+    if (!check(
+            transport_label &&
+                transport_label->text == "Remote Town\n" &&
+                interpreter.startStatus(5, -1) ==
+                    osf::script::StepResult::complete &&
+                interpreter.readTemporaryFlag(1000039) == 50 &&
+                interpreter.readTemporaryFlag(1000040) == 1 &&
+                external_values[operandKey({10, 0})] == 1 &&
+                native_commands.size() ==
+                    transport_near_command + 4 &&
+                native_commands[transport_near_command] ==
+                    std::make_pair(
+                        std::int32_t{16},
+                        std::vector<std::int32_t>{80, 0, 0, 0}) &&
+                native_commands[transport_near_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{27},
+                        std::vector<std::int32_t>{
+                            10000200, 0, -160, 1000060,
+                            224, 224, 224, 1000}) &&
+                native_commands[transport_near_command + 2] ==
+                    std::make_pair(
+                        std::int32_t{46},
+                        std::vector<std::int32_t>{10000203, 50}) &&
+                native_commands[transport_near_command + 3] ==
+                    std::make_pair(
+                        std::int32_t{46},
+                        std::vector<std::int32_t>{10000204, 50}),
+            "Remote Town's transport point did not enable, sound, label, "
+            "and begin both authored object fades.")) {
+        return false;
+    }
+    teleporter_distance = 10;
+    const std::size_t transport_away_command =
+        native_commands.size();
+    if (!check(
+            interpreter.startStatus(5, -1) ==
+                    osf::script::StepResult::complete &&
+                interpreter.readTemporaryFlag(1000039) == 0 &&
+                interpreter.readTemporaryFlag(1000040) == 0 &&
+                native_commands.size() ==
+                    transport_away_command + 3 &&
+                native_commands[transport_away_command] ==
+                    std::make_pair(
+                        std::int32_t{38},
+                        std::vector<std::int32_t>{0}) &&
+                native_commands[transport_away_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{46},
+                        std::vector<std::int32_t>{10000203, 0}) &&
+                native_commands[transport_away_command + 2] ==
+                    std::make_pair(
+                        std::int32_t{46},
+                        std::vector<std::int32_t>{10000204, 0}),
+            "Leaving Remote Town's transport point did not reset its "
+            "sound latch, fade objects, and close the matching service.")) {
         return false;
     }
 

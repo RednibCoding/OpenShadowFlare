@@ -279,6 +279,51 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 27) {
+        if (arguments.size() != 8) {
+            return false;
+        }
+        WorldPosition position;
+        const ObjectBounds* judgement = nullptr;
+        if (!scriptCharacterBounds(
+                arguments[0], position, judgement)) {
+            if (arguments[0] !=
+                    scenario_world_.localPlayerNumber() ||
+                !has_player_) {
+                return false;
+            }
+            position = player_.position();
+        }
+        const script::Message* message =
+            scenario_script_.data().findMessage(arguments[3]);
+        if (!message) {
+            return false;
+        }
+        scenario_text_labels_.push_back({
+            position,
+            arguments[1],
+            arguments[2],
+            message->text,
+            arguments[4],
+            arguments[5],
+            arguments[6],
+            arguments[7],
+        });
+        return true;
+    }
+
+    if (opcode == 46) {
+        if (arguments.size() != 2) {
+            return false;
+        }
+        ScenarioObjectActor* object =
+            findScriptObject(arguments[0]);
+        if (object) {
+            object->setDrawStrength(arguments[1]);
+        }
+        return true;
+    }
+
     if (opcode == 7) {
         if (!arguments.empty() || !has_player_) {
             return false;
@@ -533,6 +578,25 @@ bool WorldScene::executeScriptNativeCommand(
             GameplayServiceKind::transport,
             arguments[0],
         };
+        script_transport_service_ = arguments[0];
+        return true;
+    }
+
+    if (opcode == 38) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        if (script_transport_service_ == arguments[0] &&
+            (gameplay_service_request_.kind ==
+                 GameplayServiceKind::none ||
+             gameplay_service_request_.kind ==
+                 GameplayServiceKind::transport)) {
+            gameplay_service_request_ = {
+                GameplayServiceKind::close_transport,
+                arguments[0],
+            };
+            script_transport_service_ = -1;
+        }
         return true;
     }
 

@@ -11,6 +11,7 @@
 
 #include "lwl.h"
 
+#include <algorithm>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
@@ -359,6 +360,106 @@ bool testLandMineHudClick() {
 #endif
 }
 
+bool testScriptTransportClosesOutsidePoint() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    if (!std::filesystem::is_directory(
+            data_root / "Scenario" / "00000000")) {
+        return true;
+    }
+    osf::PlayerLoadRequest player;
+    player.name = "Transport Close";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(data_root, player, &error) &&
+                world.activateTransportDestination(0) ==
+                    osf::ScenarioTravelResult::relocated,
+            "The transport-close fixture could not enter Remote Town's "
+            "transport point.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    world.update();
+    const auto object = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& candidate) {
+            return candidate.id() == 200;
+        });
+    if (!check(
+            object != world.scenarioObjects().end(),
+            "Remote Town's transport object is missing.")) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(object->position());
+    osf::ScreenPosition pointer;
+    bool found_pointer = false;
+    for (std::int32_t y = -object->labelHeight();
+         y <= 24 && !found_pointer;
+         ++y) {
+        for (std::int32_t x = -48; x <= 48; ++x) {
+            pointer = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            world.updatePointerHover(pointer.x, pointer.y);
+            if (world.hoveredScenarioObjectId() == 200) {
+                found_pointer = true;
+                break;
+            }
+        }
+    }
+    if (!check(
+            found_pointer &&
+                world.commandWorldInteraction(pointer.x, pointer.y),
+            "Remote Town's transport object could not be clicked.")) {
+        return false;
+    }
+    Fixture fixture;
+    fixture.pressKey("i", world, player);
+    if (!check(
+            fixture.controller.inventory().active(),
+            "The transport fixture could not open its right-side inventory.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 2000 && world.interactionPending();
+         ++update) {
+        world.update();
+    }
+    fixture.update(world, player);
+    if (!check(
+            fixture.controller.transport().active() &&
+                fixture.controller.inventory().active(),
+            "Opcode 37 did not open the transport panel through the UI "
+            "controller beside the existing inventory.")) {
+        return false;
+    }
+    if (!check(
+            world.transitionScenario({0, 0, 0}) ==
+                    osf::ScenarioTravelResult::relocated,
+            "The transport-close fixture could not leave the point.")) {
+        return false;
+    }
+    world.update();
+    fixture.update(world, player);
+    const osf::ScreenPosition player_screen =
+        osf::calculateRealPosition(world.playerRenderPosition(1.0));
+    return check(
+        !fixture.controller.transport().active() &&
+            fixture.controller.inventory().active() &&
+            world.cameraScreenX() == player_screen.x - 160,
+        "Opcode 38 did not close only the transport panel and preserve "
+        "the right-side inventory camera anchor.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -366,7 +467,8 @@ int main() {
                    testSaveTransitionsOwnModalInput() &&
                    testIncreasedPowerKeyEdge() &&
                    testLandMineKeyEdge() &&
-                   testLandMineHudClick()
+                   testLandMineHudClick() &&
+                   testScriptTransportClosesOutsidePoint()
                ? 0
                : 1;
 }

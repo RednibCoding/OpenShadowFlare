@@ -248,9 +248,16 @@ measures the judgement-rectangle distance from the local hero to script object
 `10000202`. A zero result means the rectangles overlap. That branch writes
 `1` to operand type `10`, using the matching Table 40 row as its operand value,
 and therefore permanently adds the location to the transport list. The same
-shape appears throughout the scenario scripts for all 51 transport rows. Its
-nearby fade and visual-packet opcodes are still only partly reconstructed, but
-they do not own the unlock.
+shape appears throughout the scenario scripts for all 51 transport rows.
+
+The rest of that loop is presentation. While overlapping, it raises temporary
+flag `1000039` by 50 per update, plays sample 80 once through latch
+`1000040`, draws message `1000060` (`Remote Town`) above object `10000200`,
+and writes the rising value to objects `10000203` and `10000204`. Leaving
+subtracts 50 per update, resets the sound latch, removes the label, and asks
+the executable to close transport service zero. The label and both fades are
+therefore SCS-authored behavior, not properties hardcoded onto a teleporter
+class.
 
 ## Interpreter architecture
 
@@ -317,16 +324,19 @@ services exercise them; unknown values still fail loudly.
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 27 | `0x00432d05` | Draw an actor-anchored script message with evaluated offsets, color, and backing opacity |
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
 | 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
+| 38 | `0x00433544` | Close the matching script-opened transport service |
 | 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 45 | `0x004336a9` | Switch the local player's owned companion to an evaluated Table 60 row |
+| 46 | `0x004336e0` | Write an evaluated draw strength to a type-zero scenario object |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 49 | `0x0043389b` | Retain one raw scenario message in the executable's map-caption buffer |
 | 50 | `0x004321cb` | Write the current scenario-entry value to an operand |
@@ -457,6 +467,21 @@ zero, which toggles the same Special Item owner opened by `X`. The interpreter
 does not include panel, input, camera, item, or transport headers. It only
 evaluates the command and sends the typed request across its native-command
 hook.
+
+Opcode 27 takes eight operands: actor, X offset, Y offset, message ID, red,
+green, blue, and black-backing opacity. The executable projects the actor,
+measures Shift-JIS text on a 6-by-12 grid, horizontally centers it, and
+bottom-aligns it at the evaluated offset. It submits a black rectangle with a
+three-pixel margin, a black text pass at `+1,+1`, and then the colored text.
+Remote Town uses `{10000200, 0, -160, 1000060, 224, 224, 224, 1000}`.
+
+Opcode 46 evaluates an object character and strength, then writes the live
+type-zero draw-strength field used by both static and animated rendering.
+Remote Town feeds its 0-to-1000 pulse into objects `10000203` and `10000204`;
+an opacity of zero also stops their hidden CAF update. Opcode 38 is the paired
+service cleanup. It closes transport only when its argument matches the
+script-opened selector, leaving an independently open right-side inventory
+and its camera layout untouched.
 
 The one shipped nonzero opcode-41 call is scenario `99000013`, sentence 10.
 Its object `10000900` is named `Giant Warehouse` in the Tower of Ordeal 12F

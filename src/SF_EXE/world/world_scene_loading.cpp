@@ -350,6 +350,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
         pending_combat_effects_.clear();
         combat_effects_.clear();
         runtime_effects_.clear();
+        scenario_text_labels_.clear();
         player_land_mines_.clear();
         miss_effects_.clear();
         camera_shake_counter_ = -1;
@@ -398,6 +399,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     player_attack_target_.cancel();
     pending_player_attack_impact_target_id_ = -1;
     pending_audio_samples_.clear();
+    scenario_text_labels_.clear();
     pending_combat_effects_.clear();
     combat_effects_.clear();
     runtime_effects_.clear();
@@ -407,6 +409,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    script_transport_service_ = -1;
     player_identify_mode_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;

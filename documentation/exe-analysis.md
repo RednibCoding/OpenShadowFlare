@@ -1166,6 +1166,32 @@ is the destination's Table 40 row. The portable interpreter now follows that
 same path, and the existing save extension retains the resulting 51-row flag
 array.
 
+The same Remote Town periodic sentence owns the activation presentation.
+Opcode 27 enters at `0x00432d05` and evaluates eight operands. It resolves
+operand zero as a local-player slot when below four or as a scenario character
+otherwise, projects that world position, and applies the evaluated X/Y
+offsets. Its Shift-JIS-aware scan treats a double-byte character as two cells,
+uses six pixels per cell and twelve pixels per line, centers the widest line,
+and bottom-aligns the block. The update packet is a black rectangle extending
+three pixels around the text at operand-seven opacity, followed by a black
+`+1,+1` shadow string and the operand-four-through-six RGB string. Remote
+Town supplies object `10000200`, offset `{0,-160}`, message `1000060`, RGB
+`{224,224,224}`, and opacity 1000.
+
+Opcode 46 at `0x004336e0` resolves a type-zero object and writes its evaluated
+second operand directly to runtime offset `+0xf4`, the draw-strength field.
+Objects `10000203` and `10000204` receive temporary flag `1000039`, which the
+script raises or lowers by 50 per update. This gives the activation a
+twenty-update fade in either direction and prevents the hidden animated object
+from advancing at strength zero.
+
+Opcode 38 at `0x00433544` is not another visual packet. It checks the active
+transport UI selector and current scenario, and clears that service only when
+the evaluated argument matches. Remote Town calls it with zero on the first
+update outside object `10000202`; the same branch resets the sample-80 latch.
+An independently open right-side inventory remains active and the camera
+returns to its right-panel anchor.
+
 The complete `0x00426200` call takes player number, scenario ID, entry value,
 an auxiliary transition flag, an optional explicit position, and an entry-key
 player override. With a nonnegative entry value, both the same-scenario fast

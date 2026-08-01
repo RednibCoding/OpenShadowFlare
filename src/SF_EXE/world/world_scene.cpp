@@ -97,6 +97,7 @@ void WorldScene::clear() {
     speech_patterns_.clear();
     player_appearance_.clear();
     pending_audio_samples_.clear();
+    scenario_text_labels_.clear();
     level_up_notice_ = {};
     pending_combat_effects_.clear();
     combat_effects_.clear();
@@ -145,6 +146,7 @@ void WorldScene::clear() {
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    script_transport_service_ = -1;
     blackjack_result_ = 0;
     pending_script_travel_ = {};
     script_travel_pending_ = false;
@@ -350,6 +352,11 @@ const TransportCatalog& WorldScene::transports() const {
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
     return scenario_world_.groundItems();
+}
+
+const std::vector<ScenarioTextLabel>&
+WorldScene::scenarioTextLabels() const {
+    return scenario_text_labels_;
 }
 
 const QuestState& WorldScene::quests() const {
@@ -666,6 +673,7 @@ bool WorldScene::activatePlayerIncreasedPower() {
 }
 
 void WorldScene::update() {
+    scenario_text_labels_.clear();
     // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
     // next player update when no mana remains. Keeping this before the cast
     // action lets an exact-cost activation show its marker frame once, as in

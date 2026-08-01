@@ -338,6 +338,22 @@ bool GameplayUiController::update(
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
+        if (service.kind == GameplayServiceKind::close_transport) {
+            transport_.close();
+            const bool left_panel_active =
+                magic_.active() ||
+                status_.active() ||
+                map_.active() ||
+                mission_list_.active() ||
+                vendor_.active() ||
+                inventory_.leftStorageActive();
+            world.setCameraAnchor(
+                gameplayCameraAnchorX(
+                    left_panel_active,
+                    inventory_.active()),
+                240);
+            return false;
+        }
         if (service.kind ==
             GameplayServiceKind::identify_item) {
             if (!inventory_.active()) {

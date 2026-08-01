@@ -50,6 +50,7 @@
 #include "retail_save_world_state.hpp"
 #include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
+#include "scenario_text_label.hpp"
 #include "script/scenario_script_runtime.hpp"
 #include "transport_catalog.hpp"
 #include "world_pointer.hpp"
@@ -68,6 +69,7 @@ namespace osf {
 enum class GameplayServiceKind {
     none,
     transport,
+    close_transport,
     toggle_special_items,
     identify_item,
     vendor,
@@ -146,6 +148,7 @@ public:
     std::int32_t playerIncreasedPowerFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
+    const std::vector<ScenarioTextLabel>& scenarioTextLabels() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
     const TransportCatalog& transports() const;
@@ -464,6 +467,7 @@ private:
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
+    std::vector<ScenarioTextLabel> scenario_text_labels_;
     PlayerLevelUpNotice level_up_notice_;
     std::vector<CombatEffectSpawnRequest>
         pending_combat_effects_;
@@ -516,6 +520,7 @@ private:
     std::int32_t camera_shake_duration_ = 0;
     std::int32_t camera_shake_magnitude_ = 0;
     GameplayServiceRequest gameplay_service_request_;
+    std::int32_t script_transport_service_ = -1;
     std::int32_t blackjack_result_ = 0;
     ScenarioStart pending_script_travel_;
     bool script_travel_pending_ = false;

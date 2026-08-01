@@ -4244,10 +4244,14 @@ bool testRetailRemoteTown() {
                 companion_world.npcs()[6].judgementEnabled() &&
                 object_animation_frame == 0 &&
                 companion_world.scenarioObjects()[4]
-                        .animationFrame() == 1,
+                        .animationFrame() == 0 &&
+                companion_world.scenarioObjects()[4]
+                        .drawStrength() == 0 &&
+                companion_world.scenarioObjects()[5]
+                        .drawStrength() == 0,
             "The periodic companion scripts did not hide the player's "
-            "own dog, activate the other town companions, or advance "
-            "type-zero actors in retail order.")) {
+            "own dog, activate the other town companions, or hide the "
+            "inactive transport visuals in retail order.")) {
         return false;
     }
     osf::ScreenPosition kerberos_pointer;
@@ -4749,12 +4753,134 @@ bool testRetailRemoteTown() {
                     osf::ScenarioTravelResult::relocated &&
                 world.playerWorldX() == 94685 &&
                 world.playerWorldY() == -2756 &&
-                world.playerDirection() == 7 &&
+                world.playerDirection() == 7,
+            "Remote Town's first transport destination did not relocate "
+            "to its authored entry point.")) {
+        return false;
+    }
+    world.update();
+    const auto transport_label_object = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000200;
+        });
+    const auto transport_fade_a = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000203;
+        });
+    const auto transport_fade_b = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000204;
+        });
+    const std::vector<std::int32_t> transport_audio =
+        world.takeAudioSamples();
+    if (!check(
+            transport_label_object !=
+                    world.scenarioObjects().end() &&
+                transport_fade_a != world.scenarioObjects().end() &&
+                transport_fade_b != world.scenarioObjects().end() &&
+                transport_fade_a->drawStrength() == 50 &&
+                transport_fade_b->drawStrength() == 50 &&
+                world.scenarioTextLabels().size() == 1 &&
+                world.scenarioTextLabels()[0].anchor.x ==
+                    transport_label_object->position().x &&
+                world.scenarioTextLabels()[0].anchor.y ==
+                    transport_label_object->position().y &&
+                world.scenarioTextLabels()[0].offset_x == 0 &&
+                world.scenarioTextLabels()[0].offset_y == -160 &&
+                world.scenarioTextLabels()[0].text == "Remote Town\n" &&
+                world.scenarioTextLabels()[0].red == 224 &&
+                world.scenarioTextLabels()[0].green == 224 &&
+                world.scenarioTextLabels()[0].blue == 224 &&
+                world.scenarioTextLabels()[0].background_opacity == 1000 &&
+                std::count(
+                    transport_audio.begin(),
+                    transport_audio.end(),
+                    80) == 1,
+            "Remote Town's active transport point did not begin both "
+            "object fades, show its authored label, and sound once.")) {
+        return false;
+    }
+    renderer.calls.clear();
+    renderer.speech_calls.clear();
+    renderer.item_calls.clear();
+    renderer.status_icon_calls.clear();
+    renderer.text_calls.clear();
+    renderer.rectangles.clear();
+    osf::renderWorld(renderer, world, 500, &font);
+    const osf::ScenarioTextLabel& transport_label =
+        world.scenarioTextLabels()[0];
+    const osf::ScreenPosition transport_anchor =
+        osf::calculateRealPosition(transport_label.anchor);
+    const std::int32_t transport_text_width =
+        osf::bitmapTextPixelWidth(transport_label.text, 6);
+    const std::int32_t transport_text_x =
+        transport_anchor.x - world.cameraScreenX() -
+        transport_text_width / 2;
+    const std::int32_t transport_text_y =
+        transport_anchor.y - world.cameraScreenY() - 160 - 12;
+    const auto transport_backing = std::find_if(
+        renderer.rectangles.begin(),
+        renderer.rectangles.end(),
+        [transport_text_x,
+         transport_text_y,
+         transport_text_width](const osf::gapi::RectangleDraw& draw) {
+            return draw.x == transport_text_x - 3 &&
+                   draw.y == transport_text_y - 3 &&
+                   draw.width == transport_text_width + 6 &&
+                   draw.height == 18;
+        });
+    const auto transport_shadow = std::find_if(
+        renderer.text_calls.begin(),
+        renderer.text_calls.end(),
+        [transport_text_x,
+         transport_text_y](const TextCall& call) {
+            return call.text == "Remote Town\n" &&
+                   call.draw.x == transport_text_x + 1 &&
+                   call.draw.y == transport_text_y + 1;
+        });
+    const auto transport_text = std::find_if(
+        renderer.text_calls.begin(),
+        renderer.text_calls.end(),
+        [transport_text_x,
+         transport_text_y](const TextCall& call) {
+            return call.text == "Remote Town\n" &&
+                   call.draw.x == transport_text_x &&
+                   call.draw.y == transport_text_y;
+        });
+    if (!check(
+            transport_backing != renderer.rectangles.end() &&
+                transport_backing->color.red == 0 &&
+                transport_backing->opacity == 1000 &&
+                transport_shadow != renderer.text_calls.end() &&
+                transport_shadow->draw.color.red == 0 &&
+                transport_text != renderer.text_calls.end() &&
+                transport_text->draw.color.red == 224 &&
+                transport_text->draw.color.green == 224 &&
+                transport_text->draw.color.blue == 224,
+            "Opcode 27 lost its retail text centering, bottom anchor, "
+            "three-pixel backing, shadow, or color.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 19; ++update) {
+        world.update();
+    }
+    if (!check(
+            transport_fade_a->drawStrength() == 1000 &&
+                transport_fade_b->drawStrength() == 1000 &&
+                world.scenarioTextLabels().size() == 1 &&
+                world.takeAudioSamples().empty() &&
                 findScenarioObjectPointerPoint(
                     world, 200, transport_pointer) &&
                 world.hoveredScenarioObjectId() == 200,
-            "Remote Town's type-zero transport object was not selectable "
-            "at its retail entry point.")) {
+            "Remote Town's transport presentation did not finish its "
+            "twenty-update fade, latch its sound, or keep the object "
+            "selectable.")) {
         return false;
     }
     if (!check(
@@ -4782,6 +4908,26 @@ bool testRetailRemoteTown() {
                 !world.interactionPending(),
             "The transport object did not route through status zero and "
             "opcode 37.")) {
+        return false;
+    }
+    if (!check(
+            world.transitionScenario({0, 0, 0}) ==
+                    osf::ScenarioTravelResult::relocated,
+            "The transport close fixture could not leave the active point.")) {
+        return false;
+    }
+    world.update();
+    const osf::GameplayServiceRequest close_transport_request =
+        world.takeGameplayServiceRequest();
+    if (!check(
+            close_transport_request.kind ==
+                    osf::GameplayServiceKind::close_transport &&
+                close_transport_request.argument == 0 &&
+                transport_fade_a->drawStrength() == 950 &&
+                transport_fade_b->drawStrength() == 950 &&
+                world.scenarioTextLabels().empty(),
+            "Leaving Remote Town's transport point did not remove its "
+            "label, begin both fade-outs, and close only transport zero.")) {
         return false;
     }
 

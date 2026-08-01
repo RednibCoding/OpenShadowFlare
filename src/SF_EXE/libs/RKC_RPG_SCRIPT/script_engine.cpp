@@ -424,6 +424,8 @@ StepResult Interpreter::execute(const Command& command) {
             : executeNative(
                   std::min<std::size_t>(
                       command.operands.size(), 4));
+    case 27:
+        return executeNative(8);
     case 11:
     case 12: {
         if (command.operands.size() < 2) {
@@ -474,6 +476,7 @@ StepResult Interpreter::execute(const Command& command) {
     case 18:
     case 19:
     case 37:
+    case 38:
     case 41:
     case 48:
         return executeNative(1);
@@ -578,6 +581,8 @@ StepResult Interpreter::execute(const Command& command) {
     }
     case 45:
         return executeNative(1);
+    case 46:
+        return executeNative(2);
     case 49: {
         if (command.operands.empty() || !script_) {
             return StepResult::invalid_script;

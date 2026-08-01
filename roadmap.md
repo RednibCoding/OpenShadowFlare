@@ -942,6 +942,15 @@ opcode 34 to measure the hero against each teleporter's hidden activation
 object. Overlap enables that scenario's Table 40 row, immediately adds it to
 the compact transport list, and survives the normal save/load round trip.
 
+The matching transport-point presentation is live now as well. Opcode 27
+draws the SCS message above its authored type-zero object with retail's
+6-by-12 centering, bottom anchor, three-pixel black backing, one-pixel shadow,
+RGB, and opacity. Opcode 46 drives both Remote Town transport visuals from
+zero to 1,000 in steps of 50 and back again, including the hidden-animation
+stop at zero. The activation sample uses the script's one-shot latch. Leaving
+removes the label and opcode 38 closes only the matching transport panel;
+an open right-side inventory and its camera anchor remain intact.
+
 The named Warehouse object follows the same pointer and range path. Its
 status-zero sentence reaches opcode 41 with argument zero and toggles the
 existing 9-by-10 Special Item owner instead of creating a second warehouse
