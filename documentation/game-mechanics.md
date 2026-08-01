@@ -19,6 +19,15 @@ job to that menu value, while opcode 70 changes choices one through three
 back to Warrior, Hunter, or spellcaster. Changing occupation does not rewrite
 the character's earlier per-level job history.
 
+### Equipment colors
+
+Weapons, shields, and body armor can carry one of 16 alternate appearance
+colors. `-1` means the item's authored default. The selected value changes the
+RGB strengths of the item's primary character part; a weapon's secondary part
+keeps its own authored strengths. The value is stored inside the normal item
+instance, so moving, dropping, equipping, and saving an item all keep its
+color.
+
 ### Class Advancement
 Classes can be promoted to advanced classes:
 - **Mercenary** - Advanced Warrior/Hunter

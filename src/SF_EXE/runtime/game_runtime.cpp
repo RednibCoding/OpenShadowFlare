@@ -201,6 +201,7 @@ private:
                 savePreview_,
                 gameplayUi_.options(),
                 gameplayUi_.debug(),
+                gameplayUi_.equipmentColor(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
                 gameplayUi_.magic(),

@@ -456,6 +456,13 @@ unchanged. Scenario `03900003` contains the one shipped query/change pair:
 its authored service remembers the current selection, changes the job after
 the player's choice, and plays the accompanying sound through opcode 16.
 
+Opcode 72 has no operands. Its three shipped call sites (`01000000` sentence
+212, `02100000` sentence 357, and `03900002` sentence 102) all sit behind an
+equipment-color conversation. The interpreter asks the world for that
+service; the UI owner then snapshots the equipped weapon, shield, and body
+color fields before opening the panel. This keeps the script library unaware
+of item records, rendering, and input.
+
 Opcodes 22 and 23 take a script character number and write one or zero to all
 three of its live entity-state keys. Opcode 44 reads player-record offset
 `0x140`, which is the currently owned companion type, through a typed host

@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 
 #include "states/gameplay_debug_menu.hpp"
+#include "states/gameplay_equipment_color.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_magic.hpp"
 #include "states/gameplay_map.hpp"
@@ -48,6 +49,7 @@ public:
 
     const GameplayOptionsMenu& options() const;
     const GameplayDebugMenu& debug() const;
+    const GameplayEquipmentColor& equipmentColor() const;
     const GameplayInventory& inventory() const;
     const GameplayMap& map() const;
     const GameplayMagic& magic() const;
@@ -80,6 +82,7 @@ private:
 
     GameplayOptionsMenu options_;
     GameplayDebugMenu debug_;
+    GameplayEquipmentColor equipment_color_;
     GameplayInventory inventory_;
     GameplayMap map_;
     GameplayMagic magic_;

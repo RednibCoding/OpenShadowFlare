@@ -45,6 +45,7 @@ add_library(
   osf_items STATIC
   items/item_database.cpp
   items/item_audio.cpp
+  items/item_appearance.cpp
   items/item_condition.cpp
   items/item_instance_values.cpp
   items/item_grid.cpp
@@ -93,6 +94,7 @@ add_library(
   osf_states STATIC
   states/game_state.cpp
   states/gameplay_debug_menu.cpp
+  states/gameplay_equipment_color.cpp
   states/gameplay_inventory.cpp
   states/gameplay_magic.cpp
   states/gameplay_map.cpp
@@ -259,6 +261,7 @@ add_library(
   render/character_select_renderer.cpp
   render/enemy_nameplate_renderer.cpp
   render/gameplay_debug_renderer.cpp
+  render/gameplay_equipment_color_renderer.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp

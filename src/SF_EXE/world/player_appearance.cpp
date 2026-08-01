@@ -1,5 +1,6 @@
 #include "player_appearance.hpp"
 
+#include "items/item_appearance.hpp"
 #include "items/item_database.hpp"
 #include "items/player_equipment.hpp"
 
@@ -56,22 +57,36 @@ void PlayerAppearance::refresh(
         blue_strengths_[part] = blue;
     };
     const auto enablePrimary =
-        [&enablePart](const ItemDefinition* definition) {
+        [&enablePart, &equipment](
+            EquipmentSlot slot,
+            const ItemDefinition* definition) {
         if (definition) {
-            enablePart(
-                definition->appearance_part,
+            ItemAppearanceStrength strength{
                 definition->appearance_red_strength,
                 definition->appearance_green_strength,
-                definition->appearance_blue_strength);
+                definition->appearance_blue_strength,
+            };
+            const std::int32_t color =
+                equipment.appearanceColor(slot);
+            if (color >= 0) {
+                strength = retailItemColorStrength(color);
+            }
+            enablePart(
+                definition->appearance_part,
+                strength.red,
+                strength.green,
+                strength.blue);
         }
     };
 
     // FUN_00444ca0 contributes body, weapon, and off-hand objects to the
     // player CAF mask. Helmets and boots remain stat-bearing only.
-    enablePrimary(definitionForSlot(EquipmentSlot::body));
+    enablePrimary(
+        EquipmentSlot::body,
+        definitionForSlot(EquipmentSlot::body));
     const ItemDefinition* main_hand =
         definitionForSlot(EquipmentSlot::main_hand);
-    enablePrimary(main_hand);
+    enablePrimary(EquipmentSlot::main_hand, main_hand);
     if (main_hand) {
         enablePart(
             main_hand->secondary_appearance_part,
@@ -82,6 +97,7 @@ void PlayerAppearance::refresh(
     if (!main_hand ||
         !main_hand->suppresses_off_hand) {
         enablePrimary(
+            EquipmentSlot::off_hand,
             definitionForSlot(EquipmentSlot::off_hand));
     }
 }

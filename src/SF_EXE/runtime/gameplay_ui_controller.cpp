@@ -13,6 +13,7 @@
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -58,6 +59,7 @@ GameplayMagicModel gameplayMagicModel(
 void GameplayUiController::reset() {
     options_.close();
     debug_.close();
+    equipment_color_.close();
     inventory_.close();
     map_.close();
     magic_.close();
@@ -69,7 +71,8 @@ void GameplayUiController::reset() {
 }
 
 bool GameplayUiController::gameplayPanelsActive() const {
-    return inventory_.anyItemPanelActive() ||
+    return equipment_color_.active() ||
+           inventory_.anyItemPanelActive() ||
            map_.active() ||
            magic_.active() ||
            status_.active() ||
@@ -103,6 +106,18 @@ void GameplayUiController::closeGameplayPanels(WorldScene& world) {
     status_.close();
     mission_list_.close();
     transport_.close();
+    if (equipment_color_.active()) {
+        constexpr std::array<EquipmentSlot, 3> slots{{
+            EquipmentSlot::main_hand,
+            EquipmentSlot::off_hand,
+            EquipmentSlot::body,
+        }};
+        const auto& colors = equipment_color_.originalColors();
+        for (std::size_t index = 0; index < slots.size(); ++index) {
+            world.setPlayerEquipmentColor(slots[index], colors[index]);
+        }
+        equipment_color_.close();
+    }
 }
 
 bool GameplayUiController::update(
@@ -177,6 +192,37 @@ bool GameplayUiController::update(
         }
         if (result.play_confirm_sound) {
             audio.playOptionsConfirm();
+        }
+        return true;
+    }
+
+    if (equipment_color_.active()) {
+        const GameplayEquipmentColorResult result =
+            equipment_color_.update({
+                input.gameplayOptionsPressed() ||
+                    input.pointerSecondaryPressed(),
+                input.menu().pointer_primary_pressed,
+                input.menu().pointer_x,
+                input.menu().pointer_y,
+            });
+        constexpr std::array<EquipmentSlot, 3> slots{{
+            EquipmentSlot::main_hand,
+            EquipmentSlot::off_hand,
+            EquipmentSlot::body,
+        }};
+        if (result.color_changed) {
+            world.setPlayerEquipmentColor(
+                slots[static_cast<std::size_t>(result.target)],
+                result.color);
+        }
+        if (result.cancelled) {
+            const auto& colors = equipment_color_.originalColors();
+            for (std::size_t index = 0; index < slots.size(); ++index) {
+                world.setPlayerEquipmentColor(slots[index], colors[index]);
+            }
+        }
+        if (result.play_move_sound) {
+            audio.playGameplayEffect(58);
         }
         return true;
     }
@@ -330,6 +376,25 @@ bool GameplayUiController::update(
                         true, inventory_.active()),
                     240);
             }
+        } else if (
+            service.kind == GameplayServiceKind::equipment_color) {
+            transport_.close();
+            inventory_.close();
+            constexpr std::array<EquipmentSlot, 3> slots{{
+                EquipmentSlot::main_hand,
+                EquipmentSlot::off_hand,
+                EquipmentSlot::body,
+            }};
+            std::array<bool, 3> available{};
+            std::array<std::int32_t, 3> colors{};
+            for (std::size_t index = 0; index < slots.size(); ++index) {
+                available[index] =
+                    world.playerEquipment().item(slots[index]) != nullptr;
+                colors[index] = world.playerEquipmentColor(slots[index]);
+            }
+            equipment_color_.open(available, colors);
+            world.setCameraAnchor(320, 240);
+            return true;
         } else if (service.kind == GameplayServiceKind::vendor) {
             transport_.close();
             inventory_.closeSpecialItems();
@@ -882,6 +947,11 @@ GameplayUiController::options() const {
 const GameplayDebugMenu&
 GameplayUiController::debug() const {
     return debug_;
+}
+
+const GameplayEquipmentColor&
+GameplayUiController::equipmentColor() const {
+    return equipment_color_;
 }
 
 const GameplayInventory&

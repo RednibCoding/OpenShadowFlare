@@ -1845,6 +1845,21 @@ writing raw jobs `6`, `5`, and `9` respectively. It does not rebuild stats,
 alter level history, or change any other record field. Scenario `03900003`
 sentences 366 and 381 contain the shipped change/query pair.
 
+Opcode 72 enters at `0x00434259` and takes no operands. It clears the other
+gameplay panels, sets `DAT_0048ce60`, and snapshots the equipped main hand,
+off hand, and body color indices. The corresponding item getters read runtime
+offset `+0x348` for category zero and `+0x320` for category one. Both serialize
+as item-state word 49. The centered panel is Status.njp patterns 102 through
+109 at `(160,144)` and offers the 16 triples beginning at `0x00475bf0`.
+
+Color clicks write the selected item immediately so the hero preview updates
+live. OK clears the panel after broadcasting the changed player state. Cancel,
+right click, and Escape call `0x00410360`, restoring all three opening values
+before closing. Only the primary CAF part uses the selected table triple; the
+secondary weapon part continues to use its definition strengths. The three
+shipped opcode-72 call sites are scenario `01000000` sentence 212,
+`02100000` sentence 357, and `03900002` sentence 102.
+
 Script opcode 68 enters at `0x004342de`. It ignores a level-100 player,
 otherwise reads that same Table 13 threshold and adds
 `threshold * evaluated_argument / 100` to experience. The multiply and divide

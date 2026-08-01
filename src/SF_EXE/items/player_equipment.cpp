@@ -1,7 +1,8 @@
 #include "player_equipment.hpp"
 
-#include "item_database.hpp"
+#include "item_appearance.hpp"
 #include "item_condition.hpp"
+#include "item_database.hpp"
 #include "item_instance_values.hpp"
 #include "item_repair.hpp"
 
@@ -102,6 +103,20 @@ const InventoryItem* PlayerEquipment::item(
     const std::optional<InventoryItem>& equipped =
         slots_[index];
     return equipped ? &*equipped : nullptr;
+}
+
+std::int32_t PlayerEquipment::appearanceColor(
+    EquipmentSlot slot) const {
+    const InventoryItem* equipped = item(slot);
+    return equipped ? retailItemColorIndex(*equipped) : -1;
+}
+
+bool PlayerEquipment::setAppearanceColor(
+    EquipmentSlot slot,
+    std::int32_t color_index) {
+    const std::size_t index = static_cast<std::size_t>(slot);
+    return index < slot_count && slots_[index] &&
+           setRetailItemColorIndex(*slots_[index], color_index);
 }
 
 bool PlayerEquipment::decreaseDurability(

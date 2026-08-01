@@ -3,6 +3,7 @@
 #include "core/game_config.hpp"
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_debug_renderer.hpp"
+#include "render/gameplay_equipment_color_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_inventory_renderer.hpp"
@@ -24,6 +25,7 @@
 #include "states/character_select_state.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_debug_menu.hpp"
+#include "states/gameplay_equipment_color.hpp"
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_magic.hpp"
 #include "states/gameplay_mission_list.hpp"
@@ -112,6 +114,7 @@ void RuntimeRenderer::render(
                 context.game_config.semi_transparent_objects);
             context.save_preview.capture(renderer_.surface());
             if (!context.gameplay_debug.active() &&
+                !context.gameplay_equipment_color.active() &&
                 !context.gameplay_options.active() &&
                 !context.gameplay_mission_list.active() &&
                 !context.gameplay_transport.active() &&
@@ -130,6 +133,7 @@ void RuntimeRenderer::render(
             const bool quest_notice_hidden =
                 context.world.conversationActive() ||
                 context.gameplay_debug.active() ||
+                context.gameplay_equipment_color.active() ||
                 context.gameplay_options.active() ||
                 context.gameplay_inventory.anyItemPanelActive() ||
                 context.gameplay_map.active() ||
@@ -155,7 +159,14 @@ void RuntimeRenderer::render(
             if (status && font) {
                 const auto* map_icons =
                     context.frontend_assets.pattern(7);
-                if (context.gameplay_debug.active()) {
+                if (context.gameplay_equipment_color.active()) {
+                    renderGameplayEquipmentColor(
+                        renderer_,
+                        *status,
+                        context.gameplay_equipment_color,
+                        context.world,
+                        context.gameplay_counter);
+                } else if (context.gameplay_debug.active()) {
                     renderGameplayDebugMenu(
                         renderer_,
                         *status,

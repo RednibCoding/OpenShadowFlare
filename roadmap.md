@@ -138,6 +138,14 @@ its menu selection, and opcode 70 to write a chosen advanced job back to the
 same player-record field. The operation deliberately leaves level history and
 derived parameters alone, matching the executable's narrow handler.
 
+The matching equipment-color service is reconstructed too. Script opcode 72
+opens the authored center panel used by all three shipped armor-color NPCs.
+Main hand, off hand, and body colors update live against the retail 16-color
+strength table; OK keeps them, while Cancel, right click, and Escape restore
+the opening snapshot. The color index remains in retail item-state word 49,
+so dyed equipment survives the ordinary save/load path without a portable
+side channel.
+
 The selection side is complete too. `S` and `M` open the two tabs of the
 authored left-hand Status/Magic panel without pausing the world, shift the
 camera into the visible half, and can stay open beside the right-hand

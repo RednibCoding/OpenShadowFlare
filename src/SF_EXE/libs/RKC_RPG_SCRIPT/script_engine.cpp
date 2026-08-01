@@ -600,11 +600,12 @@ StepResult Interpreter::execute(const Command& command) {
     case 67:
     case 68:
     case 70:
+    case 72:
     case 75:
         return executeNative(
             command.opcode == 59 || command.opcode == 75
                 ? 2
-                : 1);
+                : (command.opcode == 72 ? 0 : 1));
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;

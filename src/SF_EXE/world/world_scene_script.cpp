@@ -527,6 +527,19 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
+    if (opcode == 72) {
+        if (!arguments.empty() ||
+            gameplay_service_request_.kind !=
+                GameplayServiceKind::none) {
+            return false;
+        }
+        gameplay_service_request_ = {
+            GameplayServiceKind::equipment_color,
+            0,
+        };
+        return true;
+    }
+
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
         arguments.empty()) {
         return false;

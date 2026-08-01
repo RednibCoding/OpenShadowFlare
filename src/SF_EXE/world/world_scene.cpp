@@ -606,6 +606,21 @@ void WorldScene::refreshPlayerAppearance() {
         item_database_);
 }
 
+std::int32_t WorldScene::playerEquipmentColor(
+    EquipmentSlot slot) const {
+    return player_equipment_.appearanceColor(slot);
+}
+
+bool WorldScene::setPlayerEquipmentColor(
+    EquipmentSlot slot,
+    std::int32_t color_index) {
+    if (!player_equipment_.setAppearanceColor(slot, color_index)) {
+        return false;
+    }
+    refreshPlayerAppearance();
+    return true;
+}
+
 bool WorldScene::hasPlayer() const {
     return has_player_;
 }

@@ -1,3 +1,4 @@
+#include "items/item_appearance.hpp"
 #include "items/item_database.hpp"
 #include "items/item_instance_factory.hpp"
 #include "items/item_repair.hpp"
@@ -596,6 +597,8 @@ int main() {
                         *leather_cloth,
                         male.level())
                     .accepted &&
+                saved_equipment.setAppearanceColor(
+                    osf::EquipmentSlot::body, 14) &&
                 saved_equipment
                     .place(
                         osf::EquipmentSlot::alternate_main_hand,
@@ -670,6 +673,9 @@ int main() {
                 restored_equipment
                         .item(osf::EquipmentSlot::body)
                         ->identified == 1 &&
+                osf::retailItemColorIndex(
+                    *restored_equipment.item(
+                        osf::EquipmentSlot::body)) == 14 &&
                 restored_equipment.item(
                     osf::EquipmentSlot::alternate_main_hand) &&
                 restored_equipment

@@ -63,6 +63,10 @@ public:
     std::optional<InventoryItem> take(EquipmentSlot slot);
 
     const InventoryItem* item(EquipmentSlot slot) const;
+    std::int32_t appearanceColor(EquipmentSlot slot) const;
+    bool setAppearanceColor(
+        EquipmentSlot slot,
+        std::int32_t color_index);
     bool decreaseDurability(
         EquipmentSlot slot,
         std::int32_t amount);

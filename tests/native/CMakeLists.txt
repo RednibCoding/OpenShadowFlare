@@ -152,6 +152,38 @@ if(TARGET sf_game_core)
     COMMAND gameplay_magic_test)
 
   add_executable(
+    gameplay_equipment_color_test
+    gameplay_equipment_color_test.cpp
+  )
+  target_link_libraries(
+    gameplay_equipment_color_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::States
+      OpenShadowFlare::World
+  )
+  target_compile_definitions(
+    gameplay_equipment_color_test
+    PRIVATE
+      OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  )
+  target_compile_features(
+    gameplay_equipment_color_test PRIVATE cxx_std_17)
+  set_target_properties(
+    gameplay_equipment_color_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      gameplay_equipment_color_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_equipment_color_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME gameplay_equipment_color
+    COMMAND gameplay_equipment_color_test)
+
+  add_executable(
     gameplay_ui_controller_test
     gameplay_ui_controller_test.cpp
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"

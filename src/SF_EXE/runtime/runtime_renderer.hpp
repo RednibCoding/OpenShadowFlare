@@ -14,6 +14,7 @@ struct CharacterSelectFrameResult;
 struct GameConfig;
 class GameplayInventory;
 class GameplayDebugMenu;
+class GameplayEquipmentColor;
 class GameplayMap;
 class GameplayMagic;
 class GameplayMissionList;
@@ -41,6 +42,7 @@ struct RuntimeRenderContext {
     RetailSavePreview& save_preview;
     const GameplayOptionsMenu& gameplay_options;
     const GameplayDebugMenu& gameplay_debug;
+    const GameplayEquipmentColor& gameplay_equipment_color;
     const GameplayInventory& gameplay_inventory;
     const GameplayMap& gameplay_map;
     const GameplayMagic& gameplay_magic;

@@ -70,6 +70,7 @@ enum class GameplayServiceKind {
     toggle_special_items,
     identify_item,
     vendor,
+    equipment_color,
 };
 
 struct GameplayServiceRequest {
@@ -202,6 +203,11 @@ public:
     std::int32_t playerPartBlueStrength(
         std::size_t part) const;
     void refreshPlayerAppearance();
+    std::int32_t playerEquipmentColor(
+        EquipmentSlot slot) const;
+    bool setPlayerEquipmentColor(
+        EquipmentSlot slot,
+        std::int32_t color_index);
     bool hasPlayer() const;
     void commandPlayerMovement(
         std::int32_t screen_x,

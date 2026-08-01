@@ -1286,6 +1286,53 @@ bool testRetailJobCommands() {
 #endif
 }
 
+bool testRetailEquipmentColorCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "01000000" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> commands;
+    osf::script::Interpreter interpreter({
+        {},
+        {},
+        {},
+        [&commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    return check(
+        interpreter.startSentence(212, -1) ==
+                osf::script::StepResult::complete &&
+            commands == std::vector<std::pair<
+                std::int32_t,
+                std::vector<std::int32_t>>>{{72, {}}},
+        "The shipped equipment-color service did not emit retail "
+        "opcode 72 without operands.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1295,6 +1342,7 @@ int main() {
                    testRetailGiantWarehouseScript() &&
                    testRetailItemOwnershipCommands() &&
                    testRetailJobCommands() &&
+                   testRetailEquipmentColorCommand() &&
                    testMalformedScript()
                ? 0
                : 1;
