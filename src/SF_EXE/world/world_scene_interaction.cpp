@@ -1827,6 +1827,22 @@ bool WorldScene::startGroundItemInteraction(
         item_database_.find(
             found->item.category,
             found->item.definition_id);
+    const bool mine_item =
+        found->item.category == 4 &&
+        found->item.definition_id == 1;
+    if (definition && mine_item &&
+        player_item_controller_.collectMine(
+            playerMaximumMineCount())) {
+        pending_audio_samples_.push_back(
+            retailItemMoveSound(*definition));
+        if (pointer_.target().kind ==
+                WorldPointerTargetKind::ground_item &&
+            pointer_.target().id == item_id) {
+            pointer_.clearSelection();
+        }
+        ground_items.erase(found);
+        return true;
+    }
     if (!definition ||
         !player_inventory_.store(found->item)) {
         // The single-player failure tail of FUN_004526a0 recreates the

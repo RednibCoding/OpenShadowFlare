@@ -613,8 +613,12 @@ and quest/conversation state. After them retail writes the spell state as:
 New characters begin with availability zero, level one, experience zero, and
 all bar slots set to `-1`. The Magic window and cast path only treat
 availability value `3` as learned. OpenShadowFlare restores and rewrites this
-whole section while preserving the later unmapped payload. Scenario position,
-mines, and the rest of that later state are still pending.
+whole section while preserving the later unmapped payload. Retail follows it
+with a counted history block (two parallel signed 32-bit arrays) and then the
+current Land Mine count. OpenShadowFlare locates and rewrites that count at
+the same boundary. Sparse portable saves that do not yet contain the later
+retail state keep it in the versioned portable tail instead. Scenario position
+and the rest of the later state are still pending.
 
 ## Transport destination table
 

@@ -216,6 +216,12 @@ bool testSaveTransitionsOwnModalInput() {
     }
 
     Fixture fixture;
+    if (!check(
+            world.placePlayerLandMine() &&
+                world.playerMineCount() == 4,
+            "The save fixture could not spend one mine before saving.")) {
+        return false;
+    }
     if (!openSaveConfirmation(
             fixture, world, player, false)) {
         return false;
@@ -227,6 +233,15 @@ bool testSaveTransitionsOwnModalInput() {
                 fixture.game_state.currentState() ==
                     osf::GameState::title,
             "Save and Return did not save and enter the title state.")) {
+        return false;
+    }
+    osf::WorldScene restored_world;
+    if (!check(
+            restored_world.loadInitialScenario(
+                data_root, player, &error) &&
+                restored_world.playerMineCount() == 4,
+            "Save and Return did not persist the live mine count.")) {
+        std::cerr << error << '\n';
         return false;
     }
 
@@ -282,12 +297,76 @@ bool testIncreasedPowerKeyEdge() {
         "P did not re-arm after its key-up event.");
 }
 
+bool testLandMineKeyEdge() {
+    osf::runtime::InputAdapter input{640, 480};
+    LwlEvent event{};
+    event.type = LWL_EVENT_KEY_DOWN;
+    std::strncpy(event.key, "b", sizeof(event.key) - 1u);
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    if (!check(
+            input.landMinePressed(),
+            "B did not publish the retail Land Mine input edge.")) {
+        return false;
+    }
+    input.clearTransientInput();
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    if (!check(
+            !input.landMinePressed(),
+            "A held B key repeated the Land Mine input edge.")) {
+        return false;
+    }
+    event.type = LWL_EVENT_KEY_UP;
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    event.type = LWL_EVENT_KEY_DOWN;
+    input.handleEvent(
+        nullptr, event, osf::GameState::gameplay);
+    return check(
+        input.landMinePressed(),
+        "B did not re-arm after its key-up event.");
+}
+
+bool testLandMineHudClick() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    if (!std::filesystem::is_directory(
+            data_root / "Scenario" / "00000000")) {
+        return true;
+    }
+    osf::PlayerLoadRequest player;
+    player.name = "Mine HUD";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(data_root, player, &error),
+            "The Land Mine HUD fixture could not load Remote Town.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    Fixture fixture;
+    const std::int32_t before = world.playerMineCount();
+    fixture.click(500, 430, world, player);
+    return check(
+        before == 5 && world.playerMineCount() == 4 &&
+            world.playerLandMineVisuals().size() == 1,
+        "The retail mine HUD rectangle did not place and consume a mine.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
     return testEscapeClosesPanelsBeforeSettings() &&
                    testSaveTransitionsOwnModalInput() &&
-                   testIncreasedPowerKeyEdge()
+                   testIncreasedPowerKeyEdge() &&
+                   testLandMineKeyEdge() &&
+                   testLandMineHudClick()
                ? 0
                : 1;
 }

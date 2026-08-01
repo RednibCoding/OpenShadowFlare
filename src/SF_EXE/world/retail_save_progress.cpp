@@ -1,7 +1,7 @@
 #include "retail_save_progress.hpp"
+#include "retail_save_extension.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -11,16 +11,12 @@ namespace osf {
 namespace {
 
 constexpr std::int32_t kMaximumFlagCount = 100000;
-constexpr std::array<std::uint8_t, 8> kExtensionSignature{{
-    'O', 'S', 'F', 'S', 'T', '0', '1', '\0',
-}};
-constexpr std::uint32_t kExtensionSize = 20;
 constexpr std::uint32_t kLegacySwappedFlagVersion = 1;
-constexpr std::uint32_t kExtensionVersion = 2;
 
 // The three flag arrays below are retail fields. The executable does not
-// serialize its live walk/run word in FUN_0044b580, so that one setting uses
-// a versioned tail which the retail reader safely leaves unread.
+// serialize its live walk/run word in FUN_0044b580. Sparse portable saves
+// also lack the later retail mine field, so these two values use a versioned
+// tail which the retail reader safely leaves unread.
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -94,48 +90,6 @@ bool appendFlagArray(
     return true;
 }
 
-std::int32_t portableExtensionVersion(
-    const std::vector<std::uint8_t>& payload) {
-    if (payload.size() < kExtensionSize) {
-        return 0;
-    }
-    const std::size_t start =
-        payload.size() - kExtensionSize;
-    if (!std::equal(
-            kExtensionSignature.begin(),
-            kExtensionSignature.end(),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(start))) {
-        return 0;
-    }
-    std::size_t offset = start + kExtensionSignature.size();
-    std::int32_t size = 0;
-    std::int32_t version = 0;
-    if (!readI32(payload, offset, size) ||
-        !readI32(payload, offset, version) ||
-        size != static_cast<std::int32_t>(kExtensionSize) ||
-        (version !=
-             static_cast<std::int32_t>(
-                 kLegacySwappedFlagVersion) &&
-         version !=
-             static_cast<std::int32_t>(kExtensionVersion))) {
-        return 0;
-    }
-    return version;
-}
-
-void appendPortableExtension(
-    std::vector<std::uint8_t>& payload,
-    bool running) {
-    payload.insert(
-        payload.end(),
-        kExtensionSignature.begin(),
-        kExtensionSignature.end());
-    appendU32(payload, kExtensionSize);
-    appendU32(payload, kExtensionVersion);
-    appendU32(payload, running ? 1u : 0u);
-}
-
 }  // namespace
 
 bool restoreRetailProgress(
@@ -185,8 +139,12 @@ bool restoreRetailProgress(
             "The retail script-state stream is truncated.");
         return false;
     }
+    const RetailSavePortableExtension extension =
+        inspectRetailSavePortableExtension(payload);
     const std::int32_t extension_version =
-        portableExtensionVersion(payload);
+        extension.present
+            ? static_cast<std::int32_t>(extension.version)
+            : 0;
     if (extension_version ==
         static_cast<std::int32_t>(
             kLegacySwappedFlagVersion)) {
@@ -199,10 +157,8 @@ bool restoreRetailProgress(
         restored.quest_flags = std::move(first_flags);
         restored.script_state_flags = std::move(third_flags);
     }
-    if (extension_version != 0) {
-        const std::size_t start =
-            payload.size() - kExtensionSize;
-        restored.running = payload[start + 16] != 0;
+    if (extension.present) {
+        restored.running = extension.running;
     }
     progress = std::move(restored);
     if (serialized_end) {
@@ -240,10 +196,10 @@ bool replaceRetailProgress(
         }
     }
 
-    std::size_t suffix_end = payload.size();
-    if (portableExtensionVersion(payload) != 0) {
-        suffix_end -= kExtensionSize;
-    }
+    const RetailSavePortableExtension extension =
+        inspectRetailSavePortableExtension(payload);
+    const std::size_t suffix_end =
+        extension.present ? extension.start : payload.size();
     if (old_progress_end > suffix_end) {
         setError(
             error,
@@ -284,7 +240,11 @@ bool replaceRetailProgress(
          progress.transport_flags.size() +
          progress.script_state_flags.size()) *
             4u;
-    appendPortableExtension(replacement, progress.running);
+    replaceRetailSavePortableExtension(
+        replacement,
+        progress.running,
+        extension.mine_count,
+        extension.has_mine_count);
     payload = std::move(replacement);
     if (serialized_end) {
         *serialized_end = new_progress_end;

@@ -329,6 +329,16 @@ presentation 20006 and launches an independently delayed effect-9000 diagonal
 strike at each captured character number. The complete volley costs one
 main-hand durability and keeps sample 3 at counter six.
 
+Land Mines are complete as the remaining player combat shortcut. `B` and the
+authored HUD cell spend the separate saved counter and place static OPTION
+resource 1000 at the hero after the ten-update lockout check. Counter 40 arms
+enemy-and-scenario-object collision and starts sample-54 warning beeps; contact
+or the 300-update lifetime advances into the Table-23 area packet, resource
+1001, sample 29, expanding 1002..1004 rings, and paired 1005..1008 bouncing
+debris. Mine pickups, the equipment-derived capacity and damage bonuses, map
+transition cleanup, and the exact post-magic retail save field share the
+existing item, receiver, renderer, and save owners rather than bypassing them.
+
 ## Completed foundation: make Remote Town feel like a game
 
 This slice touched nearly every piece the rest of gameplay will need: input,
@@ -1041,10 +1051,22 @@ The retail condition warning is now shared by backpack, equipment, and held
 items. Weapons and armor below ten percent durability blink `Status.njp`
 pattern 16 for eight updates on and eight off; broken gear keeps it visible.
 The player-life and player-mana fields of category-three records are decoded.
-Companion restoration, timed/status effects, mine placement, and the
-script-facing special-item commands remain the next item checkpoint. Those
-paths should keep using these owners rather than adding parallel inventory
-models.
+Land Mines now use their retail path rather than pretending to be backpack
+items or magic. `B` and the exact HUD cell spend the separate counter, obey the
+ten-update placement lockout, and create static resource 1000 at the hero.
+The mine arms at update 40, beeps every 20 updates, reacts to enemy and active
+scenario-object contact, and expires at update 300. Its Table-23 area packet,
+sample 29, resource-1001 explosion, expanding 1002..1004 rings, and paired
+1005..1008 bouncing debris run through their own small controller and the
+shared receiver/depth-sort boundaries. Mine pickups fill the counter up to the
+equipment-derived maximum before falling back to ordinary backpack pickup.
+The base count, instance-word 84 capacity bonus, instance-word 81 damage
+bonus, and post-magic retail save field are all owned and tested, including
+older sparse portable saves.
+
+Companion restoration, timed/status effects, and the script-facing
+special-item commands remain the next item checkpoint. Those paths should
+keep using these owners rather than adding parallel inventory models.
 
 ### 4. Combat and death
 

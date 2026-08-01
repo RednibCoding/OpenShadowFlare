@@ -5,6 +5,8 @@
 #include "items/player_inventory.hpp"
 #include "world/player_data.hpp"
 
+#include <algorithm>
+
 namespace osf {
 namespace {
 
@@ -51,6 +53,28 @@ void PlayerItemController::clear() {
 void PlayerItemController::initializeNew() {
     // FUN_00440f70 keeps mines outside the ordinary item containers.
     mine_count_ = 5;
+}
+
+void PlayerItemController::restoreMineCount(
+    std::int32_t count) {
+    mine_count_ = std::max(count, 0);
+}
+
+bool PlayerItemController::consumeMine() {
+    if (mine_count_ <= 0) {
+        return false;
+    }
+    --mine_count_;
+    return true;
+}
+
+bool PlayerItemController::collectMine(
+    std::int32_t maximum_count) {
+    if (mine_count_ >= std::max(maximum_count, 0)) {
+        return false;
+    }
+    ++mine_count_;
+    return true;
 }
 
 PlayerItemUseResult PlayerItemController::useBeltPocket(

@@ -103,6 +103,7 @@ void WorldScene::clear() {
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
+    player_land_mines_.clear();
     player_transport_spell_.clear();
     player_.clear();
     has_player_ = false;
@@ -466,6 +467,50 @@ PlayerItemUseResult WorldScene::usePlayerInventoryItem(
 
 std::int32_t WorldScene::playerMineCount() const {
     return player_item_controller_.mineCount();
+}
+
+bool WorldScene::placePlayerLandMine() {
+    if (!has_player_ ||
+        player_data_.currentLife() <= 0 ||
+        player_item_controller_.mineCount() <= 0 ||
+        !player_land_mines_.ready()) {
+        return false;
+    }
+    std::string error;
+    if (!effect_pattern_resources_.load(
+            data_root_, 1000, &error)) {
+        return false;
+    }
+    for (std::int32_t resource = 1001;
+         resource <= 1008;
+         ++resource) {
+        if (!effect_visuals_.load(
+                data_root_, resource, &error)) {
+            return false;
+        }
+    }
+    if (!player_land_mines_.place(
+            player_.position(),
+            player_data_.level(),
+            scenario_world_.localPlayerNumber())) {
+        return false;
+    }
+    return player_item_controller_.consumeMine();
+}
+
+const std::vector<PlayerLandMineVisual>&
+WorldScene::playerLandMineVisuals() const {
+    return player_land_mines_.visuals();
+}
+
+const gapi::NjpImage* WorldScene::playerLandMinePatterns() const {
+    return effect_pattern_resources_.find(1000);
+}
+
+const EffectVisualResource*
+WorldScene::playerLandMineVisualResource(
+    std::int32_t resource_id) const {
+    return effect_visuals_.find(resource_id);
 }
 
 const ItemWorldResource* WorldScene::itemWorldResource(

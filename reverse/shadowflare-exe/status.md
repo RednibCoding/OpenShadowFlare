@@ -205,6 +205,31 @@ plays sample 22 and requests the nearby eight-update, magnitude-six camera
 shake. The controller ends only after all rays finish. Arc Angel's third
 attack in `99000036` supplies the shipped subtype-30 five-ray live case.
 
+### Player Land Mine controller
+
+Effect 1000 dispatches to `0x0042bd40`. `0x00441c00` and the HUD rectangle
+`x=496..511, y=424..439` both require a nonzero player `+0x328` count and a
+zero global placement lockout. They set that lockout to ten, spend one mine,
+and enqueue target mask 20 at the hero's exact current position. The HUD path
+also plays sample 58.
+
+Controller update zero creates static OPTION resource 1000 with
+`[-150,-150,150,150]` judgement and a 300-update actor lifetime. Counter 40
+arms target collision. From then on every twentieth update plays positional
+sample 54. Enemy or active scenario-object contact removes the mine actor; its
+natural lifetime does the same.
+
+The missing actor advances the controller into resource 1001 with
+`[-600,-600,600,600]` judgement, sample 29, and an every-target physical
+packet. Its damage is Table 23 row `placed level - 1`, column zero, plus player
+runtime `+0x2c4`, clamped to at least one. Rebuilding that runtime value adds
+equipped instance word 81; instance word 84 instead raises maximum mines at
+`+0x2c0` from its base ten. Even counters 12 through 40 expand a radius by 50
+and place one randomly angled 1002, 1003, and 1004 visual. Counter 12 also
+creates the four 1005..1008 pieces with paired 1004 actors, initial vertical
+velocity 1500, acceleration -100, and the retail bounce. The controller ends
+at counter 80.
+
 Runtime actors are a separate category. `0x00429dd0` creates identity
 `50000000 + local ID`, while `0x0045e1a0` copies a 126-word descriptor into
 the actor. `0x0045e1e0` owns homing, free, or owner-attached movement; static
@@ -454,8 +479,10 @@ New-character equipment and owned items now follow `0x00440f70` as well.
 Category one definition zero is equipped in the body slot. Category-three
 definition zero fills backpack column zero and belt row zero four times;
 definition `10000000` does the same for backpack column one and belt row one.
-The separate mine counter starts at five. This initialization runs only for a
-new character, not as a fallback for the still-undecoded save payload.
+The separate mine counter starts at five. It is restored from the field after
+the magic block and its counted two-array history owner; older sparse portable
+saves retain the five-mine default unless their versioned tail includes a
+count.
 
 Inventory movement sounds follow `0x00466110`: category-two items use sample
 93, Gold uses 85, ordinary items below weight 60 use 48, and heavier ones use
@@ -608,7 +635,9 @@ and all trailing payload bytes remain byte-for-byte unchanged. The loader also
 skips the first counted flag array after the items and restores the following
 51 transport flags against Table 40. Tests cover a new world save/load round
 trip and unchanged re-encoding of an original retail save. Scenario, position,
-mines, and the remaining dynamic payload still need owners. Writes go
+and the remaining dynamic payload still need owners. The mine count after the
+magic block's counted two-array history section is now restored and rewritten
+independently. Writes go
 through a sibling temporary file
 and protected replacement so a corrupt source or failed write does not
 silently destroy the slot.

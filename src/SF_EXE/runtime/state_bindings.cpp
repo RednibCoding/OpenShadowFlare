@@ -273,6 +273,9 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.activate_increased_power = [&world] {
         world.activatePlayerIncreasedPower();
     };
+    hooks.place_land_mine = [&world] {
+        world.placePlayerLandMine();
+    };
     hooks.update_world = [&audio, &world] {
         world.update();
         for (const std::int32_t sample :

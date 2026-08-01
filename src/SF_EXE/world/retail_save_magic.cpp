@@ -1,9 +1,8 @@
 #include "retail_save_magic.hpp"
 
 #include "player_magic.hpp"
+#include "retail_save_extension.hpp"
 
-#include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -11,11 +10,6 @@
 
 namespace osf {
 namespace {
-
-constexpr std::array<std::uint8_t, 8> kExtensionSignature{{
-    'O', 'S', 'F', 'S', 'T', '0', '1', '\0',
-}};
-constexpr std::size_t kExtensionSize = 20;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -55,13 +49,9 @@ void appendI32(
 bool beginsPortableExtension(
     const std::vector<std::uint8_t>& payload,
     std::size_t offset) {
-    return offset <= payload.size() &&
-           payload.size() - offset == kExtensionSize &&
-           std::equal(
-               kExtensionSignature.begin(),
-               kExtensionSignature.end(),
-               payload.begin() +
-                   static_cast<std::ptrdiff_t>(offset));
+    const RetailSavePortableExtension extension =
+        inspectRetailSavePortableExtension(payload);
+    return extension.present && extension.start == offset;
 }
 
 bool parseMagic(

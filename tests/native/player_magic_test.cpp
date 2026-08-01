@@ -9,6 +9,7 @@
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_items.hpp"
 #include "world/retail_save_magic.hpp"
+#include "world/retail_save_mines.hpp"
 #include "world/retail_save_progress.hpp"
 
 #include <cstddef>
@@ -241,6 +242,54 @@ int main() {
                 restored.state().bar_slots ==
                     fixture.state().bar_slots,
             "The retail magic stream did not round-trip exactly.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    std::size_t mine_end = 0;
+    if (!check(
+            osf::replaceRetailMineCount(
+                payload,
+                magic_end,
+                7,
+                &mine_end,
+                &error),
+            "The portable mine-count fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::int32_t restored_mines = 5;
+    if (!check(
+            osf::restoreRetailMineCount(
+                payload,
+                magic_end,
+                restored_mines,
+                nullptr,
+                &error) &&
+                restored_mines == 7 &&
+                mine_end == magic_end,
+            "The portable mine count did not round-trip after magic.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    // Progress owns the running bit, but rewriting it must preserve the
+    // mine field owned by the adjacent save component.
+    progress.running = false;
+    if (!check(
+            osf::replaceRetailProgress(
+                payload,
+                items_end,
+                progress,
+                &progress_end,
+                &error) &&
+                osf::restoreRetailMineCount(
+                    payload,
+                    magic_end,
+                    restored_mines,
+                    nullptr,
+                    &error) &&
+                restored_mines == 7,
+            "Rewriting progress discarded the portable mine count.")) {
         std::cerr << error << '\n';
         return 1;
     }

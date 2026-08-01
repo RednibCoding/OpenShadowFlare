@@ -4,8 +4,10 @@
 #include "retail_save_file.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
+#include "retail_save_mines.hpp"
 #include "retail_save_progress.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -60,6 +62,7 @@ bool WorldScene::loadInitialScenario(
     }
 
     quests_.initialize(missions_.missions().size());
+    player_item_controller_.initializeNew();
     bool saved_running = false;
     if (player_request.source ==
         PlayerDataSource::new_character) {
@@ -73,7 +76,6 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
-        player_item_controller_.initializeNew();
         player_magic_.initializeNew();
     } else {
         // Older portable saves ended after the progress extension. Seed the
@@ -106,6 +108,7 @@ bool WorldScene::loadInitialScenario(
             false,
         };
         std::size_t progress_end = owned_items_end;
+        std::size_t magic_end = progress_end;
         if (!restoreRetailProgress(
                 payload,
                 owned_items_end,
@@ -116,11 +119,24 @@ bool WorldScene::loadInitialScenario(
                 payload,
                 progress_end,
                 player_magic_,
+                &magic_end,
+                error)) {
+            clear();
+            return false;
+        }
+        std::int32_t mine_count =
+            player_item_controller_.mineCount();
+        if (!restoreRetailMineCount(
+                payload,
+                magic_end,
+                mine_count,
                 nullptr,
                 error)) {
             clear();
             return false;
         }
+        player_item_controller_.restoreMineCount(
+            std::min(mine_count, playerMaximumMineCount()));
         if (!transports_.restoreEnabledFlags(
                 progress.transport_flags)) {
             setError(
@@ -293,6 +309,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
         pending_combat_effects_.clear();
         combat_effects_.clear();
         runtime_effects_.clear();
+        player_land_mines_.clear();
         miss_effects_.clear();
         camera_shake_counter_ = -1;
         camera_shake_duration_ = 0;
@@ -342,6 +359,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     pending_combat_effects_.clear();
     combat_effects_.clear();
     runtime_effects_.clear();
+    player_land_mines_.clear();
     miss_effects_.clear();
     camera_shake_counter_ = -1;
     camera_shake_duration_ = 0;

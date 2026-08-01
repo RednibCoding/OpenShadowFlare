@@ -209,6 +209,19 @@ bool GameplayUiController::update(
         return true;
     }
 
+    const bool land_mine_hud_click =
+        input.menu().pointer_primary_pressed &&
+        input.menu().pointer_x > 495 &&
+        input.menu().pointer_x < 512 &&
+        input.menu().pointer_y > 423 &&
+        input.menu().pointer_y < 440;
+    if (!world.conversationActive() &&
+        land_mine_hud_click &&
+        world.placePlayerLandMine()) {
+        audio.playGameplayEffect(58);
+        return true;
+    }
+
     const bool increased_power_hud_click =
         input.menu().pointer_primary_pressed &&
         input.menu().pointer_x > 24 &&
@@ -815,6 +828,7 @@ bool GameplayUiController::updateOptions(
                 world.playerSpecialItems(),
                 world.retailSaveProgress(),
                 world.playerMagic(),
+                world.playerMineCount(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);

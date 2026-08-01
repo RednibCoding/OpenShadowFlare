@@ -395,6 +395,7 @@ private:
                         !notice_consumed,
                     input_.runTogglePressed(),
                     input_.increasedPowerPressed(),
+                    input_.landMinePressed(),
                     map_active ||
                             magic_active ||
                             status_active ||

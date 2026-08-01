@@ -33,6 +33,7 @@
 #include "player_energy_shield.hpp"
 #include "player_increased_power.hpp"
 #include "player_item_controller.hpp"
+#include "player_land_mine.hpp"
 #include "player_level_up_notice.hpp"
 #include "player_magic_shield.hpp"
 #include "player_magic.hpp"
@@ -177,6 +178,12 @@ public:
         std::int32_t item_index);
     void cancelPlayerIdentifyMode();
     std::int32_t playerMineCount() const;
+    bool placePlayerLandMine();
+    const std::vector<PlayerLandMineVisual>&
+        playerLandMineVisuals() const;
+    const gapi::NjpImage* playerLandMinePatterns() const;
+    const EffectVisualResource* playerLandMineVisualResource(
+        std::int32_t resource_id) const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
@@ -398,6 +405,8 @@ private:
         const RuntimeEffectAudioRequest& request);
     void refreshCompanionRuntimeProfile(bool level_gained = false);
     void refreshPlayerRuntimeProfile();
+    std::int32_t playerMaximumMineCount() const;
+    std::int32_t playerMineDamageBonus() const;
     void updatePlayerResourceRates();
     void createPlayerTransport(WorldPosition aim_position);
     void preparePlayerTransportEndpoint();
@@ -455,6 +464,7 @@ private:
     PlayerResourceRateController player_life_rate_;
     PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;
+    PlayerLandMineSystem player_land_mines_;
     PlayerTransportSpell player_transport_spell_;
     PlayerActor player_;
     bool has_player_ = false;

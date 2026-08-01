@@ -7,8 +7,11 @@
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "world/player_data.hpp"
 #include "world/player_item_controller.hpp"
+#include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_items.hpp"
+#include "world/retail_save_magic.hpp"
+#include "world/retail_save_mines.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/retail_save_progress.hpp"
 #include "world/transport_catalog.hpp"
@@ -472,7 +475,7 @@ int main() {
 
     const std::filesystem::path retail_save_fixture =
         std::string(OPENSHADOWFLARE_SOURCE_DIR) +
-        "/tmp/ShadowFlare/Save/0000.Ssv";
+        "/tmp/ShadowFlare/Save/0004.Ssv";
     if (std::filesystem::exists(retail_save_fixture)) {
         osf::PlayerData retail_fixture_player;
         std::vector<std::uint8_t> retail_fixture_payload;
@@ -522,6 +525,37 @@ int main() {
                     transport_flags.front() != 0,
                 "The original retail transport flags could not be "
                 "restored after the owned-item stream.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        osf::RetailSaveProgress retail_progress;
+        std::size_t retail_progress_end = 0;
+        osf::PlayerMagic retail_magic;
+        retail_magic.initializeNew();
+        std::size_t retail_magic_end = 0;
+        std::int32_t retail_mine_count = 5;
+        if (!check(
+                osf::restoreRetailProgress(
+                    retail_fixture_payload,
+                    retail_owned_items_end,
+                    retail_progress,
+                    &retail_progress_end,
+                    &error) &&
+                    osf::restoreRetailMagic(
+                        retail_fixture_payload,
+                        retail_progress_end,
+                        retail_magic,
+                        &retail_magic_end,
+                        &error) &&
+                    osf::restoreRetailMineCount(
+                        retail_fixture_payload,
+                        retail_magic_end,
+                        retail_mine_count,
+                        nullptr,
+                    &error) &&
+                    retail_mine_count >= 0,
+                "The original retail mine count could not be restored at "
+                "its post-magic field.")) {
             std::cerr << error << '\n';
             return 1;
         }

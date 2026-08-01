@@ -632,6 +632,35 @@ class to the right-hand end and shifts the lower-priority classes left.
 - PEOP (People)
 - COMP (Companion)
 
+## Land Mines
+
+Land Mines are a separate player resource, not an inventory stack or spell.
+A new character starts with five. Pressing `B`, or clicking the mine cell at
+`496..511,424..439`, places one at the hero's current world position and
+starts a ten-update placement lockout. The HUD click plays sample 58; the
+keyboard path does not.
+
+The placed mine uses static OPTION resource 1000 with a 300-by-300 judgement
+box. It arms on update 40 and then plays positional sample 54 every 20 updates.
+Contact with a living enemy or active scenario object triggers it; an
+untriggered mine also expires into its explosion at update 300. Changing maps
+or relocating through a scenario entry clears placed mines without restoring
+the spent count.
+
+The explosion uses OPTION resource 1001, sample 29, and a 1200-by-1200 area
+which can hit every enemy inside it. Damage comes from Table 23 at the level
+captured when the mine was placed, plus the equipped mine-effect bonus, with a
+minimum of one. Resources 1002 through 1004 form the expanding debris rings;
+1005 through 1008 and paired 1004 pieces make the four bouncing fragments.
+The controller finishes at update 80 after the explosion.
+
+Mine items are category four, definition one. Picking one up increments the
+separate counter while it is below the current maximum. A full counter makes
+the item follow ordinary backpack pickup instead. The base maximum is ten;
+equipped instance word 84 raises it, while instance word 81 raises mine
+damage. The current count is saved after the magic block in the retail `.Ssv`
+stream and survives portable save/load as well.
+
 ## Controls (from help text)
 
 ### Mouse Actions

@@ -19,6 +19,9 @@ class PlayerItemController {
 public:
     void clear();
     void initializeNew();
+    void restoreMineCount(std::int32_t count);
+    bool consumeMine();
+    bool collectMine(std::int32_t maximum_count);
 
     PlayerItemUseResult useBeltPocket(
         std::int32_t pocket,

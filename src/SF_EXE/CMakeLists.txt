@@ -162,6 +162,7 @@ add_library(
   world/player_increased_power.cpp
   world/player_increased_power_attack.cpp
   world/player_item_controller.cpp
+  world/player_land_mine.cpp
   world/player_level_up_notice.cpp
   world/player_magic_shield.cpp
   world/player_magic.cpp
@@ -176,8 +177,10 @@ add_library(
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_file.cpp
+  world/retail_save_extension.cpp
   world/retail_save_items.cpp
   world/retail_save_magic.cpp
+  world/retail_save_mines.cpp
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
   world/runtime_effect_actor.cpp

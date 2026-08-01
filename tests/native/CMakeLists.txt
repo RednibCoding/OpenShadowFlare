@@ -276,6 +276,33 @@ if(TARGET sf_game_core)
     COMMAND player_increased_power_test)
 
   add_executable(
+    player_land_mine_test
+    player_land_mine_test.cpp
+  )
+  target_link_libraries(
+    player_land_mine_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_land_mine_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_land_mine_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_land_mine_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      player_land_mine_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_land_mine_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME player_land_mine COMMAND player_land_mine_test)
+
+  add_executable(
     player_transport_spell_test
     player_transport_spell_test.cpp
   )
