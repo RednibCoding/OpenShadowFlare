@@ -42,6 +42,36 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
               return hooks_.query_value &&
                      hooks_.query_value(query, value);
           },
+          [this](
+              script::ValueQuery query,
+              std::int32_t index,
+              std::int32_t& value) {
+              return hooks_.query_indexed_value &&
+                     hooks_.query_indexed_value(
+                         query, index, value);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& distance) {
+              return hooks_.measure_character_distance &&
+                     hooks_.measure_character_distance(
+                         character_number, distance);
+          },
+          [this](
+              std::int32_t category,
+              std::int32_t definition_id,
+              bool& present) {
+              return hooks_.query_item &&
+                     hooks_.query_item(
+                         category, definition_id, present);
+          },
+          [this](std::int32_t& value) {
+              if (!hooks_.next_random) {
+                  return false;
+              }
+              value = hooks_.next_random();
+              return true;
+          },
       }) {}
 
 bool ScenarioScriptRuntime::load(
@@ -114,6 +144,11 @@ const script::ScriptData& ScenarioScriptRuntime::data() const {
     return data_;
 }
 
+const script::ScenarioCaptionEvent&
+ScenarioScriptRuntime::caption() const {
+    return interpreter_.caption();
+}
+
 bool ScenarioScriptRuntime::messageActive() const {
     return message_active_;
 }
@@ -184,5 +219,4 @@ void ScenarioScriptRuntime::clearMessage() {
     actor_id_ = -1;
     selected_option_ = -1;
 }
-
 }  // namespace osf

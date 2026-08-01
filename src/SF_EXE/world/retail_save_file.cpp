@@ -1,11 +1,17 @@
 #include "retail_save_file.hpp"
 
+#include "items/player_automatic_items.hpp"
+#include "items/player_giant_warehouse.hpp"
+#include "items/player_special_items.hpp"
 #include "player_data.hpp"
 #include "player_magic.hpp"
+#include "retail_save_automatic_items.hpp"
+#include "retail_save_companion_progress.hpp"
+#include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
+#include "retail_save_mines.hpp"
 #include "retail_save_progress.hpp"
-#include "items/player_special_items.hpp"
 
 #include <algorithm>
 #include <array>
@@ -246,6 +252,9 @@ bool writeRetailSaveImpl(
     const PlayerSpecialItems* special_items,
     const RetailSaveProgress* progress,
     const PlayerMagic* magic,
+    const std::int32_t* mine_count,
+    const PlayerGiantWarehouse* giant_warehouse,
+    const PlayerAutomaticItems* automatic_items,
     std::uint8_t xor_key,
     std::string* error) {
     if (!player.valid()) {
@@ -314,12 +323,57 @@ bool writeRetailSaveImpl(
              error))) {
         return false;
     }
+    std::size_t magic_end = progress_end;
     if (magic &&
         (!progress ||
          !replaceRetailMagic(
              payload,
              progress_end,
              *magic,
+             &magic_end,
+             error))) {
+        return false;
+    }
+    std::size_t companion_progress_end = magic_end;
+    if (magic &&
+        !replaceRetailCompanionProgress(
+            payload,
+            magic_end,
+            player,
+            &companion_progress_end,
+            error)) {
+        return false;
+    }
+    std::size_t mine_end = companion_progress_end;
+    if (mine_count &&
+        (!magic ||
+         !replaceRetailMineCount(
+             payload,
+             companion_progress_end,
+             *mine_count,
+             &mine_end,
+             error))) {
+        return false;
+    }
+    std::size_t giant_warehouse_end = mine_end;
+    if (giant_warehouse &&
+        (!mine_count || !item_database ||
+         !replaceRetailGiantWarehouse(
+             payload,
+             mine_end,
+             *item_database,
+             *giant_warehouse,
+             &giant_warehouse_end,
+             error))) {
+        return false;
+    }
+    if (automatic_items &&
+        (!giant_warehouse || !item_database ||
+         !replaceRetailAutomaticItems(
+             payload,
+             giant_warehouse_end,
+             *item_database,
+             *automatic_items,
              nullptr,
              error))) {
         return false;
@@ -406,6 +460,9 @@ bool writeRetailSave(
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
         xor_key,
         error);
 }
@@ -428,6 +485,9 @@ bool writeRetailSave(
         &equipment,
         &belt,
         &special_items,
+        nullptr,
+        nullptr,
+        nullptr,
         nullptr,
         nullptr,
         xor_key,
@@ -454,6 +514,9 @@ bool writeRetailSave(
         &belt,
         &special_items,
         &progress,
+        nullptr,
+        nullptr,
+        nullptr,
         nullptr,
         xor_key,
         error);
@@ -481,6 +544,41 @@ bool writeRetailSave(
         &special_items,
         &progress,
         &magic,
+        nullptr,
+        nullptr,
+        nullptr,
+        xor_key,
+        error);
+}
+
+bool writeRetailSave(
+    const std::filesystem::path& path,
+    const PlayerData& player,
+    const ItemDatabase& item_database,
+    const PlayerInventory& inventory,
+    const PlayerEquipment& equipment,
+    const PlayerBelt& belt,
+    const PlayerSpecialItems& special_items,
+    const RetailSaveProgress& progress,
+    const PlayerMagic& magic,
+    std::int32_t mine_count,
+    const PlayerGiantWarehouse& giant_warehouse,
+    const PlayerAutomaticItems& automatic_items,
+    std::uint8_t xor_key,
+    std::string* error) {
+    return writeRetailSaveImpl(
+        path,
+        player,
+        &item_database,
+        &inventory,
+        &equipment,
+        &belt,
+        &special_items,
+        &progress,
+        &magic,
+        &mine_count,
+        &giant_warehouse,
+        &automatic_items,
         xor_key,
         error);
 }

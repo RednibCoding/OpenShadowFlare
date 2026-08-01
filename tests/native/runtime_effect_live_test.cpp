@@ -831,6 +831,8 @@ bool testShippedLiveTypeFour(
     world.update();
     const std::vector<std::int32_t> impact_audio =
         world.takeAudioSamples();
+    osf::InventoryItem expected_body = body_copy;
+    --expected_body.durability;
     if (!check(
             world.cameraScreenY() == camera_y - 6 &&
                 world.playerData().currentLife() < life_before &&
@@ -846,10 +848,10 @@ bool testShippedLiveTypeFour(
                 sameItem(
                     *world.playerEquipment().item(
                         osf::EquipmentSlot::body),
-                    body_copy),
+                    expected_body),
             "The live type-four damage actor, contact sound, "
-            "first camera jolt, or adjacent item ownership "
-            "differs.")) {
+            "first camera jolt, retail armor wear, or adjacent item "
+            "ownership differs.")) {
         return false;
     }
 

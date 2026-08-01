@@ -1,5 +1,6 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
+#include "core/retail_integer.hpp"
 
 #include <string>
 #include <utility>
@@ -98,15 +99,15 @@ WorldPosition WorldScene::combatEffectOrigin(
 
 ObjectBounds WorldScene::combatEffectJudgement(
     const CombatEffectSpawnRequest& request) const {
-    ObjectBounds judgement =
+    const ObjectBounds judgement =
         request.has_source_judgement
             ? request.source_judgement
             : ObjectBounds{};
-    ++judgement.left;
-    ++judgement.top;
-    ++judgement.right;
-    ++judgement.bottom;
-    return judgement;
+    const std::int32_t right =
+        retailAdd(judgement.right, 1);
+    const std::int32_t bottom =
+        retailAdd(judgement.bottom, 1);
+    return {right, bottom, right, bottom};
 }
 
 void WorldScene::spawnPendingCombatEffects() {

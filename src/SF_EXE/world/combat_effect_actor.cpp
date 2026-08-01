@@ -64,6 +64,12 @@ const gapi::CafDirection* selectedDirection(
 std::int32_t retailCombatEffectResourceId(
     std::int32_t effect_number) {
     switch (effect_number) {
+    case 20007:
+        return 11000005;
+    case 20008:
+        return 11000006;
+    case 20009:
+        return 11000007;
     case 21025:
         return 11000100;
     case 21028:

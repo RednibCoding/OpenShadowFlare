@@ -1374,6 +1374,8 @@ bool testGameplayDebugDrawing() {
     menu.update({true});
     menu.update({false, false, true, 400, 118});
     menu.update({false, false, true, 400, 134});
+    menu.update({false, false, true, 400, 150});
+    menu.update({false, false, true, 400, 166});
 
     osf::gapi::NjpImage status;
     osf::gapi::NjpImage font;
@@ -1396,13 +1398,22 @@ bool testGameplayDebugDrawing() {
                    call.draw.x == 184 &&
                    call.draw.y == 134;
         });
+    const auto infinite_mana = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "Infinite MP" &&
+                   call.draw.x == 184 &&
+                   call.draw.y == 166;
+        });
     if (!check(
             backend.patterns.size() == 2 &&
                 backend.patterns[0].index == 59 &&
                 backend.patterns[0].draw.opacity == 500 &&
                 backend.patterns[1].index == 58 &&
                 title != backend.texts.end() &&
-                spells != backend.texts.end(),
+                spells != backend.texts.end() &&
+                infinite_mana != backend.texts.end(),
             "The F12 debug menu does not use the gameplay menu frame or "
             "its declared rows.")) {
         return false;

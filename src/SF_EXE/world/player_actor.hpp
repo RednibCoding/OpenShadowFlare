@@ -60,6 +60,10 @@ public:
         std::int32_t target_id,
         std::int32_t attack_speed_tier,
         const gapi::CafAnimation& animation);
+    bool beginComboAttack(
+        PlayerComboAttackKind kind,
+        std::int32_t attack_speed_tier,
+        const gapi::CafAnimation& animation);
     bool beginSpellCast(
         PlayerSpellAction action,
         std::int32_t spell,

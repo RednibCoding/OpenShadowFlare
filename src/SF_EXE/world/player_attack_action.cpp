@@ -40,6 +40,21 @@ constexpr std::array<double, 10> kRangedAttackSpeedFactors{{
     2.0,
 }};
 
+constexpr std::array<double, 10> kComboAttackSpeedFactors{{
+    0.8,
+    0.9,
+    1.0,
+    1.1,
+    1.2,
+    1.3,
+    1.4,
+    1.5,
+    1.6,
+    1.7,
+}};
+
+constexpr std::int32_t kComboLungeLimit = 61;
+
 struct AttackCharts {
     std::int32_t first = -1;
     std::int32_t recovery = -1;
@@ -56,7 +71,16 @@ AttackCharts chartsForAction(PlayerAttackAction action) {
         return {19, 20};
     case PlayerAttackAction::ranged_19:
     case PlayerAttackAction::ranged_20:
+    case PlayerAttackAction::increased_power_ranged_21:
         return {10, -1};
+    case PlayerAttackAction::combo_weapon_11:
+    case PlayerAttackAction::combo_weapon_12:
+    case PlayerAttackAction::combo_weapon_13:
+    case PlayerAttackAction::combo_weapon_14:
+    case PlayerAttackAction::combo_weapon_15:
+    case PlayerAttackAction::combo_weapon_17:
+    case PlayerAttackAction::combo_weapon_18:
+        return {};
     }
     return {};
 }
@@ -64,12 +88,16 @@ AttackCharts chartsForAction(PlayerAttackAction action) {
 bool usesBasicCounterOrder(PlayerAttackAction action) {
     return action == PlayerAttackAction::basic ||
            action == PlayerAttackAction::ranged_19 ||
-           action == PlayerAttackAction::ranged_20;
+           action == PlayerAttackAction::ranged_20 ||
+           action ==
+               PlayerAttackAction::increased_power_ranged_21;
 }
 
 bool rangedAction(PlayerAttackAction action) {
     return action == PlayerAttackAction::ranged_19 ||
-           action == PlayerAttackAction::ranged_20;
+           action == PlayerAttackAction::ranged_20 ||
+           action ==
+               PlayerAttackAction::increased_power_ranged_21;
 }
 
 std::int32_t swingSoundCounter(PlayerAttackAction action) {
@@ -107,6 +135,20 @@ bool playerAttackActionIsSupported(PlayerAttackAction action) {
 
 bool playerAttackActionIsRanged(PlayerAttackAction action) {
     return rangedAction(action);
+}
+
+bool retailPlayerComboAttackKind(
+    PlayerAttackAction ordinary_action,
+    PlayerComboAttackKind& kind) {
+    if (ordinary_action == PlayerAttackAction::weapon_8) {
+        kind = PlayerComboAttackKind::one_handed;
+        return true;
+    }
+    if (ordinary_action == PlayerAttackAction::weapon_9) {
+        kind = PlayerComboAttackKind::two_handed;
+        return true;
+    }
+    return false;
 }
 
 bool buildPlayerAttackAnimationTiming(
@@ -192,7 +234,7 @@ bool PlayerAttackActionController::start(
     PlayerAttackAnimationTiming timing,
     PlayerAttackActionEvent* event) {
     cancel();
-    if (target_id < 0 ||
+    if (target_id < -1 ||
         !playerAttackActionIsSupported(action) ||
         timing.first_frame_count <= 0 ||
         (!rangedAction(action) &&
@@ -218,6 +260,77 @@ bool PlayerAttackActionController::start(
     return true;
 }
 
+bool PlayerAttackActionController::startCombo(
+    PlayerComboAttackKind kind,
+    std::int32_t attack_speed_tier,
+    const gapi::CafAnimation& animation,
+    std::int32_t direction,
+    PlayerAttackActionEvent* event) {
+    cancel();
+    if (direction < 0 || direction >= 9) {
+        return false;
+    }
+    const std::array<std::int32_t, 3> charts =
+        kind == PlayerComboAttackKind::one_handed
+            ? std::array<std::int32_t, 3>{5, 7, 8}
+            : std::array<std::int32_t, 3>{15, 17, 18};
+    const std::array<PlayerAttackAction, 3> actions =
+        kind == PlayerComboAttackKind::one_handed
+            ? std::array<PlayerAttackAction, 3>{
+                  PlayerAttackAction::combo_weapon_11,
+                  PlayerAttackAction::combo_weapon_14,
+                  PlayerAttackAction::combo_weapon_17,
+              }
+            : std::array<PlayerAttackAction, 3>{
+                  PlayerAttackAction::combo_weapon_12,
+                  PlayerAttackAction::combo_weapon_15,
+                  PlayerAttackAction::combo_weapon_18,
+              };
+    combo_phases_.reserve(charts.size());
+    for (std::size_t index = 0; index < charts.size(); ++index) {
+        const std::int32_t chart = charts[index];
+        if (static_cast<std::size_t>(chart) >=
+            animation.charts().size()) {
+            cancel();
+            return false;
+        }
+        const gapi::CafDirection& selected =
+            animation.charts()[static_cast<std::size_t>(chart)]
+                .directions[static_cast<std::size_t>(direction)];
+        if (selected.frame_count <= 0) {
+            cancel();
+            return false;
+        }
+        ComboPhase phase;
+        phase.action = actions[index];
+        phase.chart = chart;
+        phase.frame_count = selected.frame_count;
+        if (!selected.parts.empty()) {
+            phase.frame_statuses.reserve(
+                selected.parts.front().size());
+            for (const gapi::CafCell& cell :
+                 selected.parts.front()) {
+                phase.frame_statuses.push_back(cell.status);
+            }
+        }
+        combo_phases_.push_back(std::move(phase));
+    }
+    attack_speed_tier_ =
+        std::clamp(attack_speed_tier, 0, 9);
+    target_id_ = -1;
+    combo_phase_ = 0;
+    combo_lunge_distance_ = 0;
+    active_ = selectComboPhase(0);
+    if (!active_) {
+        cancel();
+        return false;
+    }
+    if (event) {
+        *event = eventForCurrentFrame();
+    }
+    return true;
+}
+
 PlayerAttackActionEvent PlayerAttackActionController::update(
     std::int32_t attack_speed_tier) {
     if (!active_) {
@@ -228,14 +341,36 @@ PlayerAttackActionEvent PlayerAttackActionController::update(
         std::clamp(attack_speed_tier, std::int32_t{0}, std::int32_t{9});
     }
 
+    const bool combo = !combo_phases_.empty();
+    if (combo && combo_phase_transition_pending_) {
+        combo_phase_transition_pending_ = false;
+        if (!selectComboPhase(combo_phase_ + 1)) {
+            cancel();
+            return {};
+        }
+        PlayerAttackActionEvent event = eventForCurrentFrame();
+        if (!event.impact_due &&
+            combo_lunge_distance_ < kComboLungeLimit) {
+            event.lunge_distance = combo_lunge_distance_;
+            combo_lunge_distance_ += 10;
+        }
+        return event;
+    }
     const double factor =
-        rangedAction(action_)
+        combo
+            ? kComboAttackSpeedFactors[
+                  static_cast<std::size_t>(attack_speed_tier_)]
+        : rangedAction(action_)
             ? kRangedAttackSpeedFactors[
                   static_cast<std::size_t>(
                       attack_speed_tier_)]
             : retailPlayerMeleeAttackAnimationSpeed(
                   attack_speed_tier_);
-    if (usesBasicCounterOrder(action_)) {
+    if (combo) {
+        ++action_counter_;
+        displayed_frame_ = static_cast<std::int32_t>(
+            static_cast<double>(action_counter_) * factor);
+    } else if (usesBasicCounterOrder(action_)) {
         displayed_frame_ = static_cast<std::int32_t>(
             static_cast<double>(action_counter_) * factor);
         ++action_counter_;
@@ -248,7 +383,26 @@ PlayerAttackActionEvent PlayerAttackActionController::update(
     selectRenderedFrame();
     PlayerAttackActionEvent event = eventForCurrentFrame();
     event.swing_sound_due =
-        action_counter_ == swingSoundCounter(action_);
+        combo
+            ? action_counter_ == 6
+            : action_counter_ == swingSoundCounter(action_);
+    if (combo && !event.impact_due &&
+        combo_lunge_distance_ < kComboLungeLimit) {
+        event.lunge_distance = combo_lunge_distance_;
+        combo_lunge_distance_ += 10;
+    }
+    if (combo) {
+        const ComboPhase& phase = combo_phases_[combo_phase_];
+        if (animation_frame_ == phase.frame_count - 1) {
+            if (combo_phase_ + 1 < combo_phases_.size()) {
+                combo_phase_transition_pending_ = true;
+            } else {
+                event.completed = true;
+                active_ = false;
+            }
+        }
+        return event;
+    }
     const bool final_frame =
         rangedAction(action_)
             ? animation_chart_ == timing_.first_chart &&
@@ -274,6 +428,10 @@ void PlayerAttackActionController::cancel() {
     previous_scanned_frame_ = -1;
     animation_chart_ = 0;
     animation_frame_ = 0;
+    combo_phases_.clear();
+    combo_phase_ = 0;
+    combo_lunge_distance_ = 0;
+    combo_phase_transition_pending_ = false;
     active_ = false;
 }
 
@@ -314,6 +472,10 @@ PlayerAttackActionController::eventForCurrentFrame() {
     PlayerAttackActionEvent event;
     event.action = action_;
     event.target_id = target_id_;
+    if (!combo_phases_.empty()) {
+        event.combo_step =
+            static_cast<std::int32_t>(combo_phase_);
+    }
     if (displayed_frame_ < timing_.first_frame_count &&
         displayed_frame_ != previous_scanned_frame_) {
         for (std::int32_t frame =
@@ -334,7 +496,35 @@ PlayerAttackActionController::eventForCurrentFrame() {
     return event;
 }
 
+bool PlayerAttackActionController::selectComboPhase(
+    std::size_t phase) {
+    if (phase >= combo_phases_.size()) {
+        return false;
+    }
+    combo_phase_ = phase;
+    const ComboPhase& selected = combo_phases_[phase];
+    action_ = selected.action;
+    timing_ = {};
+    timing_.first_chart = selected.chart;
+    timing_.first_frame_count = selected.frame_count;
+    timing_.first_frame_statuses = selected.frame_statuses;
+    action_counter_ = 0;
+    displayed_frame_ = 0;
+    previous_scanned_frame_ = -1;
+    animation_chart_ = selected.chart;
+    animation_frame_ = 0;
+    combo_lunge_distance_ = 0;
+    return true;
+}
+
 void PlayerAttackActionController::selectRenderedFrame() {
+    if (!combo_phases_.empty()) {
+        const ComboPhase& phase = combo_phases_[combo_phase_];
+        animation_chart_ = phase.chart;
+        animation_frame_ = std::min(
+            displayed_frame_, phase.frame_count - 1);
+        return;
+    }
     animation_chart_ = timing_.first_chart;
     animation_frame_ = displayed_frame_;
     if (rangedAction(action_)) {

@@ -30,7 +30,8 @@ The portable executable already has a solid front half:
 - click-to-move movement, walk/run switching, matching animation, static
   collision, and camera following
 - the in-game Settings, Help, Mission List, and Map screens
-- the four-page Magic window, its drag-and-drop bar, and live spell selection
+- the shared Status/Magic window, derived character values, elemental display,
+  four spell pages, drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
@@ -97,7 +98,12 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: skills, magic, and status effects
+## Current milestone: scenario coverage and the Episode 1 playthrough
+
+The player's 22 ordinary spell actions, Increased Power, and Land Mines are
+now reconstructed. Work has moved back to the script-driven scenario layer:
+each newly exercised opcode should unlock real Episode 1 behavior through the
+shared world owners, rather than adding map-specific shortcuts.
 
 The ordinary melee, basic ranged, and owned-companion encounter paths are now
 proven in the live outdoor world. The companion can acquire and attack enemies,
@@ -107,7 +113,17 @@ backpack item is present), and revive beside its owner through chart seven.
 Kills credited to the owner or companion add one companion experience point,
 use table row 18 for level thresholds, obey the player-level cap, rebuild the
 table-backed profile, and fully heal on a level gain. The defeated countdown,
-level, and experience stay in the retail player record and survive saving.
+active level, and active experience stay in the retail player record. The
+Table 60-sized level and experience arrays after the magic save block now keep
+the other five companions' progression too.
+
+Remote Town's `Swap Dogs` choices now run their authored opcode 45 instead of
+stopping at an unsupported branch. The active row is stored, the selected
+row is restored, the defeated countdown is cleared, and the PARTNER actor is
+rebuilt at the hero with full life. The periodic town scripts then expose the
+old dog and hide the newly owned one. All six shipped opcode-45 calls remain
+data-driven across their three scenarios, and a save/load regression keeps the
+selected dog and every inactive progression row intact.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
@@ -125,9 +141,31 @@ magic-bar slots behind one boundary. New characters receive the retail
 block after the three progress arrays, and new saves rewrite it without
 disturbing later unknown state.
 
-The selection side is complete too. `M` opens the authored left-hand Magic
-panel without pausing the world, shifts the camera into the visible half, and
-can stay open beside the right-hand inventory. Its four six-spell pages use
+Scenario spell rewards now use that owner too. Opcode 67 records the exact
+learned state in the saved availability array, while opcode 69 queries that
+stored state for script branches. The temporary All Spells debug switch stays
+outside both operations. A shipped query-and-reward path from scenario
+`04100000` covers the interpreter, world hook, and persistent owner together.
+
+The first class-system boundary is live as well. Scenario `03900003` uses
+opcode 71 to map the saved Mercenary, Warrior, Hunter, or spellcaster job to
+its menu selection, and opcode 70 to write a chosen advanced job back to the
+same player-record field. The operation deliberately leaves level history and
+derived parameters alone, matching the executable's narrow handler.
+
+The matching equipment-color service is reconstructed too. Script opcode 72
+opens the authored center panel used by all three shipped armor-color NPCs.
+Main hand, off hand, and body colors update live against the retail 16-color
+strength table; OK keeps them, while Cancel, right click, and Escape restore
+the opening snapshot. The color index remains in retail item-state word 49,
+so dyed equipment survives the ordinary save/load path without a portable
+side channel.
+
+The selection side is complete too. `S` and `M` open the two tabs of the
+authored left-hand Status/Magic panel without pausing the world, shift the
+camera into the visible half, and can stay open beside the right-hand
+inventory. Status uses pattern 5 for the saved identity, current and derived
+stats, elemental affinities and marker. Magic's four six-spell pages use
 the retail Status, MagicIcon, and MagicBarIcon artwork, availability states,
 level/experience/MP/effect rows, description tables, arrows, hit rectangles,
 and samples 57 and 58. A learned spell can be dragged into one of eight saved
@@ -279,15 +317,62 @@ sample 60, training threshold, selected-magic MP-cost quirk, equipment
 discount, and empty-MP shutdown. Ordinary travel preserves the runtime state;
 death and a fresh game clear it.
 
-The portable testing path now has its own F12 debug menu instead of changing
-the retail Escape menu. The FPS counter and All Spells override are separate,
-runtime-only switches. Debug availability and bar assignments never enter the
-retail magic save record, so testing an unfinished spell cannot silently grant
-it to a character.
+Explosion is complete. Action 42 pays the ordinary targetless command cost
+and waits for the chart-11 marker before handing the clicked walkable point to
+the owned companion. The companion plays its PARTNER chart-six departure,
+relocates at the chart-seven boundary, then runs the authored two-layer burst,
+samples, camera shake, 640-by-640 enemy check, retail packet, and spell
+practice before returning to ordinary AI. The original spell-21 scaling-level
+and owner-magical-defense damage quirks are kept deliberately.
 
-The next spell checkpoint is Explosion action 42 (`FUN_0043fcc0`). Its cast,
-packet, effect controller, visuals, audio, collision, and practice path still
-need a complete retail trace.
+Elemental Strike is complete. Action 43 returns to the pointed-enemy command
+and charts 13 and 14, then queues effect 10021 immediately with the first
+chart-13 `0x40` frame converted into its launch delay. Its family-zero packet
+uses the player's magical attack, magical defense, hit rate, affinities, and
+spell-21 tables, while the effect request keeps retail's zero display-height
+offset, null source judgement, random ordinary impact, and effective level.
+The shared controller uses Table 207 to launch one, three, or five homing rays
+and tracks each ray through its four timed elemental stages, collision,
+presentations, samples, final camera shake, and receiver-time practice. The
+same controller remains shared with the already proven enemy-owned cast.
+
+The portable testing path now has its own F12 debug menu instead of changing
+the retail Escape menu. The FPS counter, All Spells, Infinite HP, and Infinite
+MP overrides are separate runtime-only switches. Debug availability, bar
+assignments, and effective resource pools never enter the retail save record,
+so testing unfinished combat cannot silently change a character.
+
+That completes the retail player's 22 ordinary spell actions.
+
+Increased Power and its Hunter ranged redirect are complete too. Direct local
+kills charge the runtime-only state to 50, or to 30 while special item
+`98000001` is owned. P and the authored HUD cell both activate 900 updates,
+reset the charge without consuming that item, force movement speed tier nine,
+add two effective spell levels, raise the receiver's defense input by 20
+percent, block Moon, Berserker, and Energy Shield, loop the common Powerup
+aura, and play sample 76 every 15 updates. The readiness cell uses retail's
+two-frame 1000/800 pulse. Ordinary travel preserves the state; death clears
+the active timer, and neither charge nor time is written to the character
+save.
+
+While active, Hunter action 20 consumes one 33-percent random roll at action
+entry. A successful roll snapshots at most 100 living enemies whose judgement
+intersects the player's 4000-by-4000 square and enters action 21 on the same
+chart-ten timing. With no captured target it falls back to ordinary action 20
+without rerolling. Every crossed marker builds the one physical packet with
+presentation 20006 and launches an independently delayed effect-9000 diagonal
+strike at each captured character number. The complete volley costs one
+main-hand durability and keeps sample 3 at counter six.
+
+Land Mines are complete as the remaining player combat shortcut. `B` and the
+authored HUD cell spend the separate saved counter and place static OPTION
+resource 1000 at the hero after the ten-update lockout check. Counter 40 arms
+enemy-and-scenario-object collision and starts sample-54 warning beeps; contact
+or the 300-update lifetime advances into the Table-23 area packet, resource
+1001, sample 29, expanding 1002..1004 rings, and paired 1005..1008 bouncing
+debris. Mine pickups, the equipment-derived capacity and damage bonuses, map
+transition cleanup, and the exact post-magic retail save field share the
+existing item, receiver, renderer, and save owners rather than bypassing them.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -702,11 +787,13 @@ reordering, and the original effect/BGM slider scale. Pointer, shadow,
 occluding-object, and audio changes apply while the panel is open, and changed
 settings are saved back to `SFlare.Cfg` on exit. The old fullscreen row is
 intentionally blank, but its space remains so none of the following rows move.
+When a left-hand panel, right-hand panel, or both are visible, Escape closes
+that complete gameplay-panel set and restores the centered camera instead.
+Only another press with no gameplay panel left open reaches Settings.
 Save and Return and Save and Exit now open their original confirmation states,
 write the retail save envelope, and only leave gameplay after a successful
-write. Their deferred transition runs before either independently open side
-panel can consume the next UI update. With `Save Image at Game End` enabled,
-they also write the paired
+write. Their deferred transition runs before the next UI update can consume
+more input. With `Save Image at Game End` enabled, they also write the paired
 391-by-114 BMP from the player-centered world view before any HUD or menu is
 drawn. Help now opens its original full-width reference screen from either the
 menu row or `H`, including the animated player preview and the menu-owned
@@ -788,6 +875,39 @@ The scenario script addresses those channels through its 100-, 300-, and
 same state path: the player's own companion stays absent while the other three
 town companions become visible, selectable, and solid.
 
+The first outdoor periodic-state override is reconstructed as well. Opcode 56
+keeps its own effective visible, pointer, and judgement triplet instead of
+overwriting those MCT-backed script channels. Near Remote Town now swaps its
+paired objects 1030 and 1031 from saved flag 71 on every status-kind-five pass,
+and the same common owner covers all 66 shipped calls across 13 scenarios.
+
+The shared scenario random command is no longer a gap either. Opcode 39 keeps
+the retail operand order, one-draw call order, wrapped inclusive span, and
+common destination writer. The script library receives the draw from the
+world instead of owning a second generator, so the 611 shipped spawn, branch,
+and setup calls remain in the same random sequence as native gameplay work.
+
+The first authored periodic effect command is connected now too. Opcode 30
+evaluates its fourteen script values in the DLL boundary, then hands them to a
+small world-side builder for the exact owner-zero effect request, projected
+origin, combat-packet fields, and shared-random impact choice. This covers all
+411 shipped calls across 33 scenarios and lets Near Remote Town's authored
+spawn-and-sound sentences use the existing effect runtime instead of a
+scenario-specific visual shortcut.
+
+Its packetless sibling is connected as well. Opcode 36 evaluates seven values
+and creates the exact explicit-position one-pass request, including retail's
+negative-direction fallback and lower-right-plus-one point judgement. The three
+shipped effect numbers resolve to their real OPTION resources, all 353 calls
+across 26 scenarios keep their audited shape, and Near Remote Town's first
+six placed effects now enter the ordinary depth-sorted effect pass.
+
+The basic writable arithmetic set is complete now as well. Opcodes 13 through
+15 preserve retail's wrapped multiply, signed quotient and remainder, operand
+order, and zero-divisor no-write path. Corpus coverage holds all 388 shipped
+calls across their original scenarios, giving later spawn and encounter
+sentences the calculations they expect before their native actions run.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover
@@ -800,6 +920,11 @@ moves the player through the scenario entry table. Its shifted right-hand
 world view keeps updating and accepts world input while the left panel owns
 its clicks. Remote Town starts with only its own row enabled, exactly as a new
 retail character does.
+
+The matching discovery path is live too. Periodic status-kind-5 sentences use
+opcode 34 to measure the hero against each teleporter's hidden activation
+object. Overlap enables that scenario's Table 40 row, immediately adds it to
+the compact transport list, and survives the normal save/load round trip.
 
 The named Warehouse object follows the same pointer and range path. Its
 status-zero sentence reaches opcode 41 with argument zero and toggles the
@@ -826,6 +951,15 @@ The script work should grow from real Remote Town interactions:
 - preserve wait states and update ordering instead of running a whole script
   in one frame;
 - save unknown opcodes and data instead of silently discarding them.
+
+Episode 1 map initialization now follows the loader rather than a convenient
+portable ordering. The local player and resolved entry exist before status
+kind 7 runs, and that status runs again for same-scenario entry changes. Script
+opcode 50 can therefore branch on the real entry, while opcode 49 retains the
+raw authored area caption. Dusty Ruins selects `B1F` and `B2F` correctly and
+initial vendor setup can query the live player level. No caption is drawn yet:
+the known executable references only write its buffer, so adding a visible
+banner would be guesswork rather than reconstruction.
 
 The first checkpoint is now live. Remote Town's SCS decoder reads all 66
 temporary flags, 61 messages, 23 status triggers, 220 sentences, and 608
@@ -864,9 +998,46 @@ new-game branch and reaches opcodes 62 and 48, which now update world-owned
 quest state and select the retail 600-count quest notice. Message events retain
 their script character number, so actor bubbles stay anchored even on branches
 which do not run an explicit facing command. The Mission List consumes those
-quest states directly and gets its text from the retail parameter tables.
-The short-lived 600-count notice and cue audio are still pending; neither has
-been guessed.
+quest states directly and gets its text from the retail parameter tables. The
+short-lived notice now uses the recovered bottom-right coordinates, brackets,
+shadow, exact clickable title rectangle, and the script's samples 65 and 66;
+clicking it opens the Mission List. The persistent StatusIcon lock shortcut is
+drawn and clickable while any quest remains active. Syria's subsequent
+interactions now read the real type-12 quest owner and follow her normal
+healing/blessing branch. Near Remote Town's authored status-kind-four callback
+also completes quest zero after Red Goblin `14010000` finishes its death
+presentation.
+
+Malse's next authored branch is live too. Completing the Red Goblin quest is
+what advances his script into the merchant introduction and later service
+menu; the engine does not special-case his name or quest ID. Scenario status
+kind 7 and opcode 6 now build numbered vendor stock from Tables 32 and 33,
+including fixed entries, weighted random definitions, normal rolled item
+instances, and the original 9-by-10 placement starts. Choosing `Trade` reaches
+opcode 5, opens that stock on the left with the normal inventory on the right,
+and supports buying, selling, gold changes, delayed price overlays, item audio,
+and returning an unfinished purchase when the panels close. Identify now
+follows its separate authored branch too: it scans every retail-owned item
+container, substitutes the flat 100-Gold price into the confirmation, keeps
+`NO` selected initially, handles insufficient funds and the already-known
+case, and updates every identified instance and save mirror after payment.
+Repair now completes Malse's final service choice. The script builds all seven
+prices through opcode 52, preserves the retail equipment groups including the
+alternate weapon set, handles zero-price and insufficient-Gold branches, and
+uses opcodes 9 and 54 for mutation and payment. Item values come from Table 34
+and the executable's wrapped integer arithmetic; repaired durability and both
+alternate equipment pointers survive the retail save stream.
+
+The first Tower of Ordeal minigame service is reconstructed through the same
+boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
+result, while status kind 8 keeps the following branches in scenarios
+`99000018` and `99000023`. The executable-owned modal follows the recovered
+15-update deal cadence, unique deck and optional joker, exact Ace and natural
+rules, dealer behavior, Hit/Stand rectangles, samples, 200-update result, and
+the complete `Card.Njp` layout. Rules, timeline, renderer calls, and the real
+scenario launch/result commands have deterministic tests. Loading the Tower
+maps themselves remains a later scenario-coverage slice; this checkpoint does
+not pretend they are playable yet.
 
 ### 3. Items, inventory, and equipment
 
@@ -883,7 +1054,7 @@ This slice includes:
 - equipping and unequipping armor, shields, and weapons;
 - enabling only the corresponding CAF appearance layers;
 - item names, descriptions, rarity colors, and comparison text;
-- shops, prices, and money once the script layer requests them.
+- shops, prices, and money when the script layer requests them;
 
 The opening quest's four real ground items are now loaded and drawn from
 `Item.Ibn`. Pointer selection and the first complete pickup path are live:
@@ -943,19 +1114,48 @@ dropping owned items also use the retail category/weight sound selection;
 successful medicine use plays its own sound.
 
 Those owned items now survive the real `.Ssv` path. The obfuscated payload's
-retail item prefix restores and rewrites all nine player equipment slots, the
-backpack, belt, and Special Item owner, including exact grid placement, Gold
-quantities, durability, identified state, and preserved instance bytes. Unknown
-equipment records and the rest of an original save remain untouched until
-their owners are reconstructed. The counted transport flags following the
-owned-item prefix are also restored against Table 40, while new saves without
-that later retail section keep the new-character default.
+retail item prefix restores and rewrites all eleven player equipment slots:
+the nine visible gear/accessory pointers plus the alternate main-hand and
+off-hand set. The backpack, belt, and Special Item owner retain exact grid
+placement, Gold quantities, durability, identified state, and preserved
+instance bytes. The rest of an original save remains untouched until its
+owners are reconstructed. The counted transport flags following the owned-item
+prefix are also restored against Table 40, while new saves without that later
+retail section keep the new-character default.
 
 `X` now opens the separate special-item owner on the left. Its 9-by-10 grid,
 Status patterns 14 and 15, item origins, centered placement, swapping, Gold
 stacking, hover information, camera anchor, and world-input boundary follow
 the corresponding retail paths. Inventory and Special Item close each other
 instead of pretending to be two views of one container.
+
+Opcode 41's other branch is reconstructed too. The only shipped nonzero call
+comes from the `Giant Warehouse` on Tower of Ordeal 12F, not from a second
+kind of Special Item window. It owns ten independent 9-by-10 pages, ten saved
+unlock flags, and a transient selected page. The panel uses Status pattern 73,
+the disabled, enabled, and selected page-tab runs at patterns 74 through 94,
+the retail tab and close hitboxes, and sample 58. Its selected page shares the
+normal Warehouse's placement, swapping, Gold stacking, hover, camera, and
+Inventory-transfer paths. Original saves restore the ten owners at their
+post-mine boundary; shorter portable saves carry the same data in the
+versioned tail without breaking older save versions.
+
+The next script-facing item owner is reconstructed as well. Category-four
+records with an authored page now go into one of four fixed automatic-item
+pages instead of the backpack, whether they came from the ground or opcode 75.
+Opcodes 58 and 59 query and remove items through retail's exact page,
+backpack, and active-equipment order, including the intentional omission of
+the belt, alternate arms, Warehouse, and Giant Warehouse. Duplicate authored
+items are refused. All four pages follow the Giant Warehouse in original save
+payloads and use a backward-compatible late-item extension in shorter
+portable saves.
+
+Scripted experience rewards now join that path without inventing a second
+level-up system. Opcode 68 treats its argument as a percentage of the current
+Table 13 threshold, preserves retail's signed 64-bit calculation, and feeds
+the same growth, resource restoration, centered notice, and audio used by
+enemy-earned experience. The shipped Spirit Stone reward sequence is covered
+directly from scenario `04900001`.
 
 The ordinary item information display is live now. Resting the pointer over a
 backpack, equipment, or special item for the same short delay as retail draws
@@ -977,10 +1177,40 @@ The retail condition warning is now shared by backpack, equipment, and held
 items. Weapons and armor below ten percent durability blink `Status.njp`
 pattern 16 for eight updates on and eight off; broken gear keeps it visible.
 The player-life and player-mana fields of category-three records are decoded.
-Companion restoration, timed/status effects, mine placement, and the
-script-facing special-item commands remain the next item checkpoint. Those
-paths should keep using these owners rather than adding parallel inventory
-models.
+Land Mines now use their retail path rather than pretending to be backpack
+items or magic. `B` and the exact HUD cell spend the separate counter, obey the
+ten-update placement lockout, and create static resource 1000 at the hero.
+The mine arms at update 40, beeps every 20 updates, reacts to enemy and active
+scenario-object contact, and expires at update 300. Its Table-23 area packet,
+sample 29, resource-1001 explosion, expanding 1002..1004 rings, and paired
+1005..1008 bouncing debris run through their own small controller and the
+shared receiver/depth-sort boundaries. Mine pickups fill the separate counter
+up to the equipment-derived maximum and never enter the backpack. A pickup at
+capacity leaves the mine in the world through the usual bounce-and-landing
+response. The backpack's add, automatic-store, and explicit-placement paths
+also reject Mine instances, preserving that ownership boundary even when a
+future acquisition path does not originate from a ground click. The
+inventory's authored Mine icon and `current / maximum` readout,
+base count, instance-word 84 capacity bonus, instance-word 81 damage bonus,
+and post-magic retail save field are all owned and tested, including older
+sparse portable saves. The generic Mine record says weight one, but retail's
+live encumbrance routine counts equipped slots only and does not add the mine
+counter.
+
+Companion restoration, timed/status effects, and the script-facing
+special-item commands form the remaining item-use checkpoint. Companion
+restoration is now complete: Meat and its stronger definitions use the same
+backpack/belt command as player medicine, run only after player life/mana made
+no change, restore a living owned companion, and remain unconsumed when that
+companion is full or defeated. Player medicine now also uses the executable's
+equipped life/mana restoration multipliers and live derived maximum pools.
+The condition branch is complete too, and retail analysis corrected an old
+assumption: elemental medicines are not timed buffs. They move the two saved
+element axes 4,000 units toward one of eight fixed anchors, while White
+Medicine resets both axes to zero. The existing Status marker, affinity
+calculation, combat packets, and save record all read those same values.
+Script-facing special-item commands now use those owners too; the remaining
+item work can extend the same model rather than adding parallel inventories.
 
 ### 4. Combat and death
 
@@ -1355,10 +1585,10 @@ receiver handoff; a shipped live encounter covers the CAF, projectile render
 owner, launch audio, no-approach targeting, and durability without requiring
 a straight projectile to hit an enemy moving around the companion.
 
-Retail contains no subtype-four weapon record to exercise action 19. Action
-20's 33-percent action-21 redirect also depends on the not-yet-reconstructed
-increased-power state. Those two facts are recorded rather than filled with
-made-up behavior.
+Retail contains no subtype-four weapon record to exercise action 19. That
+missing authored fixture remains recorded rather than filling action 19 with
+made-up projectile behavior; action 20 and its Increased-Power action-21
+redirect are both live.
 
 The next combat work belongs to skills, magic, and status effects, keeping one
 shipped live case beside each passive reconstruction and sharing the existing
@@ -1410,6 +1640,10 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
   are complete;
 - one faithful Fire Ball cast from selection through impact and spell
   training is complete;
+- normal-target right-click now runs the retail three-stage one-handed and
+  two-handed melee combos, including their separate voices and forward steps;
+- Transport creates its collision-checked paired field/Remote Town endpoints,
+  staggered portal presentation, sounds, and two-way scenario travel;
 - Fire Ball and Ice Bolt prove the reusable single-target projectile spell
   dispatch;
 - Plasma's action-25 multi-wave area-effect path is complete;
@@ -1417,11 +1651,12 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Counter Burst action 41 are complete;
+- Berserker action 30 through Elemental Strike action 43 are complete, which
+  closes the 22-spell player list;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;
-- character status and detailed stat panels;
+- the character Status tab and its detailed derived values are complete;
 - skill assignment and quick slots;
 - map and the remaining modal screens;
 - the in-game sound, display, input, and gameplay settings.
@@ -1450,7 +1685,8 @@ The envelope writer is now in place, including the random XOR byte,
 signed-byte checksum, substitution pass, and safe preservation of an existing
 unknown payload. New saves carry the player record and owned items we currently
 own. The three counted retail arrays after the item stream now preserve
-scenario flags, transport unlocks, and quest/conversation state; this is
+type-12 quest state, type-10 transport unlocks, and type-11 general script
+state; this is
 covered by saving after Ostare's opening and proving his starter reward does
 not repeat after loading. Walk/run also survives a portable round trip through
 a small versioned tail until its exact retail save owner is identified.

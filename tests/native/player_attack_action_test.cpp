@@ -8,11 +8,14 @@
 #include "world/player_attack_target.hpp"
 #include "world/player_data.hpp"
 #include "world/player_voice.hpp"
+#include "world/world_scene.hpp"
 
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <array>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -45,6 +48,12 @@ bool testActionSelectionAndAudio() {
                 osf::retailItemAttackSound(&weapon) == 1 &&
                 osf::retailPlayerAttackVoiceSample(0) == 99 &&
                 osf::retailPlayerAttackVoiceSample(1) == 96 &&
+                osf::retailPlayerComboVoiceSample(0, 0) == 99 &&
+                osf::retailPlayerComboVoiceSample(0, 1) == 100 &&
+                osf::retailPlayerComboVoiceSample(0, 2) == 101 &&
+                osf::retailPlayerComboVoiceSample(1, 0) == 96 &&
+                osf::retailPlayerComboVoiceSample(1, 1) == 97 &&
+                osf::retailPlayerComboVoiceSample(1, 2) == 98 &&
                 osf::retailPlayerDeathVoiceSample(0) == 14 &&
                 osf::retailPlayerDeathVoiceSample(1) == 13,
             "The empty-hand action or light attack sound differs.")) {
@@ -97,9 +106,75 @@ bool testActionSelectionAndAudio() {
             osf::playerAttackActionIsSupported(
                 osf::PlayerAttackAction::ranged_20) &&
             osf::playerAttackActionIsRanged(
-                osf::PlayerAttackAction::ranged_20),
+                osf::PlayerAttackAction::ranged_20) &&
+            osf::playerAttackActionIsSupported(
+                osf::PlayerAttackAction::
+                    increased_power_ranged_21) &&
+            osf::playerAttackActionIsRanged(
+                osf::PlayerAttackAction::
+                    increased_power_ranged_21),
         "Weapon subtype five did not select supported ranged action "
-        "twenty.");
+        "twenty or leave its action-21 redirect supported.");
+}
+
+bool testRetailCombo(
+    const osf::gapi::CafAnimation& animation,
+    osf::PlayerComboAttackKind kind,
+    const std::array<std::int32_t, 3>& expected_charts,
+    const std::array<osf::PlayerAttackAction, 3>& expected_actions) {
+    osf::PlayerAttackActionController attack;
+    osf::PlayerAttackActionEvent event;
+    if (!check(
+            attack.startCombo(kind, 5, animation, 0, &event) &&
+                attack.animationChart() == expected_charts[0] &&
+                attack.animationFrame() == 0 &&
+                event.combo_step == 0 &&
+                event.action == expected_actions[0] &&
+                event.target_id == -1,
+            "The right-click combo did not enter its first retail phase.")) {
+        return false;
+    }
+
+    std::array<std::int32_t, 3> impacts{};
+    std::array<std::int32_t, 3> sounds{};
+    std::array<bool, 3> saw_chart{};
+    saw_chart[0] = true;
+    bool saw_lunge = false;
+    bool completed = false;
+    for (std::int32_t update = 0;
+         update < 160 && attack.active();
+         ++update) {
+        event = attack.update();
+        if (event.combo_step < 0 || event.combo_step > 2) {
+            return check(
+                false,
+                "The right-click combo published an invalid phase.");
+        }
+        const std::size_t step =
+            static_cast<std::size_t>(event.combo_step);
+        if (event.action != expected_actions[step]) {
+            return check(
+                false,
+                "A combo phase published the wrong retail action.");
+        }
+        impacts[step] += event.impact_due ? 1 : 0;
+        sounds[step] += event.swing_sound_due ? 1 : 0;
+        saw_lunge = saw_lunge || event.lunge_distance > 0;
+        for (std::size_t chart = 0;
+             chart < expected_charts.size();
+             ++chart) {
+            saw_chart[chart] = saw_chart[chart] ||
+                attack.animationChart() == expected_charts[chart];
+        }
+        completed = completed || event.completed;
+    }
+    return check(
+        impacts == std::array<std::int32_t, 3>{1, 1, 1} &&
+            sounds == std::array<std::int32_t, 3>{1, 1, 1} &&
+            saw_chart == std::array<bool, 3>{true, true, true} &&
+            saw_lunge && completed && !attack.active(),
+        "The three right-click phases did not each swing, impact, "
+        "lunge, and complete once.");
 }
 
 bool testBasicActionTiming() {
@@ -292,10 +367,21 @@ bool testRangedActionTiming(
         }
     }
     osf::PlayerAttackActionController attack;
+    osf::PlayerAttackAnimationTiming redirected_timing;
     if (!check(
             marker >= 0 &&
+                osf::buildPlayerAttackAnimationTiming(
+                    animation,
+                    osf::PlayerAttackAction::
+                        increased_power_ranged_21,
+                    1,
+                    redirected_timing) &&
+                redirected_timing.first_chart == 10 &&
+                redirected_timing.first_frame_count ==
+                    timing.first_frame_count &&
                 attack.start(
-                    osf::PlayerAttackAction::ranged_20,
+                    osf::PlayerAttackAction::
+                        increased_power_ranged_21,
                     44,
                     5,
                     timing),
@@ -393,6 +479,75 @@ bool testRetailDeathHold(
         "after the retail final-frame hold.");
 }
 
+bool testLiveRightClickCombo(
+    const std::filesystem::path& game_root) {
+    osf::PlayerLoadRequest request;
+    request.name = "ComboLive";
+    request.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                request,
+                {3000507, 3, 0},
+                &error),
+            "The shipped right-click combo scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    const osf::ItemDefinition* one_handed = nullptr;
+    for (const osf::ItemDefinition& definition :
+         world.itemDatabase().definitions(0)) {
+        if (definition.subtype == 0) {
+            one_handed = &definition;
+            break;
+        }
+    }
+    if (!check(
+            one_handed &&
+                world.playerEquipment()
+                    .place(
+                        osf::EquipmentSlot::main_hand,
+                        osf::makeInventoryItem(*one_handed),
+                        *one_handed,
+                        world.playerData().level())
+                    .accepted,
+            "The live combo fixture could not equip a one-handed weapon.")) {
+        return false;
+    }
+    world.refreshPlayerAppearance();
+    world.playerMagic().setTargeting(true);
+    if (!check(
+            world.commandPlayerMagic(480, 240) &&
+                world.playerMotion() == osf::PlayerMotion::attacking &&
+                world.playerAnimationChart() == 5 &&
+                world.playerAttackTargetId() == -1,
+            "Normal-target right-click did not start the targetless combo.")) {
+        return false;
+    }
+
+    std::vector<std::int32_t> voices;
+    for (std::int32_t update = 0;
+         update < 160 &&
+         world.playerMotion() == osf::PlayerMotion::attacking;
+         ++update) {
+        world.update();
+        for (std::int32_t sample : world.takeAudioSamples()) {
+            if (sample >= 96 && sample <= 98) {
+                voices.push_back(sample);
+            }
+        }
+    }
+    return check(
+        voices == std::vector<std::int32_t>{96, 97, 98} &&
+            world.playerMotion() == osf::PlayerMotion::idle,
+        "The gameplay right-click path did not finish all three voiced "
+        "combo phases.");
+}
+
 bool testRetailAssetsAndSpeedTable() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path source_root =
@@ -409,6 +564,8 @@ bool testRetailAssetsAndSpeedTable() {
     const std::filesystem::path item_path =
         source_root / "tmp" / "ShadowFlare" / "System" /
         "Game" / "Parameter" / "Item.Ibn";
+    const std::filesystem::path game_root =
+        source_root / "tmp" / "ShadowFlare";
     if (!std::filesystem::is_regular_file(male_caf) ||
         !std::filesystem::is_regular_file(female_caf) ||
         !std::filesystem::is_regular_file(table_path) ||
@@ -439,10 +596,33 @@ bool testRetailAssetsAndSpeedTable() {
     if (!testPlayerMovementLock(animation)) {
         return false;
     }
+    if (!testRetailCombo(
+            animation,
+            osf::PlayerComboAttackKind::one_handed,
+            {5, 7, 8},
+            {
+                osf::PlayerAttackAction::combo_weapon_11,
+                osf::PlayerAttackAction::combo_weapon_14,
+                osf::PlayerAttackAction::combo_weapon_17,
+            }) ||
+        !testRetailCombo(
+            animation,
+            osf::PlayerComboAttackKind::two_handed,
+            {15, 17, 18},
+            {
+                osf::PlayerAttackAction::combo_weapon_12,
+                osf::PlayerAttackAction::combo_weapon_15,
+                osf::PlayerAttackAction::combo_weapon_18,
+            })) {
+        return false;
+    }
     if (!testRangedActionTiming(animation)) {
         return false;
     }
     if (!testRetailDeathHold(animation)) {
+        return false;
+    }
+    if (!testLiveRightClickCombo(game_root)) {
         return false;
     }
     osf::gapi::CafAnimation female_animation;

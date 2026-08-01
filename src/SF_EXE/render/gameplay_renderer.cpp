@@ -34,6 +34,8 @@ struct WorldDrawEntry {
     const MissEffectActor* miss_effect = nullptr;
     const CompanionActor* companion = nullptr;
     bool companion_moon_aura = false;
+    bool player_transport = false;
+    const PlayerLandMineVisual* land_mine = nullptr;
 };
 
 ScreenPosition toScreen(
@@ -133,6 +135,16 @@ void renderPlayerPass(
             world.playerCounterBurstVisual(),
             world.playerCounterBurstActive(),
             world.playerCounterBurstFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerIncreasedPowerVisual(),
+            world.playerIncreasedPowerActive(),
+            world.playerIncreasedPowerFrame(),
             {},
             camera_x,
             camera_y,
@@ -358,6 +370,73 @@ void renderRuntimeEffect(
         [&effect](std::size_t part) {
             return effect.partEnabled(part);
         },
+        [&effect](std::size_t) {
+            return CharacterColorStrength{
+                effect.redStrength(),
+                effect.greenStrength(),
+                effect.blueStrength(),
+            };
+        },
+        camera_x,
+        camera_y,
+        false,
+        0,
+        effect.displayHeight() / 10,
+        1000,
+        effect.additionalDisplayStatus());
+}
+
+void renderPlayerLandMine(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const PlayerLandMineVisual& mine,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    const WorldPosition world_position =
+        mine.renderPosition(interpolation);
+    const std::int32_t display_height =
+        mine.renderDisplayHeight(interpolation) / 10;
+    if (mine.static_pattern) {
+        const gapi::NjpImage* patterns =
+            world.playerLandMinePatterns();
+        if (!patterns || patterns->patterns().empty()) {
+            return;
+        }
+        const ScreenPosition position =
+            calculateRealPosition(world_position);
+        renderer.drawPattern(
+            *patterns,
+            0,
+            {
+                position.x - camera_x,
+                position.y - camera_y - display_height,
+            });
+        return;
+    }
+    const EffectVisualResource* visual =
+        world.playerLandMineVisualResource(
+            mine.resource_id);
+    if (!visual || visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world_position,
+        0,
+        8,
+        mine.animation_frame % direction.frame_count,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
         [](std::size_t) {
             return CharacterColorStrength{};
         },
@@ -365,7 +444,75 @@ void renderRuntimeEffect(
         camera_y,
         false,
         0,
-        effect.displayHeight() / 10);
+        display_height);
+}
+
+void renderPlayerTransport(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    const PlayerTransportSpell& transport =
+        world.playerTransportSpell();
+    const PlayerTransportEndpoint* endpoint =
+        transport.endpoint(world.scenarioId());
+    const gapi::NjpImage* patterns =
+        world.playerTransportPatterns();
+    const EffectVisualResource* visual =
+        world.playerTransportVisual();
+    if (!endpoint || !patterns || !visual) {
+        return;
+    }
+
+    const ScreenPosition position =
+        calculateRealPosition(endpoint->position);
+    for (std::size_t index = 0;
+         index < transport.beams().size() &&
+         index < patterns->patterns().size();
+         ++index) {
+        const PlayerTransportBeam& beam =
+            transport.beams()[index];
+        renderer.drawPattern(
+            *patterns,
+            index,
+            {
+                position.x - camera_x,
+                position.y - camera_y - beam.height / 10,
+                1000,
+                1000,
+                1000,
+                beam.strength,
+                1000,
+                1000,
+                1000,
+                -1,
+                {},
+                gapi::PatternBlendMode::additive,
+            });
+    }
+    if (!transport.centerVisible() ||
+        visual->animation().charts().empty()) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        endpoint->position,
+        0,
+        8,
+        transport.animationFrame(world.scenarioId()),
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
 }
 
 void renderMissEffect(
@@ -436,6 +583,12 @@ void renderScenarioObjectPass(
                     ? 1000
                     : object.blueDrawStrength() +
                           (hovered ? 300 : 0),
+                -1,
+                {},
+                !shadow &&
+                    (object.displayStatus() & 0x10) != 0
+                    ? gapi::PatternBlendMode::additive
+                    : gapi::PatternBlendMode::normal,
             });
         return;
     }
@@ -471,7 +624,8 @@ void renderScenarioObjectPass(
         shadow,
         shadow_opacity,
         object.displayHeight(),
-        object.drawStrength());
+        object.drawStrength(),
+        object.displayStatus());
 }
 
 const gapi::NjpImage* objectImage(
@@ -560,7 +714,12 @@ void drawMapObject(
                    1000),
          shadow ? 1000 : object.red_strength,
          shadow ? 1000 : object.green_strength,
-         shadow ? 1000 : object.blue_strength});
+         shadow ? 1000 : object.blue_strength,
+         -1,
+         {},
+         !shadow && (object.status & 0x10) != 0
+             ? gapi::PatternBlendMode::additive
+             : gapi::PatternBlendMode::normal});
 }
 
 std::vector<WorldDrawEntry> collectWorldEntries(
@@ -766,6 +925,18 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             };
             entries.push_back(entry);
         }
+        for (const PlayerLandMineVisual& mine :
+             world.playerLandMineVisuals()) {
+            WorldDrawEntry entry;
+            entry.land_mine = &mine;
+            entry.order = {
+                entries.size(),
+                mine.renderPosition(interpolation),
+                mine.judgement,
+                0,
+            };
+            entries.push_back(entry);
+        }
         for (const MissEffectActor& effect :
              world.missEffects()) {
             if (effect.expired()) {
@@ -777,6 +948,22 @@ std::vector<WorldDrawEntry> collectWorldEntries(
                 entries.size(),
                 effect.position(),
                 effect.judgement(),
+                0,
+            };
+            entries.push_back(entry);
+        }
+        const PlayerTransportSpell& transport =
+            world.playerTransportSpell();
+        const PlayerTransportEndpoint* endpoint =
+            transport.endpoint(world.scenarioId());
+        if (endpoint && world.playerTransportPatterns() &&
+            world.playerTransportVisual()) {
+            WorldDrawEntry entry;
+            entry.player_transport = true;
+            entry.order = {
+                entries.size(),
+                endpoint->position,
+                {-50, -50, 50, 50},
                 0,
             };
             entries.push_back(entry);
@@ -992,6 +1179,14 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             interpolation);
+    } else if (entry.land_mine) {
+        renderPlayerLandMine(
+            renderer,
+            world,
+            *entry.land_mine,
+            camera_x,
+            camera_y,
+            interpolation);
     } else if (entry.miss_effect) {
         renderMissEffect(
             renderer,
@@ -1005,6 +1200,12 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             interpolation);
+    } else if (entry.player_transport) {
+        renderPlayerTransport(
+            renderer,
+            world,
+            camera_x,
+            camera_y);
     }
 }
 

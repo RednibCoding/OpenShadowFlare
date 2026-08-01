@@ -6,6 +6,7 @@
 #include "player_attack_impact.hpp"
 #include "player_combat_defense.hpp"
 #include "player_heal_spell.hpp"
+#include "player_increased_power_attack.hpp"
 #include "player_ranged_attack.hpp"
 #include "player_spell_cast.hpp"
 #include "player_spell_parameters.hpp"
@@ -160,6 +161,10 @@ bool WorldScene::commandPlayerMagic(
         scenario_script_.messageActive()) {
         return false;
     }
+    if (player_magic_.targeting()) {
+        return commandPlayerSecondaryAttack(
+            screen_x, screen_y);
+    }
     const std::int32_t spell =
         player_magic_.selectedSpell();
     PlayerSpellAction action;
@@ -202,14 +207,20 @@ bool WorldScene::commandPlayerMagic(
     pointer_.clearSelection();
     pending_interaction_ = {};
     player_attack_target_.cancel();
+    if (player_increased_power_.blocksSpell(spell)) {
+        return true;
+    }
     const PlayerSpellParameters parameters =
         playerSpellParameters(
             player_magic_,
             spell,
             player_equipment_,
             item_database_,
-            parameter_tables_);
-    if (player_data_.currentMana() <
+            parameter_tables_,
+            0,
+            player_increased_power_.active());
+    if (!player_infinite_mana_ &&
+        player_data_.currentMana() <
         parameters.mana_cost) {
         return true;
     }
@@ -256,11 +267,59 @@ bool WorldScene::commandPlayerMagic(
             player_visual_.animation())) {
         return true;
     }
-    player_data_.setCurrentMana(
-        player_data_.currentMana() -
-        parameters.mana_cost);
+    if (!player_infinite_mana_) {
+        player_data_.setCurrentMana(
+            player_data_.currentMana() -
+            parameters.mana_cost);
+    }
     handlePlayerSpellEvent(player_.takeSpellEvent());
     return true;
+}
+
+bool WorldScene::commandPlayerSecondaryAttack(
+    std::int32_t screen_x,
+    std::int32_t screen_y) {
+    if (!has_player_ || player_.actionLocked()) {
+        return false;
+    }
+    const InventoryItem* main_hand =
+        player_equipment_.item(EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerAttackAction ordinary_action =
+        retailPlayerAttackAction(definition);
+    const WorldPosition aim = calculateWorldPosition({
+        cameraScreenX() + screen_x,
+        cameraScreenY() + screen_y,
+    });
+
+    pointer_.clearSelection();
+    pending_interaction_ = {};
+    player_attack_target_.cancel();
+    player_.cancelMovement();
+    player_.faceToward(aim);
+
+    PlayerComboAttackKind combo_kind;
+    const bool started =
+        retailPlayerComboAttackKind(
+            ordinary_action, combo_kind)
+            ? player_.beginComboAttack(
+                  combo_kind,
+                  playerAttackSpeedTier(),
+                  player_visual_.animation())
+            : player_.beginAttack(
+                  ordinary_action,
+                  -1,
+                  playerAttackSpeedTier(),
+                  player_visual_.animation());
+    if (started) {
+        handlePlayerAttackEvent(player_.takeAttackEvent());
+    }
+    return started;
 }
 
 bool WorldScene::dropInventoryItem(
@@ -361,6 +420,11 @@ WorldScene::takeGameplayServiceRequest() {
         gameplay_service_request_;
     gameplay_service_request_ = {};
     return request;
+}
+
+void WorldScene::completeBlackjack(std::int32_t result) {
+    blackjack_result_ = std::clamp(result, 0, 2);
+    scenario_script_.runStatusKind(8);
 }
 
 ScenarioTravelResult
@@ -1045,6 +1109,13 @@ void WorldScene::handlePlayerSpellEvent(
     if (!event.cast_due) {
         return;
     }
+    if (event.spell == 0) {
+        createPlayerTransport({
+            event.aim_world_x,
+            event.aim_world_y,
+        });
+        return;
+    }
     if (event.spell == 17) {
         player_identify_mode_active_ = true;
         gameplay_service_request_ = {
@@ -1060,7 +1131,9 @@ void WorldScene::handlePlayerSpellEvent(
                 event.spell,
                 player_equipment_,
                 item_database_,
-                parameter_tables_);
+                parameter_tables_,
+                0,
+                player_increased_power_.active());
         const PlayerHealSpellResolution resolution =
             resolvePlayerHealSpell({
                 scenario_world_.localPlayerNumber(),
@@ -1093,7 +1166,9 @@ void WorldScene::handlePlayerSpellEvent(
                 event.spell,
                 player_equipment_,
                 item_database_,
-                parameter_tables_);
+                parameter_tables_,
+                0,
+                player_increased_power_.active());
         player_moon_spell_.toggle(
             200,
             parameters.effective_level,
@@ -1110,7 +1185,9 @@ void WorldScene::handlePlayerSpellEvent(
                 event.spell,
                 player_equipment_,
                 item_database_,
-                parameter_tables_);
+                parameter_tables_,
+                0,
+                player_increased_power_.active());
         player_berserker_spell_.toggle(
             201,
             parameters.effective_level,
@@ -1124,7 +1201,7 @@ void WorldScene::handlePlayerSpellEvent(
     }
     if (event.spell == 9) {
         player_energy_shield_.toggle(
-            player_data_.currentMana());
+            playerCurrentMana());
         player_powerup_visual_.load(
             data_root_ / "Player" / "Common",
             "Powerup",
@@ -1145,6 +1222,21 @@ void WorldScene::handlePlayerSpellEvent(
         effect_visuals_.load(
             data_root_, 11000250, nullptr);
         refreshPlayerRuntimeProfile();
+        return;
+    }
+    if (event.spell == 20) {
+        const WorldPosition destination{
+            event.aim_world_x,
+            event.aim_world_y,
+        };
+        if (hasCompanion() &&
+            positionIsWalkable(
+                scenario_world_.ground(),
+                scenario_world_.objectMap(),
+                destination,
+                companion_.judgement())) {
+            companion_.beginExplosion(destination);
+        }
         return;
     }
     const bool requires_target =
@@ -1205,7 +1297,9 @@ void WorldScene::handlePlayerSpellEvent(
                     event.spell,
                     player_equipment_,
                     item_database_,
-                    parameter_tables_),
+                    parameter_tables_,
+                    0,
+                    player_increased_power_.active()),
                 target
                     ? target->characterNumber()
                     : -1,
@@ -1270,7 +1364,7 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
                   main_hand->category,
                   main_hand->definition_id)
             : nullptr;
-    const PlayerAttackAction action =
+    PlayerAttackAction action =
         retailPlayerAttackAction(main_hand_definition);
     const std::int32_t attack_range =
         playerAttackActionIsRanged(action)
@@ -1290,6 +1384,18 @@ bool WorldScene::readyPlayerAttack(EnemyActor& enemy) {
     if (!playerAttackActionIsSupported(action)) {
         player_attack_target_.cancel();
         return false;
+    }
+    player_increased_power_attack_targets_.clear();
+    if (player_increased_power_.redirectsRangedAttack(
+            player_data_.job(),
+            static_cast<std::int32_t>(action),
+            item_random_)) {
+        player_increased_power_attack_targets_ =
+            playerIncreasedPowerTargets();
+        if (!player_increased_power_attack_targets_.empty()) {
+            action = PlayerAttackAction::
+                increased_power_ranged_21;
+        }
     }
     if (!player_.beginAttack(
             action,
@@ -1332,19 +1438,59 @@ void WorldScene::handlePlayerAttackEvent(
                 ? 3
                 : retailItemAttackSound(definition));
     }
-    if (!event.impact_due || event.target_id < 0) {
+    if (!event.impact_due) {
         return;
     }
     if (playerAttackActionIsRanged(event.action)) {
-        launchPlayerRangedAttack(event);
+        if (event.action == PlayerAttackAction::
+                increased_power_ranged_21) {
+            launchPlayerIncreasedPowerAttack();
+        } else {
+            launchPlayerRangedAttack(event);
+        }
         return;
     }
-    if (event.action != PlayerAttackAction::basic) {
+    if (event.combo_step >= 0) {
+        pending_audio_samples_.push_back(
+            retailPlayerComboVoiceSample(
+                player_data_.gender(), event.combo_step));
+    } else if (event.action != PlayerAttackAction::basic) {
         pending_audio_samples_.push_back(
             retailPlayerAttackVoiceSample(
                 player_data_.gender()));
     }
+    if (event.combo_step >= 0) {
+        for (EnemyActor& candidate :
+             scenario_world_.enemies()) {
+            if (classifyPlayerAttackTarget(
+                    player_.position(),
+                    player_.judgement(),
+                    attackTargetSnapshot(candidate)) !=
+                PlayerAttackTargetDisposition::ready) {
+                continue;
+            }
+            pending_player_attack_impact_target_id_ =
+                candidate.id();
+            applyPlayerAttackImpact(candidate);
+        }
+        return;
+    }
     EnemyActor* enemy = findEnemy(event.target_id);
+    if (!enemy && event.target_id == -1) {
+        auto found = std::find_if(
+            scenario_world_.enemies().begin(),
+            scenario_world_.enemies().end(),
+            [this](const EnemyActor& candidate) {
+                return classifyPlayerAttackTarget(
+                           player_.position(),
+                           player_.judgement(),
+                           attackTargetSnapshot(candidate)) ==
+                       PlayerAttackTargetDisposition::ready;
+            });
+        enemy = found == scenario_world_.enemies().end()
+            ? nullptr
+            : &*found;
+    }
     if (!enemy ||
         classifyPlayerAttackTarget(
             player_.position(),
@@ -1353,9 +1499,88 @@ void WorldScene::handlePlayerAttackEvent(
             PlayerAttackTargetDisposition::ready) {
         return;
     }
-    pending_player_attack_impact_target_id_ =
-        event.target_id;
+    pending_player_attack_impact_target_id_ = enemy->id();
     applyPlayerAttackImpact(*enemy);
+}
+
+std::vector<std::int32_t>
+WorldScene::playerIncreasedPowerTargets() const {
+    constexpr std::int32_t kHalfExtent = 2000;
+    constexpr std::size_t kMaximumTargets = 100;
+    const WorldPosition source = player_.position();
+    const std::int32_t left = source.x - kHalfExtent;
+    const std::int32_t top = source.y - kHalfExtent;
+    const std::int32_t right = source.x + kHalfExtent;
+    const std::int32_t bottom = source.y + kHalfExtent;
+    std::vector<std::int32_t> targets;
+    targets.reserve(std::min(
+        scenario_world_.enemies().size(), kMaximumTargets));
+    for (const EnemyActor& enemy :
+         scenario_world_.enemies()) {
+        if (enemy.currentLife() <= 0) {
+            continue;
+        }
+        const WorldPosition position = enemy.position();
+        const ObjectBounds& judgement = enemy.judgement();
+        if (position.x + judgement.right < left ||
+            position.x + judgement.left > right ||
+            position.y + judgement.bottom < top ||
+            position.y + judgement.top > bottom) {
+            continue;
+        }
+        targets.push_back(enemy.characterNumber());
+        if (targets.size() == kMaximumTargets) {
+            break;
+        }
+    }
+    return targets;
+}
+
+void WorldScene::launchPlayerIncreasedPowerAttack() {
+    const InventoryItem* main_hand =
+        player_equipment_.item(
+            EquipmentSlot::main_hand);
+    const ItemDefinition* definition =
+        main_hand
+            ? item_database_.find(
+                  main_hand->category,
+                  main_hand->definition_id)
+            : nullptr;
+    const PlayerIncreasedPowerAttackResult attack =
+        resolvePlayerIncreasedPowerAttack(
+            {
+                scenario_world_.localPlayerNumber(),
+                buildPlayerAttackImpactStats(
+                    scenario_world_.localPlayerNumber(),
+                    player_data_,
+                    player_equipment_,
+                    player_inventory_,
+                    item_database_,
+                    playerRuntimeProfile()),
+                player_increased_power_attack_targets_,
+            },
+            item_random_);
+    if (!attack.valid || !main_hand || !definition ||
+        itemCurrentDurability(
+            *main_hand, *definition) == 0) {
+        return;
+    }
+    for (const CombatEffectSpawnRequest& projectile :
+         attack.projectiles) {
+        RuntimeEffectActorSpawnRequest actor;
+        if (buildGenericEffectActor(
+                projectile,
+                player_.position(),
+                actor)) {
+            runtime_effects_.queueActor(
+                std::move(actor));
+        }
+    }
+    if (attack.consume_durability &&
+        !player_equipment_.decreaseDurability(
+            EquipmentSlot::main_hand, 1)) {
+        refreshPlayerAppearance();
+    }
 }
 
 void WorldScene::launchPlayerRangedAttack(
@@ -1607,6 +1832,57 @@ bool WorldScene::startGroundItemInteraction(
         item_database_.find(
             found->item.category,
             found->item.definition_id);
+    const bool mine_item =
+        found->item.category == 4 &&
+        found->item.definition_id == 1;
+    if (definition && mine_item) {
+        if (player_item_controller_.collectMine(
+                playerMaximumMineCount())) {
+            pending_audio_samples_.push_back(
+                retailItemMoveSound(*definition));
+            if (pointer_.target().kind ==
+                    WorldPointerTargetKind::ground_item &&
+                pointer_.target().id == item_id) {
+                pointer_.clearSelection();
+            }
+            ground_items.erase(found);
+            return true;
+        }
+
+        // InsertPickedUpItem (0x00449ef0) keeps category-four definition
+        // one outside the 9-by-4 owner. At maximum capacity it returns the
+        // still-live instance to the caller, whose single-player failure
+        // tail recreates the ordinary drop response.
+        restartGroundItemDrop(*found);
+        if (pointer_.target().kind ==
+                WorldPointerTargetKind::ground_item &&
+            pointer_.target().id == item_id) {
+            pointer_.clearSelection();
+        }
+        return true;
+    }
+    if (definition &&
+        definition->automatic_inventory_page >= 0) {
+        if (!player_automatic_items_.add(
+                *definition, found->item)) {
+            restartGroundItemDrop(*found);
+            if (pointer_.target().kind ==
+                    WorldPointerTargetKind::ground_item &&
+                pointer_.target().id == item_id) {
+                pointer_.clearSelection();
+            }
+            return true;
+        }
+        pending_audio_samples_.push_back(
+            retailItemMoveSound(*definition));
+        if (pointer_.target().kind ==
+                WorldPointerTargetKind::ground_item &&
+            pointer_.target().id == item_id) {
+            pointer_.clearSelection();
+        }
+        ground_items.erase(found);
+        return true;
+    }
     if (!definition ||
         !player_inventory_.store(found->item)) {
         // The single-player failure tail of FUN_004526a0 recreates the

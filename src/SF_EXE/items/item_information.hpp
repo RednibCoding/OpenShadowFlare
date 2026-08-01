@@ -9,12 +9,22 @@ namespace osf {
 struct InventoryItem;
 struct ItemDefinition;
 
+enum class ItemInformationPrice {
+    sale,
+    purchase,
+};
+
+std::int32_t itemPurchasePrice(
+    const InventoryItem& item,
+    const ItemDefinition& definition);
+
 std::int32_t itemSalePrice(
     const InventoryItem& item,
     const ItemDefinition& definition);
 std::string itemInformationText(
     const InventoryItem& item,
-    const ItemDefinition& definition);
+    const ItemDefinition& definition,
+    ItemInformationPrice price = ItemInformationPrice::sale);
 
 }  // namespace osf
 

@@ -77,6 +77,12 @@ void QuestState::selectNotice(std::int32_t quest_id) {
     notice_.counter = 600;
 }
 
+void QuestState::updateNotice() {
+    if (notice_.counter > 0) {
+        --notice_.counter;
+    }
+}
+
 std::int32_t QuestState::state(std::int32_t quest_id) const {
     return quest_id >= 0 &&
                    static_cast<std::size_t>(quest_id) <

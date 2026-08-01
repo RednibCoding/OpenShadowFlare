@@ -1,14 +1,25 @@
+#include "items/item_appearance.hpp"
 #include "items/item_database.hpp"
 #include "items/item_instance_factory.hpp"
+#include "items/item_repair.hpp"
 #include "items/player_belt.hpp"
+#include "items/player_automatic_items.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "world/player_data.hpp"
 #include "world/player_item_controller.hpp"
+#include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
+#include "world/retail_save_automatic_items.hpp"
+#include "world/retail_save_companion_progress.hpp"
+#include "world/retail_save_extension.hpp"
+#include "world/retail_save_giant_warehouse.hpp"
 #include "world/retail_save_items.hpp"
+#include "world/retail_save_magic.hpp"
+#include "world/retail_save_mines.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/retail_save_progress.hpp"
 #include "world/transport_catalog.hpp"
@@ -112,6 +123,137 @@ int main() {
             "The male record does not match table 900 and FUN_00440f70.")) {
         return 1;
     }
+    osf::PlayerData companion_player = male;
+    const osf::TableData* companion_catalog = tables.find(60);
+    const std::size_t companion_count =
+        companion_catalog
+            ? static_cast<std::size_t>(
+                  companion_catalog->rowCount())
+            : 0u;
+    companion_player.setCompanionRespawnCounter(600);
+    if (!check(
+            companion_player.switchCompanion(0) &&
+                companion_player.companionRespawnCounter() == 0,
+            "Selecting the already owned companion did not clear its "
+            "retail defeated countdown.")) {
+        return 1;
+    }
+    companion_player.awardCompanionKillExperience(
+        16000000, 0, true);
+    if (!check(
+            companion_count != 0 &&
+                companion_player.companionCount() ==
+                    companion_count &&
+                std::all_of(
+                    companion_player.companionLevels().begin(),
+                    companion_player.companionLevels().end(),
+                    [](std::int32_t level) {
+                        return level == 1;
+                    }) &&
+                companion_player.companionExperience(0) == 1 &&
+                companion_player.switchCompanion(1) &&
+                companion_player.companionType() == 1 &&
+                companion_player.companionLevel() == 1 &&
+                companion_player.companionExperience() == 0 &&
+                companion_player.companionRespawnCounter() == 0,
+            "A companion switch did not preserve the old dog and restore "
+            "the new dog's retail progression.")) {
+        return 1;
+    }
+    companion_player.awardCompanionKillExperience(
+        16000000, 0, true);
+    companion_player.awardCompanionKillExperience(
+        16000000, 0, true);
+    if (!check(
+            companion_player.switchCompanion(0) &&
+                companion_player.companionExperience() == 1 &&
+                companion_player.companionExperience(1) == 2 &&
+                !companion_player.switchCompanion(-1) &&
+                !companion_player.switchCompanion(
+                    static_cast<std::int32_t>(companion_count)),
+            "Per-companion experience leaked across a swap or an invalid "
+            "catalog row was accepted.")) {
+        return 1;
+    }
+    std::vector<std::uint8_t> companion_payload;
+    std::size_t companion_progress_end = 0;
+    std::size_t companion_mine_end = 0;
+    if (!check(
+            osf::replaceRetailCompanionProgress(
+                companion_payload,
+                0,
+                companion_player,
+                &companion_progress_end,
+                &error) &&
+                osf::replaceRetailMineCount(
+                    companion_payload,
+                    companion_progress_end,
+                    7,
+                    &companion_mine_end,
+                    &error),
+            "The portable save could not serialize companion progression "
+            "before its retail Mine field.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    osf::PlayerData restored_companion_player = male;
+    std::int32_t restored_companion_mines = 0;
+    std::size_t restored_companion_end = 0;
+    std::size_t restored_companion_mine_end = 0;
+    if (!check(
+            osf::restoreRetailCompanionProgress(
+                companion_payload,
+                0,
+                restored_companion_player,
+                &restored_companion_end,
+                &error) &&
+                osf::restoreRetailMineCount(
+                    companion_payload,
+                    restored_companion_end,
+                    restored_companion_mines,
+                    &restored_companion_mine_end,
+                    &error) &&
+                restored_companion_end == companion_progress_end &&
+                restored_companion_mine_end == companion_mine_end &&
+                restored_companion_mines == 7 &&
+                restored_companion_player.companionExperience(0) == 1 &&
+                restored_companion_player.companionExperience(1) == 2 &&
+                restored_companion_player.switchCompanion(1) &&
+                restored_companion_player.companionExperience() == 2,
+            "Distinct companion progression did not survive the retail "
+            "save stream beside the Mine count.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    osf::PlayerData job_player = male;
+    job_player.setJob(osf::PlayerJob::warrior);
+    if (!check(
+            osf::retailScriptJobSelection(
+                osf::playerJobValue(
+                    osf::PlayerJob::mercenary)) == 0 &&
+                osf::retailScriptJobSelection(
+                    osf::playerJobValue(
+                        osf::PlayerJob::warrior)) == 1 &&
+                osf::retailScriptJobSelection(
+                    osf::playerJobValue(
+                        osf::PlayerJob::hunter)) == 2 &&
+                osf::retailScriptJobSelection(
+                    osf::playerJobValue(
+                        osf::PlayerJob::spellcaster)) == 3 &&
+                job_player.job() ==
+                    osf::playerJobValue(
+                        osf::PlayerJob::warrior) &&
+                osf::retailJobForScriptSelection(1) ==
+                    osf::PlayerJob::warrior &&
+                osf::retailJobForScriptSelection(2) ==
+                    osf::PlayerJob::hunter &&
+                osf::retailJobForScriptSelection(3) ==
+                    osf::PlayerJob::spellcaster &&
+                !osf::retailJobForScriptSelection(0) &&
+                !osf::retailJobForScriptSelection(4),
+            "The retail script job mapping or saved job mutation differs.")) {
+        return 1;
+    }
 
     osf::ItemDatabase items;
     if (!check(
@@ -127,12 +269,28 @@ int main() {
         items.find(3, 0);
     const osf::ItemDefinition* capsule =
         items.find(3, 10000000);
+    const osf::ItemDefinition* white_medicine =
+        items.find(3, 30000000);
+    const osf::ItemDefinition* fire_medicine =
+        items.find(3, 30000001);
     osf::PlayerBelt belt;
     osf::PlayerItemController item_controller;
+    const auto item_use_targets = [](osf::PlayerData& player) {
+        return osf::PlayerItemUseTargets{
+            player,
+            player.baseMaximumLife(),
+            player.baseMaximumMana(),
+            0,
+            0,
+            nullptr,
+        };
+    };
     item_controller.initializeNew();
     if (!check(
             tablet &&
                 capsule &&
+                white_medicine &&
+                fire_medicine &&
                 belt.place(
                     osf::makeInventoryItem(*tablet),
                     0,
@@ -157,7 +315,7 @@ int main() {
                      0,
                      belt,
                      items,
-                     belt_player)
+                     item_use_targets(belt_player))
                  .consumed &&
                 belt.itemAt(0, 0),
             "A Tablet was consumed while life was already full.")) {
@@ -180,7 +338,7 @@ int main() {
             0,
             belt,
             items,
-            belt_player);
+            item_use_targets(belt_player));
     belt_player.setCurrentMana(
         belt_player.baseMaximumMana() - 10);
     const osf::PlayerItemUseResult capsule_use =
@@ -188,7 +346,7 @@ int main() {
             4,
             belt,
             items,
-            belt_player);
+            item_use_targets(belt_player));
     if (!check(
             tablet_use.consumed &&
                 tablet_use.sound_sample == 16 &&
@@ -218,7 +376,7 @@ int main() {
                      0,
                      medicine_inventory,
                      items,
-                     inventory_player)
+                     item_use_targets(inventory_player))
                  .consumed &&
                 medicine_inventory.items().size() == 2,
             "A backpack Tablet was consumed while life was full.")) {
@@ -231,7 +389,7 @@ int main() {
             0,
             medicine_inventory,
             items,
-            inventory_player);
+            item_use_targets(inventory_player));
     inventory_player.setCurrentMana(
         inventory_player.baseMaximumMana() - 10);
     const osf::PlayerItemUseResult inventory_capsule_use =
@@ -239,7 +397,7 @@ int main() {
             0,
             medicine_inventory,
             items,
-            inventory_player);
+            item_use_targets(inventory_player));
     if (!check(
             inventory_tablet_use.consumed &&
                 inventory_tablet_use.sound_sample == 16 &&
@@ -254,6 +412,81 @@ int main() {
         return 1;
     }
 
+    osf::PlayerInventory boosted_medicine_inventory;
+    osf::PlayerData boosted_player = male;
+    boosted_player.setCurrentLife(100, 500);
+    if (!check(
+            boosted_medicine_inventory.add(*tablet) &&
+                item_controller
+                    .useInventoryItem(
+                        0,
+                        boosted_medicine_inventory,
+                        items,
+                        {
+                            boosted_player,
+                            500,
+                            boosted_player.baseMaximumMana(),
+                            50,
+                            0,
+                            nullptr,
+                        })
+                    .consumed &&
+                boosted_player.currentLife() == 400,
+            "Equipped maximum-life bonuses did not scale medicine by "
+            "the retail order of operations.")) {
+        return 1;
+    }
+
+    osf::PlayerData condition_player = male;
+    osf::PlayerInventory condition_inventory;
+    if (!check(
+            condition_inventory.add(*fire_medicine) &&
+                condition_inventory.add(*white_medicine) &&
+                item_controller
+                    .useInventoryItem(
+                        0,
+                        condition_inventory,
+                        items,
+                        item_use_targets(condition_player))
+                    .consumed &&
+                condition_player.elementX() == 0 &&
+                condition_player.elementY() == 4000 &&
+                item_controller
+                    .useInventoryItem(
+                        0,
+                        condition_inventory,
+                        items,
+                        item_use_targets(condition_player))
+                    .consumed &&
+                condition_player.elementX() == 0 &&
+                condition_player.elementY() == 0 &&
+                condition_inventory.add(*white_medicine) &&
+                !item_controller
+                     .useInventoryItem(
+                         0,
+                         condition_inventory,
+                         items,
+                         item_use_targets(condition_player))
+                     .consumed &&
+                condition_inventory.items().size() == 1,
+            "Elemental and White Medicine did not move or clear the "
+            "saved retail condition axes transactionally.")) {
+        return 1;
+    }
+    for (int use = 0; use < 5; ++use) {
+        if (!condition_player.applyElementMedicine(0, 4000)) {
+            return 1;
+        }
+    }
+    if (!check(
+            condition_player.elementX() == 0 &&
+                condition_player.elementY() == 20000 &&
+                !condition_player.applyElementMedicine(0, 4000),
+            "Elemental Medicine did not stop exactly on its retail "
+            "element anchor.")) {
+        return 1;
+    }
+
     const std::filesystem::path new_save_root =
         std::filesystem::temp_directory_path() /
         "openshadowflare_new_save_test";
@@ -263,6 +496,11 @@ int main() {
     std::filesystem::remove_all(
         new_save_root, cleanup_error);
     male.setCompanionRespawnCounter(600);
+    if (!check(
+            male.applyElementMedicine(0, 4000),
+            "The save fixture could not acquire an elemental condition.")) {
+        return 1;
+    }
     if (!check(
             osf::writeRetailSave(
                 new_save_path, male, 0x34, &error),
@@ -277,6 +515,7 @@ int main() {
                 new_save_path, &error) &&
                 new_save_round_trip.retailRecord() ==
                     male.retailRecord() &&
+                new_save_round_trip.elementY() == 4000 &&
                 new_save_round_trip.companionRespawnCounter() ==
                     600,
             "A newly created save did not preserve its player "
@@ -291,6 +530,131 @@ int main() {
         items.find(1, 0);
     const osf::ItemDefinition* gold =
         items.find(4, 0);
+    const osf::ItemDefinition* spirit_stone =
+        items.find(4, 98000001);
+    const osf::TableData* repair_values = tables.find(34);
+    const osf::ItemDefinition* shield = nullptr;
+    for (const osf::ItemDefinition& definition :
+         items.definitions(1)) {
+        if (definition.subtype == 2 &&
+            definition.required_level <= male.level()) {
+            shield = &definition;
+            break;
+        }
+    }
+    osf::InventoryItem repair_dagger =
+        dagger
+            ? osf::makeInventoryItem(*dagger)
+            : osf::InventoryItem{};
+    if (dagger) {
+        repair_dagger.retail_state.resize(200);
+        repair_dagger.durability =
+            dagger->maximum_durability / 2;
+        writeU32(
+            repair_dagger.retail_state,
+            47u * 4u,
+            static_cast<std::uint32_t>(
+                repair_dagger.durability));
+    }
+    const std::int32_t expected_dagger_value =
+        dagger && repair_values
+            ? dagger->base_price + repair_values->value(24, 0)
+            : 0;
+    const std::int32_t expected_dagger_repair_price =
+        dagger
+            ? std::max(
+                  1,
+                  ((dagger->maximum_durability -
+                    repair_dagger.durability) *
+                   (expected_dagger_value / 10)) /
+                      dagger->maximum_durability)
+            : 0;
+    if (!check(
+            dagger && shield && repair_values &&
+                osf::retailItemValue(
+                    repair_dagger, *dagger, *repair_values) ==
+                    expected_dagger_value &&
+                osf::retailItemRepairPrice(
+                    repair_dagger, *dagger, *repair_values) ==
+                    expected_dagger_repair_price &&
+                osf::repairInventoryItem(
+                    repair_dagger, *dagger) &&
+                repair_dagger.durability ==
+                    dagger->maximum_durability &&
+                readU32(
+                    repair_dagger.retail_state,
+                    47u * 4u) ==
+                    static_cast<std::uint32_t>(
+                        dagger->maximum_durability),
+            "The retail item-value, repair-price, or durability mutation "
+            "formula differs from the executable.")) {
+        return 1;
+    }
+
+    osf::InventoryItem damaged_active = repair_dagger;
+    damaged_active.durability = dagger->maximum_durability / 2;
+    osf::InventoryItem damaged_alternate = repair_dagger;
+    damaged_alternate.durability = dagger->maximum_durability / 4;
+    osf::PlayerEquipment repair_equipment;
+    if (!check(
+            repair_equipment
+                    .place(
+                        osf::EquipmentSlot::main_hand,
+                        damaged_active,
+                        *dagger,
+                        male.level())
+                    .accepted &&
+                repair_equipment
+                    .place(
+                        osf::EquipmentSlot::alternate_main_hand,
+                        damaged_alternate,
+                        *dagger,
+                        male.level())
+                    .accepted &&
+                repair_equipment.repairPrice(
+                    osf::EquipmentRepairGroup::arms,
+                    items,
+                    *repair_values) ==
+                    osf::retailItemRepairPrice(
+                        damaged_active, *dagger, *repair_values) +
+                        osf::retailItemRepairPrice(
+                            damaged_alternate,
+                            *dagger,
+                            *repair_values) &&
+                repair_equipment.repair(
+                    osf::EquipmentRepairGroup::arms,
+                    items) == 2 &&
+                repair_equipment
+                        .item(osf::EquipmentSlot::main_hand)
+                        ->durability == dagger->maximum_durability &&
+                repair_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_main_hand)
+                        ->durability == dagger->maximum_durability,
+            "The Arms repair group did not include both retail weapon "
+            "sets.")) {
+        return 1;
+    }
+
+    osf::PlayerInventory repair_inventory;
+    const std::int32_t damaged_price =
+        osf::retailItemRepairPrice(
+            damaged_active, *dagger, *repair_values);
+    if (!check(
+            repair_inventory.store(damaged_active) &&
+                repair_inventory.add(*tablet) &&
+                repair_inventory.repairPrice(
+                    items, *repair_values) == damaged_price &&
+                repair_inventory.repairAll(items) == 1 &&
+                repair_inventory.items().size() == 2 &&
+                repair_inventory.items()[0].durability ==
+                    dagger->maximum_durability &&
+                repair_inventory.items()[1].category == 3,
+            "Non-Equipped repair did not limit itself to damaged weapons "
+            "and armor in the backpack.")) {
+        return 1;
+    }
+
     osf::PlayerInventory saved_inventory;
     osf::PlayerEquipment saved_equipment;
     osf::PlayerBelt saved_belt;
@@ -334,6 +698,22 @@ int main() {
                         osf::EquipmentSlot::body,
                         osf::makeInventoryItem(*leather_cloth),
                         *leather_cloth,
+                        male.level())
+                    .accepted &&
+                saved_equipment.setAppearanceColor(
+                    osf::EquipmentSlot::body, 14) &&
+                saved_equipment
+                    .place(
+                        osf::EquipmentSlot::alternate_main_hand,
+                        repair_dagger,
+                        *dagger,
+                        male.level())
+                    .accepted &&
+                saved_equipment
+                    .place(
+                        osf::EquipmentSlot::alternate_off_hand,
+                        osf::makeInventoryItem(*shield),
+                        *shield,
                         male.level())
                     .accepted &&
                 saved_belt
@@ -396,6 +776,25 @@ int main() {
                 restored_equipment
                         .item(osf::EquipmentSlot::body)
                         ->identified == 1 &&
+                osf::retailItemColorIndex(
+                    *restored_equipment.item(
+                        osf::EquipmentSlot::body)) == 14 &&
+                restored_equipment.item(
+                    osf::EquipmentSlot::alternate_main_hand) &&
+                restored_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_main_hand)
+                        ->definition_id == dagger->id &&
+                restored_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_main_hand)
+                        ->durability == dagger->maximum_durability &&
+                restored_equipment.item(
+                    osf::EquipmentSlot::alternate_off_hand) &&
+                restored_equipment
+                        .item(
+                            osf::EquipmentSlot::alternate_off_hand)
+                        ->definition_id == shield->id &&
                 restored_belt.itemAt(2, 0) &&
                 restored_belt.itemAt(2, 0)->category == 3 &&
                 restored_belt.itemAt(2, 0)->definition_id == 0 &&
@@ -406,6 +805,102 @@ int main() {
                 restored_special_items.items()[0].grid_y == 2,
             "Backpack, equipment, belt, or special-item ownership did not "
             "survive a save/load round trip.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    osf::PlayerGiantWarehouse saved_giant_warehouse;
+    saved_giant_warehouse.initializeNew();
+    osf::PlayerGiantWarehouse::EnabledFlags giant_flags{};
+    giant_flags[0] = 1;
+    giant_flags[3] = 1;
+    saved_giant_warehouse.restoreEnabledFlags(giant_flags);
+    if (!saved_giant_warehouse.page(3)
+             .place(dropped_dagger, 4, 5)
+             .accepted) {
+        return 1;
+    }
+    std::vector<std::uint8_t> portable_warehouse_payload;
+    osf::replaceRetailSavePortableExtension(
+        portable_warehouse_payload, true, 7, true);
+    osf::PlayerGiantWarehouse restored_giant_warehouse;
+    restored_giant_warehouse.initializeNew();
+    if (!check(
+            osf::replaceRetailGiantWarehouse(
+                portable_warehouse_payload,
+                0,
+                items,
+                saved_giant_warehouse,
+                nullptr,
+                &error) &&
+                osf::restoreRetailGiantWarehouse(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    restored_giant_warehouse,
+                    nullptr,
+                    &error) &&
+                osf::inspectRetailSavePortableExtension(
+                    portable_warehouse_payload)
+                    .running &&
+                osf::inspectRetailSavePortableExtension(
+                    portable_warehouse_payload)
+                        .mine_count == 7 &&
+                restored_giant_warehouse.pageEnabled(0) &&
+                restored_giant_warehouse.pageEnabled(3) &&
+                !restored_giant_warehouse.pageEnabled(1) &&
+                restored_giant_warehouse.page(3).items().size() == 1 &&
+                restored_giant_warehouse.page(3).items()[0].definition_id ==
+                    dropped_dagger.definition_id &&
+                restored_giant_warehouse.page(3).items()[0].grid_x == 4 &&
+                restored_giant_warehouse.page(3).items()[0].grid_y == 5,
+            "Giant Warehouse pages, unlocks, running state, or mine count "
+            "did not survive the portable save extension.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    osf::PlayerAutomaticItems saved_automatic_items;
+    osf::PlayerAutomaticItems restored_automatic_items;
+    const osf::InventoryItem automatic_spirit_stone =
+        spirit_stone
+            ? osf::makeRetailInventoryItem(
+                  *spirit_stone,
+                  [&dropped_item_random]() {
+                      return dropped_item_random.next();
+                  })
+            : osf::InventoryItem{};
+    if (!check(
+            spirit_stone &&
+                saved_automatic_items.add(
+                    *spirit_stone, automatic_spirit_stone) &&
+                osf::replaceRetailAutomaticItems(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    saved_automatic_items,
+                    nullptr,
+                    &error) &&
+                osf::replaceRetailGiantWarehouse(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    saved_giant_warehouse,
+                    nullptr,
+                    &error) &&
+                osf::restoreRetailAutomaticItems(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    restored_automatic_items,
+                    nullptr,
+                    &error) &&
+                restored_automatic_items.contains(4, 98000001) &&
+                restored_automatic_items.page(2).items().size() == 1 &&
+                restored_automatic_items.page(2).items()[0].grid_x == 1 &&
+                restored_automatic_items.page(2).items()[0].grid_y == 0,
+            "Automatic item pages did not survive the portable late-item "
+            "save stream.")) {
         std::cerr << error << '\n';
         return 1;
     }
@@ -472,7 +967,7 @@ int main() {
 
     const std::filesystem::path retail_save_fixture =
         std::string(OPENSHADOWFLARE_SOURCE_DIR) +
-        "/tmp/ShadowFlare/Save/0000.Ssv";
+        "/tmp/ShadowFlare/Save/0004.Ssv";
     if (std::filesystem::exists(retail_save_fixture)) {
         osf::PlayerData retail_fixture_player;
         std::vector<std::uint8_t> retail_fixture_payload;
@@ -525,6 +1020,66 @@ int main() {
             std::cerr << error << '\n';
             return 1;
         }
+        osf::RetailSaveProgress retail_progress;
+        std::size_t retail_progress_end = 0;
+        osf::PlayerMagic retail_magic;
+        retail_magic.initializeNew();
+        std::size_t retail_magic_end = 0;
+        std::size_t retail_companion_end = 0;
+        std::int32_t retail_mine_count = 5;
+        std::size_t retail_mine_end = 0;
+        osf::PlayerGiantWarehouse retail_giant_warehouse;
+        retail_giant_warehouse.initializeNew();
+        std::size_t retail_giant_end = retail_mine_end;
+        osf::PlayerAutomaticItems retail_automatic_items;
+        if (!check(
+                osf::restoreRetailProgress(
+                    retail_fixture_payload,
+                    retail_owned_items_end,
+                    retail_progress,
+                    &retail_progress_end,
+                    &error) &&
+                    osf::restoreRetailMagic(
+                        retail_fixture_payload,
+                        retail_progress_end,
+                        retail_magic,
+                        &retail_magic_end,
+                        &error) &&
+                    osf::restoreRetailCompanionProgress(
+                        retail_fixture_payload,
+                        retail_magic_end,
+                        retail_fixture_player,
+                        &retail_companion_end,
+                        &error) &&
+                    osf::restoreRetailMineCount(
+                        retail_fixture_payload,
+                        retail_companion_end,
+                        retail_mine_count,
+                        &retail_mine_end,
+                        &error) &&
+                    osf::restoreRetailGiantWarehouse(
+                        retail_fixture_payload,
+                        retail_mine_end,
+                        items,
+                        retail_giant_warehouse,
+                        &retail_giant_end,
+                        &error) &&
+                    osf::restoreRetailAutomaticItems(
+                        retail_fixture_payload,
+                        retail_giant_end,
+                        items,
+                        retail_automatic_items,
+                        nullptr,
+                        &error) &&
+                    retail_mine_count >= 0 &&
+                    retail_fixture_player.companionCount() ==
+                        companion_count,
+                "The original retail companion progression, mine count, "
+                "or ten-page Giant Warehouse could not be restored after "
+                "magic.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
         std::vector<std::uint8_t> rewritten_retail_payload =
             retail_fixture_payload;
         if (!check(
@@ -541,6 +1096,39 @@ int main() {
                         retail_fixture_payload,
                 "Re-encoding unchanged retail-owned items altered "
                 "their bytes or an unowned payload section.")) {
+            std::cerr << error << '\n';
+            return 1;
+        }
+        std::vector<std::uint8_t> rewritten_late_items =
+            retail_fixture_payload;
+        std::size_t rewritten_companion_end = retail_magic_end;
+        std::size_t rewritten_giant_end = retail_mine_end;
+        if (!check(
+                osf::replaceRetailCompanionProgress(
+                    rewritten_late_items,
+                    retail_magic_end,
+                    retail_fixture_player,
+                    &rewritten_companion_end,
+                    &error) &&
+                rewritten_companion_end ==
+                    retail_companion_end &&
+                osf::replaceRetailGiantWarehouse(
+                    rewritten_late_items,
+                    retail_mine_end,
+                    items,
+                    retail_giant_warehouse,
+                    &rewritten_giant_end,
+                    &error) &&
+                osf::replaceRetailAutomaticItems(
+                    rewritten_late_items,
+                    rewritten_giant_end,
+                    items,
+                    retail_automatic_items,
+                    nullptr,
+                    &error) &&
+                rewritten_late_items == retail_fixture_payload,
+            "Re-encoding the retail Giant Warehouse and four automatic "
+            "item pages altered their bytes or later state.")) {
             std::cerr << error << '\n';
             return 1;
         }

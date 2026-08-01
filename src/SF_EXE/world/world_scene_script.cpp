@@ -1,6 +1,9 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
+#include "script/scenario_effect_command.hpp"
+#include "script/scenario_placed_effect_command.hpp"
+#include "vendor_stock_generator.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -8,6 +11,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <utility>
 
 namespace osf {
@@ -71,6 +75,24 @@ std::int32_t scriptAudioDistance(
         std::trunc(std::hypot(x, y)));
 }
 
+std::optional<EquipmentRepairGroup> equipmentRepairGroup(
+    std::int32_t selector) {
+    switch (selector) {
+    case 0:
+        return EquipmentRepairGroup::arms;
+    case 1:
+        return EquipmentRepairGroup::helmet;
+    case 2:
+        return EquipmentRepairGroup::body;
+    case 3:
+        return EquipmentRepairGroup::shields;
+    case 4:
+        return EquipmentRepairGroup::boots;
+    default:
+        return std::nullopt;
+    }
+}
+
 }  // namespace
 
 bool WorldScene::readScriptWorldOperand(
@@ -80,16 +102,16 @@ bool WorldScene::readScriptWorldOperand(
         value = transports_.enabled(operand.value) ? 1 : 0;
         return true;
     }
-    if (operand.type == 11) {
+    if (operand.type == 12) {
         value = quests_.state(operand.value);
         return true;
     }
-    if (operand.type == 12) {
+    if (operand.type == 11) {
         value =
             operand.value >= 0 &&
                     static_cast<std::size_t>(operand.value) <
-                        scenario_flags_.size()
-                ? scenario_flags_[
+                        script_state_flags_.size()
+                ? script_state_flags_[
                       static_cast<std::size_t>(operand.value)]
                 : 0;
         return true;
@@ -187,19 +209,19 @@ bool WorldScene::writeScriptWorldOperand(
         transports_.setEnabled(operand.value, value != 0);
         return true;
     }
-    if (operand.type == 11) {
+    if (operand.type == 12) {
         return quests_.setScriptState(operand.value, value);
     }
-    if (operand.type == 12) {
+    if (operand.type == 11) {
         if (operand.value < 0) {
             return false;
         }
         const std::size_t index =
             static_cast<std::size_t>(operand.value);
-        if (index >= scenario_flags_.size()) {
-            scenario_flags_.resize(index + 1u, 0);
+        if (index >= script_state_flags_.size()) {
+            script_state_flags_.resize(index + 1u, 0);
         }
-        scenario_flags_[index] = value;
+        script_state_flags_[index] = value;
         return true;
     }
     if (operand.type == 13) {
@@ -257,6 +279,92 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 30) {
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioEffectRequest(
+                arguments, item_random_.next(), request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 36) {
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioPlacedEffectRequest(
+                arguments, request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 59) {
+        return arguments.size() == 2 &&
+               removeScriptItem(arguments[0], arguments[1]);
+    }
+
+    if (opcode == 75) {
+        return arguments.size() == 2 &&
+               addScriptItem(arguments[0], arguments[1]);
+    }
+
+    if (opcode == 4) {
+        player_equipment_.identifyAll();
+        player_inventory_.identifyAll();
+        player_belt_.identifyAll();
+        refreshPlayerRuntimeProfile();
+        return true;
+    }
+
+    if (opcode == 9) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        if (arguments[0] == -1) {
+            player_inventory_.repairAll(item_database_);
+        } else {
+            const std::optional<EquipmentRepairGroup> group =
+                equipmentRepairGroup(arguments[0]);
+            if (!group) {
+                return false;
+            }
+            player_equipment_.repair(*group, item_database_);
+        }
+        refreshPlayerRuntimeProfile();
+        return true;
+    }
+
+    if (opcode == 54) {
+        return arguments.size() == 1 &&
+               player_inventory_.spendGold(arguments[0]);
+    }
+
+    if (opcode == 56) {
+        if (arguments.size() != 4) {
+            return false;
+        }
+        if (ScenarioObjectActor* object =
+                findScriptObject(arguments[0])) {
+            object->setStateOverride(
+                arguments[1], arguments[2], arguments[3]);
+        } else if (NpcActor* npc =
+                       findScriptNpc(arguments[0])) {
+            npc->setStateOverride(
+                arguments[1], arguments[2], arguments[3]);
+        } else if (GroundItem* item =
+                       findScriptGroundItem(arguments[0])) {
+            item->state.setOverride(
+                arguments[1], arguments[2], arguments[3]);
+        } else if (EnemyActor* enemy =
+                       findScriptEnemy(arguments[0])) {
+            enemy->setStateOverride(
+                arguments[1], arguments[2], arguments[3]);
+        }
+        // The retail handler treats an absent target as a successful no-op.
+        return true;
+    }
+
     if (opcode == 16) {
         if (arguments.empty() || arguments[0] < 0) {
             return false;
@@ -306,6 +414,37 @@ bool WorldScene::executeScriptNativeCommand(
             return false;
         }
         return prepareGroundItems(first_item);
+    }
+
+    if (opcode == 6) {
+        if (arguments.size() < 2 || arguments[0] < 0) {
+            return false;
+        }
+        const std::size_t inventory_index =
+            static_cast<std::size_t>(arguments[0]);
+        if (vendor_inventories_.size() <= inventory_index) {
+            vendor_inventories_.resize(inventory_index + 1);
+        }
+        return generateRetailVendorStock(
+            vendor_inventories_[inventory_index],
+            arguments[1],
+            parameter_tables_,
+            item_database_,
+            item_random_);
+    }
+
+    if (opcode == 5) {
+        if (arguments.empty() ||
+            !vendorInventory(arguments[0]) ||
+            gameplay_service_request_.kind !=
+                GameplayServiceKind::none) {
+            return false;
+        }
+        gameplay_service_request_ = {
+            GameplayServiceKind::vendor,
+            arguments[0],
+        };
+        return true;
     }
 
     if (opcode == 24) {
@@ -374,16 +513,20 @@ bool WorldScene::executeScriptNativeCommand(
 
     if (opcode == 41) {
         if (arguments.empty() ||
-            arguments[0] != 0 ||
             gameplay_service_request_.kind !=
                 GameplayServiceKind::none) {
             return false;
         }
         gameplay_service_request_ = {
             GameplayServiceKind::toggle_special_items,
-            0,
+            arguments[0],
         };
         return true;
+    }
+
+    if (opcode == 45) {
+        return arguments.size() == 1 &&
+               switchOwnedCompanion(arguments[0]);
     }
 
     if (opcode == 62) {
@@ -393,8 +536,73 @@ bool WorldScene::executeScriptNativeCommand(
         // Argument two requests the retail server broadcast when a quest is
         // completed. The initial scenario is strictly single-player, but the
         // interpreter still evaluates and preserves that argument.
-        return quests_.applyScriptUpdate(
-            arguments[0], arguments[1]);
+        if (!quests_.applyScriptUpdate(
+                arguments[0], arguments[1])) {
+            return false;
+        }
+        const QuestCue cue = quests_.lastCue();
+        if (cue == QuestCue::updated) {
+            pending_audio_samples_.push_back(65);
+        } else if (cue == QuestCue::completed) {
+            pending_audio_samples_.push_back(66);
+        }
+        return true;
+    }
+
+    if (opcode == 68) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        const PlayerExperienceAwardResult award =
+            awardRetailPlayerExperiencePercentage(
+                player_data_,
+                arguments[0],
+                parameter_tables_);
+        presentPlayerLevelUp(award.level_up);
+        return true;
+    }
+
+    if (opcode == 67) {
+        return arguments.size() == 1 &&
+               player_magic_.learnPermanently(arguments[0]);
+    }
+
+    if (opcode == 70) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        const std::optional<PlayerJob> job =
+            retailJobForScriptSelection(arguments[0]);
+        if (job && has_player_) {
+            player_data_.setJob(*job);
+        }
+        return true;
+    }
+
+    if (opcode == 72) {
+        if (!arguments.empty() ||
+            gameplay_service_request_.kind !=
+                GameplayServiceKind::none) {
+            return false;
+        }
+        gameplay_service_request_ = {
+            GameplayServiceKind::equipment_color,
+            0,
+        };
+        return true;
+    }
+
+    if (opcode == 73) {
+        if (!arguments.empty() ||
+            gameplay_service_request_.kind !=
+                GameplayServiceKind::none) {
+            return false;
+        }
+        gameplay_service_request_ = {
+            GameplayServiceKind::blackjack,
+            0,
+        };
+        return true;
     }
 
     if ((opcode != 18 && opcode != 19 && opcode != 21) ||
@@ -447,8 +655,139 @@ bool WorldScene::queryScriptValue(
     case script::ValueQuery::play_mode:
         value = 0;
         return true;
+    case script::ValueQuery::local_player_current_life:
+        value = playerCurrentLife();
+        return true;
+    case script::ValueQuery::local_player_maximum_life:
+        value = playerRuntimeProfile().maximum_life;
+        return true;
+    case script::ValueQuery::local_player_current_mana:
+        value = playerCurrentMana();
+        return true;
+    case script::ValueQuery::local_player_maximum_mana:
+        value = playerRuntimeProfile().maximum_mana;
+        return true;
+    case script::ValueQuery::local_player_condition_current:
+    case script::ValueQuery::local_player_condition_maximum:
+        // The initial portable combat slice does not yet model the optional
+        // player condition at runtime offsets 0xf8/0xfc. Retail returns two
+        // equal -1 sentinels while it is inactive, which is the normal state
+        // exercised by Syria's repeat conversation.
+        value = -1;
+        return true;
+    case script::ValueQuery::local_player_gold:
+        value = player_inventory_.gold();
+        return true;
+    case script::ValueQuery::local_player_has_unidentified_items:
+        value =
+            player_equipment_.hasUnidentifiedItems() ||
+                    player_inventory_.hasUnidentifiedItems() ||
+                    player_belt_.hasUnidentifiedItems()
+                ? 1
+                : 0;
+        return true;
+    case script::ValueQuery::local_player_repair_price:
+    case script::ValueQuery::local_player_spell_learned:
+        return false;
+    case script::ValueQuery::local_player_job_selection:
+        value = retailScriptJobSelection(player_data_.job());
+        return true;
+    case script::ValueQuery::scenario_entry_value:
+        value = scenario_world_.entryValue();
+        return true;
+    case script::ValueQuery::blackjack_result:
+        value = blackjack_result_;
+        return true;
     }
     return false;
+}
+
+bool WorldScene::queryScriptIndexedValue(
+    script::ValueQuery query,
+    std::int32_t index,
+    std::int32_t& value) const {
+    if (!has_player_) {
+        return false;
+    }
+    if (query ==
+        script::ValueQuery::local_player_spell_learned) {
+        if (index < 0 ||
+            static_cast<std::size_t>(index) >=
+                PlayerMagic::spell_count) {
+            return false;
+        }
+        value = player_magic_.permanentlyLearned(index) ? 1 : 0;
+        return true;
+    }
+    if (query !=
+        script::ValueQuery::local_player_repair_price) {
+        return false;
+    }
+    const TableData* value_parameters =
+        parameter_tables_.find(34);
+    if (!value_parameters) {
+        return false;
+    }
+    if (index == -1) {
+        value = player_inventory_.repairPrice(
+            item_database_, *value_parameters);
+        return true;
+    }
+    const std::optional<EquipmentRepairGroup> group =
+        equipmentRepairGroup(index);
+    if (!group) {
+        return false;
+    }
+    value = player_equipment_.repairPrice(
+        *group, item_database_, *value_parameters);
+    return true;
+}
+
+bool WorldScene::measureScriptCharacterDistance(
+    std::int32_t character_number,
+    std::int32_t& distance) const {
+    if (!has_player_) {
+        return false;
+    }
+
+    WorldPosition position;
+    const ObjectBounds* judgement = nullptr;
+    if (!scriptCharacterBounds(
+            character_number, position, judgement)) {
+        return false;
+    }
+
+    distance = distanceBetweenBounds(
+        player_.position(),
+        player_.judgement(),
+        position,
+        *judgement);
+    return true;
+}
+
+bool WorldScene::scriptCharacterBounds(
+    std::int32_t character_number,
+    WorldPosition& position,
+    const ObjectBounds*& judgement) const {
+    judgement = nullptr;
+    if (const ScenarioObjectActor* object =
+            findScriptObject(character_number)) {
+        position = object->position();
+        judgement = &object->judgement();
+    } else if (const NpcActor* npc =
+                   findScriptNpc(character_number)) {
+        position = npc->position();
+        judgement = &npc->judgement();
+    } else if (const EnemyActor* enemy =
+                   findScriptEnemy(character_number)) {
+        position = enemy->position();
+        judgement = &enemy->judgement();
+    } else if (const GroundItem* item =
+                   findScriptGroundItem(character_number)) {
+        position = item->position;
+        judgement = &item->judgement;
+    }
+    return judgement != nullptr;
 }
 
 void WorldScene::runScenarioContactTriggers() {
@@ -465,24 +804,10 @@ void WorldScene::runScenarioContactTriggers() {
 
         WorldPosition position;
         const ObjectBounds* judgement = nullptr;
-        if (const ScenarioObjectActor* object =
-                findScriptObject(status.character_number)) {
-            position = object->position();
-            judgement = &object->judgement();
-        } else if (const NpcActor* npc =
-                       findScriptNpc(status.character_number)) {
-            position = npc->position();
-            judgement = &npc->judgement();
-        } else if (const EnemyActor* enemy =
-                       findScriptEnemy(status.character_number)) {
-            position = enemy->position();
-            judgement = &enemy->judgement();
-        } else if (const GroundItem* item =
-                       findScriptGroundItem(status.character_number)) {
-            position = item->position;
-            judgement = &item->judgement;
-        }
-        if (!judgement ||
+        if (!scriptCharacterBounds(
+                status.character_number,
+                position,
+                judgement) ||
             !boundsIntersect(
                 player_position,
                 player_judgement,

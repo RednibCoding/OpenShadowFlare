@@ -412,6 +412,40 @@ void WorldScene::updateRuntimeEffects() {
          update.audio) {
         queueRuntimeEffectAudio(audio);
     }
+
+    const PlayerLandMineUpdate mine_update =
+        player_land_mines_.update(
+            runtimeEffectTargets(),
+            parameter_tables_,
+            playerMineDamageBonus(),
+            item_random_,
+            [this](std::int32_t resource_id) {
+                const EffectVisualResource* visual =
+                    effect_visuals_.find(resource_id);
+                if (!visual ||
+                    visual->animation().charts().empty()) {
+                    return 1;
+                }
+                return std::max<std::int32_t>(
+                    visual->animation()
+                        .charts().front()
+                        .directions[8]
+                        .frame_count,
+                    1);
+            });
+    for (const PlayerLandMineDispatch& mine_dispatch :
+         mine_update.dispatches) {
+        applyRuntimeEffectDispatch({
+            mine_dispatch.contact,
+            mine_dispatch.packet,
+            1,
+            mine_dispatch.source_character_number,
+        });
+    }
+    for (const RuntimeEffectAudioRequest& audio :
+         mine_update.audio) {
+        queueRuntimeEffectAudio(audio);
+    }
 }
 
 }  // namespace osf

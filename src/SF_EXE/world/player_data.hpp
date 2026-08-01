@@ -2,6 +2,7 @@
 #define OPENSHADOWFLARE_PLAYER_DATA_HPP
 
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
+#include "player_job.hpp"
 
 #include <array>
 #include <cstddef>
@@ -9,6 +10,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace osf {
 
@@ -57,6 +59,7 @@ public:
     std::string name() const;
     std::int32_t gender() const;
     std::int32_t job() const;
+    void setJob(PlayerJob job);
     std::int32_t level() const;
     std::int32_t experience() const;
     std::int32_t experienceThreshold(
@@ -91,6 +94,15 @@ public:
     std::int32_t companionLevel() const;
     std::int32_t companionExperience() const;
     std::int32_t companionRespawnCounter() const;
+    std::size_t companionCount() const;
+    std::int32_t companionLevel(std::int32_t type) const;
+    std::int32_t companionExperience(std::int32_t type) const;
+    const std::vector<std::int32_t>& companionLevels() const;
+    const std::vector<std::int32_t>& companionExperiences() const;
+    bool restoreCompanionProgress(
+        std::vector<std::int32_t> levels,
+        std::vector<std::int32_t> experiences);
+    bool switchCompanion(std::int32_t type);
     void setCompanionRespawnCounter(std::int32_t value);
     void awardCompanionKillExperience(
         std::int32_t source_character_number,
@@ -110,6 +122,10 @@ public:
     std::int32_t baseMagicalEvasionRate() const;
     std::int32_t elementX() const;
     std::int32_t elementY() const;
+    bool clearElementCondition();
+    bool applyElementMedicine(
+        std::int32_t element,
+        std::int32_t distance);
     std::array<std::int32_t, 17>
         combatPacketStateWords() const;
     std::int32_t walkingSpeedTier() const;
@@ -120,8 +136,14 @@ private:
     std::int32_t readI32(std::size_t offset) const;
     void writeI32(std::size_t offset, std::int32_t value);
     void levelUp(const TableDatabase& tables);
+    bool initializeCompanionProgress(
+        const TableDatabase& tables,
+        std::string* error);
+    void storeActiveCompanionProgress();
 
     std::array<std::uint8_t, retail_record_size> record_{};
+    std::vector<std::int32_t> companion_levels_;
+    std::vector<std::int32_t> companion_experiences_;
     bool valid_ = false;
 };
 

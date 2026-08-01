@@ -24,6 +24,9 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t target_identifier = 0;
     bool exact_target_only = false;
     bool home_toward_target = false;
+    bool fixed_target_diagonal_approach = false;
+    std::int32_t random_start_delay = 0;
+    std::int32_t target_approach_updates = 0;
     std::int32_t homing_turn_speed = 0;
     double direction_radians = 0.0;
     std::int32_t travel_speed = 0;
@@ -46,6 +49,9 @@ struct RuntimeEffectActorSpawnRequest {
     std::int32_t animation_direction = 8;
     std::int32_t animation_speed = 1000;
     std::int32_t additional_display_status = 0;
+    std::int32_t red_strength = 1000;
+    std::int32_t green_strength = 1000;
+    std::int32_t blue_strength = 1000;
     bool visible = true;
     bool track_for_controller = false;
     std::int32_t controller_tracking_index = -1;
@@ -94,6 +100,9 @@ public:
     std::int32_t animationFrame() const;
     std::int32_t displayHeight() const;
     std::int32_t additionalDisplayStatus() const;
+    std::int32_t redStrength() const;
+    std::int32_t greenStrength() const;
+    std::int32_t blueStrength() const;
     std::int32_t counter() const;
     std::int32_t movementCounter() const;
     std::int32_t lifetime() const;
@@ -121,6 +130,9 @@ private:
     double direction_radians_ = 0.0;
     std::int32_t animation_direction_ = 8;
     bool homing_active_ = false;
+    bool target_approach_active_ = false;
+    std::int32_t target_approach_delay_ = -1;
+    std::int32_t target_approach_delay_counter_ = 0;
     bool expired_ = false;
     bool has_updated_ = false;
     RuntimeEffectTargetMemory target_memory_;

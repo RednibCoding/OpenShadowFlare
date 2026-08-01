@@ -51,6 +51,7 @@ SpellCharts chartsForAction(
         }
     }
     switch (action) {
+    case PlayerSpellAction::transport:
     case PlayerSpellAction::plasma:
     case PlayerSpellAction::ice_blast:
     case PlayerSpellAction::heal:
@@ -62,6 +63,7 @@ SpellCharts chartsForAction(
     case PlayerSpellAction::identify:
     case PlayerSpellAction::magic_shield:
     case PlayerSpellAction::counter_burst:
+    case PlayerSpellAction::explosion:
         return {11, 12};
     case PlayerSpellAction::fire_ball:
     case PlayerSpellAction::ice_bolt:
@@ -70,6 +72,7 @@ SpellCharts chartsForAction(
     case PlayerSpellAction::dread_deathscythe:
     case PlayerSpellAction::medusa:
     case PlayerSpellAction::mud_javelin:
+    case PlayerSpellAction::elemental_strike:
         return {13, 14};
     case PlayerSpellAction::sonic_blade:
         return {};
@@ -86,6 +89,7 @@ bool dispatchesAtEffectMarker(
            action == PlayerSpellAction::identify ||
            action == PlayerSpellAction::magic_shield ||
            action == PlayerSpellAction::counter_burst ||
+           action == PlayerSpellAction::explosion ||
            action == PlayerSpellAction::sonic_blade;
 }
 
@@ -124,6 +128,9 @@ bool playerSpellActionForSpell(
     std::int32_t spell,
     PlayerSpellAction& action) {
     switch (spell) {
+    case 0:
+        action = PlayerSpellAction::transport;
+        return true;
     case 1:
         action = PlayerSpellAction::fire_ball;
         return true;
@@ -180,6 +187,12 @@ bool playerSpellActionForSpell(
         return true;
     case 19:
         action = PlayerSpellAction::counter_burst;
+        return true;
+    case 20:
+        action = PlayerSpellAction::explosion;
+        return true;
+    case 21:
+        action = PlayerSpellAction::elemental_strike;
         return true;
     default:
         return false;

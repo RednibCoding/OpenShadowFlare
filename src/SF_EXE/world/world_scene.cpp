@@ -46,6 +46,29 @@ WorldScene::WorldScene()
               std::int32_t& value) {
               return queryScriptValue(query, value);
           },
+          [this](
+              script::ValueQuery query,
+              std::int32_t index,
+              std::int32_t& value) {
+              return queryScriptIndexedValue(
+                  query, index, value);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& distance) {
+              return measureScriptCharacterDistance(
+                  character_number, distance);
+          },
+          [this](
+              std::int32_t category,
+              std::int32_t definition_id,
+              bool& present) {
+              return queryScriptItem(
+                  category, definition_id, present);
+          },
+          [this]() {
+              return item_random_.next();
+          },
       }) {}
 
 
@@ -77,11 +100,14 @@ void WorldScene::clear() {
     player_belt_.clear();
     player_inventory_.clear();
     player_special_items_.clear();
+    player_giant_warehouse_.initializeNew();
+    player_automatic_items_.clear();
+    vendor_inventories_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
     ai_control_database_.clear();
     script_persistent_values_.clear();
-    scenario_flags_.clear();
+    script_state_flags_.clear();
     data_root_.clear();
     item_world_resources_.clear();
     item_random_.seed(1);
@@ -92,12 +118,16 @@ void WorldScene::clear() {
     player_energy_shield_.clear();
     player_magic_shield_.clear();
     player_counter_burst_.clear();
+    player_increased_power_.clear();
     player_life_rate_.clear();
     player_mana_rate_.clear();
     player_item_controller_.clear();
+    player_land_mines_.clear();
+    player_transport_spell_.clear();
     player_.clear();
     has_player_ = false;
     pending_player_attack_impact_target_id_ = -1;
+    player_increased_power_attack_targets_.clear();
     next_ground_item_id_ = 0;
     camera_anchor_x_ = 320;
     camera_anchor_y_ = 240;
@@ -105,10 +135,13 @@ void WorldScene::clear() {
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    blackjack_result_ = 0;
     pending_script_travel_ = {};
     script_travel_pending_ = false;
     scenario_changed_ = false;
     player_identify_mode_active_ = false;
+    player_infinite_life_ = false;
+    player_infinite_mana_ = false;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -171,6 +204,20 @@ WorldScene::combatEffects() const {
 const std::vector<RuntimeEffectActor>&
 WorldScene::runtimeEffects() const {
     return runtime_effects_.actors();
+}
+
+const PlayerTransportSpell&
+WorldScene::playerTransportSpell() const {
+    return player_transport_spell_;
+}
+
+const gapi::NjpImage* WorldScene::playerTransportPatterns() const {
+    return effect_pattern_resources_.find(10000020);
+}
+
+const EffectVisualResource*
+WorldScene::playerTransportVisual() const {
+    return effect_visuals_.find(10000020);
 }
 
 const std::vector<MissEffectActor>&
@@ -257,6 +304,31 @@ std::int32_t WorldScene::playerCounterBurstFrame() const {
     return player_counter_burst_.auraFrame();
 }
 
+bool WorldScene::playerIncreasedPowerReady() const {
+    return player_increased_power_.ready(
+        player_special_items_);
+}
+
+bool WorldScene::playerIncreasedPowerActive() const {
+    return player_increased_power_.active();
+}
+
+bool WorldScene::playerIncreasedPowerActivationFeedback() const {
+    return player_increased_power_.remainingUpdates() >
+        PlayerIncreasedPower::active_updates - 5;
+}
+
+const EffectVisualResource*
+WorldScene::playerIncreasedPowerVisual() const {
+    return player_powerup_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_powerup_visual_;
+}
+
+std::int32_t WorldScene::playerIncreasedPowerFrame() const {
+    return player_increased_power_.auraFrame();
+}
+
 std::size_t
 WorldScene::runtimeEffectControllerCount() const {
     return runtime_effects_.controllerCount();
@@ -289,9 +361,9 @@ WorldScene::aiControlDatabase() const {
 
 RetailSaveProgress WorldScene::retailSaveProgress() const {
     return {
-        scenario_flags_,
-        transports_.enabledFlags(),
         quests_.states(),
+        transports_.enabledFlags(),
+        script_state_flags_,
         player_.movementPace() == MovementPace::run,
     };
 }
@@ -328,6 +400,43 @@ const PlayerSpecialItems& WorldScene::playerSpecialItems() const {
     return player_special_items_;
 }
 
+PlayerGiantWarehouse& WorldScene::playerGiantWarehouse() {
+    return player_giant_warehouse_;
+}
+
+const PlayerGiantWarehouse&
+WorldScene::playerGiantWarehouse() const {
+    return player_giant_warehouse_;
+}
+
+PlayerAutomaticItems& WorldScene::playerAutomaticItems() {
+    return player_automatic_items_;
+}
+
+const PlayerAutomaticItems&
+WorldScene::playerAutomaticItems() const {
+    return player_automatic_items_;
+}
+
+VendorInventory* WorldScene::vendorInventory(std::int32_t index) {
+    if (index < 0 ||
+        static_cast<std::size_t>(index) >=
+            vendor_inventories_.size()) {
+        return nullptr;
+    }
+    return &vendor_inventories_[static_cast<std::size_t>(index)];
+}
+
+const VendorInventory* WorldScene::vendorInventory(
+    std::int32_t index) const {
+    if (index < 0 ||
+        static_cast<std::size_t>(index) >=
+            vendor_inventories_.size()) {
+        return nullptr;
+    }
+    return &vendor_inventories_[static_cast<std::size_t>(index)];
+}
+
 const ItemInventoryResource&
 WorldScene::itemInventoryPatterns() const {
     return item_inventory_patterns_;
@@ -335,6 +444,33 @@ WorldScene::itemInventoryPatterns() const {
 
 const PlayerData& WorldScene::playerData() const {
     return player_data_;
+}
+
+void WorldScene::configurePlayerDebugResources(
+    bool infinite_life,
+    bool infinite_mana) {
+    player_infinite_life_ = infinite_life;
+    player_infinite_mana_ = infinite_mana;
+}
+
+bool WorldScene::playerInfiniteLife() const {
+    return player_infinite_life_;
+}
+
+bool WorldScene::playerInfiniteMana() const {
+    return player_infinite_mana_;
+}
+
+std::int32_t WorldScene::playerCurrentLife() const {
+    return player_infinite_life_
+        ? playerRuntimeProfile().maximum_life
+        : player_data_.currentLife();
+}
+
+std::int32_t WorldScene::playerCurrentMana() const {
+    return player_infinite_mana_
+        ? playerRuntimeProfile().maximum_mana
+        : player_data_.currentMana();
 }
 
 PlayerMagic& WorldScene::playerMagic() {
@@ -351,24 +487,90 @@ const TableDatabase& WorldScene::parameterTables() const {
 
 PlayerItemUseResult WorldScene::usePlayerBeltPocket(
     std::int32_t pocket) {
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
+    const PlayerEquipment::DerivedParameterBonuses bonuses =
+        player_equipment_.derivedParameterBonuses(item_database_);
     return player_item_controller_.useBeltPocket(
         pocket,
         player_belt_,
         item_database_,
-        player_data_);
+        {
+            player_data_,
+            profile.maximum_life,
+            profile.maximum_mana,
+            bonuses[0],
+            bonuses[3],
+            hasCompanion() ? &companion_ : nullptr,
+        });
 }
 
 PlayerItemUseResult WorldScene::usePlayerInventoryItem(
     std::int32_t item_index) {
+    const PlayerRuntimeProfile profile =
+        playerRuntimeProfile();
+    const PlayerEquipment::DerivedParameterBonuses bonuses =
+        player_equipment_.derivedParameterBonuses(item_database_);
     return player_item_controller_.useInventoryItem(
         item_index,
         player_inventory_,
         item_database_,
-        player_data_);
+        {
+            player_data_,
+            profile.maximum_life,
+            profile.maximum_mana,
+            bonuses[0],
+            bonuses[3],
+            hasCompanion() ? &companion_ : nullptr,
+        });
 }
 
 std::int32_t WorldScene::playerMineCount() const {
     return player_item_controller_.mineCount();
+}
+
+bool WorldScene::placePlayerLandMine() {
+    if (!has_player_ ||
+        player_data_.currentLife() <= 0 ||
+        player_item_controller_.mineCount() <= 0 ||
+        !player_land_mines_.ready()) {
+        return false;
+    }
+    std::string error;
+    if (!effect_pattern_resources_.load(
+            data_root_, 1000, &error)) {
+        return false;
+    }
+    for (std::int32_t resource = 1001;
+         resource <= 1008;
+         ++resource) {
+        if (!effect_visuals_.load(
+                data_root_, resource, &error)) {
+            return false;
+        }
+    }
+    if (!player_land_mines_.place(
+            player_.position(),
+            player_data_.level(),
+            scenario_world_.localPlayerNumber())) {
+        return false;
+    }
+    return player_item_controller_.consumeMine();
+}
+
+const std::vector<PlayerLandMineVisual>&
+WorldScene::playerLandMineVisuals() const {
+    return player_land_mines_.visuals();
+}
+
+const gapi::NjpImage* WorldScene::playerLandMinePatterns() const {
+    return effect_pattern_resources_.find(1000);
+}
+
+const EffectVisualResource*
+WorldScene::playerLandMineVisualResource(
+    std::int32_t resource_id) const {
+    return effect_visuals_.find(resource_id);
 }
 
 const ItemWorldResource* WorldScene::itemWorldResource(
@@ -408,6 +610,21 @@ void WorldScene::refreshPlayerAppearance() {
         item_database_);
 }
 
+std::int32_t WorldScene::playerEquipmentColor(
+    EquipmentSlot slot) const {
+    return player_equipment_.appearanceColor(slot);
+}
+
+bool WorldScene::setPlayerEquipmentColor(
+    EquipmentSlot slot,
+    std::int32_t color_index) {
+    if (!player_equipment_.setAppearanceColor(slot, color_index)) {
+        return false;
+    }
+    refreshPlayerAppearance();
+    return true;
+}
+
 bool WorldScene::hasPlayer() const {
     return has_player_;
 }
@@ -418,12 +635,25 @@ void WorldScene::togglePlayerRun() {
     }
 }
 
+bool WorldScene::activatePlayerIncreasedPower() {
+    if (!has_player_ ||
+        !player_increased_power_.activate(
+            player_special_items_)) {
+        return false;
+    }
+    player_powerup_visual_.load(
+        data_root_ / "Player" / "Common",
+        "Powerup",
+        nullptr);
+    return true;
+}
+
 void WorldScene::update() {
     // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
     // next player update when no mana remains. Keeping this before the cast
     // action lets an exact-cost activation show its marker frame once, as in
     // retail.
-    if (player_data_.currentMana() == 0) {
+    if (playerCurrentMana() == 0) {
         player_magic_shield_.deactivate();
         player_counter_burst_.deactivate();
     }
@@ -434,6 +664,7 @@ void WorldScene::update() {
     player_energy_shield_.updateAura(has_player_);
     player_magic_shield_.updateAura(has_player_);
     player_counter_burst_.updateAura(has_player_);
+    player_increased_power_.updateAura(has_player_);
     if (camera_shake_counter_ >= 0) {
         camera_shake_counter_ =
             retailAdd(camera_shake_counter_, 1);
@@ -444,6 +675,7 @@ void WorldScene::update() {
     }
     pending_player_attack_impact_target_id_ = -1;
     level_up_notice_.update();
+    quests_.updateNotice();
     std::vector<EnemyActor>& live_enemies =
         scenario_world_.enemies();
     live_enemies.erase(
@@ -604,7 +836,8 @@ void WorldScene::update() {
     std::size_t companion_blocker_index = no_blocker;
     if (has_player_) {
         player_.setWalkingSpeedTier(
-            playerRuntimeProfile().walkingSpeedTier());
+            player_increased_power_.movementSpeedTier(
+                playerRuntimeProfile().walkingSpeedTier()));
         player_.update(
             scenario_world_.ground(),
             scenario_world_.objectMap(),
@@ -614,7 +847,14 @@ void WorldScene::update() {
             parameter_tables_.find(20));
         handlePlayerAttackEvent(player_.takeAttackEvent());
         handlePlayerSpellEvent(player_.takeSpellEvent());
+        if (updatePlayerTransportContact()) {
+            return;
+        }
+        updatePlayerTransportPresentation();
         updatePlayerResourceRates();
+        if (player_increased_power_.update()) {
+            pending_audio_samples_.push_back(76);
+        }
         const std::int32_t footstep_sample =
             player_.takeFootstepSample();
         if (footstep_sample >= 0) {
@@ -704,6 +944,16 @@ void WorldScene::update() {
                 enemy, update.effect_spawn);
         } else {
             queueCombatEffect(update.effect_spawn);
+        }
+        if (update.death_finished &&
+            scenario_script_.data().findStatus(
+                4, enemy.characterNumber())) {
+            // The retail enemy owner calls FUN_004309a0 after the death
+            // animation and fade have completed. Scenario status kind four
+            // owns authored consequences such as completing the first Red
+            // Goblin quest; ordinary enemies simply have no matching row.
+            scenario_script_.startStatus(
+                4, enemy.characterNumber());
         }
         if (enemy_blocker_indices[index] != no_blocker) {
             actor_blockers[
@@ -932,5 +1182,11 @@ const script::ScriptData& WorldScene::scenarioScript() const {
     return scenario_script_.data();
 }
 
+std::int32_t WorldScene::scenarioCaptionMessageId() const {
+    return scenario_script_.caption().id;
+}
 
+const std::string& WorldScene::scenarioCaptionText() const {
+    return scenario_script_.caption().text;
+}
 }  // namespace osf

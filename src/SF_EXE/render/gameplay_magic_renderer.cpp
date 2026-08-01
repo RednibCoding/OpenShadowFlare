@@ -268,7 +268,9 @@ void renderGameplayMagicPanel(
                 spell,
                 world.playerEquipment(),
                 world.itemDatabase(),
-                world.parameterTables());
+                world.parameterTables(),
+                0,
+                world.playerIncreasedPowerActive());
         constexpr gapi::Color name_color{
             224, 192, 128, 255,
         };

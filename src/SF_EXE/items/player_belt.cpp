@@ -3,6 +3,7 @@
 #include "item_database.hpp"
 #include "item_grid.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <utility>
 
@@ -83,6 +84,23 @@ const InventoryItem* PlayerBelt::itemAt(
 
 const std::vector<InventoryItem>& PlayerBelt::items() const {
     return items_;
+}
+
+std::int32_t PlayerBelt::identifyAll() {
+    std::int32_t identified = 0;
+    for (InventoryItem& item : items_) {
+        identified += identifyInventoryItem(item) ? 1 : 0;
+    }
+    return identified;
+}
+
+bool PlayerBelt::hasUnidentifiedItems() const {
+    return std::any_of(
+        items_.begin(),
+        items_.end(),
+        [](const InventoryItem& item) {
+            return item.identified == 0;
+        });
 }
 
 }  // namespace osf

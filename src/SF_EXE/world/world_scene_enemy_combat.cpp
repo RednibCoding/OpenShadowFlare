@@ -2,6 +2,8 @@
 #include "enemy_death_rewards.hpp"
 #include "player_combat_defense.hpp"
 
+#include <limits>
+
 namespace osf {
 
 void WorldScene::accountEnemyKill(
@@ -21,6 +23,9 @@ void WorldScene::accountEnemyKill(
     if (accounting.companion_level_gained) {
         refreshCompanionRuntimeProfile(true);
     }
+    if (accounting.direct_local_kill) {
+        player_increased_power_.accountDirectLocalKill();
+    }
     trainActiveSustainedSpellsOnOwnedKill(
         player_magic_,
         player_moon_spell_,
@@ -34,17 +39,12 @@ void WorldScene::accountEnemyKill(
         enemy.defeat_source_character_number,
         scenario_world_.localPlayerNumber(),
         parameter_tables_);
-    if (!accounting.level_gained) {
-        return;
-    }
-    level_up_notice_ = {
+    presentPlayerLevelUp({
+        accounting.level_gained,
         accounting.level_up_notice,
         accounting.level_up_notice_counter,
-    };
-    pending_audio_samples_.insert(
-        pending_audio_samples_.end(),
-        accounting.audio_samples.begin(),
-        accounting.audio_samples.end());
+        accounting.audio_samples,
+    });
 }
 
 PlayerDamageReceiverState
@@ -67,12 +67,20 @@ WorldScene::playerDamageReceiverState() const {
     state.effect_owner_identifier =
         scenario_world_.localPlayerNumber();
     state.level = player_data_.level();
-    state.maximum_life =
-        profile.maximum_life;
-    state.current_life = player_data_.currentLife();
-    state.maximum_mana =
-        profile.maximum_mana;
-    state.current_mana = player_data_.currentMana();
+    constexpr std::int32_t kDebugResourcePool =
+        std::numeric_limits<std::int32_t>::max() / 4;
+    state.maximum_life = player_infinite_life_
+        ? kDebugResourcePool
+        : profile.maximum_life;
+    state.current_life = player_infinite_life_
+        ? kDebugResourcePool
+        : player_data_.currentLife();
+    state.maximum_mana = player_infinite_mana_
+        ? kDebugResourcePool
+        : profile.maximum_mana;
+    state.current_mana = player_infinite_mana_
+        ? kDebugResourcePool
+        : player_data_.currentMana();
     state.equipment = player_equipment_;
     state.inventory = player_inventory_;
     state.special_items = player_special_items_;
@@ -84,6 +92,8 @@ WorldScene::playerDamageReceiverState() const {
         player_magic_shield_.active();
     state.counter_burst_active =
         player_counter_burst_.active();
+    state.increased_power_updates =
+        player_increased_power_.remainingUpdates();
 
     const PlayerDamagePresentation presentation =
         player_.damagePresentation();
@@ -105,10 +115,14 @@ WorldScene::playerDamageReceiverState() const {
 
 void WorldScene::applyPlayerDamageReceiverState(
     const PlayerDamageReceiverState& state) {
-    player_data_.setCurrentLife(
-        state.current_life, state.maximum_life);
-    player_data_.setCurrentMana(
-        state.current_mana, state.maximum_mana);
+    if (!player_infinite_life_) {
+        player_data_.setCurrentLife(
+            state.current_life, state.maximum_life);
+    }
+    if (!player_infinite_mana_) {
+        player_data_.setCurrentMana(
+            state.current_mana, state.maximum_mana);
+    }
     player_equipment_ = state.equipment;
     player_inventory_ = state.inventory;
     player_special_items_ = state.special_items;
@@ -315,8 +329,7 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
             target.present = true;
             target.active_state = 1;
             target.scenario_id = scenario_world_.id();
-            target.current_life =
-                player_data_.currentLife();
+            target.current_life = playerCurrentLife();
             target.combat_defense =
                 profile.physical_evasion;
             target.position = player_.position();
@@ -396,7 +409,7 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
                 return MovementTargetState{};
             }
             return MovementTargetState{
-                player_data_.currentLife() > 0,
+                playerCurrentLife() > 0,
                 player_.position(),
                 player_.judgement(),
             };

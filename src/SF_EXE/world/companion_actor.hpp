@@ -3,6 +3,7 @@
 
 #include "companion_attack_action.hpp"
 #include "companion_damage_receiver.hpp"
+#include "companion_explosion_action.hpp"
 #include "companion_profile.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
@@ -24,6 +25,7 @@ enum class CompanionMotion {
     walking,
     running,
     attacking,
+    exploding,
     reacting,
     defeated,
     reviving,
@@ -33,6 +35,13 @@ struct CompanionActorUpdate {
     bool impact_due = false;
     bool swing_sound_due = false;
     bool attack_completed = false;
+};
+
+struct CompanionExplosionUpdate {
+    bool handled = false;
+    bool relocated = false;
+    bool impact_due = false;
+    bool completed = false;
 };
 
 struct CompanionPresentationUpdate {
@@ -72,6 +81,9 @@ public:
     void trackCombatTarget(
         std::int32_t target_character_number);
     CompanionActorUpdate updateAttack();
+    bool beginExplosion(WorldPosition destination);
+    bool activatePendingExplosion();
+    CompanionExplosionUpdate updateExplosion();
     void leaveCombat();
     CompanionPresentationUpdate
     updateDamagePresentation(
@@ -89,6 +101,9 @@ public:
         const CompanionProfile& profile);
     void applyRuntimeProfile(
         const CompanionProfile& profile);
+    bool restoreLife(
+        std::int32_t amount,
+        std::int32_t maximum_percent);
 
     bool valid() const;
     std::int32_t characterNumber() const;
@@ -108,6 +123,8 @@ public:
     std::int32_t maximumLife() const;
     std::int32_t combatTargetCharacterNumber() const;
     bool attackActive() const;
+    bool explosionPending() const;
+    bool explosionActive() const;
     bool partEnabled(std::size_t part) const;
     std::int32_t partRedStrength(std::size_t part) const;
     std::int32_t partGreenStrength(std::size_t part) const;
@@ -145,6 +162,9 @@ private:
     std::int32_t combat_target_character_number_ = -1;
     MovementController movement_controller_;
     CompanionAttackActionController attack_action_;
+    CompanionExplosionActionController explosion_action_;
+    WorldPosition pending_explosion_destination_;
+    bool explosion_pending_ = false;
     const CharacterVisualResource* visual_ = nullptr;
 };
 

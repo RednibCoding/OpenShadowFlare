@@ -41,7 +41,8 @@ void renderCharacterAnimationPass(
     bool shadow,
     std::int32_t shadow_opacity,
     std::int32_t screen_height = 0,
-    std::int32_t opacity = 1000);
+    std::int32_t opacity = 1000,
+    std::int32_t additional_status = 0);
 
 }  // namespace osf
 

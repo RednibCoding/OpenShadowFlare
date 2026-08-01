@@ -46,6 +46,24 @@ std::uint8_t blendChannel(
         1000);
 }
 
+std::uint8_t addChannel(
+    std::uint8_t destination,
+    std::uint8_t source,
+    std::int32_t opacity) {
+    opacity = std::clamp(opacity, 0, 2000);
+    const std::int32_t source_amount =
+        opacity <= 1000
+            ? static_cast<std::int32_t>(source) * opacity / 1000
+            : static_cast<std::int32_t>(source) +
+                  (255 - static_cast<std::int32_t>(source)) *
+                      (opacity - 1000) / 1000;
+    return static_cast<std::uint8_t>(
+        std::min(
+            static_cast<std::int32_t>(destination) +
+                source_amount,
+            255));
+}
+
 std::uint8_t readPixelIndex(
     const NjpPart& part,
     std::int32_t x,
@@ -227,7 +245,18 @@ bool SoftwareBackend::drawPattern(
                         static_cast<std::size_t>(target_y) *
                             width_ +
                         static_cast<std::size_t>(target_x)];
-                if (draw.opacity >= 1000) {
+                if (draw.blend_mode ==
+                    PatternBlendMode::additive) {
+                    destination.red = addChannel(
+                        destination.red, color.red, draw.opacity);
+                    destination.green = addChannel(
+                        destination.green,
+                        color.green,
+                        draw.opacity);
+                    destination.blue = addChannel(
+                        destination.blue, color.blue, draw.opacity);
+                    destination.alpha = 255;
+                } else if (draw.opacity >= 1000) {
                     destination = color;
                 } else if (draw.opacity > 0) {
                     destination.red = blendChannel(

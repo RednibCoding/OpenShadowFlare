@@ -62,10 +62,41 @@ broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 
 For reconstruction testing, `F12` opens a separate debug menu in the same
-visual style without changing the retail Escape menu. Its FPS counter and
-temporary All Spells override are independent toggles. The override affects
-the live Magic window and bar only: it does not grant spell progress or write
-debug-only availability and bar assignments into the character save.
+visual style without changing the retail Escape menu. Its FPS counter, All
+Spells, Infinite HP, and Infinite MP entries are independent runtime toggles.
+The spell override affects the live Magic window and bar only, while the
+resource overrides are applied at the combat and spell-cost boundaries. None
+of them changes the character's saved progress or resource values.
+
+`S` opens the live Status tab on the left; `M` opens Magic. They are the two
+tabs of the same authored window and can also be switched by clicking their
+headings. Status shows the saved character identity, current and derived
+physical and magical values, and the eight elemental affinities. Like Magic,
+it keeps the world running and can stay open beside Inventory.
+
+Scripted spell rewards use the same saved `PlayerMagic` availability array as
+that panel. Retail opcodes 67 and 69 can permanently learn a spell or query its
+exact learned state; the F12 All Spells override remains temporary and cannot
+change those scenario branches or their save data.
+
+Scenario-driven occupation changes stay in the saved player record too.
+Retail opcodes 70 and 71 translate between the authored menu choices and the
+Mercenary, Warrior, Hunter, or gender-named spellcaster job without rewriting
+the character's earlier level history.
+
+The final bar icon selects retail normal-target mode. Right-clicking the world
+with a one-handed or two-handed weapon then runs the matching three-part melee
+combo, with each CAF phase owning its own impact, short forward step, weapon
+sound, and gender-specific voice. Selecting Transport instead creates the
+original paired portal between the current field and the player's Remote Town
+entry. Its four falling layers, paused center animation, sounds, collision
+checks, and enter/leave requirement follow the retail update path.
+
+All 22 player spells now enter their retail actions through that same world
+boundary. Their individual chart timing, targeting rules, MP costs, packets,
+effects, projectiles, area stages, buffs, companion handoffs, sounds, and
+practice awards stay in focused spell and effect owners instead of the UI or
+platform runtime.
 
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
@@ -226,6 +257,31 @@ and their script-controlled visibility and judgement state decides whether
 they are drawn or block movement. They share the ordinary display-order passes
 with scenery, the player, PEOPLE actors, and ground items.
 
+Scenario setup now follows the retail entry order too. The player is relocated
+before status kind 7 runs, including for same-scenario entry changes, so script
+opcode 50 sees the correct floor and level-dependent vendor setup sees the live
+hero. Opcode 49 retains the raw authored area-caption message for inspection;
+it is not drawn because the known executable references never read that buffer.
+
+Active-map scripts can also apply retail opcode 56 without leaking object rules
+into the interpreter. The common scenario-entity state keeps its MCT-backed
+visible, pointer, and judgement channels plus the separate effective override.
+Near Remote Town uses that path to swap its two overlapping authored objects;
+later scenarios can reuse the same command for visible and collidable variants.
+
+Script randomness crosses that boundary through one host callback as well.
+Opcode 39 lives in `RKC_RPG_SCRIPT`, evaluates and writes typed operands there,
+but consumes the next value from the world's shared retail random owner. That
+keeps random branching and spawn setup faithful without making the portable
+DLL library depend on world or core classes.
+
+Periodic scenario effects use that same split. Opcode 30 stays a fourteen-
+operand command in `RKC_RPG_SCRIPT`; a focused world helper turns those values
+into the retail projected origin, combat packet, shared-random impact visual,
+and ordinary effect request. Near Remote Town therefore uses its authored
+effect-and-sound sentences without teaching the interpreter about world actor
+or rendering classes.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
@@ -255,6 +311,32 @@ Malse and Syria can be selected just like Ostare and run their actual
 new-game dialogue branches from `Scenario.Scs`. Syria's callback also reaches
 the first quest-state commands: it starts quest zero and selects the matching
 retail quest notice without putting quest IDs or dialogue into `WorldScene`.
+That notice uses the table-owned title, retail sound cue, 600-update lifetime,
+bottom-right placement, and clickable Mission List title. The original
+StatusIcon lock shortcut remains beside it while any quest is active and also
+opens the Mission List. Syria's repeat branch now reads the same saved quest
+state and follows her normal healing/blessing dialogue. The Red Goblin's
+authored status-kind-four death callback completes quest zero after its death
+presentation expires.
+
+That completion also unlocks Malse through his original script rather than an
+NPC-name check. His merchant introduction and service choices come from
+`Scenario.Scs`; choosing Trade opens vendor inventory zero on the left and the
+player inventory on the right. Stock is rebuilt by the scenario's opcode 6
+commands from Tables 32 and 33, with the retail fixed/random definition rules,
+rolled item instances, and 9-by-10 placement starts. Items can be bought into
+the backpack or equipment slots and sold back for gold, using the ordinary
+item sounds and delayed Price/Sale Price overlays.
+The adjacent Identify Items choice also follows the authored script: it scans
+equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
+keeps `NO` selected initially, rejects insufficient Gold, and identifies every
+owned item only after payment. The identified flags and their raw retail words
+then survive the existing save path.
+Repair Items now follows the neighboring authored branch as well. Its seven
+live prices use the executable's Table 34 item-value formula and exact
+durability arithmetic. Active and alternate weapon sets stay in their retail
+equipment slots, backpack repair ignores non-gear categories, payment happens
+only after the script's Gold check, and repaired durability survives saving.
 The Mission List exposes that state through the original `Q` shortcut and
 Settings-menu row. Its 48 titles and per-mission description lines come from
 `Table.Tbd`; the portable screen keeps the retail two-page layout, closed and
@@ -278,8 +360,13 @@ also be carried in the HUD's staggered two-row belt; keys `1` through `8` use
 those pockets. A fresh hero starts with the original Leather Cloth, four
 Tablets and four Capsules in both the backpack and belt, and five mines.
 Right-clicking a Tablet or Capsule in either owner uses it when the matching
-life or mana pool is not already full. Inventory movement, equipment, world
-drops, and medicine use play the corresponding retail effects. A ground item
+life or mana pool is not already full. Meat and its stronger variants continue
+through the same command to restore a living owned companion, but are left
+alone when it is full or defeated. Equipped HP/MP bonuses scale player
+medicine just as they do in the executable. White and elemental medicines now
+clear or move the persistent element alignment used by Status and combat;
+they are not modeled as temporary buffs. Inventory movement, equipment,
+world drops, and medicine use play the corresponding retail effects. A ground item
 that cannot fit in the backpack repeats its original bounce and landing sound
 instead of silently ignoring the pickup. `X` opens the separate
 9-by-10 special-item panel on the left and shifts the live world view to the
@@ -301,17 +388,40 @@ all the way from character selection through resources and voice playback. A
 selected save contributes its complete plain 0x160-byte player record. The
 in-game save actions also decode the retail item stream and
 round-trip equipped items, the backpack, and the belt without replacing the
-unknown equipment, special-item, or trailing state in an original save. The
-three retail scenario, transport, and quest/conversation flag arrays are
-restored and rewritten as well, and the selected walk/run mode survives a
+unknown trailing state in an original save. The
+three retail quest, transport, and general script-state arrays are restored
+and rewritten in executable order, and the selected walk/run mode survives a
 portable save/load. When
 the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
-Game. Confirmed return-to-title and exit actions still complete when a map,
-warehouse, special-item, or inventory panel is open. Scenario position, mines,
-script-created world actors, and the remaining dynamic state are still
-pending. Companion type, level, experience, and its defeated countdown
-already live in the preserved player record.
+Game. Escape closes any visible left- and right-hand gameplay panels first;
+only the following press opens Settings. The separate Land Mine count now
+survives the same save path. Its inventory icon and current/maximum readout
+are live too; pickups increment that owner directly and a mine at full
+capacity stays in the world instead of leaking into the backpack. Opcode 41's
+nonzero branch now opens the Tower of Ordeal Giant Warehouse with its ten
+separately unlocked 9-by-10 pages, and all ten owners survive both original
+retail and shorter portable saves. Category-four records with an authored
+page also follow retail's four private automatic-item owners rather than
+leaking into the backpack. Ground pickup and script opcodes 58, 59, and 75
+share those data-driven pages, duplicate rules, and fixed cells, and the pages
+survive at their exact post-Giant-Warehouse save boundary. Script opcode 68
+also awards its retail percentage of the current experience threshold through
+the same player growth, notice, resource refresh, and audio path used by combat.
+Tower of Ordeal's Blackjack service is connected through script opcodes 73
+and 74 as well. The modal owns the recovered deal timing, unique cards and
+joker, scoring and natural rules, dealer decisions, Hit/Stand input, original
+samples, result timing, and `Card.Njp` presentation. Closing it returns the
+retail result through status kind 8 so each scenario's SCS keeps control of
+the outcome branch. The Blackjack service can be tested independently now;
+the Tower maps which invoke it are not yet part of the playable scenario set.
+Scenario position,
+script-created world
+actors, and the remaining dynamic state are still pending. Companion type,
+active level, active experience, and its defeated countdown already live in
+the preserved player record. The following Table 60-sized save arrays retain
+level and experience for all six companions, and the scripted `Swap Dogs`
+choice rebuilds the selected PARTNER actor without hardcoded town logic.
 
 Run it with `--smoke-test` to close automatically after three frames.
 
@@ -377,7 +487,9 @@ implementations:
 `WorldScene` is the public facade used by gameplay and rendering, but the work
 behind it is kept in focused pieces: loading, interaction, item preparation,
 script bridging, player appearance, actors, pointer selection, quests, and
-movement all have their own implementation units or objects. The executable
+movement all have their own implementation units or objects. Executable-owned
+native script actions use focused builders under `world/script/` before
+`WorldScene` hands their typed requests to the normal world owners. The
 runtime follows the same rule. Frame composition lives in `RuntimeRenderer`,
 gameplay panels in `GameplayUiController`, and state hook wiring in
 `state_bindings`; the main runtime is only responsible for lifecycle and the

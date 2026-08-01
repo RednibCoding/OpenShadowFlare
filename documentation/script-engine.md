@@ -241,9 +241,16 @@ Kind `5` is a periodic scenario update. Remote Town has five such records.
 Four keep the town companion actors in sync with the local player's saved
 companion type. The player-owned dog is disabled and the other three are
 enabled. Each status is an independent callback, so one unsupported periodic
-branch must not prevent the later records from updating their actors. The
-fifth Remote Town record drives a separate distance/effect path whose native
-commands are not portable yet.
+branch must not prevent the later records from updating their actors.
+
+The remaining record is the world-teleporter activation loop. Opcode `34`
+measures the judgement-rectangle distance from the local hero to script object
+`10000202`. A zero result means the rectangles overlap. That branch writes
+`1` to operand type `10`, using the matching Table 40 row as its operand value,
+and therefore permanently adds the location to the transport list. The same
+shape appears throughout the scenario scripts for all 51 transport rows. Its
+nearby fade and visual-packet opcodes are still only partly reconstructed, but
+they do not own the unlock.
 
 ## Interpreter architecture
 
@@ -262,6 +269,7 @@ hooks:
 - read or write an external operand domain;
 - perform a native actor/game command;
 - answer a typed query about game-owned state;
+- measure the local hero's judgement distance from a script character;
 - present a decoded message.
 
 This keeps the old DLL boundary visible without pretending that the original
@@ -280,29 +288,64 @@ no-ops.
 ## Commands implemented so far
 
 The retail opcode switch begins at `0x00430f80` and covers opcode values
-`0x00` through `0x4b`. Only commands reached by the working Remote Town
-interactions are portable so far.
+`0x00` through `0x4b`. Commands are made portable as real interactions and
+services exercise them; unknown values still fail loudly.
 
 | Opcode | Retail address | Current meaning |
 |---:|---:|---|
 | 0 | `0x00431005` | Compare two evaluated operands and call a sentence when true |
 | 1 | `0x004310a2` | Evaluate an operand and assign it to another operand |
 | 2 | `0x00431294` | Present a message, finish immediate sentence work, then wait |
+| 4 | `0x00432296` | Mark every equipped, backpack, and belt item as identified |
+| 5 | `0x0043222b` | Request one of the executable's numbered vendor inventories |
+| 6 | `0x004321e8` | Rebuild a numbered vendor inventory from a Table 32 stock profile |
+| 9 | `0x0043234a` | Repair one equipped item group, or the non-equipped backpack group for selector `-1` |
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
+| 13 | `0x00431b53` | Multiply a writable operand by an evaluated value with 32-bit wrapping |
+| 14 | `0x00431b9b` | Divide a writable operand by an evaluated signed divisor |
+| 15 | `0x00431bef` | Store the signed remainder from an evaluated divisor |
+| 16 | `0x00417260` | Ask the world to play an authored sample, optionally range-limited at its evaluated position |
 | 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
+| 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
+| 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
+| 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
-| 41 | `0x004335ac` | Toggle an executable-owned item service; argument zero is the Warehouse/Special Item owner |
+| 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
+| 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
+| 42 | opcode switch | Write the local player's current and maximum life to two operands |
+| 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
+| 45 | `0x004336a9` | Switch the local player's owned companion to an evaluated Table 60 row |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
+| 49 | `0x0043389b` | Retain one raw scenario message in the executable's map-caption buffer |
+| 50 | `0x004321cb` | Write the current scenario-entry value to an operand |
+| 51 | `0x00432fed` | Install the twenty evaluated integer substitutions used by later message `%d` fields |
+| 52 | `0x004310d7` | Write the repair price for an evaluated equipment/backpack selector to an operand |
+| 53 | `0x00433923` | Write the local player's total Gold to an operand |
+| 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
+| 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
+| 56 | `0x00433a78` | Override one scenario entity's effective visible, pointer, and judgement states |
+| 58 | `0x00433b33` | Search the four automatic-item pages, backpack, and active equipment, then write zero or one |
+| 59 | `0x00433ced` | Remove the first matching item from that same retail owner order |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
+| 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
+| 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
+| 69 | `0x0043412b` | Write whether one spell has the exact learned availability state |
+| 70 | `0x00434186` | Map the local player's saved job to the occupation-menu selection and write it |
+| 71 | `0x004341da` | Change the local player's saved job from an evaluated occupation-menu selection |
+| 73 | `0x004343b0` | Close the ordinary gameplay panels and request the executable-owned Blackjack service |
+| 74 | `0x00434412` | Write the most recent Blackjack result to an operand |
+| 75 | `0x0043443c` | Create a table-backed item and place it in its authored automatic-item page and cell when absent |
 
 Opcode 0 stores its comparison selector as a raw operand. The selectors seen
 in the executable are:
@@ -313,6 +356,80 @@ in the executable are:
 | 1 | not equal |
 | 2 | greater than |
 | 3 | less than |
+
+Opcodes 49 and 50 are part of map initialization rather than conversation UI.
+The first copies the selected SCS message verbatim into the retail buffer at
+`0x0048d5f8` and clears its companion value at `0x0048d5f4`. No code which
+reads that buffer has been found in the executable, so the portable runtime
+retains the ID and text for fidelity and inspection but does not invent a
+visible area-name banner. Opcode 50 writes the entry value installed by the
+scenario loader. Dusty Ruins uses it to choose `B1F` or `B2F`, including when
+an authored transition changes floors without changing the scenario ID.
+
+Retail installs the local player and entry before running scenario status kind
+`7`. It runs that status after both a changed-map load and a same-scenario
+relocation. The portable transaction now follows that order, which also lets
+initialization scripts safely query player level before building vendor stock.
+
+Opcode 56 evaluates a character number followed by visible, pointer, and
+judgement values. The handler at `0x00433a78` finds the live entity and writes
+an enabled flag plus those three overrides at runtime offsets `+0xfc` through
+`+0x108`. It does not rewrite the three ordinary script variables. Type-zero
+object drawing at `0x0045ddd0` uses the effective visible value, while
+`0x0045e080` uses the effective pointer and judgement values. Near Remote Town
+uses the command every update to swap objects 1030 and 1031 according to saved
+script flag 71. Every shipped opcode-56 target is a type-zero object, though
+the portable state owner keeps the same override available to every scenario
+entity class.
+
+Opcode 39 evaluates its lower bound first and its upper bound second, takes
+exactly one value from the executable's shared Visual C++ random stream, and
+writes `lower + rand() % (upper - lower + 1)` to its third operand. Both ends
+are therefore possible. The shipped scripts contain 611 calls across 55
+scenarios, and every call has exactly three operands. Of those, 285 choose
+between zero and one and 41 choose from 20 through 40; spawn setup uses the
+remaining calls with script-calculated upper bounds. The portable
+script library asks its host for the next random value, keeping the DLL
+boundary free of world ownership while still sharing the world's retail
+random sequence.
+
+Opcodes 13, 14, and 15 continue the writable arithmetic group started by add
+and subtract. All three evaluate the destination value before the right-hand
+operand and write back through the common operand owner. Multiply keeps the
+low 32 bits of the x86 `imul`. Divide and remainder use signed `idiv`, so the
+quotient truncates toward zero and the remainder keeps the dividend's sign.
+A zero divisor returns successfully without changing the destination. The
+retail scripts contain 67 multiplies, 126 divides, and 195 remainders across
+34, 45, and 27 scenarios respectively; every destination is a temporary flag.
+
+Opcode 30 is the script-facing form of the executable's normal effect request,
+not a new scenario-actor class. All 411 shipped calls have fourteen operands,
+spread across 33 scenarios. The first two supply an origin, operand three is a
+direction in degrees, and operand seven projects that origin along the retail
+sine/cosine path. The remaining values fill the effect number, speed, height,
+direction and selected words of the ordinary 77-word combat packet. One
+shared random draw selects packet presentation `21000..21003` for nonzero
+effects or `21007..21009` for effect zero. Near Remote Town's first periodic
+spawn sentence uses the position of object `10055000`, submits effect two,
+then follows it with a separately authored positional sound. The script
+library only evaluates the fourteen operands; the world owns packet
+construction, the random stream, and the effect runtime.
+
+Opcode 36 is the lighter packetless version used for placed scenery effects.
+Its seven operands are effect number, world X, world Y, display height,
+direction, judgement right, and judgement bottom. A negative direction becomes
+direction eight. The request has owner kind zero, an explicit origin, zero
+left/top bounds, no combat packet, and the same common constructor value 200.
+The one-pass owner adds one to the supplied lower-right coordinates and uses
+that result for all four edges of its point judgement rectangle.
+
+The shipped scripts contain 353 calls across 26 scenarios. Effects 20007 and
+20008 occur 34 times each and select OPTION resources 11000005 and 11000006;
+their omitted presentation values evaluate to height zero, direction eight,
+and zero-sized bounds. Effect 20009 occurs 285 times, selects resource
+11000007, uses height 150, and supplies directions one, three, five, or seven.
+Near Remote Town's sentence 18 is the first direct fixture, and its periodic
+status creates the six live visuals authored for that update.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its
@@ -338,6 +455,64 @@ does not include panel, input, camera, item, or transport headers. It only
 evaluates the command and sends the typed request across its native-command
 hook.
 
+The one shipped nonzero opcode-41 call is scenario `99000013`, sentence 10.
+Its object `10000900` is named `Giant Warehouse` in the Tower of Ordeal 12F
+MCT and passes argument one. The executable uses that value to select a
+different character-owned service with ten 9-by-10 pages. This remains a
+native request: the script chooses the service, while item ownership, page
+input, rendering, and persistence stay outside the interpreter.
+
+Opcodes 58, 59, and 75 expose a different item owner. Category-four
+`Item.Ibn` records can carry a page number and fixed grid cell. A non-negative
+page routes the item into one of four private player collections instead of
+the backpack; these are not the `X` Warehouse or any Giant Warehouse page.
+Opcode 75 creates the ordinary retail instance, refuses a duplicate in its
+authored page, and inserts it at that fixed cell. Opcode 58 searches all four
+pages first, then the backpack, active main hand, body, active off hand, head,
+legs, and four accessories. Opcode 59 removes in precisely that order and
+refreshes the player profile when it removes equipped gear. The belt,
+alternate weapon set, Warehouse, and Giant Warehouse are deliberately not
+part of either command.
+
+The shipped scripts use these commands for story objects such as Malse's Gem
+and Syria's Spirit Stone, the later orb and card sets, companion stones, and
+ordinary category-three or equipment checks. This is why the interpreter
+only evaluates operands and returns the query result: item construction,
+owner order, equipment refresh, and persistence remain executable hooks.
+
+Opcode 68 is the matching scripted reward path. Its argument is a percentage,
+not a raw experience amount. The executable reads Table 13 at `level - 1`,
+multiplies that threshold by the evaluated percentage with a signed 64-bit
+intermediate, divides by 100, and adds the result to player-record experience.
+Crossing the threshold invokes the same growth, full life/mana restoration,
+900-update notice, and samples used by combat experience. Scenario `04900001`
+sentence 30 demonstrates the real sequence: opcode 75 grants the Spirit Stone,
+opcode 68 grants 50 percent, and opcode 16 plays the authored reward sample.
+
+Opcodes 67 and 69 use the saved magic owner directly. Opcode 67 writes the
+exact learned value `3` to the evaluated spell slot at player `+0x1440`.
+Opcode 69 compares that same stored value with `3` and writes zero or one to
+its second operand. It deliberately ignores the runtime-only All Spells debug
+override. Shipped scenario `04100000` uses opcode 69 to branch on a reward
+spell and later opcode 67 to grant it; the normal magic save block preserves
+the result.
+
+Opcodes 5 and 6 follow the same boundary. Scenario status kind 7 initializes
+vendor inventory zero with opcode 6 and stock profile zero (or profile 22 for
+the alternate global state). Malse later refreshes that same owner with
+profile 8, and his `Trade` callback opens it with opcode 5. The script owns
+all of those gates and profile numbers; no Malse or Red Goblin condition is
+duplicated in C++.
+
+The executable's stock builder at `0x00430c10` expands Table 32 into Table 33
+entries. Fixed entries name a category and definition directly. Random entries
+filter the decoded `Item.Ibn` definitions by category, episode, level range,
+variant flags, and loot weight before creating a normal rolled item instance.
+Table 33's start column and row are the beginning of a row-major search in the
+9-by-10 merchant grid, not a decorative position. The portable vendor owner
+keeps that numbered inventory and placement logic separate from the player
+backpack.
+
 Opcode 10 evaluates six operands: category, definition ID, world X, world Y,
 minimum quantity, and maximum quantity. Ordinary items create one record at
 the requested point. Category `4`, definition `0` is the executable's money
@@ -358,11 +533,51 @@ The portable interpreter asks its host for
 `ValueQuery::local_player_level`, so player data stays game-owned rather than
 being copied into the script library.
 
+Opcodes 71 and 70 do the same for occupation changes. The saved runtime job
+values are `16` for Mercenary, `6` for Warrior, `5` for Hunter, and `9` for
+Wizard or Witch. Opcode 71 maps those to menu values zero through three;
+opcode 70 accepts only selections one through three and writes Warrior,
+Hunter, or spellcaster respectively. Invalid selections leave the record
+unchanged. Scenario `03900003` contains the one shipped query/change pair:
+its authored service remembers the current selection, changes the job after
+the player's choice, and plays the accompanying sound through opcode 16.
+
+Opcode 72 has no operands. Its three shipped call sites (`01000000` sentence
+212, `02100000` sentence 357, and `03900002` sentence 102) all sit behind an
+equipment-color conversation. The interpreter asks the world for that
+service; the UI owner then snapshots the equipped weapon, shield, and body
+color fields before opening the panel. This keeps the script library unaware
+of item records, rendering, and input.
+
+Opcodes 73 and 74 form a complete asynchronous service boundary. Opcode 73
+has no operands. It closes the ordinary gameplay panels and asks the
+executable to run Blackjack; cards, input, timing, audio, and drawing do not
+belong to the interpreter. When the result display closes, the executable
+runs scenario status kind `8`. The following sentence uses opcode 74 to write
+the saved result: zero is a draw, one is a player win, and two is a dealer
+win.
+
+The shipped paths are Tower of Ordeal scenarios `99000018` and `99000023`.
+Scenario `99000018` starts the game in sentence 22 and handles the result in
+sentence 31. Scenario `99000023` continues through sentence 35. The portable
+tests load the original SCS and exercise that launch/result pair, so these
+sentence numbers and branches remain scenario data rather than C++ rules.
+
 Opcodes 22 and 23 take a script character number and write one or zero to all
 three of its live entity-state keys. Opcode 44 reads player-record offset
 `0x140`, which is the currently owned companion type, through a typed host
 query. Remote Town combines those commands with the play-mode operand to keep
 the selected companion from also appearing as a clickable town NPC.
+
+Opcode 45 is the matching mutation. It evaluates one Table 60 row, stores the
+active dog's level and experience in the player's per-companion arrays, then
+loads the selected row's saved values and clears its defeated countdown.
+`0x00450500` destroys and recreates character `16000000 + player slot` at the
+hero with full life, so a swap does not reuse the town PEOPLE actor or retain
+the previous dog's presentation state. The six shipped calls cover companion
+types zero through five across scenarios `00000000`, `01000000`, and
+`03900005`. Remote Town's four `Swap Dogs` choices are therefore ordinary SCS
+branches; the portable world does not contain a name-based companion menu.
 
 Opcode 62 evaluates a quest ID, a new state, and a network-notification flag.
 Ordinary updates write the new state and issue cue `0x41`. State `2` is the
@@ -375,8 +590,19 @@ values; they do not live in the DLL-derived interpreter.
 Opcode 48 evaluates one quest ID, stores it as the selected quest notice, and
 sets the adjacent counter to `600`. Syria's first new-game conversation
 executes opcode 62 with `{0, 1, 0}` and then opcode 48 with `{0}`. The
-consumer of that counter still needs to be traced before it is decremented or
-rendered.
+gameplay interface reads the title from Table 41, wraps it in the retail
+Shift-JIS corner brackets, and temporarily draws it just above the lower HUD.
+The exact title rectangle is clickable and opens the Mission List. Opcode 62
+also plays retail sample 65 for an ordinary quest update and sample 66 for a
+valid first completion. While any quest remains in state one, the same retail
+function draws `StatusIcon.njp` pattern zero at `(616, 360)`. Its
+`616..639` by `368..383` shortcut stays after the timed title has faded and
+also opens the Mission List.
+
+Syria's later status-zero branch reads quest zero directly. When it is already
+active, opcodes 42, 43, and 63 compare the player's life, mana, and optional
+condition pairs before selecting the normal healing or blessing text; it does
+not offer quest zero again.
 
 The ordinary Mission List does not store another hand-written copy of this
 information. `0x0040cea0` reads the state array written by opcode 62, takes all
@@ -386,14 +612,15 @@ and state two is cleared. In the portable code, `QuestState` still owns the
 script values while `MissionCatalog` owns the table text; the screen only
 combines those two sources for display.
 
-Opcode-2 mode one is the selectable-message path used by the four Remote Town
-companions. In this mode operand one is the writable selection result and
-operand three is the initially selected zero-based option. A non-negative
-initial option and paired `~` runs identify the actual choice step. The
+Opcode 2 keeps presentation mode and selection state separate. Operand one is
+the writable selection result and operand three is the initially selected
+zero-based option. A non-negative initial option and paired `~` runs identify
+the actual choice step. The four Remote Town companions use presentation mode
+one, while Malse's service menu uses mode zero. The
 executable's message layout removes those markers, records the enclosed line
 and columns for hit testing, and writes the chosen range number before
-entering the actor's status-kind-one callback. Mode-one messages with initial
-option `-1` are chained informational speech instead: they have no selectable
+entering the actor's status-kind-one callback. Messages with initial option
+`-1` are chained informational speech instead: they have no selectable
 ranges and close without writing operand one. The portable interpreter and
 speech-bubble layout preserve that split.
 The native Remote Town fixture walks to Gravity, opens his retail message,
@@ -434,8 +661,8 @@ The currently understood domains are:
 | 7 | Script character's current world Y |
 | 8 | Current play mode (`0` single player, `1` client, `2` server) |
 | 10 | Persistent transport flags (Table 40 rows) |
-| 11 | Persistent quest and conversation flags |
-| 12 | Persistent scenario/global flags |
+| 11 | Persistent script and conversation flags |
+| 12 | Persistent quest state |
 | 13 | Local-player array |
 
 Type `5` includes three confirmed live scenario-entity ranges. A key beginning
@@ -490,6 +717,42 @@ records rather than stopping after Ostare. Malse's new-game status runs its
 real two-message branch (`1000019` and `1000020`) and releases him through
 opcode 19. The longer Malse quest dialogue is not forced: the retail SCS only
 selects it after the Red Goblin progression state reaches the required value.
+Once quest zero is complete, the same authored branch introduces Malse as a
+merchant, advances its persistent script flags, and then exposes message
+`1000013`. Choosing `Trade` reaches sentence 113 and opcode 5. The resulting
+left merchant panel and right inventory remain live together: stock can be
+carried into the backpack or equipment slots, player items can be sold back,
+gold is debited only after a purchase lands in an owned container, and Escape
+returns an unfinished purchase to its original merchant owner. Purchase hover
+text uses `Price`; owned-item hover text keeps `Sale Price`.
+
+Malse's `Identify Items` choice is script-owned as well. Opcode 55 first scans
+the five ordinary equipment slots, four accessory slots, backpack, and belt.
+When there is something unknown, opcode 51 inserts the authored flat price of
+100 into message `1000017`; `NO` starts selected. Confirming `YES` uses opcode
+53 to check the backpack's Gold, shows message `1000015` when the player is
+short, or spends exactly 100 through opcode 54 before opcode 4 identifies all
+of those owners. Their raw instance words are updated with the live flag, so a
+normal save keeps the result. If everything is already known, the script shows
+message `1000018` without opening another panel or charging Gold. This is a
+merchant service distinct from the Identify spell, which selects one backpack
+item and trains the spell.
+
+`Repair Items` continues through sentences 117 and 75 rather than opening a
+separate panel. Opcode 52 queries selectors zero through four for Arms, Head
+Armor, Body Armor, Shield, and Leg Armor; selector `-1` covers non-equipped
+items in the backpack. The script sums the first five values for All Equipped,
+inserts all seven prices into message `1000014`, and starts on `QUIT`.
+
+The groups come from executable ownership, not NPC-specific code. Arms include
+both active and alternate main-hand pointers, while Shield includes both
+off-hand pointers. The other three selectors address their one equipped slot.
+Non-Equipped scans only category-zero weapons and category-one armor in the
+backpack; belt and accessory items are not repairable. A zero price shows `It
+has been repaired`, insufficient Gold reuses message `1000015`, and a
+successful choice runs opcode 9 before opcode 54 spends exactly the displayed
+price. All Equipped invokes opcode 9 once for each of the five groups. Every
+branch returns to the newly priced Repair menu until `QUIT` releases Malse.
 
 Syria's new-game status follows messages `1000040` and `1000041`. Its callback
 starts quest zero with opcode 62 and selects that quest's notice with opcode
@@ -498,6 +761,12 @@ script character number, so the renderer can anchor Syria's bubble even
 though this particular branch does not run the explicit actor-facing command
 used by Ostare and Malse. Dialogue text, actor IDs, branches, and quest IDs
 continue to come from the retail SCS.
+
+The corresponding completion is authored on the outdoor map rather than in a
+hard-coded enemy-name check. Red Goblin character `14010000` has status kind
+`4` at sentence 12. After its death animation and fade finish, the retail
+enemy owner invokes that status; its opcode 62 command changes quest zero from
+state one to state two and emits the completion cue.
 
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from

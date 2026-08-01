@@ -32,6 +32,8 @@ public:
 
     const PlayerMagicState& state() const;
     bool learned(std::int32_t spell) const;
+    bool permanentlyLearned(std::int32_t spell) const;
+    bool learnPermanently(std::int32_t spell);
     std::int32_t availability(std::int32_t spell) const;
     std::int32_t level(std::int32_t spell) const;
     std::int32_t experience(std::int32_t spell) const;

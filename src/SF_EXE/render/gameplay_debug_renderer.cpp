@@ -114,9 +114,23 @@ void renderGameplayDebugMenu(
         "All Spells",
         134,
         menu.allSpellsEnabled());
+    drawBooleanRow(
+        renderer,
+        font,
+        menu,
+        "Infinite HP",
+        150,
+        menu.infiniteLifeEnabled());
+    drawBooleanRow(
+        renderer,
+        font,
+        menu,
+        "Infinite MP",
+        166,
+        menu.infiniteManaEnabled());
 
     const gapi::Color close_color =
-        hovered(menu, 176, 166, 464, 178)
+        hovered(menu, 176, 198, 464, 210)
             ? kHoverColor
             : kLabelColor;
     drawText(
@@ -124,7 +138,7 @@ void renderGameplayDebugMenu(
         font,
         "CLOSE",
         305,
-        166,
+        198,
         close_color);
 }
 

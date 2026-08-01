@@ -48,6 +48,7 @@ Total: 258 RKC DLL imports
 | 0x00402900 | RightClickHandler - Right/middle mouse |
 | 0x00402920 | PaintInitialLoadingScreen - cached loading page and overlay |
 | 0x004030F0 | RenderWorld - ground, shadow, and depth-sorted object passes |
+| 0x004050F0 | RenderQuestNotice - timed title and Mission List shortcut |
 | 0x0040CEA0 | RenderMissionList - two pages, script state, and detail panel |
 | 0x004023d0 | UpdateGameState - Game state machine (switches on state 0/1/2) |
 | 0x00401b90 | Shutdown - Cleanup all subsystems |
@@ -607,6 +608,21 @@ stacks to 10,000 as `0x00449ef0` does. The retail 9-by-4 placement grid,
 multi-cell item sizes, full-inventory failure, and inventory panel are still
 part of the next inventory slice.
 
+The category-four, definition-one branch in `0x00449ef0` is the exception to
+ordinary ownership. Below player runtime maximum `+0x2c0`, it destroys the
+concrete Mine item and increments the separate count at `+0x328`. At the
+maximum it leaves the instance intact and returns failure, so the
+single-player caller recreates the normal mode-zero world drop; it does not
+try the backpack. `0x00408a80` draws `Status.njp` pattern 67 only while that
+count is nonzero, then always draws `count / maximum` at the authored Mine
+row. The color compares the live maximum against base value ten.
+
+The Mine definition happens to carry generic weight value one. That value is
+not part of the live encumbrance path: `0x00445630` reads the nine equipment
+pointers only, and neither it nor its callers read `+0x328`. Consequently the
+separate counter does not alter the inventory Weight readout or attack-speed
+tier.
+
 Inventory artwork goes through `0x00465cb0`, separately from the world item
 CAF path. After drawing an ordinary weapon or armor icon, it divides current
 durability times 100 by maximum durability. Results from zero through nine
@@ -928,6 +944,22 @@ uses the possibly new player level for that cap and table `800 + companion
 type` row 18 for each companion threshold. A gained level rebuilds the summed
 profile and restores full companion life; experience is cleared at the cap.
 
+The level and experience fields in the 0x160-byte record are only the active
+companion's working copy. `0x00440f70` allocates one level array and one
+experience array with the Table 60 row count, initializes every level to one,
+and leaves every experience at zero. Opcode 45 reaches `0x00450500`: it first
+copies the active values into their current array row, selects the requested
+row, loads that row's values back into the record, and clears the defeated
+countdown. It then replaces character `16000000 + player slot` at the hero and
+fills its life to the rebuilt maximum. Selecting the already owned type still
+runs the complete reset.
+
+Before saving, retail synchronizes the active row again. It writes the Table
+60 count, the complete level array, and the complete experience array directly
+after the magic block; the Land Mine count follows them. OpenShadowFlare now
+owns that exact section rather than only skipping it on the way to the Mine
+field, so inactive-companion progression survives swaps and save/load cycles.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
@@ -949,11 +981,12 @@ item stream to restore and rewrite the nine known equipment slots, backpack,
 the belt, and the 9-by-10 Special Item owner. Grid positions, Gold quantities,
 durability, identified state, and all still-unnamed instance bytes survive
 the round trip. The extra equipment records and unknown trailing payload bytes remain
-untouched. Loading also restores the following counted scenario, transport,
-and quest/conversation arrays, validating the 51 transport values against
-Table 40. The rest of the dynamic payload is still pending.
+untouched. Loading also restores the following counted arrays in executable
+order: operand-type 12 quest state, type 10 transport unlocks, and type 11
+general script/conversation state. The 51 transport values are validated
+against Table 40. The rest of the dynamic payload is still pending.
 
-The three counted scenario, transport, and quest arrays are immediately
+The three counted quest, transport, and script-state arrays are immediately
 followed by the player's magic owner. Retail writes count `22`, then 22
 32-bit availability values from runtime `+0x1440`, 22 levels from `+0x1498`,
 22 experience values from `+0x14f0`, and the eight global magic-bar spell IDs
@@ -961,6 +994,23 @@ at `0x0048d508`. `0x00440f70` initializes those arrays to zero, one, and zero
 respectively and leaves every bar slot at `-1`; only availability value three
 is treated as learned. The portable save path now restores and replaces this
 exact section while retaining all later unknown bytes.
+
+Script opcodes 67 and 69 are the mutation and query paths for that array.
+`0x004340e7` evaluates a spell index and writes the exact learned value `3` at
+player `+0x1440 + index*4`. `0x0043412b` reads the same slot, compares it with
+`3`, and writes the resulting boolean to its second operand. These handlers do
+not touch spell level, practice experience, or the bar, and the portable
+runtime does not let its temporary All Spells debug override affect either
+script operation.
+
+After the magic history, companion arrays, and Land Mine count, retail writes
+three 32-bit values for later world state, the literal page count ten, ten Giant Warehouse
+unlock values, and ten ordinary item containers. The selected page is not in
+the stream. OpenShadowFlare restores and replaces the flags and all ten
+containers while preserving the three preceding and all later unmapped
+values. A version-four portable tail carries the same owners when a newer save
+does not yet contain that later retail suffix; versions one through three
+remain readable.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
@@ -995,6 +1045,23 @@ names and colors, label height, position, judgement, direction, initial CAF
 part overrides, optional fixed-capacity part/color arrays, and one preserved
 unknown value.
 
+Those initial three-channel values are not the only object state. Script
+opcode 56 at `0x00433a78` finds an existing scenario entity by character
+number, sets the override-present word at runtime `+0xfc`, then writes effective
+visible, pointer, and judgement values at `+0x100`, `+0x104`, and `+0x108`.
+The type-zero draw path at `0x0045ddd0` selects the override visibility when it
+is present. `0x0045e080` independently selects its pointer and collision values.
+Reads and writes through the 100-, 300-, and 200-million script keys continue
+to address the underlying MCT-backed channels.
+
+Near Remote Town's first periodic status checks persistent script flag 71. Its
+two branches use opcode 56 to alternate objects `10001030` and `10001031`,
+leaving pointer and judgement disabled for both. The objects share almost the
+same position, so treating the command as an ordinary state write would leave
+the base script variables wrong when the opposite branch runs. A scan of the
+shipped SCS catalog found 66 opcode-56 calls across 13 scenarios; every target
+is a type-zero object, including later three-part visible/collidable swaps.
+
 The object tail is `0x34` bytes. `FUN_00429600` creates its type-zero
 `0x120`-byte runtime class through `0x0045dca0`; its character number is local
 ID plus 10,000,000. The initializer at `0x0045dd00` copies the transformed
@@ -1011,6 +1078,36 @@ records are separate from the map's static OBL scenery. Across all 209 retail
 MCT files, the exact sequential decoder reaches 5,203 object and 163 PEOPLE
 records without a resource-list mismatch.
 
+The periodic script path also reaches the shared combat-effect owner. Opcode
+30 enters its handler at `0x0043309b`, evaluates fourteen operands, initializes
+the same 77-word packet used by native attacks, and calls the common
+22-argument request allocator at `0x0042fdc0`. The handler converts operand
+three from degrees with the retail radians constant, projects operands zero
+and one by operand seven, and stores that result as an explicit owner-zero
+origin. It chooses packet word 34 from `21000..21003` when the effect number is
+nonzero or `21007..21009` when it is zero, consuming one value from the shared
+Visual C++ random stream. Packet words 4, 37, 40, 41, 43, and 72 retain the
+other authored values; hit value 9999, packet direction eight, target kind 19,
+and constructor value 21 equal to 200 are fixed by the handler. The shipped
+catalog contains 411 calls in 33 scenarios and every call has exactly fourteen
+operands.
+
+The neighboring packetless placement command is opcode 36 at `0x0043332d`.
+It evaluates operands in the retail order 1, 2, 5, 6, 4, 3, then 0 and sends
+the same allocator a seven-value descriptor: effect number, explicit X/Y,
+display height, chart direction, and right/bottom judgement bounds. Negative
+directions are replaced with eight. Owner, source, target, speed, and angle
+fields are zero, instance is `-1`, constructor value 21 is 200, and the packet
+pointer is null. The judgement pointer contains `{0, 0, right, bottom}`.
+
+The common one-pass handler at `0x0042b860` uses the explicit origin for owner
+kind zero and turns the supplied lower-right bounds into the point judgement
+`{right+1,bottom+1,right+1,bottom+1}`. It runs chart zero for the selected
+direction's complete CAF lifetime. The
+effect switch maps 20007, 20008, and 20009 to OPTION resources 11000005,
+11000006, and 11000007. Those are the only opcode-36 effects in the shipped
+catalog: 353 calls in 26 scenarios, all with exactly seven operands.
+
 Object 200 and the Warehouse at local ID 300 are the first reconstructed
 type-zero pointer actions. The normal world pointer tests opaque cells in
 their static NJP or current CAF display, then uses the common judgement-box
@@ -1025,6 +1122,16 @@ navigation or selection. Table 40 row zero is `Remote Town`, scenario zero,
 entry 50. The same-scenario branch at `0x00426200` combines that entry value
 with local player zero as `entry * 4`, selecting MCT entry key 200 at
 `(94685,-2756)`, direction 7.
+
+Destinations are discovered by a separate periodic script path rather than by
+clicking object 200. Each teleporter's status-kind-5 sentence runs opcode 34
+at `0x004337b5`. The handler resolves its first operand as a scenario character
+and calls the common `0x004143c0` judgement-rectangle distance routine against
+the local player. It writes that exact distance to the second operand. When it
+is zero, the authored sentence assigns one to its type-10 operand, whose value
+is the destination's Table 40 row. The portable interpreter now follows that
+same path, and the existing save extension retains the resulting 51-row flag
+array.
 
 The complete `0x00426200` call takes player number, scenario ID, entry value,
 an auxiliary transition flag, an optional explicit position, and an entry-key
@@ -1063,6 +1170,41 @@ switches BGM, and starts the later standard loading presentation. Explicit
 coordinate entry `-1`, the alternate `VisualNN` presentation, multiplayer
 ownership, and exact teardown ordering remain.
 
+The local-player record and resolved entry are installed before the loader
+runs scenario status kind `7`. This ordering is shared by the changed-map path
+at `0x0042642b` and the same-scenario path at `0x00427474`; the latter does not
+skip initialization merely because it kept the current resources. Opcode 50
+at `0x004321cb` exposes that current entry through the common operand writer.
+Dusty Ruins scenario `00010000` branches on it to retain either its `B1F` or
+`B2F` caption during both cross-map arrival and its authored same-map floor
+transition.
+
+Opcode 49 enters at `0x0043389b`. In the local single-player branch it resolves
+its message operand through the current SCS, copies the raw text into
+`0x0048d5f8`, and clears `0x0048d5f4`. Direct references in the executable only
+write those globals; no reader or renderer has been identified. The portable
+script owner therefore keeps the latest message ID and text as evidence-backed
+state without drawing an area banner that the known retail path does not show.
+
+Opcode 39 starts at `0x00431c43`. It evaluates operands zero and one in order,
+calls the statically linked Visual C++ `rand` routine at `0x00467c6e`, divides
+that result by the wrapped signed span `upper - lower + 1`, adds the remainder
+to the lower bound, and sends the result plus raw operand two to the common
+writer at `0x00434920`. The bounds are inclusive and exactly one random value
+is consumed. All 611 shipped calls have three operands across 55 scenarios;
+the authored corpus includes 285 0..1 choices and 41 20..40 ranges. The
+portable interpreter receives the next value through its
+host hook, which connects to the shared world random owner rather than
+creating a private script generator.
+
+The immediately preceding arithmetic handlers complete the same writable
+operand family. Opcode 13 at `0x00431b53` keeps the low 32 bits from `imul`.
+Opcode 14 at `0x00431b9b` stores the signed `idiv` quotient, and opcode 15 at
+`0x00431bef` stores its remainder. Both division handlers test the divisor
+first and return through the successful command epilogue without writing when
+it is zero. The shipped catalog contains 67, 126, and 195 calls respectively;
+all have two operands and all destinations are temporary flags.
+
 The first authored cross-map path is now traced end to end. During the
 scenario update at `0x004305d0`, status kind three resolves its character to a
 live MCT entity and calls the inclusive rectangle test at `0x00414350`
@@ -1089,8 +1231,36 @@ back at Remote Town's `(89898,2811)`, direction 3, and music track 0.
 The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
 flag `0x0048ce48`, the same one-page Special Item owner handled by
 `0x00447970`; it is not a separate warehouse container. Nonzero opcode-41
-arguments select a related ten-page owner which is not exercised by Remote
-Town and remains pending.
+arguments instead toggle `0x0048ce4c` and clear the first flag. Scanning every
+shipped `Scenario.Scs` found one such call: scenario `99000013`, sentence 10,
+for object `10000900`. The matching MCT names it `Giant Warehouse` on Tower of
+Ordeal 12F.
+
+`0x00447ca0` handles that second owner. Player offsets `+0x520` through
+`+0x544` hold ten independent containers, `+0x55c` through `+0x580` hold ten
+page-unlock values, and `+0x558` is the transient selected page. New
+characters enable page zero only. `0x00404760` draws Status pattern 73, then
+pattern 74 for a disabled tab, 75 through 84 for enabled tabs, or 85 through
+94 for the selected tab at `(24 + page*24,41)`. Enabled tab clicks and the
+close cell at `(272..295,40..55)` use sample 58.
+
+The four player containers at `+0x548` through `+0x554` are neither Warehouse
+variant. Category-four item instances return their authored page through
+`0x00466480` and their fixed cell through `0x00466490`; those values come from
+the last three words of the 100-byte `Item.Ibn` record. Ground pickup routes
+an item with a non-negative page into that owner and rejects a duplicate
+instead of placing it in the backpack.
+
+Script opcode 58 at `0x00433b33` queries those four containers first, followed
+by backpack `+0x514`, main hand `+0x4f4`, body `+0x4ec`, off hand `+0x4f8`,
+head `+0x4e8`, legs `+0x4f0`, and accessories `+0x4fc..+0x508`. Opcode 59 at
+`0x00433ced` removes the first match in the same order and runs both player
+refresh paths after an equipment removal. Neither path checks the belt,
+alternate arms, `+0x51c` Warehouse, or Giant Warehouse. Opcode 75 at
+`0x0043443c` constructs the named definition, skips an existing item in its
+authored page, copies its fixed cell, and inserts it into `+0x548 + page*4`.
+The save writer serializes these four containers directly after all ten Giant
+Warehouse pages.
 
 The portable decoder also reads all seven Remote Town PEOPLE records and their
 bounded-wander tails. The first value after the bounds is copied to runtime
@@ -1142,6 +1312,38 @@ evaluated target; Malse deliberately ignores that turn request. Native action
 18 separately stops the current walk and enters interaction state, while
 action 19 releases it. Keeping actions 18 and 21 separate is important:
 scripts may suspend an actor without changing its direction.
+
+Malse's Repair branch also exposed the two otherwise hidden weapon-set
+pointers. Opcode 52 at `0x004310d7` prices active and alternate main hands as
+one Arms group and active and alternate off hands as one Shield group; the
+other equipped selectors each own one slot. Selector `-1` walks the backpack
+but accepts only category-zero weapons and category-one armor. Opcode 9 at
+`0x0043234a` mutates those same groups. The alternate pointers are serialized
+as entries ten and eleven of the equipment save stream, after the five visible
+gear and four accessory pointers.
+
+The per-item helper at `0x004667a0` uses the Table 34 weighted item value,
+divides it by ten, scales it by missing durability over maximum durability,
+and clamps a nonzero repair to at least one Gold. `0x00466800` restores the
+instance durability. The backpack sum and mutation loops at `0x00467180` and
+`0x00467140` deliberately ignore accessories, medicine, Gold, and belt items.
+
+`0x0044a240` gives category-three item use a strict target order. It first
+tries player HP and MP, scaling both flat and maximum-percent definition values
+by 100 plus the corresponding equipped base bonus. If neither changes, it
+resolves character `16000000 + local player slot` and applies the companion
+flat/percent fields only while that actor is alive and below maximum life.
+Only then does it reach the condition/timed-effect branch. The first changed
+owner consumes the concrete backpack or belt item and plays sample 16; full or
+dead targets leave it untouched.
+
+The final branch is element alignment rather than a temporary status timer.
+White Medicine writes zero to runtime offsets `+0x74/+0x78` when needed.
+`0x0044fd10` moves those axes toward one of eight fixed element anchors by the
+definition's 4,000-unit step, snapping at the final step and using x87
+cosine/sine truncation otherwise. Those runtime fields are record offsets
+`0x64/0x68`; the Status marker, affinity builder, combat packets, and ordinary
+save stream already share them.
 
 Player CAF parts are not independent actors that should all be drawn.
 `0x00444ca0` rebuilds an enable table on every appearance refresh: entries 0
@@ -1730,7 +1932,41 @@ records the current job in the 100-byte history at `0xdc`, applies the matching
 gender-specific 900-series growth column to the 13 base parameters, refreshes
 life and mana, and resets experience. New-character initialization fills that
 history with novice job `0x10`, matching `0x00440f70`. The full later
-job-selection and skill-unlock branch still needs its own class-system slice.
+skill-unlock branch still needs its own class-system slice.
+
+The script-facing job selection is now mapped. Opcode 71 begins at
+`0x00434186` and reads runtime player offset `+0x30`, which is saved-record
+offset `0x1c`. It writes menu value zero for Mercenary job `16`, one for
+Warrior `6`, two for Hunter `5`, and three for Wizard/Witch `9`. Opcode 70 at
+`0x004341da` evaluates one operand and accepts only values one through three,
+writing raw jobs `6`, `5`, and `9` respectively. It does not rebuild stats,
+alter level history, or change any other record field. Scenario `03900003`
+sentences 366 and 381 contain the shipped change/query pair.
+
+Opcode 72 enters at `0x00434259` and takes no operands. It clears the other
+gameplay panels, sets `DAT_0048ce60`, and snapshots the equipped main hand,
+off hand, and body color indices. The corresponding item getters read runtime
+offset `+0x348` for category zero and `+0x320` for category one. Both serialize
+as item-state word 49. The centered panel is Status.njp patterns 102 through
+109 at `(160,144)` and offers the 16 triples beginning at `0x00475bf0`.
+
+Color clicks write the selected item immediately so the hero preview updates
+live. OK clears the panel after broadcasting the changed player state. Cancel,
+right click, and Escape call `0x00410360`, restoring all three opening values
+before closing. Only the primary CAF part uses the selected table triple; the
+secondary weapon part continues to use its definition strengths. The three
+shipped opcode-72 call sites are scenario `01000000` sentence 212,
+`02100000` sentence 357, and `03900002` sentence 102.
+
+Script opcode 68 enters at `0x004342de`. It ignores a level-100 player,
+otherwise reads that same Table 13 threshold and adds
+`threshold * evaluated_argument / 100` to experience. The multiply and divide
+use a signed 64-bit intermediate. Reaching the threshold calls
+`0x00412fb0`, clears experience, rebuilds the player, and refreshes the display
+exactly like an enemy-earned level. The portable interpreter keeps the
+percentage in the script boundary and sends the award to the shared player
+experience owner, so scripted and combat level-up notices and audio cannot
+diverge.
 
 Enemy death action 11 calls `0x0045a000` before `0x0045a030`. The first uses
 MCT pre-AI value 14 as a Table 30 row. Every attempt consumes the chance draw;
@@ -1762,6 +1998,48 @@ stored initial position is interpolated to x `640 - width`, y 1, after which
 it remains in the upper-right until expiry. `0x00451cb0` ignores notice clicks
 for the first 30 updates. A later click inside the notice releases it and
 consumes the input before ordinary world interaction.
+
+## Tower of Ordeal Blackjack
+
+Script opcode 73 enters at `0x004343b0`. It closes the ordinary gameplay
+panels, initializes the executable's Blackjack state, and gives that modal
+exclusive input. Opcode 74 at `0x00434412` later writes the retained outcome:
+zero for a draw, one for a player win, or two for a dealer win. Closing the
+result starts scenario status kind 8. The shipped users are scenarios
+`99000018` and `99000023`; their SCS sentences decide what happens after each
+outcome.
+
+The modal update at `0x00403560` deals one card every 15 gameplay updates.
+The opening order is dealer, player, hidden dealer, player at counters 15,
+30, 45, and 60. Ordinary draws use `rand() % 52`; only the hidden opening
+card uses `% 53`, allowing the extra joker. A card already held by either hand
+is rejected and rerolled. Sample 44 accompanies each completed deal.
+
+Ranks use the standard `1,2,3,4,5,6,7,8,9,10,10,10,10` values. Aces and the
+joker are flexible: each becomes 11 when the remaining hand can stay at or
+below 21, otherwise one. A total above 21 is represented as `-1`. The dealer
+draws through 16 and stands at 17. Equal totals draw except at 21, where a
+two-card natural beats the same total made with more cards.
+
+The primary-button rectangles are strictly inside `(229,337)-(328,370)` for
+Hit and `(335,337)-(434,370)` for Stand, and an action is accepted only on a
+15-update boundary. A bust reveals the dealer hand immediately. The result
+stays up for 200 updates; sample 64 marks a player win, sample 65 a dealer
+win, and a draw is silent. A click after the first result update shortens the
+remaining display to one update.
+
+`0x0040da90` draws the complete modal from `Card.Njp`: board pattern 65 at
+`(32,40)`, seven stacked card backs, Status pattern 119, the title pair 55/56,
+the fixed player and companion previews, and patterns 59/60 for Hit and
+Stand. Dealer cards begin at `(182,70)` and player cards at `(158,210)`, with
+an 80-pixel spread below five cards and a compressed 240-pixel span
+afterward. Pattern 54 is the dim card/button shadow. Patterns 57 and 58 mark
+a natural or bust; patterns 61, 62, and 66 are win, lose, and draw.
+
+The portable state, renderer, audio requests, and script hook preserve those
+separate owners. Deterministic tests cover score rules, unique timed dealing,
+input phases, dealer completion, dismissal, Card.Njp placement, and the real
+scenario opcode pair.
 
 ## Magic window and gameplay bar
 
@@ -1803,7 +2081,70 @@ The portable `GameplayMagic` state mirrors those page, hitbox, hover, and drag
 rules but does not own spell data. It emits assignment and selection intent
 to the runtime boundary, which mutates `PlayerMagic`; this keeps persistent
 state and casting outside the UI layer. The Status half of the tab remains a
-later slice.
+separate `GameplayStatus` interaction state but shares this left-panel owner.
+
+`0x00405750` draws Status.njp pattern 5. It overlays job and name at x=22 and
+x=92, level and experience on the right, then current/maximum HP, weight,
+physical attack/defense, hit/evasion, walking/attack speed, current/maximum MP,
+and the four magical values at the executable's eight-pixel right-aligned
+coordinates. Derived values are neutral grey when unchanged, red when below
+base, and gold when above it. `0x0044fca0` combines the saved elemental point
+with equipped and carried-item strengths, clamps all eight affinities to
+-10..10, and selects Status patterns 36..56. Pattern 57 places the marker from
+the saved x/y axes. `S`, the HUD Status label, and the top tabs switch the
+live window without pausing the right-hand world view.
+
+## Normal-target melee combo
+
+The normal-target icon sets application field `+0x1288` instead of selecting
+a spell. In the secondary-click branch of `0x00441c00`, the local player stores
+the clicked world angle and position and asks `0x00450630` for the equipped
+ordinary attack. Weapon actions 8, 9, and 10 become actions 11, 12, and 13.
+There is no retained enemy target: each impact marker asks `0x004417f0` for all
+currently valid enemies inside the ordinary melee judgement range.
+
+Actions 11 and 12 begin the one-handed and two-handed three-stage chains.
+`0x004364e0` runs CAF chart 5 or 15, then hands off to action 14 or 15.
+`0x00436c20` runs chart 7 or 17 and hands off to action 17 or 18.
+`0x004372b0` runs chart 8 or 18 before returning to idle. All three stages use
+the Table-4 attack-speed tier with factors 0.8 through 1.7. Before its impact,
+each stage attempts short collision-aware forward movement in ten-unit
+increments up to the retail 61-unit cutoff. Counter six plays the equipped
+weapon sound.
+
+The three impact markers play consecutive `Voice00` samples. Raw gender one
+uses 96, 97, and 98; raw gender zero uses 99, 100, and 101. This is independent
+of whether an enemy is close enough to receive the hit. Action 13 is the
+separate heavy-weapon spin path and remains outside the portable three-stage
+controller for now.
+
+## Transport cast and paired portal
+
+Spell zero enters action 22 through the same secondary-click command, using
+CAF charts 11 and 12 and Table 20 row zero. `0x0043a260` compares the dominant
+axis of the stored click direction and tries one of four cardinal portal
+positions exactly 500 world units from the player. If that corridor is
+blocked, it tries the remaining directions in order zero through three. The
+four exact corridor rectangles are `[-80,-580,79,79]`,
+`[-80,-80,79,579]`, `[-580,-80,79,79]`, and
+`[-80,-80,579,79]`.
+
+`0x00420020` rejects a portal in the linked town scenario, stores the field
+position, and pairs it with scenario footer value zero and entry key
+`400 + local player`. The resulting entry value is 100. The endpoint uses
+resource 10000020 and an `[-80,-80,79,79]` contact rectangle. Four static
+`Pattern.njp` layers begin seven updates apart; each falls from height 300 to
+zero in steps of 50 while its strength rises from zero to 1000 in steps of
+200. The central chart-zero direction-eight animation begins after the fourth
+layer lands, waits a random 1..90 updates initially, then waits 30..89 updates
+between loops. Sample 79 starts the presentation and sample 51 starts a center
+loop.
+
+`0x00420970` requires leaving an endpoint before it can trigger again. Entering
+the field endpoint travels to the player's Remote Town entry. Entering the
+town endpoint restores the exact saved field position and consumes the pair.
+The portable single-player path follows those owners; multiplayer replication
+and the endpoint owner-name hover remain pending.
 
 ## Fire Ball cast and spell practice
 
@@ -2100,6 +2441,47 @@ eight, runtime frame `+0x1634`, full opacity, and RGB 1000/1000/1000. It is
 drawn directly after Magic Shield, before the later Berserker and Energy
 Shield passes. The live state survives scenario relocation, is absent from
 the disk save, is present in multiplayer state packets, and clears on death.
+
+## Explosion cast and companion handoff
+
+`0x0043fcc0` dispatches spell twenty as player action 42 on CAF charts 11 and
+12 with Table 20 row twenty. The targetless secondary-click path stores the
+clicked world point, pays the ordinary Table 16 MP cost, and faces it. A newly
+crossed chart-11 status-`0x40` marker looks up companion character
+`16000000 + local player slot`. A missing, defeated, or special-presentation
+7, 9, or 10 companion leaves the already-paid cast as a harmless no-op. The
+same is true when the companion's full judgement rectangle cannot stand at
+the clicked point. An ordinary companion attack or hit presentation is not
+cancelled; owner mode six waits and takes over when that presentation ends.
+
+A valid handoff sets companion owner mode six. `0x004627d0` turns that into
+presentation action ten and immediately clears the owner mode. The special
+presentation at `0x00461c40` plays PARTNER chart six in direction eight at the
+old position, moves the companion to the stored point when chart seven begins,
+then plays chart seven in direction eight. Only a newly crossed chart-seven
+status-`0x40` marker creates the blast. Finishing chart seven releases the
+presentation lock and returns the companion to its ordinary AI.
+
+The marker creates special effect 21031 through `0x0042f890`. That effect
+places two resource-10000000 actors at the companion, using charts one and
+zero with RGB strengths 500/500/1200, plays samples 29 and 23, and requests
+camera shake 8/6 while the local observer is nearer than 3001 world units.
+The chart-six/chart-seven boundary itself submits positional sample 45 twice,
+and the impact marker submits sample 46 before effect 21031's two samples.
+Enemy judgement rectangles are tested against a 640-by-640 box centered on
+the companion. Each living target then uses the companion's hit rate against
+the enemy's physical evasion; failed rolls show the ordinary MISS
+presentation.
+
+The shared family-zero subtype-three packet deliberately does not follow the
+normal player-spell builder. Its source is the companion, word four uses the
+owner player's magical-defense field, and word five stays zero. Spell twenty
+still owns the Table 17/18/19 and Tables 70 through 78 rows and word 73, so a
+successful receiver hit trains Explosion. One retail quirk is especially easy
+to lose: the effective level used to index those rows comes from spell 21,
+Elemental Strike, rather than Explosion. The randomized ordinary
+21000-through-21003 impact is also drawn once for the shared packet before the
+per-enemy hit rolls.
 
 ## Earth Spear cast
 

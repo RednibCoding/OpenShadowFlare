@@ -44,6 +44,56 @@ if(TARGET sf_game_core)
 
   add_test(NAME game_core COMMAND game_core_test)
 
+  add_executable(
+    gameplay_blackjack_test
+    gameplay_blackjack_test.cpp
+  )
+  target_link_libraries(
+    gameplay_blackjack_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    gameplay_blackjack_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gameplay_blackjack_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    gameplay_blackjack_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      gameplay_blackjack_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_blackjack_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME gameplay_blackjack COMMAND gameplay_blackjack_test)
+
+  add_executable(vendor_test vendor_test.cpp)
+  target_link_libraries(
+    vendor_test
+    PRIVATE
+      OpenShadowFlare::States
+      OpenShadowFlare::World
+  )
+  target_compile_features(vendor_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    vendor_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(vendor_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(vendor_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      vendor_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME vendor COMMAND vendor_test)
+
   add_executable(player_magic_test player_magic_test.cpp)
   target_link_libraries(
     player_magic_test
@@ -129,6 +179,77 @@ if(TARGET sf_game_core)
     NAME gameplay_magic
     COMMAND gameplay_magic_test)
 
+  add_executable(
+    gameplay_equipment_color_test
+    gameplay_equipment_color_test.cpp
+  )
+  target_link_libraries(
+    gameplay_equipment_color_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::States
+      OpenShadowFlare::World
+  )
+  target_compile_definitions(
+    gameplay_equipment_color_test
+    PRIVATE
+      OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  )
+  target_compile_features(
+    gameplay_equipment_color_test PRIVATE cxx_std_17)
+  set_target_properties(
+    gameplay_equipment_color_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      gameplay_equipment_color_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_equipment_color_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME gameplay_equipment_color
+    COMMAND gameplay_equipment_color_test)
+
+  add_executable(
+    gameplay_ui_controller_test
+    gameplay_ui_controller_test.cpp
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_ui_controller.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/input_adapter.cpp"
+  )
+  target_link_libraries(
+    gameplay_ui_controller_test
+    PRIVATE
+      OpenShadowFlare::GameCore
+      OpenShadowFlare::RKC_DSOUND
+      Lal::Lal
+      Lwl::Lwl
+  )
+  target_compile_features(
+    gameplay_ui_controller_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gameplay_ui_controller_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    gameplay_ui_controller_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      gameplay_ui_controller_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      gameplay_ui_controller_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME gameplay_ui_controller
+    COMMAND gameplay_ui_controller_test)
+
   add_executable(movement_test movement_test.cpp)
   target_link_libraries(
     movement_test
@@ -183,6 +304,95 @@ if(TARGET sf_game_core)
   add_test(
     NAME player_attack_action
     COMMAND player_attack_action_test)
+
+  add_executable(
+    player_increased_power_test
+    player_increased_power_test.cpp
+  )
+  target_link_libraries(
+    player_increased_power_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_increased_power_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_increased_power_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_increased_power_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      player_increased_power_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_increased_power_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME player_increased_power
+    COMMAND player_increased_power_test)
+
+  add_executable(
+    player_land_mine_test
+    player_land_mine_test.cpp
+  )
+  target_link_libraries(
+    player_land_mine_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_land_mine_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_land_mine_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_land_mine_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      player_land_mine_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_land_mine_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME player_land_mine COMMAND player_land_mine_test)
+
+  add_executable(
+    player_transport_spell_test
+    player_transport_spell_test.cpp
+  )
+  target_link_libraries(
+    player_transport_spell_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    player_transport_spell_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    player_transport_spell_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    player_transport_spell_test PROPERTIES CXX_EXTENSIONS OFF)
+
+  if(MSVC)
+    target_compile_options(
+      player_transport_spell_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      player_transport_spell_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+
+  add_test(
+    NAME player_transport_spell
+    COMMAND player_transport_spell_test)
 
   add_executable(
     player_attack_impact_test
