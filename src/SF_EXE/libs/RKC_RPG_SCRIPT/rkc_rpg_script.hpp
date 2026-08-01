@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_LIBS_RKC_RPG_SCRIPT_HPP
 #define OPENSHADOWFLARE_LIBS_RKC_RPG_SCRIPT_HPP
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -87,10 +88,28 @@ struct MessageEvent {
     std::int32_t initial_selection = -1;
 };
 
+struct ScenarioCaptionEvent {
+    std::int32_t id = -1;
+    std::string text;
+};
+
 enum class ValueQuery {
     local_player_level,
     local_player_companion_type,
     play_mode,
+    local_player_current_life,
+    local_player_maximum_life,
+    local_player_current_mana,
+    local_player_maximum_mana,
+    local_player_condition_current,
+    local_player_condition_maximum,
+    local_player_gold,
+    local_player_has_unidentified_items,
+    local_player_repair_price,
+    local_player_spell_learned,
+    local_player_job_selection,
+    scenario_entry_value,
+    blackjack_result,
 };
 
 struct InterpreterHooks {
@@ -101,6 +120,18 @@ struct InterpreterHooks {
         std::int32_t,
         const std::vector<std::int32_t>&)> native_command;
     std::function<bool(ValueQuery, std::int32_t&)> query_value;
+    std::function<bool(
+        ValueQuery,
+        std::int32_t,
+        std::int32_t&)> query_indexed_value;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t&)> measure_character_distance;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t,
+        bool&)> query_item;
+    std::function<bool(std::int32_t&)> next_random;
 };
 
 class Interpreter {
@@ -119,6 +150,7 @@ public:
     bool waitingForMessage() const;
     std::int32_t unsupportedOpcode() const;
     std::int32_t readTemporaryFlag(std::int32_t id) const;
+    const ScenarioCaptionEvent& caption() const;
 
 private:
     struct Frame {
@@ -151,6 +183,8 @@ private:
     std::int32_t current_character_number_ = -1;
     std::int32_t message_callback_character_number_ = -1;
     std::int32_t unsupported_opcode_ = -1;
+    std::array<std::int32_t, 20> message_parameters_{};
+    ScenarioCaptionEvent caption_;
 };
 
 }  // namespace osf::script

@@ -26,7 +26,8 @@ void renderCharacterAnimationPass(
     bool shadow,
     std::int32_t shadow_opacity,
     std::int32_t screen_height,
-    std::int32_t opacity) {
+    std::int32_t opacity,
+    std::int32_t additional_status) {
     if (animation.charts().empty()) {
         return;
     }
@@ -96,9 +97,11 @@ void renderCharacterAnimationPass(
             ordered[priority - 1];
         const gapi::CafCell* cell = ordered_cell.cell;
         if (!cell || cell->pattern_index < 0 ||
-            (((cell->status & 8) != 0) != shadow)) {
+            (shadow && (cell->status & 8) == 0)) {
             continue;
         }
+        const std::int32_t display_status =
+            cell->status | additional_status;
         const CharacterColorStrength strength =
             part_color(ordered_cell.part);
         const ScreenPosition screen_position =
@@ -130,7 +133,11 @@ void renderCharacterAnimationPass(
              shadow ? 1000 : strength.red,
              shadow ? 1000 : strength.green,
              shadow ? 1000 : strength.blue,
-             palette});
+             palette,
+             {},
+             !shadow && (display_status & 0x10) != 0
+                 ? gapi::PatternBlendMode::additive
+                 : gapi::PatternBlendMode::normal});
     }
 }
 

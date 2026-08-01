@@ -4,9 +4,11 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "render/gameplay_mission_list_renderer.hpp"
 #include "render/gameplay_transport_renderer.hpp"
+#include "render/quest_notice_renderer.hpp"
 #include "states/gameplay_mission_list.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_transport.hpp"
+#include "ui/quest_notice_layout.hpp"
 #include "world/mission_catalog.hpp"
 #include "world/quest_state.hpp"
 #include "world/transport_catalog.hpp"
@@ -302,6 +304,107 @@ bool testMissionListRendering() {
         "The selected mission detail panel differs from retail.");
 }
 
+bool testQuestNotice() {
+    osf::MissionCatalog catalog;
+    if (!loadCatalog(catalog)) {
+        return false;
+    }
+    osf::QuestState quests;
+    quests.applyScriptUpdate(0, 1);
+    quests.selectNotice(0);
+
+    osf::QuestNoticeLayout layout;
+    if (!check(
+            osf::buildQuestNoticeLayout(
+                quests, catalog, layout) &&
+                layout.text ==
+                    std::string("\x81\x75", 2) +
+                        "Defeat the Red Goblin." +
+                        std::string("\x81\x76", 2) &&
+                layout.x == 456 &&
+                layout.y == 368 &&
+                layout.width == 156 &&
+                layout.height == 12 &&
+                osf::questNoticeContains(
+                    layout, 456, 368) &&
+                osf::questNoticeContains(
+                    layout, 611, 379) &&
+                !osf::questNoticeContains(
+                    layout, 612, 379) &&
+                !osf::questNoticeContains(
+                    layout, 611, 380),
+            "The quest notice text or hit rectangle differs from "
+            "FUN_004050f0.")) {
+        return false;
+    }
+
+    osf::gapi::NjpImage font;
+    osf::gapi::NjpImage status_icons;
+    RecordingBackend backend;
+    osf::renderQuestNotice(
+        backend, font, &status_icons, quests, catalog);
+    if (!check(
+            backend.patterns.size() == 1 &&
+                backend.patterns[0].index == 0 &&
+                backend.patterns[0].draw.x == 616 &&
+                backend.patterns[0].draw.y == 360 &&
+                backend.texts.size() == 2 &&
+                backend.texts[0].text == layout.text &&
+                backend.texts[0].draw.x == 457 &&
+                backend.texts[0].draw.y == 369 &&
+                backend.texts[0].draw.color.red == 0 &&
+                backend.texts[1].text == layout.text &&
+                backend.texts[1].draw.x == 456 &&
+                backend.texts[1].draw.y == 368 &&
+                backend.texts[1].draw.color.red == 224 &&
+                backend.texts[1].draw.color.green == 224 &&
+                backend.texts[1].draw.color.blue == 224,
+            "The active-quest icon, notice shadow, color, or retail "
+            "position differs.")) {
+        return false;
+    }
+    const osf::ActiveQuestShortcutLayout shortcut;
+    if (!check(
+            osf::activeQuestShortcutVisible(quests) &&
+                osf::activeQuestShortcutContains(
+                    shortcut, 616, 368) &&
+                osf::activeQuestShortcutContains(
+                    shortcut, 639, 383) &&
+                !osf::activeQuestShortcutContains(
+                    shortcut, 640, 383) &&
+                !osf::activeQuestShortcutContains(
+                    shortcut, 639, 384),
+            "The active-quest shortcut hit rectangle differs from "
+            "FUN_004050f0.")) {
+        return false;
+    }
+
+    for (std::int32_t update = 0; update < 600; ++update) {
+        quests.updateNotice();
+    }
+    backend = {};
+    osf::renderQuestNotice(
+        backend, font, &status_icons, quests, catalog);
+    if (!check(
+        backend.patterns.size() == 1 &&
+            backend.patterns[0].index == 0 &&
+            backend.texts.empty() &&
+            !osf::buildQuestNoticeLayout(
+                quests, catalog, layout),
+        "The expired quest title remained visible or the active-quest "
+        "shortcut disappeared with it.")) {
+        return false;
+    }
+    quests.applyScriptUpdate(0, 2);
+    backend = {};
+    osf::renderQuestNotice(
+        backend, font, &status_icons, quests, catalog);
+    return check(
+        !osf::activeQuestShortcutVisible(quests) &&
+            backend.patterns.empty(),
+        "The active-quest shortcut remained after quest completion.");
+}
+
 bool testOptionsEntry() {
     osf::GameplayOptionsMenu menu;
     osf::GameConfig config;
@@ -414,10 +517,11 @@ bool testTransportPanel() {
 
 int main() {
     return testMissionCatalog() &&
-                   testMissionListState() &&
-                   testMissionListRendering() &&
-                   testOptionsEntry() &&
-                   testTransportPanel()
+           testMissionListState() &&
+           testMissionListRendering() &&
+           testQuestNotice() &&
+           testOptionsEntry() &&
+           testTransportPanel()
         ? 0
         : 1;
 }

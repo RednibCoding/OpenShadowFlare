@@ -30,6 +30,8 @@ public:
         std::int32_t grid_x,
         std::int32_t grid_y) const;
     const std::vector<InventoryItem>& items() const;
+    std::int32_t identifyAll();
+    bool hasUnidentifiedItems() const;
 
 private:
     std::vector<InventoryItem> items_;

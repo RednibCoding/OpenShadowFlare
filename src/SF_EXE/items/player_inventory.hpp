@@ -9,6 +9,8 @@
 namespace osf {
 
 struct ItemDefinition;
+class ItemDatabase;
+class TableData;
 
 struct InventoryItem {
     std::int32_t category = -1;
@@ -19,7 +21,7 @@ struct InventoryItem {
     std::int32_t width = 1;
     std::int32_t height = 1;
     std::int32_t durability = -1;
-    std::int32_t quality = 0;
+    std::int32_t identified = 0;
     // Preserves the category-specific retail instance fields that have not
     // been named yet. Save/load patches the fields represented above.
     std::vector<std::uint8_t> retail_state;
@@ -33,6 +35,7 @@ struct InventoryPlacementResult {
 InventoryItem makeInventoryItem(
     const ItemDefinition& definition,
     std::int32_t quantity = 1);
+bool identifyInventoryItem(InventoryItem& item);
 
 class PlayerInventory {
 public:
@@ -48,8 +51,16 @@ public:
     bool add(
         const ItemDefinition& definition,
         std::int32_t quantity = 1);
+    bool store(InventoryItem item);
     std::optional<InventoryItem> take(
         std::size_t item_index);
+    bool identify(std::size_t item_index);
+    std::int32_t identifyAll();
+    bool hasUnidentifiedItems() const;
+    std::int32_t repairPrice(
+        const ItemDatabase& database,
+        const TableData& value_parameters) const;
+    std::int32_t repairAll(const ItemDatabase& database);
     InventoryPlacementResult place(
         InventoryItem item,
         std::int32_t grid_x,
@@ -59,7 +70,15 @@ public:
         std::int32_t grid_x,
         std::int32_t grid_y) const;
     const std::vector<InventoryItem>& items() const;
+    bool contains(
+        std::int32_t category,
+        std::int32_t definition_id) const;
+    bool removeFirst(
+        std::int32_t category,
+        std::int32_t definition_id);
     std::int32_t gold() const;
+    bool spendGold(std::int32_t amount);
+    bool creditGold(std::int32_t amount);
 
 private:
     bool add(
@@ -68,7 +87,8 @@ private:
         std::int32_t quantity,
         std::int32_t width,
         std::int32_t height,
-        std::int32_t durability);
+        std::int32_t durability,
+        std::int32_t identified);
 
     std::vector<InventoryItem> items_;
 };

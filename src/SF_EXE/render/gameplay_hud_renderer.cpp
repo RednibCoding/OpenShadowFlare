@@ -4,6 +4,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "world/player_actor.hpp"
 #include "world/player_data.hpp"
+#include "world/player_runtime_profile.hpp"
 
 #include <algorithm>
 #include <array>
@@ -19,12 +20,13 @@ void drawClippedBar(
     std::size_t pattern,
     std::int32_t x,
     std::int32_t y,
-    std::int32_t width) {
+    std::int32_t width,
+    std::int32_t height = 12) {
     if (width <= 0) {
         return;
     }
     gapi::PatternDraw draw;
-    draw.clip = {x, y, width, 12};
+    draw.clip = {x, y, width, height};
     renderer.drawPattern(patterns, pattern, draw);
 }
 
@@ -61,15 +63,44 @@ void drawLevel(
 
 GameplayHudValues gameplayHudValues(
     const PlayerData& player,
-    MovementPace movement_pace) {
+    const PlayerRuntimeProfile& profile,
+    MovementPace movement_pace,
+    std::int32_t experience_threshold,
+    std::int32_t current_life,
+    std::int32_t current_mana,
+    bool increased_power_ready,
+    bool increased_power_activation_feedback,
+    std::int32_t increased_power_blink_counter) {
     return {
         player.level(),
-        player.currentLife(),
-        player.baseMaximumLife(),
-        player.currentMana(),
-        player.baseMaximumMana(),
+        current_life,
+        profile.maximum_life,
+        current_mana,
+        profile.maximum_mana,
+        player.experience(),
+        experience_threshold,
         movement_pace == MovementPace::run,
+        increased_power_ready,
+        increased_power_activation_feedback,
+        increased_power_blink_counter,
     };
+}
+
+std::int32_t gameplayHudExperienceBarWidth(
+    std::int32_t experience,
+    std::int32_t threshold) {
+    constexpr std::int32_t kRetailExperienceWidth = 109;
+    if (experience <= 0 || threshold <= 0) {
+        return 0;
+    }
+    if (experience >= threshold) {
+        return kRetailExperienceWidth;
+    }
+    return std::max(
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(experience) *
+            kRetailExperienceWidth / threshold),
+        1);
 }
 
 std::int32_t gameplayHudBarWidth(
@@ -132,9 +163,30 @@ void renderGameplayHud(
             values.current_mana,
             values.maximum_mana));
 
-    // Pattern 15 is the experience-bar frame. Its fill is added once the
-    // record field and level table behind FUN_004039f0 are both mapped.
+    if (values.increased_power_ready) {
+        const std::int32_t phase =
+            values.increased_power_blink_counter % 4;
+        const std::int32_t strength =
+            phase < 2 ? 1000 : 800;
+        renderer.drawPattern(
+            bar_patterns,
+            12,
+            {0, 0, 1000, 1000, 1000, 1000,
+             strength, strength, strength});
+    } else if (values.increased_power_activation_feedback) {
+        renderer.drawPattern(bar_patterns, 13);
+    }
     renderer.drawPattern(bar_patterns, 15);
+    drawClippedBar(
+        renderer,
+        bar_patterns,
+        14,
+        530,
+        395,
+        gameplayHudExperienceBarWidth(
+            values.experience,
+            values.experience_threshold),
+        9);
 }
 
 }  // namespace osf

@@ -26,6 +26,18 @@ struct ScenarioScriptRuntimeHooks {
     std::function<bool(
         script::ValueQuery,
         std::int32_t&)> query_value;
+    std::function<bool(
+        script::ValueQuery,
+        std::int32_t,
+        std::int32_t&)> query_indexed_value;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t&)> measure_character_distance;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t,
+        bool&)> query_item;
+    std::function<std::int32_t()> next_random;
 };
 
 class ScenarioScriptRuntime {
@@ -45,6 +57,7 @@ public:
     script::StepResult runStatusKind(std::int32_t kind);
     script::StepResult resume(std::int32_t selection = -1);
     const script::ScriptData& data() const;
+    const script::ScenarioCaptionEvent& caption() const;
 
     bool messageActive() const;
     std::int32_t actorId() const;

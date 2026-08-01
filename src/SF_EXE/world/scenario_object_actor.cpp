@@ -179,6 +179,17 @@ void ScenarioObjectActor::setStateValue(
     state_.setValue(channel, value);
 }
 
+void ScenarioObjectActor::setStateOverride(
+    std::int32_t visible,
+    std::int32_t pointer,
+    std::int32_t judgement) {
+    state_.setOverride(visible, pointer, judgement);
+}
+
+bool ScenarioObjectActor::stateOverrideEnabled() const {
+    return state_.overrideEnabled();
+}
+
 std::int32_t ScenarioObjectActor::id() const {
     return id_;
 }

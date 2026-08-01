@@ -26,7 +26,8 @@ bool groundIsWalkable(
     std::int32_t left,
     std::int32_t top,
     std::int32_t right,
-    std::int32_t bottom) {
+    std::int32_t bottom,
+    bool exclude_special_objects) {
     if (ground.judgeWidth() <= 0 ||
         ground.judgeHeight() <= 0) {
         return true;
@@ -65,6 +66,10 @@ bool groundIsWalkable(
         for (std::int32_t x = first_x; x <= last_x; ++x) {
             const std::int16_t* value = ground.judge(x, y);
             if (!value || (*value & 1) == 0) {
+                continue;
+            }
+            if (exclude_special_objects &&
+                (*value & 2) != 0) {
                 continue;
             }
             if (overlaps(
@@ -115,7 +120,12 @@ bool positionIsWalkable(
         }
     }
     return groundIsWalkable(
-        ground, left, top, right, bottom);
+        ground,
+        left,
+        top,
+        right,
+        bottom,
+        exclude_special_objects);
 }
 
 }  // namespace osf

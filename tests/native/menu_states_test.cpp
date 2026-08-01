@@ -1,8 +1,10 @@
 #include "core/retail_random.hpp"
 #include "render/character_select_renderer.hpp"
+#include "render/gameplay_debug_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
 #include "states/character_select_state.hpp"
+#include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/save_slot.hpp"
 #include "states/title_state.hpp"
@@ -939,7 +941,7 @@ bool testNewCharacterCreationAndModeScreens() {
     input.confirm_pressed = false;
     if (!check(
                 state.data().screen == 1 &&
-                state.data().character_gender == 1 &&
+                state.data().character_gender == 0 &&
                 state.data().name_entry_active &&
                 state.data().character_transition_counter == 1000 &&
                 result.mode_action ==
@@ -1129,7 +1131,7 @@ bool testNewCharacterRetailDrawing() {
     osf::CharacterSelectStateData data;
     data.mode = osf::CharacterSelectMode::new_character;
     data.screen = 1;
-    data.character_gender = 0;
+    data.character_gender = 1;
     data.name_entry_active = true;
 
     osf::CharacterSelectFrameResult frame;
@@ -1367,6 +1369,75 @@ bool testGameplayOptionsDrawing() {
         "color.");
 }
 
+bool testGameplayDebugDrawing() {
+    osf::GameplayDebugMenu menu;
+    menu.update({true});
+    menu.update({false, false, true, 400, 118});
+    menu.update({false, false, true, 400, 134});
+    menu.update({false, false, true, 400, 150});
+    menu.update({false, false, true, 400, 166});
+
+    osf::gapi::NjpImage status;
+    osf::gapi::NjpImage font;
+    RecordingBackend backend;
+    osf::renderGameplayDebugMenu(
+        backend, status, font, menu);
+    const auto title = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "DEBUG MENU" &&
+                   call.draw.x == 290 &&
+                   call.draw.y == 86;
+        });
+    const auto spells = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "All Spells" &&
+                   call.draw.x == 184 &&
+                   call.draw.y == 134;
+        });
+    const auto infinite_mana = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "Infinite MP" &&
+                   call.draw.x == 184 &&
+                   call.draw.y == 166;
+        });
+    if (!check(
+            backend.patterns.size() == 2 &&
+                backend.patterns[0].index == 59 &&
+                backend.patterns[0].draw.opacity == 500 &&
+                backend.patterns[1].index == 58 &&
+                title != backend.texts.end() &&
+                spells != backend.texts.end() &&
+                infinite_mana != backend.texts.end(),
+            "The F12 debug menu does not use the gameplay menu frame or "
+            "its declared rows.")) {
+        return false;
+    }
+
+    backend = {};
+    osf::renderGameplayDebugFps(
+        backend, font, 60);
+    const auto fps = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "FPS 60" &&
+                   call.draw.x == 600 &&
+                   call.draw.y == 4 &&
+                   call.draw.color.red == 255;
+        });
+    return check(
+        backend.texts.size() == 2 &&
+            fps != backend.texts.end(),
+        "The debug FPS counter is not anchored to the top-right with a "
+        "shadowed readable draw.");
+}
+
 bool testGameplayHelpDrawing() {
     osf::gapi::NjpImage status;
     osf::gapi::NjpImage font;
@@ -1444,6 +1515,7 @@ int main() {
         !testNewCharacterCreationAndModeScreens() ||
         !testNewCharacterRetailDrawing() ||
         !testGameplayOptionsDrawing() ||
+        !testGameplayDebugDrawing() ||
         !testGameplayHelpDrawing()) {
         return 1;
     }

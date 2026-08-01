@@ -1,5 +1,7 @@
 #include "gameplay_overlay_renderer.hpp"
 
+#include "enemy_nameplate_renderer.hpp"
+#include "player_level_up_notice_renderer.hpp"
 #include "ui/conversation_layout.hpp"
 #include "gapi/gapi.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -24,6 +26,20 @@ const NpcActor* findNpc(
             return npc.id() == id;
         });
     return found == world.npcs().end() ? nullptr : &*found;
+}
+
+const EnemyActor* findEnemy(
+    const WorldScene& world,
+    std::int32_t id) {
+    const auto found = std::find_if(
+        world.enemies().begin(),
+        world.enemies().end(),
+        [id](const EnemyActor& enemy) {
+            return enemy.id() == id;
+        });
+    return found == world.enemies().end()
+        ? nullptr
+        : &*found;
 }
 
 const ScenarioObjectActor* findScenarioObject(
@@ -56,6 +72,16 @@ const GroundItem* findGroundItem(
 
 gapi::Color npcNameColor(const NpcActor& npc) {
     const std::uint32_t color = npc.nameColor();
+    return {
+        static_cast<std::uint8_t>(color),
+        static_cast<std::uint8_t>(color >> 8u),
+        static_cast<std::uint8_t>(color >> 16u),
+        255,
+    };
+}
+
+gapi::Color enemyNameColor(const EnemyActor& enemy) {
+    const std::uint32_t color = enemy.nameColor();
     return {
         static_cast<std::uint8_t>(color),
         static_cast<std::uint8_t>(color >> 8u),
@@ -173,6 +199,41 @@ void drawHoveredNpcLabel(
         });
 }
 
+void drawHoveredEnemyLabel(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const gapi::NjpImage* font,
+    const gapi::NjpImage* status_icons,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    if (!font) {
+        return;
+    }
+    const EnemyActor* enemy =
+        findEnemy(world, world.hoveredEnemyId());
+    if (!enemy || enemy->name().empty()) {
+        return;
+    }
+    const ScreenPosition anchor =
+        calculateRealPosition(enemy->position());
+    const std::int32_t center_x = anchor.x - camera_x;
+    const std::int32_t label_y =
+        anchor.y - camera_y - enemy->labelHeight();
+    renderEnemyNameplate(
+        renderer,
+        *font,
+        status_icons,
+        {
+            enemy->name(),
+            enemyNameColor(*enemy),
+            enemy->currentLife(),
+            enemy->maximumLife(),
+            enemy->nativeElement(),
+            center_x,
+            label_y,
+        });
+}
+
 void drawHoveredGroundItemLabel(
     gapi::Backend& renderer,
     const WorldScene& world,
@@ -190,14 +251,15 @@ void drawHoveredGroundItemLabel(
     }
     const ItemDefinition* definition =
         world.itemDatabase().find(
-            item->category, item->definition_id);
+            item->item.category,
+            item->item.definition_id);
     if (!definition) {
         return;
     }
     const std::string label =
-        item->category == 4 &&
-                item->definition_id == 0
-            ? std::to_string(item->quantity) + " Gold"
+        item->item.category == 4 &&
+                item->item.definition_id == 0
+            ? std::to_string(item->item.quantity) + " Gold"
             : definition->name;
     if (label.empty()) {
         return;
@@ -262,7 +324,8 @@ void drawPointerRange(
         has_target = true;
     } else if (
         world.hoveredScenarioObjectId() >= 0 ||
-        world.hoveredNpcId() >= 0) {
+        world.hoveredNpcId() >= 0 ||
+        world.hoveredEnemyId() >= 0) {
         has_target = true;
     }
     const std::int32_t opacity =
@@ -475,6 +538,7 @@ void renderGameplayOverlay(
     gapi::Backend& renderer,
     const WorldScene& world,
     const gapi::NjpImage* font,
+    const gapi::NjpImage* status_icons,
     std::int32_t camera_x,
     std::int32_t camera_y,
     double interpolation) {
@@ -491,6 +555,13 @@ void renderGameplayOverlay(
         camera_x,
         camera_y,
         interpolation);
+    drawHoveredEnemyLabel(
+        renderer,
+        world,
+        font,
+        status_icons,
+        camera_x,
+        camera_y);
     drawHoveredGroundItemLabel(
         renderer,
         world,
@@ -504,6 +575,12 @@ void renderGameplayOverlay(
         camera_x,
         camera_y,
         interpolation);
+    if (font) {
+        renderPlayerLevelUpNotice(
+            renderer,
+            world.levelUpNotice(),
+            *font);
+    }
     drawPointerRange(renderer, world);
 }
 

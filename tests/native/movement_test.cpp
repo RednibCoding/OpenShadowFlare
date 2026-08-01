@@ -1,11 +1,15 @@
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "world/actor_direction.hpp"
 #include "world/movement_controller.hpp"
 #include "world/npc_actor.hpp"
 #include "world/player_actor.hpp"
+#include "world/player_attack_target.hpp"
 #include "world/world_pointer.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -133,6 +137,32 @@ bool testDirections() {
                 "The retail eight-way direction map is incorrect.");
         }
     }
+    constexpr double degrees_to_radians =
+        0.01745328888888889;
+    constexpr std::array<double, 8> expected_angles{{
+        315.0 * degrees_to_radians,
+        0.0,
+        45.0 * degrees_to_radians,
+        90.0 * degrees_to_radians,
+        135.0 * degrees_to_radians,
+        180.0 * degrees_to_radians,
+        225.0 * degrees_to_radians,
+        270.0 * degrees_to_radians,
+    }};
+    for (std::int32_t direction = 0;
+         direction < 8;
+         ++direction) {
+        if (std::abs(
+                osf::retailAngleForDirection(direction) -
+                expected_angles[
+                    static_cast<std::size_t>(
+                        direction)]) >
+            1.0e-12) {
+            return check(
+                false,
+                "The retail direction-to-angle map is incorrect.");
+        }
+    }
     return true;
 }
 
@@ -176,11 +206,15 @@ bool testMovementAndAnimation() {
     player.moveTo({100, 0});
     for (std::int32_t frame = 0; frame < 5; ++frame) {
         player.update(ground, objects);
+        const std::int32_t footstep =
+            player.takeFootstepSample();
         if (player.animationChart() != 1 ||
-            player.animationFrame() != frame) {
+            player.animationFrame() != frame ||
+            footstep != (frame == 0 ? 0 : -1)) {
             return check(
                 false,
-                "Walking did not use retail CAF chart/frame timing.");
+                "Walking did not use retail CAF timing or its "
+                "first Voice00 footstep.");
         }
     }
     if (!check(
@@ -208,6 +242,38 @@ bool testMovementAndAnimation() {
         player.animationChart() == 0 &&
             player.animationFrame() == 0,
         "The player did not return to idle after arriving.");
+}
+
+bool testFootstepCadence() {
+    osf::GroundMap ground;
+    osf::ObjectMap objects;
+    osf::PlayerActor player;
+    player.reset({0, 0}, 1, 5);
+    player.moveTo({10000, 0});
+    std::vector<std::int32_t> walking_steps;
+    for (std::int32_t update = 0; update < 25; ++update) {
+        player.update(ground, objects);
+        if (player.takeFootstepSample() == 0) {
+            walking_steps.push_back(update);
+        }
+    }
+    player.reset({0, 0}, 1, 5);
+    player.toggleMovementPace();
+    player.moveTo({10000, 0});
+    std::vector<std::int32_t> running_steps;
+    for (std::int32_t update = 0; update < 17; ++update) {
+        player.update(ground, objects);
+        if (player.takeFootstepSample() == 0) {
+            running_steps.push_back(update);
+        }
+    }
+    return check(
+        walking_steps ==
+                std::vector<std::int32_t>({0, 12, 24}) &&
+            running_steps ==
+                std::vector<std::int32_t>({0, 8, 16}),
+        "Player footsteps differ from the retail 12-update walk "
+        "and 8-update run cadence.");
 }
 
 bool testWalkRunToggle() {
@@ -514,6 +580,11 @@ bool testWorldPointerPriority() {
             {0, {100, 100}, {}, 0},
             3,
         },
+        {
+            {osf::WorldPointerTargetKind::enemy, 30},
+            {0, {100, 100}, {}, 0},
+            2,
+        },
     };
     osf::WorldPointer pointer;
     pointer.update(30, 40, candidates);
@@ -522,16 +593,17 @@ bool testWorldPointerPriority() {
                 pointer.screenX() == 30 &&
                 pointer.screenY() == 40 &&
                 pointer.target().kind ==
-                    osf::WorldPointerTargetKind::ground_item &&
-                pointer.target().id == 20,
+                    osf::WorldPointerTargetKind::enemy &&
+                pointer.target().id == 30,
             "The default retail click priority did not prefer "
-            "an item over an actor.")) {
+            "an enemy over other world targets.")) {
         return false;
     }
 
     osf::WorldPointerConfiguration configuration;
     configuration.click_priority[1] = 4;
     configuration.click_priority[2] = 0;
+    configuration.click_priority[0] = 1;
     configuration.range = 99;
     pointer.configure(configuration);
     pointer.update(30, 40, candidates);
@@ -598,6 +670,141 @@ bool testWorldPointerPriority() {
         "picking.");
 }
 
+bool testPlayerAttackTargetRange() {
+    const osf::ObjectBounds actor_bounds{
+        -80, -80, 79, 79,
+    };
+    osf::PlayerAttackTargetSnapshot target{
+        7,
+        {319, 0},
+        actor_bounds,
+        10,
+        true,
+        true,
+    };
+    if (!check(
+            osf::kRetailPlayerAttackRange == 0x9f &&
+                osf::classifyPlayerAttackTarget(
+                    {0, 0},
+                    actor_bounds,
+                    target) ==
+                    osf::PlayerAttackTargetDisposition::ready,
+            "The inclusive retail player attack-range edge was "
+            "not accepted.")) {
+        return false;
+    }
+
+    target.position.x = 320;
+    if (!check(
+            osf::classifyPlayerAttackTarget(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                osf::PlayerAttackTargetDisposition::approach,
+            "A target one unit beyond retail attack range did "
+            "not request an approach.")) {
+        return false;
+    }
+
+    osf::PlayerAttackTargetController controller;
+    if (!check(
+            controller.command(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                    osf::PlayerAttackTargetDisposition::approach &&
+                controller.approachTargetId() == 7 &&
+                controller.readyTargetId() == -1,
+            "The retail attack target did not enter its approach "
+            "state.")) {
+        return false;
+    }
+    target.position.x = 319;
+    if (!check(
+            controller.refresh(
+                {0, 0},
+                actor_bounds,
+                &target) ==
+                    osf::PlayerAttackTargetDisposition::ready &&
+                controller.approachTargetId() == -1 &&
+                controller.readyTargetId() == 7,
+            "Reaching retail attack range did not promote the "
+            "approach target to ready.")) {
+        return false;
+    }
+    if (!check(
+            controller.takeReadyTargetId() == 7 &&
+                controller.readyTargetId() == -1,
+            "Starting an attack did not consume its ready target.")) {
+        return false;
+    }
+    controller.command({0, 0}, actor_bounds, target);
+    target.life = 0;
+    if (!check(
+            !controller.validateReady(&target) &&
+                controller.readyTargetId() == -1,
+            "A defeated ready target was retained by the player "
+            "combat controller.")) {
+        return false;
+    }
+    target.life = 10;
+    controller.command({0, 0}, actor_bounds, target);
+    controller.cancel();
+    if (!check(
+            controller.approachTargetId() == -1 &&
+                controller.readyTargetId() == -1,
+            "Cancelling a player command retained its combat "
+            "target.")) {
+        return false;
+    }
+
+    target.position.x = 320;
+    controller.command({0, 0}, actor_bounds, target);
+    if (!check(
+            controller.refresh(
+                {0, 0},
+                actor_bounds,
+                nullptr) ==
+                    osf::PlayerAttackTargetDisposition::rejected &&
+                controller.approachTargetId() == -1 &&
+                controller.readyTargetId() == -1,
+            "A removed enemy did not cancel the pending player "
+            "approach.")) {
+        return false;
+    }
+
+    target.life = 0;
+    if (!check(
+            osf::classifyPlayerAttackTarget(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                osf::PlayerAttackTargetDisposition::rejected,
+            "A defeated enemy remained a valid player target.")) {
+        return false;
+    }
+    target.life = 10;
+    target.visible = false;
+    if (!check(
+            osf::classifyPlayerAttackTarget(
+                {0, 0},
+                actor_bounds,
+                target) ==
+                osf::PlayerAttackTargetDisposition::rejected,
+            "A hidden enemy remained a valid player target.")) {
+        return false;
+    }
+    target.visible = true;
+    target.pointer_enabled = false;
+    return check(
+        osf::classifyPlayerAttackTarget(
+            {0, 0},
+            actor_bounds,
+            target) ==
+            osf::PlayerAttackTargetDisposition::rejected,
+        "A pointer-disabled enemy remained a valid player target.");
+}
+
 bool testRemoteTownFixture() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -653,6 +860,7 @@ int main() {
         !testRetailRectangleDistance() ||
         !testRenderInterpolation() ||
         !testMovementAndAnimation() ||
+        !testFootstepCadence() ||
         !testWalkRunToggle() ||
         !testObjectJudgement() ||
         !testDiagonalContact() ||
@@ -662,6 +870,7 @@ int main() {
         !testNpcDynamicActorJudgement() ||
         !testScriptedNpcTurningFlag() ||
         !testWorldPointerPriority() ||
+        !testPlayerAttackTargetRange() ||
         !testRemoteTownFixture()) {
         return 1;
     }

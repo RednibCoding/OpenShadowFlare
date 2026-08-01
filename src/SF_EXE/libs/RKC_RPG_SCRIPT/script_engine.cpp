@@ -1,5 +1,7 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdint>
 #include <limits>
 #include <utility>
@@ -23,6 +25,65 @@ std::int32_t wrappedArithmetic(
         result += range;
     }
     return static_cast<std::int32_t>(result);
+}
+
+std::int32_t wrappedMultiply(
+    std::int32_t left,
+    std::int32_t right) {
+    const std::uint32_t result =
+        static_cast<std::uint32_t>(left) *
+        static_cast<std::uint32_t>(right);
+    constexpr std::uint32_t signed_maximum =
+        static_cast<std::uint32_t>(
+            std::numeric_limits<std::int32_t>::max());
+    if (result <= signed_maximum) {
+        return static_cast<std::int32_t>(result);
+    }
+    return -1 -
+           static_cast<std::int32_t>(
+               std::numeric_limits<std::uint32_t>::max() -
+               result);
+}
+
+std::string formatMessage(
+    const std::string& message,
+    const std::array<std::int32_t, 20>& parameters) {
+    std::string formatted;
+    formatted.reserve(message.size());
+    std::size_t parameter = 0;
+    for (std::size_t index = 0; index < message.size();) {
+        if (message[index] != '%' || index + 1 >= message.size()) {
+            formatted.push_back(message[index++]);
+            continue;
+        }
+        if (message[index + 1] == '%') {
+            formatted.push_back('%');
+            index += 2;
+            continue;
+        }
+        std::size_t cursor = index + 1;
+        std::int32_t width = 0;
+        while (cursor < message.size() &&
+               std::isdigit(
+                   static_cast<unsigned char>(message[cursor]))) {
+            width = width * 10 + (message[cursor] - '0');
+            ++cursor;
+        }
+        if (cursor >= message.size() || message[cursor] != 'd' ||
+            parameter >= parameters.size()) {
+            formatted.push_back(message[index++]);
+            continue;
+        }
+        const std::string value =
+            std::to_string(parameters[parameter++]);
+        if (width > static_cast<std::int32_t>(value.size())) {
+            formatted.append(
+                static_cast<std::size_t>(width) - value.size(), ' ');
+        }
+        formatted.append(value);
+        index = cursor + 1;
+    }
+    return formatted;
 }
 
 }  // namespace
@@ -54,6 +115,8 @@ void Interpreter::reset() {
     current_character_number_ = -1;
     message_callback_character_number_ = -1;
     unsupported_opcode_ = -1;
+    message_parameters_.fill(-1);
+    caption_ = {};
 }
 
 StepResult Interpreter::startStatus(
@@ -163,6 +226,10 @@ std::int32_t Interpreter::readTemporaryFlag(
                : found->second;
 }
 
+const ScenarioCaptionEvent& Interpreter::caption() const {
+    return caption_;
+}
+
 StepResult Interpreter::run() {
     if (!script_) {
         return StepResult::invalid_script;
@@ -268,18 +335,15 @@ StepResult Interpreter::execute(const Command& command) {
             readOperand(command.operands[2]);
         const bool mode_one = mode == 1;
         const std::int32_t initial_selection =
-            mode_one
-                ? readOperand(command.operands[3])
-                : -1;
-        // Mode one also carries the chained informational messages used by
-        // companion explanations. A non-negative initial range distinguishes
-        // the actual choice menus from those ordinary acknowledgement steps.
-        const bool selection_required =
-            mode_one && initial_selection >= 0;
+            readOperand(command.operands[3]);
+        // The third operand controls the speech presentation, independently
+        // of the fourth operand which marks a choice menu when non-negative.
+        // Malse's retail service menu uses presentation mode zero.
+        const bool selection_required = initial_selection >= 0;
         if (hooks_.show_message) {
             hooks_.show_message({
                 message->id,
-                message->text,
+                formatMessage(message->text, message_parameters_),
                 current_character_number_,
                 selection_required,
                 initial_selection,
@@ -304,6 +368,14 @@ StepResult Interpreter::execute(const Command& command) {
     }
     case 10:
         return executeNative(6);
+    case 4:
+        return executeNative(0);
+    case 16:
+        return command.operands.empty()
+            ? StepResult::invalid_script
+            : executeNative(
+                  std::min<std::size_t>(
+                      command.operands.size(), 4));
     case 11:
     case 12: {
         if (command.operands.size() < 2) {
@@ -320,12 +392,98 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 13:
+    case 14:
+    case 15: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t left =
+            readOperand(command.operands[0]);
+        const std::int32_t right =
+            readOperand(command.operands[1]);
+        if (command.opcode != 13 && right == 0) {
+            return StepResult::complete;
+        }
+        if (command.opcode != 13 &&
+            left == std::numeric_limits<std::int32_t>::min() &&
+            right == -1) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t result =
+            command.opcode == 13
+                ? wrappedMultiply(left, right)
+                : command.opcode == 14
+                    ? left / right
+                    : left % right;
+        if (!writeOperand(command.operands[0], result)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 5:
+    case 9:
     case 18:
     case 19:
     case 37:
     case 41:
     case 48:
         return executeNative(1);
+    case 54:
+        return executeNative(1);
+    case 56:
+        return executeNative(4);
+    case 6:
+        return executeNative(2);
+    case 24:
+        return executeNative(3);
+    case 30:
+        return executeNative(14);
+    case 36:
+        return executeNative(7);
+    case 34: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t distance = 0;
+        if (!hooks_.measure_character_distance ||
+            !hooks_.measure_character_distance(
+                readOperand(command.operands[0]), distance)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[1], distance)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 39: {
+        if (command.operands.size() < 3) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t lower =
+            readOperand(command.operands[0]);
+        const std::int32_t upper =
+            readOperand(command.operands[1]);
+        std::int32_t random = 0;
+        if (!hooks_.next_random ||
+            !hooks_.next_random(random)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        const std::int32_t range = wrappedArithmetic(
+            wrappedArithmetic(upper, lower, true), 1, false);
+        if (range == 0) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t value = wrappedArithmetic(
+            lower, random % range, false);
+        if (!writeOperand(command.operands[2], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 17:
     case 21:
         return executeNative(2);
     case 22:
@@ -368,6 +526,137 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 45:
+        return executeNative(1);
+    case 49: {
+        if (command.operands.empty() || !script_) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t id =
+            readOperand(command.operands[0]);
+        const Message* message = script_->findMessage(id);
+        if (!message) {
+            return StepResult::invalid_script;
+        }
+        caption_ = {message->id, message->text};
+        return StepResult::complete;
+    }
+    case 50: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::scenario_entry_value, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 51:
+        if (command.operands.size() < message_parameters_.size()) {
+            return StepResult::invalid_script;
+        }
+        for (std::size_t index = 0;
+             index < message_parameters_.size();
+             ++index) {
+            message_parameters_[index] =
+                readOperand(command.operands[index]);
+        }
+        return StepResult::complete;
+    case 52: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_indexed_value ||
+            !hooks_.query_indexed_value(
+                ValueQuery::local_player_repair_price,
+                readOperand(command.operands[0]),
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[1], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 69: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_indexed_value ||
+            !hooks_.query_indexed_value(
+                ValueQuery::local_player_spell_learned,
+                readOperand(command.operands[0]),
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[1], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 53:
+    case 55: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        const ValueQuery query =
+            command.opcode == 53
+                ? ValueQuery::local_player_gold
+                : ValueQuery::local_player_has_unidentified_items;
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(query, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 42:
+    case 43:
+    case 63: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        ValueQuery current_query =
+            ValueQuery::local_player_current_life;
+        ValueQuery maximum_query =
+            ValueQuery::local_player_maximum_life;
+        if (command.opcode == 43) {
+            current_query =
+                ValueQuery::local_player_current_mana;
+            maximum_query =
+                ValueQuery::local_player_maximum_mana;
+        } else if (command.opcode == 63) {
+            current_query =
+                ValueQuery::local_player_condition_current;
+            maximum_query =
+                ValueQuery::local_player_condition_maximum;
+        }
+        std::int32_t current = 0;
+        std::int32_t maximum = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(current_query, current) ||
+            !hooks_.query_value(maximum_query, maximum) ||
+            !writeOperand(command.operands[0], current) ||
+            !writeOperand(command.operands[1], maximum)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        return StepResult::complete;
+    }
     case 61: {
         if (command.operands.empty()) {
             return StepResult::invalid_script;
@@ -384,8 +673,73 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 71: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::local_player_job_selection,
+                value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 74: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::blackjack_result, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 62:
         return executeNative(3);
+    case 58: {
+        if (command.operands.size() < 3) {
+            return StepResult::invalid_script;
+        }
+        bool present = false;
+        if (!hooks_.query_item ||
+            !hooks_.query_item(
+                readOperand(command.operands[0]),
+                readOperand(command.operands[1]),
+                present)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(
+                command.operands[2], present ? 1 : 0)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 59:
+    case 67:
+    case 68:
+    case 70:
+    case 72:
+    case 73:
+    case 75:
+        return executeNative(
+            command.opcode == 59 || command.opcode == 75
+                ? 2
+                : (command.opcode == 72 || command.opcode == 73
+                       ? 0
+                       : 1));
     default:
         unsupported_opcode_ = command.opcode;
         return StepResult::unsupported_command;

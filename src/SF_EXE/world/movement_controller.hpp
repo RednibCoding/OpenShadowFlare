@@ -26,6 +26,11 @@ struct MovementStepResult {
     bool collided = false;
 };
 
+struct LinearMovementStep {
+    WorldPosition position;
+    bool collided = false;
+};
+
 class MovementController {
 public:
     void reset();
@@ -59,6 +64,14 @@ MovementStepResult advanceMovement(
     std::int32_t speed,
     const std::vector<MovementBlocker>* dynamic_blockers = nullptr,
     std::int32_t ignored_blocker_id = kNoMovementBlockerId);
+
+LinearMovementStep advanceLinearMovement(
+    const GroundMap& ground,
+    const ObjectMap& objects,
+    const ObjectBounds& bounds,
+    WorldPosition position,
+    WorldPosition destination,
+    bool exclude_special_objects = false);
 
 WorldPosition interpolateWorldPosition(
     WorldPosition previous,

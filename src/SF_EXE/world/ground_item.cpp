@@ -22,26 +22,35 @@ const std::vector<std::int32_t> kEnabledState{1, 1, 1};
 
 bool createGroundItem(
     std::vector<GroundItem>& items,
-    std::int32_t category,
-    std::int32_t definition_id,
-    WorldPosition position,
-    std::int32_t quantity) {
+    InventoryItem owned_item,
+    WorldPosition position) {
     const bool gold =
-        category == kGoldCategory &&
-        definition_id == kGoldDefinition;
-    if (quantity <= 0 ||
-        (!gold && quantity != 1) ||
-        (gold && quantity > kMaximumGoldStack)) {
+        owned_item.category == kGoldCategory &&
+        owned_item.definition_id == kGoldDefinition;
+    if (owned_item.quantity <= 0 ||
+        (!gold && owned_item.quantity != 1)) {
         return false;
     }
     GroundItem item;
-    item.category = category;
-    item.definition_id = definition_id;
-    item.quantity = quantity;
+    item.item = std::move(owned_item);
     item.position = position;
     item.state.initialize(kEnabledState);
     items.push_back(std::move(item));
     return true;
+}
+
+bool createGroundItem(
+    std::vector<GroundItem>& items,
+    std::int32_t category,
+    std::int32_t definition_id,
+    WorldPosition position,
+    std::int32_t quantity) {
+    InventoryItem item;
+    item.category = category;
+    item.definition_id = definition_id;
+    item.quantity = quantity;
+    return createGroundItem(
+        items, std::move(item), position);
 }
 
 bool createGroundItems(
@@ -135,9 +144,9 @@ bool createScenarioGroundItem(
     }
 
     GroundItem item;
-    item.category = source.category;
-    item.definition_id = source.definition_id;
-    item.quantity = quantity;
+    item.item.category = source.category;
+    item.item.definition_id = source.definition_id;
+    item.item.quantity = quantity;
     item.position = {source.world_x, source.world_y};
     item.vertical_velocity = 0;
     item.bounce_state = 2;
@@ -149,6 +158,17 @@ bool createScenarioGroundItem(
     }
     items.push_back(std::move(item));
     return true;
+}
+
+void restartGroundItemDrop(GroundItem& item) {
+    // When FUN_004526a0 cannot insert a picked-up item into the player's
+    // owner, it recreates that same item through the ordinary mode-zero
+    // world constructor. Keep the instance and position, but restart every
+    // field owned by its two-bounce drop presentation.
+    item.height = 0;
+    item.vertical_velocity = 1600;
+    item.vertical_gravity = 280;
+    item.bounce_state = 0;
 }
 
 GroundItemUpdateEvent updateGroundItem(GroundItem& item) {

@@ -3,6 +3,7 @@
 #include "items/item_information.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
@@ -16,6 +17,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -199,6 +201,8 @@ bool testInventoryResourcesAndRendering() {
     osf::WorldScene world;
     osf::PlayerLoadRequest player;
     player.name = "Mina";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::male);
     std::string error;
     if (!check(
             world.loadInitialScenario(
@@ -257,7 +261,7 @@ bool testInventoryResourcesAndRendering() {
         world,
         0);
     if (!check(
-        renderer.patterns.size() == 13 &&
+        renderer.patterns.size() == 14 &&
             renderer.rectangles.size() == 1 &&
             renderer.rectangles[0].x == 320 &&
             renderer.rectangles[0].width == 320 &&
@@ -266,12 +270,19 @@ bool testInventoryResourcesAndRendering() {
             renderer.patterns[1].index == 3 &&
             renderer.patterns[2].index == 0 &&
             renderer.patterns.back().index == 74 &&
-            renderer.texts.size() == 6 &&
+            renderer.patterns[3].index == 67 &&
+            renderer.texts.size() == 12 &&
             renderer.texts[0].text == "Total Gold" &&
             renderer.texts[1].text == "Total Gold" &&
             renderer.texts[2].text == "0" &&
             renderer.texts[2].draw.x == 464 &&
-            renderer.texts[4].text == "70",
+            renderer.texts[4].text == "5" &&
+            renderer.texts[5].draw.color.red == 224 &&
+            renderer.texts[5].draw.color.green == 224 &&
+            renderer.texts[5].draw.color.blue == 224 &&
+            renderer.texts[6].text == "/" &&
+            renderer.texts[8].text == "10" &&
+            renderer.texts[10].text == "70",
         "The authored inventory frame or live values differ.")) {
         return false;
     }
@@ -329,11 +340,11 @@ bool testInventoryResourcesAndRendering() {
                 world.playerEquipment().derivedParameterBonus(
                     1, world.itemDatabase()) == 100 &&
                 world.playerPartEnabled(12) &&
-                equipped_renderer.patterns.size() == 5 &&
-                equipped_renderer.patterns[3].index == 0 &&
-                equipped_renderer.patterns[3].draw.x == 496 &&
-                equipped_renderer.patterns[3].draw.y == 16 &&
-                equipped_renderer.texts[4].text == "30",
+                equipped_renderer.patterns.size() == 6 &&
+                equipped_renderer.patterns[4].index == 0 &&
+                equipped_renderer.patterns[4].draw.x == 496 &&
+                equipped_renderer.patterns[4].draw.y == 16 &&
+                equipped_renderer.texts[10].text == "30",
             "Equipping the Short Sword did not update ownership, "
             "derived values, artwork, and the CAF mask together.")) {
         return false;
@@ -395,7 +406,7 @@ bool testInventoryResourcesAndRendering() {
         0);
     if (!check(
             inventory.holdingItem() &&
-                held_renderer.patterns.size() == 5 &&
+                held_renderer.patterns.size() == 6 &&
                 held_renderer.patterns.back().index == 0 &&
                 held_renderer.patterns.back().draw.x == 334 &&
                 held_renderer.patterns.back().draw.y == 236,
@@ -483,11 +494,11 @@ bool testInventoryResourcesAndRendering() {
             world.playerPartRedStrength(9) == 900 &&
             world.playerPartGreenStrength(9) == 800 &&
             world.playerPartBlueStrength(9) == 500 &&
-            shield_renderer.patterns.size() == 6 &&
-            shield_renderer.patterns[3].index == 45 &&
-            shield_renderer.patterns[3].draw.x == 480 &&
-            shield_renderer.patterns[3].draw.y == 176 &&
-            shield_renderer.texts[4].text == "40",
+            shield_renderer.patterns.size() == 7 &&
+            shield_renderer.patterns[4].index == 45 &&
+            shield_renderer.patterns[4].draw.x == 480 &&
+            shield_renderer.patterns[4].draw.y == 176 &&
+            shield_renderer.texts[10].text == "40",
         "The Round Shield did not use its retail off-hand region, "
         "weight, icon placement, and CAF colors.")) {
         return false;
@@ -513,6 +524,69 @@ bool testInventoryResourcesAndRendering() {
                         osf::EquipmentSlot::off_hand),
             "The equipped-item region did not share the retail "
             "information path.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* tablet =
+        world.itemDatabase().find(3, 0);
+    if (!check(
+            tablet &&
+                world.playerInventory().add(*tablet),
+            "The Tablet information fixture could not be prepared.")) {
+        return false;
+    }
+    const osf::InventoryItem& tablet_item =
+        world.playerInventory().items().back();
+    const std::int32_t tablet_pointer_x =
+        osf::GameplayInventory::backpack_left +
+        tablet_item.grid_x *
+            osf::GameplayInventory::cell_size + 8;
+    const std::int32_t tablet_pointer_y =
+        osf::GameplayInventory::backpack_top +
+        tablet_item.grid_y *
+            osf::GameplayInventory::cell_size + 8;
+    for (std::int32_t update = 0; update < 3; ++update) {
+        inventory.update(
+            {
+                false,
+                false,
+                false,
+                tablet_pointer_x,
+                tablet_pointer_y,
+            },
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.playerBelt(),
+            world.playerSpecialItems(),
+            world.itemDatabase(),
+            world.playerData().level());
+    }
+    RecordingBackend tablet_information_renderer;
+    osf::renderItemInformation(
+        tablet_information_renderer,
+        font,
+        inventory,
+        world);
+    const std::string tablet_information =
+        osf::itemInformationText(
+            tablet_item, *tablet);
+    if (!check(
+            tablet_information.rfind(
+                "[Tablet]\n\n"
+                "Sale Price                :",
+                0) == 0 &&
+                tablet_information_renderer.texts.size() == 2 &&
+                tablet_information_renderer.texts[1].text ==
+                    tablet_information &&
+                tablet_information_renderer.rectangles.size() == 5 &&
+                tablet_information_renderer.rectangles[0].x ==
+                    tablet_pointer_x - 112 &&
+                tablet_information_renderer.rectangles[0].y ==
+                    tablet_pointer_y + 8 &&
+                tablet_information_renderer.rectangles[0].width == 224 &&
+                tablet_information_renderer.rectangles[0].height == 44,
+            "The one-cell Tablet information omitted its retail "
+            "sale-price row or popup dimensions.")) {
         return false;
     }
 
@@ -800,12 +874,12 @@ bool testConditionArtwork() {
         world,
         7);
     if (!check(
-            warning_on.patterns.size() == 6 &&
-                warning_on.patterns[4].image == &status &&
-                warning_on.patterns[4].index == 16 &&
-                warning_on.patterns[4].draw.x ==
+            warning_on.patterns.size() == 7 &&
+                warning_on.patterns[5].image == &status &&
+                warning_on.patterns[5].index == 16 &&
+                warning_on.patterns[5].draw.x ==
                     backpack_warning_x &&
-                warning_on.patterns[4].draw.y ==
+                warning_on.patterns[5].draw.y ==
                     backpack_warning_y,
             "Low durability did not draw Status pattern 16 at "
             "the retail backpack corner.")) {
@@ -821,7 +895,7 @@ bool testConditionArtwork() {
         world,
         8);
     if (!check(
-            warning_off.patterns.size() == 5,
+            warning_off.patterns.size() == 6,
             "The low-durability warning did not blink off.")) {
         return false;
     }
@@ -849,9 +923,9 @@ bool testConditionArtwork() {
         world,
         8);
     if (!check(
-            broken.patterns.size() == 6 &&
-                broken.patterns[4].image == &status &&
-                broken.patterns[4].index == 16,
+            broken.patterns.size() == 7 &&
+                broken.patterns[5].image == &status &&
+                broken.patterns[5].index == 16,
             "A broken backpack item did not keep its warning visible.")) {
         return false;
     }
@@ -882,7 +956,7 @@ bool testConditionArtwork() {
         8);
     if (!check(
             inventory.holdingItem() &&
-                held.patterns.size() == 6 &&
+                held.patterns.size() == 7 &&
                 held.patterns.back().image == &status &&
                 held.patterns.back().index == 16 &&
                 held.patterns.back().draw.x ==
@@ -938,15 +1012,15 @@ bool testConditionArtwork() {
     return check(
         equipped.equipment_changed &&
             !inventory.holdingItem() &&
-            equipped_renderer.patterns.size() == 6 &&
-            equipped_renderer.patterns[4].image == &status &&
-            equipped_renderer.patterns[4].index == 16 &&
-            equipped_renderer.patterns[4].draw.x ==
+            equipped_renderer.patterns.size() == 7 &&
+            equipped_renderer.patterns[5].image == &status &&
+            equipped_renderer.patterns[5].index == 16 &&
+            equipped_renderer.patterns[5].draw.x ==
                 equipped_x +
                     equipped_dagger->width *
                         osf::GameplayInventory::cell_size -
                     16 &&
-            equipped_renderer.patterns[4].draw.y ==
+            equipped_renderer.patterns[5].draw.y ==
                 equipped_y +
                     equipped_dagger->height *
                         osf::GameplayInventory::cell_size -
@@ -1310,8 +1384,58 @@ bool testSpecialItemOwnershipAndRendering() {
         world.playerData().level());
     if (!check(
             inventory.active() &&
-                !inventory.specialItemsActive(),
-            "Opening inventory did not close the special-item panel.")) {
+                inventory.specialItemsActive(),
+            "The left Special Item owner and right inventory owner "
+            "could not remain open together.")) {
+        return false;
+    }
+    world.playerInventory().clear();
+    inventory.update(
+        {false, false, true, 64, 152},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, true, 352, 280},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            !inventory.holdingItem() &&
+                world.playerSpecialItems().items().empty() &&
+                world.playerInventory().items().size() == 1,
+            "An item could not move from the left Warehouse owner "
+            "to the open right inventory.")) {
+        return false;
+    }
+    inventory.update(
+        {false, false, true, 352, 280},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, true, 32, 88},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    if (!check(
+            !inventory.holdingItem() &&
+                world.playerInventory().items().empty() &&
+                world.playerSpecialItems().items().size() == 1,
+            "An item could not move back from the right inventory "
+            "to the open left Warehouse owner.")) {
         return false;
     }
     inventory.update(
@@ -1330,19 +1454,457 @@ bool testSpecialItemOwnershipAndRendering() {
         world.playerSpecialItems(),
         world.itemDatabase(),
         world.playerData().level());
+    inventory.update(
+        {true, false, false, 64, 152},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
+    inventory.update(
+        {false, false, false, 64, 152, true},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level());
     return check(
         !inventory.anyItemPanelActive(),
-        "The X shortcut did not close its own panel.");
+        "The independent left and right item panels did not close "
+        "their own owners.");
+}
+
+bool testGiantWarehousePagesAndRendering() {
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Mina";
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(data_root, player, &error),
+            error.empty()
+                ? "The Giant Warehouse world could not be prepared."
+                : error.c_str())) {
+        return false;
+    }
+
+    osf::PlayerGiantWarehouse::EnabledFlags flags{};
+    flags[0] = 1;
+    flags[1] = 1;
+    world.playerGiantWarehouse().restoreEnabledFlags(flags);
+    const osf::ItemDefinition* accessory =
+        world.itemDatabase().find(2, 1000000);
+    if (!accessory ||
+        !world.playerGiantWarehouse()
+             .page(1)
+             .place(osf::makeInventoryItem(*accessory), 2, 3)
+             .accepted) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.openGiantWarehouse();
+    osf::gapi::NjpImage status;
+    if (!status.load(
+            data_root / "System" / "Game" / "Pattern" /
+                "Status.njp",
+            &error)) {
+        return false;
+    }
+    RecordingBackend rendered;
+    osf::renderGameplaySpecialItems(
+        rendered, status, inventory, world, 0);
+    if (!check(
+            inventory.giantWarehouseActive() &&
+                rendered.patterns.size() >= 13 &&
+                rendered.patterns[0].index == 14 &&
+                rendered.patterns[1].index == 15 &&
+                rendered.patterns[2].index == 73 &&
+                rendered.patterns[3].index == 85 &&
+                rendered.patterns[3].draw.x == 24 &&
+                rendered.patterns[3].draw.y == 41 &&
+                rendered.patterns[4].index == 76 &&
+                rendered.patterns[5].index == 74,
+            "The Giant Warehouse did not render its retail ten-page "
+            "tab states.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult selected = inventory.update(
+        {false, false, true, 52, 45},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level(),
+        &world.playerGiantWarehouse());
+    if (!check(
+            selected.pointer_consumed &&
+                selected.item_sound_sample == 58 &&
+                world.playerGiantWarehouse().selectedPage() == 1,
+            "An enabled Giant Warehouse page did not select through its "
+            "retail tab.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 3; ++update) {
+        inventory.update(
+            {false, false, false, 84, 180},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.playerBelt(),
+            world.playerSpecialItems(),
+            world.itemDatabase(),
+            world.playerData().level(),
+            &world.playerGiantWarehouse());
+    }
+    if (!check(
+            inventory.informationItem(
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerSpecialItems(),
+                &world.playerGiantWarehouse()) ==
+                &world.playerGiantWarehouse().page(1).items()[0],
+            "The selected Giant Warehouse page did not own item hover.")) {
+        return false;
+    }
+
+    inventory.update(
+        {false, false, true, 280, 45},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level(),
+        &world.playerGiantWarehouse());
+    return check(
+        !inventory.leftStorageActive(),
+        "The Giant Warehouse retail close tab did not close its owner.");
+}
+
+bool testIdentificationSelection() {
+    osf::PlayerInventory owned;
+    osf::PlayerEquipment equipment;
+    osf::PlayerBelt belt;
+    osf::PlayerSpecialItems special_items;
+    osf::ItemDatabase database;
+    osf::ItemDefinition item_definition;
+    item_definition.category = 0;
+    item_definition.id = 10;
+    item_definition.variant = 1;
+    item_definition.inventory_width = 1;
+    item_definition.inventory_height = 1;
+    item_definition.name = "Speed Short Sword";
+    item_definition.description = "Short Sword";
+    osf::InventoryItem item =
+        osf::makeInventoryItem(item_definition);
+    item.retail_state.resize(49u * 4u);
+    if (!check(
+            item.identified == 0 &&
+                owned.store(std::move(item)),
+            "The unidentified backpack fixture could not be stored.")) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.open();
+    const std::int32_t pointer_x =
+        osf::GameplayInventory::backpack_left + 8;
+    const std::int32_t pointer_y =
+        osf::GameplayInventory::backpack_top + 8;
+    const osf::GameplayInventoryResult selection =
+        inventory.update(
+            {
+                false,
+                false,
+                true,
+                pointer_x,
+                pointer_y,
+                false,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            selection.pointer_consumed &&
+                selection.inventory_item_identify_requested == 0 &&
+                !selection.cancel_identification_requested &&
+                !inventory.holdingItem() &&
+                owned.items().size() == 1 &&
+                osf::itemInformationText(
+                    owned.items()[0], item_definition) ==
+                    "[Short Sword]\n\n",
+            "Identify mode picked up the item or exposed its hidden name "
+            "and values.")) {
+        return false;
+    }
+
+    if (!check(
+            owned.identify(0) &&
+                owned.items()[0].identified == 1 &&
+                owned.items()[0].retail_state[48u * 4u] == 1 &&
+                osf::itemInformationText(
+                    owned.items()[0], item_definition)
+                    .rfind("[Speed Short Sword]\n\n", 0) == 0 &&
+                osf::itemInformationText(
+                    owned.items()[0], item_definition)
+                    .find("Durability") != std::string::npos,
+            "The identified flag did not update the item and its retail "
+            "state mirror.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult known_selection =
+        inventory.update(
+            {
+                false,
+                false,
+                true,
+                pointer_x,
+                pointer_y,
+                false,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            known_selection.pointer_consumed &&
+                known_selection.inventory_item_identify_requested == -1 &&
+                inventory.active() &&
+                !inventory.holdingItem(),
+            "Identify mode accepted an already identified item.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult outside_selection =
+        inventory.update(
+            {
+                false,
+                false,
+                true,
+                100,
+                200,
+                false,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            outside_selection.pointer_consumed &&
+                outside_selection
+                        .inventory_item_identify_requested == -1 &&
+                inventory.active(),
+            "Identify mode leaked an outside click into the world.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult cancelled =
+        inventory.update(
+            {
+                false,
+                true,
+                false,
+                100,
+                200,
+                false,
+                true,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    return check(
+        cancelled.pointer_consumed &&
+            cancelled.cancel_identification_requested &&
+            inventory.active(),
+        "Right-clicking did not cancel Identify while leaving Inventory "
+        "open.");
+}
+
+bool testMerchantIdentificationOwners() {
+    osf::ItemDefinition weapon;
+    weapon.category = 0;
+    weapon.id = 10;
+    weapon.variant = 1;
+    weapon.inventory_width = 1;
+    weapon.inventory_height = 1;
+    osf::InventoryItem backpack_item =
+        osf::makeInventoryItem(weapon);
+    backpack_item.retail_state.resize(49u * 4u);
+
+    osf::ItemDefinition armor;
+    armor.category = 1;
+    armor.id = 10;
+    armor.subtype = 1;
+    armor.variant = 1;
+    armor.inventory_width = 1;
+    armor.inventory_height = 1;
+    osf::InventoryItem equipped_item =
+        osf::makeInventoryItem(armor);
+    equipped_item.retail_state.resize(49u * 4u);
+
+    osf::ItemDefinition medicine;
+    medicine.category = 3;
+    medicine.id = 10;
+    medicine.variant = 1;
+    medicine.inventory_width = 1;
+    medicine.inventory_height = 1;
+
+    osf::PlayerInventory inventory;
+    osf::PlayerEquipment equipment;
+    osf::PlayerBelt belt;
+    if (!inventory.store(std::move(backpack_item)) ||
+        !equipment
+             .place(
+                 osf::EquipmentSlot::body,
+                 std::move(equipped_item),
+                 armor,
+                 1)
+             .accepted ||
+        !belt
+             .place(
+                 osf::makeInventoryItem(medicine),
+                 0,
+                 0,
+                 medicine)
+             .accepted) {
+        return false;
+    }
+
+    if (!check(
+            inventory.hasUnidentifiedItems() &&
+                equipment.hasUnidentifiedItems() &&
+                belt.hasUnidentifiedItems(),
+            "Malse's Identify scan missed an owned item container.")) {
+        return false;
+    }
+    const std::int32_t identified =
+        inventory.identifyAll() +
+        equipment.identifyAll() +
+        belt.identifyAll();
+    return check(
+        identified == 3 &&
+            !inventory.hasUnidentifiedItems() &&
+            !equipment.hasUnidentifiedItems() &&
+            !belt.hasUnidentifiedItems() &&
+            inventory.items()[0].retail_state[48u * 4u] == 1 &&
+            equipment.item(osf::EquipmentSlot::body)
+                    ->retail_state[48u * 4u] == 1,
+        "Malse's Identify mutation did not cover every owner or its retail "
+        "save mirror.");
+}
+
+bool testSecondaryUseRequests() {
+    osf::PlayerInventory owned;
+    osf::PlayerEquipment equipment;
+    osf::PlayerBelt belt;
+    osf::PlayerSpecialItems special_items;
+    osf::ItemDatabase database;
+    osf::ItemDefinition tablet;
+    tablet.category = 3;
+    tablet.id = 0;
+    tablet.inventory_width = 1;
+    tablet.inventory_height = 1;
+    if (!owned.add(tablet) ||
+        !belt.place(
+                 osf::makeInventoryItem(tablet),
+                 0,
+                 0,
+                 tablet)
+             .accepted) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.open();
+    const osf::GameplayInventoryResult backpack_use =
+        inventory.update(
+            {
+                false,
+                true,
+                false,
+                osf::GameplayInventory::backpack_left + 8,
+                osf::GameplayInventory::backpack_top + 8,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    if (!check(
+            backpack_use.pointer_consumed &&
+                backpack_use.inventory_item_use_requested == 0 &&
+                backpack_use.belt_pocket_use_requested == -1 &&
+                inventory.active(),
+            "Right-clicking a backpack item did not request its use "
+            "before the panel-close path.")) {
+        return false;
+    }
+
+    inventory.completeItemUse(false);
+    const osf::GameplayInventoryResult belt_use =
+        inventory.update(
+            {
+                false,
+                false,
+                false,
+                357 + 8,
+                413 + 8,
+                false,
+                true,
+            },
+            owned,
+            equipment,
+            belt,
+            special_items,
+            database,
+            1);
+    return check(
+        belt_use.pointer_consumed &&
+            belt_use.inventory_item_use_requested == -1 &&
+            belt_use.belt_pocket_use_requested == 0,
+        "Right-clicking a belt item did not request the retail "
+        "1-8 pocket.");
 }
 
 }  // namespace
 
 int main() {
     return testInventoryState() &&
+                   testIdentificationSelection() &&
+                   testMerchantIdentificationOwners() &&
+                   testSecondaryUseRequests() &&
                    testInventoryResourcesAndRendering() &&
                    testConditionArtwork() &&
                    testAccessoryAndBeltOwnership() &&
-                   testSpecialItemOwnershipAndRendering()
+                   testSpecialItemOwnershipAndRendering() &&
+                   testGiantWarehousePagesAndRendering()
         ? 0
         : 1;
 }

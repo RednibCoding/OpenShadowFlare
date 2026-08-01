@@ -59,11 +59,26 @@ std::int32_t itemSalePrice(
         std::max<std::int64_t>(price, 1));
 }
 
+std::int32_t itemPurchasePrice(
+    const InventoryItem&,
+    const ItemDefinition& definition) {
+    return std::max(definition.base_price, 0);
+}
+
 std::string itemInformationText(
     const InventoryItem& item,
-    const ItemDefinition& definition) {
+    const ItemDefinition& definition,
+    ItemInformationPrice price_kind) {
     std::ostringstream output;
-    output << '[' << definition.name << "]\n\n";
+    output << '['
+           << (item.identified != 0
+                   ? definition.name
+                   : definition.description)
+           << "]\n\n";
+
+    if (item.identified == 0) {
+        return output.str();
+    }
 
     if (definition.category == 0 ||
         definition.category == 1) {
@@ -94,8 +109,12 @@ std::string itemInformationText(
             definition.required_level);
         appendValue(
             output,
-            "Sale Price                :",
-            itemSalePrice(item, definition));
+            price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            price_kind == ItemInformationPrice::purchase
+                ? itemPurchasePrice(item, definition)
+                : itemSalePrice(item, definition));
         output << '\n';
         output
             << "Fire   :" << std::setw(3)
@@ -114,13 +133,44 @@ std::string itemInformationText(
             << definition.element_strengths[6]
             << " Metal  :" << std::setw(3)
             << definition.element_strengths[7] << '\n';
-    } else if (
-        definition.category == 4 &&
-        definition.id == 0) {
+    } else if (definition.category == 2) {
         appendValue(
             output,
-            "Price                     :",
-            item.quantity);
+            "Weight                    :",
+            definition.weight);
+        appendValue(
+            output,
+            "Required Level            :",
+            definition.required_level);
+        appendValue(
+            output,
+            price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            price_kind == ItemInformationPrice::purchase
+                ? itemPurchasePrice(item, definition)
+                : itemSalePrice(item, definition));
+    } else if (definition.category == 3) {
+        appendValue(
+            output,
+            price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            price_kind == ItemInformationPrice::purchase
+                ? itemPurchasePrice(item, definition)
+                : itemSalePrice(item, definition));
+    } else if (definition.category == 4) {
+        appendValue(
+            output,
+            definition.id == 0 ||
+                    price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            definition.id == 0
+                ? item.quantity
+                : price_kind == ItemInformationPrice::purchase
+                    ? itemPurchasePrice(item, definition)
+                    : itemSalePrice(item, definition));
     }
     return output.str();
 }

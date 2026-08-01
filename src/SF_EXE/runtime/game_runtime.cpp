@@ -16,6 +16,7 @@
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
 #include "states/title_state.hpp"
+#include "ui/player_level_up_notice_input.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
@@ -128,9 +129,10 @@ public:
                 "System\\Common\\Pattern\\Waiting.njp") ||
             !frontendAssets_.loadPattern(
                 3,
-                "System\\Common\\Pattern\\WaitIcon.njp")) {
+                "System\\Common\\Pattern\\System.njp")) {
             return false;
         }
+        lwl_window_set_cursor_visible(window_, false);
         gameState_.transition(osf::GameState::title);
         return true;
     }
@@ -141,6 +143,9 @@ public:
         renderedFrames_ = 0;
         previousTime_ = lwl_time_seconds();
         nextFrame_ = previousTime_;
+        fpsWindowStart_ = previousTime_;
+        fpsWindowFrames_ = 0;
+        framesPerSecond_ = 0;
         gameAccumulator_ = kGameStep;
     }
 
@@ -196,24 +201,37 @@ private:
                 frontendAssets_,
                 savePreview_,
                 gameplayUi_.options(),
+                gameplayUi_.blackjack(),
+                gameplayUi_.debug(),
+                gameplayUi_.equipmentColor(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
+                gameplayUi_.magic(),
+                gameplayUi_.status(),
                 gameplayUi_.missionList(),
                 gameplayUi_.transport(),
+                gameplayUi_.vendor(),
                 gameConfig_,
-                scenarioLoadingRenderCounter_,
                 shadowOpacity_,
                 gameplayCounter_,
+                framesPerSecond_,
+                input_.menu().pointer_x,
+                input_.menu().pointer_y,
             },
             interpolation);
 
-        if (gameState_.currentState() ==
-                osf::GameState::gameplay &&
-            gameplayFrame_.phase ==
-                osf::GameplayPhase::scenario_loading) {
-            ++scenarioLoadingRenderCounter_;
-        }
         ++renderedFrames_;
+        ++fpsWindowFrames_;
+        const double fps_elapsed =
+            currentTime - fpsWindowStart_;
+        if (fps_elapsed >= 0.5) {
+            framesPerSecond_ = static_cast<std::int32_t>(
+                static_cast<double>(fpsWindowFrames_) /
+                    fps_elapsed +
+                0.5);
+            fpsWindowStart_ = currentTime;
+            fpsWindowFrames_ = 0;
+        }
         if (smokeTest_ && renderedFrames_ >= 3) {
             running_ = false;
         }
@@ -238,6 +256,11 @@ private:
         surfacePresenter_->present(source);
     }
 
+    void completeScenarioChange() {
+        gameplayUi_.reset();
+        world_.setCameraAnchor(320, 240);
+        audio_.startWorldMusic(world_.musicTrack());
+    }
 
     void updateGame(bool& running) {
         switch (gameState_.currentState()) {
@@ -342,14 +365,18 @@ private:
         }
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
-            if (gameplayFrame_.phase ==
-                    osf::GameplayPhase::scenario_loading &&
-                scenarioLoadingRenderCounter_ >= 120) {
-                gameplayFrame_ =
-                    gameplayState_.finishScenarioLoading();
-                scenarioLoadingRenderCounter_ = 0;
-            }
-            const bool ui_consumed = gameplayUi_.update(
+            const bool notice_consumed =
+                !gameplayUi_.options().active() &&
+                osf::dismissPlayerLevelUpNoticeAtPointer(
+                    input_.menu()
+                        .pointer_primary_pressed,
+                    input_.menu().pointer_x,
+                    input_.menu().pointer_y,
+                    frontendAssets_.pattern(1),
+                    world_);
+            const bool ui_consumed =
+                !notice_consumed &&
+                gameplayUi_.update(
                     gameplayFrame_,
                     input_,
                     world_,
@@ -362,11 +389,8 @@ private:
                     gameState_,
                     running,
                     shadowOpacity_);
-            if (gameplayUi_.takeScenarioChanged()) {
-                audio_.startWorldMusic(world_.musicTrack());
-                scenarioLoadingRenderCounter_ = 0;
-                gameplayFrame_ =
-                    gameplayState_.beginScenarioLoading();
+            if (world_.takeScenarioChanged()) {
+                completeScenarioChange();
             } else if (!ui_consumed) {
                 const bool map_active =
                     gameplayUi_.map().active();
@@ -374,27 +398,44 @@ private:
                     gameplayUi_.inventory().active();
                 const bool special_items_active =
                     gameplayUi_.inventory()
-                        .specialItemsActive();
+                        .leftStorageActive();
+                const bool magic_active =
+                    gameplayUi_.magic().active();
+                const bool status_active =
+                    gameplayUi_.status().active();
                 const bool transport_active =
                     gameplayUi_.transport().active();
+                const bool vendor_active =
+                    gameplayUi_.vendor().active();
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed &&
                         !map_active,
                     input_.menu()
-                        .pointer_primary_pressed,
+                        .pointer_primary_pressed &&
+                        !notice_consumed,
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
-                    input_.pointerPrimaryDown(),
+                    input_.pointerPrimaryDown() &&
+                        !notice_consumed,
                     input_.runTogglePressed(),
+                    input_.increasedPowerPressed(),
+                    input_.landMinePressed(),
                     map_active ||
+                            magic_active ||
+                            status_active ||
                             special_items_active ||
-                            transport_active
+                            transport_active ||
+                            vendor_active
                         ? 320
                         : 0,
                     0,
                     inventory_active ? 320 : 640,
                     400,
+                    input_.pointerSecondaryPressed(),
                 });
+                if (world_.takeScenarioChanged()) {
+                    completeScenarioChange();
+                }
             }
             break;
         }
@@ -422,7 +463,6 @@ private:
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
             gameplayCounter_ = 0;
-            scenarioLoadingRenderCounter_ = 0;
             gameplayUi_.reset();
             savePreview_.clear();
             gameplayState_.enter();
@@ -430,7 +470,6 @@ private:
         callbacks.gameplay.leave = [this] {
             gameplayUi_.reset();
             gameplayState_.leave();
-            scenarioLoadingRenderCounter_ = 0;
         };
         return callbacks;
     }
@@ -446,7 +485,9 @@ private:
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     std::uint32_t gameplayCounter_ = 0;
-    std::int32_t scenarioLoadingRenderCounter_ = 0;
+    double fpsWindowStart_ = 0.0;
+    std::uint32_t fpsWindowFrames_ = 0;
+    std::int32_t framesPerSecond_ = 0;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::string pendingCharacterName_;

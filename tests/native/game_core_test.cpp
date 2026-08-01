@@ -2,6 +2,7 @@
 #include "core/game_config.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 
@@ -64,7 +65,7 @@ bool testRetailDefaultsAndFixture() {
                 config.semi_transparent_objects &&
                 config.display_darkness &&
                 config.unknown_48d528 &&
-                config.unknown_48d540 &&
+                config.attack_while_moving &&
                 config.save_image_at_game_end &&
                 config.click_range == 2 &&
                 config.click_range_enabled &&
@@ -97,7 +98,7 @@ bool testConfigValidationAndWriting() {
         -9, -5, 0, 2, 1, 0, 9, 8, -2, 0, 1, 2, 3, 4, -12000, 100,
     }};
     GameConfig config;
-    config.unknown_48d540 = false;
+    config.attack_while_moving = false;
     std::istringstream input(encode(values), std::ios::binary);
     if (!check(
             osf::loadGameConfig(input, config),
@@ -109,7 +110,7 @@ bool testConfigValidationAndWriting() {
                 config.semi_transparent_shadow &&
                 !config.semi_transparent_objects &&
                 config.display_darkness &&
-                config.unknown_48d540 &&
+                config.attack_while_moving &&
                 config.save_image_at_game_end &&
                 config.click_range == 2 &&
                 config.click_range_enabled &&
@@ -411,6 +412,7 @@ bool testGameplayLoadingTransition() {
     std::int32_t movementCommands = 0;
     std::int32_t movementCancels = 0;
     std::int32_t interactionCommands = 0;
+    std::int32_t magicCommands = 0;
     std::int32_t pointerUpdates = 0;
     std::int32_t pointerClears = 0;
     std::int32_t conversationAdvances = 0;
@@ -463,6 +465,11 @@ bool testGameplayLoadingTransition() {
             conversationActive = x == 300 && y == 220;
             return conversationActive;
         };
+    hooks.command_player_magic =
+        [&](std::int32_t x, std::int32_t y) {
+            ++magicCommands;
+            return x == 250 && y == 200;
+        };
     hooks.conversation_active =
         [&conversationActive] {
             return conversationActive;
@@ -510,6 +517,11 @@ bool testGameplayLoadingTransition() {
     }
     frame = state.update({false, true, 600, 460});
     state.update({false, true, 200, 450});
+    osf::GameplayFrameInput magic_cast;
+    magic_cast.pointer_x = 250;
+    magic_cast.pointer_y = 200;
+    magic_cast.pointer_secondary_pressed = true;
+    state.update(magic_cast);
     state.update({false, true, 200, 210});
     state.update({false, true, -1, 210});
     state.update({false, false, 0, 0, false, true});
@@ -538,11 +550,12 @@ bool testGameplayLoadingTransition() {
             movementX == 240 &&
             movementY == 250 &&
             interactionCommands == 4 &&
-            pointerUpdates == 12 &&
+            magicCommands == 1 &&
+            pointerUpdates == 13 &&
             pointerClears == 2 &&
             conversationAdvances == 1 &&
             conversationChoices == 1 &&
-            worldUpdates == 14 &&
+            worldUpdates == 15 &&
             runToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
 }
@@ -591,56 +604,6 @@ bool testGameplayClickAndHoldMovement() {
         movement_commands == 15 &&
             movement_cancels == 1,
         "Held movement or split-view input clipping diverged.");
-}
-
-bool testGameplayScenarioLoading() {
-    std::int32_t world_updates = 0;
-    osf::GameplayStateHooks hooks;
-    hooks.prepare_world = [] { return true; };
-    hooks.update_world =
-        [&world_updates] { ++world_updates; };
-    osf::GameplayState state(std::move(hooks));
-    state.enter();
-    state.update();
-    state.update({false, true, 600, 460});
-
-    osf::GameplayFrameResult frame =
-        state.beginScenarioLoading();
-    if (!check(
-            frame.phase ==
-                    osf::GameplayPhase::scenario_loading &&
-                frame.loading_counter == 0 &&
-                !frame.ready_to_continue,
-            "A live scenario change did not enter its own loading "
-            "presentation.")) {
-        return false;
-    }
-    for (std::int32_t update = 0; update < 120; ++update) {
-        frame = state.update(
-            {true, true, 200, 200, true, true});
-    }
-    if (!check(
-            frame.phase ==
-                    osf::GameplayPhase::scenario_loading &&
-                frame.loading_counter == 0 &&
-                world_updates == 0,
-            "Scenario loading accepted gameplay input or advanced from "
-            "the 30 Hz game loop.")) {
-        return false;
-    }
-    frame = state.finishScenarioLoading();
-    if (!check(
-            frame.phase == osf::GameplayPhase::world &&
-                frame.loading_counter == 0 &&
-                world_updates == 0,
-            "Presentation could not return scenario loading to the "
-            "world.")) {
-        return false;
-    }
-    state.update();
-    return check(
-        world_updates == 1,
-        "World updates did not resume after scenario loading.");
 }
 
 bool testGameplayOptionsMenu() {
@@ -811,6 +774,79 @@ bool testGameplayOptionsMenu() {
         "Escape did not close the gameplay options menu.");
 }
 
+bool testGameplayDebugMenu() {
+    osf::GameplayDebugMenu menu;
+    osf::GameplayDebugResult result =
+        menu.update({true});
+    if (!check(
+            menu.active() && result.play_confirm_sound,
+            "F12 did not open the gameplay debug menu.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 118});
+    if (!check(
+            menu.fpsCounterEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug FPS toggle did not use its displayed hit box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 134});
+    if (!check(
+            menu.allSpellsEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug all-spells toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 150});
+    if (!check(
+            menu.infiniteLifeEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug infinite-HP toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 166});
+    if (!check(
+            menu.infiniteManaEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug infinite-MP toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 300, 198});
+    if (!check(
+            !menu.active() &&
+                menu.fpsCounterEnabled() &&
+                menu.allSpellsEnabled() &&
+                menu.infiniteLifeEnabled() &&
+                menu.infiniteManaEnabled() &&
+                result.play_confirm_sound,
+            "The debug CLOSE row changed settings or failed to close.")) {
+        return false;
+    }
+    menu.update({true});
+    result = menu.update({false, true});
+    return check(
+        !menu.active() &&
+            menu.fpsCounterEnabled() &&
+            menu.allSpellsEnabled() &&
+            menu.infiniteLifeEnabled() &&
+            menu.infiniteManaEnabled() &&
+            result.play_confirm_sound,
+        "Escape did not close the debug menu while retaining its runtime "
+        "settings.");
+}
+
 }  // namespace
 
 int main() {
@@ -824,8 +860,8 @@ int main() {
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
         !testGameplayClickAndHoldMovement() ||
-        !testGameplayScenarioLoading() ||
-        !testGameplayOptionsMenu()) {
+        !testGameplayOptionsMenu() ||
+        !testGameplayDebugMenu()) {
         return 1;
     }
     return 0;

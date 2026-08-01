@@ -361,6 +361,79 @@ bool readScenarioEnemy(
     enemy.pre_ai_values = pre_ai_values;
     enemy.ai_control_name = std::move(ai_control_name);
     enemy.post_ai_values = post_ai_values;
+    enemy.patrol_left = pre_ai_values[1];
+    enemy.patrol_top = pre_ai_values[2];
+    enemy.patrol_right = pre_ai_values[3];
+    enemy.patrol_bottom = pre_ai_values[4];
+    enemy.maximum_life = pre_ai_values[8];
+    enemy.native_element = pre_ai_values[6];
+    enemy.physical_defense = pre_ai_values[9];
+    enemy.physical_evasion = pre_ai_values[10];
+    enemy.magical_defense = pre_ai_values[11];
+    enemy.magical_evasion = pre_ai_values[12];
+    enemy.experience_reward = pre_ai_values[13];
+    enemy.loot_table_row = pre_ai_values[14];
+    enemy.gold_drop_chance = post_ai_values[26];
+    enemy.gold_minimum = post_ai_values[27];
+    enemy.gold_maximum = post_ai_values[28];
+    enemy.reaction_chance_defense =
+        post_ai_values[38];
+    enemy.reaction_duration_defense =
+        post_ai_values[39];
+    enemy.always_suppress_reaction_displacement =
+        post_ai_values[40] == 1;
+    enemy.movement_speed_scale = post_ai_values[54];
+    enemy.presentation.packet_word_31 =
+        pre_ai_values[7];
+    enemy.presentation.native_element =
+        enemy.native_element;
+    enemy.presentation.direct_special_effect_number =
+        post_ai_values[21];
+    enemy.presentation
+        .direct_special_constructor_value_6 =
+        post_ai_values[23];
+    enemy.presentation
+        .direct_special_constructor_value_7 =
+        post_ai_values[22];
+    enemy.presentation
+        .direct_special_constructor_value_21 =
+        post_ai_values[24];
+    enemy.presentation.direct_special_variant =
+        post_ai_values[25];
+    for (std::size_t variant = 0; variant < 3; ++variant) {
+        enemy.presentation.direct_packet_word_4[variant] =
+            post_ai_values[variant];
+        enemy.presentation.direct_hit_rate[variant] =
+            post_ai_values[6 + variant];
+        enemy.presentation.direct_packet_word_40[variant] =
+            post_ai_values[35 + variant];
+        enemy.presentation.direct_packet_word_41[variant] =
+            post_ai_values[29 + variant];
+        enemy.presentation.direct_packet_word_43[variant] =
+            post_ai_values[32 + variant];
+        enemy.presentation
+            .direct_maximum_target_distance[variant] =
+            post_ai_values[3 + variant];
+        enemy.presentation.direct_animation_chart[variant] =
+            post_ai_values[41 + variant] + 4;
+        enemy.presentation
+            .direct_animation_speed_index[variant] =
+            post_ai_values[47 + variant];
+
+        enemy.presentation.effect_type[variant] =
+            post_ai_values[9 + variant];
+        enemy.presentation.effect_subtype[variant] =
+            post_ai_values[15 + variant];
+        enemy.presentation.effect_parameter[variant] =
+            post_ai_values[12 + variant];
+        enemy.presentation.effect_additive[variant] =
+            post_ai_values[18 + variant];
+        enemy.presentation.effect_animation_chart[variant] =
+            post_ai_values[44 + variant] + 7;
+        enemy.presentation
+            .effect_animation_speed_index[variant] =
+            post_ai_values[50 + variant];
+    }
     return true;
 }
 

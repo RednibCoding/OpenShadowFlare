@@ -2,32 +2,60 @@
 #define OPENSHADOWFLARE_WORLD_SCENE_HPP
 
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
+#include "libs/RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp"
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "items/item_database.hpp"
+#include "items/player_automatic_items.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_special_items.hpp"
+#include "items/vendor_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/effect_pattern_resource.hpp"
+#include "resources/effect_visual_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
 #include "resources/item_world_resource.hpp"
 #include "resources/object_visual_resource.hpp"
 #include "ground_item.hpp"
+#include "combat_effect_actor.hpp"
+#include "companion_actor.hpp"
 #include "mission_catalog.hpp"
 #include "map_exploration.hpp"
+#include "miss_effect_actor.hpp"
 #include "npc_actor.hpp"
 #include "player_appearance.hpp"
 #include "player_actor.hpp"
+#include "player_attack_target.hpp"
+#include "player_counter_burst.hpp"
 #include "player_data.hpp"
+#include "player_damage_receiver.hpp"
+#include "player_energy_shield.hpp"
+#include "player_experience_award.hpp"
+#include "player_increased_power.hpp"
 #include "player_item_controller.hpp"
+#include "player_land_mine.hpp"
+#include "player_level_up_notice.hpp"
+#include "player_magic_shield.hpp"
+#include "player_magic.hpp"
+#include "player_moon_spell.hpp"
+#include "player_resource_rate.hpp"
+#include "player_runtime_profile.hpp"
+#include "player_sustained_spell.hpp"
+#include "player_transport_spell.hpp"
 #include "quest_state.hpp"
+#include "retail_save_progress.hpp"
+#include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
 #include "script/scenario_script_runtime.hpp"
 #include "transport_catalog.hpp"
 #include "world_pointer.hpp"
 
 #include <cstdint>
+#include <cstddef>
+#include <array>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -40,6 +68,10 @@ enum class GameplayServiceKind {
     none,
     transport,
     toggle_special_items,
+    identify_item,
+    vendor,
+    equipment_color,
+    blackjack,
 };
 
 struct GameplayServiceRequest {
@@ -79,11 +111,45 @@ public:
         scenarioObjects() const;
     const std::vector<NpcActor>& npcs() const;
     const std::vector<EnemyActor>& enemies() const;
+    bool hasCompanion() const;
+    const CompanionActor& companion() const;
+    const std::vector<CombatEffectActor>&
+        combatEffects() const;
+    const std::vector<RuntimeEffectActor>&
+        runtimeEffects() const;
+    const PlayerTransportSpell& playerTransportSpell() const;
+    const gapi::NjpImage* playerTransportPatterns() const;
+    const EffectVisualResource* playerTransportVisual() const;
+    const std::vector<MissEffectActor>&
+        missEffects() const;
+    bool companionMoonAuraVisible() const;
+    const EffectVisualResource* companionMoonAuraVisual() const;
+    std::int32_t companionMoonAuraFrame() const;
+    bool playerMoonActive() const;
+    bool playerBerserkerActive() const;
+    const EffectVisualResource* playerBerserkerVisual() const;
+    std::int32_t playerBerserkerFrame() const;
+    bool playerEnergyShieldActive() const;
+    const EffectVisualResource* playerEnergyShieldVisual() const;
+    std::int32_t playerEnergyShieldFrame() const;
+    bool playerMagicShieldActive() const;
+    const EffectVisualResource* playerMagicShieldVisual() const;
+    std::int32_t playerMagicShieldFrame() const;
+    bool playerCounterBurstActive() const;
+    const EffectVisualResource* playerCounterBurstVisual() const;
+    std::int32_t playerCounterBurstFrame() const;
+    bool playerIncreasedPowerReady() const;
+    bool playerIncreasedPowerActive() const;
+    bool playerIncreasedPowerActivationFeedback() const;
+    const EffectVisualResource* playerIncreasedPowerVisual() const;
+    std::int32_t playerIncreasedPowerFrame() const;
+    std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
     const TransportCatalog& transports() const;
     const ItemDatabase& itemDatabase() const;
+    const AiControlDatabase& aiControlDatabase() const;
     PlayerEquipment& playerEquipment();
     const PlayerEquipment& playerEquipment() const;
     PlayerBelt& playerBelt();
@@ -92,11 +158,42 @@ public:
     const PlayerInventory& playerInventory() const;
     PlayerSpecialItems& playerSpecialItems();
     const PlayerSpecialItems& playerSpecialItems() const;
+    PlayerGiantWarehouse& playerGiantWarehouse();
+    const PlayerGiantWarehouse& playerGiantWarehouse() const;
+    PlayerAutomaticItems& playerAutomaticItems();
+    const PlayerAutomaticItems& playerAutomaticItems() const;
+    VendorInventory* vendorInventory(std::int32_t index);
+    const VendorInventory* vendorInventory(std::int32_t index) const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
-    BeltItemUseResult usePlayerBeltPocket(
+    PlayerRuntimeProfile playerRuntimeProfile() const;
+    void configurePlayerDebugResources(
+        bool infinite_life,
+        bool infinite_mana);
+    bool playerInfiniteLife() const;
+    bool playerInfiniteMana() const;
+    std::int32_t playerCurrentLife() const;
+    std::int32_t playerCurrentMana() const;
+    PlayerMagic& playerMagic();
+    const PlayerMagic& playerMagic() const;
+    const TableDatabase& parameterTables() const;
+    std::int32_t playerExperienceThreshold() const;
+    PlayerItemUseResult usePlayerBeltPocket(
         std::int32_t pocket);
+    PlayerItemUseResult usePlayerInventoryItem(
+        std::int32_t item_index);
+    bool playerIdentifyModeActive() const;
+    bool identifyPlayerInventoryItem(
+        std::int32_t item_index);
+    void cancelPlayerIdentifyMode();
     std::int32_t playerMineCount() const;
+    std::int32_t playerMaximumMineCount() const;
+    bool placePlayerLandMine();
+    const std::vector<PlayerLandMineVisual>&
+        playerLandMineVisuals() const;
+    const gapi::NjpImage* playerLandMinePatterns() const;
+    const EffectVisualResource* playerLandMineVisualResource(
+        std::int32_t resource_id) const;
     const ItemWorldResource* itemWorldResource(
         std::int32_t resource_id) const;
     bool playerPartEnabled(std::size_t part) const;
@@ -107,6 +204,11 @@ public:
     std::int32_t playerPartBlueStrength(
         std::size_t part) const;
     void refreshPlayerAppearance();
+    std::int32_t playerEquipmentColor(
+        EquipmentSlot slot) const;
+    bool setPlayerEquipmentColor(
+        EquipmentSlot slot,
+        std::int32_t color_index);
     bool hasPlayer() const;
     void commandPlayerMovement(
         std::int32_t screen_x,
@@ -121,6 +223,9 @@ public:
     bool commandWorldInteraction(
         std::int32_t screen_x,
         std::int32_t screen_y);
+    bool commandPlayerMagic(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
     bool dropInventoryItem(
         const InventoryItem& item,
         std::int32_t screen_x,
@@ -128,6 +233,7 @@ public:
     bool interactionPending() const;
     std::int32_t hoveredScenarioObjectId() const;
     std::int32_t hoveredNpcId() const;
+    std::int32_t hoveredEnemyId() const;
     std::int32_t hoveredGroundItemId() const;
     std::int32_t pointerScreenX() const;
     std::int32_t pointerScreenY() const;
@@ -135,12 +241,14 @@ public:
     const WorldPointerConfiguration& pointerConfiguration() const;
     bool conversationActive() const;
     GameplayServiceRequest takeGameplayServiceRequest();
+    void completeBlackjack(std::int32_t result);
     ScenarioTravelResult activateTransportDestination(
         std::int32_t row,
         std::string* error = nullptr);
     ScenarioTravelResult transitionScenario(
         const ScenarioStart& start,
         std::string* error = nullptr);
+    bool takeScenarioChanged();
     std::int32_t conversationActorId() const;
     std::int32_t conversationMessageId() const;
     const std::string& conversationText() const;
@@ -154,15 +262,24 @@ public:
     void advanceConversation();
     void chooseConversationOption(std::int32_t option);
     void togglePlayerRun();
+    bool activatePlayerIncreasedPower();
+    void queueCombatEffect(
+        const CombatEffectSpawnRequest& request);
     void update();
     std::vector<std::int32_t> takeAudioSamples();
+    const PlayerLevelUpNotice& levelUpNotice() const;
+    void dismissLevelUpNotice();
     std::int32_t playerWorldX() const;
     std::int32_t playerWorldY() const;
     std::int32_t playerDirection() const;
     PlayerMotion playerMotion() const;
+    bool playerSpellActive() const;
+    std::int32_t playerSpellTargetCharacterNumber() const;
     MovementPace playerMovementPace() const;
     std::int32_t playerAnimationChart() const;
     std::int32_t playerAnimationFrame() const;
+    std::int32_t playerAttackTargetId() const;
+    std::int32_t takePlayerAttackImpactTargetId();
     std::int32_t cameraScreenX() const;
     std::int32_t cameraScreenY() const;
     std::int32_t renderCameraScreenX(double alpha) const;
@@ -176,6 +293,9 @@ public:
     const ScenarioData& scenario() const;
     std::int32_t scenarioId() const;
     const script::ScriptData& scenarioScript() const;
+    std::int32_t scenarioCaptionMessageId() const;
+    const std::string& scenarioCaptionText() const;
+    RetailSaveProgress retailSaveProgress() const;
 
 private:
     bool readScriptWorldOperand(
@@ -190,6 +310,29 @@ private:
     bool queryScriptValue(
         script::ValueQuery query,
         std::int32_t& value) const;
+    bool queryScriptIndexedValue(
+        script::ValueQuery query,
+        std::int32_t index,
+        std::int32_t& value) const;
+    bool measureScriptCharacterDistance(
+        std::int32_t character_number,
+        std::int32_t& distance) const;
+    bool queryScriptItem(
+        std::int32_t category,
+        std::int32_t definition_id,
+        bool& present) const;
+    bool removeScriptItem(
+        std::int32_t category,
+        std::int32_t definition_id);
+    bool addScriptItem(
+        std::int32_t category,
+        std::int32_t definition_id);
+    bool scriptCharacterBounds(
+        std::int32_t character_number,
+        WorldPosition& position,
+        const ObjectBounds*& judgement) const;
+    void runScenarioContactTriggers();
+    bool processPendingScriptTravel();
     WorldPointerTarget pointerTargetAtScreenPosition(
         std::int32_t screen_x,
         std::int32_t screen_y) const;
@@ -227,16 +370,104 @@ private:
     ScenarioObjectActor* findScenarioObject(
         std::int32_t id);
     NpcActor* findNpc(std::int32_t id);
+    EnemyActor* findEnemy(std::int32_t id);
+    const EnemyActor* findEnemy(std::int32_t id) const;
     GroundItem* findGroundItem(std::int32_t id);
+    PlayerAttackTargetSnapshot attackTargetSnapshot(
+        const EnemyActor& enemy) const;
+    bool commandPlayerAttack(EnemyActor& enemy);
+    bool commandPlayerSecondaryAttack(
+        std::int32_t screen_x,
+        std::int32_t screen_y);
+    bool readyPlayerAttack(EnemyActor& enemy);
+    std::int32_t playerAttackSpeedTier() const;
+    void handlePlayerAttackEvent(
+        const PlayerAttackActionEvent& event);
+    void handlePlayerSpellEvent(
+        const PlayerSpellActionEvent& event);
+    void launchPlayerRangedAttack(
+        const PlayerAttackActionEvent& event);
+    void launchPlayerIncreasedPowerAttack();
+    std::vector<std::int32_t>
+        playerIncreasedPowerTargets() const;
+    void applyPlayerAttackImpact(EnemyActor& enemy);
+    void accountEnemyKill(
+        const EnemyDamageReceiverState& enemy,
+        std::int32_t experience_reward,
+        std::int32_t main_hand_subtype);
+    void presentPlayerLevelUp(
+        const PlayerLevelUpResult& result);
+    void handleEnemyDeathStart(
+        EnemyActor& enemy,
+        CombatEffectSpawnRequest effect);
+    EnemyActorUpdate updateEnemyActor(
+        EnemyActor& enemy,
+        const std::vector<MovementBlocker>& blockers);
+    void updateCompanionActor(
+        const std::vector<MovementBlocker>& blockers);
+    void applyCompanionAttackImpact();
+    void applyCompanionExplosionImpact();
+    PlayerDamageReceiverState playerDamageReceiverState() const;
+    void applyPlayerDamageReceiverState(
+        const PlayerDamageReceiverState& state);
+    void applyEnemyDirectImpact(
+        EnemyActor& enemy,
+        const EnemyDirectImpactResult& impact);
+    bool applyCompanionDamagePacket(
+        const CombatPacket& packet,
+        WorldPosition impact_origin);
+    bool applyPlayerDamagePacket(
+        const CombatPacket& packet,
+        WorldPosition impact_origin,
+        std::int32_t source_character_number);
+    void spawnPendingCombatEffects();
+    WorldPosition combatEffectOrigin(
+        const CombatEffectSpawnRequest& request) const;
+    ObjectBounds combatEffectJudgement(
+        const CombatEffectSpawnRequest& request) const;
+    EnemyEffectControllerSource runtimeEffectSource(
+        std::int32_t owner_kind,
+        std::int32_t source_character_number) const;
+    std::vector<RuntimeEffectTargetSnapshot>
+        runtimeEffectTargets() const;
+    void applyRuntimeEffectDispatch(
+        const RuntimeEffectReceiverDispatch& dispatch);
+    void spawnRuntimeMiss(
+        const RuntimeEffectTargetContact& contact);
+    void updateRuntimeEffects();
+    void queueRuntimeEffectAudio(
+        const RuntimeEffectAudioRequest& request);
+    bool switchOwnedCompanion(std::int32_t type);
+    void refreshCompanionRuntimeProfile(bool level_gained = false);
+    void refreshPlayerRuntimeProfile();
+    std::int32_t playerMineDamageBonus() const;
+    void updatePlayerResourceRates();
+    void createPlayerTransport(WorldPosition aim_position);
+    void preparePlayerTransportEndpoint();
+    void updatePlayerTransportPresentation();
+    bool updatePlayerTransportContact();
+    void deactivatePlayerPowerupsForRespawn();
 
     ScenarioWorld scenario_world_;
     ScenarioScriptRuntime scenario_script_;
     WorldPointer pointer_;
     WorldPointerTarget pending_interaction_;
+    PlayerAttackTargetController player_attack_target_;
     CharacterVisualResource player_visual_;
+    CharacterVisualResources companion_visuals_{"PARTNER"};
+    CompanionActor companion_;
+    EffectVisualResources effect_visuals_;
+    EffectVisualResource player_powerup_visual_;
+    EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
+    PlayerLevelUpNotice level_up_notice_;
+    std::vector<CombatEffectSpawnRequest>
+        pending_combat_effects_;
+    std::vector<CombatEffectActor> combat_effects_;
+    RuntimeEffectSystem runtime_effects_;
+    std::vector<MissEffectActor> miss_effects_;
     QuestState quests_;
     MissionCatalog missions_;
     TransportCatalog transports_;
@@ -245,22 +476,51 @@ private:
     PlayerBelt player_belt_;
     PlayerInventory player_inventory_;
     PlayerSpecialItems player_special_items_;
+    PlayerGiantWarehouse player_giant_warehouse_;
+    PlayerAutomaticItems player_automatic_items_;
+    std::vector<VendorInventory> vendor_inventories_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
+    AiControlDatabase ai_control_database_;
     std::unordered_map<std::uint64_t, std::int32_t>
         script_persistent_values_;
+    std::vector<std::int32_t> script_state_flags_;
     std::filesystem::path data_root_;
     std::vector<std::unique_ptr<ItemWorldResource>>
         item_world_resources_;
     RetailRandom item_random_;
     PlayerData player_data_;
+    PlayerMagic player_magic_;
+    PlayerSustainedSpell player_moon_spell_;
+    PlayerSustainedSpell player_berserker_spell_;
+    PlayerEnergyShield player_energy_shield_;
+    PlayerMagicShield player_magic_shield_;
+    PlayerCounterBurst player_counter_burst_;
+    PlayerIncreasedPower player_increased_power_;
+    PlayerResourceRateController player_life_rate_;
+    PlayerResourceRateController player_mana_rate_;
     PlayerItemController player_item_controller_;
+    PlayerLandMineSystem player_land_mines_;
+    PlayerTransportSpell player_transport_spell_;
     PlayerActor player_;
     bool has_player_ = false;
+    std::int32_t pending_player_attack_impact_target_id_ = -1;
+    std::vector<std::int32_t>
+        player_increased_power_attack_targets_;
     std::int32_t next_ground_item_id_ = 0;
     std::int32_t camera_anchor_x_ = 320;
     std::int32_t camera_anchor_y_ = 240;
+    std::int32_t camera_shake_counter_ = -1;
+    std::int32_t camera_shake_duration_ = 0;
+    std::int32_t camera_shake_magnitude_ = 0;
     GameplayServiceRequest gameplay_service_request_;
+    std::int32_t blackjack_result_ = 0;
+    ScenarioStart pending_script_travel_;
+    bool script_travel_pending_ = false;
+    bool scenario_changed_ = false;
+    bool player_identify_mode_active_ = false;
+    bool player_infinite_life_ = false;
+    bool player_infinite_mana_ = false;
 };
 
 }  // namespace osf

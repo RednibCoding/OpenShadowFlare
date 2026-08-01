@@ -13,6 +13,7 @@ enum class WorldPointerTargetKind {
     none,
     scenario_object,
     npc,
+    enemy,
     ground_item,
 };
 

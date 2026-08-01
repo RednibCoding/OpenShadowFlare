@@ -100,7 +100,7 @@ void CharacterSelectState::enter(std::int32_t retail_argument) {
         if (hooks_.prepare_new_character) {
             hooks_.prepare_new_character(data_.next_save_path);
         }
-        data_.character_gender = 0;
+        data_.character_gender = 1;
         data_.character_name.clear();
         data_.name_entry_active = false;
         data_.host_address.clear();

@@ -25,48 +25,4 @@ void renderInitialLoadingScreen(
         waiting, 2, {592 + arrow_offset, 450});
 }
 
-void renderScenarioLoadingScreen(
-    gapi::Backend& renderer,
-    const gapi::NjpImage& waiting,
-    const gapi::NjpImage& wait_icon,
-    std::int32_t counter) {
-    const std::int32_t strength = std::clamp<std::int32_t>(
-        std::max<std::int32_t>(counter, 0) * 1000 / 120,
-        0,
-        1000);
-    renderer.drawPattern(
-        waiting,
-        4,
-        {
-            0,
-            0,
-            1000,
-            1000,
-            1000,
-            1000,
-            strength,
-            strength,
-            strength,
-        });
-
-    const std::int32_t phase =
-        std::max<std::int32_t>(counter, 0) % 15;
-    const std::int32_t offset =
-        phase < 5 ? 0 : phase < 10 ? 8 : 16;
-    renderer.drawPattern(
-        wait_icon,
-        0,
-        {
-            590 + offset,
-            440,
-            1000,
-            1000,
-            1000,
-            1000,
-            strength,
-            strength,
-            strength,
-        });
-}
-
 }  // namespace osf

@@ -23,7 +23,7 @@ constexpr std::size_t kItemPayloadOffset =
     PlayerData::retail_record_size;
 constexpr std::int32_t kMaximumSerializedItems = 4096;
 
-constexpr std::array<EquipmentSlot, 9> kRetailEquipmentOrder{{
+constexpr std::array<EquipmentSlot, 11> kRetailEquipmentOrder{{
     EquipmentSlot::main_hand,
     EquipmentSlot::helmet,
     EquipmentSlot::body,
@@ -33,12 +33,11 @@ constexpr std::array<EquipmentSlot, 9> kRetailEquipmentOrder{{
     EquipmentSlot::accessory_2,
     EquipmentSlot::accessory_3,
     EquipmentSlot::accessory_4,
+    EquipmentSlot::alternate_main_hand,
+    EquipmentSlot::alternate_off_hand,
 }};
 
 struct ParsedSections {
-    bool has_item_stream = false;
-    std::size_t extra_equipment_begin = kItemPayloadOffset;
-    std::size_t extra_equipment_end = kItemPayloadOffset;
     std::size_t special_items_begin = kItemPayloadOffset;
     std::size_t special_items_end = kItemPayloadOffset;
     std::size_t end = kItemPayloadOffset;
@@ -165,12 +164,12 @@ bool decodeItem(
     std::string* error) {
     std::int32_t category = -1;
     std::int32_t definition_id = -1;
-    std::int32_t quality = 0;
+    std::int32_t identified = 0;
     std::int32_t grid_x = 0;
     std::int32_t grid_y = 0;
     if (!cursor.readI32(category) ||
         !cursor.readI32(definition_id) ||
-        !cursor.readI32(quality) ||
+        !cursor.readI32(identified) ||
         (has_grid_position &&
          (!cursor.readI32(grid_x) ||
           !cursor.readI32(grid_y)))) {
@@ -220,18 +219,21 @@ bool decodeItem(
     std::int32_t quantity = 1;
     if (category == 4) {
         quantity = readStateI32(state, 0);
-        if (definition_id != 0 ||
-            quantity <= 0 ||
-            quantity >
-                PlayerInventory::maximum_gold_stack) {
-            setError(error, "A saved Gold stack is invalid.");
+        const bool valid_quantity =
+            definition_id == 0
+                ? quantity > 0 &&
+                      quantity <=
+                          PlayerInventory::maximum_gold_stack
+                : quantity == 1;
+        if (!valid_quantity) {
+            setError(error, "A saved category-four quantity is invalid.");
             return false;
         }
     }
     *item = makeInventoryItem(*definition, quantity);
     item->grid_x = grid_x;
     item->grid_y = grid_y;
-    item->quality = quality;
+    item->identified = identified;
     item->retail_state = std::move(state);
     if (category == 0 || category == 1) {
         item->durability =
@@ -245,13 +247,10 @@ bool skipOrRestoreEquipment(
     const ItemDatabase* item_database,
     std::int32_t player_level,
     PlayerEquipment* equipment,
-    ParsedSections& sections,
     std::string* error) {
-    for (std::size_t index = 0; index < 11; ++index) {
-        if (index == kRetailEquipmentOrder.size()) {
-            sections.extra_equipment_begin =
-                cursor.offset();
-        }
+    for (std::size_t index = 0;
+         index < kRetailEquipmentOrder.size();
+         ++index) {
         std::int32_t present = 0;
         if (!cursor.readI32(present) ||
             (present != 0 && present != 1)) {
@@ -269,9 +268,7 @@ bool skipOrRestoreEquipment(
         }
         InventoryItem item;
         InventoryItem* destination =
-            equipment && index < kRetailEquipmentOrder.size()
-                ? &item
-                : nullptr;
+            equipment ? &item : nullptr;
         if (!decodeItem(
                 cursor,
                 item_database,
@@ -300,7 +297,6 @@ bool skipOrRestoreEquipment(
             return false;
         }
     }
-    sections.extra_equipment_end = cursor.offset();
     return true;
 }
 
@@ -417,14 +413,12 @@ bool parseOwnedItems(
         return true;
     }
 
-    sections.has_item_stream = true;
     PayloadCursor cursor(payload, kItemPayloadOffset);
     if (!skipOrRestoreEquipment(
             cursor,
             item_database,
             player_level,
             equipment,
-            sections,
             error) ||
         !skipOrRestoreContainer(
             cursor,
@@ -470,12 +464,12 @@ std::vector<std::uint8_t> encodedState(
             : std::vector<std::uint8_t>(state_size);
     if (item.category == 0 || item.category == 1) {
         writeStateI32(state, 47u * 4u, item.durability);
-        writeStateI32(state, 48u * 4u, item.quality);
+        writeStateI32(state, 48u * 4u, item.identified);
         if (item.retail_state.size() != state_size) {
             writeStateI32(state, 49u * 4u, -1);
         }
     } else if (item.category == 2) {
-        writeStateI32(state, 47u * 4u, item.quality);
+        writeStateI32(state, 47u * 4u, item.identified);
     } else if (item.category == 4) {
         writeStateI32(state, 0, item.quantity);
     }
@@ -498,15 +492,16 @@ bool encodeItem(
         item.quantity <= 0 ||
         (item.category != 4 && item.quantity != 1) ||
         (item.category == 4 &&
-         (item.definition_id != 0 ||
-          item.quantity >
-              PlayerInventory::maximum_gold_stack))) {
+         (item.definition_id == 0
+              ? item.quantity >
+                    PlayerInventory::maximum_gold_stack
+              : item.quantity != 1))) {
         setError(error, "An owned item cannot be serialized.");
         return false;
     }
     appendI32(bytes, item.category);
     appendI32(bytes, item.definition_id);
-    appendI32(bytes, item.quality);
+    appendI32(bytes, item.identified);
     if (include_grid_position) {
         appendI32(bytes, item.grid_x);
         appendI32(bytes, item.grid_y);
@@ -635,19 +630,6 @@ bool replaceRetailOwnedItems(
             return false;
         }
     }
-    if (sections.has_item_stream) {
-        encoded.insert(
-            encoded.end(),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(
-                    sections.extra_equipment_begin),
-            payload.begin() +
-                static_cast<std::ptrdiff_t>(
-                    sections.extra_equipment_end));
-    } else {
-        appendI32(encoded, 0);
-        appendI32(encoded, 0);
-    }
     if (!encodeContainer(
             encoded,
             inventory.items(),
@@ -681,6 +663,44 @@ bool replaceRetailOwnedItems(
         error->clear();
     }
     return true;
+}
+
+bool restoreRetailSpecialItemContainer(
+    const std::vector<std::uint8_t>& payload,
+    std::size_t offset,
+    const ItemDatabase& item_database,
+    PlayerSpecialItems& items,
+    std::size_t* serialized_end,
+    std::string* error) {
+    PlayerSpecialItems restored;
+    PayloadCursor cursor(payload, offset);
+    if (!skipOrRestoreContainer(
+            cursor,
+            ContainerKind::special_items,
+            &item_database,
+            nullptr,
+            nullptr,
+            &restored,
+            error)) {
+        return false;
+    }
+    items = std::move(restored);
+    if (serialized_end) {
+        *serialized_end = cursor.offset();
+    }
+    if (error) {
+        error->clear();
+    }
+    return true;
+}
+
+bool appendRetailSpecialItemContainer(
+    std::vector<std::uint8_t>& payload,
+    const ItemDatabase& item_database,
+    const PlayerSpecialItems& items,
+    std::string* error) {
+    return encodeContainer(
+        payload, items.items(), item_database, error);
 }
 
 }  // namespace osf

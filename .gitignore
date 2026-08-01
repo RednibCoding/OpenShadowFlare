@@ -1,5 +1,8 @@
 # Prerequisites
 .*/
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 *.d
 
 # Compiled Object files

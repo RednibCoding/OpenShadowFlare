@@ -35,7 +35,8 @@
 `System\Game\Parameter\Control.aid` is the global actor and enemy behavior
 database loaded through `RKC_RPG_AICONTROL`. Its header is
 `RKC_AIDATA v001`, followed by byte `0x1a`. The preserved file declares 64
-behavior lists and 18 event buckets per list.
+behavior lists and 18 event buckets per list, containing 1,338 action
+candidates in total.
 
 A version-1 behavior list stores a variable-length name and walk-point speed,
 then its event buckets. Every action candidate within an event stores:
@@ -43,14 +44,18 @@ then its event buckets. Every action candidate within an event stores:
 | Field | Size | Purpose |
 |---|---:|---|
 | Action number | 4 bytes | Selects native executable behavior |
-| Parameter block | 36 bytes | Priority, weight, timing, range, movement, and other action inputs |
-| Condition block | 24 bytes | Eligibility tests against actor/world state |
+| Parameter block | 36 bytes | Nine signed values; index 0 is priority and index 2 is selection weight |
+| Condition block | 24 bytes | Six signed values; indexes 0–2 gate life percentage and 3–5 gate target distance |
 
-The reconstructed DLL handles the binary container, list/event lookup, and
-copying. The executable evaluates conditions, chooses an eligible action, and
-executes the selected native behavior. This makes AID script-like data, but it
-is not another `Scenario.Scs` format and does not use the scenario opcode
-interpreter.
+The portable `RKC_RPG_AICONTROL` library now handles the binary container and
+exact-name/index lookup. It validates complete records and preserves each
+parameter as nine signed values and each condition as six signed values.
+The executable evaluator treats the two condition ranges as inclusive and
+uses `-1` for an unbounded end. It retains retail's unusual candidate-list
+ordering, performs the parameter-2 weighted draw, and uses event zero as the
+fallback for events 1–10, 16, and 17. Native action execution is a separate
+executable concern. This makes AID script-like data, but it is not another
+`Scenario.Scs` format and does not use the scenario opcode interpreter.
 
 The known division of responsibility and the requirements for its future
 portable implementation are covered in
@@ -193,6 +198,25 @@ name, and optional CAF part table, and resolves the common resource through
 71 of the tail values plus the resolved AI-list number into a 72-value runtime
 block; one slot in its stack block is not initialized. That rearrangement is
 documented before assigning gameplay names to the individual values.
+
+The first consumer-backed fields are now named. Pre-AI values 1 through 4
+become the left, top, right, and bottom offsets of the patrol rectangle used
+by native AI action one. Pre-AI value 8 is copied into both runtime current
+life at `+0xd4` and maximum life at `+0xe4`. Pre-AI values 6, 9, 10, and 11
+are native element, physical defense, physical evasion, and magical defense.
+Pre-AI values 13 and 14 are the experience reward and Table 30 loot row.
+The player direct-hit gate reads value 10 at runtime `+0xec`. Post-AI values
+38 through 40 defend reaction chance, defend reaction duration, and always
+suppress reaction displacement. Post-AI value 54 reaches `+0x1dc`; movement
+actions
+multiply their authored AID speed by this value and divide by 1,000. The raw
+arrays remain available so this partial naming does not discard or reshuffle
+any unclassified field.
+
+Post-AI values 26, 27, and 28 are the Gold drop chance, minimum amount, and
+maximum amount. The chance comparison is strict (`rand() % 100 < chance`);
+the amount is selected from the inclusive range and then scaled by
+`100 + Gold Find`. Gold Find is rolled equipment instance parameter 26.
 
 There is one deliberate resource-less enemy form. Thirty-four records named
 `Enemy Hole` use resource `-1` and initial state `{0, 1, 0}`. They are retained
@@ -574,11 +598,40 @@ equipment records followed by backpack, belt, and special-item containers.
 Each concrete item stores category, definition ID, an instance value, optional
 grid coordinates, its category-sized state-block length, and that state block.
 The nine known player equipment slots, backpack, belt, and Special Item
-container are restored and rewritten. The extra two equipment records and
-unmapped trailing payload remain byte-for-byte preserved. After those item
-containers, loading skips the first counted flag array and restores the next
-counted array as the 51 Table 40 transport flags. Scenario position, quests,
-mines, companions, and the rest of the dynamic payload are still pending.
+container are restored and rewritten. The extra two equipment records remain
+byte-for-byte preserved. Three counted arrays follow for scenario, transport,
+and quest/conversation state. After them retail writes the spell state as:
+
+| Field | Size |
+|-------|------|
+| Spell count | 4 bytes; retail writes 22 |
+| Availability | 22 signed 32-bit values |
+| Levels | 22 signed 32-bit values |
+| Experience | 22 signed 32-bit values |
+| Magic bar | Eight signed 32-bit spell IDs |
+
+New characters begin with availability zero, level one, experience zero, and
+all bar slots set to `-1`. The Magic window and cast path only treat
+availability value `3` as learned. OpenShadowFlare restores and rewrites this
+whole section while preserving the later unmapped payload. Retail follows it
+with the Table 60 companion count, one signed 32-bit level per companion, one
+signed 32-bit experience value per companion, and then the current Land Mine
+count. The 0x160-byte player record holds the active companion's working row;
+these arrays preserve progression for every inactive dog. OpenShadowFlare now
+restores and rewrites that complete block at the exact boundary. Older sparse
+portable saves seed missing companion rows at level one and experience zero.
+The next retail fields are three still-separate world values, followed by the
+literal Giant Warehouse page count ten, ten page-unlock values, and ten normal
+9-by-10 item containers.
+Those flags and containers are now restored and rewritten too. The currently
+selected page is UI-only and is not serialized. Four more normal item
+containers immediately follow the Giant Warehouse
+pages. They are the automatic-item pages selected by the final category-four
+`Item.Ibn` fields and searched by script opcodes 58 and 59. OpenShadowFlare
+restores and rewrites all four at that exact boundary. Sparse portable saves
+use late-item state version two; version one saves which only carried Giant
+Warehouse data still load with four empty automatic pages. Scenario position
+and the rest of the later state are still pending.
 
 ## Transport destination table
 
@@ -645,8 +698,11 @@ known offsets are shared by all five field blocks:
 
 | Field offset | Meaning |
 |--------------|---------|
+| `0x00` | Item subtype |
 | `0x04` | Definition ID |
-| `0x08` | Item subtype |
+| `0x08` | Quality/variant number |
+| `0x0c` | Episode mask used by loot profiles |
+| `0x10` | Weighted loot-selection value |
 | `0x1c` | Inventory width in 32-pixel cells |
 | `0x20` | Inventory height in 32-pixel cells |
 | `0x24` | Item weight |
@@ -658,6 +714,20 @@ known offsets are shared by all five field blocks:
 | `0x3c` | Ground sprite red strength (`1000` is unchanged) |
 | `0x40` | Ground sprite green strength (`1000` is unchanged) |
 | `0x44` | Ground sprite blue strength (`1000` is unchanged) |
+
+Category-four records use their final three words to describe automatic
+ownership:
+
+| Field offset | Meaning |
+|--------------|---------|
+| `0x58` | Automatic item page, `0` through `3`, or `-1` for the normal item path |
+| `0x5c` | Fixed grid x coordinate in that page |
+| `0x60` | Fixed grid y coordinate in that page |
+
+For example, Malse's Gem uses page zero at `(0,0)`, while Spirit Stone uses
+page two at `(1,0)`. Gold and Land Mines carry `-1` and continue through their
+separate ordinary owners. The fixed placement is data-driven; scripts only
+name the category and definition ID.
 
 Weapon records also expose the fields used by the first equipment slice:
 
@@ -689,6 +759,23 @@ contains one shared shadow palette, so shadows keep their pattern default.
 The three strength fields are applied after palette lookup. The opening Round
 Shield uses `900, 800, 500`, while the other three drops use
 `1000, 1000, 1000`.
+
+Categories zero through two carry 39 `{minimum, maximum, chance}` instance
+triples followed by eight elemental triples. Their instance blocks begin at
+field offsets 240/200/108, while elemental triples begin at 708/668/576 for
+weapon, armor, and accessory categories respectively. Every triple consumes
+its chance roll. Armor and accessories also consume the range roll after a
+successful chance even when minimum equals maximum; weapons skip that second
+draw when the bounds are equal. These values are retained in the concrete
+item instance and survive ground pickup and the retail save payload.
+
+Table 30 is the authored enemy-loot table and Table 31 supplies its profiles.
+A successful attempt picks one of ten profile pairs, enables the authored
+quality digits, filters definition episode and level fields, then selects by
+the `0x10` weight. The executable's weighted offset is built from nine
+successive decimal `rand() % 10` digits rather than one additional ordinary
+roll. Successful drops are spaced around the enemy on a 200-world-unit
+radius.
 
 There are two ground-resource layouts. Directories zero through six contain
 `Animation.Njp`, `Animation.Sdw`, and `Animation.Caf`; the table's ground
@@ -738,12 +825,13 @@ The portable `RKC_RPG_TABLE` static library keeps the numeric and string cells
 together and looks tables up by their stored number. The Episode 1 database
 contains 138 tables.
 
-`0x00440f70` uses table 901 for a new male player and table 900 for a new
-female player. Both tables have 13 rows and five columns. Column zero supplies
+`0x00440f70` stores gender as `0` for female and `1` for male. It uses table
+901 for a new female player and table 900 for a new male player. Both tables
+have 13 rows and five columns. Column zero supplies
 the initial values; the other four columns hold per-growth-step values used by
 later progression:
 
-| Row | Female table 900 | Male table 901 |
+| Row | Male table 900 | Female table 901 |
 |-----|-----------------:|---------------:|
 | 0 | 100 | 100 |
 | 1 | 128 | 128 |
@@ -798,6 +886,17 @@ index 0, so its looping track is `System\Game\Music\BGM00.Voc`.
 Character animation frames - loaded via `RKC_RPGSCRN_CHARANIM::ReadCafFile()`
 
 Player animations use format: `%s\Animation.Caf`
+
+Each CAF cell stores a status, draw priority, transparency value, and NJP
+pattern number. Two status bits directly affect rendering:
+
+- `0x08` requests a shadow pass from the matching SDW resource. The normal NJP
+  cell is still drawn as well; this bit does not turn the cell into a
+  shadow-only cell.
+- `0x10` selects additive blending. Retail forwards it through the UPDIB
+  packet flags to the DIB additive blitter, using the cell transparency as
+  the blend amount. Title steam, Transport, and many spell effects rely on
+  this bit for their glow and see-through appearance.
 
 ## Configuration
 

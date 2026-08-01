@@ -1,6 +1,6 @@
 #include "npc_actor.hpp"
+#include "actor_direction.hpp"
 #include "movement_controller.hpp"
-#include "player_actor.hpp"
 #include "resources/character_visual_resource.hpp"
 
 #include <algorithm>
@@ -253,6 +253,13 @@ void NpcActor::setStateValue(
     ScenarioEntityStateChannel channel,
     std::int32_t value) {
     state_.setValue(channel, value);
+}
+
+void NpcActor::setStateOverride(
+    std::int32_t visible,
+    std::int32_t pointer,
+    std::int32_t judgement) {
+    state_.setOverride(visible, pointer, judgement);
 }
 
 std::int32_t NpcActor::id() const {

@@ -83,12 +83,12 @@ bool loadGameConfig(std::istream& input, GameConfig& config) {
         return false;
     }
 
-    // Retail reads this field but unconditionally enables the corresponding
-    // option rather than copying or validating the stored value.
+    // Retail reads this field but unconditionally enables Attack While
+    // Moving rather than copying or validating the stored value.
     if (!readInt32(input, value)) {
         return false;
     }
-    config.unknown_48d540 = true;
+    config.attack_while_moving = true;
 
     if (!readRetailBoolean(input, config.save_image_at_game_end)) {
         return false;
@@ -142,7 +142,7 @@ bool saveGameConfig(std::ostream& output, const GameConfig& config) {
         !writeInt32(output, asInt(config.semi_transparent_objects)) ||
         !writeInt32(output, asInt(config.display_darkness)) ||
         !writeInt32(output, asInt(config.unknown_48d528)) ||
-        !writeInt32(output, asInt(config.unknown_48d540)) ||
+        !writeInt32(output, asInt(config.attack_while_moving)) ||
         !writeInt32(output, asInt(config.save_image_at_game_end)) ||
         !writeInt32(output, config.click_range) ||
         !writeInt32(output, asInt(config.click_range_enabled))) {

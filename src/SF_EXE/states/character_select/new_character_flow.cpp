@@ -77,7 +77,8 @@ void eraseLastTextCharacter(std::string& text) {
 void beginNameEntry(
     CharacterSelectStateData& data,
     CharacterSelectFrameResult& result) {
-    data.character_gender = data.dialog_selection == 0 ? 0 : 1;
+    // The retail player record stores male as one and female as zero.
+    data.character_gender = data.dialog_selection == 0 ? 1 : 0;
     data.character_transition_counter = 1000;
     data.screen = 1;
     data.name_entry_active = true;
@@ -277,4 +278,3 @@ void updateNewCharacterMode(
 }
 
 }  // namespace osf::character_select
-

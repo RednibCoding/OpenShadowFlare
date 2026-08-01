@@ -6,6 +6,7 @@
 namespace osf {
 
 class PlayerData;
+struct PlayerRuntimeProfile;
 enum class MovementPace;
 
 namespace gapi {
@@ -19,16 +20,31 @@ struct GameplayHudValues {
     std::int32_t maximum_life = 0;
     std::int32_t current_mana = 0;
     std::int32_t maximum_mana = 0;
+    std::int32_t experience = 0;
+    std::int32_t experience_threshold = 0;
     bool running = false;
+    bool increased_power_ready = false;
+    bool increased_power_activation_feedback = false;
+    std::int32_t increased_power_blink_counter = 0;
 };
 
 GameplayHudValues gameplayHudValues(
     const PlayerData& player,
-    MovementPace movement_pace);
+    const PlayerRuntimeProfile& profile,
+    MovementPace movement_pace,
+    std::int32_t experience_threshold,
+    std::int32_t current_life,
+    std::int32_t current_mana,
+    bool increased_power_ready = false,
+    bool increased_power_activation_feedback = false,
+    std::int32_t increased_power_blink_counter = 0);
 
 std::int32_t gameplayHudBarWidth(
     std::int32_t current,
     std::int32_t maximum);
+std::int32_t gameplayHudExperienceBarWidth(
+    std::int32_t experience,
+    std::int32_t threshold);
 
 void renderGameplayHud(
     gapi::Backend& renderer,

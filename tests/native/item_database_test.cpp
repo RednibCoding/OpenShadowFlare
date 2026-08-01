@@ -2,6 +2,7 @@
 #include "items/item_database.hpp"
 #include "items/item_condition.hpp"
 #include "items/player_belt.hpp"
+#include "items/player_automatic_items.hpp"
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
@@ -110,6 +111,10 @@ bool testRetailDatabase() {
         database.find(3, 30000000);
     const osf::ItemDefinition* gold =
         database.find(4, 0);
+    const osf::ItemDefinition* malse_gem =
+        database.find(4, 99000000);
+    const osf::ItemDefinition* spirit_stone =
+        database.find(4, 98000001);
     if (!check(
             short_sword &&
                 short_sword->base_price == 400 &&
@@ -118,6 +123,7 @@ bool testRetailDatabase() {
                 short_sword->inventory_height == 4 &&
                 short_sword->weight == 30 &&
                 short_sword->required_level == 1 &&
+                short_sword->loot_level == 1 &&
                 short_sword->derived_parameter_bonuses[0] == 20 &&
                 short_sword->derived_parameter_bonuses[1] == 100 &&
                 short_sword->appearance_part == 12 &&
@@ -125,7 +131,7 @@ bool testRetailDatabase() {
                 short_sword->appearance_green_strength == 1000 &&
                 short_sword->appearance_blue_strength == 1000 &&
                 short_sword->secondary_appearance_part == -1 &&
-                !short_sword->suppresses_off_hand_appearance &&
+                !short_sword->suppresses_off_hand &&
             dagger &&
                 dagger->base_price == 400 &&
                 dagger->maximum_durability == 300 &&
@@ -140,6 +146,7 @@ bool testRetailDatabase() {
                 stone_accessory->required_level == 1 &&
             blade_ring &&
                 blade_ring->required_level == 23 &&
+                blade_ring->loot_level == 23 &&
             tablet &&
                 tablet->restore_life == 200 &&
                 tablet->restore_mana == 0 &&
@@ -151,7 +158,15 @@ bool testRetailDatabase() {
             white_medicine &&
                 white_medicine->inventory_width == 1 &&
                 white_medicine->inventory_height == 2 &&
-                white_medicine->consumable_effect == -2,
+                white_medicine->consumable_effect == -2 &&
+            malse_gem &&
+                malse_gem->automatic_inventory_page == 0 &&
+                malse_gem->automatic_inventory_x == 0 &&
+                malse_gem->automatic_inventory_y == 0 &&
+            spirit_stone &&
+                spirit_stone->automatic_inventory_page == 2 &&
+                spirit_stone->automatic_inventory_x == 1 &&
+                spirit_stone->automatic_inventory_y == 0,
             "The Short Sword equipment fields differ.")) {
         return false;
     }
@@ -325,6 +340,24 @@ bool testRetailDatabase() {
                 !special_items.place(
                     invalid_item, 1, 0).accepted,
             "The retail special-item grid or gold stacking differs.")) {
+        return false;
+    }
+    osf::PlayerAutomaticItems automatic_items;
+    if (!check(
+            malse_gem && spirit_stone &&
+                automatic_items.add(
+                    *malse_gem, makeItem(*malse_gem)) &&
+                automatic_items.add(
+                    *spirit_stone, makeItem(*spirit_stone)) &&
+                !automatic_items.add(
+                    *malse_gem, makeItem(*malse_gem)) &&
+                automatic_items.contains(4, 99000000) &&
+                automatic_items.page(0).items().front().grid_x == 0 &&
+                automatic_items.page(2).items().front().grid_x == 1 &&
+                automatic_items.removeFirst(4, 99000000) &&
+                !automatic_items.contains(4, 99000000),
+            "Authored automatic-item pages, cells, or duplicate rules "
+            "differ from Item.Ibn.")) {
         return false;
     }
     if (!checkDefinition(

@@ -185,7 +185,7 @@ void renderNewCharacter(
             frame.character_transition_counter;
         if (transition >= 2000 && transition <= 2020) {
             const std::int32_t phase = transition - 2000;
-            if (data.character_gender == 0) {
+            if (data.character_gender == 1) {
                 maleX = 97 - phase * 97 / 20;
                 femaleBrightness = brightness * phase / 20;
             } else {
@@ -223,7 +223,7 @@ void renderNewCharacter(
                 : 20;
         const std::int32_t otherBrightness =
             brightness * (20 - phase) / 20;
-        if (data.character_gender == 0) {
+        if (data.character_gender == 1) {
             renderer.drawPattern(
                 select,
                 9,

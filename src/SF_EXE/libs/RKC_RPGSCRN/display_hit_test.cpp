@@ -186,8 +186,7 @@ bool displayAnimationIntersectsRectangle(
         const gapi::CafCell& cell =
             part[static_cast<std::size_t>(
                 animation_frame)];
-        if ((cell.status & 8) != 0 ||
-            cell.pattern_index < 0) {
+        if (cell.pattern_index < 0) {
             continue;
         }
         if (displayPatternIntersectsRectangle(

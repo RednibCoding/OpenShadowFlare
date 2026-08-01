@@ -83,6 +83,7 @@ bool validStart(const ScenarioStart& start) {
 bool ScenarioWorld::load(
     const std::filesystem::path& data_root,
     const ScenarioStart& start,
+    const AiControlDatabase& ai_control,
     RetailRandom& item_random,
     std::string* error) {
     clear();
@@ -250,9 +251,22 @@ bool ScenarioWorld::load(
                       data_root,
                       enemy.resource_id,
                       &actor_error);
+        const AiControlList* control =
+            ai_control.find(enemy.ai_control_name);
+        const std::int32_t control_index =
+            ai_control.indexOf(control);
+        if (!control) {
+            actor_error =
+                "The AI-control list could not be resolved.";
+        }
         if ((enemy.resource_id >= 0 && !visual) ||
+            !control ||
             !actor.initialize(
-                enemy, visual, &actor_error)) {
+                enemy,
+                visual,
+                *control,
+                control_index,
+                &actor_error)) {
             setError(
                 error,
                 "Scenario enemy " +
@@ -281,6 +295,9 @@ bool ScenarioWorld::load(
 
     id_ = start.scenario_id;
     music_track_ = data_.musicTrack();
+    local_player_number_ =
+        start.local_player_number;
+    entry_value_ = start.entry_value;
     entry_ = *selected_entry;
     map_exploration_.reveal(
         {entry_.world_x, entry_.world_y});
@@ -293,6 +310,8 @@ bool ScenarioWorld::load(
 void ScenarioWorld::clear() {
     id_ = -1;
     music_track_ = -1;
+    local_player_number_ = 0;
+    entry_value_ = 0;
     entry_ = {};
     data_.clear();
     script_data_.clear();
@@ -318,8 +337,23 @@ std::int32_t ScenarioWorld::musicTrack() const {
     return music_track_;
 }
 
+std::int32_t ScenarioWorld::localPlayerNumber() const {
+    return local_player_number_;
+}
+
+std::int32_t ScenarioWorld::entryValue() const {
+    return entry_value_;
+}
+
 const ScenarioEntry& ScenarioWorld::entry() const {
     return entry_;
+}
+
+void ScenarioWorld::setEntry(
+    std::int32_t entry_value,
+    const ScenarioEntry& entry) {
+    entry_value_ = entry_value;
+    entry_ = entry;
 }
 
 const ScenarioData& ScenarioWorld::data() const {

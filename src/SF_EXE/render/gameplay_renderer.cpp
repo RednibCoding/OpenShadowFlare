@@ -29,12 +29,59 @@ struct WorldDrawEntry {
     DisplayOrderEntry order;
     const ScenarioObjectActor* scenario_object = nullptr;
     const EnemyActor* enemy = nullptr;
+    const CombatEffectActor* effect = nullptr;
+    const RuntimeEffectActor* runtime_effect = nullptr;
+    const MissEffectActor* miss_effect = nullptr;
+    const CompanionActor* companion = nullptr;
+    bool companion_moon_aura = false;
+    bool player_transport = false;
+    const PlayerLandMineVisual* land_mine = nullptr;
 };
 
 ScreenPosition toScreen(
     std::int32_t world_x,
     std::int32_t world_y) {
     return calculateRealPosition({world_x, world_y});
+}
+
+void renderPlayerPowerupPass(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const EffectVisualResource* visual,
+    bool active,
+    std::int32_t frame,
+    CharacterColorStrength color,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    if (!active || !visual ||
+        visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world.playerRenderPosition(interpolation),
+        0,
+        8,
+        frame % direction.frame_count,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [color](std::size_t) {
+            return color;
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
 }
 
 void renderPlayerPass(
@@ -71,6 +118,58 @@ void renderPlayerPass(
         camera_y,
         shadow,
         shadow_opacity);
+    if (!shadow) {
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerMagicShieldVisual(),
+            world.playerMagicShieldActive(),
+            world.playerMagicShieldFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerCounterBurstVisual(),
+            world.playerCounterBurstActive(),
+            world.playerCounterBurstFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerIncreasedPowerVisual(),
+            world.playerIncreasedPowerActive(),
+            world.playerIncreasedPowerFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerBerserkerVisual(),
+            world.playerBerserkerActive(),
+            world.playerBerserkerFrame(),
+            {1000, 200, 200},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
+            world.playerEnergyShieldVisual(),
+            world.playerEnergyShieldActive(),
+            world.playerEnergyShieldFrame(),
+            {1000, 1000, 300},
+            camera_x,
+            camera_y,
+            interpolation);
+    }
 }
 
 void renderNpcPass(
@@ -109,36 +208,332 @@ void renderNpcPass(
         shadow_opacity);
 }
 
+void renderCompanionPass(
+    gapi::Backend& renderer,
+    const CompanionActor& companion,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    bool shadow,
+    std::int32_t shadow_opacity,
+    double interpolation) {
+    renderCharacterAnimationPass(
+        renderer,
+        companion.animation(),
+        companion.patterns(),
+        companion.shadowPatterns(),
+        companion.renderPosition(interpolation),
+        companion.animationChart(),
+        companion.animationDirection(),
+        companion.animationFrame(),
+        [&companion](std::size_t part) {
+            return companion.partEnabled(part);
+        },
+        [&companion](std::size_t part) {
+            return CharacterColorStrength{
+                companion.partRedStrength(part),
+                companion.partGreenStrength(part),
+                companion.partBlueStrength(part),
+            };
+        },
+        camera_x,
+        camera_y,
+        shadow,
+        shadow_opacity,
+        0,
+        companion.drawOpacity());
+}
+
+void renderCompanionMoonAura(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    const EffectVisualResource* visual =
+        world.companionMoonAuraVisual();
+    if (!visual || visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    const std::int32_t frame =
+        world.companionMoonAuraFrame() %
+        direction.frame_count;
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world.companion().renderPosition(interpolation),
+        0,
+        8,
+        frame,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
+}
+
 void renderEnemyPass(
     gapi::Backend& renderer,
     const EnemyActor& enemy,
     std::int32_t camera_x,
     std::int32_t camera_y,
     bool shadow,
-    std::int32_t shadow_opacity) {
+    std::int32_t shadow_opacity,
+    bool hovered,
+    double interpolation) {
     renderCharacterAnimationPass(
         renderer,
         enemy.animation(),
         enemy.patterns(),
         enemy.shadowPatterns(),
-        enemy.position(),
+        enemy.renderPosition(interpolation),
         enemy.animationChart(),
         enemy.direction(),
         enemy.animationFrame(),
         [&enemy](std::size_t part) {
             return enemy.partEnabled(part);
         },
-        [&enemy](std::size_t part) {
+        [&enemy, hovered](std::size_t part) {
+            const std::int32_t hover_strength =
+                hovered ? 300 : 0;
             return CharacterColorStrength{
-                enemy.partRedStrength(part),
-                enemy.partGreenStrength(part),
-                enemy.partBlueStrength(part),
+                enemy.partRedStrength(part) +
+                    hover_strength,
+                enemy.partGreenStrength(part) +
+                    hover_strength,
+                enemy.partBlueStrength(part) +
+                    hover_strength,
             };
         },
         camera_x,
         camera_y,
         shadow,
-        shadow_opacity);
+        shadow_opacity * enemy.drawStrength() / 1000,
+        0,
+        enemy.drawStrength());
+}
+
+void renderCombatEffect(
+    gapi::Backend& renderer,
+    const CombatEffectActor& effect,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    renderCharacterAnimationPass(
+        renderer,
+        effect.animation(),
+        effect.patterns(),
+        effect.patterns(),
+        effect.position(),
+        effect.animationChart(),
+        effect.direction(),
+        effect.animationFrame(),
+        [&effect](std::size_t part) {
+            return effect.partEnabled(part);
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0,
+        effect.displayHeight() / 10,
+        effect.drawStrength());
+}
+
+void renderRuntimeEffect(
+    gapi::Backend& renderer,
+    const RuntimeEffectActor& effect,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    renderCharacterAnimationPass(
+        renderer,
+        effect.animation(),
+        effect.patterns(),
+        effect.patterns(),
+        effect.renderPosition(interpolation),
+        effect.animationChart(),
+        effect.animationDirection(),
+        effect.animationFrame(),
+        [&effect](std::size_t part) {
+            return effect.partEnabled(part);
+        },
+        [&effect](std::size_t) {
+            return CharacterColorStrength{
+                effect.redStrength(),
+                effect.greenStrength(),
+                effect.blueStrength(),
+            };
+        },
+        camera_x,
+        camera_y,
+        false,
+        0,
+        effect.displayHeight() / 10,
+        1000,
+        effect.additionalDisplayStatus());
+}
+
+void renderPlayerLandMine(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const PlayerLandMineVisual& mine,
+    std::int32_t camera_x,
+    std::int32_t camera_y,
+    double interpolation) {
+    const WorldPosition world_position =
+        mine.renderPosition(interpolation);
+    const std::int32_t display_height =
+        mine.renderDisplayHeight(interpolation) / 10;
+    if (mine.static_pattern) {
+        const gapi::NjpImage* patterns =
+            world.playerLandMinePatterns();
+        if (!patterns || patterns->patterns().empty()) {
+            return;
+        }
+        const ScreenPosition position =
+            calculateRealPosition(world_position);
+        renderer.drawPattern(
+            *patterns,
+            0,
+            {
+                position.x - camera_x,
+                position.y - camera_y - display_height,
+            });
+        return;
+    }
+    const EffectVisualResource* visual =
+        world.playerLandMineVisualResource(
+            mine.resource_id);
+    if (!visual || visual->animation().charts().empty()) {
+        return;
+    }
+    const gapi::CafDirection& direction =
+        visual->animation().charts().front().directions[8];
+    if (direction.frame_count < 1) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        world_position,
+        0,
+        8,
+        mine.animation_frame % direction.frame_count,
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0,
+        display_height);
+}
+
+void renderPlayerTransport(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    const PlayerTransportSpell& transport =
+        world.playerTransportSpell();
+    const PlayerTransportEndpoint* endpoint =
+        transport.endpoint(world.scenarioId());
+    const gapi::NjpImage* patterns =
+        world.playerTransportPatterns();
+    const EffectVisualResource* visual =
+        world.playerTransportVisual();
+    if (!endpoint || !patterns || !visual) {
+        return;
+    }
+
+    const ScreenPosition position =
+        calculateRealPosition(endpoint->position);
+    for (std::size_t index = 0;
+         index < transport.beams().size() &&
+         index < patterns->patterns().size();
+         ++index) {
+        const PlayerTransportBeam& beam =
+            transport.beams()[index];
+        renderer.drawPattern(
+            *patterns,
+            index,
+            {
+                position.x - camera_x,
+                position.y - camera_y - beam.height / 10,
+                1000,
+                1000,
+                1000,
+                beam.strength,
+                1000,
+                1000,
+                1000,
+                -1,
+                {},
+                gapi::PatternBlendMode::additive,
+            });
+    }
+    if (!transport.centerVisible() ||
+        visual->animation().charts().empty()) {
+        return;
+    }
+    renderCharacterAnimationPass(
+        renderer,
+        visual->animation(),
+        visual->patterns(),
+        visual->patterns(),
+        endpoint->position,
+        0,
+        8,
+        transport.animationFrame(world.scenarioId()),
+        [visual](std::size_t part) {
+            return part < visual->animation().maxPartCount();
+        },
+        [](std::size_t) {
+            return CharacterColorStrength{};
+        },
+        camera_x,
+        camera_y,
+        false,
+        0);
+}
+
+void renderMissEffect(
+    gapi::Backend& renderer,
+    const MissEffectActor& effect,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    const ScreenPosition position =
+        calculateRealPosition(effect.position());
+    renderer.drawPattern(
+        effect.patterns(),
+        0,
+        {
+            position.x - camera_x,
+            position.y - camera_y -
+                effect.height() / 10,
+            1000,
+            1000,
+            1000,
+            effect.opacity(),
+        });
 }
 
 void renderScenarioObjectPass(
@@ -188,6 +583,12 @@ void renderScenarioObjectPass(
                     ? 1000
                     : object.blueDrawStrength() +
                           (hovered ? 300 : 0),
+                -1,
+                {},
+                !shadow &&
+                    (object.displayStatus() & 0x10) != 0
+                    ? gapi::PatternBlendMode::additive
+                    : gapi::PatternBlendMode::normal,
             });
         return;
     }
@@ -223,7 +624,8 @@ void renderScenarioObjectPass(
         shadow,
         shadow_opacity,
         object.displayHeight(),
-        object.drawStrength());
+        object.drawStrength(),
+        object.displayStatus());
 }
 
 const gapi::NjpImage* objectImage(
@@ -312,7 +714,12 @@ void drawMapObject(
                    1000),
          shadow ? 1000 : object.red_strength,
          shadow ? 1000 : object.green_strength,
-         shadow ? 1000 : object.blue_strength});
+         shadow ? 1000 : object.blue_strength,
+         -1,
+         {},
+         !shadow && (object.status & 0x10) != 0
+             ? gapi::PatternBlendMode::additive
+             : gapi::PatternBlendMode::normal});
 }
 
 std::vector<WorldDrawEntry> collectWorldEntries(
@@ -395,6 +802,30 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             nullptr,
         });
     }
+    if (world.hasCompanion() &&
+        world.companion().visible()) {
+        WorldDrawEntry entry;
+        entry.companion = &world.companion();
+        entry.order = {
+            entries.size(),
+            world.companion().renderPosition(interpolation),
+            world.companion().judgement(),
+            0,
+        };
+        entries.push_back(entry);
+    }
+    if (!shadow && world.companionMoonAuraVisible() &&
+        world.companionMoonAuraVisual()) {
+        WorldDrawEntry entry;
+        entry.companion_moon_aura = true;
+        entry.order = {
+            entries.size(),
+            world.companion().renderPosition(interpolation),
+            {1, 1, 1, 1},
+            0,
+        };
+        entries.push_back(entry);
+    }
     for (const NpcActor& npc : world.npcs()) {
         if (!npc.visible()) {
             continue;
@@ -415,7 +846,8 @@ std::vector<WorldDrawEntry> collectWorldEntries(
         });
     }
     for (const EnemyActor& enemy : world.enemies()) {
-        if (!enemy.visible() || !enemy.hasVisual()) {
+        if (!enemy.visible() || !enemy.hasVisual() ||
+            enemy.expired()) {
             continue;
         }
         entries.push_back({
@@ -426,7 +858,7 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             false,
             {
                 entries.size(),
-                enemy.position(),
+                enemy.renderPosition(interpolation),
                 enemy.judgement(),
                 0,
             },
@@ -452,6 +884,90 @@ std::vector<WorldDrawEntry> collectWorldEntries(
             },
             nullptr,
         });
+    }
+    if (!shadow) {
+        for (const CombatEffectActor& effect :
+             world.combatEffects()) {
+            if (effect.expired()) {
+                continue;
+            }
+            entries.push_back({
+                nullptr,
+                nullptr,
+                nullptr,
+                false,
+                false,
+                {
+                    entries.size(),
+                    effect.position(),
+                    effect.judgement(),
+                    0,
+                },
+                nullptr,
+                nullptr,
+                &effect,
+            });
+        }
+        for (const RuntimeEffectActor& effect :
+             world.runtimeEffects()) {
+            if (!effect.visible() ||
+                !effect.hasUpdated()) {
+                continue;
+            }
+            WorldDrawEntry entry;
+            entry.runtime_effect = &effect;
+            entry.order = {
+                entries.size(),
+                effect.renderPosition(interpolation),
+                effect.judgement(),
+                static_cast<std::int16_t>(
+                    effect.additionalDisplayStatus()),
+            };
+            entries.push_back(entry);
+        }
+        for (const PlayerLandMineVisual& mine :
+             world.playerLandMineVisuals()) {
+            WorldDrawEntry entry;
+            entry.land_mine = &mine;
+            entry.order = {
+                entries.size(),
+                mine.renderPosition(interpolation),
+                mine.judgement,
+                0,
+            };
+            entries.push_back(entry);
+        }
+        for (const MissEffectActor& effect :
+             world.missEffects()) {
+            if (effect.expired()) {
+                continue;
+            }
+            WorldDrawEntry entry;
+            entry.miss_effect = &effect;
+            entry.order = {
+                entries.size(),
+                effect.position(),
+                effect.judgement(),
+                0,
+            };
+            entries.push_back(entry);
+        }
+        const PlayerTransportSpell& transport =
+            world.playerTransportSpell();
+        const PlayerTransportEndpoint* endpoint =
+            transport.endpoint(world.scenarioId());
+        if (endpoint && world.playerTransportPatterns() &&
+            world.playerTransportVisual()) {
+            WorldDrawEntry entry;
+            entry.player_transport = true;
+            entry.order = {
+                entries.size(),
+                endpoint->position,
+                {-50, -50, 50, 50},
+                0,
+            };
+            entries.push_back(entry);
+        }
     }
 
     std::vector<DisplayOrderEntry> order;
@@ -610,6 +1126,15 @@ void drawWorldEntry(
             shadow,
             shadow_opacity,
             interpolation);
+    } else if (entry.companion) {
+        renderCompanionPass(
+            renderer,
+            *entry.companion,
+            camera_x,
+            camera_y,
+            shadow,
+            shadow_opacity,
+            interpolation);
     } else if (entry.npc) {
         renderNpcPass(
             renderer,
@@ -627,7 +1152,9 @@ void drawWorldEntry(
             camera_x,
             camera_y,
             shadow,
-            shadow_opacity);
+            shadow_opacity,
+            world.hoveredEnemyId() == entry.enemy->id(),
+            interpolation);
     } else if (entry.item) {
         drawGroundItem(
             renderer,
@@ -639,6 +1166,46 @@ void drawWorldEntry(
             shadow_opacity,
             world.hoveredGroundItemId() ==
                 entry.item->id);
+    } else if (entry.effect) {
+        renderCombatEffect(
+            renderer,
+            *entry.effect,
+            camera_x,
+            camera_y);
+    } else if (entry.runtime_effect) {
+        renderRuntimeEffect(
+            renderer,
+            *entry.runtime_effect,
+            camera_x,
+            camera_y,
+            interpolation);
+    } else if (entry.land_mine) {
+        renderPlayerLandMine(
+            renderer,
+            world,
+            *entry.land_mine,
+            camera_x,
+            camera_y,
+            interpolation);
+    } else if (entry.miss_effect) {
+        renderMissEffect(
+            renderer,
+            *entry.miss_effect,
+            camera_x,
+            camera_y);
+    } else if (entry.companion_moon_aura) {
+        renderCompanionMoonAura(
+            renderer,
+            world,
+            camera_x,
+            camera_y,
+            interpolation);
+    } else if (entry.player_transport) {
+        renderPlayerTransport(
+            renderer,
+            world,
+            camera_x,
+            camera_y);
     }
 }
 
@@ -868,6 +1435,7 @@ void renderWorld(
         renderer,
         world,
         font,
+        nullptr,
         camera_x,
         camera_y,
         interpolation);

@@ -80,17 +80,21 @@ void renderSmokeFrame(
         if (!cell || cell->pattern_index < 0) {
             continue;
         }
-        const std::int32_t cellBrightness =
-            static_cast<std::int32_t>(
-                static_cast<std::int64_t>(brightness) *
-                std::clamp<std::int32_t>(
-                    cell->transparency, 0, 1000) /
-                1000);
         renderer.drawPattern(
             *asset.patterns,
             static_cast<std::size_t>(cell->pattern_index),
             {position.x, position.y, 1000, 1000,
-             cellBrightness});
+             brightness,
+             std::clamp<std::int32_t>(
+                 cell->transparency, 0, 1000),
+             1000,
+             1000,
+             1000,
+             -1,
+             {},
+             (cell->status & 0x10) != 0
+                 ? gapi::PatternBlendMode::additive
+                 : gapi::PatternBlendMode::normal});
     }
 }
 

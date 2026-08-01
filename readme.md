@@ -17,6 +17,22 @@ properly.
 
 [![Join us on Discord](readme/discord.png)](https://discord.gg/4F2dMu5qwQ)
 
+Want to see the latest progress? You can
+[try the recent development build in your browser](https://rednibcoding.github.io/OpenShadowFlare/).
+It uses your own ShadowFlare game files locally; they are not uploaded.
+
+Just keep in mind that this is a live development build, not a finished
+release. Things may still be incomplete or occasionally break. If you run
+into a bug, please tell us on
+[GitHub](https://github.com/RednibCoding/OpenShadowFlare/issues) or Discord so
+we can look into it.
+
+While testing in-game, press `F12` for the debug menu. It can show the FPS
+counter, temporarily unlock every spell, and provide infinite HP or MP, which
+is handy for checking the parts that are currently being reconstructed. These
+debug switches do not grant spell progress or replace the saved resource
+values in your character.
+
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -89,11 +105,15 @@ Here's where things stand today:
   script-driven conversations and item drops, the HUD, inventory, equipment,
   belt, Special Item window, Map, Mission List, Settings, and the first
   type-zero services are working too. The Warehouse now opens the shared
-  Special Item owner, while Remote Town's transport object reads its
+  Special Item owner, the Tower of Ordeal Giant Warehouse keeps its ten real
+  saved pages, and Remote Town's transport object reads its
   destination from the retail table. The world loader is no longer tied to
   scenario zero either: the Wasteland of Pillars fixture now proves the same
   data and resource path with a nonzero retail scenario and entry. Live
-  transitions, combat, and broader scenario progression come next.
+  scenario travel is working now as well: walking through Remote Town's real
+  south-gate trigger loads `Near the Remote Town`, and the matching outdoor
+  trigger brings the player back. The first outdoor goblin combat pass and
+  broader scenario progression come next.
 
 That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.
@@ -246,6 +266,12 @@ python -m http.server 8080 --directory build/wasm/release/src/SF_EXE
 
 For an unoptimized browser build with debug information, use
 `build/wasm/debug` and `-DCMAKE_BUILD_TYPE=Debug`.
+
+The `Build and deploy WebAssembly` GitHub Actions workflow rebuilds the
+release target on every push to `master`, combines it with the page in
+`gh-pages/`, and publishes the result through GitHub Pages. The repository's
+Pages source must be set to **GitHub Actions** once under Settings → Pages.
+The same deployment can also be started manually from the Actions tab.
 
 ## Running the tests
 

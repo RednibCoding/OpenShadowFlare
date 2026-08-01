@@ -1,0 +1,153 @@
+<!doctype html>
+<!--
+  Browser shell for the WebAssembly build of ShadowFlare_rebuilt. It follows
+  the DevilutionX asset model: the player points it at their own local
+  ShadowFlare install folder. The files are read in the browser via the File
+  API (nothing is uploaded anywhere) and mounted into Emscripten's in-memory
+  filesystem, then the unmodified game main() is started. No game assets are
+  distributed with this page.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://raw.githubusercontent.com/RednibCoding/OpenShadowFlare/master/readme/sf-logo-sm.png"
+    />
+    <title>OpenShadowFlare</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1 class="start-screen__title">
+        <img
+          class="start-screen__logo"
+          src="https://raw.githubusercontent.com/RednibCoding/OpenShadowFlare/master/readme/sf-logo.png"
+          alt="OpenShadowFlare"
+        />
+      </h1>
+
+      <section
+        id="start"
+        class="start-screen sf-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Start screen"
+      >
+        <p class="start-screen__description">
+          Web build of
+          <a
+            class="sf-link"
+            href="https://github.com/RednibCoding/OpenShadowFlare"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            OpenShadowFlare
+          </a>
+          , a community effort to preserve and rebuild ShadowFlare. The game
+          engine runs here in the browser via WebAssembly.
+        </p>
+
+        <p class="start-screen__description">
+          OpenShadowFlare uses the original ShadowFlare data files. Select your
+          ShadowFlare install folder below to start playing. The files are read
+          locally by the browser.
+        </p>
+
+        <button
+          type="button"
+          id="recent"
+          class="start-screen__button sf-btn"
+          hidden
+        >
+          Load Recent Files
+        </button>
+
+        <button
+          type="button"
+          id="pick"
+          class="start-screen__button sf-btn sf-btn--flame"
+        >
+          Select Game Folder
+        </button>
+        <input
+          type="file"
+          id="folder"
+          webkitdirectory
+          directory
+          multiple
+          hidden
+        />
+
+        <p class="start-screen__fine-print">
+          This is a live development build, not a finished release. Found a bug?
+          Let us know on
+          <a
+            class="sf-link"
+            href="https://github.com/RednibCoding/OpenShadowFlare/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+          or
+          <a
+            class="sf-link"
+            href="https://discord.gg/4F2dMu5qwQ"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Discord
+          </a>
+          .
+        </p>
+      </section>
+
+      <div id="game" class="game" hidden>
+        <canvas id="canvas" width="640" height="480" tabindex="-1"></canvas>
+        <pre id="log" aria-live="polite"></pre>
+      </div>
+    </main>
+
+    <div
+      id="error-dialog"
+      class="sf-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="error-dialog-title"
+      aria-describedby="error-dialog-message"
+      hidden
+    >
+      <div class="sf-dialog__box">
+        <h2 id="error-dialog-title" class="sf-dialog__title">
+          Folder not recognized
+        </h2>
+        <p id="error-dialog-message" class="sf-dialog__message">
+          The folder you selected doesn't appear to contain a valid ShadowFlare
+          installation. Pick the folder that holds the original .exe game file.
+        </p>
+        <div class="sf-dialog__actions">
+          <button
+            type="button"
+            id="error-dialog-pick"
+            class="sf-dialog__button sf-btn sf-btn--flame"
+          >
+            Choose another folder
+          </button>
+          <button
+            type="button"
+            id="error-dialog-back"
+            class="sf-dialog__button sf-btn"
+          >
+            Back to start
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="assets/ShadowFlare_rebuilt.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

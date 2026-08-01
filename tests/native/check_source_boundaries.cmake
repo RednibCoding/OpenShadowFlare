@@ -59,6 +59,7 @@ set(implemented_public_apis
   RKC_DBFCONTROL/rkc_dbfcontrol.hpp
   RKC_DIB/rkc_dib.hpp
   RKC_DSOUND/rkc_dsound.hpp
+  RKC_RPG_AICONTROL/rkc_rpg_aicontrol.hpp
   RKC_RPG_TABLE/rkc_rpg_table.hpp
   RKC_RPGSCRN/rkc_rpgscrn.hpp
   RKC_RPG_SCRIPT/rkc_rpg_script.hpp
@@ -86,6 +87,7 @@ endforeach()
 
 set(dll_implementation_names
   bitmap.cpp
+  ai_control_database.cpp
   caf.cpp
   coordinates.cpp
   display_hit_test.cpp
@@ -241,6 +243,19 @@ if(executable_cmake MATCHES
 endif()
 
 file(READ "${portable_root}/world/world_scene.hpp" world_scene_header)
+file(READ
+  "${portable_root}/world/scenario_world.hpp"
+  scenario_world_header)
+if(NOT world_scene_header MATCHES
+    "AiControlDatabase ai_control_database_")
+  message(FATAL_ERROR
+    "The global AI-control catalog must remain owned by WorldScene")
+endif()
+if(scenario_world_header MATCHES
+    "AiControlDatabase[ \t\r\n]+[A-Za-z0-9_]+_")
+  message(FATAL_ERROR
+    "The global AI-control catalog leaked into ScenarioWorld ownership")
+endif()
 foreach(escaped_scenario_owner IN ITEMS
     "ScenarioData scenario_"
     "GroundMap ground_"

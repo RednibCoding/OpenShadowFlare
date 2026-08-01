@@ -10,14 +10,24 @@
 
 namespace osf {
 
+struct RetailItemRoll {
+    std::int32_t minimum = 0;
+    std::int32_t maximum = 0;
+    std::int32_t chance = 0;
+};
+
 struct ItemDefinition {
     static constexpr std::size_t derived_parameter_count = 10;
     static constexpr std::size_t element_count = 8;
+    static constexpr std::size_t instance_parameter_count = 39;
 
     std::int32_t category = -1;
     std::int32_t id = -1;
     std::int32_t subtype = -1;
     std::int32_t variant = -1;
+    std::int32_t loot_episode_mask = 0;
+    std::int32_t loot_weight = 0;
+    std::int32_t loot_level = -1;
     std::int32_t base_price = 0;
     std::int32_t inventory_width = 1;
     std::int32_t inventory_height = 1;
@@ -37,6 +47,12 @@ struct ItemDefinition {
     std::array<
         std::int32_t,
         element_count> element_strengths{};
+    std::array<
+        RetailItemRoll,
+        instance_parameter_count> instance_parameter_rolls{};
+    std::array<
+        RetailItemRoll,
+        element_count> element_rolls{};
     std::int32_t required_level = 1;
     std::int32_t appearance_part = -1;
     std::int32_t appearance_red_strength = 1000;
@@ -46,7 +62,11 @@ struct ItemDefinition {
     std::int32_t secondary_appearance_red_strength = 1000;
     std::int32_t secondary_appearance_green_strength = 1000;
     std::int32_t secondary_appearance_blue_strength = 1000;
-    bool suppresses_off_hand_appearance = false;
+    bool suppresses_off_hand = false;
+    std::int32_t ranged_effect_selector = -1;
+    std::int32_t ranged_pattern = -1;
+    std::int32_t ranged_travel_speed = 0;
+    bool ranged_pierces_targets = false;
     std::int32_t restore_life = 0;
     std::int32_t restore_mana = 0;
     std::int32_t restore_life_percent = 0;
@@ -55,6 +75,12 @@ struct ItemDefinition {
     std::int32_t restore_companion_life_percent = 0;
     std::int32_t consumable_effect = -1;
     std::int32_t consumable_effect_value = 0;
+    // Category-four records with a non-negative page bypass the backpack.
+    // Retail places them into one of four private player-owned pages at the
+    // fixed cell stored beside the page number.
+    std::int32_t automatic_inventory_page = -1;
+    std::int32_t automatic_inventory_x = 0;
+    std::int32_t automatic_inventory_y = 0;
     std::string name;
     std::string description;
 

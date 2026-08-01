@@ -135,12 +135,51 @@ GameplayStateHooks makeGameplayStateHooks(
             assets.releasePattern(6);
             return false;
         }
+        if (!assets.loadPattern(
+                8, "System\\Game\\Pattern\\StatusIcon.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            return false;
+        }
+        if (!assets.loadPattern(
+                9, "System\\Game\\Pattern\\MagicIcon.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            assets.releasePattern(8);
+            return false;
+        }
+        if (!assets.loadPattern(
+                10,
+                "System\\Game\\Pattern\\MagicBarIcon.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            assets.releasePattern(8);
+            assets.releasePattern(9);
+            return false;
+        }
+        if (!assets.loadPattern(
+                11, "System\\Game\\Pattern\\Card.njp")) {
+            assets.releasePattern(5);
+            assets.releasePattern(6);
+            assets.releasePattern(7);
+            assets.releasePattern(8);
+            assets.releasePattern(9);
+            assets.releasePattern(10);
+            return false;
+        }
         return true;
     };
     hooks.release_interface = [&assets] {
         assets.releasePattern(5);
         assets.releasePattern(6);
         assets.releasePattern(7);
+        assets.releasePattern(8);
+        assets.releasePattern(9);
+        assets.releasePattern(10);
+        assets.releasePattern(11);
     };
     hooks.prepare_world =
         [&data_root, &player, &world] {
@@ -201,6 +240,10 @@ GameplayStateHooks makeGameplayStateHooks(
         [&world](std::int32_t x, std::int32_t y) {
             return world.commandWorldInteraction(x, y);
         };
+    hooks.command_player_magic =
+        [&world](std::int32_t x, std::int32_t y) {
+            return world.commandPlayerMagic(x, y);
+        };
     hooks.world_interaction_pending = [&world] {
         return world.interactionPending();
     };
@@ -237,6 +280,12 @@ GameplayStateHooks makeGameplayStateHooks(
     };
     hooks.toggle_player_run = [&world] {
         world.togglePlayerRun();
+    };
+    hooks.activate_increased_power = [&world] {
+        world.activatePlayerIncreasedPower();
+    };
+    hooks.place_land_mine = [&world] {
+        world.placePlayerLandMine();
     };
     hooks.update_world = [&audio, &world] {
         world.update();

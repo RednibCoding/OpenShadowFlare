@@ -2,9 +2,15 @@
 
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
+#include "retail_save_automatic_items.hpp"
+#include "retail_save_companion_progress.hpp"
+#include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
+#include "retail_save_magic.hpp"
+#include "retail_save_mines.hpp"
 #include "retail_save_progress.hpp"
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -42,6 +48,10 @@ bool WorldScene::loadInitialScenario(
             data_root / "System" / "Game" / "Parameter" /
                 "Table.Tbd",
             error) ||
+        !ai_control_database_.load(
+            data_root / "System" / "Game" / "Parameter" /
+                "Control.aid",
+            error) ||
         !missions_.load(parameter_tables_, error) ||
         !transports_.load(parameter_tables_, error) ||
         !player_data_.load(
@@ -54,6 +64,10 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    quests_.initialize(missions_.missions().size());
+    player_item_controller_.initializeNew();
+    player_giant_warehouse_.initializeNew();
+    bool saved_running = false;
     if (player_request.source ==
         PlayerDataSource::new_character) {
         if (!initializeRetailNewPlayerLoadout(
@@ -66,8 +80,12 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
-        player_item_controller_.initializeNew();
+        player_magic_.initializeNew();
     } else {
+        // Older portable saves ended after the progress extension. Seed the
+        // retail new-character defaults before optionally restoring the
+        // magic stream so those saves remain valid.
+        player_magic_.initializeNew();
         std::vector<std::uint8_t> payload;
         std::size_t owned_items_end = 0;
         if (!readRetailSavePayload(
@@ -87,18 +105,66 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
-        std::vector<std::int32_t> transport_flags =
-            transports_.enabledFlags();
-        if (!restoreRetailTransportFlags(
+        RetailSaveProgress progress{
+            quests_.states(),
+            transports_.enabledFlags(),
+            {},
+            false,
+        };
+        std::size_t progress_end = owned_items_end;
+        std::size_t magic_end = progress_end;
+        if (!restoreRetailProgress(
                 payload,
                 owned_items_end,
-                transport_flags,
+                progress,
+                &progress_end,
+                error) ||
+            !restoreRetailMagic(
+                payload,
+                progress_end,
+                player_magic_,
+                &magic_end,
                 error)) {
             clear();
             return false;
         }
+        std::int32_t mine_count =
+            player_item_controller_.mineCount();
+        std::size_t companion_progress_end = magic_end;
+        std::size_t mine_end = companion_progress_end;
+        if (!restoreRetailCompanionProgress(
+                payload,
+                magic_end,
+                player_data_,
+                &companion_progress_end,
+                error) ||
+            !restoreRetailMineCount(
+                payload,
+                companion_progress_end,
+                mine_count,
+                &mine_end,
+                error) ||
+            !restoreRetailGiantWarehouse(
+                payload,
+                mine_end,
+                item_database_,
+                player_giant_warehouse_,
+                &mine_end,
+                error) ||
+            !restoreRetailAutomaticItems(
+                payload,
+                mine_end,
+                item_database_,
+                player_automatic_items_,
+                nullptr,
+                error)) {
+            clear();
+            return false;
+        }
+        player_item_controller_.restoreMineCount(
+            std::min(mine_count, playerMaximumMineCount()));
         if (!transports_.restoreEnabledFlags(
-                transport_flags)) {
+                progress.transport_flags)) {
             setError(
                 error,
                 "The saved transport state does not match the "
@@ -106,6 +172,10 @@ bool WorldScene::loadInitialScenario(
             clear();
             return false;
         }
+        quests_.restore(progress.quest_flags);
+        script_state_flags_ =
+            std::move(progress.script_state_flags);
+        saved_running = progress.running;
     }
 
     if (!item_inventory_patterns_.load(data_root, error) ||
@@ -117,8 +187,20 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    // Retail never reaches a normal save action while dead: its locked
+    // death action completes a revive transition first. Repair saves made
+    // by older portable builds that could persist that impossible state.
+    if (player_request.source ==
+            PlayerDataSource::retail_save &&
+        player_data_.currentLife() <= 0) {
+        player_data_.restoreForRespawn();
+    }
+
     const char* player_directory =
-        player_data_.gender() == 1 ? "Female" : "Male";
+        player_data_.gender() ==
+                playerGenderValue(PlayerGender::male)
+            ? "Male"
+            : "Female";
     const std::filesystem::path player_root =
         data_root / "Player" / player_directory;
     std::string player_error;
@@ -132,11 +214,32 @@ bool WorldScene::loadInitialScenario(
         return false;
     }
 
+    CompanionProfile companion_profile;
+    if (!decodeCompanionProfile(
+            parameter_tables_,
+            player_data_.companionType(),
+            player_data_.companionLevel(),
+            companion_profile,
+            error)) {
+        clear();
+        return false;
+    }
+    const CharacterVisualResource* companion_visual =
+        companion_visuals_.load(
+            data_root,
+            companion_profile.resource_id,
+            error);
+    if (!companion_visual) {
+        clear();
+        return false;
+    }
+
     RetailRandom prepared_item_random = item_random_;
     ScenarioWorld prepared_scenario;
     if (!prepared_scenario.load(
             data_root,
             start,
+            ai_control_database_,
             prepared_item_random,
             error)) {
         clear();
@@ -167,9 +270,29 @@ bool WorldScene::loadInitialScenario(
         },
         scenario_world_.entry().direction,
         player_data_.walkingSpeedTier());
+    if (!companion_.initialize(
+            companion_profile,
+            *companion_visual,
+            scenario_world_.localPlayerNumber(),
+            player_.position(),
+            player_.direction())) {
+        setError(
+            error,
+            "The owned companion could not be initialized.");
+        clear();
+        return false;
+    }
+    if (player_data_.companionRespawnCounter() > 0) {
+        companion_.beginDefeatedWait();
+    }
+    player_.setMovementPace(
+        saved_running ? MovementPace::run : MovementPace::walk);
     scenario_world_.mapExploration().reveal(
         player_.position());
     has_player_ = true;
+    // Retail installs the local player and current entry before status kind
+    // seven initializes the scenario. Those scripts can query both values.
+    scenario_script_.runStatusKind(7);
     if (error) {
         error->clear();
     }
@@ -206,12 +329,28 @@ ScenarioTravelResult WorldScene::transitionScenario(
             return ScenarioTravelResult::failed;
         }
         pending_interaction_ = {};
+        player_attack_target_.cancel();
+        pending_player_attack_impact_target_id_ = -1;
+        pending_combat_effects_.clear();
+        combat_effects_.clear();
+        runtime_effects_.clear();
+        player_land_mines_.clear();
+        miss_effects_.clear();
+        camera_shake_counter_ = -1;
+        camera_shake_duration_ = 0;
+        camera_shake_magnitude_ = 0;
+        player_identify_mode_active_ = false;
         pointer_.clearSelection();
+        scenario_world_.setEntry(
+            start.entry_value, *entry);
         player_.relocate(
             {entry->world_x, entry->world_y},
             entry->direction);
+        companion_.relocate(
+            player_.position(), player_.direction());
         scenario_world_.mapExploration().reveal(
             player_.position());
+        scenario_script_.runStatusKind(7);
         if (error) {
             error->clear();
         }
@@ -223,6 +362,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     if (!prepared_scenario.load(
             data_root_,
             start,
+            ai_control_database_,
             prepared_item_random,
             error)) {
         return ScenarioTravelResult::failed;
@@ -239,8 +379,19 @@ ScenarioTravelResult WorldScene::transitionScenario(
     player_.cancelMovement();
     pointer_.reset();
     pending_interaction_ = {};
+    player_attack_target_.cancel();
+    pending_player_attack_impact_target_id_ = -1;
     pending_audio_samples_.clear();
+    pending_combat_effects_.clear();
+    combat_effects_.clear();
+    runtime_effects_.clear();
+    player_land_mines_.clear();
+    miss_effects_.clear();
+    camera_shake_counter_ = -1;
+    camera_shake_duration_ = 0;
+    camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    player_identify_mode_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;
     next_ground_item_id_ =
@@ -253,12 +404,22 @@ ScenarioTravelResult WorldScene::transitionScenario(
             scenario_world_.entry().world_y,
         },
         scenario_world_.entry().direction);
+    companion_.relocate(
+        player_.position(), player_.direction());
     scenario_world_.mapExploration().reveal(
         player_.position());
+    scenario_script_.runStatusKind(7);
     if (error) {
         error->clear();
     }
+    scenario_changed_ = true;
     return ScenarioTravelResult::loaded;
+}
+
+bool WorldScene::takeScenarioChanged() {
+    const bool changed = scenario_changed_;
+    scenario_changed_ = false;
+    return changed;
 }
 
 }  // namespace osf

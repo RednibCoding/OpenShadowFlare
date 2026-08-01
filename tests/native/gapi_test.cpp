@@ -3,9 +3,11 @@
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "render/character_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
 #include "render/gameplay_renderer.hpp"
 #include "render/loading_renderer.hpp"
+#include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
 
 #include <array>
@@ -174,7 +176,8 @@ std::vector<std::uint8_t> makeBitmapFixture() {
     return bytes;
 }
 
-std::vector<std::uint8_t> makeCafFixture() {
+std::vector<std::uint8_t> makeCafFixture(
+    std::int16_t cell_status = 16) {
     std::vector<std::uint8_t> bytes;
     const char header[16] = "CHRAnimation002";
     appendBytes(bytes, header, sizeof(header));
@@ -187,11 +190,11 @@ std::vector<std::uint8_t> makeCafFixture() {
     appendI32(bytes, 1);
     appendI16(bytes, 2);
     appendI32(bytes, 2);
-    appendI16(bytes, 16);
+    appendI16(bytes, cell_status);
     appendI16(bytes, 1000);
     appendI32(bytes, 4);
     appendI16(bytes, 0);
-    appendI16(bytes, 16);
+    appendI16(bytes, cell_status);
     appendI16(bytes, 750);
     appendI32(bytes, 7);
     appendI16(bytes, 0);
@@ -350,6 +353,23 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
+    osf::gapi::SoftwareBackend additiveBackend(1, 1);
+    additiveBackend.beginFrame({20, 40, 60, 255});
+    osf::gapi::PatternDraw additiveDraw{
+        0, 0, 1000, 1000, 1000, 500};
+    additiveDraw.blend_mode =
+        osf::gapi::PatternBlendMode::additive;
+    additiveBackend.drawPattern(image, 0, additiveDraw);
+    const osf::gapi::Color added =
+        additiveBackend.surface().pixels[0];
+    if (!check(
+            added.red == 70 &&
+                added.green == 40 &&
+                added.blue == 60,
+            "GAPI additive sprite blending differs from retail.")) {
+        return false;
+    }
+
     osf::gapi::SoftwareBackend tintBackend(1, 1);
     tintBackend.beginFrame({20, 40, 60, 255});
     tintBackend.drawPattern(
@@ -460,19 +480,44 @@ bool testGameplayHudPackets() {
             100,
             200,
             160,
+            20,
+            25,
             true,
+            true,
+            false,
+            2,
+        });
+
+    RecordingBackend activationBackend;
+    osf::renderGameplayHud(
+        activationBackend,
+        bar,
+        {
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            1,
+            false,
+            false,
+            true,
+            0,
         });
     return check(
         osf::gameplayHudBarWidth(0, 100) == 0 &&
             osf::gameplayHudBarWidth(1, 1000) == 1 &&
             osf::gameplayHudBarWidth(50, 100) == 103 &&
             osf::gameplayHudBarWidth(200, 100) == 206 &&
+            osf::gameplayHudExperienceBarWidth(
+                20, 25) == 87 &&
             backend.rectangles.size() == 1 &&
             backend.rectangles[0].x == 0 &&
             backend.rectangles[0].y == 412 &&
             backend.rectangles[0].width == 640 &&
             backend.rectangles[0].height == 68 &&
-            backend.patterns.size() == 9 &&
+            backend.patterns.size() == 11 &&
             backend.patterns[0].index == 7 &&
             backend.patterns[1].index == 8 &&
             backend.patterns[2].index == 10 &&
@@ -490,8 +535,23 @@ bool testGameplayHudPackets() {
             backend.patterns[7].draw.clip.x == 106 &&
             backend.patterns[7].draw.clip.y == 452 &&
             backend.patterns[7].draw.clip.width == 206 &&
-            backend.patterns[8].index == 15,
-        "The gameplay HUD packets differ from FUN_004039f0.");
+            backend.patterns[8].index == 12 &&
+            backend.patterns[8].draw.red_strength == 800 &&
+            backend.patterns[8].draw.green_strength == 800 &&
+            backend.patterns[8].draw.blue_strength == 800 &&
+            backend.patterns[9].index == 15 &&
+            backend.patterns[10].index == 14 &&
+            backend.patterns[10].draw.clip.x == 530 &&
+            backend.patterns[10].draw.clip.y == 395 &&
+            backend.patterns[10].draw.clip.width == 87 &&
+            backend.patterns[10].draw.clip.height == 9,
+        "The gameplay HUD packets differ from FUN_004039f0.") &&
+        check(
+            activationBackend.patterns.size() == 8 &&
+                activationBackend.patterns[6].index == 13 &&
+                activationBackend.patterns[7].index == 15,
+            "The Increased Power activation marker differs from "
+            "FUN_004039f0.");
 }
 
 bool testTruncatedNjp() {
@@ -619,8 +679,70 @@ bool testCafAndTitleAnimation() {
             backend.patterns[4].index == 7 &&
             backend.patterns[4].draw.x == 562 &&
             backend.patterns[4].draw.y == 60 &&
-            backend.patterns[4].draw.brightness == 600,
+            backend.patterns[4].draw.brightness == 800 &&
+            backend.patterns[4].draw.opacity == 750 &&
+            backend.patterns[4].draw.blend_mode ==
+                osf::gapi::PatternBlendMode::additive,
         "The title steam CAF frame or retail draw packet differs.");
+}
+
+bool testCafCharacterDrawModes() {
+    osf::gapi::CafAnimation animation;
+    std::string error;
+    if (!check(
+            animation.decode(makeCafFixture(8), &error),
+            error.c_str())) {
+        return false;
+    }
+
+    osf::gapi::NjpImage patterns;
+    osf::gapi::NjpImage shadows;
+    RecordingBackend backend;
+    const auto enabled = [](std::size_t) {
+        return true;
+    };
+    const auto color = [](std::size_t) {
+        return osf::CharacterColorStrength{};
+    };
+    osf::renderCharacterAnimationPass(
+        backend,
+        animation,
+        patterns,
+        shadows,
+        {0, 0},
+        0,
+        8,
+        1,
+        enabled,
+        color,
+        0,
+        0,
+        false,
+        500);
+    osf::renderCharacterAnimationPass(
+        backend,
+        animation,
+        patterns,
+        shadows,
+        {0, 0},
+        0,
+        8,
+        1,
+        enabled,
+        color,
+        0,
+        0,
+        true,
+        500);
+    return check(
+        backend.patterns.size() == 2 &&
+            backend.patterns[0].index == 7 &&
+            backend.patterns[0].draw.opacity == 750 &&
+            backend.patterns[0].draw.blend_mode ==
+                osf::gapi::PatternBlendMode::normal &&
+            backend.patterns[1].index == 7 &&
+            backend.patterns[1].draw.opacity == 500,
+        "A shadow-enabled CAF cell did not keep its normal pass.");
 }
 
 bool testInitialLoadingPackets() {
@@ -651,6 +773,24 @@ bool testInitialLoadingPackets() {
         "The initial loading artwork or confirmation arrow differs.");
 }
 
+bool testSystemCursorPackets() {
+    osf::gapi::NjpImage system_patterns;
+    RecordingBackend backend;
+    osf::renderSystemCursor(
+        backend, system_patterns, 123, 234, false);
+    osf::renderSystemCursor(
+        backend, system_patterns, 321, 432, true);
+    return check(
+        backend.patterns.size() == 2 &&
+            backend.patterns[0].index == 0 &&
+            backend.patterns[0].draw.x == 123 &&
+            backend.patterns[0].draw.y == 234 &&
+            backend.patterns[1].index == 1 &&
+            backend.patterns[1].draw.x == 321 &&
+            backend.patterns[1].draw.y == 432,
+        "The normal or Identify system cursor draw packet differs.");
+}
+
 }  // namespace
 
 int main() {
@@ -660,7 +800,9 @@ int main() {
         !testBitmapAndTextDrawing() ||
         !testMutableBitmapMask() ||
         !testCafAndTitleAnimation() ||
+        !testCafCharacterDrawModes() ||
         !testInitialLoadingPackets() ||
+        !testSystemCursorPackets() ||
         !testGameplayHudPackets()) {
         return 1;
     }

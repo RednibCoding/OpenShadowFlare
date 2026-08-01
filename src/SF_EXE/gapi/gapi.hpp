@@ -30,6 +30,11 @@ struct Viewport {
     std::int32_t height = 0;
 };
 
+enum class PatternBlendMode {
+    normal,
+    additive,
+};
+
 struct PatternDraw {
     constexpr PatternDraw(
         std::int32_t draw_x = 0,
@@ -42,7 +47,9 @@ struct PatternDraw {
         std::int32_t draw_green_strength = 1000,
         std::int32_t draw_blue_strength = 1000,
         std::int32_t draw_palette = -1,
-        Viewport draw_clip = {})
+        Viewport draw_clip = {},
+        PatternBlendMode draw_blend_mode =
+            PatternBlendMode::normal)
         : x(draw_x),
           y(draw_y),
           scale_x(draw_scale_x),
@@ -53,7 +60,8 @@ struct PatternDraw {
           green_strength(draw_green_strength),
           blue_strength(draw_blue_strength),
           palette(draw_palette),
-          clip(draw_clip) {}
+          clip(draw_clip),
+          blend_mode(draw_blend_mode) {}
 
     std::int32_t x = 0;
     std::int32_t y = 0;
@@ -66,6 +74,7 @@ struct PatternDraw {
     std::int32_t blue_strength = 1000;
     std::int32_t palette = -1;
     Viewport clip;
+    PatternBlendMode blend_mode = PatternBlendMode::normal;
 };
 
 struct BitmapDraw {
