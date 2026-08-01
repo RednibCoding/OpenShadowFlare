@@ -1179,5 +1179,11 @@ const script::ScriptData& WorldScene::scenarioScript() const {
     return scenario_script_.data();
 }
 
+std::int32_t WorldScene::scenarioCaptionMessageId() const {
+    return scenario_script_.caption().id;
+}
 
+const std::string& WorldScene::scenarioCaptionText() const {
+    return scenario_script_.caption().text;
+}
 }  // namespace osf

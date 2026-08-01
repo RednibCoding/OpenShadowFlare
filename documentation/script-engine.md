@@ -318,6 +318,8 @@ services exercise them; unknown values still fail loudly.
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
+| 49 | `0x0043389b` | Retain one raw scenario message in the executable's map-caption buffer |
+| 50 | `0x004321cb` | Write the current scenario-entry value to an operand |
 | 51 | `0x00432fed` | Install the twenty evaluated integer substitutions used by later message `%d` fields |
 | 52 | `0x004310d7` | Write the repair price for an evaluated equipment/backpack selector to an operand |
 | 53 | `0x00433923` | Write the local player's total Gold to an operand |
@@ -346,6 +348,20 @@ in the executable are:
 | 1 | not equal |
 | 2 | greater than |
 | 3 | less than |
+
+Opcodes 49 and 50 are part of map initialization rather than conversation UI.
+The first copies the selected SCS message verbatim into the retail buffer at
+`0x0048d5f8` and clears its companion value at `0x0048d5f4`. No code which
+reads that buffer has been found in the executable, so the portable runtime
+retains the ID and text for fidelity and inspection but does not invent a
+visible area-name banner. Opcode 50 writes the entry value installed by the
+scenario loader. Dusty Ruins uses it to choose `B1F` or `B2F`, including when
+an authored transition changes floors without changing the scenario ID.
+
+Retail installs the local player and entry before running scenario status kind
+`7`. It runs that status after both a changed-map load and a same-scenario
+relocation. The portable transaction now follows that order, which also lets
+initialization scripts safely query player level before building vendor stock.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its

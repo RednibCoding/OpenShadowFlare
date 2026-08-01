@@ -56,6 +56,7 @@ public:
     script::StepResult runStatusKind(std::int32_t kind);
     script::StepResult resume(std::int32_t selection = -1);
     const script::ScriptData& data() const;
+    const script::ScenarioCaptionEvent& caption() const;
 
     bool messageActive() const;
     std::int32_t actorId() const;

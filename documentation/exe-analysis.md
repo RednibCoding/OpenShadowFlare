@@ -1107,6 +1107,22 @@ switches BGM, and starts the later standard loading presentation. Explicit
 coordinate entry `-1`, the alternate `VisualNN` presentation, multiplayer
 ownership, and exact teardown ordering remain.
 
+The local-player record and resolved entry are installed before the loader
+runs scenario status kind `7`. This ordering is shared by the changed-map path
+at `0x0042642b` and the same-scenario path at `0x00427474`; the latter does not
+skip initialization merely because it kept the current resources. Opcode 50
+at `0x004321cb` exposes that current entry through the common operand writer.
+Dusty Ruins scenario `00010000` branches on it to retain either its `B1F` or
+`B2F` caption during both cross-map arrival and its authored same-map floor
+transition.
+
+Opcode 49 enters at `0x0043389b`. In the local single-player branch it resolves
+its message operand through the current SCS, copies the raw text into
+`0x0048d5f8`, and clears `0x0048d5f4`. Direct references in the executable only
+write those globals; no reader or renderer has been identified. The portable
+script owner therefore keeps the latest message ID and text as evidence-backed
+state without drawing an area banner that the known retail path does not show.
+
 The first authored cross-map path is now traced end to end. During the
 scenario update at `0x004305d0`, status kind three resolves its character to a
 live MCT entity and calls the inclusive rectangle test at `0x00414350`

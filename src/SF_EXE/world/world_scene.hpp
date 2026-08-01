@@ -293,6 +293,8 @@ public:
     const ScenarioData& scenario() const;
     std::int32_t scenarioId() const;
     const script::ScriptData& scenarioScript() const;
+    std::int32_t scenarioCaptionMessageId() const;
+    const std::string& scenarioCaptionText() const;
     RetailSaveProgress retailSaveProgress() const;
 
 private:

@@ -904,6 +904,15 @@ The script work should grow from real Remote Town interactions:
   in one frame;
 - save unknown opcodes and data instead of silently discarding them.
 
+Episode 1 map initialization now follows the loader rather than a convenient
+portable ordering. The local player and resolved entry exist before status
+kind 7 runs, and that status runs again for same-scenario entry changes. Script
+opcode 50 can therefore branch on the real entry, while opcode 49 retains the
+raw authored area caption. Dusty Ruins selects `B1F` and `B2F` correctly and
+initial vendor setup can query the live player level. No caption is drawn yet:
+the known executable references only write its buffer, so adding a visible
+banner would be guesswork rather than reconstruction.
+
 The first checkpoint is now live. Remote Town's SCS decoder reads all 66
 temporary flags, 61 messages, 23 status triggers, 220 sentences, and 608
 commands. Clicking Ostare derives his script character number from the MCT

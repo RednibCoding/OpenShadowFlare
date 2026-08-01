@@ -257,6 +257,12 @@ and their script-controlled visibility and judgement state decides whether
 they are drawn or block movement. They share the ordinary display-order passes
 with scenery, the player, PEOPLE actors, and ground items.
 
+Scenario setup now follows the retail entry order too. The player is relocated
+before status kind 7 runs, including for same-scenario entry changes, so script
+opcode 50 sees the correct floor and level-dependent vendor setup sees the live
+hero. Opcode 49 retains the raw authored area-caption message for inspection;
+it is not drawn because the known executable references never read that buffer.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,

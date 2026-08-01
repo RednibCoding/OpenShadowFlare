@@ -175,6 +175,7 @@ bool testRetailRemoteTown() {
                     local_player_spell_learned:
             case osf::script::ValueQuery::
                     local_player_job_selection:
+            case osf::script::ValueQuery::scenario_entry_value:
             case osf::script::ValueQuery::blackjack_result:
                 return false;
             }
@@ -1416,6 +1417,61 @@ bool testRetailBlackjackCommands() {
 #endif
 }
 
+bool testRetailScenarioEntryAndCaptionCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00010000" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::unordered_map<std::uint64_t, std::int32_t> values;
+    osf::script::InterpreterHooks hooks;
+    hooks.read_operand = [&values](
+                             const osf::script::Operand& operand) {
+        const auto found = values.find(operandKey(operand));
+        return found == values.end() ? 0 : found->second;
+    };
+    hooks.write_operand = [&values](
+                              const osf::script::Operand& operand,
+                              std::int32_t value) {
+        values.insert_or_assign(operandKey(operand), value);
+        return true;
+    };
+    hooks.query_value = [](osf::script::ValueQuery query,
+                           std::int32_t& value) {
+        if (query !=
+            osf::script::ValueQuery::scenario_entry_value) {
+            return false;
+        }
+        value = 2;
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    const osf::script::StepResult result =
+        interpreter.startStatus(7, -1);
+    const osf::script::ScenarioCaptionEvent& caption =
+        interpreter.caption();
+    return check(
+        result == osf::script::StepResult::complete &&
+            interpreter.readTemporaryFlag(1000003) == 2 &&
+            caption.id == 1000001 &&
+            caption.text == "Dusty Ruins, B2F\n",
+        "Opcodes 49 and 50 did not select the retail Dusty Ruins "
+        "caption from entry two.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -1427,6 +1483,7 @@ int main() {
                    testRetailJobCommands() &&
                    testRetailEquipmentColorCommand() &&
                    testRetailBlackjackCommands() &&
+                   testRetailScenarioEntryAndCaptionCommands() &&
                    testMalformedScript()
                ? 0
                : 1;

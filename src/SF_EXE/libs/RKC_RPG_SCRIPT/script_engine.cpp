@@ -98,6 +98,7 @@ void Interpreter::reset() {
     message_callback_character_number_ = -1;
     unsupported_opcode_ = -1;
     message_parameters_.fill(-1);
+    caption_ = {};
 }
 
 StepResult Interpreter::startStatus(
@@ -205,6 +206,10 @@ std::int32_t Interpreter::readTemporaryFlag(
     return found == temporary_flags_.end()
                ? -1
                : found->second;
+}
+
+const ScenarioCaptionEvent& Interpreter::caption() const {
+    return caption_;
 }
 
 StepResult Interpreter::run() {
@@ -434,6 +439,35 @@ StepResult Interpreter::execute(const Command& command) {
             !hooks_.query_value(
                 ValueQuery::local_player_companion_type,
                 value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
+    case 49: {
+        if (command.operands.empty() || !script_) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t id =
+            readOperand(command.operands[0]);
+        const Message* message = script_->findMessage(id);
+        if (!message) {
+            return StepResult::invalid_script;
+        }
+        caption_ = {message->id, message->text};
+        return StepResult::complete;
+    }
+    case 50: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(
+                ValueQuery::scenario_entry_value, value)) {
             unsupported_opcode_ = command.opcode;
             return StepResult::unsupported_command;
         }

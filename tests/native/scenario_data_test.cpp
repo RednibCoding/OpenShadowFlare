@@ -2253,6 +2253,52 @@ bool testLiveScenarioTransition() {
 #endif
 }
 
+bool testRetailScenarioEntryInitialization() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Traveler";
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, {3, 0, 0}, &error) &&
+                world.scenarioCaptionMessageId() == 1000000 &&
+                world.scenarioCaptionText() ==
+                    "Wasteland of Hesitation\n",
+            "Opcode 49 did not retain the first Episode 1 outdoor "
+            "caption during initial status-kind-seven setup.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    if (!check(
+            world.transitionScenario({10000, 1, 0}, &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                world.scenarioId() == 10000 &&
+                world.scenarioCaptionMessageId() == 1000000 &&
+                world.scenarioCaptionText() ==
+                    "Dusty Ruins, B1F\n",
+            "The changed-map status initialization did not branch on "
+            "the retail entry value.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    return check(
+        world.transitionScenario({10000, 2, 0}, &error) ==
+                osf::ScenarioTravelResult::relocated &&
+            world.scenarioId() == 10000 &&
+            world.scenarioCaptionMessageId() == 1000001 &&
+            world.scenarioCaptionText() ==
+                "Dusty Ruins, B2F\n",
+        "A same-map relocation did not rerun retail status kind seven "
+        "with the new entry value.");
+#else
+    return true;
+#endif
+}
+
 bool testScriptedRemoteTownExit() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -4264,6 +4310,7 @@ int main() {
                    testRetailScenarioCatalog() &&
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
+                   testRetailScenarioEntryInitialization() &&
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&

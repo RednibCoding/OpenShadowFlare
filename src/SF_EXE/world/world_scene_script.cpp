@@ -640,6 +640,9 @@ bool WorldScene::queryScriptValue(
     case script::ValueQuery::local_player_job_selection:
         value = retailScriptJobSelection(player_data_.job());
         return true;
+    case script::ValueQuery::scenario_entry_value:
+        value = scenario_world_.entryValue();
+        return true;
     case script::ValueQuery::blackjack_result:
         value = blackjack_result_;
         return true;

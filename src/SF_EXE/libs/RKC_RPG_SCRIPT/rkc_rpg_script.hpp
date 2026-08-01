@@ -88,6 +88,11 @@ struct MessageEvent {
     std::int32_t initial_selection = -1;
 };
 
+struct ScenarioCaptionEvent {
+    std::int32_t id = -1;
+    std::string text;
+};
+
 enum class ValueQuery {
     local_player_level,
     local_player_companion_type,
@@ -103,6 +108,7 @@ enum class ValueQuery {
     local_player_repair_price,
     local_player_spell_learned,
     local_player_job_selection,
+    scenario_entry_value,
     blackjack_result,
 };
 
@@ -143,6 +149,7 @@ public:
     bool waitingForMessage() const;
     std::int32_t unsupportedOpcode() const;
     std::int32_t readTemporaryFlag(std::int32_t id) const;
+    const ScenarioCaptionEvent& caption() const;
 
 private:
     struct Frame {
@@ -176,6 +183,7 @@ private:
     std::int32_t message_callback_character_number_ = -1;
     std::int32_t unsupported_opcode_ = -1;
     std::array<std::int32_t, 20> message_parameters_{};
+    ScenarioCaptionEvent caption_;
 };
 
 }  // namespace osf::script

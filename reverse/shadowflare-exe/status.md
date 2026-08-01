@@ -1296,6 +1296,20 @@ teardown, while a changed scenario releases the old dynamic/map owners,
 switches music, reads the new map and Scenario NJP, and then applies the same
 entry rule.
 
+Both branches install that entry and relocate the local player before running
+scenario status kind 7. The changed-map path reaches this order around
+`0x0042642b`; the same-scenario path repeats it around `0x00427474` instead of
+merely moving the actor. Opcode 50 at `0x004321cb` writes the installed entry
+through the common operand destination. Scenario `00010000` proves why the
+same-map pass matters: entry 1 selects `Dusty Ruins, B1F`, while entry 2
+selects `Dusty Ruins, B2F`.
+
+Opcode 49 at `0x0043389b` resolves its operand as a current-SCS message ID,
+copies the message text to `0x0048d5f8`, and clears `0x0048d5f4` in the local
+single-player path. The executable has direct writes but no discovered reads
+of either global. OpenShadowFlare retains the raw ID and text in the script
+owner and deliberately does not render a guessed area caption.
+
 The portable fresh-world path accepts scenario ID, entry value, and local
 player explicitly. The first cross-map fixture is Table 40 row one: scenario
 6, entry 4, key 16. It loads Wasteland of Pillars, `Map\f00_07.map`, position

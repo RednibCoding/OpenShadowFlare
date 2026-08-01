@@ -137,6 +137,11 @@ const script::ScriptData& ScenarioScriptRuntime::data() const {
     return data_;
 }
 
+const script::ScenarioCaptionEvent&
+ScenarioScriptRuntime::caption() const {
+    return interpreter_.caption();
+}
+
 bool ScenarioScriptRuntime::messageActive() const {
     return message_active_;
 }
@@ -207,5 +212,4 @@ void ScenarioScriptRuntime::clearMessage() {
     actor_id_ = -1;
     selected_option_ = -1;
 }
-
 }  // namespace osf
