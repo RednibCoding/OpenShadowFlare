@@ -60,9 +60,9 @@ bool NpcActor::initialize(
         person.judgement_bottom,
     };
     direction_ = person.direction;
-    walk_speed_ = std::max(person.walk_speed, 0);
-    walk_duration_ = std::max(person.walk_duration, 0);
-    idle_duration_ = std::max(person.idle_duration, 0);
+    walk_speed_ = std::max(person.walk_speed, std::int32_t{0});
+    walk_duration_ = std::max(person.walk_duration, std::int32_t{0});
+    idle_duration_ = std::max(person.idle_duration, std::int32_t{0});
     wander_min_ = {
         person.wander_left,
         person.wander_top,

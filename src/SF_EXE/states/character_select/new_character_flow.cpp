@@ -112,7 +112,7 @@ void updateNewCharacterModeImpl(
             data.launch_counter == 0
                 ? kFullBrightness
                 : std::max(
-                      0,
+                      std::int32_t{0},
                       kFullBrightness - phase * 50);
         if (phase > 5) {
             data.fade_value =

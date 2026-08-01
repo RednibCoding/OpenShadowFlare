@@ -25,8 +25,8 @@ Viewport fitViewport(
             static_cast<std::int64_t>(target_height) *
             source_width / source_height);
     }
-    result.width = std::max(result.width, 1);
-    result.height = std::max(result.height, 1);
+    result.width = std::max(result.width, std::int32_t{1});
+    result.height = std::max(result.height, std::int32_t{1});
     result.x = (target_width - result.width) / 2;
     result.y = (target_height - result.height) / 2;
     return result;

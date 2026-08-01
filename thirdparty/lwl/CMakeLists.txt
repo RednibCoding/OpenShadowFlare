@@ -82,6 +82,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       X11::Xinerama
       "${CMAKE_DL_LIBS}"
   )
+elseif(PLATFORM_PS2)
+  target_sources(lwl PRIVATE lwl_ps2.c)
+  target_link_libraries(lwl PRIVATE pad kernel)
 else()
   message(FATAL_ERROR "LWL has no backend for this platform")
 endif()

@@ -218,7 +218,7 @@ std::int32_t PlayerData::jobLevel(
     std::int32_t count = 0;
     const std::int32_t history_count =
         std::clamp(
-            level(), 0,
+            level(), std::int32_t{0},
             static_cast<std::int32_t>(kJobHistoryCount));
     for (std::int32_t index = 0;
          index < history_count;
@@ -366,8 +366,8 @@ void PlayerData::setCurrentLife(
         0x34,
         std::clamp(
             value,
-            0,
-            std::max(0, maximum_life)));
+            std::int32_t{0},
+            std::max(std::int32_t{0}, maximum_life)));
 }
 
 void PlayerData::setCurrentMana(std::int32_t value) {
@@ -381,8 +381,8 @@ void PlayerData::setCurrentMana(
         0x3c,
         std::clamp(
             value,
-            0,
-            std::max(0, maximum_mana)));
+            std::int32_t{0},
+            std::max(std::int32_t{0}, maximum_mana)));
 }
 
 void PlayerData::restoreForRespawn() {
@@ -407,7 +407,7 @@ bool PlayerData::restoreLife(
             std::clamp<std::int64_t>(
                 restored,
                 0,
-                std::max(0, baseMaximumLife()))));
+                std::max(std::int32_t{0}, baseMaximumLife()))));
     return currentLife() != before;
 }
 
@@ -426,7 +426,7 @@ bool PlayerData::restoreMana(
             std::clamp<std::int64_t>(
                 restored,
                 0,
-                std::max(0, baseMaximumMana()))));
+                std::max(std::int32_t{0}, baseMaximumMana()))));
     return currentMana() != before;
 }
 
@@ -593,8 +593,8 @@ std::int32_t PlayerData::walkingSpeedTier() const {
     // 32, and clamps the resulting movement tier to the retail 0..9 range.
     return std::clamp(
         (initialParameter(1) + 32) / 32,
-        0,
-        9);
+        std::int32_t{0},
+        std::int32_t{9});
 }
 
 const std::array<std::uint8_t, PlayerData::retail_record_size>&

@@ -142,7 +142,7 @@ bool displayAnimationIntersectsRectangle(
     }
     chart_index = std::clamp(
         chart_index,
-        0,
+        std::int32_t{0},
         static_cast<std::int32_t>(
             animation.charts().size() - 1));
     const gapi::CafChart& chart =

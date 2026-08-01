@@ -39,18 +39,18 @@ CompanionProfile applyPlayerMoonCompanionModifiers(
     result.attack_speed_rating = std::clamp(
         adjustedParameter(
             base.attack_speed_rating, *table, 1, column),
-        0,
-        255);
+         std::int32_t{0},
+         std::int32_t{255});
     const std::int32_t walking_speed_raw = std::clamp(
         adjustedParameter(
             base.walking_speed_raw, *table, 2, column),
-        0,
-        255);
+         std::int32_t{0},
+         std::int32_t{255});
     const std::int32_t running_speed_raw = std::clamp(
         adjustedParameter(
             base.running_speed_raw, *table, 3, column),
-        0,
-        255);
+         std::int32_t{0},
+         std::int32_t{255});
     result.walking_speed_raw = walking_speed_raw;
     result.running_speed_raw = running_speed_raw;
     result.walking_speed = walking_speed_raw / 5;
@@ -58,42 +58,42 @@ CompanionProfile applyPlayerMoonCompanionModifiers(
     result.physical_attack = std::max(
         adjustedParameter(
             base.physical_attack, *table, 4, column),
-        1);
+         std::int32_t{1});
     result.maximum_life = std::max(
         adjustedParameter(
             base.maximum_life, *table, 5, column),
-        1);
+         std::int32_t{1});
     result.hit_rate = std::max(
         adjustedParameter(base.hit_rate, *table, 6, column),
-        1);
+         std::int32_t{1});
     result.physical_defense = std::max(
         adjustedParameter(
             base.physical_defense, *table, 7, column),
-        1);
+         std::int32_t{1});
     result.physical_evasion = std::max(
         adjustedParameter(
             base.physical_evasion, *table, 8, column),
-        1);
+         std::int32_t{1});
     result.magical_attack = std::max(
         adjustedParameter(
             base.magical_attack, *table, 9, column),
-        1);
+         std::int32_t{1});
     result.magical_hit_rate = std::max(
         adjustedParameter(
             base.magical_hit_rate, *table, 10, column),
-        1);
+         std::int32_t{1});
     result.magical_evasion = std::max(
         adjustedParameter(
             base.magical_evasion, *table, 11, column),
-        1);
+         std::int32_t{1});
     result.magical_defense = std::max(
         adjustedParameter(
             base.magical_defense, *table, 12, column),
-        1);
+         std::int32_t{1});
     result.parameter_17 = std::max(
         adjustedParameter(
             base.parameter_17, *table, 13, column),
-        1);
+         std::int32_t{1});
     return result;
 }
 

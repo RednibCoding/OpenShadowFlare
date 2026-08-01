@@ -20,7 +20,7 @@ void renderInitialLoadingScreen(
     }
 
     const std::int32_t arrow_offset =
-        std::max(counter, 0) % 16;
+        std::max(counter, std::int32_t{0}) % 16;
     renderer.drawPattern(
         waiting, 2, {592 + arrow_offset, 450});
 }

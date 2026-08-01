@@ -674,7 +674,7 @@ bool testRetailHealResolution(
     const std::int32_t expected_amount =
         std::min(
             heal_percent * 140 / 100,
-            90);
+            std::int32_t{90});
     if (!check(
             damaged.valid &&
                 damaged.healed_amount == expected_amount &&
@@ -773,35 +773,35 @@ bool testRetailMoonRules(
         };
     if (!check(
             modified.attack_speed_rating ==
-                    std::clamp(adjusted(90, 1), 0, 255) &&
+                    std::clamp(adjusted(90, 1), std::int32_t{0}, std::int32_t{255}) &&
                 modified.walking_speed_raw ==
-                    std::clamp(adjusted(105, 2), 0, 255) &&
+                    std::clamp(adjusted(105, 2), std::int32_t{0}, std::int32_t{255}) &&
                 modified.running_speed_raw ==
-                    std::clamp(adjusted(155, 3), 0, 255) &&
+                    std::clamp(adjusted(155, 3), std::int32_t{0}, std::int32_t{255}) &&
                 modified.walking_speed ==
                     modified.walking_speed_raw / 5 &&
                 modified.running_speed ==
                     modified.running_speed_raw / 5 &&
                 modified.physical_attack ==
-                    std::max(adjusted(40, 4), 1) &&
+                    std::max(adjusted(40, 4), std::int32_t{1}) &&
                 modified.maximum_life ==
-                    std::max(adjusted(120, 5), 1) &&
+                    std::max(adjusted(120, 5), std::int32_t{1}) &&
                 modified.hit_rate ==
-                    std::max(adjusted(50, 6), 1) &&
+                    std::max(adjusted(50, 6), std::int32_t{1}) &&
                 modified.physical_defense ==
-                    std::max(adjusted(30, 7), 1) &&
+                    std::max(adjusted(30, 7), std::int32_t{1}) &&
                 modified.physical_evasion ==
-                    std::max(adjusted(25, 8), 1) &&
+                    std::max(adjusted(25, 8), std::int32_t{1}) &&
                 modified.magical_attack ==
-                    std::max(adjusted(20, 9), 1) &&
+                    std::max(adjusted(20, 9), std::int32_t{1}) &&
                 modified.magical_hit_rate ==
-                    std::max(adjusted(35, 10), 1) &&
+                    std::max(adjusted(35, 10), std::int32_t{1}) &&
                 modified.magical_evasion ==
-                    std::max(adjusted(18, 11), 1) &&
+                    std::max(adjusted(18, 11), std::int32_t{1}) &&
                 modified.magical_defense ==
-                    std::max(adjusted(15, 12), 1) &&
+                    std::max(adjusted(15, 12), std::int32_t{1}) &&
                 modified.parameter_17 ==
-                    std::max(adjusted(12, 13), 1),
+                    std::max(adjusted(12, 13), std::int32_t{1}),
             "Moon did not apply the thirteen retail companion modifiers.")) {
         return false;
     }
@@ -892,30 +892,30 @@ bool testRetailBerserkerRules(
     if (!check(
             modified.attack_speed_raw ==
                     std::clamp(adjusted(
-                        base.attack_speed_raw, 1), 0, 255) &&
+                        base.attack_speed_raw, 1), std::int32_t{0}, std::int32_t{255}) &&
                 modified.walking_speed_raw ==
                     std::clamp(adjusted(
-                        base.walking_speed_raw, 2), 0, 255) &&
+                        base.walking_speed_raw, 2), std::int32_t{0}, std::int32_t{255}) &&
                 modified.maximum_life ==
-                    std::max(adjusted(base.maximum_life, 3), 1) &&
+                    std::max(adjusted(base.maximum_life, 3), std::int32_t{1}) &&
                 modified.maximum_mana ==
-                    std::max(adjusted(base.maximum_mana, 4), 1) &&
+                    std::max(adjusted(base.maximum_mana, 4), std::int32_t{1}) &&
                 modified.physical_attack ==
-                    std::max(adjusted(base.physical_attack, 5), 1) &&
+                    std::max(adjusted(base.physical_attack, 5), std::int32_t{1}) &&
                 modified.physical_defense ==
-                    std::max(adjusted(base.physical_defense, 6), 1) &&
+                    std::max(adjusted(base.physical_defense, 6), std::int32_t{1}) &&
                 modified.hit_rate ==
-                    std::max(adjusted(base.hit_rate, 7), 1) &&
+                    std::max(adjusted(base.hit_rate, 7), std::int32_t{1}) &&
                 modified.physical_evasion ==
-                    std::max(adjusted(base.physical_evasion, 8), 1) &&
+                    std::max(adjusted(base.physical_evasion, 8), std::int32_t{1}) &&
                 modified.magical_attack ==
-                    std::max(adjusted(base.magical_attack, 9), 1) &&
+                    std::max(adjusted(base.magical_attack, 9), std::int32_t{1}) &&
                 modified.magical_defense ==
-                    std::max(adjusted(base.magical_defense, 10), 1) &&
+                    std::max(adjusted(base.magical_defense, 10), std::int32_t{1}) &&
                 modified.magical_hit_rate ==
-                    std::max(adjusted(base.magical_hit_rate, 11), 1) &&
+                    std::max(adjusted(base.magical_hit_rate, 11), std::int32_t{1}) &&
                 modified.magical_evasion ==
-                    std::max(adjusted(base.magical_evasion, 12), 1),
+                    std::max(adjusted(base.magical_evasion, 12), std::int32_t{1}),
             "Berserker did not apply all twelve retail player modifiers.")) {
         return false;
     }
@@ -1231,13 +1231,13 @@ bool testShippedWorldCast(
             continue;
         }
         for (std::int32_t y =
-                 std::max(0, anchor_y - 140);
-             y < std::min(400, anchor_y + 30) &&
+                 std::max(std::int32_t{0}, anchor_y - 140);
+             y < std::min(std::int32_t{400}, anchor_y + 30) &&
              pointer_x < 0;
              ++y) {
             for (std::int32_t x =
-                     std::max(0, anchor_x - 80);
-                 x < std::min(640, anchor_x + 81);
+                     std::max(std::int32_t{0}, anchor_x - 80);
+                 x < std::min(std::int32_t{640}, anchor_x + 81);
                  ++x) {
                 world.updatePointerHover(x, y);
                 if (world.hoveredEnemyId() == enemy.id()) {
@@ -1506,11 +1506,11 @@ bool testShippedSonicBladeCast(
         }
         std::int32_t candidate_x = -1;
         std::int32_t candidate_y = -1;
-        for (std::int32_t y = std::max(0, anchor_y - 140);
-             y < std::min(400, anchor_y + 30) && candidate_x < 0;
+        for (std::int32_t y = std::max(std::int32_t{0}, anchor_y - 140);
+             y < std::min(std::int32_t{400}, anchor_y + 30) && candidate_x < 0;
              ++y) {
-            for (std::int32_t x = std::max(0, anchor_x - 80);
-                 x < std::min(640, anchor_x + 81);
+            for (std::int32_t x = std::max(std::int32_t{0}, anchor_x - 80);
+                 x < std::min(std::int32_t{640}, anchor_x + 81);
                  ++x) {
                 world.updatePointerHover(x, y);
                 if (world.hoveredEnemyId() == enemy.id()) {
@@ -1724,13 +1724,13 @@ bool testShippedHellFireCast(
         const std::int32_t anchor_y =
             projected.y - world.cameraScreenY();
         for (std::int32_t y =
-                 std::max(0, anchor_y - 140);
-             y < std::min(400, anchor_y + 30) &&
+                 std::max(std::int32_t{0}, anchor_y - 140);
+             y < std::min(std::int32_t{400}, anchor_y + 30) &&
              pointer_x < 0;
              ++y) {
             for (std::int32_t x =
-                     std::max(0, anchor_x - 80);
-                 x < std::min(640, anchor_x + 81);
+                     std::max(std::int32_t{0}, anchor_x - 80);
+                 x < std::min(std::int32_t{640}, anchor_x + 81);
                  ++x) {
                 world.updatePointerHover(x, y);
                 if (world.hoveredEnemyId() == enemy.id()) {
@@ -1946,13 +1946,13 @@ bool testShippedIceBlastCast(
         const std::int32_t anchor_y =
             projected.y - world.cameraScreenY();
         for (std::int32_t y =
-                 std::max(0, anchor_y - 140);
-             y < std::min(400, anchor_y + 30) &&
+                 std::max(std::int32_t{0}, anchor_y - 140);
+             y < std::min(std::int32_t{400}, anchor_y + 30) &&
              pointer_x < 0;
              ++y) {
             for (std::int32_t x =
-                     std::max(0, anchor_x - 80);
-                 x < std::min(640, anchor_x + 81);
+                     std::max(std::int32_t{0}, anchor_x - 80);
+                 x < std::min(std::int32_t{640}, anchor_x + 81);
                  ++x) {
                 world.updatePointerHover(x, y);
                 if (world.hoveredEnemyId() == enemy.id()) {
@@ -2921,7 +2921,7 @@ bool testShippedIdentifyCast(
     }
 
     const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
-        std::max(parameters.mana_cost - 1, 0));
+        std::max(parameters.mana_cost - 1, std::int32_t{0}));
     const std::int32_t insufficient_mana =
         world.playerData().currentMana();
     return check(
@@ -3352,11 +3352,11 @@ bool testTargetedSpellInsufficientMana(
             anchor_y < -160 || anchor_y > 440) {
             continue;
         }
-        for (std::int32_t y = std::max(0, anchor_y - 140);
-             y < std::min(400, anchor_y + 30) && pointer_x < 0;
+        for (std::int32_t y = std::max(std::int32_t{0}, anchor_y - 140);
+             y < std::min(std::int32_t{400}, anchor_y + 30) && pointer_x < 0;
              ++y) {
-            for (std::int32_t x = std::max(0, anchor_x - 80);
-                 x < std::min(640, anchor_x + 81);
+            for (std::int32_t x = std::max(std::int32_t{0}, anchor_x - 80);
+                 x < std::min(std::int32_t{640}, anchor_x + 81);
                  ++x) {
                 world.updatePointerHover(x, y);
                 if (world.hoveredEnemyId() == enemy.id()) {
@@ -3388,7 +3388,7 @@ bool testTargetedSpellInsufficientMana(
     // underlying scene is mutable here; lower only this fixture's MP so the
     // command guard can be exercised without changing the runtime API.
     const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
-        std::max(0, parameters.mana_cost - 1));
+        std::max(std::int32_t{0}, parameters.mana_cost - 1));
     const std::int32_t mana_before =
         world.playerData().currentMana();
     const std::size_t controllers_before =

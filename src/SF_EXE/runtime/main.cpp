@@ -3,6 +3,11 @@
 #include "core/game_config.hpp"
 #include "runtime/game_runtime.hpp"
 
+#if defined(__PS2__)
+#include "runtime/platform/ps2/ps2_data_backend.hpp"
+#endif
+
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 
@@ -18,6 +23,9 @@ bool isSmokeTest(int argc, char** argv) {
 }
 
 std::filesystem::path findDataRoot() {
+#if defined(__PS2__)
+    return std::filesystem::path("cdrom0:\\ShadowFlare");
+#else
     const auto isDataRoot =
         [](const std::filesystem::path& candidate) {
             std::error_code error;
@@ -85,17 +93,34 @@ std::filesystem::path findDataRoot() {
         }
     }
     return ".";
+#endif
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
+#if defined(__PS2__)
+    if (osf::runtime::platform::ps2::initDataBackend() != 0) {
+        std::fprintf(stderr, "Failed to initialize PS2 data backend.\n");
+        return 1;
+    }
+#endif
     const std::filesystem::path dataRoot = findDataRoot();
     osf::GameConfig gameConfig;
 
     // Retail ignores config-load failure and retains its constructor defaults.
-    osf::loadGameConfigFile(
+    const bool config_loaded = osf::loadGameConfigFile(
         (dataRoot / "SFlare.Cfg").string(), gameConfig);
+#if defined(__PS2__)
+    if (!config_loaded) {
+        std::fprintf(
+            stderr,
+            "Warning: could not load %s; using defaults.\n",
+            (dataRoot / "SFlare.Cfg").string().c_str());
+    }
+#else
+    (void) config_loaded;
+#endif
     for (int index = 1; index < argc; ++index) {
         osf::applyRetailCommandLine(argv[index], gameConfig);
     }

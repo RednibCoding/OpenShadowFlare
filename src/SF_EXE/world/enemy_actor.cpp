@@ -331,7 +331,7 @@ EnemyActorUpdate EnemyActor::update(
                 animation_frame_ = frame_count - 1;
             }
             animation_frame_ = std::clamp(
-                animation_frame_, 0, frame_count - 1);
+                animation_frame_, std::int32_t{0}, frame_count - 1);
         } else {
             animation_frame_ = 0;
             reaction_duration_ = 1;

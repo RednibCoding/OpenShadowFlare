@@ -1003,7 +1003,9 @@ bool testTypeTenWaves() {
                     static_cast<std::size_t>(wave_count) &&
                 shake_count ==
                     static_cast<std::size_t>(
-                        std::min(wave_count, 11)) &&
+                        std::min(
+                            wave_count,
+                            std::int32_t{11})) &&
                 random.state() == 1 &&
                 wave_updates.size() ==
                     static_cast<std::size_t>(wave_count) &&

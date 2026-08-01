@@ -30,9 +30,9 @@ PlayerSpellParameters playerSpellParameters(
     if (increased_power) {
         level += 2;
     }
-    level = std::clamp(level, 1, 20);
+    level = std::clamp(level, std::int32_t{1}, std::int32_t{20});
     result.effective_level = std::clamp(
-        level + magic_level_modifier, 1, 30);
+        level + magic_level_modifier, std::int32_t{1}, std::int32_t{30});
 
     const std::int32_t base_mana =
         retailEffectParameter(
@@ -47,20 +47,20 @@ PlayerSpellParameters playerSpellParameters(
                   base_mana -
                       equipment.instanceParameterBonus(
                           19, items),
-                  1);
+                  std::int32_t{1});
     result.effect_value = std::max(
         retailEffectParameter(
             tables,
             spell,
             result.effective_level,
             0),
-        0);
+        std::int32_t{0});
 
     result.maximum_level = magic.level(spell) == 20;
     if (!result.maximum_level) {
         const TableData* experience = tables.find(27);
         const std::int32_t column =
-            std::clamp(magic.level(spell), 1, 20) - 1;
+            std::clamp(magic.level(spell), std::int32_t{1}, std::int32_t{20}) - 1;
         if (experience &&
             experience->contains(spell, column)) {
             result.experience_threshold =

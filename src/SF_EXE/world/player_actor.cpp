@@ -26,7 +26,7 @@ constexpr std::array<double, 10> kSpeedFactors{{
 double speedFactor(std::int32_t tier) {
     return kSpeedFactors[
         static_cast<std::size_t>(
-            std::clamp(tier, 0, 9))];
+            std::clamp(tier, std::int32_t{0}, std::int32_t{9}))];
 }
 
 std::int32_t walkingSpeedForTier(std::int32_t tier) {
@@ -72,7 +72,7 @@ void PlayerActor::reset(
     destination_ = position;
     direction_ = direction;
     walking_speed_tier_ =
-        std::clamp(walking_speed_tier, 0, 9);
+        std::clamp(walking_speed_tier, std::int32_t{0}, std::int32_t{9});
     walking_speed_ =
         walkingSpeedForTier(walking_speed_tier_);
     running_speed_ = walking_speed_ * 2;
@@ -269,7 +269,7 @@ void PlayerActor::toggleMovementPace() {
 }
 
 void PlayerActor::setWalkingSpeedTier(std::int32_t tier) {
-    walking_speed_tier_ = std::clamp(tier, 0, 9);
+    walking_speed_tier_ = std::clamp(tier, std::int32_t{0}, std::int32_t{9});
     walking_speed_ = walkingSpeedForTier(walking_speed_tier_);
     running_speed_ = walking_speed_ * 2;
 }
@@ -319,7 +319,7 @@ void PlayerActor::update(
             animation_frame_ = count - 1;
         }
         animation_frame_ = std::clamp(
-            animation_frame_, 0, count - 1);
+            animation_frame_, std::int32_t{0}, count - 1);
         if (damage_presentation_.reaction_stage == 2) {
             animation_frame_ = 0;
         }

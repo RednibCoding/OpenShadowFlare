@@ -329,7 +329,7 @@ CompanionActor::updateDamagePresentation(
         presentation_animation_frame_ =
             std::clamp(
                 presentation_animation_frame_,
-                0,
+                std::int32_t{0},
                 count - 1);
 
         if (!reaction_displacement_suppressed_ &&
@@ -545,7 +545,7 @@ void CompanionActor::applyRuntimeProfile(
     }
     profile_ = profile;
     current_life_ = std::clamp(
-        current_life_, 0, profile_.maximum_life);
+        current_life_, std::int32_t{0}, profile_.maximum_life);
 }
 
 bool CompanionActor::valid() const {

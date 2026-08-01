@@ -177,8 +177,8 @@ EnemyKillAccountingResult accountRetailEnemyKill(
                 static_cast<std::size_t>(local_player_slot)] *
                 10 /
                 enemy.maximum_life,
-            0,
-            10);
+            std::int32_t{0},
+            std::int32_t{10});
         result.experience_awarded =
             shares->value(bucket, 0) *
             experience_reward /
@@ -258,7 +258,7 @@ std::vector<EnemyDeathDrop> createRetailEnemyDrops(
         if (attempts == 0) {
             attempts = active_player_count;
         }
-        attempts = std::max(attempts, 0);
+        attempts = std::max(attempts, std::int32_t{0});
         std::array<bool, 4> variants{};
         std::int32_t successful = 0;
         for (std::int32_t attempt = 0;
@@ -355,7 +355,7 @@ std::vector<EnemyDeathDrop> createRetailEnemyDrops(
                  gold_minimum) *
                 multiplier /
                 100;
-            quantity = std::max(quantity, 1);
+            quantity = std::max(quantity, std::int32_t{1});
             drops.push_back({
                 makeRetailInventoryItem(
                     *gold,

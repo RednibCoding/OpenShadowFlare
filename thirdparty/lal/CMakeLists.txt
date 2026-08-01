@@ -62,6 +62,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       ALSA::ALSA
       Threads::Threads
   )
+elseif(PLATFORM_PS2)
+  target_sources(lal PRIVATE lal_ps2.c)
+  target_link_libraries(lal PRIVATE audsrv kernel)
 else()
   message(FATAL_ERROR "LAL has no backend for this platform")
 endif()

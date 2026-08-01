@@ -139,7 +139,7 @@ void CombatEffectActor::update() {
     animation_frame_ = counter_;
     animation_frame_ = std::clamp(
         animation_frame_,
-        0,
+        std::int32_t{0},
         static_cast<std::int32_t>(
             direction->frame_count - 1));
 

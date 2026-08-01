@@ -171,18 +171,18 @@ std::int32_t retailPlayerAttackSpeedTier(
         return 0;
     }
     const std::int32_t clamped_speed =
-        std::clamp(derived_attack_speed, 0, 255);
+        std::clamp(derived_attack_speed, std::int32_t{0}, std::int32_t{255});
     const std::int32_t row = clamped_speed / 32;
     const std::int32_t table_value =
         speed_table ? speed_table->value(row, 0) : -1;
-    return std::clamp(table_value + 1, 0, 9);
+    return std::clamp(table_value + 1, std::int32_t{0}, std::int32_t{9});
 }
 
 double retailPlayerMeleeAttackAnimationSpeed(
     std::int32_t attack_speed_tier) {
     return kAttackSpeedFactors[
         static_cast<std::size_t>(
-            std::clamp(attack_speed_tier, 0, 9))];
+            std::clamp(attack_speed_tier, std::int32_t{0}, std::int32_t{9}))];
 }
 
 bool PlayerAttackActionController::start(
@@ -203,7 +203,7 @@ bool PlayerAttackActionController::start(
     action_ = action;
     target_id_ = target_id;
     attack_speed_tier_ =
-        std::clamp(attack_speed_tier, 0, 9);
+            std::clamp(attack_speed_tier, std::int32_t{0}, std::int32_t{9});
     timing_ = std::move(timing);
     action_counter_ = 0;
     displayed_frame_ = 0;
@@ -225,7 +225,7 @@ PlayerAttackActionEvent PlayerAttackActionController::update(
     }
     if (attack_speed_tier >= 0) {
         attack_speed_tier_ =
-            std::clamp(attack_speed_tier, 0, 9);
+        std::clamp(attack_speed_tier, std::int32_t{0}, std::int32_t{9});
     }
 
     const double factor =

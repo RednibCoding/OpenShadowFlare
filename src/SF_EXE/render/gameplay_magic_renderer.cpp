@@ -168,11 +168,11 @@ void renderDescription(
         static_cast<std::int32_t>(lines.size()) * 12 + 8;
     const std::int32_t x = std::clamp(
         panel.pointerX() - width / 2,
-        1,
+        std::int32_t{1},
         639 - width);
     const std::int32_t y = std::clamp(
         panel.pointerY() + 8,
-        1,
+        std::int32_t{1},
         479 - height);
     renderer.drawRectangle({
         x,

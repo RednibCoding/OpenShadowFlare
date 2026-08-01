@@ -33,7 +33,7 @@ void renderCharacterAnimationPass(
     const std::int32_t selected_chart_index =
         std::clamp(
             chart_index,
-            0,
+            std::int32_t{0},
             static_cast<std::int32_t>(
                 animation.charts().size() - 1));
     const gapi::CafChart& chart =
@@ -120,10 +120,10 @@ void renderCharacterAnimationPass(
              1000,
              1000,
              shadow
-                 ? std::clamp(shadow_opacity, 0, 1000)
+                 ? std::clamp(shadow_opacity, std::int32_t{0}, std::int32_t{1000})
                  : std::clamp<std::int32_t>(
                        cell->transparency *
-                           std::clamp(opacity, 0, 1000) /
+                           std::clamp(opacity, std::int32_t{0}, std::int32_t{1000}) /
                            1000,
                        0,
                        1000),

@@ -30,7 +30,7 @@ bool itemConditionWarningVisible(
     const std::int32_t durability =
         std::clamp(
             itemCurrentDurability(item, definition),
-            0,
+            std::int32_t{0},
             definition.maximum_durability);
     if (durability == 0) {
         return true;

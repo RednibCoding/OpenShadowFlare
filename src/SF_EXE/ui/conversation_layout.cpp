@@ -55,7 +55,9 @@ ConversationTextLayout layoutConversationText(
                         result.choices.size()),
                     choice_line,
                     choice_column,
-                    std::max(column - choice_column, 0),
+                    std::max(
+                        column - choice_column,
+                        std::int32_t{0}),
                     choice_byte_offset,
                     result.text.size() - choice_byte_offset,
                 });

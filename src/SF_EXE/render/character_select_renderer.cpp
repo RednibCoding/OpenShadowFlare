@@ -70,7 +70,7 @@ void renderNameEditor(
          {64, 64, 64, 255},
          brightness});
     const std::int32_t caretColumn =
-        std::min(textCellCount(data.character_name), 20);
+        std::min(textCellCount(data.character_name), std::int32_t{20});
     renderer.drawRectangle(
         {kEditorX + kTextInset + caretColumn * kFontWidth,
          kEditorY + kTextInset,
@@ -319,7 +319,7 @@ void renderSavedGames(
         const std::int32_t itemBrightness =
             index ==
                     static_cast<std::size_t>(
-                        std::max(selected, 0))
+                        std::max(selected, std::int32_t{0}))
                 ? brightness
                 : brightness / 2;
         renderer.drawPattern(
@@ -335,7 +335,7 @@ void renderSavedGames(
             static_cast<std::int32_t>(index) == selected ? 0 : 3;
         if (hovered) {
             const std::int32_t renderedCounter =
-                std::max(data.save_hover_animation - 1, 0);
+                std::max(data.save_hover_animation - 1, std::int32_t{0});
             numberFrame =
                 hoverFrames[(renderedCounter / 4) & 7];
         }

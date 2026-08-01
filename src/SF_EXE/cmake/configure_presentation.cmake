@@ -1,5 +1,6 @@
 function(osf_configure_presentation target)
-  if(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl")
+  if(PLATFORM_PS2)
+  elseif(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl")
     target_sources(
       ${target}
       PRIVATE
