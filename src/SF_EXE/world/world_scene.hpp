@@ -47,6 +47,7 @@
 #include "player_transport_spell.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
+#include "retail_save_world_state.hpp"
 #include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
 #include "script/scenario_script_runtime.hpp"
@@ -296,6 +297,7 @@ public:
     std::int32_t scenarioCaptionMessageId() const;
     const std::string& scenarioCaptionText() const;
     RetailSaveProgress retailSaveProgress() const;
+    RetailSaveWorldState retailSaveWorldState() const;
 
 private:
     bool readScriptWorldOperand(

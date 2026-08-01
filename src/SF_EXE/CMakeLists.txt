@@ -197,6 +197,7 @@ add_library(
   world/retail_save_mines.cpp
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
+  world/retail_save_world_state.cpp
   world/runtime_effect_actor.cpp
   world/runtime_effect_system.cpp
   world/runtime_effect_target.cpp

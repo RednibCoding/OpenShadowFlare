@@ -1701,10 +1701,12 @@ signed-byte checksum, substitution pass, and safe preservation of an existing
 unknown payload. New saves carry the player record and owned items we currently
 own. The three counted retail arrays after the item stream now preserve
 type-12 quest state, type-10 transport unlocks, and type-11 general script
-state; this is
-covered by saving after Ostare's opening and proving his starter reward does
-not repeat after loading. Walk/run also survives a portable round trip through
-a small versioned tail until its exact retail save owner is identified.
+state; this is covered by saving after Ostare's opening and proving his starter
+reward does not repeat after loading. The exact post-mine world words are now
+owned too: walk/run, scenario ID, and scenario entry restore through the retail
+stream, while the old versioned tail remains a migration fallback. A live save
+from scenario 6, entry 4 reloads at that entry's retail coordinates rather than
+silently returning to Remote Town.
 Writing captures the retail-sized paired preview from the world-only render
 when the option is enabled. Saving is not complete yet: the remaining
 persistent gameplay owners still have to contribute their real payload fields

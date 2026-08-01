@@ -932,6 +932,7 @@ bool GameplayUiController::updateOptions(
                 world.retailSaveProgress(),
                 world.playerMagic(),
                 world.playerMineCount(),
+                world.retailSaveWorldState(),
                 world.playerGiantWarehouse(),
                 world.playerAutomaticItems(),
                 static_cast<std::uint8_t>(

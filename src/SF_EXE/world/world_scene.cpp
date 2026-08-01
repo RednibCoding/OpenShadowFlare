@@ -374,7 +374,14 @@ RetailSaveProgress WorldScene::retailSaveProgress() const {
         quests_.states(),
         transports_.enabledFlags(),
         script_state_flags_,
+    };
+}
+
+RetailSaveWorldState WorldScene::retailSaveWorldState() const {
+    return {
         player_.movementPace() == MovementPace::run,
+        scenario_world_.id(),
+        scenario_world_.entryValue(),
     };
 }
 

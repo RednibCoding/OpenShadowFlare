@@ -1578,6 +1578,18 @@ bool testWorldItemSaveRoundTrip() {
         return false;
     }
     if (!check(
+            saved_world.transitionScenario({6, 4, 0}, &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                saved_world.scenarioId() == 6 &&
+                saved_world.retailSaveWorldState().entry_value == 4 &&
+                saved_world.playerWorldX() == 35105 &&
+                saved_world.playerWorldY() == -6156,
+            "The save-location fixture could not enter Wasteland of "
+            "Pillars through retail entry four.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    if (!check(
             osf::writeRetailSave(
                 save_path,
                 saved_world.playerData(),
@@ -1589,6 +1601,7 @@ bool testWorldItemSaveRoundTrip() {
                 saved_world.retailSaveProgress(),
                 saved_world.playerMagic(),
                 saved_world.playerMineCount(),
+                saved_world.retailSaveWorldState(),
                 saved_world.playerGiantWarehouse(),
                 saved_world.playerAutomaticItems(),
                 0x5a,
@@ -1610,6 +1623,10 @@ bool testWorldItemSaveRoundTrip() {
     std::filesystem::remove_all(save_root, cleanup_error);
     if (!check(
             loaded &&
+                loaded_world.scenarioId() == 6 &&
+                loaded_world.retailSaveWorldState().entry_value == 4 &&
+                loaded_world.playerWorldX() == 35105 &&
+                loaded_world.playerWorldY() == -6156 &&
                 loaded_world.playerInventory().items().size() ==
                     saved_world.playerInventory().items().size() &&
                 loaded_world.playerBelt().items().size() ==
@@ -1742,6 +1759,11 @@ bool testPersistentConversationAndMovementState() {
                 world.playerBelt(),
                 world.playerSpecialItems(),
                 world.retailSaveProgress(),
+                world.playerMagic(),
+                world.playerMineCount(),
+                world.retailSaveWorldState(),
+                world.playerGiantWarehouse(),
+                world.playerAutomaticItems(),
                 0x6d,
                 &error),
             "The conversation and movement state could not be saved.")) {
@@ -4517,6 +4539,7 @@ bool testRetailRemoteTown() {
                 companion_world.retailSaveProgress(),
                 companion_world.playerMagic(),
                 companion_world.playerMineCount(),
+                companion_world.retailSaveWorldState(),
                 companion_world.playerGiantWarehouse(),
                 companion_world.playerAutomaticItems(),
                 0x34,

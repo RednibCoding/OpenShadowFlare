@@ -13,7 +13,7 @@ class PlayerGiantWarehouse;
 
 bool restoreRetailGiantWarehouse(
     const std::vector<std::uint8_t>& payload,
-    std::size_t mine_end,
+    std::size_t world_state_end,
     const ItemDatabase& item_database,
     PlayerGiantWarehouse& warehouse,
     std::size_t* serialized_end = nullptr,
@@ -21,7 +21,7 @@ bool restoreRetailGiantWarehouse(
 
 bool replaceRetailGiantWarehouse(
     std::vector<std::uint8_t>& payload,
-    std::size_t mine_end,
+    std::size_t world_state_end,
     const ItemDatabase& item_database,
     const PlayerGiantWarehouse& warehouse,
     std::size_t* serialized_end = nullptr,

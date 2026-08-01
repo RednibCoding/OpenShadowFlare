@@ -9,6 +9,7 @@
 #include "retail_save_magic.hpp"
 #include "retail_save_mines.hpp"
 #include "retail_save_progress.hpp"
+#include "retail_save_world_state.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -68,6 +69,7 @@ bool WorldScene::loadInitialScenario(
     player_item_controller_.initializeNew();
     player_giant_warehouse_.initializeNew();
     bool saved_running = false;
+    ScenarioStart scenario_start = start;
     if (player_request.source ==
         PlayerDataSource::new_character) {
         if (!initializeRetailNewPlayerLoadout(
@@ -109,7 +111,6 @@ bool WorldScene::loadInitialScenario(
             quests_.states(),
             transports_.enabledFlags(),
             {},
-            false,
         };
         std::size_t progress_end = owned_items_end;
         std::size_t magic_end = progress_end;
@@ -132,6 +133,13 @@ bool WorldScene::loadInitialScenario(
             player_item_controller_.mineCount();
         std::size_t companion_progress_end = magic_end;
         std::size_t mine_end = companion_progress_end;
+        std::size_t world_state_end = mine_end;
+        std::size_t giant_warehouse_end = world_state_end;
+        RetailSaveWorldState world_state{
+            false,
+            start.scenario_id,
+            start.entry_value,
+        };
         if (!restoreRetailCompanionProgress(
                 payload,
                 magic_end,
@@ -144,16 +152,22 @@ bool WorldScene::loadInitialScenario(
                 mine_count,
                 &mine_end,
                 error) ||
-            !restoreRetailGiantWarehouse(
+            !restoreRetailWorldState(
                 payload,
                 mine_end,
+                world_state,
+                &world_state_end,
+                error) ||
+            !restoreRetailGiantWarehouse(
+                payload,
+                world_state_end,
                 item_database_,
                 player_giant_warehouse_,
-                &mine_end,
+                &giant_warehouse_end,
                 error) ||
             !restoreRetailAutomaticItems(
                 payload,
-                mine_end,
+                giant_warehouse_end,
                 item_database_,
                 player_automatic_items_,
                 nullptr,
@@ -175,7 +189,9 @@ bool WorldScene::loadInitialScenario(
         quests_.restore(progress.quest_flags);
         script_state_flags_ =
             std::move(progress.script_state_flags);
-        saved_running = progress.running;
+        saved_running = world_state.running;
+        scenario_start.scenario_id = world_state.scenario_id;
+        scenario_start.entry_value = world_state.entry_value;
     }
 
     if (!item_inventory_patterns_.load(data_root, error) ||
@@ -238,7 +254,7 @@ bool WorldScene::loadInitialScenario(
     ScenarioWorld prepared_scenario;
     if (!prepared_scenario.load(
             data_root,
-            start,
+            scenario_start,
             ai_control_database_,
             prepared_item_random,
             error)) {

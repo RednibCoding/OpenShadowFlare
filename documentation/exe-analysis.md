@@ -1022,13 +1022,28 @@ runtime does not let its temporary All Spells debug override affect either
 script operation.
 
 After the magic history, companion arrays, and Land Mine count, retail writes
-three 32-bit values for later world state, the literal page count ten, ten Giant Warehouse
-unlock values, and ten ordinary item containers. The selected page is not in
-the stream. OpenShadowFlare restores and replaces the flags and all ten
-containers while preserving the three preceding and all later unmapped
-values. A version-four portable tail carries the same owners when a newer save
-does not yet contain that later retail suffix; versions one through three
-remain readable.
+three 32-bit world values. `0x0044b580` first copies `DAT_0048ce80`, the live
+walk/run word. It then snapshots the current player actor's fields `+0x60` and
+`+0x64` into player offsets `+0x15a4/+0x15a8` and writes them as the scenario
+ID and scenario entry value. The load routine reads those exact destinations
+at `0x0044deae`, `0x0044dec4`, and `0x0044dee1`; the front end subsequently
+passes `+0x15a4/+0x15a8` to `0x00426200`.
+
+This is entry persistence, not arbitrary-coordinate persistence. A saved hero
+returns to the corresponding MCT entry, following the same entry-key lookup as
+ordinary scenario travel; position and facing therefore come from that entry
+rather than separate save words. OpenShadowFlare now restores and replaces all
+three words through one world-state owner. A live regression saves in scenario
+6 at entry 4 and reloads at `(35105,-6156)`; original `0004.Ssv` supplies the
+corpus tuple `running=1, scenario=0, entry=0` and rewrites byte for byte.
+
+The literal page count ten, ten Giant Warehouse unlock values, and ten
+ordinary item containers follow. The selected page is not in the stream.
+OpenShadowFlare restores and replaces the flags and all ten containers while
+preserving all later unmapped values. A version-four portable tail carries the
+same owners when a newer save does not yet contain that later retail suffix;
+versions one through three remain readable and supply run/walk as a migration
+fallback.
 
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
