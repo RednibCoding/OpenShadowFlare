@@ -14,8 +14,8 @@ The game has 3 base playable character classes:
 The saved job field uses retail values `6` for Warrior, `5` for Hunter, and
 `9` for either Wizard or Witch; gender chooses the displayed spellcaster
 name. A new character begins as job `16`, displayed as Mercenary. Scenario
-scripts use menu values zero through three instead: opcode 70 maps the saved
-job to that menu value, while opcode 71 changes choices one through three
+scripts use menu values zero through three instead: opcode 71 maps the saved
+job to that menu value, while opcode 70 changes choices one through three
 back to Warrior, Hunter, or spellcaster. Changing occupation does not rewrite
 the character's earlier per-level job history.
 

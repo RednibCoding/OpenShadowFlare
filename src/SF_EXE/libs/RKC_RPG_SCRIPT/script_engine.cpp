@@ -558,7 +558,7 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
-    case 70: {
+    case 71: {
         if (command.operands.empty()) {
             return StepResult::invalid_script;
         }
@@ -599,7 +599,7 @@ StepResult Interpreter::execute(const Command& command) {
     case 59:
     case 67:
     case 68:
-    case 71:
+    case 70:
     case 75:
         return executeNative(
             command.opcode == 59 || command.opcode == 75

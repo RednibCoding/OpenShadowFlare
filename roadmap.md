@@ -133,8 +133,8 @@ outside both operations. A shipped query-and-reward path from scenario
 `04100000` covers the interpreter, world hook, and persistent owner together.
 
 The first class-system boundary is live as well. Scenario `03900003` uses
-opcode 70 to map the saved Mercenary, Warrior, Hunter, or spellcaster job to
-its menu selection, and opcode 71 to write a chosen advanced job back to the
+opcode 71 to map the saved Mercenary, Warrior, Hunter, or spellcaster job to
+its menu selection, and opcode 70 to write a chosen advanced job back to the
 same player-record field. The operation deliberately leaves level history and
 derived parameters alone, matching the executable's narrow handler.
 

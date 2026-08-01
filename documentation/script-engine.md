@@ -447,10 +447,10 @@ The portable interpreter asks its host for
 `ValueQuery::local_player_level`, so player data stays game-owned rather than
 being copied into the script library.
 
-Opcodes 70 and 71 do the same for occupation changes. The saved runtime job
+Opcodes 71 and 70 do the same for occupation changes. The saved runtime job
 values are `16` for Mercenary, `6` for Warrior, `5` for Hunter, and `9` for
-Wizard or Witch. Opcode 70 maps those to menu values zero through three;
-opcode 71 accepts only selections one through three and writes Warrior,
+Wizard or Witch. Opcode 71 maps those to menu values zero through three;
+opcode 70 accepts only selections one through three and writes Warrior,
 Hunter, or spellcaster respectively. Invalid selections leave the record
 unchanged. Scenario `03900003` contains the one shipped query/change pair:
 its authored service remembers the current selection, changes the job after

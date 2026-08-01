@@ -1836,10 +1836,10 @@ life and mana, and resets experience. New-character initialization fills that
 history with novice job `0x10`, matching `0x00440f70`. The full later
 skill-unlock branch still needs its own class-system slice.
 
-The script-facing job selection is now mapped. Opcode 70 begins at
+The script-facing job selection is now mapped. Opcode 71 begins at
 `0x00434186` and reads runtime player offset `+0x30`, which is saved-record
 offset `0x1c`. It writes menu value zero for Mercenary job `16`, one for
-Warrior `6`, two for Hunter `5`, and three for Wizard/Witch `9`. Opcode 71 at
+Warrior `6`, two for Hunter `5`, and three for Wizard/Witch `9`. Opcode 70 at
 `0x004341da` evaluates one operand and accepts only values one through three,
 writing raw jobs `6`, `5`, and `9` respectively. It does not rebuild stats,
 alter level history, or change any other record field. Scenario `03900003`

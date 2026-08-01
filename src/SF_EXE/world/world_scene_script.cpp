@@ -515,7 +515,7 @@ bool WorldScene::executeScriptNativeCommand(
                player_magic_.learnPermanently(arguments[0]);
     }
 
-    if (opcode == 71) {
+    if (opcode == 70) {
         if (arguments.size() != 1) {
             return false;
         }

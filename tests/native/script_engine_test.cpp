@@ -1260,29 +1260,27 @@ bool testRetailJobCommands() {
     });
     interpreter.bind(&script);
     const osf::script::StepResult query_result =
-        interpreter.startSentence(381, -1);
+        interpreter.startSentence(366, -1);
     if (!check(
             query_result == osf::script::StepResult::complete &&
                 job_queries == 1 &&
-                interpreter.readTemporaryFlag(1000030) == 2 &&
-                native_commands.size() == 1 &&
-                native_commands.front().first == 16,
-            "The shipped job query did not execute retail opcode 70.")) {
+                interpreter.readTemporaryFlag(1000014) == 2,
+            "The shipped job query did not execute retail opcode 71.")) {
         return false;
     }
 
     native_commands.clear();
-    interpreter.bind(&script);
     const osf::script::StepResult change_result =
-        interpreter.startSentence(366, -1);
+        interpreter.startSentence(381, -1);
     return check(
         change_result == osf::script::StepResult::complete &&
-            !native_commands.empty() &&
-            native_commands.front() ==
+            native_commands.size() == 2 &&
+            native_commands[0] ==
                 std::make_pair(
-                    std::int32_t{71},
-                    std::vector<std::int32_t>{0}),
-        "The shipped job-change path did not emit retail opcode 71.");
+                    std::int32_t{70},
+                    std::vector<std::int32_t>{1}) &&
+            native_commands[1].first == 16,
+        "The shipped job-change path did not emit retail opcode 70.");
 #else
     return true;
 #endif
