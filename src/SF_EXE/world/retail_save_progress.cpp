@@ -14,9 +14,9 @@ constexpr std::int32_t kMaximumFlagCount = 100000;
 constexpr std::uint32_t kLegacySwappedFlagVersion = 1;
 
 // The three flag arrays below are retail fields. The executable does not
-// serialize its live walk/run word in FUN_0044b580. Sparse portable saves
-// also lack the later retail mine field, so these two values use a versioned
-// tail which the retail reader safely leaves unread.
+// serialize its live walk/run word in FUN_0044b580. Older sparse portable
+// saves also lack the later retail Mine field, so the versioned tail remains
+// a migration fallback which the retail reader safely leaves unread.
 
 void setError(std::string* error, std::string message) {
     if (error) {

@@ -187,6 +187,7 @@ add_library(
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_automatic_items.cpp
+  world/retail_save_companion_progress.cpp
   world/retail_save_extension.cpp
   world/retail_save_file.cpp
   world/retail_save_giant_warehouse.cpp
@@ -211,6 +212,7 @@ add_library(
   world/world_scene.cpp
   world/world_scene_companion_combat.cpp
   world/world_scene_companion_explosion.cpp
+  world/world_scene_companion_switch.cpp
   world/world_scene_combat.cpp
   world/world_scene_enemy_combat.cpp
   world/world_scene_effects.cpp

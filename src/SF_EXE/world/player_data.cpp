@@ -45,6 +45,7 @@ constexpr std::size_t kKillCountCount = 9;
 constexpr std::size_t kExperienceOffset = 0xd8;
 constexpr std::size_t kJobHistoryOffset = 0xdc;
 constexpr std::size_t kJobHistoryCount = 100;
+constexpr std::int32_t kCompanionCatalogTable = 60;
 
 void setError(std::string* error, std::string message) {
     if (error) {
@@ -119,6 +120,10 @@ bool PlayerData::initializeNew(
     writeI32(0x154, 0);
     writeI32(0x158, 0);
 
+    if (!initializeCompanionProgress(tables, error)) {
+        clear();
+        return false;
+    }
     valid_ = true;
     return true;
 }
@@ -151,7 +156,12 @@ bool PlayerData::load(
     const TableDatabase& tables,
     std::string* error) {
     if (request.source == PlayerDataSource::retail_save) {
-        return loadRetailSave(request.save_path, error);
+        if (!loadRetailSave(request.save_path, error) ||
+            !initializeCompanionProgress(tables, error)) {
+            clear();
+            return false;
+        }
+        return true;
     }
     return initializeNew(
         request.name, request.gender, tables, error);
@@ -159,6 +169,8 @@ bool PlayerData::load(
 
 void PlayerData::clear() {
     record_.fill(0);
+    companion_levels_.clear();
+    companion_experiences_.clear();
     valid_ = false;
 }
 
@@ -461,6 +473,84 @@ std::int32_t PlayerData::companionRespawnCounter() const {
     return readI32(0x14c);
 }
 
+std::size_t PlayerData::companionCount() const {
+    return companion_levels_.size();
+}
+
+std::int32_t PlayerData::companionLevel(
+    std::int32_t type) const {
+    return type >= 0 &&
+                   static_cast<std::size_t>(type) <
+                       companion_levels_.size()
+        ? companion_levels_[static_cast<std::size_t>(type)]
+        : 0;
+}
+
+std::int32_t PlayerData::companionExperience(
+    std::int32_t type) const {
+    return type >= 0 &&
+                   static_cast<std::size_t>(type) <
+                       companion_experiences_.size()
+        ? companion_experiences_[static_cast<std::size_t>(type)]
+        : 0;
+}
+
+const std::vector<std::int32_t>&
+PlayerData::companionLevels() const {
+    return companion_levels_;
+}
+
+const std::vector<std::int32_t>&
+PlayerData::companionExperiences() const {
+    return companion_experiences_;
+}
+
+bool PlayerData::restoreCompanionProgress(
+    std::vector<std::int32_t> levels,
+    std::vector<std::int32_t> experiences) {
+    if (levels.empty() ||
+        levels.size() != experiences.size() ||
+        (!companion_levels_.empty() &&
+         levels.size() != companion_levels_.size()) ||
+        companionType() < 0 ||
+        static_cast<std::size_t>(companionType()) >=
+            levels.size()) {
+        return false;
+    }
+    companion_levels_ = std::move(levels);
+    companion_experiences_ = std::move(experiences);
+    writeI32(
+        0x144,
+        companion_levels_[
+            static_cast<std::size_t>(companionType())]);
+    writeI32(
+        0x148,
+        companion_experiences_[
+            static_cast<std::size_t>(companionType())]);
+    return true;
+}
+
+bool PlayerData::switchCompanion(std::int32_t type) {
+    if (type < 0 ||
+        static_cast<std::size_t>(type) >=
+            companion_levels_.size() ||
+        companionType() < 0 ||
+        static_cast<std::size_t>(companionType()) >=
+            companion_levels_.size()) {
+        return false;
+    }
+    storeActiveCompanionProgress();
+    writeI32(0x140, type);
+    writeI32(
+        0x144,
+        companion_levels_[static_cast<std::size_t>(type)]);
+    writeI32(
+        0x148,
+        companion_experiences_[static_cast<std::size_t>(type)]);
+    writeI32(0x14c, 0);
+    return true;
+}
+
 void PlayerData::setCompanionRespawnCounter(
     std::int32_t value) {
     writeI32(0x14c, std::max<std::int32_t>(value, 0));
@@ -487,6 +577,7 @@ void PlayerData::awardCompanionKillExperience(
         }
     }
     writeI32(0x148, companion_experience);
+    storeActiveCompanionProgress();
 }
 
 bool PlayerData::applyCompanionLevelThreshold(
@@ -526,7 +617,44 @@ bool PlayerData::applyCompanionLevelThreshold(
     }
     writeI32(0x144, companion_level);
     writeI32(0x148, companion_experience);
+    storeActiveCompanionProgress();
     return level_gained;
+}
+
+bool PlayerData::initializeCompanionProgress(
+    const TableDatabase& tables,
+    std::string* error) {
+    const TableData* catalog =
+        tables.find(kCompanionCatalogTable);
+    if (!catalog || catalog->rowCount() <= 0 ||
+        companionType() < 0 ||
+        companionType() >= catalog->rowCount()) {
+        setError(
+            error,
+            "The companion catalog does not match the player record.");
+        return false;
+    }
+    companion_levels_.assign(
+        static_cast<std::size_t>(catalog->rowCount()), 1);
+    companion_experiences_.assign(
+        static_cast<std::size_t>(catalog->rowCount()), 0);
+    storeActiveCompanionProgress();
+    return true;
+}
+
+void PlayerData::storeActiveCompanionProgress() {
+    const std::int32_t type = companionType();
+    if (type < 0 ||
+        static_cast<std::size_t>(type) >=
+            companion_levels_.size() ||
+        companion_levels_.size() !=
+            companion_experiences_.size()) {
+        return;
+    }
+    companion_levels_[static_cast<std::size_t>(type)] =
+        companionLevel();
+    companion_experiences_[static_cast<std::size_t>(type)] =
+        companionExperience();
 }
 
 std::int32_t PlayerData::baseAttackSpeed() const {

@@ -944,6 +944,22 @@ uses the possibly new player level for that cap and table `800 + companion
 type` row 18 for each companion threshold. A gained level rebuilds the summed
 profile and restores full companion life; experience is cleared at the cap.
 
+The level and experience fields in the 0x160-byte record are only the active
+companion's working copy. `0x00440f70` allocates one level array and one
+experience array with the Table 60 row count, initializes every level to one,
+and leaves every experience at zero. Opcode 45 reaches `0x00450500`: it first
+copies the active values into their current array row, selects the requested
+row, loads that row's values back into the record, and clears the defeated
+countdown. It then replaces character `16000000 + player slot` at the hero and
+fills its life to the rebuilt maximum. Selecting the already owned type still
+runs the complete reset.
+
+Before saving, retail synchronizes the active row again. It writes the Table
+60 count, the complete level array, and the complete experience array directly
+after the magic block; the Land Mine count follows them. OpenShadowFlare now
+owns that exact section rather than only skipping it on the way to the Mine
+field, so inactive-companion progression survives swaps and save/load cycles.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
@@ -987,8 +1003,8 @@ not touch spell level, practice experience, or the bar, and the portable
 runtime does not let its temporary All Spells debug override affect either
 script operation.
 
-After the magic history and Land Mine count, retail writes three 32-bit
-values for later world state, the literal page count ten, ten Giant Warehouse
+After the magic history, companion arrays, and Land Mine count, retail writes
+three 32-bit values for later world state, the literal page count ten, ten Giant Warehouse
 unlock values, and ten ordinary item containers. The selected page is not in
 the stream. OpenShadowFlare restores and replaces the flags and all ten
 containers while preserving the three preceding and all later unmapped

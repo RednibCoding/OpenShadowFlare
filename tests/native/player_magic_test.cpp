@@ -290,13 +290,13 @@ int main() {
                 nullptr,
                 &error) &&
                 restored_mines == 7 &&
-                mine_end == magic_end,
+                mine_end == magic_end + 4u,
             "The portable mine count did not round-trip after magic.")) {
         std::cerr << error << '\n';
         return 1;
     }
     // Progress owns the running bit, but rewriting it must preserve the
-    // mine field owned by the adjacent save component.
+    // retail mine field owned by the adjacent save component.
     progress.running = false;
     if (!check(
             osf::replaceRetailProgress(

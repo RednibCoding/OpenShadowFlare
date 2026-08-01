@@ -10,8 +10,6 @@
 namespace osf {
 namespace {
 
-constexpr std::int32_t kMaximumArrayCount = 100000;
-
 void setError(std::string* error, std::string message) {
     if (error) {
         *error = std::move(message);
@@ -44,37 +42,11 @@ void writeI32(
     payload[offset + 3] = static_cast<std::uint8_t>(data >> 24u);
 }
 
-bool mineOffset(
-    const std::vector<std::uint8_t>& payload,
-    std::size_t magic_end,
-    std::size_t suffix_end,
-    std::size_t& result) {
-    if (magic_end > suffix_end ||
-        suffix_end - magic_end < 4u) {
-        return false;
-    }
-    std::size_t offset = magic_end;
-    std::int32_t count = 0;
-    if (!readI32(payload, offset, count) ||
-        count < 0 || count > kMaximumArrayCount) {
-        return false;
-    }
-    offset += 4u;
-    const std::size_t array_bytes =
-        static_cast<std::size_t>(count) * 8u;
-    if (offset > suffix_end ||
-        suffix_end - offset < array_bytes + 4u) {
-        return false;
-    }
-    result = offset + array_bytes;
-    return true;
-}
-
 }  // namespace
 
 bool restoreRetailMineCount(
     const std::vector<std::uint8_t>& payload,
-    std::size_t magic_end,
+    std::size_t companion_progress_end,
     std::int32_t& mine_count,
     std::size_t* serialized_end,
     std::string* error) {
@@ -82,28 +54,30 @@ bool restoreRetailMineCount(
         inspectRetailSavePortableExtension(payload);
     const std::size_t suffix_end =
         extension.present ? extension.start : payload.size();
-    if (magic_end > suffix_end) {
+    if (companion_progress_end > suffix_end) {
         setError(
             error,
             "The retail mine stream begins outside the save payload.");
         return false;
     }
-    if (magic_end == suffix_end) {
+    if (companion_progress_end == suffix_end) {
         if (extension.has_mine_count) {
             mine_count = std::max(extension.mine_count, 0);
         }
         if (serialized_end) {
-            *serialized_end = magic_end;
+            *serialized_end = companion_progress_end;
         }
         if (error) {
             error->clear();
         }
         return true;
     }
-    std::size_t offset = 0;
     std::int32_t restored = 0;
-    if (!mineOffset(payload, magic_end, suffix_end, offset) ||
-        !readI32(payload, offset, restored)) {
+    if (suffix_end - companion_progress_end < 4u ||
+        !readI32(
+            payload,
+            companion_progress_end,
+            restored)) {
         setError(
             error,
             "The retail mine-count stream is truncated.");
@@ -111,7 +85,7 @@ bool restoreRetailMineCount(
     }
     mine_count = std::max(restored, 0);
     if (serialized_end) {
-        *serialized_end = offset + 4u;
+        *serialized_end = companion_progress_end + 4u;
     }
     if (error) {
         error->clear();
@@ -121,7 +95,7 @@ bool restoreRetailMineCount(
 
 bool replaceRetailMineCount(
     std::vector<std::uint8_t>& payload,
-    std::size_t magic_end,
+    std::size_t companion_progress_end,
     std::int32_t mine_count,
     std::size_t* serialized_end,
     std::string* error) {
@@ -129,25 +103,27 @@ bool replaceRetailMineCount(
         inspectRetailSavePortableExtension(payload);
     const std::size_t suffix_end =
         extension.present ? extension.start : payload.size();
-    if (magic_end > suffix_end) {
+    if (companion_progress_end > suffix_end) {
         setError(
             error,
             "The retail mine stream begins outside the save payload.");
         return false;
     }
     mine_count = std::max(mine_count, 0);
-    std::size_t end = magic_end;
-    if (magic_end != suffix_end) {
-        std::size_t offset = 0;
-        if (!mineOffset(payload, magic_end, suffix_end, offset)) {
-            setError(
-                error,
-                "The existing retail mine-count stream is truncated.");
-            return false;
-        }
-        writeI32(payload, offset, mine_count);
-        end = offset + 4u;
+    std::size_t end = companion_progress_end + 4u;
+    if (companion_progress_end == suffix_end) {
+        payload.insert(
+            payload.begin() +
+                static_cast<std::ptrdiff_t>(companion_progress_end),
+            4u,
+            0);
+    } else if (suffix_end - companion_progress_end < 4u) {
+        setError(
+            error,
+            "The existing retail mine-count stream is truncated.");
+        return false;
     }
+    writeI32(payload, companion_progress_end, mine_count);
     replaceRetailSavePortableExtension(
         payload,
         extension.present && extension.running,

@@ -113,7 +113,17 @@ backpack item is present), and revive beside its owner through chart seven.
 Kills credited to the owner or companion add one companion experience point,
 use table row 18 for level thresholds, obey the player-level cap, rebuild the
 table-backed profile, and fully heal on a level gain. The defeated countdown,
-level, and experience stay in the retail player record and survive saving.
+active level, and active experience stay in the retail player record. The
+Table 60-sized level and experience arrays after the magic save block now keep
+the other five companions' progression too.
+
+Remote Town's `Swap Dogs` choices now run their authored opcode 45 instead of
+stopping at an unsupported branch. The active row is stored, the selected
+row is restored, the defeated countdown is cleared, and the PARTNER actor is
+rebuilt at the hero with full life. The periodic town scripts then expose the
+old dog and hide the newly owned one. All six shipped opcode-45 calls remain
+data-driven across their three scenarios, and a save/load regression keeps the
+selected dog and every inactive progression row intact.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game

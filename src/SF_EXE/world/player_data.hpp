@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace osf {
 
@@ -93,6 +94,15 @@ public:
     std::int32_t companionLevel() const;
     std::int32_t companionExperience() const;
     std::int32_t companionRespawnCounter() const;
+    std::size_t companionCount() const;
+    std::int32_t companionLevel(std::int32_t type) const;
+    std::int32_t companionExperience(std::int32_t type) const;
+    const std::vector<std::int32_t>& companionLevels() const;
+    const std::vector<std::int32_t>& companionExperiences() const;
+    bool restoreCompanionProgress(
+        std::vector<std::int32_t> levels,
+        std::vector<std::int32_t> experiences);
+    bool switchCompanion(std::int32_t type);
     void setCompanionRespawnCounter(std::int32_t value);
     void awardCompanionKillExperience(
         std::int32_t source_character_number,
@@ -126,8 +136,14 @@ private:
     std::int32_t readI32(std::size_t offset) const;
     void writeI32(std::size_t offset, std::int32_t value);
     void levelUp(const TableDatabase& tables);
+    bool initializeCompanionProgress(
+        const TableDatabase& tables,
+        std::string* error);
+    void storeActiveCompanionProgress();
 
     std::array<std::uint8_t, retail_record_size> record_{};
+    std::vector<std::int32_t> companion_levels_;
+    std::vector<std::int32_t> companion_experiences_;
     bool valid_ = false;
 };
 

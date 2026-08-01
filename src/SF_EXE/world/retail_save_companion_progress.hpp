@@ -1,5 +1,5 @@
-#ifndef OPENSHADOWFLARE_RETAIL_SAVE_MINES_HPP
-#define OPENSHADOWFLARE_RETAIL_SAVE_MINES_HPP
+#ifndef OPENSHADOWFLARE_RETAIL_SAVE_COMPANION_PROGRESS_HPP
+#define OPENSHADOWFLARE_RETAIL_SAVE_COMPANION_PROGRESS_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -8,17 +8,19 @@
 
 namespace osf {
 
-bool restoreRetailMineCount(
+class PlayerData;
+
+bool restoreRetailCompanionProgress(
     const std::vector<std::uint8_t>& payload,
-    std::size_t companion_progress_end,
-    std::int32_t& mine_count,
+    std::size_t magic_end,
+    PlayerData& player,
     std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 
-bool replaceRetailMineCount(
+bool replaceRetailCompanionProgress(
     std::vector<std::uint8_t>& payload,
-    std::size_t companion_progress_end,
-    std::int32_t mine_count,
+    std::size_t magic_end,
+    const PlayerData& player,
     std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 

@@ -524,6 +524,11 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
+    if (opcode == 45) {
+        return arguments.size() == 1 &&
+               switchOwnedCompanion(arguments[0]);
+    }
+
     if (opcode == 62) {
         if (arguments.size() < 3) {
             return false;

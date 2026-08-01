@@ -437,6 +437,7 @@ private:
     void updateRuntimeEffects();
     void queueRuntimeEffectAudio(
         const RuntimeEffectAudioRequest& request);
+    bool switchOwnedCompanion(std::int32_t type);
     void refreshCompanionRuntimeProfile(bool level_gained = false);
     void refreshPlayerRuntimeProfile();
     std::int32_t playerMineDamageBonus() const;

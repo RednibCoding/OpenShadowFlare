@@ -293,6 +293,20 @@ threshold, the cap is `player level / 3 + 2` up to 35, and a level rebuilds
 the summed profile and restores full life. The 0x160-byte player record keeps
 the companion type, level, experience, and defeated countdown.
 
+The record's level and experience are the active row, not the whole catalog.
+`0x00440f70` allocates level and experience arrays at `+0x1590` and `+0x1594`
+with the Table 60 row count at `+0x158c`; every level starts at one and every
+experience starts at zero. Opcode 45 at `0x004336a9` evaluates one companion
+type and calls `0x00450500`. That function stores the current row, restores the
+new row, clears `+0x15c`, replaces the owned companion actor at the player, and
+sets its life to maximum. All six shipped types are selected by six calls in
+three scenarios.
+
+The save path stores the current row before writing count, all levels, and all
+experiences, followed by player Land Mines at `+0x328`. The portable player and
+save owners now restore and rewrite this exact sequence, including progression
+for companions which are not currently selected.
+
 The portable `EnemyEffectController` now covers the complete controller half
 of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
 cover zero, positive, and negative delays,

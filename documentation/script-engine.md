@@ -323,6 +323,7 @@ services exercise them; unknown values still fail loudly.
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
+| 45 | `0x004336a9` | Switch the local player's owned companion to an evaluated Table 60 row |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 49 | `0x0043389b` | Retain one raw scenario message in the executable's map-caption buffer |
 | 50 | `0x004321cb` | Write the current scenario-entry value to an operand |
@@ -567,6 +568,16 @@ three of its live entity-state keys. Opcode 44 reads player-record offset
 `0x140`, which is the currently owned companion type, through a typed host
 query. Remote Town combines those commands with the play-mode operand to keep
 the selected companion from also appearing as a clickable town NPC.
+
+Opcode 45 is the matching mutation. It evaluates one Table 60 row, stores the
+active dog's level and experience in the player's per-companion arrays, then
+loads the selected row's saved values and clears its defeated countdown.
+`0x00450500` destroys and recreates character `16000000 + player slot` at the
+hero with full life, so a swap does not reuse the town PEOPLE actor or retain
+the previous dog's presentation state. The six shipped calls cover companion
+types zero through five across scenarios `00000000`, `01000000`, and
+`03900005`. Remote Town's four `Swap Dogs` choices are therefore ordinary SCS
+branches; the portable world does not contain a name-based companion menu.
 
 Opcode 62 evaluates a quest ID, a new state, and a network-notification flag.
 Ordinary updates write the new state and issue cue `0x41`. State `2` is the

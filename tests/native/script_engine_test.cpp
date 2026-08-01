@@ -865,6 +865,33 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    const std::size_t companion_swap_command =
+        native_commands.size();
+    const osf::script::StepResult gravity_swap_start =
+        interpreter.startStatus(0, 12010001);
+    const osf::script::StepResult gravity_swap_result =
+        interpreter.resume(2);
+    if (!check(
+            gravity_swap_start ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().selection_required &&
+                gravity_swap_result ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() ==
+                    companion_swap_command + 4 &&
+                native_commands[companion_swap_command + 2] ==
+                    std::make_pair(
+                        std::int32_t{45},
+                        std::vector<std::int32_t>{1}) &&
+                native_commands[companion_swap_command + 3] ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12010001}),
+            "Gravity's Swap Dogs choice did not invoke retail opcode 45 "
+            "before releasing the actor.")) {
+        return false;
+    }
+
     if (!check(
             interpreter.startStatus(0, 12010003) ==
                     osf::script::StepResult::waiting_for_message &&
@@ -2071,6 +2098,65 @@ bool testRetailInclusiveRandomCommandInventory() {
 #endif
 }
 
+bool testRetailCompanionSwapCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    std::map<std::int32_t, std::size_t> type_counts;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-45 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 45) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 1 &&
+                            command.operands[0].type == 1,
+                        "A shipped opcode-45 call changed shape.")) {
+                    return false;
+                }
+                ++call_count;
+                ++scenario_calls;
+                ++type_counts[command.operands[0].value];
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 6 && scenario_count == 3 &&
+            type_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {0, 1}, {1, 1}, {2, 1},
+                    {3, 1}, {4, 1}, {5, 1},
+                },
+        "The shipped opcode-45 inventory differs from the audited retail "
+        "scripts.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -2090,6 +2176,7 @@ int main() {
                    testRetailArithmeticCommandInventory() &&
                    testRetailInclusiveRandomCommand() &&
                    testRetailInclusiveRandomCommandInventory() &&
+                   testRetailCompanionSwapCommandInventory() &&
                    testMalformedScript()
                ? 0
                : 1;

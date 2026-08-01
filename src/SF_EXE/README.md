@@ -418,8 +418,10 @@ the Tower maps which invoke it are not yet part of the playable scenario set.
 Scenario position,
 script-created world
 actors, and the remaining dynamic state are still pending. Companion type,
-level, experience, and its defeated countdown already live in the preserved
-player record.
+active level, active experience, and its defeated countdown already live in
+the preserved player record. The following Table 60-sized save arrays retain
+level and experience for all six companions, and the scripted `Swap Dogs`
+choice rebuilds the selected PARTNER actor without hardcoded town logic.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

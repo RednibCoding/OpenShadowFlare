@@ -6,6 +6,7 @@
 #include "player_data.hpp"
 #include "player_magic.hpp"
 #include "retail_save_automatic_items.hpp"
+#include "retail_save_companion_progress.hpp"
 #include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
@@ -333,12 +334,22 @@ bool writeRetailSaveImpl(
              error))) {
         return false;
     }
-    std::size_t mine_end = magic_end;
+    std::size_t companion_progress_end = magic_end;
+    if (magic &&
+        !replaceRetailCompanionProgress(
+            payload,
+            magic_end,
+            player,
+            &companion_progress_end,
+            error)) {
+        return false;
+    }
+    std::size_t mine_end = companion_progress_end;
     if (mine_count &&
         (!magic ||
          !replaceRetailMineCount(
              payload,
-             magic_end,
+             companion_progress_end,
              *mine_count,
              &mine_end,
              error))) {

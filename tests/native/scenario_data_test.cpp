@@ -4401,6 +4401,102 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    if (!check(
+            companion_world.commandWorldInteraction(
+                gravity_pointer.x,
+                gravity_pointer.y) &&
+                updateUntilConversation(companion_world, 5000) &&
+                companion_world.conversationRequiresSelection(),
+            "Gravity's companion menu could not be reopened for a live "
+            "swap.")) {
+        return false;
+    }
+    companion_world.chooseConversationOption(2);
+    if (!check(
+            !companion_world.conversationActive() &&
+                companion_world.playerData().companionType() == 1 &&
+                companion_world.playerData().companionLevel() == 1 &&
+                companion_world.hasCompanion() &&
+                companion_world.companion().profile().type == 1 &&
+                companion_world.companion().profile().name == "Gravity" &&
+                companion_world.companion().currentLife() ==
+                    companion_world.companion().maximumLife() &&
+                companion_world.companion().position().x ==
+                    companion_world.playerWorldX() &&
+                companion_world.companion().position().y ==
+                    companion_world.playerWorldY(),
+            "Opcode 45 did not replace the owned companion at the player "
+            "with full life and its own saved profile.")) {
+        return false;
+    }
+    companion_world.update();
+    if (!check(
+            companion_world.npcs()[3].visible() &&
+                companion_world.npcs()[3].pointerEnabled() &&
+                companion_world.npcs()[3].judgementEnabled() &&
+                !companion_world.npcs()[4].visible() &&
+                !companion_world.npcs()[4].pointerEnabled() &&
+                !companion_world.npcs()[4].judgementEnabled() &&
+                companion_world.npcs()[5].visible() &&
+                companion_world.npcs()[6].visible(),
+            "Remote Town's periodic scripts did not exchange the old and "
+            "new town companion actors after a swap.")) {
+        return false;
+    }
+    const std::filesystem::path companion_save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_companion_swap_test";
+    const std::filesystem::path companion_save_path =
+        companion_save_root / "Save" / "0000.Ssv";
+    std::error_code companion_cleanup_error;
+    std::filesystem::remove_all(
+        companion_save_root, companion_cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                companion_save_path,
+                companion_world.playerData(),
+                companion_world.itemDatabase(),
+                companion_world.playerInventory(),
+                companion_world.playerEquipment(),
+                companion_world.playerBelt(),
+                companion_world.playerSpecialItems(),
+                companion_world.retailSaveProgress(),
+                companion_world.playerMagic(),
+                companion_world.playerMineCount(),
+                companion_world.playerGiantWarehouse(),
+                companion_world.playerAutomaticItems(),
+                0x34,
+                &error),
+            "The swapped companion state could not be written to a retail "
+            "save.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::PlayerLoadRequest companion_save_request;
+    companion_save_request.source =
+        osf::PlayerDataSource::retail_save;
+    companion_save_request.save_path = companion_save_path;
+    osf::WorldScene restored_companion_world;
+    const bool restored_companion =
+        restored_companion_world.loadInitialScenario(
+            data_root, companion_save_request, &error);
+    std::filesystem::remove_all(
+        companion_save_root, companion_cleanup_error);
+    if (!check(
+            restored_companion &&
+                restored_companion_world.playerData().companionType() == 1 &&
+                restored_companion_world.hasCompanion() &&
+                restored_companion_world.companion().profile().type == 1 &&
+                restored_companion_world.companion().profile().name ==
+                    "Gravity" &&
+                restored_companion_world.companion().currentLife() ==
+                    restored_companion_world.companion().maximumLife(),
+            "The selected companion or its live full-life actor did not "
+            "survive save and load.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
     osf::WorldScene harley_world;
     if (!check(
             harley_world.loadInitialScenario(

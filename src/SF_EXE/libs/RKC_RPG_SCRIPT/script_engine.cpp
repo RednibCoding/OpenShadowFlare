@@ -526,6 +526,8 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 45:
+        return executeNative(1);
     case 49: {
         if (command.operands.empty() || !script_) {
             return StepResult::invalid_script;
