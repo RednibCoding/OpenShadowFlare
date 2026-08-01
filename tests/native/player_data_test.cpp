@@ -14,6 +14,7 @@
 #include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_automatic_items.hpp"
+#include "world/retail_save_companion_progress.hpp"
 #include "world/retail_save_extension.hpp"
 #include "world/retail_save_giant_warehouse.hpp"
 #include "world/retail_save_items.hpp"
@@ -120,6 +121,108 @@ int main() {
                     male.initialParameter(12) &&
                 male.walkingSpeedTier() == 5,
             "The male record does not match table 900 and FUN_00440f70.")) {
+        return 1;
+    }
+    osf::PlayerData companion_player = male;
+    const osf::TableData* companion_catalog = tables.find(60);
+    const std::size_t companion_count =
+        companion_catalog
+            ? static_cast<std::size_t>(
+                  companion_catalog->rowCount())
+            : 0u;
+    companion_player.setCompanionRespawnCounter(600);
+    if (!check(
+            companion_player.switchCompanion(0) &&
+                companion_player.companionRespawnCounter() == 0,
+            "Selecting the already owned companion did not clear its "
+            "retail defeated countdown.")) {
+        return 1;
+    }
+    companion_player.awardCompanionKillExperience(
+        16000000, 0, true);
+    if (!check(
+            companion_count != 0 &&
+                companion_player.companionCount() ==
+                    companion_count &&
+                std::all_of(
+                    companion_player.companionLevels().begin(),
+                    companion_player.companionLevels().end(),
+                    [](std::int32_t level) {
+                        return level == 1;
+                    }) &&
+                companion_player.companionExperience(0) == 1 &&
+                companion_player.switchCompanion(1) &&
+                companion_player.companionType() == 1 &&
+                companion_player.companionLevel() == 1 &&
+                companion_player.companionExperience() == 0 &&
+                companion_player.companionRespawnCounter() == 0,
+            "A companion switch did not preserve the old dog and restore "
+            "the new dog's retail progression.")) {
+        return 1;
+    }
+    companion_player.awardCompanionKillExperience(
+        16000000, 0, true);
+    companion_player.awardCompanionKillExperience(
+        16000000, 0, true);
+    if (!check(
+            companion_player.switchCompanion(0) &&
+                companion_player.companionExperience() == 1 &&
+                companion_player.companionExperience(1) == 2 &&
+                !companion_player.switchCompanion(-1) &&
+                !companion_player.switchCompanion(
+                    static_cast<std::int32_t>(companion_count)),
+            "Per-companion experience leaked across a swap or an invalid "
+            "catalog row was accepted.")) {
+        return 1;
+    }
+    std::vector<std::uint8_t> companion_payload;
+    std::size_t companion_progress_end = 0;
+    std::size_t companion_mine_end = 0;
+    if (!check(
+            osf::replaceRetailCompanionProgress(
+                companion_payload,
+                0,
+                companion_player,
+                &companion_progress_end,
+                &error) &&
+                osf::replaceRetailMineCount(
+                    companion_payload,
+                    companion_progress_end,
+                    7,
+                    &companion_mine_end,
+                    &error),
+            "The portable save could not serialize companion progression "
+            "before its retail Mine field.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    osf::PlayerData restored_companion_player = male;
+    std::int32_t restored_companion_mines = 0;
+    std::size_t restored_companion_end = 0;
+    std::size_t restored_companion_mine_end = 0;
+    if (!check(
+            osf::restoreRetailCompanionProgress(
+                companion_payload,
+                0,
+                restored_companion_player,
+                &restored_companion_end,
+                &error) &&
+                osf::restoreRetailMineCount(
+                    companion_payload,
+                    restored_companion_end,
+                    restored_companion_mines,
+                    &restored_companion_mine_end,
+                    &error) &&
+                restored_companion_end == companion_progress_end &&
+                restored_companion_mine_end == companion_mine_end &&
+                restored_companion_mines == 7 &&
+                restored_companion_player.companionExperience(0) == 1 &&
+                restored_companion_player.companionExperience(1) == 2 &&
+                restored_companion_player.switchCompanion(1) &&
+                restored_companion_player.companionExperience() == 2,
+            "Distinct companion progression did not survive the retail "
+            "save stream beside the Mine count.")) {
+        std::cerr << error << '\n';
         return 1;
     }
     osf::PlayerData job_player = male;
@@ -922,6 +1025,7 @@ int main() {
         osf::PlayerMagic retail_magic;
         retail_magic.initializeNew();
         std::size_t retail_magic_end = 0;
+        std::size_t retail_companion_end = 0;
         std::int32_t retail_mine_count = 5;
         std::size_t retail_mine_end = 0;
         osf::PlayerGiantWarehouse retail_giant_warehouse;
@@ -941,9 +1045,15 @@ int main() {
                         retail_magic,
                         &retail_magic_end,
                         &error) &&
-                    osf::restoreRetailMineCount(
+                    osf::restoreRetailCompanionProgress(
                         retail_fixture_payload,
                         retail_magic_end,
+                        retail_fixture_player,
+                        &retail_companion_end,
+                        &error) &&
+                    osf::restoreRetailMineCount(
+                        retail_fixture_payload,
+                        retail_companion_end,
                         retail_mine_count,
                         &retail_mine_end,
                         &error) &&
@@ -961,9 +1071,12 @@ int main() {
                         retail_automatic_items,
                         nullptr,
                         &error) &&
-                    retail_mine_count >= 0,
-                "The original retail mine count or ten-page Giant "
-                "Warehouse could not be restored after magic.")) {
+                    retail_mine_count >= 0 &&
+                    retail_fixture_player.companionCount() ==
+                        companion_count,
+                "The original retail companion progression, mine count, "
+                "or ten-page Giant Warehouse could not be restored after "
+                "magic.")) {
             std::cerr << error << '\n';
             return 1;
         }
@@ -988,8 +1101,17 @@ int main() {
         }
         std::vector<std::uint8_t> rewritten_late_items =
             retail_fixture_payload;
+        std::size_t rewritten_companion_end = retail_magic_end;
         std::size_t rewritten_giant_end = retail_mine_end;
         if (!check(
+                osf::replaceRetailCompanionProgress(
+                    rewritten_late_items,
+                    retail_magic_end,
+                    retail_fixture_player,
+                    &rewritten_companion_end,
+                    &error) &&
+                rewritten_companion_end ==
+                    retail_companion_end &&
                 osf::replaceRetailGiantWarehouse(
                     rewritten_late_items,
                     retail_mine_end,

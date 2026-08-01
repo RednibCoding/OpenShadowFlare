@@ -98,7 +98,12 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: skills, magic, and status effects
+## Current milestone: scenario coverage and the Episode 1 playthrough
+
+The player's 22 ordinary spell actions, Increased Power, and Land Mines are
+now reconstructed. Work has moved back to the script-driven scenario layer:
+each newly exercised opcode should unlock real Episode 1 behavior through the
+shared world owners, rather than adding map-specific shortcuts.
 
 The ordinary melee, basic ranged, and owned-companion encounter paths are now
 proven in the live outdoor world. The companion can acquire and attack enemies,
@@ -108,7 +113,17 @@ backpack item is present), and revive beside its owner through chart seven.
 Kills credited to the owner or companion add one companion experience point,
 use table row 18 for level thresholds, obey the player-level cap, rebuild the
 table-backed profile, and fully heal on a level gain. The defeated countdown,
-level, and experience stay in the retail player record and survive saving.
+active level, and active experience stay in the retail player record. The
+Table 60-sized level and experience arrays after the magic save block now keep
+the other five companions' progression too.
+
+Remote Town's `Swap Dogs` choices now run their authored opcode 45 instead of
+stopping at an unsupported branch. The active row is stored, the selected
+row is restored, the defeated countdown is cleared, and the PARTNER actor is
+rebuilt at the hero with full life. The periodic town scripts then expose the
+old dog and hide the newly owned one. All six shipped opcode-45 calls remain
+data-driven across their three scenarios, and a save/load regression keeps the
+selected dog and every inactive progression row intact.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
@@ -871,6 +886,27 @@ the retail operand order, one-draw call order, wrapped inclusive span, and
 common destination writer. The script library receives the draw from the
 world instead of owning a second generator, so the 611 shipped spawn, branch,
 and setup calls remain in the same random sequence as native gameplay work.
+
+The first authored periodic effect command is connected now too. Opcode 30
+evaluates its fourteen script values in the DLL boundary, then hands them to a
+small world-side builder for the exact owner-zero effect request, projected
+origin, combat-packet fields, and shared-random impact choice. This covers all
+411 shipped calls across 33 scenarios and lets Near Remote Town's authored
+spawn-and-sound sentences use the existing effect runtime instead of a
+scenario-specific visual shortcut.
+
+Its packetless sibling is connected as well. Opcode 36 evaluates seven values
+and creates the exact explicit-position one-pass request, including retail's
+negative-direction fallback and lower-right-plus-one point judgement. The three
+shipped effect numbers resolve to their real OPTION resources, all 353 calls
+across 26 scenarios keep their audited shape, and Near Remote Town's first
+six placed effects now enter the ordinary depth-sorted effect pass.
+
+The basic writable arithmetic set is complete now as well. Opcodes 13 through
+15 preserve retail's wrapped multiply, signed quotient and remainder, operand
+order, and zero-divisor no-write path. Corpus coverage holds all 388 shipped
+calls across their original scenarios, giving later spawn and encounter
+sentences the calculations they expect before their native actions run.
 
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current

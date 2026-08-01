@@ -293,6 +293,20 @@ threshold, the cap is `player level / 3 + 2` up to 35, and a level rebuilds
 the summed profile and restores full life. The 0x160-byte player record keeps
 the companion type, level, experience, and defeated countdown.
 
+The record's level and experience are the active row, not the whole catalog.
+`0x00440f70` allocates level and experience arrays at `+0x1590` and `+0x1594`
+with the Table 60 row count at `+0x158c`; every level starts at one and every
+experience starts at zero. Opcode 45 at `0x004336a9` evaluates one companion
+type and calls `0x00450500`. That function stores the current row, restores the
+new row, clears `+0x15c`, replaces the owned companion actor at the player, and
+sets its life to maximum. All six shipped types are selected by six calls in
+three scenarios.
+
+The save path stores the current row before writing count, all levels, and all
+experiences, followed by player Land Mines at `+0x328`. The portable player and
+save owners now restore and rewrite this exact sequence, including progression
+for companions which are not currently selected.
+
 The portable `EnemyEffectController` now covers the complete controller half
 of types 1 through 5, types 10 through 14, type 16, and type 21. Focused tests
 cover zero, positive, and negative delays,
@@ -1332,6 +1346,32 @@ The full SCS catalog contains 611 three-operand calls in 55 scenarios: 285
 use 0..1, 41 use 20..40, and the rest include script-calculated bounds.
 The portable library obtains that one draw from the world's shared retail
 random owner through a narrow hook.
+
+The neighboring writable arithmetic commands are reconstructed too. Opcode
+13 keeps the low 32 bits of signed multiplication; opcodes 14 and 15 use the
+x86 signed quotient and remainder, including truncation toward zero and the
+dividend-signed remainder. A zero divisor succeeds without changing the
+destination. The 67 multiplies, 126 divides, and 195 remainders in the shipped
+scripts all retain their two-operand shape and temporary-flag destination.
+
+Opcode 30 at `0x0043309b` now crosses the same boundary without inventing a
+second effect type. Its fourteen evaluated operands build the retail
+owner-zero request, projected origin, and selected 77-word combat-packet
+fields, while one draw from the world's random stream chooses impact
+presentation `21000..21003` or `21007..21009`. The request enters the existing
+`0x0042fdc0` controller/one-pass-effect owner. All 411 shipped calls across 33
+scenarios retain the same shape; Near Remote Town's first periodic spawn
+sentence is covered directly.
+
+Opcode 36 at `0x0043332d` is reconstructed as the packetless sibling of that
+path. Seven evaluated operands create an owner-zero request with an explicit
+position, display height, chart direction, and `{0,0,right,bottom}` judgement;
+a negative direction becomes eight. The shared one-pass handler maps effects
+20007, 20008, and 20009 to OPTION resources 11000005, 11000006, and 11000007,
+then turns the lower-right values into point judgement
+`{right+1,bottom+1,right+1,bottom+1}`. All 353 shipped calls across 26
+scenarios retain the audited shape, and Near Remote Town's first six-effect
+periodic group runs through the live depth-sorted actor owner.
 
 The portable fresh-world path accepts scenario ID, entry value, and local
 player explicitly. The first cross-map fixture is Table 40 row one: scenario

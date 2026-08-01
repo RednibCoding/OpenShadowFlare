@@ -1,6 +1,8 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
+#include "script/scenario_effect_command.hpp"
+#include "script/scenario_placed_effect_command.hpp"
 #include "vendor_stock_generator.hpp"
 
 #include <algorithm>
@@ -277,6 +279,26 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 30) {
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioEffectRequest(
+                arguments, item_random_.next(), request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 36) {
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioPlacedEffectRequest(
+                arguments, request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
     if (opcode == 59) {
         return arguments.size() == 2 &&
                removeScriptItem(arguments[0], arguments[1]);
@@ -500,6 +522,11 @@ bool WorldScene::executeScriptNativeCommand(
             arguments[0],
         };
         return true;
+    }
+
+    if (opcode == 45) {
+        return arguments.size() == 1 &&
+               switchOwnedCompanion(arguments[0]);
     }
 
     if (opcode == 62) {

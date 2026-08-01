@@ -187,6 +187,7 @@ add_library(
   world/player_voice.cpp
   world/quest_state.cpp
   world/retail_save_automatic_items.cpp
+  world/retail_save_companion_progress.cpp
   world/retail_save_extension.cpp
   world/retail_save_file.cpp
   world/retail_save_giant_warehouse.cpp
@@ -204,11 +205,14 @@ add_library(
   world/scenario_world.cpp
   world/transport_catalog.cpp
   world/vendor_stock_generator.cpp
+  world/script/scenario_effect_command.cpp
+  world/script/scenario_placed_effect_command.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
   world/world_scene_companion_combat.cpp
   world/world_scene_companion_explosion.cpp
+  world/world_scene_companion_switch.cpp
   world/world_scene_combat.cpp
   world/world_scene_enemy_combat.cpp
   world/world_scene_effects.cpp

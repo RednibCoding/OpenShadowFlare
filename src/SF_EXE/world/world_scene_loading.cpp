@@ -3,6 +3,7 @@
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
 #include "retail_save_automatic_items.hpp"
+#include "retail_save_companion_progress.hpp"
 #include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
@@ -129,10 +130,17 @@ bool WorldScene::loadInitialScenario(
         }
         std::int32_t mine_count =
             player_item_controller_.mineCount();
-        std::size_t mine_end = magic_end;
-        if (!restoreRetailMineCount(
+        std::size_t companion_progress_end = magic_end;
+        std::size_t mine_end = companion_progress_end;
+        if (!restoreRetailCompanionProgress(
                 payload,
                 magic_end,
+                player_data_,
+                &companion_progress_end,
+                error) ||
+            !restoreRetailMineCount(
+                payload,
+                companion_progress_end,
                 mine_count,
                 &mine_end,
                 error) ||

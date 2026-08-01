@@ -944,6 +944,22 @@ uses the possibly new player level for that cap and table `800 + companion
 type` row 18 for each companion threshold. A gained level rebuilds the summed
 profile and restores full companion life; experience is cleared at the cap.
 
+The level and experience fields in the 0x160-byte record are only the active
+companion's working copy. `0x00440f70` allocates one level array and one
+experience array with the Table 60 row count, initializes every level to one,
+and leaves every experience at zero. Opcode 45 reaches `0x00450500`: it first
+copies the active values into their current array row, selects the requested
+row, loads that row's values back into the record, and clears the defeated
+countdown. It then replaces character `16000000 + player slot` at the hero and
+fills its life to the rebuilt maximum. Selecting the already owned type still
+runs the complete reset.
+
+Before saving, retail synchronizes the active row again. It writes the Table
+60 count, the complete level array, and the complete experience array directly
+after the magic block; the Land Mine count follows them. OpenShadowFlare now
+owns that exact section rather than only skipping it on the way to the Mine
+field, so inactive-companion progression survives swaps and save/load cycles.
+
 The second table row is the value consumed by `0x00450d40`. It is 128 for both
 new characters, producing movement tier five. This is now read through the
 portable `RKC_RPG_TABLE` boundary and owned by `PlayerData`; `PlayerActor`
@@ -987,8 +1003,8 @@ not touch spell level, practice experience, or the bar, and the portable
 runtime does not let its temporary All Spells debug override affect either
 script operation.
 
-After the magic history and Land Mine count, retail writes three 32-bit
-values for later world state, the literal page count ten, ten Giant Warehouse
+After the magic history, companion arrays, and Land Mine count, retail writes
+three 32-bit values for later world state, the literal page count ten, ten Giant Warehouse
 unlock values, and ten ordinary item containers. The selected page is not in
 the stream. OpenShadowFlare restores and replaces the flags and all ten
 containers while preserving the three preceding and all later unmapped
@@ -1061,6 +1077,36 @@ They use object resources 8, 15, and 14 from the first preload list. These
 records are separate from the map's static OBL scenery. Across all 209 retail
 MCT files, the exact sequential decoder reaches 5,203 object and 163 PEOPLE
 records without a resource-list mismatch.
+
+The periodic script path also reaches the shared combat-effect owner. Opcode
+30 enters its handler at `0x0043309b`, evaluates fourteen operands, initializes
+the same 77-word packet used by native attacks, and calls the common
+22-argument request allocator at `0x0042fdc0`. The handler converts operand
+three from degrees with the retail radians constant, projects operands zero
+and one by operand seven, and stores that result as an explicit owner-zero
+origin. It chooses packet word 34 from `21000..21003` when the effect number is
+nonzero or `21007..21009` when it is zero, consuming one value from the shared
+Visual C++ random stream. Packet words 4, 37, 40, 41, 43, and 72 retain the
+other authored values; hit value 9999, packet direction eight, target kind 19,
+and constructor value 21 equal to 200 are fixed by the handler. The shipped
+catalog contains 411 calls in 33 scenarios and every call has exactly fourteen
+operands.
+
+The neighboring packetless placement command is opcode 36 at `0x0043332d`.
+It evaluates operands in the retail order 1, 2, 5, 6, 4, 3, then 0 and sends
+the same allocator a seven-value descriptor: effect number, explicit X/Y,
+display height, chart direction, and right/bottom judgement bounds. Negative
+directions are replaced with eight. Owner, source, target, speed, and angle
+fields are zero, instance is `-1`, constructor value 21 is 200, and the packet
+pointer is null. The judgement pointer contains `{0, 0, right, bottom}`.
+
+The common one-pass handler at `0x0042b860` uses the explicit origin for owner
+kind zero and turns the supplied lower-right bounds into the point judgement
+`{right+1,bottom+1,right+1,bottom+1}`. It runs chart zero for the selected
+direction's complete CAF lifetime. The
+effect switch maps 20007, 20008, and 20009 to OPTION resources 11000005,
+11000006, and 11000007. Those are the only opcode-36 effects in the shipped
+catalog: 353 calls in 26 scenarios, all with exactly seven operands.
 
 Object 200 and the Warehouse at local ID 300 are the first reconstructed
 type-zero pointer actions. The normal world pointer tests opaque cells in
@@ -1150,6 +1196,14 @@ the authored corpus includes 285 0..1 choices and 41 20..40 ranges. The
 portable interpreter receives the next value through its
 host hook, which connects to the shared world random owner rather than
 creating a private script generator.
+
+The immediately preceding arithmetic handlers complete the same writable
+operand family. Opcode 13 at `0x00431b53` keeps the low 32 bits from `imul`.
+Opcode 14 at `0x00431b9b` stores the signed `idiv` quotient, and opcode 15 at
+`0x00431bef` stores its remainder. Both division handlers test the divisor
+first and return through the successful command epilogue without writing when
+it is zero. The shipped catalog contains 67, 126, and 195 calls respectively;
+all have two operands and all destinations are temporary flags.
 
 The first authored cross-map path is now traced end to end. During the
 scenario update at `0x004305d0`, status kind three resolves its character to a

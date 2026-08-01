@@ -303,6 +303,9 @@ services exercise them; unknown values still fail loudly.
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
+| 13 | `0x00431b53` | Multiply a writable operand by an evaluated value with 32-bit wrapping |
+| 14 | `0x00431b9b` | Divide a writable operand by an evaluated signed divisor |
+| 15 | `0x00431bef` | Store the signed remainder from an evaluated divisor |
 | 16 | `0x00417260` | Ask the world to play an authored sample, optionally range-limited at its evaluated position |
 | 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
@@ -311,13 +314,16 @@ services exercise them; unknown values still fail loudly.
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
+| 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
+| 45 | `0x004336a9` | Switch the local player's owned companion to an evaluated Table 60 row |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 49 | `0x0043389b` | Retain one raw scenario message in the executable's map-caption buffer |
 | 50 | `0x004321cb` | Write the current scenario-entry value to an operand |
@@ -386,6 +392,44 @@ remaining calls with script-calculated upper bounds. The portable
 script library asks its host for the next random value, keeping the DLL
 boundary free of world ownership while still sharing the world's retail
 random sequence.
+
+Opcodes 13, 14, and 15 continue the writable arithmetic group started by add
+and subtract. All three evaluate the destination value before the right-hand
+operand and write back through the common operand owner. Multiply keeps the
+low 32 bits of the x86 `imul`. Divide and remainder use signed `idiv`, so the
+quotient truncates toward zero and the remainder keeps the dividend's sign.
+A zero divisor returns successfully without changing the destination. The
+retail scripts contain 67 multiplies, 126 divides, and 195 remainders across
+34, 45, and 27 scenarios respectively; every destination is a temporary flag.
+
+Opcode 30 is the script-facing form of the executable's normal effect request,
+not a new scenario-actor class. All 411 shipped calls have fourteen operands,
+spread across 33 scenarios. The first two supply an origin, operand three is a
+direction in degrees, and operand seven projects that origin along the retail
+sine/cosine path. The remaining values fill the effect number, speed, height,
+direction and selected words of the ordinary 77-word combat packet. One
+shared random draw selects packet presentation `21000..21003` for nonzero
+effects or `21007..21009` for effect zero. Near Remote Town's first periodic
+spawn sentence uses the position of object `10055000`, submits effect two,
+then follows it with a separately authored positional sound. The script
+library only evaluates the fourteen operands; the world owns packet
+construction, the random stream, and the effect runtime.
+
+Opcode 36 is the lighter packetless version used for placed scenery effects.
+Its seven operands are effect number, world X, world Y, display height,
+direction, judgement right, and judgement bottom. A negative direction becomes
+direction eight. The request has owner kind zero, an explicit origin, zero
+left/top bounds, no combat packet, and the same common constructor value 200.
+The one-pass owner adds one to the supplied lower-right coordinates and uses
+that result for all four edges of its point judgement rectangle.
+
+The shipped scripts contain 353 calls across 26 scenarios. Effects 20007 and
+20008 occur 34 times each and select OPTION resources 11000005 and 11000006;
+their omitted presentation values evaluate to height zero, direction eight,
+and zero-sized bounds. Effect 20009 occurs 285 times, selects resource
+11000007, uses height 150, and supplies directions one, three, five, or seven.
+Near Remote Town's sentence 18 is the first direct fixture, and its periodic
+status creates the six live visuals authored for that update.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its
@@ -524,6 +568,16 @@ three of its live entity-state keys. Opcode 44 reads player-record offset
 `0x140`, which is the currently owned companion type, through a typed host
 query. Remote Town combines those commands with the play-mode operand to keep
 the selected companion from also appearing as a clickable town NPC.
+
+Opcode 45 is the matching mutation. It evaluates one Table 60 row, stores the
+active dog's level and experience in the player's per-companion arrays, then
+loads the selected row's saved values and clears its defeated countdown.
+`0x00450500` destroys and recreates character `16000000 + player slot` at the
+hero with full life, so a swap does not reuse the town PEOPLE actor or retain
+the previous dog's presentation state. The six shipped calls cover companion
+types zero through five across scenarios `00000000`, `01000000`, and
+`03900005`. Remote Town's four `Swap Dogs` choices are therefore ordinary SCS
+branches; the portable world does not contain a name-based companion menu.
 
 Opcode 62 evaluates a quest ID, a new state, and a network-notification flag.
 Ordinary updates write the new state and issue cue `0x41`. State `2` is the

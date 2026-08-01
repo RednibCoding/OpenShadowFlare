@@ -275,6 +275,13 @@ but consumes the next value from the world's shared retail random owner. That
 keeps random branching and spawn setup faithful without making the portable
 DLL library depend on world or core classes.
 
+Periodic scenario effects use that same split. Opcode 30 stays a fourteen-
+operand command in `RKC_RPG_SCRIPT`; a focused world helper turns those values
+into the retail projected origin, combat packet, shared-random impact visual,
+and ordinary effect request. Near Remote Town therefore uses its authored
+effect-and-sound sentences without teaching the interpreter about world actor
+or rendering classes.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
@@ -411,8 +418,10 @@ the Tower maps which invoke it are not yet part of the playable scenario set.
 Scenario position,
 script-created world
 actors, and the remaining dynamic state are still pending. Companion type,
-level, experience, and its defeated countdown already live in the preserved
-player record.
+active level, active experience, and its defeated countdown already live in
+the preserved player record. The following Table 60-sized save arrays retain
+level and experience for all six companions, and the scripted `Swap Dogs`
+choice rebuilds the selected PARTNER actor without hardcoded town logic.
 
 Run it with `--smoke-test` to close automatically after three frames.
 
@@ -478,7 +487,9 @@ implementations:
 `WorldScene` is the public facade used by gameplay and rendering, but the work
 behind it is kept in focused pieces: loading, interaction, item preparation,
 script bridging, player appearance, actors, pointer selection, quests, and
-movement all have their own implementation units or objects. The executable
+movement all have their own implementation units or objects. Executable-owned
+native script actions use focused builders under `world/script/` before
+`WorldScene` hands their typed requests to the normal world owners. The
 runtime follows the same rule. Frame composition lives in `RuntimeRenderer`,
 gameplay panels in `GameplayUiController`, and state hook wiring in
 `state_bindings`; the main runtime is only responsible for lifecycle and the

@@ -27,6 +27,24 @@ std::int32_t wrappedArithmetic(
     return static_cast<std::int32_t>(result);
 }
 
+std::int32_t wrappedMultiply(
+    std::int32_t left,
+    std::int32_t right) {
+    const std::uint32_t result =
+        static_cast<std::uint32_t>(left) *
+        static_cast<std::uint32_t>(right);
+    constexpr std::uint32_t signed_maximum =
+        static_cast<std::uint32_t>(
+            std::numeric_limits<std::int32_t>::max());
+    if (result <= signed_maximum) {
+        return static_cast<std::int32_t>(result);
+    }
+    return -1 -
+           static_cast<std::int32_t>(
+               std::numeric_limits<std::uint32_t>::max() -
+               result);
+}
+
 std::string formatMessage(
     const std::string& message,
     const std::array<std::int32_t, 20>& parameters) {
@@ -374,6 +392,35 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 13:
+    case 14:
+    case 15: {
+        if (command.operands.size() < 2) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t left =
+            readOperand(command.operands[0]);
+        const std::int32_t right =
+            readOperand(command.operands[1]);
+        if (command.opcode != 13 && right == 0) {
+            return StepResult::complete;
+        }
+        if (command.opcode != 13 &&
+            left == std::numeric_limits<std::int32_t>::min() &&
+            right == -1) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t result =
+            command.opcode == 13
+                ? wrappedMultiply(left, right)
+                : command.opcode == 14
+                    ? left / right
+                    : left % right;
+        if (!writeOperand(command.operands[0], result)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 5:
     case 9:
     case 18:
@@ -390,6 +437,10 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(2);
     case 24:
         return executeNative(3);
+    case 30:
+        return executeNative(14);
+    case 36:
+        return executeNative(7);
     case 34: {
         if (command.operands.size() < 2) {
             return StepResult::invalid_script;
@@ -475,6 +526,8 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 45:
+        return executeNative(1);
     case 49: {
         if (command.operands.empty() || !script_) {
             return StepResult::invalid_script;

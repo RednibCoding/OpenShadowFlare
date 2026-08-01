@@ -9,11 +9,14 @@
 #include "render/gameplay_renderer.hpp"
 #include "render/player_level_up_notice_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
-#include "world/ground_item.hpp"
+#include "world/actor_direction.hpp"
 #include "world/enemy_effect_impact.hpp"
+#include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
+#include "world/script/scenario_effect_command.hpp"
+#include "world/script/scenario_placed_effect_command.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>
@@ -37,6 +40,145 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool testScenarioEffectCommand() {
+    const std::vector<std::int32_t> arguments{
+        1000,
+        2000,
+        2,
+        90,
+        60,
+        123,
+        150,
+        50,
+        -1,
+        2,
+        42,
+        43,
+        41,
+        72,
+    };
+    osf::CombatEffectSpawnRequest request;
+    if (!check(
+            osf::makeScenarioEffectRequest(
+                arguments, 7, request),
+            "The retail scenario-effect descriptor was rejected.")) {
+        return false;
+    }
+    if (!check(
+            request.valid && request.effect_number == 2 &&
+                request.owner_kind == 0 &&
+                request.source_character_number == -1 &&
+                request.target_kind == 19 &&
+                request.target_identifier == -1 &&
+                request.constructor_value_6 == 60 &&
+                request.constructor_value_7 == 150 &&
+                std::abs(
+                    request.direction_radians -
+                    90.0 * osf::kRetailRadiansPerDegree) <
+                    0.000001 &&
+                request.has_explicit_origin &&
+                request.origin.x == 1000 &&
+                request.origin.y == 1951 &&
+                !request.has_source_judgement &&
+                request.constructor_value_12 == 0 &&
+                request.has_packet && request.packet_kind == 8 &&
+                request.instance_identifier == -1 &&
+                request.constructor_value_16 == 0 &&
+                request.constructor_value_17 == 0 &&
+                request.constructor_value_18 == 0 &&
+                request.constructor_value_19 == 0 &&
+                request.constructor_value_20 == 0 &&
+                request.constructor_value_21 == 200 &&
+                request.constructor_value_22 == 0,
+            "Opcode 30 did not reproduce the retail 22-field effect "
+            "request.")) {
+        return false;
+    }
+    const osf::CombatPacket& packet = request.packet;
+    if (!check(
+            packet[0] == 2 && packet[2] == -1 &&
+                packet[4] == 123 && packet[32] == -1 &&
+                packet[34] == 21003 && packet[35] == 8 &&
+                packet[36] == 9999 && packet[37] == 1 &&
+                packet[40] == 41 && packet[41] == 42 &&
+                packet[42] == 0 &&
+                packet[43] == 43 && packet[72] == 72 &&
+                packet[73] == -1 && packet[74] == -1 &&
+                packet[75] == 8 &&
+                packet.written_words.count() == 33,
+            "Opcode 30 did not reproduce its retail combat packet.")) {
+        return false;
+    }
+
+    std::vector<std::int32_t> alternate = arguments;
+    alternate[2] = 0;
+    return check(
+        osf::makeScenarioEffectRequest(alternate, 5, request) &&
+            request.packet[34] == 21009 &&
+            !osf::makeScenarioEffectRequest(
+                std::vector<std::int32_t>(13), 0, request),
+        "Opcode 30 did not preserve its alternate impact family or "
+        "operand count.");
+}
+
+bool testScenarioPlacedEffectCommand() {
+    const std::vector<std::int32_t> arguments{
+        20009,
+        1234,
+        5678,
+        150,
+        -1,
+        -1,
+        1,
+    };
+    osf::CombatEffectSpawnRequest request;
+    if (!check(
+            osf::makeScenarioPlacedEffectRequest(
+                arguments, request),
+            "The retail placed-effect descriptor was rejected.")) {
+        return false;
+    }
+    if (!check(
+            request.valid && request.effect_number == 20009 &&
+                request.owner_kind == 0 &&
+                request.source_character_number == 0 &&
+                request.target_kind == 0 &&
+                request.target_identifier == 0 &&
+                request.constructor_value_6 == 0 &&
+                request.constructor_value_7 == 150 &&
+                request.direction_radians == 0.0 &&
+                request.has_explicit_origin &&
+                request.origin.x == 1234 &&
+                request.origin.y == 5678 &&
+                request.has_source_judgement &&
+                request.source_judgement.left == 0 &&
+                request.source_judgement.top == 0 &&
+                request.source_judgement.right == -1 &&
+                request.source_judgement.bottom == 1 &&
+                request.constructor_value_12 == 0 &&
+                !request.has_packet && request.packet_kind == 8 &&
+                request.instance_identifier == -1 &&
+                request.constructor_value_16 == 0 &&
+                request.constructor_value_17 == 0 &&
+                request.constructor_value_18 == 0 &&
+                request.constructor_value_19 == 0 &&
+                request.constructor_value_20 == 0 &&
+                request.constructor_value_21 == 200 &&
+                request.constructor_value_22 == 0,
+            "Opcode 36 did not reproduce the retail 22-field effect "
+            "request.")) {
+        return false;
+    }
+    return check(
+        osf::retailCombatEffectResourceId(20007) == 11000005 &&
+            osf::retailCombatEffectResourceId(20008) == 11000006 &&
+            osf::retailCombatEffectResourceId(20009) == 11000007 &&
+            !osf::makeScenarioPlacedEffectRequest(
+                std::vector<std::int32_t>(6), request),
+        "Opcode 36 did not preserve its retail OPTION resources or "
+        "operand count.");
 }
 
 bool updateUntilConversation(
@@ -2351,6 +2493,38 @@ bool testRetailScenarioObjectOverride() {
             osf::ScenarioEntityStateChannel::judgement),
     }};
     world.update();
+    const std::array<std::int32_t, 6> effect_directions{{
+        1, 1, 1, 5, 5, 7,
+    }};
+    const std::array<std::int32_t, 6> effect_bounds{{
+        2, 2, 2, 0, 0, 2,
+    }};
+    if (!check(
+            world.combatEffects().size() ==
+                effect_directions.size(),
+            "Near Remote Town did not create its first retail "
+            "placed-effect group.")) {
+        return false;
+    }
+    for (std::size_t index = 0;
+         index < effect_directions.size(); ++index) {
+        const osf::CombatEffectActor& effect =
+            world.combatEffects()[index];
+        const osf::ObjectBounds& bounds = effect.judgement();
+        if (!check(
+                effect.effectNumber() == 20009 &&
+                    effect.resourceId() == 11000007 &&
+                    effect.direction() == effect_directions[index] &&
+                    effect.displayHeight() == 150 &&
+                    bounds.left == effect_bounds[index] &&
+                    bounds.top == effect_bounds[index] &&
+                    bounds.right == effect_bounds[index] &&
+                    bounds.bottom == effect_bounds[index],
+                "A live opcode-36 effect lost its retail resource, "
+                "direction, height, or judgement.")) {
+            return false;
+        }
+    }
     first = findObject(1030);
     second = findObject(1031);
     const std::array<std::int32_t, 3> first_after{{
@@ -4227,6 +4401,102 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    if (!check(
+            companion_world.commandWorldInteraction(
+                gravity_pointer.x,
+                gravity_pointer.y) &&
+                updateUntilConversation(companion_world, 5000) &&
+                companion_world.conversationRequiresSelection(),
+            "Gravity's companion menu could not be reopened for a live "
+            "swap.")) {
+        return false;
+    }
+    companion_world.chooseConversationOption(2);
+    if (!check(
+            !companion_world.conversationActive() &&
+                companion_world.playerData().companionType() == 1 &&
+                companion_world.playerData().companionLevel() == 1 &&
+                companion_world.hasCompanion() &&
+                companion_world.companion().profile().type == 1 &&
+                companion_world.companion().profile().name == "Gravity" &&
+                companion_world.companion().currentLife() ==
+                    companion_world.companion().maximumLife() &&
+                companion_world.companion().position().x ==
+                    companion_world.playerWorldX() &&
+                companion_world.companion().position().y ==
+                    companion_world.playerWorldY(),
+            "Opcode 45 did not replace the owned companion at the player "
+            "with full life and its own saved profile.")) {
+        return false;
+    }
+    companion_world.update();
+    if (!check(
+            companion_world.npcs()[3].visible() &&
+                companion_world.npcs()[3].pointerEnabled() &&
+                companion_world.npcs()[3].judgementEnabled() &&
+                !companion_world.npcs()[4].visible() &&
+                !companion_world.npcs()[4].pointerEnabled() &&
+                !companion_world.npcs()[4].judgementEnabled() &&
+                companion_world.npcs()[5].visible() &&
+                companion_world.npcs()[6].visible(),
+            "Remote Town's periodic scripts did not exchange the old and "
+            "new town companion actors after a swap.")) {
+        return false;
+    }
+    const std::filesystem::path companion_save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_companion_swap_test";
+    const std::filesystem::path companion_save_path =
+        companion_save_root / "Save" / "0000.Ssv";
+    std::error_code companion_cleanup_error;
+    std::filesystem::remove_all(
+        companion_save_root, companion_cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                companion_save_path,
+                companion_world.playerData(),
+                companion_world.itemDatabase(),
+                companion_world.playerInventory(),
+                companion_world.playerEquipment(),
+                companion_world.playerBelt(),
+                companion_world.playerSpecialItems(),
+                companion_world.retailSaveProgress(),
+                companion_world.playerMagic(),
+                companion_world.playerMineCount(),
+                companion_world.playerGiantWarehouse(),
+                companion_world.playerAutomaticItems(),
+                0x34,
+                &error),
+            "The swapped companion state could not be written to a retail "
+            "save.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::PlayerLoadRequest companion_save_request;
+    companion_save_request.source =
+        osf::PlayerDataSource::retail_save;
+    companion_save_request.save_path = companion_save_path;
+    osf::WorldScene restored_companion_world;
+    const bool restored_companion =
+        restored_companion_world.loadInitialScenario(
+            data_root, companion_save_request, &error);
+    std::filesystem::remove_all(
+        companion_save_root, companion_cleanup_error);
+    if (!check(
+            restored_companion &&
+                restored_companion_world.playerData().companionType() == 1 &&
+                restored_companion_world.hasCompanion() &&
+                restored_companion_world.companion().profile().type == 1 &&
+                restored_companion_world.companion().profile().name ==
+                    "Gravity" &&
+                restored_companion_world.companion().currentLife() ==
+                    restored_companion_world.companion().maximumLife(),
+            "The selected companion or its live full-life actor did not "
+            "survive save and load.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
     osf::WorldScene harley_world;
     if (!check(
             harley_world.loadInitialScenario(
@@ -4387,7 +4657,9 @@ bool testRetailRemoteTown() {
 }  // namespace
 
 int main() {
-    return testGroundItemCreation() &&
+    return testScenarioEffectCommand() &&
+                   testScenarioPlacedEffectCommand() &&
+                   testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
                    testPlayerLevelUpNoticeLayout() &&
                    testEnemyNameplatePresentation() &&

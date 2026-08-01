@@ -614,12 +614,15 @@ New characters begin with availability zero, level one, experience zero, and
 all bar slots set to `-1`. The Magic window and cast path only treat
 availability value `3` as learned. OpenShadowFlare restores and rewrites this
 whole section while preserving the later unmapped payload. Retail follows it
-with a counted history block (two parallel signed 32-bit arrays) and then the
-current Land Mine count. OpenShadowFlare locates and rewrites that count at
-the same boundary. Sparse portable saves that do not yet contain the later
-retail state keep it in the versioned portable tail instead. The next retail
-fields are three still-separate world values, a literal Giant Warehouse page
-count of ten, ten page-unlock values, and ten normal 9-by-10 item containers.
+with the Table 60 companion count, one signed 32-bit level per companion, one
+signed 32-bit experience value per companion, and then the current Land Mine
+count. The 0x160-byte player record holds the active companion's working row;
+these arrays preserve progression for every inactive dog. OpenShadowFlare now
+restores and rewrites that complete block at the exact boundary. Older sparse
+portable saves seed missing companion rows at level one and experience zero.
+The next retail fields are three still-separate world values, followed by the
+literal Giant Warehouse page count ten, ten page-unlock values, and ten normal
+9-by-10 item containers.
 Those flags and containers are now restored and rewritten too. The currently
 selected page is UI-only and is not serialized. Four more normal item
 containers immediately follow the Giant Warehouse
