@@ -32,6 +32,8 @@ public:
 
     const PlayerMagicState& state() const;
     bool learned(std::int32_t spell) const;
+    bool permanentlyLearned(std::int32_t spell) const;
+    bool learnPermanently(std::int32_t spell);
     std::int32_t availability(std::int32_t spell) const;
     std::int32_t level(std::int32_t spell) const;
     std::int32_t experience(std::int32_t spell) const;
@@ -48,14 +50,19 @@ public:
     bool selectSpell(std::int32_t spell);
     bool targeting() const;
     void setTargeting(bool targeting);
+    void setAllSpellsAvailable(bool available);
+    bool allSpellsAvailable() const;
 
 private:
     static bool validSpell(std::int32_t spell);
     static bool validBarSlot(std::int32_t slot);
 
     PlayerMagicState state_;
+    std::array<std::int32_t, bar_slot_count>
+        temporary_bar_slots_{};
     std::int32_t selected_spell_ = -1;
     bool targeting_ = false;
+    bool all_spells_available_ = false;
 };
 
 }  // namespace osf

@@ -1,7 +1,9 @@
 #include "player_inventory.hpp"
 
+#include "item_condition.hpp"
 #include "item_database.hpp"
 #include "item_grid.hpp"
+#include "item_repair.hpp"
 
 #include <algorithm>
 #include <array>
@@ -14,6 +16,17 @@ namespace {
 
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
+constexpr std::int32_t kMineCategory = 4;
+constexpr std::int32_t kMineDefinition = 1;
+
+bool belongsInBackpack(
+    std::int32_t category,
+    std::int32_t definition_id) {
+    // Retail routes Mine ownership to the player's dedicated counter before
+    // any ordinary container is considered.
+    return category != kMineCategory ||
+           definition_id != kMineDefinition;
+}
 
 std::int32_t initiallyIdentified(
     const ItemDefinition& definition) {
@@ -140,7 +153,8 @@ bool PlayerInventory::add(
 }
 
 bool PlayerInventory::store(InventoryItem item) {
-    if (item.quantity <= 0 ||
+    if (!belongsInBackpack(item.category, item.definition_id) ||
+        item.quantity <= 0 ||
         item.width <= 0 ||
         item.height <= 0) {
         return false;
@@ -203,7 +217,8 @@ bool PlayerInventory::add(
     std::int32_t height,
     std::int32_t durability,
     std::int32_t identified) {
-    if (quantity <= 0) {
+    if (!belongsInBackpack(category, definition_id) ||
+        quantity <= 0) {
         return false;
     }
 
@@ -284,7 +299,13 @@ bool PlayerInventory::identify(
         return false;
     }
 
-    InventoryItem& item = items_[item_index];
+    return identifyInventoryItem(items_[item_index]);
+}
+
+bool identifyInventoryItem(InventoryItem& item) {
+    if (item.identified != 0) {
+        return false;
+    }
     item.identified = 1;
     std::size_t offset = item.retail_state.size();
     if (item.category == 0 || item.category == 1) {
@@ -302,10 +323,63 @@ bool PlayerInventory::identify(
     return true;
 }
 
+std::int32_t PlayerInventory::identifyAll() {
+    std::int32_t identified = 0;
+    for (InventoryItem& item : items_) {
+        identified += identifyInventoryItem(item) ? 1 : 0;
+    }
+    return identified;
+}
+
+bool PlayerInventory::hasUnidentifiedItems() const {
+    return std::any_of(
+        items_.begin(),
+        items_.end(),
+        [](const InventoryItem& item) {
+            return item.identified == 0;
+        });
+}
+
+std::int32_t PlayerInventory::repairPrice(
+    const ItemDatabase& database,
+    const TableData& value_parameters) const {
+    std::uint32_t price = 0;
+    for (const InventoryItem& item : items_) {
+        const ItemDefinition* definition =
+            database.find(item.category, item.definition_id);
+        if (definition) {
+            price += static_cast<std::uint32_t>(
+                retailItemRepairPrice(
+                    item, *definition, value_parameters));
+        }
+    }
+    return static_cast<std::int32_t>(price);
+}
+
+std::int32_t PlayerInventory::repairAll(
+    const ItemDatabase& database) {
+    std::int32_t repaired = 0;
+    for (InventoryItem& item : items_) {
+        const ItemDefinition* definition =
+            database.find(item.category, item.definition_id);
+        if (definition &&
+            itemCurrentDurability(item, *definition) !=
+                definition->maximum_durability &&
+            repairInventoryItem(item, *definition)) {
+            ++repaired;
+        }
+    }
+    return repaired;
+}
+
 InventoryPlacementResult PlayerInventory::place(
     InventoryItem item,
     std::int32_t grid_x,
     std::int32_t grid_y) {
+    if (!belongsInBackpack(
+            item.category, item.definition_id)) {
+        return {};
+    }
     item.grid_x = grid_x;
     item.grid_y = grid_y;
     if (!itemFitsGrid(item, grid_width, grid_height)) {
@@ -371,6 +445,33 @@ PlayerInventory::items() const {
     return items_;
 }
 
+bool PlayerInventory::contains(
+    std::int32_t category,
+    std::int32_t definition_id) const {
+    return std::any_of(
+        items_.begin(), items_.end(),
+        [category, definition_id](const InventoryItem& item) {
+            return item.category == category &&
+                   item.definition_id == definition_id;
+        });
+}
+
+bool PlayerInventory::removeFirst(
+    std::int32_t category,
+    std::int32_t definition_id) {
+    const auto found = std::find_if(
+        items_.begin(), items_.end(),
+        [category, definition_id](const InventoryItem& item) {
+            return item.category == category &&
+                   item.definition_id == definition_id;
+        });
+    if (found == items_.end()) {
+        return false;
+    }
+    items_.erase(found);
+    return true;
+}
+
 std::int32_t PlayerInventory::gold() const {
     std::int64_t total = 0;
     for (const InventoryItem& item : items_) {
@@ -383,6 +484,41 @@ std::int32_t PlayerInventory::gold() const {
         std::min<std::int64_t>(
             total,
             std::numeric_limits<std::int32_t>::max()));
+}
+
+bool PlayerInventory::spendGold(std::int32_t amount) {
+    if (amount < 0 || gold() < amount) {
+        return false;
+    }
+    std::vector<InventoryItem> updated = items_;
+    std::int32_t remaining = amount;
+    for (auto item = updated.begin();
+         item != updated.end() && remaining > 0;) {
+        if (item->category != kGoldCategory ||
+            item->definition_id != kGoldDefinition) {
+            ++item;
+            continue;
+        }
+        const std::int32_t spent =
+            std::min(item->quantity, remaining);
+        item->quantity -= spent;
+        remaining -= spent;
+        if (item->quantity == 0) {
+            item = updated.erase(item);
+        } else {
+            ++item;
+        }
+    }
+    if (remaining != 0) {
+        return false;
+    }
+    items_ = std::move(updated);
+    return true;
+}
+
+bool PlayerInventory::creditGold(std::int32_t amount) {
+    return amount >= 0 &&
+           (amount == 0 || add(kGoldCategory, kGoldDefinition, amount));
 }
 
 }  // namespace osf

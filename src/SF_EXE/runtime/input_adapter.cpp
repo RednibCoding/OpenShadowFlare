@@ -86,6 +86,10 @@ bool InputAdapter::handleEvent(
             backspace_held_ = false;
         } else if (std::strcmp(event.key, "r") == 0) {
             run_held_ = false;
+        } else if (std::strcmp(event.key, "p") == 0) {
+            increased_power_held_ = false;
+        } else if (std::strcmp(event.key, "b") == 0) {
+            land_mine_held_ = false;
         } else if (std::strcmp(event.key, "h") == 0) {
             help_held_ = false;
         } else if (std::strcmp(event.key, "q") == 0) {
@@ -94,10 +98,14 @@ bool InputAdapter::handleEvent(
             map_held_ = false;
         } else if (std::strcmp(event.key, "m") == 0) {
             magic_held_ = false;
+        } else if (std::strcmp(event.key, "s") == 0) {
+            status_held_ = false;
         } else if (std::strcmp(event.key, "i") == 0) {
             inventory_held_ = false;
         } else if (std::strcmp(event.key, "x") == 0) {
             special_items_held_ = false;
+        } else if (std::strcmp(event.key, "f12") == 0) {
+            debug_held_ = false;
         }
         return true;
     }
@@ -184,6 +192,20 @@ bool InputAdapter::handleEvent(
         }
         run_held_ = true;
     } else if (
+        std::strcmp(event.key, "p") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!increased_power_held_) {
+            increased_power_pressed_ = true;
+        }
+        increased_power_held_ = true;
+    } else if (
+        std::strcmp(event.key, "b") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!land_mine_held_) {
+            land_mine_pressed_ = true;
+        }
+        land_mine_held_ = true;
+    } else if (
         std::strcmp(event.key, "h") == 0 &&
         current_state == GameState::gameplay) {
         if (!help_held_) {
@@ -212,6 +234,13 @@ bool InputAdapter::handleEvent(
         }
         magic_held_ = true;
     } else if (
+        std::strcmp(event.key, "s") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!status_held_) {
+            gameplay_status_pressed_ = true;
+        }
+        status_held_ = true;
+    } else if (
         std::strcmp(event.key, "i") == 0 &&
         current_state == GameState::gameplay) {
         if (!inventory_held_) {
@@ -225,6 +254,13 @@ bool InputAdapter::handleEvent(
             gameplay_special_items_pressed_ = true;
         }
         special_items_held_ = true;
+    } else if (
+        std::strcmp(event.key, "f12") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!debug_held_) {
+            gameplay_debug_pressed_ = true;
+        }
+        debug_held_ = true;
     }
     return true;
 }
@@ -245,11 +281,15 @@ void InputAdapter::clearTransientInput() {
     character_select_.backspace_pressed = false;
     character_select_.text_input.clear();
     run_toggle_pressed_ = false;
+    increased_power_pressed_ = false;
+    land_mine_pressed_ = false;
     gameplay_options_pressed_ = false;
+    gameplay_debug_pressed_ = false;
     gameplay_help_pressed_ = false;
     gameplay_mission_list_pressed_ = false;
     gameplay_map_pressed_ = false;
     gameplay_magic_pressed_ = false;
+    gameplay_status_pressed_ = false;
     gameplay_inventory_pressed_ = false;
     gameplay_special_items_pressed_ = false;
     gameplay_belt_pocket_pressed_ = -1;
@@ -286,8 +326,20 @@ bool InputAdapter::runTogglePressed() const {
     return run_toggle_pressed_;
 }
 
+bool InputAdapter::increasedPowerPressed() const {
+    return increased_power_pressed_;
+}
+
+bool InputAdapter::landMinePressed() const {
+    return land_mine_pressed_;
+}
+
 bool InputAdapter::gameplayOptionsPressed() const {
     return gameplay_options_pressed_;
+}
+
+bool InputAdapter::gameplayDebugPressed() const {
+    return gameplay_debug_pressed_;
 }
 
 bool InputAdapter::gameplayHelpPressed() const {
@@ -304,6 +356,10 @@ bool InputAdapter::gameplayMapPressed() const {
 
 bool InputAdapter::gameplayMagicPressed() const {
     return gameplay_magic_pressed_;
+}
+
+bool InputAdapter::gameplayStatusPressed() const {
+    return gameplay_status_pressed_;
 }
 
 bool InputAdapter::gameplayInventoryPressed() const {

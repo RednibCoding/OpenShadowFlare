@@ -142,6 +142,9 @@ public:
         renderedFrames_ = 0;
         previousTime_ = lwl_time_seconds();
         nextFrame_ = previousTime_;
+        fpsWindowStart_ = previousTime_;
+        fpsWindowFrames_ = 0;
+        framesPerSecond_ = 0;
         gameAccumulator_ = kGameStep;
     }
 
@@ -197,20 +200,37 @@ private:
                 frontendAssets_,
                 savePreview_,
                 gameplayUi_.options(),
+                gameplayUi_.blackjack(),
+                gameplayUi_.debug(),
+                gameplayUi_.equipmentColor(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
                 gameplayUi_.magic(),
+                gameplayUi_.status(),
                 gameplayUi_.missionList(),
                 gameplayUi_.transport(),
+                gameplayUi_.vendor(),
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
+                framesPerSecond_,
                 input_.menu().pointer_x,
                 input_.menu().pointer_y,
             },
             interpolation);
 
         ++renderedFrames_;
+        ++fpsWindowFrames_;
+        const double fps_elapsed =
+            currentTime - fpsWindowStart_;
+        if (fps_elapsed >= 0.5) {
+            framesPerSecond_ = static_cast<std::int32_t>(
+                static_cast<double>(fpsWindowFrames_) /
+                    fps_elapsed +
+                0.5);
+            fpsWindowStart_ = currentTime;
+            fpsWindowFrames_ = 0;
+        }
         if (smokeTest_ && renderedFrames_ >= 3) {
             running_ = false;
         }
@@ -324,6 +344,7 @@ private:
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
             const bool notice_consumed =
+                !gameplayUi_.options().active() &&
                 osf::dismissPlayerLevelUpNoticeAtPointer(
                     input_.menu()
                         .pointer_primary_pressed,
@@ -355,11 +376,15 @@ private:
                     gameplayUi_.inventory().active();
                 const bool special_items_active =
                     gameplayUi_.inventory()
-                        .specialItemsActive();
+                        .leftStorageActive();
                 const bool magic_active =
                     gameplayUi_.magic().active();
+                const bool status_active =
+                    gameplayUi_.status().active();
                 const bool transport_active =
                     gameplayUi_.transport().active();
+                const bool vendor_active =
+                    gameplayUi_.vendor().active();
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed &&
                         !map_active,
@@ -371,10 +396,14 @@ private:
                     input_.pointerPrimaryDown() &&
                         !notice_consumed,
                     input_.runTogglePressed(),
+                    input_.increasedPowerPressed(),
+                    input_.landMinePressed(),
                     map_active ||
                             magic_active ||
+                            status_active ||
                             special_items_active ||
-                            transport_active
+                            transport_active ||
+                            vendor_active
                         ? 320
                         : 0,
                     0,
@@ -434,6 +463,9 @@ private:
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     std::uint32_t gameplayCounter_ = 0;
+    double fpsWindowStart_ = 0.0;
+    std::uint32_t fpsWindowFrames_ = 0;
+    std::int32_t framesPerSecond_ = 0;
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;

@@ -6,6 +6,7 @@
 #include "world/enemy_death_rewards.hpp"
 #include "world/ground_item.hpp"
 #include "world/player_data.hpp"
+#include "world/player_experience_award.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -110,6 +111,41 @@ int main() {
     }
     const std::int32_t old_life =
         player.baseMaximumLife();
+
+    osf::PlayerData scripted_player;
+    if (!check(
+            scripted_player.initializeNew(
+                "Reward", 0, tables, &error),
+            "The scripted-reward player could not be initialized.")) {
+        return 1;
+    }
+    const std::int32_t scripted_threshold =
+        scripted_player.experienceThreshold(tables);
+    const osf::PlayerExperienceAwardResult half_reward =
+        osf::awardRetailPlayerExperiencePercentage(
+            scripted_player, 50, tables);
+    const osf::PlayerExperienceAwardResult full_reward =
+        osf::awardRetailPlayerExperiencePercentage(
+            scripted_player, 100, tables);
+    if (!check(
+            half_reward.experience_awarded ==
+                    scripted_threshold * 50 / 100 &&
+                !half_reward.level_up.level_gained &&
+                full_reward.experience_awarded ==
+                    scripted_threshold &&
+                full_reward.level_up.level_gained &&
+                full_reward.level_up.notice.rfind(
+                    "Level 2\n", 0) == 0 &&
+                full_reward.level_up.notice_counter == 900 &&
+                full_reward.level_up.audio_samples ==
+                    std::vector<std::int32_t>{63} &&
+                scripted_player.level() == 2 &&
+                scripted_player.experience() == 0,
+            "Script percentage experience or its shared level-up "
+            "path differs from retail.")) {
+        return 1;
+    }
+
     osf::EnemyDamageReceiverState defeated;
     defeated.maximum_life = 100;
     defeated.attributed_damage[0] = 100;

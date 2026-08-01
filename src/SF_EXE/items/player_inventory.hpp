@@ -9,6 +9,8 @@
 namespace osf {
 
 struct ItemDefinition;
+class ItemDatabase;
+class TableData;
 
 struct InventoryItem {
     std::int32_t category = -1;
@@ -33,6 +35,7 @@ struct InventoryPlacementResult {
 InventoryItem makeInventoryItem(
     const ItemDefinition& definition,
     std::int32_t quantity = 1);
+bool identifyInventoryItem(InventoryItem& item);
 
 class PlayerInventory {
 public:
@@ -52,6 +55,12 @@ public:
     std::optional<InventoryItem> take(
         std::size_t item_index);
     bool identify(std::size_t item_index);
+    std::int32_t identifyAll();
+    bool hasUnidentifiedItems() const;
+    std::int32_t repairPrice(
+        const ItemDatabase& database,
+        const TableData& value_parameters) const;
+    std::int32_t repairAll(const ItemDatabase& database);
     InventoryPlacementResult place(
         InventoryItem item,
         std::int32_t grid_x,
@@ -61,7 +70,15 @@ public:
         std::int32_t grid_x,
         std::int32_t grid_y) const;
     const std::vector<InventoryItem>& items() const;
+    bool contains(
+        std::int32_t category,
+        std::int32_t definition_id) const;
+    bool removeFirst(
+        std::int32_t category,
+        std::int32_t definition_id);
     std::int32_t gold() const;
+    bool spendGold(std::int32_t amount);
+    bool creditGold(std::int32_t amount);
 
 private:
     bool add(

@@ -39,6 +39,7 @@ struct PlayerSpellDescriptor {
     PlayerSpellDamageModel damage_model =
         PlayerSpellDamageModel::magical_flat;
     std::int32_t constructor_delay_override = -1;
+    std::int32_t projectile_display_height = 200;
 };
 
 bool playerSpellDescriptor(
@@ -212,6 +213,27 @@ bool playerSpellDescriptor(
             0,
         };
         return true;
+    case 21:
+        descriptor.effect_number = 10021;
+        descriptor.packet_subtype = 0;
+        descriptor.impact_effect = -1;
+        descriptor.target_mask = 4;
+        descriptor.requires_target = true;
+        descriptor.use_table_travel_speed = true;
+        descriptor.use_explicit_origin = false;
+        descriptor.use_source_judgement = false;
+        descriptor.constructor_uses_level = true;
+        descriptor.use_physical_defense = false;
+        descriptor.random_ordinary_impact = true;
+        descriptor.packet_value_72 = 0;
+        descriptor.use_player_effect_source = true;
+        descriptor.use_target_identifier = true;
+        descriptor.packet_type = 3;
+        descriptor.damage_model =
+            PlayerSpellDamageModel::magical_flat;
+        descriptor.constructor_delay_override = -1;
+        descriptor.projectile_display_height = 0;
+        return true;
     default:
         return false;
     }
@@ -305,7 +327,9 @@ CombatEffectSpawnRequest buildPlayerSpellCast(
                   3)
             : 0;
     request.constructor_value_7 =
-        descriptor.use_table_travel_speed ? 200 : 0;
+        descriptor.use_table_travel_speed
+            ? descriptor.projectile_display_height
+            : 0;
     request.direction_radians =
         descriptor.requires_target
             ? retailAngleForVector(

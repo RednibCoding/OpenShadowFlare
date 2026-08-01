@@ -2,6 +2,7 @@
 #include "core/game_config.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "states/game_state.hpp"
+#include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
 
@@ -773,6 +774,79 @@ bool testGameplayOptionsMenu() {
         "Escape did not close the gameplay options menu.");
 }
 
+bool testGameplayDebugMenu() {
+    osf::GameplayDebugMenu menu;
+    osf::GameplayDebugResult result =
+        menu.update({true});
+    if (!check(
+            menu.active() && result.play_confirm_sound,
+            "F12 did not open the gameplay debug menu.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 118});
+    if (!check(
+            menu.fpsCounterEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug FPS toggle did not use its displayed hit box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 134});
+    if (!check(
+            menu.allSpellsEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug all-spells toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 150});
+    if (!check(
+            menu.infiniteLifeEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug infinite-HP toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 166});
+    if (!check(
+            menu.infiniteManaEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug infinite-MP toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 300, 198});
+    if (!check(
+            !menu.active() &&
+                menu.fpsCounterEnabled() &&
+                menu.allSpellsEnabled() &&
+                menu.infiniteLifeEnabled() &&
+                menu.infiniteManaEnabled() &&
+                result.play_confirm_sound,
+            "The debug CLOSE row changed settings or failed to close.")) {
+        return false;
+    }
+    menu.update({true});
+    result = menu.update({false, true});
+    return check(
+        !menu.active() &&
+            menu.fpsCounterEnabled() &&
+            menu.allSpellsEnabled() &&
+            menu.infiniteLifeEnabled() &&
+            menu.infiniteManaEnabled() &&
+            result.play_confirm_sound,
+        "Escape did not close the debug menu while retaining its runtime "
+        "settings.");
+}
+
 }  // namespace
 
 int main() {
@@ -786,7 +860,8 @@ int main() {
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
         !testGameplayClickAndHoldMovement() ||
-        !testGameplayOptionsMenu()) {
+        !testGameplayOptionsMenu() ||
+        !testGameplayDebugMenu()) {
         return 1;
     }
     return 0;

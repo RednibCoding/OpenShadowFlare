@@ -9,11 +9,13 @@
 namespace osf {
 
 struct RetailSaveProgress {
-    // These are the executable's operand-type 12, 10, and 11 arrays, in the
-    // same order in which FUN_0044b580 writes them.
-    std::vector<std::int32_t> scenario_flags;
-    std::vector<std::int32_t> transport_flags;
+    // FUN_0044b580 writes the executable's operand-type 12, 10, and 11
+    // arrays in this order. Type 12 is the quest state consumed by the
+    // Mission List; type 11 retains broader script progression such as
+    // Ostare's completed opening conversation.
     std::vector<std::int32_t> quest_flags;
+    std::vector<std::int32_t> transport_flags;
+    std::vector<std::int32_t> script_state_flags;
     bool running = false;
 };
 

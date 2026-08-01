@@ -12,22 +12,28 @@ void PlayerMagic::initializeNew() {
     state_.levels.fill(1);
     state_.experience.fill(0);
     state_.bar_slots.fill(-1);
+    temporary_bar_slots_.fill(-1);
     selected_spell_ = -1;
     targeting_ = false;
+    all_spells_available_ = false;
 }
 
 void PlayerMagic::restore(
     const PlayerMagicState& state) {
     state_ = state;
+    temporary_bar_slots_.fill(-1);
     selected_spell_ = -1;
     targeting_ = false;
+    all_spells_available_ = false;
 }
 
 void PlayerMagic::clear() {
     state_ = {};
     state_.bar_slots.fill(-1);
+    temporary_bar_slots_.fill(-1);
     selected_spell_ = -1;
     targeting_ = false;
+    all_spells_available_ = false;
 }
 
 const PlayerMagicState& PlayerMagic::state() const {
@@ -40,11 +46,29 @@ bool PlayerMagic::learned(std::int32_t spell) const {
     return availability(spell) == 3;
 }
 
+bool PlayerMagic::permanentlyLearned(
+    std::int32_t spell) const {
+    return validSpell(spell) &&
+           state_.availability[
+               static_cast<std::size_t>(spell)] == 3;
+}
+
+bool PlayerMagic::learnPermanently(std::int32_t spell) {
+    if (!validSpell(spell)) {
+        return false;
+    }
+    state_.availability[
+        static_cast<std::size_t>(spell)] = 3;
+    return true;
+}
+
 std::int32_t PlayerMagic::availability(
     std::int32_t spell) const {
     return validSpell(spell)
-        ? state_.availability[
-              static_cast<std::size_t>(spell)]
+        ? (all_spells_available_
+               ? 3
+               : state_.availability[
+                     static_cast<std::size_t>(spell)])
         : 0;
 }
 
@@ -67,8 +91,11 @@ std::int32_t PlayerMagic::experience(
 std::int32_t PlayerMagic::barSlot(
     std::int32_t slot) const {
     return validBarSlot(slot)
-        ? state_.bar_slots[
-              static_cast<std::size_t>(slot)]
+        ? (all_spells_available_
+               ? temporary_bar_slots_[
+                     static_cast<std::size_t>(slot)]
+               : state_.bar_slots[
+                     static_cast<std::size_t>(slot)])
         : -1;
 }
 
@@ -80,17 +107,18 @@ bool PlayerMagic::assignBarSlot(
         !learned(spell)) {
         return false;
     }
+    auto& bar_slots = all_spells_available_
+        ? temporary_bar_slots_
+        : state_.bar_slots;
     bool changed =
-        state_.bar_slots[
-            static_cast<std::size_t>(slot)] != spell;
-    for (std::int32_t& assigned : state_.bar_slots) {
+        bar_slots[static_cast<std::size_t>(slot)] != spell;
+    for (std::int32_t& assigned : bar_slots) {
         if (assigned == spell) {
             assigned = -1;
             changed = true;
         }
     }
-    state_.bar_slots[
-        static_cast<std::size_t>(slot)] = spell;
+    bar_slots[static_cast<std::size_t>(slot)] = spell;
     return changed;
 }
 
@@ -98,9 +126,11 @@ bool PlayerMagic::clearBarSlot(std::int32_t slot) {
     if (!validBarSlot(slot)) {
         return false;
     }
+    auto& bar_slots = all_spells_available_
+        ? temporary_bar_slots_
+        : state_.bar_slots;
     std::int32_t& assigned =
-        state_.bar_slots[
-            static_cast<std::size_t>(slot)];
+        bar_slots[static_cast<std::size_t>(slot)];
     if (assigned == -1) {
         return false;
     }
@@ -113,7 +143,8 @@ bool PlayerMagic::train(
     bool companion_mode,
     const TableDatabase& tables) {
     if (!validSpell(spell) ||
-        (availability(spell) & 1) == 0 ||
+        (state_.availability[
+             static_cast<std::size_t>(spell)] & 1) == 0 ||
         level(spell) >= 20 ||
         (companion_mode
              ? spell < 7 || spell > 9
@@ -172,6 +203,27 @@ void PlayerMagic::setTargeting(bool targeting) {
     if (targeting_) {
         selected_spell_ = -1;
     }
+}
+
+void PlayerMagic::setAllSpellsAvailable(bool available) {
+    if (all_spells_available_ == available) {
+        return;
+    }
+    all_spells_available_ = available;
+    if (available) {
+        temporary_bar_slots_ = state_.bar_slots;
+        return;
+    }
+    temporary_bar_slots_.fill(-1);
+    if (selected_spell_ >= 0 &&
+        state_.availability[
+            static_cast<std::size_t>(selected_spell_)] != 3) {
+        selected_spell_ = -1;
+    }
+}
+
+bool PlayerMagic::allSpellsAvailable() const {
+    return all_spells_available_;
 }
 
 bool PlayerMagic::validSpell(std::int32_t spell) {

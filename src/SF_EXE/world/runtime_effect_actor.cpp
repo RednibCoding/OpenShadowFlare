@@ -179,6 +179,8 @@ bool RuntimeEffectActor::initialize(
     direction_radians_ = request.direction_radians;
     animation_direction_ = request.animation_direction;
     homing_active_ = request.home_toward_target;
+    target_approach_active_ =
+        !request.fixed_target_diagonal_approach;
     visual_ = visual;
     return true;
 }
@@ -208,7 +210,49 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
 
     previous_position_ = position_;
     has_updated_ = true;
-    if (request_.home_toward_target) {
+    if (request_.fixed_target_diagonal_approach &&
+        !target_approach_active_) {
+        if (target_approach_delay_ < 0) {
+            target_approach_delay_ =
+                request_.random_start_delay > 0
+                    ? random.next() %
+                          request_.random_start_delay
+                    : 0;
+        }
+        if (target_approach_delay_counter_ <
+            target_approach_delay_) {
+            ++target_approach_delay_counter_;
+            return result;
+        }
+        target_approach_active_ = true;
+        counter_ = 0;
+        movement_counter_ = 0;
+    }
+
+    if (request_.fixed_target_diagonal_approach) {
+        const RuntimeEffectTargetSnapshot* target =
+            homingTarget(request_, targets);
+        if (!target) {
+            expired_ = true;
+            result.expired = true;
+            return result;
+        }
+        const std::int32_t remaining = std::max(
+            request_.target_approach_updates -
+                movement_counter_,
+            0);
+        const std::int32_t offset =
+            retailMultiply(
+                remaining, request_.travel_speed) /
+            4;
+        position_ = {
+            retailAdd(target->position.x, offset + 1),
+            retailSubtract(target->position.y, offset - 1),
+        };
+        result.intended_position = position_;
+        movement_counter_ =
+            retailAdd(movement_counter_, 1);
+    } else if (request_.home_toward_target) {
         if (homing_active_) {
             const RuntimeEffectTargetSnapshot* target =
                 homingTarget(request_, targets);
@@ -451,6 +495,18 @@ RuntimeEffectActor::additionalDisplayStatus() const {
     return request_.additional_display_status;
 }
 
+std::int32_t RuntimeEffectActor::redStrength() const {
+    return request_.red_strength;
+}
+
+std::int32_t RuntimeEffectActor::greenStrength() const {
+    return request_.green_strength;
+}
+
+std::int32_t RuntimeEffectActor::blueStrength() const {
+    return request_.blue_strength;
+}
+
 std::int32_t RuntimeEffectActor::counter() const {
     return counter_;
 }
@@ -464,7 +520,9 @@ std::int32_t RuntimeEffectActor::lifetime() const {
 }
 
 bool RuntimeEffectActor::visible() const {
-    return request_.visible;
+    return request_.visible &&
+        (!request_.fixed_target_diagonal_approach ||
+         target_approach_active_);
 }
 
 bool RuntimeEffectActor::expired() const {
@@ -484,8 +542,9 @@ bool RuntimeEffectActor::targetCollisionActive() const {
 bool RuntimeEffectActor::needsTargetSnapshots() const {
     return targetCollisionActive() ||
            (!expired_ &&
-            request_.home_toward_target &&
-            homing_active_);
+            ((request_.home_toward_target &&
+              homing_active_) ||
+             request_.fixed_target_diagonal_approach));
 }
 
 bool RuntimeEffectActor::hasPacket() const {

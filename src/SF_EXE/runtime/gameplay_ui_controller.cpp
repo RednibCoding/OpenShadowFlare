@@ -7,11 +7,14 @@
 #include "runtime/input_adapter.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
+#include "ui/quest_notice_layout.hpp"
 #include "world/player_data.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
@@ -31,10 +34,20 @@ std::int32_t gameplayCameraAnchorX(
 GameplayMagicModel gameplayMagicModel(
     const PlayerMagic& magic) {
     GameplayMagicModel model;
-    model.availability =
-        magic.state().availability;
-    model.bar_slots =
-        magic.state().bar_slots;
+    for (std::size_t spell = 0;
+         spell < model.availability.size();
+         ++spell) {
+        model.availability[spell] =
+            magic.availability(
+                static_cast<std::int32_t>(spell));
+    }
+    for (std::size_t slot = 0;
+         slot < model.bar_slots.size();
+         ++slot) {
+        model.bar_slots[slot] =
+            magic.barSlot(
+                static_cast<std::int32_t>(slot));
+    }
     model.selected_spell =
         magic.selectedSpell();
     model.targeting = magic.targeting();
@@ -45,12 +58,67 @@ GameplayMagicModel gameplayMagicModel(
 
 void GameplayUiController::reset() {
     options_.close();
+    blackjack_.close();
+    debug_.close();
+    equipment_color_.close();
     inventory_.close();
     map_.close();
     magic_.close();
+    status_.close();
     mission_list_.close();
     transport_.close();
+    vendor_.close();
     pending_action_ = GameplayOptionsAction::none;
+}
+
+bool GameplayUiController::gameplayPanelsActive() const {
+    return equipment_color_.active() ||
+           inventory_.anyItemPanelActive() ||
+           map_.active() ||
+           magic_.active() ||
+           status_.active() ||
+           mission_list_.active() ||
+           transport_.active() ||
+           vendor_.active();
+}
+
+void GameplayUiController::closeVendor(WorldScene& world) {
+    if (!vendor_.active()) {
+        return;
+    }
+    if (VendorInventory* stock =
+            world.vendorInventory(vendor_.inventoryIndex())) {
+        vendor_.update(
+            {true, false, 0, 0},
+            *stock,
+            inventory_,
+            world.playerInventory(),
+            world.itemDatabase());
+    } else {
+        vendor_.close();
+    }
+}
+
+void GameplayUiController::closeGameplayPanels(WorldScene& world) {
+    closeVendor(world);
+    inventory_.close();
+    map_.close();
+    magic_.close();
+    status_.close();
+    mission_list_.close();
+    transport_.close();
+    if (equipment_color_.active()) {
+        constexpr std::array<EquipmentSlot, 3> slots{{
+            EquipmentSlot::main_hand,
+            EquipmentSlot::off_hand,
+            EquipmentSlot::body,
+        }};
+        const auto& colors = equipment_color_.originalColors();
+        for (std::size_t index = 0; index < slots.size(); ++index) {
+            world.setPlayerEquipmentColor(slots[index], colors[index]);
+        }
+        equipment_color_.close();
+    }
 }
 
 bool GameplayUiController::update(
@@ -70,9 +138,16 @@ bool GameplayUiController::update(
         return false;
     }
 
+    world.playerMagic().setAllSpellsAvailable(
+        debug_.allSpellsEnabled());
+    world.configurePlayerDebugResources(
+        debug_.infiniteLifeEnabled(),
+        debug_.infiniteManaEnabled());
+
     // Retail routes a dead player directly through its locked death action.
     // Menus cannot pause that action or expose save commands before revival.
     if (world.playerMotion() == PlayerMotion::defeated) {
+        closeVendor(world);
         reset();
         world.setCameraAnchor(320, 240);
         return false;
@@ -93,6 +168,173 @@ bool GameplayUiController::update(
         return true;
     }
 
+    if (blackjack_.active()) {
+        const GameplayBlackjackResult result =
+            blackjack_.update(
+                {
+                    input.pointerPrimaryDown(),
+                    input.menu().pointer_x,
+                    input.menu().pointer_y,
+                },
+                random);
+        if (result.audio_sample >= 0) {
+            audio.playGameplayEffect(result.audio_sample);
+        }
+        if (result.completed) {
+            world.completeBlackjack(
+                static_cast<std::int32_t>(result.outcome));
+        }
+        return true;
+    }
+
+    const bool debug_was_active = debug_.active();
+    const bool debug_toggle = input.gameplayDebugPressed();
+    if (debug_toggle && !debug_was_active) {
+        options_.close();
+        world.cancelPlayerMovement();
+    }
+    if (debug_was_active || debug_toggle) {
+        const GameplayDebugResult result =
+            debug_.update({
+                debug_toggle,
+                input.gameplayOptionsPressed(),
+                input.menu().pointer_primary_pressed,
+                input.menu().pointer_x,
+                input.menu().pointer_y,
+            });
+        world.playerMagic().setAllSpellsAvailable(
+            debug_.allSpellsEnabled());
+        world.configurePlayerDebugResources(
+            debug_.infiniteLifeEnabled(),
+            debug_.infiniteManaEnabled());
+        if (result.play_click_sound) {
+            audio.playOptionsClick();
+        }
+        if (result.play_confirm_sound) {
+            audio.playOptionsConfirm();
+        }
+        return true;
+    }
+
+    if (equipment_color_.active()) {
+        const GameplayEquipmentColorResult result =
+            equipment_color_.update({
+                input.gameplayOptionsPressed() ||
+                    input.pointerSecondaryPressed(),
+                input.menu().pointer_primary_pressed,
+                input.menu().pointer_x,
+                input.menu().pointer_y,
+            });
+        constexpr std::array<EquipmentSlot, 3> slots{{
+            EquipmentSlot::main_hand,
+            EquipmentSlot::off_hand,
+            EquipmentSlot::body,
+        }};
+        if (result.color_changed) {
+            world.setPlayerEquipmentColor(
+                slots[static_cast<std::size_t>(result.target)],
+                result.color);
+        }
+        if (result.cancelled) {
+            const auto& colors = equipment_color_.originalColors();
+            for (std::size_t index = 0; index < slots.size(); ++index) {
+                world.setPlayerEquipmentColor(slots[index], colors[index]);
+            }
+        }
+        if (result.play_move_sound) {
+            audio.playGameplayEffect(58);
+        }
+        return true;
+    }
+
+    // Escape belongs to the visible gameplay panels before it belongs to
+    // Settings. Left and right panels can be open together, so one press
+    // closes the complete panel pair and a later press opens Settings.
+    if (input.gameplayOptionsPressed() &&
+        !options_.active() &&
+        gameplayPanelsActive()) {
+        closeGameplayPanels(world);
+        world.cancelPlayerIdentifyMode();
+        world.setCameraAnchor(320, 240);
+        return true;
+    }
+
+    // The options and confirmation pages are modal. Process them before
+    // inventory, status, magic, and other panels so an open panel cannot
+    // claim a click intended for the confirmation dialog.
+    if (updateOptions(
+            input,
+            world,
+            audio,
+            game_config,
+            config_dirty,
+            random,
+            player,
+            save_preview,
+            shadow_opacity)) {
+        return true;
+    }
+
+    const bool land_mine_hud_click =
+        input.menu().pointer_primary_pressed &&
+        input.menu().pointer_x > 495 &&
+        input.menu().pointer_x < 512 &&
+        input.menu().pointer_y > 423 &&
+        input.menu().pointer_y < 440;
+    if (!world.conversationActive() &&
+        land_mine_hud_click &&
+        world.placePlayerLandMine()) {
+        audio.playGameplayEffect(58);
+        return true;
+    }
+
+    const bool increased_power_hud_click =
+        input.menu().pointer_primary_pressed &&
+        input.menu().pointer_x > 24 &&
+        input.menu().pointer_x < 59 &&
+        input.menu().pointer_y > 407 &&
+        input.menu().pointer_y < 431;
+    if (!world.conversationActive() &&
+        increased_power_hud_click &&
+        world.activatePlayerIncreasedPower()) {
+        audio.playGameplayEffect(58);
+        world.cancelPlayerMovement();
+        return true;
+    }
+
+    const bool quest_notice_hidden =
+        world.conversationActive() ||
+        inventory_.anyItemPanelActive() ||
+        map_.active() ||
+        magic_.active() ||
+        status_.active() ||
+        mission_list_.active() ||
+        transport_.active() ||
+        vendor_.active();
+    if (!quest_notice_hidden &&
+        input.menu().pointer_primary_pressed) {
+        const ActiveQuestShortcutLayout shortcut;
+        const bool shortcut_clicked =
+            activeQuestShortcutVisible(world.quests()) &&
+            activeQuestShortcutContains(
+                shortcut,
+                input.menu().pointer_x,
+                input.menu().pointer_y);
+        QuestNoticeLayout layout;
+        const bool notice_clicked =
+            buildQuestNoticeLayout(
+                world.quests(), world.missions(), layout) &&
+            questNoticeContains(
+                layout,
+                input.menu().pointer_x,
+                input.menu().pointer_y);
+        if (shortcut_clicked || notice_clicked) {
+            mission_list_.open();
+            world.cancelPlayerMovement();
+            return true;
+        }
+    }
+
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
@@ -103,10 +345,12 @@ bool GameplayUiController::update(
             }
             const bool left_panel_active =
                 magic_.active() ||
+                status_.active() ||
                 map_.active() ||
                 mission_list_.active() ||
                 transport_.active() ||
-                inventory_.specialItemsActive();
+                vendor_.active() ||
+                inventory_.leftStorageActive();
             world.setCameraAnchor(
                 gameplayCameraAnchorX(
                     left_panel_active,
@@ -114,10 +358,21 @@ bool GameplayUiController::update(
                 240);
             return false;
         }
+        if (service.kind == GameplayServiceKind::blackjack) {
+            closeGameplayPanels(world);
+            options_.close();
+            debug_.close();
+            blackjack_.open();
+            world.cancelPlayerMovement();
+            world.setCameraAnchor(320, 240);
+            return true;
+        }
         options_.close();
         map_.close();
         magic_.close();
+        status_.close();
         mission_list_.close();
+        closeVendor(world);
         world.cancelPlayerMovement();
         if (service.kind == GameplayServiceKind::transport) {
             transport_.open();
@@ -129,21 +384,89 @@ bool GameplayUiController::update(
             service.kind ==
             GameplayServiceKind::toggle_special_items) {
             transport_.close();
-            if (inventory_.specialItemsActive()) {
+            const bool giant = service.argument != 0;
+            const bool requested_active = giant
+                ? inventory_.giantWarehouseActive()
+                : inventory_.specialItemsActive();
+            if (requested_active) {
                 inventory_.closeSpecialItems();
                 world.setCameraAnchor(
                     gameplayCameraAnchorX(
                         false, inventory_.active()),
                     240);
             } else {
-                inventory_.openSpecialItems();
+                if (giant) {
+                    inventory_.openGiantWarehouse();
+                } else {
+                    inventory_.openSpecialItems();
+                }
                 world.setCameraAnchor(
                     gameplayCameraAnchorX(
                         true, inventory_.active()),
                     240);
             }
+        } else if (
+            service.kind == GameplayServiceKind::equipment_color) {
+            transport_.close();
+            inventory_.close();
+            constexpr std::array<EquipmentSlot, 3> slots{{
+                EquipmentSlot::main_hand,
+                EquipmentSlot::off_hand,
+                EquipmentSlot::body,
+            }};
+            std::array<bool, 3> available{};
+            std::array<std::int32_t, 3> colors{};
+            for (std::size_t index = 0; index < slots.size(); ++index) {
+                available[index] =
+                    world.playerEquipment().item(slots[index]) != nullptr;
+                colors[index] = world.playerEquipmentColor(slots[index]);
+            }
+            equipment_color_.open(available, colors);
+            world.setCameraAnchor(320, 240);
+            return true;
+        } else if (service.kind == GameplayServiceKind::vendor) {
+            transport_.close();
+            inventory_.closeSpecialItems();
+            if (world.vendorInventory(service.argument)) {
+                vendor_.open(service.argument);
+                inventory_.open();
+                world.setCameraAnchor(320, 240);
+            }
         }
         return false;
+    }
+
+    if (vendor_.active()) {
+        VendorInventory* stock =
+            world.vendorInventory(vendor_.inventoryIndex());
+        if (!stock) {
+            vendor_.close();
+        } else {
+            const GameplayVendorResult result = vendor_.update(
+                {
+                    input.pointerSecondaryPressed() &&
+                        input.menu().pointer_y < 412,
+                    input.menu().pointer_primary_pressed,
+                    input.menu().pointer_x,
+                    input.menu().pointer_y,
+                },
+                *stock,
+                inventory_,
+                world.playerInventory(),
+                world.itemDatabase());
+            if (result.item_sound_sample >= 0) {
+                audio.playGameplayEffect(result.item_sound_sample);
+            }
+            if (!vendor_.active()) {
+                world.setCameraAnchor(
+                    gameplayCameraAnchorX(
+                        false, inventory_.active()),
+                    240);
+            }
+            if (result.pointer_consumed) {
+                return true;
+            }
+        }
     }
 
     const bool transport_was_active = transport_.active();
@@ -199,6 +522,61 @@ bool GameplayUiController::update(
         }
     }
 
+    const bool status_was_active = status_.active();
+    const bool status_hud_toggle =
+        input.menu().pointer_primary_pressed &&
+        input.menu().pointer_x >= 524 &&
+        input.menu().pointer_x < 584 &&
+        input.menu().pointer_y >= 440 &&
+        input.menu().pointer_y < 464;
+    const bool status_toggle =
+        (input.gameplayStatusPressed() ||
+         status_hud_toggle) &&
+        (!world.conversationActive() ||
+         status_was_active) &&
+        !options_.active();
+    if (status_toggle && !status_was_active) {
+        map_.close();
+        magic_.close();
+        mission_list_.close();
+        transport_.close();
+        closeVendor(world);
+        inventory_.closeSpecialItems();
+        world.cancelPlayerMovement();
+    } else if (
+        status_was_active &&
+        (input.gameplayMagicPressed() ||
+         input.gameplayMapPressed() ||
+         input.gameplayMissionListPressed() ||
+         input.gameplaySpecialItemsPressed())) {
+        status_.close();
+    }
+    const GameplayStatusResult status_result =
+        status_.update({
+            status_toggle,
+            status_was_active &&
+                (input.gameplayOptionsPressed() ||
+                 (input.pointerSecondaryPressed() &&
+                  input.menu().pointer_y < 412)),
+            input.menu().pointer_primary_pressed,
+            input.menu().pointer_x,
+            input.menu().pointer_y,
+        });
+    if (status_result.switch_to_magic) {
+        magic_.open();
+    }
+    if (status_result.play_move_sound) {
+        audio.playGameplayEffect(58);
+    }
+    if (status_result.pointer_consumed) {
+        world.setCameraAnchor(
+            gameplayCameraAnchorX(
+                status_.active() || magic_.active(),
+                inventory_.active()),
+            240);
+        return true;
+    }
+
     const bool magic_was_active = magic_.active();
     const bool magic_toggle =
         input.gameplayMagicPressed() &&
@@ -207,8 +585,10 @@ bool GameplayUiController::update(
         !options_.active();
     if (magic_toggle && !magic_was_active) {
         map_.close();
+        status_.close();
         mission_list_.close();
         transport_.close();
+        closeVendor(world);
         inventory_.closeSpecialItems();
         world.cancelPlayerMovement();
     } else if (
@@ -219,10 +599,12 @@ bool GameplayUiController::update(
         magic_.close();
     }
     const bool other_left_panel_active =
+        status_.active() ||
         map_.active() ||
         mission_list_.active() ||
         transport_.active() ||
-        inventory_.specialItemsActive();
+        vendor_.active() ||
+        inventory_.leftStorageActive();
     const GameplayMagicResult magic_result =
         magic_.update(
             {
@@ -254,6 +636,9 @@ bool GameplayUiController::update(
         world.playerMagic().setTargeting(
             !world.playerMagic().targeting());
     }
+    if (magic_result.switch_to_status) {
+        status_.open();
+    }
     if (magic_result.play_pick_sound) {
         audio.playGameplayEffect(57);
     }
@@ -263,10 +648,12 @@ bool GameplayUiController::update(
     if (magic_result.pointer_consumed) {
         const bool left_panel_active =
             magic_.active() ||
+            status_.active() ||
             map_.active() ||
             mission_list_.active() ||
             transport_.active() ||
-            inventory_.specialItemsActive();
+            vendor_.active() ||
+            inventory_.leftStorageActive();
         world.setCameraAnchor(
             gameplayCameraAnchorX(
                 left_panel_active,
@@ -340,7 +727,8 @@ bool GameplayUiController::update(
                 world.playerBelt(),
                 world.playerSpecialItems(),
                 world.itemDatabase(),
-                world.playerData().level());
+                world.playerData().level(),
+                &world.playerGiantWarehouse());
         if (result.cancel_identification_requested) {
             world.cancelPlayerIdentifyMode();
         } else if (
@@ -389,7 +777,8 @@ bool GameplayUiController::update(
                     result.world_drop_screen_x,
                     result.world_drop_screen_y);
             inventory_.completeWorldDrop(
-                dropped);
+                dropped,
+                world.playerInventory());
             if (dropped && definition) {
                 audio.playGameplayEffect(
                     retailItemMoveSound(
@@ -397,11 +786,13 @@ bool GameplayUiController::update(
             }
         }
         const bool left_panel_active =
-            inventory_.specialItemsActive() ||
+            inventory_.leftStorageActive() ||
             magic_.active() ||
+            status_.active() ||
             map_.active() ||
             mission_list_.active() ||
-            transport_.active();
+            transport_.active() ||
+            vendor_.active();
         world.setCameraAnchor(
             gameplayCameraAnchorX(
                 left_panel_active,
@@ -472,6 +863,19 @@ bool GameplayUiController::update(
         return true;
     }
 
+    return false;
+}
+
+bool GameplayUiController::updateOptions(
+    InputAdapter& input,
+    WorldScene& world,
+    AudioSystem& audio,
+    GameConfig& game_config,
+    bool& config_dirty,
+    RetailRandom& random,
+    PlayerLoadRequest& player,
+    RetailSavePreview& save_preview,
+    std::int32_t& shadow_opacity) {
     const bool was_active = options_.active();
     const bool toggle =
         input.gameplayOptionsPressed() &&
@@ -527,6 +931,9 @@ bool GameplayUiController::update(
                 world.playerSpecialItems(),
                 world.retailSaveProgress(),
                 world.playerMagic(),
+                world.playerMineCount(),
+                world.playerGiantWarehouse(),
+                world.playerAutomaticItems(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);
@@ -557,12 +964,28 @@ bool GameplayUiController::update(
     return was_active ||
            options_.active() ||
            (input.gameplayOptionsPressed() &&
-            !world.conversationActive());
+            !world.conversationActive()) ||
+           input.gameplayHelpPressed();
 }
 
 const GameplayOptionsMenu&
 GameplayUiController::options() const {
     return options_;
+}
+
+const GameplayBlackjack&
+GameplayUiController::blackjack() const {
+    return blackjack_;
+}
+
+const GameplayDebugMenu&
+GameplayUiController::debug() const {
+    return debug_;
+}
+
+const GameplayEquipmentColor&
+GameplayUiController::equipmentColor() const {
+    return equipment_color_;
 }
 
 const GameplayInventory&
@@ -578,6 +1001,10 @@ const GameplayMagic& GameplayUiController::magic() const {
     return magic_;
 }
 
+const GameplayStatus& GameplayUiController::status() const {
+    return status_;
+}
+
 const GameplayMissionList&
 GameplayUiController::missionList() const {
     return mission_list_;
@@ -586,6 +1013,10 @@ GameplayUiController::missionList() const {
 const GameplayTransport&
 GameplayUiController::transport() const {
     return transport_;
+}
+
+const GameplayVendor& GameplayUiController::vendor() const {
+    return vendor_;
 }
 
 void GameplayUiController::applyConfig(

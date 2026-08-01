@@ -1,6 +1,8 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -25,6 +27,47 @@ std::uint64_t operandKey(const osf::script::Operand& operand) {
              static_cast<std::uint32_t>(operand.type))
          << 32u) |
         static_cast<std::uint32_t>(operand.value);
+}
+
+void appendI32(
+    std::vector<std::uint8_t>& bytes,
+    std::int32_t value) {
+    const std::uint32_t raw = static_cast<std::uint32_t>(value);
+    for (std::uint32_t shift = 0; shift < 32; shift += 8) {
+        bytes.push_back(static_cast<std::uint8_t>(raw >> shift));
+    }
+}
+
+osf::script::ScriptData makeRandomCommandScript() {
+    std::vector<std::uint8_t> bytes{
+        'S', 'c', 'e', 'n', 'a', 'S', 'c', 'r',
+        'i', 'p', 't', 'V', '0', '0', '0', '\0',
+    };
+    appendI32(bytes, 3);
+    for (std::int32_t id = 1000000; id <= 1000002; ++id) {
+        appendI32(bytes, id);
+        appendI32(bytes, -1);
+    }
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    appendI32(bytes, 3);
+    for (std::int32_t destination = 1000000;
+         destination <= 1000002;
+         ++destination) {
+        appendI32(bytes, 39);
+        appendI32(bytes, 3);
+        appendI32(bytes, 1);
+        appendI32(bytes, 20);
+        appendI32(bytes, 1);
+        appendI32(bytes, 40);
+        appendI32(bytes, 4);
+        appendI32(bytes, destination);
+    }
+    osf::script::ScriptData script;
+    script.decode(bytes);
+    return script;
 }
 
 bool testRetailRemoteTown() {
@@ -72,7 +115,6 @@ bool testRetailRemoteTown() {
             "The Remote Town script inventory differs from retail.")) {
         return false;
     }
-
     std::vector<osf::script::MessageEvent> messages;
     std::vector<std::pair<
         std::int32_t,
@@ -82,6 +124,11 @@ bool testRetailRemoteTown() {
     std::int32_t player_level_queries = 0;
     std::int32_t companion_type_queries = 0;
     std::int32_t play_mode_queries = 0;
+    std::int32_t player_gold = 200;
+    bool has_unidentified_items = true;
+    std::array<std::int32_t, 6> repair_prices{{
+        30, 10, 20, 15, 5, 40,
+    }};
     osf::script::Interpreter interpreter({
         [&external_values](const osf::script::Operand& operand) {
             if (operand.type == 6 &&
@@ -108,15 +155,22 @@ bool testRetailRemoteTown() {
         [&messages](const osf::script::MessageEvent& message) {
             messages.push_back(message);
         },
-        [&native_commands](
+        [&native_commands, &external_values](
             std::int32_t opcode,
             const std::vector<std::int32_t>& arguments) {
             native_commands.emplace_back(opcode, arguments);
+            if (opcode == 62 && arguments.size() >= 2) {
+                external_values.insert_or_assign(
+                    operandKey({12, arguments[0]}),
+                    arguments[1]);
+            }
             return true;
         },
         [&player_level_queries,
          &companion_type_queries,
-         &play_mode_queries](
+         &play_mode_queries,
+         &player_gold,
+         &has_unidentified_items](
             osf::script::ValueQuery query,
             std::int32_t& value) {
             switch (query) {
@@ -133,9 +187,59 @@ bool testRetailRemoteTown() {
                 ++play_mode_queries;
                 value = 0;
                 return true;
+            case osf::script::ValueQuery::
+                    local_player_current_life:
+            case osf::script::ValueQuery::
+                    local_player_maximum_life:
+            case osf::script::ValueQuery::
+                    local_player_current_mana:
+            case osf::script::ValueQuery::
+                    local_player_maximum_mana:
+                value = 100;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_condition_current:
+            case osf::script::ValueQuery::
+                    local_player_condition_maximum:
+                value = -1;
+                return true;
+            case osf::script::ValueQuery::local_player_gold:
+                value = player_gold;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_has_unidentified_items:
+                value = has_unidentified_items ? 1 : 0;
+                return true;
+            case osf::script::ValueQuery::
+                    local_player_repair_price:
+            case osf::script::ValueQuery::
+                    local_player_spell_learned:
+            case osf::script::ValueQuery::
+                    local_player_job_selection:
+            case osf::script::ValueQuery::scenario_entry_value:
+            case osf::script::ValueQuery::blackjack_result:
+                return false;
             }
             return false;
         },
+        [&repair_prices](
+            osf::script::ValueQuery query,
+            std::int32_t index,
+            std::int32_t& value) {
+            if (query != osf::script::ValueQuery::
+                    local_player_repair_price ||
+                index < -1 || index > 4) {
+                return false;
+            }
+            value = repair_prices[
+                index < 0
+                    ? repair_prices.size() - 1u
+                    : static_cast<std::size_t>(index)];
+            return true;
+        },
+        {},
+        {},
+        {},
     });
     interpreter.bind(&script);
     if (!check(
@@ -310,6 +414,267 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    external_values.insert_or_assign(
+        operandKey({12, 0}), 2);
+    if (!check(
+            interpreter.startStatus(0, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000021,
+            "Malse did not enter his authored merchant branch after the "
+            "Red Goblin quest completed.")) {
+        return false;
+    }
+
+    external_values.insert_or_assign(
+        operandKey({12, 3}), 2);
+    const auto malse_menu_result =
+        interpreter.startSentence(45, 12000001);
+    if (!check(
+            malse_menu_result ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000013 &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 3 &&
+                messages.back().text.find("~Trade") !=
+                    std::string::npos,
+            "Malse's post-quest interaction did not open his authored "
+            "service choices.")) {
+        return false;
+    }
+    const std::size_t malse_trade_command =
+        native_commands.size();
+    const auto malse_trade_result = interpreter.resume(0);
+    if (!check(
+            malse_trade_result ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == malse_trade_command + 2 &&
+                native_commands[malse_trade_command] ==
+                    std::make_pair(
+                        std::int32_t{5},
+                        std::vector<std::int32_t>{0}) &&
+                native_commands[malse_trade_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's Trade choice did not open vendor inventory zero and "
+            "release the actor.")) {
+        return false;
+    }
+
+    const std::size_t identify_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000017 &&
+                messages.back().text.find(
+                    "It costs 100 gold") != std::string::npos &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 1,
+            "Malse's Identify choice did not query owned items and "
+            "format its retail confirmation.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(0) ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == identify_command + 3 &&
+                native_commands[identify_command] ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{100}) &&
+                native_commands[identify_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{4},
+                        std::vector<std::int32_t>{}) &&
+                native_commands[identify_command + 2] ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Confirming Malse's Identify service did not spend 100 Gold, "
+            "identify the owned items, and release him.")) {
+        return false;
+    }
+
+    player_gold = 200;
+    has_unidentified_items = true;
+    const std::size_t repair_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(2) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 7 &&
+                messages.back().text.find("30 Gold") !=
+                    std::string::npos &&
+                messages.back().text.find("40 Gold") !=
+                    std::string::npos,
+            "Malse's Repair choice did not format the seven retail "
+            "repair prices.")) {
+        return false;
+    }
+    const osf::script::StepResult arms_repair_result =
+        interpreter.resume(0);
+    if (!check(
+            arms_repair_result ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                native_commands.size() == repair_command + 2 &&
+                native_commands[repair_command] ==
+                    std::make_pair(
+                        std::int32_t{9},
+                        std::vector<std::int32_t>{0}) &&
+                native_commands[repair_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{30}),
+            "Malse's Arms repair did not repair the retail equipment "
+            "group and spend its quoted Gold.")) {
+        return false;
+    }
+
+    repair_prices[1] = 0;
+    const std::size_t repaired_item_command = native_commands.size();
+    if (!check(
+            interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000016 &&
+                native_commands.size() == repaired_item_command,
+            "Malse did not reject an already repaired equipment group "
+            "without spending Gold.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014,
+            "Malse did not return from the already-repaired message.")) {
+        return false;
+    }
+
+    player_gold = 4;
+    const std::size_t poor_repair_command = native_commands.size();
+    if (!check(
+            interpreter.resume(4) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000015 &&
+                native_commands.size() == poor_repair_command,
+            "Malse repaired Leg Armor when the player could not afford "
+            "the quoted price.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014,
+            "Malse did not return from the insufficient-Gold message.")) {
+        return false;
+    }
+
+    player_gold = 200;
+    repair_prices[1] = 10;
+    const std::size_t all_repair_command = native_commands.size();
+    if (!check(
+            interpreter.resume(5) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                native_commands.size() == all_repair_command + 6 &&
+                std::equal(
+                    native_commands.begin() +
+                        static_cast<std::ptrdiff_t>(all_repair_command),
+                    native_commands.begin() +
+                        static_cast<std::ptrdiff_t>(all_repair_command + 5),
+                    std::array<std::pair<
+                        std::int32_t,
+                        std::vector<std::int32_t>>, 5>{{
+                        {9, {0}}, {9, {1}}, {9, {2}},
+                        {9, {3}}, {9, {4}},
+                    }}.begin()) &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{80}),
+            "Malse's All Equipped service did not repair every retail "
+            "group and charge their sum.")) {
+        return false;
+    }
+
+    const std::size_t backpack_repair_command = native_commands.size();
+    if (!check(
+            interpreter.resume(6) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000014 &&
+                native_commands.size() == backpack_repair_command + 2 &&
+                native_commands[backpack_repair_command] ==
+                    std::make_pair(
+                        std::int32_t{9},
+                        std::vector<std::int32_t>{-1}) &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{54},
+                        std::vector<std::int32_t>{40}),
+            "Malse's Non-Equipped service did not repair the backpack "
+            "and charge its quoted price.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume(7) ==
+                    osf::script::StepResult::complete &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's Repair QUIT choice did not release the actor.")) {
+        return false;
+    }
+    player_gold = 99;
+    const std::size_t poor_identify_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(0) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000015 &&
+                interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == poor_identify_command + 1 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's Identify confirmation did not reject a player with "
+            "less than 100 Gold before mutating items.")) {
+        return false;
+    }
+
+    has_unidentified_items = false;
+    const std::size_t no_identify_command = native_commands.size();
+    if (!check(
+            interpreter.startSentence(45, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                interpreter.resume(1) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000018 &&
+                interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == no_identify_command + 1 &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's already-identified branch did not show its retail "
+            "message and leave Gold untouched.")) {
+        return false;
+    }
+
+    external_values.insert_or_assign(
+        operandKey({12, 0}), 0);
+
     const std::size_t syria_first_command =
         native_commands.size();
     if (!check(
@@ -350,6 +715,45 @@ bool testRetailRemoteTown() {
                         std::int32_t{19},
                         std::vector<std::int32_t>{12000002}),
             "Syria's opening conversation did not release the actor.")) {
+        return false;
+    }
+    const std::size_t syria_repeat_command =
+        native_commands.size();
+    if (!check(
+            interpreter.startStatus(0, 12000002) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000038 &&
+                native_commands.size() ==
+                    syria_repeat_command + 2 &&
+                native_commands[syria_repeat_command] ==
+                    std::make_pair(
+                        std::int32_t{18},
+                        std::vector<std::int32_t>{12000002}) &&
+                native_commands[syria_repeat_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{21},
+                        std::vector<std::int32_t>{12000002, 0}) &&
+                std::none_of(
+                    native_commands.begin() +
+                        static_cast<std::ptrdiff_t>(
+                            syria_repeat_command),
+                    native_commands.end(),
+                    [](const auto& command) {
+                        return command.first == 62 ||
+                               command.first == 48;
+                    }),
+            "Syria's repeat interaction restarted the Red Goblin quest "
+            "instead of entering her normal blessing dialogue.")) {
+        return false;
+    }
+    if (!check(
+            interpreter.resume() ==
+                    osf::script::StepResult::complete &&
+                native_commands.back() ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000002}),
+            "Syria's repeat blessing did not release the actor.")) {
         return false;
     }
 
@@ -547,6 +951,10 @@ bool testRetailOutdoorChestScript() {
             value = 0;
             return true;
         },
+        {},
+        {},
+        {},
+        {},
     });
     interpreter.bind(&script);
     const osf::script::StepResult result =
@@ -586,11 +994,707 @@ bool testRetailOutdoorChestScript() {
 #endif
 }
 
+bool testRetailRedGoblinDeathStatus() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    osf::script::Interpreter interpreter({
+        [](const osf::script::Operand&) {
+            return std::int32_t{0};
+        },
+        {},
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery query, std::int32_t& value) {
+            if (query != osf::script::ValueQuery::play_mode) {
+                return false;
+            }
+            value = 0;
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    return check(
+        interpreter.startStatus(4, 14010000) ==
+                osf::script::StepResult::complete &&
+            native_commands ==
+                std::vector<std::pair<
+                    std::int32_t,
+                    std::vector<std::int32_t>>>{
+                    {62, {0, 2, 1}},
+                },
+        "The Red Goblin death status did not emit its authored quest "
+        "completion update.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailGiantWarehouseScript() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "99000013" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    osf::script::Interpreter interpreter({
+        [](const osf::script::Operand&) { return std::int32_t{0}; },
+        [](const osf::script::Operand&, std::int32_t) { return true; },
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery, std::int32_t& value) {
+            value = 0;
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    return check(
+        interpreter.startStatus(0, 10000900) ==
+                osf::script::StepResult::complete &&
+            native_commands ==
+                std::vector<std::pair<
+                    std::int32_t,
+                    std::vector<std::int32_t>>>{{41, {1}}},
+        "Tower of Ordeal 12F's Giant Warehouse did not emit the "
+        "nonzero opcode-41 owner branch.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailItemOwnershipCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_regular_file(
+            root / "00000000" / "Scenario.Scs") ||
+        !std::filesystem::is_regular_file(
+            root / "04900001" / "Scenario.Scs") ||
+        !std::filesystem::is_regular_file(
+            root / "04100000" / "Scenario.Scs")) {
+        return true;
+    }
+
+    osf::script::ScriptData remote_town;
+    osf::script::ScriptData angel_memory;
+    osf::script::ScriptData spell_reward;
+    std::string error;
+    if (!remote_town.load(
+            root / "00000000" / "Scenario.Scs", &error) ||
+        !angel_memory.load(
+            root / "04900001" / "Scenario.Scs", &error) ||
+        !spell_reward.load(
+            root / "04100000" / "Scenario.Scs", &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    std::vector<std::pair<std::int32_t, std::int32_t>> queries;
+    std::vector<std::int32_t> spell_queries;
+    osf::script::Interpreter interpreter({
+        {},
+        [](const osf::script::Operand&, std::int32_t) {
+            return true;
+        },
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery, std::int32_t& value) {
+            value = 0;
+            return true;
+        },
+        [&spell_queries](
+            osf::script::ValueQuery query,
+            std::int32_t index,
+            std::int32_t& value) {
+            if (query != osf::script::ValueQuery::
+                    local_player_spell_learned) {
+                return false;
+            }
+            spell_queries.push_back(index);
+            value = 1;
+            return true;
+        },
+        {},
+        [&queries](
+            std::int32_t category,
+            std::int32_t definition_id,
+            bool& present) {
+            queries.emplace_back(category, definition_id);
+            present = true;
+            return true;
+        },
+        {},
+    });
+    interpreter.bind(&remote_town);
+    const osf::script::StepResult query_result =
+        interpreter.startSentence(36, -1);
+    const std::int32_t query_flag =
+        interpreter.readTemporaryFlag(1000005);
+    const osf::script::StepResult remove_result =
+        interpreter.startSentence(37, -1);
+    const auto removed = std::find(
+        native_commands.begin(),
+        native_commands.end(),
+        std::pair<std::int32_t, std::vector<std::int32_t>>{
+            59, {4, 99000000}});
+    if (!check(
+            query_result !=
+                    osf::script::StepResult::unsupported_command &&
+                query_result !=
+                    osf::script::StepResult::invalid_script &&
+                queries == std::vector<std::pair<
+                    std::int32_t, std::int32_t>>{{4, 99000000}} &&
+                query_flag == 1 &&
+                remove_result !=
+                    osf::script::StepResult::unsupported_command &&
+                remove_result !=
+                    osf::script::StepResult::invalid_script &&
+                removed != native_commands.end(),
+            "Remote Town's item query/remove commands differ from retail.")) {
+        return false;
+    }
+
+    native_commands.clear();
+    interpreter.bind(&angel_memory);
+    const osf::script::StepResult grant_result =
+        interpreter.startSentence(30, -1);
+    const auto granted = std::find(
+        native_commands.begin(),
+        native_commands.end(),
+        std::pair<std::int32_t, std::vector<std::int32_t>>{
+            75, {4, 98000001}});
+    const auto experience = std::find(
+        native_commands.begin(),
+        native_commands.end(),
+        std::pair<std::int32_t, std::vector<std::int32_t>>{
+            68, {50}});
+    if (!check(
+            grant_result == osf::script::StepResult::complete &&
+            granted != native_commands.end() &&
+            experience != native_commands.end(),
+            "The shipped Spirit Stone reward did not emit retail opcodes "
+            "75 and 68.")) {
+        return false;
+    }
+
+    native_commands.clear();
+    interpreter.bind(&spell_reward);
+    const osf::script::StepResult query_spell_result =
+        interpreter.startSentence(3, -1);
+    const std::int32_t learned_flag =
+        interpreter.readTemporaryFlag(1000005);
+    const osf::script::StepResult learn_spell_result =
+        interpreter.startSentence(13, -1);
+    const bool emitted_learn = std::any_of(
+        native_commands.begin(),
+        native_commands.end(),
+        [](const auto& command) {
+            return command.first == 67 &&
+                   command.second.size() == 1;
+        });
+    return check(
+        query_spell_result !=
+                osf::script::StepResult::unsupported_command &&
+            query_spell_result !=
+                osf::script::StepResult::invalid_script &&
+            !spell_queries.empty() &&
+            learned_flag == 1 &&
+            learn_spell_result == osf::script::StepResult::complete &&
+            emitted_learn,
+        "The shipped spell query/reward path did not execute retail "
+        "opcodes 69 and 67.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailJobCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "03900003" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    std::int32_t job_queries = 0;
+    osf::script::Interpreter interpreter({
+        {},
+        {},
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [&job_queries](
+            osf::script::ValueQuery query,
+            std::int32_t& value) {
+            if (query != osf::script::ValueQuery::
+                    local_player_job_selection) {
+                return false;
+            }
+            ++job_queries;
+            value = 2;
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    const osf::script::StepResult query_result =
+        interpreter.startSentence(366, -1);
+    if (!check(
+            query_result == osf::script::StepResult::complete &&
+                job_queries == 1 &&
+                interpreter.readTemporaryFlag(1000014) == 2,
+            "The shipped job query did not execute retail opcode 71.")) {
+        return false;
+    }
+
+    native_commands.clear();
+    const osf::script::StepResult change_result =
+        interpreter.startSentence(381, -1);
+    return check(
+        change_result == osf::script::StepResult::complete &&
+            native_commands.size() == 2 &&
+            native_commands[0] ==
+                std::make_pair(
+                    std::int32_t{70},
+                    std::vector<std::int32_t>{1}) &&
+            native_commands[1].first == 16,
+        "The shipped job-change path did not emit retail opcode 70.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailEquipmentColorCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "01000000" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> commands;
+    osf::script::Interpreter interpreter({
+        {},
+        {},
+        {},
+        [&commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    return check(
+        interpreter.startSentence(212, -1) ==
+                osf::script::StepResult::complete &&
+            commands == std::vector<std::pair<
+                std::int32_t,
+                std::vector<std::int32_t>>>{{72, {}}},
+        "The shipped equipment-color service did not emit retail "
+        "opcode 72 without operands.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailBlackjackCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "99000018" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> commands;
+    std::unordered_map<std::uint64_t, std::int32_t> values;
+    std::int32_t result_queries = 0;
+    osf::script::Interpreter interpreter({
+        [&values](const osf::script::Operand& operand) {
+            const auto found = values.find(operandKey(operand));
+            return found == values.end() ? 0 : found->second;
+        },
+        [&values](
+            const osf::script::Operand& operand,
+            std::int32_t value) {
+            values.insert_or_assign(operandKey(operand), value);
+            return true;
+        },
+        {},
+        [&commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [&result_queries](
+            osf::script::ValueQuery query,
+            std::int32_t& value) {
+            if (query !=
+                osf::script::ValueQuery::blackjack_result) {
+                return false;
+            }
+            ++result_queries;
+            value = 2;
+            return true;
+        },
+        {},
+        {},
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(22, -1) ==
+                    osf::script::StepResult::complete &&
+                commands.size() == 2 &&
+                commands[0].first == 54 &&
+                commands[1] ==
+                    std::make_pair(
+                        std::int32_t{73},
+                        std::vector<std::int32_t>{}),
+            "The shipped Blackjack launch did not emit opcode 73 "
+            "without operands.")) {
+        return false;
+    }
+    const osf::script::StepResult result =
+        interpreter.startSentence(31, -1);
+    return check(
+        result_queries == 1 &&
+            interpreter.readTemporaryFlag(1000004) == 2 &&
+            (result == osf::script::StepResult::complete ||
+             result ==
+                 osf::script::StepResult::waiting_for_message),
+        "Opcode 74 did not publish the dealer-win result to the "
+        "shipped outcome branch.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailScenarioEntryAndCaptionCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00010000" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::unordered_map<std::uint64_t, std::int32_t> values;
+    osf::script::InterpreterHooks hooks;
+    hooks.read_operand = [&values](
+                             const osf::script::Operand& operand) {
+        const auto found = values.find(operandKey(operand));
+        return found == values.end() ? 0 : found->second;
+    };
+    hooks.write_operand = [&values](
+                              const osf::script::Operand& operand,
+                              std::int32_t value) {
+        values.insert_or_assign(operandKey(operand), value);
+        return true;
+    };
+    hooks.query_value = [](osf::script::ValueQuery query,
+                           std::int32_t& value) {
+        if (query !=
+            osf::script::ValueQuery::scenario_entry_value) {
+            return false;
+        }
+        value = 2;
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    const osf::script::StepResult result =
+        interpreter.startStatus(7, -1);
+    const osf::script::ScenarioCaptionEvent& caption =
+        interpreter.caption();
+    return check(
+        result == osf::script::StepResult::complete &&
+            interpreter.readTemporaryFlag(1000003) == 2 &&
+            caption.id == 1000001 &&
+            caption.text == "Dusty Ruins, B2F\n",
+        "Opcodes 49 and 50 did not select the retail Dusty Ruins "
+        "caption from entry two.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailScenarioEntityOverrideCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    osf::script::InterpreterHooks hooks;
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(2, -1) ==
+                    osf::script::StepResult::complete &&
+                calls == std::vector<NativeCall>{
+                    {56, {10001030, 0, 0, 0}},
+                    {56, {10001031, 1, 0, 0}},
+                },
+            "Opcode 56 did not evaluate Near Remote Town's first "
+            "object-override branch.")) {
+        return false;
+    }
+    calls.clear();
+    return check(
+        interpreter.startSentence(3, -1) ==
+                osf::script::StepResult::complete &&
+            calls == std::vector<NativeCall>{
+                {56, {10001030, 1, 0, 0}},
+                {56, {10001031, 0, 0, 0}},
+            },
+        "Opcode 56 did not evaluate Near Remote Town's opposite "
+        "object-override branch.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailInclusiveRandomCommand() {
+    osf::script::ScriptData script = makeRandomCommandScript();
+    if (!check(
+            script.sentences().size() == 1,
+            "The synthetic random-command script did not decode.")) {
+        return false;
+    }
+    const std::array<std::int32_t, 3> draws{{0, 20, 21}};
+    std::size_t next_draw = 0;
+    osf::script::InterpreterHooks hooks;
+    hooks.next_random = [&draws, &next_draw](std::int32_t& value) {
+        if (next_draw >= draws.size()) {
+            return false;
+        }
+        value = draws[next_draw++];
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(0, -1) ==
+                    osf::script::StepResult::complete &&
+                next_draw == draws.size() &&
+                interpreter.readTemporaryFlag(1000000) == 20 &&
+                interpreter.readTemporaryFlag(1000001) == 40 &&
+                interpreter.readTemporaryFlag(1000002) == 20,
+            "Opcode 39 did not preserve retail inclusive bounds or "
+            "random-call order.")) {
+        return false;
+    }
+
+    osf::script::Interpreter missing_random;
+    missing_random.bind(&script);
+    return check(
+        missing_random.startSentence(0, -1) ==
+                osf::script::StepResult::unsupported_command &&
+            missing_random.unsupportedOpcode() == 39,
+        "Opcode 39 ran without an attached retail random stream.");
+}
+
+bool testRetailInclusiveRandomCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    std::size_t binary_choice_count = 0;
+    std::size_t delay_count = 0;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-39 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 39) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 3,
+                        "A shipped opcode-39 call changed shape.")) {
+                    return false;
+                }
+                ++call_count;
+                ++scenario_calls;
+                const osf::script::Operand& lower =
+                    command.operands[0];
+                const osf::script::Operand& upper =
+                    command.operands[1];
+                if (lower.type == 1 && lower.value == 0 &&
+                    upper.type == 1 && upper.value == 1) {
+                    ++binary_choice_count;
+                }
+                if (lower.type == 1 && lower.value == 20 &&
+                    upper.type == 1 && upper.value == 40) {
+                    ++delay_count;
+                }
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 611 && scenario_count == 55 &&
+            binary_choice_count == 285 && delay_count == 41,
+        "The shipped opcode-39 inventory differs from the audited retail "
+        "scripts.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
     return testRetailRemoteTown() &&
                    testRetailOutdoorChestScript() &&
+                   testRetailRedGoblinDeathStatus() &&
+                   testRetailGiantWarehouseScript() &&
+                   testRetailItemOwnershipCommands() &&
+                   testRetailJobCommands() &&
+                   testRetailEquipmentColorCommand() &&
+                   testRetailBlackjackCommands() &&
+                   testRetailScenarioEntryAndCaptionCommands() &&
+                   testRetailScenarioEntityOverrideCommand() &&
+                   testRetailInclusiveRandomCommand() &&
+                   testRetailInclusiveRandomCommandInventory() &&
                    testMalformedScript()
                ? 0
                : 1;

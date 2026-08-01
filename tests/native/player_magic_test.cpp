@@ -9,6 +9,7 @@
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_items.hpp"
 #include "world/retail_save_magic.hpp"
+#include "world/retail_save_mines.hpp"
 #include "world/retail_save_progress.hpp"
 
 #include <cstddef>
@@ -81,6 +82,55 @@ int main() {
         return 1;
     }
 
+    fresh.setAllSpellsAvailable(true);
+    if (!check(
+            fresh.allSpellsAvailable() &&
+                fresh.learned(19) &&
+                fresh.assignBarSlot(0, 19) &&
+                fresh.barSlot(0) == 19 &&
+                fresh.selectSpell(19) &&
+                fresh.state().availability[19] == 0 &&
+                fresh.state().bar_slots[0] == -1,
+            "The temporary all-spells override changed the saved magic "
+            "state or did not expose Counter Burst.")) {
+        return 1;
+    }
+    fresh.setAllSpellsAvailable(false);
+    if (!check(
+            !fresh.allSpellsAvailable() &&
+                !fresh.learned(19) &&
+                fresh.barSlot(0) == -1 &&
+                fresh.selectedSpell() == -1 &&
+                fresh.state().availability[19] == 0 &&
+                fresh.state().bar_slots[0] == -1,
+            "Disabling the all-spells override leaked its selection or "
+            "temporary bar into normal play.")) {
+        return 1;
+    }
+
+    fresh.setAllSpellsAvailable(true);
+    if (!check(
+            !fresh.permanentlyLearned(20) &&
+                fresh.learnPermanently(20) &&
+                fresh.permanentlyLearned(20) &&
+                fresh.state().availability[20] == 3 &&
+                !fresh.learnPermanently(-1) &&
+                !fresh.learnPermanently(
+                    static_cast<std::int32_t>(
+                        osf::PlayerMagic::spell_count)),
+            "Permanent spell learning did not update the saved retail "
+            "availability independently of the debug override.")) {
+        return 1;
+    }
+    fresh.setAllSpellsAvailable(false);
+    if (!check(
+            fresh.learned(20) &&
+                fresh.permanentlyLearned(20),
+            "A permanently learned spell disappeared with the debug "
+            "override.")) {
+        return 1;
+    }
+
     std::vector<std::uint8_t> payload(
         osf::PlayerData::retail_record_size, 0x5a);
     const std::size_t items_end = payload.size();
@@ -100,6 +150,74 @@ int main() {
                 &progress_end,
                 &error),
             "The progress fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    osf::RetailSaveProgress restored_progress;
+    std::size_t restored_progress_end = 0;
+    if (!check(
+            osf::restoreRetailProgress(
+                payload,
+                items_end,
+                restored_progress,
+                &restored_progress_end,
+                &error) &&
+                restored_progress_end == progress_end &&
+                restored_progress.quest_flags ==
+                    progress.quest_flags &&
+                restored_progress.transport_flags ==
+                    progress.transport_flags &&
+                restored_progress.script_state_flags ==
+                    progress.script_state_flags &&
+                restored_progress.running,
+            "The retail type-12, type-10, and type-11 progress arrays "
+            "did not round-trip in executable order.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::vector<std::uint8_t> legacy_payload = payload;
+    osf::RetailSaveProgress legacy_written{
+        progress.script_state_flags,
+        progress.transport_flags,
+        progress.quest_flags,
+        progress.running,
+    };
+    if (!check(
+            osf::replaceRetailProgress(
+                legacy_payload,
+                items_end,
+                legacy_written,
+                nullptr,
+                &error) &&
+                legacy_payload.size() >= 8,
+            "The legacy progress-order fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    // Portable extension version one accidentally wrote type 11 first and
+    // type 12 third. Mark the deliberately swapped fixture as version one;
+    // the reader must migrate it without losing development saves.
+    legacy_payload[legacy_payload.size() - 8] = 1;
+    legacy_payload[legacy_payload.size() - 7] = 0;
+    legacy_payload[legacy_payload.size() - 6] = 0;
+    legacy_payload[legacy_payload.size() - 5] = 0;
+    osf::RetailSaveProgress migrated_progress;
+    if (!check(
+            osf::restoreRetailProgress(
+                legacy_payload,
+                items_end,
+                migrated_progress,
+                nullptr,
+                &error) &&
+                migrated_progress.quest_flags ==
+                    progress.quest_flags &&
+                migrated_progress.transport_flags ==
+                    progress.transport_flags &&
+                migrated_progress.script_state_flags ==
+                    progress.script_state_flags &&
+                migrated_progress.running,
+            "Portable version-one progress did not migrate from its "
+            "old swapped flag order.")) {
         std::cerr << error << '\n';
         return 1;
     }
@@ -147,6 +265,54 @@ int main() {
                 restored.state().bar_slots ==
                     fixture.state().bar_slots,
             "The retail magic stream did not round-trip exactly.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
+    std::size_t mine_end = 0;
+    if (!check(
+            osf::replaceRetailMineCount(
+                payload,
+                magic_end,
+                7,
+                &mine_end,
+                &error),
+            "The portable mine-count fixture could not be serialized.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::int32_t restored_mines = 5;
+    if (!check(
+            osf::restoreRetailMineCount(
+                payload,
+                magic_end,
+                restored_mines,
+                nullptr,
+                &error) &&
+                restored_mines == 7 &&
+                mine_end == magic_end,
+            "The portable mine count did not round-trip after magic.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    // Progress owns the running bit, but rewriting it must preserve the
+    // mine field owned by the adjacent save component.
+    progress.running = false;
+    if (!check(
+            osf::replaceRetailProgress(
+                payload,
+                items_end,
+                progress,
+                &progress_end,
+                &error) &&
+                osf::restoreRetailMineCount(
+                    payload,
+                    magic_end,
+                    restored_mines,
+                    nullptr,
+                    &error) &&
+                restored_mines == 7,
+            "Rewriting progress discarded the portable mine count.")) {
         std::cerr << error << '\n';
         return 1;
     }
@@ -228,8 +394,6 @@ int main() {
         return 1;
     }
 
-    std::int32_t parsed_saves = 0;
-    std::int32_t learned_spells = 0;
     for (std::int32_t slot = 0; slot < 4; ++slot) {
         const std::filesystem::path save =
             game_root / "Save" /
@@ -280,20 +444,6 @@ int main() {
             std::cerr << error << '\n';
             return 1;
         }
-        ++parsed_saves;
-        for (std::int32_t spell = 0;
-             spell <
-                 static_cast<std::int32_t>(
-                     osf::PlayerMagic::spell_count);
-             ++spell) {
-            learned_spells +=
-                retail_magic.learned(spell) ? 1 : 0;
-        }
-    }
-    if (!check(
-            parsed_saves == 4 && learned_spells > 0,
-            "The shipped retail saves did not prove the magic parser.")) {
-        return 1;
     }
     return 0;
 }

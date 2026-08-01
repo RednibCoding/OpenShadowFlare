@@ -442,6 +442,7 @@ EnemyActorUpdate EnemyActor::update(
         if (action_counter_ >=
             frame_count + kDeathFadeUpdates - 1) {
             expired_ = true;
+            result.death_finished = true;
             result.expired = true;
             return result;
         }
@@ -702,6 +703,13 @@ void EnemyActor::setStateValue(
     ScenarioEntityStateChannel channel,
     std::int32_t value) {
     state_.setValue(channel, value);
+}
+
+void EnemyActor::setStateOverride(
+    std::int32_t visible,
+    std::int32_t pointer,
+    std::int32_t judgement) {
+    state_.setOverride(visible, pointer, judgement);
 }
 
 std::int32_t EnemyActor::id() const {

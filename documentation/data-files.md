@@ -613,8 +613,22 @@ and quest/conversation state. After them retail writes the spell state as:
 New characters begin with availability zero, level one, experience zero, and
 all bar slots set to `-1`. The Magic window and cast path only treat
 availability value `3` as learned. OpenShadowFlare restores and rewrites this
-whole section while preserving the later unmapped payload. Scenario position,
-mines, and the rest of that later state are still pending.
+whole section while preserving the later unmapped payload. Retail follows it
+with a counted history block (two parallel signed 32-bit arrays) and then the
+current Land Mine count. OpenShadowFlare locates and rewrites that count at
+the same boundary. Sparse portable saves that do not yet contain the later
+retail state keep it in the versioned portable tail instead. The next retail
+fields are three still-separate world values, a literal Giant Warehouse page
+count of ten, ten page-unlock values, and ten normal 9-by-10 item containers.
+Those flags and containers are now restored and rewritten too. The currently
+selected page is UI-only and is not serialized. Four more normal item
+containers immediately follow the Giant Warehouse
+pages. They are the automatic-item pages selected by the final category-four
+`Item.Ibn` fields and searched by script opcodes 58 and 59. OpenShadowFlare
+restores and rewrites all four at that exact boundary. Sparse portable saves
+use late-item state version two; version one saves which only carried Giant
+Warehouse data still load with four empty automatic pages. Scenario position
+and the rest of the later state are still pending.
 
 ## Transport destination table
 
@@ -697,6 +711,20 @@ known offsets are shared by all five field blocks:
 | `0x3c` | Ground sprite red strength (`1000` is unchanged) |
 | `0x40` | Ground sprite green strength (`1000` is unchanged) |
 | `0x44` | Ground sprite blue strength (`1000` is unchanged) |
+
+Category-four records use their final three words to describe automatic
+ownership:
+
+| Field offset | Meaning |
+|--------------|---------|
+| `0x58` | Automatic item page, `0` through `3`, or `-1` for the normal item path |
+| `0x5c` | Fixed grid x coordinate in that page |
+| `0x60` | Fixed grid y coordinate in that page |
+
+For example, Malse's Gem uses page zero at `(0,0)`, while Spirit Stone uses
+page two at `(1,0)`. Gold and Land Mines carry `-1` and continue through their
+separate ordinary owners. The fixed placement is data-driven; scripts only
+name the category and definition ID.
 
 Weapon records also expose the fields used by the first equipment slice:
 
@@ -855,6 +883,17 @@ index 0, so its looping track is `System\Game\Music\BGM00.Voc`.
 Character animation frames - loaded via `RKC_RPGSCRN_CHARANIM::ReadCafFile()`
 
 Player animations use format: `%s\Animation.Caf`
+
+Each CAF cell stores a status, draw priority, transparency value, and NJP
+pattern number. Two status bits directly affect rendering:
+
+- `0x08` requests a shadow pass from the matching SDW resource. The normal NJP
+  cell is still drawn as well; this bit does not turn the cell into a
+  shadow-only cell.
+- `0x10` selects additive blending. Retail forwards it through the UPDIB
+  packet flags to the DIB additive blitter, using the cell transparency as
+  the blend amount. Title steam, Transport, and many spell effects rely on
+  this bit for their glow and see-through appearance.
 
 ## Configuration
 

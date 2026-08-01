@@ -45,16 +45,21 @@ add_library(
   osf_items STATIC
   items/item_database.cpp
   items/item_audio.cpp
+  items/item_appearance.cpp
   items/item_condition.cpp
   items/item_instance_values.cpp
   items/item_grid.cpp
   items/item_information.cpp
   items/item_instance_factory.cpp
+  items/item_repair.cpp
   items/new_player_loadout.cpp
+  items/player_automatic_items.cpp
   items/player_belt.cpp
   items/player_equipment.cpp
+  items/player_giant_warehouse.cpp
   items/player_inventory.cpp
   items/player_special_items.cpp
+  items/vendor_inventory.cpp
 )
 add_library(OpenShadowFlare::Items ALIAS osf_items)
 osf_configure_game_library(osf_items)
@@ -62,6 +67,7 @@ target_link_libraries(
   osf_items
   PRIVATE
     OpenShadowFlare::RK_FUNCTION
+    OpenShadowFlare::RKC_RPG_TABLE
 )
 
 add_library(
@@ -87,13 +93,18 @@ target_link_libraries(
 add_library(
   osf_states STATIC
   states/game_state.cpp
+  states/gameplay_blackjack.cpp
+  states/gameplay_debug_menu.cpp
+  states/gameplay_equipment_color.cpp
   states/gameplay_inventory.cpp
   states/gameplay_magic.cpp
   states/gameplay_map.cpp
   states/gameplay_mission_list.cpp
   states/gameplay_options_menu.cpp
+  states/gameplay_status.cpp
   states/gameplay_state.cpp
   states/gameplay_transport.cpp
+  states/gameplay_vendor.cpp
   states/save_slot.cpp
   states/character_select_state.cpp
   states/character_select/network_flow.cpp
@@ -117,6 +128,7 @@ add_library(
   world/companion_attack_action.cpp
   world/companion_attack_impact.cpp
   world/companion_damage_receiver.cpp
+  world/companion_explosion_action.cpp
   world/companion_profile.cpp
   world/companion_respawn.cpp
   world/companion_target_selector.cpp
@@ -149,11 +161,18 @@ add_library(
   world/player_attack_target.cpp
   world/player_ranged_attack.cpp
   world/player_combat_defense.cpp
+  world/player_counter_burst.cpp
   world/player_damage_receiver.cpp
+  world/player_element_condition.cpp
   world/player_data.cpp
+  world/player_job.cpp
   world/player_energy_shield.cpp
+  world/player_experience_award.cpp
   world/player_heal_spell.cpp
+  world/player_increased_power.cpp
+  world/player_increased_power_attack.cpp
   world/player_item_controller.cpp
+  world/player_land_mine.cpp
   world/player_level_up_notice.cpp
   world/player_magic_shield.cpp
   world/player_magic.cpp
@@ -164,11 +183,16 @@ add_library(
   world/player_spell_cast.cpp
   world/player_spell_parameters.cpp
   world/player_sustained_spell.cpp
+  world/player_transport_spell.cpp
   world/player_voice.cpp
   world/quest_state.cpp
+  world/retail_save_automatic_items.cpp
+  world/retail_save_extension.cpp
   world/retail_save_file.cpp
+  world/retail_save_giant_warehouse.cpp
   world/retail_save_items.cpp
   world/retail_save_magic.cpp
+  world/retail_save_mines.cpp
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
   world/runtime_effect_actor.cpp
@@ -179,10 +203,12 @@ add_library(
   world/scenario_object_actor.cpp
   world/scenario_world.cpp
   world/transport_catalog.cpp
+  world/vendor_stock_generator.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
   world/world_scene_companion_combat.cpp
+  world/world_scene_companion_explosion.cpp
   world/world_scene_combat.cpp
   world/world_scene_enemy_combat.cpp
   world/world_scene_effects.cpp
@@ -191,8 +217,11 @@ add_library(
   world/world_scene_loading.cpp
   world/world_scene_moon.cpp
   world/world_scene_player_profile.cpp
+  world/world_scene_player_experience.cpp
   world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
+  world/world_scene_script_items.cpp
+  world/world_scene_transport_spell.cpp
 )
 add_library(OpenShadowFlare::World ALIAS osf_world)
 osf_configure_game_library(osf_world)
@@ -216,6 +245,7 @@ add_library(
   ui/conversation_layout.cpp
   ui/player_level_up_notice_input.cpp
   ui/player_level_up_notice_layout.cpp
+  ui/quest_notice_layout.cpp
 )
 add_library(OpenShadowFlare::Ui ALIAS osf_ui)
 osf_configure_game_library(osf_ui)
@@ -231,6 +261,9 @@ add_library(
   render/character_renderer.cpp
   render/character_select_renderer.cpp
   render/enemy_nameplate_renderer.cpp
+  render/gameplay_blackjack_renderer.cpp
+  render/gameplay_debug_renderer.cpp
+  render/gameplay_equipment_color_renderer.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
   render/gameplay_inventory_renderer.cpp
@@ -240,10 +273,13 @@ add_library(
   render/gameplay_options_renderer.cpp
   render/gameplay_overlay_renderer.cpp
   render/gameplay_renderer.cpp
+  render/gameplay_status_renderer.cpp
   render/gameplay_transport_renderer.cpp
+  render/gameplay_vendor_renderer.cpp
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/player_level_up_notice_renderer.cpp
+  render/quest_notice_renderer.cpp
   render/system_cursor_renderer.cpp
   render/title_renderer.cpp
 )

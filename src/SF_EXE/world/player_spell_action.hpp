@@ -13,6 +13,7 @@ class CafAnimation;
 }
 
 enum class PlayerSpellAction : std::int32_t {
+    transport = 22,
     fire_ball = 23,
     ice_bolt = 24,
     plasma = 25,
@@ -31,6 +32,9 @@ enum class PlayerSpellAction : std::int32_t {
     mud_javelin = 38,
     identify = 39,
     magic_shield = 40,
+    counter_burst = 41,
+    explosion = 42,
+    elemental_strike = 43,
 };
 
 enum class PlayerSpellAnimationVariant {

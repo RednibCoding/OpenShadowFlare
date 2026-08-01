@@ -75,6 +75,12 @@ struct ItemDefinition {
     std::int32_t restore_companion_life_percent = 0;
     std::int32_t consumable_effect = -1;
     std::int32_t consumable_effect_value = 0;
+    // Category-four records with a non-negative page bypass the backpack.
+    // Retail places them into one of four private player-owned pages at the
+    // fixed cell stored beside the page number.
+    std::int32_t automatic_inventory_page = -1;
+    std::int32_t automatic_inventory_x = 0;
+    std::int32_t automatic_inventory_y = 0;
     std::string name;
     std::string description;
 

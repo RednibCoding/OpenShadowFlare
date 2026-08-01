@@ -5,6 +5,7 @@
 #include "items/item_database.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
@@ -20,13 +21,16 @@ namespace osf {
 namespace {
 
 constexpr gapi::Color kValueColor{224, 192, 128, 255};
+constexpr gapi::Color kNormalValueColor{224, 224, 224, 255};
+constexpr gapi::Color kLowerValueColor{224, 64, 64, 255};
 
 void drawPanelText(
     gapi::Backend& renderer,
     const gapi::NjpImage& font,
     const std::string& text,
     std::int32_t x,
-    std::int32_t y) {
+    std::int32_t y,
+    gapi::Color color = kValueColor) {
     renderer.drawText(
         font,
         text,
@@ -34,7 +38,7 @@ void drawPanelText(
     renderer.drawText(
         font,
         text,
-        {x, y, kValueColor, 1000, 2});
+        {x, y, color, 1000, 2});
 }
 
 void drawRightAlignedNumber(
@@ -42,7 +46,8 @@ void drawRightAlignedNumber(
     const gapi::NjpImage& font,
     std::int32_t value,
     std::int32_t right,
-    std::int32_t y) {
+    std::int32_t y,
+    gapi::Color color = kValueColor) {
     const std::string text =
         std::to_string(value < 0 ? 0 : value);
     drawPanelText(
@@ -51,10 +56,13 @@ void drawRightAlignedNumber(
         text,
         right -
             static_cast<std::int32_t>(text.size()) * 8,
-        y);
+        y,
+        color);
 }
 
-bool drawInventoryItem(
+}  // namespace
+
+bool renderInventoryItem(
     gapi::Backend& renderer,
     const gapi::NjpImage* status_patterns,
     const WorldScene& world,
@@ -117,8 +125,6 @@ bool drawInventoryItem(
     return true;
 }
 
-}  // namespace
-
 void renderGameplayInventory(
     gapi::Backend& renderer,
     const gapi::NjpImage& status_patterns,
@@ -162,6 +168,43 @@ void renderGameplayInventory(
         owned.gold(),
         471,
         28);
+
+    // InventoryStatusDisplay (0x00408a80) renders mines as a separate
+    // resource. The icon is present only for a nonzero count, while the
+    // current count, slash, and equipment-derived maximum remain visible.
+    const std::int32_t mine_count = world.playerMineCount();
+    const std::int32_t maximum_mines =
+        world.playerMaximumMineCount();
+    if (mine_count != 0) {
+        renderer.drawPattern(status_patterns, 67);
+    }
+    const gapi::Color mine_value_color =
+        maximum_mines < 10
+            ? kLowerValueColor
+            : (maximum_mines > 10
+                   ? kValueColor
+                   : kNormalValueColor);
+    drawRightAlignedNumber(
+        renderer,
+        font,
+        mine_count,
+        446,
+        118,
+        mine_value_color);
+    drawPanelText(
+        renderer,
+        font,
+        "/",
+        445,
+        117,
+        kNormalValueColor);
+    drawRightAlignedNumber(
+        renderer,
+        font,
+        maximum_mines,
+        471,
+        118,
+        mine_value_color);
     drawRightAlignedNumber(
         renderer,
         font,
@@ -171,7 +214,7 @@ void renderGameplayInventory(
         224);
 
     for (std::size_t index = 0;
-         index < PlayerEquipment::slot_count;
+         index < PlayerEquipment::visible_slot_count;
          ++index) {
         const EquipmentSlot slot =
             static_cast<EquipmentSlot>(index);
@@ -184,7 +227,7 @@ void renderGameplayInventory(
         // authored equipment region.
         const EquipmentRegion region =
             GameplayInventory::equipmentRegion(slot);
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             &status_patterns,
             world,
@@ -203,7 +246,7 @@ void renderGameplayInventory(
          index < items.size();
          ++index) {
         const InventoryItem& item = items[index];
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             &status_patterns,
             world,
@@ -228,7 +271,7 @@ void renderGameplayBeltItems(
     for (const InventoryItem& item :
          world.playerBelt().items()) {
         // FUN_00407170 uses staggered origins for the two 4-cell rows.
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             nullptr,
             world,
@@ -249,7 +292,7 @@ void renderGameplaySpecialItems(
     const GameplayInventory& inventory,
     const WorldScene& world,
     std::uint32_t gameplay_counter) {
-    if (!inventory.specialItemsActive() ||
+    if (!inventory.leftStorageActive() ||
         !world.hasPlayer()) {
         return;
     }
@@ -264,9 +307,35 @@ void renderGameplaySpecialItems(
     renderer.drawPattern(status_patterns, 14);
     renderer.drawPattern(status_patterns, 15);
 
+    const PlayerSpecialItems* storage =
+        &world.playerSpecialItems();
+    if (inventory.giantWarehouseActive()) {
+        const PlayerGiantWarehouse& giant =
+            world.playerGiantWarehouse();
+        renderer.drawPattern(status_patterns, 73);
+        for (std::size_t page = 0;
+             page < PlayerGiantWarehouse::page_count;
+             ++page) {
+            std::size_t pattern = 74;
+            if (giant.pageEnabled(page)) {
+                pattern = page == giant.selectedPage()
+                    ? 85 + page
+                    : 75 + page;
+            }
+            renderer.drawPattern(
+                status_patterns,
+                pattern,
+                {
+                    24 + static_cast<std::int32_t>(page) * 24,
+                    41,
+                });
+        }
+        storage = &giant.page(giant.selectedPage());
+    }
+
     for (const InventoryItem& item :
-         world.playerSpecialItems().items()) {
-        drawInventoryItem(
+         storage->items()) {
+        renderInventoryItem(
             renderer,
             &status_patterns,
             world,
@@ -292,7 +361,7 @@ void renderHeldInventoryItem(
     if (!item) {
         return;
     }
-    drawInventoryItem(
+    renderInventoryItem(
         renderer,
         &status_patterns,
         world,

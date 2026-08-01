@@ -5,6 +5,7 @@
 #include "world/actor_direction.hpp"
 #include "world/combat_effect_actor.hpp"
 #include "world/generic_effect_actor.hpp"
+#include "world/player_counter_burst.hpp"
 #include "world/player_data.hpp"
 #include "world/player_energy_shield.hpp"
 #include "world/player_heal_spell.hpp"
@@ -78,6 +79,7 @@ struct ExpectedSpellCast {
     std::int32_t packet_type = 3;
     bool physical_percent_damage = false;
     std::int32_t constructor_delay_override = -1;
+    std::int32_t projectile_display_height = 200;
 };
 
 bool testRetailAction(
@@ -398,7 +400,7 @@ bool testRetailPacket(
                      : 0) &&
             request.constructor_value_7 ==
                 (expected.use_table_travel_speed
-                     ? 200
+                     ? expected.projectile_display_height
                      : 0) &&
             request.constructor_value_12 ==
                 (expected.constructor_delay_override >= 0
@@ -1141,6 +1143,45 @@ bool testRetailMagicShieldRules() {
         "from retail.");
 }
 
+bool testRetailCounterBurstRules() {
+    osf::PlayerCounterBurst counter;
+    if (!check(
+            counter.toggle() &&
+                counter.active() &&
+                counter.auraFrame() == 0,
+            "Counter Burst did not toggle on and reset its retail aura "
+            "counter.")) {
+        return false;
+    }
+    counter.updateAura(false);
+    const std::int32_t hidden_frame = counter.auraFrame();
+    counter.updateAura(true);
+    if (!check(
+            hidden_frame == 0 &&
+                counter.auraFrame() == 1,
+            "Counter Burst advanced its aura while it was not "
+            "displayed.")) {
+        return false;
+    }
+    counter.restoreActive(false);
+    if (!check(
+            !counter.active() &&
+                counter.auraFrame() == 1,
+            "Damage-time Counter Burst shutdown changed its aura "
+            "counter.")) {
+        return false;
+    }
+    counter.restoreActive(true);
+    return check(
+        !counter.toggle() &&
+            !counter.active() &&
+            counter.auraFrame() == 0 &&
+            !counter.deactivate() &&
+            osf::retailCombatEffectResourceId(21030) == 11000251,
+        "Counter Burst toggle-off or hit-effect resource mapping "
+        "differs from retail.");
+}
+
 bool testShippedWorldCast(
     const std::filesystem::path& game_root,
     std::int32_t spell,
@@ -1229,8 +1270,6 @@ bool testShippedWorldCast(
     };
     const std::int32_t target_life_before =
         target->currentLife();
-    const std::int32_t mana_before =
-        world.playerData().currentMana();
     const osf::PlayerSpellParameters parameters =
         osf::playerSpellParameters(
             world.playerMagic(),
@@ -1238,6 +1277,13 @@ bool testShippedWorldCast(
             world.playerEquipment(),
             world.itemDatabase(),
             world.parameterTables());
+    const std::int32_t maximum_mana = std::max(
+        world.playerRuntimeProfile().maximum_mana,
+        parameters.mana_cost);
+    const_cast<osf::PlayerData&>(world.playerData())
+        .setCurrentMana(maximum_mana, maximum_mana);
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
     if (!check(
             world.commandPlayerMagic(pointer_x, pointer_y) &&
                 world.playerSpellActive() &&
@@ -3016,6 +3062,411 @@ bool testShippedMagicShieldCast(
         "update.");
 }
 
+bool testShippedCounterBurstCast(
+    const std::filesystem::path& game_root) {
+    osf::PlayerLoadRequest player;
+    player.name = "CounterBurstLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root, player, &error),
+            "Remote Town could not prepare Counter Burst.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[18] = 3;
+    magic_state.availability[19] = 3;
+    world.playerMagic().restore(magic_state);
+    const osf::PlayerSpellParameters magic_parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            18,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const osf::PlayerSpellParameters counter_parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            19,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t maximum_mana =
+        world.playerRuntimeProfile().maximum_mana;
+    const auto restore_mana = [&]() {
+        const_cast<osf::PlayerData&>(world.playerData())
+            .setCurrentMana(maximum_mana, maximum_mana);
+    };
+    const auto finish_cast = [&]() {
+        for (std::int32_t update = 0;
+             update < 100 && world.playerSpellActive();
+             ++update) {
+            world.update();
+        }
+        return !world.playerSpellActive();
+    };
+
+    if (!check(
+            world.playerMagic().selectSpell(18),
+            "Magic Shield could not prepare Counter Burst's mutual "
+            "exclusion check.")) {
+        return false;
+    }
+    restore_mana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                finish_cast() &&
+                world.playerMagicShieldActive(),
+            "Magic Shield could not establish the opposing live flag.")) {
+        return false;
+    }
+
+    if (!check(
+            world.playerMagic().selectSpell(19),
+            "Counter Burst could not be selected.")) {
+        return false;
+    }
+    restore_mana();
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerSpellActive() &&
+                world.playerMotion() == osf::PlayerMotion::casting &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - counter_parameters.mana_cost &&
+                world.playerMagicShieldActive() &&
+                !world.playerCounterBurstActive(),
+            "Counter Burst did not enter action 41 with its retail MP "
+            "charge.")) {
+        return false;
+    }
+    if (!check(
+            finish_cast() &&
+                world.playerCounterBurstActive() &&
+                !world.playerMagicShieldActive() &&
+                world.playerCounterBurstVisual() &&
+                !world.playerCounterBurstVisual()
+                     ->animation().charts().empty() &&
+                world.transitionScenario({0, 0, 0}) ==
+                    osf::ScenarioTravelResult::relocated &&
+                world.playerCounterBurstActive(),
+            "Counter Burst did not activate at its marker, exclude "
+            "Magic Shield, load resource 11000250, or survive ordinary "
+            "scenario relocation.")) {
+        return false;
+    }
+
+    restore_mana();
+    const std::int32_t mana_before_toggle_off =
+        world.playerData().currentMana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                finish_cast() &&
+                !world.playerCounterBurstActive() &&
+                world.playerData().currentMana() ==
+                    mana_before_toggle_off -
+                        counter_parameters.mana_cost,
+            "Counter Burst did not charge MP again and toggle off at "
+            "its marker.")) {
+        return false;
+    }
+
+    const_cast<osf::PlayerData&>(world.playerData()).setCurrentMana(
+        counter_parameters.mana_cost, maximum_mana);
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                world.playerData().currentMana() == 0,
+            "The exact-cost Counter Burst cast was rejected.")) {
+        return false;
+    }
+    for (std::int32_t update = 0;
+         update < 100 &&
+         !world.playerCounterBurstActive();
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            world.playerCounterBurstActive(),
+            "An exact-cost Counter Burst cast did not expose its marker "
+            "frame.")) {
+        return false;
+    }
+    world.update();
+    if (!check(
+            !world.playerCounterBurstActive(),
+            "Zero mana did not disable Counter Burst on the next player "
+            "update.")) {
+        return false;
+    }
+    if (!check(
+            finish_cast(),
+            "The exact-cost Counter Burst action did not finish.")) {
+        return false;
+    }
+
+    restore_mana();
+    if (!check(
+            world.commandPlayerMagic(400, 240) &&
+                finish_cast() &&
+                world.playerCounterBurstActive(),
+            "Counter Burst could not be reactivated for the reverse "
+            "exclusion check.")) {
+        return false;
+    }
+    if (!check(
+            world.playerMagic().selectSpell(18),
+            "Magic Shield could not be reselected.")) {
+        return false;
+    }
+    restore_mana();
+    return check(
+        world.commandPlayerMagic(400, 240) &&
+            finish_cast() &&
+            world.playerMagicShieldActive() &&
+            !world.playerCounterBurstActive() &&
+            world.playerData().currentMana() ==
+                maximum_mana - magic_parameters.mana_cost,
+        "Magic Shield did not exclude an active Counter Burst at its "
+        "marker.");
+}
+
+bool testShippedExplosionCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 20;
+    osf::PlayerLoadRequest player;
+    player.name = "ExplosionLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                player,
+                {3000507, 3, 0},
+                &error),
+            "The shipped Explosion scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    magic_state.availability[21] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell) &&
+                world.hasCompanion(),
+            "The live Explosion fixture could not select the spell "
+            "or find its owned companion.")) {
+        return false;
+    }
+
+    const osf::EnemyActor* target = nullptr;
+    std::int32_t pointer_x = -1;
+    std::int32_t pointer_y = -1;
+    osf::WorldPosition destination;
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        for (std::int32_t offset_y = -240;
+             offset_y <= 240 && !target;
+             offset_y += 40) {
+            for (std::int32_t offset_x = -240;
+                 offset_x <= 240;
+                 offset_x += 40) {
+                const osf::WorldPosition candidate{
+                    enemy.position().x + offset_x,
+                    enemy.position().y + offset_y,
+                };
+                const osf::ScreenPosition projected =
+                    osf::calculateRealPosition(candidate);
+                const std::int32_t x =
+                    projected.x - world.cameraScreenX();
+                const std::int32_t y =
+                    projected.y - world.cameraScreenY();
+                if (x < 0 || x >= 640 || y < 0 || y >= 400) {
+                    continue;
+                }
+                const osf::WorldPosition actual =
+                    osf::calculateWorldPosition({
+                        world.cameraScreenX() + x,
+                        world.cameraScreenY() + y,
+                    });
+                if (!osf::positionIsWalkable(
+                        world.ground(),
+                        world.objectMap(),
+                        actual,
+                        world.companion().judgement())) {
+                    continue;
+                }
+                target = &enemy;
+                pointer_x = x;
+                pointer_y = y;
+                destination = actual;
+                break;
+            }
+        }
+        if (target) {
+            break;
+        }
+    }
+    if (!check(
+            target && pointer_x >= 0 && pointer_y >= 0,
+            "No shipped on-screen enemy could prepare Explosion's "
+            "ground destination.")) {
+        return false;
+    }
+
+    const std::int32_t target_character_number =
+        target->characterNumber();
+    const std::int32_t target_life_before =
+        target->currentLife();
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            mana_before >= parameters.mana_cost &&
+                world.commandPlayerMagic(pointer_x, pointer_y) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                world.runtimeEffectControllerCount() == 0,
+            "Explosion did not enter player action 42, spend MP, and "
+            "defer its companion command to the CAF marker.")) {
+        return false;
+    }
+
+    bool saw_departure = false;
+    bool saw_arrival = false;
+    bool relocated = false;
+    bool saw_first_visual = false;
+    bool saw_second_visual = false;
+    bool heard_first_sample = false;
+    bool heard_second_sample = false;
+    std::int32_t relocate_sample_count = 0;
+    bool heard_impact_sample = false;
+    bool applied_damage = false;
+    for (std::int32_t update = 0; update < 160; ++update) {
+        world.update();
+        saw_departure =
+            saw_departure ||
+            (world.companion().explosionActive() &&
+             world.companion().animationChart() == 6);
+        saw_arrival =
+            saw_arrival ||
+            (world.companion().explosionActive() &&
+             world.companion().animationChart() == 7);
+        relocated = relocated ||
+            (world.companion().position().x == destination.x &&
+             world.companion().position().y == destination.y);
+        for (const osf::RuntimeEffectActor& actor :
+             world.runtimeEffects()) {
+            if (actor.controllerEffectNumber() != 21031 ||
+                actor.resourceId() != 10000000) {
+                continue;
+            }
+            saw_first_visual =
+                saw_first_visual ||
+                (actor.animationChart() == 1 &&
+                 actor.redStrength() == 500 &&
+                 actor.greenStrength() == 500 &&
+                 actor.blueStrength() == 1200);
+            saw_second_visual =
+                saw_second_visual ||
+                (actor.animationChart() == 0 &&
+                 actor.redStrength() == 500 &&
+                 actor.greenStrength() == 500 &&
+                 actor.blueStrength() == 1200);
+        }
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        heard_first_sample =
+            heard_first_sample ||
+            std::find(audio.begin(), audio.end(), 29) != audio.end();
+        heard_second_sample =
+            heard_second_sample ||
+            std::find(audio.begin(), audio.end(), 23) != audio.end();
+        relocate_sample_count += static_cast<std::int32_t>(
+            std::count(audio.begin(), audio.end(), 45));
+        heard_impact_sample =
+            heard_impact_sample ||
+            std::find(audio.begin(), audio.end(), 46) != audio.end();
+        const auto current = std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [target_character_number](const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() ==
+                    target_character_number;
+            });
+        applied_damage = applied_damage ||
+            current == world.enemies().end() ||
+            current->currentLife() < target_life_before;
+        if (!world.playerSpellActive() &&
+            !world.companion().explosionActive() &&
+            saw_first_visual && saw_second_visual) {
+            break;
+        }
+    }
+
+    const bool passed =
+        saw_departure && saw_arrival && relocated &&
+            saw_first_visual && saw_second_visual &&
+            heard_first_sample && heard_second_sample &&
+            relocate_sample_count == 2 &&
+            heard_impact_sample &&
+            applied_damage &&
+            world.playerMagic().experience(spell) >= 1 &&
+            !world.companion().explosionActive() &&
+            world.companion().presentationAction() == 2;
+    if (!passed) {
+        std::cerr
+            << "departure=" << saw_departure
+            << " arrival=" << saw_arrival
+            << " relocated=" << relocated
+            << " visual=" << saw_first_visual
+            << ',' << saw_second_visual
+            << " audio=" << heard_first_sample
+            << ',' << heard_second_sample
+            << ',' << relocate_sample_count
+            << ',' << heard_impact_sample
+            << " damage=" << applied_damage
+            << " practice="
+            << world.playerMagic().experience(spell)
+            << " active="
+            << world.companion().explosionActive()
+            << " presentation="
+            << world.companion().presentationAction()
+            << " destination=" << destination.x
+            << ',' << destination.y
+            << " companion="
+            << world.companion().position().x
+            << ',' << world.companion().position().y
+            << '\n';
+    }
+    return check(
+        passed,
+        "The live Explosion did not relocate its companion, play both "
+        "visual/audio layers, damage the area, train, and unlock.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -3521,6 +3972,55 @@ int main() {
             true) ||
         !testShippedMagicShieldCast(game_root) ||
         !testGroundSpellInsufficientMana(game_root, 18)) {
+        return 1;
+    }
+    if (!testRetailCounterBurstRules() ||
+        !testRetailAction(
+            animation,
+            tables,
+            19,
+            osf::PlayerSpellAction::counter_burst,
+            11,
+            12,
+            true) ||
+        !testShippedCounterBurstCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 19)) {
+        return 1;
+    }
+    if (!testRetailAction(
+            animation,
+            tables,
+            20,
+            osf::PlayerSpellAction::explosion,
+            11,
+            12,
+            true) ||
+        !testShippedExplosionCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 20)) {
+        return 1;
+    }
+    if (!testRetailAction(
+            animation,
+            tables,
+            21,
+            osf::PlayerSpellAction::elemental_strike,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            21,
+            {
+                10021, 0, -1, 4,
+                true, true, false, false, true, false,
+                true, 0, true, true, 3, false, -1, 0,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            21,
+            13,
+            10000100,
+            19) ||
+        !testTargetedSpellInsufficientMana(game_root, 21)) {
         return 1;
     }
 #endif

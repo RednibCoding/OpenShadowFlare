@@ -396,20 +396,31 @@ bool testHitAndDeathActions(
     }
 
     bool faded = false;
+    bool death_finished = false;
     for (std::int32_t update = 0;
          update < 1000 && !enemy.expired();
          ++update) {
+        const osf::EnemyActorUpdate death_update =
+            enemy.update(
+                empty_ground,
+                empty_objects,
+                nullptr);
+        death_finished =
+            death_finished || death_update.death_finished;
+        faded =
+            faded || enemy.drawStrength() < 1000;
+    }
+    const osf::EnemyActorUpdate expired_update =
         enemy.update(
             empty_ground,
             empty_objects,
             nullptr);
-        faded =
-            faded || enemy.drawStrength() < 1000;
-    }
     return check(
-        faded && enemy.expired(),
-        "Enemy action eleven did not hold, fade, and expire after "
-        "the retail chart-three tail.");
+        faded && enemy.expired() && death_finished &&
+            expired_update.expired &&
+            !expired_update.death_finished,
+        "Enemy action eleven did not publish exactly one completion "
+        "after the retail chart-three fade.");
 }
 
 }  // namespace

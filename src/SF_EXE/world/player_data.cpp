@@ -1,4 +1,5 @@
 #include "player_data.hpp"
+#include "player_element_condition.hpp"
 
 #include "core/retail_integer.hpp"
 
@@ -181,6 +182,10 @@ std::int32_t PlayerData::gender() const {
 
 std::int32_t PlayerData::job() const {
     return readI32(0x1c);
+}
+
+void PlayerData::setJob(PlayerJob job) {
+    writeI32(0x1c, playerJobValue(job));
 }
 
 std::int32_t PlayerData::level() const {
@@ -575,6 +580,29 @@ std::int32_t PlayerData::elementX() const {
 
 std::int32_t PlayerData::elementY() const {
     return readI32(0x68);
+}
+
+bool PlayerData::clearElementCondition() {
+    if (elementX() == 0 && elementY() == 0) {
+        return false;
+    }
+    writeI32(0x64, 0);
+    writeI32(0x68, 0);
+    return true;
+}
+
+bool PlayerData::applyElementMedicine(
+    std::int32_t element,
+    std::int32_t distance) {
+    const ElementAnchor before{elementX(), elementY()};
+    const ElementAnchor after = moveRetailElementCondition(
+        before, element, distance);
+    if (after.x == before.x && after.y == before.y) {
+        return false;
+    }
+    writeI32(0x64, after.x);
+    writeI32(0x68, after.y);
+    return true;
 }
 
 std::array<std::int32_t, 17>

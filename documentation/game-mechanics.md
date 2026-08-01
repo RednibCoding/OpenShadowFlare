@@ -11,6 +11,23 @@ The game has 3 base playable character classes:
 | Wizard  | Male   | Magic specialist |
 | Witch   | Female | Magic specialist (female Wizard) |
 
+The saved job field uses retail values `6` for Warrior, `5` for Hunter, and
+`9` for either Wizard or Witch; gender chooses the displayed spellcaster
+name. A new character begins as job `16`, displayed as Mercenary. Scenario
+scripts use menu values zero through three instead: opcode 71 maps the saved
+job to that menu value, while opcode 70 changes choices one through three
+back to Warrior, Hunter, or spellcaster. Changing occupation does not rewrite
+the character's earlier per-level job history.
+
+### Equipment colors
+
+Weapons, shields, and body armor can carry one of 16 alternate appearance
+colors. `-1` means the item's authored default. The selected value changes the
+RGB strengths of the item's primary character part; a weapon's secondary part
+keeps its own authored strengths. The value is stored inside the normal item
+instance, so moving, dropping, equipping, and saving an item all keep its
+color.
+
 ### Class Advancement
 Classes can be promoted to advanced classes:
 - **Mercenary** - Advanced Warrior/Hunter
@@ -49,6 +66,16 @@ This was discovered at function 0x00405750, which displays:
 - "Effect of Fire\n    Attack               %+d%%"
 - "Effect of Water\n    Defense              %+d%%"
 - etc.
+
+### Status window
+
+`S` opens Status on the left without pausing the world. Status and Magic are
+two tabs of the same window, and either tab can remain open beside Inventory.
+The Status tab shows the character's name, class, level, experience, current
+and maximum HP/MP, weight, physical and magical combat values, movement and
+attack speed, and the eight elemental affinities. Grey values match the saved
+base stat, red values are lower, and gold values are higher. The elemental
+diagram uses the saved x/y alignment point plus equipment and item bonuses.
 
 ## Spells/Skills
 
@@ -308,6 +335,59 @@ the retail character save and are cleared by death. Magic Shield and Counter
 Burst are mutually exclusive in retail; their marker actions clear the other
 live flag.
 
+### Counter Burst
+
+Counter Burst is the matching targetless toggle on action 41. It uses CAF
+charts 11 and 12 with Table 20 row nineteen and pays the normal command-time
+MP cost. Its chart-11 `0x40` marker toggles Counter Burst, resets its own aura
+frame, and clears Magic Shield. An exact-cost activation can be visible for
+that marker update before the next zero-MP player update turns it off.
+
+The spell only reacts to a reflectable packet from a living enemy that still
+exists in the current scenario. Its Table 17 parameter-zero percentage is
+added to any successful equipment reflection percentage. The returned packet
+uses the resolved incoming damage, applies the combined percentage, halves
+the result for the retail source value 100, and keeps at least one point of
+damage. Counter Burst uses effect 21030/resource 11000251 and sample 60; a
+post-resolution incoming hit of at least 20 also trains spell nineteen.
+
+Each successful Counter Burst reflection charges MP through the same retail
+quirk as Magic Shield: parameter two comes from the currently selected magic
+row at Counter Burst's effective level, equipped instance parameter 19 lowers
+it, and the result cannot be less than one. A missing or dead source produces
+no reflection, effect, practice, or MP charge. Emptying MP disables the spell
+immediately.
+
+Resource 11000250 loops at the hero using chart zero, direction eight, and
+1000/1000/1000 color strengths. Retail draws it after Magic Shield and before
+the Berserker and Energy Shield passes. The runtime flag and frame survive
+ordinary scenario travel, are not saved to disk, and are cleared on death.
+
+### Explosion
+
+Explosion is a targetless ground command on action 42. It uses player CAF
+charts 11 and 12, pays its normal MP cost when the command begins, and waits
+for the chart-11 `0x40` marker. At that marker the clicked point must fit the
+owned companion's whole collision rectangle. A missing, dead, special-action,
+or blocked companion does not refund MP and does not create a fallback effect.
+An ordinary attack or hit finishes first, then the queued Explosion command
+takes over.
+
+The companion plays PARTNER chart six in direction eight at its old position,
+instantly relocates when chart seven begins, and plays chart seven at the new
+position. The boundary submits sample 45 twice. Its chart-seven `0x40` marker
+plays sample 46 and creates effect 21031: two overlapping resource-10000000
+layers on charts one and zero with RGB 500/500/1200, samples 29 and 23, and
+nearby camera shake. Living enemies whose bounds overlap the 640-by-640 blast
+area roll the companion's hit rate against their physical evasion.
+
+Explosion's damage packet has two intentional oddities from retail. The base
+damage field is the owner hero's magical defense, while the table scaling
+level comes from Elemental Strike (spell 21). Explosion itself still owns the
+spell-20 parameter rows, randomized ordinary hit effect, and practice award.
+After the arrival chart finishes, the companion unlocks and resumes normal
+follow and combat AI.
+
 ### Earth Spear
 
 Earth Spear returns to the pointed-enemy command path. It enters action 32 on
@@ -464,6 +544,57 @@ mirrors it in word 48 for weapons and armor and word 47 for accessories.
 Before identification, the tooltip uses the item's base description as its
 name and does not expose the hidden values.
 
+Malse's `Identify Items` service is a separate scenario-script operation, not
+an invocation of this spell. Once his post–Red Goblin merchant menu is
+available, opcode 55 scans equipped gear, accessories, the backpack, and the
+belt for any unidentified instance. When at least one exists, the authored
+dialogue substitutes the flat 100-Gold price and selects `NO` by default. A
+confirmed purchase checks and spends the player's total Gold, then opcode 4
+identifies every eligible owned item in one pass. The script has distinct
+branches for insufficient Gold and for a character whose items are already
+identified.
+
+### Merchant repairs
+
+Malse's post–Red Goblin menu also offers the retail Repair Items service. It
+quotes Arms, Head Armor, Body Armor, Shield, Leg Armor, All Equipped Items, and
+Non-Equipped Items without opening another inventory surface. Arms and Shield
+include both active and alternate weapon sets; Non-Equipped means repairable
+weapons and armor in the backpack only.
+
+Retail derives each price from the item's full generated value and Table 34:
+`(missing durability * (item value / 10)) / maximum durability`. Integer
+division is used throughout, and a damaged item whose result rounds to zero
+still costs one Gold. A fully repaired item contributes zero. Successful
+payment restores current durability to the definition's maximum and updates
+the same raw item-instance word written to a retail save. The script handles
+already-repaired and insufficient-Gold choices before it asks the item owners
+to mutate anything.
+
+### Medicine and companion food
+
+Category-three items in the backpack and belt share the executable's one use
+path. Player life and mana are tried first. Both flat restoration and the
+maximum-pool percentage are scaled by the matching equipped base bonus, using
+the live derived maximum HP or MP and retail's integer operation order. An item
+is consumed and sample 16 plays as soon as either player pool changes.
+
+Only when neither player pool changed does the command try the owned companion.
+Meat, Quality Meat, High Quality Meat, and Excellent Quality Meat restore their
+Table-backed flat companion-life values. The companion must be alive and below
+maximum life; food used on a full or defeated companion remains in its owner
+and produces no use sound. Condition and elemental medicines continue after
+this same priority chain.
+
+White Medicine resets the player's two saved element axes to `(0,0)`. Fire,
+Water, Earth, Thunder, Holy, Dark, Gel, and Metal Medicine each move that point
+4,000 units toward their fixed retail element anchor, snapping exactly to the
+anchor when it is closer than one step. These are persistent element-alignment
+changes rather than timed buffs. Using a medicine that cannot move or clear
+the point leaves the item untouched. The Status marker, eight displayed
+affinities, offensive and defensive combat calculations, and retail save all
+consume the same axes.
+
 ## Character Stats
 
 ### Primary Stats
@@ -568,6 +699,61 @@ class to the right-hand end and shifts the lower-priority classes left.
 - ITEM (Item)
 - PEOP (People)
 - COMP (Companion)
+
+## Land Mines
+
+Land Mines are a separate player resource, not an inventory stack or spell.
+A new character starts with five. Pressing `B`, or clicking the mine cell at
+`496..511,424..439`, places one at the hero's current world position and
+starts a ten-update placement lockout. The HUD click plays sample 58; the
+keyboard path does not.
+
+The placed mine uses static OPTION resource 1000 with a 300-by-300 judgement
+box. It arms on update 40 and then plays positional sample 54 every 20 updates.
+Contact with a living enemy or active scenario object triggers it; an
+untriggered mine also expires into its explosion at update 300. Changing maps
+or relocating through a scenario entry clears placed mines without restoring
+the spent count.
+
+The explosion uses OPTION resource 1001, sample 29, and a 1200-by-1200 area
+which can hit every enemy inside it. Damage comes from Table 23 at the level
+captured when the mine was placed, plus the equipped mine-effect bonus, with a
+minimum of one. Resources 1002 through 1004 form the expanding debris rings;
+1005 through 1008 and paired 1004 pieces make the four bouncing fragments.
+The controller finishes at update 80 after the explosion.
+
+Mine items are category four, definition one. Picking one up increments the
+separate counter while it is below the current maximum. It never enters the
+backpack. At maximum capacity the pickup is rejected through the normal world
+drop response, so the mine bounces and plays its landing sound instead of
+silently disappearing. The backpack owner also rejects Mine instances at its
+add, automatic-store, and explicit-placement boundaries, so no alternate
+acquisition or UI path can turn that counter resource back into a grid item.
+The inventory panel shows the Mine icon whenever the count is nonzero,
+followed by the current count and the live maximum. The base maximum is ten;
+equipped instance word 84 raises it, while instance word 81 raises mine
+damage. The current count is saved after the magic block in the retail `.Ssv`
+stream and survives portable save/load as well.
+
+`Item.Ibn` gives the Mine definition the generic weight field value one, but
+retail does not multiply that field by the mine counter. Its live weight
+routine at `0x00445630` visits only the nine equipped item pointers, so mines
+do not change the inventory Weight number or attack-speed encumbrance.
+
+## Blackjack
+
+Two Tower of Ordeal scenarios launch the game's Blackjack table from their
+scenario scripts. The opening deal alternates dealer, player, dealer, player;
+the dealer's second card stays hidden until the player stands or busts. Hit
+draws another card and Stand hands play to the dealer, who draws on 16 and
+stands on 17.
+
+Number cards keep their face value and face cards are worth ten. Aces count
+as one or eleven, whichever keeps the hand valid. The hidden opening draw can
+also produce the game's joker, which follows the same flexible value rule.
+A two-card 21 beats a 21 made with more cards; otherwise equal totals draw.
+The result is handed back to the scenario script, which owns the following
+dialogue and rewards.
 
 ## Controls (from help text)
 

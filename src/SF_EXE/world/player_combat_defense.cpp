@@ -1,4 +1,5 @@
 #include "player_combat_defense.hpp"
+#include "player_element_condition.hpp"
 
 #include "core/retail_integer.hpp"
 #include "items/item_database.hpp"
@@ -14,22 +15,6 @@
 
 namespace osf {
 namespace {
-
-struct ElementAnchor {
-    std::int32_t x;
-    std::int32_t y;
-};
-
-constexpr std::array<ElementAnchor, 8> kElementAnchors = {{
-    {0, 20000},
-    {0, -20000},
-    {-20000, 0},
-    {20000, 0},
-    {14140, -14140},
-    {-14140, 14140},
-    {-14140, -14140},
-    {14140, 14140},
-}};
 
 void addItemStrengths(
     std::array<std::int32_t, 8>& affinities,
@@ -62,14 +47,15 @@ void addItemStrengths(
 std::array<std::int32_t, 8> baseAffinities(
     const PlayerCombatDefenseSnapshot& snapshot) {
     std::array<std::int32_t, 8> affinities{};
+    const auto& anchors = retailElementAnchors();
     for (std::size_t element = 0;
          element < affinities.size();
          ++element) {
         const double x =
-            static_cast<double>(kElementAnchors[element].x) -
+            static_cast<double>(anchors[element].x) -
             static_cast<double>(snapshot.element_x);
         const double y =
-            static_cast<double>(kElementAnchors[element].y) -
+            static_cast<double>(anchors[element].y) -
             static_cast<double>(snapshot.element_y);
         const std::int32_t distance =
             static_cast<std::int32_t>(

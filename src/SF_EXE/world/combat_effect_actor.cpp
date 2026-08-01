@@ -70,6 +70,8 @@ std::int32_t retailCombatEffectResourceId(
         return 11000230;
     case 21029:
         return 11000241;
+    case 21030:
+        return 11000251;
     default:
         break;
     }

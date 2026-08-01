@@ -17,6 +17,7 @@
 #include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -1401,16 +1402,37 @@ bool testWorldItemSaveRoundTrip() {
     std::filesystem::remove_all(save_root, cleanup_error);
     const osf::ItemDefinition* special_gold =
         saved_world.itemDatabase().find(4, 0);
+    const osf::ItemDefinition* spirit_stone =
+        saved_world.itemDatabase().find(4, 98000001);
     if (!check(
-            special_gold &&
+            special_gold && spirit_stone &&
                 saved_world.playerSpecialItems()
                     .place(
                         osf::makeInventoryItem(
                             *special_gold, 125),
                         2,
                         3)
-                    .accepted,
+                    .accepted &&
+                saved_world.playerAutomaticItems().add(
+                    *spirit_stone,
+                    osf::makeInventoryItem(*spirit_stone)),
             "The special-item save fixture could not be placed.")) {
+        return false;
+    }
+    osf::PlayerGiantWarehouse::EnabledFlags giant_flags{};
+    giant_flags[0] = 1;
+    giant_flags[2] = 1;
+    saved_world.playerGiantWarehouse().restoreEnabledFlags(
+        giant_flags);
+    if (!check(
+            saved_world.playerGiantWarehouse()
+                .page(2)
+                .place(
+                    osf::makeInventoryItem(*special_gold, 50),
+                    4,
+                    5)
+                .accepted,
+            "The Giant Warehouse save fixture could not be placed.")) {
         return false;
     }
     if (!check(
@@ -1422,6 +1444,11 @@ bool testWorldItemSaveRoundTrip() {
                 saved_world.playerEquipment(),
                 saved_world.playerBelt(),
                 saved_world.playerSpecialItems(),
+                saved_world.retailSaveProgress(),
+                saved_world.playerMagic(),
+                saved_world.playerMineCount(),
+                saved_world.playerGiantWarehouse(),
+                saved_world.playerAutomaticItems(),
                 0x5a,
                 &error),
             "The world-owned item state could not be saved.")) {
@@ -1473,9 +1500,36 @@ bool testWorldItemSaveRoundTrip() {
                 loaded_world.playerSpecialItems().items()[0].category == 4 &&
                 loaded_world.playerSpecialItems().items()[0].quantity == 125 &&
                 loaded_world.playerSpecialItems().items()[0].grid_x == 2 &&
-                loaded_world.playerSpecialItems().items()[0].grid_y == 3,
-            "World loading discarded backpack, belt, equipped, or "
-            "special items.")) {
+                loaded_world.playerSpecialItems().items()[0].grid_y == 3 &&
+                loaded_world.playerGiantWarehouse().pageEnabled(2) &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()
+                        .size() == 1 &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()[0]
+                        .quantity == 50 &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()[0]
+                        .grid_x == 4 &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()[0]
+                        .grid_y == 5 &&
+                loaded_world.playerAutomaticItems().contains(
+                    4, 98000001) &&
+                loaded_world.playerAutomaticItems()
+                        .page(2)
+                        .items()[0]
+                        .grid_x == 1 &&
+                loaded_world.playerAutomaticItems()
+                        .page(2)
+                        .items()[0]
+                        .grid_y == 0,
+            "World loading discarded backpack, belt, equipped, Warehouse, "
+            "or automatic items.")) {
         std::cerr << error << '\n';
         return false;
     }
@@ -1516,9 +1570,13 @@ bool testPersistentConversationAndMovementState() {
         world.advanceConversation();
     }
     world.togglePlayerRun();
+    const osf::RetailSaveProgress live_progress =
+        world.retailSaveProgress();
     if (!check(
             !world.conversationActive() &&
-                world.quests().state(4) == 1 &&
+                world.quests().state(4) == 0 &&
+                live_progress.script_state_flags.size() > 4 &&
+                live_progress.script_state_flags[4] == 1 &&
                 world.playerMovementPace() ==
                     osf::MovementPace::run,
             "The conversation or movement state was not live before saving.")) {
@@ -1556,9 +1614,13 @@ bool testPersistentConversationAndMovementState() {
     const bool loaded =
         restored.loadInitialScenario(
             data_root, saved_player, &error);
+    const osf::RetailSaveProgress restored_progress =
+        restored.retailSaveProgress();
     const bool restored_state =
         loaded &&
-        restored.quests().state(4) == 1 &&
+        restored.quests().state(4) == 0 &&
+        restored_progress.script_state_flags.size() > 4 &&
+        restored_progress.script_state_flags[4] == 1 &&
         restored.playerMovementPace() ==
             osf::MovementPace::run &&
         restored.groundItems().empty() &&
@@ -2086,6 +2148,59 @@ bool testLiveScenarioTransition() {
         return false;
     }
 
+    world.update();
+    if (!check(
+            world.transports().enabled(1) &&
+                world.retailSaveProgress().transport_flags[1] == 1,
+            "Standing on the Wasteland transport did not unlock its "
+            "Table 40 destination.")) {
+        return false;
+    }
+
+    const std::filesystem::path transport_save_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_transport_unlock_save_test";
+    const std::filesystem::path transport_save =
+        transport_save_root / "Save" / "0000.Ssv";
+    std::error_code transport_cleanup_error;
+    std::filesystem::remove_all(
+        transport_save_root, transport_cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                transport_save,
+                world.playerData(),
+                world.itemDatabase(),
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerBelt(),
+                world.playerSpecialItems(),
+                world.retailSaveProgress(),
+                world.playerMagic(),
+                0x47,
+                &error),
+            "The unlocked transport state could not be saved.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::PlayerLoadRequest transport_player;
+    transport_player.source =
+        osf::PlayerDataSource::retail_save;
+    transport_player.save_path = transport_save;
+    osf::WorldScene restored_transport;
+    const bool restored_transport_loaded =
+        restored_transport.loadInitialScenario(
+            data_root, transport_player, &error);
+    std::filesystem::remove_all(
+        transport_save_root, transport_cleanup_error);
+    if (!check(
+            restored_transport_loaded &&
+                restored_transport.transports().enabled(1),
+            "The Wasteland transport unlock did not survive a save and "
+            "load round trip.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
     const osf::WorldPosition first_enemy_position =
         world.enemies().front().position();
     const std::int32_t first_enemy_character =
@@ -2134,6 +2249,137 @@ bool testLiveScenarioTransition() {
                 inventory_count &&
             world.playerSpecialItems().items().size() == 1,
         "The same-map fast path reloaded the scenario or lost ownership.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailScenarioEntryInitialization() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Traveler";
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, {3, 0, 0}, &error) &&
+                world.scenarioCaptionMessageId() == 1000000 &&
+                world.scenarioCaptionText() ==
+                    "Wasteland of Hesitation\n",
+            "Opcode 49 did not retain the first Episode 1 outdoor "
+            "caption during initial status-kind-seven setup.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    if (!check(
+            world.transitionScenario({10000, 1, 0}, &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                world.scenarioId() == 10000 &&
+                world.scenarioCaptionMessageId() == 1000000 &&
+                world.scenarioCaptionText() ==
+                    "Dusty Ruins, B1F\n",
+            "The changed-map status initialization did not branch on "
+            "the retail entry value.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    return check(
+        world.transitionScenario({10000, 2, 0}, &error) ==
+                osf::ScenarioTravelResult::relocated &&
+            world.scenarioId() == 10000 &&
+            world.scenarioCaptionMessageId() == 1000001 &&
+            world.scenarioCaptionText() ==
+                "Dusty Ruins, B2F\n",
+        "A same-map relocation did not rerun retail status kind seven "
+        "with the new entry value.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailScenarioObjectOverride() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Object Override";
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, {1, 0, 0}, &error),
+            "The Near Remote Town object-override fixture could not "
+            "load.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto findObject = [&world](std::int32_t id) {
+        return std::find_if(
+            world.scenarioObjects().begin(),
+            world.scenarioObjects().end(),
+            [id](const osf::ScenarioObjectActor& object) {
+                return object.id() == id;
+            });
+    };
+    auto first = findObject(1030);
+    auto second = findObject(1031);
+    if (!check(
+            first != world.scenarioObjects().end() &&
+                second != world.scenarioObjects().end(),
+            "Near Remote Town no longer contains the retail paired "
+            "objects.")) {
+        return false;
+    }
+    const std::array<std::int32_t, 3> first_base{{
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    const std::array<std::int32_t, 3> second_base{{
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    world.update();
+    first = findObject(1030);
+    second = findObject(1031);
+    const std::array<std::int32_t, 3> first_after{{
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        first->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    const std::array<std::int32_t, 3> second_after{{
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::visible),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::pointer),
+        second->stateValue(
+            osf::ScenarioEntityStateChannel::judgement),
+    }};
+    return check(
+        first->stateOverrideEnabled() &&
+            second->stateOverrideEnabled() &&
+            first->visible() && !first->pointerEnabled() &&
+            !first->judgementEnabled() &&
+            !second->visible() && !second->pointerEnabled() &&
+            !second->judgementEnabled() &&
+            first_after == first_base &&
+            second_after == second_base,
+        "Opcode 56 did not swap the paired objects independently of "
+        "their script-addressable base state.");
 #else
     return true;
 #endif
@@ -2707,6 +2953,8 @@ bool testRetailRemoteTown() {
             world.playerData().baseMaximumLife() == 140 &&
             world.playerData().baseMaximumMana() == 160 &&
             world.musicTrack() == 0 &&
+            world.vendorInventory(0) &&
+            !world.vendorInventory(0)->items().empty() &&
             world.npcs().size() == scenario.people().size() &&
             world.npcs()[0].id() == 0 &&
             world.npcs()[0].resourceId() == 13 &&
@@ -2872,7 +3120,7 @@ bool testRetailRemoteTown() {
     renderer.shadows = &world.npcs()[0].shadowPatterns();
     osf::renderWorld(renderer, world, 500);
     if (!check(
-            renderer.calls.size() == 3 &&
+            renderer.calls.size() == 4 &&
                 renderer.calls[0].shadow &&
                 renderer.calls[0].pattern == 280 &&
                 renderer.calls[0].draw.x == 747 &&
@@ -2882,7 +3130,9 @@ bool testRetailRemoteTown() {
                 renderer.calls[1].pattern == 1744 &&
                 renderer.calls[1].draw.red_strength == 1000 &&
                 !renderer.calls[2].shadow &&
-                renderer.calls[2].pattern == 1784,
+                renderer.calls[2].pattern == 1784 &&
+                !renderer.calls[3].shadow &&
+                renderer.calls[3].pattern == 280,
             "Ostare's idle frame, part mask, shadow, or placement differs.")) {
         return false;
     }
@@ -2927,10 +3177,13 @@ bool testRetailRemoteTown() {
     osf::renderWorld(renderer, world, 500, &font);
     if (!check(
             world.hoveredNpcId() == 0 &&
-                renderer.calls.size() == 3 &&
+                renderer.calls.size() == 4 &&
                 renderer.calls[1].draw.red_strength == 1300 &&
                 renderer.calls[1].draw.green_strength == 1300 &&
                 renderer.calls[1].draw.blue_strength == 1300 &&
+                renderer.calls[3].draw.red_strength == 1300 &&
+                renderer.calls[3].draw.green_strength == 1300 &&
+                renderer.calls[3].draw.blue_strength == 1300 &&
                 renderer.rectangles.size() == 5 &&
                 renderer.rectangles[0].x == 725 &&
                 renderer.rectangles[0].y == 187 &&
@@ -3050,6 +3303,7 @@ bool testRetailRemoteTown() {
         return false;
     }
     world.advanceConversation();
+    world.takeAudioSamples();
     if (!check(
             world.conversationActive() &&
                 world.conversationActorId() == 0 &&
@@ -3149,7 +3403,7 @@ bool testRetailRemoteTown() {
             item_resource &&
                 item_resource->patterns().palettes().size() > 72 &&
                 item_resource->shadowPatterns().palettes().size() == 1 &&
-                renderer.item_calls.size() == 8 &&
+                renderer.item_calls.size() == 12 &&
                 renderer.item_calls[0].shadow &&
                 renderer.item_calls[0].pattern == 36 &&
                 renderer.item_calls[0].draw.palette == -1 &&
@@ -3163,32 +3417,56 @@ bool testRetailRemoteTown() {
                 renderer.item_calls[3].pattern == 30 &&
                 renderer.item_calls[3].draw.palette == -1 &&
                 !renderer.item_calls[4].shadow &&
-                renderer.item_calls[4].pattern == 113 &&
-                renderer.item_calls[4].draw.palette == 72 &&
+                renderer.item_calls[4].pattern == 36 &&
+                renderer.item_calls[4].draw.palette == 73 &&
                 renderer.item_calls[4].draw.x ==
                     renderer.item_calls[0].draw.x &&
                 renderer.item_calls[4].draw.y ==
                     renderer.item_calls[0].draw.y &&
-                renderer.item_calls[5].pattern == 77 &&
-                renderer.item_calls[5].draw.palette == 0 &&
+                renderer.item_calls[5].pattern == 113 &&
+                renderer.item_calls[5].draw.palette == 72 &&
                 renderer.item_calls[5].draw.x ==
-                    renderer.item_calls[1].draw.x &&
+                    renderer.item_calls[0].draw.x &&
                 renderer.item_calls[5].draw.y ==
-                    renderer.item_calls[1].draw.y &&
-                renderer.item_calls[6].pattern == 82 &&
-                renderer.item_calls[6].draw.palette == 10 &&
-                renderer.item_calls[6].draw.red_strength == 900 &&
-                renderer.item_calls[6].draw.green_strength == 800 &&
-                renderer.item_calls[6].draw.blue_strength == 500 &&
+                    renderer.item_calls[0].draw.y &&
+                renderer.item_calls[6].pattern == 0 &&
+                renderer.item_calls[6].draw.palette == 1 &&
                 renderer.item_calls[6].draw.x ==
-                    renderer.item_calls[2].draw.x &&
+                    renderer.item_calls[1].draw.x &&
                 renderer.item_calls[6].draw.y ==
-                    renderer.item_calls[2].draw.y &&
-                renderer.item_calls[7].pattern == 107 &&
-                renderer.item_calls[7].draw.palette == 60 &&
+                    renderer.item_calls[1].draw.y &&
+                renderer.item_calls[7].pattern == 77 &&
+                renderer.item_calls[7].draw.palette == 0 &&
                 renderer.item_calls[7].draw.x ==
-                    renderer.item_calls[3].draw.x &&
+                    renderer.item_calls[1].draw.x &&
                 renderer.item_calls[7].draw.y ==
+                    renderer.item_calls[1].draw.y &&
+                renderer.item_calls[8].pattern == 5 &&
+                renderer.item_calls[8].draw.palette == 11 &&
+                renderer.item_calls[8].draw.x ==
+                    renderer.item_calls[2].draw.x &&
+                renderer.item_calls[8].draw.y ==
+                    renderer.item_calls[2].draw.y &&
+                renderer.item_calls[9].pattern == 82 &&
+                renderer.item_calls[9].draw.palette == 10 &&
+                renderer.item_calls[9].draw.red_strength == 900 &&
+                renderer.item_calls[9].draw.green_strength == 800 &&
+                renderer.item_calls[9].draw.blue_strength == 500 &&
+                renderer.item_calls[9].draw.x ==
+                    renderer.item_calls[2].draw.x &&
+                renderer.item_calls[9].draw.y ==
+                    renderer.item_calls[2].draw.y &&
+                renderer.item_calls[10].pattern == 30 &&
+                renderer.item_calls[10].draw.palette == 61 &&
+                renderer.item_calls[10].draw.x ==
+                    renderer.item_calls[3].draw.x &&
+                renderer.item_calls[10].draw.y ==
+                    renderer.item_calls[3].draw.y &&
+                renderer.item_calls[11].pattern == 107 &&
+                renderer.item_calls[11].draw.palette == 60 &&
+                renderer.item_calls[11].draw.x ==
+                    renderer.item_calls[3].draw.x &&
+                renderer.item_calls[11].draw.y ==
                     renderer.item_calls[3].draw.y,
             "Ostare's drops do not use the retail ground CAF or depth order.")) {
         return false;
@@ -3496,6 +3774,8 @@ bool testRetailRemoteTown() {
         return false;
     }
     world.advanceConversation();
+    const std::vector<std::int32_t> quest_audio =
+        world.takeAudioSamples();
     if (!check(
             world.conversationActive() &&
                 world.conversationActorId() == 2 &&
@@ -3504,8 +3784,13 @@ bool testRetailRemoteTown() {
                 world.quests().lastCue() ==
                     osf::QuestCue::updated &&
                 world.quests().notice().quest_id == 0 &&
-                world.quests().notice().counter == 600,
-            "Syria's callback did not apply its retail quest update.")) {
+                world.quests().notice().counter == 600 &&
+                std::find(
+                    quest_audio.begin(),
+                    quest_audio.end(),
+                    65) != quest_audio.end(),
+            "Syria's callback did not apply its retail quest update, "
+            "notice, and sample 65 cue.")) {
         return false;
     }
     world.advanceConversation();
@@ -3513,6 +3798,49 @@ bool testRetailRemoteTown() {
             !world.conversationActive() &&
                 world.conversationActorId() == -1,
             "Syria's opening conversation did not release world control.")) {
+        return false;
+    }
+    world.takeAudioSamples();
+    osf::ScreenPosition syria_repeat_pointer;
+    const bool syria_repeat_click =
+        findNpcPointerPoint(
+            world, 2, syria_repeat_pointer) &&
+        world.commandWorldInteraction(
+            syria_repeat_pointer.x,
+            syria_repeat_pointer.y);
+    updateUntilConversation(world);
+    const std::vector<std::int32_t> syria_repeat_audio =
+        world.takeAudioSamples();
+    if (!check(
+            syria_repeat_click &&
+                world.conversationActive() &&
+                world.conversationActorId() == 2 &&
+                world.conversationMessageId() == 1000038 &&
+                world.quests().state(0) == 1 &&
+                std::find(
+                    syria_repeat_audio.begin(),
+                    syria_repeat_audio.end(),
+                    65) == syria_repeat_audio.end(),
+            "Syria's repeat interaction restarted quest zero instead "
+            "of entering her normal blessing dialogue.")) {
+        std::cerr
+            << "repeat-click=" << syria_repeat_click
+            << " active=" << world.conversationActive()
+            << " actor=" << world.conversationActorId()
+            << " message=" << world.conversationMessageId()
+            << " quest=" << world.quests().state(0)
+            << " notice=" << world.quests().notice().counter
+            << " life=" << world.playerCurrentLife()
+            << '/' << world.playerRuntimeProfile().maximum_life
+            << " mana=" << world.playerCurrentMana()
+            << '/' << world.playerRuntimeProfile().maximum_mana
+            << '\n';
+        return false;
+    }
+    world.advanceConversation();
+    if (!check(
+            !world.conversationActive(),
+            "Syria's repeat blessing did not return world control.")) {
         return false;
     }
 
@@ -4068,6 +4396,8 @@ int main() {
                    testRetailScenarioCatalog() &&
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
+                   testRetailScenarioEntryInitialization() &&
+                   testRetailScenarioObjectOverride() &&
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&
                    testWorldItemSaveRoundTrip() &&

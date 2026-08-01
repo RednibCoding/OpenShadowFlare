@@ -1,5 +1,7 @@
 #include "states/gameplay_magic.hpp"
+#include "states/gameplay_status.hpp"
 #include "world/player_magic.hpp"
+#include "world/world_scene.hpp"
 
 #include <iostream>
 
@@ -59,6 +61,21 @@ osf::GameplayMagicResult update(
 }  // namespace
 
 int main() {
+    osf::WorldScene debug_world;
+    debug_world.configurePlayerDebugResources(true, true);
+    if (!check(
+            debug_world.playerInfiniteLife() &&
+                debug_world.playerInfiniteMana() &&
+                debug_world.playerCurrentLife() == 1 &&
+                debug_world.playerCurrentMana() == 1 &&
+                debug_world.playerData().currentLife() == 0 &&
+                debug_world.playerData().currentMana() == 0,
+            "The infinite resource overrides changed persistent player "
+            "data.")) {
+        return 1;
+    }
+    debug_world.configurePlayerDebugResources(false, false);
+
     osf::PlayerMagicState state;
     state.levels.fill(1);
     state.bar_slots.fill(-1);
@@ -138,6 +155,31 @@ int main() {
             "The authored previous-page control did not return.")) {
         return 1;
     }
+
+    const osf::GameplayMagicResult status_tab =
+        update(panel, pointerPress(80, 18), magic);
+    if (!check(
+            status_tab.pointer_consumed &&
+                status_tab.switch_to_status &&
+                !panel.active(),
+            "The Status tab did not switch away from the shared Magic "
+            "window.")) {
+        return 1;
+    }
+    osf::GameplayStatus status;
+    status.open();
+    const osf::GameplayStatusResult magic_tab =
+        status.update({false, false, true, 240, 18});
+    if (!check(
+            magic_tab.pointer_consumed &&
+                magic_tab.switch_to_magic &&
+                !status.active(),
+            "The Magic tab did not switch away from the shared Status "
+            "window.")) {
+        return 1;
+    }
+
+    panel.open();
 
     osf::GameplayMagicInput close;
     close.close_pressed = true;

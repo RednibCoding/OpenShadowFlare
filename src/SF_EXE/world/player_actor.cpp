@@ -207,6 +207,35 @@ bool PlayerActor::beginAttack(
     return true;
 }
 
+bool PlayerActor::beginComboAttack(
+    PlayerComboAttackKind kind,
+    std::int32_t attack_speed_tier,
+    const gapi::CafAnimation& animation) {
+    if (attack_controller_.active() ||
+        spell_controller_.active() ||
+        damage_presentation_.action_lock != 0) {
+        return false;
+    }
+    destination_ = position_;
+    movement_controller_.reset();
+    if (!attack_controller_.startCombo(
+            kind,
+            attack_speed_tier,
+            animation,
+            direction_,
+            &pending_attack_event_)) {
+        return false;
+    }
+    action_counter_ = 0;
+    animation_chart_ =
+        attack_controller_.animationChart();
+    animation_frame_ =
+        attack_controller_.animationFrame();
+    motion_ = PlayerMotion::attacking;
+    previous_action_ = PlayerMotion::attacking;
+    return true;
+}
+
 bool PlayerActor::beginSpellCast(
     PlayerSpellAction action,
     std::int32_t spell,
@@ -410,6 +439,27 @@ void PlayerActor::update(
     if (attack_controller_.active()) {
         pending_attack_event_ =
             attack_controller_.update(attack_speed_tier);
+        if (pending_attack_event_.lunge_distance > 0) {
+            const double angle =
+                retailAngleForDirection(direction_);
+            const WorldPosition lunge_destination{
+                position_.x + static_cast<std::int32_t>(
+                    std::cos(angle) *
+                    pending_attack_event_.lunge_distance),
+                position_.y - static_cast<std::int32_t>(
+                    std::sin(angle) *
+                    pending_attack_event_.lunge_distance),
+            };
+            position_ = advanceMovement(
+                ground,
+                objects,
+                judgement_,
+                position_,
+                lunge_destination,
+                pending_attack_event_.lunge_distance,
+                dynamic_blockers)
+                            .position;
+        }
         animation_chart_ =
             attack_controller_.animationChart();
         animation_frame_ =

@@ -302,6 +302,12 @@ bool ItemDatabase::decode(
                 definition.consumable_effect = field(132);
                 definition.consumable_effect_value = field(136);
             }
+            if (category == 4 &&
+                definition.raw_fields.size() >= 100) {
+                definition.automatic_inventory_page = field(88);
+                definition.automatic_inventory_x = field(92);
+                definition.automatic_inventory_y = field(96);
+            }
             if (has_equipment_fields) {
                 definition.maximum_durability = field(100);
                 for (std::size_t parameter = 0;

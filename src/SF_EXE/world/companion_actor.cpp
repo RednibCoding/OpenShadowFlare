@@ -32,6 +32,8 @@ std::int32_t chartForMotion(CompanionMotion motion) {
         return 2;
     case CompanionMotion::attacking:
         return 5;
+    case CompanionMotion::exploding:
+        return 6;
     case CompanionMotion::reacting:
         return kHitChart;
     case CompanionMotion::defeated:
@@ -112,6 +114,9 @@ void CompanionActor::clear() {
     combat_target_character_number_ = -1;
     movement_controller_.reset();
     attack_action_.cancel();
+    explosion_action_.cancel();
+    pending_explosion_destination_ = {};
+    explosion_pending_ = false;
     visual_ = nullptr;
 }
 
@@ -125,6 +130,15 @@ void CompanionActor::relocate(
     combat_target_character_number_ = -1;
     movement_controller_.reset();
     attack_action_.cancel();
+    explosion_action_.cancel();
+    pending_explosion_destination_ = {};
+    explosion_pending_ = false;
+    if (current_life_ > 0) {
+        presentation_action_ = 2;
+        presentation_counter_ = 0;
+        presentation_animation_frame_ = 0;
+        action_lock_ = 0;
+    }
     selectMotion(CompanionMotion::idle);
     if (current_life_ <= 0) {
         beginDefeatedWait();
@@ -285,9 +299,86 @@ CompanionActorUpdate CompanionActor::updateAttack() {
     return result;
 }
 
+bool CompanionActor::beginExplosion(
+    WorldPosition destination) {
+    if (!valid() || current_life_ <= 0 ||
+        explosion_action_.active() ||
+        presentation_action_ == 7 ||
+        presentation_action_ == 9 ||
+        presentation_action_ == 10) {
+        return false;
+    }
+    pending_explosion_destination_ = destination;
+    explosion_pending_ = true;
+    if (attack_action_.active() ||
+        presentation_action_ != 2) {
+        return true;
+    }
+    return activatePendingExplosion();
+}
+
+bool CompanionActor::activatePendingExplosion() {
+    if (!valid() || !explosion_pending_ ||
+        current_life_ <= 0 ||
+        explosion_action_.active() ||
+        attack_action_.active() ||
+        presentation_action_ != 2) {
+        return false;
+    }
+    CompanionExplosionAnimationTiming timing;
+    if (!buildCompanionExplosionAnimationTiming(
+            visual_->animation(), timing) ||
+        !explosion_action_.start(
+            pending_explosion_destination_,
+            std::move(timing))) {
+        explosion_pending_ = false;
+        pending_explosion_destination_ = {};
+        return false;
+    }
+    explosion_pending_ = false;
+    pending_explosion_destination_ = {};
+    presentation_action_ = 10;
+    presentation_counter_ = 0;
+    action_lock_ = 1;
+    combat_target_character_number_ = -1;
+    attack_action_.cancel();
+    movement_controller_.reset();
+    selectMotion(CompanionMotion::exploding);
+    return true;
+}
+
+CompanionExplosionUpdate
+CompanionActor::updateExplosion() {
+    CompanionExplosionUpdate result;
+    if (!valid() || !explosion_action_.active()) {
+        return result;
+    }
+    result.handled = true;
+    previous_position_ = position_;
+    const CompanionExplosionActionEvent event =
+        explosion_action_.update();
+    if (event.relocate_due) {
+        position_ = explosion_action_.destination();
+        previous_position_ = position_;
+    }
+    result.relocated = event.relocate_due;
+    result.impact_due = event.impact_due;
+    result.completed = event.completed;
+    if (event.completed) {
+        presentation_action_ = 2;
+        presentation_counter_ = 0;
+        action_lock_ = 0;
+        selectMotion(CompanionMotion::idle);
+    }
+    return result;
+}
+
 void CompanionActor::leaveCombat() {
     combat_target_character_number_ = -1;
     attack_action_.cancel();
+    explosion_action_.cancel();
+    pending_explosion_destination_ = {};
+    explosion_pending_ = false;
     movement_controller_.reset();
     selectMotion(CompanionMotion::idle);
 }
@@ -481,12 +572,17 @@ void CompanionActor::applyDamageReceiverState(
     if (presentation_action_ == 5 ||
         presentation_action_ == 6) {
         attack_action_.cancel();
+        explosion_action_.cancel();
         movement_controller_.reset();
         combat_target_character_number_ = -1;
         selectMotion(
             presentation_action_ == 5
                 ? CompanionMotion::reacting
                 : CompanionMotion::defeated);
+        if (presentation_action_ == 6) {
+            pending_explosion_destination_ = {};
+            explosion_pending_ = false;
+        }
     }
 }
 
@@ -501,6 +597,9 @@ void CompanionActor::beginDefeatedWait() {
     action_lock_ = 1;
     draw_opacity_ = 0;
     attack_action_.cancel();
+    explosion_action_.cancel();
+    pending_explosion_destination_ = {};
+    explosion_pending_ = false;
     movement_controller_.reset();
     combat_target_character_number_ = -1;
     selectMotion(CompanionMotion::defeated);
@@ -520,6 +619,9 @@ void CompanionActor::beginRevive(
     action_lock_ = 1;
     draw_opacity_ = 1000;
     attack_action_.cancel();
+    explosion_action_.cancel();
+    pending_explosion_destination_ = {};
+    explosion_pending_ = false;
     movement_controller_.reset();
     combat_target_character_number_ = -1;
     selectMotion(CompanionMotion::reviving);
@@ -546,6 +648,27 @@ void CompanionActor::applyRuntimeProfile(
     profile_ = profile;
     current_life_ = std::clamp(
         current_life_, 0, profile_.maximum_life);
+}
+
+bool CompanionActor::restoreLife(
+    std::int32_t amount,
+    std::int32_t maximum_percent) {
+    if (!valid() || current_life_ <= 0 ||
+        current_life_ >= profile_.maximum_life) {
+        return false;
+    }
+    const std::int64_t restored =
+        static_cast<std::int64_t>(current_life_) + amount +
+        static_cast<std::int64_t>(maximum_percent) *
+            profile_.maximum_life / 100;
+    const std::int32_t next = static_cast<std::int32_t>(
+        std::clamp<std::int64_t>(
+            restored, 0, profile_.maximum_life));
+    if (next == current_life_) {
+        return false;
+    }
+    current_life_ = next;
+    return true;
 }
 
 bool CompanionActor::valid() const {
@@ -589,11 +712,15 @@ CompanionMotion CompanionActor::motion() const {
 }
 
 std::int32_t CompanionActor::animationChart() const {
+    if (motion_ == CompanionMotion::exploding) {
+        return explosion_action_.animationChart();
+    }
     return chartForMotion(motion_);
 }
 
 std::int32_t CompanionActor::animationDirection() const {
-    return motion_ == CompanionMotion::defeated ||
+    return motion_ == CompanionMotion::exploding ||
+                   motion_ == CompanionMotion::defeated ||
                    motion_ == CompanionMotion::reviving
         ? kSpecialDirection
         : direction_;
@@ -602,6 +729,9 @@ std::int32_t CompanionActor::animationDirection() const {
 std::int32_t CompanionActor::animationFrame() const {
     if (motion_ == CompanionMotion::attacking) {
         return attack_action_.animationFrame();
+    }
+    if (motion_ == CompanionMotion::exploding) {
+        return explosion_action_.animationFrame();
     }
     if (motion_ == CompanionMotion::reacting ||
         motion_ == CompanionMotion::defeated ||
@@ -634,6 +764,14 @@ CompanionActor::combatTargetCharacterNumber() const {
 
 bool CompanionActor::attackActive() const {
     return attack_action_.active();
+}
+
+bool CompanionActor::explosionPending() const {
+    return explosion_pending_;
+}
+
+bool CompanionActor::explosionActive() const {
+    return explosion_action_.active();
 }
 
 bool CompanionActor::partEnabled(std::size_t part) const {

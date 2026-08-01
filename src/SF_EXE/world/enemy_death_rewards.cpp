@@ -5,15 +5,14 @@
 #include "items/item_instance_factory.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "player_data.hpp"
+#include "player_experience_award.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <iomanip>
 #include <limits>
-#include <sstream>
 #include <vector>
 
 namespace osf {
@@ -22,36 +21,6 @@ namespace {
 constexpr std::int32_t kGoldCategory = 4;
 constexpr std::int32_t kGoldDefinition = 0;
 constexpr double kTwoPi = 6.28318530717958647692;
-struct LevelUpField {
-    std::size_t parameter_row = 0;
-    const char* prefix = nullptr;
-};
-
-constexpr std::array<LevelUpField, 13> kLevelUpFields{{
-    {2, "  HP                    +"},
-    {3, "  MP                    +"},
-    {0, "  Attack Speed          +"},
-    {1, "  Walking Speed         +"},
-    {4, "  Strength              +"},
-    {5, "  Attack                +"},
-    {6, "  Defense               +"},
-    {9, "  Hit Rate              +"},
-    {10, "  Evasion Rate          +"},
-    {7, "  Magical Attack        +"},
-    {8, "  Magical Defense       +"},
-    {11, "  Magical Hit Rate      +"},
-    {12, "  Magical Evasion Rate  +"},
-}};
-
-std::array<std::int32_t, 13> playerParameters(
-    const PlayerData& player) {
-    std::array<std::int32_t, 13> result{};
-    for (std::size_t row = 0; row < result.size(); ++row) {
-        result[row] = player.initialParameter(row);
-    }
-    return result;
-}
-
 std::int32_t nineDigitRandom(RetailRandom& random) {
     std::int32_t result = 0;
     for (std::int32_t digit = 0; digit < 9; ++digit) {
@@ -161,8 +130,6 @@ EnemyKillAccountingResult accountRetailEnemyKill(
     const TableDatabase& tables,
     bool companion_alive) {
     EnemyKillAccountingResult result;
-    const std::array<std::int32_t, 13> parameters_before =
-        playerParameters(player);
     const TableData* shares = tables.find(14);
     if (player.level() < 100 &&
         local_player_slot >= 0 &&
@@ -204,31 +171,12 @@ EnemyKillAccountingResult accountRetailEnemyKill(
         enemy.defeat_source_character_number,
         local_player_slot,
         companion_alive);
-    result.level_gained =
-        player.applyLevelThreshold(tables);
-    if (result.level_gained) {
-        std::ostringstream text;
-        text << "Level " << player.level() << '\n';
-        const std::array<std::int32_t, 13> parameters_after =
-            playerParameters(player);
-        for (const LevelUpField& field : kLevelUpFields) {
-            const std::int32_t change =
-                parameters_after[field.parameter_row] -
-                parameters_before[field.parameter_row];
-            if (change == 0) {
-                continue;
-            }
-            text << field.prefix
-                 << std::setw(4) << change
-                 << "    \n";
-        }
-        result.level_up_notice = text.str();
-        result.level_up_notice_counter = 900;
-        if (player.level() == 5) {
-            result.audio_samples.push_back(64);
-        }
-        result.audio_samples.push_back(63);
-    }
+    const PlayerLevelUpResult level_up =
+        applyRetailPlayerLevelThreshold(player, tables);
+    result.level_gained = level_up.level_gained;
+    result.level_up_notice = level_up.notice;
+    result.level_up_notice_counter = level_up.notice_counter;
+    result.audio_samples = level_up.audio_samples;
     result.companion_level_gained =
         player.applyCompanionLevelThreshold(tables);
     return result;

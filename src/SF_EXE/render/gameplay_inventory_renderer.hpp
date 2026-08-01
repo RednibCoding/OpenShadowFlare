@@ -6,6 +6,7 @@
 namespace osf {
 
 class GameplayInventory;
+struct InventoryItem;
 class WorldScene;
 
 namespace gapi {
@@ -19,6 +20,15 @@ void renderGameplayInventory(
     const gapi::NjpImage& font,
     const GameplayInventory& inventory,
     const WorldScene& world,
+    std::uint32_t gameplay_counter);
+
+bool renderInventoryItem(
+    gapi::Backend& renderer,
+    const gapi::NjpImage* status_patterns,
+    const WorldScene& world,
+    const InventoryItem& item,
+    std::int32_t x,
+    std::int32_t y,
     std::uint32_t gameplay_counter);
 
 void renderGameplayBeltItems(

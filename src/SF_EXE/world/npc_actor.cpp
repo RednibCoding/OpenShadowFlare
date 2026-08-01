@@ -255,6 +255,13 @@ void NpcActor::setStateValue(
     state_.setValue(channel, value);
 }
 
+void NpcActor::setStateOverride(
+    std::int32_t visible,
+    std::int32_t pointer,
+    std::int32_t judgement) {
+    state_.setOverride(visible, pointer, judgement);
+}
+
 std::int32_t NpcActor::id() const {
     return id_;
 }
