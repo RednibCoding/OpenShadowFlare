@@ -90,6 +90,7 @@ void WorldScene::clear() {
     player_belt_.clear();
     player_inventory_.clear();
     player_special_items_.clear();
+    player_giant_warehouse_.initializeNew();
     vendor_inventories_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
@@ -385,6 +386,15 @@ PlayerSpecialItems& WorldScene::playerSpecialItems() {
 
 const PlayerSpecialItems& WorldScene::playerSpecialItems() const {
     return player_special_items_;
+}
+
+PlayerGiantWarehouse& WorldScene::playerGiantWarehouse() {
+    return player_giant_warehouse_;
+}
+
+const PlayerGiantWarehouse&
+WorldScene::playerGiantWarehouse() const {
+    return player_giant_warehouse_;
 }
 
 VendorInventory* WorldScene::vendorInventory(std::int32_t index) {

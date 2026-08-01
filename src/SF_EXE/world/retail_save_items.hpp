@@ -35,6 +35,23 @@ bool replaceRetailOwnedItems(
     std::size_t* serialized_end = nullptr,
     std::string* error = nullptr);
 
+// Shared codec for the later warehouse owners in the same retail stream.
+// These helpers deliberately expose a complete 9x10 container rather than
+// the item-record internals so every owner keeps the same validation rules.
+bool restoreRetailSpecialItemContainer(
+    const std::vector<std::uint8_t>& payload,
+    std::size_t offset,
+    const ItemDatabase& item_database,
+    PlayerSpecialItems& items,
+    std::size_t* serialized_end = nullptr,
+    std::string* error = nullptr);
+
+bool appendRetailSpecialItemContainer(
+    std::vector<std::uint8_t>& payload,
+    const ItemDatabase& item_database,
+    const PlayerSpecialItems& items,
+    std::string* error = nullptr);
+
 }  // namespace osf
 
 #endif

@@ -110,7 +110,8 @@ void renderItemInformation(
     const InventoryItem* item = inventory.informationItem(
         world.playerInventory(),
         world.playerEquipment(),
-        world.playerSpecialItems());
+        world.playerSpecialItems(),
+        &world.playerGiantWarehouse());
     const ItemDefinition* definition = item
         ? world.itemDatabase().find(
               item->category, item->definition_id)

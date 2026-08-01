@@ -240,11 +240,19 @@ bool replaceRetailProgress(
          progress.transport_flags.size() +
          progress.script_state_flags.size()) *
             4u;
-    replaceRetailSavePortableExtension(
-        replacement,
-        progress.running,
-        extension.mine_count,
-        extension.has_mine_count);
+    if (!extension.additional_state.empty()) {
+        replaceRetailSavePortableExtensionState(
+            replacement,
+            progress.running,
+            extension.mine_count,
+            extension.additional_state);
+    } else {
+        replaceRetailSavePortableExtension(
+            replacement,
+            progress.running,
+            extension.mine_count,
+            extension.has_mine_count);
+    }
     payload = std::move(replacement);
     if (serialized_end) {
         *serialized_end = new_progress_end;

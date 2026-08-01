@@ -3,6 +3,7 @@
 #include "items/item_information.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
@@ -1475,6 +1476,117 @@ bool testSpecialItemOwnershipAndRendering() {
         "their own owners.");
 }
 
+bool testGiantWarehousePagesAndRendering() {
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Mina";
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(data_root, player, &error),
+            error.empty()
+                ? "The Giant Warehouse world could not be prepared."
+                : error.c_str())) {
+        return false;
+    }
+
+    osf::PlayerGiantWarehouse::EnabledFlags flags{};
+    flags[0] = 1;
+    flags[1] = 1;
+    world.playerGiantWarehouse().restoreEnabledFlags(flags);
+    const osf::ItemDefinition* accessory =
+        world.itemDatabase().find(2, 1000000);
+    if (!accessory ||
+        !world.playerGiantWarehouse()
+             .page(1)
+             .place(osf::makeInventoryItem(*accessory), 2, 3)
+             .accepted) {
+        return false;
+    }
+
+    osf::GameplayInventory inventory;
+    inventory.openGiantWarehouse();
+    osf::gapi::NjpImage status;
+    if (!status.load(
+            data_root / "System" / "Game" / "Pattern" /
+                "Status.njp",
+            &error)) {
+        return false;
+    }
+    RecordingBackend rendered;
+    osf::renderGameplaySpecialItems(
+        rendered, status, inventory, world, 0);
+    if (!check(
+            inventory.giantWarehouseActive() &&
+                rendered.patterns.size() >= 13 &&
+                rendered.patterns[0].index == 14 &&
+                rendered.patterns[1].index == 15 &&
+                rendered.patterns[2].index == 73 &&
+                rendered.patterns[3].index == 85 &&
+                rendered.patterns[3].draw.x == 24 &&
+                rendered.patterns[3].draw.y == 41 &&
+                rendered.patterns[4].index == 76 &&
+                rendered.patterns[5].index == 74,
+            "The Giant Warehouse did not render its retail ten-page "
+            "tab states.")) {
+        return false;
+    }
+
+    const osf::GameplayInventoryResult selected = inventory.update(
+        {false, false, true, 52, 45},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level(),
+        &world.playerGiantWarehouse());
+    if (!check(
+            selected.pointer_consumed &&
+                selected.item_sound_sample == 58 &&
+                world.playerGiantWarehouse().selectedPage() == 1,
+            "An enabled Giant Warehouse page did not select through its "
+            "retail tab.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 3; ++update) {
+        inventory.update(
+            {false, false, false, 84, 180},
+            world.playerInventory(),
+            world.playerEquipment(),
+            world.playerBelt(),
+            world.playerSpecialItems(),
+            world.itemDatabase(),
+            world.playerData().level(),
+            &world.playerGiantWarehouse());
+    }
+    if (!check(
+            inventory.informationItem(
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerSpecialItems(),
+                &world.playerGiantWarehouse()) ==
+                &world.playerGiantWarehouse().page(1).items()[0],
+            "The selected Giant Warehouse page did not own item hover.")) {
+        return false;
+    }
+
+    inventory.update(
+        {false, false, true, 280, 45},
+        world.playerInventory(),
+        world.playerEquipment(),
+        world.playerBelt(),
+        world.playerSpecialItems(),
+        world.itemDatabase(),
+        world.playerData().level(),
+        &world.playerGiantWarehouse());
+    return check(
+        !inventory.leftStorageActive(),
+        "The Giant Warehouse retail close tab did not close its owner.");
+}
+
 bool testIdentificationSelection() {
     osf::PlayerInventory owned;
     osf::PlayerEquipment equipment;
@@ -1791,7 +1903,8 @@ int main() {
                    testInventoryResourcesAndRendering() &&
                    testConditionArtwork() &&
                    testAccessoryAndBeltOwnership() &&
-                   testSpecialItemOwnershipAndRendering()
+                   testSpecialItemOwnershipAndRendering() &&
+                   testGiantWarehousePagesAndRendering()
         ? 0
         : 1;
 }

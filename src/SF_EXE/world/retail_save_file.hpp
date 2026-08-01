@@ -12,6 +12,7 @@ class ItemDatabase;
 class PlayerBelt;
 class PlayerData;
 class PlayerEquipment;
+class PlayerGiantWarehouse;
 class PlayerInventory;
 class PlayerMagic;
 class PlayerSpecialItems;
@@ -71,6 +72,7 @@ bool writeRetailSave(
     const RetailSaveProgress& progress,
     const PlayerMagic& magic,
     std::int32_t mine_count,
+    const PlayerGiantWarehouse& giant_warehouse,
     std::uint8_t xor_key,
     std::string* error = nullptr);
 

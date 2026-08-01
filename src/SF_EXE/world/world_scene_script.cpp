@@ -456,14 +456,13 @@ bool WorldScene::executeScriptNativeCommand(
 
     if (opcode == 41) {
         if (arguments.empty() ||
-            arguments[0] != 0 ||
             gameplay_service_request_.kind !=
                 GameplayServiceKind::none) {
             return false;
         }
         gameplay_service_request_ = {
             GameplayServiceKind::toggle_special_items,
-            0,
+            arguments[0],
         };
         return true;
     }

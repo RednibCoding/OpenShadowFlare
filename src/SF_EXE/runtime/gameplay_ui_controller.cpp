@@ -284,7 +284,7 @@ bool GameplayUiController::update(
                 mission_list_.active() ||
                 transport_.active() ||
                 vendor_.active() ||
-                inventory_.specialItemsActive();
+                inventory_.leftStorageActive();
             world.setCameraAnchor(
                 gameplayCameraAnchorX(
                     left_panel_active,
@@ -309,14 +309,22 @@ bool GameplayUiController::update(
             service.kind ==
             GameplayServiceKind::toggle_special_items) {
             transport_.close();
-            if (inventory_.specialItemsActive()) {
+            const bool giant = service.argument != 0;
+            const bool requested_active = giant
+                ? inventory_.giantWarehouseActive()
+                : inventory_.specialItemsActive();
+            if (requested_active) {
                 inventory_.closeSpecialItems();
                 world.setCameraAnchor(
                     gameplayCameraAnchorX(
                         false, inventory_.active()),
                     240);
             } else {
-                inventory_.openSpecialItems();
+                if (giant) {
+                    inventory_.openGiantWarehouse();
+                } else {
+                    inventory_.openSpecialItems();
+                }
                 world.setCameraAnchor(
                     gameplayCameraAnchorX(
                         true, inventory_.active()),
@@ -502,7 +510,7 @@ bool GameplayUiController::update(
         mission_list_.active() ||
         transport_.active() ||
         vendor_.active() ||
-        inventory_.specialItemsActive();
+        inventory_.leftStorageActive();
     const GameplayMagicResult magic_result =
         magic_.update(
             {
@@ -551,7 +559,7 @@ bool GameplayUiController::update(
             mission_list_.active() ||
             transport_.active() ||
             vendor_.active() ||
-            inventory_.specialItemsActive();
+            inventory_.leftStorageActive();
         world.setCameraAnchor(
             gameplayCameraAnchorX(
                 left_panel_active,
@@ -625,7 +633,8 @@ bool GameplayUiController::update(
                 world.playerBelt(),
                 world.playerSpecialItems(),
                 world.itemDatabase(),
-                world.playerData().level());
+                world.playerData().level(),
+                &world.playerGiantWarehouse());
         if (result.cancel_identification_requested) {
             world.cancelPlayerIdentifyMode();
         } else if (
@@ -683,7 +692,7 @@ bool GameplayUiController::update(
             }
         }
         const bool left_panel_active =
-            inventory_.specialItemsActive() ||
+            inventory_.leftStorageActive() ||
             magic_.active() ||
             status_.active() ||
             map_.active() ||
@@ -829,6 +838,7 @@ bool GameplayUiController::updateOptions(
                 world.retailSaveProgress(),
                 world.playerMagic(),
                 world.playerMineCount(),
+                world.playerGiantWarehouse(),
                 static_cast<std::uint8_t>(
                     random.next() & 0xff),
                 &error);

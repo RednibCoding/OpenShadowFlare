@@ -661,4 +661,42 @@ bool replaceRetailOwnedItems(
     return true;
 }
 
+bool restoreRetailSpecialItemContainer(
+    const std::vector<std::uint8_t>& payload,
+    std::size_t offset,
+    const ItemDatabase& item_database,
+    PlayerSpecialItems& items,
+    std::size_t* serialized_end,
+    std::string* error) {
+    PlayerSpecialItems restored;
+    PayloadCursor cursor(payload, offset);
+    if (!skipOrRestoreContainer(
+            cursor,
+            ContainerKind::special_items,
+            &item_database,
+            nullptr,
+            nullptr,
+            &restored,
+            error)) {
+        return false;
+    }
+    items = std::move(restored);
+    if (serialized_end) {
+        *serialized_end = cursor.offset();
+    }
+    if (error) {
+        error->clear();
+    }
+    return true;
+}
+
+bool appendRetailSpecialItemContainer(
+    std::vector<std::uint8_t>& payload,
+    const ItemDatabase& item_database,
+    const PlayerSpecialItems& items,
+    std::string* error) {
+    return encodeContainer(
+        payload, items.items(), item_database, error);
+}
+
 }  // namespace osf

@@ -1001,12 +1001,63 @@ bool testRetailRedGoblinDeathStatus() {
 #endif
 }
 
+bool testRetailGiantWarehouseScript() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "99000013" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::vector<std::pair<
+        std::int32_t,
+        std::vector<std::int32_t>>> native_commands;
+    osf::script::Interpreter interpreter({
+        [](const osf::script::Operand&) { return std::int32_t{0}; },
+        [](const osf::script::Operand&, std::int32_t) { return true; },
+        {},
+        [&native_commands](
+            std::int32_t opcode,
+            const std::vector<std::int32_t>& arguments) {
+            native_commands.emplace_back(opcode, arguments);
+            return true;
+        },
+        [](osf::script::ValueQuery, std::int32_t& value) {
+            value = 0;
+            return true;
+        },
+        {},
+        {},
+    });
+    interpreter.bind(&script);
+    return check(
+        interpreter.startStatus(0, 10000900) ==
+                osf::script::StepResult::complete &&
+            native_commands ==
+                std::vector<std::pair<
+                    std::int32_t,
+                    std::vector<std::int32_t>>>{{41, {1}}},
+        "Tower of Ordeal 12F's Giant Warehouse did not emit the "
+        "nonzero opcode-41 owner branch.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
     return testRetailRemoteTown() &&
                    testRetailOutdoorChestScript() &&
                    testRetailRedGoblinDeathStatus() &&
+                   testRetailGiantWarehouseScript() &&
                    testMalformedScript()
                ? 0
                : 1;

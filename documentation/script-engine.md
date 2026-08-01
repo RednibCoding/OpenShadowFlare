@@ -313,7 +313,7 @@ interactions are portable so far.
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
-| 41 | `0x004335ac` | Toggle an executable-owned item service; argument zero is the Warehouse/Special Item owner |
+| 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
@@ -360,6 +360,13 @@ zero, which toggles the same Special Item owner opened by `X`. The interpreter
 does not include panel, input, camera, item, or transport headers. It only
 evaluates the command and sends the typed request across its native-command
 hook.
+
+The one shipped nonzero opcode-41 call is scenario `99000013`, sentence 10.
+Its object `10000900` is named `Giant Warehouse` in the Tower of Ordeal 12F
+MCT and passes argument one. The executable uses that value to select a
+different character-owned service with ten 9-by-10 pages. This remains a
+native request: the script chooses the service, while item ownership, page
+input, rendering, and persistence stay outside the interpreter.
 
 Opcodes 5 and 6 follow the same boundary. Scenario status kind 7 initializes
 vendor inventory zero with opcode 6 and stock profile zero (or profile 22 for

@@ -979,6 +979,15 @@ respectively and leaves every bar slot at `-1`; only availability value three
 is treated as learned. The portable save path now restores and replaces this
 exact section while retaining all later unknown bytes.
 
+After the magic history and Land Mine count, retail writes three 32-bit
+values for later world state, the literal page count ten, ten Giant Warehouse
+unlock values, and ten ordinary item containers. The selected page is not in
+the stream. OpenShadowFlare restores and replaces the flags and all ten
+containers while preserving the three preceding and all later unmapped
+values. A version-four portable tail carries the same owners when a newer save
+does not yet contain that later retail suffix; versions one through three
+remain readable.
+
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
 destination with the live pointer position, but releasing after that held
@@ -1116,8 +1125,18 @@ back at Remote Town's `(89898,2811)`, direction 3, and music track 0.
 The Warehouse reaches opcode 41 at `0x004335ac`. Argument zero toggles runtime
 flag `0x0048ce48`, the same one-page Special Item owner handled by
 `0x00447970`; it is not a separate warehouse container. Nonzero opcode-41
-arguments select a related ten-page owner which is not exercised by Remote
-Town and remains pending.
+arguments instead toggle `0x0048ce4c` and clear the first flag. Scanning every
+shipped `Scenario.Scs` found one such call: scenario `99000013`, sentence 10,
+for object `10000900`. The matching MCT names it `Giant Warehouse` on Tower of
+Ordeal 12F.
+
+`0x00447ca0` handles that second owner. Player offsets `+0x520` through
+`+0x544` hold ten independent containers, `+0x55c` through `+0x580` hold ten
+page-unlock values, and `+0x558` is the transient selected page. New
+characters enable page zero only. `0x00404760` draws Status pattern 73, then
+pattern 74 for a disabled tab, 75 through 84 for enabled tabs, or 85 through
+94 for the selected tab at `(24 + page*24,41)`. Enabled tab clicks and the
+close cell at `(272..295,40..55)` use sample 58.
 
 The portable decoder also reads all seven Remote Town PEOPLE records and their
 bounded-wander tails. The first value after the bounds is copied to runtime

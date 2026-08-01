@@ -617,8 +617,12 @@ whole section while preserving the later unmapped payload. Retail follows it
 with a counted history block (two parallel signed 32-bit arrays) and then the
 current Land Mine count. OpenShadowFlare locates and rewrites that count at
 the same boundary. Sparse portable saves that do not yet contain the later
-retail state keep it in the versioned portable tail instead. Scenario position
-and the rest of the later state are still pending.
+retail state keep it in the versioned portable tail instead. The next retail
+fields are three still-separate world values, a literal Giant Warehouse page
+count of ten, ten page-unlock values, and ten normal 9-by-10 item containers.
+Those flags and containers are now restored and rewritten too. The currently
+selected page is UI-only and is not serialized. Scenario position and the rest
+of the later state are still pending.
 
 ## Transport destination table
 

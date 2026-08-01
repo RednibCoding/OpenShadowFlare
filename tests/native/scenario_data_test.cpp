@@ -1413,6 +1413,22 @@ bool testWorldItemSaveRoundTrip() {
             "The special-item save fixture could not be placed.")) {
         return false;
     }
+    osf::PlayerGiantWarehouse::EnabledFlags giant_flags{};
+    giant_flags[0] = 1;
+    giant_flags[2] = 1;
+    saved_world.playerGiantWarehouse().restoreEnabledFlags(
+        giant_flags);
+    if (!check(
+            saved_world.playerGiantWarehouse()
+                .page(2)
+                .place(
+                    osf::makeInventoryItem(*special_gold, 50),
+                    4,
+                    5)
+                .accepted,
+            "The Giant Warehouse save fixture could not be placed.")) {
+        return false;
+    }
     if (!check(
             osf::writeRetailSave(
                 save_path,
@@ -1422,6 +1438,10 @@ bool testWorldItemSaveRoundTrip() {
                 saved_world.playerEquipment(),
                 saved_world.playerBelt(),
                 saved_world.playerSpecialItems(),
+                saved_world.retailSaveProgress(),
+                saved_world.playerMagic(),
+                saved_world.playerMineCount(),
+                saved_world.playerGiantWarehouse(),
                 0x5a,
                 &error),
             "The world-owned item state could not be saved.")) {
@@ -1473,9 +1493,26 @@ bool testWorldItemSaveRoundTrip() {
                 loaded_world.playerSpecialItems().items()[0].category == 4 &&
                 loaded_world.playerSpecialItems().items()[0].quantity == 125 &&
                 loaded_world.playerSpecialItems().items()[0].grid_x == 2 &&
-                loaded_world.playerSpecialItems().items()[0].grid_y == 3,
+                loaded_world.playerSpecialItems().items()[0].grid_y == 3 &&
+                loaded_world.playerGiantWarehouse().pageEnabled(2) &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()
+                        .size() == 1 &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()[0]
+                        .quantity == 50 &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()[0]
+                        .grid_x == 4 &&
+                loaded_world.playerGiantWarehouse()
+                        .page(2)
+                        .items()[0]
+                        .grid_y == 5,
             "World loading discarded backpack, belt, equipped, or "
-            "special items.")) {
+            "Warehouse items.")) {
         std::cerr << error << '\n';
         return false;
     }

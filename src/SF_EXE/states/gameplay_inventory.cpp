@@ -3,6 +3,7 @@
 #include "items/item_audio.hpp"
 #include "items/item_database.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 
@@ -129,20 +130,26 @@ void GameplayInventory::open() {
 }
 
 void GameplayInventory::openSpecialItems() {
-    special_items_active_ = true;
+    left_storage_ = LeftStorage::special_items;
+    close_hovered_ = false;
+    clearItemHover();
+}
+
+void GameplayInventory::openGiantWarehouse() {
+    left_storage_ = LeftStorage::giant_warehouse;
     close_hovered_ = false;
     clearItemHover();
 }
 
 void GameplayInventory::closeSpecialItems() {
-    special_items_active_ = false;
+    left_storage_ = LeftStorage::none;
     close_hovered_ = false;
     clearItemHover();
 }
 
 void GameplayInventory::close() {
     active_ = false;
-    special_items_active_ = false;
+    left_storage_ = LeftStorage::none;
     close_hovered_ = false;
     clearItemHover();
 }
@@ -154,7 +161,8 @@ GameplayInventoryResult GameplayInventory::update(
     PlayerBelt& belt,
     PlayerSpecialItems& special_items,
     const ItemDatabase& item_database,
-    std::int32_t player_level) {
+    std::int32_t player_level,
+    PlayerGiantWarehouse* giant_warehouse) {
     GameplayInventoryResult result;
     pointer_x_ = input.pointer_x;
     pointer_y_ = input.pointer_y;
@@ -174,8 +182,8 @@ GameplayInventoryResult GameplayInventory::update(
         return result;
     }
     if (input.special_toggle_pressed) {
-        if (special_items_active_) {
-            special_items_active_ = false;
+        if (specialItemsActive()) {
+            left_storage_ = LeftStorage::none;
             close_hovered_ = false;
             clearItemHover();
         } else {
@@ -289,14 +297,52 @@ GameplayInventoryResult GameplayInventory::update(
         close();
         return result;
     }
-    if (special_items_active_ &&
+    PlayerSpecialItems* left_storage = nullptr;
+    if (specialItemsActive()) {
+        left_storage = &special_items;
+    } else if (giantWarehouseActive() && giant_warehouse) {
+        left_storage = &giant_warehouse->page(
+            giant_warehouse->selectedPage());
+    }
+    if (left_storage &&
         (!active_ || input.pointer_x < panel_left)) {
         updateSpecialHover(
             input.pointer_x,
             input.pointer_y,
-            special_items);
+            *left_storage);
         if (input.pointer_primary_pressed) {
-            if (inside(
+            if (giantWarehouseActive() &&
+                inside(
+                    input.pointer_x,
+                    input.pointer_y,
+                    272,
+                    40,
+                    296,
+                    56)) {
+                closeSpecialItems();
+                result.pointer_consumed = true;
+            } else if (giantWarehouseActive() &&
+                       inside(
+                           input.pointer_x,
+                           input.pointer_y,
+                           24,
+                           40,
+                           264,
+                           56)) {
+                const std::size_t page =
+                    static_cast<std::size_t>(
+                        (input.pointer_x - 24) / 24);
+                if (giant_warehouse &&
+                    giant_warehouse->selectPage(page)) {
+                    result.item_sound_sample = 58;
+                    left_storage = &giant_warehouse->page(page);
+                    updateSpecialHover(
+                        input.pointer_x,
+                        input.pointer_y,
+                        *left_storage);
+                }
+                result.pointer_consumed = true;
+            } else if (inside(
                     input.pointer_x,
                     input.pointer_y,
                     special_left,
@@ -319,7 +365,7 @@ GameplayInventoryResult GameplayInventory::update(
                          (special_top - cell_size / 2)) /
                         cell_size;
                     const InventoryPlacementResult placement =
-                        special_items.place(
+                        left_storage->place(
                             item,
                             grid_x,
                             grid_y);
@@ -333,7 +379,7 @@ GameplayInventoryResult GameplayInventory::update(
                     }
                 } else if (
                     hovered_special_item_index_ >= 0) {
-                    held_item_ = special_items.take(
+                    held_item_ = left_storage->take(
                         static_cast<std::size_t>(
                             hovered_special_item_index_));
                     markHeldAsPlayerItem();
@@ -580,11 +626,19 @@ bool GameplayInventory::active() const {
 }
 
 bool GameplayInventory::specialItemsActive() const {
-    return special_items_active_;
+    return left_storage_ == LeftStorage::special_items;
+}
+
+bool GameplayInventory::giantWarehouseActive() const {
+    return left_storage_ == LeftStorage::giant_warehouse;
+}
+
+bool GameplayInventory::leftStorageActive() const {
+    return left_storage_ != LeftStorage::none;
 }
 
 bool GameplayInventory::anyItemPanelActive() const {
-    return active_ || special_items_active_;
+    return active_ || leftStorageActive();
 }
 
 bool GameplayInventory::closeHovered() const {
@@ -607,7 +661,8 @@ GameplayInventory::hoveredEquipmentSlot() const {
 const InventoryItem* GameplayInventory::informationItem(
     const PlayerInventory& inventory,
     const PlayerEquipment& equipment,
-    const PlayerSpecialItems& special_items) const {
+    const PlayerSpecialItems& special_items,
+    const PlayerGiantWarehouse* giant_warehouse) const {
     // FUN_00408a80 waits for three cursor updates before creating the
     // information display and does not describe an item being carried.
     if (!anyItemPanelActive() ||
@@ -616,13 +671,18 @@ const InventoryItem* GameplayInventory::informationItem(
         return nullptr;
     }
     if (hovered_special_item_index_ >= 0) {
+        const PlayerSpecialItems* storage = &special_items;
+        if (giantWarehouseActive() && giant_warehouse) {
+            storage = &giant_warehouse->page(
+                giant_warehouse->selectedPage());
+        }
         if (hovered_special_item_index_ < 0 ||
             static_cast<std::size_t>(
                 hovered_special_item_index_) >=
-                special_items.items().size()) {
+                storage->items().size()) {
             return nullptr;
         }
-        return &special_items.items()[
+        return &storage->items()[
             static_cast<std::size_t>(
                 hovered_special_item_index_)];
     }

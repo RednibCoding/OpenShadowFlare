@@ -363,10 +363,13 @@ Game. Escape closes any visible left- and right-hand gameplay panels first;
 only the following press opens Settings. The separate Land Mine count now
 survives the same save path. Its inventory icon and current/maximum readout
 are live too; pickups increment that owner directly and a mine at full
-capacity stays in the world instead of leaking into the backpack. Scenario position,
-script-created world actors, and the remaining dynamic state are still
-pending. Companion type, level, experience, and its defeated countdown
-already live in the preserved player record.
+capacity stays in the world instead of leaking into the backpack. Opcode 41's
+nonzero branch now opens the Tower of Ordeal Giant Warehouse with its ten
+separately unlocked 9-by-10 pages, and all ten owners survive both original
+retail and shorter portable saves. Scenario position, script-created world
+actors, and the remaining dynamic state are still pending. Companion type,
+level, experience, and its defeated countdown already live in the preserved
+player record.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

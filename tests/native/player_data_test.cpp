@@ -3,6 +3,7 @@
 #include "items/item_repair.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
@@ -10,6 +11,8 @@
 #include "world/player_item_controller.hpp"
 #include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
+#include "world/retail_save_extension.hpp"
+#include "world/retail_save_giant_warehouse.hpp"
 #include "world/retail_save_items.hpp"
 #include "world/retail_save_magic.hpp"
 #include "world/retail_save_mines.hpp"
@@ -664,6 +667,57 @@ int main() {
         return 1;
     }
 
+    osf::PlayerGiantWarehouse saved_giant_warehouse;
+    saved_giant_warehouse.initializeNew();
+    osf::PlayerGiantWarehouse::EnabledFlags giant_flags{};
+    giant_flags[0] = 1;
+    giant_flags[3] = 1;
+    saved_giant_warehouse.restoreEnabledFlags(giant_flags);
+    if (!saved_giant_warehouse.page(3)
+             .place(dropped_dagger, 4, 5)
+             .accepted) {
+        return 1;
+    }
+    std::vector<std::uint8_t> portable_warehouse_payload;
+    osf::replaceRetailSavePortableExtension(
+        portable_warehouse_payload, true, 7, true);
+    osf::PlayerGiantWarehouse restored_giant_warehouse;
+    restored_giant_warehouse.initializeNew();
+    if (!check(
+            osf::replaceRetailGiantWarehouse(
+                portable_warehouse_payload,
+                0,
+                items,
+                saved_giant_warehouse,
+                nullptr,
+                &error) &&
+                osf::restoreRetailGiantWarehouse(
+                    portable_warehouse_payload,
+                    0,
+                    items,
+                    restored_giant_warehouse,
+                    nullptr,
+                    &error) &&
+                osf::inspectRetailSavePortableExtension(
+                    portable_warehouse_payload)
+                    .running &&
+                osf::inspectRetailSavePortableExtension(
+                    portable_warehouse_payload)
+                        .mine_count == 7 &&
+                restored_giant_warehouse.pageEnabled(0) &&
+                restored_giant_warehouse.pageEnabled(3) &&
+                !restored_giant_warehouse.pageEnabled(1) &&
+                restored_giant_warehouse.page(3).items().size() == 1 &&
+                restored_giant_warehouse.page(3).items()[0].definition_id ==
+                    dropped_dagger.definition_id &&
+                restored_giant_warehouse.page(3).items()[0].grid_x == 4 &&
+                restored_giant_warehouse.page(3).items()[0].grid_y == 5,
+            "Giant Warehouse pages, unlocks, running state, or mine count "
+            "did not survive the portable save extension.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+
     const osf::ItemDefinition* unknown_sword =
         items.find(0, 10);
     osf::PlayerInventory identified_inventory;
@@ -785,6 +839,9 @@ int main() {
         retail_magic.initializeNew();
         std::size_t retail_magic_end = 0;
         std::int32_t retail_mine_count = 5;
+        std::size_t retail_mine_end = 0;
+        osf::PlayerGiantWarehouse retail_giant_warehouse;
+        retail_giant_warehouse.initializeNew();
         if (!check(
                 osf::restoreRetailProgress(
                     retail_fixture_payload,
@@ -802,11 +859,18 @@ int main() {
                         retail_fixture_payload,
                         retail_magic_end,
                         retail_mine_count,
+                        &retail_mine_end,
+                        &error) &&
+                    osf::restoreRetailGiantWarehouse(
+                        retail_fixture_payload,
+                        retail_mine_end,
+                        items,
+                        retail_giant_warehouse,
                         nullptr,
-                    &error) &&
+                        &error) &&
                     retail_mine_count >= 0,
-                "The original retail mine count could not be restored at "
-                "its post-magic field.")) {
+                "The original retail mine count or ten-page Giant "
+                "Warehouse could not be restored after magic.")) {
             std::cerr << error << '\n';
             return 1;
         }

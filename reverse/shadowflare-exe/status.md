@@ -547,6 +547,23 @@ ownership, centered placement, single-item displacement, Gold stacking, and
 the three-update information delay with the ordinary inventory. Opening
 Inventory or Special Item closes the other. Opcode 41 argument zero reaches
 this same owner from the Warehouse; it does not create another container.
+
+Opcode 41's nonzero branch is no longer unnamed. A scan of every shipped SCS
+found its only use in scenario `99000013`, sentence 10. The matching Tower of
+Ordeal 12F MCT calls object `10000900` `Giant Warehouse`. At `0x004335ac`,
+argument zero toggles `0x0048ce48`; a nonzero argument toggles `0x0048ce4c`,
+and each branch clears the other flag.
+
+The Giant Warehouse has ten 9-by-10 containers at player `+0x520` through
+`+0x544`, a selected page at `+0x558`, and ten page-unlock values from `+0x55c`
+through `+0x580`. New-character initialization enables page zero only. The
+selected page is transient. `0x00404760` draws pattern 73 and the page strip:
+74 means disabled, 75..84 mean enabled, and 85..94 mean selected. Tabs begin
+at `(24,41)` and advance by 24 pixels. `0x00447ca0` owns the tab and item
+input, the close cell at x272..295/y40..55, and sample 58. All ten unlock
+values and item containers follow the Land Mine field in retail saves and are
+now restored and rewritten; sparse portable saves use the backward-compatible
+version-four tail.
 The owner now restores and rewrites its exact save-payload container. The
 inventory-panel transfer button at classifier case 10 remains pending.
 

@@ -1041,6 +1041,17 @@ stacking, hover information, camera anchor, and world-input boundary follow
 the corresponding retail paths. Inventory and Special Item close each other
 instead of pretending to be two views of one container.
 
+Opcode 41's other branch is reconstructed too. The only shipped nonzero call
+comes from the `Giant Warehouse` on Tower of Ordeal 12F, not from a second
+kind of Special Item window. It owns ten independent 9-by-10 pages, ten saved
+unlock flags, and a transient selected page. The panel uses Status pattern 73,
+the disabled, enabled, and selected page-tab runs at patterns 74 through 94,
+the retail tab and close hitboxes, and sample 58. Its selected page shares the
+normal Warehouse's placement, swapping, Gold stacking, hover, camera, and
+Inventory-transfer paths. Original saves restore the ten owners at their
+post-mine boundary; shorter portable saves carry the same data in the
+versioned tail without breaking older save versions.
+
 The ordinary item information display is live now. Resting the pointer over a
 backpack, equipment, or special item for the same short delay as retail draws
 its name,

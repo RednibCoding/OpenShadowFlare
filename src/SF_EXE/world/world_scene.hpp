@@ -10,6 +10,7 @@
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/vendor_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "resources/effect_pattern_resource.hpp"
@@ -153,6 +154,8 @@ public:
     const PlayerInventory& playerInventory() const;
     PlayerSpecialItems& playerSpecialItems();
     const PlayerSpecialItems& playerSpecialItems() const;
+    PlayerGiantWarehouse& playerGiantWarehouse();
+    const PlayerGiantWarehouse& playerGiantWarehouse() const;
     VendorInventory* vendorInventory(std::int32_t index);
     const VendorInventory* vendorInventory(std::int32_t index) const;
     const ItemInventoryResource& itemInventoryPatterns() const;
@@ -446,6 +449,7 @@ private:
     PlayerBelt player_belt_;
     PlayerInventory player_inventory_;
     PlayerSpecialItems player_special_items_;
+    PlayerGiantWarehouse player_giant_warehouse_;
     std::vector<VendorInventory> vendor_inventories_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;

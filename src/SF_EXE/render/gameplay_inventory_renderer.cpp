@@ -5,6 +5,7 @@
 #include "items/item_database.hpp"
 #include "items/player_belt.hpp"
 #include "items/player_equipment.hpp"
+#include "items/player_giant_warehouse.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
@@ -291,7 +292,7 @@ void renderGameplaySpecialItems(
     const GameplayInventory& inventory,
     const WorldScene& world,
     std::uint32_t gameplay_counter) {
-    if (!inventory.specialItemsActive() ||
+    if (!inventory.leftStorageActive() ||
         !world.hasPlayer()) {
         return;
     }
@@ -306,8 +307,34 @@ void renderGameplaySpecialItems(
     renderer.drawPattern(status_patterns, 14);
     renderer.drawPattern(status_patterns, 15);
 
+    const PlayerSpecialItems* storage =
+        &world.playerSpecialItems();
+    if (inventory.giantWarehouseActive()) {
+        const PlayerGiantWarehouse& giant =
+            world.playerGiantWarehouse();
+        renderer.drawPattern(status_patterns, 73);
+        for (std::size_t page = 0;
+             page < PlayerGiantWarehouse::page_count;
+             ++page) {
+            std::size_t pattern = 74;
+            if (giant.pageEnabled(page)) {
+                pattern = page == giant.selectedPage()
+                    ? 85 + page
+                    : 75 + page;
+            }
+            renderer.drawPattern(
+                status_patterns,
+                pattern,
+                {
+                    24 + static_cast<std::int32_t>(page) * 24,
+                    41,
+                });
+        }
+        storage = &giant.page(giant.selectedPage());
+    }
+
     for (const InventoryItem& item :
-         world.playerSpecialItems().items()) {
+         storage->items()) {
         renderInventoryItem(
             renderer,
             &status_patterns,

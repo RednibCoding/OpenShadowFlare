@@ -162,7 +162,7 @@ void RuntimeRenderer::render(
                         *font,
                         context.gameplay_debug);
                 } else if (context.gameplay_inventory
-                        .specialItemsActive()) {
+                        .leftStorageActive()) {
                     renderGameplaySpecialItems(
                         renderer_,
                         *status,
@@ -284,7 +284,7 @@ void RuntimeRenderer::render(
                     context.gameplay_transport.active() ||
                     context.gameplay_vendor.active() ||
                     context.gameplay_inventory
-                        .specialItemsActive();
+                        .leftStorageActive();
                 renderGameplayMagicBar(
                     renderer_,
                     *magic_icons,

@@ -374,7 +374,7 @@ private:
                     gameplayUi_.inventory().active();
                 const bool special_items_active =
                     gameplayUi_.inventory()
-                        .specialItemsActive();
+                        .leftStorageActive();
                 const bool magic_active =
                     gameplayUi_.magic().active();
                 const bool status_active =

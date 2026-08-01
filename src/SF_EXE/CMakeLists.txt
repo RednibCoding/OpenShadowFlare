@@ -54,6 +54,7 @@ add_library(
   items/new_player_loadout.cpp
   items/player_belt.cpp
   items/player_equipment.cpp
+  items/player_giant_warehouse.cpp
   items/player_inventory.cpp
   items/player_special_items.cpp
   items/vendor_inventory.cpp
@@ -181,6 +182,7 @@ add_library(
   world/quest_state.cpp
   world/retail_save_file.cpp
   world/retail_save_extension.cpp
+  world/retail_save_giant_warehouse.cpp
   world/retail_save_items.cpp
   world/retail_save_magic.cpp
   world/retail_save_mines.cpp

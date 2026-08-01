@@ -10,6 +10,7 @@
 namespace osf {
 
 class ItemDatabase;
+class PlayerGiantWarehouse;
 class PlayerSpecialItems;
 struct GameplayInventoryInput {
     bool toggle_pressed = false;
@@ -63,6 +64,7 @@ public:
 
     void open();
     void openSpecialItems();
+    void openGiantWarehouse();
     void closeSpecialItems();
     void close();
     GameplayInventoryResult update(
@@ -72,7 +74,8 @@ public:
         PlayerBelt& belt,
         PlayerSpecialItems& special_items,
         const ItemDatabase& item_database,
-        std::int32_t player_level);
+        std::int32_t player_level,
+        PlayerGiantWarehouse* giant_warehouse = nullptr);
     void completeWorldDrop(
         bool succeeded,
         PlayerInventory& inventory);
@@ -89,6 +92,8 @@ public:
 
     bool active() const;
     bool specialItemsActive() const;
+    bool giantWarehouseActive() const;
+    bool leftStorageActive() const;
     bool anyItemPanelActive() const;
     bool closeHovered() const;
     std::int32_t hoveredItemIndex() const;
@@ -96,13 +101,20 @@ public:
     const InventoryItem* informationItem(
         const PlayerInventory& inventory,
         const PlayerEquipment& equipment,
-        const PlayerSpecialItems& special_items) const;
+        const PlayerSpecialItems& special_items,
+        const PlayerGiantWarehouse* giant_warehouse = nullptr) const;
     bool holdingItem() const;
     const InventoryItem* heldItem() const;
     std::int32_t pointerX() const;
     std::int32_t pointerY() const;
 
 private:
+    enum class LeftStorage {
+        none,
+        special_items,
+        giant_warehouse,
+    };
+
     void updateHover(
         std::int32_t pointer_x,
         std::int32_t pointer_y,
@@ -119,7 +131,7 @@ private:
     void markHeldAsPlayerItem();
 
     bool active_ = false;
-    bool special_items_active_ = false;
+    LeftStorage left_storage_ = LeftStorage::none;
     bool close_hovered_ = false;
     std::int32_t hovered_item_index_ = -1;
     std::int32_t hovered_equipment_slot_ = -1;

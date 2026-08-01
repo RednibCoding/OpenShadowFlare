@@ -2,6 +2,7 @@
 
 #include "items/new_player_loadout.hpp"
 #include "retail_save_file.hpp"
+#include "retail_save_giant_warehouse.hpp"
 #include "retail_save_items.hpp"
 #include "retail_save_magic.hpp"
 #include "retail_save_mines.hpp"
@@ -63,6 +64,7 @@ bool WorldScene::loadInitialScenario(
 
     quests_.initialize(missions_.missions().size());
     player_item_controller_.initializeNew();
+    player_giant_warehouse_.initializeNew();
     bool saved_running = false;
     if (player_request.source ==
         PlayerDataSource::new_character) {
@@ -126,10 +128,18 @@ bool WorldScene::loadInitialScenario(
         }
         std::int32_t mine_count =
             player_item_controller_.mineCount();
+        std::size_t mine_end = magic_end;
         if (!restoreRetailMineCount(
                 payload,
                 magic_end,
                 mine_count,
+                &mine_end,
+                error) ||
+            !restoreRetailGiantWarehouse(
+                payload,
+                mine_end,
+                item_database_,
+                player_giant_warehouse_,
                 nullptr,
                 error)) {
             clear();

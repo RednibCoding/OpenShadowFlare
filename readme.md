@@ -105,7 +105,8 @@ Here's where things stand today:
   script-driven conversations and item drops, the HUD, inventory, equipment,
   belt, Special Item window, Map, Mission List, Settings, and the first
   type-zero services are working too. The Warehouse now opens the shared
-  Special Item owner, while Remote Town's transport object reads its
+  Special Item owner, the Tower of Ordeal Giant Warehouse keeps its ten real
+  saved pages, and Remote Town's transport object reads its
   destination from the retail table. The world loader is no longer tied to
   scenario zero either: the Wasteland of Pillars fixture now proves the same
   data and resource path with a nonzero retail scenario and entry. Live

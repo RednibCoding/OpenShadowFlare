@@ -15,6 +15,7 @@ struct RetailSavePortableExtension {
     bool running = false;
     bool has_mine_count = false;
     std::int32_t mine_count = 0;
+    std::vector<std::uint8_t> additional_state;
 };
 
 RetailSavePortableExtension inspectRetailSavePortableExtension(
@@ -25,6 +26,12 @@ void replaceRetailSavePortableExtension(
     bool running,
     std::int32_t mine_count,
     bool include_mine_count);
+
+void replaceRetailSavePortableExtensionState(
+    std::vector<std::uint8_t>& payload,
+    bool running,
+    std::int32_t mine_count,
+    const std::vector<std::uint8_t>& additional_state);
 
 }  // namespace osf
 
