@@ -64,6 +64,7 @@ void GameplayUiController::reset() {
     status_.close();
     mission_list_.close();
     transport_.close();
+    vendor_.close();
     pending_action_ = GameplayOptionsAction::none;
 }
 
@@ -73,10 +74,29 @@ bool GameplayUiController::gameplayPanelsActive() const {
            magic_.active() ||
            status_.active() ||
            mission_list_.active() ||
-           transport_.active();
+           transport_.active() ||
+           vendor_.active();
 }
 
-void GameplayUiController::closeGameplayPanels() {
+void GameplayUiController::closeVendor(WorldScene& world) {
+    if (!vendor_.active()) {
+        return;
+    }
+    if (VendorInventory* stock =
+            world.vendorInventory(vendor_.inventoryIndex())) {
+        vendor_.update(
+            {true, false, 0, 0},
+            *stock,
+            inventory_,
+            world.playerInventory(),
+            world.itemDatabase());
+    } else {
+        vendor_.close();
+    }
+}
+
+void GameplayUiController::closeGameplayPanels(WorldScene& world) {
+    closeVendor(world);
     inventory_.close();
     map_.close();
     magic_.close();
@@ -111,6 +131,7 @@ bool GameplayUiController::update(
     // Retail routes a dead player directly through its locked death action.
     // Menus cannot pause that action or expose save commands before revival.
     if (world.playerMotion() == PlayerMotion::defeated) {
+        closeVendor(world);
         reset();
         world.setCameraAnchor(320, 240);
         return false;
@@ -166,7 +187,7 @@ bool GameplayUiController::update(
     if (input.gameplayOptionsPressed() &&
         !options_.active() &&
         gameplayPanelsActive()) {
-        closeGameplayPanels();
+        closeGameplayPanels(world);
         world.cancelPlayerIdentifyMode();
         world.setCameraAnchor(320, 240);
         return true;
@@ -195,7 +216,8 @@ bool GameplayUiController::update(
         magic_.active() ||
         status_.active() ||
         mission_list_.active() ||
-        transport_.active();
+        transport_.active() ||
+        vendor_.active();
     if (!quest_notice_hidden &&
         input.menu().pointer_primary_pressed) {
         const ActiveQuestShortcutLayout shortcut;
@@ -234,6 +256,7 @@ bool GameplayUiController::update(
                 map_.active() ||
                 mission_list_.active() ||
                 transport_.active() ||
+                vendor_.active() ||
                 inventory_.specialItemsActive();
             world.setCameraAnchor(
                 gameplayCameraAnchorX(
@@ -247,6 +270,7 @@ bool GameplayUiController::update(
         magic_.close();
         status_.close();
         mission_list_.close();
+        closeVendor(world);
         world.cancelPlayerMovement();
         if (service.kind == GameplayServiceKind::transport) {
             transport_.open();
@@ -271,8 +295,49 @@ bool GameplayUiController::update(
                         true, inventory_.active()),
                     240);
             }
+        } else if (service.kind == GameplayServiceKind::vendor) {
+            transport_.close();
+            inventory_.closeSpecialItems();
+            if (world.vendorInventory(service.argument)) {
+                vendor_.open(service.argument);
+                inventory_.open();
+                world.setCameraAnchor(320, 240);
+            }
         }
         return false;
+    }
+
+    if (vendor_.active()) {
+        VendorInventory* stock =
+            world.vendorInventory(vendor_.inventoryIndex());
+        if (!stock) {
+            vendor_.close();
+        } else {
+            const GameplayVendorResult result = vendor_.update(
+                {
+                    input.pointerSecondaryPressed() &&
+                        input.menu().pointer_y < 412,
+                    input.menu().pointer_primary_pressed,
+                    input.menu().pointer_x,
+                    input.menu().pointer_y,
+                },
+                *stock,
+                inventory_,
+                world.playerInventory(),
+                world.itemDatabase());
+            if (result.item_sound_sample >= 0) {
+                audio.playGameplayEffect(result.item_sound_sample);
+            }
+            if (!vendor_.active()) {
+                world.setCameraAnchor(
+                    gameplayCameraAnchorX(
+                        false, inventory_.active()),
+                    240);
+            }
+            if (result.pointer_consumed) {
+                return true;
+            }
+        }
     }
 
     const bool transport_was_active = transport_.active();
@@ -346,6 +411,7 @@ bool GameplayUiController::update(
         magic_.close();
         mission_list_.close();
         transport_.close();
+        closeVendor(world);
         inventory_.closeSpecialItems();
         world.cancelPlayerMovement();
     } else if (
@@ -393,6 +459,7 @@ bool GameplayUiController::update(
         status_.close();
         mission_list_.close();
         transport_.close();
+        closeVendor(world);
         inventory_.closeSpecialItems();
         world.cancelPlayerMovement();
     } else if (
@@ -407,6 +474,7 @@ bool GameplayUiController::update(
         map_.active() ||
         mission_list_.active() ||
         transport_.active() ||
+        vendor_.active() ||
         inventory_.specialItemsActive();
     const GameplayMagicResult magic_result =
         magic_.update(
@@ -455,6 +523,7 @@ bool GameplayUiController::update(
             map_.active() ||
             mission_list_.active() ||
             transport_.active() ||
+            vendor_.active() ||
             inventory_.specialItemsActive();
         world.setCameraAnchor(
             gameplayCameraAnchorX(
@@ -578,7 +647,8 @@ bool GameplayUiController::update(
                     result.world_drop_screen_x,
                     result.world_drop_screen_y);
             inventory_.completeWorldDrop(
-                dropped);
+                dropped,
+                world.playerInventory());
             if (dropped && definition) {
                 audio.playGameplayEffect(
                     retailItemMoveSound(
@@ -591,7 +661,8 @@ bool GameplayUiController::update(
             status_.active() ||
             map_.active() ||
             mission_list_.active() ||
-            transport_.active();
+            transport_.active() ||
+            vendor_.active();
         world.setCameraAnchor(
             gameplayCameraAnchorX(
                 left_panel_active,
@@ -799,6 +870,10 @@ GameplayUiController::missionList() const {
 const GameplayTransport&
 GameplayUiController::transport() const {
     return transport_;
+}
+
+const GameplayVendor& GameplayUiController::vendor() const {
+    return vendor_;
 }
 
 void GameplayUiController::applyConfig(

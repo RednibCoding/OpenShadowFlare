@@ -238,13 +238,15 @@ GameplayInventoryResult GameplayInventory::update(
                         result.item_sound_sample =
                             retailItemMoveSound(
                                 *definition);
-                        held_item_ = placement.held_item;
+                        replaceHeldAfterPlacement(
+                            placement.held_item, inventory);
                     }
                 }
             } else {
                 held_item_ = belt.takeAt(
                     pocket->grid_x,
                     pocket->grid_y);
+                markHeldAsPlayerItem();
                 if (held_item_) {
                     setMoveSound(
                         result,
@@ -324,13 +326,15 @@ GameplayInventoryResult GameplayInventory::update(
                             result,
                             item,
                             item_database);
-                        held_item_ = placement.held_item;
+                        replaceHeldAfterPlacement(
+                            placement.held_item, inventory);
                     }
                 } else if (
                     hovered_special_item_index_ >= 0) {
                     held_item_ = special_items.take(
                         static_cast<std::size_t>(
                             hovered_special_item_index_));
+                    markHeldAsPlayerItem();
                     if (held_item_) {
                         setMoveSound(
                             result,
@@ -410,13 +414,15 @@ GameplayInventoryResult GameplayInventory::update(
                         result.item_sound_sample =
                             retailItemEquipSound(
                                 *definition);
-                        held_item_ =
-                            std::move(placement.held_item);
+                        replaceHeldAfterPlacement(
+                            std::move(placement.held_item),
+                            inventory);
                         result.equipment_changed = true;
                     }
                 }
             } else {
                 held_item_ = equipment.take(*slot);
+                markHeldAsPlayerItem();
                 result.equipment_changed =
                     held_item_.has_value();
                 if (held_item_) {
@@ -461,8 +467,8 @@ GameplayInventoryResult GameplayInventory::update(
                         result,
                         item,
                         item_database);
-                    held_item_ =
-                        placement.held_item;
+                    replaceHeldAfterPlacement(
+                        placement.held_item, inventory);
                 }
             }
             result.pointer_consumed = true;
@@ -472,6 +478,7 @@ GameplayInventoryResult GameplayInventory::update(
             held_item_ = inventory.take(
                 static_cast<std::size_t>(
                     hovered_item_index_));
+            markHeldAsPlayerItem();
             if (held_item_) {
                 setMoveSound(
                     result,
@@ -491,10 +498,72 @@ GameplayInventoryResult GameplayInventory::update(
 }
 
 void GameplayInventory::completeWorldDrop(
-    bool succeeded) {
+    bool succeeded,
+    PlayerInventory& inventory) {
     if (succeeded) {
+        if (held_item_from_vendor_) {
+            inventory.spendGold(
+                held_vendor_purchase_price_);
+        }
         held_item_.reset();
+        markHeldAsPlayerItem();
     }
+}
+
+void GameplayInventory::completeWorldDrop(bool succeeded) {
+    if (succeeded && !held_item_from_vendor_) {
+        held_item_.reset();
+        markHeldAsPlayerItem();
+    }
+}
+
+bool GameplayInventory::holdVendorItem(
+    InventoryItem item,
+    std::int32_t inventory_index,
+    std::int32_t purchase_price) {
+    if (held_item_ || inventory_index < 0 || purchase_price < 0) {
+        return false;
+    }
+    held_item_ = std::move(item);
+    held_item_from_vendor_ = true;
+    held_vendor_inventory_index_ = inventory_index;
+    held_vendor_purchase_price_ = purchase_price;
+    return true;
+}
+
+std::optional<InventoryItem> GameplayInventory::releaseHeldItem() {
+    std::optional<InventoryItem> item = std::move(held_item_);
+    held_item_.reset();
+    markHeldAsPlayerItem();
+    return item;
+}
+
+bool GameplayInventory::heldItemFromVendor() const {
+    return held_item_from_vendor_;
+}
+
+std::int32_t GameplayInventory::heldVendorInventoryIndex() const {
+    return held_vendor_inventory_index_;
+}
+
+std::int32_t GameplayInventory::heldVendorPurchasePrice() const {
+    return held_vendor_purchase_price_;
+}
+
+void GameplayInventory::replaceHeldAfterPlacement(
+    std::optional<InventoryItem> item,
+    PlayerInventory& inventory) {
+    if (held_item_from_vendor_) {
+        inventory.spendGold(held_vendor_purchase_price_);
+    }
+    held_item_ = std::move(item);
+    markHeldAsPlayerItem();
+}
+
+void GameplayInventory::markHeldAsPlayerItem() {
+    held_item_from_vendor_ = false;
+    held_vendor_inventory_index_ = -1;
+    held_vendor_purchase_price_ = 0;
 }
 
 void GameplayInventory::completeItemUse(

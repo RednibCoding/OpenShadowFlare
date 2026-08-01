@@ -59,9 +59,16 @@ std::int32_t itemSalePrice(
         std::max<std::int64_t>(price, 1));
 }
 
+std::int32_t itemPurchasePrice(
+    const InventoryItem&,
+    const ItemDefinition& definition) {
+    return std::max(definition.base_price, 0);
+}
+
 std::string itemInformationText(
     const InventoryItem& item,
-    const ItemDefinition& definition) {
+    const ItemDefinition& definition,
+    ItemInformationPrice price_kind) {
     std::ostringstream output;
     output << '['
            << (item.identified != 0
@@ -102,8 +109,12 @@ std::string itemInformationText(
             definition.required_level);
         appendValue(
             output,
-            "Sale Price                :",
-            itemSalePrice(item, definition));
+            price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            price_kind == ItemInformationPrice::purchase
+                ? itemPurchasePrice(item, definition)
+                : itemSalePrice(item, definition));
         output << '\n';
         output
             << "Fire   :" << std::setw(3)
@@ -133,22 +144,33 @@ std::string itemInformationText(
             definition.required_level);
         appendValue(
             output,
-            "Sale Price                :",
-            itemSalePrice(item, definition));
+            price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            price_kind == ItemInformationPrice::purchase
+                ? itemPurchasePrice(item, definition)
+                : itemSalePrice(item, definition));
     } else if (definition.category == 3) {
         appendValue(
             output,
-            "Sale Price                :",
-            itemSalePrice(item, definition));
+            price_kind == ItemInformationPrice::purchase
+                ? "Price                     :"
+                : "Sale Price                :",
+            price_kind == ItemInformationPrice::purchase
+                ? itemPurchasePrice(item, definition)
+                : itemSalePrice(item, definition));
     } else if (definition.category == 4) {
         appendValue(
             output,
-            definition.id == 0
+            definition.id == 0 ||
+                    price_kind == ItemInformationPrice::purchase
                 ? "Price                     :"
                 : "Sale Price                :",
             definition.id == 0
                 ? item.quantity
-                : itemSalePrice(item, definition));
+                : price_kind == ItemInformationPrice::purchase
+                    ? itemPurchasePrice(item, definition)
+                    : itemSalePrice(item, definition));
     }
     return output.str();
 }

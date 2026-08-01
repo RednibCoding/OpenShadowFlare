@@ -10,6 +10,7 @@
 #include "items/player_equipment.hpp"
 #include "items/player_inventory.hpp"
 #include "items/player_special_items.hpp"
+#include "items/vendor_inventory.hpp"
 #include "resources/character_visual_resource.hpp"
 #include "resources/effect_pattern_resource.hpp"
 #include "resources/effect_visual_resource.hpp"
@@ -63,6 +64,7 @@ enum class GameplayServiceKind {
     transport,
     toggle_special_items,
     identify_item,
+    vendor,
 };
 
 struct GameplayServiceRequest {
@@ -144,6 +146,8 @@ public:
     const PlayerInventory& playerInventory() const;
     PlayerSpecialItems& playerSpecialItems();
     const PlayerSpecialItems& playerSpecialItems() const;
+    VendorInventory* vendorInventory(std::int32_t index);
+    const VendorInventory* vendorInventory(std::int32_t index) const;
     const ItemInventoryResource& itemInventoryPatterns() const;
     const PlayerData& playerData() const;
     PlayerRuntimeProfile playerRuntimeProfile() const;
@@ -418,6 +422,7 @@ private:
     PlayerBelt player_belt_;
     PlayerInventory player_inventory_;
     PlayerSpecialItems player_special_items_;
+    std::vector<VendorInventory> vendor_inventories_;
     ItemInventoryResource item_inventory_patterns_;
     TableDatabase parameter_tables_;
     AiControlDatabase ai_control_database_;

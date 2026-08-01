@@ -62,6 +62,8 @@ public:
         std::int32_t grid_y) const;
     const std::vector<InventoryItem>& items() const;
     std::int32_t gold() const;
+    bool spendGold(std::int32_t amount);
+    bool creditGold(std::int32_t amount);
 
 private:
     bool add(

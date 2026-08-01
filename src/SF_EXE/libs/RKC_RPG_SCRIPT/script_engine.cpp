@@ -269,14 +269,11 @@ StepResult Interpreter::execute(const Command& command) {
             readOperand(command.operands[2]);
         const bool mode_one = mode == 1;
         const std::int32_t initial_selection =
-            mode_one
-                ? readOperand(command.operands[3])
-                : -1;
-        // Mode one also carries the chained informational messages used by
-        // companion explanations. A non-negative initial range distinguishes
-        // the actual choice menus from those ordinary acknowledgement steps.
-        const bool selection_required =
-            mode_one && initial_selection >= 0;
+            readOperand(command.operands[3]);
+        // The third operand controls the speech presentation, independently
+        // of the fourth operand which marks a choice menu when non-negative.
+        // Malse's retail service menu uses presentation mode zero.
+        const bool selection_required = initial_selection >= 0;
         if (hooks_.show_message) {
             hooks_.show_message({
                 message->id,
@@ -327,12 +324,15 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 5:
     case 18:
     case 19:
     case 37:
     case 41:
     case 48:
         return executeNative(1);
+    case 6:
+        return executeNative(2);
     case 24:
         return executeNative(3);
     case 34: {

@@ -385,4 +385,39 @@ std::int32_t PlayerInventory::gold() const {
             std::numeric_limits<std::int32_t>::max()));
 }
 
+bool PlayerInventory::spendGold(std::int32_t amount) {
+    if (amount < 0 || gold() < amount) {
+        return false;
+    }
+    std::vector<InventoryItem> updated = items_;
+    std::int32_t remaining = amount;
+    for (auto item = updated.begin();
+         item != updated.end() && remaining > 0;) {
+        if (item->category != kGoldCategory ||
+            item->definition_id != kGoldDefinition) {
+            ++item;
+            continue;
+        }
+        const std::int32_t spent =
+            std::min(item->quantity, remaining);
+        item->quantity -= spent;
+        remaining -= spent;
+        if (item->quantity == 0) {
+            item = updated.erase(item);
+        } else {
+            ++item;
+        }
+    }
+    if (remaining != 0) {
+        return false;
+    }
+    items_ = std::move(updated);
+    return true;
+}
+
+bool PlayerInventory::creditGold(std::int32_t amount) {
+    return amount >= 0 &&
+           (amount == 0 || add(kGoldCategory, kGoldDefinition, amount));
+}
+
 }  // namespace osf

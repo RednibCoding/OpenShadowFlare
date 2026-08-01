@@ -221,6 +221,10 @@ bool WorldScene::loadInitialScenario(
         prepared_next_ground_item_id;
     scenario_script_.adopt(
         scenario_world_.takeScriptData());
+    // Retail runs scenario status kind seven as the map is installed. Its
+    // script commands prepare numbered merchant inventories before any NPC
+    // can request one.
+    scenario_script_.runStatusKind(7);
     player_.reset(
         {
             scenario_world_.entry().world_x,
@@ -350,6 +354,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
         prepared_next_ground_item_id;
     scenario_script_.adopt(
         scenario_world_.takeScriptData());
+    scenario_script_.runStatusKind(7);
     player_.relocate(
         {
             scenario_world_.entry().world_x,

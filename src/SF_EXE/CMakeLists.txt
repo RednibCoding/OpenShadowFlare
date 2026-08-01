@@ -55,6 +55,7 @@ add_library(
   items/player_equipment.cpp
   items/player_inventory.cpp
   items/player_special_items.cpp
+  items/vendor_inventory.cpp
 )
 add_library(OpenShadowFlare::Items ALIAS osf_items)
 osf_configure_game_library(osf_items)
@@ -96,6 +97,7 @@ add_library(
   states/gameplay_status.cpp
   states/gameplay_state.cpp
   states/gameplay_transport.cpp
+  states/gameplay_vendor.cpp
   states/save_slot.cpp
   states/character_select_state.cpp
   states/character_select/network_flow.cpp
@@ -183,6 +185,7 @@ add_library(
   world/scenario_object_actor.cpp
   world/scenario_world.cpp
   world/transport_catalog.cpp
+  world/vendor_stock_generator.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
@@ -249,6 +252,7 @@ add_library(
   render/gameplay_renderer.cpp
   render/gameplay_status_renderer.cpp
   render/gameplay_transport_renderer.cpp
+  render/gameplay_vendor_renderer.cpp
   render/item_information_renderer.cpp
   render/loading_renderer.cpp
   render/player_level_up_notice_renderer.cpp

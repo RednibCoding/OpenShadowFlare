@@ -1,6 +1,7 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
+#include "vendor_stock_generator.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -306,6 +307,37 @@ bool WorldScene::executeScriptNativeCommand(
             return false;
         }
         return prepareGroundItems(first_item);
+    }
+
+    if (opcode == 6) {
+        if (arguments.size() < 2 || arguments[0] < 0) {
+            return false;
+        }
+        const std::size_t inventory_index =
+            static_cast<std::size_t>(arguments[0]);
+        if (vendor_inventories_.size() <= inventory_index) {
+            vendor_inventories_.resize(inventory_index + 1);
+        }
+        return generateRetailVendorStock(
+            vendor_inventories_[inventory_index],
+            arguments[1],
+            parameter_tables_,
+            item_database_,
+            item_random_);
+    }
+
+    if (opcode == 5) {
+        if (arguments.empty() ||
+            !vendorInventory(arguments[0]) ||
+            gameplay_service_request_.kind !=
+                GameplayServiceKind::none) {
+            return false;
+        }
+        gameplay_service_request_ = {
+            GameplayServiceKind::vendor,
+            arguments[0],
+        };
+        return true;
     }
 
     if (opcode == 24) {

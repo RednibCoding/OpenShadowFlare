@@ -277,6 +277,15 @@ opens the Mission List. Syria's repeat branch now reads the same saved quest
 state and follows her normal healing/blessing dialogue. The Red Goblin's
 authored status-kind-four death callback completes quest zero after its death
 presentation expires.
+
+That completion also unlocks Malse through his original script rather than an
+NPC-name check. His merchant introduction and service choices come from
+`Scenario.Scs`; choosing Trade opens vendor inventory zero on the left and the
+player inventory on the right. Stock is rebuilt by the scenario's opcode 6
+commands from Tables 32 and 33, with the retail fixed/random definition rules,
+rolled item instances, and 9-by-10 placement starts. Items can be bought into
+the backpack or equipment slots and sold back for gold, using the ordinary
+item sounds and delayed Price/Sale Price overlays.
 The Mission List exposes that state through the original `Q` shortcut and
 Settings-menu row. Its 48 titles and per-mission description lines come from
 `Table.Tbd`; the portable screen keeps the retail two-page layout, closed and

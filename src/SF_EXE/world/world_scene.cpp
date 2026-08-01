@@ -83,6 +83,7 @@ void WorldScene::clear() {
     player_belt_.clear();
     player_inventory_.clear();
     player_special_items_.clear();
+    vendor_inventories_.clear();
     item_inventory_patterns_.clear();
     parameter_tables_.clear();
     ai_control_database_.clear();
@@ -349,6 +350,25 @@ PlayerSpecialItems& WorldScene::playerSpecialItems() {
 
 const PlayerSpecialItems& WorldScene::playerSpecialItems() const {
     return player_special_items_;
+}
+
+VendorInventory* WorldScene::vendorInventory(std::int32_t index) {
+    if (index < 0 ||
+        static_cast<std::size_t>(index) >=
+            vendor_inventories_.size()) {
+        return nullptr;
+    }
+    return &vendor_inventories_[static_cast<std::size_t>(index)];
+}
+
+const VendorInventory* WorldScene::vendorInventory(
+    std::int32_t index) const {
+    if (index < 0 ||
+        static_cast<std::size_t>(index) >=
+            vendor_inventories_.size()) {
+        return nullptr;
+    }
+    return &vendor_inventories_[static_cast<std::size_t>(index)];
 }
 
 const ItemInventoryResource&

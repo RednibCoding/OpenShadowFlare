@@ -296,6 +296,8 @@ interactions are portable so far.
 | 0 | `0x00431005` | Compare two evaluated operands and call a sentence when true |
 | 1 | `0x004310a2` | Evaluate an operand and assign it to another operand |
 | 2 | `0x00431294` | Present a message, finish immediate sentence work, then wait |
+| 5 | `0x0043222b` | Request one of the executable's numbered vendor inventories |
+| 6 | `0x004321e8` | Rebuild a numbered vendor inventory from a Table 32 stock profile |
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
 | 12 | `0x00431b0c` | Subtract an evaluated value from a writable operand |
@@ -351,6 +353,22 @@ zero, which toggles the same Special Item owner opened by `X`. The interpreter
 does not include panel, input, camera, item, or transport headers. It only
 evaluates the command and sends the typed request across its native-command
 hook.
+
+Opcodes 5 and 6 follow the same boundary. Scenario status kind 7 initializes
+vendor inventory zero with opcode 6 and stock profile zero (or profile 22 for
+the alternate global state). Malse later refreshes that same owner with
+profile 8, and his `Trade` callback opens it with opcode 5. The script owns
+all of those gates and profile numbers; no Malse or Red Goblin condition is
+duplicated in C++.
+
+The executable's stock builder at `0x00430c10` expands Table 32 into Table 33
+entries. Fixed entries name a category and definition directly. Random entries
+filter the decoded `Item.Ibn` definitions by category, episode, level range,
+variant flags, and loot weight before creating a normal rolled item instance.
+Table 33's start column and row are the beginning of a row-major search in the
+9-by-10 merchant grid, not a decorative position. The portable vendor owner
+keeps that numbered inventory and placement logic separate from the player
+backpack.
 
 Opcode 10 evaluates six operands: category, definition ID, world X, world Y,
 minimum quantity, and maximum quantity. Ordinary items create one record at
@@ -411,14 +429,15 @@ and state two is cleared. In the portable code, `QuestState` still owns the
 script values while `MissionCatalog` owns the table text; the screen only
 combines those two sources for display.
 
-Opcode-2 mode one is the selectable-message path used by the four Remote Town
-companions. In this mode operand one is the writable selection result and
-operand three is the initially selected zero-based option. A non-negative
-initial option and paired `~` runs identify the actual choice step. The
+Opcode 2 keeps presentation mode and selection state separate. Operand one is
+the writable selection result and operand three is the initially selected
+zero-based option. A non-negative initial option and paired `~` runs identify
+the actual choice step. The four Remote Town companions use presentation mode
+one, while Malse's service menu uses mode zero. The
 executable's message layout removes those markers, records the enclosed line
 and columns for hit testing, and writes the chosen range number before
-entering the actor's status-kind-one callback. Mode-one messages with initial
-option `-1` are chained informational speech instead: they have no selectable
+entering the actor's status-kind-one callback. Messages with initial option
+`-1` are chained informational speech instead: they have no selectable
 ranges and close without writing operand one. The portable interpreter and
 speech-bubble layout preserve that split.
 The native Remote Town fixture walks to Gravity, opens his retail message,
@@ -515,6 +534,14 @@ records rather than stopping after Ostare. Malse's new-game status runs its
 real two-message branch (`1000019` and `1000020`) and releases him through
 opcode 19. The longer Malse quest dialogue is not forced: the retail SCS only
 selects it after the Red Goblin progression state reaches the required value.
+Once quest zero is complete, the same authored branch introduces Malse as a
+merchant, advances its persistent script flags, and then exposes message
+`1000013`. Choosing `Trade` reaches sentence 113 and opcode 5. The resulting
+left merchant panel and right inventory remain live together: stock can be
+carried into the backpack or equipment slots, player items can be sold back,
+gold is debited only after a purchase lands in an owned container, and Escape
+returns an unfinished purchase to its original merchant owner. Purchase hover
+text uses `Price`; owned-item hover text keeps `Sale Price`.
 
 Syria's new-game status follows messages `1000040` and `1000041`. Its callback
 starts quest zero with opcode 62 and selects that quest's notice with opcode

@@ -54,7 +54,9 @@ void drawRightAlignedNumber(
         y);
 }
 
-bool drawInventoryItem(
+}  // namespace
+
+bool renderInventoryItem(
     gapi::Backend& renderer,
     const gapi::NjpImage* status_patterns,
     const WorldScene& world,
@@ -116,8 +118,6 @@ bool drawInventoryItem(
     }
     return true;
 }
-
-}  // namespace
 
 void renderGameplayInventory(
     gapi::Backend& renderer,
@@ -184,7 +184,7 @@ void renderGameplayInventory(
         // authored equipment region.
         const EquipmentRegion region =
             GameplayInventory::equipmentRegion(slot);
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             &status_patterns,
             world,
@@ -203,7 +203,7 @@ void renderGameplayInventory(
          index < items.size();
          ++index) {
         const InventoryItem& item = items[index];
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             &status_patterns,
             world,
@@ -228,7 +228,7 @@ void renderGameplayBeltItems(
     for (const InventoryItem& item :
          world.playerBelt().items()) {
         // FUN_00407170 uses staggered origins for the two 4-cell rows.
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             nullptr,
             world,
@@ -266,7 +266,7 @@ void renderGameplaySpecialItems(
 
     for (const InventoryItem& item :
          world.playerSpecialItems().items()) {
-        drawInventoryItem(
+        renderInventoryItem(
             renderer,
             &status_patterns,
             world,
@@ -292,7 +292,7 @@ void renderHeldInventoryItem(
     if (!item) {
         return;
     }
-    drawInventoryItem(
+    renderInventoryItem(
         renderer,
         &status_patterns,
         world,

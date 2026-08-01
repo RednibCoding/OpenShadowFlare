@@ -14,6 +14,7 @@
 #include "render/gameplay_renderer.hpp"
 #include "render/gameplay_status_renderer.hpp"
 #include "render/gameplay_transport_renderer.hpp"
+#include "render/gameplay_vendor_renderer.hpp"
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/quest_notice_renderer.hpp"
@@ -30,6 +31,7 @@
 #include "states/gameplay_state.hpp"
 #include "states/gameplay_status.hpp"
 #include "states/gameplay_transport.hpp"
+#include "states/gameplay_vendor.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
 
@@ -112,7 +114,8 @@ void RuntimeRenderer::render(
             if (!context.gameplay_debug.active() &&
                 !context.gameplay_options.active() &&
                 !context.gameplay_mission_list.active() &&
-                !context.gameplay_transport.active()) {
+                !context.gameplay_transport.active() &&
+                !context.gameplay_vendor.active()) {
                 renderGameplayOverlay(
                     renderer_,
                     context.world,
@@ -133,7 +136,8 @@ void RuntimeRenderer::render(
                 context.gameplay_magic.active() ||
                 context.gameplay_status.active() ||
                 context.gameplay_mission_list.active() ||
-                context.gameplay_transport.active();
+                context.gameplay_transport.active() ||
+                context.gameplay_vendor.active();
             if (font && !quest_notice_hidden) {
                 renderQuestNotice(
                     renderer_,
@@ -173,6 +177,13 @@ void RuntimeRenderer::render(
                         *font,
                         context.gameplay_transport,
                         context.world.transports());
+                } else if (context.gameplay_vendor.active()) {
+                    renderGameplayVendor(
+                        renderer_,
+                        *status,
+                        context.gameplay_vendor,
+                        context.world,
+                        context.gameplay_counter);
                 } else if (
                     context.gameplay_status.active()) {
                     renderGameplayStatusPanel(
@@ -267,6 +278,7 @@ void RuntimeRenderer::render(
                     context.gameplay_map.active() ||
                     context.gameplay_mission_list.active() ||
                     context.gameplay_transport.active() ||
+                    context.gameplay_vendor.active() ||
                     context.gameplay_inventory
                         .specialItemsActive();
                 renderGameplayMagicBar(
@@ -289,6 +301,11 @@ void RuntimeRenderer::render(
                     renderer_,
                     *font,
                     context.gameplay_inventory,
+                    context.world);
+                renderVendorItemInformation(
+                    renderer_,
+                    *font,
+                    context.gameplay_vendor,
                     context.world);
                 if (magic_icons) {
                     renderHeldMagic(

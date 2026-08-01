@@ -44,6 +44,28 @@ if(TARGET sf_game_core)
 
   add_test(NAME game_core COMMAND game_core_test)
 
+  add_executable(vendor_test vendor_test.cpp)
+  target_link_libraries(
+    vendor_test
+    PRIVATE
+      OpenShadowFlare::States
+      OpenShadowFlare::World
+  )
+  target_compile_features(vendor_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    vendor_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(vendor_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(vendor_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      vendor_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME vendor COMMAND vendor_test)
+
   add_executable(player_magic_test player_magic_test.cpp)
   target_link_libraries(
     player_magic_test

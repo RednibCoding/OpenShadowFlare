@@ -884,6 +884,17 @@ healing/blessing branch. Near Remote Town's authored status-kind-four callback
 also completes quest zero after Red Goblin `14010000` finishes its death
 presentation.
 
+Malse's next authored branch is live too. Completing the Red Goblin quest is
+what advances his script into the merchant introduction and later service
+menu; the engine does not special-case his name or quest ID. Scenario status
+kind 7 and opcode 6 now build numbered vendor stock from Tables 32 and 33,
+including fixed entries, weighted random definitions, normal rolled item
+instances, and the original 9-by-10 placement starts. Choosing `Trade` reaches
+opcode 5, opens that stock on the left with the normal inventory on the right,
+and supports buying, selling, gold changes, delayed price overlays, item audio,
+and returning an unfinished purchase when the panels close. Identify and
+Repair remain separate service slices behind Malse's other authored choices.
+
 ### 3. Items, inventory, and equipment
 
 Item support should use the real table data rather than a hand-written list.
@@ -899,7 +910,7 @@ This slice includes:
 - equipping and unequipping armor, shields, and weapons;
 - enabling only the corresponding CAF appearance layers;
 - item names, descriptions, rarity colors, and comparison text;
-- shops, prices, and money once the script layer requests them.
+- shops, prices, and money when the script layer requests them;
 
 The opening quest's four real ground items are now loaded and drawn from
 `Item.Ibn`. Pointer selection and the first complete pickup path are live:

@@ -2768,6 +2768,8 @@ bool testRetailRemoteTown() {
             world.playerData().baseMaximumLife() == 140 &&
             world.playerData().baseMaximumMana() == 160 &&
             world.musicTrack() == 0 &&
+            world.vendorInventory(0) &&
+            !world.vendorInventory(0)->items().empty() &&
             world.npcs().size() == scenario.people().size() &&
             world.npcs()[0].id() == 0 &&
             world.npcs()[0].resourceId() == 13 &&

@@ -333,6 +333,56 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    external_values.insert_or_assign(
+        operandKey({12, 0}), 2);
+    if (!check(
+            interpreter.startStatus(0, 12000001) ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000021,
+            "Malse did not enter his authored merchant branch after the "
+            "Red Goblin quest completed.")) {
+        return false;
+    }
+
+    external_values.insert_or_assign(
+        operandKey({12, 3}), 2);
+    const auto malse_menu_result =
+        interpreter.startSentence(45, 12000001);
+    if (!check(
+            malse_menu_result ==
+                    osf::script::StepResult::waiting_for_message &&
+                messages.back().id == 1000013 &&
+                messages.back().selection_required &&
+                messages.back().initial_selection == 3 &&
+                messages.back().text.find("~Trade") !=
+                    std::string::npos,
+            "Malse's post-quest interaction did not open his authored "
+            "service choices.")) {
+        return false;
+    }
+    const std::size_t malse_trade_command =
+        native_commands.size();
+    const auto malse_trade_result = interpreter.resume(0);
+    if (!check(
+            malse_trade_result ==
+                    osf::script::StepResult::complete &&
+                native_commands.size() == malse_trade_command + 2 &&
+                native_commands[malse_trade_command] ==
+                    std::make_pair(
+                        std::int32_t{5},
+                        std::vector<std::int32_t>{0}) &&
+                native_commands[malse_trade_command + 1] ==
+                    std::make_pair(
+                        std::int32_t{19},
+                        std::vector<std::int32_t>{12000001}),
+            "Malse's Trade choice did not open vendor inventory zero and "
+            "release the actor.")) {
+        return false;
+    }
+
+    external_values.insert_or_assign(
+        operandKey({12, 0}), 0);
+
     const std::size_t syria_first_command =
         native_commands.size();
     if (!check(

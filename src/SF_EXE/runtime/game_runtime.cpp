@@ -207,6 +207,7 @@ private:
                 gameplayUi_.status(),
                 gameplayUi_.missionList(),
                 gameplayUi_.transport(),
+                gameplayUi_.vendor(),
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
@@ -380,6 +381,8 @@ private:
                     gameplayUi_.status().active();
                 const bool transport_active =
                     gameplayUi_.transport().active();
+                const bool vendor_active =
+                    gameplayUi_.vendor().active();
                 gameplayFrame_ = gameplayState_.update({
                     input_.menu().confirm_pressed &&
                         !map_active,
@@ -395,7 +398,8 @@ private:
                             magic_active ||
                             status_active ||
                             special_items_active ||
-                            transport_active
+                            transport_active ||
+                            vendor_active
                         ? 320
                         : 0,
                     0,

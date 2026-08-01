@@ -9,6 +9,7 @@
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_status.hpp"
 #include "states/gameplay_transport.hpp"
+#include "states/gameplay_vendor.hpp"
 
 #include <cstdint>
 
@@ -53,10 +54,12 @@ public:
     const GameplayStatus& status() const;
     const GameplayMissionList& missionList() const;
     const GameplayTransport& transport() const;
+    const GameplayVendor& vendor() const;
 
 private:
     bool gameplayPanelsActive() const;
-    void closeGameplayPanels();
+    void closeGameplayPanels(WorldScene& world);
+    void closeVendor(WorldScene& world);
 
     bool updateOptions(
         InputAdapter& input,
@@ -83,6 +86,7 @@ private:
     GameplayStatus status_;
     GameplayMissionList mission_list_;
     GameplayTransport transport_;
+    GameplayVendor vendor_;
     GameplayOptionsAction pending_action_ =
         GameplayOptionsAction::none;
 };

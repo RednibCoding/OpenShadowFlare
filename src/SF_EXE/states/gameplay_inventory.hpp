@@ -73,8 +73,19 @@ public:
         PlayerSpecialItems& special_items,
         const ItemDatabase& item_database,
         std::int32_t player_level);
+    void completeWorldDrop(
+        bool succeeded,
+        PlayerInventory& inventory);
     void completeWorldDrop(bool succeeded);
     void completeItemUse(bool consumed);
+    bool holdVendorItem(
+        InventoryItem item,
+        std::int32_t inventory_index,
+        std::int32_t purchase_price);
+    std::optional<InventoryItem> releaseHeldItem();
+    bool heldItemFromVendor() const;
+    std::int32_t heldVendorInventoryIndex() const;
+    std::int32_t heldVendorPurchasePrice() const;
 
     bool active() const;
     bool specialItemsActive() const;
@@ -102,6 +113,10 @@ private:
         std::int32_t pointer_y,
         const PlayerSpecialItems& special_items);
     void clearItemHover();
+    void replaceHeldAfterPlacement(
+        std::optional<InventoryItem> item,
+        PlayerInventory& inventory);
+    void markHeldAsPlayerItem();
 
     bool active_ = false;
     bool special_items_active_ = false;
@@ -111,6 +126,9 @@ private:
     std::int32_t hovered_special_item_index_ = -1;
     std::int32_t item_hover_updates_ = 0;
     std::optional<InventoryItem> held_item_;
+    bool held_item_from_vendor_ = false;
+    std::int32_t held_vendor_inventory_index_ = -1;
+    std::int32_t held_vendor_purchase_price_ = 0;
     std::int32_t pointer_x_ = 0;
     std::int32_t pointer_y_ = 0;
 };
