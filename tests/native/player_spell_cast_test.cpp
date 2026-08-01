@@ -79,6 +79,7 @@ struct ExpectedSpellCast {
     std::int32_t packet_type = 3;
     bool physical_percent_damage = false;
     std::int32_t constructor_delay_override = -1;
+    std::int32_t projectile_display_height = 200;
 };
 
 bool testRetailAction(
@@ -399,7 +400,7 @@ bool testRetailPacket(
                      : 0) &&
             request.constructor_value_7 ==
                 (expected.use_table_travel_speed
-                     ? 200
+                     ? expected.projectile_display_height
                      : 0) &&
             request.constructor_value_12 ==
                 (expected.constructor_delay_override >= 0
@@ -1269,8 +1270,6 @@ bool testShippedWorldCast(
     };
     const std::int32_t target_life_before =
         target->currentLife();
-    const std::int32_t mana_before =
-        world.playerData().currentMana();
     const osf::PlayerSpellParameters parameters =
         osf::playerSpellParameters(
             world.playerMagic(),
@@ -1278,6 +1277,13 @@ bool testShippedWorldCast(
             world.playerEquipment(),
             world.itemDatabase(),
             world.parameterTables());
+    const std::int32_t maximum_mana = std::max(
+        world.playerRuntimeProfile().maximum_mana,
+        parameters.mana_cost);
+    const_cast<osf::PlayerData&>(world.playerData())
+        .setCurrentMana(maximum_mana, maximum_mana);
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
     if (!check(
             world.commandPlayerMagic(pointer_x, pointer_y) &&
                 world.playerSpellActive() &&
@@ -3991,6 +3997,30 @@ int main() {
             true) ||
         !testShippedExplosionCast(game_root) ||
         !testGroundSpellInsufficientMana(game_root, 20)) {
+        return 1;
+    }
+    if (!testRetailAction(
+            animation,
+            tables,
+            21,
+            osf::PlayerSpellAction::elemental_strike,
+            13,
+            14) ||
+        !testRetailPacket(
+            tables,
+            21,
+            {
+                10021, 0, -1, 4,
+                true, true, false, false, true, false,
+                true, 0, true, true, 3, false, -1, 0,
+            }) ||
+        !testShippedWorldCast(
+            game_root,
+            21,
+            13,
+            10000100,
+            19) ||
+        !testTargetedSpellInsufficientMana(game_root, 21)) {
         return 1;
     }
 #endif

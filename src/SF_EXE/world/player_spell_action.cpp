@@ -72,6 +72,7 @@ SpellCharts chartsForAction(
     case PlayerSpellAction::dread_deathscythe:
     case PlayerSpellAction::medusa:
     case PlayerSpellAction::mud_javelin:
+    case PlayerSpellAction::elemental_strike:
         return {13, 14};
     case PlayerSpellAction::sonic_blade:
         return {};
@@ -189,6 +190,9 @@ bool playerSpellActionForSpell(
         return true;
     case 20:
         action = PlayerSpellAction::explosion;
+        return true;
+    case 21:
+        action = PlayerSpellAction::elemental_strike;
         return true;
     default:
         return false;

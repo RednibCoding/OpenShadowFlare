@@ -290,15 +290,28 @@ samples, camera shake, 640-by-640 enemy check, retail packet, and spell
 practice before returning to ordinary AI. The original spell-21 scaling-level
 and owner-magical-defense damage quirks are kept deliberately.
 
+Elemental Strike is complete. Action 43 returns to the pointed-enemy command
+and charts 13 and 14, then queues effect 10021 immediately with the first
+chart-13 `0x40` frame converted into its launch delay. Its family-zero packet
+uses the player's magical attack, magical defense, hit rate, affinities, and
+spell-21 tables, while the effect request keeps retail's zero display-height
+offset, null source judgement, random ordinary impact, and effective level.
+The shared controller uses Table 207 to launch one, three, or five homing rays
+and tracks each ray through its four timed elemental stages, collision,
+presentations, samples, final camera shake, and receiver-time practice. The
+same controller remains shared with the already proven enemy-owned cast.
+
 The portable testing path now has its own F12 debug menu instead of changing
 the retail Escape menu. The FPS counter, All Spells, Infinite HP, and Infinite
 MP overrides are separate runtime-only switches. Debug availability, bar
 assignments, and effective resource pools never enter the retail save record,
 so testing unfinished combat cannot silently change a character.
 
-The next spell checkpoint is Elemental Strike action 43 (`FUN_0043f2e0`). Its
-cast, packet, effect controller, visuals, audio, collision, and practice path
-still need a complete retail trace.
+That completes the retail player's 22 ordinary spell actions. The next
+skills-and-status checkpoint is the increased-power state and action-21
+ranged redirect inside `FUN_00437fe0`; it still needs a complete trace from
+the state owner through its probability, packet changes, animation, effect,
+audio, resource cost, and save lifetime before it can be enabled.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1456,7 +1469,8 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Explosion action 42 are complete;
+- Berserker action 30 through Elemental Strike action 43 are complete, which
+  closes the 22-spell player list;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

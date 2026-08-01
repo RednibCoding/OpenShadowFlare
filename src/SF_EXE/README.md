@@ -82,6 +82,12 @@ original paired portal between the current field and the player's Remote Town
 entry. Its four falling layers, paused center animation, sounds, collision
 checks, and enter/leave requirement follow the retail update path.
 
+All 22 player spells now enter their retail actions through that same world
+boundary. Their individual chart timing, targeting rules, MP costs, packets,
+effects, projectiles, area stages, buffs, companion handoffs, sounds, and
+practice awards stay in focused spell and effect owners instead of the UI or
+platform runtime.
+
 The title screen's per-frame rules are connected to LWL input: keyboard
 navigation, mouse hover/click regions, unavailable-item skipping, fades, audio
 cues, smoke timing, and delayed New Game, Continue, and Exit actions all
