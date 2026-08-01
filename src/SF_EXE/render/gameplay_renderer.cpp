@@ -359,8 +359,12 @@ void renderRuntimeEffect(
         [&effect](std::size_t part) {
             return effect.partEnabled(part);
         },
-        [](std::size_t) {
-            return CharacterColorStrength{};
+        [&effect](std::size_t) {
+            return CharacterColorStrength{
+                effect.redStrength(),
+                effect.greenStrength(),
+                effect.blueStrength(),
+            };
         },
         camera_x,
         camera_y,

@@ -282,15 +282,23 @@ sample 60, training threshold, selected-magic MP-cost quirk, equipment
 discount, and empty-MP shutdown. Ordinary travel preserves the runtime state;
 death and a fresh game clear it.
 
+Explosion is complete. Action 42 pays the ordinary targetless command cost
+and waits for the chart-11 marker before handing the clicked walkable point to
+the owned companion. The companion plays its PARTNER chart-six departure,
+relocates at the chart-seven boundary, then runs the authored two-layer burst,
+samples, camera shake, 640-by-640 enemy check, retail packet, and spell
+practice before returning to ordinary AI. The original spell-21 scaling-level
+and owner-magical-defense damage quirks are kept deliberately.
+
 The portable testing path now has its own F12 debug menu instead of changing
 the retail Escape menu. The FPS counter, All Spells, Infinite HP, and Infinite
 MP overrides are separate runtime-only switches. Debug availability, bar
 assignments, and effective resource pools never enter the retail save record,
 so testing unfinished combat cannot silently change a character.
 
-The next spell checkpoint is Explosion action 42 (`FUN_0043fcc0`). Its cast,
-packet, effect controller, visuals, audio, collision, and practice path still
-need a complete retail trace.
+The next spell checkpoint is Elemental Strike action 43 (`FUN_0043f2e0`). Its
+cast, packet, effect controller, visuals, audio, collision, and practice path
+still need a complete retail trace.
 
 ## Completed foundation: make Remote Town feel like a game
 
@@ -1448,7 +1456,7 @@ Once the ordinary combat loop is reliable, add the systems that modify it:
 - Ice Blast action 27 and effect 10005 are complete;
 - Heal action 28 and its marker-time restorative path are complete;
 - Moon action 29, its companion modifiers, aura, and MP lifetime are complete;
-- Berserker action 30 through Counter Burst action 41 are complete;
+- Berserker action 30 through Explosion action 42 are complete;
 - skill and spell databases beyond the proven table-backed spell values;
 - mana use, cooldowns, targeting, projectiles, and area effects;
 - buffs, debuffs, resistances, reflection, and absorption;

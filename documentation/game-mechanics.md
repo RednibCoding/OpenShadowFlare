@@ -346,6 +346,31 @@ Resource 11000250 loops at the hero using chart zero, direction eight, and
 the Berserker and Energy Shield passes. The runtime flag and frame survive
 ordinary scenario travel, are not saved to disk, and are cleared on death.
 
+### Explosion
+
+Explosion is a targetless ground command on action 42. It uses player CAF
+charts 11 and 12, pays its normal MP cost when the command begins, and waits
+for the chart-11 `0x40` marker. At that marker the clicked point must fit the
+owned companion's whole collision rectangle. A missing, dead, special-action,
+or blocked companion does not refund MP and does not create a fallback effect.
+An ordinary attack or hit finishes first, then the queued Explosion command
+takes over.
+
+The companion plays PARTNER chart six in direction eight at its old position,
+instantly relocates when chart seven begins, and plays chart seven at the new
+position. The boundary submits sample 45 twice. Its chart-seven `0x40` marker
+plays sample 46 and creates effect 21031: two overlapping resource-10000000
+layers on charts one and zero with RGB 500/500/1200, samples 29 and 23, and
+nearby camera shake. Living enemies whose bounds overlap the 640-by-640 blast
+area roll the companion's hit rate against their physical evasion.
+
+Explosion's damage packet has two intentional oddities from retail. The base
+damage field is the owner hero's magical defense, while the table scaling
+level comes from Elemental Strike (spell 21). Explosion itself still owns the
+spell-20 parameter rows, randomized ordinary hit effect, and practice award.
+After the arrival chart finishes, the companion unlocks and resumes normal
+follow and combat AI.
+
 ### Earth Spear
 
 Earth Spear returns to the pointed-enemy command path. It enters action 32 on

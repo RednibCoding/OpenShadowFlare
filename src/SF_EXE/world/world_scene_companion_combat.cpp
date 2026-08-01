@@ -5,6 +5,7 @@
 #include "companion_target_selector.hpp"
 #include "movement_controller.hpp"
 
+#include <cstddef>
 #include <vector>
 
 namespace osf {
@@ -16,6 +17,8 @@ constexpr std::int32_t kCompanionAttackRange = 159;
 constexpr std::int32_t kCompanionImpactRange = 150;
 constexpr std::int32_t kCompanionSwingSample = 95;
 constexpr std::int32_t kCompanionDeathEffect = 21010;
+constexpr std::int32_t kExplosionRelocateSample = 45;
+constexpr std::int32_t kExplosionImpactSample = 46;
 
 std::vector<CompanionEnemyTargetState> enemyTargets(
     const std::vector<EnemyActor>& enemies) {
@@ -78,6 +81,24 @@ void WorldScene::updateCompanionActor(
             player_data_.setCompanionRespawnCounter(
                 retailCompanionRespawnUpdates(
                     player_inventory_));
+        }
+        return;
+    }
+
+    companion_.activatePendingExplosion();
+    if (companion_.explosionActive()) {
+        const CompanionExplosionUpdate explosion =
+            companion_.updateExplosion();
+        if (explosion.relocated) {
+            pending_audio_samples_.push_back(
+                kExplosionRelocateSample);
+            pending_audio_samples_.push_back(
+                kExplosionRelocateSample);
+        }
+        if (explosion.impact_due) {
+            pending_audio_samples_.push_back(
+                kExplosionImpactSample);
+            applyCompanionExplosionImpact();
         }
         return;
     }

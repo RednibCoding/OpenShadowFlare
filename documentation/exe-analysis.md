@@ -2176,6 +2176,47 @@ drawn directly after Magic Shield, before the later Berserker and Energy
 Shield passes. The live state survives scenario relocation, is absent from
 the disk save, is present in multiplayer state packets, and clears on death.
 
+## Explosion cast and companion handoff
+
+`0x0043fcc0` dispatches spell twenty as player action 42 on CAF charts 11 and
+12 with Table 20 row twenty. The targetless secondary-click path stores the
+clicked world point, pays the ordinary Table 16 MP cost, and faces it. A newly
+crossed chart-11 status-`0x40` marker looks up companion character
+`16000000 + local player slot`. A missing, defeated, or special-presentation
+7, 9, or 10 companion leaves the already-paid cast as a harmless no-op. The
+same is true when the companion's full judgement rectangle cannot stand at
+the clicked point. An ordinary companion attack or hit presentation is not
+cancelled; owner mode six waits and takes over when that presentation ends.
+
+A valid handoff sets companion owner mode six. `0x004627d0` turns that into
+presentation action ten and immediately clears the owner mode. The special
+presentation at `0x00461c40` plays PARTNER chart six in direction eight at the
+old position, moves the companion to the stored point when chart seven begins,
+then plays chart seven in direction eight. Only a newly crossed chart-seven
+status-`0x40` marker creates the blast. Finishing chart seven releases the
+presentation lock and returns the companion to its ordinary AI.
+
+The marker creates special effect 21031 through `0x0042f890`. That effect
+places two resource-10000000 actors at the companion, using charts one and
+zero with RGB strengths 500/500/1200, plays samples 29 and 23, and requests
+camera shake 8/6 while the local observer is nearer than 3001 world units.
+The chart-six/chart-seven boundary itself submits positional sample 45 twice,
+and the impact marker submits sample 46 before effect 21031's two samples.
+Enemy judgement rectangles are tested against a 640-by-640 box centered on
+the companion. Each living target then uses the companion's hit rate against
+the enemy's physical evasion; failed rolls show the ordinary MISS
+presentation.
+
+The shared family-zero subtype-three packet deliberately does not follow the
+normal player-spell builder. Its source is the companion, word four uses the
+owner player's magical-defense field, and word five stays zero. Spell twenty
+still owns the Table 17/18/19 and Tables 70 through 78 rows and word 73, so a
+successful receiver hit trains Explosion. One retail quirk is especially easy
+to lose: the effective level used to index those rows comes from spell 21,
+Elemental Strike, rather than Explosion. The randomized ordinary
+21000-through-21003 impact is also drawn once for the shared packet before the
+per-enemy hit rolls.
+
 ## Earth Spear cast
 
 `0x0043e000` dispatches spell ten as action 32. It requires the pointed living

@@ -451,6 +451,18 @@ RuntimeEffectActor::additionalDisplayStatus() const {
     return request_.additional_display_status;
 }
 
+std::int32_t RuntimeEffectActor::redStrength() const {
+    return request_.red_strength;
+}
+
+std::int32_t RuntimeEffectActor::greenStrength() const {
+    return request_.green_strength;
+}
+
+std::int32_t RuntimeEffectActor::blueStrength() const {
+    return request_.blue_strength;
+}
+
 std::int32_t RuntimeEffectActor::counter() const {
     return counter_;
 }

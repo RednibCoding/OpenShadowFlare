@@ -1704,6 +1704,37 @@ direction eight, frame `+0x1634`, and RGB 1000/1000/1000. It draws after Magic
 Shield and before Berserker and Energy Shield. The state survives ordinary
 scenario travel, is excluded from disk saves, and clears on death.
 
+## Explosion action and companion presentation
+
+`FUN_0043fcc0` runs Explosion action 42 on player CAF charts 11 and 12 with
+Table 20 row twenty. The targetless command stores the clicked world point and
+pays Table 16 MP normally. At a newly crossed chart-11 status-`0x40` marker it
+finds owned character `16000000 + local slot` and validates the companion's
+full judgement bounds at that point. Missing, defeated, presentation 7/9/10,
+and blocked companions all leave the paid player cast as a no-op. Owner mode
+six waits behind ordinary attacks and hit presentations rather than cancelling
+them.
+
+The marker assigns companion owner mode six. `FUN_004627d0` requests
+presentation action ten and clears that owner mode. `FUN_00461c40` plays
+PARTNER chart six direction eight, relocates exactly when chart seven starts,
+then plays chart seven direction eight. Its newly crossed status-`0x40` marker
+creates effect 21031 through `FUN_0042f890`; completing chart seven unlocks the
+companion and returns it to ordinary AI.
+
+Effect 21031 creates two resource-10000000 visual actors on charts one and
+zero with RGB strengths 500/500/1200, plays samples 29 and 23, and requests
+camera shake 8/6 for an observer within 3001 units. The chart transition also
+submits positional sample 45 twice, while the impact marker submits sample 46
+immediately before the special effect. A 640-by-640 companion-centered box
+selects living enemies, then companion hit rate rolls against physical
+evasion. The shared family-zero subtype-three packet uses the companion as
+source, the owner player's magical defense as word-four damage, and zero
+defense in word five. It reads spell twenty's parameter rows but indexes them
+with spell 21's effective level. Word 73 remains twenty, so successful
+receiver contacts train Explosion. One ordinary 21000..21003 impact is
+selected before the per-target rolls.
+
 ## Earth Spear cast
 
 `FUN_0043e000` runs Earth Spear action 32 on CAF charts 11 and 12 with Table

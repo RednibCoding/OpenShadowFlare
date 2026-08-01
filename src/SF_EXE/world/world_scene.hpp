@@ -355,6 +355,7 @@ private:
     void updateCompanionActor(
         const std::vector<MovementBlocker>& blockers);
     void applyCompanionAttackImpact();
+    void applyCompanionExplosionImpact();
     PlayerDamageReceiverState playerDamageReceiverState() const;
     void applyPlayerDamageReceiverState(
         const PlayerDamageReceiverState& state);

@@ -121,6 +121,7 @@ add_library(
   world/companion_attack_action.cpp
   world/companion_attack_impact.cpp
   world/companion_damage_receiver.cpp
+  world/companion_explosion_action.cpp
   world/companion_profile.cpp
   world/companion_respawn.cpp
   world/companion_target_selector.cpp
@@ -190,6 +191,7 @@ add_library(
   world/world_pointer.cpp
   world/world_scene.cpp
   world/world_scene_companion_combat.cpp
+  world/world_scene_companion_explosion.cpp
   world/world_scene_combat.cpp
   world/world_scene_enemy_combat.cpp
   world/world_scene_effects.cpp

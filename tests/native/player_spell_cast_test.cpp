@@ -3233,6 +3233,234 @@ bool testShippedCounterBurstCast(
         "marker.");
 }
 
+bool testShippedExplosionCast(
+    const std::filesystem::path& game_root) {
+    constexpr std::int32_t spell = 20;
+    osf::PlayerLoadRequest player;
+    player.name = "ExplosionLive";
+    osf::WorldScene world;
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(
+                game_root,
+                player,
+                {3000507, 3, 0},
+                &error),
+            "The shipped Explosion scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::PlayerMagicState magic_state;
+    magic_state.availability.fill(0);
+    magic_state.levels.fill(1);
+    magic_state.experience.fill(0);
+    magic_state.bar_slots.fill(-1);
+    magic_state.availability[spell] = 3;
+    magic_state.availability[21] = 3;
+    world.playerMagic().restore(magic_state);
+    if (!check(
+            world.playerMagic().selectSpell(spell) &&
+                world.hasCompanion(),
+            "The live Explosion fixture could not select the spell "
+            "or find its owned companion.")) {
+        return false;
+    }
+
+    const osf::EnemyActor* target = nullptr;
+    std::int32_t pointer_x = -1;
+    std::int32_t pointer_y = -1;
+    osf::WorldPosition destination;
+    for (const osf::EnemyActor& enemy : world.enemies()) {
+        for (std::int32_t offset_y = -240;
+             offset_y <= 240 && !target;
+             offset_y += 40) {
+            for (std::int32_t offset_x = -240;
+                 offset_x <= 240;
+                 offset_x += 40) {
+                const osf::WorldPosition candidate{
+                    enemy.position().x + offset_x,
+                    enemy.position().y + offset_y,
+                };
+                const osf::ScreenPosition projected =
+                    osf::calculateRealPosition(candidate);
+                const std::int32_t x =
+                    projected.x - world.cameraScreenX();
+                const std::int32_t y =
+                    projected.y - world.cameraScreenY();
+                if (x < 0 || x >= 640 || y < 0 || y >= 400) {
+                    continue;
+                }
+                const osf::WorldPosition actual =
+                    osf::calculateWorldPosition({
+                        world.cameraScreenX() + x,
+                        world.cameraScreenY() + y,
+                    });
+                if (!osf::positionIsWalkable(
+                        world.ground(),
+                        world.objectMap(),
+                        actual,
+                        world.companion().judgement())) {
+                    continue;
+                }
+                target = &enemy;
+                pointer_x = x;
+                pointer_y = y;
+                destination = actual;
+                break;
+            }
+        }
+        if (target) {
+            break;
+        }
+    }
+    if (!check(
+            target && pointer_x >= 0 && pointer_y >= 0,
+            "No shipped on-screen enemy could prepare Explosion's "
+            "ground destination.")) {
+        return false;
+    }
+
+    const std::int32_t target_character_number =
+        target->characterNumber();
+    const std::int32_t target_life_before =
+        target->currentLife();
+    const osf::PlayerSpellParameters parameters =
+        osf::playerSpellParameters(
+            world.playerMagic(),
+            spell,
+            world.playerEquipment(),
+            world.itemDatabase(),
+            world.parameterTables());
+    const std::int32_t mana_before =
+        world.playerData().currentMana();
+    if (!check(
+            mana_before >= parameters.mana_cost &&
+                world.commandPlayerMagic(pointer_x, pointer_y) &&
+                world.playerSpellActive() &&
+                world.playerSpellTargetCharacterNumber() == -1 &&
+                world.playerAnimationChart() == 11 &&
+                world.playerData().currentMana() ==
+                    mana_before - parameters.mana_cost &&
+                world.runtimeEffectControllerCount() == 0,
+            "Explosion did not enter player action 42, spend MP, and "
+            "defer its companion command to the CAF marker.")) {
+        return false;
+    }
+
+    bool saw_departure = false;
+    bool saw_arrival = false;
+    bool relocated = false;
+    bool saw_first_visual = false;
+    bool saw_second_visual = false;
+    bool heard_first_sample = false;
+    bool heard_second_sample = false;
+    std::int32_t relocate_sample_count = 0;
+    bool heard_impact_sample = false;
+    bool applied_damage = false;
+    for (std::int32_t update = 0; update < 160; ++update) {
+        world.update();
+        saw_departure =
+            saw_departure ||
+            (world.companion().explosionActive() &&
+             world.companion().animationChart() == 6);
+        saw_arrival =
+            saw_arrival ||
+            (world.companion().explosionActive() &&
+             world.companion().animationChart() == 7);
+        relocated = relocated ||
+            (world.companion().position().x == destination.x &&
+             world.companion().position().y == destination.y);
+        for (const osf::RuntimeEffectActor& actor :
+             world.runtimeEffects()) {
+            if (actor.controllerEffectNumber() != 21031 ||
+                actor.resourceId() != 10000000) {
+                continue;
+            }
+            saw_first_visual =
+                saw_first_visual ||
+                (actor.animationChart() == 1 &&
+                 actor.redStrength() == 500 &&
+                 actor.greenStrength() == 500 &&
+                 actor.blueStrength() == 1200);
+            saw_second_visual =
+                saw_second_visual ||
+                (actor.animationChart() == 0 &&
+                 actor.redStrength() == 500 &&
+                 actor.greenStrength() == 500 &&
+                 actor.blueStrength() == 1200);
+        }
+        const std::vector<std::int32_t> audio =
+            world.takeAudioSamples();
+        heard_first_sample =
+            heard_first_sample ||
+            std::find(audio.begin(), audio.end(), 29) != audio.end();
+        heard_second_sample =
+            heard_second_sample ||
+            std::find(audio.begin(), audio.end(), 23) != audio.end();
+        relocate_sample_count += static_cast<std::int32_t>(
+            std::count(audio.begin(), audio.end(), 45));
+        heard_impact_sample =
+            heard_impact_sample ||
+            std::find(audio.begin(), audio.end(), 46) != audio.end();
+        const auto current = std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [target_character_number](const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() ==
+                    target_character_number;
+            });
+        applied_damage = applied_damage ||
+            current == world.enemies().end() ||
+            current->currentLife() < target_life_before;
+        if (!world.playerSpellActive() &&
+            !world.companion().explosionActive() &&
+            saw_first_visual && saw_second_visual) {
+            break;
+        }
+    }
+
+    const bool passed =
+        saw_departure && saw_arrival && relocated &&
+            saw_first_visual && saw_second_visual &&
+            heard_first_sample && heard_second_sample &&
+            relocate_sample_count == 2 &&
+            heard_impact_sample &&
+            applied_damage &&
+            world.playerMagic().experience(spell) >= 1 &&
+            !world.companion().explosionActive() &&
+            world.companion().presentationAction() == 2;
+    if (!passed) {
+        std::cerr
+            << "departure=" << saw_departure
+            << " arrival=" << saw_arrival
+            << " relocated=" << relocated
+            << " visual=" << saw_first_visual
+            << ',' << saw_second_visual
+            << " audio=" << heard_first_sample
+            << ',' << heard_second_sample
+            << ',' << relocate_sample_count
+            << ',' << heard_impact_sample
+            << " damage=" << applied_damage
+            << " practice="
+            << world.playerMagic().experience(spell)
+            << " active="
+            << world.companion().explosionActive()
+            << " presentation="
+            << world.companion().presentationAction()
+            << " destination=" << destination.x
+            << ',' << destination.y
+            << " companion="
+            << world.companion().position().x
+            << ',' << world.companion().position().y
+            << '\n';
+    }
+    return check(
+        passed,
+        "The live Explosion did not relocate its companion, play both "
+        "visual/audio layers, damage the area, train, and unlock.");
+}
+
 bool testGroundSpellInsufficientMana(
     const std::filesystem::path& game_root,
     std::int32_t spell) {
@@ -3751,6 +3979,18 @@ int main() {
             true) ||
         !testShippedCounterBurstCast(game_root) ||
         !testGroundSpellInsufficientMana(game_root, 19)) {
+        return 1;
+    }
+    if (!testRetailAction(
+            animation,
+            tables,
+            20,
+            osf::PlayerSpellAction::explosion,
+            11,
+            12,
+            true) ||
+        !testShippedExplosionCast(game_root) ||
+        !testGroundSpellInsufficientMana(game_root, 20)) {
         return 1;
     }
 #endif

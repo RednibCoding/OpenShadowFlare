@@ -1207,6 +1207,21 @@ void WorldScene::handlePlayerSpellEvent(
         refreshPlayerRuntimeProfile();
         return;
     }
+    if (event.spell == 20) {
+        const WorldPosition destination{
+            event.aim_world_x,
+            event.aim_world_y,
+        };
+        if (hasCompanion() &&
+            positionIsWalkable(
+                scenario_world_.ground(),
+                scenario_world_.objectMap(),
+                destination,
+                companion_.judgement())) {
+            companion_.beginExplosion(destination);
+        }
+        return;
+    }
     const bool requires_target =
         playerSpellRequiresCharacterTarget(
             event.spell);

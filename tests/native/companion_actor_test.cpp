@@ -6,6 +6,7 @@
 #include "world/companion_actor.hpp"
 #include "world/companion_attack_action.hpp"
 #include "world/companion_attack_impact.hpp"
+#include "world/companion_explosion_action.hpp"
 #include "world/companion_profile.hpp"
 #include "world/companion_respawn.hpp"
 #include "world/companion_target_selector.hpp"
@@ -289,6 +290,109 @@ int main() {
         return 1;
     }
 
+    osf::CompanionExplosionAnimationTiming explosion_timing;
+    if (!check(
+            osf::buildCompanionExplosionAnimationTiming(
+                visual->animation(), explosion_timing) &&
+                explosion_timing.departure_frame_count > 0 &&
+                explosion_timing.arrival_frame_count > 0,
+            "The PARTNER departure and arrival charts for Explosion "
+            "could not be reconstructed.")) {
+        return 1;
+    }
+    osf::CompanionExplosionActionController explosion_action;
+    const osf::WorldPosition explosion_destination{
+        origin.x + 96,
+        origin.y - 64,
+    };
+    if (!check(
+            explosion_action.start(
+                explosion_destination, explosion_timing),
+            "The companion Explosion presentation did not start.")) {
+        return 1;
+    }
+    bool departure_seen = false;
+    bool arrival_seen = false;
+    bool relocation_seen = false;
+    bool explosion_impact_seen = false;
+    bool explosion_completed = false;
+    for (int update = 0;
+         update < 200 && explosion_action.active();
+         ++update) {
+        const osf::CompanionExplosionActionEvent event =
+            explosion_action.update();
+        departure_seen = departure_seen ||
+            explosion_action.animationChart() == 6;
+        arrival_seen = arrival_seen ||
+            explosion_action.animationChart() == 7;
+        relocation_seen =
+            relocation_seen || event.relocate_due;
+        explosion_impact_seen =
+            explosion_impact_seen || event.impact_due;
+        explosion_completed =
+            explosion_completed || event.completed;
+    }
+    if (!check(
+            departure_seen && arrival_seen && relocation_seen &&
+                explosion_impact_seen && explosion_completed &&
+                explosion_action.destination().x ==
+                    explosion_destination.x &&
+                explosion_action.destination().y ==
+                    explosion_destination.y,
+            "The companion Explosion did not depart, relocate, "
+            "impact, and arrive through the retail PARTNER charts.")) {
+        return 1;
+    }
+
+    osf::CompanionExplosionPacketInput explosion_input;
+    explosion_input.source_character_number = 16000000;
+    explosion_input.source_level = 7;
+    explosion_input.scaling_level = 1;
+    explosion_input.damage_value = 37;
+    explosion_input.magical_hit_rate = 9;
+    explosion_input.element_affinities =
+        {10, 11, 12, 13, 14, 15, 16, 17};
+    explosion_input.state_words[0] = 101;
+    explosion_input.state_words[16] = 117;
+    osf::RetailRandom explosion_random(0x1234);
+    const osf::CombatPacket explosion_packet =
+        osf::buildCompanionExplosionPacket(
+            explosion_input, tables, explosion_random);
+    const osf::TableData* table18 = tables.find(18);
+    const osf::TableData* table19 = tables.find(19);
+    const osf::TableData* table70 = tables.find(70);
+    if (!check(
+            table18 && table19 && table70 &&
+                explosion_packet[0] == 0 &&
+                explosion_packet[1] == 3 &&
+                explosion_packet[2] == 16000000 &&
+                explosion_packet[3] == 1 &&
+                explosion_packet[4] == 37 &&
+                explosion_packet[5] == 0 &&
+                explosion_packet[6] == 10 &&
+                explosion_packet[13] == 17 &&
+                explosion_packet[14] == 101 &&
+                explosion_packet[30] == 117 &&
+                explosion_packet[31] == 7 &&
+                explosion_packet[32] ==
+                    table19->value(20, 0) &&
+                explosion_packet[34] >= 21000 &&
+                explosion_packet[34] <= 21003 &&
+                explosion_packet[36] ==
+                    table18->value(20, 0) + 9 &&
+                explosion_packet[45] ==
+                    table70->value(20, 2) &&
+                explosion_packet[54] ==
+                    table70->value(20, 0) &&
+                explosion_packet[63] ==
+                    table70->value(20, 1) &&
+                explosion_packet[73] == 20 &&
+                explosion_packet[74] == -1,
+            "The companion Explosion packet no longer matches the "
+            "retail family, owner fields, table rows, or spell tag.")) {
+        return 1;
+    }
+
     const std::vector<osf::CompanionEnemyTargetState>
         target_fixture{
             {20000002, {origin.x + 500, origin.y},
@@ -361,6 +465,74 @@ int main() {
             "post-hit sample differs from retail.")) {
         return 1;
     }
+
+    if (!check(
+            actor.beginExplosion(explosion_destination) &&
+                actor.explosionActive() &&
+                actor.motion() ==
+                    osf::CompanionMotion::exploding &&
+                actor.presentationAction() == 10 &&
+                actor.animationChart() == 6 &&
+                actor.animationDirection() == 8,
+            "The companion actor did not enter retail presentation "
+            "action ten for Explosion.")) {
+        return 1;
+    }
+    bool actor_relocated = false;
+    bool actor_impact_seen = false;
+    bool actor_explosion_completed = false;
+    for (int update = 0;
+         update < 200 && actor.explosionActive();
+         ++update) {
+        const osf::CompanionExplosionUpdate event =
+            actor.updateExplosion();
+        actor_relocated = actor_relocated ||
+            (event.relocated &&
+             actor.position().x == explosion_destination.x &&
+             actor.position().y == explosion_destination.y);
+        actor_impact_seen =
+            actor_impact_seen || event.impact_due;
+        actor_explosion_completed =
+            actor_explosion_completed || event.completed;
+    }
+    if (!check(
+            actor_relocated && actor_impact_seen &&
+                actor_explosion_completed &&
+                actor.presentationAction() == 2 &&
+                actor.motion() == osf::CompanionMotion::idle,
+            "The companion actor did not unlock after its Explosion "
+            "arrival presentation.")) {
+        return 1;
+    }
+    actor.relocate(origin, 3);
+
+    if (!check(
+            actor.beginAttack(
+                20000001,
+                {origin.x + 100, origin.y}) &&
+                actor.beginExplosion(explosion_destination) &&
+                actor.attackActive() &&
+                actor.explosionPending() &&
+                !actor.explosionActive(),
+            "An Explosion command did not wait behind the companion's "
+            "ordinary attack presentation.")) {
+        return 1;
+    }
+    for (int update = 0;
+         update < 200 && actor.attackActive();
+         ++update) {
+        actor.updateAttack();
+    }
+    if (!check(
+            actor.activatePendingExplosion() &&
+                !actor.explosionPending() &&
+                actor.explosionActive() &&
+                actor.presentationAction() == 10,
+            "The queued Explosion did not take ownership after the "
+            "ordinary companion attack completed.")) {
+        return 1;
+    }
+    actor.relocate(origin, 3);
     actor.updateFollow(
         origin,
         world.playerJudgement(),
