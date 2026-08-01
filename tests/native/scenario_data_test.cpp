@@ -9,11 +9,13 @@
 #include "render/gameplay_renderer.hpp"
 #include "render/player_level_up_notice_renderer.hpp"
 #include "resources/character_visual_resource.hpp"
-#include "world/ground_item.hpp"
+#include "world/actor_direction.hpp"
 #include "world/enemy_effect_impact.hpp"
+#include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
+#include "world/script/scenario_effect_command.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>
@@ -37,6 +39,87 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool testScenarioEffectCommand() {
+    const std::vector<std::int32_t> arguments{
+        1000,
+        2000,
+        2,
+        90,
+        60,
+        123,
+        150,
+        50,
+        -1,
+        2,
+        42,
+        43,
+        41,
+        72,
+    };
+    osf::CombatEffectSpawnRequest request;
+    if (!check(
+            osf::makeScenarioEffectRequest(
+                arguments, 7, request),
+            "The retail scenario-effect descriptor was rejected.")) {
+        return false;
+    }
+    if (!check(
+            request.valid && request.effect_number == 2 &&
+                request.owner_kind == 0 &&
+                request.source_character_number == -1 &&
+                request.target_kind == 19 &&
+                request.target_identifier == -1 &&
+                request.constructor_value_6 == 60 &&
+                request.constructor_value_7 == 150 &&
+                std::abs(
+                    request.direction_radians -
+                    90.0 * osf::kRetailRadiansPerDegree) <
+                    0.000001 &&
+                request.has_explicit_origin &&
+                request.origin.x == 1000 &&
+                request.origin.y == 1951 &&
+                !request.has_source_judgement &&
+                request.constructor_value_12 == 0 &&
+                request.has_packet && request.packet_kind == 8 &&
+                request.instance_identifier == -1 &&
+                request.constructor_value_16 == 0 &&
+                request.constructor_value_17 == 0 &&
+                request.constructor_value_18 == 0 &&
+                request.constructor_value_19 == 0 &&
+                request.constructor_value_20 == 0 &&
+                request.constructor_value_21 == 200 &&
+                request.constructor_value_22 == 0,
+            "Opcode 30 did not reproduce the retail 22-field effect "
+            "request.")) {
+        return false;
+    }
+    const osf::CombatPacket& packet = request.packet;
+    if (!check(
+            packet[0] == 2 && packet[2] == -1 &&
+                packet[4] == 123 && packet[32] == -1 &&
+                packet[34] == 21003 && packet[35] == 8 &&
+                packet[36] == 9999 && packet[37] == 1 &&
+                packet[40] == 41 && packet[41] == 42 &&
+                packet[42] == 0 &&
+                packet[43] == 43 && packet[72] == 72 &&
+                packet[73] == -1 && packet[74] == -1 &&
+                packet[75] == 8 &&
+                packet.written_words.count() == 33,
+            "Opcode 30 did not reproduce its retail combat packet.")) {
+        return false;
+    }
+
+    std::vector<std::int32_t> alternate = arguments;
+    alternate[2] = 0;
+    return check(
+        osf::makeScenarioEffectRequest(alternate, 5, request) &&
+            request.packet[34] == 21009 &&
+            !osf::makeScenarioEffectRequest(
+                std::vector<std::int32_t>(13), 0, request),
+        "Opcode 30 did not preserve its alternate impact family or "
+        "operand count.");
 }
 
 bool updateUntilConversation(
@@ -4387,7 +4470,8 @@ bool testRetailRemoteTown() {
 }  // namespace
 
 int main() {
-    return testGroundItemCreation() &&
+    return testScenarioEffectCommand() &&
+                   testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
                    testPlayerLevelUpNoticeLayout() &&
                    testEnemyNameplatePresentation() &&

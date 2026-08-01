@@ -311,6 +311,7 @@ services exercise them; unknown values still fail loudly.
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
@@ -386,6 +387,19 @@ remaining calls with script-calculated upper bounds. The portable
 script library asks its host for the next random value, keeping the DLL
 boundary free of world ownership while still sharing the world's retail
 random sequence.
+
+Opcode 30 is the script-facing form of the executable's normal effect request,
+not a new scenario-actor class. All 411 shipped calls have fourteen operands,
+spread across 33 scenarios. The first two supply an origin, operand three is a
+direction in degrees, and operand seven projects that origin along the retail
+sine/cosine path. The remaining values fill the effect number, speed, height,
+direction and selected words of the ordinary 77-word combat packet. One
+shared random draw selects packet presentation `21000..21003` for nonzero
+effects or `21007..21009` for effect zero. Near Remote Town's first periodic
+spawn sentence uses the position of object `10055000`, submits effect two,
+then follows it with a separately authored positional sound. The script
+library only evaluates the fourteen operands; the world owns packet
+construction, the random stream, and the effect runtime.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its

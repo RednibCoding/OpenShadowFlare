@@ -872,6 +872,14 @@ common destination writer. The script library receives the draw from the
 world instead of owning a second generator, so the 611 shipped spawn, branch,
 and setup calls remain in the same random sequence as native gameplay work.
 
+The first authored periodic effect command is connected now too. Opcode 30
+evaluates its fourteen script values in the DLL boundary, then hands them to a
+small world-side builder for the exact owner-zero effect request, projected
+origin, combat-packet fields, and shared-random impact choice. This covers all
+411 shipped calls across 33 scenarios and lets Near Remote Town's authored
+spawn-and-sound sentences use the existing effect runtime instead of a
+scenario-specific visual shortcut.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover

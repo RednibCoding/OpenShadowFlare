@@ -275,6 +275,13 @@ but consumes the next value from the world's shared retail random owner. That
 keeps random branching and spawn setup faithful without making the portable
 DLL library depend on world or core classes.
 
+Periodic scenario effects use that same split. Opcode 30 stays a fourteen-
+operand command in `RKC_RPG_SCRIPT`; a focused world helper turns those values
+into the retail projected origin, combat packet, shared-random impact visual,
+and ordinary effect request. Near Remote Town therefore uses its authored
+effect-and-sound sentences without teaching the interpreter about world actor
+or rendering classes.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,

@@ -1574,6 +1574,104 @@ bool testRetailScenarioEntityOverrideCommand() {
 #endif
 }
 
+bool testRetailScenarioEffectCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00000001" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    osf::script::InterpreterHooks hooks;
+    hooks.read_operand = [](
+                             const osf::script::Operand& operand) {
+        if (operand.type == 6) {
+            return 111;
+        }
+        if (operand.type == 7) {
+            return 222;
+        }
+        return 0;
+    };
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(17, -1) ==
+                    osf::script::StepResult::complete &&
+                calls.size() == 2 &&
+                calls[0].first == 30 &&
+                calls[0].second.size() == 14 &&
+                calls[0].second[0] == 111 &&
+                calls[0].second[1] == 222 &&
+                calls[0].second[2] == 2 &&
+                calls[0].second[6] == 150 &&
+                calls[0].second[8] == 1 &&
+                calls[1].first == 16,
+            "Opcode 30 did not evaluate Near Remote Town's first "
+            "authored effect sentence.")) {
+        return false;
+    }
+
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    const std::filesystem::path root = path.parent_path().parent_path();
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path scenario_path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(scenario_path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(scenario_path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-30 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 30) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 14,
+                        "A shipped opcode-30 call changed shape.")) {
+                    return false;
+                }
+                ++call_count;
+                ++scenario_calls;
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 411 && scenario_count == 33,
+        "The shipped opcode-30 inventory differs from the audited "
+        "retail scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailInclusiveRandomCommand() {
     osf::script::ScriptData script = makeRandomCommandScript();
     if (!check(
@@ -1693,6 +1791,7 @@ int main() {
                    testRetailBlackjackCommands() &&
                    testRetailScenarioEntryAndCaptionCommands() &&
                    testRetailScenarioEntityOverrideCommand() &&
+                   testRetailScenarioEffectCommand() &&
                    testRetailInclusiveRandomCommand() &&
                    testRetailInclusiveRandomCommandInventory() &&
                    testMalformedScript()

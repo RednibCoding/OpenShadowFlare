@@ -1333,6 +1333,15 @@ use 0..1, 41 use 20..40, and the rest include script-calculated bounds.
 The portable library obtains that one draw from the world's shared retail
 random owner through a narrow hook.
 
+Opcode 30 at `0x0043309b` now crosses the same boundary without inventing a
+second effect type. Its fourteen evaluated operands build the retail
+owner-zero request, projected origin, and selected 77-word combat-packet
+fields, while one draw from the world's random stream chooses impact
+presentation `21000..21003` or `21007..21009`. The request enters the existing
+`0x0042fdc0` controller/one-pass-effect owner. All 411 shipped calls across 33
+scenarios retain the same shape; Near Remote Town's first periodic spawn
+sentence is covered directly.
+
 The portable fresh-world path accepts scenario ID, entry value, and local
 player explicitly. The first cross-map fixture is Table 40 row one: scenario
 6, entry 4, key 16. It loads Wasteland of Pillars, `Map\f00_07.map`, position

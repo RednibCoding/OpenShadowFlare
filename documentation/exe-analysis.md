@@ -1062,6 +1062,20 @@ records are separate from the map's static OBL scenery. Across all 209 retail
 MCT files, the exact sequential decoder reaches 5,203 object and 163 PEOPLE
 records without a resource-list mismatch.
 
+The periodic script path also reaches the shared combat-effect owner. Opcode
+30 enters its handler at `0x0043309b`, evaluates fourteen operands, initializes
+the same 77-word packet used by native attacks, and calls the common
+22-argument request allocator at `0x0042fdc0`. The handler converts operand
+three from degrees with the retail radians constant, projects operands zero
+and one by operand seven, and stores that result as an explicit owner-zero
+origin. It chooses packet word 34 from `21000..21003` when the effect number is
+nonzero or `21007..21009` when it is zero, consuming one value from the shared
+Visual C++ random stream. Packet words 4, 37, 40, 41, 43, and 72 retain the
+other authored values; hit value 9999, packet direction eight, target kind 19,
+and constructor value 21 equal to 200 are fixed by the handler. The shipped
+catalog contains 411 calls in 33 scenarios and every call has exactly fourteen
+operands.
+
 Object 200 and the Warehouse at local ID 300 are the first reconstructed
 type-zero pointer actions. The normal world pointer tests opaque cells in
 their static NJP or current CAF display, then uses the common judgement-box

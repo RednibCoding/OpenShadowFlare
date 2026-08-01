@@ -204,6 +204,7 @@ add_library(
   world/scenario_world.cpp
   world/transport_catalog.cpp
   world/vendor_stock_generator.cpp
+  world/script/scenario_effect_command.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
   world/world_scene.cpp
