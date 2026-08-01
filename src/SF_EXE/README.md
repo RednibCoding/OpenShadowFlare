@@ -361,7 +361,9 @@ the matching option is enabled, the same action captures the world without
 the HUD or menu and writes the retail 391×114 preview bitmap used by Load
 Game. Escape closes any visible left- and right-hand gameplay panels first;
 only the following press opens Settings. The separate Land Mine count now
-survives the same save path. Scenario position,
+survives the same save path. Its inventory icon and current/maximum readout
+are live too; pickups increment that owner directly and a mine at full
+capacity stays in the world instead of leaking into the backpack. Scenario position,
 script-created world actors, and the remaining dynamic state are still
 pending. Companion type, level, experience, and its defeated countdown
 already live in the preserved player record.

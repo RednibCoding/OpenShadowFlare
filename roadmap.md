@@ -1068,11 +1068,15 @@ The mine arms at update 40, beeps every 20 updates, reacts to enemy and active
 scenario-object contact, and expires at update 300. Its Table-23 area packet,
 sample 29, resource-1001 explosion, expanding 1002..1004 rings, and paired
 1005..1008 bouncing debris run through their own small controller and the
-shared receiver/depth-sort boundaries. Mine pickups fill the counter up to the
-equipment-derived maximum before falling back to ordinary backpack pickup.
-The base count, instance-word 84 capacity bonus, instance-word 81 damage
-bonus, and post-magic retail save field are all owned and tested, including
-older sparse portable saves.
+shared receiver/depth-sort boundaries. Mine pickups fill the separate counter
+up to the equipment-derived maximum and never enter the backpack. A pickup at
+capacity leaves the mine in the world through the usual bounce-and-landing
+response. The inventory's authored Mine icon and `current / maximum` readout,
+base count, instance-word 84 capacity bonus, instance-word 81 damage bonus,
+and post-magic retail save field are all owned and tested, including older
+sparse portable saves. The generic Mine record says weight one, but retail's
+live encumbrance routine counts equipped slots only and does not add the mine
+counter.
 
 Companion restoration, timed/status effects, and the script-facing
 special-item commands form the remaining item-use checkpoint. Companion

@@ -608,6 +608,21 @@ stacks to 10,000 as `0x00449ef0` does. The retail 9-by-4 placement grid,
 multi-cell item sizes, full-inventory failure, and inventory panel are still
 part of the next inventory slice.
 
+The category-four, definition-one branch in `0x00449ef0` is the exception to
+ordinary ownership. Below player runtime maximum `+0x2c0`, it destroys the
+concrete Mine item and increments the separate count at `+0x328`. At the
+maximum it leaves the instance intact and returns failure, so the
+single-player caller recreates the normal mode-zero world drop; it does not
+try the backpack. `0x00408a80` draws `Status.njp` pattern 67 only while that
+count is nonzero, then always draws `count / maximum` at the authored Mine
+row. The color compares the live maximum against base value ten.
+
+The Mine definition happens to carry generic weight value one. That value is
+not part of the live encumbrance path: `0x00445630` reads the nine equipment
+pointers only, and neither it nor its callers read `+0x328`. Consequently the
+separate counter does not alter the inventory Weight readout or attack-speed
+tier.
+
 Inventory artwork goes through `0x00465cb0`, separately from the world item
 CAF path. After drawing an ordinary weapon or armor icon, it divides current
 durability times 100 by maximum durability. Results from zero through nine

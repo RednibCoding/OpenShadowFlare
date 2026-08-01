@@ -1830,17 +1830,30 @@ bool WorldScene::startGroundItemInteraction(
     const bool mine_item =
         found->item.category == 4 &&
         found->item.definition_id == 1;
-    if (definition && mine_item &&
-        player_item_controller_.collectMine(
-            playerMaximumMineCount())) {
-        pending_audio_samples_.push_back(
-            retailItemMoveSound(*definition));
+    if (definition && mine_item) {
+        if (player_item_controller_.collectMine(
+                playerMaximumMineCount())) {
+            pending_audio_samples_.push_back(
+                retailItemMoveSound(*definition));
+            if (pointer_.target().kind ==
+                    WorldPointerTargetKind::ground_item &&
+                pointer_.target().id == item_id) {
+                pointer_.clearSelection();
+            }
+            ground_items.erase(found);
+            return true;
+        }
+
+        // InsertPickedUpItem (0x00449ef0) keeps category-four definition
+        // one outside the 9-by-4 owner. At maximum capacity it returns the
+        // still-live instance to the caller, whose single-player failure
+        // tail recreates the ordinary drop response.
+        restartGroundItemDrop(*found);
         if (pointer_.target().kind ==
                 WorldPointerTargetKind::ground_item &&
             pointer_.target().id == item_id) {
             pointer_.clearSelection();
         }
-        ground_items.erase(found);
         return true;
     }
     if (!definition ||

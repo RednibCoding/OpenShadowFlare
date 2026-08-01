@@ -178,6 +178,7 @@ public:
         std::int32_t item_index);
     void cancelPlayerIdentifyMode();
     std::int32_t playerMineCount() const;
+    std::int32_t playerMaximumMineCount() const;
     bool placePlayerLandMine();
     const std::vector<PlayerLandMineVisual>&
         playerLandMineVisuals() const;
@@ -409,7 +410,6 @@ private:
         const RuntimeEffectAudioRequest& request);
     void refreshCompanionRuntimeProfile(bool level_gained = false);
     void refreshPlayerRuntimeProfile();
-    std::int32_t playerMaximumMineCount() const;
     std::int32_t playerMineDamageBonus() const;
     void updatePlayerResourceRates();
     void createPlayerTransport(WorldPosition aim_position);

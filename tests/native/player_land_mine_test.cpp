@@ -1,7 +1,10 @@
 #include "core/retail_random.hpp"
+#include "items/item_database.hpp"
+#include "items/player_inventory.hpp"
 #include "libs/RKC_RPG_TABLE/rkc_rpg_table.hpp"
 #include "world/player_item_controller.hpp"
 #include "world/player_land_mine.hpp"
+#include "world/world_scene.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -31,6 +34,150 @@ bool containsSample(
                }) != update.audio.end();
 }
 
+bool findGroundItemPointer(
+    osf::WorldScene& world,
+    std::int32_t item_id,
+    osf::ScreenPosition& point) {
+    const auto found = std::find_if(
+        world.groundItems().begin(),
+        world.groundItems().end(),
+        [item_id](const osf::GroundItem& item) {
+            return item.id == item_id;
+        });
+    if (found == world.groundItems().end()) {
+        return false;
+    }
+    const osf::ScreenPosition anchor =
+        osf::calculateRealPosition(found->position);
+    for (std::int32_t y = -96; y <= 64; ++y) {
+        for (std::int32_t x = -96; x <= 96; ++x) {
+            point = {
+                anchor.x - world.cameraScreenX() + x,
+                anchor.y - world.cameraScreenY() + y,
+            };
+            if (point.x < 0 || point.x >= 640 ||
+                point.y < 0 || point.y >= 480) {
+                continue;
+            }
+            world.updatePointerHover(point.x, point.y);
+            if (world.hoveredGroundItemId() == item_id) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool dropAndSelectMine(
+    osf::WorldScene& world,
+    const osf::ItemDefinition& mine,
+    std::int32_t& item_id) {
+    if (!world.dropInventoryItem(
+            osf::makeInventoryItem(mine), 320, 240)) {
+        return false;
+    }
+    item_id = world.groundItems().back().id;
+    for (std::int32_t update = 0; update < 100; ++update) {
+        world.update();
+        world.takeAudioSamples();
+        const auto found = std::find_if(
+            world.groundItems().begin(),
+            world.groundItems().end(),
+            [item_id](const osf::GroundItem& item) {
+                return item.id == item_id;
+            });
+        if (found != world.groundItems().end() &&
+            found->bounce_state == 2) {
+            break;
+        }
+    }
+    osf::ScreenPosition point;
+    return findGroundItemPointer(world, item_id, point) &&
+           world.commandWorldInteraction(point.x, point.y);
+}
+
+bool testWorldMinePickup(
+    const std::filesystem::path& root) {
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Mine Pickup";
+    std::string error;
+    if (!check(
+            world.loadInitialScenario(root, player, &error),
+            "Remote Town could not prepare the mine-pickup fixture.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const osf::ItemDefinition* mine =
+        world.itemDatabase().find(4, 1);
+    if (!check(
+            mine && mine->name == "Mine" && mine->weight == 1 &&
+                world.playerMineCount() == 5 &&
+                world.playerMaximumMineCount() == 10,
+            "The retail mine definition or starter capacity differs.")) {
+        return false;
+    }
+    const std::size_t backpack_size =
+        world.playerInventory().items().size();
+    for (std::int32_t pickup = 0; pickup < 5; ++pickup) {
+        std::int32_t item_id = -1;
+        if (!check(
+                dropAndSelectMine(world, *mine, item_id),
+                "A mine below capacity could not be selected.")) {
+            return false;
+        }
+        for (std::int32_t update = 0; update < 2000; ++update) {
+            world.update();
+            world.takeAudioSamples();
+            const auto remaining = std::find_if(
+                world.groundItems().begin(),
+                world.groundItems().end(),
+                [item_id](const osf::GroundItem& item) {
+                    return item.id == item_id;
+                });
+            if (remaining == world.groundItems().end()) {
+                break;
+            }
+        }
+        if (!check(
+                world.playerMineCount() == 6 + pickup &&
+                    world.playerInventory().items().size() ==
+                        backpack_size,
+                "A mine pickup entered the backpack instead of its "
+                "separate counter.")) {
+            return false;
+        }
+    }
+
+    std::int32_t rejected_id = -1;
+    if (!check(
+            dropAndSelectMine(world, *mine, rejected_id),
+            "The full-capacity mine fixture could not be selected.")) {
+        return false;
+    }
+    bool restarted = false;
+    for (std::int32_t update = 0; update < 2000; ++update) {
+        world.update();
+        world.takeAudioSamples();
+        const auto remaining = std::find_if(
+            world.groundItems().begin(),
+            world.groundItems().end(),
+            [rejected_id](const osf::GroundItem& item) {
+                return item.id == rejected_id;
+            });
+        if (remaining != world.groundItems().end() &&
+            remaining->bounce_state == 0) {
+            restarted = true;
+            break;
+        }
+    }
+    return check(
+        restarted && world.playerMineCount() == 10 &&
+            world.playerInventory().items().size() == backpack_size,
+        "A mine above capacity did not remain a world drop or leaked "
+        "into the backpack.");
+}
+
 }  // namespace
 
 int main() {
@@ -57,6 +204,9 @@ int main() {
     const std::filesystem::path root =
         std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
         "tmp" / "ShadowFlare";
+    if (!testWorldMinePickup(root)) {
+        return 1;
+    }
     if (!check(
             tables.load(
                 root / "System" / "Game" / "Parameter" /

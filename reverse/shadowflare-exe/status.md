@@ -504,6 +504,20 @@ the magic block and its counted two-array history owner; older sparse portable
 saves retain the five-mine default unless their versioned tail includes a
 count.
 
+Mine pickup keeps that count completely outside the ordinary item owners.
+The category-four, definition-one branch of `0x00449ef0` frees the concrete
+item and increments player `+0x328` only while it is below runtime maximum
+`+0x2c0`. When full, it returns the still-live item to `0x004526a0`; the
+single-player failure tail restarts its mode-zero drop animation rather than
+placing it in the 9-by-4 backpack. `0x00408a80` draws `Status.njp` pattern 67
+for a nonzero count and prints `current / maximum` at right edges 446 and 471,
+with the maximum colored against base `+0x160` (ten).
+
+Mine's category record contains generic weight value one, but the live weight
+owner `0x00445630` only sums the nine equipment pointers at `+0x4e8..+0x50c`.
+No use of player `+0x328` feeds that calculation, its inventory display, or
+the attack-speed tier.
+
 Inventory movement sounds follow `0x00466110`: category-two items use sample
 93, Gold uses 85, ordinary items below weight 60 use 48, and heavier ones use
 47. Equipment placement uses sample 49 except for category two, while a

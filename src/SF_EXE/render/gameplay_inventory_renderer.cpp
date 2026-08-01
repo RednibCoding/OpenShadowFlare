@@ -20,13 +20,16 @@ namespace osf {
 namespace {
 
 constexpr gapi::Color kValueColor{224, 192, 128, 255};
+constexpr gapi::Color kNormalValueColor{224, 224, 224, 255};
+constexpr gapi::Color kLowerValueColor{224, 64, 64, 255};
 
 void drawPanelText(
     gapi::Backend& renderer,
     const gapi::NjpImage& font,
     const std::string& text,
     std::int32_t x,
-    std::int32_t y) {
+    std::int32_t y,
+    gapi::Color color = kValueColor) {
     renderer.drawText(
         font,
         text,
@@ -34,7 +37,7 @@ void drawPanelText(
     renderer.drawText(
         font,
         text,
-        {x, y, kValueColor, 1000, 2});
+        {x, y, color, 1000, 2});
 }
 
 void drawRightAlignedNumber(
@@ -42,7 +45,8 @@ void drawRightAlignedNumber(
     const gapi::NjpImage& font,
     std::int32_t value,
     std::int32_t right,
-    std::int32_t y) {
+    std::int32_t y,
+    gapi::Color color = kValueColor) {
     const std::string text =
         std::to_string(value < 0 ? 0 : value);
     drawPanelText(
@@ -51,7 +55,8 @@ void drawRightAlignedNumber(
         text,
         right -
             static_cast<std::int32_t>(text.size()) * 8,
-        y);
+        y,
+        color);
 }
 
 }  // namespace
@@ -162,6 +167,43 @@ void renderGameplayInventory(
         owned.gold(),
         471,
         28);
+
+    // InventoryStatusDisplay (0x00408a80) renders mines as a separate
+    // resource. The icon is present only for a nonzero count, while the
+    // current count, slash, and equipment-derived maximum remain visible.
+    const std::int32_t mine_count = world.playerMineCount();
+    const std::int32_t maximum_mines =
+        world.playerMaximumMineCount();
+    if (mine_count != 0) {
+        renderer.drawPattern(status_patterns, 67);
+    }
+    const gapi::Color mine_value_color =
+        maximum_mines < 10
+            ? kLowerValueColor
+            : (maximum_mines > 10
+                   ? kValueColor
+                   : kNormalValueColor);
+    drawRightAlignedNumber(
+        renderer,
+        font,
+        mine_count,
+        446,
+        118,
+        mine_value_color);
+    drawPanelText(
+        renderer,
+        font,
+        "/",
+        445,
+        117,
+        kNormalValueColor);
+    drawRightAlignedNumber(
+        renderer,
+        font,
+        maximum_mines,
+        471,
+        118,
+        mine_value_color);
     drawRightAlignedNumber(
         renderer,
         font,

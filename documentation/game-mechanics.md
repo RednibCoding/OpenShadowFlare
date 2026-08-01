@@ -706,11 +706,19 @@ minimum of one. Resources 1002 through 1004 form the expanding debris rings;
 The controller finishes at update 80 after the explosion.
 
 Mine items are category four, definition one. Picking one up increments the
-separate counter while it is below the current maximum. A full counter makes
-the item follow ordinary backpack pickup instead. The base maximum is ten;
-equipped instance word 84 raises it, while instance word 81 raises mine
-damage. The current count is saved after the magic block in the retail `.Ssv`
-stream and survives portable save/load as well.
+separate counter while it is below the current maximum. It never enters the
+backpack. At maximum capacity the pickup is rejected through the normal world
+drop response, so the mine bounces and plays its landing sound instead of
+silently disappearing. The inventory panel shows the Mine icon whenever the
+count is nonzero, followed by the current count and the live maximum. The base
+maximum is ten; equipped instance word 84 raises it, while instance word 81
+raises mine damage. The current count is saved after the magic block in the
+retail `.Ssv` stream and survives portable save/load as well.
+
+`Item.Ibn` gives the Mine definition the generic weight field value one, but
+retail does not multiply that field by the mine counter. Its live weight
+routine at `0x00445630` visits only the nine equipped item pointers, so mines
+do not change the inventory Weight number or attack-speed encumbrance.
 
 ## Controls (from help text)
 

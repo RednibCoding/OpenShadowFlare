@@ -260,7 +260,7 @@ bool testInventoryResourcesAndRendering() {
         world,
         0);
     if (!check(
-        renderer.patterns.size() == 13 &&
+        renderer.patterns.size() == 14 &&
             renderer.rectangles.size() == 1 &&
             renderer.rectangles[0].x == 320 &&
             renderer.rectangles[0].width == 320 &&
@@ -269,12 +269,19 @@ bool testInventoryResourcesAndRendering() {
             renderer.patterns[1].index == 3 &&
             renderer.patterns[2].index == 0 &&
             renderer.patterns.back().index == 74 &&
-            renderer.texts.size() == 6 &&
+            renderer.patterns[3].index == 67 &&
+            renderer.texts.size() == 12 &&
             renderer.texts[0].text == "Total Gold" &&
             renderer.texts[1].text == "Total Gold" &&
             renderer.texts[2].text == "0" &&
             renderer.texts[2].draw.x == 464 &&
-            renderer.texts[4].text == "70",
+            renderer.texts[4].text == "5" &&
+            renderer.texts[5].draw.color.red == 224 &&
+            renderer.texts[5].draw.color.green == 224 &&
+            renderer.texts[5].draw.color.blue == 224 &&
+            renderer.texts[6].text == "/" &&
+            renderer.texts[8].text == "10" &&
+            renderer.texts[10].text == "70",
         "The authored inventory frame or live values differ.")) {
         return false;
     }
@@ -332,11 +339,11 @@ bool testInventoryResourcesAndRendering() {
                 world.playerEquipment().derivedParameterBonus(
                     1, world.itemDatabase()) == 100 &&
                 world.playerPartEnabled(12) &&
-                equipped_renderer.patterns.size() == 5 &&
-                equipped_renderer.patterns[3].index == 0 &&
-                equipped_renderer.patterns[3].draw.x == 496 &&
-                equipped_renderer.patterns[3].draw.y == 16 &&
-                equipped_renderer.texts[4].text == "30",
+                equipped_renderer.patterns.size() == 6 &&
+                equipped_renderer.patterns[4].index == 0 &&
+                equipped_renderer.patterns[4].draw.x == 496 &&
+                equipped_renderer.patterns[4].draw.y == 16 &&
+                equipped_renderer.texts[10].text == "30",
             "Equipping the Short Sword did not update ownership, "
             "derived values, artwork, and the CAF mask together.")) {
         return false;
@@ -398,7 +405,7 @@ bool testInventoryResourcesAndRendering() {
         0);
     if (!check(
             inventory.holdingItem() &&
-                held_renderer.patterns.size() == 5 &&
+                held_renderer.patterns.size() == 6 &&
                 held_renderer.patterns.back().index == 0 &&
                 held_renderer.patterns.back().draw.x == 334 &&
                 held_renderer.patterns.back().draw.y == 236,
@@ -486,11 +493,11 @@ bool testInventoryResourcesAndRendering() {
             world.playerPartRedStrength(9) == 900 &&
             world.playerPartGreenStrength(9) == 800 &&
             world.playerPartBlueStrength(9) == 500 &&
-            shield_renderer.patterns.size() == 6 &&
-            shield_renderer.patterns[3].index == 45 &&
-            shield_renderer.patterns[3].draw.x == 480 &&
-            shield_renderer.patterns[3].draw.y == 176 &&
-            shield_renderer.texts[4].text == "40",
+            shield_renderer.patterns.size() == 7 &&
+            shield_renderer.patterns[4].index == 45 &&
+            shield_renderer.patterns[4].draw.x == 480 &&
+            shield_renderer.patterns[4].draw.y == 176 &&
+            shield_renderer.texts[10].text == "40",
         "The Round Shield did not use its retail off-hand region, "
         "weight, icon placement, and CAF colors.")) {
         return false;
@@ -866,12 +873,12 @@ bool testConditionArtwork() {
         world,
         7);
     if (!check(
-            warning_on.patterns.size() == 6 &&
-                warning_on.patterns[4].image == &status &&
-                warning_on.patterns[4].index == 16 &&
-                warning_on.patterns[4].draw.x ==
+            warning_on.patterns.size() == 7 &&
+                warning_on.patterns[5].image == &status &&
+                warning_on.patterns[5].index == 16 &&
+                warning_on.patterns[5].draw.x ==
                     backpack_warning_x &&
-                warning_on.patterns[4].draw.y ==
+                warning_on.patterns[5].draw.y ==
                     backpack_warning_y,
             "Low durability did not draw Status pattern 16 at "
             "the retail backpack corner.")) {
@@ -887,7 +894,7 @@ bool testConditionArtwork() {
         world,
         8);
     if (!check(
-            warning_off.patterns.size() == 5,
+            warning_off.patterns.size() == 6,
             "The low-durability warning did not blink off.")) {
         return false;
     }
@@ -915,9 +922,9 @@ bool testConditionArtwork() {
         world,
         8);
     if (!check(
-            broken.patterns.size() == 6 &&
-                broken.patterns[4].image == &status &&
-                broken.patterns[4].index == 16,
+            broken.patterns.size() == 7 &&
+                broken.patterns[5].image == &status &&
+                broken.patterns[5].index == 16,
             "A broken backpack item did not keep its warning visible.")) {
         return false;
     }
@@ -948,7 +955,7 @@ bool testConditionArtwork() {
         8);
     if (!check(
             inventory.holdingItem() &&
-                held.patterns.size() == 6 &&
+                held.patterns.size() == 7 &&
                 held.patterns.back().image == &status &&
                 held.patterns.back().index == 16 &&
                 held.patterns.back().draw.x ==
@@ -1004,15 +1011,15 @@ bool testConditionArtwork() {
     return check(
         equipped.equipment_changed &&
             !inventory.holdingItem() &&
-            equipped_renderer.patterns.size() == 6 &&
-            equipped_renderer.patterns[4].image == &status &&
-            equipped_renderer.patterns[4].index == 16 &&
-            equipped_renderer.patterns[4].draw.x ==
+            equipped_renderer.patterns.size() == 7 &&
+            equipped_renderer.patterns[5].image == &status &&
+            equipped_renderer.patterns[5].index == 16 &&
+            equipped_renderer.patterns[5].draw.x ==
                 equipped_x +
                     equipped_dagger->width *
                         osf::GameplayInventory::cell_size -
                     16 &&
-            equipped_renderer.patterns[4].draw.y ==
+            equipped_renderer.patterns[5].draw.y ==
                 equipped_y +
                     equipped_dagger->height *
                         osf::GameplayInventory::cell_size -
