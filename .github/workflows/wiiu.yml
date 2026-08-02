@@ -1,0 +1,52 @@
+name: Build Wii U WUHB
+
+on:
+  push:
+    paths:
+      - '.github/workflows/wiiu.yml'
+      - 'CMakeLists.txt'
+      - 'assets/wiiu/**'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/wiiu/**'
+  pull_request:
+    paths:
+      - '.github/workflows/wiiu.yml'
+      - 'CMakeLists.txt'
+      - 'assets/wiiu/**'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/wiiu/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:20260203
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Install Wii U dependencies
+        run: |
+          apt-get update
+          apt-get install -y ninja-build
+          dkp-pacman -Syu --needed --noconfirm wiiu-dev wiiu-sdl2
+
+      - name: Build the release WUHB
+        run: sh tools/wiiu/build-wuhb.sh
+
+      - name: Verify the WUHB
+        run: test -s build/wiiu/release/OpenShadowFlare.wuhb
+
+      - name: Upload the WUHB
+        uses: actions/upload-artifact@v4
+        with:
+          name: openshadowflare-wiiu-release
+          path: build/wiiu/release/OpenShadowFlare.wuhb
+          if-no-files-found: error

@@ -517,7 +517,7 @@ private:
 int osf::runtime::runGame(
     const std::filesystem::path& data_root,
     const GameConfig& game_config,
-    bool smoke_test) {
+bool smoke_test) {
     auto runtime = std::make_unique<Runtime>(data_root);
     if (!runtime->initialize(game_config)) {
         return 1;

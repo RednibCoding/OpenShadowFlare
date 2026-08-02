@@ -54,6 +54,25 @@ elseif(APPLE)
   )
 elseif(NINTENDO_SWITCH)
   target_sources(lal PRIVATE lal_switch.c)
+elseif(WIIU OR CMAKE_SYSTEM_NAME STREQUAL "WiiU")
+  target_sources(lal PRIVATE lal_wiiu.c)
+  set(_lal_wiiu_portlibs "$ENV{DEVKITPRO}/portlibs/wiiu")
+  find_path(
+    LAL_WIIU_SDL2_INCLUDE_DIR
+    NAMES SDL.h
+    PATHS "${_lal_wiiu_portlibs}/include/SDL2"
+    NO_DEFAULT_PATH
+    REQUIRED
+  )
+  find_library(
+    LAL_WIIU_SDL2_LIBRARY
+    NAMES SDL2
+    PATHS "${_lal_wiiu_portlibs}/lib"
+    NO_DEFAULT_PATH
+    REQUIRED
+  )
+  target_include_directories(lal PRIVATE "${LAL_WIIU_SDL2_INCLUDE_DIR}")
+  target_link_libraries(lal PRIVATE "${LAL_WIIU_SDL2_LIBRARY}")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lal PRIVATE lal_alsa.c)
   find_package(ALSA REQUIRED)
