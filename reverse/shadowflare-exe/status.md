@@ -1885,6 +1885,49 @@ Agora object three reaches `2200000`, `Fanann, Village of Elves`. Native
 coverage preserves the route, fixed loot result, automatic owner, removal,
 completion sample 66, save/no-repeat branch, and reopened gate.
 
+Fanann's entry script fills vendor owners zero, one, and two with opcode 6 and
+Table rows 7, 24, and 33. PEOPLE zero is Lytle. His flag-41-zero branch shows
+message `1000002`; its MTP continuation chain supplies `1000003..1000004`,
+then the saved flag becomes one. The next interaction takes message `1000006`
+while mission 12 stays active and mission 14 stays complete.
+
+Object one in Fanann executes opcode 17 for `2200001`, entry zero,
+`Butterfly Hill`. Object one there executes the same general command for
+`2200003`, entry zero, `Dragon Road`. Native coverage enters through the
+newly opened Cross Agora gate, checks all three vendors and Lytle, round-trips
+flag 41 through the retail save owner, proves the no-repeat text, and follows
+both authored route edges. No Fanann-specific behavior was added to the world
+owner.
+
+Dragon Road object two enters `2210000`, `Mining Tunnel of Yugunos, B1F`, at
+entry zero. B1F object one enters `2210001`, `Mining Tunnel of Yugunos, B2F`,
+at entry zero. B2F object two is the protected-area trigger rather than a
+floor exit. On first contact its kind-three sentence writes saved flag 38;
+while saved flag 40 is zero, opcode 17 relocates the player within B2F to
+entry two. Mission 12 stays active and mission 15 stays at zero.
+
+B2F object zero returns to B1F entry one, and B1F object zero returns to
+Dragon Road entry two. A shipped-data regression walks those four edges,
+touches the live B2F protection rectangle, checks the same-scenario pushback,
+and saves and reloads flag 38 with the exact Dragon Road entry. The deeper
+stair and switch path is deliberately not bypassed by this checkpoint.
+
+The deeper Yugunos route is now traced and covered as its own checkpoint.
+B3F scenario `2210002` requires switches 40000 and 40002, uses object two for
+its same-scenario entry-two stair, and reaches B5F scenario `2210003` through
+object one. B5F again requires both switch pairs: 40002 opens the 11000 gate
+group and 40000 opens the 11003 group. Object 800 then writes saved flag 39.
+The regression walks the real collision maps and gate actors rather than
+relocating between those interactions.
+
+Fanann PEOPLE four, Kirarru, consumes that finding through shipped script
+branches. Her first visit shows messages `1000048..1000050` and writes saved
+flag 45. With flags 38, 39, and 45 set while mission 15 is zero, the next
+interaction shows `1000052..1000055`, starts mission 15, and plays sample 65.
+Mission 12 remains active. Saving and loading preserves all three flags and
+both mission states; the active-mission return uses message `1000051` without
+replaying sample 65.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
