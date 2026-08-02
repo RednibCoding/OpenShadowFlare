@@ -1712,6 +1712,15 @@ category 2 definition `1100001`. The completed save keeps the item absent and
 returns later visits to the normal recovery branch without repeating sample
 66 or the reward.
 
+The two one-time Remote Town gifts after Dusty Ruins are covered through the
+same script state. Malse's status chain requires completed mission three,
+Ostare's saved reward flag, and clear flag eight, then runs messages
+`1000025..1000027` before opcode 10 creates category two definition `1100000`.
+Syria uses her separate flag seven and messages `1000042..1000043` before
+creating definition `1100002`. Both items take the normal airborne landing
+path and sample 93. Saving and loading the two latches keeps later Malse and
+Syria visits on their ordinary branches without repeating either gift.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

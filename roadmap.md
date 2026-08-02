@@ -1157,6 +1157,15 @@ page-two Spirit Stone is a different definition and stays separate. Offer,
 drop, owner, return, reward, ordinary-healing fallback, and completed
 save/reload all remain authored rather than hard-coded.
 
+Remote Town's two post-recovery gifts are covered now too. Malse waits for the
+completed Dusty Ruins mission and Ostare's reward latch, thanks the hero,
+mentions his brother in Cold Svalt, and creates category-two definition
+`1100000` only on the third callback. Syria follows her own saved latch,
+thanks the hero, and creates definition `1100002` on the callback after her
+Cold Svalt message. Both gifts use the normal airborne ground-item path and
+sample 93 landing sound. Their separate latches survive save/load and prevent
+either conversation or item from repeating.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios

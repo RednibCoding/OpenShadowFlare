@@ -967,6 +967,18 @@ callback opens message `1000046` and creates the fixed category-2 definition
 `1100001` reward. Saving the completed state keeps the stone absent and sends
 later visits back through Syria's ordinary recovery branch.
 
+Completing Dusty Ruins also unlocks two independent Remote Town callbacks.
+Malse requires mission three complete, Ostare's reward latch set, and his own
+flag eight clear. Messages `1000025`, `1000026`, and `1000027` run across the
+status-zero/status-one callback chain; only the last one calls opcode 10 for
+category two, definition `1100000`. Syria checks the same completed mission
+and Ostare latch but owns flag seven instead. Message `1000042` sets that
+latch, and callback message `1000043` creates definition `1100002`. Both
+commands use the NPC position plus the authored 200-unit offset and `-1`
+spread values, so they remain ordinary airborne ground items with the
+category-two sample 93 landing sound. Saving flags seven and eight prevents
+the gifts from being produced again.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
