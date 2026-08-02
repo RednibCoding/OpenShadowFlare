@@ -1129,6 +1129,22 @@ names it `Meet with the Wizard Kirushutat.` Once that mission is active,
 Kyle's ordinary return text is `1000013`; flag 24 and both mission states
 survive saving and loading.
 
+The route to Kirushutat remains entirely scenario-authored. Cross Agora
+object one enters `2100005`, whose MCT title is spelled `Forest of Sprits` in
+the shipped data. Object one there enters `2110000`, `Tower of the Wizard`.
+The tower contains all ten floors in one scenario; its stair objects move
+between entries rather than loading separate maps. Entry 18 reaches the top
+floor near PEOPLE actor zero, Kirushutat.
+
+Kirushutat's mission-13 status selects sentence 31. It shows message
+`1000012`, writes temporary state 100, and opcode 62 marks mission 13 complete.
+The message callbacks continue through `1000027`; the final callback uses
+opcode 62 to start mission 14 and opcode 48 to publish its notice. Table 41
+names that mission `Take back the Seal Crystal.` A saved return while mission
+14 is active takes message `1000028`, so the briefing and its side effects do
+not repeat. Native coverage exercises the real route and this complete
+handoff through the generic scenario interpreter.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

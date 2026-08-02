@@ -1261,6 +1261,15 @@ active while this prerequisite runs. The route, refusal, physical gate, quest
 notice and sound, both mission states, and saved no-repeat branch are covered
 without teaching the world owner about Garshwin or Kirushutat.
 
+The detour now reaches Kirushutat through the shipped route as well. Cross
+Agora's eastern edge enters `Forest of Sprits` (`02100005`), and that map's
+far edge enters `Tower of the Wizard` (`02110000`). Entry 18 places the hero
+on Kirushutat's floor. His messages `1000012..1000027` complete mission 13
+and start mission 14, `Take back the Seal Crystal.`, with the ordinary quest
+notice and sound. The route, exact message chain, mission handoff, saved state,
+and `1000028` return branch are covered without adding a tower-specific case
+to the runtime.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -1973,8 +1982,8 @@ script commands, AI actions, effects, items, and map combinations.
 
 Episode 2 has started with the complete post-Epilogue route through Caravan
 and the two Forest road maps into Kanfore, Mining Town. Continue from the
-Kirushutat meeting required by the blocked Forest of Elves gate, keeping each
-playable handoff under a shipped-data regression.
+Seal Crystal mission Kirushutat gives after the blocked Forest of Elves gate,
+keeping each playable handoff under a shipped-data regression.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

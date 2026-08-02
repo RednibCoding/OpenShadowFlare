@@ -1856,6 +1856,19 @@ notice with opcode 48; Table 41 row 13 is `Meet with the Wizard Kirushutat.`
 Mission 12 stays active. Native coverage preserves the refusal, locked edge,
 flag, cue, sound, both mission states, and `1000013` saved return branch.
 
+The mission-13 route continues from Cross Agora object one to scenario
+`2100005`, whose authored title is `Forest of Sprits`, then from its object one
+to `2110000`, `Tower of the Wizard`. The tower uses entries for its ten floors;
+entry 18 places the player near Kirushutat, PEOPLE zero.
+
+Kirushutat's active-mission-13 sentence shows messages `1000012..1000027`.
+It first executes opcode 62 with mission 13, state two, and the last callback
+executes opcode 62 with mission 14, state one, followed by opcode 48. Table 41
+row 14 is `Take back the Seal Crystal.` The active-mission-14 return branch is
+message `1000028`. A shipped-data regression covers both route edges, the
+entry, full briefing, mission notice/sample 65, persistence, and the no-repeat
+branch through the existing generic owners.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
