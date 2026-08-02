@@ -348,11 +348,13 @@ services exercise them; unknown values still fail loudly.
 | 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
 | 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
 | 56 | `0x00433a78` | Override one scenario entity's effective visible, pointer, and judgement states |
+| 57 | `0x00433b1f` | Write the local player's stored gender value without remapping it |
 | 58 | `0x00433b33` | Search the four automatic-item pages, backpack, and active equipment, then write zero or one |
 | 59 | `0x00433ced` | Remove the first matching item from that same retail owner order |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 66 | `0x00433682` | Write the current local-player slot number |
 | 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
 | 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
 | 69 | `0x0043412b` | Write whether one spell has the exact learned availability state |
@@ -385,6 +387,23 @@ Retail installs the local player and entry before running scenario status kind
 `7`. It runs that status after both a changed-map load and a same-scenario
 relocation. The portable transaction now follows that order, which also lets
 initialization scripts safely query player level before building vendor stock.
+
+Opcodes 57 and 66 expose two different parts of that installed player. The
+handler at `0x00433b1f` resolves the current player and copies runtime field
+`+0x28`, which is the saved gender at record offset `+0x18`; it keeps retail's
+raw `0 = female`, `1 = male` representation. The shorter handler at
+`0x00433682` calls `0x00434cd0` and copies the player-list current-slot field
+at `+0x08`, so multiplayer-aware scripts receive the actual local slot from
+zero through three rather than a made-up character number.
+
+The shipped catalog contains ten opcode-57/66 pairs in ten scenarios. Every
+command has one writable temporary-flag operand, and every sentence which
+uses one query uses the other exactly once. Dusty Ruins (`00010000`) is the
+first visible example: entry zero initializes a 200-update line, opcode 66
+anchors it to the local hero, and opcode 57 selects message `1000004` for a
+woman or `1000003` for a man. The ordinary status-kind-5 update, opcode 27
+label owner, player record, and scenario slot remain separate owners; the
+script library only performs the two queries and writes their destinations.
 
 Opcode 56 evaluates a character number followed by visible, pointer, and
 judgement values. The handler at `0x00433a78` finds the live entity and writes

@@ -1375,6 +1375,16 @@ single-player path. The executable has direct writes but no discovered reads
 of either global. OpenShadowFlare retains the raw ID and text in the script
 owner and deliberately does not render a guessed area caption.
 
+The player identity queries beside that path are reconstructed as general
+host reads. Opcode 66 at `0x00433682` calls `0x00434cd0`, which returns the
+player-list current slot from `+0x08`. Opcode 57 at `0x00433b1f` resolves that
+player through `0x00434cb0` and reads runtime `+0x28`, corresponding to saved
+gender at record `+0x18`; zero remains female and one remains male. Ten
+shipped scenarios contain exactly one paired call of each, each with one
+temporary-flag destination. Dusty Ruins entry zero now exercises the complete
+status-kind-5 path with local slot two and both gender branches through the
+normal opcode-27 label owner.
+
 The script's inclusive random command is reconstructed at `0x00431c43`.
 Opcode 39 evaluates lower and upper operands, calls the executable's Visual
 C++ random routine at `0x00467c6e` once, computes the signed remainder over

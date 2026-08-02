@@ -94,6 +94,8 @@ struct ScenarioCaptionEvent {
 };
 
 enum class ValueQuery {
+    local_player_number,
+    local_player_gender,
     local_player_level,
     local_player_companion_type,
     play_mode,

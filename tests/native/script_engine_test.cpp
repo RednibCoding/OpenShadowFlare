@@ -9,6 +9,7 @@
 #include <limits>
 #include <map>
 #include <numeric>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -267,6 +268,9 @@ bool testRetailRemoteTown() {
             osf::script::ValueQuery query,
             std::int32_t& value) {
             switch (query) {
+            case osf::script::ValueQuery::local_player_number:
+            case osf::script::ValueQuery::local_player_gender:
+                return false;
             case osf::script::ValueQuery::local_player_level:
                 ++player_level_queries;
                 value = 1;
@@ -1797,6 +1801,183 @@ bool testRetailScenarioEntryAndCaptionCommands() {
 #endif
 }
 
+bool testRetailLocalPlayerIdentityCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00010000" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    std::int32_t local_player_number = 2;
+    std::int32_t gender = 0;
+    osf::script::InterpreterHooks hooks;
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    hooks.query_value = [
+                            &local_player_number,
+                            &gender](
+                            osf::script::ValueQuery query,
+                            std::int32_t& value) {
+        switch (query) {
+        case osf::script::ValueQuery::local_player_number:
+            value = local_player_number;
+            return true;
+        case osf::script::ValueQuery::local_player_gender:
+            value = gender;
+            return true;
+        case osf::script::ValueQuery::scenario_entry_value:
+            value = 0;
+            return true;
+        default:
+            return false;
+        }
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    const auto run = [
+                         &interpreter,
+                         &script,
+                         &calls,
+                         &gender](
+                         std::int32_t player_gender,
+                         std::int32_t message_id) {
+        gender = player_gender;
+        calls.clear();
+        interpreter.bind(&script);
+        const osf::script::StepResult initialization =
+            interpreter.startSentence(0, -1);
+        const osf::script::StepResult ambient =
+            interpreter.startSentence(10, -1);
+        if (initialization != osf::script::StepResult::complete ||
+            ambient != osf::script::StepResult::complete) {
+            return false;
+        }
+        const std::vector<NativeCall> expected{
+                            {27,
+                             {2,
+                              0,
+                              -80,
+                              message_id,
+                              224,
+                              224,
+                              224,
+                              1000}}};
+        return calls == expected;
+    };
+    return check(
+        run(0, 1000004) && run(1, 1000003),
+        "Opcodes 57 and 66 did not preserve Dusty Ruins' female/male "
+        "message selection and local-player anchor.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailLocalPlayerIdentityCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::size_t player_number_calls = 0;
+    std::size_t gender_calls = 0;
+    std::size_t paired_sentences = 0;
+    std::set<std::string> scenarios;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-57/66 "
+                "audit.");
+        }
+        bool scenario_uses_identity = false;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            std::size_t sentence_player_number_calls = 0;
+            std::size_t sentence_gender_calls = 0;
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 57 &&
+                    command.opcode != 66) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 1 &&
+                            command.operands[0].type == 4,
+                        "A shipped opcode-57/66 call changed shape.")) {
+                    return false;
+                }
+                scenario_uses_identity = true;
+                if (command.opcode == 57) {
+                    ++gender_calls;
+                    ++sentence_gender_calls;
+                } else {
+                    ++player_number_calls;
+                    ++sentence_player_number_calls;
+                }
+            }
+            if (sentence_player_number_calls != 0 ||
+                sentence_gender_calls != 0) {
+                if (!check(
+                        sentence_player_number_calls == 1 &&
+                            sentence_gender_calls == 1,
+                        "The shipped local-player and gender queries are "
+                        "no longer paired once per sentence.")) {
+                    return false;
+                }
+                ++paired_sentences;
+            }
+        }
+        if (scenario_uses_identity) {
+            scenarios.insert(entry.path().filename().string());
+        }
+    }
+    const std::set<std::string> expected_scenarios{
+        "00010000",
+        "01000001",
+        "01000004",
+        "01050000",
+        "01050002",
+        "02210001",
+        "02210003",
+        "02210004",
+        "04000007",
+        "04000009",
+    };
+    return check(
+        player_number_calls == 10 && gender_calls == 10 &&
+            paired_sentences == 10 &&
+            scenarios == expected_scenarios,
+        "The shipped opcode-57/66 inventory differs from the audited "
+        "retail scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailScenarioEntityOverrideCommand() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path path =
@@ -2573,6 +2754,8 @@ int main() {
                    testRetailEquipmentColorCommand() &&
                    testRetailBlackjackCommands() &&
                    testRetailScenarioEntryAndCaptionCommands() &&
+                   testRetailLocalPlayerIdentityCommands() &&
+                   testRetailLocalPlayerIdentityCommandInventory() &&
                    testRetailScenarioEntityOverrideCommand() &&
                    testRetailScenarioEffectCommand() &&
                    testRetailPlacedEffectCommand() &&

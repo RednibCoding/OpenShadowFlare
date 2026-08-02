@@ -717,6 +717,26 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 57:
+    case 66: {
+        if (command.operands.empty()) {
+            return StepResult::invalid_script;
+        }
+        const ValueQuery query =
+            command.opcode == 57
+                ? ValueQuery::local_player_gender
+                : ValueQuery::local_player_number;
+        std::int32_t value = 0;
+        if (!hooks_.query_value ||
+            !hooks_.query_value(query, value)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!writeOperand(command.operands[0], value)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 42:
     case 43:
     case 63: {

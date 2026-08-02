@@ -2504,6 +2504,51 @@ bool testRetailScenarioEntryInitialization() {
 #endif
 }
 
+bool testRetailGenderedScenarioText() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Woman";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::female);
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, {10000, 0, 2}, &error),
+            "The gendered Dusty Ruins scenario fixture could not load.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    world.update();
+    const auto& labels = world.scenarioTextLabels();
+    const auto found = std::find_if(
+        labels.begin(),
+        labels.end(),
+        [&world](const osf::ScenarioTextLabel& label) {
+            return label.anchor.x == world.playerWorldX() &&
+                   label.anchor.y == world.playerWorldY() &&
+                   label.offset_x == 0 &&
+                   label.offset_y == -80 &&
+                   label.text ==
+                       "What an unpleasant smell..\n"
+                       "I cannot breathe.\n" &&
+                   label.red == 224 &&
+                   label.green == 224 &&
+                   label.blue == 224 &&
+                   label.background_opacity == 1000;
+        });
+    return check(
+        found != labels.end(),
+        "Dusty Ruins did not use the live local-player slot and stored "
+        "female value for its retail ambient message.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailScenarioObjectOverride() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path data_root =
@@ -5013,6 +5058,7 @@ int main() {
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
                    testRetailScenarioEntryInitialization() &&
+                   testRetailGenderedScenarioText() &&
                    testRetailScenarioObjectOverride() &&
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&

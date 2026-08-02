@@ -758,6 +758,12 @@ bool WorldScene::queryScriptValue(
         return false;
     }
     switch (query) {
+    case script::ValueQuery::local_player_number:
+        value = scenario_world_.localPlayerNumber();
+        return true;
+    case script::ValueQuery::local_player_gender:
+        value = player_data_.gender();
+        return true;
     case script::ValueQuery::local_player_level:
         value = player_data_.level();
         return true;

@@ -1008,6 +1008,13 @@ initial vendor setup can query the live player level. No caption is drawn yet:
 the known executable references only write its buffer, so adding a visible
 banner would be guesswork rather than reconstruction.
 
+Dusty Ruins' entry-zero ambient line now follows its script too. Opcodes 66
+and 57 write the live local-player slot and the saved gender value, then the
+authored sentence anchors either the female or male line above that player
+through opcode 27. This is not a map special case: all ten paired uses across
+the shipped scenarios go through the same small script-host queries, with a
+catalog audit holding their one-output shape and pairing in place.
+
 The first checkpoint is now live. Remote Town's SCS decoder reads all 66
 temporary flags, 61 messages, 23 status triggers, 220 sentences, and 608
 commands. Clicking Ostare derives his script character number from the MCT
