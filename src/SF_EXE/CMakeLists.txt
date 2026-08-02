@@ -32,7 +32,11 @@ endif()
 include(cmake/configure_platform.cmake)
 include(cmake/configure_presentation.cmake)
 
-add_library(osf_gapi STATIC gapi/gapi.cpp)
+add_library(
+  osf_gapi STATIC
+  gapi/bit_mask_image.cpp
+  gapi/gapi.cpp
+)
 add_library(OpenShadowFlare::Gapi ALIAS osf_gapi)
 osf_configure_game_library(osf_gapi)
 

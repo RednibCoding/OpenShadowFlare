@@ -1,5 +1,6 @@
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 
+#include "gapi/bit_mask_image.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 
@@ -423,6 +424,101 @@ bool SoftwareBackend::drawBitmap(
                          destination.blue) *
                          (255u - color.alpha)) /
                     255u);
+                destination.alpha = 255;
+            }
+        }
+    }
+    return true;
+}
+
+bool SoftwareBackend::drawBitMask(
+    const BitMaskImage& image,
+    const BitMaskDraw& draw) {
+    if (image.width() <= 0 || image.height() <= 0 ||
+        draw.scale_x <= 0 || draw.scale_y <= 0) {
+        return false;
+    }
+    const std::int32_t destination_width =
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(image.width()) *
+            draw.scale_x / 1000);
+    const std::int32_t destination_height =
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(image.height()) *
+            draw.scale_y / 1000);
+    if (destination_width <= 0 || destination_height <= 0) {
+        return false;
+    }
+
+    std::int32_t first_y = 0;
+    std::int32_t last_y = destination_height;
+    std::int32_t first_x = 0;
+    std::int32_t last_x = destination_width;
+    if (draw.clip.width > 0 && draw.clip.height > 0) {
+        first_y = std::max(first_y, draw.clip.y - draw.y);
+        last_y = std::min(
+            last_y,
+            draw.clip.y + draw.clip.height - draw.y);
+        first_x = std::max(first_x, draw.clip.x - draw.x);
+        last_x = std::min(
+            last_x,
+            draw.clip.x + draw.clip.width - draw.x);
+    }
+    first_y = std::max(first_y, -draw.y);
+    last_y = std::min(last_y, height_ - draw.y);
+    first_x = std::max(first_x, -draw.x);
+    last_x = std::min(last_x, width_ - draw.x);
+    if (first_x >= last_x || first_y >= last_y) {
+        return true;
+    }
+
+    const std::int32_t opacity =
+        std::clamp(draw.opacity, 0, 1000) * draw.color.alpha / 255;
+    if (opacity <= 0) {
+        return true;
+    }
+    Color color = draw.color;
+    color.alpha = 255;
+    const bool identity_scale_x =
+        destination_width == image.width();
+    const bool identity_scale_y =
+        destination_height == image.height();
+    const std::vector<std::uint8_t>& source = image.bytes();
+    for (std::int32_t y = first_y; y < last_y; ++y) {
+        const std::int32_t source_y = identity_scale_y
+            ? y
+            : static_cast<std::int32_t>(
+                  static_cast<std::int64_t>(y) *
+                  image.height() / destination_height);
+        const std::uint8_t* source_row =
+            source.data() +
+            static_cast<std::size_t>(source_y) *
+                image.strideBytes();
+        Color* destination_row =
+            pixels_.data() +
+            static_cast<std::size_t>(draw.y + y) *
+                static_cast<std::size_t>(width_) +
+            static_cast<std::size_t>(draw.x + first_x);
+        for (std::int32_t x = first_x; x < last_x; ++x) {
+            const std::int32_t source_x = identity_scale_x
+                ? x
+                : static_cast<std::int32_t>(
+                      static_cast<std::int64_t>(x) *
+                      image.width() / destination_width);
+            if ((source_row[source_x / 8] &
+                 (0x80u >> (source_x & 7))) == 0) {
+                continue;
+            }
+            Color& destination = destination_row[x - first_x];
+            if (opacity >= 1000) {
+                destination = color;
+            } else {
+                destination.red = blendChannel(
+                    destination.red, color.red, opacity);
+                destination.green = blendChannel(
+                    destination.green, color.green, opacity);
+                destination.blue = blendChannel(
+                    destination.blue, color.blue, opacity);
                 destination.alpha = 255;
             }
         }

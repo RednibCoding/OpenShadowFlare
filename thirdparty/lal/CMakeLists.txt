@@ -21,7 +21,7 @@ add_library(Lal::Lal ALIAS lal)
 
 set(
   LAL_MAXIMUM_SAMPLE_RATE
-  "48000"
+  "16000"
   CACHE STRING
   "Highest sample rate retained by LAL (16000, 22050, or 48000)"
 )
@@ -36,7 +36,7 @@ endif()
 option(
   LAL_FORCE_MONO
   "Downmix retained LAL sounds to mono"
-  OFF
+  ON
 )
 if(LAL_FORCE_MONO)
   set(LAL_DEFAULT_FORCE_MONO_VALUE 1)

@@ -27,7 +27,7 @@ bool MapExploration::initialize(const GroundMap& ground) {
     return mask_.create(
         static_cast<std::int32_t>(width),
         static_cast<std::int32_t>(height),
-        {0, 0, 0, 255});
+        true);
 }
 
 void MapExploration::clear() {
@@ -41,11 +41,15 @@ void MapExploration::reveal(WorldPosition position) {
         real.y / 10 - kRevealHeight / 2,
         kRevealWidth,
         kRevealHeight,
-        {255, 255, 255, 0});
+        false);
 }
 
-const gapi::BitmapImage& MapExploration::mask() const {
+const gapi::BitMaskImage& MapExploration::mask() const {
     return mask_;
+}
+
+std::uint64_t MapExploration::memoryUsageBytes() const {
+    return mask_.memoryUsageBytes();
 }
 
 bool MapExploration::explored(
@@ -56,11 +60,7 @@ bool MapExploration::explored(
         map_y >= mask_.height()) {
         return false;
     }
-    return mask_.pixels()[
-               static_cast<std::size_t>(map_y) *
-                   static_cast<std::size_t>(mask_.width()) +
-               static_cast<std::size_t>(map_x)]
-               .alpha == 0;
+    return !mask_.value(map_x, map_y);
 }
 
 }  // namespace osf

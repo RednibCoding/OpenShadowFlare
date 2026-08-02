@@ -53,10 +53,12 @@ frames.
 22.05 kHz, and 48 kHz rates cover the usual low, medium, and high settings.
 This is a maximum retained rate: LAL never wastes memory by upsampling a source
 that was recorded below it. Builds can select their default with
-`-DLAL_MAXIMUM_SAMPLE_RATE=16000`, `22050`, or `48000`; the default is 48 kHz.
+`-DLAL_MAXIMUM_SAMPLE_RATE=16000`, `22050`, or `48000`; the default is 16 kHz.
 Set `LalConfig.force_mono` at runtime, or configure a build with
 `-DLAL_FORCE_MONO=ON`, to downmix stereo sources while loading them. Mono is
-disabled by default so the original channel layout is preserved.
+enabled by default. The default build keeps sounds at no more than 16 kHz and
+stores them as mono; applications that need higher-fidelity retained audio can
+override either setting.
 
 ## License
 

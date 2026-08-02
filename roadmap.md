@@ -2151,6 +2151,10 @@ Optimizations still need the same fidelity tests as any other slice; a faster
 result that changes update order, animation timing, blending, or game rules is
 not a win.
 
+The measured allocation breakdown and the working headroom target live in
+[`documentation/memory-budget.md`](documentation/memory-budget.md). Keep that
+table current as each resource group is reduced.
+
 The first memory pass moved frontend assets into a portable resource manager
 with explicit common, title, character-select, and gameplay lifetimes. Leaving
 a screen now destroys everything owned by that screen, including decoded save

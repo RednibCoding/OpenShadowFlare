@@ -346,7 +346,7 @@ std::uint64_t ScenarioWorld::resourceMemoryUsageBytes() const {
     std::uint64_t bytes = ground_.memoryUsageBytes() +
         object_map_.memoryUsageBytes() +
         decodedMemoryUsageBytes(map_overview_patterns_) +
-        decodedMemoryUsageBytes(map_exploration_.mask()) +
+        map_exploration_.memoryUsageBytes() +
         object_visuals_.memoryUsageBytes() +
         people_visuals_.memoryUsageBytes() +
         enemy_visuals_.memoryUsageBytes();

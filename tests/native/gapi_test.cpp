@@ -1,4 +1,5 @@
 #include "gapi/gapi.hpp"
+#include "gapi/bit_mask_image.hpp"
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -685,6 +686,42 @@ bool testMutableBitmapMask() {
         "Bitmap alpha or destination clipping differs.");
 }
 
+bool testBitMaskDrawing() {
+    osf::gapi::BitMaskImage mask;
+    if (!check(
+            mask.create(4, 4) &&
+                mask.memoryUsageBytes() == 4,
+            "A compact bit-mask image could not be created.")) {
+        return false;
+    }
+    mask.fillRectangle(1, 1, 2, 2, true);
+
+    osf::gapi::SoftwareBackend backend(4, 4);
+    backend.beginFrame({0, 255, 0, 255});
+    backend.drawBitMask(
+        mask,
+        {
+            0,
+            0,
+            1000,
+            1000,
+            {255, 0, 0, 255},
+            500,
+            {2, 1, 1, 2},
+        });
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const osf::gapi::Color untouched = surface.pixels[1 * 4 + 1];
+    const osf::gapi::Color blended = surface.pixels[1 * 4 + 2];
+    return check(
+        mask.value(1, 1) && mask.value(2, 2) &&
+            !mask.value(0, 0) && !mask.value(4, 4) &&
+            untouched.red == 0 && untouched.green == 255 &&
+            blended.red == 127 && blended.green == 127 &&
+            surface.pixels[2 * 4 + 2].red == 127 &&
+            surface.pixels[3 * 4 + 2].green == 255,
+        "Bit-mask storage, clipping, or blending differs.");
+}
+
 bool testCafAndTitleAnimation() {
     osf::gapi::CafAnimation animation;
     std::string error;
@@ -887,6 +924,7 @@ int main() {
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
         !testMutableBitmapMask() ||
+        !testBitMaskDrawing() ||
         !testCafAndTitleAnimation() ||
         !testCafCharacterDrawModes() ||
         !testSoftwareLineDrawing() ||
