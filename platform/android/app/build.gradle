@@ -5,6 +5,7 @@ plugins {
 android {
     namespace 'org.openshadowflare.game'
     compileSdk 35
+    ndkVersion '27.0.12077973'
 
     defaultConfig {
         applicationId 'org.openshadowflare.game'

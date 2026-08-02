@@ -10,6 +10,31 @@ Android Studio is optional. Install a JDK 17 plus the Android command-line
 SDK tools, then install Android API 35, Build Tools 35.0.0, NDK 27.0.12077973,
 and CMake 4.1.2.
 
+### Set the SDK location
+
+Gradle reads the SDK path from the untracked
+`platform/android/local.properties` file. Copy the tracked template, then edit
+the path for your machine:
+
+```bash
+cp platform/android/local.properties.example platform/android/local.properties
+```
+
+For a standard Windows installation, the resulting file contains:
+
+```properties
+sdk.dir=C:/Users/<your-user>/AppData/Local/Android/Sdk
+```
+
+On Linux, use the SDK's absolute path instead, for example:
+
+```properties
+sdk.dir=/home/<your-user>/Android/Sdk
+```
+
+Forward slashes work on Windows. Do not commit this file: it is already listed
+in `.gitignore` because the SDK location is machine-specific.
+
 ```bash
 sh tools/android/build-apk.sh
 ```
@@ -19,6 +44,13 @@ The installable debug APK is written to:
 ```text
 build/android/debug/OpenShadowFlare-android-debug.apk
 ```
+
+## GitHub Actions
+
+`Build Android APK` installs the required Android components, writes a temporary
+`platform/android/local.properties` using the hosted runner's SDK path, and
+uploads `openshadowflare-android-debug` as a workflow artifact. It never uses
+or commits a developer's local SDK path.
 
 The game data is not packaged. The app reads it from private app storage, so
 copy a legally obtained `ShadowFlare` directory containing `SFlare.Cfg` and

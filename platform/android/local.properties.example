@@ -1,0 +1,6 @@
+# Copy this file to local.properties, then edit the SDK path for your platform.
+# Forward slashes work on Windows.
+# Windows example:
+sdk.dir=C:/Users/<your-user>/AppData/Local/Android/Sdk
+# Linux example (replace the Windows line above):
+# sdk.dir=/home/<your-user>/Android/Sdk
