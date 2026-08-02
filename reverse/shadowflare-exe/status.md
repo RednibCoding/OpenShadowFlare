@@ -1909,10 +1909,33 @@ entry two. Mission 12 stays active and mission 15 stays at zero.
 B2F object zero returns to B1F entry one, and B1F object zero returns to
 Dragon Road entry two. A shipped-data regression walks those four edges,
 touches the live B2F protection rectangle, checks the same-scenario pushback,
-and saves and reloads flag 38 with the exact Dragon Road entry. The deeper
-stair and switch path is deliberately not bypassed by this checkpoint.
+and saves and reloads flag 38 with the exact Dragon Road entry.
 
-The deeper Yugunos route is now traced and covered as its own checkpoint.
+Fanann PEOPLE four, Kirarru, handles the resulting report. Her first visit
+shows messages `1000048..1000050` and writes saved flag 45. With flag 38 set
+while flags 39 and 40 remain zero, the next interaction shows
+`1000052..1000055`, starts mission 15, and plays sample 65. Mission 12 remains
+active. Saving and loading preserves the flags and mission states; the active
+mission branch uses message `1000051` without replaying sample 65.
+
+Dragon Road object three enters `2220000`, `Underground Passage, B1F`, at
+entry zero. Its object one reaches `2220001`, B2F. That scenario's periodic
+sentence checks only enemy character `14010000`, the named Black Wing, and
+runs opcode 62 `{15,2,1}` once its registry slot becomes inactive after the
+death fade. This completes mission 15 and plays sample 66; ordinary enemies
+are not part of the completion condition. Object zero on each floor provides
+the authored return route to Dragon Road.
+
+With mission 15 complete and flag 39 still zero, Kirarru selects messages
+`1000056..1000057` and writes saved flag 40. The B2F protection sentence then
+falls through instead of relocating the player, allowing object one to enter
+B3F. A native regression covers both passage transitions, the exact Black
+Wing lifecycle trigger, return dialogue, quest cue and sound, flag-40 save
+round-trip, and the newly usable B3F edge.
+
+The deeper Yugunos route follows that control-room handoff rather than
+bypassing it. Mission 15 is complete and flag 40 is already set before the
+route begins.
 B3F scenario `2210002` requires switches 40000 and 40002, uses object two for
 its same-scenario entry-two stair, and reaches B5F scenario `2210003` through
 object one. B5F again requires both switch pairs: 40002 opens the 11000 gate
@@ -1920,13 +1943,11 @@ group and 40000 opens the 11003 group. Object 800 then writes saved flag 39.
 The regression walks the real collision maps and gate actors rather than
 relocating between those interactions.
 
-Fanann PEOPLE four, Kirarru, consumes that finding through shipped script
-branches. Her first visit shows messages `1000048..1000050` and writes saved
-flag 45. With flags 38, 39, and 45 set while mission 15 is zero, the next
-interaction shows `1000052..1000055`, starts mission 15, and plays sample 65.
-Mission 12 remains active. Saving and loading preserves all three flags and
-both mission states; the active-mission return uses message `1000051` without
-replaying sample 65.
+Returning to Kirarru with flag 39 at one and mission 15 complete selects the
+full `1000058..1000068` dragon warning and advances flag 39 to two. The saved
+result no longer re-enters the control-room or first-seal branches. This
+ordering matters: the deeper seal is physically inaccessible until mission
+15 has opened the B2F protection device.
 
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open

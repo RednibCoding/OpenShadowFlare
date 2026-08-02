@@ -31,6 +31,7 @@ osf::RetailSaveProgress deeperMineProgress(const osf::WorldScene& seed) {
             static_cast<std::size_t>(completed)] = 2;
     }
     progress.quest_flags[12] = 1;
+    progress.quest_flags[15] = 2;
     if (progress.script_state_flags.size() < 72) {
         progress.script_state_flags.resize(72, 0);
     }
@@ -39,7 +40,9 @@ osf::RetailSaveProgress deeperMineProgress(const osf::WorldScene& seed) {
     progress.script_state_flags[23] = 1;
     progress.script_state_flags[24] = 1;
     progress.script_state_flags[38] = 1;
+    progress.script_state_flags[40] = 1;
     progress.script_state_flags[41] = 1;
+    progress.script_state_flags[45] = 1;
     progress.script_state_flags[71] = 1;
     return progress;
 }
@@ -671,20 +674,24 @@ bool testYugunosSeal(const std::filesystem::path& data_root) {
                 fanann.scenarioId() == 2200000 &&
                 fanann.retailSaveProgress().script_state_flags[38] == 1 &&
                 fanann.retailSaveProgress().script_state_flags[39] == 1 &&
+                fanann.retailSaveProgress().script_state_flags[40] == 1 &&
+                fanann.retailSaveProgress().script_state_flags[45] == 1 &&
                 fanann.quests().state(12) == 1 &&
-                fanann.quests().state(15) == 0 &&
+                fanann.quests().state(15) == 2 &&
                 osf::test::openNpcConversation(fanann, 4) &&
-                fanann.conversationMessageId() == 1000048,
-            "Kirarru did not begin the authored first meeting.")) {
+                fanann.conversationMessageId() == 1000058,
+            "Kirarru did not recognize the damaged seal facilities.")) {
         std::cerr << error << " message="
                   << fanann.conversationMessageId() << '\n';
         return false;
     }
-    for (const std::int32_t message : {1000049, 1000050}) {
+    for (std::int32_t message = 1000059;
+         message <= 1000068;
+         ++message) {
         fanann.advanceConversation();
         if (!check(
                 fanann.conversationMessageId() == message,
-                "Kirarru's first meeting skipped a message.")) {
+                "Kirarru's dragon warning skipped a message.")) {
             std::cerr << "message=" << fanann.conversationMessageId()
                       << " expected=" << message << '\n';
             return false;
@@ -693,46 +700,15 @@ bool testYugunosSeal(const std::filesystem::path& data_root) {
     fanann.advanceConversation();
     if (!check(
             !fanann.conversationActive() &&
-                fanann.retailSaveProgress().script_state_flags[45] == 1,
-            "Kirarru did not save the first-meeting branch.")) {
-        return false;
-    }
-
-    std::vector<std::int32_t> mission_audio;
-    if (!check(
-            osf::test::openNpcConversation(
-                fanann, 4, &mission_audio) &&
-                fanann.conversationMessageId() == 1000052,
-            "Kirarru did not accept the Yugunos findings.")) {
-        std::cerr << "message=" << fanann.conversationMessageId() << '\n';
-        return false;
-    }
-    for (const std::int32_t message :
-         {1000053, 1000054, 1000055}) {
-        fanann.advanceConversation();
-        if (!check(
-                fanann.conversationMessageId() == message,
-                "Kirarru's Yugunos report skipped a message.")) {
-            std::cerr << "message=" << fanann.conversationMessageId()
-                      << " expected=" << message << '\n';
-            return false;
-        }
-    }
-    fanann.advanceConversation();
-    fanann.advanceConversation();
-    std::vector<std::int32_t> completion_audio =
-        fanann.takeAudioSamples();
-    mission_audio.insert(
-        mission_audio.end(),
-        completion_audio.begin(),
-        completion_audio.end());
-    if (!check(
-            !fanann.conversationActive() &&
+                fanann.retailSaveProgress().script_state_flags[39] == 2 &&
                 fanann.quests().state(12) == 1 &&
-                fanann.quests().state(15) == 1 &&
-                containsSample(mission_audio, 65),
-            "Kirarru did not start mission fifteen once.")) {
-        std::cerr << "quest12=" << fanann.quests().state(12)
+                fanann.quests().state(15) == 2,
+            "Kirarru did not save the completed dragon warning.")) {
+        std::cerr << "active=" << fanann.conversationActive()
+                  << " message=" << fanann.conversationMessageId()
+                  << " flag39="
+                  << fanann.retailSaveProgress().script_state_flags[39]
+                  << " quest12=" << fanann.quests().state(12)
                   << " quest15=" << fanann.quests().state(15) << '\n';
         return false;
     }
@@ -745,28 +721,23 @@ bool testYugunosSeal(const std::filesystem::path& data_root) {
                 fanann.retailSaveProgress(),
                 fanann.retailSaveWorldState(),
                 error),
-            "Kirarru's Yugunos briefing could not be saved.")) {
+            "Kirarru's dragon warning could not be saved.")) {
         std::cerr << error << '\n';
         return false;
     }
     osf::WorldScene persisted;
-    std::vector<std::int32_t> repeat_audio;
     if (!check(
             loadSavedFixture(
                 data_root, completed_save, persisted, error) &&
                 persisted.scenarioId() == 2200000 &&
                 persisted.retailSaveProgress().script_state_flags[38] == 1 &&
-                persisted.retailSaveProgress().script_state_flags[39] == 1 &&
+                persisted.retailSaveProgress().script_state_flags[39] == 2 &&
+                persisted.retailSaveProgress().script_state_flags[40] == 1 &&
                 persisted.retailSaveProgress().script_state_flags[45] == 1 &&
                 persisted.quests().state(12) == 1 &&
-                persisted.quests().state(15) == 1 &&
-                osf::test::openNpcConversation(
-                    persisted, 4, &repeat_audio) &&
-                persisted.conversationMessageId() == 1000051 &&
-                !containsSample(repeat_audio, 65),
-            "Saving Kirarru's briefing replayed its mission reward.")) {
-        std::cerr << error << " message="
-                  << persisted.conversationMessageId() << '\n';
+                persisted.quests().state(15) == 2,
+            "Saving Kirarru's dragon warning lost its completed state.")) {
+        std::cerr << error << '\n';
         return false;
     }
 

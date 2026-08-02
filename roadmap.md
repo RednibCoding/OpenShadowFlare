@@ -1296,16 +1296,26 @@ blockade. Dragon Road object two enters `Mining Tunnel of Yugunos, B1F`
 protection trigger sets saved flag 38 and, while flag 40 remains zero, pushes
 the hero back to entry two. Mission 12 stays active and mission 15 has not
 started yet. The matching object-zero return edges lead back through B1F to
-Dragon Road, and saving there preserves the discovery and exact entry.
+Dragon Road, and saving there preserves the discovery and exact entry. Back
+in Fanann, Kirarru keeps her `1000048..1000050` introduction separate from
+the `1000052..1000055` blockade report, starts mission 15 with sample 65, and
+uses `1000051` after a reload without awarding it twice.
 
-The route beyond that blockade is covered now too. B3F (`02210002`) uses both
-of its authored switches and its internal stair before object one reaches B5F
-(`02210003`). B5F needs both switches as well: each opens one of the two gates
-on the long route to object 800, whose contact saves flag 39. Returning those
-findings to Kirarru keeps her first `1000048..1000050` introduction separate
-from the `1000052..1000055` report, starts mission 15 with sample 65, and saves
-the result. After a reload she uses `1000051` without awarding the mission a
-second time.
+Mission 15 now clears that blockade through the intended detour. Dragon Road's
+southern edge enters `Underground Passage, B1F` (`02220000`), whose stair leads
+to B2F (`02220001`). The named Black Wing is the authored objective: mission
+15 completes only after its death presentation expires, then Kirarru's
+`1000056..1000057` response saves flag 40. Saving and reloading keeps the
+completion, and B2F's protection trigger then permits the ordinary object-one
+route into B3F instead of pushing the hero back.
+
+Only after that handoff does the deeper Yugunos route open. B3F (`02210002`)
+uses both of its authored switches and its internal stair before object one
+reaches B5F (`02210003`). B5F needs both switches as well: each opens one of
+the two gates on the long route to object 800, whose contact saves flag 39.
+Kirarru then delivers the complete `1000058..1000068` dragon warning and
+advances flag 39 to two. The collision routes, switch sounds, quest cues,
+dialogue branches, and save state are covered in their actual story order.
 
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
@@ -2022,9 +2032,11 @@ and the two Forest road maps into Kanfore, Mining Town. The detour through
 Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
 through Butterfly Hill and Dragon Road to the first Mining Tunnel of Yugunos
 blockade. The mine's authored B3F/B5F stair, switches, two gates, and deeper
-seal now lead back to Kirarru and start mission 15 under a shipped-data
-regression. Continue from that briefing, keeping each playable handoff under
-the same kind of coverage.
+seal are now in their real order: Kirarru starts mission 15 after the first
+B2F blockade report, the Black Wing in the southern Underground Passage
+completes it, and her response opens B2F before the deeper seal can be reached.
+The seal report ends with her dragon warning. Continue from that warning,
+keeping each playable handoff under the same kind of coverage.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
