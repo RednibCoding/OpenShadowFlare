@@ -1161,6 +1161,38 @@ message `1000032`, so neither the crystal nor the mission cue repeats. Cross
 Agora object three can then execute its guarded opcode 17 and enter `2200000`,
 `Fanann, Village of Elves`.
 
+Fanann's scenario initialization uses opcode 6 to fill vendor owners zero,
+one, and two from Tables 7, 24, and 33. PEOPLE actor zero is Lytle. With saved
+flag 41 still zero, his status shows message `1000002`; the message resource's
+continuations present `1000003` and `1000004`, and the status writes flag 41
+to one. This does not start a new mission: mission 12 remains active while
+mission 14 remains complete. On a later visit, the flag-41 branch selects
+message `1000006`, so the Yugunos directions are not replayed.
+
+The route remains script-owned as well. Fanann object one runs opcode 17 for
+scenario `2200001`, entry zero, which the shipped MCT names `Butterfly Hill`.
+Butterfly Hill object one then runs opcode 17 for scenario `2200003`, entry
+zero, `Dragon Road`. A native save/load regression follows the opened Cross
+Agora gate, initializes the village services, consumes Lytle's exact message
+chain, proves the return branch, and walks both exits through the general
+interpreter without a town-specific runtime case.
+
+Dragon Road object two continues with opcode 17 to scenario `2210000`, entry
+zero, `Mining Tunnel of Yugunos, B1F`. B1F object one enters scenario
+`2210001`, entry zero, `Mining Tunnel of Yugunos, B2F`. The B2F protection is
+not the ordinary floor exit: object two has its own kind-three status. Its
+first contact writes saved flag 38, and while saved flag 40 is zero it runs
+opcode 17 for the current scenario at entry two, pushing the player away from
+the protected section. Mission 12 remains active and mission 15 remains
+untouched at this point.
+
+The ordinary return route stays independent of that rejection. B2F object
+zero enters B1F at entry one, and B1F object zero enters Dragon Road at entry
+two. Native coverage walks both inward edges, touches the real protection
+rectangle, confirms the same-scenario relocation, walks both return edges,
+and round-trips flag 38 plus the Dragon Road entry through the retail save
+owner. The later mine switches and Kirarru handoff remain the next slice.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
