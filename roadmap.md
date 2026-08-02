@@ -1359,7 +1359,8 @@ movement smooth without changing the 30 Hz simulation.
 Action 11 selects CAF chart three, uses direction eight only when that chart
 really supplies it, scans the same three sound markers, and plays the separate
 resource-specific death sample on update one. It holds the final frame through
-the original 120-update fade and then removes the enemy from the scenario.
+the original 120-update fade and then removes the enemy from live presentation
+while retaining its inactive MCT slot for later script queries or activation.
 Its first update creates the authored item drops and Gold first, then effect
 21010 with the next random direction, preserving the executable's order.
 

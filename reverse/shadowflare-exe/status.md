@@ -404,7 +404,8 @@ The first game-core slice covers:
   status requests, kill metadata, and death presentation selection
 - the live enemy hit and death actions, including chart-two reaction timing,
   collision-aware displacement, chart-three direction selection, marker and
-  death audio, fade timing, and final actor removal
+  death audio, fade timing, and removal from live presentation while retaining
+  the inactive scenario slot
 - lethal kill accounting, proportional experience, novice level growth,
   weapon/effect counters, authored Table 30/31 item rolls, Gold Find, and
   complete ground-item instance ownership
@@ -1567,8 +1568,9 @@ its weight and instance effects, but `0x0044ea60` excludes its base derived
 values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
-effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Packet effects 21000 through 21003 are ordinary
+effect-list ownership, marker and death audio, fading, and removal from live
+presentation now run at the live boundary while the inactive MCT slot remains
+script-addressable. Packet effects 21000 through 21003 are ordinary
 impact splatters and play for both surviving and lethal hits. Their one-pass
 CAF owner is separate from enemy death effect 21010, which reaches its last
 frame normally, holds it, and fades during updates 91 through 119.
