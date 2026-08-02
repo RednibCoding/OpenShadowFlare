@@ -116,6 +116,10 @@ void WorldScene::clear() {
     player_appearance_.clear();
     pending_audio_samples_.clear();
     scenario_text_labels_.clear();
+    scenario_visual_.clear();
+    scenario_visual_patterns_.clear();
+    scenario_visual_continue_patterns_.clear();
+    scenario_screen_particles_.clear();
     level_up_notice_ = {};
     pending_combat_effects_.clear();
     combat_effects_.clear();
@@ -409,6 +413,37 @@ const std::vector<GroundItem>& WorldScene::groundItems() const {
 const std::vector<ScenarioTextLabel>&
 WorldScene::scenarioTextLabels() const {
     return scenario_text_labels_;
+}
+
+const ScenarioVisualPresentation&
+WorldScene::scenarioVisual() const {
+    return scenario_visual_;
+}
+
+const gapi::NjpImage& WorldScene::scenarioVisualPatterns() const {
+    return scenario_visual_patterns_;
+}
+
+const gapi::NjpImage&
+WorldScene::scenarioVisualContinuePatterns() const {
+    return scenario_visual_continue_patterns_;
+}
+
+bool WorldScene::scenarioVisualActive() const {
+    return scenario_visual_.active();
+}
+
+void WorldScene::requestScenarioVisualAdvance() {
+    scenario_visual_.requestAdvance();
+}
+
+void WorldScene::advanceScenarioVisualFrame() {
+    scenario_visual_.advanceFrame();
+}
+
+const ScenarioScreenParticles&
+WorldScene::scenarioScreenParticles() const {
+    return scenario_screen_particles_;
 }
 
 const QuestState& WorldScene::quests() const {
@@ -726,6 +761,9 @@ bool WorldScene::activatePlayerIncreasedPower() {
 
 void WorldScene::update() {
     scenario_text_labels_.clear();
+    if (scenario_visual_.active()) {
+        return;
+    }
     // The retail player update clears +0x159c before the scenario's status
     // kind-five sentences can refresh the one-update UnlockSW marker.
     player_unlock_switch_active_ = false;
@@ -771,6 +809,10 @@ void WorldScene::update() {
         combat_effects_.end());
     if (!scenario_script_.messageActive()) {
         scenario_script_.runStatusKind(5);
+    }
+    scenario_screen_particles_.update(item_random_);
+    if (scenario_visual_.active()) {
+        return;
     }
     NpcActor* interaction_npc = nullptr;
     ScenarioObjectActor* interaction_object = nullptr;

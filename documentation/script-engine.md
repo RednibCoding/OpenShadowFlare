@@ -362,6 +362,8 @@ services exercise them; unknown values still fail loudly.
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 64 | `0x00434001` | Open an authored full-screen Epilogue or `VisualNN` presentation |
+| 65 | `0x0043403e` | Refresh the colored falling-streak emitter with evaluated RGB and count values |
 | 66 | `0x00433682` | Write the current local-player slot number |
 | 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
 | 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
@@ -868,6 +870,19 @@ gold is debited only after a purchase lands in an owned container, and Escape
 returns an unfinished purchase to its original merchant owner. Purchase hover
 text uses `Price`; owned-item hover text keeps `Sale Price`.
 
+That introduction also offers mission one through message `1000024`; the
+quest ID is not attached to Malse in C++. Black Hammer in West Ruins scenario
+`00000004` owns loot row 6. Its zero attempt count expands to the active-player
+count, every one of its ten slots selects Table 31 row 400, and that row fixes
+the result to category 4, definition `99000000`. Picking up the gem therefore
+sends it to automatic-item page zero rather than the backpack. On the return
+visit, sentence 37 finds it through opcode 58. Retail finishes the rest of
+that sentence immediately after opening message `1000028`: opcode 59 removes
+the gem and opcode 62 completes mission one and queues sample 66 before the
+bubble is dismissed. The remaining three callbacks show messages `1000029`
+through `1000031` and release Malse. Quest state, Malse's progress flags, and
+the removed automatic item all survive the ordinary save path.
+
 Malse's `Identify Items` choice is script-owned as well. Opcode 55 first scans
 the five ordinary equipment slots, four accessory slots, backpack, and belt.
 When there is something unknown, opcode 51 inserts the authored flat price of
@@ -925,6 +940,55 @@ that presentation expires, immediately before the matching status-kind-four
 callback. The portable world exposes the same lifecycle through a narrow
 interpreter hook, so group-clear and later encounter scripts do not need to
 know about `EnemyActor` or duplicate combat state.
+
+Episode 1's Dusty Ruins assignment is the first complete group-clear path.
+After quest zero is complete, Ostare still waits until the saved hero reaches
+level 30. His Remote Town branch then shows messages `1000007` through
+`1000009`, starts mission three, selects its 600-update notice, and queues
+sample 65. In Dusty Ruins scenario `00010004`, a periodic sentence scans
+enemy characters `14000000` through `14000007` with opcode 31. Each defeated
+Garam Goblin remains active until its death chart and fade expire, so the
+mission cannot complete early. Once the scan returns `-1`, the script applies
+its three object-state commands, plays its positioned sample, and completes
+mission three with sample 66. Back in town, Ostare creates the Table 30 row-4
+reward before message `1000011`, sets persistent flag two, follows with the
+Cold Svalt message `1000012`, and never creates that reward again after a
+save/load round trip.
+
+Syria's neighboring Spirit Stone mission is separate from her healing path.
+Once mission three is active, message `1000044` starts mission two and its
+notice. Stone Spike in continued Dusty Ruins scenario `00010005` owns Table
+30 row 23; all ten choices lead through Table 31 row 401 to fixed category 4,
+definition `99000001`. This is Syria's page-zero item at cell `(1,0)`, not the
+different page-two item with the same display name used by a later reward.
+On return, message `1000045` is followed immediately by opcodes 59 and 62, so
+the stone is removed and sample 66 is queued before acknowledgement. Its
+callback opens message `1000046` and creates the fixed category-2 definition
+`1100001` reward. Saving the completed state keeps the stone absent and sends
+later visits back through Syria's ordinary recovery branch.
+
+Completing Dusty Ruins also unlocks two independent Remote Town callbacks.
+Malse requires mission three complete, Ostare's reward latch set, and his own
+flag eight clear. Messages `1000025`, `1000026`, and `1000027` run across the
+status-zero/status-one callback chain; only the last one calls opcode 10 for
+category two, definition `1100000`. Syria checks the same completed mission
+and Ostare latch but owns flag seven instead. Message `1000042` sets that
+latch, and callback message `1000043` creates definition `1100002`. Both
+commands use the NPC position plus the authored 200-unit offset and `-1`
+spread values, so they remain ordinary airborne ground items with the
+category-two sample 93 landing sound. Saving flags seven and eight prevents
+the gifts from being produced again.
+
+Ostare's Cold Svalt direction is backed by ordinary status-kind-three map
+edges. The Episode 1 route is scenario 1 (`Near the Remote Town`) object 6 to
+scenario 3 entry 1, scenario 3 object 0 to scenario 5 entry 0, and scenario 5
+object 1 to scenario 6 entry 1. In `Wasteland of Pillars`, object 3 enters
+sentence 9. The sentence compares mission three with completed state two and
+only then reaches sentence 10's opcode 17 call for scenario `1000001`, entry
+zero. The incomplete branch contains no travel command, so touching the same
+edge before clearing Dusty Ruins correctly does nothing. Scenario `1000001`
+is the enemy-occupied Cold Svalt Town map; it is distinct from the recovered
+town in scenario `1000000`.
 
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
@@ -988,6 +1052,40 @@ This family appears consistently in the shipped data: opcodes 26 and 60 each
 have 60 calls across 22 scenarios, while opcode 29 has 61 calls across 23.
 The scenario audit fixes their operand shapes and actor distribution so later
 switches keep using the same general interpreter and world presentation.
+
+## Scripted full-screen visuals and weather
+
+Opcode 64 is the script owner behind the presenter at `0x00417bd0`. Its one
+evaluated value selects `Waiting.njp` pattern 4 for value zero or
+`Visual%02d.njp` for a nonzero value. The page starts fully dark, reaches full
+strength over 120 presented frames, and does not accept an advance until frame
+300. Return, Escape, and the primary mouse button all use the same advance
+path. While a page owns the screen, retail freezes the current player action
+in place rather than cancelling it; that action resumes when the presentation
+ends. A resource with more than one pattern starts its next page at counter
+one; the final acknowledgement releases the resource and returns control to
+the world.
+
+The shipped scripts call opcode 64 seven times across six scenarios, using
+each value from zero through six exactly once. `Visual02` is the only shipped
+two-page resource. These are story, briefing, and selection pages, not map
+loading screens, so normal scenario transitions still show only the
+crossed-swords loading artwork while work is actually pending.
+
+Opcode 65 is a separate screen-space particle command. The first three
+operands are RGB bytes and the fourth is the number of new streaks for that
+update. Each streak consumes five values from the executable's shared random
+stream for its X origin, speed, short line length, opacity, and angle. It
+starts at Y `-30`, moves down with the retail trigonometric projection, draws
+through the DIB-style line path, and expires when its leading point reaches Y
+`479`. The command only refreshes one frame's spawn request; periodic status
+kind five calls are what keep rain, snow, or colored ambience going.
+
+There are 22 shipped opcode-65 calls across 21 scenarios. Twenty request five
+literal streaks. The other two calculate a temporary count from distance.
+The audited colors are eight red, twelve white, one pale red, and one blue.
+The interpreter evaluates those operands, while the world owns particles and
+GAPI owns line drawing.
 
 ## How to extend it
 

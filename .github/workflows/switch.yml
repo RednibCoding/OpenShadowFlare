@@ -1,0 +1,44 @@
+name: Build Nintendo Switch NRO
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switch.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/switch/**'
+  pull_request:
+    paths:
+      - '.github/workflows/switch.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/switch/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:20260219
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Build the release NRO
+        run: sh tools/switch/build-nro.sh
+
+      - name: Verify the NRO
+        run: test -s build/switch/release/src/SF_EXE/ShadowFlare_rebuilt.nro
+
+      - name: Upload the NRO
+        uses: actions/upload-artifact@v4
+        with:
+          name: openshadowflare-switch-release
+          path: build/switch/release/src/SF_EXE/ShadowFlare_rebuilt.nro
+          if-no-files-found: error

@@ -534,10 +534,11 @@ script, player, inventory, equipment, belt, Special Items, missions, quests,
 and transport flags untouched. Successful changes restart the scenario's BGM
 and return directly to the new world once its synchronous load is complete.
 An earlier pass had mistaken the Epilogue/`VisualNN` presenter at `0x00417bd0`
-for the ordinary map loader and held it on screen for 120 frames. Retail only
-shows its black crossed-swords loading image while work is actually pending;
-the current synchronous portable load is normally too quick to expose an
-intermediate frame.
+for the ordinary map loader. Retail only shows its black crossed-swords loading
+image while work is actually pending; the current synchronous portable load is
+normally too quick to expose an intermediate frame. The separate story and
+briefing presenter now comes from script opcode 64 instead, so those authored
+pages still appear where the scenario asks for them.
 
 The next slices identified the three resource preload lists, the variable
 common entity record, and all four entity-group shapes. Objects and `PEOPLE`
@@ -747,8 +748,6 @@ transition path around `0x00426200`:
   target, and selected-action state, then implement its native movement
   actions on top of the shared movement controller;
 - release the old scenario in the same order the original does;
-- identify the story/briefing owner that requests the Epilogue and alternate
-  `VisualNN.njp` artwork rendered by `0x00417bd0`;
 - support returning to the title cleanly when loading fails.
 
 Remote Town should then be one input to the loader, not a special hard-coded
@@ -930,6 +929,18 @@ negative-direction fallback and lower-right-plus-one point judgement. The three
 shipped effect numbers resolve to their real OPTION resources, all 353 calls
 across 26 scenarios keep their audited shape, and Near Remote Town's first
 six placed effects now enter the ordinary depth-sorted effect pass.
+
+The two remaining shipped presentation commands are connected now too.
+Opcode 64 opens the authored Epilogue or `Visual01` through `Visual06` page,
+fades it over 120 presented frames, freezes rather than cancels the current
+player action, blocks ordinary world input, and waits 300 frames before Return,
+Escape, or the primary mouse button can advance it. Multi-page `Visual02` uses
+the same counter reset as retail. Opcode 65 refreshes the screen-space
+falling-streak emitter from evaluated RGB and count values; it
+uses the shared retail random stream, per-particle opacity, the original DDA
+line path, and the 479-pixel expiry boundary. The shipped catalog contains all
+seven visual IDs and 22 particle calls across 21 scenarios, including the two
+distance-driven density expressions.
 
 The basic writable arithmetic set is complete now as well. Opcodes 13 through
 15 preserve retail's wrapped multiply, signed quotient and remainder, operand
@@ -1119,6 +1130,50 @@ alternate weapon set, handles zero-price and insufficient-Gold branches, and
 uses opcodes 9 and 54 for mutation and payment. Item values come from Table 34
 and the executable's wrapped integer arithmetic; repaired durability and both
 alternate equipment pointers survive the retail save stream.
+
+The same post-Red-Goblin branch is now covered through its first complete
+follow-up mission. Malse offers the stolen-gem quest through SCS state alone;
+Black Hammer in West Ruins uses fixed Table 30/31 loot to drop category-four
+item `99000000`, pickup routes it into automatic-item page zero, and Malse's
+return sentence removes it before completing mission one and playing sample
+66. The immediate work after message `1000028`, the remaining three callbacks,
+quest notice, progress flags, and completed save/reload all stay data-driven.
+
+Ostare's next Episode 1 assignment is covered across maps as well. Completed
+quest zero is only half of its gate: the hero must also reach retail level 30
+before messages `1000007` through `1000009` start mission three. The Room of
+Judgment periodic script waits for all eight authored enemy slots to finish
+their death fades, completes the mission with its object changes and sound,
+then lets Ostare create the Table 30 row-4 reward exactly once. The mission,
+notice and cue order, Cold Svalt follow-up, and saved reward latch all come
+from SCS and table data rather than an Ostare or Dusty Ruins special case.
+
+Syria's Spirit Stone branch is covered alongside it. Once mission three is
+active, her script starts mission two; Stone Spike in continued Dusty Ruins
+uses fixed loot row 23 to create category-four item `99000001` in automatic
+page zero. Returning it removes the real item before completing the mission,
+then the next callback drops Syria's category-two reward. The similarly named
+page-two Spirit Stone is a different definition and stays separate. Offer,
+drop, owner, return, reward, ordinary-healing fallback, and completed
+save/reload all remain authored rather than hard-coded.
+
+Remote Town's two post-recovery gifts are covered now too. Malse waits for the
+completed Dusty Ruins mission and Ostare's reward latch, thanks the hero,
+mentions his brother in Cold Svalt, and creates category-two definition
+`1100000` only on the third callback. Syria follows her own saved latch,
+thanks the hero, and creates definition `1100002` on the callback after her
+Cold Svalt message. Both gifts use the normal airborne ground-item path and
+sample 93 landing sound. Their separate latches survive save/load and prevent
+either conversation or item from repeating.
+
+The outdoor handoff to Cold Svalt is covered as a real map-edge chain rather
+than a transport shortcut. Near Remote Town scenario 1 enters Wasteland of
+Hesitation scenario 3, which leads through Frozen Forest scenario 5 and
+Wasteland of Pillars scenario 6. The final overlap trigger checks mission
+three itself: while Dusty Ruins is active it leaves the hero in scenario 6;
+once complete, opcode 17 loads occupied Cold Svalt scenario `01000001` at
+entry zero. Titles, entry values, quest state, and every transition remain
+owned by the shipped MCT and SCS data.
 
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer

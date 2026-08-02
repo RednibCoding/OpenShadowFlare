@@ -20,6 +20,7 @@
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/quest_notice_renderer.hpp"
+#include "render/scenario_presentation_renderer.hpp"
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "runtime/frontend_assets.hpp"
@@ -105,6 +106,8 @@ void RuntimeRenderer::render(
                     context.gameplay_frame.loading_counter,
                     context.gameplay_frame.ready_to_continue);
             }
+        } else if (context.world.scenarioVisualActive()) {
+            renderScenarioVisual(renderer_, context.world);
         } else {
             const auto* font =
                 context.frontend_assets.pattern(1);
@@ -114,6 +117,8 @@ void RuntimeRenderer::render(
                 context.shadow_opacity,
                 interpolation,
                 context.game_config.semi_transparent_objects);
+            renderScenarioScreenParticles(
+                renderer_, context.world);
             context.save_preview.capture(renderer_.surface());
             if (!context.gameplay_debug.active() &&
                 !context.gameplay_blackjack.active() &&

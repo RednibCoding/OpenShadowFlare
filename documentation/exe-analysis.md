@@ -118,9 +118,19 @@ world.
 `0x00417bd0` is not the ordinary map loading screen. It is a later
 story/briefing visual presenter: it selects the Epilogue artwork from
 `Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
-rendered frames, and animates `WaitIcon.njp`. The owner of its nonzero visual
-selector still needs to be tied down. The portable runtime no longer calls
-this routine after every map change.
+rendered frames, waits until frame 300 before accepting Return, Escape, or the
+primary mouse button, and animates `WaitIcon.njp`. Its active ID also gates the
+local-player update, freezing the current action without cancelling it. Script
+opcode 64 at `0x00434001` owns the selector. All seven shipped calls are
+reconstructed, including the two-page `Visual02` resource. The portable
+runtime does not call this routine after every map change.
+
+The nearby screen-space particle owner is separate again. Opcode 65 at
+`0x0043403e` stores an evaluated RGB triplet, count, and one-frame spawn flag.
+`0x0041fe20` consumes five shared `rand()` values per new particle, draws its
+short DDA line with opacity 300 through 1,000, advances it from Y `-30`, and
+removes it at Y `479`. Its 22 shipped calls provide red, white, pale-red, and
+blue falling ambience; two calculate density from a temporary distance value.
 
 Retail's ordinary map transition remains black with the crossed-swords
 `Waiting.njp` image and its `LOADING` plate only while loading is in progress.
@@ -1241,6 +1251,24 @@ reports one for a zero-life enemy until `EnemyActor::expired()` becomes true;
 only MCT enemies are registered, so an absent ID never behaves like an
 inactive enemy.
 
+Dusty Ruins scenario `00010004` supplies the first shipped mission fixture for
+that exact boundary. Its periodic sentence scans `14000000..14000007`; only
+after all eight Garam Goblin slots have finished their complete death
+presentation does it run the object-state sequence, positioned sample, and
+opcode-62 completion of mission three. The corresponding Remote Town path is
+also executable-owned: completed quest zero plus player level 30 lets Ostare
+start mission three, and the completed return branch creates Table 30 row 4
+once before persistent flag two suppresses later rewards.
+
+Scenario `00010005` supplies the related fixed-item path. Stone Spike enemy
+one selects Table 30 row 23, whose zero attempt count uses the active-player
+count and whose ten choices all select Table 31 row 401. The result is fixed
+category 4, definition `99000001`: Syria's stolen Spirit Stone on automatic
+page zero at `(1,0)`. Remote Town removes that exact definition after message
+`1000045`, completes mission two, and creates category 2 definition `1100001`
+from the `1000046` callback. Definition `98000001`, despite sharing the Spirit
+Stone display name, is a different page-two story item.
+
 Operand type 3 reaches that same registry directly. The reader at
 `0x004346e2` adds `14000000` to the operand's local enemy number, calls
 `0x00430770`, returns the entry value at `+4`, and returns `-1` when lookup
@@ -1308,8 +1336,9 @@ player, items, progress, and music usable. A successful commit clears stale
 pointer, interaction, ground-item, and pending-audio state, preserves the
 player-owned and progress owners, adopts the new SCS, relocates to its entry,
 switches BGM, and starts the later standard loading presentation. Explicit
-coordinate entry `-1`, the alternate `VisualNN` presentation, multiplayer
-ownership, and exact teardown ordering remain.
+coordinate entry `-1`, multiplayer ownership, and exact teardown ordering
+remain. The alternate `VisualNN` presentation is now reached independently
+through its scenario opcode rather than this transition path.
 
 The local-player record and resolved entry are installed before the loader
 runs scenario status kind `7`. This ordering is shared by the changed-map path
@@ -2154,6 +2183,15 @@ category, level, variant, and episode filters, then uses `0x00401520(9)` for
 the weighted item offset. Constructing the definition rolls 39 instance and
 eight element triples. Successful objects are placed around the enemy at
 radius 200.
+
+West Ruins supplies the first quest-critical fixture. Black Hammer's MCT
+record selects Table 30 row 6. Its attempt value zero uses the active-player
+count, its chance is 100, and all ten slots select Table 31 row 400 with
+variant digits 111. That profile fixes category 4, definition `99000000`, so
+one stolen gem is created at radius 200 in single-player without entering the
+weighted equipment path. Remote Town sentence 37 then uses opcodes 58 and 59
+to find and remove that automatic-owner item around Malse's completion
+message.
 
 The Gold callback reads MCT post-AI values 26 through 28. Equipped instance
 parameter 26 changes the 100-percent multiplier, the chance comparison is

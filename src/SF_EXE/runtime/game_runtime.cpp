@@ -219,6 +219,11 @@ private:
                 input_.menu().pointer_y,
             },
             interpolation);
+        if (gameState_.currentState() ==
+                osf::GameState::gameplay &&
+            gameplayFrame_.phase == osf::GameplayPhase::world) {
+            world_.advanceScenarioVisualFrame();
+        }
 
         ++renderedFrames_;
         ++fpsWindowFrames_;
@@ -344,7 +349,10 @@ private:
         }
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
+            const bool scenario_visual_active =
+                world_.scenarioVisualActive();
             const bool notice_consumed =
+                !scenario_visual_active &&
                 !gameplayUi_.options().active() &&
                 osf::dismissPlayerLevelUpNoticeAtPointer(
                     input_.menu()
@@ -354,6 +362,7 @@ private:
                     frontendAssets_.pattern(1),
                     world_);
             const bool ui_consumed =
+                !scenario_visual_active &&
                 !notice_consumed &&
                 gameplayUi_.update(
                     gameplayFrame_,
@@ -422,6 +431,8 @@ private:
                         world_input.pointer_primary_pressed,
                         world_input.pointer_x,
                         world_input.pointer_y);
+                world_input.cancel_pressed =
+                    input_.gameplayOptionsPressed();
                 gameplayFrame_ =
                     gameplayState_.update(world_input);
                 if (world_.takeScenarioChanged()) {

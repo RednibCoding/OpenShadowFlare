@@ -3584,6 +3584,102 @@ bool testRetailUnlockSwitchCommandInventory() {
 #endif
 }
 
+bool testRetailScenarioPresentationCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::map<std::int32_t, std::size_t> calls;
+    std::map<std::int32_t, std::set<std::string>> scenarios;
+    std::map<std::int32_t, std::size_t> visual_ids;
+    std::map<std::string, std::size_t> particle_colors;
+    std::map<std::int32_t, std::size_t> particle_count_types;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the scenario-presentation audit.");
+        }
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 64 && command.opcode != 65) {
+                    continue;
+                }
+                const std::size_t expected_count =
+                    command.opcode == 64 ? 1u : 4u;
+                if (!check(
+                        command.operands.size() == expected_count,
+                        "A shipped opcode-64/65 call changed operand count.")) {
+                    return false;
+                }
+                if (command.opcode == 64) {
+                    if (!check(
+                            command.operands[0].type == 1,
+                            "A shipped scenario visual stopped using a literal ID.")) {
+                        return false;
+                    }
+                    ++visual_ids[command.operands[0].value];
+                } else {
+                    if (!check(
+                            command.operands[0].type == 1 &&
+                                command.operands[1].type == 1 &&
+                                command.operands[2].type == 1 &&
+                                (command.operands[3].type == 0 ||
+                                 command.operands[3].type == 4),
+                            "A shipped screen-particle call changed operand shape.")) {
+                        return false;
+                    }
+                    const std::string color =
+                        std::to_string(command.operands[0].value) + "," +
+                        std::to_string(command.operands[1].value) + "," +
+                        std::to_string(command.operands[2].value);
+                    ++particle_colors[color];
+                    ++particle_count_types[command.operands[3].type];
+                }
+                ++calls[command.opcode];
+                scenarios[command.opcode].insert(
+                    entry.path().filename().string());
+            }
+        }
+    }
+    return check(
+        calls == std::map<std::int32_t, std::size_t>{
+                     {64, 7}, {65, 22},
+                 } &&
+            scenarios[64].size() == 6 &&
+            scenarios[65].size() == 21 &&
+            visual_ids ==
+                std::map<std::int32_t, std::size_t>{
+                    {0, 1}, {1, 1}, {2, 1}, {3, 1},
+                    {4, 1}, {5, 1}, {6, 1},
+                } &&
+            particle_colors ==
+                std::map<std::string, std::size_t>{
+                    {"64,64,224", 1},
+                    {"224,64,64", 8},
+                    {"224,128,128", 1},
+                    {"224,224,224", 12},
+                } &&
+            particle_count_types ==
+                std::map<std::int32_t, std::size_t>{{0, 20}, {4, 2}},
+        "The shipped opcode-64/65 inventory differs from the audited visuals.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -3617,6 +3713,7 @@ int main() {
                    testRetailCompanionSwapCommandInventory() &&
                    testRetailUnlockSwitchCommands() &&
                    testRetailUnlockSwitchCommandInventory() &&
+                   testRetailScenarioPresentationCommandInventory() &&
                    testMalformedScript()
                ? 0
                : 1;

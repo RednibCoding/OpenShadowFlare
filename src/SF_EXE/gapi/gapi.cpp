@@ -1,6 +1,7 @@
 #include "gapi.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace osf::gapi {
 
@@ -29,6 +30,59 @@ Viewport fitViewport(
     result.height = std::max(result.height, 1);
     result.x = (target_width - result.width) / 2;
     result.y = (target_height - result.height) / 2;
+    return result;
+}
+
+bool Backend::drawLine(const LineDraw& draw) {
+    const bool clipped =
+        draw.clip.width > 0 && draw.clip.height > 0;
+    const auto inside_clip = [&draw, clipped](
+                                 std::int64_t x,
+                                 std::int64_t y) {
+        return !clipped ||
+               (x >= draw.clip.x && y >= draw.clip.y &&
+                x < static_cast<std::int64_t>(draw.clip.x) +
+                        draw.clip.width &&
+                y < static_cast<std::int64_t>(draw.clip.y) +
+                        draw.clip.height);
+    };
+
+    std::int64_t x = draw.start_x;
+    std::int64_t y = draw.start_y;
+    const std::int64_t end_x = draw.end_x;
+    const std::int64_t end_y = draw.end_y;
+    const std::int64_t delta_x = std::abs(end_x - x);
+    const std::int64_t delta_y = -std::abs(end_y - y);
+    const std::int64_t step_x = x < end_x ? 1 : -1;
+    const std::int64_t step_y = y < end_y ? 1 : -1;
+    std::int64_t error = delta_x + delta_y;
+    bool result = true;
+    for (;;) {
+        if (inside_clip(x, y)) {
+            result = drawRectangle({
+                         static_cast<std::int32_t>(x),
+                         static_cast<std::int32_t>(y),
+                         1,
+                         1,
+                         draw.color,
+                         draw.brightness,
+                         draw.opacity,
+                     }) &&
+                     result;
+        }
+        if (x == end_x && y == end_y) {
+            break;
+        }
+        const std::int64_t doubled_error = error * 2;
+        if (doubled_error >= delta_y) {
+            error += delta_y;
+            x += step_x;
+        }
+        if (doubled_error <= delta_x) {
+            error += delta_x;
+            y += step_y;
+        }
+    }
     return result;
 }
 

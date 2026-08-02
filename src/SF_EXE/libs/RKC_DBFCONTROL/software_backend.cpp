@@ -542,6 +542,92 @@ bool SoftwareBackend::drawRectangle(
     return true;
 }
 
+bool SoftwareBackend::drawLine(const LineDraw& draw) {
+    Color color = draw.color;
+    color.red = applyBrightness(color.red, draw.brightness);
+    color.green = applyBrightness(color.green, draw.brightness);
+    color.blue = applyBrightness(color.blue, draw.brightness);
+
+    const bool clipped =
+        draw.clip.width > 0 && draw.clip.height > 0;
+    const auto draw_point = [this, &draw, color, clipped](
+                                std::int32_t x,
+                                std::int32_t y) {
+        if (x < 0 || x >= width_ || y < 0 || y >= height_ ||
+            (clipped &&
+             (x < draw.clip.x || y < draw.clip.y ||
+              static_cast<std::int64_t>(x) >=
+                  static_cast<std::int64_t>(draw.clip.x) +
+                      draw.clip.width ||
+              static_cast<std::int64_t>(y) >=
+                  static_cast<std::int64_t>(draw.clip.y) +
+                      draw.clip.height))) {
+            return;
+        }
+        Color& destination =
+            pixels_[static_cast<std::size_t>(y) * width_ + x];
+        if (draw.opacity >= 1000) {
+            destination = color;
+        } else if (draw.opacity > 0) {
+            destination.red = blendChannel(
+                destination.red, color.red, draw.opacity);
+            destination.green = blendChannel(
+                destination.green, color.green, draw.opacity);
+            destination.blue = blendChannel(
+                destination.blue, color.blue, draw.opacity);
+            destination.alpha = 255;
+        }
+    };
+
+    const std::int64_t difference_x =
+        static_cast<std::int64_t>(draw.end_x) - draw.start_x;
+    const std::int64_t difference_y =
+        static_cast<std::int64_t>(draw.end_y) - draw.start_y;
+    const std::int64_t span_x = std::abs(difference_x) + 1;
+    const std::int64_t span_y = std::abs(difference_y) + 1;
+    const std::int64_t direction_x = difference_x < 0 ? -1 : 1;
+    const std::int64_t direction_y = difference_y < 0 ? -1 : 1;
+
+    if (difference_y == 0) {
+        for (std::int64_t step = 0; step < span_x; ++step) {
+            draw_point(
+                static_cast<std::int32_t>(
+                    draw.start_x + direction_x * step),
+                draw.start_y);
+        }
+    } else if (difference_x == 0) {
+        for (std::int64_t step = 0; step < span_y; ++step) {
+            draw_point(
+                draw.start_x,
+                static_cast<std::int32_t>(
+                    draw.start_y + direction_y * step));
+        }
+    } else if (span_y < span_x) {
+        std::int64_t accumulator = 0;
+        for (std::int64_t step = 0; step < span_x; ++step) {
+            draw_point(
+                static_cast<std::int32_t>(
+                    draw.start_x + direction_x * step),
+                static_cast<std::int32_t>(
+                    draw.start_y +
+                    direction_y * accumulator / span_x));
+            accumulator += span_y;
+        }
+    } else {
+        std::int64_t accumulator = 0;
+        for (std::int64_t step = 0; step < span_y; ++step) {
+            draw_point(
+                static_cast<std::int32_t>(
+                    draw.start_x +
+                    direction_x * accumulator / span_y),
+                static_cast<std::int32_t>(
+                    draw.start_y + direction_y * step));
+            accumulator += span_x;
+        }
+    }
+    return true;
+}
+
 void SoftwareBackend::endFrame() {
     if (present_) {
         present_(surface());

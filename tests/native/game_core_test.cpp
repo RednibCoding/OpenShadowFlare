@@ -702,6 +702,67 @@ bool testGameplayClickAndHoldMovement() {
         "Held movement or split-view input clipping diverged.");
 }
 
+bool testScenarioVisualInputLock() {
+    bool visual_active = true;
+    std::int32_t advances = 0;
+    std::int32_t updates = 0;
+    std::int32_t hover_clears = 0;
+    std::int32_t movements = 0;
+    std::int32_t interactions = 0;
+    std::int32_t magic = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [] { return true; };
+    hooks.scenario_visual_active = [&] {
+        return visual_active;
+    };
+    hooks.advance_scenario_visual = [&] { ++advances; };
+    hooks.update_world = [&] { ++updates; };
+    hooks.clear_pointer_hover = [&] { ++hover_clears; };
+    hooks.command_player_movement =
+        [&](std::int32_t, std::int32_t) { ++movements; };
+    hooks.command_world_interaction =
+        [&](std::int32_t, std::int32_t) {
+            ++interactions;
+            return true;
+        };
+    hooks.command_player_magic =
+        [&](std::int32_t, std::int32_t) {
+            ++magic;
+            return true;
+        };
+
+    osf::GameplayState state(std::move(hooks));
+    state.enter();
+    state.update();
+    state.update({false, true, 600, 460});
+    osf::GameplayFrameInput secondary;
+    secondary.pointer_secondary_pressed = true;
+    secondary.pointer_x = 200;
+    secondary.pointer_y = 200;
+    state.update(secondary);
+
+    osf::GameplayFrameInput confirm;
+    confirm.confirm_pressed = true;
+    state.update(confirm);
+
+    osf::GameplayFrameInput primary;
+    primary.pointer_primary_pressed = true;
+    primary.pointer_primary_down = true;
+    primary.pointer_x = 200;
+    primary.pointer_y = 200;
+    state.update(primary);
+
+    osf::GameplayFrameInput cancel;
+    cancel.cancel_pressed = true;
+    state.update(cancel);
+    visual_active = false;
+    return check(
+        advances == 3 && updates == 4 && hover_clears == 4 &&
+            movements == 0 && interactions == 0 && magic == 0,
+        "A scenario visual did not accept only retail Left, Enter, and "
+        "Escape input while locking the world.");
+}
+
 bool testGameplayOptionsMenu() {
     osf::GameConfig config;
     osf::GameplayOptionsMenu menu;
@@ -958,6 +1019,7 @@ int main() {
         !testCompanionHudInput() ||
         !testGameplayHudInput() ||
         !testGameplayClickAndHoldMovement() ||
+        !testScenarioVisualInputLock() ||
         !testGameplayOptionsMenu() ||
         !testGameplayDebugMenu()) {
         return 1;

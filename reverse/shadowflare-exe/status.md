@@ -1459,9 +1459,21 @@ immediately because the synchronous load has already completed. The previous
 120-frame Epilogue fade was removed after a closer trace showed that
 `0x00417bd0` owns story/briefing visuals rather than ordinary map loading.
 Retail's black crossed-swords screen exists only while loading work is
-pending. The alternate `VisualNN` selector remains pending. All 51
+pending. The alternate presenter is now tied to script opcode 64 at
+`0x00434001`: value zero selects the Epilogue page and values one through six
+select the matching `VisualNN.njp`. Its 120-frame strength fade, 300-frame
+advance gate, Return/Escape/primary-click inputs, multi-page reset, WaitIcon
+offsets, input lock, and resource release are reconstructed. All 51
 Table 40 rows are also checked against their shipped scenario directory and
 single-player MCT entry.
+
+Opcode 65 at `0x0043403e` owns the adjacent falling-streak emitter. It refreshes
+one spawn flag plus evaluated RGB and count values. `0x0041fe20` consumes five
+shared Visual C++ random draws per particle, starts it at Y `-30`, projects a
+short DDA line from the exact `4.712388` and `3.141592` constants, applies a
+random 300-through-1,000 opacity, and removes it at Y `479`. The shipped audit
+holds seven opcode-64 calls across six scenarios and 22 opcode-65 calls across
+21 scenarios, including both temporary distance-density operands.
 
 The authored Remote Town exit is reconstructed too. `0x004305d0` runs status
 kind five records, then scans kind three records and resolves each status
@@ -1667,6 +1679,56 @@ bypasses the weighted selection. Weighted rows compare against a separate
 Item.Ibn loot-level field rather than the player's required-level field. This
 means loot row zero's shipped profiles yield their authored low-level fixed
 consumables and mine instead of accidentally selecting high-level equipment.
+
+The first quest-critical fixed row is covered end to end too. Black Hammer in
+scenario `00000004` owns Table 30 row 6: zero attempts become the one active
+single-player slot, its 100-percent check always succeeds, and all ten choices
+point to Table 31 row 400. That row fixes category 4, definition `99000000`,
+the stolen gem stored on automatic-item page zero. Remote Town sentence 37
+opens message `1000028` and then immediately removes that item and completes
+quest one before waiting for the bubble acknowledgement. Sample 66, the next
+three messages, save/load of quest and script state, and the absent returned
+item are held by one live regression.
+
+The next Episode 1 mission now has a live regression instead of only catalog
+coverage. Ostare's Remote Town script requires completed quest zero and hero
+level 30 before messages `1000007` through `1000009` start quest three. Dusty
+Ruins scenario `00010004` then waits for enemy registry entries
+`14000000..14000007` to become inactive; zero life is deliberately not enough
+while a Garam Goblin is still fading. The all-clear branch runs its authored
+object toggles and sound before opcode 62 produces sample 66. Returning to
+Ostare creates Table 30 row 4 exactly once, sets persistent flag two, and
+continues to the Cold Svalt message. Quest state and the reward latch both
+survive save/load.
+
+Syria's linked side mission is covered through the real item owners too.
+Mission three being active lets message `1000044` start mission two. Stone
+Spike in scenario `00010005` owns fixed loot row 23, which resolves through
+Table 31 row 401 to category 4 definition `99000001`. That stolen Spirit Stone
+belongs to automatic page zero at `(1,0)`; it must not be confused with the
+later definition `98000001` on page two. Syria's message `1000045` immediately
+removes the item and completes the mission, then callback `1000046` creates
+category 2 definition `1100001`. The completed save keeps the item absent and
+returns later visits to the normal recovery branch without repeating sample
+66 or the reward.
+
+The two one-time Remote Town gifts after Dusty Ruins are covered through the
+same script state. Malse's status chain requires completed mission three,
+Ostare's saved reward flag, and clear flag eight, then runs messages
+`1000025..1000027` before opcode 10 creates category two definition `1100000`.
+Syria uses her separate flag seven and messages `1000042..1000043` before
+creating definition `1100002`. Both items take the normal airborne landing
+path and sample 93. Saving and loading the two latches keeps later Malse and
+Syria visits on their ordinary branches without repeating either gift.
+
+The authored Cold Svalt route is now held by a live map-edge regression too.
+Scenario 1 object 6 leads to scenario 3 entry 1, scenario 3 object 0 leads to
+scenario 5 entry 0, and scenario 5 object 1 leads to scenario 6 entry 1.
+Wasteland of Pillars object 3 has a separate mission-three-complete branch;
+before completion it is a no-op, and afterward opcode 17 enters enemy-occupied
+Cold Svalt scenario `1000001` at entry zero. This keeps the route, gate, map
+titles, and entry coordinates in MCT/SCS ownership rather than a portable
+quest-name special case.
 
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open

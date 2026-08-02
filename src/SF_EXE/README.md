@@ -282,6 +282,13 @@ and ordinary effect request. Near Remote Town therefore uses its authored
 effect-and-sound sentences without teaching the interpreter about world actor
 or rendering classes.
 
+Full-screen scenario pages and falling weather follow the same boundary.
+Opcode 64 selects the original Epilogue or `Visual01` through `Visual06`
+artwork, owns its fade, minimum display time, page changes, and input lock.
+Opcode 65 only hands evaluated color and density to a small screen-particle
+owner. GAPI provides the general line primitive, while the script library
+remains unaware of assets, rendering, or input.
+
 Scripted enemy waves use the same boundary. `RKC_RPG_SCRIPT` reads the retail
 type-three lifecycle domain, searches stable enemy slots, and dispatches nested
 status-kind-six sentences. The world alone owns opcode 25's enemy reset and
@@ -340,6 +347,25 @@ commands from Tables 32 and 33, with the retail fixed/random definition rules,
 rolled item instances, and 9-by-10 placement starts. Items can be bought into
 the backpack or equipment slots and sold back for gold, using the ordinary
 item sounds and delayed Price/Sale Price overlays.
+
+The same script offers his stolen-gem mission. Black Hammer's West Ruins loot
+row creates the fixed gem, pickup routes it to the item definition's automatic
+page, and returning it lets Malse remove the real owned item and complete the
+quest. That state and the removed item both remain correct after saving and
+loading; no Malse, Black Hammer, or quest-ID rule lives in the world code.
+
+Ostare's later Dusty Ruins job follows the same rule. His script checks the
+completed opening quest and the real level-30 gate, starts mission three, and
+the Room of Judgment waits until all eight enemies have completely faded
+before it marks the mission done. Returning to town creates Ostare's table
+reward once; the mission and reward latch both survive saving and loading.
+
+Syria's Spirit Stone mission is connected to that branch too. Stone Spike's
+authored loot row drops the stolen stone into its private item page; Syria
+removes that exact item, completes the mission, and creates her accessory
+reward from the next script callback. Saving keeps the mission complete and
+later visits return to her normal healing dialogue.
+
 The adjacent Identify Items choice also follows the authored script: it scans
 equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
 keeps `NO` selected initially, rejects insufficient Gold, and identifies every

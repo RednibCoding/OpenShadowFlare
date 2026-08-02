@@ -5,6 +5,9 @@ function(osf_configure_platform target)
   elseif(ANDROID)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Android.cmake")
     osf_configure_android_platform(${target})
+  elseif(NINTENDO_SWITCH)
+    include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Switch.cmake")
+    osf_configure_switch_platform(${target})
   elseif(
       WIN32
       OR APPLE
