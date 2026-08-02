@@ -1191,7 +1191,25 @@ zero enters B1F at entry one, and B1F object zero enters Dragon Road at entry
 two. Native coverage walks both inward edges, touches the real protection
 rectangle, confirms the same-scenario relocation, walks both return edges,
 and round-trips flag 38 plus the Dragon Road entry through the retail save
-owner. The later mine switches and Kirarru handoff remain the next slice.
+owner.
+
+The later mine route uses the same general pieces. Kirarru starts mission 15
+after the first blockade report; the Black Wing's inactive enemy slot
+completes it, and her return conversation saves flag 40 so B2F can enter B3F.
+The B3F and B5F switches control ordinary script entities, while B5F object
+800 saves flag 39. Kirarru's `1000058..1000068` warning advances that flag to
+two. Lytle then starts mission 16, whose route ends at the Power Supply Fort.
+The named Crimson Sword's inactive slot completes it, and Lytle's return
+creates 40,000 Gold before starting mission 17.
+
+Mission 17 also needs no executable-side quest special case. Kirarru's
+`1000070..1000072` chain prepares the seal. B5F object one checks the active
+quest before entering scenario `2210004`. That scenario's periodic sentence
+uses opcode 31 to read Ancient Dragon character `14010000`; only lifecycle
+`-1`, after its full death presentation, reaches opcode 62 and completes the
+quest. Object zero returns to the previous B5F entry. Lytle's completed branch
+shows `1000018` and writes flag 41 to two, while Kirarru uses `1000073`.
+Shipped-data coverage follows this whole chain and saves the completed state.
 
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native

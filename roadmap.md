@@ -1328,6 +1328,18 @@ stacks, plays all four landing sounds, runs `1000011..1000016`, and starts
 mission 17, `Defeat the Dragons!`, once. The route, boss trigger, reward,
 quest cues, and no-repeat save branch remain entirely script-driven.
 
+Mission 17 now reaches its full authored ending. Kirarru's
+`1000070..1000072` conversation explains that the rebuilt seal will weaken
+the dragons without changing the active quest. On B5F, mission 17 is the gate
+that lets object one enter the second `02210004` B5F scenario. Its periodic
+script waits for the named Ancient Dragon's registry slot to become inactive
+after the complete death fade, then completes `Defeat the Dragons!` and plays
+the usual completion sound. Object zero returns to the matching B5F entry.
+Back in Fanann, Lytle's `1000018` report advances flag 41 to two and Kirarru's
+`1000073` response acknowledges the victory. The preparation, guarded route,
+boss lifecycle, return edge, both reports, quest cue, and saved completion are
+covered without adding map-specific game logic.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -2049,7 +2061,9 @@ completes it, and her response opens B2F before the deeper seal can be reached.
 The seal report ends with her dragon warning. Lytle's next assignment now
 retakes the Power Supply Fort through the Labyrinth of Mauve;
 Crimson Sword's defeat and the 40,000-Gold return reward carry the story into
-mission 17. Continue from the dragon mission briefing.
+mission 17. Kirarru's seal preparation, the guarded B5F dragon chamber, the
+Ancient Dragon objective, and both Fanann victory reports are covered too.
+Continue from Lytle's post-dragon flag-41 handoff.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

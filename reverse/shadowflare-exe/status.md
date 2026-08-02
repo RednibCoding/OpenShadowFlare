@@ -1974,6 +1974,25 @@ the next interaction uses `1000017` without recreating Gold or replaying
 sample 65. A shipped-data regression covers the complete dialogue, route,
 boss lifecycle, reward audio, quest handoff, and save branch.
 
+Mission 17 then stays inside the same script boundary. Kirarru's active branch
+selects `1000070` with continuation 600; the MTP chain supplies `1000071` and
+`1000072`, describing the seal's temporary increase without changing the
+quest. B5F scenario `2210003` object one tests mission 17 and enters scenario
+`2210004`, entry zero. Both MCT files call themselves B5F (the first shipped
+title spells Yugnos without the second `u`); object zero in the dragon chamber
+returns to `2210003`, entry one.
+
+The chamber's named Ancient Dragon is enemy 10000, character `14010000`.
+Status kind five first excludes network-server mode, then opcode 31 reads that
+exact enemy lifecycle slot. Only the inactive `-1` state reached after the
+death animation and fade continues to opcode 62 `{17,2,1}` and the normal
+sample-66 completion cue. Other enemies on the map are not objectives.
+Returning to Fanann with mission 17 complete gives Lytle message `1000018`
+and writes saved flag 41 to two; Kirarru independently selects `1000073`.
+Native coverage follows the guarded object edge, waits for the real lifecycle
+boundary, returns through object zero, round-trips the completed quest, and
+checks both reports.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
