@@ -330,7 +330,9 @@ services exercise them; unknown values still fail loudly.
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 31 | `0x00432762` | Search an inclusive enemy-character range for the first registered active entry and write its absolute character number, or `-1` |
 | 32 | `0x004327c9` | Search an inclusive enemy-character range for the first registered inactive entry and write its absolute character number, or `-1` |
+| 33 | `0x0043288d` | Find the nearest living local player inside an evaluated distance range and write that slot and world position |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
+| 35 | `0x00432831` | Convert an evaluated world vector to the executable's truncated direction in degrees |
 | 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 38 | `0x00433544` | Close the matching script-opened transport service |
@@ -428,6 +430,26 @@ remaining calls with script-calculated upper bounds. The portable
 script library asks its host for the next random value, keeping the DLL
 boundary free of world ownership while still sharing the world's retail
 random sequence.
+
+Opcode 33 resolves its first operand through the scenario-character registry,
+then searches the four local-player slots in numerical order. A candidate must
+be active, alive, and in the same scenario. Distance comes from the shared
+judgement-rectangle measurement; `-1` leaves either end open and every other
+bound is inclusive. The nearest candidate wins and the earlier slot wins a
+tie. Success writes the player slot followed by world X and Y. A valid source
+with no candidate writes only `-1` to the slot, leaving both coordinates
+alone; a missing source leaves all three outputs alone. The portable runtime
+currently owns one local player, but the script-library boundary already
+returns the complete target record so multiplayer can extend the world query
+without changing the interpreter.
+
+Opcode 35 evaluates X and Y, calculates `atan2(-Y, X)`, multiplies by the
+executable's slightly truncated `57.29579143313326` degrees-per-radian
+constant, and truncates toward zero. It does not normalize negative angles.
+The shipped data contains 126 opcode-33 calls in 25 scenarios and 80
+opcode-35 calls in 17 scenarios. Six target queries and one direction query
+deliberately put a literal in the last output position, which the ordinary
+operand writer ignores just as it does for other non-writable operands.
 
 Opcodes 13, 14, and 15 continue the writable arithmetic group started by add
 and subtract. All three evaluate the destination value before the right-hand

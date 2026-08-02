@@ -324,6 +324,11 @@ private:
     bool measureScriptCharacterDistance(
         std::int32_t character_number,
         std::int32_t& distance) const;
+    bool queryScriptLocalPlayerTarget(
+        std::int32_t character_number,
+        std::int32_t lower_distance,
+        std::int32_t upper_distance,
+        script::LocalPlayerTarget& target) const;
     bool queryScriptItem(
         std::int32_t category,
         std::int32_t definition_id,

@@ -898,6 +898,40 @@ bool WorldScene::measureScriptCharacterDistance(
     return true;
 }
 
+bool WorldScene::queryScriptLocalPlayerTarget(
+    std::int32_t character_number,
+    std::int32_t lower_distance,
+    std::int32_t upper_distance,
+    script::LocalPlayerTarget& target) const {
+    target = {};
+    WorldPosition source_position;
+    const ObjectBounds* source_judgement = nullptr;
+    if (!scriptCharacterBounds(
+            character_number,
+            source_position,
+            source_judgement)) {
+        return true;
+    }
+    target.source_found = true;
+    if (!has_player_ || player_data_.currentLife() <= 0) {
+        return true;
+    }
+
+    const std::int32_t distance = distanceBetweenBounds(
+        source_position,
+        *source_judgement,
+        player_.position(),
+        player_.judgement());
+    if ((lower_distance != -1 && distance < lower_distance) ||
+        (upper_distance != -1 && distance > upper_distance)) {
+        return true;
+    }
+    target.player_number = scenario_world_.localPlayerNumber();
+    target.world_x = player_.position().x;
+    target.world_y = player_.position().y;
+    return true;
+}
+
 bool WorldScene::scriptCharacterBounds(
     std::int32_t character_number,
     WorldPosition& position,

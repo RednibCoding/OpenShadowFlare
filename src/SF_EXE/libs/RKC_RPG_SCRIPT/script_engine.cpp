@@ -1,6 +1,7 @@
 #include "libs/RKC_RPG_SCRIPT/rkc_rpg_script.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <cstdint>
 #include <limits>
@@ -554,6 +555,36 @@ StepResult Interpreter::execute(const Command& command) {
         }
         return StepResult::complete;
     }
+    case 33: {
+        if (command.operands.size() < 6) {
+            return StepResult::invalid_script;
+        }
+        LocalPlayerTarget target;
+        if (!hooks_.query_local_player_target ||
+            !hooks_.query_local_player_target(
+                readOperand(command.operands[0]),
+                readOperand(command.operands[1]),
+                readOperand(command.operands[2]),
+                target)) {
+            unsupported_opcode_ = command.opcode;
+            return StepResult::unsupported_command;
+        }
+        if (!target.source_found) {
+            return StepResult::complete;
+        }
+        if (!writeOperand(
+                command.operands[3], target.player_number)) {
+            return StepResult::invalid_script;
+        }
+        if (target.player_number < 0) {
+            return StepResult::complete;
+        }
+        if (!writeOperand(command.operands[4], target.world_x) ||
+            !writeOperand(command.operands[5], target.world_y)) {
+            return StepResult::invalid_script;
+        }
+        return StepResult::complete;
+    }
     case 36:
         return executeNative(7);
     case 34: {
@@ -571,6 +602,31 @@ StepResult Interpreter::execute(const Command& command) {
             return StepResult::invalid_script;
         }
         return StepResult::complete;
+    }
+    case 35: {
+        if (command.operands.size() < 3) {
+            return StepResult::invalid_script;
+        }
+        constexpr double kRetailDegreesPerRadian =
+            57.29579143313326;
+        const std::int32_t x =
+            readOperand(command.operands[0]);
+        const std::int32_t y =
+            readOperand(command.operands[1]);
+        std::int64_t negated_y = -static_cast<std::int64_t>(y);
+        if (negated_y >
+            std::numeric_limits<std::int32_t>::max()) {
+            negated_y -= std::int64_t{1} << 32;
+        }
+        const double angle = std::atan2(
+            static_cast<double>(negated_y),
+            static_cast<double>(x));
+        const std::int32_t degrees =
+            static_cast<std::int32_t>(
+                std::trunc(angle * kRetailDegreesPerRadian));
+        return writeOperand(command.operands[2], degrees)
+                   ? StepResult::complete
+                   : StepResult::invalid_script;
     }
     case 39: {
         if (command.operands.size() < 3) {
@@ -928,6 +984,9 @@ std::int32_t Interpreter::readOperand(
 bool Interpreter::writeOperand(
     const Operand& operand,
     std::int32_t value) {
+    if (operand.type >= 0 && operand.type <= 2) {
+        return true;
+    }
     if (operand.type == 4) {
         const auto found =
             temporary_flags_.find(operand.value);

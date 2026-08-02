@@ -85,6 +85,17 @@ WorldScene::WorldScene()
               return queryScriptEnemyLifecycleState(
                   character_number, state);
           },
+          [this](
+              std::int32_t character_number,
+              std::int32_t lower_distance,
+              std::int32_t upper_distance,
+              script::LocalPlayerTarget& target) {
+              return queryScriptLocalPlayerTarget(
+                  character_number,
+                  lower_distance,
+                  upper_distance,
+                  target);
+          },
       }) {}
 
 

@@ -2225,3 +2225,19 @@ secondary click or panel close cancels the mode. `FUN_004087b0` draws pattern
 one from `System.njp` instead of the normal pattern zero while the mode is
 active. Unidentified tooltips use the item description as their base name and
 hide all instance values.
+
+## Script target geometry
+
+The opcode-33 handler at `0x0043288d` resolves a scenario character and calls
+`FUN_00430b30` with mode one. That helper scans player slots zero through
+three, accepts only active living players in the same scenario, applies
+inclusive lower and upper judgement-distance bounds with `-1` as an open end,
+and keeps the first slot at equal distance. A match writes slot, world X, and
+world Y. No match writes only slot `-1`; an unresolved source writes nothing.
+
+Opcode 35 at `0x00432831` passes its evaluated operands to
+`FUN_00414080`, which calculates `atan2(-Y, X)`. It multiplies the result by
+the double at `0x00475178` (`57.29579143313326`) and uses the truncating x87
+conversion at `0x00467fe0`. Negative results are not normalized. The shipped
+catalog has 126 target calls across 25 scenarios and 80 direction calls across
+17 scenarios; all operand shapes are covered by the portable audit.

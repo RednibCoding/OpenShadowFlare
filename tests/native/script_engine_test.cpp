@@ -165,6 +165,84 @@ osf::script::ScriptData makeEnemyLifecycleSearchScript() {
     return script;
 }
 
+osf::script::ScriptData makeTargetGeometryScript() {
+    std::vector<std::uint8_t> bytes{
+        'S', 'c', 'e', 'n', 'a', 'S', 'c', 'r',
+        'i', 'p', 't', 'V', '0', '0', '0', '\0',
+    };
+    appendI32(bytes, 10);
+    for (std::int32_t index = 0; index < 10; ++index) {
+        appendI32(bytes, 1000000 + index);
+        appendI32(bytes, 900 + index);
+    }
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 0);
+    appendI32(bytes, 1);
+    appendI32(bytes, 7);
+
+    const auto appendOperand = [&bytes](
+                                   std::int32_t type,
+                                   std::int32_t value) {
+        appendI32(bytes, type);
+        appendI32(bytes, value);
+    };
+    appendI32(bytes, 33);
+    appendI32(bytes, 6);
+    appendOperand(1, 555);
+    appendOperand(1, 10);
+    appendOperand(1, 20);
+    appendOperand(4, 1000000);
+    appendOperand(4, 1000001);
+    appendOperand(4, 1000002);
+
+    appendI32(bytes, 35);
+    appendI32(bytes, 3);
+    appendOperand(4, 1000001);
+    appendOperand(4, 1000002);
+    appendOperand(4, 1000003);
+
+    appendI32(bytes, 33);
+    appendI32(bytes, 6);
+    appendOperand(1, 666);
+    appendOperand(1, -1);
+    appendOperand(1, 3000);
+    appendOperand(4, 1000004);
+    appendOperand(4, 1000005);
+    appendOperand(4, 1000006);
+
+    appendI32(bytes, 33);
+    appendI32(bytes, 6);
+    appendOperand(1, 777);
+    appendOperand(1, 0);
+    appendOperand(1, 3000);
+    appendOperand(4, 1000007);
+    appendOperand(4, 1000008);
+    appendOperand(4, 1000009);
+
+    appendI32(bytes, 35);
+    appendI32(bytes, 3);
+    appendOperand(1, -10);
+    appendOperand(1, -10);
+    appendOperand(4, 1000008);
+
+    appendI32(bytes, 35);
+    appendI32(bytes, 3);
+    appendOperand(1, 0);
+    appendOperand(1, 10);
+    appendOperand(4, 1000009);
+
+    appendI32(bytes, 35);
+    appendI32(bytes, 3);
+    appendOperand(1, 10);
+    appendOperand(1, 0);
+    appendOperand(1, 0);
+
+    osf::script::ScriptData script;
+    script.decode(bytes);
+    return script;
+}
+
 osf::script::ScriptData makeNestedKindSixScript() {
     std::vector<std::uint8_t> bytes{
         'S', 'c', 'e', 'n', 'a', 'S', 'c', 'r',
@@ -2574,6 +2652,150 @@ bool testRetailEnemyActivationWaveCommands() {
 #endif
 }
 
+bool testRetailTargetGeometryCommands() {
+    osf::script::ScriptData script = makeTargetGeometryScript();
+    struct Query {
+        std::int32_t character = -1;
+        std::int32_t lower = 0;
+        std::int32_t upper = 0;
+    };
+    std::vector<Query> queries;
+    osf::script::InterpreterHooks hooks;
+    hooks.query_local_player_target = [&queries](
+                                           std::int32_t character,
+                                           std::int32_t lower,
+                                           std::int32_t upper,
+                                           osf::script::LocalPlayerTarget& target) {
+        queries.push_back({character, lower, upper});
+        if (character == 555) {
+            target = {true, 2, 10, 10};
+        } else if (character == 666) {
+            target = {true, -1, 0, 0};
+        } else {
+            target = {false, -1, 0, 0};
+        }
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(0, -1) ==
+                osf::script::StepResult::complete,
+            "The synthetic retail target-geometry sentence did not "
+            "complete.")) {
+        return false;
+    }
+    if (!check(
+            queries.size() == 3 &&
+                queries[0].character == 555 &&
+                queries[0].lower == 10 &&
+                queries[0].upper == 20 &&
+                queries[1].character == 666 &&
+                queries[1].lower == -1 &&
+                queries[1].upper == 3000 &&
+                queries[2].character == 777,
+            "Opcode 33 did not preserve the authored source and inclusive "
+            "distance arguments.")) {
+        return false;
+    }
+    return check(
+        interpreter.readTemporaryFlag(1000000) == 2 &&
+            interpreter.readTemporaryFlag(1000001) == 10 &&
+            interpreter.readTemporaryFlag(1000002) == 10 &&
+            interpreter.readTemporaryFlag(1000003) == -45 &&
+            interpreter.readTemporaryFlag(1000004) == -1 &&
+            interpreter.readTemporaryFlag(1000005) == 905 &&
+            interpreter.readTemporaryFlag(1000006) == 906 &&
+            interpreter.readTemporaryFlag(1000007) == 907 &&
+            interpreter.readTemporaryFlag(1000008) == 135 &&
+            interpreter.readTemporaryFlag(1000009) == -90,
+        "The retail player target outputs, untouched failure fields, or "
+        "truncated direction degrees changed.");
+}
+
+bool testRetailTargetGeometryCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::map<std::int32_t, std::size_t> call_counts;
+    std::map<std::int32_t, std::size_t> scenario_counts;
+    std::map<std::int32_t, std::size_t> literal_last_operands;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-33/35 audit.");
+        }
+        std::set<std::int32_t> seen;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 33 && command.opcode != 35) {
+                    continue;
+                }
+                const bool valid_shape = command.opcode == 33
+                    ? command.operands.size() == 6 &&
+                          command.operands[0].type == 1 &&
+                          command.operands[1].type == 1 &&
+                          command.operands[2].type == 1 &&
+                          command.operands[3].type == 4 &&
+                          command.operands[4].type == 4 &&
+                          (command.operands[5].type == 4 ||
+                           command.operands[5].type == 1)
+                    : command.operands.size() == 3 &&
+                          command.operands[0].type == 4 &&
+                          command.operands[1].type == 4 &&
+                          (command.operands[2].type == 4 ||
+                           command.operands[2].type == 1);
+                if (!check(
+                        valid_shape,
+                        "A shipped target or direction query changed "
+                        "its audited operand shape.")) {
+                    return false;
+                }
+                ++call_counts[command.opcode];
+                seen.insert(command.opcode);
+                if (command.operands.back().type == 1) {
+                    ++literal_last_operands[command.opcode];
+                }
+            }
+        }
+        for (std::int32_t opcode : seen) {
+            ++scenario_counts[opcode];
+        }
+    }
+    return check(
+        call_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {33, 126}, {35, 80},
+                } &&
+            scenario_counts ==
+                std::map<std::int32_t, std::size_t>{
+                    {33, 25}, {35, 17},
+                } &&
+            literal_last_operands ==
+                std::map<std::int32_t, std::size_t>{
+                    {33, 6}, {35, 1},
+                },
+        "The shipped opcode-33/35 inventory differs from the audited "
+        "retail scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailEnemyLifecycleSearchCommandInventory() {
 #ifdef OPENSHADOWFLARE_SOURCE_DIR
     const std::filesystem::path root =
@@ -3043,6 +3265,8 @@ int main() {
                    testRetailEnemyLifecycleSearchCommands() &&
                    testNestedKindSixStatusCommand() &&
                    testRetailEnemyActivationWaveCommands() &&
+                   testRetailTargetGeometryCommands() &&
+                   testRetailTargetGeometryCommandInventory() &&
                    testRetailEnemyLifecycleSearchCommandInventory() &&
                    testRetailEnemyActivationWaveCommandInventory() &&
                    testRetailArithmeticCommandInventory() &&
