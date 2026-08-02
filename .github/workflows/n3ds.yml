@@ -2,6 +2,8 @@ name: Build Nintendo 3DS 3DSX
 
 on:
   push:
+    branches:
+      - master
     paths:
       - '.github/workflows/n3ds.yml'
       - 'CMakeLists.txt'
@@ -19,6 +21,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
