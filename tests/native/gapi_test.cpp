@@ -454,18 +454,25 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
-    osf::gapi::SoftwareBackend rectangleBackend(1, 1);
+    osf::gapi::SoftwareBackend rectangleBackend(3, 2);
     rectangleBackend.beginFrame({20, 40, 60, 255});
     rectangleBackend.drawRectangle({
-        0, 0, 1, 1, {100, 80, 60, 255}, 1000, 500,
+        0, 0, 2, 2, {100, 80, 60, 255}, 1000, 500,
     });
-    const osf::gapi::Color rectangle =
-        rectangleBackend.surface().pixels[0];
+    rectangleBackend.drawRectangle({
+        2, 0, 1, 2, {9, 8, 7, 255}, 1000, 2000,
+    });
+    const osf::gapi::SurfaceView rectangleSurface =
+        rectangleBackend.surface();
+    const osf::gapi::Color rectangle = rectangleSurface.pixels[0];
     return check(
         rectangle.red == 60 &&
             rectangle.green == 60 &&
-            rectangle.blue == 60,
-        "GAPI rectangle opacity did not blend portably.");
+            rectangle.blue == 60 &&
+            rectangleSurface.pixels[4].red == 60 &&
+            rectangleSurface.pixels[2].red == 9 &&
+            rectangleSurface.pixels[5].blue == 7,
+        "GAPI rectangle rows or clamped opacity differ.");
 }
 
 bool testGameplayHudPackets() {

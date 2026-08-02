@@ -917,6 +917,7 @@ bool GameplayUiController::updateOptions(
     RetailSavePreview& save_preview,
     std::int32_t& shadow_opacity) {
     const bool was_active = options_.active();
+    const GameplayOptionsPage previous_page = options_.page();
     const bool toggle =
         (input.gameplayOptionsPressed() || hud_toggle) &&
         (!world.conversationActive() || was_active);
@@ -931,6 +932,17 @@ bool GameplayUiController::updateOptions(
                 input.gameplayHelpPressed(),
             },
             game_config);
+    const GameplayOptionsPage current_page = options_.page();
+    const bool opened_save_confirmation =
+        current_page != previous_page &&
+        (current_page ==
+             GameplayOptionsPage::return_to_title_confirmation ||
+         current_page ==
+             GameplayOptionsPage::exit_game_confirmation);
+    if (opened_save_confirmation &&
+        game_config.save_image_at_game_end) {
+        save_preview.requestCapture();
+    }
     if (!was_active && options_.active()) {
         world.cancelPlayerMovement();
     }

@@ -126,7 +126,8 @@ gapi::SurfaceView RuntimeRenderer::render(
                 context.game_config.semi_transparent_objects);
             renderScenarioScreenParticles(
                 renderer_, context.world);
-            context.save_preview.capture(renderer_.surface());
+            context.save_preview.captureIfRequested(
+                renderer_.surface());
             if (!debug_active &&
                 !context.gameplay_blackjack.active() &&
                 !context.gameplay_equipment_color.active() &&
