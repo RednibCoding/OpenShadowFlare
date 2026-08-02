@@ -1912,6 +1912,22 @@ touches the live B2F protection rectangle, checks the same-scenario pushback,
 and saves and reloads flag 38 with the exact Dragon Road entry. The deeper
 stair and switch path is deliberately not bypassed by this checkpoint.
 
+The deeper Yugunos route is now traced and covered as its own checkpoint.
+B3F scenario `2210002` requires switches 40000 and 40002, uses object two for
+its same-scenario entry-two stair, and reaches B5F scenario `2210003` through
+object one. B5F again requires both switch pairs: 40002 opens the 11000 gate
+group and 40000 opens the 11003 group. Object 800 then writes saved flag 39.
+The regression walks the real collision maps and gate actors rather than
+relocating between those interactions.
+
+Fanann PEOPLE four, Kirarru, consumes that finding through shipped script
+branches. Her first visit shows messages `1000048..1000050` and writes saved
+flag 45. With flags 38, 39, and 45 set while mission 15 is zero, the next
+interaction shows `1000052..1000055`, starts mission 15, and plays sample 65.
+Mission 12 remains active. Saving and loading preserves all three flags and
+both mission states; the active-mission return uses message `1000051` without
+replaying sample 65.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

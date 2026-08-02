@@ -1298,6 +1298,15 @@ the hero back to entry two. Mission 12 stays active and mission 15 has not
 started yet. The matching object-zero return edges lead back through B1F to
 Dragon Road, and saving there preserves the discovery and exact entry.
 
+The route beyond that blockade is covered now too. B3F (`02210002`) uses both
+of its authored switches and its internal stair before object one reaches B5F
+(`02210003`). B5F needs both switches as well: each opens one of the two gates
+on the long route to object 800, whose contact saves flag 39. Returning those
+findings to Kirarru keeps her first `1000048..1000050` introduction separate
+from the `1000052..1000055` report, starts mission 15 with sample 65, and saves
+the result. After a reload she uses `1000051` without awarding the mission a
+second time.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -2012,9 +2021,10 @@ Episode 2 has started with the complete post-Epilogue route through Caravan
 and the two Forest road maps into Kanfore, Mining Town. The detour through
 Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
 through Butterfly Hill and Dragon Road to the first Mining Tunnel of Yugunos
-blockade. Continue through the mine's authored stair and switch route, then
-return its findings to Kirarru, keeping each playable handoff under a
-shipped-data regression.
+blockade. The mine's authored B3F/B5F stair, switches, two gates, and deeper
+seal now lead back to Kirarru and start mission 15 under a shipped-data
+regression. Continue from that briefing, keeping each playable handoff under
+the same kind of coverage.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
