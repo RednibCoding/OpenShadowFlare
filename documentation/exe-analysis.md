@@ -1251,6 +1251,24 @@ reports one for a zero-life enemy until `EnemyActor::expired()` becomes true;
 only MCT enemies are registered, so an absent ID never behaves like an
 inactive enemy.
 
+Dusty Ruins scenario `00010004` supplies the first shipped mission fixture for
+that exact boundary. Its periodic sentence scans `14000000..14000007`; only
+after all eight Garam Goblin slots have finished their complete death
+presentation does it run the object-state sequence, positioned sample, and
+opcode-62 completion of mission three. The corresponding Remote Town path is
+also executable-owned: completed quest zero plus player level 30 lets Ostare
+start mission three, and the completed return branch creates Table 30 row 4
+once before persistent flag two suppresses later rewards.
+
+Scenario `00010005` supplies the related fixed-item path. Stone Spike enemy
+one selects Table 30 row 23, whose zero attempt count uses the active-player
+count and whose ten choices all select Table 31 row 401. The result is fixed
+category 4, definition `99000001`: Syria's stolen Spirit Stone on automatic
+page zero at `(1,0)`. Remote Town removes that exact definition after message
+`1000045`, completes mission two, and creates category 2 definition `1100001`
+from the `1000046` callback. Definition `98000001`, despite sharing the Spirit
+Stone display name, is a different page-two story item.
+
 Operand type 3 reaches that same registry directly. The reader at
 `0x004346e2` adds `14000000` to the operand's local enemy number, calls
 `0x00430770`, returns the entry value at `+4`, and returns `-1` when lookup

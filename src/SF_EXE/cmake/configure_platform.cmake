@@ -5,6 +5,9 @@ function(osf_configure_platform target)
   elseif(NINTENDO_3DS)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Nintendo3DS.cmake")
     osf_configure_nintendo_3ds_platform(${target})
+  elseif(NINTENDO_SWITCH)
+    include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Switch.cmake")
+    osf_configure_switch_platform(${target})
   elseif(
       WIN32
       OR APPLE

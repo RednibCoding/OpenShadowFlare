@@ -1690,6 +1690,46 @@ quest one before waiting for the bubble acknowledgement. Sample 66, the next
 three messages, save/load of quest and script state, and the absent returned
 item are held by one live regression.
 
+The next Episode 1 mission now has a live regression instead of only catalog
+coverage. Ostare's Remote Town script requires completed quest zero and hero
+level 30 before messages `1000007` through `1000009` start quest three. Dusty
+Ruins scenario `00010004` then waits for enemy registry entries
+`14000000..14000007` to become inactive; zero life is deliberately not enough
+while a Garam Goblin is still fading. The all-clear branch runs its authored
+object toggles and sound before opcode 62 produces sample 66. Returning to
+Ostare creates Table 30 row 4 exactly once, sets persistent flag two, and
+continues to the Cold Svalt message. Quest state and the reward latch both
+survive save/load.
+
+Syria's linked side mission is covered through the real item owners too.
+Mission three being active lets message `1000044` start mission two. Stone
+Spike in scenario `00010005` owns fixed loot row 23, which resolves through
+Table 31 row 401 to category 4 definition `99000001`. That stolen Spirit Stone
+belongs to automatic page zero at `(1,0)`; it must not be confused with the
+later definition `98000001` on page two. Syria's message `1000045` immediately
+removes the item and completes the mission, then callback `1000046` creates
+category 2 definition `1100001`. The completed save keeps the item absent and
+returns later visits to the normal recovery branch without repeating sample
+66 or the reward.
+
+The two one-time Remote Town gifts after Dusty Ruins are covered through the
+same script state. Malse's status chain requires completed mission three,
+Ostare's saved reward flag, and clear flag eight, then runs messages
+`1000025..1000027` before opcode 10 creates category two definition `1100000`.
+Syria uses her separate flag seven and messages `1000042..1000043` before
+creating definition `1100002`. Both items take the normal airborne landing
+path and sample 93. Saving and loading the two latches keeps later Malse and
+Syria visits on their ordinary branches without repeating either gift.
+
+The authored Cold Svalt route is now held by a live map-edge regression too.
+Scenario 1 object 6 leads to scenario 3 entry 1, scenario 3 object 0 leads to
+scenario 5 entry 0, and scenario 5 object 1 leads to scenario 6 entry 1.
+Wasteland of Pillars object 3 has a separate mission-three-complete branch;
+before completion it is a no-op, and afterward opcode 17 enters enemy-occupied
+Cold Svalt scenario `1000001` at entry zero. This keeps the route, gate, map
+titles, and entry coordinates in MCT/SCS ownership rather than a portable
+quest-name special case.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

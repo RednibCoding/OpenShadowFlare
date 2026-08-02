@@ -941,6 +941,55 @@ callback. The portable world exposes the same lifecycle through a narrow
 interpreter hook, so group-clear and later encounter scripts do not need to
 know about `EnemyActor` or duplicate combat state.
 
+Episode 1's Dusty Ruins assignment is the first complete group-clear path.
+After quest zero is complete, Ostare still waits until the saved hero reaches
+level 30. His Remote Town branch then shows messages `1000007` through
+`1000009`, starts mission three, selects its 600-update notice, and queues
+sample 65. In Dusty Ruins scenario `00010004`, a periodic sentence scans
+enemy characters `14000000` through `14000007` with opcode 31. Each defeated
+Garam Goblin remains active until its death chart and fade expire, so the
+mission cannot complete early. Once the scan returns `-1`, the script applies
+its three object-state commands, plays its positioned sample, and completes
+mission three with sample 66. Back in town, Ostare creates the Table 30 row-4
+reward before message `1000011`, sets persistent flag two, follows with the
+Cold Svalt message `1000012`, and never creates that reward again after a
+save/load round trip.
+
+Syria's neighboring Spirit Stone mission is separate from her healing path.
+Once mission three is active, message `1000044` starts mission two and its
+notice. Stone Spike in continued Dusty Ruins scenario `00010005` owns Table
+30 row 23; all ten choices lead through Table 31 row 401 to fixed category 4,
+definition `99000001`. This is Syria's page-zero item at cell `(1,0)`, not the
+different page-two item with the same display name used by a later reward.
+On return, message `1000045` is followed immediately by opcodes 59 and 62, so
+the stone is removed and sample 66 is queued before acknowledgement. Its
+callback opens message `1000046` and creates the fixed category-2 definition
+`1100001` reward. Saving the completed state keeps the stone absent and sends
+later visits back through Syria's ordinary recovery branch.
+
+Completing Dusty Ruins also unlocks two independent Remote Town callbacks.
+Malse requires mission three complete, Ostare's reward latch set, and his own
+flag eight clear. Messages `1000025`, `1000026`, and `1000027` run across the
+status-zero/status-one callback chain; only the last one calls opcode 10 for
+category two, definition `1100000`. Syria checks the same completed mission
+and Ostare latch but owns flag seven instead. Message `1000042` sets that
+latch, and callback message `1000043` creates definition `1100002`. Both
+commands use the NPC position plus the authored 200-unit offset and `-1`
+spread values, so they remain ordinary airborne ground items with the
+category-two sample 93 landing sound. Saving flags seven and eight prevents
+the gifts from being produced again.
+
+Ostare's Cold Svalt direction is backed by ordinary status-kind-three map
+edges. The Episode 1 route is scenario 1 (`Near the Remote Town`) object 6 to
+scenario 3 entry 1, scenario 3 object 0 to scenario 5 entry 0, and scenario 5
+object 1 to scenario 6 entry 1. In `Wasteland of Pillars`, object 3 enters
+sentence 9. The sentence compares mission three with completed state two and
+only then reaches sentence 10's opcode 17 call for scenario `1000001`, entry
+zero. The incomplete branch contains no travel command, so touching the same
+edge before clearing Dusty Ruins correctly does nothing. Scenario `1000001`
+is the enemy-occupied Cold Svalt Town map; it is distinct from the recovered
+town in scenario `1000000`.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

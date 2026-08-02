@@ -1,4 +1,5 @@
 #include "core/retail_random.hpp"
+#include "episode_one_test_support.hpp"
 #include "items/player_automatic_items.hpp"
 #include "items/player_inventory.hpp"
 #include "world/enemy_death_rewards.hpp"
@@ -17,113 +18,14 @@
 
 namespace {
 
-bool check(bool condition, const char* message) {
-    if (!condition) {
-        std::cerr << message << '\n';
-    }
-    return condition;
-}
-
-bool containsSample(
-    const std::vector<std::int32_t>& samples,
-    std::int32_t sample) {
-    return std::find(
-               samples.begin(), samples.end(), sample) !=
-           samples.end();
-}
-
-bool findNpcPointerPoint(
-    osf::WorldScene& world,
-    std::int32_t npc_id,
-    osf::ScreenPosition& point) {
-    const auto found = std::find_if(
-        world.npcs().begin(),
-        world.npcs().end(),
-        [npc_id](const osf::NpcActor& npc) {
-            return npc.id() == npc_id;
-        });
-    if (found == world.npcs().end()) {
-        return false;
-    }
-    const osf::ScreenPosition anchor =
-        osf::calculateRealPosition(found->position());
-    for (std::int32_t y = -found->labelHeight();
-         y <= 16;
-         ++y) {
-        for (std::int32_t x = -48; x <= 48; ++x) {
-            point = {
-                anchor.x - world.cameraScreenX() + x,
-                anchor.y - world.cameraScreenY() + y,
-            };
-            if (point.x < 0 || point.x >= 640 ||
-                point.y < 0 || point.y >= 480) {
-                continue;
-            }
-            world.updatePointerHover(point.x, point.y);
-            if (world.hoveredNpcId() == npc_id) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool updateUntilConversation(
-    osf::WorldScene& world,
-    std::int32_t maximum_updates = 2000,
-    std::vector<std::int32_t>* audio = nullptr) {
-    for (std::int32_t update = 0;
-         update < maximum_updates &&
-         !world.conversationActive();
-        ++update) {
-        world.update();
-        std::vector<std::int32_t> samples =
-            world.takeAudioSamples();
-        if (audio) {
-            audio->insert(
-                audio->end(), samples.begin(), samples.end());
-        }
-    }
-    return world.conversationActive();
-}
+using osf::test::check;
+using osf::test::containsSample;
+using osf::test::loadSavedFixture;
 
 bool openMalseConversation(
     osf::WorldScene& world,
     std::vector<std::int32_t>* audio = nullptr) {
-    osf::ScreenPosition pointer;
-    for (std::int32_t update = 0; update < 2000; ++update) {
-        if (findNpcPointerPoint(world, 1, pointer)) {
-            world.cancelPlayerMovement();
-            return world.commandWorldInteraction(
-                       pointer.x, pointer.y) &&
-                   updateUntilConversation(
-                       world, 2000, audio);
-        }
-        const auto malse = std::find_if(
-            world.npcs().begin(),
-            world.npcs().end(),
-            [](const osf::NpcActor& npc) {
-                return npc.id() == 1;
-            });
-        if (malse == world.npcs().end()) {
-            return false;
-        }
-        if (update % 30 == 0) {
-            const osf::ScreenPosition target =
-                osf::calculateRealPosition(malse->position());
-            world.commandPlayerMovement(
-                target.x - world.cameraScreenX(),
-                target.y - world.cameraScreenY());
-        }
-        world.update();
-        std::vector<std::int32_t> samples =
-            world.takeAudioSamples();
-        if (audio) {
-            audio->insert(
-                audio->end(), samples.begin(), samples.end());
-        }
-    }
-    return false;
+    return osf::test::openNpcConversation(world, 1, audio);
 }
 
 osf::RetailSaveProgress malseQuestProgress(
@@ -170,17 +72,6 @@ bool writeQuestFixture(
         automatic_items,
         0x35,
         &error);
-}
-
-bool loadSavedFixture(
-    const std::filesystem::path& data_root,
-    const std::filesystem::path& save_path,
-    osf::WorldScene& world,
-    std::string& error) {
-    osf::PlayerLoadRequest request;
-    request.source = osf::PlayerDataSource::retail_save;
-    request.save_path = save_path;
-    return world.loadInitialScenario(data_root, request, &error);
 }
 
 bool testBlackHammerDrop(

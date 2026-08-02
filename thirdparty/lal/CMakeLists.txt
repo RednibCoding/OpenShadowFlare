@@ -54,6 +54,8 @@ elseif(APPLE)
       "${AUDIOTOOLBOX_FRAMEWORK}"
       Threads::Threads
   )
+elseif(NINTENDO_SWITCH)
+  target_sources(lal PRIVATE lal_switch.c)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lal PRIVATE lal_alsa.c)
   find_package(ALSA REQUIRED)

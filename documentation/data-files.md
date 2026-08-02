@@ -730,10 +730,11 @@ ownership:
 | `0x5c` | Fixed grid x coordinate in that page |
 | `0x60` | Fixed grid y coordinate in that page |
 
-For example, Malse's Gem uses page zero at `(0,0)`, while Spirit Stone uses
-page two at `(1,0)`. Gold and Land Mines carry `-1` and continue through their
-separate ordinary owners. The fixed placement is data-driven; scripts only
-name the category and definition ID.
+For example, Malse's Gem uses page zero at `(0,0)`, while Syria's stolen
+Spirit Stone uses page zero at `(1,0)`. A different later item also named
+Spirit Stone uses page two at `(1,0)`. Gold and Land Mines carry `-1` and
+continue through their separate ordinary owners. The fixed placement is
+data-driven; scripts only name the category and definition ID.
 
 Weapon records also expose the fields used by the first equipment slice:
 
