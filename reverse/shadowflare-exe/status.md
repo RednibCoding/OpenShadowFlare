@@ -2260,3 +2260,32 @@ point judgement. Effect 20010 selects OPTION resource 11000008 and effect
 20018 selects resource 10000020. The shipped catalog contains 54 calls across
 45 scenarios, all with two literal operands: eight use 20010 and 46 use
 20018.
+
+## Scripted unlock switches
+
+`FUN_004346b0` operand type nine is the common switch-interaction gate. It
+requires the local player to be in the running script's scenario with action
+one, finds the requested character in the live object-display registry, and
+uses `FUN_004143c0` to compare their judgement rectangles with player field
+`+0x3f4`. The ordinary range is `0x9f`. A missing or undisplayed character,
+different scenario, busy player, or distance above 159 returns zero.
+
+The opcode-26 handler at `0x00432b02` resolves a player slot or scenario actor,
+projects its position, and draws the evaluated fourth operand as `%d`. It uses
+the supplied X/Y offsets and RGB strengths, six pixels per character for
+centering, a fixed twelve-pixel upward baseline, and a black `(1,1)` shadow.
+There is no backing rectangle. Missing actors and absent remote player slots
+are successful no-ops.
+
+Opcode 60 at `0x00433edf` writes the evaluated marker to local-player field
+`+0x159c`. The player update clears it before status kind five. The player pass
+at `0x00434ef0` maps animation 502 to `Player/Common/UnlockSW` and draws chart
+zero, direction eight at the player with full RGB strengths while the script
+keeps that field set.
+
+Opcode 29 at `0x00433056` is only the network-client notification. It passes
+scenario event kind six and the evaluated value to `FUN_00419050`, which emits
+packet `0x22` only in client mode; it performs no local state mutation. The
+shipped corpus contains 60 matching type-nine gates, opcode-26 labels, and
+opcode-60 markers across 22 scenarios. Opcode 29 appears 61 times across 23
+scenarios.

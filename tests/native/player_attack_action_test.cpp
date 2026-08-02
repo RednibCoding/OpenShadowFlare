@@ -536,22 +536,48 @@ bool testLiveRightClickCombo(
     }
 
     std::vector<std::int32_t> voices;
+    std::int32_t initial_updates = 0;
     for (std::int32_t update = 0;
          update < 160 &&
          world.playerMotion() == osf::PlayerMotion::attacking;
          ++update) {
         world.update();
+        ++initial_updates;
         for (std::int32_t sample : world.takeAudioSamples()) {
             if (sample >= 96 && sample <= 98) {
                 voices.push_back(sample);
             }
         }
     }
+    if (!check(
+            voices == std::vector<std::int32_t>{96, 97, 98} &&
+                world.playerMotion() == osf::PlayerMotion::idle,
+            "The gameplay right-click path did not finish all three "
+            "voiced combo phases.")) {
+        return false;
+    }
+
+    if (!check(
+            world.transitionScenario(
+                {world.scenarioId(), 3, 0}, &error) ==
+                osf::ScenarioTravelResult::relocated &&
+                world.commandPlayerMagic(480, 240),
+            "The combo timing fixture could not reproduce a same-entry "
+            "revival transition.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::int32_t relocated_updates = 0;
+    while (world.playerMotion() == osf::PlayerMotion::attacking &&
+           relocated_updates < 160) {
+        world.update();
+        ++relocated_updates;
+    }
     return check(
-        voices == std::vector<std::int32_t>{96, 97, 98} &&
+        relocated_updates == initial_updates &&
             world.playerMotion() == osf::PlayerMotion::idle,
-        "The gameplay right-click path did not finish all three voiced "
-        "combo phases.");
+        "Loading and same-entry revival used different right-click combo "
+        "timing.");
 }
 
 bool testRetailAssetsAndSpeedTable() {

@@ -433,6 +433,8 @@ StepResult Interpreter::execute(const Command& command) {
                       command.operands.size(), 4));
     case 27:
         return executeNative(8);
+    case 26:
+        return executeNative(7);
     case 11:
     case 12: {
         if (command.operands.size() < 2) {
@@ -499,6 +501,9 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(3);
     case 25:
         return executeNative(4);
+    case 29:
+    case 60:
+        return executeNative(1);
     case 28: {
         if (command.operands.empty() || !script_) {
             return StepResult::invalid_script;

@@ -18,6 +18,7 @@
 #include "world/scenario_data.hpp"
 #include "world/script/scenario_attached_effect_command.hpp"
 #include "world/script/scenario_effect_command.hpp"
+#include "world/script/scenario_numeric_label_command.hpp"
 #include "world/script/scenario_placed_effect_command.hpp"
 #include "world/world_scene.hpp"
 
@@ -278,6 +279,29 @@ bool testScenarioAttachedEffectCommand() {
     }
 
     return true;
+}
+
+bool testScenarioNumericLabelCommand() {
+    osf::ScenarioTextLabel label;
+    const std::vector<std::int32_t> arguments{
+        10041000, 20, -60, 14, 224, 192, 160,
+    };
+    return check(
+        osf::makeScenarioNumericLabel(
+            arguments, {1234, 5678}, label) &&
+            label.anchor.x == 1234 &&
+            label.anchor.y == 5678 &&
+            label.offset_x == 20 &&
+            label.offset_y == -60 &&
+            label.text == "14" &&
+            label.red == 224 &&
+            label.green == 192 &&
+            label.blue == 160 &&
+            label.background_opacity == 0 &&
+            !osf::makeScenarioNumericLabel(
+                std::vector<std::int32_t>(6), {}, label),
+        "Opcode 26 did not preserve its actor anchor, decimal format, "
+        "offsets, shadow-only backing, color, or operand count.");
 }
 
 bool updateUntilConversation(
@@ -5039,6 +5063,68 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    osf::WorldScene unlock_world;
+    if (!check(
+            unlock_world.loadInitialScenario(
+                data_root,
+                osf::PlayerLoadRequest{},
+                {4070000, 0, 0},
+                &error),
+            "The shipped unlock-switch fixture could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto unlock_switch = std::find_if(
+        unlock_world.scenarioObjects().begin(),
+        unlock_world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10041001;
+        });
+    if (!check(
+            unlock_switch != unlock_world.scenarioObjects().end(),
+            "The shipped unlock-switch actor is missing.")) {
+        return false;
+    }
+    const osf::ScreenPosition unlock_screen =
+        osf::calculateRealPosition(unlock_switch->position());
+    unlock_world.commandPlayerMovement(
+        unlock_screen.x - unlock_world.cameraScreenX(),
+        unlock_screen.y - unlock_world.cameraScreenY());
+    for (std::int32_t update = 0; update < 300; ++update) {
+        unlock_world.update();
+    }
+    if (!check(
+            !unlock_world.playerUnlockSwitchActive() &&
+                unlock_world.scenarioTextLabels().empty(),
+            "Approaching a switch incorrectly activated it before its "
+            "status-zero interaction.")) {
+        return false;
+    }
+    unlock_world.commandWorldInteraction(
+        unlock_screen.x - unlock_world.cameraScreenX(),
+        unlock_screen.y - unlock_world.cameraScreenY());
+    for (std::int32_t update = 0;
+         update < 200 &&
+         !unlock_world.playerUnlockSwitchActive();
+         ++update) {
+        unlock_world.update();
+    }
+    if (!check(
+            unlock_world.playerUnlockSwitchActive() &&
+                unlock_world.playerUnlockSwitchVisual() != nullptr &&
+                unlock_world.scenarioTextLabels().size() == 1 &&
+                unlock_world.scenarioTextLabels()[0].anchor.x ==
+                    unlock_switch->position().x &&
+                unlock_world.scenarioTextLabels()[0].anchor.y ==
+                    unlock_switch->position().y &&
+                unlock_world.scenarioTextLabels()[0].text == "30" &&
+                unlock_world.scenarioTextLabels()[0]
+                        .background_opacity == 0,
+            "The shipped switch did not gate on interaction range or "
+            "publish its numeric label and player marker.")) {
+        return false;
+    }
+
     osf::WorldScene wander_world;
     if (!check(
             wander_world.loadInitialScenario(
@@ -5110,6 +5196,7 @@ int main() {
                    testScenarioEffectCommand() &&
                    testScenarioPlacedEffectCommand() &&
                    testScenarioAttachedEffectCommand() &&
+                   testScenarioNumericLabelCommand() &&
                    testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
                    testPlayerLevelUpNoticeLayout() &&

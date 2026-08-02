@@ -2864,3 +2864,34 @@ The item database name is the identified display name, while its description
 is the base name shown before identification. Unidentified information hides
 all values. The saved instance mirrors the identified value at raw word 48
 for category-zero and category-one items, and word 47 for category-two items.
+
+## Scripted unlock-switch presentation
+
+Operand type nine in `0x004346b0` is the interaction gate used by the switch
+scripts. It first resolves the local player and requires its scenario to match
+the running script. Player action `+0x3f8/+8` must be one. The target must
+resolve through the current scenario and appear in the object-display list;
+the common judgement-distance routine then compares it with the player's live
+range at `+0x3f4`. The ordinary value is `0x9f`, so the portable query returns
+one only for a displayed actor within 159 judgement units of an idle hero.
+
+Opcode 26 reaches `0x00432b02`. Its first operand accepts player slots zero
+through three or a scenario character number. Missing sources and absent
+remote player slots are successful no-ops. The handler evaluates the other
+six operands, formats operand three with `%d`, centers the result using a
+six-pixel character width, and draws it at the projected actor position plus
+the supplied offsets and fixed `-12` baseline. Black text at `(1,1)` is the
+shadow; the requested RGB text is drawn over it without a backing box.
+
+Opcode 60 at `0x00433edf` writes its evaluated value to local-player field
+`+0x159c`. The player update clears that field before periodic scenario status
+kind five runs. `0x00434ef0` checks it after the base player pass and draws
+common player animation 502, `Player/Common/UnlockSW`, at chart zero,
+direction eight and full RGB strengths using the current player frame counter.
+
+Opcode 29 at `0x00433056` does not own local switch state. It evaluates one
+value and asks `0x00419050` to send scenario event kind six in packet `0x22`
+only in network-client mode. Shipped scripts place this behind the play-mode
+branch; single player uses opcode 28. The catalog contains 60 type-nine gates,
+60 opcode-26 labels, and 60 opcode-60 markers across the same 22 scenarios.
+Opcode 29 has 61 calls across 23 scenarios.

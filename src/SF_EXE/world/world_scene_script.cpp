@@ -3,6 +3,7 @@
 #include "movement_controller.hpp"
 #include "script/scenario_attached_effect_command.hpp"
 #include "script/scenario_effect_command.hpp"
+#include "script/scenario_numeric_label_command.hpp"
 #include "script/scenario_placed_effect_command.hpp"
 #include "vendor_stock_generator.hpp"
 
@@ -99,6 +100,33 @@ std::optional<EquipmentRepairGroup> equipmentRepairGroup(
 bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t& value) const {
+    if (operand.type == 9) {
+        value = 0;
+        if (!has_player_ ||
+            player_.damagePresentation().action != 1 ||
+            !scriptCharacterDisplayed(operand.value)) {
+            return true;
+        }
+        WorldPosition position;
+        const ObjectBounds* judgement = nullptr;
+        if (!scriptCharacterBounds(
+                operand.value, position, judgement)) {
+            return true;
+        }
+        // EvaluateScriptOperand (0x004346b0) uses the player's live
+        // interaction range at +0x3f4 after finding the target in the
+        // object-display registry. The normal retail value is 0x9f.
+        constexpr std::int32_t kRetailInteractionDistance = 0x9f;
+        value = distanceBetweenBounds(
+                    player_.position(),
+                    player_.judgement(),
+                    position,
+                    *judgement) <=
+                kRetailInteractionDistance
+            ? 1
+            : 0;
+        return true;
+    }
     if (operand.type == 10) {
         value = transports_.enabled(operand.value) ? 1 : 0;
         return true;
@@ -294,6 +322,51 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 26) {
+        if (arguments.size() != 7) {
+            return false;
+        }
+        WorldPosition position;
+        if (arguments[0] >= 0 && arguments[0] < 4) {
+            if (arguments[0] !=
+                    scenario_world_.localPlayerNumber() ||
+                !has_player_) {
+                // Other player slots are absent in portable single-player.
+                return true;
+            }
+            position = player_.position();
+        } else {
+            const ObjectBounds* judgement = nullptr;
+            if (!scriptCharacterBounds(
+                    arguments[0], position, judgement)) {
+                return true;
+            }
+        }
+        ScenarioTextLabel label;
+        if (!makeScenarioNumericLabel(
+                arguments, position, label)) {
+            return false;
+        }
+        scenario_text_labels_.push_back(std::move(label));
+        return true;
+    }
+
+    if (opcode == 29) {
+        // Retail only reaches this branch as a network client and sends
+        // packet 0x22. Play mode zero takes opcode 28 instead, so there is
+        // intentionally no local state mutation in the portable game.
+        return arguments.size() == 1;
+    }
+
+    if (opcode == 60) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        player_unlock_switch_active_ =
+            has_player_ && arguments[0] != 0;
+        return true;
+    }
+
     if (opcode == 25) {
         if (arguments.size() != 4) {
             return false;
@@ -998,6 +1071,27 @@ bool WorldScene::scriptCharacterBounds(
         judgement = &item->judgement;
     }
     return judgement != nullptr;
+}
+
+bool WorldScene::scriptCharacterDisplayed(
+    std::int32_t character_number) const {
+    if (const ScenarioObjectActor* object =
+            findScriptObject(character_number)) {
+        return object->visible();
+    }
+    if (const NpcActor* npc =
+            findScriptNpc(character_number)) {
+        return npc->visible();
+    }
+    if (const EnemyActor* enemy =
+            findScriptEnemy(character_number)) {
+        return enemy->visible() && !enemy->expired();
+    }
+    if (const GroundItem* item =
+            findScriptGroundItem(character_number)) {
+        return item->visible();
+    }
+    return false;
 }
 
 void WorldScene::runScenarioContactTriggers() {

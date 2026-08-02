@@ -148,6 +148,9 @@ public:
     bool playerIncreasedPowerActivationFeedback() const;
     const EffectVisualResource* playerIncreasedPowerVisual() const;
     std::int32_t playerIncreasedPowerFrame() const;
+    bool playerUnlockSwitchActive() const;
+    const EffectVisualResource* playerUnlockSwitchVisual() const;
+    std::int32_t playerUnlockSwitchFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const std::vector<ScenarioTextLabel>& scenarioTextLabels() const;
@@ -346,6 +349,8 @@ private:
         std::int32_t character_number,
         WorldPosition& position,
         const ObjectBounds*& judgement) const;
+    bool scriptCharacterDisplayed(
+        std::int32_t character_number) const;
     void runScenarioContactTriggers();
     bool processPendingScriptTravel();
     WorldPointerTarget pointerTargetAtScreenPosition(
@@ -473,6 +478,7 @@ private:
     CompanionActor companion_;
     EffectVisualResources effect_visuals_;
     EffectVisualResource player_powerup_visual_;
+    EffectVisualResource player_unlock_switch_visual_;
     EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
@@ -536,6 +542,7 @@ private:
     bool script_travel_pending_ = false;
     bool scenario_changed_ = false;
     bool player_identify_mode_active_ = false;
+    bool player_unlock_switch_active_ = false;
     bool player_infinite_life_ = false;
     bool player_infinite_mana_ = false;
     bool owned_companion_inactive_ = true;

@@ -3377,6 +3377,213 @@ bool testRetailCompanionSwapCommandInventory() {
 #endif
 }
 
+bool testRetailUnlockSwitchCommands() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "00010000" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    osf::script::InterpreterHooks hooks;
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(129, -1) ==
+                    osf::script::StepResult::complete,
+            "The shipped unlock-progress sentence did not execute.")) {
+        return false;
+    }
+    const auto progress = std::find_if(
+        calls.begin(), calls.end(), [](const NativeCall& call) {
+            return call.first == 26;
+        });
+    const auto marker = std::find_if(
+        calls.begin(), calls.end(), [](const NativeCall& call) {
+            return call.first == 60;
+        });
+    if (!check(
+            progress != calls.end() &&
+                progress->second ==
+                    std::vector<std::int32_t>{
+                        10041000, 20, -60, 30,
+                        224, 224, 224,
+                    } &&
+                marker != calls.end() &&
+                marker->second == std::vector<std::int32_t>{1},
+            "The shipped unlock sentence did not evaluate its numeric "
+            "label and player marker operands.")) {
+        return false;
+    }
+    calls.clear();
+    return check(
+        interpreter.startSentence(135, -1) ==
+                osf::script::StepResult::complete &&
+            calls == std::vector<NativeCall>{{29, {41000}}},
+        "The network-client unlock sentence did not evaluate opcode 29.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailUnlockSwitchCommandInventory() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario";
+    if (!std::filesystem::is_directory(root)) {
+        return true;
+    }
+    std::map<std::int32_t, std::size_t> calls;
+    std::map<std::int32_t, std::set<std::string>> scenarios;
+    std::map<std::int32_t, std::map<std::int32_t, std::size_t>>
+        first_values;
+    std::map<std::int32_t, std::map<std::int32_t, std::size_t>>
+        fourth_values;
+    std::size_t interaction_operands = 0;
+    std::set<std::string> interaction_scenarios;
+    std::map<std::int32_t, std::size_t> interaction_values;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-26/29/60 "
+                "audit.");
+        }
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                for (std::size_t operand_index = 0;
+                     operand_index < command.operands.size();
+                     ++operand_index) {
+                    const osf::script::Operand& operand =
+                        command.operands[operand_index];
+                    if (operand.type != 9) {
+                        continue;
+                    }
+                    if (!check(
+                            command.opcode == 1 &&
+                                operand_index == 1,
+                            "A shipped interaction-range operand moved "
+                            "outside its retail comparison shape.")) {
+                        return false;
+                    }
+                    ++interaction_operands;
+                    interaction_scenarios.insert(
+                        entry.path().filename().string());
+                    ++interaction_values[operand.value];
+                }
+                if (command.opcode != 26 &&
+                    command.opcode != 29 &&
+                    command.opcode != 60) {
+                    continue;
+                }
+                const std::size_t expected_count =
+                    command.opcode == 26 ? 7u : 1u;
+                if (!check(
+                        command.operands.size() == expected_count,
+                        "A shipped opcode-26/29/60 call changed "
+                        "operand count.")) {
+                    return false;
+                }
+                if (command.opcode == 26) {
+                    const std::array<std::int32_t, 7> types{
+                        1, 1, 1, 4, 1, 1, 1,
+                    };
+                    for (std::size_t index = 0;
+                         index < types.size();
+                         ++index) {
+                        if (!check(
+                                command.operands[index].type ==
+                                    types[index],
+                                "A shipped opcode-26 call changed "
+                                "operand shape.")) {
+                            return false;
+                        }
+                    }
+                    ++first_values[26][command.operands[0].value];
+                    ++fourth_values[26][command.operands[3].value];
+                } else if (!check(
+                               command.operands[0].type == 1,
+                               "A shipped opcode-29/60 call changed "
+                               "operand type.")) {
+                    return false;
+                } else {
+                    ++first_values[command.opcode]
+                                  [command.operands[0].value];
+                }
+                ++calls[command.opcode];
+                scenarios[command.opcode].insert(
+                    entry.path().filename().string());
+            }
+        }
+    }
+    return check(
+        calls == std::map<std::int32_t, std::size_t>{
+                     {26, 60}, {29, 61}, {60, 60},
+                 } &&
+            scenarios[26].size() == 22 &&
+            scenarios[29].size() == 23 &&
+            scenarios[60].size() == 22 &&
+            first_values[26] ==
+                std::map<std::int32_t, std::size_t>{
+                    {10041000, 22}, {10041001, 16},
+                    {10041002, 11}, {10041003, 8},
+                    {10041004, 1}, {10041005, 1},
+                    {10041006, 1},
+                } &&
+            fourth_values[26] ==
+                std::map<std::int32_t, std::size_t>{
+                    {1000003, 46}, {1000004, 1}, {1000006, 13},
+                } &&
+            first_values[29] ==
+                std::map<std::int32_t, std::size_t>{
+                    {21000, 1}, {41000, 22}, {41001, 16},
+                    {41002, 11}, {41003, 8}, {41004, 1},
+                    {41005, 1}, {41006, 1},
+                } &&
+            first_values[60] ==
+                std::map<std::int32_t, std::size_t>{{1, 60}} &&
+            interaction_operands == 60 &&
+            interaction_scenarios.size() == 22 &&
+            interaction_values ==
+                std::map<std::int32_t, std::size_t>{
+                    {10041000, 22}, {10041001, 16},
+                    {10041002, 11}, {10041003, 8},
+                    {10041004, 1}, {10041005, 1},
+                    {10041006, 1},
+                },
+        "The shipped opcode-26/29/60 inventory differs from the "
+        "audited unlock-switch scripts.");
+#else
+    return true;
+#endif
+}
+
 }  // namespace
 
 int main() {
@@ -3408,6 +3615,8 @@ int main() {
                    testRetailInclusiveRandomCommandInventory() &&
                    testRetailCompanionStatusCommandInventory() &&
                    testRetailCompanionSwapCommandInventory() &&
+                   testRetailUnlockSwitchCommands() &&
+                   testRetailUnlockSwitchCommandInventory() &&
                    testMalformedScript()
                ? 0
                : 1;

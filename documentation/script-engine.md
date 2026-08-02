@@ -325,8 +325,10 @@ services exercise them; unknown values still fail loudly.
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
 | 25 | `0x004326c9` | Reactivate an inactive scenario-enemy slot at an evaluated position and direction |
+| 26 | `0x00432b02` | Draw one evaluated decimal value above a player or scenario actor |
 | 27 | `0x00432d05` | Draw an actor-anchored script message with evaluated offsets, color, and backing opacity |
 | 28 | `0x00433022` | Run the target character's status-kind-six sentence inline when one exists |
+| 29 | `0x00433056` | Send the network-client form of an unlock-switch notification; a single-player run has no local mutation |
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 31 | `0x00432762` | Search an inclusive enemy-character range for the first registered active entry and write its absolute character number, or `-1` |
 | 32 | `0x004327c9` | Search an inclusive enemy-character range for the first registered inactive entry and write its absolute character number, or `-1` |
@@ -356,6 +358,7 @@ services exercise them; unknown values still fail loudly.
 | 57 | `0x00433b1f` | Write the local player's stored gender value without remapping it |
 | 58 | `0x00433b33` | Search the four automatic-item pages, backpack, and active equipment, then write zero or one |
 | 59 | `0x00433ced` | Remove the first matching item from that same retail owner order |
+| 60 | `0x00433edf` | Refresh the local player's one-update `UnlockSW` presentation marker |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
@@ -784,6 +787,7 @@ The currently understood domains are:
 | 6 | Script character's current world X |
 | 7 | Script character's current world Y |
 | 8 | Current play mode (`0` single player, `1` client, `2` server) |
+| 9 | Whether the idle local player is within interaction range of a displayed script character |
 | 10 | Persistent transport flags (Table 40 rows) |
 | 11 | Persistent script and conversation flags |
 | 12 | Persistent quest state |
@@ -803,6 +807,14 @@ and 32. Retail adds `14000000` to the operand value, looks up that exact MCT
 enemy slot, and returns its lifecycle value. A missing entry returns `-1`, not
 zero. All 160 shipped type-three operands are reads in opcode-0 comparisons;
 none are assignment destinations.
+
+Type `9` is the gate used by the shipped unlock-switch interactions. Retail
+first requires the local player to belong to the active scenario and be in
+normal idle action one. It then finds the requested character in the live
+object-display registry and compares the two judgement rectangles against the
+player's 159-unit interaction range. Missing, hidden, busy, or distant actors
+return zero. All 60 shipped uses are the second operand of opcode 1, spread
+across 22 scenarios and the seven `10041000..10041006` switch actors.
 
 Temporary flags are owned directly by the interpreter and initialized from the
 SCS definitions. Persistent and game-owned domains are callbacks because their
@@ -950,6 +962,32 @@ participate in opaque-pixel pointer selection and the common interaction-range
 approach too. A successful pickup moves the concrete category, definition,
 and quantity into `PlayerInventory`; that owner now feeds the live 9-by-4
 inventory panel and retail save stream.
+
+## Scripted unlock-switch feedback
+
+Switch progress is a script-owned interaction, not a hard-coded map feature.
+The status-zero sentence first uses operand type `9` to confirm that the idle
+hero has actually reached the displayed switch actor. The authored arithmetic
+then computes the progress value before opcode 26 draws it as centered decimal
+text at the actor, with a one-pixel black shadow and no rectangle behind it.
+Its remaining operands provide the world offsets and RGB strengths.
+
+Opcode 60 refreshes the player's transient switch marker for that update.
+`0x00434ef0` draws `Player/Common/UnlockSW` as chart zero, direction eight,
+using the player's action counter and full RGB strengths. The player update
+clears the marker before each status-kind-five pass, so the periodic script
+must keep refreshing it while the switch sequence is active.
+
+Opcode 29 is the multiplayer counterpart. Its handler sends packet `0x22`
+with event kind six only when the executable is a network client. The shipped
+scripts select it behind a play-mode branch; local single player reaches
+opcode 28 instead. The portable single-player host therefore accepts opcode
+29 without inventing local state.
+
+This family appears consistently in the shipped data: opcodes 26 and 60 each
+have 60 calls across 22 scenarios, while opcode 29 has 61 calls across 23.
+The scenario audit fixes their operand shapes and actor distribution so later
+switches keep using the same general interpreter and world presentation.
 
 ## How to extend it
 
