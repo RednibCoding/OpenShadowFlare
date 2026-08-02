@@ -990,6 +990,20 @@ edge before clearing Dusty Ruins correctly does nothing. Scenario `1000001`
 is the enemy-occupied Cold Svalt Town map; it is distinct from the recovered
 town in scenario `1000000`.
 
+The next edge and first town mission stay script-owned as well. Object 2 in
+occupied scenario `1000001` calls opcode 17 for inhabited Cold Svalt scenario
+`1000000`, entry zero. Alex's clear flag 11 starts messages `1000000..1000006`
+through his status-zero/status-one chain and saves the first-visit latch.
+Rosanna owns flag 15: her first visit runs messages `1000047..1000049`, and
+the next runs `1000050..1000051`, sets mission four active, selects its notice,
+and queues sample 65. Wild Ice in the occupied outskirts owns loot row 56 and
+therefore the fixed category-four definition `99000002`, stored on automatic
+page zero at `(2,0)`. On return, Rosanna's message `1000053` is followed by
+opcode 59 and opcode 62 before acknowledgement, so the ruby is removed and
+sample 66 is queued immediately. Callback message `1000054` creates category
+two definition `1100003`; later visits use message `1000055` without repeating
+the item.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

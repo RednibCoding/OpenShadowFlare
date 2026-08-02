@@ -1730,6 +1730,17 @@ Cold Svalt scenario `1000001` at entry zero. This keeps the route, gate, map
 titles, and entry coordinates in MCT/SCS ownership rather than a portable
 quest-name special case.
 
+Cold Svalt's first mission is covered through the same owners. Occupied
+scenario `1000001` has 108 enemies and its object-two overlap enters inhabited
+scenario `1000000`, entry zero. Alex's messages `1000000..1000006` latch flag
+11, while Rosanna uses flag 15 and two visits for messages `1000047..1000051`
+before starting mission four. Wild Ice character `14000001` owns loot row 56,
+which resolves to fixed category four definition `99000002` on automatic page
+zero at `(2,0)`. Rosanna's return sentence removes it and completes the mission
+before message acknowledgement, then callback `1000054` creates category two
+definition `1100003`. Completion sample 66, reward landing sample 93, saved
+quest and latch state, and the no-repeat `1000055` follow-up are all covered.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
