@@ -1040,6 +1040,15 @@ with sample 66. Alex's message `1000022` creates 6,000 Gold; callbacks
 `1000023..1000024` start mission nine and sample 65. Saved active state uses
 `1000025`, so neither Gold nor the handoff repeats.
 
+Mission nine is a map-discovery assignment, not another group clear. Object 5
+in Remains scenario `1040002` calls opcode 17 for Sea of Trees scenario
+`1000004`, entry one. Object 0 there enters Immortal Remains scenario
+`1050000`, entry zero. The destination's status-kind-seven initialization
+calls opcode 62 immediately, completing mission nine and queuing sample 66 as
+the map loads. Back in town, Alex's messages `1000026..1000028` start mission
+ten and sample 65. There is deliberately no Gold or item command in this
+handoff; saved active mission ten uses message `1000029`.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

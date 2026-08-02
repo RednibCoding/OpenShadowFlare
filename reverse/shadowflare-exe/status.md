@@ -1771,6 +1771,15 @@ for the room loot, and completes mission eight with sample 66. Alex then drops
 6,000 Gold and messages `1000023..1000024` start mission nine with sample 65.
 The item landing paths and saved `1000025` no-repeat branch are covered too.
 
+Mission nine is now held by its actual discovery transition. Remains scenario
+`1040002` object five enters Sea of Trees scenario `1000004`, entry one, and
+object zero there enters Immortal Remains scenario `1050000`, entry zero. The
+destination initialization completes mission nine with sample 66 immediately;
+it does not wait for an enemy clear. Alex's `1000026..1000028` chain then
+starts mission ten with sample 65 and intentionally creates no item reward.
+Saving and reloading returns through active message `1000029` without
+replaying the handoff.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

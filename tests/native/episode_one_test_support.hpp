@@ -214,7 +214,8 @@ inline bool walkThroughScenarioTrigger(
     WorldScene& world,
     std::int32_t local_id,
     std::int32_t expected_scenario,
-    std::int32_t maximum_updates = 5000) {
+    std::int32_t maximum_updates = 5000,
+    std::vector<std::int32_t>* audio = nullptr) {
     const ScenarioObjectActor* trigger =
         findScenarioTrigger(world, local_id);
     if (!trigger) {
@@ -234,7 +235,12 @@ inline bool walkThroughScenarioTrigger(
                 screen.y - world.cameraScreenY());
         }
         world.update();
-        world.takeAudioSamples();
+        std::vector<std::int32_t> samples =
+            world.takeAudioSamples();
+        if (audio) {
+            audio->insert(
+                audio->end(), samples.begin(), samples.end());
+        }
     }
     if (world.scenarioId() != expected_scenario) {
         std::cerr << "route trigger " << local_id

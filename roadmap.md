@@ -1212,6 +1212,14 @@ row 63 creates its room loot, and mission eight completes. Alex's 6,000-Gold
 reward, the following mission-nine notice, landing sounds, and saved
 no-repeat branch are covered in the same regression.
 
+The following scouting mission now ends at the place the shipped script says
+it does. Remains scenario `01040002` object five enters Sea of Trees scenario
+`01000004`; its object-zero edge reaches Immortal Remains scenario `01050000`.
+That map's initialization completes mission nine immediately with sample 66.
+Alex uses messages `1000026` through `1000028` to turn the report into mission
+ten, without creating an intermediate item reward. The route, entry values,
+notice sound, saved active branch, and no-repeat behavior are covered.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
