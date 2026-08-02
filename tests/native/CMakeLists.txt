@@ -1437,6 +1437,37 @@ if(TARGET sf_game_core)
     NAME episode_one_quest
     COMMAND episode_one_quest_test)
 
+  add_executable(
+    episode_one_dusty_ruins_test
+    episode_one_dusty_ruins_test.cpp
+  )
+  target_link_libraries(
+    episode_one_dusty_ruins_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_dusty_ruins_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_dusty_ruins_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_dusty_ruins_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_dusty_ruins_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_dusty_ruins_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_dusty_ruins
+    COMMAND episode_one_dusty_ruins_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test

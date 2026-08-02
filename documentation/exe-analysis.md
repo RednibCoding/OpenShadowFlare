@@ -1251,6 +1251,15 @@ reports one for a zero-life enemy until `EnemyActor::expired()` becomes true;
 only MCT enemies are registered, so an absent ID never behaves like an
 inactive enemy.
 
+Dusty Ruins scenario `00010004` supplies the first shipped mission fixture for
+that exact boundary. Its periodic sentence scans `14000000..14000007`; only
+after all eight Garam Goblin slots have finished their complete death
+presentation does it run the object-state sequence, positioned sample, and
+opcode-62 completion of mission three. The corresponding Remote Town path is
+also executable-owned: completed quest zero plus player level 30 lets Ostare
+start mission three, and the completed return branch creates Table 30 row 4
+once before persistent flag two suppresses later rewards.
+
 Operand type 3 reaches that same registry directly. The reader at
 `0x004346e2` adds `14000000` to the operand's local enemy number, calls
 `0x00430770`, returns the entry value at `+4`, and returns `-1` when lookup

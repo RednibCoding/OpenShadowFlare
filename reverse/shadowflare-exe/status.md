@@ -1690,6 +1690,17 @@ quest one before waiting for the bubble acknowledgement. Sample 66, the next
 three messages, save/load of quest and script state, and the absent returned
 item are held by one live regression.
 
+The next Episode 1 mission now has a live regression instead of only catalog
+coverage. Ostare's Remote Town script requires completed quest zero and hero
+level 30 before messages `1000007` through `1000009` start quest three. Dusty
+Ruins scenario `00010004` then waits for enemy registry entries
+`14000000..14000007` to become inactive; zero life is deliberately not enough
+while a Garam Goblin is still fading. The all-clear branch runs its authored
+object toggles and sound before opcode 62 produces sample 66. Returning to
+Ostare creates Table 30 row 4 exactly once, sets persistent flag two, and
+continues to the Cold Svalt message. Quest state and the reward latch both
+survive save/load.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

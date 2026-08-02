@@ -941,6 +941,20 @@ callback. The portable world exposes the same lifecycle through a narrow
 interpreter hook, so group-clear and later encounter scripts do not need to
 know about `EnemyActor` or duplicate combat state.
 
+Episode 1's Dusty Ruins assignment is the first complete group-clear path.
+After quest zero is complete, Ostare still waits until the saved hero reaches
+level 30. His Remote Town branch then shows messages `1000007` through
+`1000009`, starts mission three, selects its 600-update notice, and queues
+sample 65. In Dusty Ruins scenario `00010004`, a periodic sentence scans
+enemy characters `14000000` through `14000007` with opcode 31. Each defeated
+Garam Goblin remains active until its death chart and fade expire, so the
+mission cannot complete early. Once the scan returns `-1`, the script applies
+its three object-state commands, plays its positioned sample, and completes
+mission three with sample 66. Back in town, Ostare creates the Table 30 row-4
+reward before message `1000011`, sets persistent flag two, follows with the
+Cold Svalt message `1000012`, and never creates that reward again after a
+save/load round trip.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

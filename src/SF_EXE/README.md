@@ -354,6 +354,12 @@ page, and returning it lets Malse remove the real owned item and complete the
 quest. That state and the removed item both remain correct after saving and
 loading; no Malse, Black Hammer, or quest-ID rule lives in the world code.
 
+Ostare's later Dusty Ruins job follows the same rule. His script checks the
+completed opening quest and the real level-30 gate, starts mission three, and
+the Room of Judgment waits until all eight enemies have completely faded
+before it marks the mission done. Returning to town creates Ostare's table
+reward once; the mission and reward latch both survive saving and loading.
+
 The adjacent Identify Items choice also follows the authored script: it scans
 equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
 keeps `NO` selected initially, rejects insufficient Gold, and identifies every

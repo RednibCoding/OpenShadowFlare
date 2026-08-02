@@ -1139,6 +1139,15 @@ return sentence removes it before completing mission one and playing sample
 66. The immediate work after message `1000028`, the remaining three callbacks,
 quest notice, progress flags, and completed save/reload all stay data-driven.
 
+Ostare's next Episode 1 assignment is covered across maps as well. Completed
+quest zero is only half of its gate: the hero must also reach retail level 30
+before messages `1000007` through `1000009` start mission three. The Room of
+Judgment periodic script waits for all eight authored enemy slots to finish
+their death fades, completes the mission with its object changes and sound,
+then lets Ostare create the Table 30 row-4 reward exactly once. The mission,
+notice and cue order, Cold Svalt follow-up, and saved reward latch all come
+from SCS and table data rather than an Ostare or Dusty Ruins special case.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
