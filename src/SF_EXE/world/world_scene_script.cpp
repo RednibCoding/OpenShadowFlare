@@ -1,6 +1,7 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
+#include "script/scenario_attached_effect_command.hpp"
 #include "script/scenario_effect_command.hpp"
 #include "script/scenario_placed_effect_command.hpp"
 #include "vendor_stock_generator.hpp"
@@ -392,6 +393,48 @@ bool WorldScene::executeScriptNativeCommand(
         CombatEffectSpawnRequest request;
         if (!makeScenarioPlacedEffectRequest(
                 arguments, request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 40) {
+        if (arguments.size() != 2) {
+            return false;
+        }
+        constexpr std::int32_t kPlayerOwner = 1;
+        constexpr std::int32_t kScenarioActorOwner = 4;
+        const std::int32_t source_character_number = arguments[1];
+        std::int32_t owner_kind = kScenarioActorOwner;
+        ObjectBounds source_judgement;
+        if (source_character_number >= 0 &&
+            source_character_number < 4) {
+            if (!has_player_ ||
+                source_character_number !=
+                    scenario_world_.localPlayerNumber()) {
+                return true;
+            }
+            owner_kind = kPlayerOwner;
+            source_judgement = player_.judgement();
+        } else {
+            WorldPosition source_position;
+            const ObjectBounds* judgement = nullptr;
+            if (!scriptCharacterBounds(
+                    source_character_number,
+                    source_position,
+                    judgement)) {
+                return true;
+            }
+            source_judgement = *judgement;
+        }
+
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioAttachedEffectRequest(
+                arguments,
+                owner_kind,
+                source_judgement,
+                request)) {
             return false;
         }
         queueCombatEffect(request);

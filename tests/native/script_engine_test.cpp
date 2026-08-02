@@ -2410,6 +2410,139 @@ bool testRetailPlacedEffectCommand() {
 #endif
 }
 
+bool testRetailAttachedEffectCommand() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path scenario_path =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare" / "Scenario" / "04000003" /
+        "Scenario.Scs";
+    if (!std::filesystem::is_regular_file(scenario_path)) {
+        return true;
+    }
+    osf::script::ScriptData script;
+    std::string error;
+    if (!script.load(scenario_path, &error)) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    using NativeCall =
+        std::pair<std::int32_t, std::vector<std::int32_t>>;
+    std::vector<NativeCall> calls;
+    osf::script::InterpreterHooks hooks;
+    hooks.read_operand = [](
+                             const osf::script::Operand& operand) {
+        if (operand.type == 6) {
+            return 111;
+        }
+        if (operand.type == 7) {
+            return 222;
+        }
+        return 0;
+    };
+    hooks.native_command = [&calls](
+                               std::int32_t opcode,
+                               const std::vector<std::int32_t>& arguments) {
+        calls.emplace_back(opcode, arguments);
+        return true;
+    };
+    hooks.next_random = [](std::int32_t& value) {
+        value = 0;
+        return true;
+    };
+    osf::script::Interpreter interpreter(std::move(hooks));
+    interpreter.bind(&script);
+    if (!check(
+            interpreter.startSentence(7, -1) ==
+                    osf::script::StepResult::complete &&
+                calls == std::vector<NativeCall>{
+                    {40, {20018, 10000001}},
+                    {16, {51, 0, 111, 222}},
+                },
+            "Opcode 40 did not evaluate the authored actor-attached "
+            "effect sentence.")) {
+        return false;
+    }
+
+    const std::filesystem::path root =
+        scenario_path.parent_path().parent_path();
+    std::size_t call_count = 0;
+    std::size_t scenario_count = 0;
+    std::map<std::int32_t, std::size_t> effects;
+    std::map<std::int32_t, std::size_t> sources;
+    std::map<std::string, std::size_t> operand_shapes;
+    for (const std::filesystem::directory_entry& entry :
+         std::filesystem::directory_iterator(root)) {
+        const std::filesystem::path path =
+            entry.path() / "Scenario.Scs";
+        if (!std::filesystem::is_regular_file(path)) {
+            continue;
+        }
+        osf::script::ScriptData data;
+        if (!data.load(path)) {
+            return check(
+                false,
+                "A shipped script failed during the opcode-40 audit.");
+        }
+        std::size_t scenario_calls = 0;
+        for (const osf::script::Sentence& sentence :
+             data.sentences()) {
+            for (const osf::script::Command& command :
+                 sentence.commands) {
+                if (command.opcode != 40) {
+                    continue;
+                }
+                if (!check(
+                        command.operands.size() == 2,
+                        "A shipped opcode-40 call changed shape.")) {
+                    return false;
+                }
+                ++call_count;
+                ++scenario_calls;
+                std::string shape;
+                for (const osf::script::Operand& operand :
+                     command.operands) {
+                    shape += std::to_string(operand.type);
+                    shape += ',';
+                }
+                ++operand_shapes[shape];
+                if (command.operands[0].type == 1 &&
+                    command.operands[1].type == 1) {
+                    ++effects[command.operands[0].value];
+                    ++sources[command.operands[1].value];
+                }
+            }
+        }
+        scenario_count += scenario_calls != 0 ? 1u : 0u;
+    }
+    return check(
+        call_count == 54 && scenario_count == 45 &&
+            effects ==
+                std::map<std::int32_t, std::size_t>{
+                    {20010, 8},
+                    {20018, 46},
+                } &&
+            sources ==
+                std::map<std::int32_t, std::size_t>{
+                    {10000000, 19},
+                    {10000001, 13},
+                    {10000002, 4},
+                    {10000003, 1},
+                    {10000009, 1},
+                    {10000013, 1},
+                    {10000014, 1},
+                    {10000015, 1},
+                    {10000102, 8},
+                    {10000200, 5},
+                } &&
+            operand_shapes ==
+                std::map<std::string, std::size_t>{{"1,1,", 54}},
+        "The shipped opcode-40 inventory differs from the audited retail "
+        "scripts.");
+#else
+    return true;
+#endif
+}
+
 bool testRetailInclusiveRandomCommand() {
     osf::script::ScriptData script = makeRandomCommandScript();
     if (!check(
@@ -3261,6 +3394,7 @@ int main() {
                    testRetailScenarioEntityOverrideCommand() &&
                    testRetailScenarioEffectCommand() &&
                    testRetailPlacedEffectCommand() &&
+                   testRetailAttachedEffectCommand() &&
                    testRetailArithmeticCommands() &&
                    testRetailEnemyLifecycleSearchCommands() &&
                    testNestedKindSixStatusCommand() &&

@@ -2241,3 +2241,22 @@ the double at `0x00475178` (`57.29579143313326`) and uses the truncating x87
 conversion at `0x00467fe0`. Negative results are not normalized. The shipped
 catalog has 126 target calls across 25 scenarios and 80 direction calls across
 17 scenarios; all operand shapes are covered by the portable audit.
+
+## Script actor-attached effects
+
+The opcode-40 handler at `0x00433409` evaluates an effect number followed by
+a source character. Source values zero through three resolve a live player
+slot and use owner kind one with the judgement rectangle at player offset
+`+0x2e8`. Every other value resolves through the scenario-character registry,
+uses owner kind four, and copies the rectangle at the common actor offset
+`+0x20`. A missing source returns successfully without creating anything.
+
+The handler calls `FUN_0042fdc0` with target kind and identifier zero, no
+explicit origin, the copied source rectangle, no combat packet, direction
+eight, instance `-1`, common lifetime value 200, and zero in every remaining
+constructor field. `FUN_0042b860` resolves the owner position when the request
+is presented and turns the copied lower-right bound plus one into the effect's
+point judgement. Effect 20010 selects OPTION resource 11000008 and effect
+20018 selects resource 10000020. The shipped catalog contains 54 calls across
+45 scenarios, all with two literal operands: eight use 20010 and 46 use
+20018.

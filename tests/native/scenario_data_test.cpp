@@ -16,6 +16,7 @@
 #include "world/npc_script_action.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
+#include "world/script/scenario_attached_effect_command.hpp"
 #include "world/script/scenario_effect_command.hpp"
 #include "world/script/scenario_placed_effect_command.hpp"
 #include "world/world_scene.hpp"
@@ -217,6 +218,66 @@ bool testScenarioPlacedEffectCommand() {
                 std::vector<std::int32_t>(6), request),
         "Opcode 36 did not preserve its retail OPTION resources or "
         "operand count.");
+}
+
+bool testScenarioAttachedEffectCommand() {
+    const std::vector<std::int32_t> arguments{
+        20018,
+        10000001,
+    };
+    const osf::ObjectBounds judgement{-80, -60, 79, 99};
+    osf::CombatEffectSpawnRequest request;
+    if (!check(
+            osf::makeScenarioAttachedEffectRequest(
+                arguments, 4, judgement, request),
+            "The retail actor-attached effect descriptor was rejected.")) {
+        return false;
+    }
+    if (!check(
+            request.valid && request.effect_number == 20018 &&
+                request.owner_kind == 4 &&
+                request.source_character_number == 10000001 &&
+                request.target_kind == 0 &&
+                request.target_identifier == 0 &&
+                request.constructor_value_6 == 0 &&
+                request.constructor_value_7 == 0 &&
+                request.direction_radians == 0.0 &&
+                !request.has_explicit_origin &&
+                request.has_source_judgement &&
+                request.source_judgement.left == -80 &&
+                request.source_judgement.top == -60 &&
+                request.source_judgement.right == 79 &&
+                request.source_judgement.bottom == 99 &&
+                request.constructor_value_12 == 0 &&
+                !request.has_packet && request.packet_kind == 8 &&
+                request.instance_identifier == -1 &&
+                request.constructor_value_16 == 0 &&
+                request.constructor_value_17 == 0 &&
+                request.constructor_value_18 == 0 &&
+                request.constructor_value_19 == 0 &&
+                request.constructor_value_20 == 0 &&
+                request.constructor_value_21 == 200 &&
+                request.constructor_value_22 == 0,
+            "Opcode 40 did not reproduce the retail 22-field effect "
+            "request.")) {
+        return false;
+    }
+    if (!check(
+            osf::retailCombatEffectResourceId(20010) == 11000008 &&
+            osf::retailCombatEffectResourceId(20018) == 10000020 &&
+            !osf::makeScenarioAttachedEffectRequest(
+                std::vector<std::int32_t>(1),
+                4,
+                judgement,
+                request) &&
+            !osf::makeScenarioAttachedEffectRequest(
+                arguments, 0, judgement, request),
+            "Opcode 40 did not preserve its retail OPTION resources, owner "
+            "kinds, or operand count.")) {
+        return false;
+    }
+
+    return true;
 }
 
 bool updateUntilConversation(
@@ -5048,6 +5109,7 @@ int main() {
     return testNpcScriptAction() &&
                    testScenarioEffectCommand() &&
                    testScenarioPlacedEffectCommand() &&
+                   testScenarioAttachedEffectCommand() &&
                    testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
                    testPlayerLevelUpNoticeLayout() &&
