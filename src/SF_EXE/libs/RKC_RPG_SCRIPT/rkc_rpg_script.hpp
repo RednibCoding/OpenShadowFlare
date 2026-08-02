@@ -93,6 +93,13 @@ struct ScenarioCaptionEvent {
     std::string text;
 };
 
+struct LocalPlayerTarget {
+    bool source_found = false;
+    std::int32_t player_number = -1;
+    std::int32_t world_x = 0;
+    std::int32_t world_y = 0;
+};
+
 enum class ValueQuery {
     local_player_number,
     local_player_gender,
@@ -140,6 +147,11 @@ struct InterpreterHooks {
     std::function<bool(
         std::int32_t,
         std::int32_t&)> query_enemy_lifecycle_state = {};
+    std::function<bool(
+        std::int32_t,
+        std::int32_t,
+        std::int32_t,
+        LocalPlayerTarget&)> query_local_player_target = {};
 };
 
 class Interpreter {

@@ -330,11 +330,14 @@ services exercise them; unknown values still fail loudly.
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 31 | `0x00432762` | Search an inclusive enemy-character range for the first registered active entry and write its absolute character number, or `-1` |
 | 32 | `0x004327c9` | Search an inclusive enemy-character range for the first registered inactive entry and write its absolute character number, or `-1` |
+| 33 | `0x0043288d` | Find the nearest living local player inside an evaluated distance range and write that slot and world position |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
+| 35 | `0x00432831` | Convert an evaluated world vector to the executable's truncated direction in degrees |
 | 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
 | 38 | `0x00433544` | Close the matching script-opened transport service |
 | 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
+| 40 | `0x00433409` | Submit a packetless one-pass visual attached to an evaluated player or scenario actor |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
@@ -429,6 +432,26 @@ script library asks its host for the next random value, keeping the DLL
 boundary free of world ownership while still sharing the world's retail
 random sequence.
 
+Opcode 33 resolves its first operand through the scenario-character registry,
+then searches the four local-player slots in numerical order. A candidate must
+be active, alive, and in the same scenario. Distance comes from the shared
+judgement-rectangle measurement; `-1` leaves either end open and every other
+bound is inclusive. The nearest candidate wins and the earlier slot wins a
+tie. Success writes the player slot followed by world X and Y. A valid source
+with no candidate writes only `-1` to the slot, leaving both coordinates
+alone; a missing source leaves all three outputs alone. The portable runtime
+currently owns one local player, but the script-library boundary already
+returns the complete target record so multiplayer can extend the world query
+without changing the interpreter.
+
+Opcode 35 evaluates X and Y, calculates `atan2(-Y, X)`, multiplies by the
+executable's slightly truncated `57.29579143313326` degrees-per-radian
+constant, and truncates toward zero. It does not normalize negative angles.
+The shipped data contains 126 opcode-33 calls in 25 scenarios and 80
+opcode-35 calls in 17 scenarios. Six target queries and one direction query
+deliberately put a literal in the last output position, which the ordinary
+operand writer ignores just as it does for other non-writable operands.
+
 Opcodes 13, 14, and 15 continue the writable arithmetic group started by add
 and subtract. All three evaluate the destination value before the right-hand
 operand and write back through the common operand owner. Multiply keeps the
@@ -466,6 +489,20 @@ and zero-sized bounds. Effect 20009 occurs 285 times, selects resource
 11000007, uses height 150, and supplies directions one, three, five, or seven.
 Near Remote Town's sentence 18 is the first direct fixture, and its periodic
 status creates the six live visuals authored for that update.
+
+Opcode 40 is the actor-attached form. Its two operands are the effect number
+and source character. Player slots zero through three use owner kind one;
+every other resolved scenario character uses owner kind four. The executable
+copies the source judgement rectangle into the common request, leaves the
+origin implicit so the one-pass owner resolves the actor position, uses
+direction eight, and carries no combat packet. A missing source is a
+successful no-op.
+
+All 54 shipped calls have two literal operands and occur across 45 scenarios.
+Eight use effect 20010/resource 11000008, while the other 46 use effect
+20018/resource 10000020. The portable interpreter only evaluates and forwards
+the pair. Actor lookup, geometry, effect resources, and presentation stay in
+the world owner.
 
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its

@@ -1,6 +1,7 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
+#include "script/scenario_attached_effect_command.hpp"
 #include "script/scenario_effect_command.hpp"
 #include "script/scenario_placed_effect_command.hpp"
 #include "vendor_stock_generator.hpp"
@@ -392,6 +393,48 @@ bool WorldScene::executeScriptNativeCommand(
         CombatEffectSpawnRequest request;
         if (!makeScenarioPlacedEffectRequest(
                 arguments, request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 40) {
+        if (arguments.size() != 2) {
+            return false;
+        }
+        constexpr std::int32_t kPlayerOwner = 1;
+        constexpr std::int32_t kScenarioActorOwner = 4;
+        const std::int32_t source_character_number = arguments[1];
+        std::int32_t owner_kind = kScenarioActorOwner;
+        ObjectBounds source_judgement;
+        if (source_character_number >= 0 &&
+            source_character_number < 4) {
+            if (!has_player_ ||
+                source_character_number !=
+                    scenario_world_.localPlayerNumber()) {
+                return true;
+            }
+            owner_kind = kPlayerOwner;
+            source_judgement = player_.judgement();
+        } else {
+            WorldPosition source_position;
+            const ObjectBounds* judgement = nullptr;
+            if (!scriptCharacterBounds(
+                    source_character_number,
+                    source_position,
+                    judgement)) {
+                return true;
+            }
+            source_judgement = *judgement;
+        }
+
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioAttachedEffectRequest(
+                arguments,
+                owner_kind,
+                source_judgement,
+                request)) {
             return false;
         }
         queueCombatEffect(request);
@@ -895,6 +938,40 @@ bool WorldScene::measureScriptCharacterDistance(
         player_.judgement(),
         position,
         *judgement);
+    return true;
+}
+
+bool WorldScene::queryScriptLocalPlayerTarget(
+    std::int32_t character_number,
+    std::int32_t lower_distance,
+    std::int32_t upper_distance,
+    script::LocalPlayerTarget& target) const {
+    target = {};
+    WorldPosition source_position;
+    const ObjectBounds* source_judgement = nullptr;
+    if (!scriptCharacterBounds(
+            character_number,
+            source_position,
+            source_judgement)) {
+        return true;
+    }
+    target.source_found = true;
+    if (!has_player_ || player_data_.currentLife() <= 0) {
+        return true;
+    }
+
+    const std::int32_t distance = distanceBetweenBounds(
+        source_position,
+        *source_judgement,
+        player_.position(),
+        player_.judgement());
+    if ((lower_distance != -1 && distance < lower_distance) ||
+        (upper_distance != -1 && distance > upper_distance)) {
+        return true;
+    }
+    target.player_number = scenario_world_.localPlayerNumber();
+    target.world_x = player_.position().x;
+    target.world_y = player_.position().y;
     return true;
 }
 

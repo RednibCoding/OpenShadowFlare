@@ -208,6 +208,7 @@ add_library(
   world/scenario_world.cpp
   world/transport_catalog.cpp
   world/vendor_stock_generator.cpp
+  world/script/scenario_attached_effect_command.cpp
   world/script/scenario_effect_command.cpp
   world/script/scenario_placed_effect_command.cpp
   world/script/scenario_script_runtime.cpp

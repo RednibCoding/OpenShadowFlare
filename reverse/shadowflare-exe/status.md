@@ -2225,3 +2225,38 @@ secondary click or panel close cancels the mode. `FUN_004087b0` draws pattern
 one from `System.njp` instead of the normal pattern zero while the mode is
 active. Unidentified tooltips use the item description as their base name and
 hide all instance values.
+
+## Script target geometry
+
+The opcode-33 handler at `0x0043288d` resolves a scenario character and calls
+`FUN_00430b30` with mode one. That helper scans player slots zero through
+three, accepts only active living players in the same scenario, applies
+inclusive lower and upper judgement-distance bounds with `-1` as an open end,
+and keeps the first slot at equal distance. A match writes slot, world X, and
+world Y. No match writes only slot `-1`; an unresolved source writes nothing.
+
+Opcode 35 at `0x00432831` passes its evaluated operands to
+`FUN_00414080`, which calculates `atan2(-Y, X)`. It multiplies the result by
+the double at `0x00475178` (`57.29579143313326`) and uses the truncating x87
+conversion at `0x00467fe0`. Negative results are not normalized. The shipped
+catalog has 126 target calls across 25 scenarios and 80 direction calls across
+17 scenarios; all operand shapes are covered by the portable audit.
+
+## Script actor-attached effects
+
+The opcode-40 handler at `0x00433409` evaluates an effect number followed by
+a source character. Source values zero through three resolve a live player
+slot and use owner kind one with the judgement rectangle at player offset
+`+0x2e8`. Every other value resolves through the scenario-character registry,
+uses owner kind four, and copies the rectangle at the common actor offset
+`+0x20`. A missing source returns successfully without creating anything.
+
+The handler calls `FUN_0042fdc0` with target kind and identifier zero, no
+explicit origin, the copied source rectangle, no combat packet, direction
+eight, instance `-1`, common lifetime value 200, and zero in every remaining
+constructor field. `FUN_0042b860` resolves the owner position when the request
+is presented and turns the copied lower-right bound plus one into the effect's
+point judgement. Effect 20010 selects OPTION resource 11000008 and effect
+20018 selects resource 10000020. The shipped catalog contains 54 calls across
+45 scenarios, all with two literal operands: eight use 20010 and 46 use
+20018.

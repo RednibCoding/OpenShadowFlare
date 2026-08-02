@@ -1073,6 +1073,23 @@ companion targeting continue to ignore them. Scenario `04000003` is covered
 end to end: its controller selects one dead slot, shows the authored two-layer
 wave effect, waits 40 updates, and returns that slot at full life.
 
+Scripted target geometry now follows the executable as well. Opcode 33 asks
+the world for the nearest living local player inside its inclusive
+judgement-bound distance range and returns the player slot and authored world
+coordinates without giving the script library ownership of actors. Opcode 35
+turns those coordinate deltas into retail's unnormalized, truncated direction
+degrees. Their 206 shipped calls are covered by a full scenario-catalog shape
+audit, including the unusual literal output operands.
+
+The matching actor-attached visual command is reconstructed too. Opcode 40
+evaluates an effect and source character, distinguishes local-player owner
+kind one from scenario-actor owner kind four, snapshots that actor's
+judgement rectangle, and submits the packetless one-pass request through the
+existing effect owner. Missing actors remain successful no-ops. All 54
+shipped calls across 45 scenarios are audited; effects 20010 and 20018 map to
+their retail OPTION resources 11000008 and 10000020 without adding any
+scenario-specific rules.
+
 Malse's next authored branch is live too. Completing the Red Goblin quest is
 what advances his script into the merchant introduction and later service
 menu; the engine does not special-case his name or quest ID. Scenario status
