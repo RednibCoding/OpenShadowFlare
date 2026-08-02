@@ -1113,6 +1113,22 @@ Messages `1000011..1000012` then start mission 12, whose Table 41 title is
 11 completion, mission 12 activation, flag 23, and the no-repeat branch all
 survive the retail save owner.
 
+Mission 12 does not immediately open the route to the Mining Tunnel. Mining
+Town object one reaches Forest of Four Leaves scenario `2100001`, and object
+three there leads to Cross Agora scenario `2100004`. Garshwin is PEOPLE actor
+zero. His default `1000002` text is replaced before presentation when mission
+12 is active, so the player sees the `1000003` and `1000004` refusal bubbles.
+The same status sets saved flag 24.
+
+Cross Agora object three only runs opcode 17 for Fanann scenario `2200000`
+when mission 14 is complete. With mission 12 active and mission 14 untouched,
+walking into its authored judgement rectangle is a no-op. Back in Mining Town,
+Kyle's flag-24 branch runs messages `1000020..1000029`, leaves mission 12
+active, and uses opcodes 62 and 48 to start and publish mission 13. Table 41
+names it `Meet with the Wizard Kirushutat.` Once that mission is active,
+Kyle's ordinary return text is `1000013`; flag 24 and both mission states
+survive saving and loading.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

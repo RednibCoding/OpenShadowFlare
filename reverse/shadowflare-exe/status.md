@@ -1840,6 +1840,22 @@ Mining Tunnel of Yugunos.`, and the active branch becomes `1000013`. Native
 coverage keeps both mission states, flag 23, map route, gate, quest cues, Gold,
 landing sounds, and saved no-repeat behavior under shipped data.
 
+The first mission-12 gate is now traced and covered. Mining Town object one
+enters Forest of Four Leaves scenario `2100001`; object three there points to
+Cross Agora scenario `2100004`. Garshwin is PEOPLE zero near the southern
+edge. His status starts with default message `1000002`, but active mission 12
+replaces it before display with `1000003`; its embedded continuation shows
+`1000004`. The status writes saved flag 24 on this refusal branch.
+
+Cross Agora object three checks mission 14 for state two before opcode 17 can
+enter Fanann scenario `2200000`. At this point mission 14 is zero, so reaching
+the live trigger rectangle leaves the player in Cross Agora. Kyle reads flag
+24 on return and runs messages `1000020..1000029`, describing the dragon seal
+and Kirushutat. The final callback starts mission 13 with opcode 62 and its
+notice with opcode 48; Table 41 row 13 is `Meet with the Wizard Kirushutat.`
+Mission 12 stays active. Native coverage preserves the refusal, locked edge,
+flag, cue, sound, both mission states, and `1000013` saved return branch.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
