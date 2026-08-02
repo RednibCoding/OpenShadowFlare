@@ -12,6 +12,7 @@
 #include "retail_save_magic.hpp"
 #include "retail_save_mines.hpp"
 #include "retail_save_progress.hpp"
+#include "retail_save_world_state.hpp"
 
 #include <algorithm>
 #include <array>
@@ -253,6 +254,7 @@ bool writeRetailSaveImpl(
     const RetailSaveProgress* progress,
     const PlayerMagic* magic,
     const std::int32_t* mine_count,
+    const RetailSaveWorldState* world_state,
     const PlayerGiantWarehouse* giant_warehouse,
     const PlayerAutomaticItems* automatic_items,
     std::uint8_t xor_key,
@@ -355,12 +357,23 @@ bool writeRetailSaveImpl(
              error))) {
         return false;
     }
-    std::size_t giant_warehouse_end = mine_end;
-    if (giant_warehouse &&
-        (!mine_count || !item_database ||
-         !replaceRetailGiantWarehouse(
+    std::size_t world_state_end = mine_end;
+    if (world_state &&
+        (!mine_count ||
+         !replaceRetailWorldState(
              payload,
              mine_end,
+             *world_state,
+             &world_state_end,
+             error))) {
+        return false;
+    }
+    std::size_t giant_warehouse_end = world_state_end;
+    if (giant_warehouse &&
+        (!world_state || !item_database ||
+         !replaceRetailGiantWarehouse(
+             payload,
+             world_state_end,
              *item_database,
              *giant_warehouse,
              &giant_warehouse_end,
@@ -463,6 +476,7 @@ bool writeRetailSave(
         nullptr,
         nullptr,
         nullptr,
+        nullptr,
         xor_key,
         error);
 }
@@ -485,6 +499,7 @@ bool writeRetailSave(
         &equipment,
         &belt,
         &special_items,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -514,6 +529,7 @@ bool writeRetailSave(
         &belt,
         &special_items,
         &progress,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -544,6 +560,7 @@ bool writeRetailSave(
         &special_items,
         &progress,
         &magic,
+        nullptr,
         nullptr,
         nullptr,
         nullptr,
@@ -562,6 +579,7 @@ bool writeRetailSave(
     const RetailSaveProgress& progress,
     const PlayerMagic& magic,
     std::int32_t mine_count,
+    const RetailSaveWorldState& world_state,
     const PlayerGiantWarehouse& giant_warehouse,
     const PlayerAutomaticItems& automatic_items,
     std::uint8_t xor_key,
@@ -577,6 +595,7 @@ bool writeRetailSave(
         &progress,
         &magic,
         &mine_count,
+        &world_state,
         &giant_warehouse,
         &automatic_items,
         xor_key,

@@ -12,6 +12,7 @@
 #include "states/gameplay_status.hpp"
 #include "states/gameplay_transport.hpp"
 #include "states/gameplay_vendor.hpp"
+#include "ui/pointer_input_guard.hpp"
 
 #include <cstdint>
 
@@ -67,6 +68,7 @@ private:
 
     bool updateOptions(
         InputAdapter& input,
+        bool hud_toggle,
         WorldScene& world,
         AudioSystem& audio,
         GameConfig& game_config,
@@ -93,6 +95,7 @@ private:
     GameplayMissionList mission_list_;
     GameplayTransport transport_;
     GameplayVendor vendor_;
+    PointerInputGuard world_drop_pointer_guard_;
     GameplayOptionsAction pending_action_ =
         GameplayOptionsAction::none;
 };

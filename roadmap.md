@@ -25,6 +25,7 @@ The portable executable already has a solid front half:
 - a backend-neutral graphics API with a 640×480 software renderer
 - the title screen, its smoke animation, music, fades, and menu sounds
 - new-character creation and the complete saved-game selection flow
+- full retail save-row summaries (Level, Job, Sex, Name, HP, MP, and EXP)
 - the original initial loading screen
 - Remote Town's ground, static objects, shadows, player sprite, and music
 - click-to-move movement, walk/run switching, matching animation, static
@@ -33,12 +34,14 @@ The portable executable already has a solid front half:
 - the shared Status/Magic window, derived character values, elemental display,
   four spell pages, drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
+- working Menu, Status, and Item HUD buttons with UI-owned item-drop clicks
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
 - the player's table-backed owned companion, including its PARTNER visual,
   depth sorting, collision, scenario travel, retail follow distances, enemy
   acquisition, ordinary melee attack, damage reactions, death, timed revival,
-  and capped table-backed progression
+  capped table-backed progression, Space/HUD activity control, and the
+  original bottom-left life and active/inactive display
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -124,6 +127,22 @@ rebuilt at the hero with full life. The periodic town scripts then expose the
 old dog and hide the newly owned one. All six shipped opcode-45 calls remain
 data-driven across their three scenarios, and a save/load regression keeps the
 selected dog and every inactive progression row intact.
+
+The companion `Check Status` choices now run opcode 3 as well. The selected
+Table 60 row and its saved level build the retail multiline status text, and
+the result stays an ordinary actor speech bubble rather than becoming a new
+menu. Closing it writes the command's result operand and follows the authored
+status-one release branch. All six calls across the three shipped scenarios
+remain script-driven, including retail's slightly odd magical-stat labels.
+
+Syria's normal recovery callback is complete now too. The script itself
+decides whether life, mana, or the optional condition needs attention, then
+uses opcodes 20, 7, and 8 to play her resource-9 chart-three blessing and
+restore the live party pools. The hero uses the derived equipment-adjusted
+maximums; a living owned companion is fully healed, while a defeated companion
+stays defeated. PEOPLE one-shot and repeated frame ranges now have their own
+small controller, preserving the first and final frames and returning to idle
+at the retail update boundary. Her authored sample still comes from opcode 16.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
@@ -763,8 +782,18 @@ claim full save loading or writing.
 The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
 screen coordinates, digit placement, and 206-pixel life and mana calculations.
 The renderer draws those packets after the camera-driven world and before
-actor speech. The HUD owns y=400 through y=479, so clicks there no longer pass
-through as movement commands.
+actor speech. The lower interface owns y=400 through y=479, and the companion
+strip additionally owns its exact y=393 through y=408 rectangle, so those
+clicks no longer pass through as movement commands.
+
+The companion part of that layer is live as well. New play sessions start the
+owned companion inactive, matching the retail player runtime. Space or the
+exact bottom-left HUD strip toggles it. Inactive companions keep following and
+colliding, but they do not acquire targets and enemies or hostile effects do
+not select them. The HUD uses patterns 29 through 32 for the right-aligned
+109-pixel life fill, its low-health pulse, and the `ACTIVE`/`INACTIVE` label.
+The state stays intact between maps and is not written into the character
+save.
 
 The retail window class loads the ordinary system arrow and never replaces it
 with another cursor. LWL already supplies that native arrow on every desktop
@@ -817,9 +846,9 @@ The remaining layers are:
 
 The bar currently shows full new-character life and mana from `PlayerData`,
 the centered one-to-three-digit level display, and the persistent walk/run
-indicator. Damage/healing lag colors, bar particles, condition icons, a
-companion bar, and the level-up pulse can be added when the corresponding
-gameplay state exists. HUD coordinates and visibility rules must continue to
+indicator. Damage/healing lag colors, bar particles, condition icons, and
+other transient values can be added when the corresponding gameplay state
+exists. HUD coordinates and visibility rules must continue to
 come from retail draw packets; the interface stays separate from the world
 camera.
 
@@ -908,6 +937,15 @@ order, and zero-divisor no-write path. Corpus coverage holds all 388 shipped
 calls across their original scenarios, giving later spawn and encounter
 sentences the calculations they expect before their native actions run.
 
+The paired enemy-group searches are reconstructed too. Opcodes 31 and 32 scan
+an inclusive authored range for the first registered active or inactive enemy,
+skip character numbers which do not exist in the current scenario, and write
+`-1` when there is no match. The world keeps a zero-life enemy active through
+its complete death chart and 120-update fade, just as retail does, and only
+publishes the inactive state when the actor expires. Corpus tests hold the 134
+active searches across 90 scenarios and 34 inactive searches across 13
+scenarios to their retail operand shape.
+
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
 CAF cells, and both share the retail range square, display ordering, pale hover
@@ -925,6 +963,15 @@ The matching discovery path is live too. Periodic status-kind-5 sentences use
 opcode 34 to measure the hero against each teleporter's hidden activation
 object. Overlap enables that scenario's Table 40 row, immediately adds it to
 the compact transport list, and survives the normal save/load round trip.
+
+The matching transport-point presentation is live now as well. Opcode 27
+draws the SCS message above its authored type-zero object with retail's
+6-by-12 centering, bottom anchor, three-pixel black backing, one-pixel shadow,
+RGB, and opacity. Opcode 46 drives both Remote Town transport visuals from
+zero to 1,000 in steps of 50 and back again, including the hidden-animation
+stop at zero. The activation sample uses the script's one-shot latch. Leaving
+removes the label and opcode 38 closes only the matching transport panel;
+an open right-side inventory and its camera anchor remain intact.
 
 The named Warehouse object follows the same pointer and range path. Its
 status-zero sentence reaches opcode 41 with argument zero and toggles the
@@ -960,6 +1007,13 @@ raw authored area caption. Dusty Ruins selects `B1F` and `B2F` correctly and
 initial vendor setup can query the live player level. No caption is drawn yet:
 the known executable references only write its buffer, so adding a visible
 banner would be guesswork rather than reconstruction.
+
+Dusty Ruins' entry-zero ambient line now follows its script too. Opcodes 66
+and 57 write the live local-player slot and the saved gender value, then the
+authored sentence anchors either the female or male line above that player
+through opcode 27. This is not a map special case: all ten paired uses across
+the shipped scenarios go through the same small script-host queries, with a
+catalog audit holding their one-output shape and pairing in place.
 
 The first checkpoint is now live. Remote Town's SCS decoder reads all 66
 temporary flags, 61 messages, 23 status triggers, 220 sentences, and 608
@@ -1004,9 +1058,47 @@ shadow, exact clickable title rectangle, and the script's samples 65 and 66;
 clicking it opens the Mission List. The persistent StatusIcon lock shortcut is
 drawn and clickable while any quest remains active. Syria's subsequent
 interactions now read the real type-12 quest owner and follow her normal
-healing/blessing branch. Near Remote Town's authored status-kind-four callback
-also completes quest zero after Red Goblin `14010000` finishes its death
-presentation.
+healing/blessing branch. A wounded branch runs the authored PEOPLE action,
+fully restores hero life and mana plus any living owned companion, plays its
+positioned sample, and returns Syria to idle after the last CAF frame. Near
+Remote Town's authored status-kind-four callback also completes quest zero
+after Red Goblin `14010000` finishes its death presentation.
+
+The next enemy-script lifecycle is reconstructed too. Operand type 3 now reads
+the same MCT enemy registry as opcodes 31 and 32, opcode 28 runs the target's
+status-kind-six sentence without losing caller context, and opcode 25 restores
+an inactive slot at the script's position and direction. Expired enemies keep
+their stable scenario slots while rendering, picking, collision, effects, and
+companion targeting continue to ignore them. Scenario `04000003` is covered
+end to end: its controller selects one dead slot, shows the authored two-layer
+wave effect, waits 40 updates, and returns that slot at full life.
+
+Scripted target geometry now follows the executable as well. Opcode 33 asks
+the world for the nearest living local player inside its inclusive
+judgement-bound distance range and returns the player slot and authored world
+coordinates without giving the script library ownership of actors. Opcode 35
+turns those coordinate deltas into retail's unnormalized, truncated direction
+degrees. Their 206 shipped calls are covered by a full scenario-catalog shape
+audit, including the unusual literal output operands.
+
+The matching actor-attached visual command is reconstructed too. Opcode 40
+evaluates an effect and source character, distinguishes local-player owner
+kind one from scenario-actor owner kind four, snapshots that actor's
+judgement rectangle, and submits the packetless one-pass request through the
+existing effect owner. Missing actors remain successful no-ops. All 54
+shipped calls across 45 scenarios are audited; effects 20010 and 20018 map to
+their retail OPTION resources 11000008 and 10000020 without adding any
+scenario-specific rules.
+
+The authored unlock-switch feedback is reconstructed too. Operand type nine
+now gates a switch sentence on the idle hero actually reaching its displayed
+actor and 159-unit judgement range. Opcode 26 draws the script's evaluated
+decimal progress above that actor, while opcode 60 refreshes the original
+`Player/Common/UnlockSW` animation on the hero for one update at a time.
+Opcode 29 remains the client-only packet notification it is in retail instead
+of gaining invented single-player behavior. A catalog audit covers the 60
+matching gates, labels, and markers across 22 scenarios, plus all 61 network
+notifications.
 
 Malse's next authored branch is live too. Completing the Red Goblin quest is
 what advances his script into the merchant introduction and later service
@@ -1294,7 +1386,8 @@ movement smooth without changing the 30 Hz simulation.
 Action 11 selects CAF chart three, uses direction eight only when that chart
 really supplies it, scans the same three sound markers, and plays the separate
 resource-specific death sample on update one. It holds the final frame through
-the original 120-update fade and then removes the enemy from the scenario.
+the original 120-update fade and then removes the enemy from live presentation
+while retaining its inactive MCT slot for later script queries or activation.
 Its first update creates the authored item drops and Gold first, then effect
 21010 with the next random direction, preserving the executable's order.
 
@@ -1601,6 +1694,14 @@ summed through the saved companion level for movement and combat values.
 Kerberos therefore starts with the retail level-one profile rather than a
 copy of a town NPC.
 
+Script opcode 3 completes the visible `Check Status` branch for the same six
+profiles. It takes a companion type, rebuilds that row at its saved level, and
+formats the name, active level, HP, element, combat values, movement values,
+and experience state into the normal speech-bubble owner. The player-level
+cap still decides between a number, `Experience Limit`, and `Experience Max`.
+The portable formatter deliberately keeps the original executable's mislabeled
+magical-stat reads instead of silently correcting what players saw.
+
 The default follow half of `0x004622b0` is live too. A companion idles inside
 160 judgement units, waits five updates before leaving that close band, walks
 below 600, runs at 600 or farther, and snaps to the player plus `(200,200)`
@@ -1610,6 +1711,13 @@ actor collision, and is relocated with the player on scenario changes. Its
 1200-unit living-enemy search, attack-mode approach, chart-five marker timing,
 enemy receiver handoff, damage lifecycle, and progression are now live as
 separate companion concerns rather than shortcuts in the follower.
+
+The player-owned mode around that AI is reconstructed too. Retail initializes
+it inactive, toggles it from Space or the bottom-left HUD strip, and clears a
+pending combat command when it becomes inactive. Follow behavior remains
+live, while autonomous acquisition and enemy/effect targeting require active
+mode. `0x004039f0` renders the matching life bar and activity label from the
+original `Bar.njp` patterns.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,
@@ -1686,10 +1794,12 @@ signed-byte checksum, substitution pass, and safe preservation of an existing
 unknown payload. New saves carry the player record and owned items we currently
 own. The three counted retail arrays after the item stream now preserve
 type-12 quest state, type-10 transport unlocks, and type-11 general script
-state; this is
-covered by saving after Ostare's opening and proving his starter reward does
-not repeat after loading. Walk/run also survives a portable round trip through
-a small versioned tail until its exact retail save owner is identified.
+state; this is covered by saving after Ostare's opening and proving his starter
+reward does not repeat after loading. The exact post-mine world words are now
+owned too: walk/run, scenario ID, and scenario entry restore through the retail
+stream, while the old versioned tail remains a migration fallback. A live save
+from scenario 6, entry 4 reloads at that entry's retail coordinates rather than
+silently returning to Remote Town.
 Writing captures the retail-sized paired preview from the world-only render
 when the option is enabled. Saving is not complete yet: the remaining
 persistent gameplay owners still have to contribute their real payload fields

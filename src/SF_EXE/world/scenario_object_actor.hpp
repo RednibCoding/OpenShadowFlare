@@ -37,6 +37,7 @@ public:
         std::int32_t visible,
         std::int32_t pointer,
         std::int32_t judgement);
+    void setDrawStrength(std::int32_t strength);
     bool stateOverrideEnabled() const;
 
     std::int32_t id() const;

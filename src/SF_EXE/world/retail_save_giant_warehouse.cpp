@@ -116,19 +116,20 @@ bool appendPages(
 
 bool retailHeaderEnd(
     const std::vector<std::uint8_t>& payload,
-    std::size_t mine_end,
+    std::size_t world_state_end,
     std::size_t suffix_end,
     std::size_t& flags_offset) {
-    if (mine_end > suffix_end || suffix_end - mine_end < 16u) {
+    if (world_state_end > suffix_end ||
+        suffix_end - world_state_end < 4u) {
         return false;
     }
     std::int32_t page_count = 0;
-    if (!readI32(payload, mine_end + 12u, page_count) ||
+    if (!readI32(payload, world_state_end, page_count) ||
         page_count != static_cast<std::int32_t>(
                           PlayerGiantWarehouse::page_count)) {
         return false;
     }
-    flags_offset = mine_end + 16u;
+    flags_offset = world_state_end + 4u;
     return true;
 }
 
@@ -160,7 +161,7 @@ bool portableHeaderEnd(
 
 bool restoreRetailGiantWarehouse(
     const std::vector<std::uint8_t>& payload,
-    std::size_t mine_end,
+    std::size_t world_state_end,
     const ItemDatabase& item_database,
     PlayerGiantWarehouse& warehouse,
     std::size_t* serialized_end,
@@ -169,18 +170,18 @@ bool restoreRetailGiantWarehouse(
         inspectRetailSavePortableExtension(payload);
     const std::size_t suffix_end =
         extension.present ? extension.start : payload.size();
-    if (mine_end > suffix_end) {
+    if (world_state_end > suffix_end) {
         setError(
             error,
             "The Giant Warehouse stream begins outside the save payload.");
         return false;
     }
 
-    std::size_t end = mine_end;
-    if (mine_end < suffix_end) {
+    std::size_t end = world_state_end;
+    if (world_state_end < suffix_end) {
         std::size_t flags_offset = 0;
         if (!retailHeaderEnd(
-                payload, mine_end, suffix_end, flags_offset) ||
+                payload, world_state_end, suffix_end, flags_offset) ||
             !restorePages(
                 payload,
                 flags_offset,
@@ -216,7 +217,7 @@ bool restoreRetailGiantWarehouse(
             }
             return false;
         }
-        end = mine_end;
+        end = world_state_end;
     }
     if (serialized_end) {
         *serialized_end = end;
@@ -229,7 +230,7 @@ bool restoreRetailGiantWarehouse(
 
 bool replaceRetailGiantWarehouse(
     std::vector<std::uint8_t>& payload,
-    std::size_t mine_end,
+    std::size_t world_state_end,
     const ItemDatabase& item_database,
     const PlayerGiantWarehouse& warehouse,
     std::size_t* serialized_end,
@@ -238,20 +239,20 @@ bool replaceRetailGiantWarehouse(
         inspectRetailSavePortableExtension(payload);
     const std::size_t suffix_end =
         extension.present ? extension.start : payload.size();
-    if (mine_end > suffix_end) {
+    if (world_state_end > suffix_end) {
         setError(
             error,
             "The Giant Warehouse stream begins outside the save payload.");
         return false;
     }
 
-    std::size_t end = mine_end;
-    if (mine_end < suffix_end) {
+    std::size_t end = world_state_end;
+    if (world_state_end < suffix_end) {
         std::size_t flags_offset = 0;
         PlayerGiantWarehouse ignored;
         std::size_t old_end = 0;
         if (!retailHeaderEnd(
-                payload, mine_end, suffix_end, flags_offset) ||
+                payload, world_state_end, suffix_end, flags_offset) ||
             !restorePages(
                 payload,
                 flags_offset,

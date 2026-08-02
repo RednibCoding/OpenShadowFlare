@@ -93,7 +93,16 @@ struct ScenarioCaptionEvent {
     std::string text;
 };
 
+struct LocalPlayerTarget {
+    bool source_found = false;
+    std::int32_t player_number = -1;
+    std::int32_t world_x = 0;
+    std::int32_t world_y = 0;
+};
+
 enum class ValueQuery {
+    local_player_number,
+    local_player_gender,
     local_player_level,
     local_player_companion_type,
     play_mode,
@@ -132,6 +141,17 @@ struct InterpreterHooks {
         std::int32_t,
         bool&)> query_item;
     std::function<bool(std::int32_t&)> next_random;
+    std::function<bool(
+        std::int32_t,
+        std::string&)> build_companion_status_message = {};
+    std::function<bool(
+        std::int32_t,
+        std::int32_t&)> query_enemy_lifecycle_state = {};
+    std::function<bool(
+        std::int32_t,
+        std::int32_t,
+        std::int32_t,
+        LocalPlayerTarget&)> query_local_player_target = {};
 };
 
 class Interpreter {
@@ -156,6 +176,7 @@ private:
     struct Frame {
         std::int32_t sentence = -1;
         std::size_t command = 0;
+        std::int32_t character_number = -1;
     };
 
     StepResult run();
@@ -168,7 +189,9 @@ private:
     bool writeOperand(
         const Operand& operand,
         std::int32_t value);
-    bool pushSentence(std::int32_t sentence);
+    bool pushSentence(
+        std::int32_t sentence,
+        std::int32_t character_number);
 
     const ScriptData* script_ = nullptr;
     InterpreterHooks hooks_;
@@ -178,7 +201,9 @@ private:
     bool waiting_for_message_ = false;
     bool message_callback_pending_ = false;
     bool message_selection_pending_ = false;
+    bool message_result_pending_ = false;
     Operand message_selection_operand_;
+    Operand message_result_operand_;
     std::int32_t message_initial_selection_ = -1;
     std::int32_t current_character_number_ = -1;
     std::int32_t message_callback_character_number_ = -1;

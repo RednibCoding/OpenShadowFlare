@@ -1,6 +1,7 @@
 #include "world_scene.hpp"
-#include "enemy_death_rewards.hpp"
+#include "companion_status_message.hpp"
 #include "core/retail_integer.hpp"
+#include "enemy_death_rewards.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
@@ -69,6 +70,32 @@ WorldScene::WorldScene()
           [this]() {
               return item_random_.next();
           },
+          [this](
+              std::int32_t companion_type,
+              std::string& message) {
+              return buildRetailCompanionStatusMessage(
+                  parameter_tables_,
+                  player_data_,
+                  companion_type,
+                  message);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& state) {
+              return queryScriptEnemyLifecycleState(
+                  character_number, state);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t lower_distance,
+              std::int32_t upper_distance,
+              script::LocalPlayerTarget& target) {
+              return queryScriptLocalPlayerTarget(
+                  character_number,
+                  lower_distance,
+                  upper_distance,
+                  target);
+          },
       }) {}
 
 
@@ -83,10 +110,12 @@ void WorldScene::clear() {
     companion_.clear();
     effect_visuals_.clear();
     player_powerup_visual_.clear();
+    player_unlock_switch_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
     pending_audio_samples_.clear();
+    scenario_text_labels_.clear();
     level_up_notice_ = {};
     pending_combat_effects_.clear();
     combat_effects_.clear();
@@ -135,13 +164,16 @@ void WorldScene::clear() {
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    script_transport_service_ = -1;
     blackjack_result_ = 0;
     pending_script_travel_ = {};
     script_travel_pending_ = false;
     scenario_changed_ = false;
     player_identify_mode_active_ = false;
+    player_unlock_switch_active_ = false;
     player_infinite_life_ = false;
     player_infinite_mana_ = false;
+    owned_companion_inactive_ = true;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -194,6 +226,23 @@ bool WorldScene::hasCompanion() const {
 
 const CompanionActor& WorldScene::companion() const {
     return companion_;
+}
+
+bool WorldScene::ownedCompanionInactive() const {
+    return owned_companion_inactive_;
+}
+
+void WorldScene::toggleOwnedCompanionActivity() {
+    if (!hasCompanion()) {
+        return;
+    }
+    owned_companion_inactive_ =
+        !owned_companion_inactive_;
+    if (owned_companion_inactive_) {
+        // Both retail toggle paths clear the pending companion command.
+        // An attack already presenting is allowed to finish normally.
+        companion_.clearCombatIntent();
+    }
 }
 
 const std::vector<CombatEffectActor>&
@@ -329,6 +378,21 @@ std::int32_t WorldScene::playerIncreasedPowerFrame() const {
     return player_increased_power_.auraFrame();
 }
 
+bool WorldScene::playerUnlockSwitchActive() const {
+    return player_unlock_switch_active_;
+}
+
+const EffectVisualResource*
+WorldScene::playerUnlockSwitchVisual() const {
+    return player_unlock_switch_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_unlock_switch_visual_;
+}
+
+std::int32_t WorldScene::playerUnlockSwitchFrame() const {
+    return player_.damagePresentation().counter;
+}
+
 std::size_t
 WorldScene::runtimeEffectControllerCount() const {
     return runtime_effects_.controllerCount();
@@ -340,6 +404,11 @@ const TransportCatalog& WorldScene::transports() const {
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
     return scenario_world_.groundItems();
+}
+
+const std::vector<ScenarioTextLabel>&
+WorldScene::scenarioTextLabels() const {
+    return scenario_text_labels_;
 }
 
 const QuestState& WorldScene::quests() const {
@@ -364,7 +433,14 @@ RetailSaveProgress WorldScene::retailSaveProgress() const {
         quests_.states(),
         transports_.enabledFlags(),
         script_state_flags_,
+    };
+}
+
+RetailSaveWorldState WorldScene::retailSaveWorldState() const {
+    return {
         player_.movementPace() == MovementPace::run,
+        scenario_world_.id(),
+        scenario_world_.entryValue(),
     };
 }
 
@@ -649,6 +725,10 @@ bool WorldScene::activatePlayerIncreasedPower() {
 }
 
 void WorldScene::update() {
+    scenario_text_labels_.clear();
+    // The retail player update clears +0x159c before the scenario's status
+    // kind-five sentences can refresh the one-update UnlockSW marker.
+    player_unlock_switch_active_ = false;
     // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
     // next player update when no mana remains. Keeping this before the cast
     // action lets an exact-cost activation show its marker frame once, as in
@@ -676,16 +756,8 @@ void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
     level_up_notice_.update();
     quests_.updateNotice();
-    std::vector<EnemyActor>& live_enemies =
-        scenario_world_.enemies();
-    live_enemies.erase(
-        std::remove_if(
-            live_enemies.begin(),
-            live_enemies.end(),
-            [](const EnemyActor& enemy) {
-                return enemy.expired();
-            }),
-        live_enemies.end());
+    // MCT enemy slots remain stable after expiry: scenario scripts can find
+    // an inactive slot and reactivate that same actor through opcode 25.
     for (CombatEffectActor& effect : combat_effects_) {
         effect.update();
     }

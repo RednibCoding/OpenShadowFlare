@@ -276,6 +276,16 @@ bool ScenarioWorld::load(
             clear();
             return false;
         }
+        const std::size_t index = enemies_.size();
+        if (!enemy_indices_.emplace(
+                actor.characterNumber(), index).second) {
+            setError(
+                error,
+                "The scenario contains a duplicate enemy character "
+                "number.");
+            clear();
+            return false;
+        }
         enemies_.push_back(std::move(actor));
     }
 
@@ -326,6 +336,7 @@ void ScenarioWorld::clear() {
     objects_.clear();
     people_.clear();
     enemies_.clear();
+    enemy_indices_.clear();
     ground_items_.clear();
 }
 
@@ -429,6 +440,22 @@ std::vector<EnemyActor>& ScenarioWorld::enemies() {
 const std::vector<EnemyActor>&
 ScenarioWorld::enemies() const {
     return enemies_;
+}
+
+EnemyActor* ScenarioWorld::findEnemyByCharacterNumber(
+    std::int32_t character_number) {
+    const auto found = enemy_indices_.find(character_number);
+    return found == enemy_indices_.end()
+               ? nullptr
+               : &enemies_[found->second];
+}
+
+const EnemyActor* ScenarioWorld::findEnemyByCharacterNumber(
+    std::int32_t character_number) const {
+    const auto found = enemy_indices_.find(character_number);
+    return found == enemy_indices_.end()
+               ? nullptr
+               : &enemies_[found->second];
 }
 
 std::vector<GroundItem>& ScenarioWorld::groundItems() {

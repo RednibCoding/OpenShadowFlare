@@ -9,6 +9,7 @@
 #include "retail_save_magic.hpp"
 #include "retail_save_mines.hpp"
 #include "retail_save_progress.hpp"
+#include "retail_save_world_state.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -68,6 +69,7 @@ bool WorldScene::loadInitialScenario(
     player_item_controller_.initializeNew();
     player_giant_warehouse_.initializeNew();
     bool saved_running = false;
+    ScenarioStart scenario_start = start;
     if (player_request.source ==
         PlayerDataSource::new_character) {
         if (!initializeRetailNewPlayerLoadout(
@@ -109,7 +111,6 @@ bool WorldScene::loadInitialScenario(
             quests_.states(),
             transports_.enabledFlags(),
             {},
-            false,
         };
         std::size_t progress_end = owned_items_end;
         std::size_t magic_end = progress_end;
@@ -132,6 +133,13 @@ bool WorldScene::loadInitialScenario(
             player_item_controller_.mineCount();
         std::size_t companion_progress_end = magic_end;
         std::size_t mine_end = companion_progress_end;
+        std::size_t world_state_end = mine_end;
+        std::size_t giant_warehouse_end = world_state_end;
+        RetailSaveWorldState world_state{
+            false,
+            start.scenario_id,
+            start.entry_value,
+        };
         if (!restoreRetailCompanionProgress(
                 payload,
                 magic_end,
@@ -144,16 +152,22 @@ bool WorldScene::loadInitialScenario(
                 mine_count,
                 &mine_end,
                 error) ||
-            !restoreRetailGiantWarehouse(
+            !restoreRetailWorldState(
                 payload,
                 mine_end,
+                world_state,
+                &world_state_end,
+                error) ||
+            !restoreRetailGiantWarehouse(
+                payload,
+                world_state_end,
                 item_database_,
                 player_giant_warehouse_,
-                &mine_end,
+                &giant_warehouse_end,
                 error) ||
             !restoreRetailAutomaticItems(
                 payload,
-                mine_end,
+                giant_warehouse_end,
                 item_database_,
                 player_automatic_items_,
                 nullptr,
@@ -175,8 +189,15 @@ bool WorldScene::loadInitialScenario(
         quests_.restore(progress.quest_flags);
         script_state_flags_ =
             std::move(progress.script_state_flags);
-        saved_running = progress.running;
+        saved_running = world_state.running;
+        scenario_start.scenario_id = world_state.scenario_id;
+        scenario_start.entry_value = world_state.entry_value;
     }
+
+    // Gameplay bootstrap sets runtime field +0x1288 after both the new-player
+    // and saved-player paths. It is transient UI/action state, not part of
+    // the saved spell arrays: every entry begins with normal attack selected.
+    player_magic_.setTargeting(true);
 
     if (!item_inventory_patterns_.load(data_root, error) ||
         !speech_patterns_.load(
@@ -213,6 +234,17 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
+    if (!player_unlock_switch_visual_.load(
+            data_root / "Player" / "Common",
+            "UnlockSW",
+            &player_error)) {
+        setError(
+            error,
+            "The player unlock-switch animation could not be loaded: " +
+                player_error);
+        clear();
+        return false;
+    }
 
     CompanionProfile companion_profile;
     if (!decodeCompanionProfile(
@@ -238,7 +270,7 @@ bool WorldScene::loadInitialScenario(
     ScenarioWorld prepared_scenario;
     if (!prepared_scenario.load(
             data_root,
-            start,
+            scenario_start,
             ai_control_database_,
             prepared_item_random,
             error)) {
@@ -334,12 +366,14 @@ ScenarioTravelResult WorldScene::transitionScenario(
         pending_combat_effects_.clear();
         combat_effects_.clear();
         runtime_effects_.clear();
+        scenario_text_labels_.clear();
         player_land_mines_.clear();
         miss_effects_.clear();
         camera_shake_counter_ = -1;
         camera_shake_duration_ = 0;
         camera_shake_magnitude_ = 0;
         player_identify_mode_active_ = false;
+        player_unlock_switch_active_ = false;
         pointer_.clearSelection();
         scenario_world_.setEntry(
             start.entry_value, *entry);
@@ -382,6 +416,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     player_attack_target_.cancel();
     pending_player_attack_impact_target_id_ = -1;
     pending_audio_samples_.clear();
+    scenario_text_labels_.clear();
     pending_combat_effects_.clear();
     combat_effects_.clear();
     runtime_effects_.clear();
@@ -391,7 +426,9 @@ ScenarioTravelResult WorldScene::transitionScenario(
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    script_transport_service_ = -1;
     player_identify_mode_active_ = false;
+    player_unlock_switch_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;
     next_ground_item_id_ =

@@ -248,9 +248,16 @@ measures the judgement-rectangle distance from the local hero to script object
 `10000202`. A zero result means the rectangles overlap. That branch writes
 `1` to operand type `10`, using the matching Table 40 row as its operand value,
 and therefore permanently adds the location to the transport list. The same
-shape appears throughout the scenario scripts for all 51 transport rows. Its
-nearby fade and visual-packet opcodes are still only partly reconstructed, but
-they do not own the unlock.
+shape appears throughout the scenario scripts for all 51 transport rows.
+
+The rest of that loop is presentation. While overlapping, it raises temporary
+flag `1000039` by 50 per update, plays sample 80 once through latch
+`1000040`, draws message `1000060` (`Remote Town`) above object `10000200`,
+and writes the rising value to objects `10000203` and `10000204`. Leaving
+subtracts 50 per update, resets the sound latch, removes the label, and asks
+the executable to close transport service zero. The label and both fades are
+therefore SCS-authored behavior, not properties hardcoded onto a teleporter
+class.
 
 ## Interpreter architecture
 
@@ -299,6 +306,8 @@ services exercise them; unknown values still fail loudly.
 | 4 | `0x00432296` | Mark every equipped, backpack, and belt item as identified |
 | 5 | `0x0043222b` | Request one of the executable's numbered vendor inventories |
 | 6 | `0x004321e8` | Rebuild a numbered vendor inventory from a Table 32 stock profile |
+| 7 | `0x0043244d` | Fully restore the local hero and a living owned companion |
+| 8 | `0x004324cf` | Fully restore the local hero's mana |
 | 9 | `0x0043234a` | Repair one equipped item group, or the non-equipped backpack group for selector `-1` |
 | 10 | `0x00431ca1` | Ask the world to create an item at evaluated coordinates |
 | 11 | `0x00431ac5` | Add an evaluated value to a writable operand |
@@ -310,20 +319,33 @@ services exercise them; unknown values still fail loudly.
 | 17 | `0x00432162` | Queue travel to an evaluated scenario and entry |
 | 18 | `0x00431efa` | Stop a PEOPLE actor and enter its interaction state |
 | 19 | `0x00431f72` | Native actor action which releases Ostare's interaction |
+| 20 | `0x00431fc9` | Start an evaluated PEOPLE animation action with one-shot or repeated frame bounds |
 | 21 | `0x00432094` | Turn a PEOPLE actor toward an evaluated target when its MCT flag allows it |
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 25 | `0x004326c9` | Reactivate an inactive scenario-enemy slot at an evaluated position and direction |
+| 26 | `0x00432b02` | Draw one evaluated decimal value above a player or scenario actor |
+| 27 | `0x00432d05` | Draw an actor-anchored script message with evaluated offsets, color, and backing opacity |
+| 28 | `0x00433022` | Run the target character's status-kind-six sentence inline when one exists |
+| 29 | `0x00433056` | Send the network-client form of an unlock-switch notification; a single-player run has no local mutation |
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
+| 31 | `0x00432762` | Search an inclusive enemy-character range for the first registered active entry and write its absolute character number, or `-1` |
+| 32 | `0x004327c9` | Search an inclusive enemy-character range for the first registered inactive entry and write its absolute character number, or `-1` |
+| 33 | `0x0043288d` | Find the nearest living local player inside an evaluated distance range and write that slot and world position |
 | 34 | `0x004337b5` | Measure the judgement-bound distance from the local hero to a script character and write the result |
+| 35 | `0x00432831` | Convert an evaluated world vector to the executable's truncated direction in degrees |
 | 36 | `0x0043332d` | Submit a packetless one-pass visual at an evaluated world position |
 | 37 | `0x004334da` | Request the transport service selected by the command argument |
+| 38 | `0x00433544` | Close the matching script-opened transport service |
 | 39 | `0x00431c43` | Write a random integer between two evaluated inclusive bounds |
+| 40 | `0x00433409` | Submit a packetless one-pass visual attached to an evaluated player or scenario actor |
 | 41 | `0x004335ac` | Toggle an executable-owned item service; zero selects Warehouse/Special Item and nonzero selects Giant Warehouse |
 | 42 | opcode switch | Write the local player's current and maximum life to two operands |
 | 43 | opcode switch | Write the local player's current and maximum mana to two operands |
 | 44 | `0x00433692` | Write the local player's saved companion type to an operand |
 | 45 | `0x004336a9` | Switch the local player's owned companion to an evaluated Table 60 row |
+| 46 | `0x004336e0` | Write an evaluated draw strength to a type-zero scenario object |
 | 48 | `0x00433868` | Select a quest notice and set its counter to 600 |
 | 49 | `0x0043389b` | Retain one raw scenario message in the executable's map-caption buffer |
 | 50 | `0x004321cb` | Write the current scenario-entry value to an operand |
@@ -333,11 +355,14 @@ services exercise them; unknown values still fail loudly.
 | 54 | `0x00433940` | Spend an evaluated amount of Gold from the backpack owner |
 | 55 | `0x0043397d` | Write whether any equipped, backpack, or belt item is unidentified |
 | 56 | `0x00433a78` | Override one scenario entity's effective visible, pointer, and judgement states |
+| 57 | `0x00433b1f` | Write the local player's stored gender value without remapping it |
 | 58 | `0x00433b33` | Search the four automatic-item pages, backpack, and active equipment, then write zero or one |
 | 59 | `0x00433ced` | Remove the first matching item from that same retail owner order |
+| 60 | `0x00433edf` | Refresh the local player's one-update `UnlockSW` presentation marker |
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 66 | `0x00433682` | Write the current local-player slot number |
 | 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
 | 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
 | 69 | `0x0043412b` | Write whether one spell has the exact learned availability state |
@@ -371,6 +396,23 @@ Retail installs the local player and entry before running scenario status kind
 relocation. The portable transaction now follows that order, which also lets
 initialization scripts safely query player level before building vendor stock.
 
+Opcodes 57 and 66 expose two different parts of that installed player. The
+handler at `0x00433b1f` resolves the current player and copies runtime field
+`+0x28`, which is the saved gender at record offset `+0x18`; it keeps retail's
+raw `0 = female`, `1 = male` representation. The shorter handler at
+`0x00433682` calls `0x00434cd0` and copies the player-list current-slot field
+at `+0x08`, so multiplayer-aware scripts receive the actual local slot from
+zero through three rather than a made-up character number.
+
+The shipped catalog contains ten opcode-57/66 pairs in ten scenarios. Every
+command has one writable temporary-flag operand, and every sentence which
+uses one query uses the other exactly once. Dusty Ruins (`00010000`) is the
+first visible example: entry zero initializes a 200-update line, opcode 66
+anchors it to the local hero, and opcode 57 selects message `1000004` for a
+woman or `1000003` for a man. The ordinary status-kind-5 update, opcode 27
+label owner, player record, and scenario slot remain separate owners; the
+script library only performs the two queries and writes their destinations.
+
 Opcode 56 evaluates a character number followed by visible, pointer, and
 judgement values. The handler at `0x00433a78` finds the live entity and writes
 an enabled flag plus those three overrides at runtime offsets `+0xfc` through
@@ -392,6 +434,26 @@ remaining calls with script-calculated upper bounds. The portable
 script library asks its host for the next random value, keeping the DLL
 boundary free of world ownership while still sharing the world's retail
 random sequence.
+
+Opcode 33 resolves its first operand through the scenario-character registry,
+then searches the four local-player slots in numerical order. A candidate must
+be active, alive, and in the same scenario. Distance comes from the shared
+judgement-rectangle measurement; `-1` leaves either end open and every other
+bound is inclusive. The nearest candidate wins and the earlier slot wins a
+tie. Success writes the player slot followed by world X and Y. A valid source
+with no candidate writes only `-1` to the slot, leaving both coordinates
+alone; a missing source leaves all three outputs alone. The portable runtime
+currently owns one local player, but the script-library boundary already
+returns the complete target record so multiplayer can extend the world query
+without changing the interpreter.
+
+Opcode 35 evaluates X and Y, calculates `atan2(-Y, X)`, multiplies by the
+executable's slightly truncated `57.29579143313326` degrees-per-radian
+constant, and truncates toward zero. It does not normalize negative angles.
+The shipped data contains 126 opcode-33 calls in 25 scenarios and 80
+opcode-35 calls in 17 scenarios. Six target queries and one direction query
+deliberately put a literal in the last output position, which the ordinary
+operand writer ignores just as it does for other non-writable operands.
 
 Opcodes 13, 14, and 15 continue the writable arithmetic group started by add
 and subtract. All three evaluate the destination value before the right-hand
@@ -431,6 +493,20 @@ and zero-sized bounds. Effect 20009 occurs 285 times, selects resource
 Near Remote Town's sentence 18 is the first direct fixture, and its periodic
 status creates the six live visuals authored for that update.
 
+Opcode 40 is the actor-attached form. Its two operands are the effect number
+and source character. Player slots zero through three use owner kind one;
+every other resolved scenario character uses owner kind four. The executable
+copies the source judgement rectangle into the common request, leaves the
+origin implicit so the one-pass owner resolves the actor position, uses
+direction eight, and carries no combat packet. A missing source is a
+successful no-op.
+
+All 54 shipped calls have two literal operands and occur across 45 scenarios.
+Eight use effect 20010/resource 11000008, while the other 46 use effect
+20018/resource 10000020. The portable interpreter only evaluates and forwards
+the pair. Actor lookup, geometry, effect resources, and presentation stay in
+the world owner.
+
 Opcodes 18 and 21 are separate operations. Opcode 18 addresses a PEOPLE actor,
 stops its current walk, and enters interaction state without changing its
 facing. Opcode 21 evaluates an actor and a target. Target zero is the local
@@ -454,6 +530,21 @@ zero, which toggles the same Special Item owner opened by `X`. The interpreter
 does not include panel, input, camera, item, or transport headers. It only
 evaluates the command and sends the typed request across its native-command
 hook.
+
+Opcode 27 takes eight operands: actor, X offset, Y offset, message ID, red,
+green, blue, and black-backing opacity. The executable projects the actor,
+measures Shift-JIS text on a 6-by-12 grid, horizontally centers it, and
+bottom-aligns it at the evaluated offset. It submits a black rectangle with a
+three-pixel margin, a black text pass at `+1,+1`, and then the colored text.
+Remote Town uses `{10000200, 0, -160, 1000060, 224, 224, 224, 1000}`.
+
+Opcode 46 evaluates an object character and strength, then writes the live
+type-zero draw-strength field used by both static and animated rendering.
+Remote Town feeds its 0-to-1000 pulse into objects `10000203` and `10000204`;
+an opacity of zero also stops their hidden CAF update. Opcode 38 is the paired
+service cleanup. It closes transport only when its argument matches the
+script-opened selector, leaving an independently open right-side inventory
+and its camera layout untouched.
 
 The one shipped nonzero opcode-41 call is scenario `99000013`, sentence 10.
 Its object `10000900` is named `Giant Warehouse` in the Tower of Ordeal 12F
@@ -604,6 +695,25 @@ active, opcodes 42, 43, and 63 compare the player's life, mana, and optional
 condition pairs before selecting the normal healing or blessing text; it does
 not offer quest zero again.
 
+The wounded branch continues through the authored callback rather than a
+conversation special case. Opcode 19 first releases Syria, opcode 20 starts
+PEOPLE action four as a one-shot, opcodes 7 and 8 restore the party, and opcode
+16 plays the sample stored in temporary flag `1000061`. Action four maps to
+Syria's CAF chart three. The PEOPLE owner presents frame zero first, keeps the
+last frame for one update, and then returns to idle chart zero. Opcode 7 copies
+the hero's live derived maximum life into current life and does the same for
+the owned companion only while that companion is alive; it deliberately does
+not revive a defeated companion. Opcode 8 independently copies the live
+derived maximum mana into current mana.
+
+Opcode 20 evaluates six operands: actor, action, repeat selector, restart
+frame, end frame, and one trailing value retained by the native call. PEOPLE
+actions four through nineteen map to CAF charts three through eighteen. A
+repeat selector of `-1` plays once. Other values repeat, using the authored
+restart and end frames; `-1` means frame zero or the chart's last frame. This
+is kept in the PEOPLE action controller, not in the interpreter, because CAF
+ownership and actor update timing belong to the world.
+
 The ordinary Mission List does not store another hand-written copy of this
 information. `0x0040cea0` reads the state array written by opcode 62, takes all
 48 titles from `Table.Tbd` table 41, and reads mission `n`'s description from
@@ -621,15 +731,32 @@ executable's message layout removes those markers, records the enclosed line
 and columns for hit testing, and writes the chosen range number before
 entering the actor's status-kind-one callback. Messages with initial option
 `-1` are chained informational speech instead: they have no selectable
-ranges and close without writing operand one. The portable interpreter and
-speech-bubble layout preserve that split.
+ranges and write `-1` to operand one when they close. The portable interpreter
+and speech-bubble layout preserve that split.
 The native Remote Town fixture walks to Gravity, opens his retail message,
 checks the initial red `QUIT` selection, moves the red highlight to
-`Check Status`, then hits the rendered `QUIT` range, writes option three, and
-verifies that the conversation releases the actor. Unselected ranges use the
-retail gray, and leaving all ranges keeps the most recent selection. This
-covers the actual world-to-render-to-interpreter path rather than only testing
-the marker parser by itself.
+`Check Status`, and opens the generated status speech before closing it through
+Gravity's authored status-one release branch. A second interaction hits the
+rendered `QUIT` range and writes option three. Unselected ranges use the retail
+gray, and leaving all ranges keeps the most recent selection. This covers the
+actual world-to-render-to-interpreter path rather than only testing the marker
+parser by itself.
+
+Opcode 3 is the companion status message. Its first operand is a constant
+companion type and its second is the writable close result. The handler at
+`0x0043167d` reads that type's saved level, rebuilds the profile from Table 60
+and table `800 + type`, and opens the resulting text through the same ordinary
+actor speech owner as opcode 2. Closing the bubble writes `-1` to the result
+and enters status kind one; the shipped companion sentences have already set
+their branch flag to two, so that callback releases the actor.
+
+There are only six opcode-3 calls in the shipped scripts, one for every
+companion type across three scenarios. The text uses the active companion's
+level and experience fields but the requested type's table-backed profile.
+The cap is `min(player level / 3 + 2, 35)`, producing `Experience Limit` at a
+non-final cap and `Experience Max` at 35. The executable also labels magical
+hit rate as `M Defense` and physical defense as `M Evasion Rate`; the portable
+formatter keeps that retail display bug.
 
 Harley's `Explanation` choice exercises the other mode-one path. Choosing
 option one shows `1000057` (“You found me finally.”), ordinary acknowledgement
@@ -654,12 +781,13 @@ The currently understood domains are:
 | Type | Meaning |
 |---:|---|
 | 0, 1, 2 | Raw immediate value |
-| 3 | Runtime-state domain |
+| 3 | Scenario-enemy lifecycle by local enemy number |
 | 4 | Scenario temporary flag |
 | 5 | Network/state domain |
 | 6 | Script character's current world X |
 | 7 | Script character's current world Y |
 | 8 | Current play mode (`0` single player, `1` client, `2` server) |
+| 9 | Whether the idle local player is within interaction range of a displayed script character |
 | 10 | Persistent transport flags (Table 40 rows) |
 | 11 | Persistent script and conversation flags |
 | 12 | Persistent quest state |
@@ -673,6 +801,20 @@ PEOPLE use `12000000 + local ID`.
 
 Several additional types address broader game state. They will be named only
 when an exercised retail path gives us enough evidence.
+
+Type `3` is the direct form of the scenario-enemy registry used by opcodes 31
+and 32. Retail adds `14000000` to the operand value, looks up that exact MCT
+enemy slot, and returns its lifecycle value. A missing entry returns `-1`, not
+zero. All 160 shipped type-three operands are reads in opcode-0 comparisons;
+none are assignment destinations.
+
+Type `9` is the gate used by the shipped unlock-switch interactions. Retail
+first requires the local player to belong to the active scenario and be in
+normal idle action one. It then finds the requested character in the live
+object-display registry and compares the two judgement rectangles against the
+player's 159-unit interaction range. Missing, hidden, busy, or distant actors
+return zero. All 60 shipped uses are the second operand of opcode 1, spread
+across 22 scenarios and the seven `10041000..10041006` switch actors.
 
 Temporary flags are owned directly by the interpreter and initialized from the
 SCS definitions. Persistent and game-owned domains are callbacks because their
@@ -768,6 +910,45 @@ hard-coded enemy-name check. Red Goblin character `14010000` has status kind
 enemy owner invokes that status; its opcode 62 command changes quest zero from
 state one to state two and emits the completion cue.
 
+Enemy groups have a second script-facing state which is separate from their
+three visible, pointer, and judgement channels. Opcodes 31 and 32 evaluate an
+inclusive pair of absolute `14000000`-series character numbers and scan the
+scenario enemy registry in ascending order. Opcode 31 returns the first
+registered entry whose lifecycle value is one; opcode 32 returns the first
+whose value is zero. IDs which are not present in the current MCT are skipped,
+including for opcode 32, and either command writes `-1` when no entry matches.
+
+That lifecycle value follows the enemy owner rather than HP alone. Retail sets
+it to one when an enemy is activated and leaves it set while a zero-life enemy
+plays its death chart and 120-update fade. The death owner clears it only when
+that presentation expires, immediately before the matching status-kind-four
+callback. The portable world exposes the same lifecycle through a narrow
+interpreter hook, so group-clear and later encounter scripts do not need to
+know about `EnemyActor` or duplicate combat state.
+
+Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
+absolute enemy character number, world X, world Y, and direction. The native
+owner refuses to mutate an already-living enemy, but the script command still
+returns successfully. An inactive slot is moved without changing its authored
+spawn rectangle, restored to maximum life, reset to idle action 7, made fully
+opaque, and cleared of old AI, movement, reaction, damage-attribution, and
+death state. The slot is not recreated: expired MCT enemies stay in their
+original vector position so later script lookups keep stable identities.
+
+Opcode 28 evaluates one character number and runs that character's status-kind
+six sentence inline through the normal frame stack. Nested calls carry the
+target character context, and returning restores the caller's context. A
+target without kind six is a successful no-op. The shipped scripts contain 181
+calls across 32 scenarios, and every target has a matching kind-six status.
+
+Scenario `04000003` shows how the pieces fit. Its periodic sentence uses a
+type-three read for controller enemy `14030000`, opcode 32 to choose an expired
+slot from `14030001` through `14030005`, and opcode 28 to create effects 20007
+and 20008 plus positional sample 27. Forty updates later, opcode 25 activates
+the chosen slot at object `10030000` facing direction 7. Native coverage runs
+this shipped controller end to end and proves the expired slot remains present,
+shows the wave effect, and returns at full life.
+
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from
 the Shift-JIS-aware 6-by-12 `Font01.njp` text layout, and the tail follows
@@ -781,6 +962,32 @@ participate in opaque-pixel pointer selection and the common interaction-range
 approach too. A successful pickup moves the concrete category, definition,
 and quantity into `PlayerInventory`; that owner now feeds the live 9-by-4
 inventory panel and retail save stream.
+
+## Scripted unlock-switch feedback
+
+Switch progress is a script-owned interaction, not a hard-coded map feature.
+The status-zero sentence first uses operand type `9` to confirm that the idle
+hero has actually reached the displayed switch actor. The authored arithmetic
+then computes the progress value before opcode 26 draws it as centered decimal
+text at the actor, with a one-pixel black shadow and no rectangle behind it.
+Its remaining operands provide the world offsets and RGB strengths.
+
+Opcode 60 refreshes the player's transient switch marker for that update.
+`0x00434ef0` draws `Player/Common/UnlockSW` as chart zero, direction eight,
+using the player's action counter and full RGB strengths. The player update
+clears the marker before each status-kind-five pass, so the periodic script
+must keep refreshing it while the switch sequence is active.
+
+Opcode 29 is the multiplayer counterpart. Its handler sends packet `0x22`
+with event kind six only when the executable is a network client. The shipped
+scripts select it behind a play-mode branch; local single player reaches
+opcode 28 instead. The portable single-player host therefore accepts opcode
+29 without inventing local state.
+
+This family appears consistently in the shipped data: opcodes 26 and 60 each
+have 60 calls across 22 scenarios, while opcode 29 has 61 calls across 23.
+The scenario audit fixes their operand shapes and actor distribution so later
+switches keep using the same general interpreter and world presentation.
 
 ## How to extend it
 

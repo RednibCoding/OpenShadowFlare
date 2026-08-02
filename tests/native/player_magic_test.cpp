@@ -7,10 +7,12 @@
 #include "world/player_data.hpp"
 #include "world/player_magic.hpp"
 #include "world/retail_save_file.hpp"
+#include "world/retail_save_extension.hpp"
 #include "world/retail_save_items.hpp"
 #include "world/retail_save_magic.hpp"
 #include "world/retail_save_mines.hpp"
 #include "world/retail_save_progress.hpp"
+#include "world/retail_save_world_state.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -138,7 +140,6 @@ int main() {
         {1, 2, 3},
         {4, 5},
         {6, 7, 8, 9},
-        true,
     };
     std::size_t progress_end = 0;
     std::string error;
@@ -168,19 +169,19 @@ int main() {
                 restored_progress.transport_flags ==
                     progress.transport_flags &&
                 restored_progress.script_state_flags ==
-                    progress.script_state_flags &&
-                restored_progress.running,
+                    progress.script_state_flags,
             "The retail type-12, type-10, and type-11 progress arrays "
             "did not round-trip in executable order.")) {
         std::cerr << error << '\n';
         return 1;
     }
     std::vector<std::uint8_t> legacy_payload = payload;
+    osf::replaceRetailSavePortableExtension(
+        legacy_payload, true, 0, false);
     osf::RetailSaveProgress legacy_written{
         progress.script_state_flags,
         progress.transport_flags,
         progress.quest_flags,
-        progress.running,
     };
     if (!check(
             osf::replaceRetailProgress(
@@ -214,8 +215,7 @@ int main() {
                 migrated_progress.transport_flags ==
                     progress.transport_flags &&
                 migrated_progress.script_state_flags ==
-                    progress.script_state_flags &&
-                migrated_progress.running,
+                    progress.script_state_flags,
             "Portable version-one progress did not migrate from its "
             "old swapped flag order.")) {
         std::cerr << error << '\n';
@@ -295,9 +295,51 @@ int main() {
         std::cerr << error << '\n';
         return 1;
     }
-    // Progress owns the running bit, but rewriting it must preserve the
-    // retail mine field owned by the adjacent save component.
-    progress.running = false;
+    const osf::RetailSaveWorldState world_state{true, 6, 4};
+    std::size_t world_state_end = 0;
+    osf::RetailSaveWorldState restored_world_state;
+    if (!check(
+            osf::replaceRetailWorldState(
+                payload,
+                mine_end,
+                world_state,
+                &world_state_end,
+                &error) &&
+                osf::restoreRetailWorldState(
+                    payload,
+                    mine_end,
+                    restored_world_state,
+                    nullptr,
+                    &error) &&
+                world_state_end == mine_end + 12u &&
+                restored_world_state.running &&
+                restored_world_state.scenario_id == 6 &&
+                restored_world_state.entry_value == 4,
+            "The retail run/scenario/entry words did not round-trip after "
+            "the Mine count.")) {
+        std::cerr << error << '\n';
+        return 1;
+    }
+    std::vector<std::uint8_t> truncated_world_state(
+        payload.begin(),
+        payload.begin() +
+            static_cast<std::ptrdiff_t>(world_state_end - 1u));
+    osf::RetailSaveWorldState protected_world_state{false, 3, 2};
+    if (!check(
+            !osf::restoreRetailWorldState(
+                truncated_world_state,
+                mine_end,
+                protected_world_state,
+                nullptr,
+                &error) &&
+                !protected_world_state.running &&
+                protected_world_state.scenario_id == 3 &&
+                protected_world_state.entry_value == 2,
+            "A truncated retail world state was accepted or partially "
+            "applied.")) {
+        return 1;
+    }
+    // Rewriting earlier progress must preserve both adjacent owners.
     if (!check(
             osf::replaceRetailProgress(
                 payload,
@@ -311,8 +353,17 @@ int main() {
                     restored_mines,
                     nullptr,
                     &error) &&
-                restored_mines == 7,
-            "Rewriting progress discarded the portable mine count.")) {
+                osf::restoreRetailWorldState(
+                    payload,
+                    mine_end,
+                    restored_world_state,
+                    nullptr,
+                    &error) &&
+                restored_mines == 7 &&
+                restored_world_state.running &&
+                restored_world_state.scenario_id == 6 &&
+                restored_world_state.entry_value == 4,
+            "Rewriting progress discarded the Mine count or world state.")) {
         std::cerr << error << '\n';
         return 1;
     }

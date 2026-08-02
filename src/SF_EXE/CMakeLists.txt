@@ -130,6 +130,7 @@ add_library(
   world/companion_damage_receiver.cpp
   world/companion_explosion_action.cpp
   world/companion_profile.cpp
+  world/companion_status_message.cpp
   world/companion_respawn.cpp
   world/companion_target_selector.cpp
   world/combat_damage.cpp
@@ -154,6 +155,7 @@ add_library(
   world/movement_controller.cpp
   world/movement_destination_selector.cpp
   world/npc_actor.cpp
+  world/npc_script_action.cpp
   world/player_appearance.cpp
   world/player_actor.cpp
   world/player_attack_action.cpp
@@ -196,6 +198,7 @@ add_library(
   world/retail_save_mines.cpp
   world/retail_save_preview.cpp
   world/retail_save_progress.cpp
+  world/retail_save_world_state.cpp
   world/runtime_effect_actor.cpp
   world/runtime_effect_system.cpp
   world/runtime_effect_target.cpp
@@ -205,7 +208,9 @@ add_library(
   world/scenario_world.cpp
   world/transport_catalog.cpp
   world/vendor_stock_generator.cpp
+  world/script/scenario_attached_effect_command.cpp
   world/script/scenario_effect_command.cpp
+  world/script/scenario_numeric_label_command.cpp
   world/script/scenario_placed_effect_command.cpp
   world/script/scenario_script_runtime.cpp
   world/world_pointer.cpp
@@ -246,9 +251,12 @@ target_link_libraries(
 
 add_library(
   osf_ui STATIC
+  ui/companion_hud_input.cpp
   ui/conversation_layout.cpp
+  ui/gameplay_hud_input.cpp
   ui/player_level_up_notice_input.cpp
   ui/player_level_up_notice_layout.cpp
+  ui/pointer_input_guard.cpp
   ui/quest_notice_layout.cpp
 )
 add_library(OpenShadowFlare::Ui ALIAS osf_ui)

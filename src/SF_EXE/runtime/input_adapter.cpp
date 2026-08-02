@@ -86,6 +86,8 @@ bool InputAdapter::handleEvent(
             backspace_held_ = false;
         } else if (std::strcmp(event.key, "r") == 0) {
             run_held_ = false;
+        } else if (std::strcmp(event.key, "space") == 0) {
+            companion_toggle_held_ = false;
         } else if (std::strcmp(event.key, "p") == 0) {
             increased_power_held_ = false;
         } else if (std::strcmp(event.key, "b") == 0) {
@@ -192,6 +194,13 @@ bool InputAdapter::handleEvent(
         }
         run_held_ = true;
     } else if (
+        std::strcmp(event.key, "space") == 0 &&
+        current_state == GameState::gameplay) {
+        if (!companion_toggle_held_) {
+            companion_toggle_pressed_ = true;
+        }
+        companion_toggle_held_ = true;
+    } else if (
         std::strcmp(event.key, "p") == 0 &&
         current_state == GameState::gameplay) {
         if (!increased_power_held_) {
@@ -281,6 +290,7 @@ void InputAdapter::clearTransientInput() {
     character_select_.backspace_pressed = false;
     character_select_.text_input.clear();
     run_toggle_pressed_ = false;
+    companion_toggle_pressed_ = false;
     increased_power_pressed_ = false;
     land_mine_pressed_ = false;
     gameplay_options_pressed_ = false;
@@ -324,6 +334,10 @@ bool InputAdapter::pointerSecondaryPressed() const {
 
 bool InputAdapter::runTogglePressed() const {
     return run_toggle_pressed_;
+}
+
+bool InputAdapter::companionTogglePressed() const {
+    return companion_toggle_pressed_;
 }
 
 bool InputAdapter::increasedPowerPressed() const {

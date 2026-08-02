@@ -101,6 +101,67 @@ gapi::Color scenarioObjectNameColor(
     };
 }
 
+std::uint8_t colorChannel(std::int32_t value) {
+    return static_cast<std::uint8_t>(
+        std::clamp(value, 0, 255));
+}
+
+void drawScenarioTextLabels(
+    gapi::Backend& renderer,
+    const WorldScene& world,
+    const gapi::NjpImage* font,
+    std::int32_t camera_x,
+    std::int32_t camera_y) {
+    if (!font) {
+        return;
+    }
+    constexpr std::int32_t kCellWidth = 6;
+    constexpr std::int32_t kCellHeight = 12;
+    constexpr std::int32_t kMargin = 3;
+    for (const ScenarioTextLabel& label :
+         world.scenarioTextLabels()) {
+        if (label.text.empty()) {
+            continue;
+        }
+        const ScreenPosition anchor =
+            calculateRealPosition(label.anchor);
+        const std::int32_t width =
+            bitmapTextPixelWidth(label.text, kCellWidth);
+        const std::int32_t height =
+            bitmapTextLineCount(label.text) * kCellHeight;
+        const std::int32_t x =
+            anchor.x - camera_x + label.offset_x - width / 2;
+        const std::int32_t y =
+            anchor.y - camera_y + label.offset_y - height;
+        renderer.drawRectangle({
+            x - kMargin,
+            y - kMargin,
+            width + kMargin * 2,
+            height + kMargin * 2,
+            {0, 0, 0, 255},
+            1000,
+            std::clamp(label.background_opacity, 0, 1000),
+        });
+        renderer.drawText(
+            *font,
+            label.text,
+            {x + 1, y + 1, {0, 0, 0, 255}});
+        renderer.drawText(
+            *font,
+            label.text,
+            {
+                x,
+                y,
+                {
+                    colorChannel(label.red),
+                    colorChannel(label.green),
+                    colorChannel(label.blue),
+                    255,
+                },
+            });
+    }
+}
+
 void drawHoveredScenarioObjectLabel(
     gapi::Backend& renderer,
     const WorldScene& world,
@@ -542,6 +603,12 @@ void renderGameplayOverlay(
     std::int32_t camera_x,
     std::int32_t camera_y,
     double interpolation) {
+    drawScenarioTextLabels(
+        renderer,
+        world,
+        font,
+        camera_x,
+        camera_y);
     drawHoveredScenarioObjectLabel(
         renderer,
         world,

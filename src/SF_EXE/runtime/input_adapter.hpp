@@ -31,6 +31,7 @@ public:
     bool pointerPrimaryDown() const;
     bool pointerSecondaryPressed() const;
     bool runTogglePressed() const;
+    bool companionTogglePressed() const;
     bool increasedPowerPressed() const;
     bool landMinePressed() const;
     bool gameplayOptionsPressed() const;
@@ -69,6 +70,7 @@ private:
     bool pointer_primary_down_ = false;
     bool pointer_secondary_pressed_ = false;
     bool run_held_ = false;
+    bool companion_toggle_held_ = false;
     bool increased_power_held_ = false;
     bool land_mine_held_ = false;
     bool help_held_ = false;
@@ -81,6 +83,7 @@ private:
     bool debug_held_ = false;
     std::array<bool, 8> belt_pocket_held_{};
     bool run_toggle_pressed_ = false;
+    bool companion_toggle_pressed_ = false;
     bool increased_power_pressed_ = false;
     bool land_mine_pressed_ = false;
     bool gameplay_options_pressed_ = false;

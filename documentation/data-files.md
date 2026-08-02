@@ -620,9 +620,13 @@ count. The 0x160-byte player record holds the active companion's working row;
 these arrays preserve progression for every inactive dog. OpenShadowFlare now
 restores and rewrites that complete block at the exact boundary. Older sparse
 portable saves seed missing companion rows at level one and experience zero.
-The next retail fields are three still-separate world values, followed by the
-literal Giant Warehouse page count ten, ten page-unlock values, and ten normal
-9-by-10 item containers.
+The next three signed words are the live run/walk flag, scenario ID, and
+scenario entry value. Retail writes them from `DAT_0048ce80` and the current
+player actor's `+0x60/+0x64` fields, then passes the latter pair straight back
+to the scenario loader after loading. It does not store the hero's arbitrary
+world coordinates or live facing here: both come from the saved scenario
+entry when it is resolved. The literal Giant Warehouse page count ten, ten
+page-unlock values, and ten normal 9-by-10 item containers follow those words.
 Those flags and containers are now restored and rewritten too. The currently
 selected page is UI-only and is not serialized. Four more normal item
 containers immediately follow the Giant Warehouse
@@ -630,8 +634,10 @@ pages. They are the automatic-item pages selected by the final category-four
 `Item.Ibn` fields and searched by script opcodes 58 and 59. OpenShadowFlare
 restores and rewrites all four at that exact boundary. Sparse portable saves
 use late-item state version two; version one saves which only carried Giant
-Warehouse data still load with four empty automatic pages. Scenario position
-and the rest of the later state are still pending.
+Warehouse data still load with four empty automatic pages. Their old extension
+supplies the run/walk fallback, while the requested initial scenario and entry
+remain the fallback for saves which predate the retail world-state owner. The
+rest of the later state is still pending.
 
 ## Transport destination table
 

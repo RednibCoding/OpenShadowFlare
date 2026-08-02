@@ -1,7 +1,9 @@
 #include "world_scene.hpp"
 #include "enemy_death_rewards.hpp"
 #include "movement_controller.hpp"
+#include "script/scenario_attached_effect_command.hpp"
 #include "script/scenario_effect_command.hpp"
+#include "script/scenario_numeric_label_command.hpp"
 #include "script/scenario_placed_effect_command.hpp"
 #include "vendor_stock_generator.hpp"
 
@@ -98,6 +100,33 @@ std::optional<EquipmentRepairGroup> equipmentRepairGroup(
 bool WorldScene::readScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t& value) const {
+    if (operand.type == 9) {
+        value = 0;
+        if (!has_player_ ||
+            player_.damagePresentation().action != 1 ||
+            !scriptCharacterDisplayed(operand.value)) {
+            return true;
+        }
+        WorldPosition position;
+        const ObjectBounds* judgement = nullptr;
+        if (!scriptCharacterBounds(
+                operand.value, position, judgement)) {
+            return true;
+        }
+        // EvaluateScriptOperand (0x004346b0) uses the player's live
+        // interaction range at +0x3f4 after finding the target in the
+        // object-display registry. The normal retail value is 0x9f.
+        constexpr std::int32_t kRetailInteractionDistance = 0x9f;
+        value = distanceBetweenBounds(
+                    player_.position(),
+                    player_.judgement(),
+                    position,
+                    *judgement) <=
+                kRetailInteractionDistance
+            ? 1
+            : 0;
+        return true;
+    }
     if (operand.type == 10) {
         value = transports_.enabled(operand.value) ? 1 : 0;
         return true;
@@ -197,6 +226,20 @@ bool WorldScene::readScriptWorldOperand(
     return false;
 }
 
+bool WorldScene::queryScriptEnemyLifecycleState(
+    std::int32_t character_number,
+    std::int32_t& state) const {
+    const EnemyActor* enemy =
+        findScriptEnemy(character_number);
+    if (!enemy) {
+        return false;
+    }
+    // Retail keeps the scenario registry active throughout the complete
+    // death presentation, then clears it when that presentation expires.
+    state = enemy->expired() ? 0 : 1;
+    return true;
+}
+
 bool WorldScene::writeScriptWorldOperand(
     const script::Operand& operand,
     std::int32_t value) {
@@ -279,6 +322,136 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 26) {
+        if (arguments.size() != 7) {
+            return false;
+        }
+        WorldPosition position;
+        if (arguments[0] >= 0 && arguments[0] < 4) {
+            if (arguments[0] !=
+                    scenario_world_.localPlayerNumber() ||
+                !has_player_) {
+                // Other player slots are absent in portable single-player.
+                return true;
+            }
+            position = player_.position();
+        } else {
+            const ObjectBounds* judgement = nullptr;
+            if (!scriptCharacterBounds(
+                    arguments[0], position, judgement)) {
+                return true;
+            }
+        }
+        ScenarioTextLabel label;
+        if (!makeScenarioNumericLabel(
+                arguments, position, label)) {
+            return false;
+        }
+        scenario_text_labels_.push_back(std::move(label));
+        return true;
+    }
+
+    if (opcode == 29) {
+        // Retail only reaches this branch as a network client and sends
+        // packet 0x22. Play mode zero takes opcode 28 instead, so there is
+        // intentionally no local state mutation in the portable game.
+        return arguments.size() == 1;
+    }
+
+    if (opcode == 60) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        player_unlock_switch_active_ =
+            has_player_ && arguments[0] != 0;
+        return true;
+    }
+
+    if (opcode == 25) {
+        if (arguments.size() != 4) {
+            return false;
+        }
+        EnemyActor* enemy =
+            findScriptEnemy(arguments[0]);
+        if (!enemy) {
+            return false;
+        }
+        enemy->activate(
+            {arguments[1], arguments[2]},
+            arguments[3]);
+        return true;
+    }
+
+    if (opcode == 27) {
+        if (arguments.size() != 8) {
+            return false;
+        }
+        WorldPosition position;
+        const ObjectBounds* judgement = nullptr;
+        if (!scriptCharacterBounds(
+                arguments[0], position, judgement)) {
+            if (arguments[0] !=
+                    scenario_world_.localPlayerNumber() ||
+                !has_player_) {
+                return false;
+            }
+            position = player_.position();
+        }
+        const script::Message* message =
+            scenario_script_.data().findMessage(arguments[3]);
+        if (!message) {
+            return false;
+        }
+        scenario_text_labels_.push_back({
+            position,
+            arguments[1],
+            arguments[2],
+            message->text,
+            arguments[4],
+            arguments[5],
+            arguments[6],
+            arguments[7],
+        });
+        return true;
+    }
+
+    if (opcode == 46) {
+        if (arguments.size() != 2) {
+            return false;
+        }
+        ScenarioObjectActor* object =
+            findScriptObject(arguments[0]);
+        if (object) {
+            object->setDrawStrength(arguments[1]);
+        }
+        return true;
+    }
+
+    if (opcode == 7) {
+        if (!arguments.empty() || !has_player_) {
+            return false;
+        }
+        const PlayerRuntimeProfile profile =
+            playerRuntimeProfile();
+        player_data_.setCurrentLife(
+            profile.maximum_life, profile.maximum_life);
+        if (hasCompanion() && companion_.currentLife() > 0) {
+            companion_.restoreLife(0, 100);
+        }
+        return true;
+    }
+
+    if (opcode == 8) {
+        if (!arguments.empty() || !has_player_) {
+            return false;
+        }
+        const std::int32_t maximum_mana =
+            playerRuntimeProfile().maximum_mana;
+        player_data_.setCurrentMana(
+            maximum_mana, maximum_mana);
+        return true;
+    }
+
     if (opcode == 30) {
         CombatEffectSpawnRequest request;
         if (!makeScenarioEffectRequest(
@@ -293,6 +466,48 @@ bool WorldScene::executeScriptNativeCommand(
         CombatEffectSpawnRequest request;
         if (!makeScenarioPlacedEffectRequest(
                 arguments, request)) {
+            return false;
+        }
+        queueCombatEffect(request);
+        return true;
+    }
+
+    if (opcode == 40) {
+        if (arguments.size() != 2) {
+            return false;
+        }
+        constexpr std::int32_t kPlayerOwner = 1;
+        constexpr std::int32_t kScenarioActorOwner = 4;
+        const std::int32_t source_character_number = arguments[1];
+        std::int32_t owner_kind = kScenarioActorOwner;
+        ObjectBounds source_judgement;
+        if (source_character_number >= 0 &&
+            source_character_number < 4) {
+            if (!has_player_ ||
+                source_character_number !=
+                    scenario_world_.localPlayerNumber()) {
+                return true;
+            }
+            owner_kind = kPlayerOwner;
+            source_judgement = player_.judgement();
+        } else {
+            WorldPosition source_position;
+            const ObjectBounds* judgement = nullptr;
+            if (!scriptCharacterBounds(
+                    source_character_number,
+                    source_position,
+                    judgement)) {
+                return true;
+            }
+            source_judgement = *judgement;
+        }
+
+        CombatEffectSpawnRequest request;
+        if (!makeScenarioAttachedEffectRequest(
+                arguments,
+                owner_kind,
+                source_judgement,
+                request)) {
             return false;
         }
         queueCombatEffect(request);
@@ -508,6 +723,25 @@ bool WorldScene::executeScriptNativeCommand(
             GameplayServiceKind::transport,
             arguments[0],
         };
+        script_transport_service_ = arguments[0];
+        return true;
+    }
+
+    if (opcode == 38) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        if (script_transport_service_ == arguments[0] &&
+            (gameplay_service_request_.kind ==
+                 GameplayServiceKind::none ||
+             gameplay_service_request_.kind ==
+                 GameplayServiceKind::transport)) {
+            gameplay_service_request_ = {
+                GameplayServiceKind::close_transport,
+                arguments[0],
+            };
+            script_transport_service_ = -1;
+        }
         return true;
     }
 
@@ -605,7 +839,8 @@ bool WorldScene::executeScriptNativeCommand(
         return true;
     }
 
-    if ((opcode != 18 && opcode != 19 && opcode != 21) ||
+    if ((opcode != 18 && opcode != 19 && opcode != 20 &&
+         opcode != 21) ||
         arguments.empty()) {
         return false;
     }
@@ -616,6 +851,14 @@ bool WorldScene::executeScriptNativeCommand(
     if (opcode == 19) {
         npc->endInteraction();
         return true;
+    }
+    if (opcode == 20) {
+        return arguments.size() == 6 &&
+               npc->startScriptAction(
+                   arguments[1],
+                   arguments[2],
+                   arguments[3],
+                   arguments[4]);
     }
     if (opcode == 18) {
         npc->beginInteraction();
@@ -646,6 +889,12 @@ bool WorldScene::queryScriptValue(
         return false;
     }
     switch (query) {
+    case script::ValueQuery::local_player_number:
+        value = scenario_world_.localPlayerNumber();
+        return true;
+    case script::ValueQuery::local_player_gender:
+        value = player_data_.gender();
+        return true;
     case script::ValueQuery::local_player_level:
         value = player_data_.level();
         return true;
@@ -765,6 +1014,40 @@ bool WorldScene::measureScriptCharacterDistance(
     return true;
 }
 
+bool WorldScene::queryScriptLocalPlayerTarget(
+    std::int32_t character_number,
+    std::int32_t lower_distance,
+    std::int32_t upper_distance,
+    script::LocalPlayerTarget& target) const {
+    target = {};
+    WorldPosition source_position;
+    const ObjectBounds* source_judgement = nullptr;
+    if (!scriptCharacterBounds(
+            character_number,
+            source_position,
+            source_judgement)) {
+        return true;
+    }
+    target.source_found = true;
+    if (!has_player_ || player_data_.currentLife() <= 0) {
+        return true;
+    }
+
+    const std::int32_t distance = distanceBetweenBounds(
+        source_position,
+        *source_judgement,
+        player_.position(),
+        player_.judgement());
+    if ((lower_distance != -1 && distance < lower_distance) ||
+        (upper_distance != -1 && distance > upper_distance)) {
+        return true;
+    }
+    target.player_number = scenario_world_.localPlayerNumber();
+    target.world_x = player_.position().x;
+    target.world_y = player_.position().y;
+    return true;
+}
+
 bool WorldScene::scriptCharacterBounds(
     std::int32_t character_number,
     WorldPosition& position,
@@ -788,6 +1071,27 @@ bool WorldScene::scriptCharacterBounds(
         judgement = &item->judgement;
     }
     return judgement != nullptr;
+}
+
+bool WorldScene::scriptCharacterDisplayed(
+    std::int32_t character_number) const {
+    if (const ScenarioObjectActor* object =
+            findScriptObject(character_number)) {
+        return object->visible();
+    }
+    if (const NpcActor* npc =
+            findScriptNpc(character_number)) {
+        return npc->visible();
+    }
+    if (const EnemyActor* enemy =
+            findScriptEnemy(character_number)) {
+        return enemy->visible() && !enemy->expired();
+    }
+    if (const GroundItem* item =
+            findScriptGroundItem(character_number)) {
+        return item->visible();
+    }
+    return false;
 }
 
 void WorldScene::runScenarioContactTriggers() {

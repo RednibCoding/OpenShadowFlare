@@ -4,6 +4,7 @@
 #include "core/retail_random.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 #include "movement_controller.hpp"
+#include "npc_script_action.hpp"
 #include "scenario_data.hpp"
 #include "scenario_entity_state.hpp"
 
@@ -34,6 +35,12 @@ public:
     void beginInteraction();
     void faceToward(WorldPosition target_position);
     void endInteraction();
+    void releaseConversation();
+    bool startScriptAction(
+        std::int32_t action,
+        std::int32_t repeat,
+        std::int32_t restart_frame,
+        std::int32_t end_frame);
     std::int32_t stateValue(
         ScenarioEntityStateChannel channel) const;
     void setStateValue(
@@ -93,6 +100,7 @@ private:
     bool interaction_active_ = false;
     RetailRandom random_;
     MovementController movement_controller_;
+    NpcScriptActionController script_action_;
     ScenarioEntityState state_;
     std::vector<std::int32_t> part_visibility_;
     std::vector<std::int16_t> red_strength_;

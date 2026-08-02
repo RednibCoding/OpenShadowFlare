@@ -47,8 +47,10 @@
 #include "player_transport_spell.hpp"
 #include "quest_state.hpp"
 #include "retail_save_progress.hpp"
+#include "retail_save_world_state.hpp"
 #include "runtime_effect_system.hpp"
 #include "scenario_world.hpp"
+#include "scenario_text_label.hpp"
 #include "script/scenario_script_runtime.hpp"
 #include "transport_catalog.hpp"
 #include "world_pointer.hpp"
@@ -67,6 +69,7 @@ namespace osf {
 enum class GameplayServiceKind {
     none,
     transport,
+    close_transport,
     toggle_special_items,
     identify_item,
     vendor,
@@ -113,6 +116,8 @@ public:
     const std::vector<EnemyActor>& enemies() const;
     bool hasCompanion() const;
     const CompanionActor& companion() const;
+    bool ownedCompanionInactive() const;
+    void toggleOwnedCompanionActivity();
     const std::vector<CombatEffectActor>&
         combatEffects() const;
     const std::vector<RuntimeEffectActor>&
@@ -143,8 +148,12 @@ public:
     bool playerIncreasedPowerActivationFeedback() const;
     const EffectVisualResource* playerIncreasedPowerVisual() const;
     std::int32_t playerIncreasedPowerFrame() const;
+    bool playerUnlockSwitchActive() const;
+    const EffectVisualResource* playerUnlockSwitchVisual() const;
+    std::int32_t playerUnlockSwitchFrame() const;
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
+    const std::vector<ScenarioTextLabel>& scenarioTextLabels() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
     const TransportCatalog& transports() const;
@@ -296,6 +305,7 @@ public:
     std::int32_t scenarioCaptionMessageId() const;
     const std::string& scenarioCaptionText() const;
     RetailSaveProgress retailSaveProgress() const;
+    RetailSaveWorldState retailSaveWorldState() const;
 
 private:
     bool readScriptWorldOperand(
@@ -317,10 +327,18 @@ private:
     bool measureScriptCharacterDistance(
         std::int32_t character_number,
         std::int32_t& distance) const;
+    bool queryScriptLocalPlayerTarget(
+        std::int32_t character_number,
+        std::int32_t lower_distance,
+        std::int32_t upper_distance,
+        script::LocalPlayerTarget& target) const;
     bool queryScriptItem(
         std::int32_t category,
         std::int32_t definition_id,
         bool& present) const;
+    bool queryScriptEnemyLifecycleState(
+        std::int32_t character_number,
+        std::int32_t& state) const;
     bool removeScriptItem(
         std::int32_t category,
         std::int32_t definition_id);
@@ -331,6 +349,8 @@ private:
         std::int32_t character_number,
         WorldPosition& position,
         const ObjectBounds*& judgement) const;
+    bool scriptCharacterDisplayed(
+        std::int32_t character_number) const;
     void runScenarioContactTriggers();
     bool processPendingScriptTravel();
     WorldPointerTarget pointerTargetAtScreenPosition(
@@ -458,10 +478,12 @@ private:
     CompanionActor companion_;
     EffectVisualResources effect_visuals_;
     EffectVisualResource player_powerup_visual_;
+    EffectVisualResource player_unlock_switch_visual_;
     EffectPatternResources effect_pattern_resources_;
     gapi::NjpImage speech_patterns_;
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
+    std::vector<ScenarioTextLabel> scenario_text_labels_;
     PlayerLevelUpNotice level_up_notice_;
     std::vector<CombatEffectSpawnRequest>
         pending_combat_effects_;
@@ -514,13 +536,16 @@ private:
     std::int32_t camera_shake_duration_ = 0;
     std::int32_t camera_shake_magnitude_ = 0;
     GameplayServiceRequest gameplay_service_request_;
+    std::int32_t script_transport_service_ = -1;
     std::int32_t blackjack_result_ = 0;
     ScenarioStart pending_script_travel_;
     bool script_travel_pending_ = false;
     bool scenario_changed_ = false;
     bool player_identify_mode_active_ = false;
+    bool player_unlock_switch_active_ = false;
     bool player_infinite_life_ = false;
     bool player_infinite_mana_ = false;
+    bool owned_companion_inactive_ = true;
 };
 
 }  // namespace osf

@@ -16,7 +16,6 @@ struct RetailSaveProgress {
     std::vector<std::int32_t> quest_flags;
     std::vector<std::int32_t> transport_flags;
     std::vector<std::int32_t> script_state_flags;
-    bool running = false;
 };
 
 bool restoreRetailProgress(

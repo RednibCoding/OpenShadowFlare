@@ -296,7 +296,11 @@ void RuntimeRenderer::render(
                         context.world.playerIncreasedPowerReady(),
                         context.world
                             .playerIncreasedPowerActivationFeedback(),
-                        context.gameplay_counter));
+                        context.gameplay_counter,
+                        context.world.hasCompanion()
+                            ? &context.world.companion()
+                            : nullptr,
+                        context.world.ownedCompanionInactive()));
                 renderGameplayBeltItems(
                     renderer_,
                     context.world);

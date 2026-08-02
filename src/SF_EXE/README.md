@@ -282,6 +282,19 @@ and ordinary effect request. Near Remote Town therefore uses its authored
 effect-and-sound sentences without teaching the interpreter about world actor
 or rendering classes.
 
+Scripted enemy waves use the same boundary. `RKC_RPG_SCRIPT` reads the retail
+type-three lifecycle domain, searches stable enemy slots, and dispatches nested
+status-kind-six sentences. The world alone owns opcode 25's enemy reset and
+position change. Expired actors remain in their MCT order but every renderer,
+pointer, collision, combat-effect, and companion consumer treats them as
+inactive until the script activates them again.
+
+Unlock switches now stay in that data-driven path too. Their scripts test the
+idle hero against the displayed switch actor's retail interaction range, draw
+the evaluated progress number above the switch, and refresh the original
+`Player/Common/UnlockSW` animation on the hero. The separate opcode used by a
+network client remains a harmless no-op in the portable single-player host.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
@@ -422,6 +435,11 @@ active level, active experience, and its defeated countdown already live in
 the preserved player record. The following Table 60-sized save arrays retain
 level and experience for all six companions, and the scripted `Swap Dogs`
 choice rebuilds the selected PARTNER actor without hardcoded town logic.
+The companion `Check Status` branches are live too. Script opcode 3 builds the
+requested dog's profile from its saved level and the retail parameter tables,
+then shows the original multiline values in the normal actor speech bubble.
+All six shipped companion types use this shared path; even the retail screen's
+mislabeled magical-stat reads are kept faithfully.
 
 Run it with `--smoke-test` to close automatically after three frames.
 

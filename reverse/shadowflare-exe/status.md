@@ -275,6 +275,22 @@ five attack, owner companion level, native element, random effect
 approach, both markers, the enemy receiver, and actual damage outside Remote
 Town.
 
+Owned-companion activity follows the player runtime flag at `+0x15a0`.
+`0x00440f70` initializes it to one (`INACTIVE`). Both the Space command in
+`0x004429b0` and the x `0..111`, y `393..408` strip in `0x00445bd0` toggle it
+with `1 - current`; the pointer strip consumes its click before world movement.
+Switching inactive clears pending combat intent without interrupting a locked
+attack presentation. Inactive companions still run the normal follow bands
+and remain visible and solid, but `0x004622b0` skips autonomous acquisition
+and enemy/effect target selection rejects owner mode one.
+
+The matching HUD path in `0x004039f0` draws `Bar.njp` pattern 30, clips
+pattern 29 from the right to `life * 109 / maximum`, and uses patterns 31 and
+32 for `ACTIVE` and `INACTIVE`. A sub-30-percent fill pulses at RGB strength
+1500 for two of every four updates. The mode survives scenario transitions
+inside a play session but is deliberately absent from the save stream, as in
+retail.
+
 The rest of the owned-companion combat lifecycle is live too. `0x004616d0`
 scales PARTNER chart three across the receiver duration and applies its
 collision-aware diminishing 120-unit hit impulse. `0x00461990` locks chart
@@ -301,6 +317,17 @@ type and calls `0x00450500`. That function stores the current row, restores the
 new row, clears `+0x15c`, replaces the owned companion actor at the player, and
 sets its life to maximum. All six shipped types are selected by six calls in
 three scenarios.
+
+Opcode 3 at `0x0043167d` supplies the companion `Check Status` branch. It reads
+one constant companion type, uses that type's saved array level for
+`0x004136f0`, and formats the result into the normal actor speech buffer. The
+printed level and experience still come from the active record fields at
+`+0x154` and `+0x158`. Its cap is player level divided by three plus two,
+clamped to 35, with separate limit and maximum strings. The original display
+also reads profile `+0x54` under `M Defense` and `+0x44` under `M Evasion
+Rate`; these are magical hit rate and physical defense, not the fields the
+labels imply. All six shipped calls across three scenarios are covered by a
+catalog audit and live Remote Town interaction.
 
 The save path stores the current row before writing count, all levels, and all
 experiences, followed by player Land Mines at `+0x328`. The portable player and
@@ -362,6 +389,10 @@ The first game-core slice covers:
 - new-character gender selection and portable 15-byte name entry
 - Online/Single and New/Join mode menus plus portable host-address entry
 - saved-game summary parsing, BMP previews, and Delete confirmation
+- complete saved-game row text from the player record: Level, Job, Sex, Name,
+  HP, MP, and EXP as the original separate same-origin label and padded-value
+  packets, including gold labels, pale-white values, and half-intensity idle
+  rows
 - software drawing with the original Select and bitmap-font pattern sheets
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
@@ -373,7 +404,8 @@ The first game-core slice covers:
   status requests, kill metadata, and death presentation selection
 - the live enemy hit and death actions, including chart-two reaction timing,
   collision-aware displacement, chart-three direction selection, marker and
-  death audio, fade timing, and final actor removal
+  death audio, fade timing, and removal from live presentation while retaining
+  the inactive scenario slot
 - lethal kill accounting, proportional experience, novice level growth,
   weapon/effect counters, authored Table 30/31 item rolls, Gold Find, and
   complete ground-item instance ownership
@@ -427,12 +459,18 @@ the config before creating its LWL window, just as the retail entry point does.
 
 The first gameplay HUD layer now follows `0x004039f0`. `Bar.njp` supplies the
 fixed lower interface, walk/run marker, level digits, life and mana fills, and
-the Table 13-driven 109-pixel experience fill and frame. GAPI has a general
+the Table 13-driven 109-pixel experience fill and frame. The owned companion
+uses the original bottom-left frame, reverse life fill, low-life pulse, and
+active/inactive marker. GAPI has a general
 destination clip for the live fills, so the original artwork is revealed
 rather than stretched. The HUD
 is a screen-space renderer outside the world camera and owns the lower input
 band. Retail registers the standard Windows arrow once and never calls
 `SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
+The Menu, Status, and Item labels now use `0x00445bd0`'s exact inclusive
+rectangles and open their real owners. Interface clicks are consumed before
+world commands, including every held update through release after dropping an
+inventory item onto the map.
 
 World feedback now follows `0x004165d0`, `0x0040ee70`, and `0x00416bb0`.
 Portable `RKC_RPGSCRN` tests the configured inclusive square against the
@@ -1146,6 +1184,24 @@ calls `0x004309a0` only after the death presentation and fade expire. The
 portable enemy owner now does the same, keeping the quest consequence in the
 authored SCS rather than attaching it to an enemy name.
 
+The scenario enemy registry now covers scripted reactivation as well. Operand
+type 3 adds `14000000` to its local enemy number and reads the same entry used
+by opcodes 31 and 32; a missing entry returns `-1`. All 160 shipped type-three
+uses are opcode-0 reads. Opcode 28 at `0x00433022` calls `0x004309f0` to run a
+target's status-kind-six sentence inline, preserving that target's character
+context and succeeding when no such status exists. The corpus contains 181
+calls across 32 scenarios and every shipped target has kind six.
+
+Opcode 25 at `0x004326c9` evaluates enemy, X, Y, and direction before calling
+`0x0045a140`. A living enemy is an ignored successful command. An inactive one
+has its life, action, animation, movement, AI, reaction, attribution, death,
+and opacity state reset, then moves to the supplied point without changing its
+authored spawn rectangle. All 34 calls across 13 scenarios use operand shape
+`{4,6,7,1}`. Expired portable enemies therefore remain in stable MCT slots.
+Scenario `04000003` now proves the complete shipped flow from inactive search,
+through kind-six effects 20007/20008 and sample 27, to delayed full-life
+activation.
+
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
 calls create three ordinary ground-item records plus 200 money. The portable
@@ -1338,6 +1394,16 @@ single-player path. The executable has direct writes but no discovered reads
 of either global. OpenShadowFlare retains the raw ID and text in the script
 owner and deliberately does not render a guessed area caption.
 
+The player identity queries beside that path are reconstructed as general
+host reads. Opcode 66 at `0x00433682` calls `0x00434cd0`, which returns the
+player-list current slot from `+0x08`. Opcode 57 at `0x00433b1f` resolves that
+player through `0x00434cb0` and reads runtime `+0x28`, corresponding to saved
+gender at record `+0x18`; zero remains female and one remains male. Ten
+shipped scenarios contain exactly one paired call of each, each with one
+temporary-flag destination. Dusty Ruins entry zero now exercises the complete
+status-kind-5 path with local slot two and both gender branches through the
+normal opcode-27 label owner.
+
 The script's inclusive random command is reconstructed at `0x00431c43`.
 Opcode 39 evaluates lower and upper operands, calls the executable's Visual
 C++ random routine at `0x00467c6e` once, computes the signed remainder over
@@ -1502,8 +1568,9 @@ its weight and instance effects, but `0x0044ea60` excludes its base derived
 values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
-effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Packet effects 21000 through 21003 are ordinary
+effect-list ownership, marker and death audio, fading, and removal from live
+presentation now run at the live boundary while the inactive MCT slot remains
+script-addressable. Packet effects 21000 through 21003 are ordinary
 impact splatters and play for both surviving and lethal hits. Their one-pass
 CAF owner is separate from enemy death effect 21010, which reaches its last
 frame normally, holds it, and fades during updates 91 through 119.
@@ -2158,3 +2225,67 @@ secondary click or panel close cancels the mode. `FUN_004087b0` draws pattern
 one from `System.njp` instead of the normal pattern zero while the mode is
 active. Unidentified tooltips use the item description as their base name and
 hide all instance values.
+
+## Script target geometry
+
+The opcode-33 handler at `0x0043288d` resolves a scenario character and calls
+`FUN_00430b30` with mode one. That helper scans player slots zero through
+three, accepts only active living players in the same scenario, applies
+inclusive lower and upper judgement-distance bounds with `-1` as an open end,
+and keeps the first slot at equal distance. A match writes slot, world X, and
+world Y. No match writes only slot `-1`; an unresolved source writes nothing.
+
+Opcode 35 at `0x00432831` passes its evaluated operands to
+`FUN_00414080`, which calculates `atan2(-Y, X)`. It multiplies the result by
+the double at `0x00475178` (`57.29579143313326`) and uses the truncating x87
+conversion at `0x00467fe0`. Negative results are not normalized. The shipped
+catalog has 126 target calls across 25 scenarios and 80 direction calls across
+17 scenarios; all operand shapes are covered by the portable audit.
+
+## Script actor-attached effects
+
+The opcode-40 handler at `0x00433409` evaluates an effect number followed by
+a source character. Source values zero through three resolve a live player
+slot and use owner kind one with the judgement rectangle at player offset
+`+0x2e8`. Every other value resolves through the scenario-character registry,
+uses owner kind four, and copies the rectangle at the common actor offset
+`+0x20`. A missing source returns successfully without creating anything.
+
+The handler calls `FUN_0042fdc0` with target kind and identifier zero, no
+explicit origin, the copied source rectangle, no combat packet, direction
+eight, instance `-1`, common lifetime value 200, and zero in every remaining
+constructor field. `FUN_0042b860` resolves the owner position when the request
+is presented and turns the copied lower-right bound plus one into the effect's
+point judgement. Effect 20010 selects OPTION resource 11000008 and effect
+20018 selects resource 10000020. The shipped catalog contains 54 calls across
+45 scenarios, all with two literal operands: eight use 20010 and 46 use
+20018.
+
+## Scripted unlock switches
+
+`FUN_004346b0` operand type nine is the common switch-interaction gate. It
+requires the local player to be in the running script's scenario with action
+one, finds the requested character in the live object-display registry, and
+uses `FUN_004143c0` to compare their judgement rectangles with player field
+`+0x3f4`. The ordinary range is `0x9f`. A missing or undisplayed character,
+different scenario, busy player, or distance above 159 returns zero.
+
+The opcode-26 handler at `0x00432b02` resolves a player slot or scenario actor,
+projects its position, and draws the evaluated fourth operand as `%d`. It uses
+the supplied X/Y offsets and RGB strengths, six pixels per character for
+centering, a fixed twelve-pixel upward baseline, and a black `(1,1)` shadow.
+There is no backing rectangle. Missing actors and absent remote player slots
+are successful no-ops.
+
+Opcode 60 at `0x00433edf` writes the evaluated marker to local-player field
+`+0x159c`. The player update clears it before status kind five. The player pass
+at `0x00434ef0` maps animation 502 to `Player/Common/UnlockSW` and draws chart
+zero, direction eight at the player with full RGB strengths while the script
+keeps that field set.
+
+Opcode 29 at `0x00433056` is only the network-client notification. It passes
+scenario event kind six and the evaluated value to `FUN_00419050`, which emits
+packet `0x22` only in client mode; it performs no local state mutation. The
+shipped corpus contains 60 matching type-nine gates, opcode-26 labels, and
+opcode-60 markers across 22 scenarios. Opcode 29 appears 61 times across 23
+scenarios.

@@ -16,6 +16,9 @@ struct RetailSaveSummary {
     std::int32_t gender = 0;
     std::int32_t job = 0;
     std::int32_t level = 0;
+    std::int32_t life = 0;
+    std::int32_t mana = 0;
+    std::int32_t experience = 0;
 };
 
 std::vector<RetailSaveSummary> loadRetailSaveCatalog(

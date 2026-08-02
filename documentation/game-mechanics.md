@@ -143,6 +143,11 @@ drawn as its larger MagicIcon at y=382; ordinary entries sit at y=392.
 Clicking a learned entry selects it and clears normal-attack targeting.
 Clicking the final targeting icon does the reverse.
 
+Every entry into gameplay starts with that final normal-attack icon selected,
+whether the hero is new or was loaded from a save. This is transient command
+state rather than saved spell data, so a previously selected spell is not
+restored as the active command.
+
 ### Fire Ball
 
 With Fire Ball selected, right-clicking a pointed enemy consumes the command.
@@ -645,6 +650,7 @@ consume the same axes.
 - Effect of Mine (damage)
 - Number of Mines (available)
 - Effect of Stamina Medicine (+%)
+- Effect of Mental Medicine (+%)
 
 ## Player Death and Recovery
 
@@ -657,7 +663,19 @@ and MP to their current maximums and clears the death action.
 This means death is not a normal state that can be saved from the settings
 menu. A zero-life save produced by an older portable build is an invalid
 state, not ordinary retail save behavior.
-- Effect of Mental Medicine (+%)
+
+## Enemy Slots and Scripted Waves
+
+Scenario enemies keep their original MCT slots even after their death
+animation and fade finish. The slot becomes inactive for script queries, but
+it is not removed from the scenario list. This lets an authored encounter find
+a dead slot and activate that same enemy again later.
+
+Activation restores maximum life and clears the previous AI, movement, hit,
+damage-credit, and death state. The script supplies the new position and
+direction; the enemy's original patrol/spawn rectangle remains authored MCT
+data. Some encounters run a status-kind-six sentence first for their spawn
+effects and sound, then reactivate the chosen slot after a scripted delay.
 
 ## Attack Modes
 

@@ -15,6 +15,7 @@
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
 #include "states/title_state.hpp"
+#include "ui/companion_hud_input.hpp"
 #include "ui/player_level_up_notice_input.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
@@ -385,32 +386,44 @@ private:
                     gameplayUi_.transport().active();
                 const bool vendor_active =
                     gameplayUi_.vendor().active();
-                gameplayFrame_ = gameplayState_.update({
+                osf::GameplayFrameInput world_input;
+                world_input.confirm_pressed =
                     input_.menu().confirm_pressed &&
-                        !map_active,
-                    input_.menu()
-                        .pointer_primary_pressed &&
-                        !notice_consumed,
-                    input_.menu().pointer_x,
-                    input_.menu().pointer_y,
+                    !map_active;
+                world_input.pointer_primary_pressed =
+                    input_.menu().pointer_primary_pressed &&
+                    !notice_consumed;
+                world_input.pointer_x = input_.menu().pointer_x;
+                world_input.pointer_y = input_.menu().pointer_y;
+                world_input.pointer_primary_down =
                     input_.pointerPrimaryDown() &&
-                        !notice_consumed,
-                    input_.runTogglePressed(),
-                    input_.increasedPowerPressed(),
-                    input_.landMinePressed(),
-                    map_active ||
-                            magic_active ||
-                            status_active ||
-                            special_items_active ||
-                            transport_active ||
+                    !notice_consumed;
+                world_input.run_toggle_pressed =
+                    input_.runTogglePressed();
+                world_input.increased_power_pressed =
+                    input_.increasedPowerPressed();
+                world_input.land_mine_pressed =
+                    input_.landMinePressed();
+                world_input.world_view_left =
+                    map_active || magic_active || status_active ||
+                            special_items_active || transport_active ||
                             vendor_active
                         ? 320
-                        : 0,
-                    0,
-                    inventory_active ? 320 : 640,
-                    400,
-                    input_.pointerSecondaryPressed(),
-                });
+                        : 0;
+                world_input.world_view_right =
+                    inventory_active ? 320 : 640;
+                world_input.pointer_secondary_pressed =
+                    input_.pointerSecondaryPressed();
+                world_input.companion_toggle_pressed =
+                    input_.companionTogglePressed();
+                world_input.companion_hud_pressed =
+                    world_.hasCompanion() &&
+                    osf::companionHudToggleAtPointer(
+                        world_input.pointer_primary_pressed,
+                        world_input.pointer_x,
+                        world_input.pointer_y);
+                gameplayFrame_ =
+                    gameplayState_.update(world_input);
                 if (world_.takeScenarioChanged()) {
                     completeScenarioChange();
                 }
