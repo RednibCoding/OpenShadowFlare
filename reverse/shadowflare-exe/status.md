@@ -1752,6 +1752,16 @@ which is the authored Gold reward and uses sample 85 when it lands. Callback
 message `1000015` immediately starts mission seven with sample 65, while saved
 active state returns through `1000016` without repeating either reward.
 
+Mission seven is covered from its outdoor entrance through Alex's next
+assignment. Vaporous Forest object two enters Purgatory scenario `1030000`,
+and object one there enters the clear room in `1030002`. That room contains
+exactly three Arc Shamans and four Arc Thunder Bats; its periodic opcode-31
+scan waits for every death fade before toggling objects `10011000..10011002`
+and completing the mission with sample 66. Alex then creates 4,000 Gold, whose
+normal landing queues sample 85, and messages `1000018..1000020` start mission
+eight with sample 65. A saved reload follows message `1000021` without
+repeating the reward or handoff.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

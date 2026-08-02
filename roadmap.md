@@ -1194,6 +1194,15 @@ then message `1000015` immediately starts mission seven, Purgatory of
 Judgments. The Gold landing sound, both quest cues, saved handoff, and
 no-repeat return branch are held by the same end-to-end regression.
 
+Purgatory of Judgments now continues that playthrough without a shortcut.
+Vaporous Forest object two enters scenario `01030000`; its object-one edge
+reaches the clear room in `01030002`. Three Arc Shamans and four Arc Thunder
+Bats all remain active through their death fades, and only the empty scan
+changes the room objects and completes mission seven. Alex then drops 4,000
+Gold and uses messages `1000018` through `1000020` to start the Remains of
+Reincarnation mission. Both map edges, the exact roster, quest sounds, Gold
+landing, saved handoff, and ordinary no-repeat message are covered.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios

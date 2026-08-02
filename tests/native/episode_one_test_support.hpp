@@ -184,6 +184,72 @@ inline bool scriptedObjectVisible(
            found->visible() == visible;
 }
 
+inline const ScenarioObjectActor* findScenarioTrigger(
+    const WorldScene& world,
+    std::int32_t local_id) {
+    const std::int32_t character_number = 10000000 + local_id;
+    const auto found = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [character_number](const ScenarioObjectActor& object) {
+            return object.characterNumber() == character_number;
+        });
+    return found == world.scenarioObjects().end()
+               ? nullptr
+               : &*found;
+}
+
+inline WorldPosition scenarioTriggerCenter(
+    const ScenarioObjectActor& trigger) {
+    const ObjectBounds& bounds = trigger.judgement();
+    return {
+        trigger.position().x +
+            (bounds.left + bounds.right) / 2,
+        trigger.position().y +
+            (bounds.top + bounds.bottom) / 2,
+    };
+}
+
+inline bool walkThroughScenarioTrigger(
+    WorldScene& world,
+    std::int32_t local_id,
+    std::int32_t expected_scenario,
+    std::int32_t maximum_updates = 5000) {
+    const ScenarioObjectActor* trigger =
+        findScenarioTrigger(world, local_id);
+    if (!trigger) {
+        return false;
+    }
+    const std::int32_t source_scenario = world.scenarioId();
+    const WorldPosition target = scenarioTriggerCenter(*trigger);
+    for (std::int32_t update = 0;
+         update < maximum_updates &&
+         world.scenarioId() == source_scenario;
+         ++update) {
+        if (update % 30 == 0) {
+            const ScreenPosition screen =
+                calculateRealPosition(target);
+            world.commandPlayerMovement(
+                screen.x - world.cameraScreenX(),
+                screen.y - world.cameraScreenY());
+        }
+        world.update();
+        world.takeAudioSamples();
+    }
+    if (world.scenarioId() != expected_scenario) {
+        std::cerr << "route trigger " << local_id
+                  << " from scenario " << source_scenario
+                  << " ended in " << world.scenarioId()
+                  << " at " << world.playerWorldX() << ','
+                  << world.playerWorldY() << " targeting "
+                  << target.x << ',' << target.y
+                  << " life=" << world.playerData().currentLife()
+                  << '\n';
+        return false;
+    }
+    return true;
+}
+
 }  // namespace osf::test
 
 #endif

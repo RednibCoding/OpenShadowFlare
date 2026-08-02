@@ -4,7 +4,6 @@
 #include "world/retail_save_world_state.hpp"
 #include "world/world_scene.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -61,84 +60,18 @@ bool writeRouteFixture(
         &error);
 }
 
-const osf::ScenarioObjectActor* findTrigger(
-    const osf::WorldScene& world,
-    std::int32_t local_id) {
-    const std::int32_t character_number = 10000000 + local_id;
-    const auto found = std::find_if(
-        world.scenarioObjects().begin(),
-        world.scenarioObjects().end(),
-        [character_number](
-            const osf::ScenarioObjectActor& object) {
-            return object.characterNumber() == character_number;
-        });
-    return found == world.scenarioObjects().end()
-               ? nullptr
-               : &*found;
-}
-
-osf::WorldPosition triggerCenter(
-    const osf::ScenarioObjectActor& trigger) {
-    const osf::ObjectBounds& bounds = trigger.judgement();
-    return {
-        trigger.position().x +
-            (bounds.left + bounds.right) / 2,
-        trigger.position().y +
-            (bounds.top + bounds.bottom) / 2,
-    };
-}
-
-bool walkThroughTrigger(
-    osf::WorldScene& world,
-    std::int32_t local_id,
-    std::int32_t expected_scenario,
-    std::int32_t maximum_updates = 5000) {
-    const osf::ScenarioObjectActor* trigger =
-        findTrigger(world, local_id);
-    if (!trigger) {
-        return false;
-    }
-    const std::int32_t source_scenario = world.scenarioId();
-    const osf::WorldPosition target = triggerCenter(*trigger);
-    for (std::int32_t update = 0;
-         update < maximum_updates &&
-         world.scenarioId() == source_scenario;
-         ++update) {
-        if (update % 30 == 0) {
-            const osf::ScreenPosition screen =
-                osf::calculateRealPosition(target);
-            world.commandPlayerMovement(
-                screen.x - world.cameraScreenX(),
-                screen.y - world.cameraScreenY());
-        }
-        world.update();
-        world.takeAudioSamples();
-    }
-    if (world.scenarioId() != expected_scenario) {
-        std::cerr << "route trigger " << local_id
-                  << " from scenario " << source_scenario
-                  << " ended in " << world.scenarioId()
-                  << " at " << world.playerWorldX() << ','
-                  << world.playerWorldY() << " targeting "
-                  << target.x << ',' << target.y
-                  << " life=" << world.playerData().currentLife()
-                  << '\n';
-        return false;
-    }
-    return true;
-}
-
 bool reachTriggerWithoutLeaving(
     osf::WorldScene& world,
     std::int32_t local_id,
     std::int32_t updates = 2000) {
     const osf::ScenarioObjectActor* trigger =
-        findTrigger(world, local_id);
+        osf::test::findScenarioTrigger(world, local_id);
     if (!trigger) {
         return false;
     }
     const std::int32_t source_scenario = world.scenarioId();
-    const osf::WorldPosition target = triggerCenter(*trigger);
+    const osf::WorldPosition target =
+        osf::test::scenarioTriggerCenter(*trigger);
     const osf::WorldPosition trigger_position = trigger->position();
     const osf::ObjectBounds bounds = trigger->judgement();
     for (std::int32_t update = 0;
@@ -218,7 +151,8 @@ bool testColdSvaltRoute(const std::filesystem::path& data_root) {
         return false;
     }
     if (!check(
-            walkThroughTrigger(route, 6, 3) &&
+            osf::test::walkThroughScenarioTrigger(
+                route, 6, 3) &&
                 route.scenario().title() ==
                     "Wasteland of Hesitation" &&
                 route.retailSaveWorldState().entry_value == 1,
@@ -228,7 +162,8 @@ bool testColdSvaltRoute(const std::filesystem::path& data_root) {
     if (!check(
             route.transitionScenario({3, 0, 0}, &error) ==
                     osf::ScenarioTravelResult::relocated &&
-                walkThroughTrigger(route, 0, 5) &&
+                osf::test::walkThroughScenarioTrigger(
+                    route, 0, 5) &&
                 route.scenario().title() == "Frozen Forest" &&
                 route.retailSaveWorldState().entry_value == 0,
             "Wasteland of Hesitation did not lead into Frozen Forest.")) {
@@ -238,7 +173,8 @@ bool testColdSvaltRoute(const std::filesystem::path& data_root) {
     if (!check(
             route.transitionScenario({5, 1, 0}, &error) ==
                     osf::ScenarioTravelResult::relocated &&
-                walkThroughTrigger(route, 1, 6) &&
+                osf::test::walkThroughScenarioTrigger(
+                    route, 1, 6) &&
                 route.scenario().title() ==
                     "Wasteland of Pillars" &&
                 route.retailSaveWorldState().entry_value == 1,
@@ -249,7 +185,8 @@ bool testColdSvaltRoute(const std::filesystem::path& data_root) {
     if (!check(
             route.transitionScenario({6, 3, 0}, &error) ==
                     osf::ScenarioTravelResult::relocated &&
-                walkThroughTrigger(route, 3, 1000001) &&
+                osf::test::walkThroughScenarioTrigger(
+                    route, 3, 1000001) &&
                 route.scenario().title() == "Cold Svalt Town" &&
                 route.retailSaveWorldState().entry_value == 0 &&
                 route.quests().state(3) == 2,

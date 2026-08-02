@@ -1017,6 +1017,18 @@ landing sound. Its callback opens `1000015`, starts mission seven, and queues
 sample 65; later visits use `1000016`, so saving and loading cannot repeat the
 Gold or the handoff.
 
+The Purgatory assignment uses the same generic pieces on different shipped
+maps. Vaporous Forest scenario `1000002` object 2 calls opcode 17 for scenario
+`1030000`, entry zero. After traversing that map, object 1 calls opcode 17 for
+scenario `1030002`, also at entry zero. Its periodic sentence scans character
+numbers `14000000..14000006`: three Arc Shamans and four Arc Thunder Bats.
+When all seven death presentations expire, the script hides object `10011000`,
+shows `10011001` and `10011002`, plays the room sound, and completes mission
+seven with sample 66. Alex's `1000017` branch creates category four definition
+zero with quantity 4,000, followed by sample 85 on landing. Callback messages
+`1000018..1000020` start mission eight and sample 65; saved active state uses
+`1000021` and does not create the Gold again.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
