@@ -2,6 +2,8 @@ name: Build Wii U WUHB
 
 on:
   push:
+    branches:
+      - master
     paths:
       - '.github/workflows/wiiu.yml'
       - 'CMakeLists.txt'
@@ -22,6 +24,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,11 +38,22 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v6
 
-      - name: Install Wii U dependencies
+      - name: Install build tools
         run: |
           apt-get update
-          apt-get install -y ninja-build
-          dkp-pacman -Syu --needed --noconfirm wiiu-dev wiiu-sdl2
+          apt-get install -y ninja-build git
+
+      - name: Build the Wii U SDL2 port
+        run: |
+          git clone --depth 1 --branch wiiu-sdl2-devel https://github.com/dkosmari/SDL.git /tmp/wiiu-sdl2
+          /opt/devkitpro/portlibs/wiiu/bin/powerpc-eabi-cmake \
+            -S /tmp/wiiu-sdl2 \
+            -B /tmp/wiiu-sdl2/build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt/devkitpro/portlibs/wiiu
+          cmake --build /tmp/wiiu-sdl2/build --parallel
+          cmake --install /tmp/wiiu-sdl2/build
 
       - name: Build the release WUHB
         run: sh tools/wiiu/build-wuhb.sh
