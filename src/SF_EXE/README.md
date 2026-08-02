@@ -289,6 +289,12 @@ position change. Expired actors remain in their MCT order but every renderer,
 pointer, collision, combat-effect, and companion consumer treats them as
 inactive until the script activates them again.
 
+Unlock switches now stay in that data-driven path too. Their scripts test the
+idle hero against the displayed switch actor's retail interaction range, draw
+the evaluated progress number above the switch, and refresh the original
+`Player/Common/UnlockSW` animation on the hero. The separate opcode used by a
+network client remains a harmless no-op in the portable single-player host.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,

@@ -1090,6 +1090,16 @@ shipped calls across 45 scenarios are audited; effects 20010 and 20018 map to
 their retail OPTION resources 11000008 and 10000020 without adding any
 scenario-specific rules.
 
+The authored unlock-switch feedback is reconstructed too. Operand type nine
+now gates a switch sentence on the idle hero actually reaching its displayed
+actor and 159-unit judgement range. Opcode 26 draws the script's evaluated
+decimal progress above that actor, while opcode 60 refreshes the original
+`Player/Common/UnlockSW` animation on the hero for one update at a time.
+Opcode 29 remains the client-only packet notification it is in retail instead
+of gaining invented single-player behavior. A catalog audit covers the 60
+matching gates, labels, and markers across 22 scenarios, plus all 61 network
+notifications.
+
 Malse's next authored branch is live too. Completing the Red Goblin quest is
 what advances his script into the merchant introduction and later service
 menu; the engine does not special-case his name or quest ID. Scenario status

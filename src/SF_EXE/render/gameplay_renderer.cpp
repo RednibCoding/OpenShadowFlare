@@ -122,6 +122,16 @@ void renderPlayerPass(
         renderPlayerPowerupPass(
             renderer,
             world,
+            world.playerUnlockSwitchVisual(),
+            world.playerUnlockSwitchActive(),
+            world.playerUnlockSwitchFrame(),
+            {},
+            camera_x,
+            camera_y,
+            interpolation);
+        renderPlayerPowerupPass(
+            renderer,
+            world,
             world.playerMagicShieldVisual(),
             world.playerMagicShieldActive(),
             world.playerMagicShieldFrame(),

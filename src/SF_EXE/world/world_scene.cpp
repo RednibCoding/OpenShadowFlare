@@ -110,6 +110,7 @@ void WorldScene::clear() {
     companion_.clear();
     effect_visuals_.clear();
     player_powerup_visual_.clear();
+    player_unlock_switch_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
@@ -169,6 +170,7 @@ void WorldScene::clear() {
     script_travel_pending_ = false;
     scenario_changed_ = false;
     player_identify_mode_active_ = false;
+    player_unlock_switch_active_ = false;
     player_infinite_life_ = false;
     player_infinite_mana_ = false;
     owned_companion_inactive_ = true;
@@ -374,6 +376,21 @@ WorldScene::playerIncreasedPowerVisual() const {
 
 std::int32_t WorldScene::playerIncreasedPowerFrame() const {
     return player_increased_power_.auraFrame();
+}
+
+bool WorldScene::playerUnlockSwitchActive() const {
+    return player_unlock_switch_active_;
+}
+
+const EffectVisualResource*
+WorldScene::playerUnlockSwitchVisual() const {
+    return player_unlock_switch_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_unlock_switch_visual_;
+}
+
+std::int32_t WorldScene::playerUnlockSwitchFrame() const {
+    return player_.damagePresentation().counter;
 }
 
 std::size_t
@@ -709,6 +726,9 @@ bool WorldScene::activatePlayerIncreasedPower() {
 
 void WorldScene::update() {
     scenario_text_labels_.clear();
+    // The retail player update clears +0x159c before the scenario's status
+    // kind-five sentences can refresh the one-update UnlockSW marker.
+    player_unlock_switch_active_ = false;
     // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
     // next player update when no mana remains. Keeping this before the cast
     // action lets an exact-cost activation show its marker frame once, as in

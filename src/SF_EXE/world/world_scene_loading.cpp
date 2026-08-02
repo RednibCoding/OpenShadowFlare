@@ -234,6 +234,17 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
+    if (!player_unlock_switch_visual_.load(
+            data_root / "Player" / "Common",
+            "UnlockSW",
+            &player_error)) {
+        setError(
+            error,
+            "The player unlock-switch animation could not be loaded: " +
+                player_error);
+        clear();
+        return false;
+    }
 
     CompanionProfile companion_profile;
     if (!decodeCompanionProfile(
@@ -362,6 +373,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
         camera_shake_duration_ = 0;
         camera_shake_magnitude_ = 0;
         player_identify_mode_active_ = false;
+        player_unlock_switch_active_ = false;
         pointer_.clearSelection();
         scenario_world_.setEntry(
             start.entry_value, *entry);
@@ -416,6 +428,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
     gameplay_service_request_ = {};
     script_transport_service_ = -1;
     player_identify_mode_active_ = false;
+    player_unlock_switch_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;
     next_ground_item_id_ =
