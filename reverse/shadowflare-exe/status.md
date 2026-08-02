@@ -1796,6 +1796,28 @@ uses message `1000033` to send the player toward Mining Town and latches flag
 71. The Gold landing sample 85, Epilogue launch, both saved flags, completed
 quest, and no-repeat return branch are covered by the live shipped-data test.
 
+The post-Epilogue route into Episode 2 is now traced and covered with shipped
+data. Near Remote Town status kind five reads saved flag 71 and uses opcode 56
+to swap characters `10001030` and `10001031`. Object four only follows its
+sentence-eight branch to opcode 17 `{2999999, 0}` when that flag is one. With
+flag zero, walking into the same authored trigger leaves the player in the
+scenario.
+
+Scenario `2999999` is `Caravan`; its object-one edge leads to `2000000`, then
+object one leads to `2000001`, and the next object-one edge leads to `2100000`
+entry zero. The two road scenarios are both titled `Forest` and use music one.
+Caravan's visual-one branch belongs to object two when flag 71 is zero and
+then writes value two, so the ordinary flag-one Episode route must not present
+that visual.
+
+Scenario `2100000` is `Kanfore, Mining Town`. Status kind seven issues opcode
+6 for vendor indexes 0, 1, and 2 with Tables 6, 23, and 32. The decoded town
+has 14 PEOPLE actors: IDs 0 through 12 plus Beboba at ID 100. Its object-zero
+edge returns to `2000001`, entry one. The native route regression proves the
+gate object swap, Caravan branch, road titles and music, town actors and
+vendors, save/load persistence, and return edge without adding production
+map-specific code.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

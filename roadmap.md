@@ -101,12 +101,13 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: scenario coverage and the Episode 1 playthrough
+## Current milestone: scenario coverage and the Episode 2 playthrough
 
 The player's 22 ordinary spell actions, Increased Power, and Land Mines are
-now reconstructed. Work has moved back to the script-driven scenario layer:
-each newly exercised opcode should unlock real Episode 1 behavior through the
-shared world owners, rather than adding map-specific shortcuts.
+now reconstructed, and the main Episode 1 route is covered through its
+Epilogue. Work has moved back to the script-driven scenario layer for Episode
+2: each new slice should unlock shipped behavior through the shared world
+owners, rather than adding map-specific shortcuts.
 
 The ordinary melee, basic ranged, and owned-companion encounter paths are now
 proven in the live outdoor world. The companion can acquire and attack enemies,
@@ -1230,6 +1231,16 @@ Tower of Ordeal message, and starts opcode 64's Episode 1 Epilogue. The next
 visit points toward Mining Town. The reward landing sound, episode flags,
 Epilogue handoff, save/load state, and no-repeat branch are covered together.
 
+The first Episode 2 route is covered too. Alex's post-Epilogue message leaves
+saved flag 71 at one. Near Remote Town uses that flag to swap objects
+`10001030` and `10001031`, and only then lets object four send the player to
+Caravan. The normal route does not show Caravan's unrelated scenario visual;
+it continues through scenarios `02000000` and `02000001`, both titled
+`Forest`, into `Kanfore, Mining Town` (`02100000`). The town initializes all
+14 PEOPLE actors, including Beboba, and fills vendor inventories zero through
+two from Tables 6, 23, and 32. Saving in town keeps the route flag, scenario,
+entry, and services, and its return edge leads back to the second Forest map.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -1939,6 +1950,11 @@ to the retail executable.
 Once Episode 1 is solid, run the same process through Episodes 2–4. Most of the
 engine should already exist by then, but later content will expose less common
 script commands, AI actions, effects, items, and map combinations.
+
+Episode 2 has started with the complete post-Epilogue route through Caravan
+and the two Forest road maps into Kanfore, Mining Town. Continue from the
+town's first authored conversations and assignments, keeping each playable
+handoff under a shipped-data regression.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

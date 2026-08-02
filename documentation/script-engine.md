@@ -1067,6 +1067,28 @@ sends later visits to message `1000033` and sets the separate one-time flag
 71, pointing the player toward Mining Town without creating the reward again.
 Both flags and the completed mission survive the retail save extension.
 
+Flag 71 also owns the first Episode 2 road. Near Remote Town scenario `1`
+runs its status-kind-five sentence every update: value zero shows character
+`10001030` and hides `10001031`, while value one reverses them with opcode 56.
+Object four only reaches its opcode-17 transition to scenario `2999999`, entry
+zero, while the flag is one. This keeps the route in script data rather than a
+world-scene special case.
+
+Scenario `2999999` is titled `Caravan`. Its object-one edge enters scenario
+`2000000`, whose object-one edge enters `2000001`; object one there enters
+`2100000`, entry zero. Both intermediate scenarios are titled `Forest` and
+select music track one. Caravan's object-two branch shows visual one and
+changes flag 71 from zero to two, but that branch is not taken by the normal
+post-Epilogue route, which arrives with value one.
+
+Mining Town is titled `Kanfore, Mining Town`. Its initialization builds vendor
+inventory zero from Table 6, inventory one from Table 23, and inventory two
+from Table 32, alongside 14 PEOPLE actors including actor 100, Beboba. Object
+zero returns to scenario `2000001`, entry one. A shipped-data regression now
+keeps this whole chain, the no-visual branch, vendor initialization, and the
+saved flag/scenario/entry state under the generic interpreter and world
+owners.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
