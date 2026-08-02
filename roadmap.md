@@ -1175,6 +1175,16 @@ once complete, opcode 17 loads occupied Cold Svalt scenario `01000001` at
 entry zero. Titles, entry values, quest state, and every transition remain
 owned by the shipped MCT and SCS data.
 
+The first Cold Svalt mission is covered end to end. Occupied outskirts
+scenario `01000001` loads all 108 enemies and its object-two edge enters the
+inhabited town in scenario `01000000`. Alex's seven-message introduction and
+saved first-visit latch run before Rosanna's two-conversation request. Wild
+Ice owns loot row 56, which creates the fixed Memorable Ruby in automatic-item
+page zero at cell `(2,0)`. Returning it removes the real item, completes
+mission four with sample 66, and creates Rosanna's category-two definition
+`1100003` reward on the following callback. Its sample 93 landing sound,
+completed save, ordinary follow-up, and no-repeat behavior are covered too.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
