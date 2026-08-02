@@ -1762,6 +1762,15 @@ normal landing queues sample 85, and messages `1000018..1000020` start mission
 eight with sample 65. A saved reload follows message `1000021` without
 repeating the reward or handoff.
 
+The Remains of Reincarnation path now follows it. Hanged Men's Forest object
+one enters scenario `1040000`; the object-one edges through `1040001` reach
+clear room `1040002`. Its two Earth Golems, two King Earth Goblins, and three
+Arc Goblin Shamans stay active through their fades. The empty opcode-31 scan
+opens both authored door pairs, plays samples 34 and 31, runs Table 30 row 63
+for the room loot, and completes mission eight with sample 66. Alex then drops
+6,000 Gold and messages `1000023..1000024` start mission nine with sample 65.
+The item landing paths and saved `1000025` no-repeat branch are covered too.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

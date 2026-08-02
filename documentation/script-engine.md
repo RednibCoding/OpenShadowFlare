@@ -1029,6 +1029,17 @@ zero with quantity 4,000, followed by sample 85 on landing. Callback messages
 `1000018..1000020` start mission eight and sample 65; saved active state uses
 `1000021` and does not create the Gold again.
 
+Mission eight begins at Hanged Men's Forest scenario `1000003`, whose object
+1 enters Remains scenario `1040000`. Object 1 there enters `1040001`, and
+object 1 in that inner map reaches clear room `1040002`. The room scans enemy
+characters `14000000..14000006`: two Earth Golems, two King Earth Goblins,
+and three Arc Goblin Shamans. After every lifecycle clears, it swaps objects
+`10011000..10011002` with sample 34, swaps `10021000..10021001` with sample
+31, runs Table 30 loot row 63 at the second door, and completes mission eight
+with sample 66. Alex's message `1000022` creates 6,000 Gold; callbacks
+`1000023..1000024` start mission nine and sample 65. Saved active state uses
+`1000025`, so neither Gold nor the handoff repeats.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

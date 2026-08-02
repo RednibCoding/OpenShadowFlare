@@ -1203,6 +1203,15 @@ Gold and uses messages `1000018` through `1000020` to start the Remains of
 Reincarnation mission. Both map edges, the exact roster, quest sounds, Gold
 landing, saved handoff, and ordinary no-repeat message are covered.
 
+The Remains of Reincarnation assignment is covered through its real entrance
+and inner maps. Hanged Men's Forest leads into scenario `01040000`, then the
+authored object-one edges reach `01040001` and the clear room in `01040002`.
+Two Earth Golems, two King Earth Goblins, and three Arc Goblin Shamans must
+finish fading before both door pairs open, samples 34 and 31 play, Table 30
+row 63 creates its room loot, and mission eight completes. Alex's 6,000-Gold
+reward, the following mission-nine notice, landing sounds, and saved
+no-repeat branch are covered in the same regression.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
