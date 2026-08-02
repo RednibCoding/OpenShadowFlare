@@ -1211,6 +1211,20 @@ quest. Object zero returns to the previous B5F entry. Lytle's completed branch
 shows `1000018` and writes flag 41 to two, while Kirarru uses `1000073`.
 Shipped-data coverage follows this whole chain and saves the completed state.
 
+The aftermath also remains script-owned. Lytle's `1000018..1000025` chain
+writes flag 41 to two, then uses `1000026..1000027` while mission 12 remains
+active. Kyle's corresponding Kanfore branch sees mission 17 complete, uses
+opcode 62 `{12,2,0}` to close mission 12 without a notice, and creates 40,000
+Gold through opcode 10 before messages `1000014..1000017`. A later visit uses
+`1000018..1000019` and does not recreate the reward.
+
+Back in Fanann, completed mission 12 selects `1000028..1000029`, writes flag
+41 to four, and assigns one to type-10 operand 25. That is the persistent
+transport domain: Table 40 row 25 names South Camp of Yugunos and maps it to
+scenario `3900000`, entry 50. The saved repeat is `1000030`. Native coverage
+round-trips the quest, flag, and transport owners and follows the enabled row
+into the real South Camp scenario.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

@@ -1993,6 +1993,28 @@ Native coverage follows the guarded object edge, waits for the real lifecycle
 boundary, returns through object zero, round-trips the completed quest, and
 checks both reports.
 
+The main route continues through an older quest rather than starting a new
+mission in Fanann. Lytle's mission-17-complete branch begins at `1000018`;
+the MTP chain continues through `1000025`, while the status writes saved flag
+41 to two. Mission 12 is still active, so repeat interactions select
+`1000026..1000027` and do not unlock a transport yet.
+
+Kanfore's Kyle checks mission 17 before mission 12. With 17 complete and 12
+active, sentence 19 runs opcode 62 `{12,2,0}`, deliberately producing no
+quest notice or sample, selects `1000014`, and creates category-four,
+definition-zero quantity 40,000 at Kyle. The shared ground-item owner splits
+that into four 10,000-Gold stacks and plays four sample-85 landing sounds.
+The first conversation ends at `1000017`; the no-reward repeat uses
+`1000018..1000019`.
+
+Once mission 12 is complete, Lytle selects `1000028..1000029`, writes flag 41
+to four, and writes transport operand 25 to one. Table 40 row 25 is
+`South Camp of Yugunos`, scenario `3900000`, entry 50. Later visits use
+`1000030`. Save data retains both the flag and transport bit, and activating
+that row loads shipped scenario `03900000`, whose MCT title includes one
+trailing space. Native coverage follows the complete report, reward,
+no-repeat branches, save round-trip, and transport transition.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

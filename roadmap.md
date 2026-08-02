@@ -1340,6 +1340,17 @@ Back in Fanann, Lytle's `1000018` report advances flag 41 to two and Kirarru's
 boss lifecycle, return edge, both reports, quest cue, and saved completion are
 covered without adding map-specific game logic.
 
+The post-dragon handoff now reaches the central front. Lytle's complete
+`1000018..1000025` victory conversation advances flag 41 to two; while the
+older Yugunos mission is still active, later visits use `1000026..1000027`.
+Kyle then recognizes mission 17's completion, silently closes mission 12,
+drops four 10,000-Gold stacks, and runs `1000014..1000017`. His no-repeat
+branch uses `1000018..1000019`. Back in Fanann, Lytle's
+`1000028..1000029` directions advance flag 41 to four and enable transport
+row 25; `1000030` is the saved repeat. That transport lands at the shipped
+`South Camp of Yugunos ` scenario and entry. Dialogue, reward sounds, silent
+quest update, flags, transport persistence, and the actual trip are covered.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -2063,7 +2074,8 @@ retakes the Power Supply Fort through the Labyrinth of Mauve;
 Crimson Sword's defeat and the 40,000-Gold return reward carry the story into
 mission 17. Kirarru's seal preparation, the guarded B5F dragon chamber, the
 Ancient Dragon objective, and both Fanann victory reports are covered too.
-Continue from Lytle's post-dragon flag-41 handoff.
+The following Lytle/Kyle handoff now closes mission 12, awards 40,000 Gold,
+and unlocks the South Camp of Yugunos transport. Continue from South Camp.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
