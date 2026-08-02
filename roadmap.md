@@ -1317,6 +1317,17 @@ Kirarru then delivers the complete `1000058..1000068` dragon warning and
 advances flag 39 to two. The collision routes, switch sounds, quest cues,
 dialogue branches, and save state are covered in their actual story order.
 
+That warning now leads through the next complete assignment. Lytle's
+`1000007..1000009` briefing starts mission 16, `Recapture the power supply
+facility.`, and saves cleanly into the active `1000010` branch. Butterfly
+Hill's southern edge enters `Labyrinth of Mauve` (`02200004`), followed by
+`Near The Power Supply Facility` (`02200005`) and `Fort of the Power Supply`
+(`02230000`). Only the named Crimson Sword completes the mission, after its
+death presentation expires. Returning to Lytle creates four 10,000-Gold
+stacks, plays all four landing sounds, runs `1000011..1000016`, and starts
+mission 17, `Defeat the Dragons!`, once. The route, boss trigger, reward,
+quest cues, and no-repeat save branch remain entirely script-driven.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -2035,8 +2046,10 @@ blockade. The mine's authored B3F/B5F stair, switches, two gates, and deeper
 seal are now in their real order: Kirarru starts mission 15 after the first
 B2F blockade report, the Black Wing in the southern Underground Passage
 completes it, and her response opens B2F before the deeper seal can be reached.
-The seal report ends with her dragon warning. Continue from that warning,
-keeping each playable handoff under the same kind of coverage.
+The seal report ends with her dragon warning. Lytle's next assignment now
+retakes the Power Supply Fort through the Labyrinth of Mauve;
+Crimson Sword's defeat and the 40,000-Gold return reward carry the story into
+mission 17. Continue from the dragon mission briefing.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

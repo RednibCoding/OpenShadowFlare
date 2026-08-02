@@ -1949,6 +1949,31 @@ result no longer re-enters the control-room or first-seal branches. This
 ordering matters: the deeper seal is physically inaccessible until mission
 15 has opened the B2F protection device.
 
+Lytle's flag-41-one branch then observes saved flag 39 at two. Messages
+`1000007..1000009` describe the Power Supply Facility beyond the Labyrinth of
+Mauve; continuation 202 runs opcode 62 `{16,1,0}` and opcode 48, producing
+the ordinary mission-update cue, sample 65, and notice for mission 16. A
+saved active mission returns through message `1000010` without repeating the
+cue.
+
+Butterfly Hill object two enters `2200004`, `Labyrinth of Mauve`, at entry
+zero. Its object one enters `2200005`, `Near The Power Supply Facility`, and
+that map's object one enters `2230000`, `Fort of the Power Supply`. The fort's
+periodic sentence checks only enemy character `14010000`, the named Crimson
+Sword. Once that actor's death presentation expires, opcode 62 `{16,2,1}`
+completes mission 16 and plays sample 66. Fort object zero returns to the
+approach map at entry one.
+
+Back in Fanann, Lytle's mission-16-complete branch selects
+`1000011..1000016`. Its opcode-10 request creates category-four definition-zero
+quantity 40,000 at Lytle, which the shared item owner splits into four retail
+10,000-Gold ground stacks; all four play sample 85 on their first landing.
+Continuation 405 then runs opcode 62 `{17,1,0}` and selects mission 17,
+`Defeat the Dragons!`. Saving preserves missions 16 complete and 17 active;
+the next interaction uses `1000017` without recreating Gold or replaying
+sample 65. A shipped-data regression covers the complete dialogue, route,
+boss lifecycle, reward audio, quest handoff, and save branch.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
