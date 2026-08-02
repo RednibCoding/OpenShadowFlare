@@ -1885,6 +1885,20 @@ Agora object three reaches `2200000`, `Fanann, Village of Elves`. Native
 coverage preserves the route, fixed loot result, automatic owner, removal,
 completion sample 66, save/no-repeat branch, and reopened gate.
 
+Fanann's entry script fills vendor owners zero, one, and two with opcode 6 and
+Table rows 7, 24, and 33. PEOPLE zero is Lytle. His flag-41-zero branch shows
+message `1000002`; its MTP continuation chain supplies `1000003..1000004`,
+then the saved flag becomes one. The next interaction takes message `1000006`
+while mission 12 stays active and mission 14 stays complete.
+
+Object one in Fanann executes opcode 17 for `2200001`, entry zero,
+`Butterfly Hill`. Object one there executes the same general command for
+`2200003`, entry zero, `Dragon Road`. Native coverage enters through the
+newly opened Cross Agora gate, checks all three vendors and Lytle, round-trips
+flag 41 through the retail save owner, proves the no-repeat text, and follows
+both authored route edges. No Fanann-specific behavior was added to the world
+owner.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

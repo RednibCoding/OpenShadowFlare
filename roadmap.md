@@ -1281,6 +1281,15 @@ normally into `Fanann, Village of Elves` (`02200000`). The route, guardian,
 fixed item owner, completion cue, persistence, and newly opened gate all stay
 data-driven.
 
+The opened gate now has a playable handoff on the other side. Fanann fills
+vendor inventories zero through two from Tables 7, 24, and 33. Lytle's first
+visit shows messages `1000002..1000004`, keeps mission 12 active, and saves
+flag 41 so that a later visit uses `1000006` instead of replaying the
+directions. Fanann's western edge enters `Butterfly Hill` (`02200001`), and
+its object-one edge continues to `Dragon Road` (`02200003`), matching Lytle's
+route toward the Mining Tunnel of Yugunos. Town services, briefing state,
+save/load behavior, and both route edges are covered by shipped-data tests.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -1992,9 +2001,10 @@ engine should already exist by then, but later content will expose less common
 script commands, AI actions, effects, items, and map combinations.
 
 Episode 2 has started with the complete post-Epilogue route through Caravan
-and the two Forest road maps into Kanfore, Mining Town. Continue from the
-newly opened route into Fanann after returning Kirushutat's Seal Crystal,
-keeping each playable handoff under a shipped-data regression.
+and the two Forest road maps into Kanfore, Mining Town. The detour through
+Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
+through Butterfly Hill to Dragon Road. Continue toward the Mining Tunnel of
+Yugunos, keeping each playable handoff under a shipped-data regression.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

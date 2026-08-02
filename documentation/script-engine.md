@@ -1161,6 +1161,22 @@ message `1000032`, so neither the crystal nor the mission cue repeats. Cross
 Agora object three can then execute its guarded opcode 17 and enter `2200000`,
 `Fanann, Village of Elves`.
 
+Fanann's scenario initialization uses opcode 6 to fill vendor owners zero,
+one, and two from Tables 7, 24, and 33. PEOPLE actor zero is Lytle. With saved
+flag 41 still zero, his status shows message `1000002`; the message resource's
+continuations present `1000003` and `1000004`, and the status writes flag 41
+to one. This does not start a new mission: mission 12 remains active while
+mission 14 remains complete. On a later visit, the flag-41 branch selects
+message `1000006`, so the Yugunos directions are not replayed.
+
+The route remains script-owned as well. Fanann object one runs opcode 17 for
+scenario `2200001`, entry zero, which the shipped MCT names `Butterfly Hill`.
+Butterfly Hill object one then runs opcode 17 for scenario `2200003`, entry
+zero, `Dragon Road`. A native save/load regression follows the opened Cross
+Agora gate, initializes the village services, consumes Lytle's exact message
+chain, proves the return branch, and walks both exits through the general
+interpreter without a town-specific runtime case.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
