@@ -652,6 +652,15 @@ consume the same axes.
 - Effect of Stamina Medicine (+%)
 - Effect of Mental Medicine (+%)
 
+### Normal melee speed
+
+A new Mercenary's raw attack speed is 100. Table 4 maps that to tier five, so
+the right-click three-stage melee chain runs at factor 1.3 from the beginning.
+The opening Short Sword adds no attack speed, so the relatively quick combo is
+the hero's normal baseline. The Dagger does have its authored 50-point bonus
+and is slightly faster. Saving, loading, and returning to the current entry
+after death do not change the applicable tier.
+
 ## Player Death and Recovery
 
 Without a revival item, lethal damage selects player action 5. Retail locks

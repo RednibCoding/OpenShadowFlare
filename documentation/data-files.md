@@ -639,6 +639,14 @@ supplies the run/walk fallback, while the requested initial scenario and entry
 remain the fallback for saves which predate the retail world-state owner. The
 rest of the later state is still pending.
 
+The early quest items show why these coordinates must remain part of the item
+definition. Malse's stolen gem `99000000`, Syria's stolen Spirit Stone
+`99000001`, and Rosanna's Memorable Ruby `99000002` occupy cells `(0,0)`,
+`(1,0)`, and `(2,0)` on automatic page zero. Script opcode 58 finds them there
+and opcode 59 removes the returned item from that owner before completing the
+matching mission. The other Spirit Stone named by definition `98000001` is a
+different item on page two.
+
 ## Transport destination table
 
 Table 40 in `Table.Tbd` has 51 rows and three columns:

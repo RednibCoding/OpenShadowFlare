@@ -2337,6 +2337,15 @@ each stage attempts short collision-aware forward movement in ten-unit
 increments up to the retail 61-unit cutoff. Counter six plays the equipped
 weapon sound.
 
+A new Mercenary starts with raw attack speed 100. Table 4 maps that to tier
+five, whose three-stage combo factor is 1.3. Ostare's Short Sword contributes
+zero to the attack-speed field, so the fairly quick opening combo already is
+the normal character baseline. The Dagger is a separate, modest improvement
+with an authored contribution of 50. The portable timing regression
+round-trips a Short-Sword-equipped hero through a real save and then through
+the same-entry revival transition; all three paths complete the combo in the
+same number of simulation updates.
+
 The three impact markers play consecutive `Voice00` samples. Raw gender one
 uses 96, 97, and 98; raw gender zero uses 99, 100, and 101. This is independent
 of whether an enemy is close enough to receive the hit. Action 13 is the

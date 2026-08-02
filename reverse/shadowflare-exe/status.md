@@ -1730,6 +1730,204 @@ Cold Svalt scenario `1000001` at entry zero. This keeps the route, gate, map
 titles, and entry coordinates in MCT/SCS ownership rather than a portable
 quest-name special case.
 
+Cold Svalt's first mission is covered through the same owners. Occupied
+scenario `1000001` has 108 enemies and its object-two overlap enters inhabited
+scenario `1000000`, entry zero. Alex's messages `1000000..1000006` latch flag
+11, while Rosanna uses flag 15 and two visits for messages `1000047..1000051`
+before starting mission four. Wild Ice character `14000001` owns loot row 56,
+which resolves to fixed category four definition `99000002` on automatic page
+zero at `(2,0)`. Rosanna's return sentence removes it and completes the mission
+before message acknowledgement, then callback `1000054` creates category two
+definition `1100003`. Completion sample 66, reward landing sample 93, saved
+quest and latch state, and the no-repeat `1000055` follow-up are all covered.
+
+Alex's following Cold Ruins assignment now has the same end-to-end coverage.
+Once mission four is complete, messages `1000009..1000012` start mission six
+and its normal notice. Bottom-floor scenario `1020002` scans its seven enemy
+slots until both Frost Golems, all four Knight Frost Goblins, and the King
+Frost Goblin have finished fading. The clear branch hides object `10011000`,
+shows `10011001` and `10011002`, and completes the mission with sample 66.
+Returning to Alex creates category four definition zero with quantity 2,000,
+which is the authored Gold reward and uses sample 85 when it lands. Callback
+message `1000015` immediately starts mission seven with sample 65, while saved
+active state returns through `1000016` without repeating either reward.
+
+Mission seven is covered from its outdoor entrance through Alex's next
+assignment. Vaporous Forest object two enters Purgatory scenario `1030000`,
+and object one there enters the clear room in `1030002`. That room contains
+exactly three Arc Shamans and four Arc Thunder Bats; its periodic opcode-31
+scan waits for every death fade before toggling objects `10011000..10011002`
+and completing the mission with sample 66. Alex then creates 4,000 Gold, whose
+normal landing queues sample 85, and messages `1000018..1000020` start mission
+eight with sample 65. A saved reload follows message `1000021` without
+repeating the reward or handoff.
+
+The Remains of Reincarnation path now follows it. Hanged Men's Forest object
+one enters scenario `1040000`; the object-one edges through `1040001` reach
+clear room `1040002`. Its two Earth Golems, two King Earth Goblins, and three
+Arc Goblin Shamans stay active through their fades. The empty opcode-31 scan
+opens both authored door pairs, plays samples 34 and 31, runs Table 30 row 63
+for the room loot, and completes mission eight with sample 66. Alex then drops
+6,000 Gold and messages `1000023..1000024` start mission nine with sample 65.
+The item landing paths and saved `1000025` no-repeat branch are covered too.
+
+Mission nine is now held by its actual discovery transition. Remains scenario
+`1040002` object five enters Sea of Trees scenario `1000004`, entry one, and
+object zero there enters Immortal Remains scenario `1050000`, entry zero. The
+destination initialization completes mission nine with sample 66 immediately;
+it does not wait for an enemy clear. Alex's `1000026..1000028` chain then
+starts mission ten with sample 65 and intentionally creates no item reward.
+Saving and reloading returns through active message `1000029` without
+replaying the handoff.
+
+The Immortal Remains battle now completes the same chain. Object one in
+scenario `1050000` enters `1050001`, and object one there enters Gargoyle room
+`1050002`. Characters `14000000..14000003` are ordinary Gargoyles using loot
+row 55 and a 50-percent 200..300 Gold range; `14000004..14000006` are the
+magic variants with guaranteed 600..800 Gold. The periodic opcode-31 scan
+waits through all seven death fades before swapping objects
+`10011000..10011002`, playing positioned sample 34, and completing mission ten
+with sample 66.
+
+Alex's message `1000030` creates 10,000 Gold and changes global flag 11 from
+one to two. Message `1000031` follows on callback, then opcode 64 value zero
+opens the Episode 1 Epilogue presenter. Once it closes, the flag-two branch
+uses message `1000033` to send the player toward Mining Town and latches flag
+71. The Gold landing sample 85, Epilogue launch, both saved flags, completed
+quest, and no-repeat return branch are covered by the live shipped-data test.
+
+The post-Epilogue route into Episode 2 is now traced and covered with shipped
+data. Near Remote Town status kind five reads saved flag 71 and uses opcode 56
+to swap characters `10001030` and `10001031`. Object four only follows its
+sentence-eight branch to opcode 17 `{2999999, 0}` when that flag is one. With
+flag zero, walking into the same authored trigger leaves the player in the
+scenario.
+
+Scenario `2999999` is `Caravan`; its object-one edge leads to `2000000`, then
+object one leads to `2000001`, and the next object-one edge leads to `2100000`
+entry zero. The two road scenarios are both titled `Forest` and use music one.
+Caravan's visual-one branch belongs to object two when flag 71 is zero and
+then writes value two, so the ordinary flag-one Episode route must not present
+that visual.
+
+Scenario `2100000` is `Kanfore, Mining Town`. Status kind seven issues opcode
+6 for vendor indexes 0, 1, and 2 with Tables 6, 23, and 32. The decoded town
+has 14 PEOPLE actors: IDs 0 through 12 plus Beboba at ID 100. Its object-zero
+edge returns to `2000001`, entry one. The native route regression proves the
+gate object swap, Caravan branch, road titles and music, town actors and
+vendors, save/load persistence, and return edge without adding production
+map-specific code.
+
+Kyle's first Episode 2 mission is now traced and covered as well. PEOPLE zero
+uses saved flag 23 for its first-visit latch. Messages `1000002..1000008`
+finish by setting mission 11 active with opcode 62 and publishing it with
+opcode 48. Table 41 row 11 is `Destroy thieves staying SE of Kanfore.` The
+active return branch is message `1000009`.
+
+Mining Town object one enters `2100001` (`Forest of Four Leaves`) at entry
+zero, and its object one enters `2100002` (`Forest of Claws`) at entry zero.
+The first periodic opcode-31 scan watches Oak Knights
+`14010000..14010002`. After their death presentations expire, opcodes 23 hide
+objects `10000700` and `10000701`, and positional opcode 16 requests sample
+81. A second scan watches `14020000..14020002` and completes mission 11 with
+sample 66. Both triples use loot row 85 and a ten-percent Gold chance.
+
+Kyle's completed branch opens message `1000010`. Temporary flag `1000018` is
+20,000, so opcode 10's equal minimum and maximum create exactly 20,000 Gold;
+the common 10,000 cap splits it into two airborne stacks with two sample-85
+landings. Messages `1000011..1000012` then start mission 12, `Head for the
+Mining Tunnel of Yugunos.`, and the active branch becomes `1000013`. Native
+coverage keeps both mission states, flag 23, map route, gate, quest cues, Gold,
+landing sounds, and saved no-repeat behavior under shipped data.
+
+The first mission-12 gate is now traced and covered. Mining Town object one
+enters Forest of Four Leaves scenario `2100001`; object three there points to
+Cross Agora scenario `2100004`. Garshwin is PEOPLE zero near the southern
+edge. His status starts with default message `1000002`, but active mission 12
+replaces it before display with `1000003`; its embedded continuation shows
+`1000004`. The status writes saved flag 24 on this refusal branch.
+
+Cross Agora object three checks mission 14 for state two before opcode 17 can
+enter Fanann scenario `2200000`. At this point mission 14 is zero, so reaching
+the live trigger rectangle leaves the player in Cross Agora. Kyle reads flag
+24 on return and runs messages `1000020..1000029`, describing the dragon seal
+and Kirushutat. The final callback starts mission 13 with opcode 62 and its
+notice with opcode 48; Table 41 row 13 is `Meet with the Wizard Kirushutat.`
+Mission 12 stays active. Native coverage preserves the refusal, locked edge,
+flag, cue, sound, both mission states, and `1000013` saved return branch.
+
+The mission-13 route continues from Cross Agora object one to scenario
+`2100005`, whose authored title is `Forest of Sprits`, then from its object one
+to `2110000`, `Tower of the Wizard`. The tower uses entries for its ten floors;
+entry 18 places the player near Kirushutat, PEOPLE zero.
+
+Kirushutat's active-mission-13 sentence shows messages `1000012..1000027`.
+It first executes opcode 62 with mission 13, state two, and the last callback
+executes opcode 62 with mission 14, state one, followed by opcode 48. Table 41
+row 14 is `Take back the Seal Crystal.` The active-mission-14 return branch is
+message `1000028`. A shipped-data regression covers both route edges, the
+entry, full briefing, mission notice/sample 65, persistence, and the no-repeat
+branch through the existing generic owners.
+
+Mission 14's item chain is also recovered. Cross Agora object two enters
+scenario `2100006`, `Forest of Knight's Misery`, and its object one enters
+`2120000`, `Fort of Thieves`. Scenario enemy 65 is an Oak Warrior with loot
+row 76. Table 30 row 76 guarantees Table 31 row 403, which constructs category
+four definition `99000003`; `Item.Ibn` names it `Seal Crystal` and assigns
+automatic page zero, cell `(3,0)`.
+
+Kirushutat sentence 28 passes `(4,99000003)` to opcode 58. When present,
+sentence 29 removes it with opcode 59, shows message `1000029`, sets temporary
+conversation state 300, and completes mission 14 through opcode 62. The
+callback continues through `1000030..1000031`; subsequent visits use
+`1000032` until mission 17 is complete. With mission 14 in state two, Cross
+Agora object three reaches `2200000`, `Fanann, Village of Elves`. Native
+coverage preserves the route, fixed loot result, automatic owner, removal,
+completion sample 66, save/no-repeat branch, and reopened gate.
+
+Fanann's entry script fills vendor owners zero, one, and two with opcode 6 and
+Table rows 7, 24, and 33. PEOPLE zero is Lytle. His flag-41-zero branch shows
+message `1000002`; its MTP continuation chain supplies `1000003..1000004`,
+then the saved flag becomes one. The next interaction takes message `1000006`
+while mission 12 stays active and mission 14 stays complete.
+
+Object one in Fanann executes opcode 17 for `2200001`, entry zero,
+`Butterfly Hill`. Object one there executes the same general command for
+`2200003`, entry zero, `Dragon Road`. Native coverage enters through the
+newly opened Cross Agora gate, checks all three vendors and Lytle, round-trips
+flag 41 through the retail save owner, proves the no-repeat text, and follows
+both authored route edges. No Fanann-specific behavior was added to the world
+owner.
+
+Dragon Road object two enters `2210000`, `Mining Tunnel of Yugunos, B1F`, at
+entry zero. B1F object one enters `2210001`, `Mining Tunnel of Yugunos, B2F`,
+at entry zero. B2F object two is the protected-area trigger rather than a
+floor exit. On first contact its kind-three sentence writes saved flag 38;
+while saved flag 40 is zero, opcode 17 relocates the player within B2F to
+entry two. Mission 12 stays active and mission 15 stays at zero.
+
+B2F object zero returns to B1F entry one, and B1F object zero returns to
+Dragon Road entry two. A shipped-data regression walks those four edges,
+touches the live B2F protection rectangle, checks the same-scenario pushback,
+and saves and reloads flag 38 with the exact Dragon Road entry. The deeper
+stair and switch path is deliberately not bypassed by this checkpoint.
+
+The deeper Yugunos route is now traced and covered as its own checkpoint.
+B3F scenario `2210002` requires switches 40000 and 40002, uses object two for
+its same-scenario entry-two stair, and reaches B5F scenario `2210003` through
+object one. B5F again requires both switch pairs: 40002 opens the 11000 gate
+group and 40000 opens the 11003 group. Object 800 then writes saved flag 39.
+The regression walks the real collision maps and gate actors rather than
+relocating between those interactions.
+
+Fanann PEOPLE four, Kirarru, consumes that finding through shipped script
+branches. Her first visit shows messages `1000048..1000050` and writes saved
+flag 45. With flags 38, 39, and 45 set while mission 15 is zero, the next
+interaction shows `1000052..1000055`, starts mission 15, and plays sample 65.
+Mission 12 remains active. Saving and loading preserves all three flags and
+both mission states; the active-mission return uses message `1000051` without
+replaying sample 65.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a
@@ -1867,6 +2065,14 @@ weapon swing sound, hits all valid nearby enemies, and uses consecutive male
 samples 96..98 or female samples 99..101. Native coverage starts this through
 the actual normal-target secondary-click command as well as the isolated
 retail CAF controller.
+
+The opening speed is character-owned, not a starter-item exception. A new
+Mercenary has raw attack speed 100, Table 4 maps it to tier five, and the combo
+factor at that tier is 1.3. The Short Sword contributes zero to derived
+attack-speed parameter eight; the Dagger contributes 50. Native coverage now
+saves and reloads the Short-Sword-equipped hero and compares the full combo
+update count before and after a same-entry revival transition; the cadence
+stays identical.
 
 Spell zero now reaches action 22. `FUN_0043a260` uses Table 20 row zero and
 the clicked dominant axis, tries the exact 500-unit cardinal offsets and four
