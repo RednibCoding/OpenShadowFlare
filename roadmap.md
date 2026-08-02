@@ -101,12 +101,13 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: scenario coverage and the Episode 1 playthrough
+## Current milestone: scenario coverage and the Episode 2 playthrough
 
 The player's 22 ordinary spell actions, Increased Power, and Land Mines are
-now reconstructed. Work has moved back to the script-driven scenario layer:
-each newly exercised opcode should unlock real Episode 1 behavior through the
-shared world owners, rather than adding map-specific shortcuts.
+now reconstructed, and the main Episode 1 route is covered through its
+Epilogue. Work has moved back to the script-driven scenario layer for Episode
+2: each new slice should unlock shipped behavior through the shared world
+owners, rather than adding map-specific shortcuts.
 
 The ordinary melee, basic ranged, and owned-companion encounter paths are now
 proven in the live outdoor world. The companion can acquire and attack enemies,
@@ -1185,6 +1186,127 @@ mission four with sample 66, and creates Rosanna's category-two definition
 `1100003` reward on the following callback. Its sample 93 landing sound,
 completed save, ordinary follow-up, and no-repeat behavior are covered too.
 
+Alex's next assignment is covered through the Cold Ruins and back. After the
+Ruby mission, messages `1000009` through `1000012` start mission six with its
+normal notice and sound. Bottom-floor scenario `01020002` waits for all seven
+authored enemies to finish their death fades before changing the room objects
+and completing the mission. Back in Cold Svalt, Alex drops exactly 2,000 Gold,
+then message `1000015` immediately starts mission seven, Purgatory of
+Judgments. The Gold landing sound, both quest cues, saved handoff, and
+no-repeat return branch are held by the same end-to-end regression.
+
+Purgatory of Judgments now continues that playthrough without a shortcut.
+Vaporous Forest object two enters scenario `01030000`; its object-one edge
+reaches the clear room in `01030002`. Three Arc Shamans and four Arc Thunder
+Bats all remain active through their death fades, and only the empty scan
+changes the room objects and completes mission seven. Alex then drops 4,000
+Gold and uses messages `1000018` through `1000020` to start the Remains of
+Reincarnation mission. Both map edges, the exact roster, quest sounds, Gold
+landing, saved handoff, and ordinary no-repeat message are covered.
+
+The Remains of Reincarnation assignment is covered through its real entrance
+and inner maps. Hanged Men's Forest leads into scenario `01040000`, then the
+authored object-one edges reach `01040001` and the clear room in `01040002`.
+Two Earth Golems, two King Earth Goblins, and three Arc Goblin Shamans must
+finish fading before both door pairs open, samples 34 and 31 play, Table 30
+row 63 creates its room loot, and mission eight completes. Alex's 6,000-Gold
+reward, the following mission-nine notice, landing sounds, and saved
+no-repeat branch are covered in the same regression.
+
+The following scouting mission now ends at the place the shipped script says
+it does. Remains scenario `01040002` object five enters Sea of Trees scenario
+`01000004`; its object-zero edge reaches Immortal Remains scenario `01050000`.
+That map's initialization completes mission nine immediately with sample 66.
+Alex uses messages `1000026` through `1000028` to turn the report into mission
+ten, without creating an intermediate item reward. The route, entry values,
+notice sound, saved active branch, and no-repeat behavior are covered.
+
+Mission ten now closes the main Episode 1 assignment through the shipped
+Gargoyle room. The object-one exits through scenarios `01050000` and
+`01050001` lead into `01050002`, whose seven Gargoyles use the authored four
+ordinary and three magic variants. The periodic script waits for every death
+fade, opens objects `10011000..10011002`, plays sample 34, and completes the
+mission with sample 66. Alex then drops exactly 10,000 Gold, follows with his
+Tower of Ordeal message, and starts opcode 64's Episode 1 Epilogue. The next
+visit points toward Mining Town. The reward landing sound, episode flags,
+Epilogue handoff, save/load state, and no-repeat branch are covered together.
+
+The first Episode 2 route is covered too. Alex's post-Epilogue message leaves
+saved flag 71 at one. Near Remote Town uses that flag to swap objects
+`10001030` and `10001031`, and only then lets object four send the player to
+Caravan. The normal route does not show Caravan's unrelated scenario visual;
+it continues through scenarios `02000000` and `02000001`, both titled
+`Forest`, into `Kanfore, Mining Town` (`02100000`). The town initializes all
+14 PEOPLE actors, including Beboba, and fills vendor inventories zero through
+two from Tables 6, 23, and 32. Saving in town keeps the route flag, scenario,
+entry, and services, and its return edge leads back to the second Forest map.
+
+Kyle's first Mining Town assignment is covered from briefing to the following
+handoff. His messages `1000002..1000008` start mission 11, `Destroy thieves
+staying SE of Kanfore.`, and the southeast town edge leads through Forest of
+Four Leaves into Forest of Claws. Three Oak Knights using loot row 85 open the
+inner gate; a second group of three completes the mission. Returning to Kyle
+creates exactly 20,000 Gold as two retail-sized stacks, then messages
+`1000011..1000012` start mission 12, `Head for the Mining Tunnel of Yugunos.`
+The gate state, quest sounds and notices, Gold landing sounds, conversation
+latch, mission states, and no-repeat save/load branch all stay data-driven.
+
+The first mining-tunnel detour is covered at its real gate. With mission 12
+active, the Cross Agora elf Garshwin refuses passage in messages
+`1000003..1000004` and sets saved flag 24. The southern object-three edge
+still refuses to enter Fanann because mission 14 is not complete. Kyle reads
+that latch, explains the sleeping dragon through messages `1000020..1000029`,
+and starts mission 13, `Meet with the Wizard Kirushutat.` Mission 12 remains
+active while this prerequisite runs. The route, refusal, physical gate, quest
+notice and sound, both mission states, and saved no-repeat branch are covered
+without teaching the world owner about Garshwin or Kirushutat.
+
+The detour now reaches Kirushutat through the shipped route as well. Cross
+Agora's eastern edge enters `Forest of Sprits` (`02100005`), and that map's
+far edge enters `Tower of the Wizard` (`02110000`). Entry 18 places the hero
+on Kirushutat's floor. His messages `1000012..1000027` complete mission 13
+and start mission 14, `Take back the Seal Crystal.`, with the ordinary quest
+notice and sound. The route, exact message chain, mission handoff, saved state,
+and `1000028` return branch are covered without adding a tower-specific case
+to the runtime.
+
+Mission 14 is covered through its real item handoff. Cross Agora's western
+edge enters `Forest of Knight's Misery` (`02100006`), whose fort entrance
+leads to `Fort of Thieves` (`02120000`). The special Oak Warrior uses loot row
+76; Tables 30 and 31 turn that into the guaranteed automatic item
+`99000003`, the Seal Crystal. Kirushutat finds and removes that exact item,
+completes mission 14 through messages `1000029..1000031`, and stops the
+handoff from repeating after a save. Cross Agora's southern edge then opens
+normally into `Fanann, Village of Elves` (`02200000`). The route, guardian,
+fixed item owner, completion cue, persistence, and newly opened gate all stay
+data-driven.
+
+The opened gate now has a playable handoff on the other side. Fanann fills
+vendor inventories zero through two from Tables 7, 24, and 33. Lytle's first
+visit shows messages `1000002..1000004`, keeps mission 12 active, and saves
+flag 41 so that a later visit uses `1000006` instead of replaying the
+directions. Fanann's western edge enters `Butterfly Hill` (`02200001`), and
+its object-one edge continues to `Dragon Road` (`02200003`), matching Lytle's
+route toward the Mining Tunnel of Yugunos. Town services, briefing state,
+save/load behavior, and both route edges are covered by shipped-data tests.
+
+The first Yugunos investigation is covered without skipping its authored
+blockade. Dragon Road object two enters `Mining Tunnel of Yugunos, B1F`
+(`02210000`), whose object one descends to B2F (`02210001`). The separate B2F
+protection trigger sets saved flag 38 and, while flag 40 remains zero, pushes
+the hero back to entry two. Mission 12 stays active and mission 15 has not
+started yet. The matching object-zero return edges lead back through B1F to
+Dragon Road, and saving there preserves the discovery and exact entry.
+
+The route beyond that blockade is covered now too. B3F (`02210002`) uses both
+of its authored switches and its internal stair before object one reaches B5F
+(`02210003`). B5F needs both switches as well: each opens one of the two gates
+on the long route to object 800, whose contact saves flag 39. Returning those
+findings to Kirarru keeps her first `1000048..1000050` introduction separate
+from the `1000052..1000055` report, starts mission 15 with sample 65, and saves
+the result. After a reload she uses `1000051` without awarding the mission a
+second time.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -1894,6 +2016,15 @@ to the retail executable.
 Once Episode 1 is solid, run the same process through Episodes 2–4. Most of the
 engine should already exist by then, but later content will expose less common
 script commands, AI actions, effects, items, and map combinations.
+
+Episode 2 has started with the complete post-Epilogue route through Caravan
+and the two Forest road maps into Kanfore, Mining Town. The detour through
+Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
+through Butterfly Hill and Dragon Road to the first Mining Tunnel of Yugunos
+blockade. The mine's authored B3F/B5F stair, switches, two gates, and deeper
+seal now lead back to Kirarru and start mission 15 under a shipped-data
+regression. Continue from that briefing, keeping each playable handoff under
+the same kind of coverage.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

@@ -1004,6 +1004,195 @@ sample 66 is queued immediately. Callback message `1000054` creates category
 two definition `1100003`; later visits use message `1000055` without repeating
 the item.
 
+With mission four complete, Alex's next status chain runs messages
+`1000009..1000012` and sets mission six active. Cold Ruins bottom-floor
+scenario `1020002` periodically scans enemy characters `14000000..14000006`
+with opcode 31. The two Frost Golems, four Knight Frost Goblins, and King Frost
+Goblin must all finish their death presentations before the scan is empty.
+Only then does the script hide object `10011000`, show `10011001` and
+`10011002`, play its positioned sound, and complete mission six with sample
+66. Alex's completed branch opens message `1000014` and creates category four,
+definition zero with quantity 2,000: the normal Gold ground item and sample 85
+landing sound. Its callback opens `1000015`, starts mission seven, and queues
+sample 65; later visits use `1000016`, so saving and loading cannot repeat the
+Gold or the handoff.
+
+The Purgatory assignment uses the same generic pieces on different shipped
+maps. Vaporous Forest scenario `1000002` object 2 calls opcode 17 for scenario
+`1030000`, entry zero. After traversing that map, object 1 calls opcode 17 for
+scenario `1030002`, also at entry zero. Its periodic sentence scans character
+numbers `14000000..14000006`: three Arc Shamans and four Arc Thunder Bats.
+When all seven death presentations expire, the script hides object `10011000`,
+shows `10011001` and `10011002`, plays the room sound, and completes mission
+seven with sample 66. Alex's `1000017` branch creates category four definition
+zero with quantity 4,000, followed by sample 85 on landing. Callback messages
+`1000018..1000020` start mission eight and sample 65; saved active state uses
+`1000021` and does not create the Gold again.
+
+Mission eight begins at Hanged Men's Forest scenario `1000003`, whose object
+1 enters Remains scenario `1040000`. Object 1 there enters `1040001`, and
+object 1 in that inner map reaches clear room `1040002`. The room scans enemy
+characters `14000000..14000006`: two Earth Golems, two King Earth Goblins,
+and three Arc Goblin Shamans. After every lifecycle clears, it swaps objects
+`10011000..10011002` with sample 34, swaps `10021000..10021001` with sample
+31, runs Table 30 loot row 63 at the second door, and completes mission eight
+with sample 66. Alex's message `1000022` creates 6,000 Gold; callbacks
+`1000023..1000024` start mission nine and sample 65. Saved active state uses
+`1000025`, so neither Gold nor the handoff repeats.
+
+Mission nine is a map-discovery assignment, not another group clear. Object 5
+in Remains scenario `1040002` calls opcode 17 for Sea of Trees scenario
+`1000004`, entry one. Object 0 there enters Immortal Remains scenario
+`1050000`, entry zero. The destination's status-kind-seven initialization
+calls opcode 62 immediately, completing mission nine and queuing sample 66 as
+the map loads. Back in town, Alex's messages `1000026..1000028` start mission
+ten and sample 65. There is deliberately no Gold or item command in this
+handoff; saved active mission ten uses message `1000029`.
+
+Mission ten continues through object one in Immortal Remains scenarios
+`1050000` and `1050001`, then reaches the seven-Gargoyle room in `1050002`.
+Its four ordinary Gargoyles use loot row 55 with a 50-percent Gold branch of
+200..300; the three magic variants use the same loot row with guaranteed
+600..800 Gold. The periodic sentence scans characters `14000000..14000006`
+and waits until all seven death presentations have expired. It then hides
+object `10011000`, shows `10011001` and `10011002`, plays positioned sample
+34, and completes mission ten with sample 66.
+
+Alex's completed branch opens message `1000030`, sets the episode-state flag
+to two, and creates category-four definition zero with quantity 10,000. Its
+normal landing path plays sample 85. Callback message `1000031` explains the
+Tower of Ordeal, and the following callback runs opcode 64 with value zero,
+which is the Episode 1 Epilogue presenter. After it closes, flag value two
+sends later visits to message `1000033` and sets the separate one-time flag
+71, pointing the player toward Mining Town without creating the reward again.
+Both flags and the completed mission survive the retail save extension.
+
+Flag 71 also owns the first Episode 2 road. Near Remote Town scenario `1`
+runs its status-kind-five sentence every update: value zero shows character
+`10001030` and hides `10001031`, while value one reverses them with opcode 56.
+Object four only reaches its opcode-17 transition to scenario `2999999`, entry
+zero, while the flag is one. This keeps the route in script data rather than a
+world-scene special case.
+
+Scenario `2999999` is titled `Caravan`. Its object-one edge enters scenario
+`2000000`, whose object-one edge enters `2000001`; object one there enters
+`2100000`, entry zero. Both intermediate scenarios are titled `Forest` and
+select music track one. Caravan's object-two branch shows visual one and
+changes flag 71 from zero to two, but that branch is not taken by the normal
+post-Epilogue route, which arrives with value one.
+
+Mining Town is titled `Kanfore, Mining Town`. Its initialization builds vendor
+inventory zero from Table 6, inventory one from Table 23, and inventory two
+from Table 32, alongside 14 PEOPLE actors including actor 100, Beboba. Object
+zero returns to scenario `2000001`, entry one. A shipped-data regression now
+keeps this whole chain, the no-visual branch, vendor initialization, and the
+saved flag/scenario/entry state under the generic interpreter and world
+owners.
+
+Kyle, PEOPLE actor zero, owns the first Episode 2 assignment. His first status
+branch sets saved flag 23 and runs messages `1000002..1000008`; their callback
+uses opcode 62 to set mission 11 active and opcode 48 to publish its notice.
+Table 41 names it `Destroy thieves staying SE of Kanfore.` Reopening the
+conversation while it is active uses message `1000009` rather than replaying
+the briefing.
+
+Mining Town object one enters Forest of Four Leaves scenario `2100001`, entry
+zero. Object one there enters Forest of Claws scenario `2100002`, entry zero.
+That map's periodic statuses use opcode 31 to scan two separate ranges. Once
+characters `14010000..14010002` finish their death presentation, opcodes 23
+hide gate objects `10000700` and `10000701`, and positional opcode 16 requests
+sample 81. The second scan waits for `14020000..14020002` and completes
+mission 11 through opcode 62. All six actors are Oak Knights with Table 30 row
+85 and a ten-percent Gold branch.
+
+Kyle's completed branch opens message `1000010` and calls opcode 10 with the
+temporary value 20,000 at both quantity bounds. The common Gold constructor
+therefore makes two stacks of 10,000, each with its normal landing sample 85.
+Messages `1000011..1000012` then start mission 12, whose Table 41 title is
+`Head for the Mining Tunnel of Yugunos.` Later visits use `1000013`. Mission
+11 completion, mission 12 activation, flag 23, and the no-repeat branch all
+survive the retail save owner.
+
+Mission 12 does not immediately open the route to the Mining Tunnel. Mining
+Town object one reaches Forest of Four Leaves scenario `2100001`, and object
+three there leads to Cross Agora scenario `2100004`. Garshwin is PEOPLE actor
+zero. His default `1000002` text is replaced before presentation when mission
+12 is active, so the player sees the `1000003` and `1000004` refusal bubbles.
+The same status sets saved flag 24.
+
+Cross Agora object three only runs opcode 17 for Fanann scenario `2200000`
+when mission 14 is complete. With mission 12 active and mission 14 untouched,
+walking into its authored judgement rectangle is a no-op. Back in Mining Town,
+Kyle's flag-24 branch runs messages `1000020..1000029`, leaves mission 12
+active, and uses opcodes 62 and 48 to start and publish mission 13. Table 41
+names it `Meet with the Wizard Kirushutat.` Once that mission is active,
+Kyle's ordinary return text is `1000013`; flag 24 and both mission states
+survive saving and loading.
+
+The route to Kirushutat remains entirely scenario-authored. Cross Agora
+object one enters `2100005`, whose MCT title is spelled `Forest of Sprits` in
+the shipped data. Object one there enters `2110000`, `Tower of the Wizard`.
+The tower contains all ten floors in one scenario; its stair objects move
+between entries rather than loading separate maps. Entry 18 reaches the top
+floor near PEOPLE actor zero, Kirushutat.
+
+Kirushutat's mission-13 status selects sentence 31. It shows message
+`1000012`, writes temporary state 100, and opcode 62 marks mission 13 complete.
+The message callbacks continue through `1000027`; the final callback uses
+opcode 62 to start mission 14 and opcode 48 to publish its notice. Table 41
+names that mission `Take back the Seal Crystal.` A saved return while mission
+14 is active takes message `1000028`, so the briefing and its side effects do
+not repeat. Native coverage exercises the real route and this complete
+handoff through the generic scenario interpreter.
+
+Mission 14 uses the same automatic-item and script-query path as the earlier
+Episode 1 keepsakes. Cross Agora object two enters `2100006`, `Forest of
+Knight's Misery`; object one there enters `2120000`, `Fort of Thieves`. Enemy
+65 is the special Oak Warrior with Table 30 row 76. Its guaranteed Table 31
+row 403 result is category four, definition `99000003`, the Seal Crystal.
+`Item.Ibn` places it at page zero, cell `(3,0)` in the automatic-item owner.
+
+While mission 14 is active, Kirushutat's sentence 28 uses opcode 58 to search
+for category four, definition `99000003`. The present branch runs opcode 59,
+opens messages `1000029..1000031`, and sets mission 14 to state two; the usual
+completion sample is queued by opcode 62. The item is gone before the first
+return bubble is displayed. A later visit without completed mission 17 uses
+message `1000032`, so neither the crystal nor the mission cue repeats. Cross
+Agora object three can then execute its guarded opcode 17 and enter `2200000`,
+`Fanann, Village of Elves`.
+
+Fanann's scenario initialization uses opcode 6 to fill vendor owners zero,
+one, and two from Tables 7, 24, and 33. PEOPLE actor zero is Lytle. With saved
+flag 41 still zero, his status shows message `1000002`; the message resource's
+continuations present `1000003` and `1000004`, and the status writes flag 41
+to one. This does not start a new mission: mission 12 remains active while
+mission 14 remains complete. On a later visit, the flag-41 branch selects
+message `1000006`, so the Yugunos directions are not replayed.
+
+The route remains script-owned as well. Fanann object one runs opcode 17 for
+scenario `2200001`, entry zero, which the shipped MCT names `Butterfly Hill`.
+Butterfly Hill object one then runs opcode 17 for scenario `2200003`, entry
+zero, `Dragon Road`. A native save/load regression follows the opened Cross
+Agora gate, initializes the village services, consumes Lytle's exact message
+chain, proves the return branch, and walks both exits through the general
+interpreter without a town-specific runtime case.
+
+Dragon Road object two continues with opcode 17 to scenario `2210000`, entry
+zero, `Mining Tunnel of Yugunos, B1F`. B1F object one enters scenario
+`2210001`, entry zero, `Mining Tunnel of Yugunos, B2F`. The B2F protection is
+not the ordinary floor exit: object two has its own kind-three status. Its
+first contact writes saved flag 38, and while saved flag 40 is zero it runs
+opcode 17 for the current scenario at entry two, pushing the player away from
+the protected section. Mission 12 remains active and mission 15 remains
+untouched at this point.
+
+The ordinary return route stays independent of that rejection. B2F object
+zero enters B1F at entry one, and B1F object zero enters Dragon Road at entry
+two. Native coverage walks both inward edges, touches the real protection
+rectangle, confirms the same-scenario relocation, walks both return edges,
+and round-trips flag 38 plus the Dragon Road entry through the retail save
+owner. The later mine switches and Kirarru handoff remain the next slice.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
