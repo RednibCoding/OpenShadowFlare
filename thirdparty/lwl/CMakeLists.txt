@@ -64,6 +64,15 @@ elseif(APPLE)
   )
 elseif(NINTENDO_SWITCH)
   target_sources(lwl PRIVATE lwl_switch.c)
+elseif(VITA OR CMAKE_SYSTEM_NAME STREQUAL "Vita")
+  target_sources(lwl PRIVATE lwl_vita.c)
+  target_link_libraries(
+    lwl
+    PRIVATE
+      SceCtrl_stub
+      SceTouch_stub
+      SceLibKernel_stub
+  )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lwl PRIVATE lwl_x11.c)
   find_package(OpenGL REQUIRED)
