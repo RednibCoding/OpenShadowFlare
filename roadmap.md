@@ -1290,6 +1290,14 @@ its object-one edge continues to `Dragon Road` (`02200003`), matching Lytle's
 route toward the Mining Tunnel of Yugunos. Town services, briefing state,
 save/load behavior, and both route edges are covered by shipped-data tests.
 
+The first Yugunos investigation is covered without skipping its authored
+blockade. Dragon Road object two enters `Mining Tunnel of Yugunos, B1F`
+(`02210000`), whose object one descends to B2F (`02210001`). The separate B2F
+protection trigger sets saved flag 38 and, while flag 40 remains zero, pushes
+the hero back to entry two. Mission 12 stays active and mission 15 has not
+started yet. The matching object-zero return edges lead back through B1F to
+Dragon Road, and saving there preserves the discovery and exact entry.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -2003,8 +2011,10 @@ script commands, AI actions, effects, items, and map combinations.
 Episode 2 has started with the complete post-Epilogue route through Caravan
 and the two Forest road maps into Kanfore, Mining Town. The detour through
 Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
-through Butterfly Hill to Dragon Road. Continue toward the Mining Tunnel of
-Yugunos, keeping each playable handoff under a shipped-data regression.
+through Butterfly Hill and Dragon Road to the first Mining Tunnel of Yugunos
+blockade. Continue through the mine's authored stair and switch route, then
+return its findings to Kirarru, keeping each playable handoff under a
+shipped-data regression.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

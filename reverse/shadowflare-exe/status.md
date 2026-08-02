@@ -1899,6 +1899,19 @@ flag 41 through the retail save owner, proves the no-repeat text, and follows
 both authored route edges. No Fanann-specific behavior was added to the world
 owner.
 
+Dragon Road object two enters `2210000`, `Mining Tunnel of Yugunos, B1F`, at
+entry zero. B1F object one enters `2210001`, `Mining Tunnel of Yugunos, B2F`,
+at entry zero. B2F object two is the protected-area trigger rather than a
+floor exit. On first contact its kind-three sentence writes saved flag 38;
+while saved flag 40 is zero, opcode 17 relocates the player within B2F to
+entry two. Mission 12 stays active and mission 15 stays at zero.
+
+B2F object zero returns to B1F entry one, and B1F object zero returns to
+Dragon Road entry two. A shipped-data regression walks those four edges,
+touches the live B2F protection rectangle, checks the same-scenario pushback,
+and saves and reloads flag 38 with the exact Dragon Road entry. The deeper
+stair and switch path is deliberately not bypassed by this checkpoint.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

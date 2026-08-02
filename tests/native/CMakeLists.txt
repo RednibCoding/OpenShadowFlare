@@ -1933,6 +1933,37 @@ if(TARGET sf_game_core)
     NAME episode_two_fanann_handoff
     COMMAND episode_two_fanann_handoff_test)
 
+  add_executable(
+    episode_two_yugunos_blockade_test
+    episode_two_yugunos_blockade_test.cpp
+  )
+  target_link_libraries(
+    episode_two_yugunos_blockade_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_yugunos_blockade_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_yugunos_blockade_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_yugunos_blockade_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_yugunos_blockade_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_yugunos_blockade_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_yugunos_blockade
+    COMMAND episode_two_yugunos_blockade_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test

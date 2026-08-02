@@ -1177,6 +1177,22 @@ Agora gate, initializes the village services, consumes Lytle's exact message
 chain, proves the return branch, and walks both exits through the general
 interpreter without a town-specific runtime case.
 
+Dragon Road object two continues with opcode 17 to scenario `2210000`, entry
+zero, `Mining Tunnel of Yugunos, B1F`. B1F object one enters scenario
+`2210001`, entry zero, `Mining Tunnel of Yugunos, B2F`. The B2F protection is
+not the ordinary floor exit: object two has its own kind-three status. Its
+first contact writes saved flag 38, and while saved flag 40 is zero it runs
+opcode 17 for the current scenario at entry two, pushing the player away from
+the protected section. Mission 12 remains active and mission 15 remains
+untouched at this point.
+
+The ordinary return route stays independent of that rejection. B2F object
+zero enters B1F at entry one, and B1F object zero enters Dragon Road at entry
+two. Native coverage walks both inward edges, touches the real protection
+rectangle, confirms the same-scenario relocation, walks both return edges,
+and round-trips flag 38 plus the Dragon Road entry through the retail save
+owner. The later mine switches and Kirarru handoff remain the next slice.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
