@@ -1818,6 +1818,28 @@ gate object swap, Caravan branch, road titles and music, town actors and
 vendors, save/load persistence, and return edge without adding production
 map-specific code.
 
+Kyle's first Episode 2 mission is now traced and covered as well. PEOPLE zero
+uses saved flag 23 for its first-visit latch. Messages `1000002..1000008`
+finish by setting mission 11 active with opcode 62 and publishing it with
+opcode 48. Table 41 row 11 is `Destroy thieves staying SE of Kanfore.` The
+active return branch is message `1000009`.
+
+Mining Town object one enters `2100001` (`Forest of Four Leaves`) at entry
+zero, and its object one enters `2100002` (`Forest of Claws`) at entry zero.
+The first periodic opcode-31 scan watches Oak Knights
+`14010000..14010002`. After their death presentations expire, opcodes 23 hide
+objects `10000700` and `10000701`, and positional opcode 16 requests sample
+81. A second scan watches `14020000..14020002` and completes mission 11 with
+sample 66. Both triples use loot row 85 and a ten-percent Gold chance.
+
+Kyle's completed branch opens message `1000010`. Temporary flag `1000018` is
+20,000, so opcode 10's equal minimum and maximum create exactly 20,000 Gold;
+the common 10,000 cap splits it into two airborne stacks with two sample-85
+landings. Messages `1000011..1000012` then start mission 12, `Head for the
+Mining Tunnel of Yugunos.`, and the active branch becomes `1000013`. Native
+coverage keeps both mission states, flag 23, map route, gate, quest cues, Gold,
+landing sounds, and saved no-repeat behavior under shipped data.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

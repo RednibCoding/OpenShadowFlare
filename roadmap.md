@@ -1241,6 +1241,16 @@ it continues through scenarios `02000000` and `02000001`, both titled
 two from Tables 6, 23, and 32. Saving in town keeps the route flag, scenario,
 entry, and services, and its return edge leads back to the second Forest map.
 
+Kyle's first Mining Town assignment is covered from briefing to the following
+handoff. His messages `1000002..1000008` start mission 11, `Destroy thieves
+staying SE of Kanfore.`, and the southeast town edge leads through Forest of
+Four Leaves into Forest of Claws. Three Oak Knights using loot row 85 open the
+inner gate; a second group of three completes the mission. Returning to Kyle
+creates exactly 20,000 Gold as two retail-sized stacks, then messages
+`1000011..1000012` start mission 12, `Head for the Mining Tunnel of Yugunos.`
+The gate state, quest sounds and notices, Gold landing sounds, conversation
+latch, mission states, and no-repeat save/load branch all stay data-driven.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -1953,8 +1963,8 @@ script commands, AI actions, effects, items, and map combinations.
 
 Episode 2 has started with the complete post-Epilogue route through Caravan
 and the two Forest road maps into Kanfore, Mining Town. Continue from the
-town's first authored conversations and assignments, keeping each playable
-handoff under a shipped-data regression.
+first Yugunos mining-tunnel assignment after Kyle's Forest of Claws mission,
+keeping each playable handoff under a shipped-data regression.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

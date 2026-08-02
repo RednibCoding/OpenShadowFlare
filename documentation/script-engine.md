@@ -1089,6 +1089,30 @@ keeps this whole chain, the no-visual branch, vendor initialization, and the
 saved flag/scenario/entry state under the generic interpreter and world
 owners.
 
+Kyle, PEOPLE actor zero, owns the first Episode 2 assignment. His first status
+branch sets saved flag 23 and runs messages `1000002..1000008`; their callback
+uses opcode 62 to set mission 11 active and opcode 48 to publish its notice.
+Table 41 names it `Destroy thieves staying SE of Kanfore.` Reopening the
+conversation while it is active uses message `1000009` rather than replaying
+the briefing.
+
+Mining Town object one enters Forest of Four Leaves scenario `2100001`, entry
+zero. Object one there enters Forest of Claws scenario `2100002`, entry zero.
+That map's periodic statuses use opcode 31 to scan two separate ranges. Once
+characters `14010000..14010002` finish their death presentation, opcodes 23
+hide gate objects `10000700` and `10000701`, and positional opcode 16 requests
+sample 81. The second scan waits for `14020000..14020002` and completes
+mission 11 through opcode 62. All six actors are Oak Knights with Table 30 row
+85 and a ten-percent Gold branch.
+
+Kyle's completed branch opens message `1000010` and calls opcode 10 with the
+temporary value 20,000 at both quantity bounds. The common Gold constructor
+therefore makes two stacks of 10,000, each with its normal landing sample 85.
+Messages `1000011..1000012` then start mission 12, whose Table 41 title is
+`Head for the Mining Tunnel of Yugunos.` Later visits use `1000013`. Mission
+11 completion, mission 12 activation, flag 23, and the no-repeat branch all
+survive the retail save owner.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
