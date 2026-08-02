@@ -362,6 +362,8 @@ services exercise them; unknown values still fail loudly.
 | 61 | `0x00433f16` | Write the local player's level to an operand |
 | 62 | `0x00433f29` | Update a quest's state and trigger its update/completion cue |
 | 63 | opcode switch | Write the local player's current and maximum optional condition to two operands |
+| 64 | `0x00434001` | Open an authored full-screen Epilogue or `VisualNN` presentation |
+| 65 | `0x0043403e` | Refresh the colored falling-streak emitter with evaluated RGB and count values |
 | 66 | `0x00433682` | Write the current local-player slot number |
 | 67 | `0x004340e7` | Mark one spell as permanently learned in the player's saved magic owner |
 | 68 | `0x004342de` | Award a percentage of the current level's experience threshold and run the ordinary level-up path |
@@ -988,6 +990,40 @@ This family appears consistently in the shipped data: opcodes 26 and 60 each
 have 60 calls across 22 scenarios, while opcode 29 has 61 calls across 23.
 The scenario audit fixes their operand shapes and actor distribution so later
 switches keep using the same general interpreter and world presentation.
+
+## Scripted full-screen visuals and weather
+
+Opcode 64 is the script owner behind the presenter at `0x00417bd0`. Its one
+evaluated value selects `Waiting.njp` pattern 4 for value zero or
+`Visual%02d.njp` for a nonzero value. The page starts fully dark, reaches full
+strength over 120 presented frames, and does not accept an advance until frame
+300. Return, Escape, and the primary mouse button all use the same advance
+path. While a page owns the screen, retail freezes the current player action
+in place rather than cancelling it; that action resumes when the presentation
+ends. A resource with more than one pattern starts its next page at counter
+one; the final acknowledgement releases the resource and returns control to
+the world.
+
+The shipped scripts call opcode 64 seven times across six scenarios, using
+each value from zero through six exactly once. `Visual02` is the only shipped
+two-page resource. These are story, briefing, and selection pages, not map
+loading screens, so normal scenario transitions still show only the
+crossed-swords loading artwork while work is actually pending.
+
+Opcode 65 is a separate screen-space particle command. The first three
+operands are RGB bytes and the fourth is the number of new streaks for that
+update. Each streak consumes five values from the executable's shared random
+stream for its X origin, speed, short line length, opacity, and angle. It
+starts at Y `-30`, moves down with the retail trigonometric projection, draws
+through the DIB-style line path, and expires when its leading point reaches Y
+`479`. The command only refreshes one frame's spawn request; periodic status
+kind five calls are what keep rain, snow, or colored ambience going.
+
+There are 22 shipped opcode-65 calls across 21 scenarios. Twenty request five
+literal streaks. The other two calculate a temporary count from distance.
+The audited colors are eight red, twelve white, one pale red, and one blue.
+The interpreter evaluates those operands, while the world owns particles and
+GAPI owns line drawing.
 
 ## How to extend it
 

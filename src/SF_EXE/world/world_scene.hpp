@@ -49,6 +49,8 @@
 #include "retail_save_progress.hpp"
 #include "retail_save_world_state.hpp"
 #include "runtime_effect_system.hpp"
+#include "scenario_screen_particles.hpp"
+#include "scenario_visual_presentation.hpp"
 #include "scenario_world.hpp"
 #include "scenario_text_label.hpp"
 #include "script/scenario_script_runtime.hpp"
@@ -154,6 +156,13 @@ public:
     std::size_t runtimeEffectControllerCount() const;
     const std::vector<GroundItem>& groundItems() const;
     const std::vector<ScenarioTextLabel>& scenarioTextLabels() const;
+    const ScenarioVisualPresentation& scenarioVisual() const;
+    const gapi::NjpImage& scenarioVisualPatterns() const;
+    const gapi::NjpImage& scenarioVisualContinuePatterns() const;
+    bool scenarioVisualActive() const;
+    void requestScenarioVisualAdvance();
+    void advanceScenarioVisualFrame();
+    const ScenarioScreenParticles& scenarioScreenParticles() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
     const TransportCatalog& transports() const;
@@ -317,6 +326,7 @@ private:
     bool executeScriptNativeCommand(
         std::int32_t opcode,
         const std::vector<std::int32_t>& arguments);
+    void beginScenarioVisual(std::int32_t visual_id);
     bool queryScriptValue(
         script::ValueQuery query,
         std::int32_t& value) const;
@@ -484,6 +494,10 @@ private:
     PlayerAppearance player_appearance_;
     std::vector<std::int32_t> pending_audio_samples_;
     std::vector<ScenarioTextLabel> scenario_text_labels_;
+    ScenarioVisualPresentation scenario_visual_;
+    gapi::NjpImage scenario_visual_patterns_;
+    gapi::NjpImage scenario_visual_continue_patterns_;
+    ScenarioScreenParticles scenario_screen_particles_;
     PlayerLevelUpNotice level_up_notice_;
     std::vector<CombatEffectSpawnRequest>
         pending_combat_effects_;

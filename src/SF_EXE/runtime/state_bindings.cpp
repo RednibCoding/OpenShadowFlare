@@ -250,6 +250,12 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.conversation_active = [&world] {
         return world.conversationActive();
     };
+    hooks.scenario_visual_active = [&world] {
+        return world.scenarioVisualActive();
+    };
+    hooks.advance_scenario_visual = [&world] {
+        world.requestScenarioVisualAdvance();
+    };
     hooks.conversation_requires_selection = [&world] {
         return world.conversationRequiresSelection();
     };

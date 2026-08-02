@@ -119,6 +119,17 @@ struct RectangleDraw {
     std::int32_t opacity = 1000;
 };
 
+struct LineDraw {
+    std::int32_t start_x = 0;
+    std::int32_t start_y = 0;
+    std::int32_t end_x = 0;
+    std::int32_t end_y = 0;
+    Color color{255, 255, 255, 255};
+    std::int32_t brightness = 1000;
+    std::int32_t opacity = 1000;
+    Viewport clip;
+};
+
 Viewport fitViewport(
     std::int32_t source_width,
     std::int32_t source_height,
@@ -143,6 +154,7 @@ public:
         const TextDraw& draw = {}) = 0;
     virtual bool drawRectangle(
         const RectangleDraw& draw) = 0;
+    virtual bool drawLine(const LineDraw& draw);
     virtual void endFrame() = 0;
 };
 

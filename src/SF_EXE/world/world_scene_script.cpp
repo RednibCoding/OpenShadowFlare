@@ -322,6 +322,26 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 64) {
+        if (arguments.size() != 1) {
+            return false;
+        }
+        beginScenarioVisual(arguments[0]);
+        return true;
+    }
+
+    if (opcode == 65) {
+        if (arguments.size() != 4) {
+            return false;
+        }
+        scenario_screen_particles_.request(
+            arguments[0],
+            arguments[1],
+            arguments[2],
+            arguments[3]);
+        return true;
+    }
+
     if (opcode == 26) {
         if (arguments.size() != 7) {
             return false;

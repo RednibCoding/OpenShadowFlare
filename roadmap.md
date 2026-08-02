@@ -534,10 +534,11 @@ script, player, inventory, equipment, belt, Special Items, missions, quests,
 and transport flags untouched. Successful changes restart the scenario's BGM
 and return directly to the new world once its synchronous load is complete.
 An earlier pass had mistaken the Epilogue/`VisualNN` presenter at `0x00417bd0`
-for the ordinary map loader and held it on screen for 120 frames. Retail only
-shows its black crossed-swords loading image while work is actually pending;
-the current synchronous portable load is normally too quick to expose an
-intermediate frame.
+for the ordinary map loader. Retail only shows its black crossed-swords loading
+image while work is actually pending; the current synchronous portable load is
+normally too quick to expose an intermediate frame. The separate story and
+briefing presenter now comes from script opcode 64 instead, so those authored
+pages still appear where the scenario asks for them.
 
 The next slices identified the three resource preload lists, the variable
 common entity record, and all four entity-group shapes. Objects and `PEOPLE`
@@ -747,8 +748,6 @@ transition path around `0x00426200`:
   target, and selected-action state, then implement its native movement
   actions on top of the shared movement controller;
 - release the old scenario in the same order the original does;
-- identify the story/briefing owner that requests the Epilogue and alternate
-  `VisualNN.njp` artwork rendered by `0x00417bd0`;
 - support returning to the title cleanly when loading fails.
 
 Remote Town should then be one input to the loader, not a special hard-coded
@@ -930,6 +929,18 @@ negative-direction fallback and lower-right-plus-one point judgement. The three
 shipped effect numbers resolve to their real OPTION resources, all 353 calls
 across 26 scenarios keep their audited shape, and Near Remote Town's first
 six placed effects now enter the ordinary depth-sorted effect pass.
+
+The two remaining shipped presentation commands are connected now too.
+Opcode 64 opens the authored Epilogue or `Visual01` through `Visual06` page,
+fades it over 120 presented frames, freezes rather than cancels the current
+player action, blocks ordinary world input, and waits 300 frames before Return,
+Escape, or the primary mouse button can advance it. Multi-page `Visual02` uses
+the same counter reset as retail. Opcode 65 refreshes the screen-space
+falling-streak emitter from evaluated RGB and count values; it
+uses the shared retail random stream, per-particle opacity, the original DDA
+line path, and the 479-pixel expiry boundary. The shipped catalog contains all
+seven visual IDs and 22 particle calls across 21 scenarios, including the two
+distance-driven density expressions.
 
 The basic writable arithmetic set is complete now as well. Opcodes 13 through
 15 preserve retail's wrapped multiply, signed quotient and remainder, operand

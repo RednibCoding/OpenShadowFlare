@@ -118,9 +118,19 @@ world.
 `0x00417bd0` is not the ordinary map loading screen. It is a later
 story/briefing visual presenter: it selects the Epilogue artwork from
 `Waiting.njp` pattern 4 or an alternate `VisualNN.njp`, fades it over 120
-rendered frames, and animates `WaitIcon.njp`. The owner of its nonzero visual
-selector still needs to be tied down. The portable runtime no longer calls
-this routine after every map change.
+rendered frames, waits until frame 300 before accepting Return, Escape, or the
+primary mouse button, and animates `WaitIcon.njp`. Its active ID also gates the
+local-player update, freezing the current action without cancelling it. Script
+opcode 64 at `0x00434001` owns the selector. All seven shipped calls are
+reconstructed, including the two-page `Visual02` resource. The portable
+runtime does not call this routine after every map change.
+
+The nearby screen-space particle owner is separate again. Opcode 65 at
+`0x0043403e` stores an evaluated RGB triplet, count, and one-frame spawn flag.
+`0x0041fe20` consumes five shared `rand()` values per new particle, draws its
+short DDA line with opacity 300 through 1,000, advances it from Y `-30`, and
+removes it at Y `479`. Its 22 shipped calls provide red, white, pale-red, and
+blue falling ambience; two calculate density from a temporary distance value.
 
 Retail's ordinary map transition remains black with the crossed-swords
 `Waiting.njp` image and its `LOADING` plate only while loading is in progress.
@@ -1308,8 +1318,9 @@ player, items, progress, and music usable. A successful commit clears stale
 pointer, interaction, ground-item, and pending-audio state, preserves the
 player-owned and progress owners, adopts the new SCS, relocates to its entry,
 switches BGM, and starts the later standard loading presentation. Explicit
-coordinate entry `-1`, the alternate `VisualNN` presentation, multiplayer
-ownership, and exact teardown ordering remain.
+coordinate entry `-1`, multiplayer ownership, and exact teardown ordering
+remain. The alternate `VisualNN` presentation is now reached independently
+through its scenario opcode rather than this transition path.
 
 The local-player record and resolved entry are installed before the loader
 runs scenario status kind `7`. This ordering is shared by the changed-map path

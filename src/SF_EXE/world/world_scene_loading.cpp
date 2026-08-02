@@ -367,6 +367,10 @@ ScenarioTravelResult WorldScene::transitionScenario(
         combat_effects_.clear();
         runtime_effects_.clear();
         scenario_text_labels_.clear();
+        scenario_visual_.clear();
+        scenario_visual_patterns_.clear();
+        scenario_visual_continue_patterns_.clear();
+        scenario_screen_particles_.clear();
         player_land_mines_.clear();
         miss_effects_.clear();
         camera_shake_counter_ = -1;
@@ -417,6 +421,10 @@ ScenarioTravelResult WorldScene::transitionScenario(
     pending_player_attack_impact_target_id_ = -1;
     pending_audio_samples_.clear();
     scenario_text_labels_.clear();
+    scenario_visual_.clear();
+    scenario_visual_patterns_.clear();
+    scenario_visual_continue_patterns_.clear();
+    scenario_screen_particles_.clear();
     pending_combat_effects_.clear();
     combat_effects_.clear();
     runtime_effects_.clear();

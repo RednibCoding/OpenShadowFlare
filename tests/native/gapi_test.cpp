@@ -830,6 +830,48 @@ bool testSystemCursorPackets() {
         "The normal or Identify system cursor draw packet differs.");
 }
 
+bool testSoftwareLineDrawing() {
+    RecordingBackend fallback;
+    if (!check(
+            fallback.drawLine({
+                0, 0, 2, 1, {255, 255, 255, 255}, 1000, 1000, {},
+            }),
+            "The generic GAPI line fallback rejected a valid line.")) {
+        return false;
+    }
+    if (!check(
+            fallback.rectangles.size() == 3 &&
+                fallback.rectangles[0].x == 0 &&
+                fallback.rectangles[0].y == 0 &&
+                fallback.rectangles[1].x == 1 &&
+                fallback.rectangles[1].y == 1 &&
+                fallback.rectangles[2].x == 2 &&
+                fallback.rectangles[2].y == 1,
+            "The generic GAPI line fallback missed a Bresenham point.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend backend(4, 4);
+    backend.beginFrame({0, 0, 0, 255});
+    if (!check(
+            backend.drawLine({
+                0, 1, 2, 1, {200, 100, 50, 255}, 1000, 500, {}}),
+            "The software GAPI rejected a valid line.")) {
+        return false;
+    }
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const osf::gapi::Color first = surface.pixels[4];
+    const osf::gapi::Color middle = surface.pixels[5];
+    const osf::gapi::Color last = surface.pixels[6];
+    return check(
+        first.red == 100 && first.green == 50 && first.blue == 25 &&
+            middle.red == 100 && middle.green == 50 &&
+            middle.blue == 25 && last.red == 100 &&
+            last.green == 50 && last.blue == 25 &&
+            surface.pixels[7].red == 0,
+        "The software GAPI line missed an endpoint or blended incorrectly.");
+}
+
 }  // namespace
 
 int main() {
@@ -840,6 +882,7 @@ int main() {
         !testMutableBitmapMask() ||
         !testCafAndTitleAnimation() ||
         !testCafCharacterDrawModes() ||
+        !testSoftwareLineDrawing() ||
         !testInitialLoadingPackets() ||
         !testSystemCursorPackets() ||
         !testGameplayHudPackets()) {

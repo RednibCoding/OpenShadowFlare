@@ -1450,6 +1450,37 @@ if(TARGET sf_game_core)
 
   add_test(NAME gapi COMMAND gapi_test)
 
+  add_executable(
+    scenario_presentation_test
+    scenario_presentation_test.cpp
+  )
+  target_link_libraries(
+    scenario_presentation_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    scenario_presentation_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    scenario_presentation_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    scenario_presentation_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      scenario_presentation_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      scenario_presentation_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME scenario_presentation
+    COMMAND scenario_presentation_test)
+
   add_executable(menu_states_test menu_states_test.cpp)
   target_link_libraries(
     menu_states_test PRIVATE OpenShadowFlare::Render)

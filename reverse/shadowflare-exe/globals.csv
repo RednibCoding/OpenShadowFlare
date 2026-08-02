@@ -17,6 +17,12 @@ address,name,portable_owner,status,notes
 0x0048d734,g_clickRange,GameConfig::click_range,implemented,Validated to range zero through four
 0x0048d738,g_clickRangeEnabled,GameConfig::click_range_enabled,implemented,
 0x0048d73c,g_clickPriority,GameConfig::click_priority,implemented,Five-value permutation spanning 0x0048d73c through 0x0048d74c
+0x0048d778,g_scenarioVisualDuration,osf::ScenarioVisualPresentation,implemented,Starts at 300 for every authored page and returns to minus one when no full-screen visual is active
+0x0048d77c,g_scenarioVisualId,osf::ScenarioVisualPresentation,implemented,Zero selects Waiting pattern four while nonzero values select VisualNN
+0x0048d780,g_scenarioVisualCounter,osf::ScenarioVisualPresentation,implemented,Presented-frame counter drives the 120-frame fade 300-frame input gate and WaitIcon phase
+0x0048d784,g_scenarioVisualPage,osf::ScenarioVisualPresentation,implemented,Current pattern index for nonzero multi-page VisualNN resources
+0x0048d79c,g_scenarioParticleSpawnRequested,osf::ScenarioScreenParticles,implemented,Opcode 65 raises this one-frame request and the presentation pass clears it after spawning
+0x0048d7a0,g_scenarioParticleEmitter,osf::ScenarioScreenParticles,implemented,Owns emitter color count update counter and linked falling-streak list
 0x0048d8b8,g_windowedAtStart,GameConfig::windowed_at_start,implemented,Zero fullscreen nonzero normalized to windowed
 0x0048d8cc,g_imeEnabled,,identified,
 0x0048d8d4,g_cursorVisible,,identified,

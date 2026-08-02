@@ -1459,9 +1459,21 @@ immediately because the synchronous load has already completed. The previous
 120-frame Epilogue fade was removed after a closer trace showed that
 `0x00417bd0` owns story/briefing visuals rather than ordinary map loading.
 Retail's black crossed-swords screen exists only while loading work is
-pending. The alternate `VisualNN` selector remains pending. All 51
+pending. The alternate presenter is now tied to script opcode 64 at
+`0x00434001`: value zero selects the Epilogue page and values one through six
+select the matching `VisualNN.njp`. Its 120-frame strength fade, 300-frame
+advance gate, Return/Escape/primary-click inputs, multi-page reset, WaitIcon
+offsets, input lock, and resource release are reconstructed. All 51
 Table 40 rows are also checked against their shipped scenario directory and
 single-player MCT entry.
+
+Opcode 65 at `0x0043403e` owns the adjacent falling-streak emitter. It refreshes
+one spawn flag plus evaluated RGB and count values. `0x0041fe20` consumes five
+shared Visual C++ random draws per particle, starts it at Y `-30`, projects a
+short DDA line from the exact `4.712388` and `3.141592` constants, applies a
+random 300-through-1,000 opacity, and removes it at Y `479`. The shipped audit
+holds seven opcode-64 calls across six scenarios and 22 opcode-65 calls across
+21 scenarios, including both temporary distance-density operands.
 
 The authored Remote Town exit is reconstructed too. `0x004305d0` runs status
 kind five records, then scans kind three records and resolves each status

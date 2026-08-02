@@ -205,6 +205,8 @@ add_library(
   world/scenario_data.cpp
   world/scenario_entity_state.cpp
   world/scenario_object_actor.cpp
+  world/scenario_screen_particles.cpp
+  world/scenario_visual_presentation.cpp
   world/scenario_world.cpp
   world/transport_catalog.cpp
   world/vendor_stock_generator.cpp
@@ -227,6 +229,7 @@ add_library(
   world/world_scene_moon.cpp
   world/world_scene_player_profile.cpp
   world/world_scene_player_experience.cpp
+  world/world_scene_presentation.cpp
   world/world_scene_player_resources.cpp
   world/world_scene_script.cpp
   world/world_scene_script_items.cpp
@@ -292,6 +295,7 @@ add_library(
   render/loading_renderer.cpp
   render/player_level_up_notice_renderer.cpp
   render/quest_notice_renderer.cpp
+  render/scenario_presentation_renderer.cpp
   render/system_cursor_renderer.cpp
   render/title_renderer.cpp
 )

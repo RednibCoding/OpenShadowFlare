@@ -282,6 +282,13 @@ and ordinary effect request. Near Remote Town therefore uses its authored
 effect-and-sound sentences without teaching the interpreter about world actor
 or rendering classes.
 
+Full-screen scenario pages and falling weather follow the same boundary.
+Opcode 64 selects the original Epilogue or `Visual01` through `Visual06`
+artwork, owns its fade, minimum display time, page changes, and input lock.
+Opcode 65 only hands evaluated color and density to a small screen-particle
+owner. GAPI provides the general line primitive, while the script library
+remains unaware of assets, rendering, or input.
+
 Scripted enemy waves use the same boundary. `RKC_RPG_SCRIPT` reads the retail
 type-three lifecycle domain, searches stable enemy slots, and dispatches nested
 status-kind-six sentences. The world alone owns opcode 25's enemy reset and

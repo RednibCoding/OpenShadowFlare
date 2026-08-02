@@ -31,6 +31,7 @@ public:
         const TextDraw& draw = {}) override;
     bool drawRectangle(
         const RectangleDraw& draw) override;
+    bool drawLine(const LineDraw& draw) override;
     void endFrame() override;
 
     SurfaceView surface() const;
