@@ -2089,8 +2089,12 @@ and unlocks the South Camp of Yugunos transport. South Camp now opens its
 one-time Visual03 briefing, starts mission 20 through Jeel's split
 introduction and assignment, follows the East Antalusia route, completes on
 the two named warrior lifecycle slots at the Foot of Mt. Tedoron, and returns
-for Jeel's one-time experience reward and Morris handoff. Continue with Morris
-and the Sacred Wing.
+for Jeel's one-time experience reward and Morris handoff. Morris's Sacred Wing
+mission now follows the full Edgar/Morris/Berini authorization loop, clears
+the authored gates on all five Tower of Nazzle floors, recovers the relic from
+the fixed Dark Golem loot row, and returns it for Berini's one-time experience
+reward and saved Giant Warehouse III unlock. Continue with Angel's Hair and
+the underground church cave.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.

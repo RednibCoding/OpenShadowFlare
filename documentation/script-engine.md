@@ -793,7 +793,7 @@ The currently understood domains are:
 | 10 | Persistent transport flags (Table 40 rows) |
 | 11 | Persistent script and conversation flags |
 | 12 | Persistent quest state |
-| 13 | Local-player array |
+| 13 | Giant Warehouse page-unlock values |
 
 Type `5` includes three confirmed live scenario-entity ranges. A key beginning
 at `100000000` controls visibility, `300000000` controls pointer selection,
@@ -825,8 +825,11 @@ DLL boundary. Retail writes types `12`, `10`, and `11` as three counted arrays
 immediately after the owned-item stream, in that order. The reconstruction now
 restores and rewrites those arrays through their real owners. This includes
 Ostare's type-11 flag at index 4, so his opening conversation and starter drop
-do not repeat after a save/load. Type `13` is still held for the lifetime of
-the player but its later save location has not been mapped yet.
+do not repeat after a save/load. Type `13` addresses the ten Giant Warehouse
+page-unlock values which retail saves beside the ten page containers. All ten
+shipped operands use indices two through nine; Berini's Sacred Wing reward,
+for example, writes one to index two and unlocks Giant Warehouse III. The
+portable operand callback now reads and writes that saved owner directly.
 
 ## Working conversations
 
@@ -1247,6 +1250,34 @@ current level threshold through opcode 68, advances flag 74 to two, and runs
 Morris. Shipped-data coverage follows the briefing, both conversations, both
 map edges, exact enemy range, completion cue, reward, handoff, and no-repeat
 branch without adding a South Camp case to the interpreter.
+
+Morris continues that same data-owned story through saved flags 77, 79, and
+80. His separate `1000027` remark is followed on the next visit by
+`1000028..1000033`; the latter chain starts mission 21, `Get the sacred relic,
+Sacred Wing.` East Antalusia object three enters Tower of Nazzle 1F, where
+Bishop Edgar first refuses entry and writes flag 79. Morris then responds with
+`1000035..1000037`, advances flag 77 to three, and opens East Antalusia object
+two into the Town of Antalusia. Berini's `1000002..1000008` response writes
+flag 80, after which Edgar's `1000002..1000004` branch advances flag 79 and
+opens the tower stair.
+
+The tower climb remains entirely authored. Objects one and zero link floors
+one through five in opposite directions. Floors 2F, 3F, and 4F use opcode 31
+over enemy ranges `14000000..14000024`, `14000000..14000024`, and
+`14000000..14000028`; only after all 25, 25, and 29 slots respectively become
+inactive do opcodes 22 and 23 swap each closed gate for its open state. On 5F,
+MCT enemy zero is a Dark Golem with Table 30 loot row 154. That row has a
+100-percent fixed profile for category four definition `99000005`, Sacred
+Wing, whose automatic-item location is page zero at cell `(5,0)`.
+
+Berini's flag-80 branch uses opcode 58 to find that exact item and opcode 59
+to remove it. Opcode 62 completes mission 21, opcode 68 awards 50 percent of
+the current level threshold, sample 64 plays with the reward, and
+`1000010..1000016` grants Giant Warehouse III through type-13 index two.
+Mission state, all three conversation flags, the removed relic, experience,
+and the warehouse unlock survive saving; the next `1000017` branch does not
+repeat the reward. Native coverage follows both directions through every map
+edge and the complete gate sequence.
 
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native

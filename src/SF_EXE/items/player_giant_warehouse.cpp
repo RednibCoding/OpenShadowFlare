@@ -23,7 +23,28 @@ void PlayerGiantWarehouse::restoreEnabledFlags(
     selected_page_ = first_enabled == enabled_flags_.end()
         ? 0
         : static_cast<std::size_t>(
+            first_enabled - enabled_flags_.begin());
+}
+
+bool PlayerGiantWarehouse::setPageEnabled(
+    std::size_t page_index,
+    std::int32_t value) {
+    if (page_index >= page_count) {
+        return false;
+    }
+    enabled_flags_[page_index] = value;
+    if (pageEnabled(selected_page_)) {
+        return true;
+    }
+    const auto first_enabled = std::find_if(
+        enabled_flags_.begin(),
+        enabled_flags_.end(),
+        [](std::int32_t flag) { return flag != 0; });
+    selected_page_ = first_enabled == enabled_flags_.end()
+        ? 0
+        : static_cast<std::size_t>(
               first_enabled - enabled_flags_.begin());
+    return true;
 }
 
 bool PlayerGiantWarehouse::pageEnabled(

@@ -1085,6 +1085,13 @@ same owners when a newer save does not yet contain that later retail suffix;
 versions one through three remain readable and supply run/walk as a migration
 fallback.
 
+The script operand reader and writer expose those same unlock values as type
+13. The ten shipped operands address indices two through nine. Town of
+Antalusia sentence 55 provides the first end-to-end proof: after accepting the
+Sacred Wing, Berini writes one to index two while granting Giant Warehouse
+III. The portable interpreter callback now targets the saved ten-flag owner,
+not a transient script map.
+
 Primary-button input has two retail behaviors. A press and release is a
 latched destination click. Keeping the button down continuously replaces the
 destination with the live pointer position, but releasing after that held

@@ -1177,6 +1177,14 @@ It uses opcodes 42 and 43 to compare current/maximum life and mana, and opcode
 63 for the optional player-condition pair, before choosing her ordinary
 healing or blessing response instead of restarting the quest.
 
+Type 13 is the ten-entry Giant Warehouse unlock array. The shipped corpus has
+ten uses, all at indices two through nine; its first exercised story write is
+Town of Antalusia sentence 55, which sets index two after Berini promises the
+right to use Giant Warehouse III. These values are the ten flags written
+immediately before the ten warehouse item containers in the retail save. The
+portable operand owner now reads and writes `PlayerGiantWarehouse` directly,
+so script grants and later conditions share the UI and save state.
+
 Scenario `00000001` owns the completion side. Red Goblin MCT ID `10000` maps
 to script character `14010000`; its status-kind-four sentence 12 reaches
 opcode 62 with `{0,2,1}` in single-player mode. The retail enemy lifecycle
@@ -2036,6 +2044,34 @@ sample 64 before messages `1000009..1000011`. The later handoff reminder is
 `1000012`; neither the experience nor sound repeats. A native regression uses
 the shipped SCS/MCT data for the one-time visual, dialogue split, overlap
 route, exact two-enemy lifecycle range, quest cues, reward, and saved branch.
+
+Morris's follow-up uses general flag 77. His first `1000027` remark writes one;
+the `1000028..1000033` chain on the next visit writes two and starts mission
+21, `Get the sacred relic, Sacred Wing.` East Antalusia object three enters
+Tower of Nazzle 1F. Edgar's initial refusal writes flag 79, which makes Morris
+run `1000035..1000037`, advance flag 77 to three, and open East Antalusia
+object two into the Town of Antalusia. Berini's full `1000002..1000008`
+letter response writes flag 80 to one. Returning to Edgar then runs
+`1000002..1000004`, writes flag 79 to two, and swaps the first-floor gate to
+its open presentation.
+
+Tower scenarios `03020000..03020004` link 1F through 5F with their ordinary
+paired overlap objects. The 2F and 3F scripts each scan all 25 enemies before
+opening object `10011000`; 4F scans all 29. The Dark Golem at local enemy zero
+on 5F is the only shipped carrier of Table 30 row 154. That row's ten choices
+all point to profile 405, a fixed 100-percent category-four definition
+`99000005` drop. `Item.Ibn` names it Sacred Wing and assigns automatic page
+zero, cell `(5,0)`.
+
+Berini's flag-80-one sentence checks and removes that exact item, completes
+mission 21, writes flag 80 to two, awards 50 percent of the current level
+threshold, and plays samples 66 and 64 before `1000010..1000016`. Sentence 55
+also unlocks Giant Warehouse III through type-13 index two. Shipped-data
+coverage follows the outward and return routes, exact floor rosters and gate
+states, fixed drop construction, dialogue, item removal, experience and audio,
+then round-trips flags 77/79/80, the completed quest, automatic item owner, and
+warehouse unlock without repeating the reward. The saved next branch begins
+at `1000017`.
 
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
