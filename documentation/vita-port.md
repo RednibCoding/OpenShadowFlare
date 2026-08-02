@@ -30,4 +30,4 @@ It must include `SFlare.Cfg` and `System/Title/Pattern/Title.njp`.
 | L / R | Mission list / run toggle |
 
 The port uses double-buffered software scaling at 960x544 and the system IME
-for character names. Audio is not implemented yet.
+for character names.
