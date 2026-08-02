@@ -144,6 +144,12 @@ For another graphics API:
 4. add the backend to `cmake/configure_presentation.cmake`;
 5. select it through `OPENSHADOWFLARE_PRESENTATION_BACKEND`.
 
+Keep the two presentation phases honest. `prepareFrame()` owns the useful
+copying, conversion, scaling, upload, and submission work. It must not
+deliberately wait for display synchronization. `displayFrame()` makes that
+prepared frame visible and may wait for the display. The common runtime times
+only the first phase, so a platform implementation never needs profiling code.
+
 `game_runtime.cpp`, GAPI, and the software renderer should not need changes.
 A future hardware renderer is a separate GAPI concern; it should not be mixed
 into the finished-surface presenter.

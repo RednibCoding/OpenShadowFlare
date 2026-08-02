@@ -243,11 +243,12 @@ private:
             lwl_time_seconds() - framebufferFillStart);
         const double presentStart = lwl_time_seconds();
 #endif
-        surfacePresenter_->present(surface);
+        surfacePresenter_->prepareFrame(surface);
 #if OSF_ENABLE_DEBUG_TOOLS
         profiler_.recordPresent(
             lwl_time_seconds() - presentStart);
 #endif
+        surfacePresenter_->displayFrame();
         if (gameState_.currentState() ==
                 osf::GameState::gameplay &&
             gameplayFrame_.phase == osf::GameplayPhase::world) {

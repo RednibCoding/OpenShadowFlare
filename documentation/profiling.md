@@ -13,12 +13,19 @@ The overlay shows:
 - **FILL:** the rolling average time spent clearing and drawing the 640x480
   software framebuffer;
 - **PRESENT:** the rolling average time spent uploading or copying that finished
-  framebuffer, drawing it to the window, and swapping buffers.
+  framebuffer, scaling it, and submitting it for display. Buffer swapping and
+  display synchronization are deliberately excluded.
 
 The timing averages cover the latest 120 frames. Memory is sampled twice per
 second because asking the operating system every frame would make the profiler
 part of the problem it is trying to measure. The profiler itself uses fixed
 storage and does not allocate while recording frames.
+
+The presenter has separate frame-preparation and display steps so the common
+runtime can measure useful presentation work without including refresh-rate
+waiting. Platform presenters contain no profiling code. FPS remains the useful
+measure of whether the complete pipeline, including display synchronization,
+keeps up with the target refresh rate.
 
 VRAM deserves one caveat: portable OpenGL cannot reliably report everything a
 driver has allocated. The value therefore counts allocations owned by our

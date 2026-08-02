@@ -102,7 +102,8 @@ public:
     bool initialize(
         LwlWindow* window,
         std::string* error) override;
-    void present(osf::gapi::SurfaceView surface) override;
+    void prepareFrame(osf::gapi::SurfaceView surface) override;
+    void displayFrame() override;
 #if OSF_ENABLE_DEBUG_TOOLS
     std::optional<std::uint64_t>
         videoMemoryUsageBytes() const override;
@@ -122,6 +123,7 @@ private:
     unsigned int vertex_array_ = 0;
     std::int32_t texture_width_ = 0;
     std::int32_t texture_height_ = 0;
+    bool frame_prepared_ = false;
 };
 
 bool LglSurfacePresenter::initialize(
@@ -235,14 +237,16 @@ void LglSurfacePresenter::shutdown() {
     program_ = 0;
     texture_width_ = 0;
     texture_height_ = 0;
+    frame_prepared_ = false;
     lgl_reset();
     lwl_gl_context_destroy(context_);
     context_ = nullptr;
     window_ = nullptr;
 }
 
-void LglSurfacePresenter::present(
+void LglSurfacePresenter::prepareFrame(
     osf::gapi::SurfaceView surface) {
+    frame_prepared_ = false;
     int window_width = 0;
     int window_height = 0;
     lwl_window_get_size(
@@ -303,7 +307,15 @@ void LglSurfacePresenter::present(
     lglUseProgram(program_);
     lglBindVertexArray(vertex_array_);
     lglDrawArrays(LGL_TRIANGLES, 0, 3);
+    frame_prepared_ = true;
+}
+
+void LglSurfacePresenter::displayFrame() {
+    if (!frame_prepared_ || !context_) {
+        return;
+    }
     lwl_gl_context_swap_buffers(context_);
+    frame_prepared_ = false;
 }
 
 #if OSF_ENABLE_DEBUG_TOOLS
