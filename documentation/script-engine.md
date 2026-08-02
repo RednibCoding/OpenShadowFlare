@@ -1225,6 +1225,29 @@ scenario `3900000`, entry 50. The saved repeat is `1000030`. Native coverage
 round-trips the quest, flag, and transport owners and follows the enabled row
 into the real South Camp scenario.
 
+South Camp starts with another script-owned one-time event. Its first periodic
+pass sees saved flag 104 at zero, calls opcode 64 with value three, and writes
+the flag to one. That is the real `Visual03` briefing; it freezes gameplay
+until acknowledged and does not turn ordinary map loading into a story page.
+Jeel then uses saved flag 74 to keep his `1000002..1000004` introduction
+separate from the assignment. The following `1000005..1000006` conversation
+starts mission 20, `Sweep vicinity of S. Camp of Yugunos.`, while `1000007`
+is its active reminder.
+
+The route is made from ordinary overlap triggers. South Camp object zero
+enters `East Antalusia` (`3000507`), and that map's object one enters
+`The Foot of Mt. Tedoron` (`3000407`). Its mission sentence scans only enemy
+characters `14020000..14020001` with opcode 31. Those are MCT enemies 20000
+and 20001, Flame Warrior and Dread Warrior; the hundreds of other enemies on
+the map are not part of the clear condition. When both slots finish their
+death presentation and become inactive, opcode 62 `{20,2,1}` completes the
+mission. Jeel's return branch plays sample 64, awards 50 percent of the
+current level threshold through opcode 68, advances flag 74 to two, and runs
+`1000008..1000011`. Later visits use `1000012` and leave the next request to
+Morris. Shipped-data coverage follows the briefing, both conversations, both
+map edges, exact enemy range, completion cue, reward, handoff, and no-repeat
+branch without adding a South Camp case to the interpreter.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

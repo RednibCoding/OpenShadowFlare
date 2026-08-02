@@ -2015,6 +2015,28 @@ that row loads shipped scenario `03900000`, whose MCT title includes one
 trailing space. Native coverage follows the complete report, reward,
 no-repeat branches, save round-trip, and transport transition.
 
+South Camp's first periodic update checks general flag 104. Zero launches
+opcode 64 value three and then saves one, so `Visual03` is a one-time story
+briefing rather than a loading screen. Jeel's status-zero branch uses flag 74:
+messages `1000002..1000004` are the introduction, a second interaction runs
+`1000005..1000006` and starts mission 20, and `1000007` is the active reminder.
+
+The authored north route is South Camp object zero to scenario `3000507`
+(`East Antalusia`), then object one to scenario `3000407` (`The Foot of Mt.
+Tedoron`). That destination has 422 enemies, but mission 20 does not count all
+of them. Its periodic sentence calls opcode 31 for characters
+`14020000..14020001`, the MCT's Flame Warrior and Dread Warrior at local IDs
+20000 and 20001. Only after both death fades leave those slots at lifecycle
+`-1` does opcode 62 `{20,2,1}` complete `Sweep vicinity of S. Camp of
+Yugunos.` and request sample 66.
+
+Jeel's completed branch begins at `1000008`, writes flag 74 to two, awards 50
+percent of the current level's experience threshold with opcode 68, and plays
+sample 64 before messages `1000009..1000011`. The later handoff reminder is
+`1000012`; neither the experience nor sound repeats. A native regression uses
+the shipped SCS/MCT data for the one-time visual, dialogue split, overlap
+route, exact two-enemy lifecycle range, quest cues, reward, and saved branch.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

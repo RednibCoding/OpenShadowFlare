@@ -1351,6 +1351,16 @@ row 25; `1000030` is the saved repeat. That transport lands at the shipped
 `South Camp of Yugunos ` scenario and entry. Dialogue, reward sounds, silent
 quest update, flags, transport persistence, and the actual trip are covered.
 
+South Camp's first assignment is complete too. The saved one-time flag opens
+the real `Visual03` briefing, Jeel keeps his introduction separate from the
+mission-20 offer, and the ordinary overlap exits lead through East Antalusia
+to the Foot of Mt. Tedoron. The objective is the shipped Flame Warrior and
+Dread Warrior pair—not a guessed count of the other 420 enemies on that map.
+Their inactive lifecycle slots complete the quest, and Jeel's return grants
+the authored experience reward and Morris handoff once. The visual, dialogue
+branches, route, exact targets, cues, sound, reward, and repeat state all run
+from the shipped script and map data.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -2075,7 +2085,12 @@ Crimson Sword's defeat and the 40,000-Gold return reward carry the story into
 mission 17. Kirarru's seal preparation, the guarded B5F dragon chamber, the
 Ancient Dragon objective, and both Fanann victory reports are covered too.
 The following Lytle/Kyle handoff now closes mission 12, awards 40,000 Gold,
-and unlocks the South Camp of Yugunos transport. Continue from South Camp.
+and unlocks the South Camp of Yugunos transport. South Camp now opens its
+one-time Visual03 briefing, starts mission 20 through Jeel's split
+introduction and assignment, follows the East Antalusia route, completes on
+the two named warrior lifecycle slots at the Foot of Mt. Tedoron, and returns
+for Jeel's one-time experience reward and Morris handoff. Continue with Morris
+and the Sacred Wing.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
