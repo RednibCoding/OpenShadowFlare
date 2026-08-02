@@ -4,6 +4,10 @@ function(osf_configure_emscripten_platform target)
     PRIVATE
       runtime/platform/web/application_loop.cpp
   )
+  if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+    target_sources(
+      ${target} PRIVATE runtime/platform/web/memory_usage.cpp)
+  endif()
 
   target_link_options(
     ${target}

@@ -3,7 +3,9 @@
 #include "core/game_config.hpp"
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_blackjack_renderer.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
 #include "render/gameplay_debug_renderer.hpp"
+#endif
 #include "render/gameplay_equipment_color_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
@@ -27,7 +29,9 @@
 #include "states/character_select_state.hpp"
 #include "states/gameplay_blackjack.hpp"
 #include "states/gameplay_inventory.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
 #include "states/gameplay_debug_menu.hpp"
+#endif
 #include "states/gameplay_equipment_color.hpp"
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_magic.hpp"
@@ -42,20 +46,23 @@
 
 #include <array>
 #include <cstddef>
-#include <utility>
 
 namespace osf::runtime {
 
 RuntimeRenderer::RuntimeRenderer(
     std::int32_t width,
-    std::int32_t height,
-    std::function<void(gapi::SurfaceView)> present)
-    : renderer_(width, height, std::move(present)) {}
+    std::int32_t height)
+    : renderer_(width, height) {}
 
-void RuntimeRenderer::render(
+gapi::SurfaceView RuntimeRenderer::render(
     const RuntimeRenderContext& context,
     double interpolation) {
     renderer_.beginFrame({0, 0, 0, 255});
+#if OSF_ENABLE_DEBUG_TOOLS
+    const bool debug_active = context.gameplay_debug.active();
+#else
+    constexpr bool debug_active = false;
+#endif
     if (context.game_state == GameState::title) {
         const auto* pattern =
             context.frontend_assets.pattern(4);
@@ -120,7 +127,7 @@ void RuntimeRenderer::render(
             renderScenarioScreenParticles(
                 renderer_, context.world);
             context.save_preview.capture(renderer_.surface());
-            if (!context.gameplay_debug.active() &&
+            if (!debug_active &&
                 !context.gameplay_blackjack.active() &&
                 !context.gameplay_equipment_color.active() &&
                 !context.gameplay_options.active() &&
@@ -141,7 +148,7 @@ void RuntimeRenderer::render(
             const bool quest_notice_hidden =
                 context.world.conversationActive() ||
                 context.gameplay_blackjack.active() ||
-                context.gameplay_debug.active() ||
+                debug_active ||
                 context.gameplay_equipment_color.active() ||
                 context.gameplay_options.active() ||
                 context.gameplay_inventory.anyItemPanelActive() ||
@@ -186,13 +193,17 @@ void RuntimeRenderer::render(
                         context.gameplay_equipment_color,
                         context.world,
                         context.gameplay_counter);
-                } else if (context.gameplay_debug.active()) {
+                }
+#if OSF_ENABLE_DEBUG_TOOLS
+                else if (debug_active) {
                     renderGameplayDebugMenu(
                         renderer_,
                         *status,
                         *font,
                         context.gameplay_debug);
-                } else if (context.gameplay_inventory
+                }
+#endif
+                else if (context.gameplay_inventory
                         .leftStorageActive()) {
                     renderGameplaySpecialItems(
                         renderer_,
@@ -272,7 +283,7 @@ void RuntimeRenderer::render(
                         context.gameplay_options,
                         context.game_config);
                 }
-                if (!context.gameplay_debug.active()) {
+                if (!debug_active) {
                     if (context.gameplay_inventory.active()) {
                         renderGameplayInventory(
                             renderer_,
@@ -329,7 +340,7 @@ void RuntimeRenderer::render(
                     context.world);
             }
             if (status && font &&
-                !context.gameplay_debug.active() &&
+                !debug_active &&
                 !context.gameplay_blackjack.active()) {
                 renderHeldInventoryItem(
                     renderer_,
@@ -354,6 +365,7 @@ void RuntimeRenderer::render(
                         context.gameplay_magic);
                 }
             }
+#if OSF_ENABLE_DEBUG_TOOLS
             if (font &&
                 context.gameplay_debug.fpsCounterEnabled()) {
                 renderGameplayDebugFps(
@@ -361,6 +373,15 @@ void RuntimeRenderer::render(
                     *font,
                     context.frames_per_second);
             }
+            if (font &&
+                context.gameplay_debug.profilingEnabled()) {
+                renderGameplayProfiling(
+                    renderer_,
+                    *font,
+                    context.profiling_metrics,
+                    context.gameplay_debug.fpsCounterEnabled());
+            }
+#endif
         }
     }
     const auto* system_patterns =
@@ -375,6 +396,7 @@ void RuntimeRenderer::render(
                 context.world.playerIdentifyModeActive());
     }
     renderer_.endFrame();
+    return renderer_.surface();
 }
 
 }  // namespace osf::runtime

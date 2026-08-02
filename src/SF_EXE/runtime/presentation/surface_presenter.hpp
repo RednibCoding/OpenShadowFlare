@@ -4,6 +4,10 @@
 
 #include <memory>
 #include <string>
+#if OSF_ENABLE_DEBUG_TOOLS
+#include <cstdint>
+#include <optional>
+#endif
 
 struct LwlWindow;
 
@@ -20,6 +24,10 @@ public:
         LwlWindow* window,
         std::string* error = nullptr) = 0;
     virtual void present(gapi::SurfaceView surface) = 0;
+#if OSF_ENABLE_DEBUG_TOOLS
+    virtual std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const = 0;
+#endif
 
 protected:
     SurfacePresenter() = default;

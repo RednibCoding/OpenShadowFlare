@@ -103,6 +103,10 @@ public:
         LwlWindow* window,
         std::string* error) override;
     void present(osf::gapi::SurfaceView surface) override;
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override;
+#endif
 
 private:
     void shutdown();
@@ -301,6 +305,18 @@ void LglSurfacePresenter::present(
     lglDrawArrays(LGL_TRIANGLES, 0, 3);
     lwl_gl_context_swap_buffers(context_);
 }
+
+#if OSF_ENABLE_DEBUG_TOOLS
+std::optional<std::uint64_t>
+LglSurfacePresenter::videoMemoryUsageBytes() const {
+    if (texture_width_ <= 0 || texture_height_ <= 0) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint64_t>(texture_width_) *
+           static_cast<std::uint64_t>(texture_height_) *
+           sizeof(osf::gapi::Color);
+}
+#endif
 
 unsigned int LglSurfacePresenter::compileShader(
     unsigned int type,

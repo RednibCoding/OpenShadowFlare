@@ -62,8 +62,10 @@ broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 
 For reconstruction testing, `F12` opens a separate debug menu in the same
-visual style without changing the retail Escape menu. Its FPS counter, All
-Spells, Infinite HP, and Infinite MP entries are independent runtime toggles.
+visual style without changing the retail Escape menu. Its FPS counter,
+profiling overlay, All Spells, Infinite HP, and Infinite MP entries are
+independent runtime toggles. The profiler and platform memory boundary are
+described in [`documentation/profiling.md`](../../documentation/profiling.md).
 The spell override affects the live Magic window and bar only, while the
 resource overrides are applied at the combat and spell-cost boundaries. None
 of them changes the character's saved progress or resource values.

@@ -17,6 +17,23 @@ target_include_directories(
 
 add_test(NAME portable_libraries COMMAND portable_libraries_test)
 
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  add_executable(frame_profiler_test frame_profiler_test.cpp)
+  target_link_libraries(
+    frame_profiler_test PRIVATE OpenShadowFlare::DebugTools)
+  target_compile_features(frame_profiler_test PRIVATE cxx_std_17)
+  set_target_properties(
+    frame_profiler_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      frame_profiler_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      frame_profiler_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME frame_profiler COMMAND frame_profiler_test)
+endif()
+
 add_test(
   NAME source_boundaries
   COMMAND

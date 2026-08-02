@@ -40,6 +40,12 @@ function or expose a platform SDK type through the public header.
 Avoid `#ifdef` branches in shared runtime code. The build should select one
 implementation of an interface instead.
 
+When debug tools are enabled, a target may also provide a resident-memory probe
+under `runtime/platform/<platform>/`. The portable contract and the meaning of
+the displayed RAM/VRAM figures are covered in
+[`profiling.md`](profiling.md). A missing probe must report `n/a`; do not move an
+SDK memory API into shared game code just to make the overlay show a number.
+
 ## 1. Add the application host
 
 `runtime/application_loop.hpp` is the boundary between the game and the

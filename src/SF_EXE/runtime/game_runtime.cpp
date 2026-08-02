@@ -19,6 +19,10 @@
 #include "ui/player_level_up_notice_input.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
+#include "debug/frame_profiler.hpp"
+#include "runtime/platform/memory_usage.hpp"
+#endif
 
 #include <algorithm>
 #include <cstdio>
@@ -39,12 +43,7 @@ public:
           frontendAssets_(dataRoot_),
           surfacePresenter_(
               osf::runtime::createSurfacePresenter()),
-          renderer_(
-              kVirtualWidth,
-              kVirtualHeight,
-              [this](osf::gapi::SurfaceView surface) {
-                  presentSurface(surface);
-              }),
+          renderer_(kVirtualWidth, kVirtualHeight),
           input_(kVirtualWidth, kVirtualHeight),
           titleState_(
               random_,
@@ -143,9 +142,12 @@ public:
         renderedFrames_ = 0;
         previousTime_ = lwl_time_seconds();
         nextFrame_ = previousTime_;
+#if OSF_ENABLE_DEBUG_TOOLS
         fpsWindowStart_ = previousTime_;
         fpsWindowFrames_ = 0;
         framesPerSecond_ = 0;
+        profiler_.setEnabled(false, previousTime_);
+#endif
         gameAccumulator_ = kGameStep;
     }
 
@@ -190,7 +192,19 @@ private:
                 gameAccumulator_ / kGameStep,
                 0.0,
                 1.0);
-        renderer_.render(
+#if OSF_ENABLE_DEBUG_TOOLS
+        profiler_.setEnabled(
+            gameplayUi_.debug().profilingEnabled(),
+            currentTime);
+        if (profiler_.memorySampleDue(currentTime)) {
+            profiler_.recordMemoryUsage(
+                currentTime,
+                osf::runtime::residentMemoryUsageBytes(),
+                surfacePresenter_->videoMemoryUsageBytes());
+        }
+        const double framebufferFillStart = lwl_time_seconds();
+#endif
+        const osf::gapi::SurfaceView surface = renderer_.render(
             {
                 gameState_.currentState(),
                 titleFrame_,
@@ -202,7 +216,9 @@ private:
                 savePreview_,
                 gameplayUi_.options(),
                 gameplayUi_.blackjack(),
+#if OSF_ENABLE_DEBUG_TOOLS
                 gameplayUi_.debug(),
+#endif
                 gameplayUi_.equipmentColor(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
@@ -214,11 +230,24 @@ private:
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
+#if OSF_ENABLE_DEBUG_TOOLS
                 framesPerSecond_,
+                profiler_.metrics(),
+#endif
                 input_.menu().pointer_x,
                 input_.menu().pointer_y,
             },
             interpolation);
+#if OSF_ENABLE_DEBUG_TOOLS
+        profiler_.recordFramebufferFill(
+            lwl_time_seconds() - framebufferFillStart);
+        const double presentStart = lwl_time_seconds();
+#endif
+        surfacePresenter_->present(surface);
+#if OSF_ENABLE_DEBUG_TOOLS
+        profiler_.recordPresent(
+            lwl_time_seconds() - presentStart);
+#endif
         if (gameState_.currentState() ==
                 osf::GameState::gameplay &&
             gameplayFrame_.phase == osf::GameplayPhase::world) {
@@ -226,6 +255,7 @@ private:
         }
 
         ++renderedFrames_;
+#if OSF_ENABLE_DEBUG_TOOLS
         ++fpsWindowFrames_;
         const double fps_elapsed =
             currentTime - fpsWindowStart_;
@@ -237,6 +267,7 @@ private:
             fpsWindowStart_ = currentTime;
             fpsWindowFrames_ = 0;
         }
+#endif
         if (smokeTest_ && renderedFrames_ >= 3) {
             running_ = false;
         }
@@ -255,10 +286,6 @@ private:
                 gameConfig_);
             configDirty_ = false;
         }
-    }
-
-    void presentSurface(osf::gapi::SurfaceView source) {
-        surfacePresenter_->present(source);
     }
 
     void completeScenarioChange() {
@@ -487,9 +514,12 @@ private:
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     std::uint32_t gameplayCounter_ = 0;
+#if OSF_ENABLE_DEBUG_TOOLS
     double fpsWindowStart_ = 0.0;
     std::uint32_t fpsWindowFrames_ = 0;
     std::int32_t framesPerSecond_ = 0;
+    osf::debug::FrameProfiler profiler_;
+#endif
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;

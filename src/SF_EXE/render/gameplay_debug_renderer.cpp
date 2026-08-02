@@ -4,6 +4,7 @@
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 #include "states/gameplay_debug_menu.hpp"
 
+#include <cstdio>
 #include <string>
 #include <string_view>
 
@@ -77,6 +78,52 @@ void drawBooleanRow(
             : (!value ? kSelectedColor : kUnselectedColor));
 }
 
+std::string formatMemory(
+    std::string_view label,
+    const std::optional<std::uint64_t>& bytes) {
+    if (!bytes) {
+        return std::string(label) + " n/a";
+    }
+    constexpr double kMebibyte = 1024.0 * 1024.0;
+    char text[32]{};
+    std::snprintf(
+        text,
+        sizeof(text),
+        "%.*s %.2f MiB",
+        static_cast<int>(label.size()),
+        label.data(),
+        static_cast<double>(*bytes) / kMebibyte);
+    return text;
+}
+
+std::string formatMilliseconds(
+    std::string_view label,
+    double milliseconds) {
+    char text[32]{};
+    std::snprintf(
+        text,
+        sizeof(text),
+        "%.*s %.2f ms",
+        static_cast<int>(label.size()),
+        label.data(),
+        milliseconds);
+    return text;
+}
+
+void drawRightAlignedText(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& font,
+    const std::string& text,
+    std::int32_t y) {
+    drawText(
+        renderer,
+        font,
+        text,
+        636 - static_cast<std::int32_t>(text.size()) * 6,
+        y,
+        kSelectedColor);
+}
+
 }  // namespace
 
 void renderGameplayDebugMenu(
@@ -111,26 +158,33 @@ void renderGameplayDebugMenu(
         renderer,
         font,
         menu,
-        "All Spells",
+        "Profiling",
         134,
+        menu.profilingEnabled());
+    drawBooleanRow(
+        renderer,
+        font,
+        menu,
+        "All Spells",
+        150,
         menu.allSpellsEnabled());
     drawBooleanRow(
         renderer,
         font,
         menu,
         "Infinite HP",
-        150,
+        166,
         menu.infiniteLifeEnabled());
     drawBooleanRow(
         renderer,
         font,
         menu,
         "Infinite MP",
-        166,
+        182,
         menu.infiniteManaEnabled());
 
     const gapi::Color close_color =
-        hovered(menu, 176, 198, 464, 210)
+        hovered(menu, 176, 214, 464, 226)
             ? kHoverColor
             : kLabelColor;
     drawText(
@@ -138,7 +192,7 @@ void renderGameplayDebugMenu(
         font,
         "CLOSE",
         305,
-        198,
+        214,
         close_color);
 }
 
@@ -148,13 +202,37 @@ void renderGameplayDebugFps(
     std::int32_t frames_per_second) {
     const std::string text =
         "FPS " + std::to_string(frames_per_second);
-    drawText(
+    drawRightAlignedText(renderer, font, text, 4);
+}
+
+void renderGameplayProfiling(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& font,
+    const debug::ProfilingMetrics& metrics,
+    bool fps_counter_visible) {
+    const std::int32_t first_y = fps_counter_visible ? 16 : 4;
+    drawRightAlignedText(
         renderer,
         font,
-        text,
-        636 - static_cast<std::int32_t>(text.size()) * 6,
-        4,
-        kSelectedColor);
+        formatMemory("RAM", metrics.ram_bytes),
+        first_y);
+    drawRightAlignedText(
+        renderer,
+        font,
+        formatMemory("VRAM", metrics.video_memory_bytes),
+        first_y + 12);
+    drawRightAlignedText(
+        renderer,
+        font,
+        formatMilliseconds(
+            "FILL", metrics.average_framebuffer_fill_ms),
+        first_y + 24);
+    drawRightAlignedText(
+        renderer,
+        font,
+        formatMilliseconds(
+            "PRESENT", metrics.average_present_ms),
+        first_y + 36);
 }
 
 }  // namespace osf

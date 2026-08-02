@@ -23,6 +23,10 @@ public:
 
     bool initialize(LwlWindow* window, std::string* error) override;
     void present(osf::gapi::SurfaceView surface) override;
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override;
+#endif
 
 private:
     void shutdown();
@@ -109,6 +113,19 @@ void SwitchSurfacePresenter::present(osf::gapi::SurfaceView surface) {
     }
     framebufferEnd(&framebuffer_);
 }
+
+#if OSF_ENABLE_DEBUG_TOOLS
+std::optional<std::uint64_t>
+SwitchSurfacePresenter::videoMemoryUsageBytes() const {
+    if (!initialized_) {
+        return std::nullopt;
+    }
+    constexpr std::uint64_t kBufferCount = 2;
+    return static_cast<std::uint64_t>(kScreenWidth) *
+           static_cast<std::uint64_t>(kScreenHeight) *
+           sizeof(std::uint32_t) * kBufferCount;
+}
+#endif
 
 void SwitchSurfacePresenter::shutdown() {
     if (initialized_) {

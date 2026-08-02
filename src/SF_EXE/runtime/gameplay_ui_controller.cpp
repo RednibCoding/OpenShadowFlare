@@ -60,7 +60,9 @@ GameplayMagicModel gameplayMagicModel(
 void GameplayUiController::reset() {
     options_.close();
     blackjack_.close();
+#if OSF_ENABLE_DEBUG_TOOLS
     debug_.close();
+#endif
     equipment_color_.close();
     inventory_.close();
     map_.close();
@@ -140,11 +142,13 @@ bool GameplayUiController::update(
         return false;
     }
 
+#if OSF_ENABLE_DEBUG_TOOLS
     world.playerMagic().setAllSpellsAvailable(
         debug_.allSpellsEnabled());
     world.configurePlayerDebugResources(
         debug_.infiniteLifeEnabled(),
         debug_.infiniteManaEnabled());
+#endif
 
     if (world_drop_pointer_guard_.update(
             input.pointerPrimaryDown())) {
@@ -200,6 +204,7 @@ bool GameplayUiController::update(
         return true;
     }
 
+#if OSF_ENABLE_DEBUG_TOOLS
     const bool debug_was_active = debug_.active();
     const bool debug_toggle = input.gameplayDebugPressed();
     if (debug_toggle && !debug_was_active) {
@@ -228,6 +233,7 @@ bool GameplayUiController::update(
         }
         return true;
     }
+#endif
 
     if (equipment_color_.active()) {
         const GameplayEquipmentColorResult result =
@@ -398,7 +404,9 @@ bool GameplayUiController::update(
         if (service.kind == GameplayServiceKind::blackjack) {
             closeGameplayPanels(world);
             options_.close();
+#if OSF_ENABLE_DEBUG_TOOLS
             debug_.close();
+#endif
             blackjack_.open();
             world.cancelPlayerMovement();
             world.setCameraAnchor(320, 240);
@@ -1011,10 +1019,12 @@ GameplayUiController::blackjack() const {
     return blackjack_;
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 const GameplayDebugMenu&
 GameplayUiController::debug() const {
     return debug_;
 }
+#endif
 
 const GameplayEquipmentColor&
 GameplayUiController::equipmentColor() const {

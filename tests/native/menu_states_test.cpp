@@ -1490,6 +1490,7 @@ bool testGameplayOptionsDrawing() {
         "color.");
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 bool testGameplayDebugDrawing() {
     osf::GameplayDebugMenu menu;
     menu.update({true});
@@ -1497,6 +1498,7 @@ bool testGameplayDebugDrawing() {
     menu.update({false, false, true, 400, 134});
     menu.update({false, false, true, 400, 150});
     menu.update({false, false, true, 400, 166});
+    menu.update({false, false, true, 400, 182});
 
     osf::gapi::NjpImage status;
     osf::gapi::NjpImage font;
@@ -1515,7 +1517,7 @@ bool testGameplayDebugDrawing() {
         backend.texts.begin(),
         backend.texts.end(),
         [](const TextCall& call) {
-            return call.text == "All Spells" &&
+            return call.text == "Profiling" &&
                    call.draw.x == 184 &&
                    call.draw.y == 134;
         });
@@ -1525,7 +1527,7 @@ bool testGameplayDebugDrawing() {
         [](const TextCall& call) {
             return call.text == "Infinite MP" &&
                    call.draw.x == 184 &&
-                   call.draw.y == 166;
+                   call.draw.y == 182;
         });
     if (!check(
             backend.patterns.size() == 2 &&
@@ -1552,12 +1554,60 @@ bool testGameplayDebugDrawing() {
                    call.draw.y == 4 &&
                    call.draw.color.red == 255;
         });
-    return check(
-        backend.texts.size() == 2 &&
+    if (!check(
+            backend.texts.size() == 2 &&
             fps != backend.texts.end(),
         "The debug FPS counter is not anchored to the top-right with a "
-        "shadowed readable draw.");
+        "shadowed readable draw.")) {
+        return false;
+    }
+
+    backend = {};
+    osf::debug::ProfilingMetrics metrics;
+    metrics.ram_bytes = 32ULL * 1024ULL * 1024ULL;
+    metrics.video_memory_bytes = 4ULL * 1024ULL * 1024ULL;
+    metrics.average_framebuffer_fill_ms = 2.5;
+    metrics.average_present_ms = 1.25;
+    osf::renderGameplayProfiling(
+        backend, font, metrics, true);
+    const auto ram = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "RAM 32.00 MiB" &&
+                   call.draw.y == 16;
+        });
+    const auto vram = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "VRAM 4.00 MiB" &&
+                   call.draw.y == 28;
+        });
+    const auto fill = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "FILL 2.50 ms" &&
+                   call.draw.y == 40;
+        });
+    const auto present = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "PRESENT 1.25 ms" &&
+                   call.draw.y == 52;
+        });
+    return check(
+        backend.texts.size() == 8 &&
+            ram != backend.texts.end() &&
+            vram != backend.texts.end() &&
+            fill != backend.texts.end() &&
+            present != backend.texts.end(),
+        "The profiling metrics are not stacked below FPS with stable "
+        "units and right alignment.");
 }
+#endif
 
 bool testGameplayHelpDrawing() {
     osf::gapi::NjpImage status;
@@ -1623,6 +1673,11 @@ bool testGameplayHelpDrawing() {
 }  // namespace
 
 int main() {
+#if OSF_ENABLE_DEBUG_TOOLS
+    const bool debug_tests_passed = testGameplayDebugDrawing();
+#else
+    constexpr bool debug_tests_passed = true;
+#endif
     if (!testRetailRandom() ||
         !testSaveNameSearch() ||
         !testRetailSaveCatalogFields() ||
@@ -1637,7 +1692,7 @@ int main() {
         !testNewCharacterCreationAndModeScreens() ||
         !testNewCharacterRetailDrawing() ||
         !testGameplayOptionsDrawing() ||
-        !testGameplayDebugDrawing() ||
+        !debug_tests_passed ||
         !testGameplayHelpDrawing()) {
         return 1;
     }

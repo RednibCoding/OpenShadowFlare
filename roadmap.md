@@ -23,6 +23,8 @@ The portable executable already has a solid front half:
 
 - portable windowing, input, audio, and presentation through LWL, LAL, and LGL
 - a backend-neutral graphics API with a 640×480 software renderer
+- an optional F12 profiler for RAM, presenter-owned video memory, software
+  framebuffer time, and presentation time
 - the title screen, its smoke animation, music, fades, and menu sounds
 - new-character creation and the complete saved-game selection flow
 - full retail save-row summaries (Level, Job, Sex, Name, HP, MP, and EXP)
@@ -2140,6 +2142,15 @@ drifting:
 - run the boundary test so DLL-derived code stays in `SF_EXE/libs/`;
 - keep Linux and Windows builds green and regularly test real macOS hardware.
 
+Performance work now has a concrete low-end target too: a future PlayStation 2
+port should fit its game-side work into 32 MiB of RAM and its presenter into a
+4 MiB video-memory budget while keeping the reconstructed 30 Hz simulation and
+smooth 60 Hz presentation. Use the F12 profiler to establish representative
+town, combat, inventory, and effect-heavy baselines before changing code.
+Optimizations still need the same fidelity tests as any other slice; a faster
+result that changes update order, animation timing, blending, or game rules is
+not a win.
+
 ## What can wait
 
 These are good ideas, just not reconstruction blockers:
@@ -2149,12 +2160,11 @@ These are good ideas, just not reconstruction blockers:
 - Vulkan, Metal, or Direct3D GAPI backends;
 - a public modding or plug-in API;
 - balance changes and new gameplay;
-- asset conversion tools that the reconstruction itself does not need;
-- major optimization before a representative gameplay scene can be profiled.
+- asset conversion tools that the reconstruction itself does not need.
 
-The software renderer and LGL presenter are intentionally enough for now. A
-new backend becomes worthwhile when the complete 640×480 game gives us
-something meaningful to measure.
+The software renderer and LGL presenter remain the reference path. Optimize
+that measured path before adding another graphics backend, so a new API does
+not hide avoidable renderer or asset-memory costs.
 
 ## Checks before a slice is ready to commit
 
