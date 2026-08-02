@@ -32,6 +32,17 @@ typedef uint32_t LalVoice;
 
 #define LAL_INVALID_VOICE ((LalVoice) 0)
 
+enum {
+  LAL_SAMPLE_RATE_16000 = 16000,
+  LAL_SAMPLE_RATE_22050 = 22050,
+  LAL_SAMPLE_RATE_48000 = 48000
+};
+
+typedef struct {
+  uint32_t maximum_sample_rate;
+  bool force_mono;
+} LalConfig;
+
 typedef struct {
   uint32_t sample_rate;
   uint16_t channels;
@@ -46,7 +57,9 @@ typedef struct {
   bool loop;
 } LalPlayOptions;
 
+LalConfig lal_config_default(void);
 bool lal_init(void);
+bool lal_init_ex(const LalConfig *config);
 void lal_shutdown(void);
 
 LalSound *lal_sound_load_wav(const char *path);
@@ -57,6 +70,9 @@ LalSound *lal_sound_create_pcm(
 void lal_sound_destroy(LalSound *sound);
 size_t lal_sound_frame_count(const LalSound *sound);
 double lal_sound_duration(const LalSound *sound);
+uint32_t lal_sound_sample_rate(const LalSound *sound);
+uint16_t lal_sound_channel_count(const LalSound *sound);
+size_t lal_sound_memory_usage_bytes(const LalSound *sound);
 
 LalPlayOptions lal_play_options_default(void);
 LalVoice lal_play(const LalSound *sound, float volume, bool loop);

@@ -51,6 +51,7 @@ public:
     std::int32_t savedGameCount() const;
     const std::vector<RetailSaveSummary>& savedGames() const;
     const std::vector<gapi::BitmapImage>& savedPreviews() const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     using PatternMap =

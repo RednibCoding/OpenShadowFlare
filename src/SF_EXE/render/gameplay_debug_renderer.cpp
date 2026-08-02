@@ -96,6 +96,14 @@ std::string formatMemory(
     return text;
 }
 
+std::optional<std::uint64_t> totalRam(
+    const debug::ProfilingMetrics& metrics) {
+    if (!metrics.game_memory_bytes || !metrics.audio_memory_bytes) {
+        return std::nullopt;
+    }
+    return *metrics.game_memory_bytes + *metrics.audio_memory_bytes;
+}
+
 std::string formatMilliseconds(
     std::string_view label,
     double milliseconds) {
@@ -214,25 +222,35 @@ void renderGameplayProfiling(
     drawRightAlignedText(
         renderer,
         font,
-        formatMemory("RAM", metrics.ram_bytes),
+        formatMemory("GAME", metrics.game_memory_bytes),
         first_y);
     drawRightAlignedText(
         renderer,
         font,
-        formatMemory("VRAM", metrics.video_memory_bytes),
+        formatMemory("AUDIO", metrics.audio_memory_bytes),
         first_y + 12);
+    drawRightAlignedText(
+        renderer,
+        font,
+        formatMemory("TOTAL RAM", totalRam(metrics)),
+        first_y + 24);
+    drawRightAlignedText(
+        renderer,
+        font,
+        formatMemory("VRAM", metrics.video_memory_bytes),
+        first_y + 36);
     drawRightAlignedText(
         renderer,
         font,
         formatMilliseconds(
             "FILL", metrics.average_framebuffer_fill_ms),
-        first_y + 24);
+        first_y + 48);
     drawRightAlignedText(
         renderer,
         font,
         formatMilliseconds(
             "PRESENT", metrics.average_present_ms),
-        first_y + 36);
+        first_y + 60);
 }
 
 }  // namespace osf

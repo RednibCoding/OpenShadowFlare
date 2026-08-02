@@ -1,5 +1,7 @@
 #include "effect_visual_resource.hpp"
 
+#include "resource_memory.hpp"
+
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -64,6 +66,11 @@ EffectVisualResource::animation() const {
     return animation_;
 }
 
+std::uint64_t EffectVisualResource::memoryUsageBytes() const {
+    return decodedMemoryUsageBytes(patterns_) +
+        decodedMemoryUsageBytes(animation_);
+}
+
 const EffectVisualResource* EffectVisualResources::load(
     const std::filesystem::path& data_root,
     std::int32_t resource_id,
@@ -107,6 +114,14 @@ const EffectVisualResource* EffectVisualResources::find(
 
 void EffectVisualResources::clear() {
     resources_.clear();
+}
+
+std::uint64_t EffectVisualResources::memoryUsageBytes() const {
+    std::uint64_t bytes = 0;
+    for (const auto& entry : resources_) {
+        bytes += entry.second->memoryUsageBytes();
+    }
+    return bytes;
 }
 
 }  // namespace osf

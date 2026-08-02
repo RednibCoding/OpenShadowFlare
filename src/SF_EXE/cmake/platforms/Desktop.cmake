@@ -5,20 +5,6 @@ function(osf_configure_desktop_platform target)
       runtime/platform/desktop/application_loop.cpp
   )
 
-  if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
-    if(WIN32)
-      target_sources(
-        ${target} PRIVATE runtime/platform/windows/memory_usage.cpp)
-      target_link_libraries(${target} PRIVATE psapi)
-    elseif(APPLE)
-      target_sources(
-        ${target} PRIVATE runtime/platform/macos/memory_usage.cpp)
-    else()
-      target_sources(
-        ${target} PRIVATE runtime/platform/linux/memory_usage.cpp)
-    endif()
-  endif()
-
   if(APPLE)
     option(
       OPENSHADOWFLARE_MACOS_BUNDLE

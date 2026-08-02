@@ -1564,43 +1564,60 @@ bool testGameplayDebugDrawing() {
 
     backend = {};
     osf::debug::ProfilingMetrics metrics;
-    metrics.ram_bytes = 32ULL * 1024ULL * 1024ULL;
+    metrics.game_memory_bytes = 32ULL * 1024ULL * 1024ULL;
+    metrics.audio_memory_bytes = 8ULL * 1024ULL * 1024ULL;
     metrics.video_memory_bytes = 4ULL * 1024ULL * 1024ULL;
     metrics.average_framebuffer_fill_ms = 2.5;
     metrics.average_present_ms = 1.25;
     osf::renderGameplayProfiling(
         backend, font, metrics, true);
-    const auto ram = std::find_if(
+    const auto game_memory = std::find_if(
         backend.texts.begin(),
         backend.texts.end(),
         [](const TextCall& call) {
-            return call.text == "RAM 32.00 MiB" &&
+            return call.text == "GAME 32.00 MiB" &&
                    call.draw.y == 16;
+        });
+    const auto audio_memory = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "AUDIO 8.00 MiB" &&
+                   call.draw.y == 28;
         });
     const auto vram = std::find_if(
         backend.texts.begin(),
         backend.texts.end(),
         [](const TextCall& call) {
             return call.text == "VRAM 4.00 MiB" &&
-                   call.draw.y == 28;
+                   call.draw.y == 52;
+        });
+    const auto total_ram = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "TOTAL RAM 40.00 MiB" &&
+                   call.draw.y == 40;
         });
     const auto fill = std::find_if(
         backend.texts.begin(),
         backend.texts.end(),
         [](const TextCall& call) {
             return call.text == "FILL 2.50 ms" &&
-                   call.draw.y == 40;
+                   call.draw.y == 64;
         });
     const auto present = std::find_if(
         backend.texts.begin(),
         backend.texts.end(),
         [](const TextCall& call) {
             return call.text == "PRESENT 1.25 ms" &&
-                   call.draw.y == 52;
+                   call.draw.y == 76;
         });
     return check(
-        backend.texts.size() == 8 &&
-            ram != backend.texts.end() &&
+        backend.texts.size() == 12 &&
+            game_memory != backend.texts.end() &&
+            audio_memory != backend.texts.end() &&
+            total_ram != backend.texts.end() &&
             vram != backend.texts.end() &&
             fill != backend.texts.end() &&
             present != backend.texts.end(),

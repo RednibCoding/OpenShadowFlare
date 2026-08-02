@@ -40,11 +40,10 @@ function or expose a platform SDK type through the public header.
 Avoid `#ifdef` branches in shared runtime code. The build should select one
 implementation of an interface instead.
 
-When debug tools are enabled, a target may also provide a resident-memory probe
-under `runtime/platform/<platform>/`. The portable contract and the meaning of
-the displayed RAM/VRAM figures are covered in
-[`profiling.md`](profiling.md). A missing probe must report `n/a`; do not move an
-SDK memory API into shared game code just to make the overlay show a number.
+The RAM profiler follows portable allocations owned by the game and LAL. A new
+target does not need an operating-system memory probe. Presenter-owned video
+memory is reported through `SurfacePresenter`; the exact meaning of these
+figures is covered in [`profiling.md`](profiling.md).
 
 ## 1. Add the application host
 
@@ -149,6 +148,10 @@ copying, conversion, scaling, upload, and submission work. It must not
 deliberately wait for display synchronization. `displayFrame()` makes that
 prepared frame visible and may wait for the display. The common runtime times
 only the first phase, so a platform implementation never needs profiling code.
+If a presenter can control synchronization, implement the generic
+`setDisplaySynchronization()` operation. It is a display capability, not a
+profiling hook; the common runtime decides when to use it. The default
+implementation reports that the capability is unavailable.
 
 `game_runtime.cpp`, GAPI, and the software renderer should not need changes.
 A future hardware renderer is a separate GAPI concern; it should not be mixed

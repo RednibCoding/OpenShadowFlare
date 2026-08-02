@@ -93,6 +93,7 @@ add_library(
   resources/item_world_resource.cpp
   resources/object_visual_resource.cpp
   resources/resource_manager.cpp
+  resources/resource_memory.cpp
   resources/retail_filesystem.cpp
   resources/save_catalog.cpp
 )

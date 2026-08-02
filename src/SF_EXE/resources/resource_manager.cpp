@@ -1,5 +1,6 @@
 #include "resource_manager.hpp"
 
+#include "resource_memory.hpp"
 #include "resources/retail_filesystem.hpp"
 
 #include <cstdio>
@@ -134,6 +135,29 @@ ResourceManager::savedGames() const {
 const std::vector<gapi::BitmapImage>&
 ResourceManager::savedPreviews() const {
     return character_select_.saved_previews;
+}
+
+std::uint64_t ResourceManager::memoryUsageBytes() const {
+    const auto pattern_bytes = [](const PatternMap& patterns) {
+        std::uint64_t bytes = 0;
+        for (const auto& entry : patterns) {
+            bytes += decodedMemoryUsageBytes(entry.second);
+        }
+        return bytes;
+    };
+
+    std::uint64_t bytes = pattern_bytes(common_patterns_) +
+        pattern_bytes(title_.patterns) +
+        pattern_bytes(character_select_.patterns) +
+        pattern_bytes(gameplay_patterns_);
+    for (const gapi::CafAnimation& animation : title_.animations) {
+        bytes += decodedMemoryUsageBytes(animation);
+    }
+    for (const gapi::BitmapImage& preview :
+         character_select_.saved_previews) {
+        bytes += decodedMemoryUsageBytes(preview);
+    }
+    return bytes;
 }
 
 bool ResourceManager::loadPattern(

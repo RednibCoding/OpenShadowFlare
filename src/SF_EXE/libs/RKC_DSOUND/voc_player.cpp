@@ -162,6 +162,24 @@ bool VocPlayer::loaded() const {
     return !sounds_.empty();
 }
 
+std::uint64_t VocPlayer::memoryUsageBytes() const {
+    std::uint64_t bytes =
+        static_cast<std::uint64_t>(sounds_.capacity()) *
+            sizeof(LalSound*) +
+        static_cast<std::uint64_t>(references_.capacity()) *
+            sizeof(std::int32_t) +
+        static_cast<std::uint64_t>(voices_.capacity()) *
+            sizeof(std::vector<LalVoice>);
+    for (const LalSound* sound : sounds_) {
+        bytes += lal_sound_memory_usage_bytes(sound);
+    }
+    for (const std::vector<LalVoice>& voices : voices_) {
+        bytes += static_cast<std::uint64_t>(voices.capacity()) *
+            sizeof(LalVoice);
+    }
+    return bytes;
+}
+
 const LalSound* VocPlayer::resolveSound(
     std::size_t sample_index) const {
     if (sample_index >= sounds_.size()) {

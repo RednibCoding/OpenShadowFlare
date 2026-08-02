@@ -43,6 +43,7 @@ int main() {
     profiler.recordMemoryUsage(
         10.0,
         std::uint64_t{32} * 1024 * 1024,
+        std::uint64_t{8} * 1024 * 1024,
         std::uint64_t{4} * 1024 * 1024);
     if (!check(
             !profiler.memorySampleDue(10.499) &&
@@ -60,8 +61,10 @@ int main() {
     profiler.recordPresent(0.004);
     auto metrics = profiler.metrics();
     if (!check(
-            metrics.ram_bytes ==
+            metrics.game_memory_bytes ==
                     std::uint64_t{32} * 1024 * 1024 &&
+                metrics.audio_memory_bytes ==
+                    std::uint64_t{8} * 1024 * 1024 &&
                 metrics.video_memory_bytes ==
                     std::uint64_t{4} * 1024 * 1024 &&
                 near(metrics.average_framebuffer_fill_ms, 60.5) &&
@@ -81,7 +84,8 @@ int main() {
     profiler.setEnabled(false, 12.0);
     metrics = profiler.metrics();
     return check(
-        !metrics.ram_bytes &&
+        !metrics.game_memory_bytes &&
+            !metrics.audio_memory_bytes &&
             !metrics.video_memory_bytes &&
             near(metrics.average_framebuffer_fill_ms, 0.0) &&
             near(metrics.average_present_ms, 0.0),

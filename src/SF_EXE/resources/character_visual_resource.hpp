@@ -23,6 +23,7 @@ public:
     const gapi::NjpImage& patterns() const;
     const gapi::NjpImage& shadowPatterns() const;
     const gapi::CafAnimation& animation() const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     gapi::NjpImage patterns_;
@@ -42,6 +43,7 @@ public:
     const CharacterVisualResource* find(
         std::int32_t resource_id) const;
     void clear();
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::string category_;

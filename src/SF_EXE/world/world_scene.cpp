@@ -5,6 +5,7 @@
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
+#include "resources/resource_memory.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -178,6 +179,26 @@ void WorldScene::clear() {
     player_infinite_life_ = false;
     player_infinite_mana_ = false;
     owned_companion_inactive_ = true;
+}
+
+std::uint64_t WorldScene::resourceMemoryUsageBytes() const {
+    std::uint64_t bytes = scenario_world_.resourceMemoryUsageBytes() +
+        player_visual_.memoryUsageBytes() +
+        companion_visuals_.memoryUsageBytes() +
+        effect_visuals_.memoryUsageBytes() +
+        player_powerup_visual_.memoryUsageBytes() +
+        player_unlock_switch_visual_.memoryUsageBytes() +
+        effect_pattern_resources_.memoryUsageBytes() +
+        decodedMemoryUsageBytes(speech_patterns_) +
+        decodedMemoryUsageBytes(scenario_visual_patterns_) +
+        decodedMemoryUsageBytes(scenario_visual_continue_patterns_) +
+        item_inventory_patterns_.memoryUsageBytes();
+    for (const auto& resource : item_world_resources_) {
+        if (resource) {
+            bytes += resource->memoryUsageBytes();
+        }
+    }
+    return bytes;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {

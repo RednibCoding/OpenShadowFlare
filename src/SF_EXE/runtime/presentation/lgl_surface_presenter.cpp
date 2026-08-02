@@ -102,6 +102,7 @@ public:
     bool initialize(
         LwlWindow* window,
         std::string* error) override;
+    bool setDisplaySynchronization(bool enabled) override;
     void prepareFrame(osf::gapi::SurfaceView surface) override;
     void displayFrame() override;
 #if OSF_ENABLE_DEBUG_TOOLS
@@ -242,6 +243,11 @@ void LglSurfacePresenter::shutdown() {
     lwl_gl_context_destroy(context_);
     context_ = nullptr;
     window_ = nullptr;
+}
+
+bool LglSurfacePresenter::setDisplaySynchronization(bool enabled) {
+    return context_ &&
+        lwl_gl_context_set_swap_interval(context_, enabled ? 1 : 0);
 }
 
 void LglSurfacePresenter::prepareFrame(

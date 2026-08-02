@@ -24,7 +24,8 @@ public:
     bool memorySampleDue(double now_seconds) const;
     void recordMemoryUsage(
         double now_seconds,
-        std::optional<std::uint64_t> ram_bytes,
+        std::optional<std::uint64_t> game_memory_bytes,
+        std::optional<std::uint64_t> audio_memory_bytes,
         std::optional<std::uint64_t> video_memory_bytes);
 
     ProfilingMetrics metrics() const;
@@ -47,7 +48,8 @@ private:
     double next_memory_sample_seconds_ = 0.0;
     RollingAverage framebuffer_fill_seconds_;
     RollingAverage present_seconds_;
-    std::optional<std::uint64_t> ram_bytes_;
+    std::optional<std::uint64_t> game_memory_bytes_;
+    std::optional<std::uint64_t> audio_memory_bytes_;
     std::optional<std::uint64_t> video_memory_bytes_;
 };
 

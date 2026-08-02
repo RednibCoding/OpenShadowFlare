@@ -54,6 +54,15 @@ RuntimeRenderer::RuntimeRenderer(
     std::int32_t height)
     : renderer_(width, height) {}
 
+std::uint64_t RuntimeRenderer::memoryUsageBytes() const {
+    const gapi::SurfaceView surface = renderer_.surface();
+    return surface.width > 0 && surface.height > 0
+        ? static_cast<std::uint64_t>(surface.width) *
+              static_cast<std::uint64_t>(surface.height) *
+              sizeof(gapi::Color)
+        : 0;
+}
+
 gapi::SurfaceView RuntimeRenderer::render(
     const RuntimeRenderContext& context,
     double interpolation) {

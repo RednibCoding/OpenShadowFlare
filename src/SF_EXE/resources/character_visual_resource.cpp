@@ -1,5 +1,7 @@
 #include "character_visual_resource.hpp"
 
+#include "resource_memory.hpp"
+
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -64,6 +66,12 @@ CharacterVisualResource::animation() const {
     return animation_;
 }
 
+std::uint64_t CharacterVisualResource::memoryUsageBytes() const {
+    return decodedMemoryUsageBytes(patterns_) +
+        decodedMemoryUsageBytes(shadow_patterns_) +
+        decodedMemoryUsageBytes(animation_);
+}
+
 CharacterVisualResources::CharacterVisualResources(
     std::string category)
     : category_(std::move(category)) {}
@@ -116,6 +124,14 @@ const CharacterVisualResource* CharacterVisualResources::find(
 
 void CharacterVisualResources::clear() {
     resources_.clear();
+}
+
+std::uint64_t CharacterVisualResources::memoryUsageBytes() const {
+    std::uint64_t bytes = 0;
+    for (const auto& entry : resources_) {
+        bytes += entry.second->memoryUsageBytes();
+    }
+    return bytes;
 }
 
 }  // namespace osf

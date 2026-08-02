@@ -1,5 +1,7 @@
 #include "scenario_world.hpp"
 
+#include "resources/resource_memory.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -338,6 +340,22 @@ void ScenarioWorld::clear() {
     enemies_.clear();
     enemy_indices_.clear();
     ground_items_.clear();
+}
+
+std::uint64_t ScenarioWorld::resourceMemoryUsageBytes() const {
+    std::uint64_t bytes = ground_.memoryUsageBytes() +
+        object_map_.memoryUsageBytes() +
+        decodedMemoryUsageBytes(map_overview_patterns_) +
+        decodedMemoryUsageBytes(map_exploration_.mask()) +
+        object_visuals_.memoryUsageBytes() +
+        people_visuals_.memoryUsageBytes() +
+        enemy_visuals_.memoryUsageBytes();
+    for (const auto& patterns : map_patterns_) {
+        if (patterns) {
+            bytes += decodedMemoryUsageBytes(*patterns);
+        }
+    }
+    return bytes;
 }
 
 std::int32_t ScenarioWorld::id() const {

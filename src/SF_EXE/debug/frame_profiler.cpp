@@ -13,7 +13,8 @@ void FrameProfiler::setEnabled(
     enabled_ = enabled;
     framebuffer_fill_seconds_.clear();
     present_seconds_.clear();
-    ram_bytes_.reset();
+    game_memory_bytes_.reset();
+    audio_memory_bytes_.reset();
     video_memory_bytes_.reset();
     next_memory_sample_seconds_ = now_seconds;
 }
@@ -43,12 +44,14 @@ bool FrameProfiler::memorySampleDue(double now_seconds) const {
 
 void FrameProfiler::recordMemoryUsage(
     double now_seconds,
-    std::optional<std::uint64_t> ram_bytes,
+    std::optional<std::uint64_t> game_memory_bytes,
+    std::optional<std::uint64_t> audio_memory_bytes,
     std::optional<std::uint64_t> video_memory_bytes) {
     if (!enabled_) {
         return;
     }
-    ram_bytes_ = ram_bytes;
+    game_memory_bytes_ = game_memory_bytes;
+    audio_memory_bytes_ = audio_memory_bytes;
     video_memory_bytes_ = video_memory_bytes;
     next_memory_sample_seconds_ =
         now_seconds + memory_sample_interval_seconds;
@@ -56,7 +59,8 @@ void FrameProfiler::recordMemoryUsage(
 
 ProfilingMetrics FrameProfiler::metrics() const {
     return {
-        ram_bytes_,
+        game_memory_bytes_,
+        audio_memory_bytes_,
         video_memory_bytes_,
         framebuffer_fill_seconds_.value() * 1000.0,
         present_seconds_.value() * 1000.0,

@@ -77,6 +77,7 @@ public:
     gapi::SurfaceView render(
         const RuntimeRenderContext& context,
         double interpolation);
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     gapi::SoftwareBackend renderer_;

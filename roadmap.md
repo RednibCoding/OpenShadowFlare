@@ -23,8 +23,8 @@ The portable executable already has a solid front half:
 
 - portable windowing, input, audio, and presentation through LWL, LAL, and LGL
 - a backend-neutral graphics API with a 640×480 software renderer
-- an optional F12 profiler for RAM, presenter-owned video memory, software
-  framebuffer time, and presentation time
+- an optional F12 profiler for portable game/audio memory, presenter-owned
+  video memory, software framebuffer time, and presentation time
 - the title screen, its smoke animation, music, fades, and menu sounds
 - new-character creation and the complete saved-game selection flow
 - full retail save-row summaries (Level, Job, Sex, Name, HP, MP, and EXP)
@@ -2158,6 +2158,15 @@ previews, while the common fonts and cursor remain alive. The next useful
 measurements are gameplay-only: make inventory sheets lazy, give every scenario
 its own world/effect/item resource scope, and remove the temporary two-map peak
 during transitions without weakening failure-safe loading.
+
+The profiler now reports game and decoded-audio memory separately, followed by
+their TOTAL RAM sum, instead of process RSS. This keeps Linux graphics-driver
+and window-system allocations out of console budgeting.
+LAL also retains each sound's mono/stereo layout and original rate instead of
+expanding everything to the output mix format. Its 16 kHz, 22.05 kHz, and
+48 kHz ceilings and optional stereo-to-mono downmix are configured inside LAL,
+so constrained targets can trade sample quality for memory without adding
+policy to the game or platform code.
 
 ## What can wait
 

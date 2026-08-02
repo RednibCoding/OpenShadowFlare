@@ -98,6 +98,7 @@ public:
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,
         std::string* error = nullptr);
+    std::uint64_t resourceMemoryUsageBytes() const;
     bool loadInitialScenario(
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,

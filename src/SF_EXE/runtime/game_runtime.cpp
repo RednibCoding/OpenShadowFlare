@@ -21,7 +21,6 @@
 #include "world/world_scene.hpp"
 #if OSF_ENABLE_DEBUG_TOOLS
 #include "debug/frame_profiler.hpp"
-#include "runtime/platform/memory_usage.hpp"
 #endif
 
 #include <algorithm>
@@ -193,13 +192,26 @@ private:
                 0.0,
                 1.0);
 #if OSF_ENABLE_DEBUG_TOOLS
-        profiler_.setEnabled(
-            gameplayUi_.debug().profilingEnabled(),
-            currentTime);
+        const bool profilingEnabled =
+            gameplayUi_.debug().profilingEnabled();
+        profiler_.setEnabled(profilingEnabled, currentTime);
+        const bool synchronizeDisplay = !profilingEnabled;
+        if (synchronizeDisplay != displaySynchronizationEnabled_) {
+            surfacePresenter_->setDisplaySynchronization(
+                synchronizeDisplay);
+            displaySynchronizationEnabled_ = synchronizeDisplay;
+        }
         if (profiler_.memorySampleDue(currentTime)) {
+            const std::uint64_t audioMemory =
+                audio_.memoryUsageBytes();
+            const std::uint64_t gameMemory =
+                resources_.memoryUsageBytes() +
+                world_.resourceMemoryUsageBytes() +
+                renderer_.memoryUsageBytes();
             profiler_.recordMemoryUsage(
                 currentTime,
-                osf::runtime::residentMemoryUsageBytes(),
+                gameMemory,
+                audioMemory,
                 surfacePresenter_->videoMemoryUsageBytes());
         }
         const double framebufferFillStart = lwl_time_seconds();
@@ -529,6 +541,9 @@ private:
     osf::ResourceManager resources_;
     std::unique_ptr<osf::runtime::SurfacePresenter>
         surfacePresenter_;
+#if OSF_ENABLE_DEBUG_TOOLS
+    bool displaySynchronizationEnabled_ = true;
+#endif
     osf::runtime::RuntimeRenderer renderer_;
     osf::TitleFrameResult titleFrame_;
     osf::CharacterSelectFrameResult characterFrame_;

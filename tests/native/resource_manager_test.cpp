@@ -32,6 +32,13 @@ int main() {
             "The common resource fixture could not be loaded.")) {
         return 1;
     }
+    const std::uint64_t common_bytes =
+        resources.memoryUsageBytes();
+    if (!check(
+            common_bytes > 0,
+            "The common resource memory was not accounted.")) {
+        return 1;
+    }
 
     if (!check(
             resources.loadTitlePattern(
@@ -40,16 +47,18 @@ int main() {
                     0,
                     "System\\Title\\Pattern\\Smoke00.Caf") &&
                 resources.pattern(4) != nullptr &&
-                !resources.titleAnimation(0)->charts().empty(),
+                !resources.titleAnimation(0)->charts().empty() &&
+                resources.memoryUsageBytes() > common_bytes,
             "The title resource scope could not be loaded.")) {
         return 1;
     }
 
     resources.releaseTitleResources();
     if (!check(
-            resources.pattern(4) == nullptr &&
+                resources.pattern(4) == nullptr &&
                 resources.titleAnimation(0)->charts().empty() &&
-                resources.pattern(0) != nullptr,
+                resources.pattern(0) != nullptr &&
+                resources.memoryUsageBytes() == common_bytes,
             "Releasing the title scope retained title data or removed common data.")) {
         return 1;
     }

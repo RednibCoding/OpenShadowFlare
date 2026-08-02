@@ -23,6 +23,10 @@ public:
     virtual bool initialize(
         LwlWindow* window,
         std::string* error = nullptr) = 0;
+    virtual bool setDisplaySynchronization(bool enabled) {
+        (void) enabled;
+        return false;
+    }
     // Prepare the finished software surface without waiting for display
     // synchronization. The common runtime profiles this work.
     virtual void prepareFrame(gapi::SurfaceView surface) = 0;
