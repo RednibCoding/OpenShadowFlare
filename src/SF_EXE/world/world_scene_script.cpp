@@ -293,6 +293,21 @@ bool WorldScene::writeScriptWorldOperand(
 bool WorldScene::executeScriptNativeCommand(
     std::int32_t opcode,
     const std::vector<std::int32_t>& arguments) {
+    if (opcode == 25) {
+        if (arguments.size() != 4) {
+            return false;
+        }
+        EnemyActor* enemy =
+            findScriptEnemy(arguments[0]);
+        if (!enemy) {
+            return false;
+        }
+        enemy->activate(
+            {arguments[1], arguments[2]},
+            arguments[3]);
+        return true;
+    }
+
     if (opcode == 27) {
         if (arguments.size() != 8) {
             return false;

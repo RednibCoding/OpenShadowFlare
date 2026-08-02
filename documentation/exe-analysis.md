@@ -1241,6 +1241,39 @@ reports one for a zero-life enemy until `EnemyActor::expired()` becomes true;
 only MCT enemies are registered, so an absent ID never behaves like an
 inactive enemy.
 
+Operand type 3 reaches that same registry directly. The reader at
+`0x004346e2` adds `14000000` to the operand's local enemy number, calls
+`0x00430770`, returns the entry value at `+4`, and returns `-1` when lookup
+fails. The shipped corpus has 160 type-three operands, all as the left side of
+opcode-0 comparisons. This is why `04000003` operand `30000` addresses enemy
+character `14030000`; it is not a generic runtime flag.
+
+Opcode 25 enters at `0x004326c9`. It evaluates four operands and calls
+`0x0045a140` with the resolved enemy, `{x,y}`, and direction. The handler
+ignores the native routine's zero result when the slot is already alive, so
+that case remains a successful no-op. For an inactive slot, `0x0045a140`
+clears its old action, movement, reaction, attribution, and death fields,
+selects action 7, restores maximum life and full draw strength, installs the
+new position and direction, and writes registry value one. Its virtual screen
+sync at `0x00459f60` does not rewrite the MCT spawn rectangle. All 34 shipped
+calls across 13 scenarios have the exact operand shape `{4,6,7,1}`.
+
+Opcode 28 enters at `0x00433022`, evaluates one target character, and calls
+`0x004309f0`. That helper finds status kind 6 and invokes its sentence inline
+through `0x00430ab0`; a missing status returns success without running
+anything. There are 181 shipped calls across 32 scenarios, all with one
+operand, and every target has a matching kind-six status. The portable frame
+stack now retains character context per nested sentence, so a kind-six action
+uses its target and the caller regains its own context afterward.
+
+The shipped controller in `04000003` combines these paths. Sentence 164 uses
+opcode 32 to find an inactive slot in `14030001..14030005`. Sentence 165 waits
+40 updates and invokes kind six on controller `30000`, whose sentence 175
+creates effects 20007 and 20008 and positional sample 27 at object `10030000`.
+Sentence 168 then activates the chosen slot at that position facing direction
+7. Keeping expired enemy actors in their original scenario vector is therefore
+a fidelity requirement, not merely a container implementation choice.
+
 The complete `0x00426200` call takes player number, scenario ID, entry value,
 an auxiliary transition flag, an optional explicit position, and an entry-key
 player override. With a nonnegative entry value, both the same-scenario fast

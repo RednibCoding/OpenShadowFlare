@@ -152,7 +152,8 @@ StepResult Interpreter::startSentence(
     message_callback_character_number_ = -1;
     current_character_number_ = character_number;
     unsupported_opcode_ = -1;
-    if (!script_ || !pushSentence(sentence)) {
+    if (!script_ ||
+        !pushSentence(sentence, character_number)) {
         return StepResult::invalid_script;
     }
     return run();
@@ -172,7 +173,8 @@ StepResult Interpreter::enterStatus(
                    ? StepResult::complete
                    : StepResult::invalid_script;
     }
-    if (!pushSentence(status->sentence)) {
+    if (!pushSentence(
+            status->sentence, character_number)) {
         return StepResult::invalid_script;
     }
     current_character_number_ = character_number;
@@ -250,6 +252,8 @@ StepResult Interpreter::run() {
     }
     while (!frames_.empty()) {
         Frame& frame = frames_.back();
+        current_character_number_ =
+            frame.character_number;
         const Sentence* sentence =
             script_->findSentence(frame.sentence);
         if (!sentence) {
@@ -322,7 +326,9 @@ StepResult Interpreter::execute(const Command& command) {
             return StepResult::invalid_script;
         }
         if (condition &&
-            !pushSentence(command.operands[3].value)) {
+            !pushSentence(
+                command.operands[3].value,
+                current_character_number_)) {
             return StepResult::invalid_script;
         }
         return StepResult::complete;
@@ -490,6 +496,24 @@ StepResult Interpreter::execute(const Command& command) {
         return executeNative(2);
     case 24:
         return executeNative(3);
+    case 25:
+        return executeNative(4);
+    case 28: {
+        if (command.operands.empty() || !script_) {
+            return StepResult::invalid_script;
+        }
+        const std::int32_t character_number =
+            readOperand(command.operands[0]);
+        const Status* status =
+            script_->findStatus(6, character_number);
+        if (!status) {
+            return StepResult::complete;
+        }
+        return pushSentence(
+                   status->sentence, character_number)
+                   ? StepResult::complete
+                   : StepResult::invalid_script;
+    }
     case 30:
         return executeNative(14);
     case 31:
@@ -871,6 +895,24 @@ std::int32_t Interpreter::readOperand(
                    ? -1
                    : found->second;
     }
+    if (operand.type == 3) {
+        constexpr std::int32_t enemy_character_base = 14000000;
+        std::int32_t state = -1;
+        const std::int64_t character_number =
+            static_cast<std::int64_t>(enemy_character_base) +
+            operand.value;
+        if (character_number <=
+                std::numeric_limits<std::int32_t>::max() &&
+            character_number >=
+                std::numeric_limits<std::int32_t>::min() &&
+            hooks_.query_enemy_lifecycle_state &&
+            hooks_.query_enemy_lifecycle_state(
+                static_cast<std::int32_t>(character_number),
+                state)) {
+            return state;
+        }
+        return -1;
+    }
     if (operand.type == 8) {
         std::int32_t value = 0;
         if (hooks_.query_value &&
@@ -899,11 +941,13 @@ bool Interpreter::writeOperand(
            hooks_.write_operand(operand, value);
 }
 
-bool Interpreter::pushSentence(std::int32_t sentence) {
+bool Interpreter::pushSentence(
+    std::int32_t sentence,
+    std::int32_t character_number) {
     if (!script_ || !script_->findSentence(sentence)) {
         return false;
     }
-    frames_.push_back({sentence, 0});
+    frames_.push_back({sentence, 0, character_number});
     return true;
 }
 

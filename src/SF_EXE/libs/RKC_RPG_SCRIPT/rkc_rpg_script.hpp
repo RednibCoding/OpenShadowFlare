@@ -164,6 +164,7 @@ private:
     struct Frame {
         std::int32_t sentence = -1;
         std::size_t command = 0;
+        std::int32_t character_number = -1;
     };
 
     StepResult run();
@@ -176,7 +177,9 @@ private:
     bool writeOperand(
         const Operand& operand,
         std::int32_t value);
-    bool pushSentence(std::int32_t sentence);
+    bool pushSentence(
+        std::int32_t sentence,
+        std::int32_t character_number);
 
     const ScriptData* script_ = nullptr;
     InterpreterHooks hooks_;

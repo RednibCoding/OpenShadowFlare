@@ -1064,6 +1064,15 @@ positioned sample, and returns Syria to idle after the last CAF frame. Near
 Remote Town's authored status-kind-four callback also completes quest zero
 after Red Goblin `14010000` finishes its death presentation.
 
+The next enemy-script lifecycle is reconstructed too. Operand type 3 now reads
+the same MCT enemy registry as opcodes 31 and 32, opcode 28 runs the target's
+status-kind-six sentence without losing caller context, and opcode 25 restores
+an inactive slot at the script's position and direction. Expired enemies keep
+their stable scenario slots while rendering, picking, collision, effects, and
+companion targeting continue to ignore them. Scenario `04000003` is covered
+end to end: its controller selects one dead slot, shows the authored two-layer
+wave effect, waits 40 updates, and returns that slot at full life.
+
 Malse's next authored branch is live too. Completing the Red Goblin quest is
 what advances his script into the merchant introduction and later service
 menu; the engine does not special-case his name or quest ID. Scenario status

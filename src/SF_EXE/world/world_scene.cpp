@@ -725,16 +725,8 @@ void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
     level_up_notice_.update();
     quests_.updateNotice();
-    std::vector<EnemyActor>& live_enemies =
-        scenario_world_.enemies();
-    live_enemies.erase(
-        std::remove_if(
-            live_enemies.begin(),
-            live_enemies.end(),
-            [](const EnemyActor& enemy) {
-                return enemy.expired();
-            }),
-        live_enemies.end());
+    // MCT enemy slots remain stable after expiry: scenario scripts can find
+    // an inactive slot and reactivate that same actor through opcode 25.
     for (CombatEffectActor& effect : combat_effects_) {
         effect.update();
     }

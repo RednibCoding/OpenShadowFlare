@@ -1183,6 +1183,24 @@ calls `0x004309a0` only after the death presentation and fade expire. The
 portable enemy owner now does the same, keeping the quest consequence in the
 authored SCS rather than attaching it to an enemy name.
 
+The scenario enemy registry now covers scripted reactivation as well. Operand
+type 3 adds `14000000` to its local enemy number and reads the same entry used
+by opcodes 31 and 32; a missing entry returns `-1`. All 160 shipped type-three
+uses are opcode-0 reads. Opcode 28 at `0x00433022` calls `0x004309f0` to run a
+target's status-kind-six sentence inline, preserving that target's character
+context and succeeding when no such status exists. The corpus contains 181
+calls across 32 scenarios and every shipped target has kind six.
+
+Opcode 25 at `0x004326c9` evaluates enemy, X, Y, and direction before calling
+`0x0045a140`. A living enemy is an ignored successful command. An inactive one
+has its life, action, animation, movement, AI, reaction, attribution, death,
+and opacity state reset, then moves to the supplied point without changing its
+authored spawn rectangle. All 34 calls across 13 scenarios use operand shape
+`{4,6,7,1}`. Expired portable enemies therefore remain in stable MCT slots.
+Scenario `04000003` now proves the complete shipped flow from inactive search,
+through kind-six effects 20007/20008 and sample 27, to delayed full-life
+activation.
+
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
 calls create three ordinary ground-item records plus 200 money. The portable

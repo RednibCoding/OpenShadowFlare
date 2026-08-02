@@ -324,7 +324,9 @@ services exercise them; unknown values still fail loudly.
 | 22 | opcode switch | Enable all three state channels for a scenario entity |
 | 23 | opcode switch | Disable all three state channels for a scenario entity |
 | 24 | `0x00417550` | Ask the world to create authored loot at evaluated coordinates |
+| 25 | `0x004326c9` | Reactivate an inactive scenario-enemy slot at an evaluated position and direction |
 | 27 | `0x00432d05` | Draw an actor-anchored script message with evaluated offsets, color, and backing opacity |
+| 28 | `0x00433022` | Run the target character's status-kind-six sentence inline when one exists |
 | 30 | `0x0043309b` | Build a combat packet and submit an authored effect from an explicit projected origin |
 | 31 | `0x00432762` | Search an inclusive enemy-character range for the first registered active entry and write its absolute character number, or `-1` |
 | 32 | `0x004327c9` | Search an inclusive enemy-character range for the first registered inactive entry and write its absolute character number, or `-1` |
@@ -739,7 +741,7 @@ The currently understood domains are:
 | Type | Meaning |
 |---:|---|
 | 0, 1, 2 | Raw immediate value |
-| 3 | Runtime-state domain |
+| 3 | Scenario-enemy lifecycle by local enemy number |
 | 4 | Scenario temporary flag |
 | 5 | Network/state domain |
 | 6 | Script character's current world X |
@@ -758,6 +760,12 @@ PEOPLE use `12000000 + local ID`.
 
 Several additional types address broader game state. They will be named only
 when an exercised retail path gives us enough evidence.
+
+Type `3` is the direct form of the scenario-enemy registry used by opcodes 31
+and 32. Retail adds `14000000` to the operand value, looks up that exact MCT
+enemy slot, and returns its lifecycle value. A missing entry returns `-1`, not
+zero. All 160 shipped type-three operands are reads in opcode-0 comparisons;
+none are assignment destinations.
 
 Temporary flags are owned directly by the interpreter and initialized from the
 SCS definitions. Persistent and game-owned domains are callbacks because their
@@ -868,6 +876,29 @@ that presentation expires, immediately before the matching status-kind-four
 callback. The portable world exposes the same lifecycle through a narrow
 interpreter hook, so group-clear and later encounter scripts do not need to
 know about `EnemyActor` or duplicate combat state.
+
+Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
+absolute enemy character number, world X, world Y, and direction. The native
+owner refuses to mutate an already-living enemy, but the script command still
+returns successfully. An inactive slot is moved without changing its authored
+spawn rectangle, restored to maximum life, reset to idle action 7, made fully
+opaque, and cleared of old AI, movement, reaction, damage-attribution, and
+death state. The slot is not recreated: expired MCT enemies stay in their
+original vector position so later script lookups keep stable identities.
+
+Opcode 28 evaluates one character number and runs that character's status-kind
+six sentence inline through the normal frame stack. Nested calls carry the
+target character context, and returning restores the caller's context. A
+target without kind six is a successful no-op. The shipped scripts contain 181
+calls across 32 scenarios, and every target has a matching kind-six status.
+
+Scenario `04000003` shows how the pieces fit. Its periodic sentence uses a
+type-three read for controller enemy `14030000`, opcode 32 to choose an expired
+slot from `14030001` through `14030005`, and opcode 28 to create effects 20007
+and 20008 plus positional sample 27. Forty updates later, opcode 25 activates
+the chosen slot at object `10030000` facing direction 7. Native coverage runs
+this shipped controller end to end and proves the expired slot remains present,
+shows the wave effect, and returns at full life.
 
 This is intentionally a narrow vertical slice. The messages use the
 actor-anchored retail speech frame from `Hukidasi.njp`: its size comes from

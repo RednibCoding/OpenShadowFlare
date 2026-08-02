@@ -282,6 +282,13 @@ and ordinary effect request. Near Remote Town therefore uses its authored
 effect-and-sound sentences without teaching the interpreter about world actor
 or rendering classes.
 
+Scripted enemy waves use the same boundary. `RKC_RPG_SCRIPT` reads the retail
+type-three lifecycle domain, searches stable enemy slots, and dispatches nested
+status-kind-six sentences. The world alone owns opcode 25's enemy reset and
+position change. Expired actors remain in their MCT order but every renderer,
+pointer, collision, combat-effect, and companion consumer treats them as
+inactive until the script activates them again.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
