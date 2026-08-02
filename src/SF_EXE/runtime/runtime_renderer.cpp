@@ -42,6 +42,7 @@
 
 #include <array>
 #include <cstddef>
+#include <memory>
 #include <utility>
 
 namespace osf::runtime {
@@ -52,9 +53,46 @@ RuntimeRenderer::RuntimeRenderer(
     std::function<void(gapi::SurfaceView)> present)
     : renderer_(width, height, std::move(present)) {}
 
+void RuntimeRenderer::setAuxiliarySurface(
+    std::int32_t width,
+    std::int32_t height,
+    std::function<void(gapi::SurfaceView)> present) {
+    if (width <= 0 || height <= 0 || !present) {
+        auxiliary_renderer_.reset();
+        return;
+    }
+    auxiliary_renderer_ = std::make_unique<gapi::SoftwareBackend>(
+        width, height, std::move(present));
+}
+
+void RuntimeRenderer::renderAuxiliary(
+    const RuntimeRenderContext& context) {
+    if (!auxiliary_renderer_ ||
+        context.game_state != GameState::gameplay ||
+        context.gameplay_frame.phase != GameplayPhase::world ||
+        context.world.scenarioVisualActive() ||
+        !context.world.hasPlayer()) {
+        return;
+    }
+    const auto* map_icons = context.frontend_assets.pattern(7);
+    if (!map_icons) {
+        return;
+    }
+
+    auxiliary_renderer_->beginFrame({0, 0, 0, 255});
+    renderGameplayMiniMap(
+        *auxiliary_renderer_,
+        *map_icons,
+        context.world,
+        {0, 0, auxiliary_renderer_->surface().width,
+         auxiliary_renderer_->surface().height});
+    auxiliary_renderer_->endFrame();
+}
+
 void RuntimeRenderer::render(
     const RuntimeRenderContext& context,
     double interpolation) {
+    renderAuxiliary(context);
     renderer_.beginFrame({0, 0, 0, 255});
     if (context.game_state == GameState::title) {
         const auto* pattern =

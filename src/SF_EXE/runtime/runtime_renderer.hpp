@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 
 namespace osf {
 
@@ -67,12 +68,20 @@ public:
         std::int32_t height,
         std::function<void(gapi::SurfaceView)> present);
 
+    void setAuxiliarySurface(
+        std::int32_t width,
+        std::int32_t height,
+        std::function<void(gapi::SurfaceView)> present);
+
     void render(
         const RuntimeRenderContext& context,
         double interpolation);
 
 private:
+    void renderAuxiliary(const RuntimeRenderContext& context);
+
     gapi::SoftwareBackend renderer_;
+    std::unique_ptr<gapi::SoftwareBackend> auxiliary_renderer_;
 };
 
 }  // namespace runtime

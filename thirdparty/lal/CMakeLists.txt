@@ -39,6 +39,8 @@ endif()
 
 if(EMSCRIPTEN)
   target_sources(lal PRIVATE lal_webaudio.c)
+elseif(NINTENDO_3DS)
+  target_sources(lal PRIVATE lal_n3ds.c)
 elseif(WIN32)
   target_sources(lal PRIVATE lal_waveout.c)
   target_link_libraries(lal PRIVATE winmm)

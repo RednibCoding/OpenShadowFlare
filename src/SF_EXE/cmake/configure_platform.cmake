@@ -2,6 +2,9 @@ function(osf_configure_platform target)
   if(EMSCRIPTEN)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Emscripten.cmake")
     osf_configure_emscripten_platform(${target})
+  elseif(NINTENDO_3DS)
+    include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/platforms/Nintendo3DS.cmake")
+    osf_configure_nintendo_3ds_platform(${target})
   elseif(
       WIN32
       OR APPLE

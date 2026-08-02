@@ -76,6 +76,9 @@ std::filesystem::path findDataRoot() {
     }
 
     const std::filesystem::path fallbacks[] = {
+#ifdef OSF_PLATFORM_N3DS
+        std::filesystem::path("sdmc:/3ds/OpenShadowFlare/ShadowFlare"),
+#endif
         ".",
         std::filesystem::path("tmp") / "ShadowFlare",
     };

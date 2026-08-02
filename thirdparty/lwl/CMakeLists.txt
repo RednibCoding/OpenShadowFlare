@@ -39,6 +39,8 @@ if(EMSCRIPTEN)
       "-sMAX_WEBGL_VERSION=2"
       "-sGL_ENABLE_GET_PROC_ADDRESS=1"
   )
+elseif(NINTENDO_3DS)
+  target_sources(lwl PRIVATE lwl_n3ds.c)
 elseif(WIN32)
   target_sources(lwl PRIVATE lwl_win32.c)
   target_link_libraries(

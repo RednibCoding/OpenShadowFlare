@@ -1,0 +1,44 @@
+name: Build Nintendo 3DS 3DSX
+
+on:
+  push:
+    paths:
+      - '.github/workflows/n3ds.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/n3ds/**'
+  pull_request:
+    paths:
+      - '.github/workflows/n3ds.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/n3ds/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Build the release 3DSX
+        run: sh tools/n3ds/build-3dsx.sh
+
+      - name: Verify the 3DSX
+        run: test -s build/n3ds/release/src/SF_EXE/OpenShadowFlare.3dsx
+
+      - name: Upload the 3DSX
+        uses: actions/upload-artifact@v4
+        with:
+          name: openshadowflare-n3ds-release
+          path: build/n3ds/release/src/SF_EXE/OpenShadowFlare.3dsx
+          if-no-files-found: error

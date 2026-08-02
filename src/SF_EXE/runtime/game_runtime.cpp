@@ -101,6 +101,14 @@ public:
                 presenterError.c_str());
             return false;
         }
+#ifdef OSF_PLATFORM_N3DS
+        renderer_.setAuxiliarySurface(
+            400,
+            240,
+            [this](osf::gapi::SurfaceView surface) {
+                presentAuxiliarySurface(surface);
+            });
+#endif
         std::string audioError;
         if (!audio_.initialize(
                 dataRoot_,
@@ -259,6 +267,10 @@ private:
 
     void presentSurface(osf::gapi::SurfaceView source) {
         surfacePresenter_->present(source);
+    }
+
+    void presentAuxiliarySurface(osf::gapi::SurfaceView source) {
+        surfacePresenter_->presentAuxiliary(source);
     }
 
     void completeScenarioChange() {

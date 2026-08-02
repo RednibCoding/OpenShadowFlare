@@ -6,18 +6,26 @@ project(
   LANGUAGES C CXX
 )
 
+if(NINTENDO_3DS)
+  add_compile_options(-U__INT32_TYPE__ -D__INT32_TYPE__=int)
+endif()
+
 include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
+set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "lgl")
+if(NINTENDO_3DS)
+  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "n3ds")
+endif()
 set(
   OPENSHADOWFLARE_PRESENTATION_BACKEND
-  "lgl"
+  "${OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND}"
   CACHE STRING
   "Surface presentation backend used by the portable executable"
 )
 set_property(
   CACHE OPENSHADOWFLARE_PRESENTATION_BACKEND
-  PROPERTY STRINGS lgl
+  PROPERTY STRINGS lgl n3ds
 )
 
 add_subdirectory(thirdparty/lwl)

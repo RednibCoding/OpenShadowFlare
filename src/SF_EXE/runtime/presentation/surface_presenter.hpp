@@ -20,6 +20,10 @@ public:
         LwlWindow* window,
         std::string* error = nullptr) = 0;
     virtual void present(gapi::SurfaceView surface) = 0;
+    // Platforms with an auxiliary display can draw it before the primary
+    // surface is presented. The default keeps single-screen presenters
+    // unchanged.
+    virtual void presentAuxiliary(gapi::SurfaceView) {}
 
 protected:
     SurfacePresenter() = default;

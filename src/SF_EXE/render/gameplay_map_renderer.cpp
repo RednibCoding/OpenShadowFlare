@@ -165,4 +165,85 @@ void renderGameplayMap(
     drawAreaTitle(renderer, font, world.scenario().title());
 }
 
+void renderGameplayMiniMap(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& map_icons,
+    const WorldScene& world,
+    gapi::Viewport viewport) {
+    if (!world.hasPlayer()) {
+        return;
+    }
+
+    const ScreenPosition player_real =
+        calculateRealPosition({
+            world.playerWorldX(),
+            world.playerWorldY(),
+        });
+    const std::int32_t player_map_x = player_real.x / 10;
+    const std::int32_t player_map_y = player_real.y / 10;
+    const std::int32_t marker_x = viewport.x + viewport.width / 2;
+    const std::int32_t marker_y = viewport.y + viewport.height / 2;
+    const std::int32_t origin_x = player_map_x - marker_x;
+    const std::int32_t origin_y = player_map_y - marker_y;
+
+    renderer.drawPattern(
+        world.mapOverviewPatterns(),
+        0,
+        {
+            -origin_x,
+            -origin_y,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            -1,
+            viewport,
+        });
+    renderer.drawBitmap(
+        world.mapExploration().mask(),
+        {
+            -origin_x,
+            -origin_y,
+            1000,
+            1000,
+            1000,
+            viewport,
+        });
+    renderer.drawPattern(
+        map_icons,
+        0,
+        {
+            marker_x,
+            marker_y,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            0,
+            viewport,
+        });
+    renderer.drawPattern(
+        map_icons,
+        1,
+        {
+            marker_x,
+            marker_y,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            0,
+            viewport,
+        });
+}
+
 }  // namespace osf
