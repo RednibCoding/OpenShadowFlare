@@ -1220,6 +1220,16 @@ Alex uses messages `1000026` through `1000028` to turn the report into mission
 ten, without creating an intermediate item reward. The route, entry values,
 notice sound, saved active branch, and no-repeat behavior are covered.
 
+Mission ten now closes the main Episode 1 assignment through the shipped
+Gargoyle room. The object-one exits through scenarios `01050000` and
+`01050001` lead into `01050002`, whose seven Gargoyles use the authored four
+ordinary and three magic variants. The periodic script waits for every death
+fade, opens objects `10011000..10011002`, plays sample 34, and completes the
+mission with sample 66. Alex then drops exactly 10,000 Gold, follows with his
+Tower of Ordeal message, and starts opcode 64's Episode 1 Epilogue. The next
+visit points toward Mining Town. The reward landing sound, episode flags,
+Epilogue handoff, save/load state, and no-repeat branch are covered together.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios

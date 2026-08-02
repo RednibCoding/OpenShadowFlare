@@ -1780,6 +1780,22 @@ starts mission ten with sample 65 and intentionally creates no item reward.
 Saving and reloading returns through active message `1000029` without
 replaying the handoff.
 
+The Immortal Remains battle now completes the same chain. Object one in
+scenario `1050000` enters `1050001`, and object one there enters Gargoyle room
+`1050002`. Characters `14000000..14000003` are ordinary Gargoyles using loot
+row 55 and a 50-percent 200..300 Gold range; `14000004..14000006` are the
+magic variants with guaranteed 600..800 Gold. The periodic opcode-31 scan
+waits through all seven death fades before swapping objects
+`10011000..10011002`, playing positioned sample 34, and completing mission ten
+with sample 66.
+
+Alex's message `1000030` creates 10,000 Gold and changes global flag 11 from
+one to two. Message `1000031` follows on callback, then opcode 64 value zero
+opens the Episode 1 Epilogue presenter. Once it closes, the flag-two branch
+uses message `1000033` to send the player toward Mining Town and latches flag
+71. The Gold landing sample 85, Epilogue launch, both saved flags, completed
+quest, and no-repeat return branch are covered by the live shipped-data test.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

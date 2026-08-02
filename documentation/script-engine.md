@@ -1049,6 +1049,24 @@ the map loads. Back in town, Alex's messages `1000026..1000028` start mission
 ten and sample 65. There is deliberately no Gold or item command in this
 handoff; saved active mission ten uses message `1000029`.
 
+Mission ten continues through object one in Immortal Remains scenarios
+`1050000` and `1050001`, then reaches the seven-Gargoyle room in `1050002`.
+Its four ordinary Gargoyles use loot row 55 with a 50-percent Gold branch of
+200..300; the three magic variants use the same loot row with guaranteed
+600..800 Gold. The periodic sentence scans characters `14000000..14000006`
+and waits until all seven death presentations have expired. It then hides
+object `10011000`, shows `10011001` and `10011002`, plays positioned sample
+34, and completes mission ten with sample 66.
+
+Alex's completed branch opens message `1000030`, sets the episode-state flag
+to two, and creates category-four definition zero with quantity 10,000. Its
+normal landing path plays sample 85. Callback message `1000031` explains the
+Tower of Ordeal, and the following callback runs opcode 64 with value zero,
+which is the Episode 1 Epilogue presenter. After it closes, flag value two
+sends later visits to message `1000033` and sets the separate one-time flag
+71, pointing the player toward Mining Town without creating the reward again.
+Both flags and the completed mission survive the retail save extension.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
