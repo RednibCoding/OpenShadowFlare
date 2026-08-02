@@ -1270,6 +1270,17 @@ notice and sound. The route, exact message chain, mission handoff, saved state,
 and `1000028` return branch are covered without adding a tower-specific case
 to the runtime.
 
+Mission 14 is covered through its real item handoff. Cross Agora's western
+edge enters `Forest of Knight's Misery` (`02100006`), whose fort entrance
+leads to `Fort of Thieves` (`02120000`). The special Oak Warrior uses loot row
+76; Tables 30 and 31 turn that into the guaranteed automatic item
+`99000003`, the Seal Crystal. Kirushutat finds and removes that exact item,
+completes mission 14 through messages `1000029..1000031`, and stops the
+handoff from repeating after a save. Cross Agora's southern edge then opens
+normally into `Fanann, Village of Elves` (`02200000`). The route, guardian,
+fixed item owner, completion cue, persistence, and newly opened gate all stay
+data-driven.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
@@ -1982,7 +1993,7 @@ script commands, AI actions, effects, items, and map combinations.
 
 Episode 2 has started with the complete post-Epilogue route through Caravan
 and the two Forest road maps into Kanfore, Mining Town. Continue from the
-Seal Crystal mission Kirushutat gives after the blocked Forest of Elves gate,
+newly opened route into Fanann after returning Kirushutat's Seal Crystal,
 keeping each playable handoff under a shipped-data regression.
 
 Keep fixes general. If a later map needs a special case, first prove that the

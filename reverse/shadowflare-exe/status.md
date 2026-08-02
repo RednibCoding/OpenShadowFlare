@@ -1869,6 +1869,22 @@ message `1000028`. A shipped-data regression covers both route edges, the
 entry, full briefing, mission notice/sample 65, persistence, and the no-repeat
 branch through the existing generic owners.
 
+Mission 14's item chain is also recovered. Cross Agora object two enters
+scenario `2100006`, `Forest of Knight's Misery`, and its object one enters
+`2120000`, `Fort of Thieves`. Scenario enemy 65 is an Oak Warrior with loot
+row 76. Table 30 row 76 guarantees Table 31 row 403, which constructs category
+four definition `99000003`; `Item.Ibn` names it `Seal Crystal` and assigns
+automatic page zero, cell `(3,0)`.
+
+Kirushutat sentence 28 passes `(4,99000003)` to opcode 58. When present,
+sentence 29 removes it with opcode 59, shows message `1000029`, sets temporary
+conversation state 300, and completes mission 14 through opcode 62. The
+callback continues through `1000030..1000031`; subsequent visits use
+`1000032` until mission 17 is complete. With mission 14 in state two, Cross
+Agora object three reaches `2200000`, `Fanann, Village of Elves`. Native
+coverage preserves the route, fixed loot result, automatic owner, removal,
+completion sample 66, save/no-repeat branch, and reopened gate.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

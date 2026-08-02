@@ -1145,6 +1145,22 @@ names that mission `Take back the Seal Crystal.` A saved return while mission
 not repeat. Native coverage exercises the real route and this complete
 handoff through the generic scenario interpreter.
 
+Mission 14 uses the same automatic-item and script-query path as the earlier
+Episode 1 keepsakes. Cross Agora object two enters `2100006`, `Forest of
+Knight's Misery`; object one there enters `2120000`, `Fort of Thieves`. Enemy
+65 is the special Oak Warrior with Table 30 row 76. Its guaranteed Table 31
+row 403 result is category four, definition `99000003`, the Seal Crystal.
+`Item.Ibn` places it at page zero, cell `(3,0)` in the automatic-item owner.
+
+While mission 14 is active, Kirushutat's sentence 28 uses opcode 58 to search
+for category four, definition `99000003`. The present branch runs opcode 59,
+opens messages `1000029..1000031`, and sets mission 14 to state two; the usual
+completion sample is queued by opcode 62. The item is gone before the first
+return bubble is displayed. A later visit without completed mission 17 uses
+message `1000032`, so neither the crystal nor the mission cue repeats. Cross
+Agora object three can then execute its guarded opcode 17 and enter `2200000`,
+`Fanann, Village of Elves`.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
