@@ -1818,6 +1818,73 @@ gate object swap, Caravan branch, road titles and music, town actors and
 vendors, save/load persistence, and return edge without adding production
 map-specific code.
 
+Kyle's first Episode 2 mission is now traced and covered as well. PEOPLE zero
+uses saved flag 23 for its first-visit latch. Messages `1000002..1000008`
+finish by setting mission 11 active with opcode 62 and publishing it with
+opcode 48. Table 41 row 11 is `Destroy thieves staying SE of Kanfore.` The
+active return branch is message `1000009`.
+
+Mining Town object one enters `2100001` (`Forest of Four Leaves`) at entry
+zero, and its object one enters `2100002` (`Forest of Claws`) at entry zero.
+The first periodic opcode-31 scan watches Oak Knights
+`14010000..14010002`. After their death presentations expire, opcodes 23 hide
+objects `10000700` and `10000701`, and positional opcode 16 requests sample
+81. A second scan watches `14020000..14020002` and completes mission 11 with
+sample 66. Both triples use loot row 85 and a ten-percent Gold chance.
+
+Kyle's completed branch opens message `1000010`. Temporary flag `1000018` is
+20,000, so opcode 10's equal minimum and maximum create exactly 20,000 Gold;
+the common 10,000 cap splits it into two airborne stacks with two sample-85
+landings. Messages `1000011..1000012` then start mission 12, `Head for the
+Mining Tunnel of Yugunos.`, and the active branch becomes `1000013`. Native
+coverage keeps both mission states, flag 23, map route, gate, quest cues, Gold,
+landing sounds, and saved no-repeat behavior under shipped data.
+
+The first mission-12 gate is now traced and covered. Mining Town object one
+enters Forest of Four Leaves scenario `2100001`; object three there points to
+Cross Agora scenario `2100004`. Garshwin is PEOPLE zero near the southern
+edge. His status starts with default message `1000002`, but active mission 12
+replaces it before display with `1000003`; its embedded continuation shows
+`1000004`. The status writes saved flag 24 on this refusal branch.
+
+Cross Agora object three checks mission 14 for state two before opcode 17 can
+enter Fanann scenario `2200000`. At this point mission 14 is zero, so reaching
+the live trigger rectangle leaves the player in Cross Agora. Kyle reads flag
+24 on return and runs messages `1000020..1000029`, describing the dragon seal
+and Kirushutat. The final callback starts mission 13 with opcode 62 and its
+notice with opcode 48; Table 41 row 13 is `Meet with the Wizard Kirushutat.`
+Mission 12 stays active. Native coverage preserves the refusal, locked edge,
+flag, cue, sound, both mission states, and `1000013` saved return branch.
+
+The mission-13 route continues from Cross Agora object one to scenario
+`2100005`, whose authored title is `Forest of Sprits`, then from its object one
+to `2110000`, `Tower of the Wizard`. The tower uses entries for its ten floors;
+entry 18 places the player near Kirushutat, PEOPLE zero.
+
+Kirushutat's active-mission-13 sentence shows messages `1000012..1000027`.
+It first executes opcode 62 with mission 13, state two, and the last callback
+executes opcode 62 with mission 14, state one, followed by opcode 48. Table 41
+row 14 is `Take back the Seal Crystal.` The active-mission-14 return branch is
+message `1000028`. A shipped-data regression covers both route edges, the
+entry, full briefing, mission notice/sample 65, persistence, and the no-repeat
+branch through the existing generic owners.
+
+Mission 14's item chain is also recovered. Cross Agora object two enters
+scenario `2100006`, `Forest of Knight's Misery`, and its object one enters
+`2120000`, `Fort of Thieves`. Scenario enemy 65 is an Oak Warrior with loot
+row 76. Table 30 row 76 guarantees Table 31 row 403, which constructs category
+four definition `99000003`; `Item.Ibn` names it `Seal Crystal` and assigns
+automatic page zero, cell `(3,0)`.
+
+Kirushutat sentence 28 passes `(4,99000003)` to opcode 58. When present,
+sentence 29 removes it with opcode 59, shows message `1000029`, sets temporary
+conversation state 300, and completes mission 14 through opcode 62. The
+callback continues through `1000030..1000031`; subsequent visits use
+`1000032` until mission 17 is complete. With mission 14 in state two, Cross
+Agora object three reaches `2200000`, `Fanann, Village of Elves`. Native
+coverage preserves the route, fixed loot result, automatic owner, removal,
+completion sample 66, save/no-repeat branch, and reopened gate.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

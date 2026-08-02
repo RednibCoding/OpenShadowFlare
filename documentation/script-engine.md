@@ -1089,6 +1089,78 @@ keeps this whole chain, the no-visual branch, vendor initialization, and the
 saved flag/scenario/entry state under the generic interpreter and world
 owners.
 
+Kyle, PEOPLE actor zero, owns the first Episode 2 assignment. His first status
+branch sets saved flag 23 and runs messages `1000002..1000008`; their callback
+uses opcode 62 to set mission 11 active and opcode 48 to publish its notice.
+Table 41 names it `Destroy thieves staying SE of Kanfore.` Reopening the
+conversation while it is active uses message `1000009` rather than replaying
+the briefing.
+
+Mining Town object one enters Forest of Four Leaves scenario `2100001`, entry
+zero. Object one there enters Forest of Claws scenario `2100002`, entry zero.
+That map's periodic statuses use opcode 31 to scan two separate ranges. Once
+characters `14010000..14010002` finish their death presentation, opcodes 23
+hide gate objects `10000700` and `10000701`, and positional opcode 16 requests
+sample 81. The second scan waits for `14020000..14020002` and completes
+mission 11 through opcode 62. All six actors are Oak Knights with Table 30 row
+85 and a ten-percent Gold branch.
+
+Kyle's completed branch opens message `1000010` and calls opcode 10 with the
+temporary value 20,000 at both quantity bounds. The common Gold constructor
+therefore makes two stacks of 10,000, each with its normal landing sample 85.
+Messages `1000011..1000012` then start mission 12, whose Table 41 title is
+`Head for the Mining Tunnel of Yugunos.` Later visits use `1000013`. Mission
+11 completion, mission 12 activation, flag 23, and the no-repeat branch all
+survive the retail save owner.
+
+Mission 12 does not immediately open the route to the Mining Tunnel. Mining
+Town object one reaches Forest of Four Leaves scenario `2100001`, and object
+three there leads to Cross Agora scenario `2100004`. Garshwin is PEOPLE actor
+zero. His default `1000002` text is replaced before presentation when mission
+12 is active, so the player sees the `1000003` and `1000004` refusal bubbles.
+The same status sets saved flag 24.
+
+Cross Agora object three only runs opcode 17 for Fanann scenario `2200000`
+when mission 14 is complete. With mission 12 active and mission 14 untouched,
+walking into its authored judgement rectangle is a no-op. Back in Mining Town,
+Kyle's flag-24 branch runs messages `1000020..1000029`, leaves mission 12
+active, and uses opcodes 62 and 48 to start and publish mission 13. Table 41
+names it `Meet with the Wizard Kirushutat.` Once that mission is active,
+Kyle's ordinary return text is `1000013`; flag 24 and both mission states
+survive saving and loading.
+
+The route to Kirushutat remains entirely scenario-authored. Cross Agora
+object one enters `2100005`, whose MCT title is spelled `Forest of Sprits` in
+the shipped data. Object one there enters `2110000`, `Tower of the Wizard`.
+The tower contains all ten floors in one scenario; its stair objects move
+between entries rather than loading separate maps. Entry 18 reaches the top
+floor near PEOPLE actor zero, Kirushutat.
+
+Kirushutat's mission-13 status selects sentence 31. It shows message
+`1000012`, writes temporary state 100, and opcode 62 marks mission 13 complete.
+The message callbacks continue through `1000027`; the final callback uses
+opcode 62 to start mission 14 and opcode 48 to publish its notice. Table 41
+names that mission `Take back the Seal Crystal.` A saved return while mission
+14 is active takes message `1000028`, so the briefing and its side effects do
+not repeat. Native coverage exercises the real route and this complete
+handoff through the generic scenario interpreter.
+
+Mission 14 uses the same automatic-item and script-query path as the earlier
+Episode 1 keepsakes. Cross Agora object two enters `2100006`, `Forest of
+Knight's Misery`; object one there enters `2120000`, `Fort of Thieves`. Enemy
+65 is the special Oak Warrior with Table 30 row 76. Its guaranteed Table 31
+row 403 result is category four, definition `99000003`, the Seal Crystal.
+`Item.Ibn` places it at page zero, cell `(3,0)` in the automatic-item owner.
+
+While mission 14 is active, Kirushutat's sentence 28 uses opcode 58 to search
+for category four, definition `99000003`. The present branch runs opcode 59,
+opens messages `1000029..1000031`, and sets mission 14 to state two; the usual
+completion sample is queued by opcode 62. The item is gone before the first
+return bubble is displayed. A later visit without completed mission 17 uses
+message `1000032`, so neither the crystal nor the mission cue repeats. Cross
+Agora object three can then execute its guarded opcode 17 and enter `2200000`,
+`Fanann, Village of Elves`.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
