@@ -1721,6 +1721,15 @@ creating definition `1100002`. Both items take the normal airborne landing
 path and sample 93. Saving and loading the two latches keeps later Malse and
 Syria visits on their ordinary branches without repeating either gift.
 
+The authored Cold Svalt route is now held by a live map-edge regression too.
+Scenario 1 object 6 leads to scenario 3 entry 1, scenario 3 object 0 leads to
+scenario 5 entry 0, and scenario 5 object 1 leads to scenario 6 entry 1.
+Wasteland of Pillars object 3 has a separate mission-three-complete branch;
+before completion it is a no-op, and afterward opcode 17 enters enemy-occupied
+Cold Svalt scenario `1000001` at entry zero. This keeps the route, gate, map
+titles, and entry coordinates in MCT/SCS ownership rather than a portable
+quest-name special case.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

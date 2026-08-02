@@ -1166,6 +1166,15 @@ Cold Svalt message. Both gifts use the normal airborne ground-item path and
 sample 93 landing sound. Their separate latches survive save/load and prevent
 either conversation or item from repeating.
 
+The outdoor handoff to Cold Svalt is covered as a real map-edge chain rather
+than a transport shortcut. Near Remote Town scenario 1 enters Wasteland of
+Hesitation scenario 3, which leads through Frozen Forest scenario 5 and
+Wasteland of Pillars scenario 6. The final overlap trigger checks mission
+three itself: while Dusty Ruins is active it leaves the hero in scenario 6;
+once complete, opcode 17 loads occupied Cold Svalt scenario `01000001` at
+entry zero. Titles, entry values, quest state, and every transition remain
+owned by the shipped MCT and SCS data.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios

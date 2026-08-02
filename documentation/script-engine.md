@@ -979,6 +979,17 @@ spread values, so they remain ordinary airborne ground items with the
 category-two sample 93 landing sound. Saving flags seven and eight prevents
 the gifts from being produced again.
 
+Ostare's Cold Svalt direction is backed by ordinary status-kind-three map
+edges. The Episode 1 route is scenario 1 (`Near the Remote Town`) object 6 to
+scenario 3 entry 1, scenario 3 object 0 to scenario 5 entry 0, and scenario 5
+object 1 to scenario 6 entry 1. In `Wasteland of Pillars`, object 3 enters
+sentence 9. The sentence compares mission three with completed state two and
+only then reaches sentence 10's opcode 17 call for scenario `1000001`, entry
+zero. The incomplete branch contains no travel command, so touching the same
+edge before clearing Dusty Ruins correctly does nothing. Scenario `1000001`
+is the enemy-occupied Cold Svalt Town map; it is distinct from the recovered
+town in scenario `1000000`.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still
