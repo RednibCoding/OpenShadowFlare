@@ -2023,6 +2023,14 @@ samples 96..98 or female samples 99..101. Native coverage starts this through
 the actual normal-target secondary-click command as well as the isolated
 retail CAF controller.
 
+The opening speed is character-owned, not a starter-item exception. A new
+Mercenary has raw attack speed 100, Table 4 maps it to tier five, and the combo
+factor at that tier is 1.3. The Short Sword contributes zero to derived
+attack-speed parameter eight; the Dagger contributes 50. Native coverage now
+saves and reloads the Short-Sword-equipped hero and compares the full combo
+update count before and after a same-entry revival transition; the cadence
+stays identical.
+
 Spell zero now reaches action 22. `FUN_0043a260` uses Table 20 row zero and
 the clicked dominant axis, tries the exact 500-unit cardinal offsets and four
 retail corridor rectangles, and falls back through the other directions when
