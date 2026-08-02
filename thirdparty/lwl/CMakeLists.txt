@@ -39,6 +39,13 @@ if(EMSCRIPTEN)
       "-sMAX_WEBGL_VERSION=2"
       "-sGL_ENABLE_GET_PROC_ADDRESS=1"
   )
+elseif(ANDROID)
+  target_sources(lwl PRIVATE lwl_android.c)
+  target_include_directories(
+    lwl PRIVATE
+    "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue"
+  )
+  target_link_libraries(lwl PRIVATE android EGL GLESv3 log)
 elseif(WIN32)
   target_sources(lwl PRIVATE lwl_win32.c)
   target_link_libraries(

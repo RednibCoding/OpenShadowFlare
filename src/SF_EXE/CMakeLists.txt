@@ -321,8 +321,15 @@ target_link_libraries(
     OpenShadowFlare::Render
 )
 
-add_executable(
+if(ANDROID)
+  add_library(ShadowFlare_rebuilt SHARED)
+else()
+  add_executable(ShadowFlare_rebuilt)
+endif()
+
+target_sources(
   ShadowFlare_rebuilt
+  PRIVATE
   runtime/audio_system.cpp
   runtime/frontend_assets.cpp
   runtime/game_runtime.cpp

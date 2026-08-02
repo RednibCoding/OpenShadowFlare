@@ -38,7 +38,17 @@ __pycache__/
 *.py[cod]
 
 .idea
+*.iml
 .vs
 .vscode
 /build/
 tmp/
+
+# Gradle build products
+/platform/android/.gradle/
+/platform/android/.idea/
+/platform/android/local.properties
+/platform/android/build/
+/platform/android/app/build/
+/platform/android/app/.cxx/
+/platform/android/app/.externalNativeBuild/

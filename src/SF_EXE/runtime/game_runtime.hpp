@@ -11,4 +11,6 @@ int runGame(
     const GameConfig& game_config,
     bool smoke_test);
 
+int runMain(int argc, char** argv);
+
 }  // namespace osf::runtime

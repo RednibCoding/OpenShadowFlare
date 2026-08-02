@@ -472,6 +472,12 @@ bool lwl_exe_path(char *buf, int size) {
   return false;
 }
 
+bool lwl_data_path(char *buf, int size) {
+  (void) buf;
+  (void) size;
+  return false;
+}
+
 /* --- OpenGL / WebGL2 ----------------------------------------------------- */
 
 LwlGlConfig lwl_gl_config_default(void) {
