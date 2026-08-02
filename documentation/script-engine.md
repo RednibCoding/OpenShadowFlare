@@ -870,6 +870,19 @@ gold is debited only after a purchase lands in an owned container, and Escape
 returns an unfinished purchase to its original merchant owner. Purchase hover
 text uses `Price`; owned-item hover text keeps `Sale Price`.
 
+That introduction also offers mission one through message `1000024`; the
+quest ID is not attached to Malse in C++. Black Hammer in West Ruins scenario
+`00000004` owns loot row 6. Its zero attempt count expands to the active-player
+count, every one of its ten slots selects Table 31 row 400, and that row fixes
+the result to category 4, definition `99000000`. Picking up the gem therefore
+sends it to automatic-item page zero rather than the backpack. On the return
+visit, sentence 37 finds it through opcode 58. Retail finishes the rest of
+that sentence immediately after opening message `1000028`: opcode 59 removes
+the gem and opcode 62 completes mission one and queues sample 66 before the
+bubble is dismissed. The remaining three callbacks show messages `1000029`
+through `1000031` and release Malse. Quest state, Malse's progress flags, and
+the removed automatic item all survive the ordinary save path.
+
 Malse's `Identify Items` choice is script-owned as well. Opcode 55 first scans
 the five ordinary equipment slots, four accessory slots, backpack, and belt.
 When there is something unknown, opcode 51 inserts the authored flat price of

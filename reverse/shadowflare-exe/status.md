@@ -1680,6 +1680,16 @@ Item.Ibn loot-level field rather than the player's required-level field. This
 means loot row zero's shipped profiles yield their authored low-level fixed
 consumables and mine instead of accidentally selecting high-level equipment.
 
+The first quest-critical fixed row is covered end to end too. Black Hammer in
+scenario `00000004` owns Table 30 row 6: zero attempts become the one active
+single-player slot, its 100-percent check always succeeds, and all ten choices
+point to Table 31 row 400. That row fixes category 4, definition `99000000`,
+the stolen gem stored on automatic-item page zero. Remote Town sentence 37
+opens message `1000028` and then immediately removes that item and completes
+quest one before waiting for the bubble acknowledgement. Sample 66, the next
+three messages, save/load of quest and script state, and the absent returned
+item are held by one live regression.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

@@ -1131,6 +1131,14 @@ uses opcodes 9 and 54 for mutation and payment. Item values come from Table 34
 and the executable's wrapped integer arithmetic; repaired durability and both
 alternate equipment pointers survive the retail save stream.
 
+The same post-Red-Goblin branch is now covered through its first complete
+follow-up mission. Malse offers the stolen-gem quest through SCS state alone;
+Black Hammer in West Ruins uses fixed Table 30/31 loot to drop category-four
+item `99000000`, pickup routes it into automatic-item page zero, and Malse's
+return sentence removes it before completing mission one and playing sample
+66. The immediate work after message `1000028`, the remaining three callbacks,
+quest notice, progress flags, and completed save/reload all stay data-driven.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios

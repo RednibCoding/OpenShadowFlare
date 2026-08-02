@@ -2166,6 +2166,15 @@ the weighted item offset. Constructing the definition rolls 39 instance and
 eight element triples. Successful objects are placed around the enemy at
 radius 200.
 
+West Ruins supplies the first quest-critical fixture. Black Hammer's MCT
+record selects Table 30 row 6. Its attempt value zero uses the active-player
+count, its chance is 100, and all ten slots select Table 31 row 400 with
+variant digits 111. That profile fixes category 4, definition `99000000`, so
+one stolen gem is created at radius 200 in single-player without entering the
+weighted equipment path. Remote Town sentence 37 then uses opcodes 58 and 59
+to find and remove that automatic-owner item around Malse's completion
+message.
+
 The Gold callback reads MCT post-AI values 26 through 28. Equipped instance
 parameter 26 changes the 100-percent multiplier, the chance comparison is
 strict, and the inclusive amount draw occurs only after Gold construction.

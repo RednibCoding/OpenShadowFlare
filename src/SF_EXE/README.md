@@ -347,6 +347,13 @@ commands from Tables 32 and 33, with the retail fixed/random definition rules,
 rolled item instances, and 9-by-10 placement starts. Items can be bought into
 the backpack or equipment slots and sold back for gold, using the ordinary
 item sounds and delayed Price/Sale Price overlays.
+
+The same script offers his stolen-gem mission. Black Hammer's West Ruins loot
+row creates the fixed gem, pickup routes it to the item definition's automatic
+page, and returning it lets Malse remove the real owned item and complete the
+quest. That state and the removed item both remain correct after saving and
+loading; no Malse, Black Hammer, or quest-ID rule lives in the world code.
+
 The adjacent Identify Items choice also follows the authored script: it scans
 equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
 keeps `NO` selected initially, rejects insufficient Gold, and identifies every
