@@ -1,3 +1,4 @@
+#include "episode_one_test_support.hpp"
 #include "world/enemy_actor.hpp"
 #include "world/player_data.hpp"
 #include "world/retail_save_file.hpp"
@@ -16,125 +17,15 @@ namespace {
 
 constexpr std::int32_t kRetailDeathPresentationAction = 11;
 
-bool check(bool condition, const char* message) {
-    if (!condition) {
-        std::cerr << message << '\n';
-    }
-    return condition;
-}
-
-bool containsSample(
-    const std::vector<std::int32_t>& samples,
-    std::int32_t sample) {
-    return std::find(samples.begin(), samples.end(), sample) !=
-           samples.end();
-}
-
-bool findNpcPointerPoint(
-    osf::WorldScene& world,
-    std::int32_t npc_id,
-    osf::ScreenPosition& point) {
-    const auto found = std::find_if(
-        world.npcs().begin(),
-        world.npcs().end(),
-        [npc_id](const osf::NpcActor& npc) {
-            return npc.id() == npc_id;
-        });
-    if (found == world.npcs().end()) {
-        return false;
-    }
-    const osf::ScreenPosition anchor =
-        osf::calculateRealPosition(found->position());
-    for (std::int32_t y = -found->labelHeight(); y <= 16; ++y) {
-        for (std::int32_t x = -48; x <= 48; ++x) {
-            point = {
-                anchor.x - world.cameraScreenX() + x,
-                anchor.y - world.cameraScreenY() + y,
-            };
-            if (point.x < 0 || point.x >= 640 ||
-                point.y < 0 || point.y >= 480) {
-                continue;
-            }
-            world.updatePointerHover(point.x, point.y);
-            if (world.hoveredNpcId() == npc_id) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool updateUntilConversation(
-    osf::WorldScene& world,
-    std::vector<std::int32_t>* audio = nullptr) {
-    for (std::int32_t update = 0;
-         update < 2000 && !world.conversationActive();
-         ++update) {
-        world.update();
-        std::vector<std::int32_t> samples =
-            world.takeAudioSamples();
-        if (audio) {
-            audio->insert(
-                audio->end(), samples.begin(), samples.end());
-        }
-    }
-    return world.conversationActive();
-}
+using osf::test::check;
+using osf::test::containsSample;
+using osf::test::loadSavedFixture;
+using osf::test::raiseToLevel;
 
 bool openOstareConversation(
     osf::WorldScene& world,
     std::vector<std::int32_t>* audio = nullptr) {
-    osf::ScreenPosition pointer;
-    for (std::int32_t update = 0; update < 2000; ++update) {
-        if (findNpcPointerPoint(world, 0, pointer)) {
-            world.cancelPlayerMovement();
-            return world.commandWorldInteraction(
-                       pointer.x, pointer.y) &&
-                   updateUntilConversation(world, audio);
-        }
-        const auto ostare = std::find_if(
-            world.npcs().begin(),
-            world.npcs().end(),
-            [](const osf::NpcActor& npc) {
-                return npc.id() == 0;
-            });
-        if (ostare == world.npcs().end()) {
-            return false;
-        }
-        if (update % 30 == 0) {
-            const osf::ScreenPosition target =
-                osf::calculateRealPosition(ostare->position());
-            world.commandPlayerMovement(
-                target.x - world.cameraScreenX(),
-                target.y - world.cameraScreenY());
-        }
-        world.update();
-        std::vector<std::int32_t> samples =
-            world.takeAudioSamples();
-        if (audio) {
-            audio->insert(
-                audio->end(), samples.begin(), samples.end());
-        }
-    }
-    return false;
-}
-
-bool raiseToLevel(
-    osf::PlayerData& player,
-    std::int32_t level,
-    const osf::TableDatabase& tables) {
-    while (player.level() < level) {
-        const std::int32_t threshold =
-            player.experienceThreshold(tables);
-        if (threshold <= player.experience()) {
-            return false;
-        }
-        player.addExperience(threshold - player.experience());
-        if (!player.applyLevelThreshold(tables)) {
-            return false;
-        }
-    }
-    return player.level() == level;
+    return osf::test::openNpcConversation(world, 0, audio);
 }
 
 osf::RetailSaveProgress dustyRuinsProgress(
@@ -177,17 +68,6 @@ bool writeFixture(
         world.playerAutomaticItems(),
         0x42,
         &error);
-}
-
-bool loadFixture(
-    const std::filesystem::path& data_root,
-    const std::filesystem::path& save_path,
-    osf::WorldScene& world,
-    std::string& error) {
-    osf::PlayerLoadRequest request;
-    request.source = osf::PlayerDataSource::retail_save;
-    request.save_path = save_path;
-    return world.loadInitialScenario(data_root, request, &error);
 }
 
 bool markJudgementEnemiesDefeated(osf::WorldScene& world) {
@@ -271,7 +151,7 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
     }
     osf::WorldScene offered;
     if (!check(
-            loadFixture(data_root, offer_save, offered, error) &&
+            loadSavedFixture(data_root, offer_save, offered, error) &&
                 openOstareConversation(offered) &&
                 offered.conversationMessageId() == 1000007,
             "Ostare did not announce the authored Dusty Ruins lead.")) {
@@ -319,7 +199,7 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
     }
     osf::WorldScene room;
     if (!check(
-            loadFixture(data_root, room_save, room, error) &&
+            loadSavedFixture(data_root, room_save, room, error) &&
                 room.scenarioId() == 10004 &&
                 room.quests().state(3) == 1 &&
                 markJudgementEnemiesDefeated(room),
@@ -389,7 +269,7 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
     }
     osf::WorldScene returned;
     if (!check(
-            loadFixture(data_root, return_save, returned, error) &&
+            loadSavedFixture(data_root, return_save, returned, error) &&
                 returned.quests().state(3) == 2 &&
                 openOstareConversation(returned) &&
                 returned.conversationMessageId() == 1000011,
@@ -435,7 +315,7 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
     }
     osf::WorldScene persisted;
     const bool reward_persisted =
-        loadFixture(data_root, rewarded_save, persisted, error) &&
+        loadSavedFixture(data_root, rewarded_save, persisted, error) &&
         persisted.quests().state(3) == 2 &&
         persisted.retailSaveProgress().script_state_flags.size() > 2 &&
         persisted.retailSaveProgress().script_state_flags[2] == 1 &&

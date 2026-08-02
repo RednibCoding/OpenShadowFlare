@@ -1701,6 +1701,17 @@ Ostare creates Table 30 row 4 exactly once, sets persistent flag two, and
 continues to the Cold Svalt message. Quest state and the reward latch both
 survive save/load.
 
+Syria's linked side mission is covered through the real item owners too.
+Mission three being active lets message `1000044` start mission two. Stone
+Spike in scenario `00010005` owns fixed loot row 23, which resolves through
+Table 31 row 401 to category 4 definition `99000001`. That stolen Spirit Stone
+belongs to automatic page zero at `(1,0)`; it must not be confused with the
+later definition `98000001` on page two. Syria's message `1000045` immediately
+removes the item and completes the mission, then callback `1000046` creates
+category 2 definition `1100001`. The completed save keeps the item absent and
+returns later visits to the normal recovery branch without repeating sample
+66 or the reward.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

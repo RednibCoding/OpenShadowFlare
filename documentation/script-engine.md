@@ -955,6 +955,18 @@ reward before message `1000011`, sets persistent flag two, follows with the
 Cold Svalt message `1000012`, and never creates that reward again after a
 save/load round trip.
 
+Syria's neighboring Spirit Stone mission is separate from her healing path.
+Once mission three is active, message `1000044` starts mission two and its
+notice. Stone Spike in continued Dusty Ruins scenario `00010005` owns Table
+30 row 23; all ten choices lead through Table 31 row 401 to fixed category 4,
+definition `99000001`. This is Syria's page-zero item at cell `(1,0)`, not the
+different page-two item with the same display name used by a later reward.
+On return, message `1000045` is followed immediately by opcodes 59 and 62, so
+the stone is removed and sample 66 is queued before acknowledgement. Its
+callback opens message `1000046` and creates the fixed category-2 definition
+`1100001` reward. Saving the completed state keeps the stone absent and sends
+later visits back through Syria's ordinary recovery branch.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

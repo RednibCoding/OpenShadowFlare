@@ -1148,6 +1148,15 @@ then lets Ostare create the Table 30 row-4 reward exactly once. The mission,
 notice and cue order, Cold Svalt follow-up, and saved reward latch all come
 from SCS and table data rather than an Ostare or Dusty Ruins special case.
 
+Syria's Spirit Stone branch is covered alongside it. Once mission three is
+active, her script starts mission two; Stone Spike in continued Dusty Ruins
+uses fixed loot row 23 to create category-four item `99000001` in automatic
+page zero. Returning it removes the real item before completing the mission,
+then the next callback drops Syria's category-two reward. The similarly named
+page-two Spirit Stone is a different definition and stays separate. Offer,
+drop, owner, return, reward, ordinary-healing fallback, and completed
+save/reload all remain authored rather than hard-coded.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios
