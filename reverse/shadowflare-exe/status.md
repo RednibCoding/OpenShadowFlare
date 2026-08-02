@@ -1741,6 +1741,17 @@ before message acknowledgement, then callback `1000054` creates category two
 definition `1100003`. Completion sample 66, reward landing sample 93, saved
 quest and latch state, and the no-repeat `1000055` follow-up are all covered.
 
+Alex's following Cold Ruins assignment now has the same end-to-end coverage.
+Once mission four is complete, messages `1000009..1000012` start mission six
+and its normal notice. Bottom-floor scenario `1020002` scans its seven enemy
+slots until both Frost Golems, all four Knight Frost Goblins, and the King
+Frost Goblin have finished fading. The clear branch hides object `10011000`,
+shows `10011001` and `10011002`, and completes the mission with sample 66.
+Returning to Alex creates category four definition zero with quantity 2,000,
+which is the authored Gold reward and uses sample 85 when it lands. Callback
+message `1000015` immediately starts mission seven with sample 65, while saved
+active state returns through `1000016` without repeating either reward.
+
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
 partner, calls opcode 16 for positional sound, and calls opcode 24 with a

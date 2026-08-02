@@ -1,6 +1,7 @@
 #ifndef OPENSHADOWFLARE_EPISODE_ONE_TEST_SUPPORT_HPP
 #define OPENSHADOWFLARE_EPISODE_ONE_TEST_SUPPORT_HPP
 
+#include "world/enemy_actor.hpp"
 #include "world/world_scene.hpp"
 
 #include <algorithm>
@@ -144,6 +145,43 @@ inline bool raiseToLevel(
         }
     }
     return player.level() == level;
+}
+
+inline bool markScenarioEnemiesDefeated(
+    WorldScene& world,
+    std::int32_t first_id,
+    std::int32_t last_id) {
+    std::vector<EnemyActor>& enemies =
+        const_cast<std::vector<EnemyActor>&>(world.enemies());
+    std::int32_t defeated = 0;
+    for (EnemyActor& enemy : enemies) {
+        if (enemy.id() < first_id || enemy.id() > last_id) {
+            continue;
+        }
+        EnemyDamageReceiverState state =
+            enemy.damageReceiverState(world.scenarioId());
+        state.current_life = 0;
+        state.presentation_action = 11;
+        state.presentation_counter = 0;
+        state.action_lock = 1;
+        enemy.applyDamageReceiverState(state);
+        ++defeated;
+    }
+    return defeated == last_id - first_id + 1;
+}
+
+inline bool scriptedObjectVisible(
+    const WorldScene& world,
+    std::int32_t character_number,
+    bool visible) {
+    const auto found = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [character_number](const ScenarioObjectActor& object) {
+            return object.characterNumber() == character_number;
+        });
+    return found != world.scenarioObjects().end() &&
+           found->visible() == visible;
 }
 
 }  // namespace osf::test

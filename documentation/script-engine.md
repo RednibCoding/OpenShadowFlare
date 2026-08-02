@@ -1004,6 +1004,19 @@ sample 66 is queued immediately. Callback message `1000054` creates category
 two definition `1100003`; later visits use message `1000055` without repeating
 the item.
 
+With mission four complete, Alex's next status chain runs messages
+`1000009..1000012` and sets mission six active. Cold Ruins bottom-floor
+scenario `1020002` periodically scans enemy characters `14000000..14000006`
+with opcode 31. The two Frost Golems, four Knight Frost Goblins, and King Frost
+Goblin must all finish their death presentations before the scan is empty.
+Only then does the script hide object `10011000`, show `10011001` and
+`10011002`, play its positioned sound, and complete mission six with sample
+66. Alex's completed branch opens message `1000014` and creates category four,
+definition zero with quantity 2,000: the normal Gold ground item and sample 85
+landing sound. Its callback opens `1000015`, starts mission seven, and queues
+sample 65; later visits use `1000016`, so saving and loading cannot repeat the
+Gold or the handoff.
+
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native
 owner refuses to mutate an already-living enemy, but the script command still

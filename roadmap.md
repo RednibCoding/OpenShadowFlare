@@ -1185,6 +1185,15 @@ mission four with sample 66, and creates Rosanna's category-two definition
 `1100003` reward on the following callback. Its sample 93 landing sound,
 completed save, ordinary follow-up, and no-repeat behavior are covered too.
 
+Alex's next assignment is covered through the Cold Ruins and back. After the
+Ruby mission, messages `1000009` through `1000012` start mission six with its
+normal notice and sound. Bottom-floor scenario `01020002` waits for all seven
+authored enemies to finish their death fades before changing the room objects
+and completing the mission. Back in Cold Svalt, Alex drops exactly 2,000 Gold,
+then message `1000015` immediately starts mission seven, Purgatory of
+Judgments. The Gold landing sound, both quest cues, saved handoff, and
+no-repeat return branch are held by the same end-to-end regression.
+
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
 result, while status kind 8 keeps the following branches in scenarios

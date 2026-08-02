@@ -1,11 +1,9 @@
 #include "episode_one_test_support.hpp"
-#include "world/player_data.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/retail_save_progress.hpp"
 #include "world/retail_save_world_state.hpp"
 #include "world/world_scene.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -19,26 +17,33 @@ using osf::test::containsSample;
 using osf::test::loadSavedFixture;
 using osf::test::raiseToLevel;
 
-bool openOstareConversation(
+bool openAlexConversation(
     osf::WorldScene& world,
     std::vector<std::int32_t>* audio = nullptr) {
     return osf::test::openNpcConversation(world, 0, audio);
 }
 
-osf::RetailSaveProgress dustyRuinsProgress(
+osf::RetailSaveProgress coldRuinsProgress(
     const osf::WorldScene& seed,
-    std::int32_t quest_state) {
+    std::int32_t cold_ruins_state,
+    std::int32_t purgatory_state = 0) {
     osf::RetailSaveProgress progress =
         seed.retailSaveProgress();
     if (progress.quest_flags.size() < 48) {
         progress.quest_flags.resize(48, 0);
     }
     progress.quest_flags[0] = 2;
-    progress.quest_flags[3] = quest_state;
+    progress.quest_flags[1] = 2;
+    progress.quest_flags[2] = 2;
+    progress.quest_flags[3] = 2;
+    progress.quest_flags[4] = 2;
+    progress.quest_flags[6] = cold_ruins_state;
+    progress.quest_flags[7] = purgatory_state;
     if (progress.script_state_flags.size() < 72) {
         progress.script_state_flags.resize(72, 0);
     }
-    progress.script_state_flags[4] = 1;
+    progress.script_state_flags[11] = 1;
+    progress.script_state_flags[15] = 1;
     return progress;
 }
 
@@ -63,18 +68,18 @@ bool writeFixture(
         world_state,
         world.playerGiantWarehouse(),
         world.playerAutomaticItems(),
-        0x42,
+        0x47,
         &error);
 }
 
-bool testDustyRuinsMission(const std::filesystem::path& data_root) {
+bool testColdRuinsMission(const std::filesystem::path& data_root) {
     osf::WorldScene seed;
     osf::PlayerLoadRequest new_player;
-    new_player.name = "DustyRuins";
+    new_player.name = "ColdRuins";
     std::string error;
     if (!check(
             seed.loadInitialScenario(data_root, new_player, &error),
-            "The Dusty Ruins fixture could not load Remote Town.")) {
+            "The Cold Ruins fixture could not load Remote Town.")) {
         std::cerr << error << '\n';
         return false;
     }
@@ -82,21 +87,21 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
     if (!check(
             raiseToLevel(
                 level_thirty, 30, seed.parameterTables()),
-            "The Dusty Ruins fixture could not reach the retail level gate.")) {
+            "The Cold Ruins fixture could not reach Cold Svalt level.")) {
         return false;
     }
 
     const std::filesystem::path fixture_root =
         std::filesystem::temp_directory_path() /
-        "openshadowflare_dusty_ruins_quest_test";
+        "openshadowflare_episode_one_cold_ruins_test";
     const std::filesystem::path offer_save =
         fixture_root / "offer" / "Save" / "0000.Ssv";
     const std::filesystem::path room_save =
         fixture_root / "room" / "Save" / "0000.Ssv";
     const std::filesystem::path return_save =
         fixture_root / "return" / "Save" / "0000.Ssv";
-    const std::filesystem::path rewarded_save =
-        fixture_root / "rewarded" / "Save" / "0000.Ssv";
+    const std::filesystem::path completed_save =
+        fixture_root / "completed" / "Save" / "0000.Ssv";
     std::error_code cleanup_error;
     std::filesystem::remove_all(fixture_root, cleanup_error);
 
@@ -105,46 +110,49 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
                 offer_save,
                 seed,
                 level_thirty,
-                dustyRuinsProgress(seed, 0),
-                {false, 0, 0},
+                coldRuinsProgress(seed, 0),
+                {true, 1000000, 0},
                 error),
-            "The Dusty Ruins offer fixture could not be saved.")) {
+            "The Cold Ruins offer fixture could not be saved.")) {
         std::cerr << error << '\n';
         return false;
     }
     osf::WorldScene offered;
     if (!check(
-            loadSavedFixture(data_root, offer_save, offered, error) &&
-                openOstareConversation(offered) &&
-                offered.conversationMessageId() == 1000007,
-            "Ostare did not announce the authored Dusty Ruins lead.")) {
+            loadSavedFixture(
+                data_root, offer_save, offered, error) &&
+                openAlexConversation(offered) &&
+                offered.conversationMessageId() == 1000009,
+            "Alex did not begin the authored Cold Ruins briefing.")) {
         std::cerr << error << '\n';
         return false;
+    }
+    for (const std::int32_t message : {1000010, 1000011}) {
+        offered.advanceConversation();
+        if (!check(
+                offered.conversationMessageId() == message,
+                "Alex's Cold Ruins briefing skipped a message.")) {
+            return false;
+        }
     }
     offered.advanceConversation();
     const std::vector<std::int32_t> offer_audio =
         offered.takeAudioSamples();
     if (!check(
-            offered.conversationMessageId() == 1000008 &&
-                offered.quests().state(3) == 1 &&
+            offered.conversationMessageId() == 1000012 &&
+                offered.quests().state(6) == 1 &&
                 offered.quests().lastCue() ==
                     osf::QuestCue::updated &&
-                offered.quests().notice().quest_id == 3 &&
+                offered.quests().notice().quest_id == 6 &&
                 offered.quests().notice().counter == 600 &&
                 containsSample(offer_audio, 65),
-            "Ostare did not start mission three with its retail notice and cue.")) {
-        return false;
-    }
-    offered.advanceConversation();
-    if (!check(
-            offered.conversationMessageId() == 1000009,
-            "Ostare skipped the Dusty Ruins Warp Gate advice.")) {
+            "Alex did not start mission six with its notice and cue.")) {
         return false;
     }
     offered.advanceConversation();
     if (!check(
             !offered.conversationActive(),
-            "The Dusty Ruins offer did not release Ostare.")) {
+            "The Cold Ruins briefing did not release Alex.")) {
         return false;
     }
 
@@ -154,37 +162,36 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
                 offered,
                 offered.playerData(),
                 offered.retailSaveProgress(),
-                {true, 10004, 0},
+                {true, 1020002, 0},
                 error),
-            "The Room of Judgment fixture could not be saved.")) {
+            "The Cold Ruins bottom-floor fixture could not be saved.")) {
         std::cerr << error << '\n';
         return false;
     }
     osf::WorldScene room;
     if (!check(
             loadSavedFixture(data_root, room_save, room, error) &&
-                room.scenarioId() == 10004 &&
-                room.quests().state(3) == 1 &&
+                room.scenarioId() == 1020002 &&
+                room.scenario().title() == "Cold Ruins" &&
+                room.enemies().size() == 7 &&
                 osf::test::markScenarioEnemiesDefeated(
-                    room, 0, 7),
-            "The Room of Judgment encounter could not be prepared.")) {
+                    room, 0, 6),
+            "The Cold Ruins group-clear encounter could not be prepared.")) {
         std::cerr << error << '\n';
         return false;
     }
     std::vector<std::int32_t> completion_audio;
     for (std::int32_t update = 0;
-         update < 400 && room.quests().state(3) != 2;
+         update < 400 && room.quests().state(6) != 2;
          ++update) {
         room.update();
         const std::vector<std::int32_t> samples =
             room.takeAudioSamples();
         completion_audio.insert(
-            completion_audio.end(),
-            samples.begin(),
-            samples.end());
+            completion_audio.end(), samples.begin(), samples.end());
     }
     if (!check(
-            room.quests().state(3) == 2 &&
+            room.quests().state(6) == 2 &&
                 room.quests().lastCue() ==
                     osf::QuestCue::completed &&
                 containsSample(completion_audio, 66) &&
@@ -194,34 +201,7 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
                     room, 10011001, true) &&
                 osf::test::scriptedObjectVisible(
                     room, 10011002, true),
-            "The eight defeated slots did not complete mission three and "
-            "apply the authored room state.")) {
-        std::cerr << "quest=" << room.quests().state(3)
-                  << " cue="
-                  << static_cast<std::int32_t>(
-                         room.quests().lastCue())
-                  << " sample66="
-                  << containsSample(completion_audio, 66)
-                  << " objects="
-                  << osf::test::scriptedObjectVisible(
-                         room, 10011000, false)
-                  << ','
-                  << osf::test::scriptedObjectVisible(
-                         room, 10011001, true)
-                  << ','
-                  << osf::test::scriptedObjectVisible(
-                         room, 10011002, true)
-                  << '\n';
-        for (const osf::EnemyActor& enemy : room.enemies()) {
-            if (enemy.id() >= 0 && enemy.id() <= 7) {
-                std::cerr << "enemy " << enemy.id()
-                          << " life=" << enemy.currentLife()
-                          << " expired=" << enemy.expired()
-                          << " chart=" << enemy.animationChart()
-                          << " frame=" << enemy.animationFrame()
-                          << '\n';
-            }
-        }
+            "The seven defeated Cold Ruins slots did not complete mission six.")) {
         return false;
     }
 
@@ -231,79 +211,77 @@ bool testDustyRuinsMission(const std::filesystem::path& data_root) {
                 room,
                 room.playerData(),
                 room.retailSaveProgress(),
-                {false, 0, 0},
+                {true, 1000000, 0},
                 error),
-            "The completed Dusty Ruins fixture could not be saved.")) {
+            "The completed Cold Ruins fixture could not be saved.")) {
         std::cerr << error << '\n';
         return false;
     }
     osf::WorldScene returned;
     if (!check(
-            loadSavedFixture(data_root, return_save, returned, error) &&
-                returned.quests().state(3) == 2 &&
-                openOstareConversation(returned) &&
-                returned.conversationMessageId() == 1000011,
-            "Ostare did not recognize the completed Dusty Ruins mission.")) {
+            loadSavedFixture(
+                data_root, return_save, returned, error) &&
+                openAlexConversation(returned) &&
+                returned.conversationMessageId() == 1000014 &&
+                returned.groundItems().size() == 1 &&
+                returned.groundItems().front().item.category == 4 &&
+                returned.groundItems().front().item.definition_id == 0 &&
+                returned.groundItems().front().item.quantity == 2000,
+            "Alex did not create the authored 2,000-Gold reward.")) {
         std::cerr << error << '\n';
         return false;
     }
-    const std::size_t reward_count =
-        returned.groundItems().size();
-    const osf::RetailSaveProgress reward_progress =
-        returned.retailSaveProgress();
+
+    returned.takeAudioSamples();
+    for (std::int32_t update = 0; update < 19; ++update) {
+        returned.update();
+    }
     if (!check(
-            reward_count == 1 &&
-                reward_progress.script_state_flags.size() > 2 &&
-                reward_progress.script_state_flags[2] == 1,
-            "Ostare did not create and latch his authored mission reward.")) {
+            containsSample(returned.takeAudioSamples(), 85),
+            "Alex's Gold reward did not play its authored landing sound.")) {
         return false;
     }
     returned.advanceConversation();
+    const std::vector<std::int32_t> next_audio =
+        returned.takeAudioSamples();
     if (!check(
-            returned.conversationMessageId() == 1000012,
-            "Ostare skipped the Cold Svalt assignment after the reward.")) {
+            returned.conversationMessageId() == 1000015 &&
+                returned.quests().state(7) == 1 &&
+                returned.quests().notice().quest_id == 7 &&
+                containsSample(next_audio, 65),
+            "Alex did not hand off directly to the Purgatory mission.")) {
         return false;
     }
     returned.advanceConversation();
-    if (!check(
-            !returned.conversationActive(),
-            "Ostare did not release the completed mission conversation.")) {
-        return false;
-    }
 
     if (!check(
             writeFixture(
-                rewarded_save,
+                completed_save,
                 returned,
                 returned.playerData(),
                 returned.retailSaveProgress(),
-                {false, 0, 0},
+                {true, 1000000, 0},
                 error),
-            "The latched Dusty Ruins reward could not be saved.")) {
+            "The Cold Ruins and Purgatory states could not be saved.")) {
         std::cerr << error << '\n';
         return false;
     }
     osf::WorldScene persisted;
-    const bool reward_persisted =
-        loadSavedFixture(data_root, rewarded_save, persisted, error) &&
-        persisted.quests().state(3) == 2 &&
-        persisted.retailSaveProgress().script_state_flags.size() > 2 &&
-        persisted.retailSaveProgress().script_state_flags[2] == 1 &&
-        openOstareConversation(persisted) &&
-        persisted.conversationMessageId() == 1000012 &&
+    const bool completed =
+        loadSavedFixture(
+            data_root, completed_save, persisted, error) &&
+        persisted.quests().state(6) == 2 &&
+        persisted.quests().state(7) == 1 &&
+        openAlexConversation(persisted) &&
+        persisted.conversationMessageId() == 1000016 &&
         persisted.groundItems().empty();
     if (persisted.conversationActive()) {
         persisted.advanceConversation();
     }
-    if (!check(
-            reward_persisted,
-            "Saving and loading repeated Ostare's Dusty Ruins reward.")) {
-        std::cerr << error << '\n';
-        return false;
-    }
-
     std::filesystem::remove_all(fixture_root, cleanup_error);
-    return true;
+    return check(
+        completed,
+        "Saving and loading repeated Alex's Cold Ruins reward or handoff.");
 }
 
 }  // namespace
@@ -314,10 +292,10 @@ int main() {
         std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
         "tmp" / "ShadowFlare";
     if (!std::filesystem::is_directory(
-            data_root / "Scenario" / "00010004")) {
+            data_root / "Scenario" / "01020002")) {
         return 0;
     }
-    return testDustyRuinsMission(data_root) ? 0 : 1;
+    return testColdRuinsMission(data_root) ? 0 : 1;
 #else
     return 0;
 #endif
