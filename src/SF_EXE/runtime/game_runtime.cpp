@@ -2,10 +2,10 @@
 
 #include "lwl.h"
 #include "core/retail_random.hpp"
+#include "resources/resource_manager.hpp"
 #include "resources/retail_filesystem.hpp"
 #include "runtime/application_loop.hpp"
 #include "runtime/audio_system.hpp"
-#include "runtime/frontend_assets.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
 #include "runtime/presentation/surface_presenter.hpp"
@@ -40,7 +40,7 @@ class Runtime final : public osf::runtime::FrameApplication {
 public:
     explicit Runtime(std::filesystem::path dataRoot)
         : dataRoot_(std::move(dataRoot)),
-          frontendAssets_(dataRoot_),
+          resources_(dataRoot_),
           surfacePresenter_(
               osf::runtime::createSurfacePresenter()),
           renderer_(kVirtualWidth, kVirtualHeight),
@@ -48,18 +48,18 @@ public:
           titleState_(
               random_,
               osf::runtime::makeTitleStateHooks(
-                  dataRoot_, frontendAssets_, audio_)),
+                  dataRoot_, resources_, audio_)),
           characterSelectState_(
               osf::runtime::makeCharacterSelectStateHooks(
                   dataRoot_,
-                  frontendAssets_,
+                  resources_,
                   audio_,
                   window_)),
           gameplayState_(
               osf::runtime::makeGameplayStateHooks(
                   dataRoot_,
                   gameplayPlayer_,
-                  frontendAssets_,
+                  resources_,
                   audio_,
                   world_)),
           gameState_(makeGameStateCallbacks()) {}
@@ -119,14 +119,14 @@ public:
             gameConfig_.click_priority,
         });
 
-        if (!frontendAssets_.loadPattern(
+        if (!resources_.loadCommonPattern(
                 0, "System\\Common\\Pattern\\Font00.njp") ||
-            !frontendAssets_.loadPattern(
+            !resources_.loadCommonPattern(
                 1, "System\\Common\\Pattern\\Font01.njp") ||
-            !frontendAssets_.loadPattern(
+            !resources_.loadCommonPattern(
                 2,
                 "System\\Common\\Pattern\\Waiting.njp") ||
-            !frontendAssets_.loadPattern(
+            !resources_.loadCommonPattern(
                 3,
                 "System\\Common\\Pattern\\System.njp")) {
             return false;
@@ -212,7 +212,7 @@ private:
                 gameplayFrame_,
                 characterSelectState_,
                 world_,
-                frontendAssets_,
+                resources_,
                 savePreview_,
                 gameplayUi_.options(),
                 gameplayUi_.blackjack(),
@@ -302,7 +302,7 @@ private:
                  index < 10;
                  ++index) {
                 const auto* animation =
-                    frontendAssets_.titleAnimation(index);
+                    resources_.titleAnimation(index);
                 const auto& charts = animation->charts();
                 input_.menu().smoke_frame_counts[index] =
                     charts.empty()
@@ -325,7 +325,7 @@ private:
         }
         case osf::GameState::character_select: {
             input_.characterSelect().saved_game_count =
-                frontendAssets_.savedGameCount();
+                resources_.savedGameCount();
             characterFrame_ =
                 characterSelectState_.update(
                     input_.characterSelect());
@@ -344,7 +344,7 @@ private:
                     gameplayPlayer_.source =
                         osf::PlayerDataSource::retail_save;
                     const auto& saved_games =
-                        frontendAssets_.savedGames();
+                        resources_.savedGames();
                     if (selection.selected_saved_game >= 0 &&
                         static_cast<std::size_t>(
                             selection.selected_saved_game) <
@@ -387,7 +387,7 @@ private:
                         .pointer_primary_pressed,
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
-                    frontendAssets_.pattern(1),
+                    resources_.pattern(1),
                     world_);
             const bool ui_consumed =
                 !scenario_visual_active &&
@@ -483,12 +483,14 @@ private:
         };
         callbacks.title.leave = [this] {
             titleState_.leave();
+            resources_.releaseTitleResources();
         };
         callbacks.character_select.enter = [this](std::int32_t argument) {
             characterSelectState_.enter(argument);
         };
         callbacks.character_select.leave = [this] {
             characterSelectState_.leave();
+            resources_.releaseCharacterSelectResources();
         };
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
@@ -524,7 +526,7 @@ private:
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;
-    osf::runtime::FrontendAssets frontendAssets_;
+    osf::ResourceManager resources_;
     std::unique_ptr<osf::runtime::SurfacePresenter>
         surfacePresenter_;
     osf::runtime::RuntimeRenderer renderer_;

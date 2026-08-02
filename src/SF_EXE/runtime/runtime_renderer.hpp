@@ -31,10 +31,9 @@ struct GameplayFrameResult;
 class RetailSavePreview;
 struct TitleFrameResult;
 class WorldScene;
+class ResourceManager;
 
 namespace runtime {
-
-class FrontendAssets;
 
 struct RuntimeRenderContext {
     GameState game_state;
@@ -43,7 +42,7 @@ struct RuntimeRenderContext {
     const GameplayFrameResult& gameplay_frame;
     const CharacterSelectState& character_select;
     const WorldScene& world;
-    FrontendAssets& frontend_assets;
+    ResourceManager& resources;
     RetailSavePreview& save_preview;
     const GameplayOptionsMenu& gameplay_options;
     const GameplayBlackjack& gameplay_blackjack;

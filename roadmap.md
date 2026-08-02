@@ -2151,6 +2151,14 @@ Optimizations still need the same fidelity tests as any other slice; a faster
 result that changes update order, animation timing, blending, or game rules is
 not a win.
 
+The first memory pass moved frontend assets into a portable resource manager
+with explicit common, title, character-select, and gameplay lifetimes. Leaving
+a screen now destroys everything owned by that screen, including decoded save
+previews, while the common fonts and cursor remain alive. The next useful
+measurements are gameplay-only: make inventory sheets lazy, give every scenario
+its own world/effect/item resource scope, and remove the temporary two-map peak
+during transitions without weakening failure-safe loading.
+
 ## What can wait
 
 These are good ideas, just not reconstruction blockers:

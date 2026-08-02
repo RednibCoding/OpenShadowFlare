@@ -92,6 +92,7 @@ add_library(
   resources/item_inventory_resource.cpp
   resources/item_world_resource.cpp
   resources/object_visual_resource.cpp
+  resources/resource_manager.cpp
   resources/retail_filesystem.cpp
   resources/save_catalog.cpp
 )
@@ -100,6 +101,7 @@ osf_configure_game_library(osf_resources)
 target_link_libraries(
   osf_resources
   PUBLIC
+    OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_RPGSCRN
     OpenShadowFlare::RKC_UPDIB
 )
@@ -363,7 +365,6 @@ target_link_libraries(
 add_executable(
   ShadowFlare_rebuilt
   runtime/audio_system.cpp
-  runtime/frontend_assets.cpp
   runtime/game_runtime.cpp
   runtime/gameplay_ui_controller.cpp
   runtime/input_adapter.cpp

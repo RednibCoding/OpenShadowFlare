@@ -25,7 +25,7 @@
 #include "render/scenario_presentation_renderer.hpp"
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
-#include "runtime/frontend_assets.hpp"
+#include "resources/resource_manager.hpp"
 #include "states/character_select_state.hpp"
 #include "states/gameplay_blackjack.hpp"
 #include "states/gameplay_inventory.hpp"
@@ -65,19 +65,19 @@ gapi::SurfaceView RuntimeRenderer::render(
 #endif
     if (context.game_state == GameState::title) {
         const auto* pattern =
-            context.frontend_assets.pattern(4);
+            context.resources.pattern(4);
         if (pattern) {
             std::array<TitleSmokeAsset, 10> smoke{};
             for (std::size_t index = 0;
                  index < smoke.size();
                  ++index) {
                 const auto* smoke_pattern =
-                    context.frontend_assets.pattern(
+                    context.resources.pattern(
                         5 + static_cast<std::int32_t>(index) * 2);
                 if (smoke_pattern) {
                     smoke[index] = {
                         smoke_pattern,
-                        context.frontend_assets.titleAnimation(index),
+                        context.resources.titleAnimation(index),
                     };
                 }
             }
@@ -90,22 +90,22 @@ gapi::SurfaceView RuntimeRenderer::render(
     } else if (
         context.game_state == GameState::character_select) {
         const auto* pattern =
-            context.frontend_assets.pattern(4);
+            context.resources.pattern(4);
         if (pattern) {
             renderCharacterSelect(
                 renderer_,
                 *pattern,
-                context.frontend_assets.pattern(0),
+                context.resources.pattern(0),
                 context.character_select.data(),
                 context.character_frame,
-                context.frontend_assets.savedGames(),
-                context.frontend_assets.savedPreviews());
+                context.resources.savedGames(),
+                context.resources.savedPreviews());
         }
     } else if (context.game_state == GameState::gameplay) {
         if (context.gameplay_frame.phase ==
             GameplayPhase::loading) {
             const auto* waiting =
-                context.frontend_assets.pattern(2);
+                context.resources.pattern(2);
             if (waiting) {
                 renderInitialLoadingScreen(
                     renderer_,
@@ -117,7 +117,7 @@ gapi::SurfaceView RuntimeRenderer::render(
             renderScenarioVisual(renderer_, context.world);
         } else {
             const auto* font =
-                context.frontend_assets.pattern(1);
+                context.resources.pattern(1);
             renderWorldGeometry(
                 renderer_,
                 context.world,
@@ -139,7 +139,7 @@ gapi::SurfaceView RuntimeRenderer::render(
                     renderer_,
                     context.world,
                     font,
-                    context.frontend_assets.pattern(8),
+                    context.resources.pattern(8),
                     context.world.renderCameraScreenX(
                         interpolation),
                     context.world.renderCameraScreenY(
@@ -163,18 +163,18 @@ gapi::SurfaceView RuntimeRenderer::render(
                 renderQuestNotice(
                     renderer_,
                     *font,
-                    context.frontend_assets.pattern(8),
+                    context.resources.pattern(8),
                     context.world.quests(),
                     context.world.missions());
             }
             const auto* magic_icons =
-                context.frontend_assets.pattern(9);
+                context.resources.pattern(9);
             const auto* magic_bar_icons =
-                context.frontend_assets.pattern(10);
+                context.resources.pattern(10);
             const auto* status =
-                context.frontend_assets.pattern(6);
+                context.resources.pattern(6);
             const auto* cards =
-                context.frontend_assets.pattern(11);
+                context.resources.pattern(11);
             if (status && cards &&
                 context.gameplay_blackjack.active()) {
                 renderGameplayBlackjack(
@@ -186,7 +186,7 @@ gapi::SurfaceView RuntimeRenderer::render(
                     context.gameplay_counter);
             } else if (status && font) {
                 const auto* map_icons =
-                    context.frontend_assets.pattern(7);
+                    context.resources.pattern(7);
                 if (context.gameplay_equipment_color.active()) {
                     renderGameplayEquipmentColor(
                         renderer_,
@@ -297,7 +297,7 @@ gapi::SurfaceView RuntimeRenderer::render(
                 }
             }
             const auto* bar =
-                context.frontend_assets.pattern(5);
+                context.resources.pattern(5);
             if (bar) {
                 renderGameplayHud(
                     renderer_,
@@ -386,7 +386,7 @@ gapi::SurfaceView RuntimeRenderer::render(
         }
     }
     const auto* system_patterns =
-        context.frontend_assets.pattern(3);
+        context.resources.pattern(3);
     if (system_patterns) {
         renderSystemCursor(
             renderer_,

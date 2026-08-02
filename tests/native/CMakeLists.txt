@@ -43,6 +43,26 @@ add_test(
 )
 
 if(TARGET sf_game_core)
+  add_executable(resource_manager_test resource_manager_test.cpp)
+  target_link_libraries(
+    resource_manager_test PRIVATE OpenShadowFlare::Resources)
+  target_compile_features(resource_manager_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    resource_manager_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    resource_manager_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      resource_manager_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      resource_manager_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME resource_manager COMMAND resource_manager_test)
+
   add_executable(game_core_test game_core_test.cpp)
   target_link_libraries(
     game_core_test

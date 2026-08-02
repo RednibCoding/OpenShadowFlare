@@ -525,7 +525,7 @@ implementations:
 - `states/` contains the top-level dispatcher and reconstructed game states
 - `ui/` contains layout shared by input handling and drawing
 - `world/` contains actors, scenario orchestration, and script-to-world glue
-- `runtime/` contains startup, input/audio adapters, and frontend assets
+- `runtime/` contains startup and the input/audio adapters
 - `runtime/platform/` owns application-loop and lifecycle adapters
 - `runtime/presentation/` owns the final-surface presentation interface and
   concrete graphics backends
