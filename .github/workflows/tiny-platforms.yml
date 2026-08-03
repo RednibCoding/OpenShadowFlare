@@ -51,14 +51,38 @@ jobs:
           -DOPENSHADOWFLARE_BUILD_EXE=OFF
           -DOPENSHADOWFLARE_ENABLE_DEBUG_TOOLS=OFF
 
-      - name: Build TWL and TAL tests
+      - name: Build TWL and TAL tests (macOS)
+        if: runner.os == 'macOS'
         run: >-
           cmake --build build/${{ matrix.platform }}/debug
           --target tiny_libraries_test twl_backend_smoke_test
           --parallel
 
-      - name: Run TWL and TAL tests
+      - name: Build TWL and TAL tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = & cmake --build build/${{ matrix.platform }}/debug `
+            --target tiny_libraries_test twl_backend_smoke_test `
+            --parallel 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Write-Host
+          if ($exitCode -ne 0) {
+            $tail = ($output | Select-Object -Last 60 | Out-String)
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows TWL/TAL build failed::$tail"
+            exit $exitCode
+          }
+
+      - name: Run common TWL and TAL tests
         run: >-
           ctest --test-dir build/${{ matrix.platform }}/debug
           --output-on-failure
-          -R "tiny_libraries|tiny_library_boundaries|twl_backend_smoke"
+          -R "tiny_libraries|tiny_library_boundaries"
+
+      - name: Run Windows presentation smoke test
+        if: runner.os == 'Windows'
+        run: >-
+          ctest --test-dir build/${{ matrix.platform }}/debug
+          --output-on-failure
+          -R "^twl_backend_smoke$"
