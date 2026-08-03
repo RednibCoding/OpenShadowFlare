@@ -2,6 +2,8 @@ name: Build PlayStation 2 ISO
 
 on:
   push:
+    branches:
+      - master
     paths:
       - '.github/workflows/ps2.yml'
       - 'CMakeLists.txt'
@@ -20,6 +22,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,10 +36,16 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v6
 
-      - name: Install PS2DEV
+      - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes cmake genisoimage
+          sudo apt-get install --yes cmake genisoimage ninja-build
+          cmake --version
+          ninja --version
+          genisoimage --version
+
+      - name: Install PS2DEV
+        run: |
           mkdir -p "$PS2DEV"
           curl --fail --location --retry 3 \
             --output /tmp/ps2dev.tar.gz \
