@@ -397,13 +397,17 @@ static int test_character_creation(void) {
 }
 
 int main(void) {
-  if (check(SF_MAIN_MEMORY_LIMIT_BYTES == 2u * 1024u * 1024u,
+  if (check(SF_MAIN_MEMORY_LIMIT_BYTES == 8u * 1024u * 1024u,
             "main-memory limit changed") ||
-      check(SF_VIDEO_MEMORY_LIMIT_BYTES == 1024u * 1024u,
+      check(SF_MAIN_SYSTEM_RESERVE_BYTES == 1024u * 1024u,
+            "main-memory system reserve changed") ||
+      check(SF_MAIN_ARENA_BYTES == 7u * 1024u * 1024u,
+            "caller-owned game arena changed") ||
+      check(SF_VIDEO_MEMORY_LIMIT_BYTES == 4u * 1024u * 1024u,
             "video-memory limit changed") ||
       check(SF_FRAMEBUFFER_BYTES == 640u * 480u * 2u,
             "RGB555 framebuffer size is wrong") ||
-      check(SF_VIDEO_ASSET_BUDGET_BYTES == 434176u,
+      check(SF_VIDEO_ASSET_BUDGET_BYTES == 3579904u,
             "video asset budget is wrong") ||
       test_arena() || test_world_coordinates() || test_depth_order() ||
       test_framebuffer() || test_renderer() ||

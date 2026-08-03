@@ -27,8 +27,8 @@ fit them, we stop and rethink the feature instead of quietly raising a limit.
 The baseline is deliberately harsh:
 
 - roughly 33 MHz CPU;
-- 2 MiB main RAM;
-- 1 MiB video RAM;
+- 8 MiB main RAM;
+- 4 MiB video RAM;
 - 640×480 output using packed RGB555;
 - 30 Hz game updates and presentation, matching the retail game.
 
@@ -36,10 +36,16 @@ At 30 Hz, 33 MHz is only about 1.1 million CPU cycles per frame. A 640×480 imag
 contains 307,200 pixels. Touching the complete framebuffer is therefore a
 serious operation, not a harmless default.
 
-The current memory split reserves 512 KiB of main RAM for executable code,
+The current memory split reserves 1 MiB of main RAM for executable code,
 stacks, and untracked target needs. The caller-owned game arena gets the other
-1.5 MiB. One RGB555 framebuffer occupies 600 KiB of video RAM, leaving 424 KiB
+7 MiB. One RGB555 framebuffer occupies 600 KiB of video RAM, leaving 3,496 KiB
 for visible artwork and other video resources.
+
+The PlayStation's 2 MiB main RAM and 1 MiB video RAM remain a later stretch
+target, not the baseline used while reconstructing the complete game. Reaching
+that target will require dedicated asset packaging and tighter animation and
+texture banks. Those concerns should stay behind the resource and rendering
+boundaries instead of complicating ordinary game code now.
 
 ## Code and boundaries
 

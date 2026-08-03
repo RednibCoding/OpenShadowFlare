@@ -25,7 +25,7 @@ still preserving sensible boundaries between memory, game rules, rendering,
 and the outer application loop.
 
 Before changing this runtime, read the [standing runtime rules](RULES.md).
-They make the 33 MHz CPU, 2 MiB main-RAM, and 1 MiB video-RAM constraints
+They make the 33 MHz CPU, 8 MiB main-RAM, and 4 MiB video-RAM constraints
 explicit and describe the boundaries that new code must preserve.
 
 The current executable opens a 640×480 RGB555 surface and reconstructs the
@@ -51,17 +51,19 @@ not faked in the map screen.
 
 The limits are part of the code, not just goals written in a document:
 
-- 2 MiB total main RAM;
-- 512 KiB of that is held back for code, stacks, and platform state;
-- 1.5 MiB is available to the caller-owned game arena;
-- 1 MiB video RAM;
+- 8 MiB total main RAM;
+- 1 MiB of that is held back for code, stacks, and platform state;
+- 7 MiB is available to the caller-owned game arena;
+- 4 MiB video RAM;
 - one 640×480 RGB555 framebuffer uses 600 KiB;
-- the remaining 424 KiB is the initial video-asset budget.
+- the remaining 3,496 KiB is the initial video-asset budget.
 
 Desktop builds use fixed arrays to emulate the two memory pools. A future PS1
 backend can point the video pool at real video memory and size the main arena
 from the memory left after the executable and stacks. Nothing in the game core
-allocates from the heap.
+allocates from the heap. The original PlayStation's 2 MiB/1 MiB split remains
+a later porting target that can use dedicated asset packages without forcing
+streaming and cache eviction into the general game implementation.
 
 ## Folder layout
 
@@ -118,11 +120,11 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,423,725 bytes of the 1.5 MiB main arena,
-leaving 149,139 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,423,725 bytes of the 7 MiB main arena,
+leaving 5,916,307 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
-video pool contains only the 614,400-byte RGB555 framebuffer, leaving 434,176
+video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
 bytes.
 
 Static title frames do not redraw the whole screen. A fixed 16-entry damage
@@ -132,12 +134,12 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 736,648 bytes of the main arena, leaving 836,216 bytes free;
+assets. It uses 736,648 bytes of the main arena, leaving 6,603,384 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 696,864 bytes of the main arena, leaving 876,000
+The load-game screen uses 696,864 bytes of the main arena, leaving 6,643,168
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
@@ -145,7 +147,7 @@ new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
 The first Remote Town gameplay viewport uses 1,007,920 bytes of the main arena,
-leaving 564,944 bytes free. Its map- and player-scoped data and selected
+leaving 6,332,112 bytes free. Its map- and player-scoped data and selected
 artwork account for 685,377 bytes. GND rendering data is decoded directly from
 its compressed three-plane stream into two bytes per tile, so the 300x300 town
 grid occupies 180,000 bytes instead of retaining the 540,000-byte source
@@ -170,6 +172,6 @@ its 2.27 MiB decoded payload. The initial world draw is complete; later idle
 frames restore and redraw only the measured player rectangle in full retail
 depth order.
 
-The framebuffer still occupies 614,400 bytes of video memory, leaving 434,176
+The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software
 backend.
