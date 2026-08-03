@@ -23,9 +23,11 @@ sh tools/ps2/build-iso.sh
 
 The archive is published on [PS2DEV releases](https://github.com/ps2dev/ps2dev/releases).
 
-The default output, `build/ps2/openshadowflare.iso`, is data-free and suitable
-for CI and distribution. It loads an owned `ShadowFlare` data directory placed
-beside the ISO in PCSX2, or at the root of a FAT32 USB drive on PS2 hardware:
+The default output, `build/ps2/openshadowflare.iso`, is a small data-free ISO
+suitable for CI and distribution. GitHub Actions builds and uploads this
+variant, and verifies it does not contain game data. It loads an owned
+`ShadowFlare` data directory placed beside the ISO in PCSX2, or at the root of
+a FAT32 USB drive on PS2 hardware:
 
 ```text
 <PCSX2 ISO folder>/
@@ -57,11 +59,16 @@ cp -a /path/to/ShadowFlare build/ps2/
 cp -a /path/to/ShadowFlare /media/$USER/PS2USB/
 ```
 
-Alternatively, create a private all-in-one disc from an owned retail
-installation:
+To create a private all-in-one disc from an owned retail installation, pass
+the path to its `ShadowFlare` directory. This replaces the same output ISO with
+a version containing a packed `SFGAME.BIN` archive, so it must not be
+distributed:
 
 ```sh
 sh tools/ps2/build-iso.sh --data-dir /path/to/ShadowFlare
+
+# Example when the data is on the Windows E: drive in WSL.
+sh tools/ps2/build-iso.sh --data-dir /mnt/e/Games/pcsx2/ps2/ShadowFlare
 ```
 
 ## Type portability
