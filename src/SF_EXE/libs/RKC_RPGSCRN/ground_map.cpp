@@ -284,6 +284,13 @@ void GroundMap::clear() {
     judgement_.clear();
 }
 
+std::uint64_t GroundMap::memoryUsageBytes() const {
+    return static_cast<std::uint64_t>(cells_.capacity()) *
+            sizeof(GroundCell) +
+        static_cast<std::uint64_t>(judgement_.capacity()) *
+            sizeof(std::int16_t);
+}
+
 std::int32_t GroundMap::width() const {
     return width_;
 }

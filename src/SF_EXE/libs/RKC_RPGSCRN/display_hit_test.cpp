@@ -50,6 +50,9 @@ bool displayPatternIntersectsRectangle(
     }
     const gapi::NjpPattern& pattern =
         image.patterns()[pattern_index];
+    if (!image.patternDecoded(pattern_index)) {
+        return false;
+    }
     for (const gapi::NjpPatternPart& pattern_part :
          pattern.parts) {
         if (pattern_part.part_index < 0 ||
@@ -63,6 +66,9 @@ bool displayPatternIntersectsRectangle(
         const gapi::NjpPart& part =
             image.parts()[static_cast<std::size_t>(
                 pattern_part.part_index)];
+        if (!part.hasDecodedPixels()) {
+            continue;
+        }
         const std::int32_t width =
             static_cast<std::int32_t>(
                 static_cast<std::int64_t>(part.width) *

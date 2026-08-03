@@ -59,6 +59,9 @@ public:
         const AiControlList& ai_control,
         std::int32_t ai_control_index,
         std::string* error = nullptr);
+    bool activate(
+        WorldPosition position,
+        std::int32_t direction);
     void clear();
     EnemyActorUpdate update(
         const EnemyActorUpdateContext& context);

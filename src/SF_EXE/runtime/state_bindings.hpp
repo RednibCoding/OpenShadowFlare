@@ -11,29 +11,29 @@ struct LwlWindow;
 
 namespace osf {
 
+class ResourceManager;
 struct PlayerLoadRequest;
 class WorldScene;
 
 namespace runtime {
 
 class AudioSystem;
-class FrontendAssets;
 
 TitleStateHooks makeTitleStateHooks(
     const std::filesystem::path& data_root,
-    FrontendAssets& assets,
+    ResourceManager& resources,
     AudioSystem& audio);
 
 CharacterSelectStateHooks makeCharacterSelectStateHooks(
     const std::filesystem::path& data_root,
-    FrontendAssets& assets,
+    ResourceManager& resources,
     AudioSystem& audio,
     LwlWindow*& window);
 
 GameplayStateHooks makeGameplayStateHooks(
     const std::filesystem::path& data_root,
     PlayerLoadRequest& player,
-    FrontendAssets& assets,
+    ResourceManager& resources,
     AudioSystem& audio,
     WorldScene& world);
 

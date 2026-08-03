@@ -61,7 +61,7 @@ GameplayDebugResult GameplayDebugMenu::update(
         return result;
     }
     if (input.pointer_primary_pressed &&
-        inside(input, 176, 198, 464, 210)) {
+        inside(input, 176, 214, 464, 226)) {
         close();
         result.play_confirm_sound = true;
         return result;
@@ -69,9 +69,10 @@ GameplayDebugResult GameplayDebugMenu::update(
 
     result.settings_changed =
         setBooleanRow(input, 118, fps_counter_enabled_) ||
-        setBooleanRow(input, 134, all_spells_enabled_) ||
-        setBooleanRow(input, 150, infinite_life_enabled_) ||
-        setBooleanRow(input, 166, infinite_mana_enabled_);
+        setBooleanRow(input, 134, profiling_enabled_) ||
+        setBooleanRow(input, 150, all_spells_enabled_) ||
+        setBooleanRow(input, 166, infinite_life_enabled_) ||
+        setBooleanRow(input, 182, infinite_mana_enabled_);
     result.play_click_sound = result.settings_changed;
     return result;
 }
@@ -86,6 +87,10 @@ bool GameplayDebugMenu::active() const {
 
 bool GameplayDebugMenu::fpsCounterEnabled() const {
     return fps_counter_enabled_;
+}
+
+bool GameplayDebugMenu::profilingEnabled() const {
+    return profiling_enabled_;
 }
 
 bool GameplayDebugMenu::allSpellsEnabled() const {

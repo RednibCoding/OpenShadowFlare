@@ -167,6 +167,11 @@ void ObjectMap::clear() {
     objects_.clear();
 }
 
+std::uint64_t ObjectMap::memoryUsageBytes() const {
+    return static_cast<std::uint64_t>(objects_.capacity()) *
+        sizeof(MapObject);
+}
+
 std::int32_t ObjectMap::version() const {
     return version_;
 }

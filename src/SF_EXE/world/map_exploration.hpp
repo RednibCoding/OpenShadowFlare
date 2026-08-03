@@ -1,7 +1,7 @@
 #ifndef OPENSHADOWFLARE_MAP_EXPLORATION_HPP
 #define OPENSHADOWFLARE_MAP_EXPLORATION_HPP
 
-#include "libs/RKC_DIB/rkc_dib.hpp"
+#include "gapi/bit_mask_image.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
 
 #include <cstdint>
@@ -14,13 +14,14 @@ public:
     void clear();
     void reveal(WorldPosition position);
 
-    const gapi::BitmapImage& mask() const;
+    const gapi::BitMaskImage& mask() const;
+    std::uint64_t memoryUsageBytes() const;
     bool explored(
         std::int32_t map_x,
         std::int32_t map_y) const;
 
 private:
-    gapi::BitmapImage mask_;
+    gapi::BitMaskImage mask_;
 };
 
 }  // namespace osf

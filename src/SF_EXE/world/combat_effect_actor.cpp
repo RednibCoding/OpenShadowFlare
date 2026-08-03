@@ -70,6 +70,10 @@ std::int32_t retailCombatEffectResourceId(
         return 11000006;
     case 20009:
         return 11000007;
+    case 20010:
+        return 11000008;
+    case 20018:
+        return 10000020;
     case 21025:
         return 11000100;
     case 21028:

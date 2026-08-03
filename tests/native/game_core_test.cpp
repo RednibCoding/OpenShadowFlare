@@ -5,6 +5,9 @@
 #include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_options_menu.hpp"
 #include "states/gameplay_state.hpp"
+#include "ui/companion_hud_input.hpp"
+#include "ui/gameplay_hud_input.hpp"
+#include "ui/pointer_input_guard.hpp"
 
 #include <array>
 #include <cstdint>
@@ -419,6 +422,7 @@ bool testGameplayLoadingTransition() {
     std::int32_t conversationChoices = 0;
     std::int32_t worldUpdates = 0;
     std::int32_t runToggles = 0;
+    std::int32_t companionToggles = 0;
     std::int32_t movementX = 0;
     std::int32_t movementY = 0;
     bool conversationActive = false;
@@ -494,6 +498,8 @@ bool testGameplayLoadingTransition() {
         };
     hooks.toggle_player_run =
         [&runToggles] { ++runToggles; };
+    hooks.toggle_companion_activity =
+        [&companionToggles] { ++companionToggles; };
     hooks.update_world =
         [&worldUpdates] { ++worldUpdates; };
     osf::GameplayState state(std::move(hooks));
@@ -524,7 +530,10 @@ bool testGameplayLoadingTransition() {
     state.update(magic_cast);
     state.update({false, true, 200, 210});
     state.update({false, true, -1, 210});
-    state.update({false, false, 0, 0, false, true});
+    osf::GameplayFrameInput mode_toggles;
+    mode_toggles.run_toggle_pressed = true;
+    mode_toggles.companion_toggle_pressed = true;
+    state.update(mode_toggles);
     state.update({false, true, 300, 220});
     state.update({false, false, 310, 220, true, true});
     state.update({true});
@@ -556,8 +565,95 @@ bool testGameplayLoadingTransition() {
             conversationAdvances == 1 &&
             conversationChoices == 1 &&
             worldUpdates == 15 &&
-            runToggles == 1,
+            runToggles == 1 &&
+            companionToggles == 1,
         "Gameplay did not hand loading off or lock conversation input cleanly.");
+}
+
+bool testCompanionHudInput() {
+    if (!check(
+        osf::companionHudToggleAtPointer(true, 0, 393) &&
+            osf::companionHudToggleAtPointer(true, 111, 408) &&
+            !osf::companionHudToggleAtPointer(false, 50, 400) &&
+            !osf::companionHudToggleAtPointer(true, -1, 400) &&
+            !osf::companionHudToggleAtPointer(true, 112, 400) &&
+            !osf::companionHudToggleAtPointer(true, 50, 392) &&
+            !osf::companionHudToggleAtPointer(true, 50, 409),
+        "The companion HUD toggle rectangle differs from "
+        "FUN_00445bd0.")) {
+        return false;
+    }
+
+    std::int32_t toggles = 0;
+    std::int32_t movements = 0;
+    std::int32_t interactions = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [] { return true; };
+    hooks.toggle_companion_activity = [&] { ++toggles; };
+    hooks.command_player_movement =
+        [&](std::int32_t, std::int32_t) { ++movements; };
+    hooks.command_world_interaction =
+        [&](std::int32_t, std::int32_t) {
+            ++interactions;
+            return false;
+        };
+    osf::GameplayState state(std::move(hooks));
+    state.enter();
+    state.update();
+    state.update({false, true, 600, 460});
+    osf::GameplayFrameInput hud_click;
+    hud_click.pointer_primary_pressed = true;
+    hud_click.pointer_primary_down = true;
+    hud_click.pointer_x = 50;
+    hud_click.pointer_y = 395;
+    hud_click.companion_hud_pressed = true;
+    state.update(hud_click);
+    return check(
+        toggles == 1 && movements == 0 && interactions == 0,
+        "A companion HUD click leaked into world interaction or "
+        "movement.");
+}
+
+bool testGameplayHudInput() {
+    using osf::GameplayHudButton;
+    if (!check(
+            osf::gameplayHudButtonAtPointer(true, 589, 402) ==
+                    GameplayHudButton::options &&
+                osf::gameplayHudButtonAtPointer(true, 639, 413) ==
+                    GameplayHudButton::options &&
+                osf::gameplayHudButtonAtPointer(true, 537, 420) ==
+                    GameplayHudButton::status &&
+                osf::gameplayHudButtonAtPointer(true, 577, 437) ==
+                    GameplayHudButton::status &&
+                osf::gameplayHudButtonAtPointer(true, 583, 429) ==
+                    GameplayHudButton::inventory &&
+                osf::gameplayHudButtonAtPointer(true, 636, 448) ==
+                    GameplayHudButton::inventory &&
+                osf::gameplayHudButtonAtPointer(false, 600, 405) ==
+                    GameplayHudButton::none &&
+                osf::gameplayHudButtonAtPointer(true, 588, 402) ==
+                    GameplayHudButton::none &&
+                osf::gameplayHudButtonAtPointer(true, 578, 430) ==
+                    GameplayHudButton::none &&
+                osf::gameplayHudButtonAtPointer(true, 637, 440) ==
+                    GameplayHudButton::none,
+            "The lower-right HUD hitboxes differ from FUN_00445bd0.")) {
+        return false;
+    }
+
+    osf::PointerInputGuard guard;
+    guard.consumeUntilRelease(true);
+    if (!check(
+            guard.update(true) &&
+                guard.update(false) &&
+                !guard.update(false),
+            "A UI-owned pointer press leaked before its release.")) {
+        return false;
+    }
+    guard.consumeUntilRelease(false);
+    return check(
+        !guard.update(false),
+        "An already released pointer was incorrectly retained by UI.");
 }
 
 bool testGameplayClickAndHoldMovement() {
@@ -604,6 +700,67 @@ bool testGameplayClickAndHoldMovement() {
         movement_commands == 15 &&
             movement_cancels == 1,
         "Held movement or split-view input clipping diverged.");
+}
+
+bool testScenarioVisualInputLock() {
+    bool visual_active = true;
+    std::int32_t advances = 0;
+    std::int32_t updates = 0;
+    std::int32_t hover_clears = 0;
+    std::int32_t movements = 0;
+    std::int32_t interactions = 0;
+    std::int32_t magic = 0;
+    osf::GameplayStateHooks hooks;
+    hooks.prepare_world = [] { return true; };
+    hooks.scenario_visual_active = [&] {
+        return visual_active;
+    };
+    hooks.advance_scenario_visual = [&] { ++advances; };
+    hooks.update_world = [&] { ++updates; };
+    hooks.clear_pointer_hover = [&] { ++hover_clears; };
+    hooks.command_player_movement =
+        [&](std::int32_t, std::int32_t) { ++movements; };
+    hooks.command_world_interaction =
+        [&](std::int32_t, std::int32_t) {
+            ++interactions;
+            return true;
+        };
+    hooks.command_player_magic =
+        [&](std::int32_t, std::int32_t) {
+            ++magic;
+            return true;
+        };
+
+    osf::GameplayState state(std::move(hooks));
+    state.enter();
+    state.update();
+    state.update({false, true, 600, 460});
+    osf::GameplayFrameInput secondary;
+    secondary.pointer_secondary_pressed = true;
+    secondary.pointer_x = 200;
+    secondary.pointer_y = 200;
+    state.update(secondary);
+
+    osf::GameplayFrameInput confirm;
+    confirm.confirm_pressed = true;
+    state.update(confirm);
+
+    osf::GameplayFrameInput primary;
+    primary.pointer_primary_pressed = true;
+    primary.pointer_primary_down = true;
+    primary.pointer_x = 200;
+    primary.pointer_y = 200;
+    state.update(primary);
+
+    osf::GameplayFrameInput cancel;
+    cancel.cancel_pressed = true;
+    state.update(cancel);
+    visual_active = false;
+    return check(
+        advances == 3 && updates == 4 && hover_clears == 4 &&
+            movements == 0 && interactions == 0 && magic == 0,
+        "A scenario visual did not accept only retail Left, Enter, and "
+        "Escape input while locking the world.");
 }
 
 bool testGameplayOptionsMenu() {
@@ -774,6 +931,7 @@ bool testGameplayOptionsMenu() {
         "Escape did not close the gameplay options menu.");
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 bool testGameplayDebugMenu() {
     osf::GameplayDebugMenu menu;
     osf::GameplayDebugResult result =
@@ -795,6 +953,16 @@ bool testGameplayDebugMenu() {
     result = menu.update(
         {false, false, true, 400, 134});
     if (!check(
+            menu.profilingEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug profiling toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 150});
+    if (!check(
             menu.allSpellsEnabled() &&
                 result.settings_changed &&
                 result.play_click_sound,
@@ -803,7 +971,7 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 400, 150});
+        {false, false, true, 400, 166});
     if (!check(
             menu.infiniteLifeEnabled() &&
                 result.settings_changed &&
@@ -813,7 +981,7 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 400, 166});
+        {false, false, true, 400, 182});
     if (!check(
             menu.infiniteManaEnabled() &&
                 result.settings_changed &&
@@ -823,10 +991,11 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 300, 198});
+        {false, false, true, 300, 214});
     if (!check(
             !menu.active() &&
                 menu.fpsCounterEnabled() &&
+                menu.profilingEnabled() &&
                 menu.allSpellsEnabled() &&
                 menu.infiniteLifeEnabled() &&
                 menu.infiniteManaEnabled() &&
@@ -839,6 +1008,7 @@ bool testGameplayDebugMenu() {
     return check(
         !menu.active() &&
             menu.fpsCounterEnabled() &&
+            menu.profilingEnabled() &&
             menu.allSpellsEnabled() &&
             menu.infiniteLifeEnabled() &&
             menu.infiniteManaEnabled() &&
@@ -846,10 +1016,16 @@ bool testGameplayDebugMenu() {
         "Escape did not close the debug menu while retaining its runtime "
         "settings.");
 }
+#endif
 
 }  // namespace
 
 int main() {
+#if OSF_ENABLE_DEBUG_TOOLS
+    const bool debug_tests_passed = testGameplayDebugMenu();
+#else
+    constexpr bool debug_tests_passed = true;
+#endif
     if (!testRetailDefaultsAndFixture() ||
         !testConfigValidationAndWriting() ||
         !testConfigFailureSideEffects() ||
@@ -859,9 +1035,12 @@ int main() {
         !testObjectMapDecode() ||
         !testDisplayObjectOrdering() ||
         !testGameplayLoadingTransition() ||
+        !testCompanionHudInput() ||
+        !testGameplayHudInput() ||
         !testGameplayClickAndHoldMovement() ||
+        !testScenarioVisualInputLock() ||
         !testGameplayOptionsMenu() ||
-        !testGameplayDebugMenu()) {
+        !debug_tests_passed) {
         return 1;
     }
     return 0;

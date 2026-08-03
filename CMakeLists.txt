@@ -6,16 +6,23 @@ project(
   LANGUAGES C CXX
 )
 
-if(PSP)
+if(PSP OR NINTENDO_SWITCH)
   set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 endif()
 
 include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
+option(
+  OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS
+  "Compile the F12 debug menu and runtime profiling tools"
+  ON
+)
 
 if(PSP)
   set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "gu")
+elseif(NINTENDO_SWITCH)
+  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "nxfb")
 else()
   set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "lgl")
 endif()
@@ -27,7 +34,7 @@ set(
 )
 set_property(
   CACHE OPENSHADOWFLARE_PRESENTATION_BACKEND
-  PROPERTY STRINGS lgl gu
+  PROPERTY STRINGS lgl gu nxfb
 )
 
 add_subdirectory(thirdparty/lwl)

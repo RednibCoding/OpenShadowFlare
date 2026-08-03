@@ -3,7 +3,9 @@
 #include "core/game_config.hpp"
 #include "render/character_select_renderer.hpp"
 #include "render/gameplay_blackjack_renderer.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
 #include "render/gameplay_debug_renderer.hpp"
+#endif
 #include "render/gameplay_equipment_color_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_hud_renderer.hpp"
@@ -20,13 +22,16 @@
 #include "render/item_information_renderer.hpp"
 #include "render/loading_renderer.hpp"
 #include "render/quest_notice_renderer.hpp"
+#include "render/scenario_presentation_renderer.hpp"
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
-#include "runtime/frontend_assets.hpp"
+#include "resources/resource_manager.hpp"
 #include "states/character_select_state.hpp"
 #include "states/gameplay_blackjack.hpp"
 #include "states/gameplay_inventory.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
 #include "states/gameplay_debug_menu.hpp"
+#endif
 #include "states/gameplay_equipment_color.hpp"
 #include "states/gameplay_map.hpp"
 #include "states/gameplay_magic.hpp"
@@ -41,35 +46,47 @@
 
 #include <array>
 #include <cstddef>
-#include <utility>
 
 namespace osf::runtime {
 
 RuntimeRenderer::RuntimeRenderer(
     std::int32_t width,
-    std::int32_t height,
-    std::function<void(gapi::SurfaceView)> present)
-    : renderer_(width, height, std::move(present)) {}
+    std::int32_t height)
+    : renderer_(width, height) {}
 
-void RuntimeRenderer::render(
+std::uint64_t RuntimeRenderer::memoryUsageBytes() const {
+    const gapi::SurfaceView surface = renderer_.surface();
+    return surface.width > 0 && surface.height > 0
+        ? static_cast<std::uint64_t>(surface.width) *
+              static_cast<std::uint64_t>(surface.height) *
+              sizeof(gapi::Color)
+        : 0;
+}
+
+gapi::SurfaceView RuntimeRenderer::render(
     const RuntimeRenderContext& context,
     double interpolation) {
     renderer_.beginFrame({0, 0, 0, 255});
+#if OSF_ENABLE_DEBUG_TOOLS
+    const bool debug_active = context.gameplay_debug.active();
+#else
+    constexpr bool debug_active = false;
+#endif
     if (context.game_state == GameState::title) {
         const auto* pattern =
-            context.frontend_assets.pattern(4);
+            context.resources.pattern(4);
         if (pattern) {
             std::array<TitleSmokeAsset, 10> smoke{};
             for (std::size_t index = 0;
                  index < smoke.size();
                  ++index) {
                 const auto* smoke_pattern =
-                    context.frontend_assets.pattern(
+                    context.resources.pattern(
                         5 + static_cast<std::int32_t>(index) * 2);
                 if (smoke_pattern) {
                     smoke[index] = {
                         smoke_pattern,
-                        context.frontend_assets.titleAnimation(index),
+                        context.resources.titleAnimation(index),
                     };
                 }
             }
@@ -82,22 +99,22 @@ void RuntimeRenderer::render(
     } else if (
         context.game_state == GameState::character_select) {
         const auto* pattern =
-            context.frontend_assets.pattern(4);
+            context.resources.pattern(4);
         if (pattern) {
             renderCharacterSelect(
                 renderer_,
                 *pattern,
-                context.frontend_assets.pattern(0),
+                context.resources.pattern(0),
                 context.character_select.data(),
                 context.character_frame,
-                context.frontend_assets.savedGames(),
-                context.frontend_assets.savedPreviews());
+                context.resources.savedGames(),
+                context.resources.savedPreviews());
         }
     } else if (context.game_state == GameState::gameplay) {
         if (context.gameplay_frame.phase ==
             GameplayPhase::loading) {
             const auto* waiting =
-                context.frontend_assets.pattern(2);
+                context.resources.pattern(2);
             if (waiting) {
                 renderInitialLoadingScreen(
                     renderer_,
@@ -105,17 +122,22 @@ void RuntimeRenderer::render(
                     context.gameplay_frame.loading_counter,
                     context.gameplay_frame.ready_to_continue);
             }
+        } else if (context.world.scenarioVisualActive()) {
+            renderScenarioVisual(renderer_, context.world);
         } else {
             const auto* font =
-                context.frontend_assets.pattern(1);
+                context.resources.pattern(1);
             renderWorldGeometry(
                 renderer_,
                 context.world,
                 context.shadow_opacity,
                 interpolation,
                 context.game_config.semi_transparent_objects);
-            context.save_preview.capture(renderer_.surface());
-            if (!context.gameplay_debug.active() &&
+            renderScenarioScreenParticles(
+                renderer_, context.world);
+            context.save_preview.captureIfRequested(
+                renderer_.surface());
+            if (!debug_active &&
                 !context.gameplay_blackjack.active() &&
                 !context.gameplay_equipment_color.active() &&
                 !context.gameplay_options.active() &&
@@ -126,7 +148,7 @@ void RuntimeRenderer::render(
                     renderer_,
                     context.world,
                     font,
-                    context.frontend_assets.pattern(8),
+                    context.resources.pattern(8),
                     context.world.renderCameraScreenX(
                         interpolation),
                     context.world.renderCameraScreenY(
@@ -136,7 +158,7 @@ void RuntimeRenderer::render(
             const bool quest_notice_hidden =
                 context.world.conversationActive() ||
                 context.gameplay_blackjack.active() ||
-                context.gameplay_debug.active() ||
+                debug_active ||
                 context.gameplay_equipment_color.active() ||
                 context.gameplay_options.active() ||
                 context.gameplay_inventory.anyItemPanelActive() ||
@@ -150,18 +172,18 @@ void RuntimeRenderer::render(
                 renderQuestNotice(
                     renderer_,
                     *font,
-                    context.frontend_assets.pattern(8),
+                    context.resources.pattern(8),
                     context.world.quests(),
                     context.world.missions());
             }
             const auto* magic_icons =
-                context.frontend_assets.pattern(9);
+                context.resources.pattern(9);
             const auto* magic_bar_icons =
-                context.frontend_assets.pattern(10);
+                context.resources.pattern(10);
             const auto* status =
-                context.frontend_assets.pattern(6);
+                context.resources.pattern(6);
             const auto* cards =
-                context.frontend_assets.pattern(11);
+                context.resources.pattern(11);
             if (status && cards &&
                 context.gameplay_blackjack.active()) {
                 renderGameplayBlackjack(
@@ -173,7 +195,7 @@ void RuntimeRenderer::render(
                     context.gameplay_counter);
             } else if (status && font) {
                 const auto* map_icons =
-                    context.frontend_assets.pattern(7);
+                    context.resources.pattern(7);
                 if (context.gameplay_equipment_color.active()) {
                     renderGameplayEquipmentColor(
                         renderer_,
@@ -181,13 +203,17 @@ void RuntimeRenderer::render(
                         context.gameplay_equipment_color,
                         context.world,
                         context.gameplay_counter);
-                } else if (context.gameplay_debug.active()) {
+                }
+#if OSF_ENABLE_DEBUG_TOOLS
+                else if (debug_active) {
                     renderGameplayDebugMenu(
                         renderer_,
                         *status,
                         *font,
                         context.gameplay_debug);
-                } else if (context.gameplay_inventory
+                }
+#endif
+                else if (context.gameplay_inventory
                         .leftStorageActive()) {
                     renderGameplaySpecialItems(
                         renderer_,
@@ -267,7 +293,7 @@ void RuntimeRenderer::render(
                         context.gameplay_options,
                         context.game_config);
                 }
-                if (!context.gameplay_debug.active()) {
+                if (!debug_active) {
                     if (context.gameplay_inventory.active()) {
                         renderGameplayInventory(
                             renderer_,
@@ -280,7 +306,7 @@ void RuntimeRenderer::render(
                 }
             }
             const auto* bar =
-                context.frontend_assets.pattern(5);
+                context.resources.pattern(5);
             if (bar) {
                 renderGameplayHud(
                     renderer_,
@@ -296,7 +322,11 @@ void RuntimeRenderer::render(
                         context.world.playerIncreasedPowerReady(),
                         context.world
                             .playerIncreasedPowerActivationFeedback(),
-                        context.gameplay_counter));
+                        context.gameplay_counter,
+                        context.world.hasCompanion()
+                            ? &context.world.companion()
+                            : nullptr,
+                        context.world.ownedCompanionInactive()));
                 renderGameplayBeltItems(
                     renderer_,
                     context.world);
@@ -320,7 +350,7 @@ void RuntimeRenderer::render(
                     context.world);
             }
             if (status && font &&
-                !context.gameplay_debug.active() &&
+                !debug_active &&
                 !context.gameplay_blackjack.active()) {
                 renderHeldInventoryItem(
                     renderer_,
@@ -345,6 +375,7 @@ void RuntimeRenderer::render(
                         context.gameplay_magic);
                 }
             }
+#if OSF_ENABLE_DEBUG_TOOLS
             if (font &&
                 context.gameplay_debug.fpsCounterEnabled()) {
                 renderGameplayDebugFps(
@@ -352,10 +383,19 @@ void RuntimeRenderer::render(
                     *font,
                     context.frames_per_second);
             }
+            if (font &&
+                context.gameplay_debug.profilingEnabled()) {
+                renderGameplayProfiling(
+                    renderer_,
+                    *font,
+                    context.profiling_metrics,
+                    context.gameplay_debug.fpsCounterEnabled());
+            }
+#endif
         }
     }
     const auto* system_patterns =
-        context.frontend_assets.pattern(3);
+        context.resources.pattern(3);
     if (system_patterns) {
         renderSystemCursor(
             renderer_,
@@ -366,6 +406,7 @@ void RuntimeRenderer::render(
                 context.world.playerIdentifyModeActive());
     }
     renderer_.endFrame();
+    return renderer_.surface();
 }
 
 }  // namespace osf::runtime

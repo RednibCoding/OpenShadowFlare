@@ -62,8 +62,10 @@ broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 
 For reconstruction testing, `F12` opens a separate debug menu in the same
-visual style without changing the retail Escape menu. Its FPS counter, All
-Spells, Infinite HP, and Infinite MP entries are independent runtime toggles.
+visual style without changing the retail Escape menu. Its FPS counter,
+profiling overlay, All Spells, Infinite HP, and Infinite MP entries are
+independent runtime toggles. The profiler's portable memory accounting is
+described in [`documentation/profiling.md`](../../documentation/profiling.md).
 The spell override affects the live Magic window and bar only, while the
 resource overrides are applied at the combat and spell-cost boundaries. None
 of them changes the character's saved progress or resource values.
@@ -282,6 +284,26 @@ and ordinary effect request. Near Remote Town therefore uses its authored
 effect-and-sound sentences without teaching the interpreter about world actor
 or rendering classes.
 
+Full-screen scenario pages and falling weather follow the same boundary.
+Opcode 64 selects the original Epilogue or `Visual01` through `Visual06`
+artwork, owns its fade, minimum display time, page changes, and input lock.
+Opcode 65 only hands evaluated color and density to a small screen-particle
+owner. GAPI provides the general line primitive, while the script library
+remains unaware of assets, rendering, or input.
+
+Scripted enemy waves use the same boundary. `RKC_RPG_SCRIPT` reads the retail
+type-three lifecycle domain, searches stable enemy slots, and dispatches nested
+status-kind-six sentences. The world alone owns opcode 25's enemy reset and
+position change. Expired actors remain in their MCT order but every renderer,
+pointer, collision, combat-effect, and companion consumer treats them as
+inactive until the script activates them again.
+
+Unlock switches now stay in that data-driven path too. Their scripts test the
+idle hero against the displayed switch actor's retail interaction range, draw
+the evaluated progress number above the switch, and refresh the original
+`Player/Common/UnlockSW` animation on the hero. The separate opcode used by a
+network client remains a harmless no-op in the portable single-player host.
+
 Remote Town's `Scenario.Scs` is now decoded through the portable
 `RKC_RPG_SCRIPT` boundary. Clicking Ostare derives his script character number
 from the MCT people record, resolves the retail status trigger and sentence,
@@ -327,6 +349,25 @@ commands from Tables 32 and 33, with the retail fixed/random definition rules,
 rolled item instances, and 9-by-10 placement starts. Items can be bought into
 the backpack or equipment slots and sold back for gold, using the ordinary
 item sounds and delayed Price/Sale Price overlays.
+
+The same script offers his stolen-gem mission. Black Hammer's West Ruins loot
+row creates the fixed gem, pickup routes it to the item definition's automatic
+page, and returning it lets Malse remove the real owned item and complete the
+quest. That state and the removed item both remain correct after saving and
+loading; no Malse, Black Hammer, or quest-ID rule lives in the world code.
+
+Ostare's later Dusty Ruins job follows the same rule. His script checks the
+completed opening quest and the real level-30 gate, starts mission three, and
+the Room of Judgment waits until all eight enemies have completely faded
+before it marks the mission done. Returning to town creates Ostare's table
+reward once; the mission and reward latch both survive saving and loading.
+
+Syria's Spirit Stone mission is connected to that branch too. Stone Spike's
+authored loot row drops the stolen stone into its private item page; Syria
+removes that exact item, completes the mission, and creates her accessory
+reward from the next script callback. Saving keeps the mission complete and
+later visits return to her normal healing dialogue.
+
 The adjacent Identify Items choice also follows the authored script: it scans
 equipment, accessories, backpack, and belt, formats the 100-Gold confirmation,
 keeps `NO` selected initially, rejects insufficient Gold, and identifies every
@@ -422,6 +463,11 @@ active level, active experience, and its defeated countdown already live in
 the preserved player record. The following Table 60-sized save arrays retain
 level and experience for all six companions, and the scripted `Swap Dogs`
 choice rebuilds the selected PARTNER actor without hardcoded town logic.
+The companion `Check Status` branches are live too. Script opcode 3 builds the
+requested dog's profile from its saved level and the retail parameter tables,
+then shows the original multiline values in the normal actor speech bubble.
+All six shipped companion types use this shared path; even the retail screen's
+mislabeled magical-stat reads are kept faithfully.
 
 Run it with `--smoke-test` to close automatically after three frames.
 
@@ -479,7 +525,7 @@ implementations:
 - `states/` contains the top-level dispatcher and reconstructed game states
 - `ui/` contains layout shared by input handling and drawing
 - `world/` contains actors, scenario orchestration, and script-to-world glue
-- `runtime/` contains startup, input/audio adapters, and frontend assets
+- `runtime/` contains startup and the input/audio adapters
 - `runtime/platform/` owns application-loop and lifecycle adapters
 - `runtime/presentation/` owns the final-surface presentation interface and
   concrete graphics backends

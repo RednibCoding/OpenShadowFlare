@@ -158,6 +158,12 @@ void AudioSystem::playGameplayEffect(
     }
 }
 
+std::uint64_t AudioSystem::memoryUsageBytes() const {
+    return effect_audio_.memoryUsageBytes() +
+        menu_music_.memoryUsageBytes() +
+        world_music_.memoryUsageBytes();
+}
+
 bool AudioSystem::loadVoc(
     VocPlayer& player,
     std::string_view retail_path) {

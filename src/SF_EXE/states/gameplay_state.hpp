@@ -32,6 +32,9 @@ struct GameplayFrameInput {
     std::int32_t world_view_right = 640;
     std::int32_t world_view_bottom = 400;
     bool pointer_secondary_pressed = false;
+    bool companion_toggle_pressed = false;
+    bool companion_hud_pressed = false;
+    bool cancel_pressed = false;
 };
 
 struct GameplayStateHooks {
@@ -53,11 +56,14 @@ struct GameplayStateHooks {
         command_player_magic;
     std::function<bool()> world_interaction_pending;
     std::function<bool()> conversation_active;
+    std::function<bool()> scenario_visual_active;
+    std::function<void()> advance_scenario_visual;
     std::function<bool()> conversation_requires_selection;
     std::function<bool(std::int32_t, std::int32_t)>
         choose_conversation_option;
     std::function<void()> advance_conversation;
     std::function<void()> toggle_player_run;
+    std::function<void()> toggle_companion_activity;
     std::function<void()> activate_increased_power;
     std::function<void()> place_land_mine;
     std::function<void()> update_world;

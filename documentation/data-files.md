@@ -620,9 +620,13 @@ count. The 0x160-byte player record holds the active companion's working row;
 these arrays preserve progression for every inactive dog. OpenShadowFlare now
 restores and rewrites that complete block at the exact boundary. Older sparse
 portable saves seed missing companion rows at level one and experience zero.
-The next retail fields are three still-separate world values, followed by the
-literal Giant Warehouse page count ten, ten page-unlock values, and ten normal
-9-by-10 item containers.
+The next three signed words are the live run/walk flag, scenario ID, and
+scenario entry value. Retail writes them from `DAT_0048ce80` and the current
+player actor's `+0x60/+0x64` fields, then passes the latter pair straight back
+to the scenario loader after loading. It does not store the hero's arbitrary
+world coordinates or live facing here: both come from the saved scenario
+entry when it is resolved. The literal Giant Warehouse page count ten, ten
+page-unlock values, and ten normal 9-by-10 item containers follow those words.
 Those flags and containers are now restored and rewritten too. The currently
 selected page is UI-only and is not serialized. Four more normal item
 containers immediately follow the Giant Warehouse
@@ -630,8 +634,18 @@ pages. They are the automatic-item pages selected by the final category-four
 `Item.Ibn` fields and searched by script opcodes 58 and 59. OpenShadowFlare
 restores and rewrites all four at that exact boundary. Sparse portable saves
 use late-item state version two; version one saves which only carried Giant
-Warehouse data still load with four empty automatic pages. Scenario position
-and the rest of the later state are still pending.
+Warehouse data still load with four empty automatic pages. Their old extension
+supplies the run/walk fallback, while the requested initial scenario and entry
+remain the fallback for saves which predate the retail world-state owner. The
+rest of the later state is still pending.
+
+The early quest items show why these coordinates must remain part of the item
+definition. Malse's stolen gem `99000000`, Syria's stolen Spirit Stone
+`99000001`, and Rosanna's Memorable Ruby `99000002` occupy cells `(0,0)`,
+`(1,0)`, and `(2,0)` on automatic page zero. Script opcode 58 finds them there
+and opcode 59 removes the returned item from that owner before completing the
+matching mission. The other Spirit Stone named by definition `98000001` is a
+different item on page two.
 
 ## Transport destination table
 
@@ -724,10 +738,11 @@ ownership:
 | `0x5c` | Fixed grid x coordinate in that page |
 | `0x60` | Fixed grid y coordinate in that page |
 
-For example, Malse's Gem uses page zero at `(0,0)`, while Spirit Stone uses
-page two at `(1,0)`. Gold and Land Mines carry `-1` and continue through their
-separate ordinary owners. The fixed placement is data-driven; scripts only
-name the category and definition ID.
+For example, Malse's Gem uses page zero at `(0,0)`, while Syria's stolen
+Spirit Stone uses page zero at `(1,0)`. A different later item also named
+Spirit Stone uses page two at `(1,0)`. Gold and Land Mines carry `-1` and
+continue through their separate ordinary owners. The fixed placement is
+data-driven; scripts only name the category and definition ID.
 
 Weapon records also expose the fields used by the first equipment slice:
 

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "debug/profiling_metrics.hpp"
+
 namespace osf {
 
 class GameplayDebugMenu;
@@ -21,6 +23,11 @@ void renderGameplayDebugFps(
     gapi::Backend& renderer,
     const gapi::NjpImage& font,
     std::int32_t frames_per_second);
+void renderGameplayProfiling(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& font,
+    const debug::ProfilingMetrics& metrics,
+    bool fps_counter_visible);
 
 }  // namespace osf
 

@@ -23,6 +23,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef LAL_DEFAULT_MAXIMUM_SAMPLE_RATE
+#define LAL_DEFAULT_MAXIMUM_SAMPLE_RATE 16000
+#endif
+
+#ifndef LAL_DEFAULT_FORCE_MONO
+#define LAL_DEFAULT_FORCE_MONO 1
+#endif
+
 enum {
   LAL_OUTPUT_SAMPLE_RATE = 44100,
   LAL_OUTPUT_CHANNELS = 2,

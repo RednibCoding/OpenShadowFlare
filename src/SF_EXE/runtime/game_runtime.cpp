@@ -2,10 +2,10 @@
 
 #include "lwl.h"
 #include "core/retail_random.hpp"
+#include "resources/resource_manager.hpp"
 #include "resources/retail_filesystem.hpp"
 #include "runtime/application_loop.hpp"
 #include "runtime/audio_system.hpp"
-#include "runtime/frontend_assets.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
 #include "runtime/platform/platform_text_input.hpp"
@@ -16,9 +16,13 @@
 #include "states/gameplay_state.hpp"
 #include "states/character_select_state.hpp"
 #include "states/title_state.hpp"
+#include "ui/companion_hud_input.hpp"
 #include "ui/player_level_up_notice_input.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
+#include "debug/frame_profiler.hpp"
+#endif
 
 #include <algorithm>
 #include <cstdio>
@@ -36,31 +40,26 @@ class Runtime final : public osf::runtime::FrameApplication {
 public:
     explicit Runtime(std::filesystem::path dataRoot)
         : dataRoot_(std::move(dataRoot)),
-          frontendAssets_(dataRoot_),
+          resources_(dataRoot_),
           surfacePresenter_(
               osf::runtime::createSurfacePresenter()),
-          renderer_(
-              kVirtualWidth,
-              kVirtualHeight,
-              [this](osf::gapi::SurfaceView surface) {
-                  presentSurface(surface);
-              }),
+          renderer_(kVirtualWidth, kVirtualHeight),
           input_(kVirtualWidth, kVirtualHeight),
           titleState_(
               random_,
               osf::runtime::makeTitleStateHooks(
-                  dataRoot_, frontendAssets_, audio_)),
+                  dataRoot_, resources_, audio_)),
           characterSelectState_(
               osf::runtime::makeCharacterSelectStateHooks(
                   dataRoot_,
-                  frontendAssets_,
+                  resources_,
                   audio_,
                   window_)),
           gameplayState_(
               osf::runtime::makeGameplayStateHooks(
                   dataRoot_,
                   gameplayPlayer_,
-                  frontendAssets_,
+                  resources_,
                   audio_,
                   world_)),
           gameState_(makeGameStateCallbacks()) {}
@@ -120,14 +119,14 @@ public:
             gameConfig_.click_priority,
         });
 
-        if (!frontendAssets_.loadPattern(
+        if (!resources_.loadCommonPattern(
                 0, "System\\Common\\Pattern\\Font00.njp") ||
-            !frontendAssets_.loadPattern(
+            !resources_.loadCommonPattern(
                 1, "System\\Common\\Pattern\\Font01.njp") ||
-            !frontendAssets_.loadPattern(
+            !resources_.loadCommonPattern(
                 2,
                 "System\\Common\\Pattern\\Waiting.njp") ||
-            !frontendAssets_.loadPattern(
+            !resources_.loadCommonPattern(
                 3,
                 "System\\Common\\Pattern\\System.njp")) {
             return false;
@@ -143,9 +142,12 @@ public:
         renderedFrames_ = 0;
         previousTime_ = lwl_time_seconds();
         nextFrame_ = previousTime_;
+#if OSF_ENABLE_DEBUG_TOOLS
         fpsWindowStart_ = previousTime_;
         fpsWindowFrames_ = 0;
         framesPerSecond_ = 0;
+        profiler_.setEnabled(false, previousTime_);
+#endif
         gameAccumulator_ = kGameStep;
     }
 
@@ -190,7 +192,32 @@ private:
                 gameAccumulator_ / kGameStep,
                 0.0,
                 1.0);
-        renderer_.render(
+#if OSF_ENABLE_DEBUG_TOOLS
+        const bool profilingEnabled =
+            gameplayUi_.debug().profilingEnabled();
+        profiler_.setEnabled(profilingEnabled, currentTime);
+        const bool synchronizeDisplay = !profilingEnabled;
+        if (synchronizeDisplay != displaySynchronizationEnabled_) {
+            surfacePresenter_->setDisplaySynchronization(
+                synchronizeDisplay);
+            displaySynchronizationEnabled_ = synchronizeDisplay;
+        }
+        if (profiler_.memorySampleDue(currentTime)) {
+            const std::uint64_t audioMemory =
+                audio_.memoryUsageBytes();
+            const std::uint64_t gameMemory =
+                resources_.memoryUsageBytes() +
+                world_.resourceMemoryUsageBytes() +
+                renderer_.memoryUsageBytes();
+            profiler_.recordMemoryUsage(
+                currentTime,
+                gameMemory,
+                audioMemory,
+                surfacePresenter_->videoMemoryUsageBytes());
+        }
+        const double framebufferFillStart = lwl_time_seconds();
+#endif
+        const osf::gapi::SurfaceView surface = renderer_.render(
             {
                 gameState_.currentState(),
                 titleFrame_,
@@ -198,11 +225,13 @@ private:
                 gameplayFrame_,
                 characterSelectState_,
                 world_,
-                frontendAssets_,
+                resources_,
                 savePreview_,
                 gameplayUi_.options(),
                 gameplayUi_.blackjack(),
+#if OSF_ENABLE_DEBUG_TOOLS
                 gameplayUi_.debug(),
+#endif
                 gameplayUi_.equipmentColor(),
                 gameplayUi_.inventory(),
                 gameplayUi_.map(),
@@ -214,13 +243,33 @@ private:
                 gameConfig_,
                 shadowOpacity_,
                 gameplayCounter_,
+#if OSF_ENABLE_DEBUG_TOOLS
                 framesPerSecond_,
+                profiler_.metrics(),
+#endif
                 input_.menu().pointer_x,
                 input_.menu().pointer_y,
             },
             interpolation);
+#if OSF_ENABLE_DEBUG_TOOLS
+        profiler_.recordFramebufferFill(
+            lwl_time_seconds() - framebufferFillStart);
+        const double presentStart = lwl_time_seconds();
+#endif
+        surfacePresenter_->prepareFrame(surface);
+#if OSF_ENABLE_DEBUG_TOOLS
+        profiler_.recordPresent(
+            lwl_time_seconds() - presentStart);
+#endif
+        surfacePresenter_->displayFrame();
+        if (gameState_.currentState() ==
+                osf::GameState::gameplay &&
+            gameplayFrame_.phase == osf::GameplayPhase::world) {
+            world_.advanceScenarioVisualFrame();
+        }
 
         ++renderedFrames_;
+#if OSF_ENABLE_DEBUG_TOOLS
         ++fpsWindowFrames_;
         const double fps_elapsed =
             currentTime - fpsWindowStart_;
@@ -232,6 +281,7 @@ private:
             fpsWindowStart_ = currentTime;
             fpsWindowFrames_ = 0;
         }
+#endif
         if (smokeTest_ && renderedFrames_ >= 3) {
             running_ = false;
         }
@@ -252,10 +302,6 @@ private:
         }
     }
 
-    void presentSurface(osf::gapi::SurfaceView source) {
-        surfacePresenter_->present(source);
-    }
-
     void completeScenarioChange() {
         gameplayUi_.reset();
         world_.setCameraAnchor(320, 240);
@@ -269,7 +315,7 @@ private:
                  index < 10;
                  ++index) {
                 const auto* animation =
-                    frontendAssets_.titleAnimation(index);
+                    resources_.titleAnimation(index);
                 const auto& charts = animation->charts();
                 input_.menu().smoke_frame_counts[index] =
                     charts.empty()
@@ -292,7 +338,7 @@ private:
         }
         case osf::GameState::character_select: {
             input_.characterSelect().saved_game_count =
-                frontendAssets_.savedGameCount();
+                resources_.savedGameCount();
             // Feed a name captured from a platform text-input method (PSP
             // on-screen keyboard) as if it had been typed.
             if (!pendingCharacterName_.empty()) {
@@ -332,7 +378,7 @@ private:
                     gameplayPlayer_.source =
                         osf::PlayerDataSource::retail_save;
                     const auto& saved_games =
-                        frontendAssets_.savedGames();
+                        resources_.savedGames();
                     if (selection.selected_saved_game >= 0 &&
                         static_cast<std::size_t>(
                             selection.selected_saved_game) <
@@ -365,16 +411,20 @@ private:
         }
         case osf::GameState::gameplay: {
             ++gameplayCounter_;
+            const bool scenario_visual_active =
+                world_.scenarioVisualActive();
             const bool notice_consumed =
+                !scenario_visual_active &&
                 !gameplayUi_.options().active() &&
                 osf::dismissPlayerLevelUpNoticeAtPointer(
                     input_.menu()
                         .pointer_primary_pressed,
                     input_.menu().pointer_x,
                     input_.menu().pointer_y,
-                    frontendAssets_.pattern(1),
+                    resources_.pattern(1),
                     world_);
             const bool ui_consumed =
+                !scenario_visual_active &&
                 !notice_consumed &&
                 gameplayUi_.update(
                     gameplayFrame_,
@@ -407,32 +457,46 @@ private:
                     gameplayUi_.transport().active();
                 const bool vendor_active =
                     gameplayUi_.vendor().active();
-                gameplayFrame_ = gameplayState_.update({
+                osf::GameplayFrameInput world_input;
+                world_input.confirm_pressed =
                     input_.menu().confirm_pressed &&
-                        !map_active,
-                    input_.menu()
-                        .pointer_primary_pressed &&
-                        !notice_consumed,
-                    input_.menu().pointer_x,
-                    input_.menu().pointer_y,
+                    !map_active;
+                world_input.pointer_primary_pressed =
+                    input_.menu().pointer_primary_pressed &&
+                    !notice_consumed;
+                world_input.pointer_x = input_.menu().pointer_x;
+                world_input.pointer_y = input_.menu().pointer_y;
+                world_input.pointer_primary_down =
                     input_.pointerPrimaryDown() &&
-                        !notice_consumed,
-                    input_.runTogglePressed(),
-                    input_.increasedPowerPressed(),
-                    input_.landMinePressed(),
-                    map_active ||
-                            magic_active ||
-                            status_active ||
-                            special_items_active ||
-                            transport_active ||
+                    !notice_consumed;
+                world_input.run_toggle_pressed =
+                    input_.runTogglePressed();
+                world_input.increased_power_pressed =
+                    input_.increasedPowerPressed();
+                world_input.land_mine_pressed =
+                    input_.landMinePressed();
+                world_input.world_view_left =
+                    map_active || magic_active || status_active ||
+                            special_items_active || transport_active ||
                             vendor_active
                         ? 320
-                        : 0,
-                    0,
-                    inventory_active ? 320 : 640,
-                    400,
-                    input_.pointerSecondaryPressed(),
-                });
+                        : 0;
+                world_input.world_view_right =
+                    inventory_active ? 320 : 640;
+                world_input.pointer_secondary_pressed =
+                    input_.pointerSecondaryPressed();
+                world_input.companion_toggle_pressed =
+                    input_.companionTogglePressed();
+                world_input.companion_hud_pressed =
+                    world_.hasCompanion() &&
+                    osf::companionHudToggleAtPointer(
+                        world_input.pointer_primary_pressed,
+                        world_input.pointer_x,
+                        world_input.pointer_y);
+                world_input.cancel_pressed =
+                    input_.gameplayOptionsPressed();
+                gameplayFrame_ =
+                    gameplayState_.update(world_input);
                 if (world_.takeScenarioChanged()) {
                     completeScenarioChange();
                 }
@@ -453,12 +517,14 @@ private:
         };
         callbacks.title.leave = [this] {
             titleState_.leave();
+            resources_.releaseTitleResources();
         };
         callbacks.character_select.enter = [this](std::int32_t argument) {
             characterSelectState_.enter(argument);
         };
         callbacks.character_select.leave = [this] {
             characterSelectState_.leave();
+            resources_.releaseCharacterSelectResources();
         };
         callbacks.gameplay.enter = [this](std::int32_t) {
             gameplayFrame_ = {};
@@ -485,16 +551,22 @@ private:
     double gameAccumulator_ = 0.0;
     std::int32_t shadowOpacity_ = 500;
     std::uint32_t gameplayCounter_ = 0;
+#if OSF_ENABLE_DEBUG_TOOLS
     double fpsWindowStart_ = 0.0;
     std::uint32_t fpsWindowFrames_ = 0;
     std::int32_t framesPerSecond_ = 0;
+    osf::debug::FrameProfiler profiler_;
+#endif
     osf::GameConfig gameConfig_;
     osf::PlayerLoadRequest gameplayPlayer_;
     std::string pendingCharacterName_;
     std::filesystem::path dataRoot_;
-    osf::runtime::FrontendAssets frontendAssets_;
+    osf::ResourceManager resources_;
     std::unique_ptr<osf::runtime::SurfacePresenter>
         surfacePresenter_;
+#if OSF_ENABLE_DEBUG_TOOLS
+    bool displaySynchronizationEnabled_ = true;
+#endif
     osf::runtime::RuntimeRenderer renderer_;
     osf::TitleFrameResult titleFrame_;
     osf::CharacterSelectFrameResult characterFrame_;

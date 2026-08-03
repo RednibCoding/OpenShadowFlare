@@ -21,6 +21,7 @@ public:
 
     const gapi::NjpImage* group(
         std::int32_t index) const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::array<gapi::NjpImage, group_count> groups_;

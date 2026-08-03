@@ -26,6 +26,8 @@
 struct LalSound {
   int16_t *samples;
   size_t frame_count;
+  uint32_t sample_rate;
+  uint16_t channels;
 };
 
 typedef struct {
@@ -43,6 +45,10 @@ static LalVoiceState g_voices[LAL_MAX_VOICES];
 static float g_master_volume = 1.0f;
 static bool g_initialized;
 static char g_error[256];
+static LalConfig g_config = {
+  LAL_DEFAULT_MAXIMUM_SAMPLE_RATE,
+  LAL_DEFAULT_FORCE_MONO != 0
+};
 
 static uint16_t read_u16_le(const uint8_t *p) {
   return (uint16_t) ((uint16_t) p[0] | ((uint16_t) p[1] << 8));
@@ -106,16 +112,51 @@ const char *lal_last_error(void) {
   return g_error;
 }
 
+LalConfig lal_config_default(void) {
+  LalConfig config;
+
+  config.maximum_sample_rate = LAL_DEFAULT_MAXIMUM_SAMPLE_RATE;
+  config.force_mono = LAL_DEFAULT_FORCE_MONO != 0;
+  return config;
+}
+
+static bool valid_config(const LalConfig *config) {
+  return config != NULL &&
+         config->maximum_sample_rate >= 8000 &&
+         config->maximum_sample_rate <= 192000;
+}
+
 bool lal_init(void) {
+  LalConfig config;
+
+  config = lal_config_default();
+  return lal_init_ex(&config);
+}
+
+bool lal_init_ex(const LalConfig *config) {
+  LalConfig previous_config;
+
+  if (!valid_config(config)) {
+    lal_set_error("The LAL configuration is invalid.");
+    return false;
+  }
   if (g_initialized) {
-    return true;
+    if (g_config.maximum_sample_rate == config->maximum_sample_rate &&
+        g_config.force_mono == config->force_mono) {
+      return true;
+    }
+    lal_set_error("LAL cannot change configuration while initialized.");
+    return false;
   }
 
   memset(g_voices, 0, sizeof(g_voices));
   g_master_volume = 1.0f;
   lal_set_error(NULL);
+  previous_config = g_config;
+  g_config = *config;
 
   if (!lal_platform_init()) {
+    g_config = previous_config;
     if (g_error[0] == '\0') {
       lal_set_error("Could not initialize the platform audio device.");
     }
@@ -212,6 +253,8 @@ static LalSound *create_converted_pcm(
     uint16_t bits_per_sample, uint16_t frame_stride) {
   size_t input_frames;
   size_t output_frames;
+  uint32_t output_sample_rate;
+  uint16_t output_channels;
   size_t frame;
   LalSound *sound;
   uint16_t packed_stride;
@@ -246,13 +289,18 @@ static LalSound *create_converted_pcm(
     lal_set_error("PCM data contains no complete sample frames.");
     return NULL;
   }
+  output_sample_rate = sample_rate < g_config.maximum_sample_rate
+    ? sample_rate
+    : g_config.maximum_sample_rate;
+  output_channels = g_config.force_mono ? 1 : channels;
   {
     uint64_t computed_output_frames =
-      ((uint64_t) input_frames * LAL_OUTPUT_SAMPLE_RATE + sample_rate / 2) /
+      ((uint64_t) input_frames * output_sample_rate + sample_rate / 2) /
       sample_rate;
     if (computed_output_frames == 0 ||
         computed_output_frames >
-          (uint64_t) (SIZE_MAX / (2 * sizeof(int16_t)))) {
+          (uint64_t) (SIZE_MAX /
+            ((size_t) output_channels * sizeof(int16_t)))) {
       lal_set_error("Converted PCM sample count is invalid.");
       return NULL;
     }
@@ -265,13 +313,15 @@ static LalSound *create_converted_pcm(
     return NULL;
   }
   sound->samples = (int16_t *) malloc(
-    output_frames * 2 * sizeof(*sound->samples));
+    output_frames * (size_t) output_channels * sizeof(*sound->samples));
   if (sound->samples == NULL) {
     free(sound);
     lal_set_error("Out of memory while converting PCM samples.");
     return NULL;
   }
   sound->frame_count = output_frames;
+  sound->sample_rate = output_sample_rate;
+  sound->channels = output_channels;
 
   for (frame = 0; frame < output_frames; ++frame) {
     uint64_t source_position;
@@ -281,8 +331,8 @@ static LalSound *create_converted_pcm(
     int channel;
 
     source_position = (uint64_t) frame * sample_rate;
-    source_frame = (size_t) (source_position / LAL_OUTPUT_SAMPLE_RATE);
-    fraction = (uint32_t) (source_position % LAL_OUTPUT_SAMPLE_RATE);
+    source_frame = (size_t) (source_position / output_sample_rate);
+    fraction = (uint32_t) (source_position % output_sample_rate);
     if (source_frame >= input_frames) {
       source_frame = input_frames - 1;
     }
@@ -290,22 +340,41 @@ static LalSound *create_converted_pcm(
       ? source_frame + 1
       : source_frame;
 
-    for (channel = 0; channel < 2; ++channel) {
+    for (channel = 0; channel < output_channels; ++channel) {
       int32_t first;
       int32_t second;
       int32_t converted;
 
-      first = pcm_sample(
-        sample_data, source_frame, channel, channels,
-        bits_per_sample, frame_stride);
-      second = pcm_sample(
-        sample_data, next_frame, channel, channels,
-        bits_per_sample, frame_stride);
+      if (output_channels == 1 && channels == 2) {
+        first = (
+          pcm_sample(
+            sample_data, source_frame, 0, channels,
+            bits_per_sample, frame_stride) +
+          pcm_sample(
+            sample_data, source_frame, 1, channels,
+            bits_per_sample, frame_stride)) / 2;
+        second = (
+          pcm_sample(
+            sample_data, next_frame, 0, channels,
+            bits_per_sample, frame_stride) +
+          pcm_sample(
+            sample_data, next_frame, 1, channels,
+            bits_per_sample, frame_stride)) / 2;
+      } else {
+        first = pcm_sample(
+          sample_data, source_frame, channel, channels,
+          bits_per_sample, frame_stride);
+        second = pcm_sample(
+          sample_data, next_frame, channel, channels,
+          bits_per_sample, frame_stride);
+      }
       converted = (int32_t) (
-        ((int64_t) first * (LAL_OUTPUT_SAMPLE_RATE - fraction) +
+        ((int64_t) first * (output_sample_rate - fraction) +
          (int64_t) second * fraction) /
-        LAL_OUTPUT_SAMPLE_RATE);
-      sound->samples[frame * 2 + (size_t) channel] = (int16_t) converted;
+        output_sample_rate);
+      sound->samples[
+        frame * (size_t) output_channels + (size_t) channel] =
+          (int16_t) converted;
     }
   }
 
@@ -463,10 +532,27 @@ size_t lal_sound_frame_count(const LalSound *sound) {
 }
 
 double lal_sound_duration(const LalSound *sound) {
-  if (sound == NULL) {
+  if (sound == NULL || sound->sample_rate == 0) {
     return 0.0;
   }
-  return (double) sound->frame_count / LAL_OUTPUT_SAMPLE_RATE;
+  return (double) sound->frame_count / sound->sample_rate;
+}
+
+uint32_t lal_sound_sample_rate(const LalSound *sound) {
+  return sound == NULL ? 0 : sound->sample_rate;
+}
+
+uint16_t lal_sound_channel_count(const LalSound *sound) {
+  return sound == NULL ? 0 : sound->channels;
+}
+
+size_t lal_sound_memory_usage_bytes(const LalSound *sound) {
+  if (sound == NULL) {
+    return 0;
+  }
+  return sizeof(*sound) +
+         sound->frame_count * (size_t) sound->channels *
+           sizeof(*sound->samples);
 }
 
 static LalVoice make_voice_handle(int index, uint32_t generation) {
@@ -737,18 +823,26 @@ void lal_mix_frames(int16_t *output, size_t frame_count) {
         second_frame = voice->loop ? 0 : first_frame;
       }
       fraction = voice->position - first_frame;
-      first = voice->sound->samples + first_frame * 2;
-      second = voice->sound->samples + second_frame * 2;
+      first = voice->sound->samples +
+              first_frame * voice->sound->channels;
+      second = voice->sound->samples +
+               second_frame * voice->sound->channels;
       left_sample = (float) (
         first[0] + (second[0] - first[0]) * fraction);
-      right_sample = (float) (
-        first[1] + (second[1] - first[1]) * fraction);
+      if (voice->sound->channels == 1) {
+        right_sample = left_sample;
+      } else {
+        right_sample = (float) (
+          first[1] + (second[1] - first[1]) * fraction);
+      }
       left_balance = voice->pan > 0.0f ? 1.0f - voice->pan : 1.0f;
       right_balance = voice->pan < 0.0f ? 1.0f + voice->pan : 1.0f;
       gain = voice->volume * g_master_volume;
       left += (int64_t) (left_sample * gain * left_balance);
       right += (int64_t) (right_sample * gain * right_balance);
-      voice->position += voice->playback_rate;
+      voice->position +=
+        voice->playback_rate * voice->sound->sample_rate /
+        LAL_OUTPUT_SAMPLE_RATE;
       if (voice->position >= (double) voice->sound->frame_count) {
         if (voice->loop) {
           size_t wraps;

@@ -38,6 +38,17 @@ struct ScenarioScriptRuntimeHooks {
         std::int32_t,
         bool&)> query_item;
     std::function<std::int32_t()> next_random;
+    std::function<bool(
+        std::int32_t,
+        std::string&)> build_companion_status_message;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t&)> query_enemy_lifecycle_state;
+    std::function<bool(
+        std::int32_t,
+        std::int32_t,
+        std::int32_t,
+        script::LocalPlayerTarget&)> query_local_player_target;
 };
 
 class ScenarioScriptRuntime {

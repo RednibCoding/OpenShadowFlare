@@ -25,6 +25,12 @@ function(osf_configure_presentation target)
         pspge
         pspdisplay
     )
+  elseif(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "nxfb")
+    target_sources(
+      ${target}
+      PRIVATE
+        runtime/presentation/switch_surface_presenter.cpp
+    )
   else()
     message(FATAL_ERROR
       "Unsupported presentation backend: "

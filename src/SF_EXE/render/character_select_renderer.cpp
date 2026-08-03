@@ -1,5 +1,7 @@
 #include "character_select_renderer.hpp"
 
+#include "world/player_job.hpp"
+
 #include <algorithm>
 #include <string>
 #include <string_view>
@@ -13,7 +15,8 @@ void drawText(
     std::string_view text,
     std::int32_t x,
     std::int32_t y,
-    std::int32_t brightness = 1000) {
+    std::int32_t brightness = 1000,
+    gapi::Color color = {255, 255, 255, 255}) {
     if (!font) {
         return;
     }
@@ -24,7 +27,7 @@ void drawText(
     renderer.drawText(
         *font,
         text,
-        {x, y, {255, 255, 255, 255}, brightness});
+        {x, y, color, brightness});
 }
 
 std::int32_t textCellCount(std::string_view text) {
@@ -322,6 +325,15 @@ void renderSavedGames(
                         std::max<std::int32_t>(selected, 0))
                 ? brightness
                 : brightness / 2;
+        const bool selectedItem =
+            index ==
+            static_cast<std::size_t>(std::max(selected, 0));
+        const gapi::Color labelColor = selectedItem
+            ? gapi::Color{224, 192, 128, 255}
+            : gapi::Color{112, 96, 64, 255};
+        const gapi::Color valueColor = selectedItem
+            ? gapi::Color{224, 224, 224, 255}
+            : gapi::Color{112, 112, 112, 255};
         renderer.drawPattern(
             select,
             40,
@@ -352,25 +364,129 @@ void renderSavedGames(
             drawText(
                 renderer,
                 font,
-                "Level: " + std::to_string(save.level),
-                x + 40,
+                "Level.",
+                x + 39,
                 y + 12,
-                itemBrightness);
+                brightness,
+                labelColor);
             drawText(
                 renderer,
                 font,
-                save.name,
-                x + 40,
+                "       " + std::to_string(save.level),
+                x + 39,
+                y + 12,
+                brightness,
+                valueColor);
+            drawText(
+                renderer,
+                font,
+                "Job.",
+                x + 104,
+                y + 12,
+                brightness,
+                labelColor);
+            drawText(
+                renderer,
+                font,
+                "     " +
+                    std::string(retailPlayerJobName(
+                        save.job, save.gender)),
+                x + 104,
+                y + 12,
+                brightness,
+                valueColor);
+            drawText(
+                renderer,
+                font,
+                "Sex.",
+                x + 200,
+                y + 12,
+                brightness,
+                labelColor);
+            drawText(
+                renderer,
+                font,
+                "     " +
+                    std::string(
+                        save.gender == 1 ? "Male" : "Female"),
+                x + 200,
+                y + 12,
+                brightness,
+                valueColor);
+            drawText(
+                renderer,
+                font,
+                "Name.",
+                x + 39,
                 y + 32,
-                itemBrightness);
+                brightness,
+                labelColor);
+            drawText(
+                renderer,
+                font,
+                "      " + save.name,
+                x + 39,
+                y + 32,
+                brightness,
+                valueColor);
+            drawText(
+                renderer,
+                font,
+                "HP.",
+                x + 39,
+                y + 52,
+                brightness,
+                labelColor);
+            drawText(
+                renderer,
+                font,
+                "    " + std::to_string(save.life),
+                x + 39,
+                y + 52,
+                brightness,
+                valueColor);
+            drawText(
+                renderer,
+                font,
+                "MP.",
+                x + 100,
+                y + 52,
+                brightness,
+                labelColor);
+            drawText(
+                renderer,
+                font,
+                "    " + std::to_string(save.mana),
+                x + 100,
+                y + 52,
+                brightness,
+                valueColor);
+            drawText(
+                renderer,
+                font,
+                "EXP.",
+                x + 160,
+                y + 52,
+                brightness,
+                labelColor);
+            drawText(
+                renderer,
+                font,
+                "     " +
+                    std::to_string(save.experience),
+                x + 160,
+                y + 52,
+                brightness,
+                valueColor);
         } else {
             drawText(
                 renderer,
                 font,
                 "No Data",
-                x + 40,
-                y + 13,
-                itemBrightness);
+                x + 39,
+                y + 12,
+                brightness,
+                {112, 112, 112, 255});
         }
     }
 

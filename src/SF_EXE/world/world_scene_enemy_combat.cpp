@@ -164,6 +164,7 @@ void WorldScene::applyEnemyDirectImpact(
         impact.target.kind ==
             MovementTargetKind::scenario_actor &&
         hasCompanion() &&
+        !owned_companion_inactive_ &&
         impact.target.identifier ==
             companion_.characterNumber()) {
         accepted = applyCompanionDamagePacket(
@@ -343,12 +344,14 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
             companion_.characterNumber();
         target.scenario_id = scenario_world_.id();
         target.script_active = true;
-        target.attack_target_enabled = true;
+        target.attack_target_enabled =
+            !owned_companion_inactive_;
         target.current_life =
             companion_.currentLife();
         target.combat_defense =
             companion_.profile().physical_evasion;
-        target.owner_mode = 0;
+        target.owner_mode =
+            owned_companion_inactive_ ? 1 : 0;
         target.position = companion_.position();
         target.bounds = companion_.judgement();
         targets.companions.push_back(target);
@@ -394,6 +397,7 @@ EnemyActorUpdate WorldScene::updateEnemyActor(
             if (kind ==
                     MovementTargetKind::scenario_actor &&
                 hasCompanion() &&
+                !owned_companion_inactive_ &&
                 identifier ==
                     companion_.characterNumber()) {
                 return MovementTargetState{

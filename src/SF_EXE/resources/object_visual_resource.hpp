@@ -28,6 +28,7 @@ public:
     const gapi::NjpImage& staticShadows() const;
     const gapi::NjpImage& animationPatterns() const;
     const gapi::CafAnimation& animation() const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::int32_t id_ = -1;
@@ -49,6 +50,7 @@ public:
     const ObjectVisualResource* find(
         std::int32_t resource_id) const;
     void clear();
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::unordered_map<

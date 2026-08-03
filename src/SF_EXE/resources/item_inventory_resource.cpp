@@ -1,5 +1,6 @@
 #include "item_inventory_resource.hpp"
 
+#include "resource_memory.hpp"
 #include "retail_filesystem.hpp"
 
 #include <cstdio>
@@ -64,6 +65,14 @@ const gapi::NjpImage* ItemInventoryResource::group(
         return nullptr;
     }
     return &groups_[static_cast<std::size_t>(index)];
+}
+
+std::uint64_t ItemInventoryResource::memoryUsageBytes() const {
+    std::uint64_t bytes = 0;
+    for (const gapi::NjpImage& group : groups_) {
+        bytes += decodedMemoryUsageBytes(group);
+    }
+    return bytes;
 }
 
 }  // namespace osf

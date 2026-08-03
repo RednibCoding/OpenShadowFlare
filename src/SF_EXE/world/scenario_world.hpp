@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace osf {
@@ -64,8 +65,13 @@ public:
     const std::vector<NpcActor>& people() const;
     std::vector<EnemyActor>& enemies();
     const std::vector<EnemyActor>& enemies() const;
+    EnemyActor* findEnemyByCharacterNumber(
+        std::int32_t character_number);
+    const EnemyActor* findEnemyByCharacterNumber(
+        std::int32_t character_number) const;
     std::vector<GroundItem>& groundItems();
     const std::vector<GroundItem>& groundItems() const;
+    std::uint64_t resourceMemoryUsageBytes() const;
 
 private:
     std::int32_t id_ = -1;
@@ -86,6 +92,8 @@ private:
     std::vector<ScenarioObjectActor> objects_;
     std::vector<NpcActor> people_;
     std::vector<EnemyActor> enemies_;
+    std::unordered_map<std::int32_t, std::size_t>
+        enemy_indices_;
     std::vector<GroundItem> ground_items_;
 };
 

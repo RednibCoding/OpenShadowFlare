@@ -4,8 +4,10 @@
 #include "world/combat_effect_actor.hpp"
 #include "world/enemy_presentation_audio.hpp"
 #include "world/scenario_world.hpp"
+#include "world/world_scene.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
@@ -354,6 +356,15 @@ bool testHitAndDeathActions(
     state.presentation_action = 11;
     state.presentation_counter = 0;
     state.action_lock = 1;
+    state.reaction_duration = 9;
+    state.reaction_stage = 2;
+    state.reaction_displacement_suppressed = true;
+    state.reaction_additive = 3;
+    state.event_number = -1;
+    state.attributed_damage = {10, 20, 30, 40};
+    state.death_counter = 7;
+    state.defeated_by_effect = true;
+    state.defeat_source_character_number = 3;
     enemy.applyDamageReceiverState(state);
     const osf::EnemyActorUpdate first_death =
         enemy.update(
@@ -415,12 +426,157 @@ bool testHitAndDeathActions(
             empty_ground,
             empty_objects,
             nullptr);
+    if (!check(
+            faded && enemy.expired() && death_finished &&
+                expired_update.expired &&
+                !expired_update.death_finished,
+            "Enemy action eleven did not publish exactly one completion "
+            "after the retail chart-three fade.")) {
+        return false;
+    }
+
+    const std::int32_t visible_before = enemy.stateValue(
+        osf::ScenarioEntityStateChannel::visible);
+    const std::int32_t pointer_before = enemy.stateValue(
+        osf::ScenarioEntityStateChannel::pointer);
+    const std::int32_t judgement_before = enemy.stateValue(
+        osf::ScenarioEntityStateChannel::judgement);
+    const osf::WorldPosition activation_position{1234, 2345};
+    if (!check(
+            enemy.activate(activation_position, 5),
+            "An expired enemy slot rejected retail activation.")) {
+        return false;
+    }
+    const osf::EnemyDamageReceiverState activated =
+        enemy.damageReceiverState(world.id());
+    const osf::WorldPosition rendered =
+        enemy.renderPosition(0.0);
+    if (!check(
+            !enemy.expired() &&
+                enemy.currentLife() == enemy.maximumLife() &&
+                enemy.position().x == activation_position.x &&
+                enemy.position().y == activation_position.y &&
+                rendered.x == activation_position.x &&
+                rendered.y == activation_position.y &&
+                enemy.direction() == 5 &&
+                enemy.animationChart() == 0 &&
+                enemy.animationFrame() == 0 &&
+                enemy.drawStrength() == 1000 &&
+                activated.presentation_action == 7 &&
+                activated.presentation_counter == 0 &&
+                activated.action_lock == 0 &&
+                activated.reaction_duration == 0 &&
+                activated.reaction_stage == 0 &&
+                !activated.reaction_displacement_suppressed &&
+                activated.reaction_additive == 0 &&
+                activated.event_number == 0 &&
+                activated.attributed_damage ==
+                    std::array<
+                        std::int32_t,
+                        osf::kEnemyDamageSourceSlotCount>{} &&
+                activated.death_counter == 0 &&
+                !activated.defeated_by_effect &&
+                activated.defeat_source_character_number == -1 &&
+                enemy.stateValue(
+                    osf::ScenarioEntityStateChannel::visible) ==
+                    visible_before &&
+                enemy.stateValue(
+                    osf::ScenarioEntityStateChannel::pointer) ==
+                    pointer_before &&
+                enemy.stateValue(
+                    osf::ScenarioEntityStateChannel::judgement) ==
+                    judgement_before,
+            "Enemy activation did not restore the retail lifecycle state "
+            "or preserve authored entity flags.")) {
+        return false;
+    }
     return check(
-        faded && enemy.expired() && death_finished &&
-            expired_update.expired &&
-            !expired_update.death_finished,
-        "Enemy action eleven did not publish exactly one completion "
-        "after the retail chart-three fade.");
+        !enemy.activate({9999, 9999}, 1) &&
+            enemy.position().x == activation_position.x &&
+            enemy.position().y == activation_position.y &&
+            enemy.direction() == 5,
+        "Retail activation mutated a still-living enemy slot.");
+}
+
+bool testShippedScriptedEnemyWave(
+    const std::filesystem::path& data_root) {
+    osf::PlayerLoadRequest player;
+    player.name = "EnemyWave";
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root,
+                player,
+                {4000003, 0, 0},
+                &error),
+            "The shipped scripted-wave scenario could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    world.configurePlayerDebugResources(true, true);
+
+    constexpr std::int32_t character_number = 14030003;
+    auto findSlot = [&world]() {
+        return std::find_if(
+            world.enemies().begin(),
+            world.enemies().end(),
+            [](const osf::EnemyActor& enemy) {
+                return enemy.characterNumber() == character_number;
+            });
+    };
+    auto found = findSlot();
+    if (!check(
+            found != world.enemies().end(),
+            "The shipped scripted-wave enemy slot is missing.")) {
+        return false;
+    }
+    const std::size_t enemy_count = world.enemies().size();
+    osf::EnemyActor& enemy =
+        const_cast<osf::EnemyActor&>(*found);
+    osf::EnemyDamageReceiverState state =
+        enemy.damageReceiverState(world.scenarioId());
+    state.current_life = 0;
+    state.presentation_action = 11;
+    state.presentation_counter = 0;
+    state.action_lock = 1;
+    state.death_counter = 0;
+    enemy.applyDamageReceiverState(state);
+
+    bool saw_expired_slot = false;
+    bool saw_wave_effect = false;
+    bool reactivated = false;
+    for (std::int32_t update = 0;
+         update < 2000 && !reactivated;
+         ++update) {
+        world.update();
+        const auto slot = findSlot();
+        if (!check(
+                world.enemies().size() == enemy_count &&
+                    slot != world.enemies().end(),
+                "A dead scenario enemy lost its stable script slot.")) {
+            return false;
+        }
+        saw_expired_slot =
+            saw_expired_slot || slot->expired();
+        if (saw_expired_slot &&
+            !slot->expired() &&
+            slot->currentLife() == slot->maximumLife()) {
+            reactivated = true;
+        }
+        for (const osf::CombatEffectActor& effect :
+             world.combatEffects()) {
+            saw_wave_effect =
+                saw_wave_effect ||
+                effect.effectNumber() == 20007 ||
+                effect.effectNumber() == 20008;
+        }
+        world.takeAudioSamples();
+    }
+    return check(
+        saw_expired_slot && reactivated && saw_wave_effect,
+        "The shipped script did not show and reactivate its dead enemy "
+        "slot.");
 }
 
 }  // namespace
@@ -435,7 +591,8 @@ int main() {
         return 0;
     }
     return testEffectResourceMappingAndLifetime(data_root) &&
-                   testHitAndDeathActions(data_root)
+                   testHitAndDeathActions(data_root) &&
+                   testShippedScriptedEnemyWave(data_root)
                ? 0
                : 1;
 #else

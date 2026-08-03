@@ -73,8 +73,41 @@ GameplayFrameResult GameplayState::update(
             phase_ = GameplayPhase::world;
         }
     } else {
+        const bool companion_hud_pressed =
+            input.companion_hud_pressed;
+        const bool scenario_visual_active =
+            hooks_.scenario_visual_active &&
+            hooks_.scenario_visual_active();
+        if (scenario_visual_active) {
+            pointer_ground_command_active_ = false;
+            continuous_pointer_movement_ = false;
+            pointer_hold_updates_ = 0;
+            pointer_consumed_until_release_ =
+                input.pointer_primary_down;
+            if (hooks_.clear_pointer_hover) {
+                hooks_.clear_pointer_hover();
+            }
+            if ((input.confirm_pressed ||
+                 input.pointer_primary_pressed ||
+                 input.cancel_pressed) &&
+                hooks_.advance_scenario_visual) {
+                hooks_.advance_scenario_visual();
+            }
+            if (hooks_.update_world) {
+                hooks_.update_world();
+            }
+            previous_pointer_down_ =
+                input.pointer_primary_down;
+            return {
+                phase_,
+                loading_counter_,
+                world_ready_,
+                world_ready_,
+            };
+        }
         const bool pointer_in_world =
-            pointerInsideWorldView(input);
+            pointerInsideWorldView(input) &&
+            !companion_hud_pressed;
         if (pointer_in_world &&
             hooks_.update_pointer_hover) {
             hooks_.update_pointer_hover(
@@ -131,6 +164,11 @@ GameplayFrameResult GameplayState::update(
             if (input.run_toggle_pressed &&
                 hooks_.toggle_player_run) {
                 hooks_.toggle_player_run();
+            }
+            if ((input.companion_toggle_pressed ||
+                 companion_hud_pressed) &&
+                hooks_.toggle_companion_activity) {
+                hooks_.toggle_companion_activity();
             }
             if (input.increased_power_pressed &&
                 hooks_.activate_increased_power) {

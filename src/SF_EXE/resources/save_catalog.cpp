@@ -75,6 +75,9 @@ std::vector<RetailSaveSummary> loadRetailSaveCatalog(
         summary.gender = readI32(data, 0x18);
         summary.job = readI32(data, 0x1c);
         summary.level = readI32(data, 0x24);
+        summary.life = readI32(data, 0x34);
+        summary.mana = readI32(data, 0x3c);
+        summary.experience = readI32(data, 0xd8);
         catalog.push_back(std::move(summary));
     }
     return catalog;
