@@ -52,6 +52,29 @@ if(TARGET shadowflare_core)
       shadowflare_core_test PRIVATE -Wall -Wextra -Wpedantic)
   endif()
   add_test(NAME shadowflare_core COMMAND shadowflare_core_test)
+
+  add_executable(
+    shadowflare_gameplay_assets_test
+    shadowflare_gameplay_assets_test.c)
+  target_link_libraries(
+    shadowflare_gameplay_assets_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_gameplay_assets_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_gameplay_assets_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_gameplay_assets_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_gameplay_assets_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_gameplay_assets_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_gameplay_assets
+    COMMAND shadowflare_gameplay_assets_test)
+
   add_test(
     NAME shadowflare_c99_boundaries
     COMMAND

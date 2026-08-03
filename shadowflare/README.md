@@ -151,11 +151,11 @@ the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The first Remote Town gameplay viewport uses 1,892,120 bytes of the main arena,
-leaving 5,447,912 bytes free. Its map- and player-scoped data and selected
-artwork account for 1,569,481 bytes. GND rendering data is decoded directly from
-its compressed three-plane stream into two bytes per tile, so the 300x300 town
-grid occupies 180,000 bytes instead of retaining the 540,000-byte source
+The complete Remote Town gameplay screen uses 2,693,504 bytes of the main
+arena, leaving 4,646,528 bytes free. Its map- and player-scoped data and
+artwork account for 2,370,865 bytes. GND rendering data is decoded directly
+from its compressed three-plane stream into two bytes per tile, so the 300x300
+town grid occupies 180,000 bytes instead of retaining the 540,000-byte source
 layout.
 
 The GND movement plane is active without retaining its 1,451,808-byte raw
@@ -165,14 +165,14 @@ OBL judgement and the player rectangle feed a direct collision sweep followed
 by the executable's stateful cardinal edge steering. There is no route list,
 heap allocation, or file access during movement.
 
-Map artwork follows the current camera rather than a scenario-specific asset
-list. The loader reads the map's own ground cells and OBL objects, checks exact
-NJP/SDW pattern bounds against the 640x480 viewport, and retains only the
-referenced pattern pixels and palettes. The static world is then drawn in the
-retail ground, non-default shadow/object, and default shadow/object passes.
-The hero joins those same sorted passes using the retail player judgement box,
-so gates, walls, roofs, and ordinary scenery can appear on the correct side of
-the actor.
+Map artwork is owned by the active map rather than the camera or a
+scenario-specific asset list. When a map is entered, the loader scans its own
+ground cells and OBL objects once and retains every referenced NJP/SDW pattern
+and palette. Camera movement therefore performs no file access and cannot
+reveal unloaded tiles or scenery. The static world is then drawn in the retail
+ground, non-default shadow/object, and default shadow/object passes. The hero
+joins those same sorted passes using the retail player judgement box, so gates,
+walls, roofs, and ordinary scenery can appear on the correct side of the actor.
 
 The player archives are deliberately not loaded whole. The male NJP alone
 would expand to more than 20 MiB. A two-pass sparse loader scans the large file

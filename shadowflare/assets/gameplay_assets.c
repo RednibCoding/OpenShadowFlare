@@ -20,8 +20,6 @@
 #include "assets/gameplay_assets.h"
 
 #include "assets/retail_paths.h"
-#include "core/coordinates.h"
-#include "core/memory_budget.h"
 #include "data/pattern_list.h"
 
 #include <ctype.h>
@@ -89,35 +87,18 @@ static void sf_gameplay_select(
   }
 }
 
-static bool sf_gameplay_intersects(
-    const SfNjpPatternBounds *bounds, int32_t anchor_x, int32_t anchor_y) {
-  const int64_t left = (int64_t) anchor_x + bounds->x;
-  const int64_t top = (int64_t) anchor_y + bounds->y;
-  return bounds->valid && left < SF_FRAME_WIDTH && top < SF_FRAME_HEIGHT &&
-    left + bounds->width > 0 && top + bounds->height > 0;
-}
-
 static bool sf_gameplay_select_ground(
     SfGameplaySelection *selection, const SfPatternList *patterns,
-    const SfGroundMap *ground, int32_t camera_x, int32_t camera_y) {
-  int32_t first_x = sf_floor_divide(camera_x, ground->chip_width);
-  int32_t first_y = sf_floor_divide(camera_y, ground->chip_height);
-  int32_t last_x = sf_floor_divide(
-    camera_x + SF_FRAME_WIDTH - 1, ground->chip_width);
-  int32_t last_y = sf_floor_divide(
-    camera_y + SF_FRAME_HEIGHT - 1, ground->chip_height);
+    const SfGroundMap *ground) {
   int32_t y;
-  if (first_x < 0) first_x = 0;
-  if (first_y < 0) first_y = 0;
-  if (last_x >= ground->width) last_x = ground->width - 1;
-  if (last_y >= ground->height) last_y = ground->height - 1;
-  for (y = first_y; y <= last_y; ++y) {
+  for (y = 0; y < ground->height; ++y) {
     int32_t x;
-    for (x = first_x; x <= last_x; ++x) {
+    for (x = 0; x < ground->width; ++x) {
       const SfGroundCell *cell = sf_ground_cell(ground, x, y);
-      if (!cell || cell->pattern_set == SF_GROUND_EMPTY_PATTERN ||
-          cell->pattern == SF_GROUND_EMPTY_PATTERN ||
-          cell->pattern_set >= patterns->count ||
+      if (!cell) return false;
+      if (cell->pattern_set == SF_GROUND_EMPTY_PATTERN ||
+          cell->pattern == SF_GROUND_EMPTY_PATTERN) continue;
+      if (cell->pattern_set >= patterns->count ||
           cell->pattern >= SF_NJP_PATTERN_FILE_LIMIT) return false;
       sf_gameplay_select(
         selection, cell->pattern_set, cell->pattern);
@@ -126,59 +107,25 @@ static bool sf_gameplay_select_ground(
   return true;
 }
 
-static bool sf_gameplay_set_referenced(
-    const SfObjectMap *objects, uint8_t set, bool shadow) {
-  uint16_t index;
-  for (index = 0u; index < objects->count; ++index) {
-    const SfMapObject *object = &objects->objects[index];
-    if ((!shadow && object->pattern_set == set) ||
-        (shadow && (object->status & 8) != 0 &&
-         object->pattern_set >= 0 && object->pattern_set + 1 == set))
-      return true;
-  }
-  return false;
-}
-
 static bool sf_gameplay_select_objects(
     SfGameplaySelection *selection, const SfPatternList *patterns,
-    const SfObjectMap *objects, const char *data_root,
-    int32_t camera_x, int32_t camera_y) {
-  uint8_t set;
-  for (set = 0u; set < patterns->count; ++set) {
-    const bool shadow = sf_gameplay_ends_with_shadow(patterns->names[set]);
-    SfNjpPatternBounds bounds[SF_NJP_PATTERN_FILE_LIMIT];
-    uint8_t pattern_count;
-    char path[SF_RETAIL_PATH_CAPACITY];
-    uint16_t object_index;
-    if (strcmp(patterns->names[set], "?") == 0 ||
-        !sf_gameplay_set_referenced(objects, set, shadow)) continue;
-    if (!sf_gameplay_path(
-          path, sizeof(path), data_root,
-          sf_retail_world_paths.pattern_format,
-          patterns->names[set], 0))
-      return false;
-    if (!sf_njp_read_pattern_bounds(
-          path, bounds, SF_NJP_PATTERN_FILE_LIMIT, &pattern_count))
-      return false;
-    for (object_index = 0u; object_index < objects->count; ++object_index) {
-      const SfMapObject *object = &objects->objects[object_index];
-      SfScreenPoint anchor;
-      int32_t y;
-      bool belongs;
-      if (object->pattern < 0 || object->pattern >= pattern_count) continue;
-      belongs = shadow
-        ? (object->status & 8) != 0 && object->pattern_set >= 0 &&
-            object->pattern_set + 1 == set
-        : object->pattern_set == set;
-      if (!belongs) continue;
-      anchor = sf_world_to_screen(
-        (SfWorldPoint) {object->world_x, object->world_y});
-      y = anchor.y - camera_y;
-      if (!shadow) y -= object->height * 20 / 100;
-      if (sf_gameplay_intersects(
-            &bounds[object->pattern], anchor.x - camera_x, y))
-        sf_gameplay_select(selection, set, (uint8_t) object->pattern);
-    }
+    const SfObjectMap *objects) {
+  uint16_t object_index;
+  for (object_index = 0u; object_index < objects->count; ++object_index) {
+    const SfMapObject *object = &objects->objects[object_index];
+    if (object->pattern < 0 ||
+        object->pattern >= (int32_t) SF_NJP_PATTERN_FILE_LIMIT ||
+        object->pattern_set < 0 || object->pattern_set >= patterns->count)
+      continue;
+    sf_gameplay_select(
+      selection, (uint8_t) object->pattern_set, (uint8_t) object->pattern);
+    if ((object->status & 8) != 0 &&
+        object->pattern_set + 1 < patterns->count &&
+        sf_gameplay_ends_with_shadow(
+          patterns->names[object->pattern_set + 1]))
+      sf_gameplay_select(
+        selection, (uint8_t) (object->pattern_set + 1),
+        (uint8_t) object->pattern);
   }
   return true;
 }
@@ -229,7 +176,6 @@ bool sf_gameplay_assets_load(
   SfPatternList patterns;
   SfGameplaySelection selection;
   const SfMctEntry *entry;
-  SfScreenPoint player_screen;
   char map_name[SF_PATTERN_NAME_CAPACITY];
   char path[SF_RETAIL_PATH_CAPACITY];
   size_t mark;
@@ -258,14 +204,10 @@ bool sf_gameplay_assets_load(
         path, sizeof(path), data_root,
         sf_retail_world_paths.pattern_list_format, map_name, 0) ||
       !sf_pattern_list_load(path, &patterns)) goto done;
-  player_screen = sf_world_to_screen(
-    (SfWorldPoint) {entry->world_x, entry->world_y});
   if (!sf_gameplay_select_ground(
-        &selection, &patterns, &assets->ground,
-        player_screen.x - 320, player_screen.y - 240) ||
+        &selection, &patterns, &assets->ground) ||
       !sf_gameplay_select_objects(
-        &selection, &patterns, &assets->objects, data_root,
-        player_screen.x - 320, player_screen.y - 240) ||
+        &selection, &patterns, &assets->objects) ||
       !sf_gameplay_load_patterns(
         assets, &selection, &patterns, data_root, arena) ||
       !sf_player_assets_load(
