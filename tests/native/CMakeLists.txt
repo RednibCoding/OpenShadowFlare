@@ -26,6 +26,39 @@ target_include_directories(
 )
 add_test(NAME lal_conversion COMMAND lal_conversion_test)
 
+add_executable(tiny_libraries_test tiny_libraries_test.c)
+target_link_libraries(
+  tiny_libraries_test
+  PRIVATE
+    Twl::Twl
+    Tal::Tal
+)
+add_test(NAME tiny_libraries COMMAND tiny_libraries_test)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+  if(XVFB_RUN_EXECUTABLE)
+    add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+    target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+    add_test(
+      NAME twl_backend_smoke
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:twl_backend_smoke_test>")
+  endif()
+elseif(EMSCRIPTEN)
+  add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+  target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+  target_link_options(twl_backend_smoke_test PRIVATE "SHELL:-sEXIT_RUNTIME=1")
+  set_target_properties(twl_backend_smoke_test PROPERTIES SUFFIX ".html")
+endif()
+
+add_test(
+  NAME tiny_library_boundaries
+  COMMAND
+    "${CMAKE_COMMAND}"
+    "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/check_tiny_libraries.cmake"
+)
+
 if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
   add_executable(frame_profiler_test frame_profiler_test.cpp)
   target_link_libraries(
