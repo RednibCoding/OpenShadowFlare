@@ -16,6 +16,7 @@
 
 add_library(lal STATIC
   lal.c
+  lal_convert.c
 )
 add_library(Lal::Lal ALIAS lal)
 
@@ -50,6 +51,9 @@ target_include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_compile_features(lal PUBLIC c_std_99)
+if(NOT MSVC)
+  target_link_libraries(lal PRIVATE m)
+endif()
 target_compile_definitions(
   lal
   PRIVATE

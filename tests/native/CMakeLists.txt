@@ -17,6 +17,15 @@ target_include_directories(
 
 add_test(NAME portable_libraries COMMAND portable_libraries_test)
 
+add_executable(lal_conversion_test lal_conversion_test.c)
+target_link_libraries(lal_conversion_test PRIVATE Lal::Lal)
+target_include_directories(
+  lal_conversion_test
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/thirdparty/lal"
+)
+add_test(NAME lal_conversion COMMAND lal_conversion_test)
+
 if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
   add_executable(frame_profiler_test frame_profiler_test.cpp)
   target_link_libraries(
