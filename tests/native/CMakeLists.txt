@@ -35,6 +35,28 @@ target_link_libraries(
 )
 add_test(NAME tiny_libraries COMMAND tiny_libraries_test)
 
+if(TARGET shadowflare_core)
+  add_executable(shadowflare_core_test shadowflare_core_test.c)
+  target_link_libraries(shadowflare_core_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_core_test PRIVATE c_std_99)
+  set_target_properties(
+    shadowflare_core_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_core_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_core_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_core COMMAND shadowflare_core_test)
+  add_test(
+    NAME shadowflare_c99_boundaries
+    COMMAND
+      "${CMAKE_COMMAND}"
+      "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/check_shadowflare_c99.cmake")
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_program(XVFB_RUN_EXECUTABLE xvfb-run)
   if(XVFB_RUN_EXECUTABLE)

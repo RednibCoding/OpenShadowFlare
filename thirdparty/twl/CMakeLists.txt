@@ -18,7 +18,7 @@ add_library(twl STATIC twl.c)
 add_library(Twl::Twl ALIAS twl)
 
 target_include_directories(twl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_compile_features(twl PUBLIC c_std_11)
+target_compile_features(twl PRIVATE c_std_11)
 set_target_properties(twl PROPERTIES C_EXTENSIONS OFF)
 
 if(MSVC)

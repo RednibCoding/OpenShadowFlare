@@ -7,8 +7,11 @@ on:
       - 'CMakeLists.txt'
       - 'tests/native/CMakeLists.txt'
       - 'tests/native/check_tiny_libraries.cmake'
+      - 'tests/native/check_shadowflare_c99.cmake'
+      - 'tests/native/shadowflare_core_test.c'
       - 'tests/native/tiny_libraries_test.c'
       - 'tests/native/twl_backend_smoke_test.c'
+      - 'shadowflare/**'
       - 'thirdparty/tal/**'
       - 'thirdparty/twl/**'
   pull_request:
@@ -17,8 +20,11 @@ on:
       - 'CMakeLists.txt'
       - 'tests/native/CMakeLists.txt'
       - 'tests/native/check_tiny_libraries.cmake'
+      - 'tests/native/check_shadowflare_c99.cmake'
+      - 'tests/native/shadowflare_core_test.c'
       - 'tests/native/tiny_libraries_test.c'
       - 'tests/native/twl_backend_smoke_test.c'
+      - 'shadowflare/**'
       - 'thirdparty/tal/**'
       - 'thirdparty/twl/**'
   workflow_dispatch:
@@ -56,6 +62,7 @@ jobs:
         run: >-
           cmake --build build/${{ matrix.platform }}/debug
           --target tiny_libraries_test twl_backend_smoke_test
+          osf shadowflare_core_test
           --parallel
 
       - name: Build TWL and TAL tests (Windows)
@@ -64,6 +71,7 @@ jobs:
         run: |
           $output = & cmake --build build/${{ matrix.platform }}/debug `
             --target tiny_libraries_test twl_backend_smoke_test `
+            osf shadowflare_core_test `
             --parallel 2>&1
           $exitCode = $LASTEXITCODE
           $output | Write-Host
@@ -80,7 +88,7 @@ jobs:
           ctest --test-dir build/${{ matrix.platform }}/debug
           -C Debug
           --output-on-failure
-          -R "tiny_libraries|tiny_library_boundaries"
+          -R "tiny_libraries|tiny_library_boundaries|shadowflare_core|shadowflare_c99_boundaries"
 
       - name: Run common TWL and TAL tests (Windows)
         if: runner.os == 'Windows'
@@ -89,7 +97,7 @@ jobs:
           $output = & ctest --test-dir build/${{ matrix.platform }}/debug `
             -C Debug `
             --output-on-failure `
-            -R "tiny_libraries|tiny_library_boundaries" 2>&1
+            -R "tiny_libraries|tiny_library_boundaries|shadowflare_core|shadowflare_c99_boundaries" 2>&1
           $exitCode = $LASTEXITCODE
           $output | Write-Host
           if ($exitCode -ne 0) {
