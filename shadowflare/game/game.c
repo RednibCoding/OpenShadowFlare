@@ -20,6 +20,7 @@
 #include "game/game.h"
 
 #include "game/character_create.h"
+#include "game/load_game.h"
 #include "game/title.h"
 
 #include <string.h>
@@ -42,11 +43,36 @@ void sf_game_update(SfGame *game, const SfGameInput *input) {
     if (previous_mode != game->mode &&
         game->mode == SF_GAME_MODE_CHARACTER_SELECT)
       sf_character_create_state_init(game);
+    if (previous_mode != game->mode &&
+        game->mode == SF_GAME_MODE_LOAD_GAME)
+      sf_load_game_state_init(game);
   } else if (game->mode == SF_GAME_MODE_CHARACTER_SELECT) {
     game->title.sound_events = 0u;
     sf_character_create_state_update(game, input);
+  } else if (game->mode == SF_GAME_MODE_LOAD_GAME) {
+    game->title.sound_events = 0u;
+    game->character_create.sound_events = 0u;
+    sf_load_game_state_update(game, input);
   } else {
     game->title.sound_events = 0u;
     game->character_create.sound_events = 0u;
   }
+}
+
+void sf_game_saved_catalog_changed(
+    SfGame *game, const uint8_t *file_slots, uint8_t saved_game_count) {
+  uint8_t index;
+  if (!game) return;
+  if (saved_game_count > 6u) saved_game_count = 6u;
+  for (index = 0u; index < 6u; ++index)
+    game->config.saved_game_file_slots[index] =
+      file_slots && index < saved_game_count ? file_slots[index] : UINT8_MAX;
+  game->config.saved_game_count = saved_game_count;
+  game->config.next_save_available = saved_game_count < 6u;
+  game->load_game.selected_file_slot = -1;
+  if (saved_game_count == 0u) {
+    game->load_game.selection = 0u;
+  }
+  else if (game->load_game.selection >= saved_game_count)
+    game->load_game.selection = (uint8_t) (saved_game_count - 1u);
 }

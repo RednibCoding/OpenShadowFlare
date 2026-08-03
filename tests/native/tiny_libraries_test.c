@@ -73,6 +73,13 @@ static int test_twl(void) {
   TEST_CHECK(
     twl_present(twl, &surface) == TWL_RESULT_OK,
     "TWL rejected a valid RGB555 surface");
+  TEST_CHECK(
+    twl_display_frame(twl) == TWL_RESULT_INVALID_ARGUMENT,
+    "TWL displayed a frame that had not been prepared");
+  TEST_CHECK(
+    twl_prepare_frame(twl, &surface) == TWL_RESULT_OK &&
+      twl_display_frame(twl) == TWL_RESULT_OK,
+    "TWL rejected split frame preparation and display");
   twl_shutdown(twl);
   return 1;
 }

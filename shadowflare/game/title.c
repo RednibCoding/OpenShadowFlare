@@ -66,7 +66,7 @@ void sf_title_state_init(SfGame *game) {
   title->previous_pointer_x = 0;
   title->previous_pointer_y = 0;
   title->menu_visible[0] = game->config.next_save_available;
-  title->menu_visible[1] = game->config.saved_game_exists;
+  title->menu_visible[1] = game->config.saved_game_count > 0u;
   title->menu_visible[2] = true;
   title->selection = title->menu_visible[0] ? 0u :
     title->menu_visible[1] ? 1u : 2u;
@@ -95,7 +95,8 @@ void sf_title_state_update(SfGame *game, const SfGameInput *input) {
   title->sound_events = 0u;
 
   if (title->transition_timer == 1020 || title->transition_timer == 2020) {
-    game->mode = SF_GAME_MODE_CHARACTER_SELECT;
+    game->mode = title->transition_timer == 1020
+      ? SF_GAME_MODE_CHARACTER_SELECT : SF_GAME_MODE_LOAD_GAME;
     game->character_select_argument = title->transition_timer == 1020 ? 0u : 1u;
     return;
   }

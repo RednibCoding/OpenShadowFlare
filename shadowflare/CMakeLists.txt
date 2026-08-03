@@ -35,21 +35,26 @@ endfunction()
 add_library(
   shadowflare_core STATIC
   assets/character_create_assets.c
+  assets/load_game_assets.c
   assets/menu_assets.c
   assets/retail_paths.c
   assets/title_assets.c
   core/arena.c
   data/caf.c
+  data/bmp.c
   data/njp.c
   data/rclib.c
+  data/save.c
   data/voc.c
   game/character_create.c
   game/game.c
+  game/load_game.c
   game/title.c
   render/dirty.c
   render/framebuffer.c
   render/renderer.c
   screens/character_create_screen.c
+  screens/load_game_screen.c
   screens/title_screen.c
 )
 add_library(ShadowFlare::Core ALIAS shadowflare_core)
@@ -70,3 +75,25 @@ target_link_libraries(
     Tal::Tal
     Twl::Twl
 )
+
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  add_library(shadowflare_profiler STATIC runtime/profiler.c)
+  add_library(ShadowFlare::Profiler ALIAS shadowflare_profiler)
+  sf_configure_c99_target(shadowflare_profiler)
+  target_link_libraries(osf PRIVATE ShadowFlare::Profiler)
+  target_compile_definitions(osf PRIVATE SF_ENABLE_PROFILING=1)
+
+  add_executable(
+    osf-measure
+    ../utils/osf-measure.c
+    runtime/screen_runtime.c
+  )
+  sf_configure_c99_target(osf-measure)
+  target_link_libraries(
+    osf-measure
+    PRIVATE
+      ShadowFlare::Core
+      Tal::Tal
+      Twl::Twl
+  )
+endif()

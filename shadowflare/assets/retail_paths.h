@@ -41,9 +41,15 @@ typedef struct SfRetailCharacterCreatePaths {
   const char *font;
 } SfRetailCharacterCreatePaths;
 
+typedef struct SfRetailSavePaths {
+  const char *data_format;
+  const char *preview_format;
+} SfRetailSavePaths;
+
 extern const SfRetailTitlePaths sf_retail_title_paths;
 extern const SfRetailMenuPaths sf_retail_menu_paths;
 extern const SfRetailCharacterCreatePaths sf_retail_character_create_paths;
+extern const SfRetailSavePaths sf_retail_save_paths;
 
 bool sf_retail_path_join(
   char *path, size_t capacity, const char *root, const char *relative);

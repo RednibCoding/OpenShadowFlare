@@ -23,9 +23,14 @@
 #include "assets/retail_paths.h"
 #include "core/arena.h"
 #include "core/memory_budget.h"
+#include "data/save.h"
 #include "game/game.h"
 #include "render/renderer.h"
 #include "runtime/screen_runtime.h"
+
+#if defined(SF_ENABLE_PROFILING)
+#include "runtime/profiler.h"
+#endif
 
 #include "tal.h"
 #include "twl.h"
@@ -72,6 +77,7 @@ static void sf_read_event(
     if (event->key == TWL_KEY_RETURN) input->confirm_pressed = true;
     if (event->key == TWL_KEY_ESCAPE) input->cancel_pressed = true;
     if (event->key == TWL_KEY_BACKSPACE) input->backspace_pressed = true;
+    if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
   }
   if (event->type == TWL_EVENT_TEXT && input->text_length < 15u) {
     uint8_t encoded[4];
@@ -129,6 +135,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->confirm_pressed = false;
   input->cancel_pressed = false;
   input->backspace_pressed = false;
+  input->delete_pressed = false;
   input->text_length = 0u;
   input->text[0] = '\0';
 }
@@ -166,6 +173,11 @@ static void sf_play_menu_events(
     *music_started = sf_play_pcm(audio, &assets->music, true);
 }
 
+static bool sf_menu_game_mode(SfGameMode mode) {
+  return mode == SF_GAME_MODE_CHARACTER_SELECT ||
+    mode == SF_GAME_MODE_LOAD_GAME;
+}
+
 int sf_application_run(
     void *main_memory, size_t main_memory_size,
     void *video_memory, size_t video_memory_size,
@@ -179,6 +191,7 @@ int sf_application_run(
   const SfTitleAssets *title_assets;
   SfGame *game;
   SfGameConfig game_config;
+  SfSaveCatalog save_catalog;
   SfGameInput input;
   TwlConfig window_config;
   TalConfig audio_config;
@@ -196,6 +209,9 @@ int sf_application_run(
   SfGameMode audio_mode = SF_GAME_MODE_TITLE;
   bool running = true;
   bool menu_music_started = false;
+#if defined(SF_ENABLE_PROFILING)
+  SfRuntimeProfiler profiler;
+#endif
 
   if (!main_memory || main_memory_size > SF_MAIN_ARENA_BYTES ||
       !video_memory || video_memory_size > SF_VIDEO_MEMORY_LIMIT_BYTES)
@@ -275,10 +291,20 @@ int sf_application_run(
     return 4;
   }
 
-  game_config.saved_game_exists = false;
-  game_config.next_save_available = true;
+  if (!sf_save_catalog_load(data_root, &save_catalog)) {
+    if (audio) tal_shutdown(audio);
+    twl_shutdown(window);
+    return 4;
+  }
+  memset(&game_config, 0, sizeof(game_config));
+  game_config.saved_game_count = save_catalog.count;
+  game_config.next_save_available = save_catalog.count < SF_SAVE_SLOT_COUNT;
   {
     unsigned smoke;
+    unsigned save;
+    for (save = 0u; save < SF_SAVE_SLOT_COUNT; ++save)
+      game_config.saved_game_file_slots[save] = save < save_catalog.count
+        ? save_catalog.entries[save].file_slot : UINT8_MAX;
     for (smoke = 0u; smoke < SF_TITLE_SMOKE_COUNT; ++smoke)
       game_config.title_smoke_frame_count[smoke] =
         title_assets->smoke[smoke].animation.frame_count;
@@ -293,6 +319,9 @@ int sf_application_run(
     (size_t) framebuffer->stride * sizeof(uint16_t);
   surface.format = TWL_PIXEL_RGB555;
   next_frame = twl_time_microseconds(window);
+#if defined(SF_ENABLE_PROFILING)
+  sf_profiler_init(&profiler, next_frame);
+#endif
 
   while (running && !game->quit_requested) {
     TwlEvent event;
@@ -314,7 +343,8 @@ int sf_application_run(
         sf_play_menu_events(
           audio, menu_assets,
           (uint8_t) (game->title.sound_events |
-            game->character_create.sound_events),
+            game->character_create.sound_events |
+            game->load_game.sound_events),
           &menu_music_started);
         sf_clear_input(&input);
         next_frame += SF_FRAME_MICROSECONDS;
@@ -324,13 +354,11 @@ int sf_application_run(
         next_frame = now + SF_FRAME_MICROSECONDS;
     }
 
-    if (audio_mode == SF_GAME_MODE_CHARACTER_SELECT &&
-        game->mode != SF_GAME_MODE_CHARACTER_SELECT) {
+    if (sf_menu_game_mode(audio_mode) && !sf_menu_game_mode(game->mode)) {
       if (audio) tal_stop_all(audio);
       menu_music_started = false;
     }
-    if (audio_mode != SF_GAME_MODE_CHARACTER_SELECT &&
-        game->mode == SF_GAME_MODE_CHARACTER_SELECT &&
+    if (!sf_menu_game_mode(audio_mode) && sf_menu_game_mode(game->mode) &&
         !menu_music_started) {
       menu_music_started = sf_play_pcm(audio, &menu_assets->music, true);
     }
@@ -344,8 +372,41 @@ int sf_application_run(
       running = false;
       continue;
     }
-    sf_screen_runtime_draw(screen_runtime, &renderer, game);
-    if (twl_present(window, &surface) != TWL_RESULT_OK) running = false;
+    if (!sf_screen_runtime_prepare(screen_runtime, game)) {
+      fprintf(stderr, "Could not prepare assets for game mode %d.\n",
+        (int) game->mode);
+      running = false;
+      continue;
+    }
+    {
+#if defined(SF_ENABLE_PROFILING)
+      const uint64_t fill_started = twl_time_microseconds(window);
+      uint64_t fill_finished;
+      uint64_t present_prepared;
+      uint64_t frame_finished;
+#endif
+      sf_screen_runtime_draw(screen_runtime, &renderer, game);
+#if defined(SF_ENABLE_PROFILING)
+      fill_finished = twl_time_microseconds(window);
+#endif
+      if (twl_prepare_frame(window, &surface) != TWL_RESULT_OK)
+        running = false;
+#if defined(SF_ENABLE_PROFILING)
+      present_prepared = twl_time_microseconds(window);
+#endif
+      if (running && twl_display_frame(window) != TWL_RESULT_OK)
+        running = false;
+#if defined(SF_ENABLE_PROFILING)
+      frame_finished = twl_time_microseconds(window);
+      if (running) {
+        sf_profiler_record_frame(
+          &profiler, frame_finished,
+          (uint32_t) (fill_finished - fill_started),
+          (uint32_t) (present_prepared - fill_finished),
+          main_arena.used, video_arena.used);
+      }
+#endif
+    }
     if (audio) (void) tal_update(audio);
   }
 

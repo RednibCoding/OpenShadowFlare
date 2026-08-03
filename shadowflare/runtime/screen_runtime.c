@@ -56,11 +56,43 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGameMode mode) {
       runtime->data_root, runtime->arena);
     if (success)
       sf_character_create_screen_init(&runtime->screen.character_create);
+  } else if (mode == SF_GAME_MODE_LOAD_GAME) {
+    success = sf_load_game_assets_load(
+      &runtime->assets.load_game,
+      runtime->data_root, runtime->arena,
+      runtime->decode_scratch, runtime->decode_scratch_size);
+    if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   }
   runtime->loaded = success;
   runtime->loaded_mode = mode;
   runtime->blank_drawn = false;
   return success;
+}
+
+bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
+  SfLoadGameAssets *assets;
+  if (!runtime || !game || !runtime->loaded) return false;
+  if (runtime->loaded_mode != SF_GAME_MODE_LOAD_GAME ||
+      game->mode != SF_GAME_MODE_LOAD_GAME) return true;
+  assets = &runtime->assets.load_game;
+  if (game->load_game.delete_request >= 0) {
+    const uint8_t index = (uint8_t) game->load_game.delete_request;
+    uint8_t file_slots[SF_SAVE_SLOT_COUNT];
+    uint8_t slot;
+    game->load_game.delete_request = -1;
+    if (sf_load_game_assets_delete(
+          assets, runtime->data_root, index,
+          runtime->decode_scratch, runtime->decode_scratch_size)) {
+      for (slot = 0u; slot < assets->catalog.count; ++slot)
+        file_slots[slot] = assets->catalog.entries[slot].file_slot;
+      sf_game_saved_catalog_changed(
+        game, file_slots, assets->catalog.count);
+    }
+  }
+  if (assets->catalog.count == 0u) return true;
+  return sf_load_game_assets_select_preview(
+    assets, runtime->data_root, game->load_game.selection,
+    runtime->decode_scratch, runtime->decode_scratch_size);
 }
 
 const SfTitleAssets *sf_screen_runtime_title_assets(
@@ -80,6 +112,10 @@ void sf_screen_runtime_draw(
     sf_character_create_screen_draw(
       &runtime->screen.character_create, renderer,
       &runtime->assets.character_create, game);
+  } else if (game->mode == SF_GAME_MODE_LOAD_GAME) {
+    sf_load_game_screen_draw(
+      &runtime->screen.load_game, renderer,
+      &runtime->assets.load_game, game);
   } else if (!runtime->blank_drawn) {
     sf_renderer_clear(renderer, 0u);
     runtime->blank_drawn = true;

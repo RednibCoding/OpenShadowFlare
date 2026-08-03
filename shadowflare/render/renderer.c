@@ -19,6 +19,8 @@
 
 #include "render/renderer.h"
 
+#include <string.h>
+
 static uint8_t sf_indexed_pixel(
     const SfIndexedImage *image, uint16_t x, uint16_t y) {
   const uint16_t source_y = image->bottom_up
@@ -151,6 +153,42 @@ void sf_renderer_draw_indexed(
           destination[x + column], color, opacity,
           blend == SF_BLEND_ADDITIVE);
       }
+    }
+  }
+}
+
+void sf_renderer_draw_rgb555(
+    SfRenderer *renderer, const SfRgb555Image *image,
+    int x, int y, uint16_t brightness) {
+  int first_x = 0;
+  int first_y = 0;
+  int last_x;
+  int last_y;
+  int row;
+  if (!renderer || !image || !image->pixels || image->width == 0u ||
+      image->height == 0u || image->stride < image->width) return;
+  if (brightness > 1000u) brightness = 1000u;
+  last_x = image->width;
+  last_y = image->height;
+  if (x < 0) first_x = -x;
+  if (y < 0) first_y = -y;
+  if (x + last_x > renderer->target.width)
+    last_x = renderer->target.width - x;
+  if (y + last_y > renderer->target.height)
+    last_y = renderer->target.height - y;
+  if (first_x >= last_x || first_y >= last_y) return;
+  for (row = first_y; row < last_y; ++row) {
+    const uint16_t *source = image->pixels +
+      (size_t) row * image->stride + first_x;
+    uint16_t *destination = renderer->target.pixels +
+      (size_t) (y + row) * renderer->target.stride + x + first_x;
+    const size_t columns = (size_t) (last_x - first_x);
+    if (brightness == 1000u) {
+      memcpy(destination, source, columns * sizeof(*destination));
+    } else {
+      size_t column;
+      for (column = 0u; column < columns; ++column)
+        destination[column] = sf_brighten(source[column], brightness);
     }
   }
 }

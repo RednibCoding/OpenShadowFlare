@@ -35,8 +35,12 @@ keeps the fade, menu brightness, smoke timing, music, and effects in their
 recovered order. New Game now continues through the retail character-creation
 screen: gender selection, the portrait slide and fade, 15-byte name entry,
 visible caret, menu sounds, and the Online/Single/Back choices are present.
-Choosing a game mode currently reaches the black loading hand-off because the
-new C99 gameplay screen has not been reconstructed yet.
+Load Game now opens the retail six-entry save screen, reads the original save
+summaries, swaps the selected thumbnail, supports mouse and two-column
+keyboard/controller navigation, and includes Continue, Delete, Back, Exit,
+the delete confirmation, and game-mode dialogs. Choosing a game mode currently
+reaches the black loading hand-off because the new C99 gameplay screen has not
+been reconstructed yet.
 
 ## Hard limits
 
@@ -74,6 +78,25 @@ The executable is built at `build/<platform>/<config>/shadowflare/osf` (or
 `ShadowFlare_rebuilt`, so it is always clear which implementation is being
 tested.
 
+Debug-tool builds also produce `osf-measure` beside the game. It loads every
+implemented C99 screen through the real screen runtime and prints the total,
+screen-scoped, and remaining arena bytes. This keeps memory-budget checks out
+of platform backends and gives later runtime profiling a small dedicated home:
+
+```sh
+./build/linux/debug/shadowflare/osf-measure
+```
+
+The same build option enables a small live profiler in `osf`. The outer
+runtime records FPS, current and peak arena usage, and average and peak
+framebuffer-fill and presentation-preparation times. The presentation metric
+ends before TWL displays or swaps the prepared frame, so vertical-blank waits
+cannot inflate it. It uses timestamps supplied through TWL and contains no
+target-specific code. The snapshot is ready for a future
+top-right debug overlay; no profiling UI is drawn yet. Configuring with
+`-DOPENSHADOWFLARE_ENABLE_DEBUG_TOOLS=OFF` omits the profiler source, calls,
+test, and `osf-measure` target from the C99 game build.
+
 The executable first looks for the retail `System` folder beside itself. This
 means a release can be copied directly into an original ShadowFlare install.
 Development builds also find `tmp/ShadowFlare` from their standard
@@ -90,8 +113,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,422,733 bytes of the 1.5 MiB main arena,
-leaving 150,131 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,422,773 bytes of the 1.5 MiB main arena,
+leaving 150,091 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 434,176
@@ -104,7 +127,14 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 732,064 bytes of the main arena, leaving 840,800 bytes free;
+assets. It uses 732,104 bytes of the main arena, leaving 840,760 bytes free;
 410,513 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
+
+The load-game screen uses 693,860 bytes of the main arena, leaving 879,004
+bytes free. Its screen-scoped artwork, font, and selected save preview account
+for 372,269 bytes. Save headers stay in a fixed six-entry catalog, while only
+the selected 391x114 thumbnail occupies memory. Changing selection decodes the
+new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
+file access and do not refill the framebuffer.

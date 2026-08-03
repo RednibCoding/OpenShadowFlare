@@ -219,6 +219,8 @@ void twl_pump_events(Twl *twl);
 bool twl_poll_event(Twl *twl, TwlEvent *event);
 bool twl_controller_state(
   const Twl *twl, uint32_t controller_index, TwlControllerState *state);
+TwlResult twl_prepare_frame(Twl *twl, const TwlSurface *surface);
+TwlResult twl_display_frame(Twl *twl);
 TwlResult twl_present(Twl *twl, const TwlSurface *surface);
 void twl_get_display_size(
   const Twl *twl, uint32_t *width, uint32_t *height);

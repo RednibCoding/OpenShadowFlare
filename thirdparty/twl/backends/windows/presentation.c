@@ -23,7 +23,7 @@ typedef struct {
   DWORD masks[3];
 } TwlWin32Bitmap;
 
-TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
+TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   TwlWin32 *win32 = twl ? (TwlWin32 *) twl->backend : NULL;
   TwlWin32Bitmap bitmap;
   size_t expected_stride;
@@ -61,4 +61,10 @@ TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
     DIB_RGB_COLORS, SRCCOPY);
   return result == 0 || result == (int) GDI_ERROR
     ? TWL_RESULT_BACKEND_FAILURE : TWL_RESULT_OK;
+}
+
+TwlResult twl_backend_display_frame(Twl *twl) {
+  TwlWin32 *win32 = twl ? (TwlWin32 *) twl->backend : NULL;
+  return win32 && win32->device_context
+    ? TWL_RESULT_OK : TWL_RESULT_INVALID_ARGUMENT;
 }

@@ -88,6 +88,26 @@ add_test(
 )
 
 if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  if(TARGET shadowflare_profiler)
+    add_executable(
+      shadowflare_profiler_test
+      shadowflare_profiler_test.c
+    )
+    target_link_libraries(
+      shadowflare_profiler_test PRIVATE ShadowFlare::Profiler)
+    target_compile_features(shadowflare_profiler_test PRIVATE c_std_99)
+    set_target_properties(
+      shadowflare_profiler_test
+      PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+    if(MSVC)
+      target_compile_options(shadowflare_profiler_test PRIVATE /W4)
+    else()
+      target_compile_options(
+        shadowflare_profiler_test PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME shadowflare_profiler COMMAND shadowflare_profiler_test)
+  endif()
+
   add_executable(frame_profiler_test frame_profiler_test.cpp)
   target_link_libraries(
     frame_profiler_test PRIVATE OpenShadowFlare::DebugTools)

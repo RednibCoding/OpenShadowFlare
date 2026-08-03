@@ -44,6 +44,13 @@ typedef struct SfIndexedImage {
   bool bottom_up;
 } SfIndexedImage;
 
+typedef struct SfRgb555Image {
+  const uint16_t *pixels;
+  uint16_t width;
+  uint16_t height;
+  uint16_t stride;
+} SfRgb555Image;
+
 typedef enum SfBlendMode {
   SF_BLEND_OPAQUE = 0,
   SF_BLEND_MASKED,
@@ -66,6 +73,9 @@ void sf_renderer_draw_indexed(
   SfRenderer *renderer, const SfIndexedImage *image,
   int x, int y, uint16_t brightness, uint16_t opacity,
   SfBlendMode blend, const SfRect *clip);
+void sf_renderer_draw_rgb555(
+  SfRenderer *renderer, const SfRgb555Image *image,
+  int x, int y, uint16_t brightness);
 void sf_renderer_restore_indexed(
   SfRenderer *renderer, const SfIndexedImage *image,
   int x, int y, uint16_t brightness, SfRect region);

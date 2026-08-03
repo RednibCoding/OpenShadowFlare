@@ -38,6 +38,11 @@ const SfRetailCharacterCreatePaths sf_retail_character_create_paths = {
   "System/Common/Pattern/Font00.njp"
 };
 
+const SfRetailSavePaths sf_retail_save_paths = {
+  "Save/%04u.Ssv",
+  "Save/%04u.Bmp"
+};
+
 static bool sf_retail_path_copy(
     char *destination, size_t capacity, const char *source) {
   const size_t length = source ? strlen(source) : 0u;

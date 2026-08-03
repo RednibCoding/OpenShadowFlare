@@ -29,6 +29,7 @@
 typedef enum SfGameMode {
   SF_GAME_MODE_TITLE = 0,
   SF_GAME_MODE_CHARACTER_SELECT,
+  SF_GAME_MODE_LOAD_GAME,
   SF_GAME_MODE_LOADING
 } SfGameMode;
 
@@ -51,13 +52,15 @@ typedef struct SfGameInput {
   bool confirm_pressed;
   bool cancel_pressed;
   bool backspace_pressed;
+  bool delete_pressed;
   char text[16];
   uint8_t text_length;
 } SfGameInput;
 
 typedef struct SfGameConfig {
   uint8_t title_smoke_frame_count[SF_GAME_TITLE_SMOKE_COUNT];
-  bool saved_game_exists;
+  uint8_t saved_game_file_slots[6];
+  uint8_t saved_game_count;
   bool next_save_available;
 } SfGameConfig;
 
@@ -104,10 +107,35 @@ typedef struct SfCharacterCreateState {
   bool name_confirm_hovered;
 } SfCharacterCreateState;
 
+typedef struct SfLoadGameState {
+  int32_t fade_value;
+  int32_t fade_target;
+  int32_t hover_animation;
+  int16_t launch_counter;
+  int16_t click_cooldown;
+  int16_t previous_pointer_x;
+  int16_t previous_pointer_y;
+  int16_t dialog_previous_pointer_x;
+  int16_t dialog_previous_pointer_y;
+  uint16_t background_brightness;
+  uint8_t fade_steps_remaining;
+  uint8_t hovered_slots;
+  uint8_t screen;
+  uint8_t selection;
+  uint8_t selected_save;
+  uint8_t dialog_selection;
+  uint8_t sound_events;
+  int8_t selected_file_slot;
+  int8_t delete_request;
+  bool brightness_increasing;
+  bool input_latch;
+} SfLoadGameState;
+
 typedef struct SfGame {
   SfGameConfig config;
   SfTitleState title;
   SfCharacterCreateState character_create;
+  SfLoadGameState load_game;
   SfGameMode mode;
   uint32_t ticks;
   uint8_t character_select_argument;
@@ -116,5 +144,7 @@ typedef struct SfGame {
 
 void sf_game_init(SfGame *game, const SfGameConfig *config);
 void sf_game_update(SfGame *game, const SfGameInput *input);
+void sf_game_saved_catalog_changed(
+  SfGame *game, const uint8_t *file_slots, uint8_t saved_game_count);
 
 #endif

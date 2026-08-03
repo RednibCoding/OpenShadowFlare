@@ -22,6 +22,7 @@
 #include "data/rclib.h"
 #include "game/character_create.h"
 #include "game/game.h"
+#include "game/load_game.h"
 #include "render/dirty.h"
 #include "render/framebuffer.h"
 #include "render/renderer.h"
@@ -83,6 +84,7 @@ static int test_framebuffer(void) {
 
 static int test_renderer(void) {
   uint16_t pixels[8u * 4u];
+  static const uint16_t direct_pixels[2] = {0x001fu, 0x7c00u};
   uint8_t font_pixels[16u * 16u] = {0};
   static const uint8_t indices[4] = {0u, 1u, 1u, 0u};
   static const uint16_t palette[2] = {0u, 0x7fffu};
@@ -90,6 +92,7 @@ static int test_renderer(void) {
   SfRenderer renderer;
   SfDirtyRects dirty;
   SfIndexedImage font;
+  SfRgb555Image direct;
   SfRect rectangle = {1, 1, 2, 2};
   image.pixels = indices;
   image.palette = palette;
@@ -129,6 +132,85 @@ static int test_renderer(void) {
     &renderer, &font, "A", 0, 0, sf_rgb555(31u, 0u, 0u), 1000u);
   if (check(pixels[0] == sf_rgb555(31u, 0u, 0u),
             "renderer did not draw a bitmap-font glyph")) return 1;
+  direct.pixels = direct_pixels;
+  direct.width = 2u;
+  direct.height = 1u;
+  direct.stride = 2u;
+  sf_renderer_draw_rgb555(&renderer, &direct, 3, 2, 1000u);
+  if (check(pixels[2u * 8u + 3u] == 0x001fu &&
+            pixels[2u * 8u + 4u] == 0x7c00u,
+            "renderer did not draw a packed RGB555 image")) return 1;
+  return 0;
+}
+
+static int test_load_game(void) {
+  SfGame game;
+  SfGameInput input;
+  int frame;
+  memset(&game, 0, sizeof(game));
+  memset(&input, 0, sizeof(input));
+  game.mode = SF_GAME_MODE_LOAD_GAME;
+  game.config.saved_game_count = 4u;
+  game.config.saved_game_file_slots[0] = 0u;
+  game.config.saved_game_file_slots[1] = 2u;
+  game.config.saved_game_file_slots[2] = 4u;
+  game.config.saved_game_file_slots[3] = 5u;
+  sf_load_game_state_init(&game);
+  game.load_game.fade_steps_remaining = 0u;
+  game.load_game.fade_value = 1000;
+  game.load_game.fade_target = 1000;
+  game.load_game.input_latch = false;
+  input.right_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  if (check(game.load_game.selection == 1u,
+            "load-game navigation did not select the next save")) return 1;
+  memset(&input, 0, sizeof(input));
+  input.confirm_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  if (check(game.load_game.screen == 10u &&
+            game.load_game.selected_save == 1u &&
+            game.load_game.selected_file_slot == 2,
+            "load-game confirmation did not open the mode menu")) return 1;
+  memset(&input, 0, sizeof(input));
+  input.cancel_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  if (check(game.load_game.screen == 0u &&
+            game.load_game.brightness_increasing,
+            "closing the mode menu did not restore the load screen"))
+    return 1;
+  memset(&input, 0, sizeof(input));
+  input.delete_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  if (check(game.load_game.screen == 1u &&
+            game.load_game.dialog_selection == 1u,
+            "Delete did not open the retail confirmation dialog")) return 1;
+  memset(&input, 0, sizeof(input));
+  input.left_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  memset(&input, 0, sizeof(input));
+  input.confirm_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  if (check(game.load_game.delete_request == 1 &&
+            game.load_game.screen == 0u,
+            "confirming save deletion did not emit the selected request"))
+    return 1;
+  game.load_game.delete_request = -1;
+  memset(&input, 0, sizeof(input));
+  input.confirm_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  memset(&input, 0, sizeof(input));
+  input.down_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  memset(&input, 0, sizeof(input));
+  input.confirm_pressed = true;
+  sf_load_game_state_update(&game, &input);
+  for (frame = 0; frame < 16 && game.mode != SF_GAME_MODE_LOADING; ++frame) {
+    memset(&input, 0, sizeof(input));
+    sf_load_game_state_update(&game, &input);
+  }
+  if (check(game.mode == SF_GAME_MODE_LOADING,
+            "Single Mode did not start the saved-game loading hand-off"))
+    return 1;
   return 0;
 }
 
@@ -224,7 +306,8 @@ int main(void) {
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 434176u,
             "video asset budget is wrong") ||
       test_arena() || test_framebuffer() || test_renderer() ||
-      test_rclib() || test_game() || test_character_creation())
+      test_rclib() || test_game() || test_character_creation() ||
+      test_load_game())
     return 1;
   return 0;
 }

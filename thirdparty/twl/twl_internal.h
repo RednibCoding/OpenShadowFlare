@@ -33,6 +33,7 @@ struct Twl {
   uint32_t display_width;
   uint32_t display_height;
   bool backend_ready;
+  bool frame_prepared;
 };
 
 size_t twl_internal_align_up(size_t value, size_t alignment);
@@ -55,7 +56,8 @@ TwlResult twl_backend_init(
   Twl *twl, void *memory, size_t memory_size, const TwlConfig *config);
 void twl_backend_shutdown(Twl *twl);
 void twl_backend_pump_events(Twl *twl);
-TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface);
+TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface);
+TwlResult twl_backend_display_frame(Twl *twl);
 uint64_t twl_backend_time_microseconds(const Twl *twl);
 void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration);
 
