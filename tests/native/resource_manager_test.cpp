@@ -1,6 +1,11 @@
 #include "resources/resource_manager.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/font_resource.hpp"
+#include "resources/item_inventory_resource.hpp"
+#include "resources/effect_pattern_resource.hpp"
+#include "resources/effect_visual_resource.hpp"
 
+#include <array>
 #include <filesystem>
 #include <iostream>
 #include <vector>
@@ -171,6 +176,95 @@ int main() {
         return 1;
     }
 
+    osf::ResourceManager selected_font(data_root);
+    if (!check(
+            selected_font.loadCommonPattern(
+                0,
+                "System\\Common\\Pattern\\Font00.njp",
+                osf::englishRetailFontPatternSelection()) &&
+                selected_font.pattern(0) &&
+                selected_font.pattern(0)->patternDecoded(0) &&
+                !selected_font.pattern(0)->patternDecoded(1) &&
+                selected_font.pattern(0)->patternDecoded(2) &&
+                selected_font.memoryUsageBytes() * 10 < common_bytes,
+            "The English font sheet was not decoded selectively.")) {
+        return 1;
+    }
+    selected_font.releaseCommonPattern(0);
+    if (!check(
+            selected_font.pattern(0) == nullptr &&
+                selected_font.memoryUsageBytes() == 0,
+            "Releasing a state-scoped common pattern retained memory.")) {
+        return 1;
+    }
+
+    osf::ItemInventoryResource inventory_artwork;
+    std::array<
+        std::uint8_t,
+        osf::ItemInventoryResource::group_count> item_groups{};
+    item_groups.fill(1);
+    std::string inventory_error;
+    if (!check(
+            inventory_artwork.load(data_root, &inventory_error) &&
+                inventory_artwork.group(0) == nullptr &&
+                inventory_artwork.prepareGroups(
+                    item_groups, &inventory_error),
+            "The lazy inventory artwork fixture could not load.")) {
+        return 1;
+    }
+    const std::uint64_t all_item_bytes =
+        inventory_artwork.memoryUsageBytes();
+    item_groups.fill(0);
+    item_groups[3] = 1;
+    if (!check(
+            inventory_artwork.prepareGroups(
+                item_groups, &inventory_error) &&
+                inventory_artwork.group(0) == nullptr &&
+                inventory_artwork.group(3) != nullptr &&
+                inventory_artwork.memoryUsageBytes() * 5 <
+                    all_item_bytes,
+            "Closing inventory containers retained their artwork sheets.")) {
+        return 1;
+    }
+
+    osf::EffectVisualResources effect_visuals;
+    if (!check(
+            effect_visuals.load(data_root, 11000040) &&
+                effect_visuals.load(data_root, 11000240),
+            "The effect-cache fixture could not be loaded.")) {
+        return 1;
+    }
+    const std::uint64_t all_effect_visual_bytes =
+        effect_visuals.memoryUsageBytes();
+    effect_visuals.retainOnly({11000240});
+    if (!check(
+            effect_visuals.find(11000040) == nullptr &&
+                effect_visuals.find(11000240) != nullptr &&
+                effect_visuals.memoryUsageBytes() <
+                    all_effect_visual_bytes,
+            "The effect animation cache retained an inactive resource.")) {
+        return 1;
+    }
+
+    osf::EffectPatternResources effect_patterns;
+    if (!check(
+            effect_patterns.load(data_root, 10000020) &&
+                effect_patterns.load(data_root, 11000011),
+            "The static-effect cache fixture could not be loaded.")) {
+        return 1;
+    }
+    const std::uint64_t all_effect_pattern_bytes =
+        effect_patterns.memoryUsageBytes();
+    effect_patterns.retainOnly({10000020});
+    if (!check(
+            effect_patterns.find(11000011) == nullptr &&
+                effect_patterns.find(10000020) != nullptr &&
+                effect_patterns.memoryUsageBytes() <
+                    all_effect_pattern_bytes,
+            "The static-effect cache retained an inactive resource.")) {
+        return 1;
+    }
+
     if (!check(
             resources.loadTitlePattern(
                 4, "System\\Title\\Pattern\\Title.njp") &&
@@ -216,10 +310,36 @@ int main() {
     if (!check(
             resources.loadGameplayPattern(
                 5, "System\\Game\\Pattern\\Bar.njp") &&
-                resources.pattern(5) != nullptr,
+                resources.pattern(5) != nullptr &&
+                resources.prepareGameplayPattern(
+                    6,
+                    "System\\Game\\Pattern\\Status.njp",
+                    true) &&
+                resources.pattern(6) != nullptr &&
+                resources.prepareGameplayPattern(
+                    6,
+                    "System\\Game\\Pattern\\Status.njp",
+                    false) &&
+                resources.pattern(6) == nullptr,
             "The gameplay resource scope could not be loaded.")) {
         return 1;
     }
+    std::vector<std::uint8_t> status_selection(121, 0);
+    status_selection[5] = 1;
+    if (!check(
+            resources.prepareGameplayPattern(
+                6,
+                "System\\Game\\Pattern\\Status.njp",
+                status_selection,
+                true) &&
+                resources.pattern(6) &&
+                resources.pattern(6)->patternDecoded(5) &&
+                !resources.pattern(6)->patternDecoded(2),
+            "A gameplay panel did not replace its full sheet with the "
+            "requested pattern selection.")) {
+        return 1;
+    }
+    resources.releaseGameplayPattern(6);
     resources.releaseGameplayResources();
     return check(
                resources.pattern(5) == nullptr &&

@@ -574,6 +574,22 @@ WorldScene::itemInventoryPatterns() const {
     return item_inventory_patterns_;
 }
 
+bool WorldScene::prepareItemInventoryPatterns(
+    const std::array<
+        std::uint8_t,
+        ItemInventoryResource::group_count>& enabled_groups,
+    std::string* error) {
+    return item_inventory_patterns_.prepareGroups(
+        enabled_groups, error);
+}
+
+bool WorldScene::prepareItemInventoryPatterns(
+    const ItemInventoryResource::PatternSelection& enabled_patterns,
+    std::string* error) {
+    return item_inventory_patterns_.preparePatterns(
+        enabled_patterns, error);
+}
+
 const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }

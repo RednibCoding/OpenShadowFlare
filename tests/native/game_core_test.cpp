@@ -408,6 +408,7 @@ bool testDisplayObjectOrdering() {
 bool testGameplayLoadingTransition() {
     std::int32_t interfacePrepares = 0;
     std::int32_t interfaceReleases = 0;
+    std::int32_t loadingArtworkReleases = 0;
     std::int32_t prepares = 0;
     std::int32_t releases = 0;
     std::int32_t musicStarts = 0;
@@ -435,6 +436,10 @@ bool testGameplayLoadingTransition() {
     hooks.release_interface =
         [&interfaceReleases] {
             ++interfaceReleases;
+        };
+    hooks.release_loading_artwork =
+        [&loadingArtworkReleases] {
+            ++loadingArtworkReleases;
         };
     hooks.prepare_world = [&prepares] {
             ++prepares;
@@ -552,6 +557,7 @@ bool testGameplayLoadingTransition() {
             frame.world_ready &&
             releases == 1 &&
             interfaceReleases == 1 &&
+            loadingArtworkReleases == 1 &&
             musicStarts == 1 &&
             musicStops == 1 &&
             movementCommands == 4 &&

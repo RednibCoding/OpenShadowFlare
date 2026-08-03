@@ -45,6 +45,62 @@ bool check(bool condition, const char* message) {
     return condition;
 }
 
+bool referencedMapPatternsDecoded(const osf::WorldScene& world) {
+    const auto& patterns = world.mapPatterns();
+    const auto decoded = [&patterns](
+        std::int32_t pattern_set,
+        std::int32_t pattern) {
+        return pattern_set >= 0 && pattern >= 0 &&
+            static_cast<std::size_t>(pattern_set) < patterns.size() &&
+            patterns[static_cast<std::size_t>(pattern_set)] &&
+            patterns[static_cast<std::size_t>(pattern_set)]
+                ->patternDecoded(static_cast<std::size_t>(pattern));
+    };
+    for (std::int32_t y = 0; y < world.ground().height(); ++y) {
+        for (std::int32_t x = 0; x < world.ground().width(); ++x) {
+            const osf::GroundCell* cell = world.ground().cell(x, y);
+            if (cell && cell->pattern_set >= 0 &&
+                static_cast<std::size_t>(cell->pattern_set) <
+                    patterns.size() &&
+                patterns[static_cast<std::size_t>(
+                    cell->pattern_set)] &&
+                !decoded(cell->pattern_set, cell->pattern)) {
+                std::cerr << "Missing ground map pattern set "
+                          << cell->pattern_set << ", pattern "
+                          << cell->pattern << " at " << x << ',' << y
+                          << '\n';
+                return false;
+            }
+        }
+    }
+    for (const osf::MapObject& object : world.objectMap().objects()) {
+        if (object.pattern_set < 0 || object.pattern < 0) {
+            continue;
+        }
+        if (static_cast<std::size_t>(object.pattern_set) <
+                patterns.size() &&
+            patterns[static_cast<std::size_t>(object.pattern_set)] &&
+            !decoded(object.pattern_set, object.pattern)) {
+            std::cerr << "Missing object map pattern set "
+                      << object.pattern_set << ", pattern "
+                      << object.pattern << '\n';
+            return false;
+        }
+        const std::int32_t shadow_set = object.pattern_set + 1;
+        if (shadow_set >= 0 &&
+            static_cast<std::size_t>(shadow_set) < patterns.size() &&
+            patterns[static_cast<std::size_t>(shadow_set)] &&
+            patterns[static_cast<std::size_t>(shadow_set)]->isShadow() &&
+            !decoded(shadow_set, object.pattern)) {
+            std::cerr << "Missing object shadow pattern set "
+                      << shadow_set << ", pattern "
+                      << object.pattern << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
 bool testNpcScriptAction() {
     osf::NpcScriptActionController action;
     if (!check(
@@ -2051,11 +2107,12 @@ bool testGeneralScenarioStart() {
                 wasteland.ground().height() > 0 &&
                 !wasteland.objectMap().objects().empty() &&
                 !wasteland.mapPatterns().empty() &&
+                referencedMapPatternsDecoded(wasteland) &&
                 !wasteland.mapOverviewPatterns()
                      .patterns()
                      .empty(),
-            "The decimal scenario directory, entry key, map, actors, "
-            "or music differ from retail scenario 6.")) {
+            "The decimal scenario directory, entry key, selectively "
+            "decoded map, actors, or music differ from retail scenario 6.")) {
         return false;
     }
 

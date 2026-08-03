@@ -39,6 +39,7 @@ struct GameplayFrameInput {
 
 struct GameplayStateHooks {
     std::function<bool()> prepare_interface;
+    std::function<void()> release_loading_artwork;
     std::function<void()> release_interface;
     std::function<bool()> prepare_world;
     std::function<void()> release_world;

@@ -23,12 +23,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef struct {
+  int16_t *samples;
+  size_t frame_count;
+  uint32_t sample_rate;
+  uint16_t channels;
+} LalConvertedPcm;
+
 #ifndef LAL_DEFAULT_MAXIMUM_SAMPLE_RATE
-#define LAL_DEFAULT_MAXIMUM_SAMPLE_RATE 16000
+#define LAL_DEFAULT_MAXIMUM_SAMPLE_RATE 44100
 #endif
 
 #ifndef LAL_DEFAULT_FORCE_MONO
-#define LAL_DEFAULT_FORCE_MONO 1
+#define LAL_DEFAULT_FORCE_MONO 0
 #endif
 
 /* Platform backends may lower the mixer rate when their hardware output
@@ -52,5 +59,16 @@ void lal_platform_unlock(void);
 void lal_mix_frames(int16_t *output, size_t frame_count);
 
 void lal_set_error(const char *message);
+
+bool lal_convert_pcm(
+  const uint8_t *sample_data,
+  size_t sample_size,
+  uint32_t sample_rate,
+  uint16_t channels,
+  uint16_t bits_per_sample,
+  uint16_t frame_stride,
+  uint32_t maximum_sample_rate,
+  bool force_mono,
+  LalConvertedPcm *output);
 
 #endif

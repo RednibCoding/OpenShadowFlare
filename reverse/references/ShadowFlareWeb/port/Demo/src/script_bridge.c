@@ -114,7 +114,7 @@ static void LogIfChanged(LogDedupCache *cache, const char *fmt, ...)
     char buf[256];
     va_list ap;
     va_start(ap, fmt);
-    v
+    vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
     for (int i = 0; i < cache->count; i++)
@@ -1112,7 +1112,7 @@ void ApplyPlayerInteract(DemoState *state, const LiveSpawn *spawn)
 {
     const char *label = spawn->name ? spawn->name : (spawn->block == 1 ? "(unnamed object)" : "(unnamed enemy)");
     if (!RunTriggersForCharacter(state, spawn->characterNo, label))
-        
+        printf("%s has no interaction trigger\n", label);
 }
 
 

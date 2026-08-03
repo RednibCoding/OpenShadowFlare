@@ -1,10 +1,13 @@
 #include "core/game_config.hpp"
 #include "core/retail_random.hpp"
 #include "runtime/audio_system.hpp"
+#include "runtime/gameplay_artwork.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
+#include "resources/font_resource.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
+#include "resources/resource_manager.hpp"
 #include "world/player_data.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
@@ -12,6 +15,7 @@
 #include "lwl.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
@@ -25,6 +29,61 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool testClosedGameplayArtworkBudget() {
+#ifndef __EMSCRIPTEN__
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Mina";
+    osf::ResourceManager resources(data_root);
+    osf::runtime::GameplayUiController ui;
+    std::string error;
+    if (!check(
+            resources.loadCommonPattern(
+                3, "System\\Common\\Pattern\\System.njp") &&
+                resources.loadCommonPattern(
+                    1,
+                    "System\\Common\\Pattern\\Font01.njp",
+                    osf::englishRetailFontPatternSelection()) &&
+                resources.loadGameplayPattern(
+                    5, "System\\Game\\Pattern\\Bar.njp") &&
+                resources.loadGameplayPattern(
+                    8, "System\\Game\\Pattern\\StatusIcon.njp") &&
+                resources.loadGameplayPattern(
+                    9, "System\\Game\\Pattern\\MagicIcon.njp") &&
+                resources.loadGameplayPattern(
+                    10,
+                    "System\\Game\\Pattern\\MagicBarIcon.njp") &&
+                world.loadInitialScenario(data_root, player, &error) &&
+                osf::runtime::synchronizeGameplayArtwork(
+                    resources, world, ui, &error),
+            error.empty()
+                ? "The closed gameplay artwork fixture could not load."
+                : error.c_str())) {
+        return false;
+    }
+
+    constexpr std::uint64_t framebuffer_bytes = 640u * 480u * 4u;
+    constexpr std::uint64_t budget_bytes = 23u * 1024u * 1024u;
+    const std::uint64_t tracked_bytes =
+        resources.memoryUsageBytes() +
+        world.resourceMemoryUsageBytes() +
+        framebuffer_bytes;
+    std::cout << "closed gameplay artwork: "
+              << tracked_bytes << " bytes\n";
+    return check(
+        tracked_bytes <= budget_bytes &&
+            resources.pattern(6) == nullptr &&
+            resources.pattern(7) == nullptr &&
+            resources.pattern(11) == nullptr,
+        "Closed gameplay exceeds 23 MiB or retains panel artwork.");
+#else
+    return true;
+#endif
 }
 
 struct Fixture {
@@ -210,25 +269,64 @@ bool testHudButtonsOpenRetailPanels() {
     }
 
     Fixture fixture;
+    osf::ResourceManager resources(data_root);
     fixture.click(557, 428, world, player);
     if (!check(
-            fixture.controller.status().active(),
-            "The STATUS HUD button did not open the Status panel.")) {
+            fixture.controller.status().active() &&
+                osf::runtime::synchronizeGameplayArtwork(
+                    resources, world, fixture.controller, &error) &&
+                resources.pattern(6) &&
+                resources.pattern(6)->patternDecoded(5) &&
+                resources.pattern(6)->patternDecoded(36) &&
+                resources.pattern(6)->patternDecoded(57) &&
+                !resources.pattern(6)->patternDecoded(2),
+            "The STATUS HUD button did not open the Status panel with "
+            "only its artwork resident.")) {
         return false;
     }
     fixture.click(557, 428, world, player);
     fixture.click(600, 438, world, player);
+    const bool inventory_artwork_ready =
+        osf::runtime::synchronizeGameplayArtwork(
+            resources, world, fixture.controller, &error);
+    const osf::gapi::NjpImage* status = resources.pattern(6);
+    const osf::gapi::NjpImage* item_group =
+        world.itemInventoryPatterns().group(0);
+    const std::size_t decoded_item_patterns = item_group
+        ? static_cast<std::size_t>(std::count_if(
+              item_group->decodedPatternFlags().begin(),
+              item_group->decodedPatternFlags().end(),
+              [](std::uint8_t decoded) { return decoded != 0; }))
+        : 0;
     if (!check(
             !fixture.controller.status().active() &&
-                fixture.controller.inventory().active(),
-            "The ITEM HUD button did not open the Inventory panel.")) {
+                fixture.controller.inventory().active() &&
+                inventory_artwork_ready && status &&
+                status->patternDecoded(2) &&
+                status->patternDecoded(3) &&
+                !status->patternDecoded(5) &&
+                item_group && decoded_item_patterns > 0 &&
+                decoded_item_patterns < item_group->patterns().size(),
+            "The ITEM HUD button did not open the Inventory panel with "
+            "selective panel and item artwork.")) {
         return false;
     }
     fixture.click(610, 407, world, player);
+    const bool options_artwork_ready =
+        osf::runtime::synchronizeGameplayArtwork(
+            resources, world, fixture.controller, &error);
+    status = resources.pattern(6);
     return check(
         fixture.controller.options().active() &&
-            !fixture.controller.inventory().active(),
-        "The MENU HUD button did not own input and open Settings.");
+            !fixture.controller.inventory().active() &&
+            options_artwork_ready && status &&
+            status->patternDecoded(58) &&
+            status->patternDecoded(59) &&
+            status->patternDecoded(68) &&
+            status->patternDecoded(120) &&
+            !status->patternDecoded(2),
+        "The MENU HUD button did not own input or prepare only the "
+        "Settings artwork.");
 #else
     return true;
 #endif
@@ -530,7 +628,8 @@ bool testScriptTransportClosesOutsidePoint() {
 }  // namespace
 
 int main() {
-    return testEscapeClosesPanelsBeforeSettings() &&
+    return testClosedGameplayArtworkBudget() &&
+                   testEscapeClosesPanelsBeforeSettings() &&
                    testHudButtonsOpenRetailPanels() &&
                    testSaveTransitionsOwnModalInput() &&
                    testIncreasedPowerKeyEdge() &&

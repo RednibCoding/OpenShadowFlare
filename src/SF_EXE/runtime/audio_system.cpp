@@ -15,6 +15,13 @@ constexpr std::size_t kTitleConfirmSound = 56;
 constexpr std::size_t kMenuMoveSound = 58;
 constexpr std::size_t kTitleCueSound = 62;
 
+LalConfig gameAudioConfig() {
+    LalConfig config = lal_config_default();
+    config.maximum_sample_rate = LAL_SAMPLE_RATE_11025;
+    config.force_mono = true;
+    return config;
+}
+
 }  // namespace
 
 AudioSystem::~AudioSystem() {
@@ -27,7 +34,8 @@ bool AudioSystem::initialize(
     std::int32_t bgm_volume,
     std::string* error) {
     shutdown();
-    if (!lal_init()) {
+    const LalConfig audioConfig = gameAudioConfig();
+    if (!lal_init_ex(&audioConfig)) {
         if (error) {
             *error = lal_last_error();
         }

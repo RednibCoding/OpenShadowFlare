@@ -4,6 +4,7 @@
 
 #include "retail_filesystem.hpp"
 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -68,6 +69,21 @@ const gapi::NjpImage* EffectPatternResources::find(
     return found == resources_.end()
         ? nullptr
         : found->second.get();
+}
+
+void EffectPatternResources::retainOnly(
+    const std::vector<std::int32_t>& resource_ids) {
+    for (auto resource = resources_.begin();
+         resource != resources_.end();) {
+        if (std::find(
+                resource_ids.begin(),
+                resource_ids.end(),
+                resource->first) == resource_ids.end()) {
+            resource = resources_.erase(resource);
+        } else {
+            ++resource;
+        }
+    }
 }
 
 void EffectPatternResources::clear() {

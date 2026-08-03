@@ -120,4 +120,28 @@ bool WorldScene::prepareGroundItems(
     return true;
 }
 
+void WorldScene::releaseUnusedItemWorldResources() {
+    std::vector<std::uint8_t> required(
+        item_world_resources_.size(), 0);
+    for (const GroundItem& item : scenario_world_.groundItems()) {
+        if (item.resource_id >= 0 &&
+            static_cast<std::size_t>(item.resource_id) <
+                required.size()) {
+            required[static_cast<std::size_t>(item.resource_id)] = 1;
+        }
+    }
+    for (std::size_t index = 0;
+         index < item_world_resources_.size();
+         ++index) {
+        if (required[index] == 0) {
+            item_world_resources_[index].reset();
+        }
+    }
+    while (!item_world_resources_.empty() &&
+           !item_world_resources_.back()) {
+        item_world_resources_.pop_back();
+    }
+    item_world_resources_.shrink_to_fit();
+}
+
 }  // namespace osf
