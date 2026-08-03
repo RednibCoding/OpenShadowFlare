@@ -611,6 +611,37 @@ bool testTruncatedNjp() {
         "The NJP decoder accepted a truncated compressed bitmap.");
 }
 
+bool testSelectedNjpDecode() {
+    const std::vector<std::uint8_t> bytes =
+        makeCompressedNjpFixture();
+    osf::gapi::NjpImage image;
+    std::string error;
+    if (!check(
+            image.decodeSelectedPatterns(bytes, {0}, &error) &&
+                image.parts().size() == 1 &&
+                !image.patternDecoded(0) &&
+                !image.parts()[0].hasDecodedPixels() &&
+                image.parts()[0].pixels.empty(),
+            "The selective NJP decoder retained an unused bitmap.")) {
+        return false;
+    }
+    osf::gapi::SoftwareBackend backend(2, 2);
+    backend.beginFrame({0, 0, 0, 255});
+    if (!check(
+            !backend.drawPattern(image, 0) &&
+                !osf::displayPatternContainsPoint(
+                    image, 0, {0, 0}, {0, 0}),
+            "An omitted NJP bitmap was treated as decoded.")) {
+        return false;
+    }
+    return check(
+        image.decodeSelectedPatterns(bytes, {1}, &error) &&
+            image.patternDecoded(0) &&
+            image.parts()[0].hasDecodedPixels() &&
+            backend.drawPattern(image, 0),
+        "The selective NJP decoder omitted a requested bitmap.");
+}
+
 bool testBitmapAndTextDrawing() {
     osf::gapi::BitmapImage bitmap;
     std::string error;
@@ -924,6 +955,7 @@ int main() {
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
         !testMutableBitmapMask() ||
+        !testSelectedNjpDecode() ||
         !testBitMaskDrawing() ||
         !testCafAndTitleAnimation() ||
         !testCafCharacterDrawModes() ||

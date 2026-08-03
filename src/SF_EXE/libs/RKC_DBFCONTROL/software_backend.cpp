@@ -110,6 +110,9 @@ bool SoftwareBackend::drawPattern(
         return false;
     }
     const NjpPattern& pattern = image.patterns()[pattern_index];
+    if (!image.patternDecoded(pattern_index)) {
+        return false;
+    }
     const std::int32_t palette_index =
         draw.palette >= 0
             ? draw.palette
@@ -164,6 +167,9 @@ bool SoftwareBackend::drawPattern(
         }
         const NjpPart& part =
             image.parts()[static_cast<std::size_t>(item.part_index)];
+        if (!part.hasDecodedPixels()) {
+            return false;
+        }
         if (part.width <= 0 || part.height <= 0 ||
             item.scale_x <= 0 || item.scale_y <= 0 ||
             draw.scale_x <= 0 || draw.scale_y <= 0) {
@@ -584,6 +590,9 @@ bool SoftwareBackend::drawText(
         }
 
         const NjpPattern& pattern = font.patterns()[patternIndex];
+        if (!font.patternDecoded(patternIndex)) {
+            return false;
+        }
         if (pattern.default_palette < 0 ||
             static_cast<std::size_t>(pattern.default_palette) >=
                 font.palettes().size()) {
@@ -602,6 +611,9 @@ bool SoftwareBackend::drawText(
             const NjpPart& part =
                 font.parts()[static_cast<std::size_t>(
                     item.part_index)];
+            if (!part.hasDecodedPixels()) {
+                return false;
+            }
             for (std::int32_t y = 0; y < cellHeight; ++y) {
                 const std::int32_t targetY = cursorY + y;
                 const std::int32_t sourceY =

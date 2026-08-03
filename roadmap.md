@@ -2158,19 +2158,21 @@ table current as each resource group is reduced.
 The first memory pass moved frontend assets into a portable resource manager
 with explicit common, title, character-select, and gameplay lifetimes. Leaving
 a screen now destroys everything owned by that screen, including decoded save
-previews, while the common fonts and cursor remain alive. The next useful
-measurements are gameplay-only: make inventory sheets lazy, give every scenario
-its own world/effect/item resource scope, and remove the temporary two-map peak
-during transitions without weakening failure-safe loading.
+previews, while the common fonts and cursor remain alive. Map exploration now
+uses one packed bit per pixel, and player NJP files decode only the body and
+equipment layers selected by the CAF appearance mask. The next useful work is
+to scope common fonts and loading art, make inventory sheets lazy, give every
+scenario its own world/effect/item resource scope, and remove the temporary
+two-map peak during transitions without weakening failure-safe loading.
 
 The profiler now reports game and decoded-audio memory separately, followed by
 their TOTAL RAM sum, instead of process RSS. This keeps Linux graphics-driver
 and window-system allocations out of console budgeting.
 LAL also retains each sound's mono/stereo layout and original rate instead of
-expanding everything to the output mix format. Its 16 kHz, 22.05 kHz, and
-48 kHz ceilings and optional stereo-to-mono downmix are configured inside LAL,
-so constrained targets can trade sample quality for memory without adding
-policy to the game or platform code.
+expanding everything to the output mix format. The project defaults to 16 kHz
+mono on every target; LAL still exposes 16 kHz, 22.05 kHz, and 48 kHz ceilings
+and an optional stereo layout for applications that need a different quality
+tradeoff. That policy remains in LAL rather than game or platform code.
 
 ## What can wait
 

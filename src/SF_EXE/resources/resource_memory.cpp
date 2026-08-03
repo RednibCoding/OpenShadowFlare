@@ -42,7 +42,9 @@ std::uint64_t decodedMemoryUsageBytes(
         static_cast<std::uint64_t>(image.patterns().capacity()) *
             sizeof(gapi::NjpPattern) +
         static_cast<std::uint64_t>(image.palettes().capacity()) *
-            sizeof(gapi::NjpPalette);
+            sizeof(gapi::NjpPalette) +
+        static_cast<std::uint64_t>(
+            image.decodedPatternFlags().capacity());
     for (const gapi::NjpPart& part : image.parts()) {
         bytes += part.pixels.capacity();
     }

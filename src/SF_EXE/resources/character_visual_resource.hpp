@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace osf {
 
@@ -17,6 +18,13 @@ public:
     bool load(
         const std::filesystem::path& directory,
         const std::string& stem,
+        std::string* error = nullptr);
+    bool loadAnimation(
+        const std::filesystem::path& directory,
+        const std::string& stem,
+        std::string* error = nullptr);
+    bool loadSelectedParts(
+        const std::vector<std::uint8_t>& enabled_parts,
         std::string* error = nullptr);
     void clear();
 
@@ -29,6 +37,10 @@ private:
     gapi::NjpImage patterns_;
     gapi::NjpImage shadow_patterns_;
     gapi::CafAnimation animation_;
+    std::filesystem::path directory_;
+    std::string stem_;
+    std::vector<std::uint8_t> selected_parts_;
+    bool patterns_loaded_ = false;
 };
 
 class CharacterVisualResources {

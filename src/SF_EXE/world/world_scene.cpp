@@ -735,11 +735,13 @@ std::int32_t WorldScene::playerPartBlueStrength(
     return player_appearance_.blueStrength(part);
 }
 
-void WorldScene::refreshPlayerAppearance() {
+bool WorldScene::refreshPlayerAppearance(std::string* error) {
     player_appearance_.refresh(
         player_visual_.animation().maxPartCount(),
         player_equipment_,
         item_database_);
+    return player_visual_.loadSelectedParts(
+        player_appearance_.enabledParts(), error);
 }
 
 std::int32_t WorldScene::playerEquipmentColor(

@@ -1,7 +1,9 @@
 #include "resources/resource_manager.hpp"
+#include "resources/character_visual_resource.hpp"
 
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 namespace {
 
@@ -10,6 +12,74 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool patternDecoded(
+    const osf::gapi::NjpImage& image,
+    std::int32_t pattern_index) {
+    if (pattern_index < 0 ||
+        static_cast<std::size_t>(pattern_index) >=
+            image.patterns().size() ||
+        !image.patternDecoded(static_cast<std::size_t>(
+            pattern_index))) {
+        return false;
+    }
+    for (const osf::gapi::NjpPatternPart& part :
+         image.patterns()[static_cast<std::size_t>(
+             pattern_index)].parts) {
+        if (part.part_index < 0 ||
+            static_cast<std::size_t>(part.part_index) >=
+                image.parts().size() ||
+            !image.parts()[static_cast<std::size_t>(
+                part.part_index)].hasDecodedPixels()) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool selectedAnimationPatternsDecoded(
+    const osf::CharacterVisualResource& visual,
+    const osf::CharacterVisualResource& reference,
+    const std::vector<std::uint8_t>& enabled_parts) {
+    for (const osf::gapi::CafChart& chart :
+         visual.animation().charts()) {
+        for (const osf::gapi::CafDirection& direction :
+             chart.directions) {
+            for (std::size_t part_index = 0;
+                 part_index < direction.parts.size();
+                 ++part_index) {
+                if (part_index >= enabled_parts.size() ||
+                    enabled_parts[part_index] == 0) {
+                    continue;
+                }
+                for (const osf::gapi::CafCell& cell :
+                     direction.parts[part_index]) {
+                    if (cell.pattern_index < 0) {
+                        continue;
+                    }
+                    const bool normal_required = patternDecoded(
+                        reference.patterns(), cell.pattern_index);
+                    const bool shadow_required =
+                        (cell.status & 8) != 0 &&
+                        patternDecoded(
+                            reference.shadowPatterns(),
+                            cell.pattern_index);
+                    if ((normal_required &&
+                         !patternDecoded(
+                             visual.patterns(),
+                             cell.pattern_index)) ||
+                        (shadow_required &&
+                         !patternDecoded(
+                             visual.shadowPatterns(),
+                             cell.pattern_index))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
 }
 
 }  // namespace
@@ -23,6 +93,67 @@ int main() {
         "tmp/ShadowFlare";
     if (!std::filesystem::is_directory(data_root)) {
         return 0;
+    }
+
+    const std::filesystem::path female_root =
+        data_root / "Player" / "Female";
+    osf::CharacterVisualResource full_player;
+    osf::CharacterVisualResource selected_player;
+    std::string player_error;
+    if (!check(
+            full_player.load(
+                female_root, "Animation00", &player_error) &&
+                selected_player.loadAnimation(
+                    female_root, "Animation00", &player_error),
+            player_error.c_str())) {
+        return 1;
+    }
+    std::vector<std::uint8_t> selected_parts(
+        selected_player.animation().maxPartCount(), 0);
+    for (std::size_t part : {std::size_t{0}, std::size_t{1},
+                             std::size_t{5}}) {
+        if (part < selected_parts.size()) {
+            selected_parts[part] = 1;
+        }
+    }
+    const bool selected_loaded =
+        selected_player.loadSelectedParts(
+            selected_parts, &player_error);
+    const bool selected_compact =
+        selected_player.memoryUsageBytes() * 2 <
+            full_player.memoryUsageBytes();
+    const bool selected_complete =
+        selectedAnimationPatternsDecoded(
+            selected_player, full_player, selected_parts);
+    if (!check(
+            selected_loaded && selected_compact && selected_complete,
+            "Selected player layers were not decoded completely or "
+            "did not reduce their allocation.")) {
+        std::cerr
+            << "full=" << full_player.memoryUsageBytes()
+            << " selected=" << selected_player.memoryUsageBytes()
+            << " loaded=" << selected_loaded
+            << " complete=" << selected_complete
+            << " error=" << player_error << '\n';
+        return 1;
+    }
+    const std::uint64_t equipped_bytes =
+        selected_player.memoryUsageBytes();
+    if (selected_parts.size() > 5) {
+        selected_parts[5] = 0;
+    }
+    if (!check(
+            selected_player.loadSelectedParts(
+                selected_parts, &player_error) &&
+                selected_player.memoryUsageBytes() <
+                    equipped_bytes &&
+                selectedAnimationPatternsDecoded(
+                    selected_player,
+                    full_player,
+                    selected_parts),
+            "Changing equipment layers did not release unused player "
+            "bitmaps.")) {
+        return 1;
     }
 
     osf::ResourceManager resources(data_root);

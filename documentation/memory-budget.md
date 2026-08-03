@@ -18,8 +18,8 @@ profiler total.
 | Resource | Before | Current state or next step |
 |---|---:|---|
 | Remote Town exploration mask | 10.55 MiB | 0.33 MiB bit mask; completed |
-| Female player graphics | 18.92 MiB | Decode only active body and equipment layers |
-| Male player graphics | 24.88 MiB | Decode only active body and equipment layers |
+| Female player graphics | 18.97 MiB | 6.86 MiB with the new-character body and armour; completed |
+| Male player graphics | 24.93 MiB | 8.14 MiB with the new-character body and armour; completed |
 | Common fonts and loading art | 5.20 MiB | Load glyphs and loading art on demand |
 | All inventory sheets | 2.59 MiB | Load only the groups currently needed |
 | Gameplay interface artwork | 2.09 MiB | Scope optional panels such as Card artwork |
@@ -33,17 +33,23 @@ clipping while reducing the allocation from 11,059,200 to 345,600 bytes, a
 
 ## Order of work
 
-The next major target is player graphics. `Animation00.Njp` currently expands
-every body, weapon, shield, and armour bitmap even though the CAF renderer only
-enables the base body and equipped layers. Keeping CAF and pattern metadata but
-loading bitmap payloads for enabled layers should recover roughly another
-12–17 MiB, depending on gender and equipment.
+Player graphics now keep the complete CAF animation and NJP pattern metadata,
+but decode bitmap payloads only for the base body and currently equipped visual
+layers. Equipment changes rebuild that selection at a predictable UI boundary.
+The previous selection is released before replacement bitmaps are allocated, so
+an equipment change does not briefly retain two complete player payloads.
+With the new-character leather armour, this reduces the female resource by
+12.10 MiB and the male resource by 16.79 MiB. Other equipment combinations use
+different amounts, so the current figures are useful baselines rather than hard
+caps. Selected NJP loading also streams individual compressed blocks from disk;
+it does not temporarily copy the complete 9–12 MiB source file into memory.
 
-After that, make inventory groups and optional interface artwork lazy, then
-bound scenario-owned actor, item, and effect caches. Map transitions also need
-to release the old scenario before allocating the complete replacement; the
-current failure-safe preparation briefly holds both maps and would exceed a
-32 MiB machine even if steady gameplay fits.
+The next targets are common fonts and loading art, followed by lazy inventory
+groups and optional interface artwork. After that, bound scenario-owned actor,
+item, and effect caches. Map transitions also need to release the old scenario
+before allocating the complete replacement; the current failure-safe
+preparation briefly holds both maps and would exceed a 32 MiB machine even if
+steady gameplay fits.
 
 Memory work must remain portable and fidelity-safe. Resource budgets and cache
 lifetimes belong in shared resource code, never in target adapters. Streaming
