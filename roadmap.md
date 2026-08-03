@@ -2162,7 +2162,7 @@ previews. The English fonts retain only their Latin sheet, loading art is freed
 at the world handoff, and optional gameplay and inventory sheets follow the
 visible panels and item containers. Map exploration uses one packed bit per
 pixel, and player NJP files decode only the body and equipment layers selected
-by the CAF appearance mask. Closed starter gameplay now measures 23.95 MiB of
+by the CAF appearance mask. Closed starter gameplay now measures 23.98 MiB of
 tracked game resources including the software framebuffer. The next useful
 work is to give every scenario its own bounded world/effect/item resource scope
 and remove the temporary two-map peak during transitions without weakening

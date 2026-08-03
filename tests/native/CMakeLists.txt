@@ -2252,6 +2252,10 @@ if(TARGET sf_game_core)
       OpenShadowFlare::RKC_DBFCONTROL
   )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gapi_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
   set_target_properties(gapi_test PROPERTIES CXX_EXTENSIONS OFF)
 
   if(MSVC)

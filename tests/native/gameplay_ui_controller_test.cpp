@@ -4,6 +4,7 @@
 #include "runtime/gameplay_artwork.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
+#include "resources/font_resource.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
 #include "resources/resource_manager.hpp"
@@ -47,7 +48,7 @@ bool testClosedGameplayArtworkBudget() {
                 resources.loadCommonPattern(
                     1,
                     "System\\Common\\Pattern\\Font01.njp",
-                    std::vector<std::uint8_t>{1}) &&
+                    osf::englishRetailFontPatternSelection()) &&
                 resources.loadGameplayPattern(
                     5, "System\\Game\\Pattern\\Bar.njp") &&
                 resources.loadGameplayPattern(

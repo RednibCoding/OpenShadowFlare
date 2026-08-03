@@ -1,6 +1,7 @@
 #include "state_bindings.hpp"
 
 #include "lwl.h"
+#include "resources/font_resource.hpp"
 #include "resources/resource_manager.hpp"
 #include "ui/conversation_layout.hpp"
 #include "resources/retail_filesystem.hpp"
@@ -12,7 +13,6 @@
 #include <cstdio>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace osf::runtime {
 
@@ -70,7 +70,7 @@ CharacterSelectStateHooks makeCharacterSelectStateHooks(
         resources.loadCommonPattern(
             0,
             "System\\Common\\Pattern\\Font00.njp",
-            std::vector<std::uint8_t>{1});
+            englishRetailFontPatternSelection());
     };
     hooks.clear_scene = [&resources] {
         resources.releaseCommonPattern(0);
@@ -133,7 +133,7 @@ GameplayStateHooks makeGameplayStateHooks(
         const bool ready = resources.loadCommonPattern(
                 1,
                 "System\\Common\\Pattern\\Font01.njp",
-                std::vector<std::uint8_t>{1}) &&
+                englishRetailFontPatternSelection()) &&
             resources.loadCommonPattern(
                 2,
                 "System\\Common\\Pattern\\Waiting.njp") &&

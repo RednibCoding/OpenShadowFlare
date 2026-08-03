@@ -1,5 +1,6 @@
 #include "resources/resource_manager.hpp"
 #include "resources/character_visual_resource.hpp"
+#include "resources/font_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
 
 #include <array>
@@ -178,10 +179,11 @@ int main() {
             selected_font.loadCommonPattern(
                 0,
                 "System\\Common\\Pattern\\Font00.njp",
-                std::vector<std::uint8_t>{1}) &&
+                osf::englishRetailFontPatternSelection()) &&
                 selected_font.pattern(0) &&
                 selected_font.pattern(0)->patternDecoded(0) &&
                 !selected_font.pattern(0)->patternDecoded(1) &&
+                selected_font.pattern(0)->patternDecoded(2) &&
                 selected_font.memoryUsageBytes() * 10 < common_bytes,
             "The English font sheet was not decoded selectively.")) {
         return 1;

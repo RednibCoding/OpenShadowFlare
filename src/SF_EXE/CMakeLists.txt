@@ -93,6 +93,7 @@ add_library(
   resources/character_visual_resource.cpp
   resources/effect_pattern_resource.cpp
   resources/effect_visual_resource.cpp
+  resources/font_resource.cpp
   resources/item_inventory_resource.cpp
   resources/item_world_resource.cpp
   resources/object_visual_resource.cpp
