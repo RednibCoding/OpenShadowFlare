@@ -29,7 +29,8 @@ static const SfCafSelectedAnimation *sf_gameplay_player_animation(
 }
 
 SfRect sf_gameplay_player_bounds(
-    const SfPlayerAssets *assets, const SfWorldState *world) {
+    const SfPlayerAssets *assets, const SfWorldState *world,
+    const SfWorldRenderView *view) {
   const SfCafSelectedAnimation *animation;
   SfScreenPoint anchor;
   SfRect result = {0, 0, 0, 0};
@@ -38,12 +39,12 @@ SfRect sf_gameplay_player_bounds(
   int right = 0;
   int bottom = 0;
   uint8_t part;
-  if (!assets || !world) return result;
+  if (!assets || !world || !view) return result;
   animation = sf_gameplay_player_animation(assets, &world->player);
   if (!animation) return result;
-  anchor = sf_world_to_screen(world->player.position);
-  anchor.x -= world->camera_x;
-  anchor.y -= world->camera_y;
+  anchor = sf_world_to_screen(view->player_position);
+  anchor.x -= view->camera_x;
+  anchor.y -= view->camera_y;
   for (part = 0u; part < animation->part_count; ++part) {
     uint8_t frame;
     for (frame = 0u; frame < animation->frame_count; ++frame) {
@@ -76,21 +77,22 @@ SfRect sf_gameplay_player_bounds(
 
 void sf_gameplay_player_draw(
     SfRenderer *renderer, const SfPlayerAssets *assets,
-    const SfWorldState *world, bool shadow, const SfRect *clip) {
+    const SfWorldState *world, const SfWorldRenderView *view,
+    bool shadow, const SfRect *clip) {
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
   SfScreenPoint anchor;
   uint8_t priority;
   uint8_t frame;
-  if (!renderer || !assets || !world) return;
+  if (!renderer || !assets || !world || !view) return;
   animation = sf_gameplay_player_animation(assets, &world->player);
   resource = shadow ? &assets->shadows : &assets->artwork;
   if (!animation || animation->frame_count == 0u) return;
   frame = (uint8_t) (
     world->player.animation_frame % animation->frame_count);
-  anchor = sf_world_to_screen(world->player.position);
-  anchor.x -= world->camera_x;
-  anchor.y -= world->camera_y;
+  anchor = sf_world_to_screen(view->player_position);
+  anchor.x -= view->camera_x;
+  anchor.y -= view->camera_y;
   for (priority = animation->priority_count; priority > 0u; --priority) {
     uint8_t part;
     for (part = 0u; part < animation->part_count; ++part) {

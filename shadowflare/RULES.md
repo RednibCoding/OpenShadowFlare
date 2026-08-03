@@ -30,11 +30,14 @@ The baseline is deliberately harsh:
 - 8 MiB main RAM;
 - 4 MiB video RAM;
 - 640×480 output using packed RGB555;
-- 30 Hz game updates and presentation, matching the retail game.
+- 30 Hz game updates, matching the retail game;
+- integer-interpolated 60 Hz presentation where the target can afford it.
 
-At 30 Hz, 33 MHz is only about 1.1 million CPU cycles per frame. A 640×480 image
-contains 307,200 pixels. Touching the complete framebuffer is therefore a
-serious operation, not a harmless default.
+At 30 Hz, 33 MHz is only about 1.1 million CPU cycles per game update. A
+640×480 image contains 307,200 pixels. Touching the complete framebuffer is
+therefore a serious operation, not a harmless default. Presentation may sample
+the two latest game states at 60 Hz, but it must not run game rules twice or
+introduce floating-point work.
 
 The current memory split reserves 1 MiB of main RAM for executable code,
 stacks, and untracked target needs. The caller-owned game arena gets the other
@@ -119,7 +122,7 @@ headers, legacy libraries, and heap allocation.
   and older research can point us in the right direction, but they do not
   overrule retail behavior.
 - Decode or prepare expensive data while loading, not during gameplay.
-- Prefer integer and fixed-point math in recurring game and render work.
+- Game, render, screen, and runtime code uses integer or fixed-point math only.
 - File access, logging, decompression, and save work do not belong in a frame
   hot path.
 - Optimize measured work, but reject obviously unbounded algorithms before a

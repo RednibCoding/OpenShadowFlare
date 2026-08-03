@@ -33,6 +33,12 @@ typedef struct SfWorldPointerControl {
   bool previous_down;
 } SfWorldPointerControl;
 
+typedef struct SfWorldRenderView {
+  SfWorldPoint player_position;
+  int32_t camera_x;
+  int32_t camera_y;
+} SfWorldRenderView;
+
 typedef struct SfWorldState {
   int32_t scenario_id;
   int32_t entry_key;
@@ -54,5 +60,8 @@ void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
+void sf_world_render_view(
+  const SfWorldState *world, uint16_t interpolation,
+  SfWorldRenderView *view);
 
 #endif

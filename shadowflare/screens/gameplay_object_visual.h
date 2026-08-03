@@ -17,21 +17,28 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_PLAYER_H
-#define SHADOWFLARE_SCREENS_GAMEPLAY_PLAYER_H
+#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_OBJECT_VISUAL_H
+#define SHADOWFLARE_SCREENS_GAMEPLAY_OBJECT_VISUAL_H
 
-#include "assets/player_assets.h"
+#include "assets/gameplay_assets.h"
 #include "game/world.h"
 #include "render/renderer.h"
 
 #include <stdbool.h>
 
-SfRect sf_gameplay_player_bounds(
-  const SfPlayerAssets *assets, const SfWorldState *world,
-  const SfWorldRenderView *view);
-void sf_gameplay_player_draw(
-  SfRenderer *renderer, const SfPlayerAssets *assets,
-  const SfWorldState *world, const SfWorldRenderView *view,
-  bool shadow, const SfRect *clip);
+typedef struct SfGameplayObjectVisual {
+  const SfNjpDecodedResource *resource;
+  const SfNjpDecodedPattern *pattern;
+} SfGameplayObjectVisual;
+
+bool sf_gameplay_object_visual_find(
+  const SfGameplayAssets *assets, const SfMapObject *object,
+  bool shadow, SfGameplayObjectVisual *visual);
+bool sf_gameplay_object_visual_visible(
+  const SfGameplayObjectVisual *visual, const SfMapObject *object,
+  const SfWorldRenderView *view, bool shadow);
+bool sf_gameplay_object_visual_intersects(
+  const SfGameplayObjectVisual *visual, const SfMapObject *object,
+  const SfWorldRenderView *view, SfRect rectangle);
 
 #endif

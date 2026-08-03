@@ -127,7 +127,8 @@ const SfTitleAssets *sf_screen_runtime_title_assets(
 }
 
 void sf_screen_runtime_draw(
-    SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game) {
+    SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game,
+    uint16_t interpolation) {
   if (!runtime || !renderer || !game || !runtime->loaded) return;
   if (game->mode == SF_GAME_MODE_TITLE) {
     sf_title_screen_draw(
@@ -143,7 +144,7 @@ void sf_screen_runtime_draw(
   } else if (game->mode == SF_GAME_MODE_GAMEPLAY) {
     sf_gameplay_screen_draw(
       &runtime->screen.gameplay, renderer,
-      &runtime->assets.gameplay, game);
+      &runtime->assets.gameplay, game, interpolation);
   } else if (!runtime->blank_drawn) {
     sf_renderer_clear(renderer, 0u);
     runtime->blank_drawn = true;

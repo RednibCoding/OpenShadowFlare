@@ -34,6 +34,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef union SfRuntimeScreenAssets {
   SfTitleAssets title;
@@ -70,6 +71,7 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game);
 const SfTitleAssets *sf_screen_runtime_title_assets(
   const SfScreenRuntime *runtime);
 void sf_screen_runtime_draw(
-  SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game);
+  SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game,
+  uint16_t interpolation);
 
 #endif

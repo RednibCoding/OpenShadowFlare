@@ -108,21 +108,28 @@ static int test_world_coordinates(void) {
 static int test_player_movement(void) {
   SfPlayerState player;
   SfMovementStep step;
+  SfWorldPoint rendered;
   sf_player_init(&player, 1u);
   sf_player_enter(&player, (SfWorldPoint) {1000, 1000}, 1u);
   sf_player_move_to(&player, (SfWorldPoint) {1100, 1000});
   sf_player_update(&player, NULL);
+  rendered = sf_player_render_position(&player, 500u);
   if (check(player.position.x == 1020 && player.position.y == 1000,
             "retail walking speed was not twenty world units") ||
+      check(rendered.x == 1010 && rendered.y == 1000,
+            "integer interpolation did not produce the half-step position") ||
       check(player.motion == SF_PLAYER_WALKING &&
             player.direction == 1u && player.animation_frame == 0u,
             "walking did not select chart one and its first frame")) return 1;
   sf_player_toggle_pace(&player);
   sf_player_update(&player, NULL);
+  rendered = sf_player_render_position(&player, 500u);
   if (check(player.position.x == 1060 &&
             player.motion == SF_PLAYER_RUNNING &&
             player.animation_frame == 0u,
-            "running did not use twice the walk speed and chart two"))
+            "running did not use twice the walk speed and chart two") ||
+      check(rendered.x == 1040 && rendered.y == 1000,
+            "running interpolation did not preserve the 30 Hz endpoints"))
     return 1;
   step = sf_movement_step_toward(
     (SfWorldPoint) {0, 0}, (SfWorldPoint) {3, 4}, 20u);

@@ -101,3 +101,23 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   world->camera_y = player_screen.y - 240;
   pointer->previous_down = input->pointer_primary_down;
 }
+
+void sf_world_render_view(
+    const SfWorldState *world, uint16_t interpolation,
+    SfWorldRenderView *view) {
+  SfScreenPoint current_screen;
+  SfScreenPoint render_screen;
+  int32_t anchor_x;
+  int32_t anchor_y;
+  if (!view) return;
+  memset(view, 0, sizeof(*view));
+  if (!world) return;
+  view->player_position = sf_player_render_position(
+    &world->player, interpolation);
+  current_screen = sf_world_to_screen(world->player.position);
+  render_screen = sf_world_to_screen(view->player_position);
+  anchor_x = current_screen.x - world->camera_x;
+  anchor_y = current_screen.y - world->camera_y;
+  view->camera_x = render_screen.x - anchor_x;
+  view->camera_y = render_screen.y - anchor_y;
+}

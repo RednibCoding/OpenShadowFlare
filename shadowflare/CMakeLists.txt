@@ -71,6 +71,7 @@ add_library(
   render/renderer.c
   screens/character_create_screen.c
   screens/gameplay_screen.c
+  screens/gameplay_object_visual.c
   screens/gameplay_player.c
   screens/load_game_screen.c
   screens/title_screen.c
@@ -86,6 +87,20 @@ add_executable(
 )
 add_executable(ShadowFlare::Game ALIAS osf)
 sf_configure_c99_target(osf)
+set(
+  OPENSHADOWFLARE_C99_PRESENTATION_HZ
+  "60"
+  CACHE STRING
+  "Presentation rate for the C99 game (30 or 60 Hz)"
+)
+set_property(
+  CACHE OPENSHADOWFLARE_C99_PRESENTATION_HZ PROPERTY STRINGS 30 60)
+if(NOT OPENSHADOWFLARE_C99_PRESENTATION_HZ STREQUAL "30" AND
+   NOT OPENSHADOWFLARE_C99_PRESENTATION_HZ STREQUAL "60")
+  message(FATAL_ERROR "C99 presentation rate must be 30 or 60 Hz")
+endif()
+target_compile_definitions(
+  osf PRIVATE SF_PRESENTATION_HZ=${OPENSHADOWFLARE_C99_PRESENTATION_HZ})
 target_link_libraries(
   osf
   PRIVATE

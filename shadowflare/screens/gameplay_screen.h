@@ -33,6 +33,7 @@
 typedef struct SfGameplayScreen {
   uint16_t visible_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
   uint16_t shadow_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
+  uint8_t translucent_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
   uint16_t visible_count;
   uint16_t shadow_count;
   uint32_t rendered_animation_frame;
@@ -51,6 +52,7 @@ bool sf_gameplay_screen_init(
   const SfWorldState *world);
 void sf_gameplay_screen_draw(
   SfGameplayScreen *screen, SfRenderer *renderer,
-  const SfGameplayAssets *assets, const SfGame *game);
+  const SfGameplayAssets *assets, const SfGame *game,
+  uint16_t interpolation);
 
 #endif

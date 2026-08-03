@@ -29,22 +29,25 @@ They make the 33 MHz CPU, 8 MiB main-RAM, and 4 MiB video-RAM constraints
 explicit and describe the boundaries that new code must preserve.
 
 The current executable opens a 640×480 RGB555 surface and reconstructs the
-retail title screen from the original NJP, CAF, and VOC files. It runs at the
-retail 30 Hz cadence, supports mouse, keyboard, and controller menu input, and
-keeps the fade, menu brightness, smoke timing, music, and effects in their
-recovered order. New Game now continues through the retail character-creation
-screen: gender selection, the portrait slide and fade, 15-byte name entry,
-visible caret, menu sounds, and the Online/Single/Back choices are present.
+retail title screen from the original NJP, CAF, and VOC files. Game rules run
+at the retail 30 Hz cadence, while integer-only interpolation presents moving
+gameplay at 60 Hz on capable targets. It supports mouse, keyboard, and
+controller menu input and keeps the fade, menu brightness, smoke timing,
+music, and effects in their recovered order. New Game now continues through
+the retail character-creation screen: gender selection, the portrait slide and
+fade, 15-byte name entry, visible caret, menu sounds, and the
+Online/Single/Back choices are present.
 Load Game now opens the retail six-entry save screen, reads the original save
 summaries, swaps the selected thumbnail, supports mouse and two-column
 keyboard/controller navigation, and includes Continue, Delete, Back, Exit,
 the delete confirmation, and game-mode dialogs. Choosing Single Mode now
-continues through the loading hand-off into the first gameplay slice: a static
-Remote Town viewport loaded entirely from scenario, GND, OBL, LST, NJP, and
-SDW retail data. The selected male or female hero now appears at the authored
-MCT entry, wears the new-character Leather Cloth described by `Item.Ibn`, and
-plays the retail idle, walk, and run charts with matching shadows and scenery
-depth. Mouse movement follows the retail distinction between a latched click
+continues through the loading hand-off into the first gameplay slice: a
+scrolling Remote Town viewport loaded entirely from scenario, GND, OBL, LST,
+NJP, and SDW retail data. The selected male or female hero now appears at the
+authored MCT entry, wears the new-character Leather Cloth described by
+`Item.Ibn`, and plays the retail idle, walk, and run charts with matching
+shadows and scenery depth. Mouse movement follows the retail distinction
+between a latched click
 and a held pointer that stops on release, while `R` switches between the
 recovered walk and run speeds. Static map collision and the retail cardinal
 edge-following route controller are now active as well, including the full
@@ -88,7 +91,13 @@ interfaces.
 The executable is built at `build/<platform>/<config>/shadowflare/osf` (or
 `osf.exe` on Windows). The older reference executable remains
 `ShadowFlare_rebuilt`, so it is always clear which implementation is being
-tested.
+tested. Presentation defaults to 60 Hz with 30 Hz integer-interpolated game
+states. Constrained builds can select 30 Hz without adding target code:
+
+```sh
+cmake -S . -B build/linux/release \
+  -DOPENSHADOWFLARE_C99_PRESENTATION_HZ=30
+```
 
 Debug-tool builds also produce `osf-measure` beside the game. It loads every
 implemented C99 screen through the real screen runtime and prints the total,
@@ -125,8 +134,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,423,821 bytes of the 7 MiB main arena,
-leaving 5,916,211 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,424,093 bytes of the 7 MiB main arena,
+leaving 5,915,939 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -139,20 +148,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 736,744 bytes of the main arena, leaving 6,603,288 bytes free;
+assets. It uses 737,016 bytes of the main arena, leaving 6,603,016 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 696,960 bytes of the main arena, leaving 6,643,072
+The load-game screen uses 697,232 bytes of the main arena, leaving 6,642,800
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 2,708,864 bytes of the main
-arena, leaving 4,631,168 bytes free. Its map- and player-scoped data and
+The complete Remote Town gameplay screen uses 2,709,136 bytes of the main
+arena, leaving 4,630,896 bytes free. Its map- and player-scoped data and
 artwork account for 2,386,225 bytes. GND rendering data is decoded directly
 from its compressed three-plane stream into two bytes per tile, so the 300x300
 town grid occupies 180,000 bytes instead of retaining the 540,000-byte source
@@ -175,7 +184,9 @@ NJP bounds cull the current viewport before sorting, and the NJP header must
 identify a resource as a real shadow before it can enter a shadow pass. The
 hero joins those same sorted passes using the retail player judgement box, so
 gates, walls, roofs, and ordinary scenery can appear on the correct side of the
-actor.
+actor. Visible objects drawn in front of the hero use the retail pixel-level
+51×61 obstruction check and are capped at half opacity unless their OBL status
+explicitly disables fading.
 
 The player archives are deliberately not loaded whole. The male NJP alone
 would expand to more than 20 MiB. A two-pass sparse loader scans the large file

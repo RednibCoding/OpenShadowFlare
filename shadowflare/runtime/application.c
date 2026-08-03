@@ -40,7 +40,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SF_FRAME_MICROSECONDS UINT64_C(33333)
+#if !defined(SF_PRESENTATION_HZ)
+#define SF_PRESENTATION_HZ 60
+#endif
+#if SF_PRESENTATION_HZ != 30 && SF_PRESENTATION_HZ != 60
+#error "SF_PRESENTATION_HZ must be 30 or 60"
+#endif
+
+#define SF_UPDATE_MICROSECONDS UINT64_C(33333)
+#define SF_RENDER_MICROSECONDS \
+  ((UINT64_C(1000000) + SF_PRESENTATION_HZ / 2u) / SF_PRESENTATION_HZ)
 #define SF_MAX_FRAME_MICROSECONDS UINT64_C(100000)
 
 static void sf_read_event(
@@ -212,7 +221,8 @@ int sf_application_run(
   void *decode_scratch;
   size_t window_bytes;
   size_t audio_bytes;
-  uint64_t next_frame;
+  uint64_t next_update;
+  uint64_t next_render;
   char data_root[SF_RETAIL_PATH_CAPACITY];
   SfGameMode audio_mode = SF_GAME_MODE_TITLE;
   bool running = true;
@@ -329,27 +339,30 @@ int sf_application_run(
   surface.stride_bytes =
     (size_t) framebuffer->stride * sizeof(uint16_t);
   surface.format = TWL_PIXEL_RGB555;
-  next_frame = twl_time_microseconds(window);
+  next_update = twl_time_microseconds(window);
+  next_render = next_update;
 #if defined(SF_ENABLE_PROFILING)
-  sf_profiler_init(&profiler, next_frame);
+  sf_profiler_init(&profiler, next_update);
 #endif
 
   while (running && !game->quit_requested) {
     TwlEvent event;
     uint64_t now;
+    uint64_t next_wake;
     twl_pump_events(window);
     while (twl_poll_event(window, &event))
       sf_read_event(window, &event, &input, &running);
     if (!running) break;
 
     now = twl_time_microseconds(window);
-    if (now < next_frame) {
-      twl_sleep_microseconds(window, next_frame - now);
+    next_wake = next_update < next_render ? next_update : next_render;
+    if (now < next_wake) {
+      twl_sleep_microseconds(window, next_wake - now);
       now = twl_time_microseconds(window);
     }
     {
       unsigned updates = 0u;
-      while (now >= next_frame && updates < 3u) {
+      while (now >= next_update && updates < 3u) {
         sf_game_update(game, &input);
         sf_play_menu_events(
           audio, menu_assets,
@@ -358,11 +371,11 @@ int sf_application_run(
             game->load_game.sound_events),
           &menu_music_started);
         sf_clear_input(&input);
-        next_frame += SF_FRAME_MICROSECONDS;
+        next_update += SF_UPDATE_MICROSECONDS;
         ++updates;
       }
-      if (now > next_frame + SF_MAX_FRAME_MICROSECONDS)
-        next_frame = now + SF_FRAME_MICROSECONDS;
+      if (now > next_update + SF_MAX_FRAME_MICROSECONDS)
+        next_update = now + SF_UPDATE_MICROSECONDS;
     }
 
     if (sf_menu_game_mode(audio_mode) && !sf_menu_game_mode(game->mode)) {
@@ -389,14 +402,34 @@ int sf_application_run(
       running = false;
       continue;
     }
+    if (now > next_render + SF_MAX_FRAME_MICROSECONDS) next_render = now;
+    if (now < next_render) {
+      if (audio) (void) tal_update(audio);
+      continue;
+    }
     {
+      const uint64_t previous_update =
+        next_update >= SF_UPDATE_MICROSECONDS
+          ? next_update - SF_UPDATE_MICROSECONDS : 0u;
+      uint64_t interpolation_time = now > previous_update
+        ? now - previous_update : 0u;
+      uint16_t interpolation;
 #if defined(SF_ENABLE_PROFILING)
       const uint64_t fill_started = twl_time_microseconds(window);
       uint64_t fill_finished;
       uint64_t present_prepared;
       uint64_t frame_finished;
 #endif
-      sf_screen_runtime_draw(screen_runtime, &renderer, game);
+      if (interpolation_time > SF_UPDATE_MICROSECONDS)
+        interpolation_time = SF_UPDATE_MICROSECONDS;
+#if SF_PRESENTATION_HZ == 30
+      interpolation = 1000u;
+#else
+      interpolation = (uint16_t) (
+        interpolation_time * 1000u / SF_UPDATE_MICROSECONDS);
+#endif
+      sf_screen_runtime_draw(
+        screen_runtime, &renderer, game, interpolation);
 #if defined(SF_ENABLE_PROFILING)
       fill_finished = twl_time_microseconds(window);
 #endif
@@ -418,6 +451,7 @@ int sf_application_run(
       }
 #endif
     }
+    next_render += SF_RENDER_MICROSECONDS;
     if (audio) (void) tal_update(audio);
   }
 

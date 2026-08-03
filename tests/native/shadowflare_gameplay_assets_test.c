@@ -18,11 +18,13 @@
  */
 
 #include "assets/gameplay_assets.h"
+#include "core/coordinates.h"
 #include "core/memory_budget.h"
 #include "data/pattern_list.h"
 #include "game/player.h"
 #include "game/world.h"
 #include "screens/gameplay_screen.h"
+#include "screens/gameplay_object_visual.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -58,6 +60,35 @@ static int check_pattern(
   if (decoded && decoded->bounds.valid) return 0;
   fprintf(stderr, "Remote Town is missing %s pattern %d:%d\n",
     kind, (int) set, (int) pattern);
+  return 1;
+}
+
+static int test_object_intersection(const SfGameplayAssets *assets) {
+  uint16_t index;
+  for (index = 0u; index < assets->objects.count; ++index) {
+    const SfMapObject *object = &assets->objects.objects[index];
+    SfGameplayObjectVisual visual;
+    SfWorldRenderView view;
+    SfScreenPoint anchor;
+    SfRect rectangle;
+    if (!sf_gameplay_object_visual_find(
+          assets, object, false, &visual) ||
+        !visual.pattern->bounds.valid || visual.pattern->bounds.width > 1000 ||
+        visual.pattern->bounds.height > 1000) continue;
+    anchor = sf_world_to_screen(
+      (SfWorldPoint) {object->world_x, object->world_y});
+    view.player_position = (SfWorldPoint) {object->world_x, object->world_y};
+    view.camera_x = anchor.x - 320;
+    view.camera_y = anchor.y - 240;
+    rectangle.x = (int16_t) (320 + visual.pattern->bounds.x);
+    rectangle.y = (int16_t) (
+      240 + visual.pattern->bounds.y - object->height * 20 / 100);
+    rectangle.width = (int16_t) visual.pattern->bounds.width;
+    rectangle.height = (int16_t) visual.pattern->bounds.height;
+    if (sf_gameplay_object_visual_intersects(
+          &visual, object, &view, rectangle)) return 0;
+  }
+  fprintf(stderr, "Remote Town object pixels did not intersect their bounds\n");
   return 1;
 }
 
@@ -136,6 +167,7 @@ int main(void) {
       }
     }
   }
+  if (test_object_intersection(&assets)) return 1;
   sf_world_state_init(&world, 0, 0, player.gender);
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
   sf_world_state_enter(

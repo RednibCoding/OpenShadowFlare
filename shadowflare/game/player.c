@@ -54,6 +54,7 @@ void sf_player_enter(
     SfPlayerState *player, SfWorldPoint position, uint8_t direction) {
   if (!player) return;
   player->position = position;
+  player->previous_position = position;
   player->destination = position;
   player->direction = direction < 8u ? direction : 1u;
   player->action_counter = 0u;
@@ -96,10 +97,31 @@ void sf_player_toggle_pace(SfPlayerState *player) {
       ? SF_PLAYER_RUNNING : SF_PLAYER_WALKING;
 }
 
+static int32_t sf_player_interpolate_axis(
+    int32_t previous, int32_t current, uint16_t interpolation) {
+  int64_t distance;
+  if (interpolation > 1000u) interpolation = 1000u;
+  distance = ((int64_t) current - previous) * interpolation;
+  distance += distance >= 0 ? 500 : -500;
+  return previous + (int32_t) (distance / 1000);
+}
+
+SfWorldPoint sf_player_render_position(
+    const SfPlayerState *player, uint16_t interpolation) {
+  SfWorldPoint result = {0, 0};
+  if (!player) return result;
+  result.x = sf_player_interpolate_axis(
+    player->previous_position.x, player->position.x, interpolation);
+  result.y = sf_player_interpolate_axis(
+    player->previous_position.y, player->position.y, interpolation);
+  return result;
+}
+
 void sf_player_update(
     SfPlayerState *player, const SfCollisionWorld *collision) {
   SfRouteStep movement;
   if (!player) return;
+  player->previous_position = player->position;
   if (player->motion == SF_PLAYER_IDLE) {
     if (player->previous_motion != SF_PLAYER_IDLE) player->action_counter = 0u;
     player->animation_frame = player->action_counter++;

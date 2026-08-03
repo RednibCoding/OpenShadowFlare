@@ -42,6 +42,7 @@ typedef enum SfPlayerPace {
 
 typedef struct SfPlayerState {
   SfWorldPoint position;
+  SfWorldPoint previous_position;
   SfWorldPoint destination;
   SfObjectBounds judgement;
   SfRouteController route;
@@ -66,6 +67,8 @@ void sf_player_move_to(SfPlayerState *player, SfWorldPoint destination);
 void sf_player_follow_to(SfPlayerState *player, SfWorldPoint destination);
 void sf_player_cancel_movement(SfPlayerState *player);
 void sf_player_toggle_pace(SfPlayerState *player);
+SfWorldPoint sf_player_render_position(
+  const SfPlayerState *player, uint16_t interpolation);
 void sf_player_update(
   SfPlayerState *player, const SfCollisionWorld *collision);
 
