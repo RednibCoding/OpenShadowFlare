@@ -203,13 +203,14 @@ void renderGameplayMiniMap(
             -1,
             viewport,
         });
-    renderer.drawBitmap(
+    renderer.drawBitMask(
         world.mapExploration().mask(),
         {
             -origin_x,
             -origin_y,
             1000,
             1000,
+            {0, 0, 0, 255},
             1000,
             viewport,
         });
