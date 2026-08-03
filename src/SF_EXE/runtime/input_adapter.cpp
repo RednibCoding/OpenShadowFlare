@@ -106,8 +106,10 @@ bool InputAdapter::handleEvent(
             inventory_held_ = false;
         } else if (std::strcmp(event.key, "x") == 0) {
             special_items_held_ = false;
+#if OSF_ENABLE_DEBUG_TOOLS
         } else if (std::strcmp(event.key, "f12") == 0) {
             debug_held_ = false;
+#endif
         }
         return true;
     }
@@ -263,6 +265,7 @@ bool InputAdapter::handleEvent(
             gameplay_special_items_pressed_ = true;
         }
         special_items_held_ = true;
+#if OSF_ENABLE_DEBUG_TOOLS
     } else if (
         std::strcmp(event.key, "f12") == 0 &&
         current_state == GameState::gameplay) {
@@ -270,6 +273,7 @@ bool InputAdapter::handleEvent(
             gameplay_debug_pressed_ = true;
         }
         debug_held_ = true;
+#endif
     }
     return true;
 }
@@ -294,7 +298,9 @@ void InputAdapter::clearTransientInput() {
     increased_power_pressed_ = false;
     land_mine_pressed_ = false;
     gameplay_options_pressed_ = false;
+#if OSF_ENABLE_DEBUG_TOOLS
     gameplay_debug_pressed_ = false;
+#endif
     gameplay_help_pressed_ = false;
     gameplay_mission_list_pressed_ = false;
     gameplay_map_pressed_ = false;
@@ -352,9 +358,11 @@ bool InputAdapter::gameplayOptionsPressed() const {
     return gameplay_options_pressed_;
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 bool InputAdapter::gameplayDebugPressed() const {
     return gameplay_debug_pressed_;
 }
+#endif
 
 bool InputAdapter::gameplayHelpPressed() const {
     return gameplay_help_pressed_;

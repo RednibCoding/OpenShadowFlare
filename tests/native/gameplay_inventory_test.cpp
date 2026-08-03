@@ -12,6 +12,7 @@
 #include "states/gameplay_inventory.hpp"
 #include "world/world_scene.hpp"
 
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <iostream>
@@ -77,6 +78,16 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool prepareAllItemArtwork(
+    osf::WorldScene& world,
+    std::string* error) {
+    std::array<
+        std::uint8_t,
+        osf::ItemInventoryResource::group_count> groups{};
+    groups.fill(1);
+    return world.prepareItemInventoryPatterns(groups, error);
 }
 
 bool testInventoryState() {
@@ -212,6 +223,12 @@ bool testInventoryResourcesAndRendering() {
             error.empty()
                 ? "Remote Town could not prepare its inventory."
                 : error.c_str())) {
+        return false;
+    }
+    if (!check(
+            world.itemInventoryPatterns().group(0) == nullptr &&
+                prepareAllItemArtwork(world, &error),
+            "Inventory sheets were decoded before they were requested.")) {
         return false;
     }
 
@@ -792,7 +809,8 @@ bool testConditionArtwork() {
             world.loadInitialScenario(
                 data_root,
                 player,
-                &error),
+                &error) &&
+                prepareAllItemArtwork(world, &error),
             error.empty()
                 ? "The condition-artwork world could not be prepared."
                 : error.c_str())) {
@@ -1041,7 +1059,8 @@ bool testAccessoryAndBeltOwnership() {
             world.loadInitialScenario(
                 data_root,
                 player,
-                &error),
+                &error) &&
+                prepareAllItemArtwork(world, &error),
             error.empty()
                 ? "The accessory-and-belt world could not be prepared."
                 : error.c_str())) {
@@ -1255,7 +1274,8 @@ bool testSpecialItemOwnershipAndRendering() {
             world.loadInitialScenario(
                 data_root,
                 player,
-                &error),
+                &error) &&
+                prepareAllItemArtwork(world, &error),
             error.empty()
                 ? "The special-item world could not be prepared."
                 : error.c_str())) {
@@ -1485,7 +1505,8 @@ bool testGiantWarehousePagesAndRendering() {
     player.name = "Mina";
     std::string error;
     if (!check(
-            world.loadInitialScenario(data_root, player, &error),
+            world.loadInitialScenario(data_root, player, &error) &&
+                prepareAllItemArtwork(world, &error),
             error.empty()
                 ? "The Giant Warehouse world could not be prepared."
                 : error.c_str())) {

@@ -17,6 +17,139 @@ target_include_directories(
 
 add_test(NAME portable_libraries COMMAND portable_libraries_test)
 
+add_executable(lal_conversion_test lal_conversion_test.c)
+target_link_libraries(lal_conversion_test PRIVATE Lal::Lal)
+target_include_directories(
+  lal_conversion_test
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/thirdparty/lal"
+)
+add_test(NAME lal_conversion COMMAND lal_conversion_test)
+
+add_executable(tiny_libraries_test tiny_libraries_test.c)
+target_link_libraries(
+  tiny_libraries_test
+  PRIVATE
+    Twl::Twl
+    Tal::Tal
+)
+add_test(NAME tiny_libraries COMMAND tiny_libraries_test)
+
+if(TARGET shadowflare_core)
+  add_executable(shadowflare_core_test shadowflare_core_test.c)
+  target_link_libraries(shadowflare_core_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_core_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_core_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_core_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_core_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_core_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_core COMMAND shadowflare_core_test)
+
+  add_executable(
+    shadowflare_gameplay_assets_test
+    shadowflare_gameplay_assets_test.c)
+  target_link_libraries(
+    shadowflare_gameplay_assets_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_gameplay_assets_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_gameplay_assets_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_gameplay_assets_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_gameplay_assets_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_gameplay_assets_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_gameplay_assets
+    COMMAND shadowflare_gameplay_assets_test)
+
+  add_test(
+    NAME shadowflare_c99_boundaries
+    COMMAND
+      "${CMAKE_COMMAND}"
+      "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/check_shadowflare_c99.cmake")
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+  if(XVFB_RUN_EXECUTABLE)
+    add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+    target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+    add_test(
+      NAME twl_backend_smoke
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:twl_backend_smoke_test>")
+  endif()
+elseif(EMSCRIPTEN)
+  add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+  target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+  target_link_options(twl_backend_smoke_test PRIVATE "SHELL:-sEXIT_RUNTIME=1")
+  set_target_properties(twl_backend_smoke_test PROPERTIES SUFFIX ".html")
+elseif(WIN32 OR APPLE)
+  add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+  target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME twl_backend_smoke COMMAND twl_backend_smoke_test)
+  endif()
+endif()
+
+add_test(
+  NAME tiny_library_boundaries
+  COMMAND
+    "${CMAKE_COMMAND}"
+    "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/check_tiny_libraries.cmake"
+)
+
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  if(TARGET shadowflare_profiler)
+    add_executable(
+      shadowflare_profiler_test
+      shadowflare_profiler_test.c
+    )
+    target_link_libraries(
+      shadowflare_profiler_test PRIVATE ShadowFlare::Profiler)
+    target_compile_features(shadowflare_profiler_test PRIVATE c_std_99)
+    set_target_properties(
+      shadowflare_profiler_test
+      PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+    if(MSVC)
+      target_compile_options(shadowflare_profiler_test PRIVATE /W4)
+    else()
+      target_compile_options(
+        shadowflare_profiler_test PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME shadowflare_profiler COMMAND shadowflare_profiler_test)
+  endif()
+
+  add_executable(frame_profiler_test frame_profiler_test.cpp)
+  target_link_libraries(
+    frame_profiler_test PRIVATE OpenShadowFlare::DebugTools)
+  target_compile_features(frame_profiler_test PRIVATE cxx_std_17)
+  set_target_properties(
+    frame_profiler_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      frame_profiler_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      frame_profiler_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME frame_profiler COMMAND frame_profiler_test)
+endif()
+
 add_test(
   NAME source_boundaries
   COMMAND
@@ -26,6 +159,26 @@ add_test(
 )
 
 if(TARGET sf_game_core)
+  add_executable(resource_manager_test resource_manager_test.cpp)
+  target_link_libraries(
+    resource_manager_test PRIVATE OpenShadowFlare::Resources)
+  target_compile_features(resource_manager_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    resource_manager_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    resource_manager_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      resource_manager_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      resource_manager_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME resource_manager COMMAND resource_manager_test)
+
   add_executable(game_core_test game_core_test.cpp)
   target_link_libraries(
     game_core_test
@@ -216,6 +369,7 @@ if(TARGET sf_game_core)
     gameplay_ui_controller_test
     gameplay_ui_controller_test.cpp
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_artwork.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_ui_controller.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/input_adapter.cpp"
   )
@@ -1991,9 +2145,194 @@ if(TARGET sf_game_core)
       episode_two_yugunos_seal_test PRIVATE
         -Wall -Wextra -Wpedantic)
   endif()
+  add_executable(
+    episode_two_control_room_test
+    episode_two_control_room_test.cpp
+  )
+  target_link_libraries(
+    episode_two_control_room_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_control_room_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_control_room_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_control_room_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_control_room_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_control_room_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_control_room
+    COMMAND episode_two_control_room_test)
   add_test(
     NAME episode_two_yugunos_seal
     COMMAND episode_two_yugunos_seal_test)
+
+  add_executable(
+    episode_two_power_supply_test
+    episode_two_power_supply_test.cpp
+  )
+  target_link_libraries(
+    episode_two_power_supply_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_power_supply_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_power_supply_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_power_supply_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_power_supply_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_power_supply_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_power_supply
+    COMMAND episode_two_power_supply_test)
+
+  add_executable(
+    episode_two_dragons_test
+    episode_two_dragons_test.cpp
+  )
+  target_link_libraries(
+    episode_two_dragons_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_dragons_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_dragons_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_dragons_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_dragons_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_dragons_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_dragons
+    COMMAND episode_two_dragons_test)
+
+  add_executable(
+    episode_two_central_front_test
+    episode_two_central_front_test.cpp
+  )
+  target_link_libraries(
+    episode_two_central_front_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_central_front_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_central_front_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_central_front_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_central_front_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_central_front_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_central_front
+    COMMAND episode_two_central_front_test)
+
+  add_executable(
+    episode_two_south_camp_test
+    episode_two_south_camp_test.cpp
+  )
+  target_link_libraries(
+    episode_two_south_camp_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_south_camp_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_south_camp_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_south_camp_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_south_camp_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_south_camp_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_south_camp
+    COMMAND episode_two_south_camp_test)
+
+  add_executable(
+    episode_two_sacred_wing_test
+    episode_two_sacred_wing_test.cpp
+  )
+  target_link_libraries(
+    episode_two_sacred_wing_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_sacred_wing_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_sacred_wing_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_sacred_wing_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_sacred_wing_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_sacred_wing_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_sacred_wing
+    COMMAND episode_two_sacred_wing_test)
 
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
@@ -2029,6 +2368,10 @@ if(TARGET sf_game_core)
       OpenShadowFlare::RKC_DBFCONTROL
   )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gapi_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
   set_target_properties(gapi_test PROPERTIES CXX_EXTENSIONS OFF)
 
   if(MSVC)

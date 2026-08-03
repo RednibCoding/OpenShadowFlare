@@ -5,6 +5,7 @@
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
+#include "resources/resource_memory.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -178,6 +179,26 @@ void WorldScene::clear() {
     player_infinite_life_ = false;
     player_infinite_mana_ = false;
     owned_companion_inactive_ = true;
+}
+
+std::uint64_t WorldScene::resourceMemoryUsageBytes() const {
+    std::uint64_t bytes = scenario_world_.resourceMemoryUsageBytes() +
+        player_visual_.memoryUsageBytes() +
+        companion_visuals_.memoryUsageBytes() +
+        effect_visuals_.memoryUsageBytes() +
+        player_powerup_visual_.memoryUsageBytes() +
+        player_unlock_switch_visual_.memoryUsageBytes() +
+        effect_pattern_resources_.memoryUsageBytes() +
+        decodedMemoryUsageBytes(speech_patterns_) +
+        decodedMemoryUsageBytes(scenario_visual_patterns_) +
+        decodedMemoryUsageBytes(scenario_visual_continue_patterns_) +
+        item_inventory_patterns_.memoryUsageBytes();
+    for (const auto& resource : item_world_resources_) {
+        if (resource) {
+            bytes += resource->memoryUsageBytes();
+        }
+    }
+    return bytes;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -553,6 +574,22 @@ WorldScene::itemInventoryPatterns() const {
     return item_inventory_patterns_;
 }
 
+bool WorldScene::prepareItemInventoryPatterns(
+    const std::array<
+        std::uint8_t,
+        ItemInventoryResource::group_count>& enabled_groups,
+    std::string* error) {
+    return item_inventory_patterns_.prepareGroups(
+        enabled_groups, error);
+}
+
+bool WorldScene::prepareItemInventoryPatterns(
+    const ItemInventoryResource::PatternSelection& enabled_patterns,
+    std::string* error) {
+    return item_inventory_patterns_.preparePatterns(
+        enabled_patterns, error);
+}
+
 const PlayerData& WorldScene::playerData() const {
     return player_data_;
 }
@@ -714,11 +751,13 @@ std::int32_t WorldScene::playerPartBlueStrength(
     return player_appearance_.blueStrength(part);
 }
 
-void WorldScene::refreshPlayerAppearance() {
+bool WorldScene::refreshPlayerAppearance(std::string* error) {
     player_appearance_.refresh(
         player_visual_.animation().maxPartCount(),
         player_equipment_,
         item_database_);
+    return player_visual_.loadSelectedParts(
+        player_appearance_.enabledParts(), error);
 }
 
 std::int32_t WorldScene::playerEquipmentColor(

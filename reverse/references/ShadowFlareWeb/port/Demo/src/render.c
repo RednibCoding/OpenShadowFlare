@@ -3748,12 +3748,12 @@ static void DrawWorldItemHoverLabel(DemoState *state, const WorldItem *item, lon
 {
     char label[160];
     if (item->isGold)
-        
+        snprintf(label, sizeof(label), "%ld Gold", item->amount);
     else
     {
         if (item->name[0] == '\0')
             return;
-        
+        snprintf(label, sizeof(label), "%s", item->name);
     }
 
     long textW = MeasureTextSJIS(state, label);

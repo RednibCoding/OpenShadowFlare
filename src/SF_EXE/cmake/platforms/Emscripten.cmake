@@ -4,7 +4,6 @@ function(osf_configure_emscripten_platform target)
     PRIVATE
       runtime/platform/web/application_loop.cpp
   )
-
   target_link_options(
     ${target}
     PRIVATE

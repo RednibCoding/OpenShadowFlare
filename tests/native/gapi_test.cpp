@@ -1,4 +1,5 @@
 #include "gapi/gapi.hpp"
+#include "gapi/bit_mask_image.hpp"
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_RPGSCRN/rkc_rpgscrn.hpp"
@@ -9,10 +10,13 @@
 #include "render/loading_renderer.hpp"
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
+#include "resources/font_resource.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -454,18 +458,25 @@ bool testNjpAndSoftwareBackend() {
         return false;
     }
 
-    osf::gapi::SoftwareBackend rectangleBackend(1, 1);
+    osf::gapi::SoftwareBackend rectangleBackend(3, 2);
     rectangleBackend.beginFrame({20, 40, 60, 255});
     rectangleBackend.drawRectangle({
-        0, 0, 1, 1, {100, 80, 60, 255}, 1000, 500,
+        0, 0, 2, 2, {100, 80, 60, 255}, 1000, 500,
     });
-    const osf::gapi::Color rectangle =
-        rectangleBackend.surface().pixels[0];
+    rectangleBackend.drawRectangle({
+        2, 0, 1, 2, {9, 8, 7, 255}, 1000, 2000,
+    });
+    const osf::gapi::SurfaceView rectangleSurface =
+        rectangleBackend.surface();
+    const osf::gapi::Color rectangle = rectangleSurface.pixels[0];
     return check(
         rectangle.red == 60 &&
             rectangle.green == 60 &&
-            rectangle.blue == 60,
-        "GAPI rectangle opacity did not blend portably.");
+            rectangle.blue == 60 &&
+            rectangleSurface.pixels[4].red == 60 &&
+            rectangleSurface.pixels[2].red == 9 &&
+            rectangleSurface.pixels[5].blue == 7,
+        "GAPI rectangle rows or clamped opacity differ.");
 }
 
 bool testGameplayHudPackets() {
@@ -603,6 +614,37 @@ bool testTruncatedNjp() {
         "The NJP decoder accepted a truncated compressed bitmap.");
 }
 
+bool testSelectedNjpDecode() {
+    const std::vector<std::uint8_t> bytes =
+        makeCompressedNjpFixture();
+    osf::gapi::NjpImage image;
+    std::string error;
+    if (!check(
+            image.decodeSelectedPatterns(bytes, {0}, &error) &&
+                image.parts().size() == 1 &&
+                !image.patternDecoded(0) &&
+                !image.parts()[0].hasDecodedPixels() &&
+                image.parts()[0].pixels.empty(),
+            "The selective NJP decoder retained an unused bitmap.")) {
+        return false;
+    }
+    osf::gapi::SoftwareBackend backend(2, 2);
+    backend.beginFrame({0, 0, 0, 255});
+    if (!check(
+            !backend.drawPattern(image, 0) &&
+                !osf::displayPatternContainsPoint(
+                    image, 0, {0, 0}, {0, 0}),
+            "An omitted NJP bitmap was treated as decoded.")) {
+        return false;
+    }
+    return check(
+        image.decodeSelectedPatterns(bytes, {1}, &error) &&
+            image.patternDecoded(0) &&
+            image.parts()[0].hasDecodedPixels() &&
+            backend.drawPattern(image, 0),
+        "The selective NJP decoder omitted a requested bitmap.");
+}
+
 bool testBitmapAndTextDrawing() {
     osf::gapi::BitmapImage bitmap;
     std::string error;
@@ -676,6 +718,42 @@ bool testMutableBitmapMask() {
             surface.pixels[2 * 4 + 2].red == 128 &&
             surface.pixels[3 * 4 + 2].green == 255,
         "Bitmap alpha or destination clipping differs.");
+}
+
+bool testBitMaskDrawing() {
+    osf::gapi::BitMaskImage mask;
+    if (!check(
+            mask.create(4, 4) &&
+                mask.memoryUsageBytes() == 4,
+            "A compact bit-mask image could not be created.")) {
+        return false;
+    }
+    mask.fillRectangle(1, 1, 2, 2, true);
+
+    osf::gapi::SoftwareBackend backend(4, 4);
+    backend.beginFrame({0, 255, 0, 255});
+    backend.drawBitMask(
+        mask,
+        {
+            0,
+            0,
+            1000,
+            1000,
+            {255, 0, 0, 255},
+            500,
+            {2, 1, 1, 2},
+        });
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const osf::gapi::Color untouched = surface.pixels[1 * 4 + 1];
+    const osf::gapi::Color blended = surface.pixels[1 * 4 + 2];
+    return check(
+        mask.value(1, 1) && mask.value(2, 2) &&
+            !mask.value(0, 0) && !mask.value(4, 4) &&
+            untouched.red == 0 && untouched.green == 255 &&
+            blended.red == 127 && blended.green == 127 &&
+            surface.pixels[2 * 4 + 2].red == 127 &&
+            surface.pixels[3 * 4 + 2].green == 255,
+        "Bit-mask storage, clipping, or blending differs.");
 }
 
 bool testCafAndTitleAnimation() {
@@ -872,6 +950,43 @@ bool testSoftwareLineDrawing() {
         "The software GAPI line missed an endpoint or blended incorrectly.");
 }
 
+bool testEnglishRetailFontSelection() {
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::gapi::NjpImage font;
+    std::string error;
+    if (!check(
+            font.loadSelectedPatterns(
+                data_root / "System" / "Common" / "Pattern" /
+                    "Font01.njp",
+                osf::englishRetailFontPatternSelection(),
+                &error),
+            "The selected English retail font could not be loaded.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend backend(96, 16);
+    backend.beginFrame({0, 0, 0, 255});
+    const bool rendered = backend.drawText(
+        font,
+        std::string("\x81\x40Goblin", 8),
+        {0, 0, {255, 255, 255, 255}});
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const bool visible = std::any_of(
+        surface.pixels,
+        surface.pixels +
+            static_cast<std::size_t>(surface.width) *
+                static_cast<std::size_t>(surface.height),
+        [](osf::gapi::Color pixel) {
+            return pixel.red != 0 || pixel.green != 0 ||
+                   pixel.blue != 0;
+        });
+    return check(
+        rendered && visible,
+        "The compact English font omitted enemy-nameplate glyphs.");
+}
+
 }  // namespace
 
 int main() {
@@ -880,8 +995,11 @@ int main() {
         !testTruncatedNjp() ||
         !testBitmapAndTextDrawing() ||
         !testMutableBitmapMask() ||
+        !testSelectedNjpDecode() ||
+        !testBitMaskDrawing() ||
         !testCafAndTitleAnimation() ||
         !testCafCharacterDrawModes() ||
+        !testEnglishRetailFontSelection() ||
         !testSoftwareLineDrawing() ||
         !testInitialLoadingPackets() ||
         !testSystemCursorPackets() ||

@@ -80,7 +80,7 @@ public:
         return true;
     }
 
-    void present(osf::gapi::SurfaceView surface) override {
+    void prepareFrame(osf::gapi::SurfaceView surface) override {
         static_assert(
             sizeof(osf::gapi::Color) == 4,
             "GAPI colors must be tightly packed RGBA bytes.");
@@ -104,12 +104,29 @@ public:
                 static_cast<std::int32_t>(width),
                 static_cast<std::int32_t>(width));
         }
+    }
+
+    void displayFrame() override {
         gfxFlushBuffers();
         gfxScreenSwapBuffers(GFX_TOP, false);
         gfxScreenSwapBuffers(GFX_BOTTOM, false);
         gspWaitForVBlank();
         auxiliary_presented_ = false;
     }
+
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override {
+        // Double-buffered 24-bit BGR framebuffers for the top (400x240)
+        // and bottom (320x240) screens.
+        constexpr std::uint64_t kTopPixels = 400 * 240;
+        constexpr std::uint64_t kBottomPixels = 320 * 240;
+        constexpr std::uint64_t kBytesPerPixel = 3;
+        constexpr std::uint64_t kBufferCount = 2;
+        return (kTopPixels + kBottomPixels) * kBytesPerPixel *
+               kBufferCount;
+    }
+#endif
 
     void presentAuxiliary(osf::gapi::SurfaceView surface) override {
         u16 width = 0;

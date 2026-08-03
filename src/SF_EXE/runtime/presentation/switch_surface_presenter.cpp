@@ -22,13 +22,19 @@ public:
     }
 
     bool initialize(LwlWindow* window, std::string* error) override;
-    void present(osf::gapi::SurfaceView surface) override;
+    void prepareFrame(osf::gapi::SurfaceView surface) override;
+    void displayFrame() override;
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override;
+#endif
 
 private:
     void shutdown();
 
     Framebuffer framebuffer_{};
     bool initialized_ = false;
+    bool frame_prepared_ = false;
 };
 
 bool SwitchSurfacePresenter::initialize(
@@ -60,7 +66,9 @@ bool SwitchSurfacePresenter::initialize(
     return true;
 }
 
-void SwitchSurfacePresenter::present(osf::gapi::SurfaceView surface) {
+void SwitchSurfacePresenter::prepareFrame(
+    osf::gapi::SurfaceView surface) {
+    frame_prepared_ = false;
     static_assert(
         sizeof(osf::gapi::Color) == sizeof(std::uint32_t),
         "GAPI colors must be tightly packed RGBA bytes.");
@@ -107,10 +115,35 @@ void SwitchSurfacePresenter::present(osf::gapi::SurfaceView surface) {
                 color.red, color.green, color.blue, color.alpha);
         }
     }
-    framebufferEnd(&framebuffer_);
+    frame_prepared_ = true;
 }
 
+void SwitchSurfacePresenter::displayFrame() {
+    if (!initialized_ || !frame_prepared_) {
+        return;
+    }
+    framebufferEnd(&framebuffer_);
+    frame_prepared_ = false;
+}
+
+#if OSF_ENABLE_DEBUG_TOOLS
+std::optional<std::uint64_t>
+SwitchSurfacePresenter::videoMemoryUsageBytes() const {
+    if (!initialized_) {
+        return std::nullopt;
+    }
+    constexpr std::uint64_t kBufferCount = 2;
+    return static_cast<std::uint64_t>(kScreenWidth) *
+           static_cast<std::uint64_t>(kScreenHeight) *
+           sizeof(std::uint32_t) * kBufferCount;
+}
+#endif
+
 void SwitchSurfacePresenter::shutdown() {
+    if (initialized_ && frame_prepared_) {
+        framebufferEnd(&framebuffer_);
+    }
+    frame_prepared_ = false;
     if (initialized_) {
         framebufferClose(&framebuffer_);
         initialized_ = false;

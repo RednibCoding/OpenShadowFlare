@@ -1,5 +1,7 @@
 #include "scenario_world.hpp"
 
+#include "resources/resource_memory.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -33,6 +35,19 @@ bool endsWithIgnoreCase(
                    std::tolower(
                        static_cast<unsigned char>(right));
         });
+}
+
+void enablePattern(
+    std::vector<std::uint8_t>& patterns,
+    std::int32_t pattern) {
+    if (pattern < 0) {
+        return;
+    }
+    const std::size_t index = static_cast<std::size_t>(pattern);
+    if (patterns.size() <= index) {
+        patterns.resize(index + 1, 0);
+    }
+    patterns[index] = 1;
 }
 
 std::vector<std::string> readPatternList(
@@ -152,6 +167,42 @@ bool ScenarioWorld::load(
         clear();
         return false;
     }
+    std::vector<std::vector<std::uint8_t>> pattern_selection(
+        pattern_names.size());
+    for (std::int32_t y = 0; y < ground_.height(); ++y) {
+        for (std::int32_t x = 0; x < ground_.width(); ++x) {
+            const GroundCell* cell = ground_.cell(x, y);
+            if (!cell || cell->pattern_set < 0 ||
+                static_cast<std::size_t>(cell->pattern_set) >=
+                    pattern_selection.size()) {
+                continue;
+            }
+            enablePattern(
+                pattern_selection[static_cast<std::size_t>(
+                    cell->pattern_set)],
+                cell->pattern);
+        }
+    }
+    for (const MapObject& object : object_map_.objects()) {
+        if (object.pattern_set < 0 ||
+            static_cast<std::size_t>(object.pattern_set) >=
+                pattern_selection.size()) {
+            continue;
+        }
+        const std::size_t normal_set =
+            static_cast<std::size_t>(object.pattern_set);
+        enablePattern(
+            pattern_selection[normal_set], object.pattern);
+
+        // Retail pairs an object's normal pattern set with the following
+        // shadow sheet. Keep the same pattern from that sheet when present.
+        const std::size_t shadow_set = normal_set + 1;
+        if (shadow_set < pattern_names.size() &&
+            endsWithIgnoreCase(pattern_names[shadow_set], ".sdw")) {
+            enablePattern(
+                pattern_selection[shadow_set], object.pattern);
+        }
+    }
     map_patterns_.resize(pattern_names.size());
     for (std::size_t index = 0;
          index < pattern_names.size();
@@ -160,10 +211,14 @@ bool ScenarioWorld::load(
             !endsWithIgnoreCase(pattern_names[index], ".sdw")) {
             continue;
         }
+        if (pattern_selection[index].empty()) {
+            continue;
+        }
         auto image = std::make_unique<gapi::NjpImage>();
         std::string image_error;
-        if (!image->load(
+        if (!image->loadSelectedPatterns(
                 map_root / "Pattern" / pattern_names[index],
+                pattern_selection[index],
                 &image_error)) {
             setError(
                 error,
@@ -338,6 +393,22 @@ void ScenarioWorld::clear() {
     enemies_.clear();
     enemy_indices_.clear();
     ground_items_.clear();
+}
+
+std::uint64_t ScenarioWorld::resourceMemoryUsageBytes() const {
+    std::uint64_t bytes = ground_.memoryUsageBytes() +
+        object_map_.memoryUsageBytes() +
+        decodedMemoryUsageBytes(map_overview_patterns_) +
+        map_exploration_.memoryUsageBytes() +
+        object_visuals_.memoryUsageBytes() +
+        people_visuals_.memoryUsageBytes() +
+        enemy_visuals_.memoryUsageBytes();
+    for (const auto& patterns : map_patterns_) {
+        if (patterns) {
+            bytes += decodedMemoryUsageBytes(*patterns);
+        }
+    }
+    return bytes;
 }
 
 std::int32_t ScenarioWorld::id() const {

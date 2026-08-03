@@ -60,7 +60,9 @@ GameplayMagicModel gameplayMagicModel(
 void GameplayUiController::reset() {
     options_.close();
     blackjack_.close();
+#if OSF_ENABLE_DEBUG_TOOLS
     debug_.close();
+#endif
     equipment_color_.close();
     inventory_.close();
     map_.close();
@@ -140,11 +142,13 @@ bool GameplayUiController::update(
         return false;
     }
 
+#if OSF_ENABLE_DEBUG_TOOLS
     world.playerMagic().setAllSpellsAvailable(
         debug_.allSpellsEnabled());
     world.configurePlayerDebugResources(
         debug_.infiniteLifeEnabled(),
         debug_.infiniteManaEnabled());
+#endif
 
     if (world_drop_pointer_guard_.update(
             input.pointerPrimaryDown())) {
@@ -200,6 +204,7 @@ bool GameplayUiController::update(
         return true;
     }
 
+#if OSF_ENABLE_DEBUG_TOOLS
     const bool debug_was_active = debug_.active();
     const bool debug_toggle = input.gameplayDebugPressed();
     if (debug_toggle && !debug_was_active) {
@@ -228,6 +233,7 @@ bool GameplayUiController::update(
         }
         return true;
     }
+#endif
 
     if (equipment_color_.active()) {
         const GameplayEquipmentColorResult result =
@@ -398,7 +404,9 @@ bool GameplayUiController::update(
         if (service.kind == GameplayServiceKind::blackjack) {
             closeGameplayPanels(world);
             options_.close();
+#if OSF_ENABLE_DEBUG_TOOLS
             debug_.close();
+#endif
             blackjack_.open();
             world.cancelPlayerMovement();
             world.setCameraAnchor(320, 240);
@@ -909,6 +917,7 @@ bool GameplayUiController::updateOptions(
     RetailSavePreview& save_preview,
     std::int32_t& shadow_opacity) {
     const bool was_active = options_.active();
+    const GameplayOptionsPage previous_page = options_.page();
     const bool toggle =
         (input.gameplayOptionsPressed() || hud_toggle) &&
         (!world.conversationActive() || was_active);
@@ -923,6 +932,17 @@ bool GameplayUiController::updateOptions(
                 input.gameplayHelpPressed(),
             },
             game_config);
+    const GameplayOptionsPage current_page = options_.page();
+    const bool opened_save_confirmation =
+        current_page != previous_page &&
+        (current_page ==
+             GameplayOptionsPage::return_to_title_confirmation ||
+         current_page ==
+             GameplayOptionsPage::exit_game_confirmation);
+    if (opened_save_confirmation &&
+        game_config.save_image_at_game_end) {
+        save_preview.requestCapture();
+    }
     if (!was_active && options_.active()) {
         world.cancelPlayerMovement();
     }
@@ -1011,10 +1031,12 @@ GameplayUiController::blackjack() const {
     return blackjack_;
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 const GameplayDebugMenu&
 GameplayUiController::debug() const {
     return debug_;
 }
+#endif
 
 const GameplayEquipmentColor&
 GameplayUiController::equipmentColor() const {

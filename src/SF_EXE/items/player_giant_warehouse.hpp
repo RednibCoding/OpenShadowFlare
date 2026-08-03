@@ -17,6 +17,9 @@ public:
 
     void initializeNew();
     void restoreEnabledFlags(const EnabledFlags& flags);
+    bool setPageEnabled(
+        std::size_t page,
+        std::int32_t value);
 
     bool pageEnabled(std::size_t page) const;
     const EnabledFlags& enabledFlags() const;

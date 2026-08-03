@@ -8,10 +8,12 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
 
 using osf::test::check;
+using osf::test::containsSample;
 using osf::test::loadSavedFixture;
 using osf::test::raiseToLevel;
 
@@ -123,6 +125,10 @@ bool testYugunosBlockade(const std::filesystem::path& data_root) {
         fixture_root / "route" / "Save" / "0000.Ssv";
     const std::filesystem::path investigated_save =
         fixture_root / "investigated" / "Save" / "0000.Ssv";
+    const std::filesystem::path report_save =
+        fixture_root / "report" / "Save" / "0000.Ssv";
+    const std::filesystem::path briefed_save =
+        fixture_root / "briefed" / "Save" / "0000.Ssv";
     std::error_code cleanup_error;
     std::filesystem::remove_all(fixture_root, cleanup_error);
 
@@ -209,18 +215,124 @@ bool testYugunosBlockade(const std::filesystem::path& data_root) {
     }
 
     osf::WorldScene persisted;
-    const bool investigation_persisted =
+    if (!check(
         loadSavedFixture(data_root, investigated_save, persisted, error) &&
-        persisted.scenarioId() == 2200003 &&
-        persisted.retailSaveWorldState().entry_value == 2 &&
-        persisted.retailSaveProgress().script_state_flags[38] == 1 &&
-        persisted.retailSaveProgress().script_state_flags[39] == 0 &&
-        persisted.quests().state(12) == 1 &&
-        persisted.quests().state(15) == 0;
+            persisted.scenarioId() == 2200003 &&
+            persisted.retailSaveWorldState().entry_value == 2 &&
+            persisted.retailSaveProgress().script_state_flags[38] == 1 &&
+            persisted.retailSaveProgress().script_state_flags[39] == 0 &&
+            persisted.retailSaveProgress().script_state_flags[40] == 0 &&
+            persisted.quests().state(12) == 1 &&
+            persisted.quests().state(15) == 0,
+        "Saving the first Yugunos investigation lost its blockade state.")) {
+        return false;
+    }
+
+    if (!check(
+            writeFixture(
+                report_save,
+                persisted,
+                persisted.playerData(),
+                persisted.retailSaveProgress(),
+                {true, 2200000, 0},
+                error),
+            "The Yugunos investigation could not return to Kirarru.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+
+    osf::WorldScene fanann;
+    if (!check(
+            loadSavedFixture(data_root, report_save, fanann, error) &&
+                osf::test::openNpcConversation(fanann, 4) &&
+                fanann.conversationMessageId() == 1000048,
+            "Kirarru did not begin her authored first meeting.")) {
+        std::cerr << error << " message="
+                  << fanann.conversationMessageId() << '\n';
+        return false;
+    }
+    for (const std::int32_t message : {1000049, 1000050}) {
+        fanann.advanceConversation();
+        if (!check(
+                fanann.conversationMessageId() == message,
+                "Kirarru's first meeting skipped a message.")) {
+            return false;
+        }
+    }
+    fanann.advanceConversation();
+    if (!check(
+            !fanann.conversationActive() &&
+                fanann.retailSaveProgress().script_state_flags[45] == 1,
+            "Kirarru did not save her first-meeting branch.")) {
+        return false;
+    }
+
+    std::vector<std::int32_t> briefing_audio;
+    if (!check(
+            osf::test::openNpcConversation(
+                fanann, 4, &briefing_audio) &&
+                fanann.conversationMessageId() == 1000052,
+            "Kirarru did not accept the B2F blockade report.")) {
+        std::cerr << "message=" << fanann.conversationMessageId() << '\n';
+        return false;
+    }
+    for (const std::int32_t message :
+         {1000053, 1000054, 1000055}) {
+        fanann.advanceConversation();
+        if (!check(
+                fanann.conversationMessageId() == message,
+                "Kirarru's blockade report skipped a message.")) {
+            return false;
+        }
+    }
+    fanann.advanceConversation();
+    fanann.advanceConversation();
+    const std::vector<std::int32_t> update_audio =
+        fanann.takeAudioSamples();
+    briefing_audio.insert(
+        briefing_audio.end(), update_audio.begin(), update_audio.end());
+    if (!check(
+            !fanann.conversationActive() &&
+                fanann.quests().state(12) == 1 &&
+                fanann.quests().state(15) == 1 &&
+                fanann.retailSaveProgress().script_state_flags[39] == 0 &&
+                fanann.retailSaveProgress().script_state_flags[40] == 0 &&
+                containsSample(briefing_audio, 65),
+            "Kirarru did not start the control-room mission once.")) {
+        return false;
+    }
+
+    if (!check(
+            writeFixture(
+                briefed_save,
+                fanann,
+                fanann.playerData(),
+                fanann.retailSaveProgress(),
+                fanann.retailSaveWorldState(),
+                error),
+            "Kirarru's control-room briefing could not be saved.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::WorldScene briefed;
+    std::vector<std::int32_t> repeat_audio;
+    if (!check(
+            loadSavedFixture(data_root, briefed_save, briefed, error) &&
+                briefed.quests().state(15) == 1 &&
+                briefed.retailSaveProgress().script_state_flags[39] == 0 &&
+                briefed.retailSaveProgress().script_state_flags[40] == 0 &&
+                osf::test::openNpcConversation(
+                    briefed, 4, &repeat_audio) &&
+                briefed.conversationMessageId() == 1000051 &&
+                !containsSample(repeat_audio, 65),
+            "Saving Kirarru's briefing replayed the mission update.")) {
+        std::cerr << error << " message="
+                  << briefed.conversationMessageId() << '\n';
+        return false;
+    }
+
     std::filesystem::remove_all(fixture_root, cleanup_error);
-    return check(
-        investigation_persisted,
-        "Saving the first Yugunos investigation lost its blockade state.");
+    return true;
 }
 
 }  // namespace

@@ -17,6 +17,8 @@ struct NjpPart {
     std::int32_t height = 0;
     std::int32_t stride = 0;
     std::vector<std::uint8_t> pixels;
+
+    bool hasDecodedPixels() const;
 };
 
 struct NjpPatternPart {
@@ -45,8 +47,16 @@ public:
     bool decode(
         const std::vector<std::uint8_t>& bytes,
         std::string* error = nullptr);
+    bool decodeSelectedPatterns(
+        const std::vector<std::uint8_t>& bytes,
+        const std::vector<std::uint8_t>& enabled_patterns,
+        std::string* error = nullptr);
     bool load(
         const std::filesystem::path& path,
+        std::string* error = nullptr);
+    bool loadSelectedPatterns(
+        const std::filesystem::path& path,
+        const std::vector<std::uint8_t>& enabled_patterns,
         std::string* error = nullptr);
 
     void clear();
@@ -55,6 +65,8 @@ public:
     const std::vector<NjpPart>& parts() const;
     const std::vector<NjpPattern>& patterns() const;
     const std::vector<NjpPalette>& palettes() const;
+    bool patternDecoded(std::size_t pattern_index) const;
+    const std::vector<std::uint8_t>& decodedPatternFlags() const;
 
 private:
     std::int32_t version_ = 0;
@@ -62,6 +74,7 @@ private:
     std::vector<NjpPart> parts_;
     std::vector<NjpPattern> patterns_;
     std::vector<NjpPalette> palettes_;
+    std::vector<std::uint8_t> decoded_pattern_flags_;
 };
 
 }  // namespace osf::gapi

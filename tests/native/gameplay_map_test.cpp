@@ -1,4 +1,5 @@
 #include "gapi/gapi.hpp"
+#include "gapi/bit_mask_image.hpp"
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
@@ -28,6 +29,11 @@ struct BitmapCall {
     osf::gapi::BitmapDraw draw;
 };
 
+struct BitMaskCall {
+    const osf::gapi::BitMaskImage* image = nullptr;
+    osf::gapi::BitMaskDraw draw;
+};
+
 struct TextCall {
     std::string text;
     osf::gapi::TextDraw draw;
@@ -52,6 +58,13 @@ public:
         return true;
     }
 
+    bool drawBitMask(
+        const osf::gapi::BitMaskImage& image,
+        const osf::gapi::BitMaskDraw& draw) override {
+        bit_masks.push_back({&image, draw});
+        return true;
+    }
+
     bool drawText(
         const osf::gapi::NjpImage&,
         std::string_view text,
@@ -70,6 +83,7 @@ public:
 
     std::vector<PatternCall> patterns;
     std::vector<BitmapCall> bitmaps;
+    std::vector<BitMaskCall> bit_masks;
     std::vector<TextCall> texts;
     std::vector<osf::gapi::RectangleDraw> rectangles;
 };
@@ -162,6 +176,7 @@ bool testMapResourcesAndRendering() {
                     normal_camera_x - 160 &&
                 exploration.mask().width() == 1920 &&
                 exploration.mask().height() == 1440 &&
+                exploration.memoryUsageBytes() == 345600 &&
                 exploration.explored(1272, 904) &&
                 exploration.explored(1339, 949) &&
                 !exploration.explored(1271, 904) &&
@@ -216,11 +231,14 @@ bool testMapResourcesAndRendering() {
             renderer.patterns[3].index == 71 &&
             renderer.patterns[4].index == 118 &&
             renderer.patterns[4].draw.red_strength == 700 &&
-            renderer.bitmaps.size() == 1 &&
-            renderer.bitmaps[0].image ==
+            renderer.bitmaps.empty() &&
+            renderer.bit_masks.size() == 1 &&
+            renderer.bit_masks[0].image ==
                 &exploration.mask() &&
-            renderer.bitmaps[0].draw.x == -1146 &&
-            renderer.bitmaps[0].draw.y == -717 &&
+            renderer.bit_masks[0].draw.x == -1146 &&
+            renderer.bit_masks[0].draw.y == -717 &&
+            renderer.bit_masks[0].draw.color.red == 0 &&
+            renderer.bit_masks[0].draw.opacity == 1000 &&
             renderer.rectangles.size() == 2 &&
             renderer.rectangles[0].x == 32 &&
             renderer.rectangles[0].y == 40 &&

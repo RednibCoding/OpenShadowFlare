@@ -23,6 +23,8 @@ The portable executable already has a solid front half:
 
 - portable windowing, input, audio, and presentation through LWL, LAL, and LGL
 - a backend-neutral graphics API with a 640×480 software renderer
+- an optional F12 profiler for portable game/audio memory, presenter-owned
+  video memory, software framebuffer time, and presentation time
 - the title screen, its smoke animation, music, fades, and menu sounds
 - new-character creation and the complete saved-game selection flow
 - full retail save-row summaries (Level, Job, Sex, Name, HP, MP, and EXP)
@@ -1296,16 +1298,70 @@ blockade. Dragon Road object two enters `Mining Tunnel of Yugunos, B1F`
 protection trigger sets saved flag 38 and, while flag 40 remains zero, pushes
 the hero back to entry two. Mission 12 stays active and mission 15 has not
 started yet. The matching object-zero return edges lead back through B1F to
-Dragon Road, and saving there preserves the discovery and exact entry.
+Dragon Road, and saving there preserves the discovery and exact entry. Back
+in Fanann, Kirarru keeps her `1000048..1000050` introduction separate from
+the `1000052..1000055` blockade report, starts mission 15 with sample 65, and
+uses `1000051` after a reload without awarding it twice.
 
-The route beyond that blockade is covered now too. B3F (`02210002`) uses both
-of its authored switches and its internal stair before object one reaches B5F
-(`02210003`). B5F needs both switches as well: each opens one of the two gates
-on the long route to object 800, whose contact saves flag 39. Returning those
-findings to Kirarru keeps her first `1000048..1000050` introduction separate
-from the `1000052..1000055` report, starts mission 15 with sample 65, and saves
-the result. After a reload she uses `1000051` without awarding the mission a
-second time.
+Mission 15 now clears that blockade through the intended detour. Dragon Road's
+southern edge enters `Underground Passage, B1F` (`02220000`), whose stair leads
+to B2F (`02220001`). The named Black Wing is the authored objective: mission
+15 completes only after its death presentation expires, then Kirarru's
+`1000056..1000057` response saves flag 40. Saving and reloading keeps the
+completion, and B2F's protection trigger then permits the ordinary object-one
+route into B3F instead of pushing the hero back.
+
+Only after that handoff does the deeper Yugunos route open. B3F (`02210002`)
+uses both of its authored switches and its internal stair before object one
+reaches B5F (`02210003`). B5F needs both switches as well: each opens one of
+the two gates on the long route to object 800, whose contact saves flag 39.
+Kirarru then delivers the complete `1000058..1000068` dragon warning and
+advances flag 39 to two. The collision routes, switch sounds, quest cues,
+dialogue branches, and save state are covered in their actual story order.
+
+That warning now leads through the next complete assignment. Lytle's
+`1000007..1000009` briefing starts mission 16, `Recapture the power supply
+facility.`, and saves cleanly into the active `1000010` branch. Butterfly
+Hill's southern edge enters `Labyrinth of Mauve` (`02200004`), followed by
+`Near The Power Supply Facility` (`02200005`) and `Fort of the Power Supply`
+(`02230000`). Only the named Crimson Sword completes the mission, after its
+death presentation expires. Returning to Lytle creates four 10,000-Gold
+stacks, plays all four landing sounds, runs `1000011..1000016`, and starts
+mission 17, `Defeat the Dragons!`, once. The route, boss trigger, reward,
+quest cues, and no-repeat save branch remain entirely script-driven.
+
+Mission 17 now reaches its full authored ending. Kirarru's
+`1000070..1000072` conversation explains that the rebuilt seal will weaken
+the dragons without changing the active quest. On B5F, mission 17 is the gate
+that lets object one enter the second `02210004` B5F scenario. Its periodic
+script waits for the named Ancient Dragon's registry slot to become inactive
+after the complete death fade, then completes `Defeat the Dragons!` and plays
+the usual completion sound. Object zero returns to the matching B5F entry.
+Back in Fanann, Lytle's `1000018` report advances flag 41 to two and Kirarru's
+`1000073` response acknowledges the victory. The preparation, guarded route,
+boss lifecycle, return edge, both reports, quest cue, and saved completion are
+covered without adding map-specific game logic.
+
+The post-dragon handoff now reaches the central front. Lytle's complete
+`1000018..1000025` victory conversation advances flag 41 to two; while the
+older Yugunos mission is still active, later visits use `1000026..1000027`.
+Kyle then recognizes mission 17's completion, silently closes mission 12,
+drops four 10,000-Gold stacks, and runs `1000014..1000017`. His no-repeat
+branch uses `1000018..1000019`. Back in Fanann, Lytle's
+`1000028..1000029` directions advance flag 41 to four and enable transport
+row 25; `1000030` is the saved repeat. That transport lands at the shipped
+`South Camp of Yugunos ` scenario and entry. Dialogue, reward sounds, silent
+quest update, flags, transport persistence, and the actual trip are covered.
+
+South Camp's first assignment is complete too. The saved one-time flag opens
+the real `Visual03` briefing, Jeel keeps his introduction separate from the
+mission-20 offer, and the ordinary overlap exits lead through East Antalusia
+to the Foot of Mt. Tedoron. The objective is the shipped Flame Warrior and
+Dread Warrior pair—not a guessed count of the other 420 enemies on that map.
+Their inactive lifecycle slots complete the quest, and Jeel's return grants
+the authored experience reward and Morris handoff once. The visual, dialogue
+branches, route, exact targets, cues, sound, reward, and repeat state all run
+from the shipped script and map data.
 
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
@@ -2022,9 +2078,25 @@ and the two Forest road maps into Kanfore, Mining Town. The detour through
 Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
 through Butterfly Hill and Dragon Road to the first Mining Tunnel of Yugunos
 blockade. The mine's authored B3F/B5F stair, switches, two gates, and deeper
-seal now lead back to Kirarru and start mission 15 under a shipped-data
-regression. Continue from that briefing, keeping each playable handoff under
-the same kind of coverage.
+seal are now in their real order: Kirarru starts mission 15 after the first
+B2F blockade report, the Black Wing in the southern Underground Passage
+completes it, and her response opens B2F before the deeper seal can be reached.
+The seal report ends with her dragon warning. Lytle's next assignment now
+retakes the Power Supply Fort through the Labyrinth of Mauve;
+Crimson Sword's defeat and the 40,000-Gold return reward carry the story into
+mission 17. Kirarru's seal preparation, the guarded B5F dragon chamber, the
+Ancient Dragon objective, and both Fanann victory reports are covered too.
+The following Lytle/Kyle handoff now closes mission 12, awards 40,000 Gold,
+and unlocks the South Camp of Yugunos transport. South Camp now opens its
+one-time Visual03 briefing, starts mission 20 through Jeel's split
+introduction and assignment, follows the East Antalusia route, completes on
+the two named warrior lifecycle slots at the Foot of Mt. Tedoron, and returns
+for Jeel's one-time experience reward and Morris handoff. Morris's Sacred Wing
+mission now follows the full Edgar/Morris/Berini authorization loop, clears
+the authored gates on all five Tower of Nazzle floors, recovers the relic from
+the fixed Dark Golem loot row, and returns it for Berini's one-time experience
+reward and saved Giant Warehouse III unlock. Continue with Angel's Hair and
+the underground church cave.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
@@ -2070,6 +2142,42 @@ drifting:
 - run the boundary test so DLL-derived code stays in `SF_EXE/libs/`;
 - keep Linux and Windows builds green and regularly test real macOS hardware.
 
+Performance work now has a concrete low-end target too: a future PlayStation 2
+port should fit its game-side work into 32 MiB of RAM and its presenter into a
+4 MiB video-memory budget while keeping the reconstructed 30 Hz simulation and
+smooth 60 Hz presentation. Use the F12 profiler to establish representative
+town, combat, inventory, and effect-heavy baselines before changing code.
+Optimizations still need the same fidelity tests as any other slice; a faster
+result that changes update order, animation timing, blending, or game rules is
+not a win.
+
+The measured allocation breakdown and the working headroom target live in
+[`documentation/memory-budget.md`](documentation/memory-budget.md). Keep that
+table current as each resource group is reduced.
+
+The first memory passes moved frontend assets into a portable resource manager
+with explicit title, character-select, loading, gameplay, and panel lifetimes.
+Leaving a screen destroys everything owned by it, including decoded save
+previews. The English fonts retain only their Latin sheet, loading art is freed
+at the world handoff, and optional gameplay and inventory sheets follow the
+visible panels and exact visible item patterns. Map exploration uses one packed
+bit per pixel, map artwork decodes only patterns referenced by the active GND
+and OBL, and player NJP files decode only the body and equipment layers selected
+by the CAF appearance mask. Closed starter gameplay now measures 22.28 MiB of
+tracked game resources including the software framebuffer. Scenario changes
+release stale ground-item and transient-effect artwork while preserving active
+spell-owned resources. The next useful memory work is to remove the temporary
+two-map peak during transitions without weakening failure-safe loading.
+
+The profiler now reports game and decoded-audio memory separately, followed by
+their TOTAL RAM sum, instead of process RSS. This keeps Linux graphics-driver
+and window-system allocations out of console budgeting.
+LAL also retains each sound's mono/stereo layout and original rate instead of
+expanding everything to the output mix format. The project defaults to 16 kHz
+mono on every target; LAL still exposes 16 kHz, 22.05 kHz, and 48 kHz ceilings
+and an optional stereo layout for applications that need a different quality
+tradeoff. That policy remains in LAL rather than game or platform code.
+
 ## What can wait
 
 These are good ideas, just not reconstruction blockers:
@@ -2079,12 +2187,11 @@ These are good ideas, just not reconstruction blockers:
 - Vulkan, Metal, or Direct3D GAPI backends;
 - a public modding or plug-in API;
 - balance changes and new gameplay;
-- asset conversion tools that the reconstruction itself does not need;
-- major optimization before a representative gameplay scene can be profiled.
+- asset conversion tools that the reconstruction itself does not need.
 
-The software renderer and LGL presenter are intentionally enough for now. A
-new backend becomes worthwhile when the complete 640×480 game gives us
-something meaningful to measure.
+The software renderer and LGL presenter remain the reference path. Optimize
+that measured path before adding another graphics backend, so a new API does
+not hide avoidable renderer or asset-memory costs.
 
 ## Checks before a slice is ready to commit
 

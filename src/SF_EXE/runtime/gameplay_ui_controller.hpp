@@ -2,7 +2,9 @@
 #define OPENSHADOWFLARE_GAMEPLAY_UI_CONTROLLER_HPP
 
 #include "states/gameplay_blackjack.hpp"
+#if OSF_ENABLE_DEBUG_TOOLS
 #include "states/gameplay_debug_menu.hpp"
+#endif
 #include "states/gameplay_equipment_color.hpp"
 #include "states/gameplay_inventory.hpp"
 #include "states/gameplay_magic.hpp"
@@ -51,7 +53,9 @@ public:
 
     const GameplayOptionsMenu& options() const;
     const GameplayBlackjack& blackjack() const;
+#if OSF_ENABLE_DEBUG_TOOLS
     const GameplayDebugMenu& debug() const;
+#endif
     const GameplayEquipmentColor& equipmentColor() const;
     const GameplayInventory& inventory() const;
     const GameplayMap& map() const;
@@ -86,7 +90,9 @@ private:
 
     GameplayOptionsMenu options_;
     GameplayBlackjack blackjack_;
+#if OSF_ENABLE_DEBUG_TOOLS
     GameplayDebugMenu debug_;
+#endif
     GameplayEquipmentColor equipment_color_;
     GameplayInventory inventory_;
     GameplayMap map_;

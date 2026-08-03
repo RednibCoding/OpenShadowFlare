@@ -408,6 +408,7 @@ bool testDisplayObjectOrdering() {
 bool testGameplayLoadingTransition() {
     std::int32_t interfacePrepares = 0;
     std::int32_t interfaceReleases = 0;
+    std::int32_t loadingArtworkReleases = 0;
     std::int32_t prepares = 0;
     std::int32_t releases = 0;
     std::int32_t musicStarts = 0;
@@ -435,6 +436,10 @@ bool testGameplayLoadingTransition() {
     hooks.release_interface =
         [&interfaceReleases] {
             ++interfaceReleases;
+        };
+    hooks.release_loading_artwork =
+        [&loadingArtworkReleases] {
+            ++loadingArtworkReleases;
         };
     hooks.prepare_world = [&prepares] {
             ++prepares;
@@ -552,6 +557,7 @@ bool testGameplayLoadingTransition() {
             frame.world_ready &&
             releases == 1 &&
             interfaceReleases == 1 &&
+            loadingArtworkReleases == 1 &&
             musicStarts == 1 &&
             musicStops == 1 &&
             movementCommands == 4 &&
@@ -931,6 +937,7 @@ bool testGameplayOptionsMenu() {
         "Escape did not close the gameplay options menu.");
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 bool testGameplayDebugMenu() {
     osf::GameplayDebugMenu menu;
     osf::GameplayDebugResult result =
@@ -952,6 +959,16 @@ bool testGameplayDebugMenu() {
     result = menu.update(
         {false, false, true, 400, 134});
     if (!check(
+            menu.profilingEnabled() &&
+                result.settings_changed &&
+                result.play_click_sound,
+            "The debug profiling toggle did not use its displayed hit "
+            "box.")) {
+        return false;
+    }
+    result = menu.update(
+        {false, false, true, 400, 150});
+    if (!check(
             menu.allSpellsEnabled() &&
                 result.settings_changed &&
                 result.play_click_sound,
@@ -960,7 +977,7 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 400, 150});
+        {false, false, true, 400, 166});
     if (!check(
             menu.infiniteLifeEnabled() &&
                 result.settings_changed &&
@@ -970,7 +987,7 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 400, 166});
+        {false, false, true, 400, 182});
     if (!check(
             menu.infiniteManaEnabled() &&
                 result.settings_changed &&
@@ -980,10 +997,11 @@ bool testGameplayDebugMenu() {
         return false;
     }
     result = menu.update(
-        {false, false, true, 300, 198});
+        {false, false, true, 300, 214});
     if (!check(
             !menu.active() &&
                 menu.fpsCounterEnabled() &&
+                menu.profilingEnabled() &&
                 menu.allSpellsEnabled() &&
                 menu.infiniteLifeEnabled() &&
                 menu.infiniteManaEnabled() &&
@@ -996,6 +1014,7 @@ bool testGameplayDebugMenu() {
     return check(
         !menu.active() &&
             menu.fpsCounterEnabled() &&
+            menu.profilingEnabled() &&
             menu.allSpellsEnabled() &&
             menu.infiniteLifeEnabled() &&
             menu.infiniteManaEnabled() &&
@@ -1003,10 +1022,16 @@ bool testGameplayDebugMenu() {
         "Escape did not close the debug menu while retaining its runtime "
         "settings.");
 }
+#endif
 
 }  // namespace
 
 int main() {
+#if OSF_ENABLE_DEBUG_TOOLS
+    const bool debug_tests_passed = testGameplayDebugMenu();
+#else
+    constexpr bool debug_tests_passed = true;
+#endif
     if (!testRetailDefaultsAndFixture() ||
         !testConfigValidationAndWriting() ||
         !testConfigFailureSideEffects() ||
@@ -1021,7 +1046,7 @@ int main() {
         !testGameplayClickAndHoldMovement() ||
         !testScenarioVisualInputLock() ||
         !testGameplayOptionsMenu() ||
-        !testGameplayDebugMenu()) {
+        !debug_tests_passed) {
         return 1;
     }
     return 0;
