@@ -22,9 +22,20 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+
+#define TEST_CHECK(condition, message) \
+  do { \
+    if (!(condition)) { \
+      fputs(message "\n", stderr); \
+      return 0; \
+    } \
+  } while (0)
 
 typedef union {
-  max_align_t alignment;
+  void *pointer_alignment;
+  uint64_t integer_alignment;
+  long double floating_point_alignment;
   uint8_t bytes[16384];
 } AlignedStorage;
 
@@ -41,20 +52,27 @@ static int test_twl(void) {
   config.event_capacity = 8u;
   config.controller_capacity = 2u;
   required = twl_memory_required(&config);
-  if (required == 0u || required > sizeof(storage.bytes)) return 0;
-  if (twl_init(
-        storage.bytes, required - 1u, &config, &twl) !=
-      TWL_RESULT_INSUFFICIENT_MEMORY) return 0;
-  if (twl_init(storage.bytes, required, &config, &twl) != TWL_RESULT_OK)
-    return 0;
-  if (!twl_controller_state(twl, 0u, &controller) || controller.connected)
-    return 0;
+  TEST_CHECK(
+    required > 0u && required <= sizeof(storage.bytes),
+    "TWL returned an invalid memory requirement");
+  TEST_CHECK(
+    twl_init(storage.bytes, required - 1u, &config, &twl) ==
+      TWL_RESULT_INSUFFICIENT_MEMORY,
+    "TWL did not reject insufficient caller memory");
+  TEST_CHECK(
+    twl_init(storage.bytes, required, &config, &twl) == TWL_RESULT_OK,
+    "TWL headless initialization failed");
+  TEST_CHECK(
+    twl_controller_state(twl, 0u, &controller) && !controller.connected,
+    "TWL controller state was not initialized");
   surface.pixels = pixels;
   surface.width = 2u;
   surface.height = 2u;
   surface.stride_bytes = 2u * sizeof(uint16_t);
   surface.format = TWL_PIXEL_RGB555;
-  if (twl_present(twl, &surface) != TWL_RESULT_OK) return 0;
+  TEST_CHECK(
+    twl_present(twl, &surface) == TWL_RESULT_OK,
+    "TWL rejected a valid RGB555 surface");
   twl_shutdown(twl);
   return 1;
 }
@@ -76,22 +94,33 @@ static int test_tal(void) {
   config.max_voices = 4u;
   config.channels = 2u;
   required = tal_memory_required(&config);
-  if (required == 0u || required > sizeof(storage.bytes)) return 0;
-  if (tal_init(storage.bytes, required, &config, &tal) != TAL_RESULT_OK)
-    return 0;
+  TEST_CHECK(
+    required > 0u && required <= sizeof(storage.bytes),
+    "TAL returned an invalid memory requirement");
+  TEST_CHECK(
+    tal_init(storage.bytes, required, &config, &tal) == TAL_RESULT_OK,
+    "TAL manual initialization failed");
 
   pcm.samples = samples;
   pcm.frame_count = 4u;
   pcm.sample_rate = 16000u;
   pcm.channels = 1u;
-  if (tal_play(tal, &pcm, &options, &voice) != TAL_RESULT_OK ||
-      voice == TAL_INVALID_VOICE) return 0;
-  if (tal_render(tal, output, 4u) != TAL_RESULT_OK) return 0;
-  if (output[0] != 0 || output[1] != 0 ||
-      output[2] != 12000 || output[3] != 12000 ||
-      output[4] != -12000 || output[5] != -12000 ||
-      output[6] != 6000 || output[7] != 6000) return 0;
-  if (tal_voice_playing(tal, voice)) return 0;
+  TEST_CHECK(
+    tal_play(tal, &pcm, &options, &voice) == TAL_RESULT_OK &&
+      voice != TAL_INVALID_VOICE,
+    "TAL could not start a valid PCM voice");
+  TEST_CHECK(
+    tal_render(tal, output, 4u) == TAL_RESULT_OK,
+    "TAL could not render a manual block");
+  TEST_CHECK(
+    output[0] == 0 && output[1] == 0 &&
+      output[2] == 12000 && output[3] == 12000 &&
+      output[4] == -12000 && output[5] == -12000 &&
+      output[6] == 6000 && output[7] == 6000,
+    "TAL rendered unexpected PCM samples");
+  TEST_CHECK(
+    !tal_voice_playing(tal, voice),
+    "TAL voice remained active after its final frame");
   tal_shutdown(tal);
   return 1;
 }

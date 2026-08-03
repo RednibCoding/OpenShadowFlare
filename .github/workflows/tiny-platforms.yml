@@ -1,0 +1,108 @@
+name: Test tiny platform libraries
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tiny-platforms.yml'
+      - 'CMakeLists.txt'
+      - 'tests/native/CMakeLists.txt'
+      - 'tests/native/check_tiny_libraries.cmake'
+      - 'tests/native/tiny_libraries_test.c'
+      - 'tests/native/twl_backend_smoke_test.c'
+      - 'thirdparty/tal/**'
+      - 'thirdparty/twl/**'
+  pull_request:
+    paths:
+      - '.github/workflows/tiny-platforms.yml'
+      - 'CMakeLists.txt'
+      - 'tests/native/CMakeLists.txt'
+      - 'tests/native/check_tiny_libraries.cmake'
+      - 'tests/native/tiny_libraries_test.c'
+      - 'tests/native/twl_backend_smoke_test.c'
+      - 'thirdparty/tal/**'
+      - 'thirdparty/twl/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Configure
+        run: >-
+          cmake
+          -S .
+          -B build/${{ matrix.platform }}/debug
+          -DCMAKE_BUILD_TYPE=Debug
+          -DOPENSHADOWFLARE_BUILD_EXE=OFF
+          -DOPENSHADOWFLARE_ENABLE_DEBUG_TOOLS=OFF
+
+      - name: Build TWL and TAL tests (macOS)
+        if: runner.os == 'macOS'
+        run: >-
+          cmake --build build/${{ matrix.platform }}/debug
+          --target tiny_libraries_test twl_backend_smoke_test
+          --parallel
+
+      - name: Build TWL and TAL tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = & cmake --build build/${{ matrix.platform }}/debug `
+            --target tiny_libraries_test twl_backend_smoke_test `
+            --parallel 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Write-Host
+          if ($exitCode -ne 0) {
+            $tail = ($output | Select-Object -Last 60 | Out-String)
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows TWL/TAL build failed::$tail"
+            exit $exitCode
+          }
+
+      - name: Run common TWL and TAL tests (macOS)
+        if: runner.os == 'macOS'
+        run: >-
+          ctest --test-dir build/${{ matrix.platform }}/debug
+          -C Debug
+          --output-on-failure
+          -R "tiny_libraries|tiny_library_boundaries"
+
+      - name: Run common TWL and TAL tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = & ctest --test-dir build/${{ matrix.platform }}/debug `
+            -C Debug `
+            --output-on-failure `
+            -R "tiny_libraries|tiny_library_boundaries" 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Write-Host
+          if ($exitCode -ne 0) {
+            $tail = ($output | Select-Object -Last 60 | Out-String)
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows TWL/TAL tests failed::$tail"
+            exit $exitCode
+          }
+
+      - name: Run Windows presentation smoke test
+        if: runner.os == 'Windows'
+        run: >-
+          ctest --test-dir build/${{ matrix.platform }}/debug
+          -C Debug
+          --output-on-failure
+          -R "^twl_backend_smoke$"
