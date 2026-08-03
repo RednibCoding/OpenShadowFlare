@@ -30,6 +30,12 @@ typedef struct SfMemoryBytes {
   const uint8_t *end;
 } SfMemoryBytes;
 
+typedef struct SfTransformedFile {
+  FILE *file;
+  SfRclibByteTransform transform;
+  void *user;
+} SfTransformedFile;
+
 static uint32_t sf_u32(const uint8_t *bytes) {
   return (uint32_t) bytes[0] | ((uint32_t) bytes[1] << 8u) |
     ((uint32_t) bytes[2] << 16u) | ((uint32_t) bytes[3] << 24u);
@@ -43,6 +49,13 @@ static int sf_read_memory_byte(void *source) {
 
 static int sf_read_file_byte(void *source) {
   return fgetc((FILE *) source);
+}
+
+static int sf_read_transformed_file_byte(void *source) {
+  SfTransformedFile *transformed = (SfTransformedFile *) source;
+  const int value = fgetc(transformed->file);
+  return value < 0 ? value : transformed->transform(
+    transformed->user, (uint8_t) value);
 }
 
 static bool sf_write_memory_byte(
@@ -135,4 +148,22 @@ bool sf_rclib_decode_stream_to(
   return sf_rclib_decode(
     sf_read_file_byte, file,
     sink, user, decoded_size);
+}
+
+bool sf_rclib_decode_stream_to_transformed(
+    FILE *file, size_t decoded_size,
+    SfRclibByteTransform transform, void *transform_user,
+    SfRclibByteSink sink, void *sink_user) {
+  uint8_t header[16];
+  SfTransformedFile source;
+  if (!file || !transform || !sink ||
+      fread(header, 1u, sizeof(header), file) != sizeof(header) ||
+      memcmp(header, "RCLIB-L", 7u) != 0 ||
+      sf_u32(header + 8u) != decoded_size) return false;
+  source.file = file;
+  source.transform = transform;
+  source.user = transform_user;
+  return sf_rclib_decode(
+    sf_read_transformed_file_byte, &source,
+    sink, sink_user, decoded_size);
 }

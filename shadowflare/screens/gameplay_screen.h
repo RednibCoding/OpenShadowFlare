@@ -28,17 +28,21 @@
 #include <stdint.h>
 
 #define SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT 256u
+#define SF_GAMEPLAY_DRAW_ENTRY_LIMIT (SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT + 1u)
 
 typedef struct SfGameplayScreen {
-  uint16_t visible_objects[SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT];
-  uint16_t shadow_objects[SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT];
+  uint16_t visible_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
+  uint16_t shadow_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
   uint16_t visible_count;
   uint16_t shadow_count;
+  uint32_t rendered_animation_frame;
+  SfRect player_damage;
   bool drawn;
 } SfGameplayScreen;
 
 bool sf_gameplay_screen_init(
-  SfGameplayScreen *screen, const SfGameplayAssets *assets);
+  SfGameplayScreen *screen, const SfGameplayAssets *assets,
+  const SfWorldState *world);
 void sf_gameplay_screen_draw(
   SfGameplayScreen *screen, SfRenderer *renderer,
   const SfGameplayAssets *assets, const SfGame *game);

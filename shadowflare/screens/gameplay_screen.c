@@ -25,6 +25,8 @@
 
 #include <string.h>
 
+#define SF_GAMEPLAY_PLAYER_ENTRY UINT16_MAX
+
 static const SfNjpDecodedPattern *sf_gameplay_object_pattern(
     const SfGameplayAssets *assets, const SfMapObject *object, bool shadow,
     const SfNjpDecodedResource **resource) {
@@ -37,10 +39,47 @@ static const SfNjpDecodedPattern *sf_gameplay_object_pattern(
     ? sf_njp_decoded_pattern(*resource, (uint8_t) object->pattern) : NULL;
 }
 
+static SfRect sf_gameplay_player_damage(
+    const SfGameplayAssets *assets, const SfWorldState *world) {
+  const SfNjpSparseResource *resources[2] = {
+    &assets->player.artwork, &assets->player.shadows};
+  SfScreenPoint anchor = sf_world_to_screen(
+    (SfWorldPoint) {world->player_x, world->player_y});
+  int left = SF_FRAME_WIDTH;
+  int top = SF_FRAME_HEIGHT;
+  int right = 0;
+  int bottom = 0;
+  unsigned resource;
+  SfRect result = {0, 0, 0, 0};
+  anchor.x -= world->camera_x;
+  anchor.y -= world->camera_y;
+  for (resource = 0u; resource < 2u; ++resource) {
+    uint16_t pattern;
+    for (pattern = 0u; pattern < resources[resource]->pattern_count;
+         ++pattern) {
+      const SfNjpPatternImage *image =
+        &resources[resource]->patterns[pattern].image;
+      const int x = anchor.x + image->x;
+      const int y = anchor.y + image->y;
+      if (x < left) left = x;
+      if (y < top) top = y;
+      if (x + image->image.width > right) right = x + image->image.width;
+      if (y + image->image.height > bottom) bottom = y + image->image.height;
+    }
+  }
+  if (right > left && bottom > top) {
+    result.x = (int16_t) left;
+    result.y = (int16_t) top;
+    result.width = (int16_t) (right - left);
+    result.height = (int16_t) (bottom - top);
+  }
+  return result;
+}
+
 static uint16_t sf_gameplay_collect_objects(
-    const SfGameplayAssets *assets, bool shadow,
+    const SfGameplayAssets *assets, const SfWorldState *world, bool shadow,
     uint16_t *indices) {
-  SfDepthEntry entries[SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT];
+  SfDepthEntry entries[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
   uint16_t count = 0u;
   uint16_t object_index;
   for (object_index = 0u; object_index < assets->objects.count;
@@ -58,6 +97,18 @@ static uint16_t sf_gameplay_collect_objects(
     entries[count].status = object->status;
     ++count;
   }
+  if (world && world->entered && count < SF_GAMEPLAY_DRAW_ENTRY_LIMIT &&
+      (!shadow || assets->player.shadows.pattern_count > 0u)) {
+    entries[count].position.x = world->player_x;
+    entries[count].position.y = world->player_y;
+    entries[count].judgement.left = -80;
+    entries[count].judgement.top = -80;
+    entries[count].judgement.right = 79;
+    entries[count].judgement.bottom = 79;
+    entries[count].source_index = SF_GAMEPLAY_PLAYER_ENTRY;
+    entries[count].status = 0;
+    ++count;
+  }
   sf_depth_sort(entries, count);
   for (object_index = 0u; object_index < count; ++object_index)
     indices[object_index] = entries[object_index].source_index;
@@ -65,25 +116,72 @@ static uint16_t sf_gameplay_collect_objects(
 }
 
 bool sf_gameplay_screen_init(
-    SfGameplayScreen *screen, const SfGameplayAssets *assets) {
-  if (!screen || !assets) return false;
+    SfGameplayScreen *screen, const SfGameplayAssets *assets,
+    const SfWorldState *world) {
+  if (!screen || !assets || !world) return false;
   memset(screen, 0, sizeof(*screen));
   screen->visible_count = sf_gameplay_collect_objects(
-    assets, false, screen->visible_objects);
+    assets, world, false, screen->visible_objects);
   screen->shadow_count = sf_gameplay_collect_objects(
-    assets, true, screen->shadow_objects);
+    assets, world, true, screen->shadow_objects);
   if (screen->visible_count == UINT16_MAX ||
       screen->shadow_count == UINT16_MAX) {
     memset(screen, 0, sizeof(*screen));
     return false;
   }
+  screen->player_damage = sf_gameplay_player_damage(assets, world);
   return true;
+}
+
+static void sf_gameplay_draw_player(
+    SfRenderer *renderer, const SfGameplayAssets *assets,
+    const SfWorldState *world, bool shadow, const SfRect *clip) {
+  const SfCafSelectedAnimation *animation = &assets->player.idle;
+  const SfNjpSparseResource *resource = shadow
+    ? &assets->player.shadows : &assets->player.artwork;
+  SfScreenPoint anchor = sf_world_to_screen(
+    (SfWorldPoint) {world->player_x, world->player_y});
+  uint8_t priority;
+  if (animation->frame_count == 0u) return;
+  anchor.x -= world->camera_x;
+  anchor.y -= world->camera_y;
+  for (priority = animation->priority_count; priority > 0u; --priority) {
+    uint8_t part;
+    for (part = 0u; part < animation->part_count; ++part) {
+      const SfCafSelectedPart *selected_part = &animation->parts[part];
+      const uint8_t frame = (uint8_t) (
+        world->player_animation_frame % animation->frame_count);
+      const SfCafCell *cell = &selected_part->cells[frame];
+      const SfNjpSparsePattern *pattern;
+      uint16_t opacity;
+      SfBlendMode blend;
+      if (cell->priority != (int16_t) (priority - 1u) || cell->pattern < 0 ||
+          (shadow && (cell->status & 8) == 0)) continue;
+      pattern = sf_njp_sparse_pattern(resource, cell->pattern);
+      if (!pattern) continue;
+      if (shadow) {
+        opacity = 500u;
+        blend = SF_BLEND_TRANSLUCENT;
+      } else {
+        opacity = cell->transparency < 0 ? 0u :
+          cell->transparency > 1000 ? 1000u :
+          (uint16_t) cell->transparency;
+        blend = (cell->status & 0x10) != 0
+          ? SF_BLEND_ADDITIVE : SF_BLEND_MASKED;
+      }
+      sf_renderer_draw_indexed(
+        renderer, &pattern->image.image,
+        anchor.x + pattern->image.x, anchor.y + pattern->image.y,
+        1000u, opacity, blend, clip);
+    }
+  }
 }
 
 static void sf_gameplay_draw_pattern(
     SfRenderer *renderer, const SfNjpDecodedResource *resource,
     const SfNjpDecodedPattern *pattern, int x, int y,
-    int palette_override, uint16_t opacity, SfBlendMode blend) {
+    int palette_override, uint16_t opacity, SfBlendMode blend,
+    const SfRect *clip) {
   uint8_t palette;
   uint8_t reference;
   const uint16_t *colors;
@@ -103,13 +201,13 @@ static void sf_gameplay_draw_pattern(
     image.palette = colors;
     sf_renderer_draw_indexed(
       renderer, &image, x + item->x, y + item->y,
-      1000u, opacity, blend, NULL);
+      1000u, opacity, blend, clip);
   }
 }
 
 static void sf_gameplay_draw_ground(
     SfRenderer *renderer, const SfGameplayAssets *assets,
-    const SfWorldState *world) {
+    const SfWorldState *world, const SfRect *clip) {
   const SfGroundMap *ground = &assets->ground;
   int32_t first_x = sf_floor_divide(world->camera_x, ground->chip_width);
   int32_t first_y = sf_floor_divide(world->camera_y, ground->chip_height);
@@ -137,14 +235,15 @@ static void sf_gameplay_draw_ground(
         renderer, resource, pattern,
         x * ground->chip_width - world->camera_x,
         y * ground->chip_height - world->camera_y,
-        -1, 1000u, SF_BLEND_OPAQUE);
+        -1, 1000u, SF_BLEND_OPAQUE, clip);
     }
   }
 }
 
 static void sf_gameplay_draw_object(
     SfRenderer *renderer, const SfGameplayAssets *assets,
-    const SfWorldState *world, uint16_t object_index, bool shadow) {
+    const SfWorldState *world, uint16_t object_index, bool shadow,
+    const SfRect *clip) {
   const SfMapObject *object = &assets->objects.objects[object_index];
   const SfNjpDecodedResource *resource = NULL;
   const SfNjpDecodedPattern *pattern = sf_gameplay_object_pattern(
@@ -168,40 +267,54 @@ static void sf_gameplay_draw_object(
   sf_gameplay_draw_pattern(
     renderer, resource, pattern,
     anchor.x - world->camera_x, anchor.y - world->camera_y,
-    shadow ? -1 : object->palette, opacity, blend);
+    shadow ? -1 : object->palette, opacity, blend, clip);
 }
 
 static void sf_gameplay_draw_object_pass(
     SfRenderer *renderer, const SfGameplayAssets *assets,
     const SfWorldState *world, const uint16_t *indices,
-    uint16_t count, bool shadow, bool default_class) {
+    uint16_t count, bool shadow, bool default_class, const SfRect *clip) {
   uint16_t index;
   for (index = 0u; index < count; ++index) {
-    const SfMapObject *object = &assets->objects.objects[indices[index]];
-    if ((sf_depth_class(object->status) == 0) != default_class) continue;
-    sf_gameplay_draw_object(
-      renderer, assets, world, indices[index], shadow);
+    if (indices[index] == SF_GAMEPLAY_PLAYER_ENTRY) {
+      if (default_class)
+        sf_gameplay_draw_player(renderer, assets, world, shadow, clip);
+    } else {
+      const SfMapObject *object = &assets->objects.objects[indices[index]];
+      if ((sf_depth_class(object->status) == 0) != default_class) continue;
+      sf_gameplay_draw_object(
+        renderer, assets, world, indices[index], shadow, clip);
+    }
   }
 }
 
 void sf_gameplay_screen_draw(
     SfGameplayScreen *screen, SfRenderer *renderer,
     const SfGameplayAssets *assets, const SfGame *game) {
-  if (!screen || !renderer || !assets || !game || screen->drawn ||
+  const SfRect *clip = NULL;
+  if (!screen || !renderer || !assets || !game ||
       !game->world.entered) return;
-  sf_renderer_clear(renderer, 0u);
-  sf_gameplay_draw_ground(renderer, assets, &game->world);
+  if (screen->drawn) {
+    if (screen->rendered_animation_frame ==
+        game->world.player_animation_frame) return;
+    clip = &screen->player_damage;
+    sf_renderer_fill_rect(renderer, *clip, 0u);
+  } else {
+    sf_renderer_clear(renderer, 0u);
+  }
+  sf_gameplay_draw_ground(renderer, assets, &game->world, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, &game->world,
-    screen->shadow_objects, screen->shadow_count, true, false);
+    screen->shadow_objects, screen->shadow_count, true, false, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, &game->world,
-    screen->visible_objects, screen->visible_count, false, false);
+    screen->visible_objects, screen->visible_count, false, false, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, &game->world,
-    screen->shadow_objects, screen->shadow_count, true, true);
+    screen->shadow_objects, screen->shadow_count, true, true, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, &game->world,
-    screen->visible_objects, screen->visible_count, false, true);
+    screen->visible_objects, screen->visible_count, false, true, clip);
+  screen->rendered_animation_frame = game->world.player_animation_frame;
   screen->drawn = true;
 }

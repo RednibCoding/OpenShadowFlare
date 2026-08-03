@@ -222,7 +222,10 @@ static bool sf_gameplay_load_patterns(
 
 bool sf_gameplay_assets_load(
     SfGameplayAssets *assets, const char *data_root,
-    int32_t scenario_id, int32_t entry_key, SfArena *arena) {
+    int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
+    const uint8_t *appearance_parts, uint8_t appearance_part_count,
+    const SfItemReference *visible_items, uint8_t visible_item_count,
+    SfArena *arena) {
   SfPatternList patterns;
   SfGameplaySelection selection;
   const SfMctEntry *entry;
@@ -264,7 +267,11 @@ bool sf_gameplay_assets_load(
         &selection, &patterns, &assets->objects, data_root,
         player_screen.x - 320, player_screen.y - 240) ||
       !sf_gameplay_load_patterns(
-        assets, &selection, &patterns, data_root, arena)) goto done;
+        assets, &selection, &patterns, data_root, arena) ||
+      !sf_player_assets_load(
+        &assets->player, data_root, player_gender, (uint8_t) entry->direction,
+        appearance_parts, appearance_part_count,
+        visible_items, visible_item_count, arena)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:

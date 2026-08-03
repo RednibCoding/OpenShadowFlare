@@ -63,6 +63,7 @@ typedef struct SfGameInput {
 typedef struct SfGameConfig {
   uint8_t title_smoke_frame_count[SF_GAME_TITLE_SMOKE_COUNT];
   uint8_t saved_game_file_slots[6];
+  uint8_t saved_game_genders[6];
   uint8_t saved_game_count;
   bool next_save_available;
 } SfGameConfig;
@@ -143,12 +144,14 @@ typedef struct SfGame {
   SfGameMode mode;
   uint32_t ticks;
   uint8_t character_select_argument;
+  uint8_t player_gender;
   bool quit_requested;
 } SfGame;
 
 void sf_game_init(SfGame *game, const SfGameConfig *config);
 void sf_game_update(SfGame *game, const SfGameInput *input);
 void sf_game_saved_catalog_changed(
-  SfGame *game, const uint8_t *file_slots, uint8_t saved_game_count);
+  SfGame *game, const uint8_t *file_slots, const uint8_t *genders,
+  uint8_t saved_game_count);
 
 #endif

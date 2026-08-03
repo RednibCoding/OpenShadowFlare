@@ -58,7 +58,7 @@ static bool sf_measure_screen(
   size_t screen_bytes;
   game->mode = mode;
   if (mode == SF_GAME_MODE_GAMEPLAY)
-    sf_world_state_init(&game->world, 0, 0);
+    sf_world_state_init(&game->world, 0, 0, 1u);
   if (!sf_screen_runtime_load(runtime, game)) return false;
   screen_bytes = sf_measure_screen_bytes(runtime, mode);
   printf("%-18s %10zu %13zu %10zu\n",

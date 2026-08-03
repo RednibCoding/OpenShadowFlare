@@ -272,6 +272,45 @@ static int test_rclib(void) {
   return 0;
 }
 
+static uint8_t test_rclib_invert(void *user, uint8_t value) {
+  (void) user;
+  return (uint8_t) ~value;
+}
+
+static bool test_rclib_sink(void *user, size_t offset, uint8_t value) {
+  ((uint8_t *) user)[offset] = value;
+  return true;
+}
+
+static int test_transformed_rclib(void) {
+  static const uint8_t header[] = {
+    'R', 'C', 'L', 'I', 'B', '-', 'L', 0,
+    4, 0, 0, 0, 5, 0, 0, 0
+  };
+  static const uint8_t encoded[] = {
+    (uint8_t) ~0u, (uint8_t) ~1u, (uint8_t) ~2u,
+    (uint8_t) ~3u, (uint8_t) ~4u
+  };
+  uint8_t decoded[4] = {0};
+  FILE *file = tmpfile();
+  if (check(file != NULL, "could not create transformed RCLIB fixture"))
+    return 1;
+  if (fwrite(header, 1u, sizeof(header), file) != sizeof(header) ||
+      fwrite(encoded, 1u, sizeof(encoded), file) != sizeof(encoded) ||
+      fseek(file, 0L, SEEK_SET) != 0 ||
+      !sf_rclib_decode_stream_to_transformed(
+        file, sizeof(decoded), test_rclib_invert, NULL,
+        test_rclib_sink, decoded)) {
+    fclose(file);
+    return check(0, "transformed RCLIB stream was not decoded");
+  }
+  fclose(file);
+  if (check(decoded[0] == 1u && decoded[1] == 2u &&
+            decoded[2] == 3u && decoded[3] == 4u,
+            "transformed RCLIB stream decoded the wrong bytes")) return 1;
+  return 0;
+}
+
 static int test_game(void) {
   SfGameConfig config;
   SfGame game;
@@ -296,10 +335,16 @@ static int test_game(void) {
             "cancel did not start the retail exit transition"))
     return 1;
   memset(&input, 0, sizeof(input));
+  game.player_gender = 0u;
   game.mode = SF_GAME_MODE_LOADING;
   sf_game_update(&game, &input);
   if (check(game.mode == SF_GAME_MODE_GAMEPLAY &&
-            game.world.scenario_id == 0 && game.world.entry_key == 0,
+            game.world.scenario_id == 0 && game.world.entry_key == 0 &&
+            game.world.player_gender == 0u &&
+            game.world.player_appearance_part_count == 2u &&
+            game.world.player_visible_item_count == 1u &&
+            game.world.player_visible_items[0].category == 1u &&
+            game.world.player_visible_items[0].definition_id == 0,
             "loading did not hand off to the first retail scenario"))
     return 1;
   return 0;
@@ -342,6 +387,12 @@ static int test_character_creation(void) {
   sf_character_create_state_update(&game, &input);
   if (check(game.character_create.screen == 20u,
             "Single Mode did not start the gameplay hand-off")) return 1;
+  game.character_create.launch_counter = 5023;
+  game.character_create.gender = 0u;
+  memset(&input, 0, sizeof(input));
+  sf_character_create_state_update(&game, &input);
+  if (check(game.mode == SF_GAME_MODE_LOADING && game.player_gender == 0u,
+            "character creation lost the selected retail gender")) return 1;
   return 0;
 }
 
@@ -356,7 +407,8 @@ int main(void) {
             "video asset budget is wrong") ||
       test_arena() || test_world_coordinates() || test_depth_order() ||
       test_framebuffer() || test_renderer() ||
-      test_rclib() || test_game() || test_character_creation() ||
+      test_rclib() || test_transformed_rclib() ||
+      test_game() || test_character_creation() ||
       test_load_game())
     return 1;
   return 0;

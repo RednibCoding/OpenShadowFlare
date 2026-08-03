@@ -34,6 +34,8 @@
 #define SF_NJP_DECODED_PART_LIMIT 80u
 #define SF_NJP_DECODED_REFERENCE_LIMIT 128u
 #define SF_NJP_PATTERN_FILE_LIMIT 80u
+#define SF_NJP_SPARSE_PATTERN_LIMIT 128u
+#define SF_NJP_SPARSE_PALETTE_LIMIT 8u
 
 typedef struct SfNjpPatternImage {
   SfIndexedImage image;
@@ -108,6 +110,20 @@ typedef struct SfNjpPatternBounds {
   bool valid;
 } SfNjpPatternBounds;
 
+typedef struct SfNjpSparsePattern {
+  SfNjpPatternImage image;
+  int32_t source_index;
+  uint8_t palette;
+} SfNjpSparsePattern;
+
+typedef struct SfNjpSparseResource {
+  SfNjpSparsePattern patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
+  uint16_t palettes[SF_NJP_SPARSE_PALETTE_LIMIT][256];
+  int32_t palette_sources[SF_NJP_SPARSE_PALETTE_LIMIT];
+  uint16_t pattern_count;
+  uint8_t palette_count;
+} SfNjpSparseResource;
+
 bool sf_njp_load_selected(
   const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
   SfArena *arena, SfNjpSelected *output);
@@ -119,6 +135,11 @@ bool sf_njp_load_decoded_patterns(
 bool sf_njp_read_pattern_bounds(
   const char *path, SfNjpPatternBounds *bounds,
   uint8_t capacity, uint8_t *pattern_count);
+bool sf_njp_load_sparse_patterns(
+  const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
+  SfArena *arena, SfNjpSparseResource *output);
+const SfNjpSparsePattern *sf_njp_sparse_pattern(
+  const SfNjpSparseResource *resource, int32_t source_index);
 const SfNjpDecodedPattern *sf_njp_decoded_pattern(
   const SfNjpDecodedResource *resource, uint8_t source_index);
 const uint16_t *sf_njp_decoded_palette(

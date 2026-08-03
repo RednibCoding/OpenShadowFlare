@@ -17,27 +17,26 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_DATA_ITEM_H
+#define SHADOWFLARE_DATA_ITEM_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
-typedef uint8_t (*SfRclibByteTransform)(void *user, uint8_t value);
+typedef struct SfItemAppearance {
+  int32_t part;
+  int32_t red;
+  int32_t green;
+  int32_t blue;
+} SfItemAppearance;
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
-bool sf_rclib_decode_stream_to_transformed(
-  FILE *file, size_t decoded_size,
-  SfRclibByteTransform transform, void *transform_user,
-  SfRclibByteSink sink, void *sink_user);
+typedef struct SfItemReference {
+  int32_t definition_id;
+  uint8_t category;
+} SfItemReference;
+
+bool sf_item_read_appearance(
+  const char *path, uint8_t category, int32_t definition_id,
+  SfItemAppearance *appearance);
 
 #endif

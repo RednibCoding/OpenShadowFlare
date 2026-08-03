@@ -70,6 +70,7 @@ static void sf_load_begin_choice(SfGame *game) {
   state->selected_save = state->selection;
   state->selected_file_slot = (int8_t)
     game->config.saved_game_file_slots[state->selection];
+  game->player_gender = game->config.saved_game_genders[state->selection];
   state->screen = 10u;
   state->input_latch = true;
   state->brightness_increasing = false;

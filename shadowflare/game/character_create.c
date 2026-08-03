@@ -295,7 +295,10 @@ void sf_character_create_state_update(
       state, input, sf_network_rectangles, true);
   } else if (state->screen == 20u) {
     if (state->launch_counter == 0) state->launch_counter = 5010;
-    if (state->launch_counter == 5024) game->mode = SF_GAME_MODE_LOADING;
+    if (state->launch_counter == 5024) {
+      game->player_gender = state->gender;
+      game->mode = SF_GAME_MODE_LOADING;
+    }
   }
   state->previous_pointer_x = input->pointer_x;
   state->previous_pointer_y = input->pointer_y;

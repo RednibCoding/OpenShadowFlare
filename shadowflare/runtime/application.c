@@ -302,9 +302,12 @@ int sf_application_run(
   {
     unsigned smoke;
     unsigned save;
-    for (save = 0u; save < SF_SAVE_SLOT_COUNT; ++save)
+    for (save = 0u; save < SF_SAVE_SLOT_COUNT; ++save) {
       game_config.saved_game_file_slots[save] = save < save_catalog.count
         ? save_catalog.entries[save].file_slot : UINT8_MAX;
+      game_config.saved_game_genders[save] = save < save_catalog.count &&
+        save_catalog.entries[save].gender == 1 ? 1u : 0u;
+    }
     for (smoke = 0u; smoke < SF_TITLE_SMOKE_COUNT; ++smoke)
       game_config.title_smoke_frame_count[smoke] =
         title_assets->smoke[smoke].animation.frame_count;

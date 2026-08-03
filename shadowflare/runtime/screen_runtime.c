@@ -67,14 +67,18 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
     success = sf_gameplay_assets_load(
       &runtime->assets.gameplay, runtime->data_root,
-      game->world.scenario_id, game->world.entry_key, runtime->arena);
+      game->world.scenario_id, game->world.entry_key,
+      game->world.player_gender, game->world.player_appearance_parts,
+      game->world.player_appearance_part_count,
+      game->world.player_visible_items, game->world.player_visible_item_count,
+      runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
       sf_world_state_enter(
         &game->world, entry->world_x, entry->world_y,
         (uint8_t) entry->direction);
       success = sf_gameplay_screen_init(
-        &runtime->screen.gameplay, &runtime->assets.gameplay);
+        &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
     }
   }
   runtime->loaded = success;
@@ -92,6 +96,7 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
   if (game->load_game.delete_request >= 0) {
     const uint8_t index = (uint8_t) game->load_game.delete_request;
     uint8_t file_slots[SF_SAVE_SLOT_COUNT];
+    uint8_t genders[SF_SAVE_SLOT_COUNT];
     uint8_t slot;
     game->load_game.delete_request = -1;
     if (sf_load_game_assets_delete(
@@ -99,8 +104,10 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
           runtime->decode_scratch, runtime->decode_scratch_size)) {
       for (slot = 0u; slot < assets->catalog.count; ++slot)
         file_slots[slot] = assets->catalog.entries[slot].file_slot;
+      for (slot = 0u; slot < assets->catalog.count; ++slot)
+        genders[slot] = assets->catalog.entries[slot].gender == 1 ? 1u : 0u;
       sf_game_saved_catalog_changed(
-        game, file_slots, assets->catalog.count);
+        game, file_slots, genders, assets->catalog.count);
     }
   }
   if (assets->catalog.count == 0u) return true;

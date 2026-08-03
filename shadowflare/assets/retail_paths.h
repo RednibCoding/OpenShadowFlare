@@ -54,11 +54,23 @@ typedef struct SfRetailWorldPaths {
   const char *pattern_format;
 } SfRetailWorldPaths;
 
+typedef struct SfRetailPlayerPaths {
+  const char *animation_format;
+  const char *artwork_format;
+  const char *shadow_format;
+} SfRetailPlayerPaths;
+
+typedef struct SfRetailGamePaths {
+  const char *item_database;
+} SfRetailGamePaths;
+
 extern const SfRetailTitlePaths sf_retail_title_paths;
 extern const SfRetailMenuPaths sf_retail_menu_paths;
 extern const SfRetailCharacterCreatePaths sf_retail_character_create_paths;
 extern const SfRetailSavePaths sf_retail_save_paths;
 extern const SfRetailWorldPaths sf_retail_world_paths;
+extern const SfRetailPlayerPaths sf_retail_player_paths;
+extern const SfRetailGamePaths sf_retail_game_paths;
 
 bool sf_retail_path_join(
   char *path, size_t capacity, const char *root, const char *relative);

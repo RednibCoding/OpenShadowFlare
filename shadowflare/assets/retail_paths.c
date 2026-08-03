@@ -51,6 +51,16 @@ const SfRetailWorldPaths sf_retail_world_paths = {
   "Map/Pattern/%s"
 };
 
+const SfRetailPlayerPaths sf_retail_player_paths = {
+  "Player/%s/Animation00.Caf",
+  "Player/%s/Animation00.Njp",
+  "Player/%s/Animation00.Sdw"
+};
+
+const SfRetailGamePaths sf_retail_game_paths = {
+  "System/Game/Parameter/Item.Ibn"
+};
+
 static bool sf_retail_path_copy(
     char *destination, size_t capacity, const char *source) {
   const size_t length = source ? strlen(source) : 0u;

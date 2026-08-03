@@ -17,45 +17,30 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_GAMEPLAY_ASSETS_H
-#define SHADOWFLARE_ASSETS_GAMEPLAY_ASSETS_H
+#ifndef SHADOWFLARE_ASSETS_PLAYER_ASSETS_H
+#define SHADOWFLARE_ASSETS_PLAYER_ASSETS_H
 
-#include "assets/player_assets.h"
 #include "core/arena.h"
-#include "data/gnd.h"
-#include "data/mct.h"
+#include "data/caf.h"
 #include "data/njp.h"
-#include "data/obl.h"
+#include "data/item.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_PATTERN_SET_LIMIT 16u
-
-typedef struct SfGameplayPatternSet {
-  SfNjpDecodedResource resource;
-  uint8_t source_index;
-} SfGameplayPatternSet;
-
-typedef struct SfGameplayAssets {
-  SfGroundMap ground;
-  SfObjectMap objects;
-  SfMctScenario scenario;
-  SfMctEntry entry;
-  SfPlayerAssets player;
-  SfGameplayPatternSet *pattern_sets;
+typedef struct SfPlayerAssets {
+  SfCafSelectedAnimation idle;
+  SfNjpSparseResource artwork;
+  SfNjpSparseResource shadows;
   size_t memory_bytes;
-  uint8_t pattern_set_count;
-} SfGameplayAssets;
+} SfPlayerAssets;
 
-bool sf_gameplay_assets_load(
-  SfGameplayAssets *assets, const char *data_root,
-  int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
+bool sf_player_assets_load(
+  SfPlayerAssets *assets, const char *data_root,
+  uint8_t gender, uint8_t direction,
   const uint8_t *appearance_parts, uint8_t appearance_part_count,
   const SfItemReference *visible_items, uint8_t visible_item_count,
   SfArena *arena);
-const SfNjpDecodedResource *sf_gameplay_pattern_set(
-  const SfGameplayAssets *assets, uint8_t source_index);
 
 #endif

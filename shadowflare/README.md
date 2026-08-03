@@ -41,8 +41,11 @@ keyboard/controller navigation, and includes Continue, Delete, Back, Exit,
 the delete confirmation, and game-mode dialogs. Choosing Single Mode now
 continues through the loading hand-off into the first gameplay slice: a static
 Remote Town viewport loaded entirely from scenario, GND, OBL, LST, NJP, and
-SDW retail data. Player actors, movement, collision, and scripts are the next
-layers; they are deliberately not faked in the map screen.
+SDW retail data. The selected male or female hero now appears at the authored
+MCT entry, wears the new-character Leather Cloth described by `Item.Ibn`, and
+plays retail idle chart zero with its matching shadow and scenery depth. Player
+movement, collision, and scripts are the next layers; they are deliberately
+not faked in the map screen.
 
 ## Hard limits
 
@@ -115,8 +118,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,423,669 bytes of the 1.5 MiB main arena,
-leaving 149,195 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,423,725 bytes of the 1.5 MiB main arena,
+leaving 149,139 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 434,176
@@ -129,23 +132,24 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 736,592 bytes of the main arena, leaving 836,272 bytes free;
+assets. It uses 736,648 bytes of the main arena, leaving 836,216 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 696,808 bytes of the main arena, leaving 876,056
+The load-game screen uses 696,864 bytes of the main arena, leaving 876,000
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The first Remote Town gameplay viewport uses 983,072 bytes of the main arena,
-leaving 589,792 bytes free. Its map-scoped data and selected artwork account
-for 660,585 bytes. GND rendering data is decoded directly from its compressed
-three-plane stream into two bytes per tile, so the 300x300 town grid occupies
-180,000 bytes instead of retaining the 540,000-byte source layout. Collision
+The first Remote Town gameplay viewport uses 1,007,920 bytes of the main arena,
+leaving 564,944 bytes free. Its map- and player-scoped data and selected
+artwork account for 685,377 bytes. GND rendering data is decoded directly from
+its compressed three-plane stream into two bytes per tile, so the 300x300 town
+grid occupies 180,000 bytes instead of retaining the 540,000-byte source
+layout. Collision
 judgement is not loaded by this rendering-only slice yet.
 
 Map artwork follows the current camera rather than a scenario-specific asset
@@ -153,6 +157,19 @@ list. The loader reads the map's own ground cells and OBL objects, checks exact
 NJP/SDW pattern bounds against the 640x480 viewport, and retains only the
 referenced pattern pixels and palettes. The static world is then drawn in the
 retail ground, non-default shadow/object, and default shadow/object passes.
+The hero joins those same sorted passes using the retail player judgement box,
+so gates, walls, roofs, and ordinary scenery can appear on the correct side of
+the actor.
+
+The player archives are deliberately not loaded whole. The male NJP alone
+would expand to more than 20 MiB. A two-pass sparse loader scans the large file
+without retaining its metadata and decodes only the body, equipped armor, and
+shadow patterns used by the active idle direction. `Item.Ibn` is streamed in
+the same way to recover the Leather Cloth appearance fields without keeping
+its 2.27 MiB decoded payload. The initial world draw is complete; later idle
+frames restore and redraw only the measured player rectangle in full retail
+depth order.
+
 The framebuffer still occupies 614,400 bytes of video memory, leaving 434,176
 bytes there; map artwork remains packed in main RAM for the desktop software
 backend.

@@ -38,6 +38,7 @@ add_library(
   assets/gameplay_assets.c
   assets/load_game_assets.c
   assets/menu_assets.c
+  assets/player_assets.c
   assets/retail_paths.c
   assets/title_assets.c
   core/arena.c
@@ -45,8 +46,10 @@ add_library(
   data/caf.c
   data/bmp.c
   data/gnd.c
+  data/item.c
   data/mct.c
   data/njp.c
+  data/njp_sparse.c
   data/obl.c
   data/pattern_list.c
   data/rclib.c

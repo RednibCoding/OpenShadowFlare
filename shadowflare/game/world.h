@@ -20,8 +20,13 @@
 #ifndef SHADOWFLARE_GAME_WORLD_H
 #define SHADOWFLARE_GAME_WORLD_H
 
+#include "data/item.h"
+
 #include <stdbool.h>
 #include <stdint.h>
+
+#define SF_PLAYER_APPEARANCE_PART_LIMIT 8u
+#define SF_PLAYER_VISIBLE_ITEM_LIMIT 3u
 
 typedef struct SfWorldState {
   int32_t scenario_id;
@@ -30,14 +35,22 @@ typedef struct SfWorldState {
   int32_t player_y;
   int32_t camera_x;
   int32_t camera_y;
+  uint32_t player_animation_frame;
+  uint8_t player_appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];
+  SfItemReference player_visible_items[SF_PLAYER_VISIBLE_ITEM_LIMIT];
   uint8_t player_direction;
+  uint8_t player_gender;
+  uint8_t player_appearance_part_count;
+  uint8_t player_visible_item_count;
   bool entered;
 } SfWorldState;
 
 void sf_world_state_init(
-  SfWorldState *world, int32_t scenario_id, int32_t entry_key);
+  SfWorldState *world, int32_t scenario_id, int32_t entry_key,
+  uint8_t player_gender);
 void sf_world_state_enter(
   SfWorldState *world,
   int32_t player_x, int32_t player_y, uint8_t direction);
+void sf_world_state_update(SfWorldState *world);
 
 #endif

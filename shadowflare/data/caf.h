@@ -20,10 +20,13 @@
 #ifndef SHADOWFLARE_DATA_CAF_H
 #define SHADOWFLARE_DATA_CAF_H
 
+#include "core/arena.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
 #define SF_CAF_FRAME_LIMIT 64u
+#define SF_CAF_SELECTED_PART_LIMIT 8u
 
 typedef struct SfCafFrame {
   int16_t pattern;
@@ -37,7 +40,33 @@ typedef struct SfCafSequence {
   bool looping;
 } SfCafSequence;
 
+typedef struct SfCafCell {
+  int32_t pattern;
+  int16_t status;
+  int16_t transparency;
+  int16_t priority;
+} SfCafCell;
+
+typedef struct SfCafSelectedPart {
+  SfCafCell *cells;
+  uint8_t source_index;
+} SfCafSelectedPart;
+
+typedef struct SfCafSelectedAnimation {
+  SfCafSelectedPart parts[SF_CAF_SELECTED_PART_LIMIT];
+  int32_t palette_mode;
+  int32_t chart_priority_stride;
+  uint8_t part_count;
+  uint8_t priority_count;
+  uint8_t frame_count;
+  bool looping;
+} SfCafSelectedAnimation;
+
 bool sf_caf_load_first_chart_direction(
   const char *path, uint8_t direction, SfCafSequence *output);
+bool sf_caf_load_selected_chart_direction(
+  const char *path, uint16_t chart, uint8_t direction,
+  const uint8_t *parts, uint8_t part_count,
+  SfArena *arena, SfCafSelectedAnimation *output);
 
 #endif

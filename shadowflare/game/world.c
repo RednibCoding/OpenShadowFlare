@@ -24,11 +24,19 @@
 #include <string.h>
 
 void sf_world_state_init(
-    SfWorldState *world, int32_t scenario_id, int32_t entry_key) {
+    SfWorldState *world, int32_t scenario_id, int32_t entry_key,
+    uint8_t player_gender) {
   if (!world) return;
   memset(world, 0, sizeof(*world));
   world->scenario_id = scenario_id;
   world->entry_key = entry_key;
+  world->player_gender = player_gender == 1u ? 1u : 0u;
+  world->player_appearance_parts[0] = 0u;
+  world->player_appearance_parts[1] = 1u;
+  world->player_appearance_part_count = 2u;
+  world->player_visible_items[0].category = 1u;
+  world->player_visible_items[0].definition_id = 0;
+  world->player_visible_item_count = 1u;
 }
 
 void sf_world_state_enter(
@@ -43,4 +51,9 @@ void sf_world_state_enter(
   world->camera_x = screen.x - 320;
   world->camera_y = screen.y - 240;
   world->entered = true;
+}
+
+void sf_world_state_update(SfWorldState *world) {
+  if (!world || !world->entered) return;
+  ++world->player_animation_frame;
 }
