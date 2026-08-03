@@ -269,7 +269,9 @@ lives here:
 
 It is only a bring-up build for now, so use `ShadowFlare_rebuilt` when testing
 reconstructed gameplay. The [C99 runtime notes](shadowflare/README.md) explain
-its layout and the memory limits it already enforces.
+its layout and the memory limits it already enforces. Contributors working on
+it should also read the [standing runtime rules](shadowflare/RULES.md) before
+adding a new system or renderer path.
 
 ### Web (WebAssembly) build
 

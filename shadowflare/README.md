@@ -24,6 +24,10 @@ being moved over wholesale. The aim is to keep the game easy to follow while
 still preserving sensible boundaries between memory, game rules, rendering,
 and the outer application loop.
 
+Before changing this runtime, read the [standing runtime rules](RULES.md).
+They make the 33 MHz CPU, 2 MiB main-RAM, and 1 MiB video-RAM constraints
+explicit and describe the boundaries that new code must preserve.
+
 The current executable is only a bring-up slice. It opens a 640×480 RGB555
 surface, runs game updates at 60 Hz, accepts keyboard or controller input, and
 shows a temporary title-menu layout. It is intentionally not trying to imitate
