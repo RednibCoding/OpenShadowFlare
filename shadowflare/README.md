@@ -43,9 +43,12 @@ continues through the loading hand-off into the first gameplay slice: a static
 Remote Town viewport loaded entirely from scenario, GND, OBL, LST, NJP, and
 SDW retail data. The selected male or female hero now appears at the authored
 MCT entry, wears the new-character Leather Cloth described by `Item.Ibn`, and
-plays retail idle chart zero with its matching shadow and scenery depth. Player
-movement, collision, and scripts are the next layers; they are deliberately
-not faked in the map screen.
+plays the retail idle, walk, and run charts with matching shadows and scenery
+depth. Mouse movement follows the retail distinction between a latched click
+and a held pointer that stops on release, while `R` switches between the
+recovered walk and run speeds. Collision, path routing, and scripts are the
+next layers; they remain separate from the small player state machine instead
+of being faked in the map screen.
 
 ## Hard limits
 
@@ -146,9 +149,9 @@ the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The first Remote Town gameplay viewport uses 1,007,920 bytes of the main arena,
-leaving 6,332,112 bytes free. Its map- and player-scoped data and selected
-artwork account for 685,377 bytes. GND rendering data is decoded directly from
+The first Remote Town gameplay viewport uses 1,710,592 bytes of the main arena,
+leaving 5,629,440 bytes free. Its map- and player-scoped data and selected
+artwork account for 1,388,001 bytes. GND rendering data is decoded directly from
 its compressed three-plane stream into two bytes per tile, so the 300x300 town
 grid occupies 180,000 bytes instead of retaining the 540,000-byte source
 layout. Collision
@@ -165,12 +168,13 @@ the actor.
 
 The player archives are deliberately not loaded whole. The male NJP alone
 would expand to more than 20 MiB. A two-pass sparse loader scans the large file
-without retaining its metadata and decodes only the body, equipped armor, and
-shadow patterns used by the active idle direction. `Item.Ibn` is streamed in
-the same way to recover the Leather Cloth appearance fields without keeping
-its 2.27 MiB decoded payload. The initial world draw is complete; later idle
-frames restore and redraw only the measured player rectangle in full retail
-depth order.
+without retaining its full metadata and decodes only the body, equipped armor,
+weapon, and shadow patterns used by idle, walk, and run. Its pattern metadata
+is arena-sized to the selected bank rather than embedded in every screen.
+`Item.Ibn` is streamed in the same way to recover the Leather Cloth appearance
+fields without keeping its 2.27 MiB decoded payload. Stationary frames restore
+and redraw only the measured player rectangle in full retail depth order;
+scrolling frames redraw the changing world once.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

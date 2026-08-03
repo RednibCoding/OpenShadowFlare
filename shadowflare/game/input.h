@@ -17,38 +17,28 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_WORLD_H
-#define SHADOWFLARE_GAME_WORLD_H
-
-#include "game/input.h"
-#include "game/player.h"
+#ifndef SHADOWFLARE_GAME_INPUT_H
+#define SHADOWFLARE_GAME_INPUT_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfWorldPointerControl {
-  uint8_t hold_updates;
-  bool ground_command_active;
-  bool continuous_movement;
-  bool previous_down;
-} SfWorldPointerControl;
-
-typedef struct SfWorldState {
-  int32_t scenario_id;
-  int32_t entry_key;
-  int32_t camera_x;
-  int32_t camera_y;
-  SfPlayerState player;
-  SfWorldPointerControl pointer;
-  bool entered;
-} SfWorldState;
-
-void sf_world_state_init(
-  SfWorldState *world, int32_t scenario_id, int32_t entry_key,
-  uint8_t player_gender);
-void sf_world_state_enter(
-  SfWorldState *world,
-  int32_t player_x, int32_t player_y, uint8_t direction);
-void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
+typedef struct SfGameInput {
+  int16_t pointer_x;
+  int16_t pointer_y;
+  bool pointer_primary_pressed;
+  bool pointer_primary_down;
+  bool up_pressed;
+  bool down_pressed;
+  bool left_pressed;
+  bool right_pressed;
+  bool confirm_pressed;
+  bool cancel_pressed;
+  bool backspace_pressed;
+  bool delete_pressed;
+  bool pace_toggle_pressed;
+  char text[16];
+  uint8_t text_length;
+} SfGameInput;
 
 #endif

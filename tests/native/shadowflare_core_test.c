@@ -25,6 +25,7 @@
 #include "game/character_create.h"
 #include "game/game.h"
 #include "game/load_game.h"
+#include "game/movement.h"
 #include "render/dirty.h"
 #include "render/depth.h"
 #include "render/framebuffer.h"
@@ -88,13 +89,98 @@ static int test_framebuffer(void) {
 static int test_world_coordinates(void) {
   const SfScreenPoint screen = sf_world_to_screen(
     (SfWorldPoint) {89898, 2811});
+  const SfWorldPoint world = sf_screen_to_world((SfScreenPoint) {45, 30});
   if (check(screen.x == 13063 && screen.y == 9270,
             "world projection did not match the retail entry point") ||
+      check(world.x == 300 && world.y == 0,
+            "screen projection did not recover its world position") ||
       check(sf_floor_divide(-1, 64) == -1 &&
             sf_floor_divide(64, 64) == 1,
             "floor division broke map-cell culling") ||
       check(sizeof(SfGroundCell) == 2u,
             "render ground cells no longer fit their two-byte budget"))
+    return 1;
+  return 0;
+}
+
+static int test_player_movement(void) {
+  SfPlayerState player;
+  SfMovementStep step;
+  sf_player_init(&player, 1u);
+  sf_player_enter(&player, (SfWorldPoint) {1000, 1000}, 1u);
+  sf_player_move_to(&player, (SfWorldPoint) {1100, 1000});
+  sf_player_update(&player);
+  if (check(player.position.x == 1020 && player.position.y == 1000,
+            "retail walking speed was not twenty world units") ||
+      check(player.motion == SF_PLAYER_WALKING &&
+            player.direction == 1u && player.animation_frame == 0u,
+            "walking did not select chart one and its first frame")) return 1;
+  sf_player_toggle_pace(&player);
+  sf_player_update(&player);
+  if (check(player.position.x == 1060 &&
+            player.motion == SF_PLAYER_RUNNING &&
+            player.animation_frame == 0u,
+            "running did not use twice the walk speed and chart two"))
+    return 1;
+  step = sf_movement_step_toward(
+    (SfWorldPoint) {0, 0}, (SfWorldPoint) {3, 4}, 20u);
+  if (check(step.arrived && step.position.x == 3 && step.position.y == 4,
+            "a short movement step overshot its destination") ||
+      check(sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {1, 1}) == 0u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {1, 0}) == 1u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {1, -1}) == 2u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {0, -1}) == 3u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {-1, -1}) == 4u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {-1, 0}) == 5u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {-1, 1}) == 6u &&
+            sf_movement_direction(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {0, 1}) == 7u,
+            "movement did not preserve the eight retail directions"))
+    return 1;
+  return 0;
+}
+
+static int test_world_pointer_movement(void) {
+  SfWorldState world;
+  SfGameInput input;
+  int32_t released_x;
+  unsigned update;
+  sf_world_state_init(&world, 0, 0, 1u);
+  sf_world_state_enter(&world, 1000, 1000, 1u);
+  memset(&input, 0, sizeof(input));
+  input.pointer_x = 420;
+  input.pointer_y = 240;
+  input.pointer_primary_pressed = true;
+  sf_world_state_update(&world, &input);
+  released_x = world.player.position.x;
+  memset(&input, 0, sizeof(input));
+  sf_world_state_update(&world, &input);
+  if (check(world.player.position.x > released_x,
+            "a single click did not retain its destination")) return 1;
+
+  sf_world_state_enter(&world, 1000, 1000, 1u);
+  memset(&input, 0, sizeof(input));
+  input.pointer_x = 420;
+  input.pointer_y = 240;
+  input.pointer_primary_pressed = true;
+  input.pointer_primary_down = true;
+  sf_world_state_update(&world, &input);
+  input.pointer_primary_pressed = false;
+  for (update = 1u; update < 10u; ++update)
+    sf_world_state_update(&world, &input);
+  released_x = world.player.position.x;
+  input.pointer_primary_down = false;
+  sf_world_state_update(&world, &input);
+  if (check(world.player.position.x == released_x &&
+            world.player.motion == SF_PLAYER_IDLE,
+            "releasing a held pointer did not stop movement immediately"))
     return 1;
   return 0;
 }
@@ -340,11 +426,11 @@ static int test_game(void) {
   sf_game_update(&game, &input);
   if (check(game.mode == SF_GAME_MODE_GAMEPLAY &&
             game.world.scenario_id == 0 && game.world.entry_key == 0 &&
-            game.world.player_gender == 0u &&
-            game.world.player_appearance_part_count == 2u &&
-            game.world.player_visible_item_count == 1u &&
-            game.world.player_visible_items[0].category == 1u &&
-            game.world.player_visible_items[0].definition_id == 0,
+            game.world.player.gender == 0u &&
+            game.world.player.appearance_part_count == 2u &&
+            game.world.player.visible_item_count == 1u &&
+            game.world.player.visible_items[0].category == 1u &&
+            game.world.player.visible_items[0].definition_id == 0,
             "loading did not hand off to the first retail scenario"))
     return 1;
   return 0;
@@ -409,7 +495,8 @@ int main(void) {
             "RGB555 framebuffer size is wrong") ||
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 3579904u,
             "video asset budget is wrong") ||
-      test_arena() || test_world_coordinates() || test_depth_order() ||
+      test_arena() || test_world_coordinates() || test_player_movement() ||
+      test_world_pointer_movement() || test_depth_order() ||
       test_framebuffer() || test_renderer() ||
       test_rclib() || test_transformed_rclib() ||
       test_game() || test_character_creation() ||

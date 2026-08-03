@@ -58,6 +58,8 @@ add_library(
   game/character_create.c
   game/game.c
   game/load_game.c
+  game/movement.c
+  game/player.c
   game/title.c
   game/world.c
   render/depth.c
@@ -66,6 +68,7 @@ add_library(
   render/renderer.c
   screens/character_create_screen.c
   screens/gameplay_screen.c
+  screens/gameplay_player.c
   screens/load_game_screen.c
   screens/title_screen.c
 )

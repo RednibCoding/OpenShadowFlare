@@ -62,11 +62,21 @@ typedef struct SfCafSelectedAnimation {
   bool looping;
 } SfCafSelectedAnimation;
 
+typedef struct SfCafAnimationSelection {
+  uint16_t chart;
+  uint8_t direction;
+} SfCafAnimationSelection;
+
 bool sf_caf_load_first_chart_direction(
   const char *path, uint8_t direction, SfCafSequence *output);
 bool sf_caf_load_selected_chart_direction(
   const char *path, uint16_t chart, uint8_t direction,
   const uint8_t *parts, uint8_t part_count,
   SfArena *arena, SfCafSelectedAnimation *output);
+bool sf_caf_load_selected_animations(
+  const char *path,
+  const SfCafAnimationSelection *selections, uint8_t selection_count,
+  const uint8_t *parts, uint8_t part_count,
+  SfArena *arena, SfCafSelectedAnimation *outputs);
 
 #endif

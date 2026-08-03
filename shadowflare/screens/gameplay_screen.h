@@ -36,6 +36,12 @@ typedef struct SfGameplayScreen {
   uint16_t visible_count;
   uint16_t shadow_count;
   uint32_t rendered_animation_frame;
+  int32_t rendered_player_x;
+  int32_t rendered_player_y;
+  int32_t rendered_camera_x;
+  int32_t rendered_camera_y;
+  uint8_t rendered_motion;
+  uint8_t rendered_direction;
   SfRect player_damage;
   bool drawn;
 } SfGameplayScreen;

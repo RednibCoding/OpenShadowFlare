@@ -129,6 +129,28 @@ bool sf_caf_load_selected_chart_direction(
     const char *path, uint16_t wanted_chart, uint8_t wanted_direction,
     const uint8_t *parts, uint8_t part_count,
     SfArena *arena, SfCafSelectedAnimation *output) {
+  const SfCafAnimationSelection selection = {
+    wanted_chart, wanted_direction};
+  return sf_caf_load_selected_animations(
+    path, &selection, 1u, parts, part_count, arena, output);
+}
+
+static int sf_caf_selection_index(
+    const SfCafAnimationSelection *selections, uint8_t selection_count,
+    int32_t chart, uint8_t direction) {
+  uint8_t index;
+  for (index = 0u; index < selection_count; ++index) {
+    if (selections[index].chart == chart &&
+        selections[index].direction == direction) return (int) index;
+  }
+  return -1;
+}
+
+bool sf_caf_load_selected_animations(
+    const char *path,
+    const SfCafAnimationSelection *selections, uint8_t selection_count,
+    const uint8_t *parts, uint8_t part_count,
+    SfArena *arena, SfCafSelectedAnimation *outputs) {
   FILE *file;
   char header[16];
   int version;
@@ -136,11 +158,21 @@ bool sf_caf_load_selected_chart_direction(
   int32_t chart;
   size_t mark;
   bool success = false;
-  if (!path || !parts || part_count == 0u ||
-      part_count > SF_CAF_SELECTED_PART_LIMIT || wanted_direction >= 9u ||
-      !arena || !output) return false;
+  uint8_t selection;
+  if (!path || !selections || selection_count == 0u || !parts ||
+      part_count == 0u || part_count > SF_CAF_SELECTED_PART_LIMIT ||
+      !arena || !outputs) return false;
+  for (selection = 0u; selection < selection_count; ++selection) {
+    uint8_t previous;
+    if (selections[selection].direction >= 9u) return false;
+    for (previous = 0u; previous < selection; ++previous) {
+      if (selections[selection].chart == selections[previous].chart &&
+          selections[selection].direction == selections[previous].direction)
+        return false;
+    }
+  }
   mark = sf_arena_mark(arena);
-  memset(output, 0, sizeof(*output));
+  memset(outputs, 0, (size_t) selection_count * sizeof(*outputs));
   file = fopen(path, "rb");
   if (!file) return false;
   if (!sf_caf_read(file, header, sizeof(header)) ||
@@ -150,23 +182,29 @@ bool sf_caf_load_selected_chart_direction(
       header[14] < '0' || header[14] > '9') goto done;
   version = (header[12] - '0') * 100 + (header[13] - '0') * 10 +
     header[14] - '0';
-  if (version > 3 || !sf_caf_i32(file, &chart_count) ||
-      chart_count <= wanted_chart) goto done;
+  if (version > 3 || !sf_caf_i32(file, &chart_count)) goto done;
+  for (selection = 0u; selection < selection_count; ++selection) {
+    if (chart_count <= selections[selection].chart) goto done;
+  }
   for (chart = 0; chart < chart_count; ++chart) {
     int16_t status;
     uint8_t direction;
     if (!sf_caf_i16(file, &status)) goto done;
-    if (chart == wanted_chart) output->looping = (status & 1) != 0;
     for (direction = 0u; direction < 9u; ++direction) {
       int32_t source_part_count;
       int16_t frame_count;
       int32_t source_part;
+      const int selected_index = sf_caf_selection_index(
+        selections, selection_count, chart, direction);
+      SfCafSelectedAnimation *output = selected_index >= 0
+        ? &outputs[selected_index] : NULL;
       if (!sf_caf_i32(file, &source_part_count) ||
           !sf_caf_i16(file, &frame_count) || source_part_count < 0 ||
           frame_count < 0 || frame_count > (int16_t) SF_CAF_FRAME_LIMIT)
         goto done;
-      if (chart == wanted_chart && direction == wanted_direction) {
+      if (output) {
         uint8_t selected;
+        output->looping = (status & 1) != 0;
         output->frame_count = (uint8_t) frame_count;
         if (source_part_count > UINT8_MAX) goto done;
         output->priority_count = (uint8_t) source_part_count;
@@ -184,8 +222,7 @@ bool sf_caf_load_selected_chart_direction(
         int32_t cell_count;
         int32_t cell;
         uint8_t selected_slot = 0u;
-        const bool selected = chart == wanted_chart &&
-          direction == wanted_direction &&
+        const bool selected = output &&
           sf_caf_selected_part(
             parts, part_count, source_part, &selected_slot);
         if (!sf_caf_i32(file, &cell_count) || cell_count < 0 ||
@@ -215,14 +252,26 @@ bool sf_caf_load_selected_chart_direction(
       }
     }
   }
-  if (version != 0 && (!sf_caf_i32(file, &output->palette_mode) ||
-      !sf_caf_i32(file, &output->chart_priority_stride))) goto done;
-  success = output->part_count == part_count && output->frame_count > 0u;
+  if (version != 0) {
+    int32_t palette_mode;
+    int32_t chart_priority_stride;
+    if (!sf_caf_i32(file, &palette_mode) ||
+        !sf_caf_i32(file, &chart_priority_stride)) goto done;
+    for (selection = 0u; selection < selection_count; ++selection) {
+      outputs[selection].palette_mode = palette_mode;
+      outputs[selection].chart_priority_stride = chart_priority_stride;
+    }
+  }
+  success = true;
+  for (selection = 0u; selection < selection_count; ++selection) {
+    if (outputs[selection].part_count != part_count ||
+        outputs[selection].frame_count == 0u) success = false;
+  }
 done:
   fclose(file);
   if (!success) {
     (void) sf_arena_rewind(arena, mark);
-    memset(output, 0, sizeof(*output));
+    memset(outputs, 0, (size_t) selection_count * sizeof(*outputs));
   }
   return success;
 }

@@ -68,9 +68,9 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
     success = sf_gameplay_assets_load(
       &runtime->assets.gameplay, runtime->data_root,
       game->world.scenario_id, game->world.entry_key,
-      game->world.player_gender, game->world.player_appearance_parts,
-      game->world.player_appearance_part_count,
-      game->world.player_visible_items, game->world.player_visible_item_count,
+      game->world.player.gender, game->world.player.appearance_parts,
+      game->world.player.appearance_part_count,
+      game->world.player.visible_items, game->world.player.visible_item_count,
       runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;

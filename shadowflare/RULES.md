@@ -55,6 +55,10 @@ boundaries instead of complicating ordinary game code now.
   architecture.
 - Keep files concerned and reasonably small, but do not invent layers merely
   to avoid a direct function call.
+- When a source file approaches roughly 300 lines, stop before extending it
+  and check whether a real responsibility can move to its own concerned file.
+  Split by ownership, such as player presentation versus screen composition,
+  rather than creating arbitrary `part1` and `part2` files.
 - `core/` cannot depend on game, rendering, or runtime code.
 - `game/` owns rules and state. It cannot depend on rendering or runtime code.
 - `render/` may read game state, but cannot depend on runtime integration.

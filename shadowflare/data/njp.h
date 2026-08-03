@@ -34,7 +34,7 @@
 #define SF_NJP_DECODED_PART_LIMIT 80u
 #define SF_NJP_DECODED_REFERENCE_LIMIT 128u
 #define SF_NJP_PATTERN_FILE_LIMIT 80u
-#define SF_NJP_SPARSE_PATTERN_LIMIT 128u
+#define SF_NJP_SPARSE_PATTERN_LIMIT 2048u
 #define SF_NJP_SPARSE_PALETTE_LIMIT 8u
 
 typedef struct SfNjpPatternImage {
@@ -113,13 +113,14 @@ typedef struct SfNjpPatternBounds {
 typedef struct SfNjpSparsePattern {
   SfNjpPatternImage image;
   int32_t source_index;
+  int32_t source_part;
   uint8_t palette;
 } SfNjpSparsePattern;
 
 typedef struct SfNjpSparseResource {
-  SfNjpSparsePattern patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
-  uint16_t palettes[SF_NJP_SPARSE_PALETTE_LIMIT][256];
-  int32_t palette_sources[SF_NJP_SPARSE_PALETTE_LIMIT];
+  SfNjpSparsePattern *patterns;
+  uint16_t (*palettes)[256];
+  int32_t *palette_sources;
   uint16_t pattern_count;
   uint8_t palette_count;
 } SfNjpSparseResource;

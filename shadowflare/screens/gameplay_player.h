@@ -17,26 +17,19 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "core/coordinates.h"
+#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_PLAYER_H
+#define SHADOWFLARE_SCREENS_GAMEPLAY_PLAYER_H
 
-SfScreenPoint sf_world_to_screen(SfWorldPoint point) {
-  SfScreenPoint result;
-  result.x = (int32_t) (((int64_t) point.x - point.y) * 15 / 100);
-  result.y = (int32_t) (((int64_t) point.x + point.y) * 10 / 100);
-  return result;
-}
+#include "assets/player_assets.h"
+#include "game/world.h"
+#include "render/renderer.h"
 
-SfWorldPoint sf_screen_to_world(SfScreenPoint point) {
-  SfWorldPoint result;
-  result.x = (point.x * 10 + point.y * 15) / 3;
-  result.y = (point.y * 15 - point.x * 10) / 3;
-  return result;
-}
+#include <stdbool.h>
 
-int32_t sf_floor_divide(int32_t numerator, int32_t denominator) {
-  int32_t result;
-  if (denominator <= 0) return 0;
-  result = numerator / denominator;
-  if (numerator < 0 && numerator % denominator != 0) --result;
-  return result;
-}
+SfRect sf_gameplay_player_bounds(
+  const SfPlayerAssets *assets, const SfWorldState *world);
+void sf_gameplay_player_draw(
+  SfRenderer *renderer, const SfPlayerAssets *assets,
+  const SfWorldState *world, bool shadow, const SfRect *clip);
+
+#endif

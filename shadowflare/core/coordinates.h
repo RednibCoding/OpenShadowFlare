@@ -33,6 +33,7 @@ typedef struct SfScreenPoint {
 } SfScreenPoint;
 
 SfScreenPoint sf_world_to_screen(SfWorldPoint point);
+SfWorldPoint sf_screen_to_world(SfScreenPoint point);
 int32_t sf_floor_divide(int32_t numerator, int32_t denominator);
 
 #endif

@@ -47,11 +47,13 @@ static bool sf_player_add_pattern(
 
 bool sf_player_assets_load(
     SfPlayerAssets *assets, const char *data_root,
-    uint8_t gender, uint8_t direction,
+    uint8_t gender,
     const uint8_t *appearance_parts, uint8_t appearance_part_count,
     const SfItemReference *visible_items, uint8_t visible_item_count,
     SfArena *arena) {
   uint8_t selected_parts[SF_CAF_SELECTED_PART_LIMIT];
+  SfCafAnimationSelection selections[
+    SF_PLAYER_ANIMATION_COUNT * SF_PLAYER_DIRECTION_COUNT];
   int32_t artwork_patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
   int32_t shadow_patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
   uint16_t artwork_count = 0u;
@@ -60,8 +62,9 @@ bool sf_player_assets_load(
   char path[SF_RETAIL_PATH_CAPACITY];
   size_t mark;
   uint8_t part;
+  uint8_t animation_index;
   bool success = false;
-  if (!assets || !data_root || direction > 7u || !appearance_parts ||
+  if (!assets || !data_root || !appearance_parts ||
       appearance_part_count == 0u ||
       appearance_part_count + visible_item_count > SF_CAF_SELECTED_PART_LIMIT ||
       (visible_item_count > 0u && !visible_items) || !arena) return false;
@@ -83,20 +86,40 @@ bool sf_player_assets_load(
       selected_parts[appearance_part_count++] = (uint8_t) appearance.part;
     }
   }
+  for (animation_index = 0u;
+       animation_index < SF_PLAYER_ANIMATION_COUNT; ++animation_index) {
+    uint8_t direction;
+    for (direction = 0u; direction < SF_PLAYER_DIRECTION_COUNT; ++direction) {
+      const uint8_t selection = (uint8_t) (
+        animation_index * SF_PLAYER_DIRECTION_COUNT + direction);
+      selections[selection].chart = animation_index;
+      selections[selection].direction = direction;
+    }
+  }
   if (!sf_player_path(
         path, sizeof(path), data_root,
         sf_retail_player_paths.animation_format, gender_name) ||
-      !sf_caf_load_selected_chart_direction(
-        path, 0u, direction, selected_parts, appearance_part_count,
-        arena, &assets->idle)) goto done;
-  for (part = 0u; part < assets->idle.part_count; ++part) {
-    uint8_t frame;
-    for (frame = 0u; frame < assets->idle.frame_count; ++frame) {
-      const SfCafCell *cell = &assets->idle.parts[part].cells[frame];
-      if (((cell->status & 8) == 0 && !sf_player_add_pattern(
-            artwork_patterns, &artwork_count, cell->pattern)) ||
-          ((cell->status & 8) != 0 && !sf_player_add_pattern(
-            shadow_patterns, &shadow_count, cell->pattern))) goto done;
+      !sf_caf_load_selected_animations(
+        path, selections,
+        SF_PLAYER_ANIMATION_COUNT * SF_PLAYER_DIRECTION_COUNT,
+        selected_parts, appearance_part_count, arena,
+        &assets->animations[0][0])) goto done;
+  for (animation_index = 0u;
+       animation_index < SF_PLAYER_ANIMATION_COUNT; ++animation_index) {
+    uint8_t direction;
+    for (direction = 0u; direction < SF_PLAYER_DIRECTION_COUNT; ++direction) {
+      const SfCafSelectedAnimation *animation =
+        &assets->animations[animation_index][direction];
+      for (part = 0u; part < animation->part_count; ++part) {
+        uint8_t frame;
+        for (frame = 0u; frame < animation->frame_count; ++frame) {
+          const SfCafCell *cell = &animation->parts[part].cells[frame];
+          if (((cell->status & 8) == 0 && !sf_player_add_pattern(
+                artwork_patterns, &artwork_count, cell->pattern)) ||
+              ((cell->status & 8) != 0 && !sf_player_add_pattern(
+                shadow_patterns, &shadow_count, cell->pattern))) goto done;
+        }
+      }
     }
   }
   if (artwork_count == 0u || shadow_count == 0u ||
@@ -119,4 +142,11 @@ done:
     memset(assets, 0, sizeof(*assets));
   }
   return success;
+}
+
+const SfCafSelectedAnimation *sf_player_assets_animation(
+    const SfPlayerAssets *assets, uint8_t chart, uint8_t direction) {
+  if (!assets || chart >= SF_PLAYER_ANIMATION_COUNT ||
+      direction >= SF_PLAYER_DIRECTION_COUNT) return NULL;
+  return &assets->animations[chart][direction];
 }

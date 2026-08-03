@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "game/input.h"
 #include "game/world.h"
 
 #define SF_GAME_TITLE_ENTRY_COUNT 3u
@@ -43,22 +44,6 @@ typedef enum SfGameSoundEvent {
   SF_GAME_SOUND_TITLE_MUSIC = 1u << 3u,
   SF_GAME_SOUND_MENU_CONFIRM = 1u << 4u
 } SfGameSoundEvent;
-
-typedef struct SfGameInput {
-  int16_t pointer_x;
-  int16_t pointer_y;
-  bool pointer_primary_pressed;
-  bool up_pressed;
-  bool down_pressed;
-  bool left_pressed;
-  bool right_pressed;
-  bool confirm_pressed;
-  bool cancel_pressed;
-  bool backspace_pressed;
-  bool delete_pressed;
-  char text[16];
-  uint8_t text_length;
-} SfGameInput;
 
 typedef struct SfGameConfig {
   uint8_t title_smoke_frame_count[SF_GAME_TITLE_SMOKE_COUNT];

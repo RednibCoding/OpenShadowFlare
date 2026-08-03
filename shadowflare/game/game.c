@@ -63,7 +63,7 @@ void sf_game_update(SfGame *game, const SfGameInput *input) {
   } else {
     game->title.sound_events = 0u;
     game->character_create.sound_events = 0u;
-    sf_world_state_update(&game->world);
+    sf_world_state_update(&game->world, input);
   }
 }
 

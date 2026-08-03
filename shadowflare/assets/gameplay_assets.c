@@ -269,7 +269,7 @@ bool sf_gameplay_assets_load(
       !sf_gameplay_load_patterns(
         assets, &selection, &patterns, data_root, arena) ||
       !sf_player_assets_load(
-        &assets->player, data_root, player_gender, (uint8_t) entry->direction,
+        &assets->player, data_root, player_gender,
         appearance_parts, appearance_part_count,
         visible_items, visible_item_count, arena)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;

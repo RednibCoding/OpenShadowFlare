@@ -22,6 +22,7 @@
 #include "core/coordinates.h"
 #include "core/memory_budget.h"
 #include "render/depth.h"
+#include "screens/gameplay_player.h"
 
 #include <string.h>
 
@@ -37,43 +38,6 @@ static const SfNjpDecodedPattern *sf_gameplay_object_pattern(
   *resource = sf_gameplay_pattern_set(assets, (uint8_t) set);
   return *resource
     ? sf_njp_decoded_pattern(*resource, (uint8_t) object->pattern) : NULL;
-}
-
-static SfRect sf_gameplay_player_damage(
-    const SfGameplayAssets *assets, const SfWorldState *world) {
-  const SfNjpSparseResource *resources[2] = {
-    &assets->player.artwork, &assets->player.shadows};
-  SfScreenPoint anchor = sf_world_to_screen(
-    (SfWorldPoint) {world->player_x, world->player_y});
-  int left = SF_FRAME_WIDTH;
-  int top = SF_FRAME_HEIGHT;
-  int right = 0;
-  int bottom = 0;
-  unsigned resource;
-  SfRect result = {0, 0, 0, 0};
-  anchor.x -= world->camera_x;
-  anchor.y -= world->camera_y;
-  for (resource = 0u; resource < 2u; ++resource) {
-    uint16_t pattern;
-    for (pattern = 0u; pattern < resources[resource]->pattern_count;
-         ++pattern) {
-      const SfNjpPatternImage *image =
-        &resources[resource]->patterns[pattern].image;
-      const int x = anchor.x + image->x;
-      const int y = anchor.y + image->y;
-      if (x < left) left = x;
-      if (y < top) top = y;
-      if (x + image->image.width > right) right = x + image->image.width;
-      if (y + image->image.height > bottom) bottom = y + image->image.height;
-    }
-  }
-  if (right > left && bottom > top) {
-    result.x = (int16_t) left;
-    result.y = (int16_t) top;
-    result.width = (int16_t) (right - left);
-    result.height = (int16_t) (bottom - top);
-  }
-  return result;
 }
 
 static uint16_t sf_gameplay_collect_objects(
@@ -99,8 +63,7 @@ static uint16_t sf_gameplay_collect_objects(
   }
   if (world && world->entered && count < SF_GAMEPLAY_DRAW_ENTRY_LIMIT &&
       (!shadow || assets->player.shadows.pattern_count > 0u)) {
-    entries[count].position.x = world->player_x;
-    entries[count].position.y = world->player_y;
+    entries[count].position = world->player.position;
     entries[count].judgement.left = -80;
     entries[count].judgement.top = -80;
     entries[count].judgement.right = 79;
@@ -129,52 +92,8 @@ bool sf_gameplay_screen_init(
     memset(screen, 0, sizeof(*screen));
     return false;
   }
-  screen->player_damage = sf_gameplay_player_damage(assets, world);
+  screen->player_damage = sf_gameplay_player_bounds(&assets->player, world);
   return true;
-}
-
-static void sf_gameplay_draw_player(
-    SfRenderer *renderer, const SfGameplayAssets *assets,
-    const SfWorldState *world, bool shadow, const SfRect *clip) {
-  const SfCafSelectedAnimation *animation = &assets->player.idle;
-  const SfNjpSparseResource *resource = shadow
-    ? &assets->player.shadows : &assets->player.artwork;
-  SfScreenPoint anchor = sf_world_to_screen(
-    (SfWorldPoint) {world->player_x, world->player_y});
-  uint8_t priority;
-  if (animation->frame_count == 0u) return;
-  anchor.x -= world->camera_x;
-  anchor.y -= world->camera_y;
-  for (priority = animation->priority_count; priority > 0u; --priority) {
-    uint8_t part;
-    for (part = 0u; part < animation->part_count; ++part) {
-      const SfCafSelectedPart *selected_part = &animation->parts[part];
-      const uint8_t frame = (uint8_t) (
-        world->player_animation_frame % animation->frame_count);
-      const SfCafCell *cell = &selected_part->cells[frame];
-      const SfNjpSparsePattern *pattern;
-      uint16_t opacity;
-      SfBlendMode blend;
-      if (cell->priority != (int16_t) (priority - 1u) || cell->pattern < 0 ||
-          (shadow && (cell->status & 8) == 0)) continue;
-      pattern = sf_njp_sparse_pattern(resource, cell->pattern);
-      if (!pattern) continue;
-      if (shadow) {
-        opacity = 500u;
-        blend = SF_BLEND_TRANSLUCENT;
-      } else {
-        opacity = cell->transparency < 0 ? 0u :
-          cell->transparency > 1000 ? 1000u :
-          (uint16_t) cell->transparency;
-        blend = (cell->status & 0x10) != 0
-          ? SF_BLEND_ADDITIVE : SF_BLEND_MASKED;
-      }
-      sf_renderer_draw_indexed(
-        renderer, &pattern->image.image,
-        anchor.x + pattern->image.x, anchor.y + pattern->image.y,
-        1000u, opacity, blend, clip);
-    }
-  }
 }
 
 static void sf_gameplay_draw_pattern(
@@ -278,7 +197,8 @@ static void sf_gameplay_draw_object_pass(
   for (index = 0u; index < count; ++index) {
     if (indices[index] == SF_GAMEPLAY_PLAYER_ENTRY) {
       if (default_class)
-        sf_gameplay_draw_player(renderer, assets, world, shadow, clip);
+        sf_gameplay_player_draw(
+          renderer, &assets->player, world, shadow, clip);
     } else {
       const SfMapObject *object = &assets->objects.objects[indices[index]];
       if ((sf_depth_class(object->status) == 0) != default_class) continue;
@@ -292,14 +212,32 @@ void sf_gameplay_screen_draw(
     SfGameplayScreen *screen, SfRenderer *renderer,
     const SfGameplayAssets *assets, const SfGame *game) {
   const SfRect *clip = NULL;
+  const SfPlayerState *player;
+  bool scene_moved;
   if (!screen || !renderer || !assets || !game ||
       !game->world.entered) return;
-  if (screen->drawn) {
+  player = &game->world.player;
+  scene_moved = !screen->drawn ||
+    screen->rendered_player_x != player->position.x ||
+    screen->rendered_player_y != player->position.y ||
+    screen->rendered_camera_x != game->world.camera_x ||
+    screen->rendered_camera_y != game->world.camera_y ||
+    screen->rendered_motion != (uint8_t) player->motion ||
+    screen->rendered_direction != player->direction;
+  if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame ==
-        game->world.player_animation_frame) return;
+        player->animation_frame) return;
     clip = &screen->player_damage;
     sf_renderer_fill_rect(renderer, *clip, 0u);
   } else {
+    screen->visible_count = sf_gameplay_collect_objects(
+      assets, &game->world, false, screen->visible_objects);
+    screen->shadow_count = sf_gameplay_collect_objects(
+      assets, &game->world, true, screen->shadow_objects);
+    if (screen->visible_count == UINT16_MAX ||
+        screen->shadow_count == UINT16_MAX) return;
+    screen->player_damage = sf_gameplay_player_bounds(
+      &assets->player, &game->world);
     sf_renderer_clear(renderer, 0u);
   }
   sf_gameplay_draw_ground(renderer, assets, &game->world, clip);
@@ -315,6 +253,12 @@ void sf_gameplay_screen_draw(
   sf_gameplay_draw_object_pass(
     renderer, assets, &game->world,
     screen->visible_objects, screen->visible_count, false, true, clip);
-  screen->rendered_animation_frame = game->world.player_animation_frame;
+  screen->rendered_animation_frame = player->animation_frame;
+  screen->rendered_player_x = player->position.x;
+  screen->rendered_player_y = player->position.y;
+  screen->rendered_camera_x = game->world.camera_x;
+  screen->rendered_camera_y = game->world.camera_y;
+  screen->rendered_motion = (uint8_t) player->motion;
+  screen->rendered_direction = player->direction;
   screen->drawn = true;
 }

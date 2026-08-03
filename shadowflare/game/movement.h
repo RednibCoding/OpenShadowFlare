@@ -17,38 +17,22 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_WORLD_H
-#define SHADOWFLARE_GAME_WORLD_H
+#ifndef SHADOWFLARE_GAME_MOVEMENT_H
+#define SHADOWFLARE_GAME_MOVEMENT_H
 
-#include "game/input.h"
-#include "game/player.h"
+#include "core/coordinates.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfWorldPointerControl {
-  uint8_t hold_updates;
-  bool ground_command_active;
-  bool continuous_movement;
-  bool previous_down;
-} SfWorldPointerControl;
+typedef struct SfMovementStep {
+  SfWorldPoint position;
+  bool moved;
+  bool arrived;
+} SfMovementStep;
 
-typedef struct SfWorldState {
-  int32_t scenario_id;
-  int32_t entry_key;
-  int32_t camera_x;
-  int32_t camera_y;
-  SfPlayerState player;
-  SfWorldPointerControl pointer;
-  bool entered;
-} SfWorldState;
-
-void sf_world_state_init(
-  SfWorldState *world, int32_t scenario_id, int32_t entry_key,
-  uint8_t player_gender);
-void sf_world_state_enter(
-  SfWorldState *world,
-  int32_t player_x, int32_t player_y, uint8_t direction);
-void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
+SfMovementStep sf_movement_step_toward(
+  SfWorldPoint position, SfWorldPoint destination, uint32_t speed);
+uint8_t sf_movement_direction(SfWorldPoint from, SfWorldPoint to);
 
 #endif

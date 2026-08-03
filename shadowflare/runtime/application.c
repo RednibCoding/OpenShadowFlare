@@ -62,8 +62,14 @@ static void sf_read_event(
       input->pointer_x = (int16_t) x;
       input->pointer_y = (int16_t) y;
     }
-    if (event->type == TWL_EVENT_POINTER_DOWN && event->button == 1u)
-      input->pointer_primary_pressed = true;
+    if (event->button == 1u) {
+      if (event->type == TWL_EVENT_POINTER_DOWN) {
+        input->pointer_primary_pressed = true;
+        input->pointer_primary_down = true;
+      }
+      if (event->type == TWL_EVENT_POINTER_UP)
+        input->pointer_primary_down = false;
+    }
   }
   if (event->type == TWL_EVENT_QUIT) {
     *running = false;
@@ -78,6 +84,7 @@ static void sf_read_event(
     if (event->key == TWL_KEY_ESCAPE) input->cancel_pressed = true;
     if (event->key == TWL_KEY_BACKSPACE) input->backspace_pressed = true;
     if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
+    if (event->key == TWL_KEY_R) input->pace_toggle_pressed = true;
   }
   if (event->type == TWL_EVENT_TEXT && input->text_length < 15u) {
     uint8_t encoded[4];
@@ -136,6 +143,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->cancel_pressed = false;
   input->backspace_pressed = false;
   input->delete_pressed = false;
+  input->pace_toggle_pressed = false;
   input->text_length = 0u;
   input->text[0] = '\0';
 }

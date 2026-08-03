@@ -29,8 +29,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define SF_PLAYER_ANIMATION_COUNT 3u
+#define SF_PLAYER_DIRECTION_COUNT 8u
+
 typedef struct SfPlayerAssets {
-  SfCafSelectedAnimation idle;
+  SfCafSelectedAnimation
+    animations[SF_PLAYER_ANIMATION_COUNT][SF_PLAYER_DIRECTION_COUNT];
   SfNjpSparseResource artwork;
   SfNjpSparseResource shadows;
   size_t memory_bytes;
@@ -38,9 +42,11 @@ typedef struct SfPlayerAssets {
 
 bool sf_player_assets_load(
   SfPlayerAssets *assets, const char *data_root,
-  uint8_t gender, uint8_t direction,
+  uint8_t gender,
   const uint8_t *appearance_parts, uint8_t appearance_part_count,
   const SfItemReference *visible_items, uint8_t visible_item_count,
   SfArena *arena);
+const SfCafSelectedAnimation *sf_player_assets_animation(
+  const SfPlayerAssets *assets, uint8_t chart, uint8_t direction);
 
 #endif

@@ -66,23 +66,40 @@ static bool sf_stride(uint8_t bits, uint16_t width, uint16_t *output) {
   return true;
 }
 
-typedef struct SfNjpSparseRequest {
-  int32_t pattern;
-  int32_t part;
-  int32_t palette_source;
-  int16_t x;
-  int16_t y;
-  uint8_t palette_slot;
-  bool found;
-} SfNjpSparseRequest;
-
 static int sf_njp_sparse_request(
-    const SfNjpSparseRequest *requests, uint16_t count, int32_t pattern) {
-  uint16_t index;
-  for (index = 0u; index < count; ++index) {
-    if (requests[index].pattern == pattern) return (int) index;
+    const SfNjpSparseResource *output, uint16_t count, int32_t pattern) {
+  uint16_t first = 0u;
+  uint16_t last = count;
+  while (first < last) {
+    const uint16_t middle = (uint16_t) (first + (last - first) / 2u);
+    const int32_t source = output->patterns[middle].source_index;
+    if (source == pattern) return (int) middle;
+    if (source < pattern) first = (uint16_t) (middle + 1u);
+    else last = middle;
   }
   return -1;
+}
+
+static bool sf_njp_sparse_prepare_patterns(
+    SfNjpSparseResource *output,
+    const int32_t *pattern_indices, uint16_t pattern_count) {
+  uint16_t pattern;
+  for (pattern = 0u; pattern < pattern_count; ++pattern) {
+    uint16_t position = pattern;
+    if (pattern_indices[pattern] < 0) return false;
+    while (position > 0u &&
+           output->patterns[position - 1u].source_index >
+             pattern_indices[pattern]) {
+      output->patterns[position] = output->patterns[position - 1u];
+      --position;
+    }
+    if (position > 0u &&
+        output->patterns[position - 1u].source_index ==
+          pattern_indices[pattern]) return false;
+    output->patterns[position].source_index = pattern_indices[pattern];
+    output->patterns[position].source_part = -1;
+  }
+  return true;
 }
 
 static int sf_njp_sparse_palette(
@@ -139,8 +156,7 @@ static bool sf_njp_sparse_skip_part(FILE *file, bool shadow) {
 }
 
 static bool sf_njp_sparse_scan(
-    FILE *file, SfNjpSparseRequest *requests, uint16_t request_count,
-    SfNjpSparseResource *output) {
+    FILE *file, uint16_t request_count, SfNjpSparseResource *output) {
   uint8_t version;
   bool united;
   bool shadow;
@@ -167,7 +183,7 @@ static bool sf_njp_sparse_scan(
         !sf_i32(file, &ignored) || !sf_i32(file, &ignored) ||
         (united && !sf_skip(file, 0xa8)) ||
         (version > 0u && !sf_i32(file, &palette_source))) return false;
-    selected = sf_njp_sparse_request(requests, request_count, pattern);
+    selected = sf_njp_sparse_request(output, request_count, pattern);
     if (selected >= 0 && reference_count != 1) return false;
     for (reference = 0; reference < reference_count; ++reference) {
       int32_t reference_status;
@@ -182,7 +198,7 @@ static bool sf_njp_sparse_scan(
           !sf_i32(file, &y) || !sf_i32(file, &palette_offset) ||
           !sf_i32(file, &scale_x) || !sf_i32(file, &scale_y)) return false;
       if (selected >= 0) {
-        SfNjpSparseRequest *request = &requests[selected];
+        SfNjpSparsePattern *request = &output->patterns[selected];
         int palette_slot;
         if (reference_part < 0 || reference_part >= part_count ||
             x < INT16_MIN || x > INT16_MAX ||
@@ -196,18 +212,16 @@ static bool sf_njp_sparse_scan(
           palette_slot = output->palette_count++;
           output->palette_sources[palette_slot] = palette_source;
         }
-        request->part = reference_part;
-        request->palette_source = palette_source;
-        request->palette_slot = (uint8_t) palette_slot;
-        request->x = (int16_t) x;
-        request->y = (int16_t) y;
-        request->found = true;
+        request->source_part = reference_part;
+        request->palette = (uint8_t) palette_slot;
+        request->image.x = (int16_t) x;
+        request->image.y = (int16_t) y;
       }
       (void) reference_status;
     }
   }
   for (pattern = 0; pattern < request_count; ++pattern) {
-    if (!requests[pattern].found) return false;
+    if (output->patterns[pattern].source_part < 0) return false;
   }
   if (!sf_i32(file, &palette_count) || palette_count < 0) return false;
   for (pattern = 0; pattern < palette_count; ++pattern) {
@@ -228,7 +242,7 @@ static bool sf_njp_sparse_scan(
 }
 
 static bool sf_njp_sparse_decode(
-    FILE *file, const SfNjpSparseRequest *requests, uint16_t request_count,
+    FILE *file, uint16_t request_count,
     SfArena *arena, SfNjpSparseResource *output) {
   uint8_t version;
   bool united;
@@ -258,7 +272,7 @@ static bool sf_njp_sparse_decode(
         !sf_stride((uint8_t) bits, checked_width, &stride)) return false;
     decoded_size = (uint32_t) stride * checked_height;
     for (request = 0u; request < request_count; ++request) {
-      if (requests[request].part == part) selected = true;
+      if (output->patterns[request].source_part == part) selected = true;
     }
     if (selected) {
       pixels = (uint8_t *) sf_arena_push(arena, decoded_size, 4u);
@@ -268,13 +282,11 @@ static bool sf_njp_sparse_decode(
       } else if (!sf_read(file, pixels, decoded_size)) return false;
       for (request = 0u; request < request_count; ++request) {
         SfNjpSparsePattern *pattern;
-        if (requests[request].part != part) continue;
+        if (output->patterns[request].source_part != part) continue;
         pattern = &output->patterns[request];
-        pattern->source_index = requests[request].pattern;
-        pattern->palette = requests[request].palette_slot;
         pattern->image.image.pixels = pixels;
         pattern->image.image.palette =
-          output->palettes[requests[request].palette_slot];
+          output->palettes[pattern->palette];
         pattern->image.image.width = checked_width;
         pattern->image.image.height = checked_height;
         pattern->image.image.stride = stride;
@@ -282,8 +294,6 @@ static bool sf_njp_sparse_decode(
           ? 256u : (uint16_t) (1u << bits);
         pattern->image.image.bits_per_pixel = (uint8_t) bits;
         pattern->image.image.bottom_up = true;
-        pattern->image.x = requests[request].x;
-        pattern->image.y = requests[request].y;
       }
     } else if (!compressed) {
       if (decoded_size > UINT32_C(0x7fffffff) ||
@@ -305,7 +315,6 @@ static bool sf_njp_sparse_decode(
 bool sf_njp_load_sparse_patterns(
     const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
     SfArena *arena, SfNjpSparseResource *output) {
-  SfNjpSparseRequest requests[SF_NJP_SPARSE_PATTERN_LIMIT];
   FILE *file;
   size_t mark;
   uint16_t pattern;
@@ -315,16 +324,23 @@ bool sf_njp_load_sparse_patterns(
     return false;
   mark = sf_arena_mark(arena);
   memset(output, 0, sizeof(*output));
-  memset(requests, 0, sizeof(requests));
-  for (pattern = 0u; pattern < pattern_count; ++pattern) {
-    if (pattern_indices[pattern] < 0 ||
-        sf_njp_sparse_request(requests, pattern, pattern_indices[pattern]) >= 0)
-      goto done;
-    requests[pattern].pattern = pattern_indices[pattern];
-  }
+  output->patterns = (SfNjpSparsePattern *) sf_arena_push_zero(
+    arena, (size_t) pattern_count * sizeof(*output->patterns), sizeof(void *));
+  output->palettes = (uint16_t (*)[256]) sf_arena_push_zero(
+    arena, sizeof(*output->palettes) * SF_NJP_SPARSE_PALETTE_LIMIT,
+    sizeof(uint16_t));
+  output->palette_sources = (int32_t *) sf_arena_push(
+    arena, sizeof(*output->palette_sources) * SF_NJP_SPARSE_PALETTE_LIMIT,
+    sizeof(int32_t));
+  if (!output->patterns || !output->palettes || !output->palette_sources)
+    goto done;
+  for (pattern = 0u; pattern < SF_NJP_SPARSE_PALETTE_LIMIT; ++pattern)
+    output->palette_sources[pattern] = -1;
+  if (!sf_njp_sparse_prepare_patterns(
+        output, pattern_indices, pattern_count)) goto done;
   file = fopen(path, "rb");
   if (!file) goto done;
-  success = sf_njp_sparse_scan(file, requests, pattern_count, output);
+  success = sf_njp_sparse_scan(file, pattern_count, output);
   fclose(file);
   if (!success) goto done;
   file = fopen(path, "rb");
@@ -333,7 +349,7 @@ bool sf_njp_load_sparse_patterns(
     goto done;
   }
   success = sf_njp_sparse_decode(
-    file, requests, pattern_count, arena, output);
+    file, pattern_count, arena, output);
   fclose(file);
   if (success) output->pattern_count = pattern_count;
 done:
@@ -346,12 +362,9 @@ done:
 
 const SfNjpSparsePattern *sf_njp_sparse_pattern(
     const SfNjpSparseResource *resource, int32_t source_index) {
-  uint16_t pattern;
+  int pattern;
   if (!resource) return NULL;
-  for (pattern = 0u; pattern < resource->pattern_count; ++pattern) {
-    if (resource->patterns[pattern].source_index == source_index)
-      return &resource->patterns[pattern];
-  }
-  return NULL;
+  pattern = sf_njp_sparse_request(
+    resource, resource->pattern_count, source_index);
+  return pattern >= 0 ? &resource->patterns[pattern] : NULL;
 }
-
