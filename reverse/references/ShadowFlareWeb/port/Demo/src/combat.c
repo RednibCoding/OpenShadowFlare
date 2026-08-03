@@ -355,7 +355,7 @@ int ApplyPlayerAttack(DemoState *state, LiveSpawn *spawn)
         }
         DropEnemyGold(state, spawn);
         if (!RunTriggersForCharacter(state, spawn->characterNo, label))
-            
+            printf("%s was defeated\n", label);
     }
     else
     {
@@ -1144,7 +1144,7 @@ static void TickPlayerGearDurability(DemoState *state)
         {
             state->armor[s].durability--;
             if (state->armor[s].durability <= 0)
-                
+                printf("%s broke\n", state->armorName[s]);
         }
         if (state->armor[s].durability <= 0)
             anyBroke = 1;
@@ -1202,7 +1202,7 @@ void TickEnemyAttack(DemoState *state, LiveSpawn *spawn)
                 ArmPlayerShake(state, spawn->x, spawn->y);
 
             if (state->playerHP > 0)
-                
+                printf("%s hit player for %ld damage\n", label, damage);
             else
             {
                 state->playerHP = 0;

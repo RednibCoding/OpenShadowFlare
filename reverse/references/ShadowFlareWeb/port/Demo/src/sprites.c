@@ -5,17 +5,16 @@
 void LoadCafTemplate(LiveSpawnTemplate *t, const char *dir, const char *stem)
 {
     char path[sizeof(((DemoState *)0)->characterRoot) + 64];
-    
+    snprintf(path, sizeof(path), "%s/%s.Caf", dir, stem);
     int ok = RKC_RPGSCRN_CAF_Read(&t->caf, path);
     if (ok)
     {
-        
+        snprintf(path, sizeof(path), "%s/%s.Njp", dir, stem);
         ok = RKC_UPDIB_Read(&t->animNjp, path);
     }
     if (ok)
     {
-        
-        
+        snprintf(path, sizeof(path), "%s/%s.Sdw", dir, stem);
         RKC_UPDIB_Read(&t->animSdw, path);
     }
     if (ok)
@@ -49,32 +48,31 @@ static int FindOrLoadTemplate(DemoState *state, int block, long field8)
     char dir[sizeof(((DemoState *)0)->characterRoot) + 32];
     if (block == 1)
     {
-        
+        snprintf(dir, sizeof(dir), "%s/OBJECT/%08ld", state->characterRoot, field8);
         char path[sizeof(dir) + 32];
-        
+        snprintf(path, sizeof(path), "%s/Pattern.Njp", dir);
         if (!RKC_UPDIB_Read(&t->staticNjp, path))
         {
-            
-            
+            snprintf(path, sizeof(path), "%s/Pattern.njp", dir);
             RKC_UPDIB_Read(&t->staticNjp, path);
         }
         if (RKC_UPDIB_GetFrameCount(&t->staticNjp) > 0)
             t->kind = LIVE_SPAWN_SPRITE_STATIC;
         else
-            
             LoadCafTemplate(t, dir, "Animation");
     }
     else if (block == 2)
     {
         if (field8 < LIVE_SPAWN_BLOCK2_PARTNER_OFFSET)
-            
+            snprintf(dir, sizeof(dir), "%s/ENEMY/%08ld", state->characterRoot, field8);
         else
-            
+            snprintf(dir, sizeof(dir), "%s/PARTNER/%08ld", state->characterRoot,
+                     field8 - LIVE_SPAWN_BLOCK2_PARTNER_OFFSET);
         LoadCafTemplate(t, dir, "Animation");
     }
     else 
     {
-        
+        snprintf(dir, sizeof(dir), "%s/PEOPLE/%08ld", state->characterRoot, field8);
         LoadCafTemplate(t, dir, "Animation");
     }
 
@@ -465,10 +463,10 @@ void PrintSpawnNavigationHints(DemoState *state)
         long dy = screenY - APP_HEIGHT / 2 - startCameraY;
 
         if (printed == 0)
-            
-        
+            printf("  named scenario actors near the starting view:\n");
+        printf("    %s at screen offset (%ld,%ld)\n", spawn->name, dx, dy);
         printed++;
     }
     if (printed == 0)
-        
+        printf("  (no nearby named scenario actors with interaction triggers)\n");
 }

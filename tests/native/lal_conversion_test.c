@@ -1,3 +1,4 @@
+#include "lal.h"
 #include "lal_internal.h"
 
 #include <stdint.h>
@@ -119,6 +120,43 @@ static int check_antialiased_downsampling(void) {
   return result;
 }
 
+static int check_quality_rate(
+    uint32_t input_rate,
+    uint32_t sample_rate,
+    size_t input_frames,
+    size_t expected_frames) {
+  int16_t input[480];
+  LalConvertedPcm output;
+  size_t frame;
+  int result;
+
+  if (input_frames > 480) {
+    return 0;
+  }
+  for (frame = 0; frame < input_frames; ++frame) {
+    input[frame] = 6000;
+  }
+  if (!convert(
+        input,
+        input_frames,
+        input_rate,
+        1,
+        sample_rate,
+        0,
+        &output)) {
+    return 0;
+  }
+  result = output.sample_rate == sample_rate &&
+           output.channels == 1 &&
+           output.frame_count == expected_frames;
+  for (frame = 16; result && frame + 16 < output.frame_count; ++frame) {
+    result = output.samples[frame] >= 5999 &&
+             output.samples[frame] <= 6001;
+  }
+  free(output.samples);
+  return result;
+}
+
 int main(void) {
   if (!check_mono_passthrough()) {
     fprintf(stderr, "LAL changed mono PCM that required no conversion.\n");
@@ -136,6 +174,12 @@ int main(void) {
     fprintf(
       stderr,
       "LAL did not reject frequencies above the output Nyquist limit.\n");
+    return 1;
+  }
+  if (!check_quality_rate(22050, LAL_SAMPLE_RATE_11025, 441, 221) ||
+      !check_quality_rate(22050, LAL_SAMPLE_RATE_12000, 441, 240) ||
+      !check_quality_rate(48000, LAL_SAMPLE_RATE_44100, 480, 441)) {
+    fprintf(stderr, "LAL did not retain its named quality tiers.\n");
     return 1;
   }
   return 0;
