@@ -162,10 +162,10 @@ std::vector<WorldPosition> rasterizedSegment(
                 y = end.y;
             } else {
                 y = (x - start.x) * delta_y / delta_x + start.y;
-                y = std::clamp(
+                y = std::clamp<std::int32_t>(
                     y,
                     std::min(start.y, end.y),
-                    std::max(start.y, end.y));
+                    std::max<std::int32_t>(start.y, end.y));
             }
             result.push_back({x, y});
             if (x == end.x) {
@@ -182,10 +182,10 @@ std::vector<WorldPosition> rasterizedSegment(
                 x = end.x;
             } else {
                 x = (y - start.y) * delta_x / delta_y + start.x;
-                x = std::clamp(
+                x = std::clamp<std::int32_t>(
                     x,
                     std::min(start.x, end.x),
-                    std::max(start.x, end.x));
+                    std::max<std::int32_t>(start.x, end.x));
             }
             result.push_back({x, y});
             if (y == end.y) {

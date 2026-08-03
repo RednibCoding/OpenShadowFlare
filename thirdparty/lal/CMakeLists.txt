@@ -85,7 +85,9 @@ elseif(APPLE)
   )
 elseif(PSP)
   target_sources(lal PRIVATE lal_psp.c)
-  target_link_libraries(lal PRIVATE pspaudio)
+  # The PSP hardware output is fixed at 44.1 kHz. Mix at half that rate and
+  # duplicate frames in the PSP backend to avoid costly software resampling.
+  target_compile_definitions(lal PRIVATE LAL_OUTPUT_SAMPLE_RATE=22050)
 elseif(NINTENDO_SWITCH)
   target_sources(lal PRIVATE lal_switch.c)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")

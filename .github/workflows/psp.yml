@@ -1,0 +1,61 @@
+name: Build PlayStation Portable PBP
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/psp.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/psp/**'
+  pull_request:
+    paths:
+      - '.github/workflows/psp.yml'
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/psp/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: pspdev/pspdev:v20260701
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Install build tools
+        run: |
+          if command -v apt-get > /dev/null; then
+            apt-get update
+            apt-get install -y cmake ninja-build
+          elif command -v apk > /dev/null; then
+            apk add --no-cache cmake ninja
+          fi
+          cmake --version
+          ninja --version
+
+      - name: Build the release PBP
+        run: sh tools/psp/build-pbp.sh
+
+      - name: Verify the PBP
+        run: test -s build/psp/release/OpenShadowFlare-psp-release.PBP
+
+      - name: Upload the PBP
+        uses: actions/upload-artifact@v4
+        with:
+          name: openshadowflare-psp-release
+          path: build/psp/release/OpenShadowFlare-psp-release.PBP
+          if-no-files-found: error

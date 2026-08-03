@@ -298,7 +298,7 @@ void PlayerActor::toggleMovementPace() {
 }
 
 void PlayerActor::setWalkingSpeedTier(std::int32_t tier) {
-    walking_speed_tier_ = std::clamp(tier, 0, 9);
+    walking_speed_tier_ = std::clamp<std::int32_t>(tier, 0, 9);
     walking_speed_ = walkingSpeedForTier(walking_speed_tier_);
     running_speed_ = walking_speed_ * 2;
 }
@@ -347,7 +347,7 @@ void PlayerActor::update(
             damage_presentation_.reaction_duration - 1) {
             animation_frame_ = count - 1;
         }
-        animation_frame_ = std::clamp(
+        animation_frame_ = std::clamp<std::int32_t>(
             animation_frame_, 0, count - 1);
         if (damage_presentation_.reaction_stage == 2) {
             animation_frame_ = 0;

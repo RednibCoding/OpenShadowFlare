@@ -31,8 +31,13 @@
 #define LAL_DEFAULT_FORCE_MONO 1
 #endif
 
+/* Platform backends may lower the mixer rate when their hardware output
+ * requires a separate upsampling pass. */
+#ifndef LAL_OUTPUT_SAMPLE_RATE
+#define LAL_OUTPUT_SAMPLE_RATE 44100
+#endif
+
 enum {
-  LAL_OUTPUT_SAMPLE_RATE = 44100,
   LAL_OUTPUT_CHANNELS = 2,
   LAL_MAX_VOICES = 32,
   LAL_BUFFER_FRAMES = 1024

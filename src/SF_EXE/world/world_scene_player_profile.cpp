@@ -30,7 +30,7 @@ void WorldScene::refreshPlayerRuntimeProfile() {
 std::int32_t WorldScene::playerMaximumMineCount() const {
     // RebuildPlayerRuntimeProfile copies the base value at +0x160 and adds
     // equipped instance word 84 into the runtime value at +0x2c0.
-    return std::max(
+    return std::max<std::int32_t>(
         10 + player_equipment_.instanceParameterBonus(
                  84, item_database_),
         1);

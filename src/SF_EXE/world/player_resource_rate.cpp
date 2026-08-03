@@ -53,10 +53,10 @@ PlayerResourceRateUpdate PlayerResourceRateController::update(
         scaled = retailAdd(scaled, 100);
         remainder_ = retailSubtract(remainder_, 100);
     }
-    result.value = std::clamp(
+    result.value = std::clamp<std::int32_t>(
         retailAdd(current_value, scaled / 100),
         std::min(minimum_value, maximum_value),
-        std::max(minimum_value, maximum_value));
+        std::max<std::int32_t>(minimum_value, maximum_value));
     result.changed = result.value != current_value;
     return result;
 }

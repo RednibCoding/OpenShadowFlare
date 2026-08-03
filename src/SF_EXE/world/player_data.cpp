@@ -234,7 +234,7 @@ std::int32_t PlayerData::jobLevel(
     std::int32_t job_value) const {
     std::int32_t count = 0;
     const std::int32_t history_count =
-        std::clamp(
+        std::clamp<std::int32_t>(
             level(), 0,
             static_cast<std::int32_t>(kJobHistoryCount));
     for (std::int32_t index = 0;

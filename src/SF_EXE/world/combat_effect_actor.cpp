@@ -147,7 +147,7 @@ void CombatEffectActor::update() {
         return;
     }
     animation_frame_ = counter_;
-    animation_frame_ = std::clamp(
+    animation_frame_ = std::clamp<std::int32_t>(
         animation_frame_,
         0,
         static_cast<std::int32_t>(

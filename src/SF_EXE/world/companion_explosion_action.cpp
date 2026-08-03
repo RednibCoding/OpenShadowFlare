@@ -187,7 +187,7 @@ CombatPacket buildCompanionExplosionPacket(
     packet.write(2, input.source_character_number);
     // FUN_00461c40 deliberately uses the owner's magical-defense field as
     // Explosion's base damage and leaves packet defense at zero.
-    packet.write(4, std::max(input.damage_value, 1));
+    packet.write(4, std::max<std::int32_t>(input.damage_value, 1));
     for (std::size_t index = 0;
          index < input.element_affinities.size();
          ++index) {

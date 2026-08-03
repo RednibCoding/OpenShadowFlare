@@ -58,7 +58,7 @@ std::uint8_t addChannel(
                   (255 - static_cast<std::int32_t>(source)) *
                       (opacity - 1000) / 1000;
     return static_cast<std::uint8_t>(
-        std::min(
+        std::min<std::int32_t>(
             static_cast<std::int32_t>(destination) +
                 source_amount,
             255));
@@ -157,7 +157,7 @@ bool SoftwareBackend::drawPattern(
 
     const bool additive =
         draw.blend_mode == PatternBlendMode::additive;
-    const std::int32_t opacity = std::clamp(
+    const std::int32_t opacity = std::clamp<std::int32_t>(
         draw.opacity, 0, additive ? 2000 : 1000);
 
     for (const NjpPatternPart& item : pattern.parts) {
@@ -210,21 +210,23 @@ bool SoftwareBackend::drawPattern(
         std::int32_t first_y =
             std::max<std::int32_t>(0, -destination_y);
         std::int32_t last_y =
-            std::min(destination_height, height_ - destination_y);
+            std::min<std::int32_t>(
+                destination_height, height_ - destination_y);
         std::int32_t first_x =
             std::max<std::int32_t>(0, -destination_x);
         std::int32_t last_x =
-            std::min(destination_width, width_ - destination_x);
+            std::min<std::int32_t>(
+                destination_width, width_ - destination_x);
         if (draw.clip.width > 0 && draw.clip.height > 0) {
-            first_y = std::max(
+            first_y = std::max<std::int32_t>(
                 first_y, draw.clip.y - destination_y);
-            last_y = std::min(
+            last_y = std::min<std::int32_t>(
                 last_y,
                 draw.clip.y + draw.clip.height -
                     destination_y);
-            first_x = std::max(
+            first_x = std::max<std::int32_t>(
                 first_x, draw.clip.x - destination_x);
-            last_x = std::min(
+            last_x = std::min<std::int32_t>(
                 last_x,
                 draw.clip.x + draw.clip.width -
                     destination_x);
@@ -348,21 +350,21 @@ bool SoftwareBackend::drawBitmap(
     std::int32_t firstX = 0;
     std::int32_t lastX = destinationWidth;
     if (draw.clip.width > 0 && draw.clip.height > 0) {
-        firstY = std::max(
+        firstY = std::max<std::int32_t>(
             firstY, draw.clip.y - draw.y);
-        lastY = std::min(
+        lastY = std::min<std::int32_t>(
             lastY,
             draw.clip.y + draw.clip.height - draw.y);
-        firstX = std::max(
+        firstX = std::max<std::int32_t>(
             firstX, draw.clip.x - draw.x);
-        lastX = std::min(
+        lastX = std::min<std::int32_t>(
             lastX,
             draw.clip.x + draw.clip.width - draw.x);
     }
-    firstY = std::max(firstY, -draw.y);
-    lastY = std::min(lastY, height_ - draw.y);
-    firstX = std::max(firstX, -draw.x);
-    lastX = std::min(lastX, width_ - draw.x);
+    firstY = std::max<std::int32_t>(firstY, -draw.y);
+    lastY = std::min<std::int32_t>(lastY, height_ - draw.y);
+    firstX = std::max<std::int32_t>(firstX, -draw.x);
+    lastX = std::min<std::int32_t>(lastX, width_ - draw.x);
     if (firstX >= lastX || firstY >= lastY) {
         return true;
     }
@@ -462,25 +464,25 @@ bool SoftwareBackend::drawBitMask(
     std::int32_t first_x = 0;
     std::int32_t last_x = destination_width;
     if (draw.clip.width > 0 && draw.clip.height > 0) {
-        first_y = std::max(first_y, draw.clip.y - draw.y);
-        last_y = std::min(
+        first_y = std::max<std::int32_t>(first_y, draw.clip.y - draw.y);
+        last_y = std::min<std::int32_t>(
             last_y,
             draw.clip.y + draw.clip.height - draw.y);
-        first_x = std::max(first_x, draw.clip.x - draw.x);
-        last_x = std::min(
+        first_x = std::max<std::int32_t>(first_x, draw.clip.x - draw.x);
+        last_x = std::min<std::int32_t>(
             last_x,
             draw.clip.x + draw.clip.width - draw.x);
     }
-    first_y = std::max(first_y, -draw.y);
-    last_y = std::min(last_y, height_ - draw.y);
-    first_x = std::max(first_x, -draw.x);
-    last_x = std::min(last_x, width_ - draw.x);
+    first_y = std::max<std::int32_t>(first_y, -draw.y);
+    last_y = std::min<std::int32_t>(last_y, height_ - draw.y);
+    first_x = std::max<std::int32_t>(first_x, -draw.x);
+    last_x = std::min<std::int32_t>(last_x, width_ - draw.x);
     if (first_x >= last_x || first_y >= last_y) {
         return true;
     }
 
     const std::int32_t opacity =
-        std::clamp(draw.opacity, 0, 1000) * draw.color.alpha / 255;
+        std::clamp<std::int32_t>(draw.opacity, 0, 1000) * draw.color.alpha / 255;
     if (opacity <= 0) {
         return true;
     }
@@ -674,7 +676,7 @@ bool SoftwareBackend::drawRectangle(
         return true;
     }
     const std::int32_t opacity =
-        std::clamp(draw.opacity, 0, 1000);
+        std::clamp<std::int32_t>(draw.opacity, 0, 1000);
     if (opacity >= 1000) {
         for (std::int32_t y = top; y < bottom; ++y) {
             Color* row = pixels_.data() +
@@ -713,7 +715,7 @@ bool SoftwareBackend::drawLine(const LineDraw& draw) {
     const bool clipped =
         draw.clip.width > 0 && draw.clip.height > 0;
     const std::int32_t opacity =
-        std::clamp(draw.opacity, 0, 1000);
+        std::clamp<std::int32_t>(draw.opacity, 0, 1000);
     const auto draw_point = [this, &draw, color, clipped, opacity](
                                 std::int32_t x,
                                 std::int32_t y) {

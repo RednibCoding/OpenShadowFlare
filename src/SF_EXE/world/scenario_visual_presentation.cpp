@@ -86,7 +86,7 @@ std::int32_t ScenarioVisualPresentation::fadeStrength() const {
     if (counter_ >= kFadeUpdates) {
         return 1000;
     }
-    return std::max(counter_, 0) * 1000 / kFadeUpdates;
+    return std::max<std::int32_t>(counter_, 0) * 1000 / kFadeUpdates;
 }
 
 bool ScenarioVisualPresentation::continueVisible() const {
@@ -96,7 +96,7 @@ bool ScenarioVisualPresentation::continueVisible() const {
 
 std::int32_t ScenarioVisualPresentation::continueOffset() const {
     const std::int32_t phase =
-        (std::max(counter_, 0) + 1) % 15;
+        (std::max<std::int32_t>(counter_, 0) + 1) % 15;
     if (phase < 5) {
         return 0;
     }

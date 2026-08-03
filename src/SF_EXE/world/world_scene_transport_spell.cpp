@@ -1,5 +1,6 @@
 #include "world_scene.hpp"
 
+#include <cinttypes>
 #include <cstdio>
 
 namespace osf {
@@ -12,7 +13,7 @@ std::filesystem::path scenarioPath(
     std::int32_t scenario_id) {
     char directory[16]{};
     std::snprintf(
-        directory, sizeof(directory), "%08d", scenario_id);
+        directory, sizeof(directory), "%08" PRId32, scenario_id);
     return data_root / "Scenario" / directory / "Scenario.Mct";
 }
 

@@ -291,7 +291,7 @@ double retailPlayerSpellAnimationSpeed(
     return static_cast<double>(base) *
            kSpellSpeedFactors[
                static_cast<std::size_t>(
-                   std::clamp(speed_tier, 0, 9))] *
+                   std::clamp<std::int32_t>(speed_tier, 0, 9))] *
            0.001;
 }
 
@@ -420,7 +420,7 @@ PlayerSpellActionController::update(
         dispatchesAtEffectMarker(action_) &&
         displayed_frame_ < timing_.first_frame_count) {
         const std::int32_t first_frame =
-            std::max(
+            std::max<std::int32_t>(
                 last_effect_scan_frame_ + 1,
                 previous_displayed_frame + 1);
         for (std::int32_t frame = first_frame;
@@ -433,7 +433,7 @@ PlayerSpellActionController::update(
             }
         }
         last_effect_scan_frame_ =
-            std::max(
+            std::max<std::int32_t>(
                 last_effect_scan_frame_,
                 displayed_frame_);
     }
@@ -521,7 +521,7 @@ PlayerSpellActionController::effectDelay() const {
 void PlayerSpellActionController::refreshSpeed(
     std::int32_t speed_tier,
     const TableData* speed_table) {
-    speed_tier_ = std::clamp(speed_tier, 0, 9);
+    speed_tier_ = std::clamp<std::int32_t>(speed_tier, 0, 9);
     animation_speed_ =
         action_ == PlayerSpellAction::sonic_blade
             ? retailPlayerSonicBladeAnimationSpeed(
@@ -542,7 +542,7 @@ void PlayerSpellActionController::refreshSpeed(
 void PlayerSpellActionController::selectRenderedFrame() {
     if (displayed_frame_ < timing_.first_frame_count) {
         animation_chart_ = timing_.first_chart;
-        animation_frame_ = std::max(
+        animation_frame_ = std::max<std::int32_t>(
             displayed_frame_, 0);
         return;
     }

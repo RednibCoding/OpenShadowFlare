@@ -37,9 +37,9 @@ void renderEnemyNameplate(
         800,
     });
     const std::int32_t maximum_life =
-        std::max(nameplate.maximum_life, 0);
+        std::max<std::int32_t>(nameplate.maximum_life, 0);
     const std::int32_t current_life =
-        std::clamp(
+        std::clamp<std::int32_t>(
             nameplate.current_life, 0, maximum_life);
     const std::int32_t life_width =
         maximum_life == 0

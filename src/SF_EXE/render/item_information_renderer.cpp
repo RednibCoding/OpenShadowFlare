@@ -66,14 +66,14 @@ void renderInformation(
     const std::int32_t height =
         bitmapTextLineCount(text) * cell_height +
         kInformationPadding * 2;
-    const std::int32_t x = std::clamp(
+    const std::int32_t x = std::clamp<std::int32_t>(
         pointer_x - width / 2,
         1,
-        std::max(1, kScreenWidth - width));
-    const std::int32_t y = std::clamp(
+        std::max<std::int32_t>(1, kScreenWidth - width));
+    const std::int32_t y = std::clamp<std::int32_t>(
         pointer_y + 8,
         1,
-        std::max(1, kScreenHeight - height));
+        std::max<std::int32_t>(1, kScreenHeight - height));
     const gapi::Color black{0, 0, 0, 255};
     const gapi::Color white{255, 255, 255, 255};
     renderer.drawRectangle({

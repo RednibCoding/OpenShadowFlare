@@ -91,7 +91,7 @@ bool buildRetailCompanionStatusMessage(
            << "  Walking Speed  " << std::setw(5)
            << profile.walking_speed_raw << '\n';
 
-    const std::int32_t level_limit = std::min(
+    const std::int32_t level_limit = std::min<std::int32_t>(
         player.level() / 3 + 2, 35);
     if (player.companionLevel() == level_limit) {
         output << (level_limit == 35

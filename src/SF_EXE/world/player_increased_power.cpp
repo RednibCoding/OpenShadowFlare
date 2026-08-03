@@ -84,7 +84,7 @@ std::int32_t PlayerIncreasedPower::auraFrame() const {
 
 std::int32_t PlayerIncreasedPower::movementSpeedTier(
     std::int32_t ordinary_tier) const {
-    return active() ? 9 : std::clamp(ordinary_tier, 0, 9);
+    return active() ? 9 : std::clamp<std::int32_t>(ordinary_tier, 0, 9);
 }
 
 bool PlayerIncreasedPower::blocksSpell(

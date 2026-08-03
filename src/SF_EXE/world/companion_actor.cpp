@@ -429,7 +429,7 @@ CompanionActor::updateDamagePresentation(
             presentation_animation_frame_ = 0;
         }
         presentation_animation_frame_ =
-            std::clamp(
+            std::clamp<std::int32_t>(
                 presentation_animation_frame_,
                 0,
                 count - 1);
@@ -657,7 +657,7 @@ void CompanionActor::applyRuntimeProfile(
         return;
     }
     profile_ = profile;
-    current_life_ = std::clamp(
+    current_life_ = std::clamp<std::int32_t>(
         current_life_, 0, profile_.maximum_life);
 }
 

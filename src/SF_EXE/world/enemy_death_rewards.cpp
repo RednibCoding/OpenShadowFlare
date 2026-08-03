@@ -139,7 +139,7 @@ EnemyKillAccountingResult accountRetailEnemyKill(
         enemy.attributed_damage[
             static_cast<std::size_t>(local_player_slot)] != 0 &&
         shares) {
-        const std::int32_t bucket = std::clamp(
+        const std::int32_t bucket = std::clamp<std::int32_t>(
             enemy.attributed_damage[
                 static_cast<std::size_t>(local_player_slot)] *
                 10 /
@@ -206,7 +206,7 @@ std::vector<EnemyDeathDrop> createRetailEnemyDrops(
         if (attempts == 0) {
             attempts = active_player_count;
         }
-        attempts = std::max(attempts, 0);
+        attempts = std::max<std::int32_t>(attempts, 0);
         std::array<bool, 4> variants{};
         std::int32_t successful = 0;
         for (std::int32_t attempt = 0;
@@ -303,7 +303,7 @@ std::vector<EnemyDeathDrop> createRetailEnemyDrops(
                  gold_minimum) *
                 multiplier /
                 100;
-            quantity = std::max(quantity, 1);
+            quantity = std::max<std::int32_t>(quantity, 1);
             drops.push_back({
                 makeRetailInventoryItem(
                     *gold,

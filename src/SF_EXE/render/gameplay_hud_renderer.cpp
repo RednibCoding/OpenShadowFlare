@@ -123,7 +123,7 @@ std::int32_t gameplayHudExperienceBarWidth(
     if (experience >= threshold) {
         return kRetailExperienceWidth;
     }
-    return std::max(
+    return std::max<std::int32_t>(
         static_cast<std::int32_t>(
             static_cast<std::int64_t>(experience) *
             kRetailExperienceWidth / threshold),

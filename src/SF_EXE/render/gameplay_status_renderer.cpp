@@ -197,7 +197,7 @@ void renderGameplayStatusPanel(
         renderer.drawPattern(
             status_patterns,
             static_cast<std::size_t>(
-                36 + std::clamp(
+                36 + std::clamp<std::int32_t>(
                     affinities[element] + 10,
                     0,
                     20)),

@@ -45,19 +45,19 @@ bool groundIsWalkable(
     std::int32_t first_y = top / cell_height - 1;
     std::int32_t last_x = right / cell_width + 1;
     std::int32_t last_y = bottom / cell_height + 1;
-    first_x = std::clamp(
+    first_x = std::clamp<std::int32_t>(
         first_x,
         ground.judgeOffsetX(),
         ground.judgeOffsetX() + ground.judgeWidth() - 1);
-    last_x = std::clamp(
+    last_x = std::clamp<std::int32_t>(
         last_x,
         ground.judgeOffsetX(),
         ground.judgeOffsetX() + ground.judgeWidth() - 1);
-    first_y = std::clamp(
+    first_y = std::clamp<std::int32_t>(
         first_y,
         ground.judgeOffsetY(),
         ground.judgeOffsetY() + ground.judgeHeight() - 1);
-    last_y = std::clamp(
+    last_y = std::clamp<std::int32_t>(
         last_y,
         ground.judgeOffsetY(),
         ground.judgeOffsetY() + ground.judgeHeight() - 1);

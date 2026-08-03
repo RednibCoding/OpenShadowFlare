@@ -423,7 +423,7 @@ WorldScene::takeGameplayServiceRequest() {
 }
 
 void WorldScene::completeBlackjack(std::int32_t result) {
-    blackjack_result_ = std::clamp(result, 0, 2);
+    blackjack_result_ = std::clamp<std::int32_t>(result, 0, 2);
     scenario_script_.runStatusKind(8);
 }
 

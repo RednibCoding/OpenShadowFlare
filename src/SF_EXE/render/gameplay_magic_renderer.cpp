@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cinttypes>
 #include <cstdio>
 #include <string>
 #include <string_view>
@@ -88,7 +89,7 @@ void drawShadowedText(
 
 std::string number(std::int32_t value) {
     char buffer[32]{};
-    std::snprintf(buffer, sizeof(buffer), "%d", value);
+    std::snprintf(buffer, sizeof(buffer), "%" PRId32, value);
     return buffer;
 }
 
@@ -166,11 +167,11 @@ void renderDescription(
         static_cast<std::int32_t>(longest) * 6 + 8;
     const std::int32_t height =
         static_cast<std::int32_t>(lines.size()) * 12 + 8;
-    const std::int32_t x = std::clamp(
+    const std::int32_t x = std::clamp<std::int32_t>(
         panel.pointerX() - width / 2,
         1,
         639 - width);
-    const std::int32_t y = std::clamp(
+    const std::int32_t y = std::clamp<std::int32_t>(
         panel.pointerY() + 8,
         1,
         479 - height);

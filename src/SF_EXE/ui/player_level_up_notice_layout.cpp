@@ -72,7 +72,7 @@ bool buildPlayerLevelUpNoticeLayout(
                 kSlideUpdates;
         layout.x = std::min(
             layout.x, kScreenWidth - layout.width);
-        layout.y = std::max(layout.y, 1);
+        layout.y = std::max<std::int32_t>(layout.y, 1);
     }
 
     layout.text_x = layout.x + kTextPadding;

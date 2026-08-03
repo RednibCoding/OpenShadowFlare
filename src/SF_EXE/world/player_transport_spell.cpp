@@ -183,8 +183,9 @@ PlayerTransportSpell::updatePresentation(
         if (beam.delay > presentation_counter_) {
             continue;
         }
-        beam.height = std::max(beam.height - 50, 0);
-        beam.strength = std::min(beam.strength + 200, 1000);
+        beam.height = std::max<std::int32_t>(beam.height - 50, 0);
+        beam.strength =
+            std::min<std::int32_t>(beam.strength + 200, 1000);
     }
     ++presentation_counter_;
     return result;

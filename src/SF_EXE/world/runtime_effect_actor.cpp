@@ -237,7 +237,7 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
             result.expired = true;
             return result;
         }
-        const std::int32_t remaining = std::max(
+        const std::int32_t remaining = std::max<std::int32_t>(
             request_.target_approach_updates -
                 movement_counter_,
             0);

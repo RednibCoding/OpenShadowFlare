@@ -29,7 +29,7 @@ std::int32_t adjustedParameter(
 }  // namespace
 
 std::int32_t PlayerRuntimeProfile::walkingSpeedTier() const {
-    return std::clamp((walking_speed_raw + 32) / 32, 0, 9);
+    return std::clamp<std::int32_t>((walking_speed_raw + 32) / 32, 0, 9);
 }
 
 PlayerRuntimeProfile buildPlayerRuntimeProfile(
@@ -42,60 +42,60 @@ PlayerRuntimeProfile buildPlayerRuntimeProfile(
     const PlayerEquipment::DerivedParameterBonuses
         equipment_bonuses =
         equipment.derivedParameterBonuses(items);
-    result.attack_speed_raw = std::clamp(
+    result.attack_speed_raw = std::clamp<std::int32_t>(
         retailAdd(
             player.baseAttackSpeed(),
             equipment_bonuses[8]),
         0,
         255);
-    result.walking_speed_raw = std::clamp(
+    result.walking_speed_raw = std::clamp<std::int32_t>(
         retailAdd(
             player.initialParameter(1),
             equipment_bonuses[9]),
         0,
         255);
     result.maximum_life =
-        std::max(player.baseMaximumLife(), 1);
+        std::max<std::int32_t>(player.baseMaximumLife(), 1);
     result.maximum_mana =
-        std::max(player.baseMaximumMana(), 1);
+        std::max<std::int32_t>(player.baseMaximumMana(), 1);
     result.weight_capacity =
-        std::max(player.baseWeightCapacity(), 0);
-    result.physical_attack = std::max(
+        std::max<std::int32_t>(player.baseWeightCapacity(), 0);
+    result.physical_attack = std::max<std::int32_t>(
         retailAdd(
             player.basePhysicalAttack(),
             equipment_bonuses[0]),
         1);
-    result.physical_defense = std::max(
+    result.physical_defense = std::max<std::int32_t>(
         retailAdd(
             player.basePhysicalDefense(),
             equipment_bonuses[2]),
         1);
-    result.hit_rate = std::max(
+    result.hit_rate = std::max<std::int32_t>(
         retailAdd(
             player.baseHitRate(),
             equipment_bonuses[1]),
         1);
-    result.physical_evasion = std::max(
+    result.physical_evasion = std::max<std::int32_t>(
         retailAdd(
             player.baseEvasionRate(),
             equipment_bonuses[3]),
         1);
-    result.magical_attack = std::max(
+    result.magical_attack = std::max<std::int32_t>(
         retailAdd(
             player.baseMagicalAttack(),
             equipment_bonuses[4]),
         1);
-    result.magical_defense = std::max(
+    result.magical_defense = std::max<std::int32_t>(
         retailAdd(
             player.baseMagicalDefense(),
             equipment_bonuses[6]),
         1);
-    result.magical_hit_rate = std::max(
+    result.magical_hit_rate = std::max<std::int32_t>(
         retailAdd(
             player.baseMagicalHitRate(),
             equipment_bonuses[5]),
         1);
-    result.magical_evasion = std::max(
+    result.magical_evasion = std::max<std::int32_t>(
         retailAdd(
             player.baseMagicalEvasionRate(),
             equipment_bonuses[7]),
@@ -108,53 +108,53 @@ PlayerRuntimeProfile buildPlayerRuntimeProfile(
         return result;
     }
 
-    result.attack_speed_raw = std::clamp(
+    result.attack_speed_raw = std::clamp<std::int32_t>(
         adjustedParameter(
             result.attack_speed_raw, *table, 1, column),
         0,
         255);
-    result.walking_speed_raw = std::clamp(
+    result.walking_speed_raw = std::clamp<std::int32_t>(
         adjustedParameter(
             result.walking_speed_raw, *table, 2, column),
         0,
         255);
-    result.maximum_life = std::max(
+    result.maximum_life = std::max<std::int32_t>(
         adjustedParameter(
             result.maximum_life, *table, 3, column),
         1);
-    result.maximum_mana = std::max(
+    result.maximum_mana = std::max<std::int32_t>(
         adjustedParameter(
             result.maximum_mana, *table, 4, column),
         1);
-    result.physical_attack = std::max(
+    result.physical_attack = std::max<std::int32_t>(
         adjustedParameter(
             result.physical_attack, *table, 5, column),
         1);
-    result.physical_defense = std::max(
+    result.physical_defense = std::max<std::int32_t>(
         adjustedParameter(
             result.physical_defense, *table, 6, column),
         1);
-    result.hit_rate = std::max(
+    result.hit_rate = std::max<std::int32_t>(
         adjustedParameter(
             result.hit_rate, *table, 7, column),
         1);
-    result.physical_evasion = std::max(
+    result.physical_evasion = std::max<std::int32_t>(
         adjustedParameter(
             result.physical_evasion, *table, 8, column),
         1);
-    result.magical_attack = std::max(
+    result.magical_attack = std::max<std::int32_t>(
         adjustedParameter(
             result.magical_attack, *table, 9, column),
         1);
-    result.magical_defense = std::max(
+    result.magical_defense = std::max<std::int32_t>(
         adjustedParameter(
             result.magical_defense, *table, 10, column),
         1);
-    result.magical_hit_rate = std::max(
+    result.magical_hit_rate = std::max<std::int32_t>(
         adjustedParameter(
             result.magical_hit_rate, *table, 11, column),
         1);
-    result.magical_evasion = std::max(
+    result.magical_evasion = std::max<std::int32_t>(
         adjustedParameter(
             result.magical_evasion, *table, 12, column),
         1);

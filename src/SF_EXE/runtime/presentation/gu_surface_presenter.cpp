@@ -37,7 +37,9 @@ static_assert(
     "GAPI colors must be tightly packed RGBA bytes so they can be copied "
     "straight into a GU_PSM_8888 texture.");
 
-unsigned int g_display_list[262144] __attribute__((aligned(16)));
+// The presentation pass issues only a clear and up to four sprites.  The
+// previous 1 MiB command list was unnecessarily expensive on PSP memory.
+unsigned int g_display_list[16 * 1024] __attribute__((aligned(16)));
 
 struct Vertex {
     float u;
@@ -111,7 +113,8 @@ public:
     }
 
     bool initialize(LwlWindow* window, std::string* error) override;
-    void present(osf::gapi::SurfaceView surface) override;
+    void prepareFrame(osf::gapi::SurfaceView surface) override;
+    void displayFrame() override;
     void reset() override;
 
 private:
@@ -127,6 +130,7 @@ private:
     int surface_height_ = 0;
     int texture_height_ = 0;
     int tile_count_ = 0;
+    bool frame_prepared_ = false;
     SurfaceTile tiles_[kMaxTiles];
 };
 
@@ -172,9 +176,11 @@ void GuSurfacePresenter::shutdown() {
     surface_width_ = 0;
     surface_height_ = 0;
     texture_height_ = 0;
+    frame_prepared_ = false;
 }
 
 void GuSurfacePresenter::reset() {
+    frame_prepared_ = false;
     if (!initialized_) {
         return;
     }
@@ -262,7 +268,8 @@ bool GuSurfacePresenter::ensureTiles(
     return true;
 }
 
-void GuSurfacePresenter::present(osf::gapi::SurfaceView surface) {
+void GuSurfacePresenter::prepareFrame(osf::gapi::SurfaceView surface) {
+    frame_prepared_ = false;
     if (!initialized_ || !surface.pixels ||
         surface.width <= 0 || surface.height <= 0) {
         return;
@@ -290,10 +297,18 @@ void GuSurfacePresenter::present(osf::gapi::SurfaceView surface) {
         sceKernelDcacheWritebackRange(tile.pixels, tile.byte_count);
     }
 
+    frame_prepared_ = true;
+}
+
+void GuSurfacePresenter::displayFrame() {
+    if (!initialized_ || !frame_prepared_) {
+        return;
+    }
+
     const osf::gapi::Viewport fit =
         osf::gapi::fitViewport(
-            surface.width, surface.height, kScreenWidth, kScreenHeight);
-    const float v_max = static_cast<float>(surface.height);
+            surface_width_, surface_height_, kScreenWidth, kScreenHeight);
+    const float v_max = static_cast<float>(surface_height_);
 
     sceGuStart(GU_DIRECT, g_display_list);
     applyBlitState();
@@ -304,14 +319,14 @@ void GuSurfacePresenter::present(osf::gapi::SurfaceView surface) {
         const SurfaceTile& tile = tiles_[index];
         const float left =
             static_cast<float>(fit.x) +
-            static_cast<float>(fit.width) *
+                static_cast<float>(fit.width) *
                 static_cast<float>(tile.source_x) /
-                static_cast<float>(surface.width);
+                static_cast<float>(surface_width_);
         const float right =
             static_cast<float>(fit.x) +
-            static_cast<float>(fit.width) *
+                static_cast<float>(fit.width) *
                 static_cast<float>(tile.source_x + tile.used_width) /
-                static_cast<float>(surface.width);
+                static_cast<float>(surface_width_);
         const float u_max = static_cast<float>(tile.used_width);
 
         sceGuTexImage(
@@ -342,6 +357,7 @@ void GuSurfacePresenter::present(osf::gapi::SurfaceView surface) {
     sceGuSync(0, 0);
     sceDisplayWaitVblankStart();
     sceGuSwapBuffers();
+    frame_prepared_ = false;
 }
 
 }  // namespace

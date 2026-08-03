@@ -15,7 +15,7 @@ std::int32_t retailPlayerComboVoiceSample(
     // The three linked right-click actions use consecutive Voice00 samples.
     // Retail stores female as zero and male as one.
     const std::int32_t first = retail_gender == 1 ? 96 : 99;
-    return first + std::clamp(combo_step, 0, 2);
+    return first + std::clamp<std::int32_t>(combo_step, 0, 2);
 }
 
 std::int32_t retailPlayerDeathVoiceSample(

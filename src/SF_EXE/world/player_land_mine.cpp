@@ -52,7 +52,7 @@ CombatPacket minePacket(
     packet.write(1, 0);
     packet.write(2, source_character_number);
     packet.write(3, 0);
-    packet.write(4, std::max(damage, 1));
+    packet.write(4, std::max<std::int32_t>(damage, 1));
     packet.write(31, player_level);
     packet.write(34, random.next() % 4 + 21000);
     packet.write(35, 8);
@@ -74,8 +74,8 @@ std::int32_t mineDamage(
     std::int32_t player_level,
     std::int32_t bonus) {
     const TableData* damage = tables.find(23);
-    const std::int32_t row = std::max(player_level - 1, 0);
-    return std::max(
+    const std::int32_t row = std::max<std::int32_t>(player_level - 1, 0);
+    return std::max<std::int32_t>(
         damage && damage->contains(row, 0)
             ? retailAdd(damage->value(row, 0), bonus)
             : retailAdd(1, bonus),
@@ -132,7 +132,7 @@ bool PlayerLandMineSystem::place(
     }
     mines_.push_back({
         position,
-        std::max(player_level, 1),
+        std::max<std::int32_t>(player_level, 1),
         source_character_number,
     });
     PlayerLandMineVisual visual;
@@ -158,7 +158,7 @@ void PlayerLandMineSystem::addAnimatedVisual(
     visual.position = position;
     visual.previous_position = position;
     visual.judgement = judgement;
-    visual.lifetime = std::max(lifetime, 1);
+    visual.lifetime = std::max<std::int32_t>(lifetime, 1);
     visual.vertical_velocity = vertical_velocity;
     visual.vertical_acceleration = vertical_acceleration;
     visuals_.push_back(visual);

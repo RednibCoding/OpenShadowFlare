@@ -58,7 +58,7 @@ bool buildCompanionAttackAnimationTiming(
 
 std::int32_t retailCompanionAttackSpeedTier(
     std::int32_t attack_speed_rating) {
-    return std::clamp(
+    return std::clamp<std::int32_t>(
         attack_speed_rating / 32, 0, 9);
 }
 

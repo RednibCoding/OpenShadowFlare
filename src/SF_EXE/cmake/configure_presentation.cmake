@@ -17,14 +17,6 @@ function(osf_configure_presentation target)
       PRIVATE
         runtime/presentation/gu_surface_presenter.cpp
     )
-    target_link_libraries(
-      ${target}
-      PRIVATE
-        pspgum
-        pspgu
-        pspge
-        pspdisplay
-    )
   elseif(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "nxfb")
     target_sources(
       ${target}

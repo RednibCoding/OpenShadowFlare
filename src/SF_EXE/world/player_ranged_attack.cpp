@@ -128,13 +128,13 @@ std::int32_t retailRangedPhysicalAttack(
     std::int32_t current_job,
     std::int32_t ranged_job_level) {
     if (current_job == kRangedJob) {
-        return std::max(physical_attack, 1);
+        return std::max<std::int32_t>(physical_attack, 1);
     }
     const std::int32_t percent =
-        std::min(
+        std::min<std::int32_t>(
             ranged_job_level * 50 / 30 + 40,
             90);
-    return std::max(
+    return std::max<std::int32_t>(
         retailMultiply(physical_attack, percent) / 100,
         1);
 }

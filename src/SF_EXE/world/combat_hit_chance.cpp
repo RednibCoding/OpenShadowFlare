@@ -7,7 +7,7 @@ namespace osf {
 std::int32_t retailCombatHitChance(
     std::int32_t attack_value,
     std::int32_t defense_value) {
-    return std::clamp(
+    return std::clamp<std::int32_t>(
         attack_value - defense_value,
         20,
         98);
