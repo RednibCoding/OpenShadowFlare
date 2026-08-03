@@ -11,9 +11,11 @@ a long time yet.
 
 We started by reconstructing all fourteen support DLLs used by the original
 game. With that foundation in place, the main work is now a faithful,
-cross-platform reconstruction of `ShadowFlare.exe`. Modern extras such as
-widescreen support can come later; first we want the original game working
-properly.
+cross-platform reconstruction of `ShadowFlare.exe`. The existing `SF_EXE`
+implementation remains our working reference, while the game itself is now
+being rewritten as a much smaller C99 runtime under [`shadowflare/`](shadowflare/README.md).
+Modern extras such as widescreen support can come later; first we want the
+original game working properly.
 
 [![Join us on Discord](readme/discord.png)](https://discord.gg/4F2dMu5qwQ)
 
@@ -119,7 +121,9 @@ That completes the first big reconstruction milestone: the whole support-DLL
 layer is ours. It does not mean every obscure code path is proven perfect yet.
 Audio timing, uncommon drawing modes, authenticated multiplayer, and some
 in-game map/rendering combinations still need broader testing. The current
-major task is reconstructing the rest of `ShadowFlare.exe`.
+`SF_EXE` build is a valuable playable reference for all of that recovered
+behavior. New game code now goes into the small C99 runtime, with hard 2 MiB
+main-RAM and 1 MiB video-RAM budgets from the beginning.
 
 For the DLL details, see the [fidelity inventory](fidelity/README.md).
 
@@ -163,8 +167,9 @@ For now, use the build instructions below.
 
 ## Building from source
 
-There are two builds at the moment: the compatibility DLLs used by the retail
-game, and the new portable executable foundation.
+There are three useful build outputs at the moment: the compatibility DLLs,
+the feature-rich `SF_EXE` reference build, and the small C99 game runtime that
+will eventually replace it.
 
 All generated files stay under `build/<target>/<configuration>/`:
 
@@ -219,7 +224,7 @@ You can then start the game through Wine:
 ./run-shadowflare.sh
 ```
 
-### Portable executable
+### SF_EXE reference executable
 
 The new executable uses CMake. The normal Linux development build lives in
 `build/linux/debug`:
@@ -246,11 +251,27 @@ in `src/reconstructed` and remain the reference as their behavior is brought
 into the portable executable piece by piece.
 
 There is also an early low-memory platform layer under `thirdparty/twl` and
-`thirdparty/tal`. Those libraries are being built for TinyFlare: they use
+`thirdparty/tal`. Those libraries are used by the new C99 runtime: they use
 caller-owned memory, keep their common C11 code freestanding-friendly, and can
 present a packed RGB555 framebuffer without converting it on the CPU. SF_EXE
 still uses LWL and LAL for now, so this work can settle without disrupting the
-playable build.
+playable build. TWL and TAL currently have real Linux, Windows, macOS, and web
+backends; console and mobile backends will come later.
+
+### Small C99 runtime
+
+The replacement runtime is built by the same CMake command and currently
+lives here:
+
+```bash
+./build/linux/debug/shadowflare/osf
+```
+
+It is only a bring-up build for now, so use `ShadowFlare_rebuilt` when testing
+reconstructed gameplay. The [C99 runtime notes](shadowflare/README.md) explain
+its layout and the memory limits it already enforces. Contributors working on
+it should also read the [standing runtime rules](shadowflare/RULES.md) before
+adding a new system or renderer path.
 
 ### Web (WebAssembly) build
 

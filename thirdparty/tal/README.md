@@ -38,11 +38,17 @@ Manual output mode does not open a device. `tal_render()` writes directly into
 a caller-provided buffer, making the same mixer usable by tests, tools, and
 future pull-style console backends.
 
+Windows and macOS synchronize voice changes once around each device block so
+their system audio callbacks cannot race the caller thread. There is no locking,
+allocation, or format setup inside the per-sample mixing loop.
+
 ## Backends
 
 Implemented backends are:
 
 - Linux: nonblocking ALSA output pumped by `tal_update()`, without a thread;
+- Windows: waveOut with three caller-funded output blocks;
+- macOS: Core Audio rendering directly into the device buffer;
 - WebAssembly: Web Audio pulling from the caller-funded C mix block;
 - null: used on targets whose real backend has not been written yet.
 
