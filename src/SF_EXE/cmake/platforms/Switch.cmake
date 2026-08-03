@@ -3,6 +3,7 @@ function(osf_configure_switch_platform target)
     ${target}
     PRIVATE
       runtime/platform/switch/application_loop.cpp
+      runtime/platform/switch/text_input.cpp
   )
   target_compile_definitions(${target} PRIVATE OSF_PLATFORM_SWITCH)
 
