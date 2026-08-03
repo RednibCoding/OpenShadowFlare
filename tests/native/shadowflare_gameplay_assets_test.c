@@ -25,6 +25,7 @@
 #include "game/world.h"
 #include "screens/gameplay_screen.h"
 #include "screens/gameplay_object_visual.h"
+#include "ui/conversation_layout.h"
 #include "ui/world_pointer.h"
 
 #include <ctype.h>
@@ -104,12 +105,23 @@ static int test_scenario_actors(
   uint8_t index;
   SfCollisionQuery collision;
   if (assets->scenario.people_count != 7u ||
+      assets->scenario.object_count != 7u ||
+      assets->scenario.objects[3].id != 202 ||
+      assets->scenario.objects[3].world_x != 94620 ||
+      assets->scenario.objects[3].world_y != -4043 ||
       assets->actors.visual_count != 5u || !assets->script ||
       assets->script->temporary_flag_count != 66u ||
       assets->script->status_count != 23u ||
       assets->script->sentence_count != 220u ||
       assets->script->command_count != 608u ||
-      assets->script->operand_count != 1895u) {
+      assets->script->operand_count != 1895u ||
+      assets->script->message_count != 61u ||
+      strcmp(sf_scs_message_text(
+          assets->script, sf_scs_message(assets->script, 1000000)),
+        "Thank you for coming. I am Ostare, a commander of this area.\n"
+        "As you see, this town has fallen into a critical state.\n\201@\n"
+        "I can't sleep peacefully because goblins and demons are\n"
+        "lingering around the protective wall.\n") != 0) {
     fprintf(stderr, "Remote Town actor or script counts differ from retail\n");
     return 1;
   }
@@ -209,6 +221,48 @@ static int test_scenario_actors(
       world->actors.actors[0].destination.y < 1309 ||
       world->actors.actors[0].destination.y > 1763) {
     fprintf(stderr, "Ostare did not begin the authored retail wander\n");
+    return 1;
+  }
+  return 0;
+}
+
+static int test_ostare_conversation(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  SfScenarioScriptEnvironment environment;
+  SfScenarioScriptResult result;
+  SfConversationLayout layout;
+  SfWorldRenderView view;
+  environment = (SfScenarioScriptEnvironment) {
+    &assets->scenario, &world->actors, world->player.position,
+    world->player.judgement, world->companion_type};
+  result = sf_scenario_actor_script_start_status(
+    &world->actor_script_state, assets->script,
+    0, 12000000, &environment);
+  sf_world_render_view(world, 1000u, &view);
+  if (result != SF_SCENARIO_SCRIPT_WAITING_FOR_MESSAGE ||
+      world->actor_script_state.message_id != 1000000 ||
+      world->actor_script_state.message_actor_id != 0 ||
+      !world->actors.actors[0].interaction_active ||
+      !sf_conversation_layout_build(
+        assets, world, &view, 1000u, &layout) ||
+      layout.width != 368 || layout.height != 68 ||
+      layout.choice_count != 0u ||
+      assets->speech_frame.image_count != 5u) {
+    fprintf(stderr, "Ostare's opening bubble differs from retail\n");
+    return 1;
+  }
+  result = sf_scenario_actor_script_resume(
+    &world->actor_script_state, assets->script, -1, &environment);
+  if (result != SF_SCENARIO_SCRIPT_WAITING_FOR_MESSAGE ||
+      world->actor_script_state.message_id != 1000001) {
+    fprintf(stderr, "Ostare's first callback differs from retail\n");
+    return 1;
+  }
+  result = sf_scenario_actor_script_resume(
+    &world->actor_script_state, assets->script, -1, &environment);
+  if (result != SF_SCENARIO_SCRIPT_WAITING_FOR_MESSAGE ||
+      world->actor_script_state.message_id != 1000002) {
+    fprintf(stderr, "Ostare's second callback differs from retail\n");
     return 1;
   }
   return 0;
@@ -349,6 +403,7 @@ int main(void) {
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);
   if (test_actor_pointer(&assets, &world)) return 1;
+  if (test_ostare_conversation(&assets, &world)) return 1;
   world.pointer.range_enabled = true;
   if (!sf_gameplay_screen_init(&screen, &assets, &world) ||
       screen.scene.visible_count != 22u || screen.scene.shadow_count != 10u) {

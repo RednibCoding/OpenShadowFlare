@@ -66,7 +66,8 @@ const SfRetailPeoplePaths sf_retail_people_paths = {
 
 const SfRetailGamePaths sf_retail_game_paths = {
   "System/Game/Parameter/Item.Ibn",
-  "System/Common/Pattern/Font00.njp"
+  "System/Common/Pattern/Font00.njp",
+  "System/Game/Pattern/Hukidasi.njp"
 };
 
 static bool sf_retail_path_copy(

@@ -179,6 +179,7 @@ bool sf_gameplay_assets_load(
   char map_name[SF_PATTERN_NAME_CAPACITY];
   char path[SF_RETAIL_PATH_CAPACITY];
   static const uint8_t font_pattern = 0u;
+  static const uint8_t speech_patterns[5] = {0u, 1u, 2u, 3u, 4u};
   size_t mark;
   bool success = false;
   if (!assets || !data_root || scenario_id < 0 || !arena) return false;
@@ -191,7 +192,7 @@ bool sf_gameplay_assets_load(
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_format, NULL, scenario_id) ||
-      !sf_mct_load(path, &assets->scenario)) goto done;
+      !sf_mct_load(path, arena, &assets->scenario)) goto done;
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_script_format, NULL, scenario_id) ||
@@ -222,6 +223,10 @@ bool sf_gameplay_assets_load(
         path, sizeof(path), data_root, sf_retail_game_paths.font) ||
       !sf_njp_load_selected(
         path, &font_pattern, 1u, arena, &assets->font) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.speech_frame) ||
+      !sf_njp_load_selected(
+        path, speech_patterns, 5u, arena, &assets->speech_frame) ||
       !sf_player_assets_load(
         &assets->player, data_root, player_gender,
         appearance_parts, appearance_part_count,

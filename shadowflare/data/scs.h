@@ -25,6 +25,8 @@
 
 #define SF_SCS_FLAG_LIMIT 256u
 #define SF_SCS_STATUS_LIMIT 256u
+#define SF_SCS_MESSAGE_LIMIT 320u
+#define SF_SCS_MESSAGE_BYTES_LIMIT (32u * 1024u)
 #define SF_SCS_SENTENCE_LIMIT 512u
 #define SF_SCS_COMMAND_LIMIT 2048u
 #define SF_SCS_OPERAND_LIMIT 8192u
@@ -40,6 +42,12 @@ typedef struct SfScsStatus {
   int32_t sentence;
   bool networked;
 } SfScsStatus;
+
+typedef struct SfScsMessage {
+  int32_t id;
+  uint16_t offset;
+  uint16_t length;
+} SfScsMessage;
 
 typedef struct SfScsSentence {
   uint16_t first_command;
@@ -59,11 +67,15 @@ typedef struct SfScsOperand {
 
 typedef struct SfScsScript {
   SfScsFlag temporary_flags[SF_SCS_FLAG_LIMIT];
+  SfScsMessage messages[SF_SCS_MESSAGE_LIMIT];
+  char message_bytes[SF_SCS_MESSAGE_BYTES_LIMIT];
   SfScsStatus statuses[SF_SCS_STATUS_LIMIT];
   SfScsSentence sentences[SF_SCS_SENTENCE_LIMIT];
   SfScsCommand commands[SF_SCS_COMMAND_LIMIT];
   SfScsOperand operands[SF_SCS_OPERAND_LIMIT];
   uint16_t temporary_flag_count;
+  uint16_t message_count;
+  uint16_t message_bytes_count;
   uint16_t status_count;
   uint16_t sentence_count;
   uint16_t command_count;
@@ -73,5 +85,9 @@ typedef struct SfScsScript {
 bool sf_scs_load(const char *path, SfScsScript *script);
 const SfScsSentence *sf_scs_sentence(
   const SfScsScript *script, int32_t index);
+const SfScsMessage *sf_scs_message(
+  const SfScsScript *script, int32_t id);
+const char *sf_scs_message_text(
+  const SfScsScript *script, const SfScsMessage *message);
 
 #endif

@@ -61,6 +61,7 @@ typedef struct SfWorldState {
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
+  const SfMctScenario *scenario;
   const SfScsScript *script;
   SfWorldPointerControl pointer;
   int32_t companion_type;

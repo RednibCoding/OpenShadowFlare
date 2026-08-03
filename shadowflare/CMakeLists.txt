@@ -50,6 +50,8 @@ add_library(
   data/gnd.c
   data/item.c
   data/mct.c
+  data/mct_reader.c
+  data/mct_sections.c
   data/njp.c
   data/njp_sparse.c
   data/obl.c
@@ -70,6 +72,8 @@ add_library(
   game/title.c
   game/world.c
   interpreter/scenario_actor_script.c
+  interpreter/scenario_script_commands.c
+  interpreter/scenario_script_values.c
   render/depth.c
   render/dirty.c
   render/framebuffer.c
@@ -83,6 +87,8 @@ add_library(
   screens/load_game_screen.c
   screens/title_screen.c
   ui/actor_nameplate.c
+  ui/conversation_bubble.c
+  ui/conversation_layout.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c
 )

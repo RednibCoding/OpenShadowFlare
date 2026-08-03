@@ -26,3 +26,8 @@ rules stay in `game/` or `interpreter/`.
 Screens compose these pieces and control their lifetime. The `render/` folder
 only supplies reusable drawing primitives; UI layout and behavior never belong
 there.
+
+Conversation text layout and bubble composition are separate on purpose. The
+layout code understands the retail Shift-JIS column rules and hidden choice
+markers. The bubble code only draws that result with the original frame
+patterns. Neither file advances scripts or changes actor behavior.

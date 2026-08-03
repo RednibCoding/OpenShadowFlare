@@ -62,8 +62,13 @@ controller, so they route around one another without a second pathfinder.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
-ground command behind the actor. Conversations are the next interpreter
-slice; none of these rules have been hidden inside the renderer.
+ground command behind the actor. The SCS interpreter now enters Ostare's
+status-zero conversation, keeps its fixed call stack across message waits,
+runs the first two status-one callbacks, and reads the original Shift-JIS
+message table. Ostare stops wandering, turns toward the player, and speaks
+through the actor-anchored five-piece `Hukidasi.njp` bubble. Its layout and
+drawing stay in `ui/`; script state and actor behavior stay in `interpreter/`
+and `game/`.
 
 ## Hard limits
 
@@ -146,8 +151,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,431,693 bytes of the 7 MiB main arena,
-leaving 5,908,339 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,433,997 bytes of the 7 MiB main arena,
+leaving 5,906,035 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -160,21 +165,21 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 744,616 bytes of the main arena, leaving 6,595,416 bytes free;
+assets. It uses 746,920 bytes of the main arena, leaving 6,593,112 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 704,832 bytes of the main arena, leaving 6,635,200
+The load-game screen uses 707,136 bytes of the main arena, leaving 6,632,896
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,268,676 bytes of the main
-arena, leaving 3,071,356 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, and UI data and artwork account for 3,938,165 bytes. GND
+The complete Remote Town gameplay screen uses 4,309,796 bytes of the main
+arena, leaving 3,030,236 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, and UI data and artwork account for 3,976,981 bytes. GND
 rendering
 data is decoded directly from its compressed three-plane stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
@@ -215,15 +220,19 @@ PEOPLE artwork follows the same sparse rule. The loader first combines the
 parts needed by actors that share a retail resource, keeps the idle patterns
 referenced by their eight directions, and adds walk patterns only when an
 authored actor using that resource can wander. Offscreen actors are removed
-before depth sorting and drawing. The decoded SCS tables live in the gameplay
-screen arena as well, so returning to a menu releases them with the rest of
-the map instead of making every screen pay for script memory.
+before depth sorting and drawing. The decoded SCS tables and message bytes live
+in the gameplay screen arena as well, so returning to a menu releases them
+with the rest of the map instead of making every screen pay for script memory.
+The interpreter uses fixed temporary, persistent, quest, and 16-frame call
+stack storage. Command semantics, operand access, and the resumable status loop
+are separate small files rather than one growing interpreter source.
 
 World pointer hit testing lives in `ui/`, where the loaded sparse actor cells
 are already available. It produces a small actor intent before each game
 update; `game/` owns the actual approach and distance rule. The common font is
-loaded once with the map for authored nameplates. The translucent click square
-and nameplate background use a general RGB555 rectangle blend operation, not a
+loaded once with the map for authored nameplates, along with the five small
+speech-frame patterns used by conversations. The translucent click square and
+nameplate background use a general RGB555 rectangle blend operation, not a
 platform or gameplay-specific renderer path.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904

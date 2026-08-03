@@ -20,10 +20,13 @@
 #ifndef SHADOWFLARE_DATA_MCT_H
 #define SHADOWFLARE_DATA_MCT_H
 
+#include "core/arena.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
 #define SF_MCT_ENTRY_LIMIT 64u
+#define SF_MCT_OBJECT_LIMIT 128u
 #define SF_MCT_PERSON_LIMIT 32u
 #define SF_MCT_PERSON_NAME_CAPACITY 64u
 #define SF_MCT_PERSON_PART_LIMIT 8u
@@ -35,6 +38,32 @@ typedef struct SfMctEntry {
   int32_t world_y;
   int32_t direction;
 } SfMctEntry;
+
+typedef struct SfMctObject {
+  char name[SF_MCT_PERSON_NAME_CAPACITY];
+  int32_t id;
+  int32_t resource_id;
+  uint32_t name_color;
+  int32_t label_height;
+  int32_t world_x;
+  int32_t world_y;
+  int32_t judgement_left;
+  int32_t judgement_top;
+  int32_t judgement_right;
+  int32_t judgement_bottom;
+  int32_t direction;
+  int32_t initial_state[SF_MCT_ENTITY_STATE_COUNT];
+  int32_t visual_mode;
+  int32_t static_pattern;
+  int32_t animation_chart;
+  int32_t draw_status_bit_80;
+  int32_t height;
+  int32_t draw_flags;
+  int32_t draw_strength;
+  int32_t red_strength;
+  int32_t green_strength;
+  int32_t blue_strength;
+} SfMctObject;
 
 typedef struct SfMctPerson {
   char name[SF_MCT_PERSON_NAME_CAPACITY];
@@ -72,14 +101,17 @@ typedef struct SfMctPerson {
 typedef struct SfMctScenario {
   char map_path[260];
   char title[256];
-  SfMctEntry entries[SF_MCT_ENTRY_LIMIT];
-  SfMctPerson people[SF_MCT_PERSON_LIMIT];
+  SfMctEntry *entries;
+  SfMctObject *objects;
+  SfMctPerson *people;
   int32_t music_track;
   uint8_t entry_count;
+  uint8_t object_count;
   uint8_t people_count;
 } SfMctScenario;
 
-bool sf_mct_load(const char *path, SfMctScenario *scenario);
+bool sf_mct_load(
+  const char *path, SfArena *arena, SfMctScenario *scenario);
 const SfMctEntry *sf_mct_find_entry(
   const SfMctScenario *scenario, int32_t key);
 

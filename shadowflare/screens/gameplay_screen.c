@@ -21,6 +21,7 @@
 
 #include "screens/gameplay_player.h"
 #include "ui/actor_nameplate.h"
+#include "ui/conversation_bubble.h"
 #include "ui/world_pointer_overlay.h"
 
 #include <string.h>
@@ -113,6 +114,10 @@ void sf_gameplay_screen_draw(
     screen->rendered_camera_y != view.camera_y ||
     screen->rendered_hovered_actor_id !=
       game->world.pointer.hovered_actor_id ||
+    screen->rendered_message_id !=
+      game->world.actor_script_state.message_id ||
+    screen->rendered_message_active !=
+      game->world.actor_script_state.message_active ||
     screen->rendered_pointer_x != game->world.pointer.screen_x ||
     screen->rendered_pointer_y != game->world.pointer.screen_y ||
     screen->rendered_pointer_active != game->world.pointer.active ||
@@ -142,6 +147,8 @@ void sf_gameplay_screen_draw(
     interpolation, clip);
   sf_actor_nameplate_draw(
     renderer, assets, &game->world, &view, interpolation);
+  sf_conversation_bubble_draw(
+    renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
@@ -151,6 +158,10 @@ void sf_gameplay_screen_draw(
   screen->rendered_camera_y = view.camera_y;
   screen->rendered_hovered_actor_id =
     game->world.pointer.hovered_actor_id;
+  screen->rendered_message_id =
+    game->world.actor_script_state.message_id;
+  screen->rendered_message_active =
+    game->world.actor_script_state.message_active;
   screen->rendered_pointer_x = game->world.pointer.screen_x;
   screen->rendered_pointer_y = game->world.pointer.screen_y;
   screen->rendered_pointer_active = game->world.pointer.active;

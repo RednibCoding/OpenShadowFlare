@@ -63,13 +63,25 @@ void sf_world_state_bind_collision(
 bool sf_world_state_bind_scenario(
     SfWorldState *world,
     const SfMctScenario *scenario, const SfScsScript *script) {
+  SfScenarioScriptEnvironment environment;
   if (!world || !scenario || !script) return false;
   sf_scenario_actors_init(&world->actors, scenario);
   sf_scenario_actor_script_init(&world->actor_script_state, script);
+  world->scenario = scenario;
   world->script = script;
+  environment = (SfScenarioScriptEnvironment) {
+    scenario, &world->actors, world->player.position,
+    world->player.judgement, world->companion_type};
   return sf_scenario_actor_script_run_periodic(
-    &world->actor_script_state, script,
-    world->companion_type, &world->actors);
+    &world->actor_script_state, script, &environment);
+}
+
+static SfScenarioScriptEnvironment sf_world_script_environment(
+    SfWorldState *world) {
+  const SfScenarioScriptEnvironment environment = {
+    world->scenario, &world->actors, world->player.position,
+    world->player.judgement, world->companion_type};
+  return environment;
 }
 
 static SfWorldPoint sf_world_pointer_target(
@@ -103,6 +115,16 @@ static void sf_world_refresh_pending_actor(SfWorldState *world) {
         actor->position, actor->judgement) <= 0x9f) {
     sf_player_cancel_movement(&world->player);
     world->pointer.pending_actor_id = -1;
+    if (world->script) {
+      const SfScenarioScriptEnvironment environment =
+        sf_world_script_environment(world);
+      (void) sf_scenario_actor_script_start_status(
+        &world->actor_script_state, world->script, 0,
+        sf_scenario_actor_character_number(actor), &environment);
+    }
+    if (!world->actor_script_state.message_active)
+      sf_scenario_actor_release_interaction(actor);
+    world->pointer.hovered_actor_id = -1;
     return;
   }
   sf_player_follow_to(&world->player, actor->position);
@@ -147,11 +169,19 @@ static void sf_world_update_scenario_actors(
   }
 }
 
+static void sf_world_release_actor_interactions(SfWorldState *world) {
+  uint8_t actor_index;
+  for (actor_index = 0u; actor_index < world->actors.count; ++actor_index)
+    sf_scenario_actor_release_interaction(
+      &world->actors.actors[actor_index]);
+}
+
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   SfWorldPointerControl *pointer;
   SfCollisionQuery collision;
   SfScreenPoint player_screen;
   uint8_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
+  bool message_consumed_input;
   if (!world || !world->entered || !input) return;
   pointer = &world->pointer;
   pointer->screen_x = input->pointer_x;
@@ -159,20 +189,36 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   pointer->active = input->pointer_active;
   pointer->hovered_actor_id = input->world_pointer_resolved
     ? input->pointed_actor_id : -1;
-  if (input->pace_toggle_pressed) sf_player_toggle_pace(&world->player);
-  if (input->pointer_primary_down && pointer->ground_command_active) {
+  message_consumed_input = world->actor_script_state.message_active;
+  if (message_consumed_input) {
+    pointer->hovered_actor_id = -1;
+    sf_player_cancel_movement(&world->player);
+    if (input->pointer_primary_pressed || input->confirm_pressed) {
+      const SfScenarioScriptEnvironment environment =
+        sf_world_script_environment(world);
+      (void) sf_scenario_actor_script_resume(
+        &world->actor_script_state, world->script, -1, &environment);
+      if (!world->actor_script_state.message_active)
+        sf_world_release_actor_interactions(world);
+    }
+  }
+  if (!message_consumed_input && input->pace_toggle_pressed)
+    sf_player_toggle_pace(&world->player);
+  if (!message_consumed_input && input->pointer_primary_down &&
+      pointer->ground_command_active) {
     if (input->pointer_primary_pressed) pointer->hold_updates = 1u;
     else if (pointer->hold_updates < UINT8_MAX) ++pointer->hold_updates;
     pointer->continuous_movement = pointer->hold_updates > 9u;
   }
-  if (input->pointer_primary_pressed &&
+  if (!message_consumed_input && input->pointer_primary_pressed &&
       pointer->hovered_actor_id >= 0) {
     pointer->pending_actor_id = pointer->hovered_actor_id;
     pointer->interaction_command_active = true;
     pointer->ground_command_active = false;
     pointer->continuous_movement = false;
     pointer->hold_updates = 0u;
-  } else if ((input->pointer_primary_pressed || input->pointer_primary_down) &&
+  } else if (!message_consumed_input &&
+             (input->pointer_primary_pressed || input->pointer_primary_down) &&
              !pointer->interaction_command_active) {
     const SfWorldPoint target = sf_world_pointer_target(world, input);
     pointer->pending_actor_id = -1;
@@ -212,9 +258,12 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   collision.blocker_count = world->movement_blocker_count;
   sf_world_update_scenario_actors(
     world, actor_blocker_indices, collision);
-  if (world->script) (void) sf_scenario_actor_script_run_periodic(
-    &world->actor_script_state, world->script,
-    world->companion_type, &world->actors);
+  if (world->script) {
+    const SfScenarioScriptEnvironment environment =
+      sf_world_script_environment(world);
+    (void) sf_scenario_actor_script_run_periodic(
+      &world->actor_script_state, world->script, &environment);
+  }
   player_screen = sf_world_to_screen(world->player.position);
   world->camera_x = player_screen.x - 320;
   world->camera_y = player_screen.y - 240;

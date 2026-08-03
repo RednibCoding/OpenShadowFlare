@@ -8,6 +8,30 @@ will move around when the evidence tells us they should.
 The rule is simple: get one small part behaving like the original, test it,
 and only then build the next part on top of it.
 
+## Current track: the small C99 game
+
+The implementation under `shadowflare/` is now the active replacement track.
+It uses the mature `src/SF_EXE/` reconstruction as a strong behavioral
+reference, checks uncertain details against retail, and is intended to replace
+`SF_EXE` once it reaches the same playable coverage.
+
+This version deliberately has a smaller shape: plain C99, fixed caller-owned
+memory, integer game math, TWL/TAL at the platform edge, and an 8 MiB main-RAM
+plus 4 MiB video-memory ceiling. Rendering primitives stay in `render/`, all
+HUD and interface composition stays in `ui/`, and the game must remain easy
+enough for a junior contributor to follow without learning a framework first.
+The standing details and measured screen budgets live in
+`shadowflare/RULES.md` and `shadowflare/README.md`.
+
+The front-end, Remote Town map, player movement, retail PEOPLE actors,
+collision, pointing, and the first script-driven Ostare conversation are live.
+The next slices should keep growing shared systems in dependency order:
+complete conversation choices and native script services, then HUD and panel
+owners, items and saves, scenario travel, combat and companions, and finally
+the remaining `SF_EXE` feature set. A slice is only done after the C99/TWL/TAL
+tests, a release build, a practical check when visible behavior changed, and a
+fresh measured budget when assets changed.
+
 ## Where we are now
 
 The compatibility-DLL milestone is complete. All fourteen DLLs build, reproduce

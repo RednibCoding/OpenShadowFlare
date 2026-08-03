@@ -70,6 +70,7 @@ typedef struct SfRetailPeoplePaths {
 typedef struct SfRetailGamePaths {
   const char *item_database;
   const char *font;
+  const char *speech_frame;
 } SfRetailGamePaths;
 
 extern const SfRetailTitlePaths sf_retail_title_paths;
