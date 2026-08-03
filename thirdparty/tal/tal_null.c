@@ -44,3 +44,11 @@ TalResult tal_backend_update(Tal *tal) {
   (void) tal;
   return TAL_RESULT_BACKEND_UNAVAILABLE;
 }
+
+void tal_backend_lock(Tal *tal) {
+  (void) tal;
+}
+
+void tal_backend_unlock(Tal *tal) {
+  (void) tal;
+}

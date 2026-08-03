@@ -14,6 +14,11 @@ include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
 option(
+  OPENSHADOWFLARE_BUILD_C99_GAME
+  "Build the small C99 ShadowFlare rewrite"
+  ON
+)
+option(
   OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS
   "Compile the F12 debug menu and runtime profiling tools"
   ON
@@ -47,6 +52,10 @@ endif()
 
 if(OPENSHADOWFLARE_BUILD_EXE)
   add_subdirectory(src/SF_EXE)
+endif()
+
+if(OPENSHADOWFLARE_BUILD_C99_GAME)
+  add_subdirectory(shadowflare)
 endif()
 
 if(BUILD_TESTING)

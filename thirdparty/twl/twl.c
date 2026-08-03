@@ -21,6 +21,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef union {
+  void *pointer;
+  uint64_t integer;
+  long double floating_point;
+} TwlNaturalAlignment;
+
 static size_t twl_pixel_size(TwlPixelFormat format) {
   return format == TWL_PIXEL_XRGB8888 ? 4u : 2u;
 }
@@ -66,7 +72,7 @@ TwlConfig twl_config_default(void) {
 }
 
 size_t twl_memory_alignment(void) {
-  const size_t common_alignment = _Alignof(max_align_t);
+  const size_t common_alignment = _Alignof(TwlNaturalAlignment);
   const size_t backend_alignment = twl_backend_memory_alignment();
   return backend_alignment > common_alignment
            ? backend_alignment
