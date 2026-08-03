@@ -76,9 +76,16 @@ Implemented backends are:
 - WebAssembly: HTML canvas, WebGL 2 presentation, browser input, and Gamepad;
 - null: used on targets whose real backend has not been written yet.
 
-Each backend lives in one source file and implements the private contract in
-`twl_internal.h`. Adding another backend does not change `twl.c` or the public
-API.
+Each backend has its own folder under `backends/`. Window lifecycle, input,
+and presentation live in separate source files and share only their backend's
+private `backend.h`. The macOS backend also has a `support.c` file for shared
+Objective-C runtime calls. These are real compilation boundaries: one concern
+cannot reach another concern's file-local helpers or state by accident.
+
+A new platform starts as a new backend folder and implements the private
+contract in `twl_internal.h`. Platform headers and APIs stay inside that
+folder; adding a backend does not change `twl.c` or the public API. The null
+backend is intentionally small enough to remain a single file.
 
 ## Memory guarantees
 

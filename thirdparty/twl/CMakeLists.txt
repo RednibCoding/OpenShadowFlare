@@ -28,12 +28,31 @@ else()
 endif()
 
 if(EMSCRIPTEN)
-  target_sources(twl PRIVATE twl_web.c)
+  target_sources(
+    twl
+    PRIVATE
+      backends/web/input.c
+      backends/web/presentation.c
+      backends/web/window.c
+  )
 elseif(WIN32)
-  target_sources(twl PRIVATE twl_win32.c)
+  target_sources(
+    twl
+    PRIVATE
+      backends/windows/input.c
+      backends/windows/presentation.c
+      backends/windows/window.c
+  )
   target_link_libraries(twl PRIVATE user32 gdi32 xinput9_1_0)
 elseif(APPLE)
-  target_sources(twl PRIVATE twl_macos.c)
+  target_sources(
+    twl
+    PRIVATE
+      backends/macos/input.c
+      backends/macos/presentation.c
+      backends/macos/support.c
+      backends/macos/window.c
+  )
   find_library(TWL_APPKIT_FRAMEWORK AppKit REQUIRED)
   find_library(TWL_GAMECONTROLLER_FRAMEWORK GameController REQUIRED)
   find_library(TWL_OPENGL_FRAMEWORK OpenGL REQUIRED)
@@ -45,10 +64,16 @@ elseif(APPLE)
       "${TWL_OPENGL_FRAMEWORK}"
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_sources(twl PRIVATE twl_x11.c)
+  target_sources(
+    twl
+    PRIVATE
+      backends/linux/input.c
+      backends/linux/presentation.c
+      backends/linux/window.c
+  )
   find_package(X11 REQUIRED)
   find_package(OpenGL REQUIRED)
   target_link_libraries(twl PRIVATE X11::X11 OpenGL::GL)
 else()
-  target_sources(twl PRIVATE twl_null.c)
+  target_sources(twl PRIVATE backends/null/backend.c)
 endif()
