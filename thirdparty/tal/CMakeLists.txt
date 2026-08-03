@@ -18,7 +18,7 @@ add_library(tal STATIC tal.c)
 add_library(Tal::Tal ALIAS tal)
 
 target_include_directories(tal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_compile_features(tal PUBLIC c_std_11)
+target_compile_features(tal PRIVATE c_std_11)
 set_target_properties(tal PROPERTIES C_EXTENSIONS OFF)
 
 if(MSVC)
@@ -29,6 +29,21 @@ endif()
 
 if(EMSCRIPTEN)
   target_sources(tal PRIVATE tal_web.c)
+elseif(WIN32)
+  target_sources(tal PRIVATE tal_winmm.c)
+  target_link_libraries(tal PRIVATE winmm)
+elseif(APPLE)
+  target_sources(tal PRIVATE tal_coreaudio.c)
+  find_library(TAL_AUDIOTOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
+  find_library(TAL_AUDIOUNIT_FRAMEWORK AudioUnit REQUIRED)
+  find_package(Threads REQUIRED)
+  target_link_libraries(
+    tal
+    PRIVATE
+      "${TAL_AUDIOTOOLBOX_FRAMEWORK}"
+      "${TAL_AUDIOUNIT_FRAMEWORK}"
+      Threads::Threads
+  )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(tal PRIVATE tal_alsa.c)
   find_package(ALSA REQUIRED)
