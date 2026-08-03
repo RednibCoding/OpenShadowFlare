@@ -83,7 +83,16 @@ typedef struct SfNjpDecodedReference {
   uint8_t part;
 } SfNjpDecodedReference;
 
+typedef struct SfNjpPatternBounds {
+  int32_t x;
+  int32_t y;
+  int32_t width;
+  int32_t height;
+  bool valid;
+} SfNjpPatternBounds;
+
 typedef struct SfNjpDecodedPattern {
+  SfNjpPatternBounds bounds;
   uint8_t source_index;
   uint8_t palette;
   uint8_t first_reference;
@@ -100,15 +109,8 @@ typedef struct SfNjpDecodedResource {
   uint8_t reference_count;
   uint8_t pattern_count;
   uint8_t palette_count;
+  bool is_shadow;
 } SfNjpDecodedResource;
-
-typedef struct SfNjpPatternBounds {
-  int32_t x;
-  int32_t y;
-  int32_t width;
-  int32_t height;
-  bool valid;
-} SfNjpPatternBounds;
 
 typedef struct SfNjpSparsePattern {
   SfNjpPatternImage image;

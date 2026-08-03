@@ -151,9 +151,9 @@ the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 2,693,504 bytes of the main
-arena, leaving 4,646,528 bytes free. Its map- and player-scoped data and
-artwork account for 2,370,865 bytes. GND rendering data is decoded directly
+The complete Remote Town gameplay screen uses 2,708,864 bytes of the main
+arena, leaving 4,631,168 bytes free. Its map- and player-scoped data and
+artwork account for 2,386,225 bytes. GND rendering data is decoded directly
 from its compressed three-plane stream into two bytes per tile, so the 300x300
 town grid occupies 180,000 bytes instead of retaining the 540,000-byte source
 layout.
@@ -170,9 +170,12 @@ scenario-specific asset list. When a map is entered, the loader scans its own
 ground cells and OBL objects once and retains every referenced NJP/SDW pattern
 and palette. Camera movement therefore performs no file access and cannot
 reveal unloaded tiles or scenery. The static world is then drawn in the retail
-ground, non-default shadow/object, and default shadow/object passes. The hero
-joins those same sorted passes using the retail player judgement box, so gates,
-walls, roofs, and ordinary scenery can appear on the correct side of the actor.
+ground, non-default shadow/object, and default shadow/object passes. Authored
+NJP bounds cull the current viewport before sorting, and the NJP header must
+identify a resource as a real shadow before it can enter a shadow pass. The
+hero joins those same sorted passes using the retail player judgement box, so
+gates, walls, roofs, and ordinary scenery can appear on the correct side of the
+actor.
 
 The player archives are deliberately not loaded whole. The male NJP alone
 would expand to more than 20 MiB. A two-pass sparse loader scans the large file

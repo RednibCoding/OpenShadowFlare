@@ -51,6 +51,10 @@ typedef struct SfNjpReferenceMeta {
 } SfNjpReferenceMeta;
 
 typedef struct SfNjpPatternMeta {
+  int32_t x;
+  int32_t y;
+  int32_t width;
+  int32_t height;
   uint16_t first_reference;
   uint16_t reference_count;
   int32_t default_palette;
@@ -174,8 +178,9 @@ static bool sf_njp_parse(FILE *file, SfNjpMeta *meta) {
     int32_t reference;
     if (!sf_i32(file, &references) || references < 0 ||
         references > (int32_t) (SF_NJP_REFERENCE_LIMIT - meta->reference_count) ||
-        !sf_i32(file, &ignored) || !sf_i32(file, &ignored) ||
-        !sf_i32(file, &ignored) || !sf_i32(file, &ignored)) return false;
+        !sf_i32(file, &pattern->x) || !sf_i32(file, &pattern->y) ||
+        !sf_i32(file, &pattern->width) ||
+        !sf_i32(file, &pattern->height)) return false;
     if (meta->united && !sf_skip(file, 0xa8)) return false;
     pattern->default_palette = -1;
     if (meta->version > 0u && !sf_i32(file, &pattern->default_palette))
@@ -371,6 +376,7 @@ bool sf_njp_load_decoded_patterns(
   if (!file) return false;
   memset(output, 0, sizeof(*output));
   if (!sf_njp_parse(file, &meta)) goto done;
+  output->is_shadow = meta.shadow;
   memset(palette_slots, -1, sizeof(palette_slots));
   for (selected = 0u; selected < pattern_count; ++selected) {
     const uint8_t source_pattern = pattern_indices[selected];
@@ -412,6 +418,12 @@ bool sf_njp_load_decoded_patterns(
         pattern->reference_count > SF_NJP_DECODED_REFERENCE_LIMIT -
           output->reference_count) goto done;
     decoded_pattern = &output->patterns[output->pattern_count++];
+    decoded_pattern->bounds.x = pattern->x;
+    decoded_pattern->bounds.y = pattern->y;
+    decoded_pattern->bounds.width = pattern->width;
+    decoded_pattern->bounds.height = pattern->height;
+    decoded_pattern->bounds.valid =
+      pattern->width > 0 && pattern->height > 0;
     decoded_pattern->source_index = source_pattern;
     decoded_pattern->palette =
       (uint8_t) palette_slots[pattern->default_palette];
@@ -487,38 +499,11 @@ bool sf_njp_read_pattern_bounds(
        ++pattern_index) {
     const SfNjpPatternMeta *pattern = &meta.patterns[pattern_index];
     SfNjpPatternBounds *output = &bounds[pattern_index];
-    uint16_t reference_index;
-    int64_t left = INT32_MAX;
-    int64_t top = INT32_MAX;
-    int64_t right = INT32_MIN;
-    int64_t bottom = INT32_MIN;
-    for (reference_index = 0u; reference_index < pattern->reference_count;
-         ++reference_index) {
-      const SfNjpReferenceMeta *reference =
-        &meta.references[pattern->first_reference + reference_index];
-      const SfNjpPartMeta *part;
-      int64_t reference_right;
-      int64_t reference_bottom;
-      if (reference->part < 0 || reference->part >= meta.part_count ||
-          reference->scale_x != 1000 || reference->scale_y != 1000)
-        goto done;
-      part = &meta.parts[reference->part];
-      reference_right = (int64_t) reference->x + part->width;
-      reference_bottom = (int64_t) reference->y + part->height;
-      if (reference->x < left) left = reference->x;
-      if (reference->y < top) top = reference->y;
-      if (reference_right > right) right = reference_right;
-      if (reference_bottom > bottom) bottom = reference_bottom;
-    }
-    if (pattern->reference_count > 0u) {
-      if (left < INT32_MIN || top < INT32_MIN || right > INT32_MAX ||
-          bottom > INT32_MAX || right <= left || bottom <= top) goto done;
-      output->x = (int32_t) left;
-      output->y = (int32_t) top;
-      output->width = (int32_t) (right - left);
-      output->height = (int32_t) (bottom - top);
-      output->valid = true;
-    }
+    output->x = pattern->x;
+    output->y = pattern->y;
+    output->width = pattern->width;
+    output->height = pattern->height;
+    output->valid = pattern->width > 0 && pattern->height > 0;
   }
   *pattern_count = meta.pattern_count;
   success = true;

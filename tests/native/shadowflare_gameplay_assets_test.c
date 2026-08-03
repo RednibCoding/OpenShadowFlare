@@ -21,6 +21,8 @@
 #include "core/memory_budget.h"
 #include "data/pattern_list.h"
 #include "game/player.h"
+#include "game/world.h"
+#include "screens/gameplay_screen.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -47,11 +49,13 @@ static int check_pattern(
     const SfGameplayAssets *assets, int32_t set, int32_t pattern,
     const char *kind) {
   const SfNjpDecodedResource *resource;
+  const SfNjpDecodedPattern *decoded;
   if (set < 0 || set > UINT8_MAX || pattern < 0 || pattern > UINT8_MAX)
     return 0;
   resource = sf_gameplay_pattern_set(assets, (uint8_t) set);
-  if (resource && sf_njp_decoded_pattern(resource, (uint8_t) pattern))
-    return 0;
+  decoded = resource
+    ? sf_njp_decoded_pattern(resource, (uint8_t) pattern) : NULL;
+  if (decoded && decoded->bounds.valid) return 0;
   fprintf(stderr, "Remote Town is missing %s pattern %d:%d\n",
     kind, (int) set, (int) pattern);
   return 1;
@@ -60,8 +64,10 @@ static int check_pattern(
 int main(void) {
 #if defined(OPENSHADOWFLARE_SOURCE_DIR)
   SfGameplayAssets assets;
+  SfGameplayScreen screen;
   SfPatternList patterns;
   SfPlayerState player;
+  SfWorldState world;
   SfArena arena;
   char root[1024];
   char probe_path[1024];
@@ -93,6 +99,15 @@ int main(void) {
     fprintf(stderr, "Remote Town gameplay assets did not fit the game arena\n");
     return 1;
   }
+  for (index = 0u; index < assets.pattern_set_count; ++index) {
+    const SfGameplayPatternSet *set = &assets.pattern_sets[index];
+    if (set->source_index >= patterns.count ||
+        set->resource.is_shadow !=
+          (is_shadow_name(patterns.names[set->source_index]) != 0)) {
+      fprintf(stderr, "Remote Town pattern-set type does not match its NJP\n");
+      return 1;
+    }
+  }
   for (y = 0; y < assets.ground.height; ++y) {
     int32_t x;
     for (x = 0; x < assets.ground.width; ++x) {
@@ -120,6 +135,17 @@ int main(void) {
         return 1;
       }
     }
+  }
+  sf_world_state_init(&world, 0, 0, player.gender);
+  sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+  sf_world_state_enter(
+    &world, assets.entry.world_x, assets.entry.world_y,
+    (uint8_t) assets.entry.direction);
+  if (!sf_gameplay_screen_init(&screen, &assets, &world) ||
+      screen.visible_count != 22u || screen.shadow_count != 10u) {
+    fprintf(stderr,
+      "Remote Town viewport culling changed before retail depth sorting\n");
+    return 1;
   }
 #endif
   return 0;

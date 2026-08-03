@@ -36,8 +36,25 @@ static const SfNjpDecodedPattern *sf_gameplay_object_pattern(
   if (set < 0 || set > UINT8_MAX || object->pattern < 0 ||
       object->pattern > UINT8_MAX) return NULL;
   *resource = sf_gameplay_pattern_set(assets, (uint8_t) set);
-  return *resource
-    ? sf_njp_decoded_pattern(*resource, (uint8_t) object->pattern) : NULL;
+  if (!*resource || (*resource)->is_shadow != shadow) return NULL;
+  return sf_njp_decoded_pattern(*resource, (uint8_t) object->pattern);
+}
+
+static bool sf_gameplay_object_visible(
+    const SfNjpDecodedPattern *pattern, const SfMapObject *object,
+    const SfWorldState *world, bool shadow) {
+  SfScreenPoint anchor;
+  int64_t left;
+  int64_t top;
+  if (!pattern->bounds.valid) return false;
+  anchor = sf_world_to_screen(
+    (SfWorldPoint) {object->world_x, object->world_y});
+  left = (int64_t) anchor.x - world->camera_x + pattern->bounds.x;
+  top = (int64_t) anchor.y - world->camera_y + pattern->bounds.y;
+  if (!shadow) top -= object->height * 20 / 100;
+  return left < SF_FRAME_WIDTH && top < SF_FRAME_HEIGHT &&
+    left + pattern->bounds.width > 0 &&
+    top + pattern->bounds.height > 0;
 }
 
 static uint16_t sf_gameplay_collect_objects(
@@ -50,9 +67,12 @@ static uint16_t sf_gameplay_collect_objects(
        ++object_index) {
     const SfMapObject *object = &assets->objects.objects[object_index];
     const SfNjpDecodedResource *resource = NULL;
+    const SfNjpDecodedPattern *pattern;
     if (shadow && (object->status & 8) == 0) continue;
-    if (!sf_gameplay_object_pattern(
-          assets, object, shadow, &resource)) continue;
+    pattern = sf_gameplay_object_pattern(
+      assets, object, shadow, &resource);
+    if (!pattern || !sf_gameplay_object_visible(
+          pattern, object, world, shadow)) continue;
     if (count >= SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT) return UINT16_MAX;
     entries[count].position.x = object->world_x;
     entries[count].position.y = object->world_y;
