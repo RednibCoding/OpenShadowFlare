@@ -27,7 +27,12 @@ public:
     }
 
     bool initialize(LwlWindow* window, std::string* error) override;
-    void present(osf::gapi::SurfaceView surface) override;
+    void prepareFrame(osf::gapi::SurfaceView surface) override;
+    void displayFrame() override;
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override;
+#endif
 
 private:
     void shutdown();
@@ -35,6 +40,7 @@ private:
     std::uint32_t* buffers_ = nullptr;
     int back_buffer_ = 0;
     bool initialized_ = false;
+    bool frame_prepared_ = false;
 };
 
 bool VitaSurfacePresenter::initialize(
@@ -77,7 +83,8 @@ bool VitaSurfacePresenter::initialize(
     return true;
 }
 
-void VitaSurfacePresenter::present(osf::gapi::SurfaceView surface) {
+void VitaSurfacePresenter::prepareFrame(osf::gapi::SurfaceView surface) {
+    frame_prepared_ = false;
     static_assert(
         sizeof(osf::gapi::Color) == sizeof(std::uint32_t),
         "GAPI colors must be tightly packed RGBA bytes.");
@@ -117,10 +124,31 @@ void VitaSurfacePresenter::present(osf::gapi::SurfaceView surface) {
     frameBuffer.pixelformat = SCE_DISPLAY_PIXELFORMAT_A8B8G8R8;
     frameBuffer.width = kScreenWidth;
     frameBuffer.height = kScreenHeight;
-    sceDisplaySetFrameBuf(&frameBuffer, SCE_DISPLAY_SETBUF_NEXTFRAME);
+    if (sceDisplaySetFrameBuf(
+            &frameBuffer, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0) {
+        return;
+    }
+    frame_prepared_ = true;
+}
+
+void VitaSurfacePresenter::displayFrame() {
+    if (!initialized_ || !frame_prepared_) {
+        return;
+    }
     sceDisplayWaitVblankStart();
     back_buffer_ = 1 - back_buffer_;
+    frame_prepared_ = false;
 }
+
+#if OSF_ENABLE_DEBUG_TOOLS
+std::optional<std::uint64_t>
+VitaSurfacePresenter::videoMemoryUsageBytes() const {
+    if (!initialized_) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint64_t>(kBufferBytes) * 2;
+}
+#endif
 
 void VitaSurfacePresenter::shutdown() {
     if (buffers_) {
@@ -129,6 +157,7 @@ void VitaSurfacePresenter::shutdown() {
     }
     back_buffer_ = 0;
     initialized_ = false;
+    frame_prepared_ = false;
 }
 
 }  // namespace
