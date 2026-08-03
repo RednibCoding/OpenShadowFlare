@@ -45,8 +45,9 @@ FAT32 USB drive/
     ...
 ```
 
-PCSX2 maps its ISO folder to the `host0:` device. The PS2 ISO includes the
-USB drivers required to use `mass:` on hardware. Copy the owned game data:
+In PCSX2, enable **Settings > Emulation > Enable Host Filesystem**. PCSX2
+then maps its ISO folder to the `host:` device. The PS2 ISO includes the USB
+drivers required to use `mass:` on hardware. Copy the owned game data:
 
 ```sh
 # PCSX2: copy next to build/ps2/openshadowflare.iso.
