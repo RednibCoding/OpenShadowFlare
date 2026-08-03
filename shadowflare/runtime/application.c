@@ -20,6 +20,7 @@
 #include "runtime/application.h"
 
 #include "assets/title_assets.h"
+#include "assets/retail_paths.h"
 #include "core/arena.h"
 #include "core/memory_budget.h"
 #include "game/game.h"
@@ -120,7 +121,7 @@ static void sf_play_title_events(
 int sf_application_run(
     void *main_memory, size_t main_memory_size,
     void *video_memory, size_t video_memory_size,
-    const char *data_root) {
+    const char *executable_path, const char *requested_data_root) {
   SfArena main_arena;
   SfArena video_arena;
   SfRenderer renderer;
@@ -142,11 +143,21 @@ int sf_application_run(
   size_t window_bytes;
   size_t audio_bytes;
   uint64_t next_frame;
+  char data_root[SF_RETAIL_PATH_CAPACITY];
   bool running = true;
 
   if (!main_memory || main_memory_size > SF_MAIN_ARENA_BYTES ||
       !video_memory || video_memory_size > SF_VIDEO_MEMORY_LIMIT_BYTES)
     return 1;
+  if (!sf_retail_root_find(
+        data_root, sizeof(data_root),
+        executable_path, requested_data_root)) {
+    fprintf(stderr,
+      "Could not find the retail ShadowFlare data. Put osf in the original "
+      "game folder, keep the development copy in tmp/ShadowFlare, or pass "
+      "the game folder as the first argument.\n");
+    return 1;
+  }
   sf_arena_init(&main_arena, main_memory, main_memory_size);
   sf_arena_init(&video_arena, video_memory, video_memory_size);
 
@@ -187,7 +198,7 @@ int sf_application_run(
         title_assets, data_root, &main_arena,
         decode_scratch, SF_TITLE_DECODE_SCRATCH_BYTES)) {
     fprintf(stderr, "Could not load the retail title assets from '%s'.\n",
-      data_root ? data_root : "");
+      data_root);
     if (audio) tal_shutdown(audio);
     twl_shutdown(window);
     return 3;

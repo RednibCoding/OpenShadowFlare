@@ -20,6 +20,11 @@
 #ifndef SHADOWFLARE_ASSETS_RETAIL_PATHS_H
 #define SHADOWFLARE_ASSETS_RETAIL_PATHS_H
 
+#include <stdbool.h>
+#include <stddef.h>
+
+#define SF_RETAIL_PATH_CAPACITY 1024u
+
 typedef struct SfRetailTitlePaths {
   const char *artwork;
   const char *smoke_artwork_format;
@@ -29,5 +34,11 @@ typedef struct SfRetailTitlePaths {
 } SfRetailTitlePaths;
 
 extern const SfRetailTitlePaths sf_retail_title_paths;
+
+bool sf_retail_path_join(
+  char *path, size_t capacity, const char *root, const char *relative);
+bool sf_retail_root_find(
+  char *root, size_t capacity,
+  const char *executable_path, const char *requested_root);
 
 #endif

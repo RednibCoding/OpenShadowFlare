@@ -71,15 +71,19 @@ The executable is built at `build/<platform>/<config>/shadowflare/osf` (or
 `ShadowFlare_rebuilt`, so it is always clear which implementation is being
 tested.
 
-Run it from the repository root so the default `tmp/ShadowFlare` data path is
-available:
+The executable first looks for the retail `System` folder beside itself. This
+means a release can be copied directly into an original ShadowFlare install.
+Development builds also find `tmp/ShadowFlare` from their standard
+`build/<platform>/<config>/shadowflare/` folder, so they can be started by
+double-clicking without changing the working directory:
 
 ```sh
 ./build/linux/debug/shadowflare/osf
 ```
 
-An unpacked retail data directory can also be passed explicitly as the first
-argument.
+An unpacked retail game directory can still be passed explicitly as the first
+argument. An explicit path is never silently replaced by an automatic one if
+it is invalid.
 
 ## Current title budget
 

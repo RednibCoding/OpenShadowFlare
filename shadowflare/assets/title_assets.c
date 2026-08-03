@@ -24,26 +24,20 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool sf_title_path(
-    char *path, size_t capacity, const char *root, const char *relative) {
-  const int length = snprintf(path, capacity, "%s/%s", root, relative);
-  return length > 0 && (size_t) length < capacity;
-}
-
 bool sf_title_assets_load(
     SfTitleAssets *assets, const char *data_root, SfArena *arena,
     void *decode_scratch, size_t decode_scratch_size) {
   static const uint8_t title_patterns[4] = {0u, 1u, 2u, 3u};
   static const uint16_t sound_indices[SF_TITLE_SOUND_COUNT] = {56u, 58u, 62u};
   static const uint16_t music_index = 0u;
-  char path[512];
+  char path[SF_RETAIL_PATH_CAPACITY];
   size_t mark;
   unsigned smoke;
   if (!assets || !data_root || !data_root[0] || !arena || !decode_scratch ||
       decode_scratch_size < SF_TITLE_DECODE_SCRATCH_BYTES) return false;
   mark = sf_arena_mark(arena);
   memset(assets, 0, sizeof(*assets));
-  if (!sf_title_path(path, sizeof(path), data_root,
+  if (!sf_retail_path_join(path, sizeof(path), data_root,
         sf_retail_title_paths.artwork) ||
       !sf_njp_load_selected(
         path, title_patterns, 4u, arena, &assets->artwork)) goto failed;
@@ -54,14 +48,14 @@ bool sf_title_assets_load(
     int length = snprintf(relative, sizeof(relative),
       sf_retail_title_paths.smoke_artwork_format, smoke);
     if (length <= 0 || (size_t) length >= sizeof(relative) ||
-        !sf_title_path(path, sizeof(path), data_root, relative) ||
+        !sf_retail_path_join(path, sizeof(path), data_root, relative) ||
         !sf_njp_load_animation(path, arena, &asset->images) ||
         !sf_njp_find_blank_frames(
           &asset->images, decode_scratch, decode_scratch_size)) goto failed;
     length = snprintf(relative, sizeof(relative),
       sf_retail_title_paths.smoke_animation_format, smoke);
     if (length <= 0 || (size_t) length >= sizeof(relative) ||
-        !sf_title_path(path, sizeof(path), data_root, relative) ||
+        !sf_retail_path_join(path, sizeof(path), data_root, relative) ||
         !sf_caf_load_first_chart_direction(path, 8u, &asset->animation) ||
         asset->animation.frame_count != asset->images.frame_count) goto failed;
     for (frame = 0u; frame < asset->animation.frame_count; ++frame) {
@@ -74,11 +68,11 @@ bool sf_title_assets_load(
       }
     }
   }
-  if (!sf_title_path(path, sizeof(path), data_root,
+  if (!sf_retail_path_join(path, sizeof(path), data_root,
         sf_retail_title_paths.music) ||
       !sf_voc_load_u8_mono_samples(
         path, &music_index, 1u, arena, &assets->music) ||
-      !sf_title_path(path, sizeof(path), data_root,
+      !sf_retail_path_join(path, sizeof(path), data_root,
         sf_retail_title_paths.common_sounds) ||
       !sf_voc_load_u8_mono_samples(
         path, sound_indices, SF_TITLE_SOUND_COUNT, arena, assets->sounds))
