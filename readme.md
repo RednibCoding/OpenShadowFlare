@@ -245,6 +245,13 @@ Win32 DLL binaries. The tested compatibility reconstructions live separately
 in `src/reconstructed` and remain the reference as their behavior is brought
 into the portable executable piece by piece.
 
+There is also an early low-memory platform layer under `thirdparty/twl` and
+`thirdparty/tal`. Those libraries are being built for TinyFlare: they use
+caller-owned memory, keep their common C11 code freestanding-friendly, and can
+present a packed RGB555 framebuffer without converting it on the CPU. SF_EXE
+still uses LWL and LAL for now, so this work can settle without disrupting the
+playable build.
+
 ### Web (WebAssembly) build
 
 Install Emscripten with [emsdk](https://github.com/emscripten-core/emsdk)

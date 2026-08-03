@@ -37,6 +37,8 @@ set_property(
 
 add_subdirectory(thirdparty/lwl)
 add_subdirectory(thirdparty/lal)
+add_subdirectory(thirdparty/twl)
+add_subdirectory(thirdparty/tal)
 if(
     NOT PLATFORM_PS2
     AND (OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl" OR BUILD_TESTING))
