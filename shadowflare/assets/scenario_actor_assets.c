@@ -27,6 +27,7 @@
 typedef struct SfScenarioActorRequest {
   int32_t resource_id;
   uint8_t enabled_parts;
+  uint8_t animation_count;
 } SfScenarioActorRequest;
 
 static bool sf_scenario_actor_path(
@@ -72,6 +73,11 @@ static bool sf_scenario_actor_requests(
     }
     requests[request].enabled_parts = (uint8_t) (
       requests[request].enabled_parts | enabled);
+    if (person->wandering_enabled && person->walk_speed > 0 &&
+        person->walk_duration > 0)
+      requests[request].animation_count = SF_SCENARIO_ACTOR_ANIMATION_COUNT;
+    else if (requests[request].animation_count == 0u)
+      requests[request].animation_count = 1u;
   }
   return *request_count > 0u;
 }
@@ -91,7 +97,8 @@ static bool sf_scenario_actor_add_pattern(
 static bool sf_scenario_actor_visual_load(
     SfScenarioActorVisual *visual, const char *data_root,
     SfScenarioActorRequest request, SfArena *arena) {
-  SfCafAnimationSelection selections[SF_SCENARIO_ACTOR_DIRECTION_COUNT];
+  SfCafAnimationSelection selections[
+    SF_SCENARIO_ACTOR_ANIMATION_COUNT * SF_SCENARIO_ACTOR_DIRECTION_COUNT];
   uint8_t selected_parts[SF_MCT_PERSON_PART_LIMIT];
   int32_t artwork_patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
   int32_t shadow_patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
@@ -100,6 +107,7 @@ static bool sf_scenario_actor_visual_load(
   char path[SF_RETAIL_PATH_CAPACITY];
   uint8_t available_parts = UINT8_MAX;
   uint8_t selected_count = 0u;
+  uint8_t animation;
   uint8_t direction;
   uint8_t part;
   memset(visual, 0, sizeof(*visual));
@@ -108,14 +116,18 @@ static bool sf_scenario_actor_visual_load(
         path, sizeof(path), data_root,
         sf_retail_people_paths.animation_format, request.resource_id))
     return false;
-  for (direction = 0u; direction < SF_SCENARIO_ACTOR_DIRECTION_COUNT;
-       ++direction) {
-    uint8_t count;
-    if (!sf_caf_chart_direction_part_count(path, 0u, direction, &count))
-      return false;
-    if (count < available_parts) available_parts = count;
-    selections[direction].chart = 0u;
-    selections[direction].direction = direction;
+  for (animation = 0u; animation < request.animation_count; ++animation) {
+    for (direction = 0u; direction < SF_SCENARIO_ACTOR_DIRECTION_COUNT;
+         ++direction) {
+      const uint8_t selection = (uint8_t) (
+        animation * SF_SCENARIO_ACTOR_DIRECTION_COUNT + direction);
+      uint8_t count;
+      if (!sf_caf_chart_direction_part_count(
+            path, animation, direction, &count)) return false;
+      if (count < available_parts) available_parts = count;
+      selections[selection].chart = animation;
+      selections[selection].direction = direction;
+    }
   }
   if (available_parts > SF_MCT_PERSON_PART_LIMIT)
     available_parts = SF_MCT_PERSON_PART_LIMIT;
@@ -124,23 +136,28 @@ static bool sf_scenario_actor_visual_load(
       selected_parts[selected_count++] = part;
   }
   if (selected_count == 0u || !sf_caf_load_selected_animations(
-        path, selections, SF_SCENARIO_ACTOR_DIRECTION_COUNT,
-        selected_parts, selected_count, arena, visual->animations))
+        path, selections,
+        (uint8_t) (request.animation_count *
+          SF_SCENARIO_ACTOR_DIRECTION_COUNT),
+        selected_parts, selected_count, arena, &visual->animations[0][0]))
     return false;
-  for (direction = 0u; direction < SF_SCENARIO_ACTOR_DIRECTION_COUNT;
-       ++direction) {
-    const SfCafSelectedAnimation *animation = &visual->animations[direction];
-    for (part = 0u; part < animation->part_count; ++part) {
-      uint16_t frame;
-      visual->selected_parts = (uint8_t) (
-        visual->selected_parts |
-        (uint8_t) (1u << animation->parts[part].source_index));
-      for (frame = 0u; frame < animation->frame_count; ++frame) {
-        const SfCafCell *cell = &animation->parts[part].cells[frame];
-        if (((cell->status & 8) == 0 && !sf_scenario_actor_add_pattern(
-              artwork_patterns, &artwork_count, cell->pattern)) ||
-            ((cell->status & 8) != 0 && !sf_scenario_actor_add_pattern(
-              shadow_patterns, &shadow_count, cell->pattern))) return false;
+  for (animation = 0u; animation < request.animation_count; ++animation) {
+    for (direction = 0u; direction < SF_SCENARIO_ACTOR_DIRECTION_COUNT;
+         ++direction) {
+      const SfCafSelectedAnimation *selected =
+        &visual->animations[animation][direction];
+      for (part = 0u; part < selected->part_count; ++part) {
+        uint16_t frame;
+        visual->selected_parts = (uint8_t) (
+          visual->selected_parts |
+          (uint8_t) (1u << selected->parts[part].source_index));
+        for (frame = 0u; frame < selected->frame_count; ++frame) {
+          const SfCafCell *cell = &selected->parts[part].cells[frame];
+          if (((cell->status & 8) == 0 && !sf_scenario_actor_add_pattern(
+                artwork_patterns, &artwork_count, cell->pattern)) ||
+              ((cell->status & 8) != 0 && !sf_scenario_actor_add_pattern(
+                shadow_patterns, &shadow_count, cell->pattern))) return false;
+        }
       }
     }
   }

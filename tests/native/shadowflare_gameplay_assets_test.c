@@ -101,6 +101,7 @@ static int test_scenario_actors(
     13, 8, 9, 1000000, 1000000, 1000000, 1000001
   };
   uint8_t index;
+  SfCollisionQuery collision;
   if (assets->scenario.people_count != 7u ||
       assets->actors.visual_count != 5u || !assets->script ||
       assets->script->temporary_flag_count != 66u ||
@@ -125,7 +126,7 @@ static int test_scenario_actors(
       return 1;
     }
     for (direction = 0u; direction < 8u; ++direction) {
-      if (visual->animations[direction].frame_count == 0u) {
+      if (visual->animations[0][direction].frame_count == 0u) {
         fprintf(stderr, "Remote Town actor %u has an empty idle direction\n",
           (unsigned) index);
         return 1;
@@ -165,9 +166,48 @@ static int test_scenario_actors(
       return 1;
     }
   }
-  sf_scenario_actors_update(&world->actors);
-  if (world->actors.actors[0].animation_frame != 1u) {
+  if (sf_scenario_actor_visual(&assets->actors, 13)->animations[1][0].frame_count
+        == 0u ||
+      sf_scenario_actor_visual(&assets->actors, 8)->animations[1][0].frame_count
+        != 0u) {
+    fprintf(stderr, "Remote Town actor walk assets are not loaded sparsely\n");
+    return 1;
+  }
+  collision.world = &world->collision;
+  collision.blockers = NULL;
+  collision.ignored_blocker_id = 0;
+  collision.blocker_count = 0u;
+  sf_scenario_actor_update(&world->actors.actors[0], &collision);
+  if (world->actors.actors[0].animation_chart != 0u ||
+      world->actors.actors[0].animation_frame != 0u ||
+      world->actors.actors[0].position.x != 91467 ||
+      world->actors.actors[0].position.y != 1532) {
+    fprintf(stderr, "Ostare did not begin with the retail idle frame\n");
+    return 1;
+  }
+  sf_scenario_actor_update(&world->actors.actors[0], &collision);
+  if (world->actors.actors[0].animation_chart != 0u ||
+      world->actors.actors[0].animation_frame != 1u) {
     fprintf(stderr, "Remote Town actors do not animate at update cadence\n");
+    return 1;
+  }
+  for (index = 2u; index < 30u; ++index)
+    sf_scenario_actor_update(&world->actors.actors[0], &collision);
+  if (world->actors.actors[0].animation_chart != 0u ||
+      world->actors.actors[0].position.x != 91467 ||
+      world->actors.actors[0].position.y != 1532) {
+    fprintf(stderr, "Ostare left before the authored idle duration\n");
+    return 1;
+  }
+  sf_scenario_actor_update(&world->actors.actors[0], &collision);
+  if (world->actors.actors[0].animation_chart != 1u ||
+      (world->actors.actors[0].position.x == 91467 &&
+       world->actors.actors[0].position.y == 1532) ||
+      world->actors.actors[0].destination.x < 91030 ||
+      world->actors.actors[0].destination.x > 91736 ||
+      world->actors.actors[0].destination.y < 1309 ||
+      world->actors.actors[0].destination.y > 1763) {
+    fprintf(stderr, "Ostare did not begin the authored retail wander\n");
     return 1;
   }
   return 0;

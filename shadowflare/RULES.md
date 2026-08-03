@@ -53,6 +53,16 @@ boundaries instead of complicating ordinary game code now.
 ## Code and boundaries
 
 - Game code is straightforward C99. Do not add C++.
+- Write for the next person reading the code, including someone early in their
+  career. Prefer explicit names, short functions, ordinary control flow, and a
+  visible data path over clever macros, hidden mutation, generic frameworks,
+  or compressed tricks. A junior developer should be able to follow a feature
+  from decoded data, through game state, to presentation without first
+  learning a private architecture vocabulary.
+- Keep abstractions earned and small. Introduce a type or layer when it owns a
+  real lifetime, rule, or boundary; do not introduce one only to avoid a direct
+  function call. When retail behavior is surprising, add a short comment that
+  explains the recovered reason rather than narrating obvious C syntax.
 - Do not recreate the old DLL folder structure or one static library per DLL.
   Reconstructed DLLs and `SF_EXE` are behavioral references, not the new
   architecture.
@@ -69,6 +79,16 @@ boundaries instead of complicating ordinary game code now.
   operations. Title, loading, load/save, and gameplay screens belong there.
 - `render/` contains only the small render API and its reusable primitives;
   it must not accumulate game screens.
+- `ui/` owns every HUD, panel, button, tooltip, conversation bubble, overlay,
+  and other game-interface component. It may turn game state into draw calls
+  and input into UI intent, but it does not own gameplay rules.
+- `screens/` owns complete screen lifetimes, transitions, and high-level
+  composition. A screen may arrange world presentation and components from
+  `ui/`; it must not grow its own private HUD or conversation implementation.
+- `render/` must never contain UI-specific layout, text, input handling, HUD
+  state, menu state, or conversation behavior. It provides reusable drawing
+  operations only. This rule applies even when putting UI code beside a
+  renderer would save a small function call.
 - TWL and TAL belong at the outer runtime boundary only.
 - Platform SDK headers and operating-system calls stay out of `shadowflare/`.
   Future target adapters belong outside the game folder.

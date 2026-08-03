@@ -40,5 +40,9 @@ SfRouteStep sf_route_advance(
   SfRouteController *controller, const SfCollisionWorld *world,
   SfObjectBounds bounds, SfWorldPoint position,
   SfWorldPoint destination, uint32_t speed);
+SfRouteStep sf_route_advance_query(
+  SfRouteController *controller, const SfCollisionQuery *query,
+  SfObjectBounds bounds, SfWorldPoint position,
+  SfWorldPoint destination, uint32_t speed);
 
 #endif

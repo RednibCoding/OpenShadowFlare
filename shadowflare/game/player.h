@@ -71,5 +71,7 @@ SfWorldPoint sf_player_render_position(
   const SfPlayerState *player, uint16_t interpolation);
 void sf_player_update(
   SfPlayerState *player, const SfCollisionWorld *collision);
+void sf_player_update_query(
+  SfPlayerState *player, const SfCollisionQuery *collision);
 
 #endif

@@ -28,8 +28,8 @@ void sf_route_reset(SfRouteController *controller) {
   controller->wall = SF_CARDINAL_NONE;
 }
 
-SfRouteStep sf_route_advance(
-    SfRouteController *controller, const SfCollisionWorld *world,
+SfRouteStep sf_route_advance_query(
+    SfRouteController *controller, const SfCollisionQuery *query,
     SfObjectBounds bounds, SfWorldPoint position,
     SfWorldPoint destination, uint32_t speed) {
   SfWorldPoint attempted;
@@ -46,8 +46,8 @@ SfRouteStep sf_route_advance(
   if (controller->movement == SF_CARDINAL_NONE) {
     attempted = sf_movement_step_toward(
       position, destination, speed).position;
-    sweep = sf_collision_sweep(
-      world, position, attempted, bounds, SF_CARDINAL_NONE);
+    sweep = sf_collision_query_sweep(
+      query, position, attempted, bounds, SF_CARDINAL_NONE);
     if (!sweep.collided) return (SfRouteStep) {
       sweep.position,
       sweep.position.x == destination.x && sweep.position.y == destination.y,
@@ -55,7 +55,7 @@ SfRouteStep sf_route_advance(
       true, false};
     {
       const SfRouteEdgeState edge = sf_route_initial_edge(
-        world, bounds, position, attempted, sweep.position);
+        query, bounds, position, attempted, sweep.position);
       if (edge.movement == SF_CARDINAL_NONE) {
         if (sweep.position.x != position.x || sweep.position.y != position.y)
           return (SfRouteStep) {
@@ -81,8 +81,8 @@ SfRouteStep sf_route_advance(
     const SfWorldPoint edge_target = {
       position.x + vector.x * (int32_t) speed,
       position.y + vector.y * (int32_t) speed};
-    sweep = sf_collision_sweep(
-      world, position, edge_target, bounds, controller->wall);
+    sweep = sf_collision_query_sweep(
+      query, position, edge_target, bounds, controller->wall);
     if (sweep.position.x == position.x && sweep.position.y == position.y) {
       const SfCardinalDirection previous_movement = controller->movement;
       controller->movement = sf_cardinal_opposite(controller->wall);
@@ -101,4 +101,13 @@ SfRouteStep sf_route_advance(
       sweep.position.x == destination.x && sweep.position.y == destination.y,
       true, true, sweep.collided};
   }
+}
+
+SfRouteStep sf_route_advance(
+    SfRouteController *controller, const SfCollisionWorld *world,
+    SfObjectBounds bounds, SfWorldPoint position,
+    SfWorldPoint destination, uint32_t speed) {
+  const SfCollisionQuery query = {world, NULL, INT32_MIN, 0u};
+  return sf_route_advance_query(
+    controller, &query, bounds, position, destination, speed);
 }

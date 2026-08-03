@@ -28,6 +28,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT (SF_MCT_PERSON_LIMIT + 1u)
+
 typedef struct SfWorldPointerControl {
   uint8_t hold_updates;
   bool ground_command_active;
@@ -50,9 +52,11 @@ typedef struct SfWorldState {
   SfScenarioActorSet actors;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
+  SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
   const SfScsScript *script;
   SfWorldPointerControl pointer;
   int32_t companion_type;
+  uint8_t movement_blocker_count;
   bool entered;
 } SfWorldState;
 

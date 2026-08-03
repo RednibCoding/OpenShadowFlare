@@ -34,21 +34,24 @@ static bool sf_gameplay_actor_cell_visible(
 
 bool sf_gameplay_actor_visible(
     const SfScenarioActorAssets *assets, const SfScenarioActor *actor,
-    const SfWorldRenderView *view, bool shadow) {
+    const SfWorldRenderView *view, uint16_t interpolation, bool shadow) {
   const SfScenarioActorVisual *visual;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
   SfScreenPoint anchor;
   uint16_t frame;
   uint8_t part;
-  if (!assets || !actor || !view || actor->direction >= 8u) return false;
+  if (!assets || !actor || !view || actor->direction >= 8u ||
+      actor->animation_chart >= SF_SCENARIO_ACTOR_ANIMATION_COUNT)
+    return false;
   visual = sf_scenario_actor_visual(assets, actor->resource_id);
   if (!visual) return false;
-  animation = &visual->animations[actor->direction];
+  animation = &visual->animations[actor->animation_chart][actor->direction];
   resource = shadow ? &visual->shadows : &visual->artwork;
   if (animation->frame_count == 0u) return false;
   frame = (uint16_t) (actor->animation_frame % animation->frame_count);
-  anchor = sf_world_to_screen(actor->position);
+  anchor = sf_world_to_screen(
+    sf_scenario_actor_render_position(actor, interpolation));
   anchor.x -= view->camera_x;
   anchor.y -= view->camera_y;
   for (part = 0u; part < animation->part_count; ++part) {
@@ -69,22 +72,24 @@ bool sf_gameplay_actor_visible(
 void sf_gameplay_actor_draw(
     SfRenderer *renderer, const SfScenarioActorAssets *assets,
     const SfScenarioActor *actor, const SfWorldRenderView *view,
-    bool shadow, const SfRect *clip) {
+    uint16_t interpolation, bool shadow, const SfRect *clip) {
   const SfScenarioActorVisual *visual;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
   SfScreenPoint anchor;
   uint16_t frame;
   uint8_t priority;
-  if (!renderer || !assets || !actor || !view || actor->direction >= 8u)
+  if (!renderer || !assets || !actor || !view || actor->direction >= 8u ||
+      actor->animation_chart >= SF_SCENARIO_ACTOR_ANIMATION_COUNT)
     return;
   visual = sf_scenario_actor_visual(assets, actor->resource_id);
   if (!visual) return;
-  animation = &visual->animations[actor->direction];
+  animation = &visual->animations[actor->animation_chart][actor->direction];
   resource = shadow ? &visual->shadows : &visual->artwork;
   if (animation->frame_count == 0u) return;
   frame = (uint16_t) (actor->animation_frame % animation->frame_count);
-  anchor = sf_world_to_screen(actor->position);
+  anchor = sf_world_to_screen(
+    sf_scenario_actor_render_position(actor, interpolation));
   anchor.x -= view->camera_x;
   anchor.y -= view->camera_y;
   for (priority = animation->priority_count; priority > 0u; --priority) {

@@ -28,7 +28,7 @@ typedef struct SfRouteEdgeState {
 } SfRouteEdgeState;
 
 SfRouteEdgeState sf_route_initial_edge(
-  const SfCollisionWorld *world, SfObjectBounds bounds,
+  const SfCollisionQuery *query, SfObjectBounds bounds,
   SfWorldPoint start, SfWorldPoint attempted, SfWorldPoint contact);
 bool sf_route_should_leave_edge(
   SfWorldPoint position, SfWorldPoint destination,

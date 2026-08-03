@@ -44,6 +44,7 @@ add_library(
   assets/title_assets.c
   core/arena.c
   core/coordinates.c
+  core/retail_random.c
   data/caf.c
   data/bmp.c
   data/gnd.c

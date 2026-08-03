@@ -29,10 +29,10 @@
 
 bool sf_gameplay_actor_visible(
   const SfScenarioActorAssets *assets, const SfScenarioActor *actor,
-  const SfWorldRenderView *view, bool shadow);
+  const SfWorldRenderView *view, uint16_t interpolation, bool shadow);
 void sf_gameplay_actor_draw(
   SfRenderer *renderer, const SfScenarioActorAssets *assets,
   const SfScenarioActor *actor, const SfWorldRenderView *view,
-  bool shadow, const SfRect *clip);
+  uint16_t interpolation, bool shadow, const SfRect *clip);
 
 #endif

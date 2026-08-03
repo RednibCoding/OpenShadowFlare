@@ -34,6 +34,7 @@ typedef struct SfGameplayScreen {
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_x[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_y[SF_MCT_PERSON_LIMIT];
+  uint8_t rendered_actor_chart[SF_MCT_PERSON_LIMIT];
   bool rendered_actor_visible[SF_MCT_PERSON_LIMIT];
   int32_t rendered_player_x;
   int32_t rendered_player_y;

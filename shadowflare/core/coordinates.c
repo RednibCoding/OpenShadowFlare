@@ -33,6 +33,25 @@ SfWorldPoint sf_screen_to_world(SfScreenPoint point) {
   return result;
 }
 
+static int32_t sf_world_axis_interpolate(
+    int32_t previous, int32_t current, uint16_t interpolation) {
+  int64_t distance;
+  if (interpolation > 1000u) interpolation = 1000u;
+  distance = ((int64_t) current - previous) * interpolation;
+  distance += distance >= 0 ? 500 : -500;
+  return previous + (int32_t) (distance / 1000);
+}
+
+SfWorldPoint sf_world_point_interpolate(
+    SfWorldPoint previous, SfWorldPoint current, uint16_t interpolation) {
+  SfWorldPoint result;
+  result.x = sf_world_axis_interpolate(
+    previous.x, current.x, interpolation);
+  result.y = sf_world_axis_interpolate(
+    previous.y, current.y, interpolation);
+  return result;
+}
+
 int32_t sf_floor_divide(int32_t numerator, int32_t denominator) {
   int32_t result;
   if (denominator <= 0) return 0;

@@ -19,6 +19,8 @@
 
 #include "game/title.h"
 
+#include "core/retail_random.h"
+
 #include <string.h>
 
 typedef struct SfMenuRectangle {
@@ -33,12 +35,6 @@ static const SfMenuRectangle sf_title_menu_rectangles[3] = {
   {0x0d7, 0x1a3, 0x186, 0x19c},
   {0x10e, 0x172, 0x19b, 0x1b9}
 };
-
-static uint16_t sf_title_random(SfTitleState *title) {
-  title->random_state = title->random_state * UINT32_C(0x343fd) +
-    UINT32_C(0x269ec3);
-  return (uint16_t) ((title->random_state >> 16u) & 0x7fffu);
-}
 
 static bool sf_title_inside(
     const SfMenuRectangle *rectangle, int16_t x, int16_t y) {
@@ -71,7 +67,8 @@ void sf_title_state_init(SfGame *game) {
   title->selection = title->menu_visible[0] ? 0u :
     title->menu_visible[1] ? 1u : 2u;
   for (smoke = 0u; smoke < SF_GAME_TITLE_SMOKE_COUNT; ++smoke) {
-    title->smoke_delay[smoke] = sf_title_random(title) % 0x5a;
+    title->smoke_delay[smoke] =
+      sf_retail_random_next(&title->random_state) % 0x5a;
     title->smoke_frame[smoke] = -1;
   }
   for (smoke = 0u; smoke < SF_GAME_TITLE_ENTRY_COUNT; ++smoke)
@@ -176,7 +173,7 @@ void sf_title_state_update(SfGame *game, const SfGameInput *input) {
       title->smoke_frame[entry] = (int16_t) (title->animation_frame - first);
     if (title->animation_frame == end - 1) {
       title->smoke_delay[entry] = title->animation_frame + frame_count + 30 +
-        sf_title_random(title) % 100;
+        sf_retail_random_next(&title->random_state) % 100;
     }
   }
   ++title->animation_frame;

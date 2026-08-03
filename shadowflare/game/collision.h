@@ -41,6 +41,19 @@ typedef struct SfCollisionWorld {
   const SfObjectMap *objects;
 } SfCollisionWorld;
 
+typedef struct SfMovementBlocker {
+  SfWorldPoint position;
+  SfObjectBounds bounds;
+  int32_t id;
+} SfMovementBlocker;
+
+typedef struct SfCollisionQuery {
+  const SfCollisionWorld *world;
+  const SfMovementBlocker *blockers;
+  int32_t ignored_blocker_id;
+  uint8_t blocker_count;
+} SfCollisionQuery;
+
 typedef struct SfCollisionSweep {
   SfWorldPoint position;
   bool collided;
@@ -51,11 +64,20 @@ SfCardinalDirection sf_cardinal_opposite(SfCardinalDirection direction);
 bool sf_collision_position_walkable(
   const SfCollisionWorld *world, SfWorldPoint position,
   SfObjectBounds bounds, bool exclude_special_objects);
+bool sf_collision_query_position_walkable(
+  const SfCollisionQuery *query, SfWorldPoint position,
+  SfObjectBounds bounds, bool exclude_special_objects);
 bool sf_collision_can_step(
   const SfCollisionWorld *world, SfWorldPoint position,
   SfObjectBounds bounds, SfCardinalDirection direction);
+bool sf_collision_query_can_step(
+  const SfCollisionQuery *query, SfWorldPoint position,
+  SfObjectBounds bounds, SfCardinalDirection direction);
 SfCollisionSweep sf_collision_sweep(
   const SfCollisionWorld *world, SfWorldPoint start, SfWorldPoint end,
+  SfObjectBounds bounds, SfCardinalDirection wall_direction);
+SfCollisionSweep sf_collision_query_sweep(
+  const SfCollisionQuery *query, SfWorldPoint start, SfWorldPoint end,
   SfObjectBounds bounds, SfCardinalDirection wall_direction);
 
 #endif

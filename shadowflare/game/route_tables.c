@@ -23,66 +23,66 @@
   ((SfRouteEdgeState) {(move), (side)})
 
 static SfRouteEdgeState sf_route_stopped_edge(
-    const SfCollisionWorld *world, SfObjectBounds bounds,
+    const SfCollisionQuery *query, SfObjectBounds bounds,
     SfWorldPoint start, int x_sign, int y_sign) {
   if (x_sign > 0 && y_sign > 0) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_EAST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_EAST))
       return SF_ROUTE_EDGE(SF_CARDINAL_EAST, SF_CARDINAL_SOUTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_SOUTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_SOUTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_EAST);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_WEST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_WEST))
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_SOUTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_NORTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_NORTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_NORTH, SF_CARDINAL_EAST);
   } else if (x_sign > 0 && y_sign < 0) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_EAST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_EAST))
       return SF_ROUTE_EDGE(SF_CARDINAL_EAST, SF_CARDINAL_NORTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_NORTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_NORTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_NORTH, SF_CARDINAL_EAST);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_WEST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_WEST))
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_NORTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_SOUTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_SOUTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_EAST);
   } else if (x_sign < 0 && y_sign > 0) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_WEST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_WEST))
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_SOUTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_SOUTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_SOUTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_WEST);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_EAST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_EAST))
       return SF_ROUTE_EDGE(SF_CARDINAL_EAST, SF_CARDINAL_SOUTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_NORTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_NORTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_NORTH, SF_CARDINAL_WEST);
   } else if (x_sign < 0 && y_sign < 0) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_WEST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_WEST))
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_NORTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_NORTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_NORTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_NORTH, SF_CARDINAL_WEST);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_EAST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_EAST))
       return SF_ROUTE_EDGE(SF_CARDINAL_EAST, SF_CARDINAL_NORTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_SOUTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_SOUTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_WEST);
   }
   return SF_ROUTE_EDGE(SF_CARDINAL_NONE, SF_CARDINAL_NONE);
 }
 
 SfRouteEdgeState sf_route_initial_edge(
-    const SfCollisionWorld *world, SfObjectBounds bounds,
+    const SfCollisionQuery *query, SfObjectBounds bounds,
     SfWorldPoint start, SfWorldPoint attempted, SfWorldPoint contact) {
   const int x_sign = attempted.x > start.x ? 1 :
     attempted.x < start.x ? -1 : 0;
@@ -90,7 +90,7 @@ SfRouteEdgeState sf_route_initial_edge(
     attempted.y < start.y ? -1 : 0;
   const bool stopped = contact.x == start.x && contact.y == start.y;
   if (stopped && x_sign != 0 && y_sign != 0)
-    return sf_route_stopped_edge(world, bounds, start, x_sign, y_sign);
+    return sf_route_stopped_edge(query, bounds, start, x_sign, y_sign);
   if (x_sign > 0 && y_sign > 0) {
     if (contact.x == start.x && contact.y != start.y)
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_EAST);
@@ -112,32 +112,32 @@ SfRouteEdgeState sf_route_initial_edge(
     if (contact.y == start.y && contact.x != start.x)
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_NORTH);
   } else if (x_sign == 0 && y_sign > 0 && contact.y == start.y) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_EAST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_EAST))
       return SF_ROUTE_EDGE(SF_CARDINAL_EAST, SF_CARDINAL_SOUTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_WEST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_WEST))
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_SOUTH);
   } else if (x_sign == 0 && y_sign < 0 && contact.y == start.y) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_EAST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_EAST))
       return SF_ROUTE_EDGE(SF_CARDINAL_EAST, SF_CARDINAL_NORTH);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_WEST))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_WEST))
       return SF_ROUTE_EDGE(SF_CARDINAL_WEST, SF_CARDINAL_NORTH);
   } else if (y_sign == 0 && x_sign > 0 && contact.x == start.x) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_SOUTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_SOUTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_EAST);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_NORTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_NORTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_NORTH, SF_CARDINAL_EAST);
   } else if (y_sign == 0 && x_sign < 0 && contact.x == start.x) {
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_SOUTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_SOUTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_SOUTH, SF_CARDINAL_WEST);
-    if (sf_collision_can_step(
-          world, start, bounds, SF_CARDINAL_NORTH))
+    if (sf_collision_query_can_step(
+          query, start, bounds, SF_CARDINAL_NORTH))
       return SF_ROUTE_EDGE(SF_CARDINAL_NORTH, SF_CARDINAL_WEST);
   }
   return SF_ROUTE_EDGE(SF_CARDINAL_NONE, SF_CARDINAL_NONE);

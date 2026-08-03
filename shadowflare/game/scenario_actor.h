@@ -23,6 +23,7 @@
 #include "core/bounds.h"
 #include "core/coordinates.h"
 #include "data/mct.h"
+#include "game/route.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -36,16 +37,28 @@ typedef enum SfScenarioEntityChannel {
 typedef struct SfScenarioActor {
   SfWorldPoint position;
   SfWorldPoint previous_position;
+  SfWorldPoint destination;
+  SfWorldPoint wander_min;
+  SfWorldPoint wander_max;
   SfObjectBounds judgement;
+  SfRouteController route;
   int32_t id;
   int32_t resource_id;
   int32_t state[SF_MCT_ENTITY_STATE_COUNT];
   int16_t red_strength[SF_MCT_PERSON_PART_LIMIT];
   int16_t green_strength[SF_MCT_PERSON_PART_LIMIT];
   int16_t blue_strength[SF_MCT_PERSON_PART_LIMIT];
+  uint32_t random_state;
   uint32_t animation_frame;
+  uint16_t action_counter;
+  uint16_t walk_speed;
+  uint16_t walk_duration;
+  uint16_t idle_duration;
+  uint8_t animation_chart;
   uint8_t direction;
   uint8_t enabled_parts;
+  bool wandering_enabled;
+  bool walking;
 } SfScenarioActor;
 
 typedef struct SfScenarioActorSet {
@@ -55,7 +68,11 @@ typedef struct SfScenarioActorSet {
 
 void sf_scenario_actors_init(
   SfScenarioActorSet *actors, const SfMctScenario *scenario);
-void sf_scenario_actors_update(SfScenarioActorSet *actors);
+void sf_scenario_actor_update(
+  SfScenarioActor *actor, const SfCollisionQuery *collision);
+int32_t sf_scenario_actor_character_number(const SfScenarioActor *actor);
+SfWorldPoint sf_scenario_actor_render_position(
+  const SfScenarioActor *actor, uint16_t interpolation);
 SfScenarioActor *sf_scenario_actor_find(
   SfScenarioActorSet *actors, int32_t character_number);
 const SfScenarioActor *sf_scenario_actor_find_const(

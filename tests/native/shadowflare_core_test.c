@@ -20,6 +20,7 @@
 #include "core/arena.h"
 #include "core/coordinates.h"
 #include "core/memory_budget.h"
+#include "core/retail_random.h"
 #include "data/gnd.h"
 #include "data/rclib.h"
 #include "game/character_create.h"
@@ -28,6 +29,7 @@
 #include "game/load_game.h"
 #include "game/movement.h"
 #include "game/route.h"
+#include "game/scenario_actor.h"
 #include "render/dirty.h"
 #include "render/depth.h"
 #include "render/framebuffer.h"
@@ -233,6 +235,103 @@ static int test_collision_route(void) {
             greatest_detour > 79,
             "the retail edge controller did not route around an object"))
     return 1;
+  return 0;
+}
+
+static int test_dynamic_collision_route(void) {
+  SfMovementBlocker blockers[2];
+  SfCollisionWorld world = {NULL, NULL};
+  SfCollisionQuery query;
+  SfRouteController route;
+  const SfObjectBounds bounds = {-10, -10, 10, 10};
+  SfWorldPoint position = {0, 0};
+  const SfWorldPoint destination = {100, 0};
+  int32_t greatest_detour = 0;
+  unsigned update;
+  memset(blockers, 0, sizeof(blockers));
+  blockers[0].position = position;
+  blockers[0].bounds = bounds;
+  blockers[0].id = 7;
+  blockers[1].position = (SfWorldPoint) {50, 0};
+  blockers[1].bounds = bounds;
+  blockers[1].id = 8;
+  query.world = &world;
+  query.blockers = blockers;
+  query.ignored_blocker_id = 7;
+  query.blocker_count = 2u;
+  sf_route_reset(&route);
+  for (update = 0u; update < 100u &&
+       (position.x != destination.x || position.y != destination.y);
+       ++update) {
+    position = sf_route_advance_query(
+      &route, &query, bounds, position, destination, 10u).position;
+    blockers[0].position = position;
+    if (position.y < 0 && -position.y > greatest_detour)
+      greatest_detour = -position.y;
+    if (position.y > greatest_detour) greatest_detour = position.y;
+  }
+  if (check(position.x == destination.x && position.y == destination.y &&
+            greatest_detour > 20,
+            "the route controller did not avoid another actor")) return 1;
+  return 0;
+}
+
+static int test_scenario_actor_movement(void) {
+  SfMctScenario scenario;
+  SfScenarioActorSet actors;
+  SfScenarioActor *actor;
+  SfMovementBlocker blockers[2];
+  SfCollisionWorld world = {NULL, NULL};
+  SfCollisionQuery query;
+  int32_t greatest_detour = 0;
+  unsigned update;
+  memset(&scenario, 0, sizeof(scenario));
+  scenario.people_count = 1u;
+  scenario.people[0].id = 7;
+  scenario.people[0].resource_id = 1;
+  scenario.people[0].initial_state[SF_SCENARIO_JUDGEMENT] = 1;
+  scenario.people[0].judgement_left = -10;
+  scenario.people[0].judgement_top = -10;
+  scenario.people[0].judgement_right = 10;
+  scenario.people[0].judgement_bottom = 10;
+  scenario.people[0].walk_speed = 10;
+  scenario.people[0].walk_duration = 100;
+  scenario.people[0].wander_left = 100;
+  scenario.people[0].wander_right = 100;
+  scenario.people[0].wandering_enabled = true;
+  sf_scenario_actors_init(&actors, &scenario);
+  actor = &actors.actors[0];
+  memset(blockers, 0, sizeof(blockers));
+  blockers[0].position = actor->position;
+  blockers[0].bounds = actor->judgement;
+  blockers[0].id = sf_scenario_actor_character_number(actor);
+  blockers[1].position = (SfWorldPoint) {50, 0};
+  blockers[1].bounds = actor->judgement;
+  blockers[1].id = 99;
+  query.world = &world;
+  query.blockers = blockers;
+  query.ignored_blocker_id = blockers[0].id;
+  query.blocker_count = 2u;
+  for (update = 0u; update < 100u && actor->position.x != 100; ++update) {
+    sf_scenario_actor_update(actor, &query);
+    blockers[0].position = actor->position;
+    if (actor->position.y < 0 && -actor->position.y > greatest_detour)
+      greatest_detour = -actor->position.y;
+    if (actor->position.y > greatest_detour)
+      greatest_detour = actor->position.y;
+  }
+  if (check(actor->position.x == 100 && actor->position.y == 0 &&
+            greatest_detour > 20,
+            "a wandering scenario actor did not route around its peer"))
+    return 1;
+  return 0;
+}
+
+static int test_retail_random(void) {
+  uint32_t state = 1u;
+  if (check(sf_retail_random_next(&state) == 41u &&
+            sf_retail_random_next(&state) == 18467u,
+            "the shared random sequence differs from retail")) return 1;
   return 0;
 }
 
@@ -637,6 +736,8 @@ int main(void) {
             "video asset budget is wrong") ||
       test_arena() || test_world_coordinates() || test_player_movement() ||
       test_world_pointer_movement() || test_collision_route() ||
+      test_dynamic_collision_route() || test_scenario_actor_movement() ||
+      test_retail_random() ||
       test_remote_town_collision() || test_depth_order() ||
       test_framebuffer() || test_renderer() ||
       test_rclib() || test_transformed_rclib() ||

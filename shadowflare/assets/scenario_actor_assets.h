@@ -30,9 +30,11 @@
 #include <stdint.h>
 
 #define SF_SCENARIO_ACTOR_DIRECTION_COUNT 8u
+#define SF_SCENARIO_ACTOR_ANIMATION_COUNT 2u
 
 typedef struct SfScenarioActorVisual {
-  SfCafSelectedAnimation animations[SF_SCENARIO_ACTOR_DIRECTION_COUNT];
+  SfCafSelectedAnimation animations
+    [SF_SCENARIO_ACTOR_ANIMATION_COUNT][SF_SCENARIO_ACTOR_DIRECTION_COUNT];
   SfNjpSparseResource artwork;
   SfNjpSparseResource shadows;
   int32_t resource_id;

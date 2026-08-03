@@ -41,10 +41,12 @@ typedef struct SfGameplayScene {
 
 bool sf_gameplay_scene_update(
   SfGameplayScene *scene, const SfGameplayAssets *assets,
-  const SfWorldState *world, const SfWorldRenderView *view);
+  const SfWorldState *world, const SfWorldRenderView *view,
+  uint16_t interpolation);
 void sf_gameplay_scene_draw(
   const SfGameplayScene *scene, SfRenderer *renderer,
   const SfGameplayAssets *assets, const SfWorldState *world,
-  const SfWorldRenderView *view, const SfRect *clip);
+  const SfWorldRenderView *view, uint16_t interpolation,
+  const SfRect *clip);
 
 #endif

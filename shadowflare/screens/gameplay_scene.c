@@ -38,7 +38,8 @@ static bool sf_gameplay_actor_entry(uint16_t entry) {
 
 static uint16_t sf_gameplay_collect_objects(
     const SfGameplayAssets *assets, const SfWorldState *world,
-    const SfWorldRenderView *view, bool shadow, uint16_t *indices) {
+    const SfWorldRenderView *view, uint16_t interpolation,
+    bool shadow, uint16_t *indices) {
   SfDepthEntry entries[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
   uint16_t count = 0u;
   uint16_t object_index;
@@ -77,9 +78,10 @@ static uint16_t sf_gameplay_collect_objects(
       visual = sf_scenario_actor_visual(&assets->actors, actor->resource_id);
       if (!visual || (shadow && visual->shadows.pattern_count == 0u) ||
           !sf_gameplay_actor_visible(
-            &assets->actors, actor, view, shadow)) continue;
+            &assets->actors, actor, view, interpolation, shadow)) continue;
       if (count >= SF_GAMEPLAY_DRAW_ENTRY_LIMIT) return UINT16_MAX;
-      entries[count].position = actor->position;
+      entries[count].position = sf_scenario_actor_render_position(
+        actor, interpolation);
       entries[count].judgement = actor->judgement;
       entries[count].source_index = (uint16_t) (
         SF_GAMEPLAY_ACTOR_ENTRY_BASE + actor_index);
@@ -129,12 +131,13 @@ static void sf_gameplay_mark_translucent_objects(
 
 bool sf_gameplay_scene_update(
     SfGameplayScene *scene, const SfGameplayAssets *assets,
-    const SfWorldState *world, const SfWorldRenderView *view) {
+    const SfWorldState *world, const SfWorldRenderView *view,
+    uint16_t interpolation) {
   if (!scene || !assets || !world || !view) return false;
   scene->visible_count = sf_gameplay_collect_objects(
-    assets, world, view, false, scene->visible_objects);
+    assets, world, view, interpolation, false, scene->visible_objects);
   scene->shadow_count = sf_gameplay_collect_objects(
-    assets, world, view, true, scene->shadow_objects);
+    assets, world, view, interpolation, true, scene->shadow_objects);
   if (scene->visible_count == UINT16_MAX ||
       scene->shadow_count == UINT16_MAX) return false;
   sf_gameplay_mark_translucent_objects(scene, assets, view);
@@ -238,7 +241,8 @@ static void sf_gameplay_draw_object_pass(
     SfRenderer *renderer, const SfGameplayAssets *assets,
     const SfWorldState *world, const SfWorldRenderView *view,
     const uint16_t *indices, const uint8_t *translucent,
-    uint16_t count, bool shadow, bool default_class, const SfRect *clip) {
+    uint16_t count, uint16_t interpolation,
+    bool shadow, bool default_class, const SfRect *clip) {
   uint16_t index;
   for (index = 0u; index < count; ++index) {
     if (indices[index] == SF_GAMEPLAY_PLAYER_ENTRY) {
@@ -252,7 +256,8 @@ static void sf_gameplay_draw_object_pass(
         &world->actors, (uint8_t) actor_index);
       if (default_class && actor)
         sf_gameplay_actor_draw(
-          renderer, &assets->actors, actor, view, shadow, clip);
+          renderer, &assets->actors, actor, view,
+          interpolation, shadow, clip);
     } else {
       const SfMapObject *object = &assets->objects.objects[indices[index]];
       if ((sf_depth_class(object->status) == 0) != default_class) continue;
@@ -266,19 +271,22 @@ static void sf_gameplay_draw_object_pass(
 void sf_gameplay_scene_draw(
     const SfGameplayScene *scene, SfRenderer *renderer,
     const SfGameplayAssets *assets, const SfWorldState *world,
-    const SfWorldRenderView *view, const SfRect *clip) {
+    const SfWorldRenderView *view, uint16_t interpolation,
+    const SfRect *clip) {
   if (!scene || !renderer || !assets || !world || !view) return;
   sf_gameplay_draw_ground(renderer, assets, view, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, world, view, scene->shadow_objects, NULL,
-    scene->shadow_count, true, false, clip);
+    scene->shadow_count, interpolation, true, false, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, world, view, scene->visible_objects,
-    scene->translucent_objects, scene->visible_count, false, false, clip);
+    scene->translucent_objects, scene->visible_count,
+    interpolation, false, false, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, world, view, scene->shadow_objects, NULL,
-    scene->shadow_count, true, true, clip);
+    scene->shadow_count, interpolation, true, true, clip);
   sf_gameplay_draw_object_pass(
     renderer, assets, world, view, scene->visible_objects,
-    scene->translucent_objects, scene->visible_count, false, true, clip);
+    scene->translucent_objects, scene->visible_count,
+    interpolation, false, true, clip);
 }

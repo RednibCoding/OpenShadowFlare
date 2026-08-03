@@ -103,7 +103,7 @@ static bool sf_collision_ground_walkable(
   return true;
 }
 
-bool sf_collision_position_walkable(
+static bool sf_collision_static_position_walkable(
     const SfCollisionWorld *world, SfWorldPoint position,
     SfObjectBounds bounds, bool exclude_special_objects) {
   const int32_t left = position.x + bounds.left;
@@ -129,13 +129,51 @@ bool sf_collision_position_walkable(
     world->ground, left, top, right, bottom, exclude_special_objects);
 }
 
-bool sf_collision_can_step(
+bool sf_collision_query_position_walkable(
+    const SfCollisionQuery *query, SfWorldPoint position,
+    SfObjectBounds bounds, bool exclude_special_objects) {
+  uint8_t index;
+  if (!query) return true;
+  if (!sf_collision_static_position_walkable(
+        query->world, position, bounds, exclude_special_objects))
+    return false;
+  for (index = 0u; index < query->blocker_count; ++index) {
+    const SfMovementBlocker *blocker = &query->blockers[index];
+    if (blocker->id == query->ignored_blocker_id) continue;
+    if (sf_collision_overlaps(
+          position.x + bounds.left, position.y + bounds.top,
+          position.x + bounds.right, position.y + bounds.bottom,
+          blocker->position.x + blocker->bounds.left,
+          blocker->position.y + blocker->bounds.top,
+          blocker->position.x + blocker->bounds.right,
+          blocker->position.y + blocker->bounds.bottom)) return false;
+  }
+  return true;
+}
+
+bool sf_collision_position_walkable(
     const SfCollisionWorld *world, SfWorldPoint position,
+    SfObjectBounds bounds, bool exclude_special_objects) {
+  const SfCollisionQuery query = {world, NULL, INT32_MIN, 0u};
+  return sf_collision_query_position_walkable(
+    &query, position, bounds, exclude_special_objects);
+}
+
+bool sf_collision_query_can_step(
+    const SfCollisionQuery *query, SfWorldPoint position,
     SfObjectBounds bounds, SfCardinalDirection direction) {
   const SfWorldPoint vector = sf_cardinal_vector(direction);
   position.x += vector.x;
   position.y += vector.y;
-  return sf_collision_position_walkable(world, position, bounds, false);
+  return sf_collision_query_position_walkable(
+    query, position, bounds, false);
+}
+
+bool sf_collision_can_step(
+    const SfCollisionWorld *world, SfWorldPoint position,
+    SfObjectBounds bounds, SfCardinalDirection direction) {
+  const SfCollisionQuery query = {world, NULL, INT32_MIN, 0u};
+  return sf_collision_query_can_step(&query, position, bounds, direction);
 }
 
 static SfWorldPoint sf_collision_segment_point(
@@ -161,8 +199,8 @@ static SfWorldPoint sf_collision_segment_point(
   return result;
 }
 
-SfCollisionSweep sf_collision_sweep(
-    const SfCollisionWorld *world, SfWorldPoint start, SfWorldPoint end,
+SfCollisionSweep sf_collision_query_sweep(
+    const SfCollisionQuery *query, SfWorldPoint start, SfWorldPoint end,
     SfObjectBounds bounds, SfCardinalDirection wall_direction) {
   const int32_t dx = end.x - start.x;
   const int32_t dy = end.y - start.y;
@@ -181,7 +219,8 @@ SfCollisionSweep sf_collision_sweep(
   for (step = 1; step <= count; ++step) {
     const SfWorldPoint point = sf_collision_segment_point(
       start, end, horizontal, step, count);
-    if (!sf_collision_position_walkable(world, point, bounds, false)) {
+    if (!sf_collision_query_position_walkable(
+          query, point, bounds, false)) {
       collided = true;
       break;
     }
@@ -201,7 +240,8 @@ SfCollisionSweep sf_collision_sweep(
       start, end, horizontal, step, count);
     side.x += wall.x;
     side.y += wall.y;
-    if (!sf_collision_position_walkable(world, side, bounds, false)) {
+    if (!sf_collision_query_position_walkable(
+          query, side, bounds, false)) {
       side_blocked = true;
       break;
     }
@@ -212,7 +252,8 @@ SfCollisionSweep sf_collision_sweep(
         start, end, horizontal, step, count);
       side.x += wall.x;
       side.y += wall.y;
-      if (sf_collision_position_walkable(world, side, bounds, false)) {
+      if (sf_collision_query_position_walkable(
+            query, side, bounds, false)) {
         contact = side;
         break;
       }
@@ -223,10 +264,19 @@ SfCollisionSweep sf_collision_sweep(
     contact.x += wall.x;
     contact.y += wall.y;
   }
-  if (!sf_collision_position_walkable(world, contact, bounds, false)) {
+  if (!sf_collision_query_position_walkable(
+        query, contact, bounds, false)) {
     contact.x -= wall.x;
     contact.y -= wall.y;
   }
   return (SfCollisionSweep) {
     contact, collided || contact.x != end.x || contact.y != end.y};
+}
+
+SfCollisionSweep sf_collision_sweep(
+    const SfCollisionWorld *world, SfWorldPoint start, SfWorldPoint end,
+    SfObjectBounds bounds, SfCardinalDirection wall_direction) {
+  const SfCollisionQuery query = {world, NULL, INT32_MIN, 0u};
+  return sf_collision_query_sweep(
+    &query, start, end, bounds, wall_direction);
 }

@@ -17,25 +17,11 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_CORE_COORDINATES_H
-#define SHADOWFLARE_CORE_COORDINATES_H
+#ifndef SHADOWFLARE_CORE_RETAIL_RANDOM_H
+#define SHADOWFLARE_CORE_RETAIL_RANDOM_H
 
 #include <stdint.h>
 
-typedef struct SfWorldPoint {
-  int32_t x;
-  int32_t y;
-} SfWorldPoint;
-
-typedef struct SfScreenPoint {
-  int32_t x;
-  int32_t y;
-} SfScreenPoint;
-
-SfScreenPoint sf_world_to_screen(SfWorldPoint point);
-SfWorldPoint sf_screen_to_world(SfScreenPoint point);
-SfWorldPoint sf_world_point_interpolate(
-  SfWorldPoint previous, SfWorldPoint current, uint16_t interpolation);
-int32_t sf_floor_divide(int32_t numerator, int32_t denominator);
+uint16_t sf_retail_random_next(uint32_t *state);
 
 #endif

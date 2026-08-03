@@ -74,9 +74,50 @@ static SfWorldPoint sf_world_pointer_target(
     input->pointer_y + world->camera_y});
 }
 
+static void sf_world_build_actor_blockers(
+    SfWorldState *world, uint8_t *actor_blocker_indices) {
+  uint8_t actor_index;
+  world->movement_blocker_count = 0u;
+  for (actor_index = 0u; actor_index < world->actors.count; ++actor_index) {
+    const SfScenarioActor *actor = &world->actors.actors[actor_index];
+    actor_blocker_indices[actor_index] = UINT8_MAX;
+    if (!sf_scenario_actor_state(actor, SF_SCENARIO_JUDGEMENT)) continue;
+    actor_blocker_indices[actor_index] = world->movement_blocker_count;
+    world->movement_blockers[world->movement_blocker_count++] =
+      (SfMovementBlocker) {
+        actor->position, actor->judgement,
+        sf_scenario_actor_character_number(actor)};
+  }
+}
+
+static void sf_world_add_player_blocker(SfWorldState *world) {
+  if (world->movement_blocker_count >= SF_WORLD_MOVEMENT_BLOCKER_LIMIT)
+    return;
+  world->movement_blockers[world->movement_blocker_count++] =
+    (SfMovementBlocker) {
+      world->player.position, world->player.judgement, INT32_MIN + 1};
+}
+
+static void sf_world_update_scenario_actors(
+    SfWorldState *world, const uint8_t *actor_blocker_indices,
+    SfCollisionQuery collision) {
+  uint8_t actor_index;
+  for (actor_index = 0u; actor_index < world->actors.count; ++actor_index) {
+    SfScenarioActor *actor = &world->actors.actors[actor_index];
+    collision.ignored_blocker_id =
+      sf_scenario_actor_character_number(actor);
+    sf_scenario_actor_update(actor, &collision);
+    if (actor_blocker_indices[actor_index] != UINT8_MAX)
+      world->movement_blockers[
+        actor_blocker_indices[actor_index]].position = actor->position;
+  }
+}
+
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   SfWorldPointerControl *pointer;
+  SfCollisionQuery collision;
   SfScreenPoint player_screen;
+  uint8_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
   if (!world || !world->entered || !input) return;
   pointer = &world->pointer;
   if (input->pace_toggle_pressed) sf_player_toggle_pace(&world->player);
@@ -107,8 +148,16 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     pointer->ground_command_active = false;
     pointer->hold_updates = 0u;
   }
-  sf_player_update(&world->player, &world->collision);
-  sf_scenario_actors_update(&world->actors);
+  sf_world_build_actor_blockers(world, actor_blocker_indices);
+  collision.world = &world->collision;
+  collision.blockers = world->movement_blockers;
+  collision.blocker_count = world->movement_blocker_count;
+  collision.ignored_blocker_id = INT32_MIN;
+  sf_player_update_query(&world->player, &collision);
+  sf_world_add_player_blocker(world);
+  collision.blocker_count = world->movement_blocker_count;
+  sf_world_update_scenario_actors(
+    world, actor_blocker_indices, collision);
   if (world->script) (void) sf_scenario_actor_script_run_periodic(
     &world->actor_script_state, world->script,
     world->companion_type, &world->actors);
