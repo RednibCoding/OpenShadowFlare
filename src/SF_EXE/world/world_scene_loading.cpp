@@ -338,6 +338,36 @@ bool WorldScene::loadInitialScenario(
     return true;
 }
 
+void WorldScene::releaseInactiveEffectResources() {
+    constexpr std::int32_t transport_resource = 10000020;
+    constexpr std::int32_t moon_resource = 11000040;
+    constexpr std::int32_t magic_shield_resource = 11000240;
+    constexpr std::int32_t counter_burst_resource = 11000250;
+
+    std::vector<std::int32_t> visual_resources;
+    if (player_transport_spell_.active() &&
+        effect_visuals_.find(transport_resource)) {
+        visual_resources.push_back(transport_resource);
+    }
+    if (player_moon_spell_.active()) {
+        visual_resources.push_back(moon_resource);
+    }
+    if (player_magic_shield_.active()) {
+        visual_resources.push_back(magic_shield_resource);
+    }
+    if (player_counter_burst_.active()) {
+        visual_resources.push_back(counter_burst_resource);
+    }
+    effect_visuals_.retainOnly(visual_resources);
+
+    std::vector<std::int32_t> pattern_resources;
+    if (player_transport_spell_.active() &&
+        effect_pattern_resources_.find(transport_resource)) {
+        pattern_resources.push_back(transport_resource);
+    }
+    effect_pattern_resources_.retainOnly(pattern_resources);
+}
+
 ScenarioTravelResult WorldScene::transitionScenario(
     const ScenarioStart& start,
     std::string* error) {
@@ -380,6 +410,7 @@ ScenarioTravelResult WorldScene::transitionScenario(
         scenario_screen_particles_.clear();
         player_land_mines_.clear();
         miss_effects_.clear();
+        releaseInactiveEffectResources();
         camera_shake_counter_ = -1;
         camera_shake_duration_ = 0;
         camera_shake_magnitude_ = 0;
@@ -445,6 +476,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
     player_identify_mode_active_ = false;
     player_unlock_switch_active_ = false;
     scenario_world_ = std::move(prepared_scenario);
+    releaseUnusedItemWorldResources();
+    releaseInactiveEffectResources();
     item_random_ = prepared_item_random;
     next_ground_item_id_ =
         prepared_next_ground_item_id;

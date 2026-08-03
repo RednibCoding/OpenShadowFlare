@@ -2,6 +2,7 @@
 
 #include "resource_memory.hpp"
 
+#include <algorithm>
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -110,6 +111,21 @@ const EffectVisualResource* EffectVisualResources::find(
     return found == resources_.end()
         ? nullptr
         : found->second.get();
+}
+
+void EffectVisualResources::retainOnly(
+    const std::vector<std::int32_t>& resource_ids) {
+    for (auto resource = resources_.begin();
+         resource != resources_.end();) {
+        if (std::find(
+                resource_ids.begin(),
+                resource_ids.end(),
+                resource->first) == resource_ids.end()) {
+            resource = resources_.erase(resource);
+        } else {
+            ++resource;
+        }
+    }
 }
 
 void EffectVisualResources::clear() {

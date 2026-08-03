@@ -2,6 +2,8 @@
 #include "resources/character_visual_resource.hpp"
 #include "resources/font_resource.hpp"
 #include "resources/item_inventory_resource.hpp"
+#include "resources/effect_pattern_resource.hpp"
+#include "resources/effect_visual_resource.hpp"
 
 #include <array>
 #include <filesystem>
@@ -225,6 +227,44 @@ int main() {
         return 1;
     }
 
+    osf::EffectVisualResources effect_visuals;
+    if (!check(
+            effect_visuals.load(data_root, 11000040) &&
+                effect_visuals.load(data_root, 11000240),
+            "The effect-cache fixture could not be loaded.")) {
+        return 1;
+    }
+    const std::uint64_t all_effect_visual_bytes =
+        effect_visuals.memoryUsageBytes();
+    effect_visuals.retainOnly({11000240});
+    if (!check(
+            effect_visuals.find(11000040) == nullptr &&
+                effect_visuals.find(11000240) != nullptr &&
+                effect_visuals.memoryUsageBytes() <
+                    all_effect_visual_bytes,
+            "The effect animation cache retained an inactive resource.")) {
+        return 1;
+    }
+
+    osf::EffectPatternResources effect_patterns;
+    if (!check(
+            effect_patterns.load(data_root, 10000020) &&
+                effect_patterns.load(data_root, 11000011),
+            "The static-effect cache fixture could not be loaded.")) {
+        return 1;
+    }
+    const std::uint64_t all_effect_pattern_bytes =
+        effect_patterns.memoryUsageBytes();
+    effect_patterns.retainOnly({10000020});
+    if (!check(
+            effect_patterns.find(11000011) == nullptr &&
+                effect_patterns.find(10000020) != nullptr &&
+                effect_patterns.memoryUsageBytes() <
+                    all_effect_pattern_bytes,
+            "The static-effect cache retained an inactive resource.")) {
+        return 1;
+    }
+
     if (!check(
             resources.loadTitlePattern(
                 4, "System\\Title\\Pattern\\Title.njp") &&
@@ -284,6 +324,22 @@ int main() {
             "The gameplay resource scope could not be loaded.")) {
         return 1;
     }
+    std::vector<std::uint8_t> status_selection(121, 0);
+    status_selection[5] = 1;
+    if (!check(
+            resources.prepareGameplayPattern(
+                6,
+                "System\\Game\\Pattern\\Status.njp",
+                status_selection,
+                true) &&
+                resources.pattern(6) &&
+                resources.pattern(6)->patternDecoded(5) &&
+                !resources.pattern(6)->patternDecoded(2),
+            "A gameplay panel did not replace its full sheet with the "
+            "requested pattern selection.")) {
+        return 1;
+    }
+    resources.releaseGameplayPattern(6);
     resources.releaseGameplayResources();
     return check(
                resources.pattern(5) == nullptr &&

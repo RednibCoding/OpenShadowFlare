@@ -8,6 +8,32 @@
 #include <utility>
 
 namespace osf {
+namespace {
+
+bool matchesPatternSelection(
+    const gapi::NjpImage& image,
+    const std::vector<std::uint8_t>& enabled_patterns) {
+    for (std::size_t index = 0;
+         index < image.patterns().size();
+         ++index) {
+        const bool requested =
+            index < enabled_patterns.size() &&
+            enabled_patterns[index] != 0;
+        if (image.patternDecoded(index) != requested) {
+            return false;
+        }
+    }
+    for (std::size_t index = image.patterns().size();
+         index < enabled_patterns.size();
+         ++index) {
+        if (enabled_patterns[index] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+}  // namespace
 
 ResourceManager::ResourceManager(std::filesystem::path data_root)
     : data_root_(std::move(data_root)) {}
@@ -120,6 +146,25 @@ bool ResourceManager::prepareGameplayPattern(
         return true;
     }
     return loadGameplayPattern(id, retail_path);
+}
+
+bool ResourceManager::prepareGameplayPattern(
+    std::int32_t id,
+    std::string_view retail_path,
+    const std::vector<std::uint8_t>& enabled_patterns,
+    bool required) {
+    if (!required) {
+        releaseGameplayPattern(id);
+        return true;
+    }
+    const gapi::NjpImage* current =
+        findPattern(gameplay_patterns_, id);
+    if (current &&
+        matchesPatternSelection(*current, enabled_patterns)) {
+        return true;
+    }
+    return loadPattern(
+        gameplay_patterns_, id, retail_path, enabled_patterns);
 }
 
 void ResourceManager::releaseGameplayPattern(std::int32_t id) {

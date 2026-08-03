@@ -52,6 +52,11 @@ public:
         std::int32_t id,
         std::string_view retail_path,
         bool required);
+    bool prepareGameplayPattern(
+        std::int32_t id,
+        std::string_view retail_path,
+        const std::vector<std::uint8_t>& enabled_patterns,
+        bool required);
     void releaseGameplayPattern(std::int32_t id);
     void releaseGameplayResources();
 

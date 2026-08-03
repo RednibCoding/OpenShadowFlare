@@ -2160,13 +2160,14 @@ with explicit title, character-select, loading, gameplay, and panel lifetimes.
 Leaving a screen destroys everything owned by it, including decoded save
 previews. The English fonts retain only their Latin sheet, loading art is freed
 at the world handoff, and optional gameplay and inventory sheets follow the
-visible panels and item containers. Map exploration uses one packed bit per
-pixel, and player NJP files decode only the body and equipment layers selected
-by the CAF appearance mask. Closed starter gameplay now measures 23.98 MiB of
-tracked game resources including the software framebuffer. The next useful
-work is to give every scenario its own bounded world/effect/item resource scope
-and remove the temporary two-map peak during transitions without weakening
-failure-safe loading.
+visible panels and exact visible item patterns. Map exploration uses one packed
+bit per pixel, map artwork decodes only patterns referenced by the active GND
+and OBL, and player NJP files decode only the body and equipment layers selected
+by the CAF appearance mask. Closed starter gameplay now measures 22.28 MiB of
+tracked game resources including the software framebuffer. Scenario changes
+release stale ground-item and transient-effect artwork while preserving active
+spell-owned resources. The next useful memory work is to remove the temporary
+two-map peak during transitions without weakening failure-safe loading.
 
 The profiler now reports game and decoded-audio memory separately, followed by
 their TOTAL RAM sum, instead of process RSS. This keeps Linux graphics-driver

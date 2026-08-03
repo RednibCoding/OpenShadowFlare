@@ -189,6 +189,9 @@ public:
             std::uint8_t,
             ItemInventoryResource::group_count>& enabled_groups,
         std::string* error = nullptr);
+    bool prepareItemInventoryPatterns(
+        const ItemInventoryResource::PatternSelection& enabled_patterns,
+        std::string* error = nullptr);
     const PlayerData& playerData() const;
     PlayerRuntimeProfile playerRuntimeProfile() const;
     void configurePlayerDebugResources(
@@ -399,6 +402,8 @@ private:
         std::size_t first_item,
         std::int32_t& next_item_id,
         std::string* error = nullptr);
+    void releaseInactiveEffectResources();
+    void releaseUnusedItemWorldResources();
     bool startNpcInteraction(NpcActor& npc);
     bool startScenarioObjectInteraction(
         ScenarioObjectActor& object);

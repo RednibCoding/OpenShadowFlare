@@ -21,9 +21,9 @@ profiler total.
 | Female player graphics | 18.97 MiB | 6.86 MiB with the new-character body and armour; completed |
 | Male player graphics | 24.93 MiB | 8.14 MiB with the new-character body and armour; completed |
 | Common fonts and loading art | 5.20 MiB | 0.06 MiB in steady English gameplay; loading art lives only on the loading page |
-| All inventory sheets | 2.59 MiB | 0.21 MiB for the starter belt while panels are closed; visible groups only |
-| Gameplay interface artwork | 2.09 MiB | 0.17 MiB with panels closed; Status, MapIcon, and Card are panel-scoped |
-| Remote Town map patterns | 2.47 MiB | Already compact; stream only if still needed |
+| All inventory sheets | 2.59 MiB | 0.37 MiB for the starter belt while panels are closed; only visible item patterns are decoded |
+| Gameplay interface artwork | 2.09 MiB | 0.17 MiB with panels closed; each open panel decodes only the Status patterns it draws |
+| Remote Town map patterns | 2.47 MiB | 1.29 MiB after selecting patterns from the map's own ground and object references |
 | Software framebuffer | 1.17 MiB | Consider a general RGB565 surface later |
 
 The first completed change replaced the 1920×1440 RGBA exploration bitmap with
@@ -53,22 +53,37 @@ in gameplay. The 680,281-byte loading page is released at the exact handoff to
 the world.
 
 Gameplay starts with only Bar, StatusIcon, MagicIcon, and MagicBarIcon. The
-1.27 MiB Status sheet, MapIcon, and 0.65 MiB Card sheet follow their panels.
-Inventory sheets follow the always-visible belt plus whichever backpack,
-equipment, warehouse, or vendor container is visible. Synchronization occurs
-at the 30 Hz UI/state boundary and performs no file access while that state is
-unchanged; the render loop only reads prepared resources.
+Status panel uses 0.21 MiB of its 1.27 MiB source sheet, Inventory uses 0.33
+MiB, and Settings uses 0.09 MiB. Selections are combined when independent left
+and right panels are open. MapIcon and the 0.65 MiB Card sheet still follow
+their panels. Inventory artwork follows the always-visible belt plus the exact
+items in whichever backpack, equipment, warehouse, or vendor container is
+visible. Synchronization occurs at the 30 Hz UI/state boundary and performs no
+file access while that state is unchanged; the render loop only reads prepared
+resources.
 
-A deterministic Remote Town starter test now measures 25,147,095 bytes
-(23.98 MiB) for tracked game resources and the software framebuffer with all
+Map pattern selection is driven by each loaded GND and OBL rather than a list
+of known scenarios. Ground references select their exact patterns, and object
+references select the matching normal and shadow patterns. The same loading
+path therefore applies to every retail map and future data without per-map
+rules.
+
+A deterministic Remote Town starter test now measures 23,364,669 bytes
+(22.28 MiB) for tracked game resources and the software framebuffer with all
 panels closed. With the current roughly 0.39 MiB decoded-audio baseline, this
-puts the representative tracked total around 24.37 MiB. Heavier equipment,
+puts the representative tracked total around 22.67 MiB. Heavier equipment,
 open panels, actors, and effects still need their own representative budgets.
 
-The next target is to bound scenario-owned actor, item, and effect caches. Map
-transitions also need to release the old scenario before allocating the
-complete replacement; the current failure-safe preparation briefly holds both
-maps and would exceed a 32 MiB machine even if steady gameplay fits.
+Ground-item resources now retain only IDs referenced by the newly active
+scenario after travel. Transient combat, script, mine, and miss-effect caches
+are released at the same boundary, while resources owned by persistent spells
+remain alive until those systems release them. This keeps the policy in the
+shared world/resource layer and avoids decompression work during ordinary
+frames.
+
+The next memory target is the transition peak. Failure-safe map preparation
+still briefly holds both the old and replacement scenarios, which can exceed a
+32 MiB machine even when steady gameplay fits.
 
 Memory work must remain portable and fidelity-safe. Resource budgets and cache
 lifetimes belong in shared resource code, never in target adapters. Streaming
