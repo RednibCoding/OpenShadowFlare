@@ -42,10 +42,12 @@ void sf_player_init(SfPlayerState *player, uint8_t gender) {
   player->visible_items[0].category = 1u;
   player->visible_items[0].definition_id = 0u;
   player->visible_item_count = 1u;
+  player->judgement = (SfObjectBounds) {-80, -80, 79, 79};
   player->direction = 1u;
   player->walking_speed_tier = 5u;
   player->motion = SF_PLAYER_IDLE;
   player->previous_motion = SF_PLAYER_IDLE;
+  sf_route_reset(&player->route);
 }
 
 void sf_player_enter(
@@ -58,6 +60,7 @@ void sf_player_enter(
   player->animation_frame = 0u;
   player->motion = SF_PLAYER_IDLE;
   player->previous_motion = SF_PLAYER_IDLE;
+  sf_route_reset(&player->route);
 }
 
 static void sf_player_start_movement(
@@ -80,6 +83,7 @@ void sf_player_cancel_movement(SfPlayerState *player) {
   if (!player) return;
   player->destination = player->position;
   player->motion = SF_PLAYER_IDLE;
+  sf_route_reset(&player->route);
 }
 
 void sf_player_toggle_pace(SfPlayerState *player) {
@@ -92,8 +96,9 @@ void sf_player_toggle_pace(SfPlayerState *player) {
       ? SF_PLAYER_RUNNING : SF_PLAYER_WALKING;
 }
 
-void sf_player_update(SfPlayerState *player) {
-  SfMovementStep movement;
+void sf_player_update(
+    SfPlayerState *player, const SfCollisionWorld *collision) {
+  SfRouteStep movement;
   if (!player) return;
   if (player->motion == SF_PLAYER_IDLE) {
     if (player->previous_motion != SF_PLAYER_IDLE) player->action_counter = 0u;
@@ -112,11 +117,13 @@ void sf_player_update(SfPlayerState *player) {
   }
   player->direction = sf_movement_direction(
     player->position, player->destination);
-  movement = sf_movement_step_toward(
+  movement = sf_route_advance(
+    &player->route, collision, player->judgement,
     player->position, player->destination, sf_player_speed(player));
   if (movement.moved)
     player->direction = sf_movement_direction(
       player->position, movement.position);
   player->position = movement.position;
-  if (!movement.moved) player->motion = SF_PLAYER_IDLE;
+  if (!movement.moved && !movement.controller_active)
+    player->motion = SF_PLAYER_IDLE;
 }

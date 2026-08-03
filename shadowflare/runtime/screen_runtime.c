@@ -74,6 +74,9 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
+      sf_world_state_bind_collision(
+        &game->world, &runtime->assets.gameplay.ground,
+        &runtime->assets.gameplay.objects);
       sf_world_state_enter(
         &game->world, entry->world_x, entry->world_y,
         (uint8_t) entry->direction);

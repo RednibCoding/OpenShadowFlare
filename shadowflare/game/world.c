@@ -47,6 +47,14 @@ void sf_world_state_enter(
   world->entered = true;
 }
 
+void sf_world_state_bind_collision(
+    SfWorldState *world,
+    const SfGroundMap *ground, const SfObjectMap *objects) {
+  if (!world) return;
+  world->collision.ground = ground;
+  world->collision.objects = objects;
+}
+
 static SfWorldPoint sf_world_pointer_target(
     const SfWorldState *world, const SfGameInput *input) {
   return sf_screen_to_world((SfScreenPoint) {
@@ -87,7 +95,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     pointer->ground_command_active = false;
     pointer->hold_updates = 0u;
   }
-  sf_player_update(&world->player);
+  sf_player_update(&world->player, &world->collision);
   player_screen = sf_world_to_screen(world->player.position);
   world->camera_x = player_screen.x - 320;
   world->camera_y = player_screen.y - 240;

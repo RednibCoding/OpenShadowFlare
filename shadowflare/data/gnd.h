@@ -34,17 +34,24 @@ typedef struct SfGroundCell {
 
 typedef struct SfGroundMap {
   SfGroundCell *cells;
+  uint8_t *movement_flags;
   uint16_t width;
   uint16_t height;
   uint16_t chip_width;
   uint16_t chip_height;
   int32_t base_magnification_x;
   int32_t base_magnification_y;
+  int32_t judge_width;
+  int32_t judge_height;
+  int32_t judge_offset_x;
+  int32_t judge_offset_y;
 } SfGroundMap;
 
-bool sf_gnd_load_render_map(
+bool sf_gnd_load(
   const char *path, SfArena *arena, SfGroundMap *map);
 const SfGroundCell *sf_ground_cell(
+  const SfGroundMap *map, int32_t x, int32_t y);
+uint8_t sf_ground_movement_flags(
   const SfGroundMap *map, int32_t x, int32_t y);
 
 #endif

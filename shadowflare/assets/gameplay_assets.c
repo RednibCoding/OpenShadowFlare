@@ -249,7 +249,7 @@ bool sf_gameplay_assets_load(
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.ground_format, map_name, 0) ||
-      !sf_gnd_load_render_map(path, arena, &assets->ground) ||
+      !sf_gnd_load(path, arena, &assets->ground) ||
       !sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.objects_format, map_name, 0) ||

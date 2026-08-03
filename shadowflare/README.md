@@ -46,9 +46,11 @@ MCT entry, wears the new-character Leather Cloth described by `Item.Ibn`, and
 plays the retail idle, walk, and run charts with matching shadows and scenery
 depth. Mouse movement follows the retail distinction between a latched click
 and a held pointer that stops on release, while `R` switches between the
-recovered walk and run speeds. Collision, path routing, and scripts are the
-next layers; they remain separate from the small player state machine instead
-of being faked in the map screen.
+recovered walk and run speeds. Static map collision and the retail cardinal
+edge-following route controller are now active as well, including the full
+route around the sacks beside Ostare. This is deliberately not an A* search.
+Dynamic actor blockers and scripts are later layers and remain separate from
+the small player state machine.
 
 ## Hard limits
 
@@ -123,8 +125,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,423,725 bytes of the 7 MiB main arena,
-leaving 5,916,307 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,423,821 bytes of the 7 MiB main arena,
+leaving 5,916,211 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -137,25 +139,31 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 736,648 bytes of the main arena, leaving 6,603,384 bytes free;
+assets. It uses 736,744 bytes of the main arena, leaving 6,603,288 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 696,864 bytes of the main arena, leaving 6,643,168
+The load-game screen uses 696,960 bytes of the main arena, leaving 6,643,072
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The first Remote Town gameplay viewport uses 1,710,592 bytes of the main arena,
-leaving 5,629,440 bytes free. Its map- and player-scoped data and selected
-artwork account for 1,388,001 bytes. GND rendering data is decoded directly from
+The first Remote Town gameplay viewport uses 1,892,120 bytes of the main arena,
+leaving 5,447,912 bytes free. Its map- and player-scoped data and selected
+artwork account for 1,569,481 bytes. GND rendering data is decoded directly from
 its compressed three-plane stream into two bytes per tile, so the 300x300 town
 grid occupies 180,000 bytes instead of retaining the 540,000-byte source
-layout. Collision
-judgement is not loaded by this rendering-only slice yet.
+layout.
+
+The GND movement plane is active without retaining its 1,451,808-byte raw
+16-bit expansion. Retail movement only reads its low two flags, so the 852x852
+Remote Town plane is kept as a packed two-bit map using 181,476 bytes. Static
+OBL judgement and the player rectangle feed a direct collision sweep followed
+by the executable's stateful cardinal edge steering. There is no route list,
+heap allocation, or file access during movement.
 
 Map artwork follows the current camera rather than a scenario-specific asset
 list. The loader reads the map's own ground cells and OBL objects, checks exact

@@ -56,10 +56,13 @@ add_library(
   data/save.c
   data/voc.c
   game/character_create.c
+  game/collision.c
   game/game.c
   game/load_game.c
   game/movement.c
   game/player.c
+  game/route.c
+  game/route_tables.c
   game/title.c
   game/world.c
   render/depth.c

@@ -23,9 +23,11 @@
 #include "data/gnd.h"
 #include "data/rclib.h"
 #include "game/character_create.h"
+#include "game/collision.h"
 #include "game/game.h"
 #include "game/load_game.h"
 #include "game/movement.h"
+#include "game/route.h"
 #include "render/dirty.h"
 #include "render/depth.h"
 #include "render/framebuffer.h"
@@ -109,14 +111,14 @@ static int test_player_movement(void) {
   sf_player_init(&player, 1u);
   sf_player_enter(&player, (SfWorldPoint) {1000, 1000}, 1u);
   sf_player_move_to(&player, (SfWorldPoint) {1100, 1000});
-  sf_player_update(&player);
+  sf_player_update(&player, NULL);
   if (check(player.position.x == 1020 && player.position.y == 1000,
             "retail walking speed was not twenty world units") ||
       check(player.motion == SF_PLAYER_WALKING &&
             player.direction == 1u && player.animation_frame == 0u,
             "walking did not select chart one and its first frame")) return 1;
   sf_player_toggle_pace(&player);
-  sf_player_update(&player);
+  sf_player_update(&player, NULL);
   if (check(player.position.x == 1060 &&
             player.motion == SF_PLAYER_RUNNING &&
             player.animation_frame == 0u,
@@ -182,6 +184,129 @@ static int test_world_pointer_movement(void) {
             world.player.motion == SF_PLAYER_IDLE,
             "releasing a held pointer did not stop movement immediately"))
     return 1;
+  return 0;
+}
+
+static int test_collision_route(void) {
+  SfMapObject object;
+  SfObjectMap objects;
+  SfCollisionWorld collision;
+  SfRouteController route;
+  SfObjectBounds player_bounds = {-80, -80, 79, 79};
+  SfWorldPoint position = {0, 0};
+  const SfWorldPoint destination = {250, 0};
+  int32_t greatest_detour = 0;
+  unsigned update;
+  memset(&object, 0, sizeof(object));
+  object.world_x = 90;
+  object.status = 1;
+  objects.objects = &object;
+  objects.count = 1u;
+  objects.version = 1u;
+  collision.ground = NULL;
+  collision.objects = &objects;
+  if (check(sf_collision_position_walkable(
+        &collision, (SfWorldPoint) {10, 0}, player_bounds, false),
+        "collision rejected the last free point before an object") ||
+      check(!sf_collision_position_walkable(
+        &collision, (SfWorldPoint) {11, 0}, player_bounds, false),
+        "collision ignored inclusive OBL judgement bounds")) return 1;
+  sf_route_reset(&route);
+  for (update = 0u; update < 100u &&
+       (position.x != destination.x || position.y != destination.y);
+       ++update) {
+    const SfRouteStep step = sf_route_advance(
+      &route, &collision, player_bounds, position, destination, 20u);
+    position = step.position;
+    if (position.y < 0 && -position.y > greatest_detour)
+      greatest_detour = -position.y;
+    if (position.y > greatest_detour) greatest_detour = position.y;
+  }
+  if (check(position.x == destination.x && position.y == destination.y &&
+            greatest_detour > 79,
+            "the retail edge controller did not route around an object"))
+    return 1;
+  return 0;
+}
+
+static int test_remote_town_collision(void) {
+#if defined(OPENSHADOWFLARE_SOURCE_DIR)
+  static uint8_t memory[512u * 1024u];
+  SfArena arena;
+  SfGroundMap ground;
+  SfObjectMap objects;
+  SfCollisionWorld collision;
+  SfRouteController route;
+  SfObjectBounds player_bounds = {-80, -80, 79, 79};
+  SfWorldPoint position = {89800, 1450};
+  const SfWorldPoint destination = {91800, 1450};
+  char path[1024];
+  int32_t greatest_detour = 0;
+  unsigned update;
+  FILE *probe;
+  (void) snprintf(
+    path, sizeof(path), "%s/tmp/ShadowFlare/Map/Ground/f00_01.Gnd",
+    OPENSHADOWFLARE_SOURCE_DIR);
+  probe = fopen(path, "rb");
+  if (!probe) return 0;
+  fclose(probe);
+  sf_arena_init(&arena, memory, sizeof(memory));
+  if (check(sf_gnd_load(path, &arena, &ground),
+            "the C99 runtime could not load Remote Town collision")) return 1;
+  (void) snprintf(
+    path, sizeof(path), "%s/tmp/ShadowFlare/Map/Object/f00_01.Obl",
+    OPENSHADOWFLARE_SOURCE_DIR);
+  if (check(sf_obl_load(path, &arena, &objects),
+            "the C99 runtime could not load Remote Town objects")) return 1;
+  collision.ground = &ground;
+  collision.objects = &objects;
+  if (check(ground.judge_width == 852 && ground.judge_height == 852 &&
+            ground.judge_offset_x == -1 && ground.judge_offset_y == -401,
+            "Remote Town judgement dimensions differ from retail") ||
+      check(sf_collision_position_walkable(
+        &collision, (SfWorldPoint) {89898, 2811}, player_bounds, false),
+        "the authored Remote Town spawn is no longer walkable") ||
+      check(!sf_collision_position_walkable(
+        &collision, (SfWorldPoint) {90700, 1450}, player_bounds, false),
+        "the Remote Town sacks lost their blocking footprint")) return 1;
+  sf_route_reset(&route);
+  for (update = 0u; update < 500u &&
+       (position.x != destination.x || position.y != destination.y);
+       ++update) {
+    const SfRouteStep step = sf_route_advance(
+      &route, &collision, player_bounds, position, destination, 20u);
+    position = step.position;
+    if (position.y - 1450 > greatest_detour)
+      greatest_detour = position.y - 1450;
+    if (1450 - position.y > greatest_detour)
+      greatest_detour = 1450 - position.y;
+  }
+  if (check(position.x == destination.x && position.y == destination.y &&
+            greatest_detour > 100,
+            "the player did not follow the full Remote Town sacks edge"))
+    return 1;
+  {
+    static const SfWorldPoint destinations[] = {
+      {92500, 500}, {91200, 500}, {93000, 3000}, {88700, 500}};
+    unsigned route_index;
+    for (route_index = 0u;
+         route_index < sizeof(destinations) / sizeof(destinations[0]);
+         ++route_index) {
+      position = (SfWorldPoint) {89898, 2811};
+      sf_route_reset(&route);
+      for (update = 0u; update < 1000u &&
+           (position.x != destinations[route_index].x ||
+            position.y != destinations[route_index].y); ++update)
+        position = sf_route_advance(
+          &route, &collision, player_bounds, position,
+          destinations[route_index], 20u).position;
+      if (check(position.x == destinations[route_index].x &&
+                position.y == destinations[route_index].y,
+                "the edge controller did not retry between town obstacles"))
+        return 1;
+    }
+  }
+#endif
   return 0;
 }
 
@@ -496,7 +621,8 @@ int main(void) {
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 3579904u,
             "video asset budget is wrong") ||
       test_arena() || test_world_coordinates() || test_player_movement() ||
-      test_world_pointer_movement() || test_depth_order() ||
+      test_world_pointer_movement() || test_collision_route() ||
+      test_remote_town_collision() || test_depth_order() ||
       test_framebuffer() || test_renderer() ||
       test_rclib() || test_transformed_rclib() ||
       test_game() || test_character_creation() ||

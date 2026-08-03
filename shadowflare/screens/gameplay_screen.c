@@ -64,10 +64,7 @@ static uint16_t sf_gameplay_collect_objects(
   if (world && world->entered && count < SF_GAMEPLAY_DRAW_ENTRY_LIMIT &&
       (!shadow || assets->player.shadows.pattern_count > 0u)) {
     entries[count].position = world->player.position;
-    entries[count].judgement.left = -80;
-    entries[count].judgement.top = -80;
-    entries[count].judgement.right = 79;
-    entries[count].judgement.bottom = 79;
+    entries[count].judgement = world->player.judgement;
     entries[count].source_index = SF_GAMEPLAY_PLAYER_ENTRY;
     entries[count].status = 0;
     ++count;

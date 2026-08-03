@@ -39,6 +39,7 @@ typedef struct SfWorldState {
   int32_t camera_x;
   int32_t camera_y;
   SfPlayerState player;
+  SfCollisionWorld collision;
   SfWorldPointerControl pointer;
   bool entered;
 } SfWorldState;
@@ -49,6 +50,9 @@ void sf_world_state_init(
 void sf_world_state_enter(
   SfWorldState *world,
   int32_t player_x, int32_t player_y, uint8_t direction);
+void sf_world_state_bind_collision(
+  SfWorldState *world,
+  const SfGroundMap *ground, const SfObjectMap *objects);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
 
 #endif
