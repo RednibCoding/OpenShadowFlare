@@ -6,5 +6,5 @@ function(osf_configure_ps2_platform target)
       runtime/platform/ps2/ps2_data_backend.cpp
       runtime/platform/ps2/surface_presenter.cpp
   )
-  target_link_libraries(${target} PRIVATE gskit dmakit)
+  target_link_libraries(${target} PRIVATE gskit dmakit loadfile)
 endfunction()

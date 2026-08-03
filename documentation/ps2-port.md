@@ -1,17 +1,71 @@
-# PlayStation 2 port
+# PS2 port
 
-The PS2 port is packaged through Docker, so the repository does not need a
-local ps2dev toolchain. With the original game
-files present under `tmp/ShadowFlare`, run:
+## Build
+
+Install PS2DEV and `genisoimage`, then set its environment variables:
 
 ```sh
+export PS2DEV="$HOME/ps2dev"
+export PS2SDK="$PS2DEV/ps2sdk"
+export GSKIT="$PS2DEV/gsKit"
+export PATH="$PATH:$PS2DEV/bin:$PS2DEV/ee/bin:$PS2DEV/iop/bin"
+```
+
+On Ubuntu or WSL, install the PS2DEV prebuilt toolchain and build:
+
+```sh
+sudo apt-get update && sudo apt-get install -y curl cmake genisoimage
+mkdir -p "$PS2DEV"
+curl -fL https://github.com/ps2dev/ps2dev/releases/download/latest/ps2dev-ubuntu-latest.tar.gz \
+  | tar -xz --strip-components=1 -C "$PS2DEV"
 sh tools/ps2/build-iso.sh
 ```
 
-The first run builds the `openshadowflare-ps2` image from
-`tools/ps2/Dockerfile`; later runs reuse it. The generated disc files,
-including `openshadowflare.iso`, are written to `build/ps2`.
+The archive is published on [PS2DEV releases](https://github.com/ps2dev/ps2dev/releases).
 
-Use `--build-image` to force a rebuild of the Docker image after changing the
-toolchain setup, and `--data-dir` or `--out-dir` to override the default input
-or output locations.
+The default output, `build/ps2/openshadowflare.iso`, is data-free and suitable
+for CI and distribution. It loads an owned `ShadowFlare` data directory placed
+beside the ISO in PCSX2, or at the root of a FAT32 USB drive on PS2 hardware:
+
+```text
+<PCSX2 ISO folder>/
+  openshadowflare.iso
+  ShadowFlare/
+    SFlare.Cfg
+    System/
+    Scenario/
+    Save/
+    Player/
+    Map/
+    Character/
+
+FAT32 USB drive/
+  ShadowFlare/
+    SFlare.Cfg
+    ...
+```
+
+PCSX2 maps its ISO folder to the `host0:` device. The PS2 ISO includes the
+USB drivers required to use `mass:` on hardware. Copy the owned game data:
+
+```sh
+# PCSX2: copy next to build/ps2/openshadowflare.iso.
+cp -a /path/to/ShadowFlare build/ps2/
+
+# PS2 hardware: copy to the root of a mounted FAT32 USB drive.
+cp -a /path/to/ShadowFlare /media/$USER/PS2USB/
+```
+
+Alternatively, create a private all-in-one disc from an owned retail
+installation:
+
+```sh
+sh tools/ps2/build-iso.sh --data-dir /path/to/ShadowFlare
+```
+
+## Type portability
+
+On PS2DEV, `std::int32_t` is `long`, not `int`. Use typed literals such as
+`std::int32_t{0}` with `std::min`, `std::max`, and `std::clamp`; their
+arguments must have the same type. Format fixed-width integers with `PRId32`
+from `<cinttypes>` rather than `%d`.

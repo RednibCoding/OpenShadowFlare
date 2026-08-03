@@ -240,7 +240,7 @@ RuntimeEffectActorUpdate RuntimeEffectActor::update(
         const std::int32_t remaining = std::max(
             request_.target_approach_updates -
                 movement_counter_,
-            0);
+            std::int32_t{0});
         const std::int32_t offset =
             retailMultiply(
                 remaining, request_.travel_speed) /

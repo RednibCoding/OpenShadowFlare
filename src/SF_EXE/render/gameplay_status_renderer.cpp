@@ -199,8 +199,8 @@ void renderGameplayStatusPanel(
             static_cast<std::size_t>(
                 36 + std::clamp(
                     affinities[element] + 10,
-                    0,
-                    20)),
+                    std::int32_t{0},
+                    std::int32_t{20})),
             {0, static_cast<std::int32_t>(element) * 16});
     }
 

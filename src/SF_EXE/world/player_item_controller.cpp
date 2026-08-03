@@ -45,7 +45,7 @@ bool applyMedicine(
                 static_cast<std::int64_t>(current) +
                     flat + percentage,
                 0,
-                std::max(0, maximum)));
+                std::max(std::int32_t{0}, maximum)));
     };
 
     const std::int32_t old_life = targets.player.currentLife();
@@ -102,7 +102,7 @@ void PlayerItemController::initializeNew() {
 
 void PlayerItemController::restoreMineCount(
     std::int32_t count) {
-    mine_count_ = std::max(count, 0);
+    mine_count_ = std::max(count, std::int32_t{0});
 }
 
 bool PlayerItemController::consumeMine() {
@@ -115,7 +115,8 @@ bool PlayerItemController::consumeMine() {
 
 bool PlayerItemController::collectMine(
     std::int32_t maximum_count) {
-    if (mine_count_ >= std::max(maximum_count, 0)) {
+    if (mine_count_ >=
+        std::max(maximum_count, std::int32_t{0})) {
         return false;
     }
     ++mine_count_;

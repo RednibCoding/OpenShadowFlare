@@ -33,7 +33,7 @@ std::int32_t WorldScene::playerMaximumMineCount() const {
     return std::max(
         10 + player_equipment_.instanceParameterBonus(
                  84, item_database_),
-        1);
+        std::int32_t{1});
 }
 
 std::int32_t WorldScene::playerMineDamageBonus() const {

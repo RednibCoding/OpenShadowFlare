@@ -62,7 +62,8 @@ bool restoreRetailMineCount(
     }
     if (companion_progress_end == suffix_end) {
         if (extension.has_mine_count) {
-            mine_count = std::max(extension.mine_count, 0);
+            mine_count = std::max(
+                extension.mine_count, std::int32_t{0});
         }
         if (serialized_end) {
             *serialized_end = companion_progress_end;
@@ -83,7 +84,7 @@ bool restoreRetailMineCount(
             "The retail mine-count stream is truncated.");
         return false;
     }
-    mine_count = std::max(restored, 0);
+    mine_count = std::max(restored, std::int32_t{0});
     if (serialized_end) {
         *serialized_end = companion_progress_end + 4u;
     }
@@ -109,7 +110,7 @@ bool replaceRetailMineCount(
             "The retail mine stream begins outside the save payload.");
         return false;
     }
-    mine_count = std::max(mine_count, 0);
+    mine_count = std::max(mine_count, std::int32_t{0});
     std::size_t end = companion_progress_end + 4u;
     if (companion_progress_end == suffix_end) {
         payload.insert(

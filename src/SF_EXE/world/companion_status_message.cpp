@@ -92,7 +92,7 @@ bool buildRetailCompanionStatusMessage(
            << profile.walking_speed_raw << '\n';
 
     const std::int32_t level_limit = std::min(
-        player.level() / 3 + 2, 35);
+        player.level() / 3 + 2, std::int32_t{35});
     if (player.companionLevel() == level_limit) {
         output << (level_limit == 35
                        ? "Experience   Max\n"

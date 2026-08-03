@@ -61,7 +61,7 @@ std::uint8_t addChannel(
         std::min(
             static_cast<std::int32_t>(destination) +
                 source_amount,
-            255));
+            std::int32_t{255}));
 }
 
 std::uint8_t readPixelIndex(
@@ -158,7 +158,9 @@ bool SoftwareBackend::drawPattern(
     const bool additive =
         draw.blend_mode == PatternBlendMode::additive;
     const std::int32_t opacity = std::clamp(
-        draw.opacity, 0, additive ? 2000 : 1000);
+        draw.opacity,
+        std::int32_t{0},
+        additive ? std::int32_t{2000} : std::int32_t{1000});
 
     for (const NjpPatternPart& item : pattern.parts) {
         if (item.part_index < 0 ||
@@ -480,7 +482,11 @@ bool SoftwareBackend::drawBitMask(
     }
 
     const std::int32_t opacity =
-        std::clamp(draw.opacity, 0, 1000) * draw.color.alpha / 255;
+        std::clamp(
+            draw.opacity,
+            std::int32_t{0},
+            std::int32_t{1000}) *
+        draw.color.alpha / std::int32_t{255};
     if (opacity <= 0) {
         return true;
     }
@@ -674,7 +680,10 @@ bool SoftwareBackend::drawRectangle(
         return true;
     }
     const std::int32_t opacity =
-        std::clamp(draw.opacity, 0, 1000);
+        std::clamp(
+            draw.opacity,
+            std::int32_t{0},
+            std::int32_t{1000});
     if (opacity >= 1000) {
         for (std::int32_t y = top; y < bottom; ++y) {
             Color* row = pixels_.data() +
@@ -713,7 +722,10 @@ bool SoftwareBackend::drawLine(const LineDraw& draw) {
     const bool clipped =
         draw.clip.width > 0 && draw.clip.height > 0;
     const std::int32_t opacity =
-        std::clamp(draw.opacity, 0, 1000);
+        std::clamp(
+            draw.opacity,
+            std::int32_t{0},
+            std::int32_t{1000});
     const auto draw_point = [this, &draw, color, clipped, opacity](
                                 std::int32_t x,
                                 std::int32_t y) {

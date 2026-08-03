@@ -68,12 +68,14 @@ void renderInformation(
         kInformationPadding * 2;
     const std::int32_t x = std::clamp(
         pointer_x - width / 2,
-        1,
-        std::max(1, kScreenWidth - width));
+        std::int32_t{1},
+        std::max(
+            std::int32_t{1}, kScreenWidth - width));
     const std::int32_t y = std::clamp(
         pointer_y + 8,
-        1,
-        std::max(1, kScreenHeight - height));
+        std::int32_t{1},
+        std::max(
+            std::int32_t{1}, kScreenHeight - height));
     const gapi::Color black{0, 0, 0, 255};
     const gapi::Color white{255, 255, 255, 255};
     renderer.drawRectangle({

@@ -103,7 +103,8 @@ gapi::Color scenarioObjectNameColor(
 
 std::uint8_t colorChannel(std::int32_t value) {
     return static_cast<std::uint8_t>(
-        std::clamp(value, 0, 255));
+        std::clamp(
+            value, std::int32_t{0}, std::int32_t{255}));
 }
 
 void drawScenarioTextLabels(
@@ -140,7 +141,10 @@ void drawScenarioTextLabels(
             height + kMargin * 2,
             {0, 0, 0, 255},
             1000,
-            std::clamp(label.background_opacity, 0, 1000),
+            std::clamp(
+                label.background_opacity,
+                std::int32_t{0},
+                std::int32_t{1000}),
         });
         renderer.drawText(
             *font,

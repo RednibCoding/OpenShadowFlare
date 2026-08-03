@@ -24,7 +24,8 @@ bool isSmokeTest(int argc, char** argv) {
 
 std::filesystem::path findDataRoot() {
 #if defined(__PS2__)
-    return std::filesystem::path("cdrom0:\\ShadowFlare");
+    return std::filesystem::path(
+        osf::runtime::platform::ps2::dataRoot());
 #else
     const auto isDataRoot =
         [](const std::filesystem::path& candidate) {

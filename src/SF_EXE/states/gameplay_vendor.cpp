@@ -184,7 +184,9 @@ void GameplayVendor::updateHover(
     }
     if (next >= 0 && next == hovered_item_index_) {
         item_hover_updates_ =
-            std::min(item_hover_updates_ + 1, 3);
+            std::min(
+                item_hover_updates_ + std::int32_t{1},
+                std::int32_t{3});
     } else {
         item_hover_updates_ = next >= 0 ? 1 : 0;
     }

@@ -1,5 +1,6 @@
 #include "world_scene.hpp"
 
+#include <cinttypes>
 #include <cstdio>
 
 namespace osf {
@@ -13,7 +14,7 @@ void WorldScene::beginScenarioVisual(std::int32_t visual_id) {
         std::snprintf(
             filename,
             sizeof(filename),
-            "Visual%02d.njp",
+            "Visual%02" PRId32 ".njp",
             visual_id);
     }
     const std::filesystem::path pattern_root =

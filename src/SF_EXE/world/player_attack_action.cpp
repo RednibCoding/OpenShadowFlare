@@ -316,7 +316,10 @@ bool PlayerAttackActionController::startCombo(
         combo_phases_.push_back(std::move(phase));
     }
     attack_speed_tier_ =
-        std::clamp(attack_speed_tier, 0, 9);
+        std::clamp(
+            attack_speed_tier,
+            std::int32_t{0},
+            std::int32_t{9});
     target_id_ = -1;
     combo_phase_ = 0;
     combo_lunge_distance_ = 0;

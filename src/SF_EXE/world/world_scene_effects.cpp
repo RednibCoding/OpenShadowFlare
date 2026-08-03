@@ -426,7 +426,7 @@ void WorldScene::updateRuntimeEffects() {
                     effect_visuals_.find(resource_id);
                 if (!visual ||
                     visual->animation().charts().empty()) {
-                    return 1;
+                    return std::int32_t{1};
                 }
                 return std::max<std::int32_t>(
                     visual->animation()

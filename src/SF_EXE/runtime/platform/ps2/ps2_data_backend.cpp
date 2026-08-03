@@ -3,7 +3,10 @@
 
 #include "ps2_data_backend.hpp"
 
+#include <kernel.h>
+#include <loadfile.h>
 #include <ps2sdkapi.h>
+#include <sifrpc.h>
 
 #include <dirent.h>
 #include <errno.h>
@@ -24,6 +27,15 @@ namespace ps2 {
 namespace {
 
 constexpr char kArchiveName[] = "cdrom0:\\SFGAME.BIN";
+constexpr char kArchiveDataRoot[] = "cdrom0:\\ShadowFlare";
+constexpr char kHostDataRoot[] = "host0:ShadowFlare";
+constexpr char kHostConfigPath[] = "host0:ShadowFlare/SFlare.Cfg";
+constexpr char kLegacyHostDataRoot[] = "host:ShadowFlare";
+constexpr char kLegacyHostConfigPath[] = "host:ShadowFlare/SFlare.Cfg";
+constexpr char kMassDataRoot[] = "mass:/ShadowFlare";
+constexpr char kMassConfigPath[] = "mass:/ShadowFlare/SFlare.Cfg";
+constexpr char kUsbDriverPath[] = "cdrom0:\\USBD.IRX;1";
+constexpr char kUsbMassDriverPath[] = "cdrom0:\\USBHDFSD.IRX;1";
 constexpr char kDataRootComponent[] = "ShadowFlare";
 constexpr std::uint32_t kMagic = 0x53464231u;
 constexpr std::uint32_t kVersion = 1u;
@@ -57,6 +69,7 @@ struct DirHandle {
 };
 
 bool s_initialized = false;
+const char* s_data_root = kArchiveDataRoot;
 DataEntry* s_entries = nullptr;
 std::uint32_t s_entry_count = 0;
 _libcglue_fdman_path_ops_t* s_default_path_ops = nullptr;
@@ -591,6 +604,23 @@ bool readFull(int fd, void* buffer, int size) {
     return true;
 }
 
+bool fileExists(const char* path) {
+    const int fd = fioOpen(path, FIO_O_RDONLY);
+    if (fd < 0) {
+        return false;
+    }
+    fioClose(fd);
+    return true;
+}
+
+void loadUsbMassStorageDrivers() {
+    // USBHDFSD registers the mass: filesystem after USBD is available. Ignore
+    // load failures so an archive-only disc still boots on every PS2 setup.
+    SifLoadFileInit();
+    SifLoadModule(kUsbDriverPath, 0, nullptr);
+    SifLoadModule(kUsbMassDriverPath, 0, nullptr);
+}
+
 }  // namespace
 
 int initDataBackend() {
@@ -599,6 +629,27 @@ int initDataBackend() {
     }
 
     fioInit();
+    if (fileExists(kHostConfigPath)) {
+        s_data_root = kHostDataRoot;
+        s_initialized = true;
+        std::fprintf(stderr, "ps2 data: using %s\n", s_data_root);
+        return 0;
+    }
+    if (fileExists(kLegacyHostConfigPath)) {
+        s_data_root = kLegacyHostDataRoot;
+        s_initialized = true;
+        std::fprintf(stderr, "ps2 data: using %s\n", s_data_root);
+        return 0;
+    }
+
+    loadUsbMassStorageDrivers();
+    if (fileExists(kMassConfigPath)) {
+        s_data_root = kMassDataRoot;
+        s_initialized = true;
+        std::fprintf(stderr, "ps2 data: using %s\n", s_data_root);
+        return 0;
+    }
+
     s_default_path_ops = _libcglue_fdman_path_ops;
 
     const int fd = fioOpen(kArchiveName, FIO_O_RDONLY);
@@ -695,12 +746,17 @@ int initDataBackend() {
 
     _libcglue_fdman_path_ops = &s_path_ops;
     s_initialized = true;
+    s_data_root = kArchiveDataRoot;
     std::fprintf(
         stderr,
         "ps2 data: %lu files from %s\n",
         static_cast<unsigned long>(s_entry_count),
         kArchiveName);
     return 0;
+}
+
+const char* dataRoot() {
+    return s_data_root;
 }
 
 }  // namespace ps2

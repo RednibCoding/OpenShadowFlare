@@ -327,7 +327,8 @@ void renderSavedGames(
                 : brightness / 2;
         const bool selectedItem =
             index ==
-            static_cast<std::size_t>(std::max(selected, 0));
+            static_cast<std::size_t>(
+                std::max(selected, std::int32_t{0}));
         const gapi::Color labelColor = selectedItem
             ? gapi::Color{224, 192, 128, 255}
             : gapi::Color{112, 96, 64, 255};

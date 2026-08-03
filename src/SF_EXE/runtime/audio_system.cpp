@@ -5,6 +5,7 @@
 #include "states/character_select_state.hpp"
 #include "states/title_state.hpp"
 
+#include <cinttypes>
 #include <cstdio>
 
 namespace osf::runtime {
@@ -105,7 +106,7 @@ void AudioSystem::startWorldMusic(std::int32_t track) {
     std::snprintf(
         path,
         sizeof(path),
-        "System\\Game\\Music\\BGM%02d.Voc",
+        "System\\Game\\Music\\BGM%02" PRId32 ".Voc",
         track);
     if (loadVoc(world_music_, path)) {
         world_music_.play(0, true, bgm_volume_);

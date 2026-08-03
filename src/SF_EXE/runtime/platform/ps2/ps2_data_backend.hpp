@@ -14,6 +14,7 @@ namespace platform {
 namespace ps2 {
 
 int initDataBackend();
+const char* dataRoot();
 
 }  // namespace ps2
 }  // namespace platform

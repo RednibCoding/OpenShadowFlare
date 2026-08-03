@@ -27,7 +27,12 @@ public:
     bool initialize(
         LwlWindow* window,
         std::string* error) override;
-    void present(SurfaceView surface) override;
+    void prepareFrame(SurfaceView surface) override;
+    void displayFrame() override;
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override;
+#endif
 
 private:
     void shutdown();
@@ -38,6 +43,7 @@ private:
     std::unique_ptr<std::uint32_t[]> textureMemory_;
     std::int32_t textureWidth_ = 0;
     std::int32_t textureHeight_ = 0;
+    bool framePrepared_ = false;
 };
 
 void setError(std::string* error, const char* message) {
@@ -104,6 +110,7 @@ bool Ps2SurfacePresenter::initialize(
 }
 
 void Ps2SurfacePresenter::shutdown() {
+    framePrepared_ = false;
     textureWidth_ = 0;
     textureHeight_ = 0;
     textureMemory_.reset();
@@ -129,7 +136,8 @@ void Ps2SurfacePresenter::uploadSurface(const SurfaceView& surface) {
     gsKit_texture_upload(gsGlobal_, &texture_);
 }
 
-void Ps2SurfacePresenter::present(SurfaceView surface) {
+void Ps2SurfacePresenter::prepareFrame(SurfaceView surface) {
+    framePrepared_ = false;
     if (!gsGlobal_ || !textureMemory_ || !surface.pixels ||
         surface.width <= 0 || surface.height <= 0) {
         return;
@@ -166,8 +174,28 @@ void Ps2SurfacePresenter::present(SurfaceView surface) {
         0,
         GS_SETREG_RGBAQ(0x80, 0x80, 0x80, 0x80, 0x00));
     gsKit_queue_exec(gsGlobal_);
-    gsKit_sync_flip(gsGlobal_);
+    framePrepared_ = true;
 }
+
+void Ps2SurfacePresenter::displayFrame() {
+    if (!gsGlobal_ || !framePrepared_) {
+        return;
+    }
+    gsKit_sync_flip(gsGlobal_);
+    framePrepared_ = false;
+}
+
+#if OSF_ENABLE_DEBUG_TOOLS
+std::optional<std::uint64_t>
+Ps2SurfacePresenter::videoMemoryUsageBytes() const {
+    if (!gsGlobal_ || texture_.Vram == 0) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint64_t>(kTextureWidth) *
+           static_cast<std::uint64_t>(kTextureHeight) *
+           sizeof(std::uint32_t);
+}
+#endif
 
 }  // namespace
 

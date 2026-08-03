@@ -111,7 +111,7 @@ std::int32_t retailItemRepairPrice(
     }
     const std::int32_t current = std::clamp(
         itemCurrentDurability(item, definition),
-        0,
+        std::int32_t{0},
         definition.maximum_durability);
     if (current == definition.maximum_durability) {
         return 0;

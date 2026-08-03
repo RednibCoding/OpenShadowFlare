@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cinttypes>
 #include <cstdio>
 #include <string>
 #include <string_view>
@@ -88,7 +89,7 @@ void drawShadowedText(
 
 std::string number(std::int32_t value) {
     char buffer[32]{};
-    std::snprintf(buffer, sizeof(buffer), "%d", value);
+    std::snprintf(buffer, sizeof(buffer), "%" PRId32, value);
     return buffer;
 }
 

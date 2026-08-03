@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cinttypes>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -77,7 +78,7 @@ std::filesystem::path scenarioDirectory(
     std::snprintf(
         directory,
         sizeof(directory),
-        "%08d",
+        "%08" PRId32,
         scenario_id);
     return data_root / "Scenario" / directory;
 }

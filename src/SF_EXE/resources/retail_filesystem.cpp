@@ -1,6 +1,7 @@
 #include "retail_filesystem.hpp"
 
 #include <cctype>
+#include <cinttypes>
 #include <cstdio>
 #include <string>
 
@@ -87,7 +88,8 @@ std::int32_t countRetailSaves(
     std::int32_t count = 0;
     for (std::int32_t index = 0; index < 6; ++index) {
         char path[32]{};
-        std::snprintf(path, sizeof(path), "Save\\%04d.Ssv", index);
+        std::snprintf(
+            path, sizeof(path), "Save\\%04" PRId32 ".Ssv", index);
         if (retailFileExists(root, path)) {
             ++count;
         }
@@ -104,7 +106,10 @@ bool deleteRetailSave(
     for (std::int32_t slot = 0; slot < 6; ++slot) {
         char save_path[32]{};
         std::snprintf(
-            save_path, sizeof(save_path), "Save\\%04d.Ssv", slot);
+            save_path,
+            sizeof(save_path),
+            "Save\\%04" PRId32 ".Ssv",
+            slot);
         if (!retailFileExists(root, save_path)) {
             continue;
         }
@@ -119,7 +124,7 @@ bool deleteRetailSave(
         std::snprintf(
             preview_path,
             sizeof(preview_path),
-            "Save\\%04d.Bmp",
+            "Save\\%04" PRId32 ".Bmp",
             slot);
         error.clear();
         std::filesystem::remove(

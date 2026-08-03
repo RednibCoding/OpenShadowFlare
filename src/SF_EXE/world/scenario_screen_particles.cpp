@@ -16,7 +16,8 @@ std::int32_t retailProjection(double value) {
 }
 
 std::int32_t clampColor(std::int32_t value) {
-    return std::clamp(value, 0, 255);
+    return std::clamp(
+        value, std::int32_t{0}, std::int32_t{255});
 }
 
 }  // namespace

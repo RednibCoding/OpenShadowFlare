@@ -62,7 +62,7 @@ std::int32_t itemSalePrice(
 std::int32_t itemPurchasePrice(
     const InventoryItem&,
     const ItemDefinition& definition) {
-    return std::max(definition.base_price, 0);
+    return std::max(definition.base_price, std::int32_t{0});
 }
 
 std::string itemInformationText(
