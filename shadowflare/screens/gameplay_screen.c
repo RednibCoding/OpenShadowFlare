@@ -20,8 +20,24 @@
 #include "screens/gameplay_screen.h"
 
 #include "screens/gameplay_player.h"
+#include "ui/actor_nameplate.h"
+#include "ui/world_pointer_overlay.h"
 
 #include <string.h>
+
+static SfRect sf_gameplay_damage_union(SfRect first, SfRect second) {
+  const int left = first.x < second.x ? first.x : second.x;
+  const int top = first.y < second.y ? first.y : second.y;
+  const int first_right = first.x + first.width;
+  const int second_right = second.x + second.width;
+  const int first_bottom = first.y + first.height;
+  const int second_bottom = second.y + second.height;
+  const int right = first_right > second_right ? first_right : second_right;
+  const int bottom = first_bottom > second_bottom ? first_bottom : second_bottom;
+  return (SfRect) {
+    (int16_t) left, (int16_t) top,
+    (int16_t) (right - left), (int16_t) (bottom - top)};
+}
 
 bool sf_gameplay_screen_init(
     SfGameplayScreen *screen, const SfGameplayAssets *assets,
@@ -83,6 +99,8 @@ void sf_gameplay_screen_draw(
   const SfRect *clip = NULL;
   const SfPlayerState *player;
   SfWorldRenderView view;
+  SfRect damage;
+  SfRect ui_damage;
   bool scene_moved;
   if (!screen || !renderer || !assets || !game ||
       !game->world.entered) return;
@@ -93,12 +111,23 @@ void sf_gameplay_screen_draw(
     screen->rendered_player_y != view.player_position.y ||
     screen->rendered_camera_x != view.camera_x ||
     screen->rendered_camera_y != view.camera_y ||
+    screen->rendered_hovered_actor_id !=
+      game->world.pointer.hovered_actor_id ||
+    screen->rendered_pointer_x != game->world.pointer.screen_x ||
+    screen->rendered_pointer_y != game->world.pointer.screen_y ||
+    screen->rendered_pointer_active != game->world.pointer.active ||
     screen->rendered_motion != (uint8_t) player->motion ||
     screen->rendered_direction != player->direction ||
     sf_gameplay_actor_frames_changed(screen, &game->world, interpolation);
   if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame == player->animation_frame) return;
-    clip = &screen->player_damage;
+    damage = screen->player_damage;
+    if (sf_world_pointer_overlay_bounds(&game->world, &ui_damage))
+      damage = sf_gameplay_damage_union(damage, ui_damage);
+    if (sf_actor_nameplate_bounds(
+          assets, &game->world, &view, interpolation, &ui_damage))
+      damage = sf_gameplay_damage_union(damage, ui_damage);
+    clip = &damage;
     sf_renderer_fill_rect(renderer, *clip, 0u);
   } else {
     if (!sf_gameplay_scene_update(
@@ -111,12 +140,20 @@ void sf_gameplay_screen_draw(
   sf_gameplay_scene_draw(
     &screen->scene, renderer, assets, &game->world, &view,
     interpolation, clip);
+  sf_actor_nameplate_draw(
+    renderer, assets, &game->world, &view, interpolation);
+  sf_world_pointer_overlay_draw(renderer, &game->world);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
   screen->rendered_player_x = view.player_position.x;
   screen->rendered_player_y = view.player_position.y;
   screen->rendered_camera_x = view.camera_x;
   screen->rendered_camera_y = view.camera_y;
+  screen->rendered_hovered_actor_id =
+    game->world.pointer.hovered_actor_id;
+  screen->rendered_pointer_x = game->world.pointer.screen_x;
+  screen->rendered_pointer_y = game->world.pointer.screen_y;
+  screen->rendered_pointer_active = game->world.pointer.active;
   screen->rendered_motion = (uint8_t) player->motion;
   screen->rendered_direction = player->direction;
   screen->drawn = true;

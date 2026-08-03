@@ -17,31 +17,15 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_INPUT_H
-#define SHADOWFLARE_GAME_INPUT_H
+#ifndef SHADOWFLARE_UI_WORLD_POINTER_H
+#define SHADOWFLARE_UI_WORLD_POINTER_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "assets/gameplay_assets.h"
+#include "game/input.h"
+#include "game/world.h"
 
-typedef struct SfGameInput {
-  int32_t pointed_actor_id;
-  int16_t pointer_x;
-  int16_t pointer_y;
-  bool pointer_active;
-  bool world_pointer_resolved;
-  bool pointer_primary_pressed;
-  bool pointer_primary_down;
-  bool up_pressed;
-  bool down_pressed;
-  bool left_pressed;
-  bool right_pressed;
-  bool confirm_pressed;
-  bool cancel_pressed;
-  bool backspace_pressed;
-  bool delete_pressed;
-  bool pace_toggle_pressed;
-  char text[16];
-  uint8_t text_length;
-} SfGameInput;
+void sf_world_pointer_resolve(
+  const SfGameplayAssets *assets, const SfWorldState *world,
+  SfGameInput *input);
 
 #endif

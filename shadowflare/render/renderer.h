@@ -69,6 +69,8 @@ const SfFramebuffer *sf_renderer_framebuffer(const SfRenderer *renderer);
 void sf_renderer_clear(SfRenderer *renderer, uint16_t color);
 void sf_renderer_fill_rect(
   SfRenderer *renderer, SfRect rectangle, uint16_t color);
+void sf_renderer_fill_rect_blended(
+  SfRenderer *renderer, SfRect rectangle, uint16_t color, uint16_t opacity);
 void sf_renderer_draw_indexed(
   SfRenderer *renderer, const SfIndexedImage *image,
   int x, int y, uint16_t brightness, uint16_t opacity,

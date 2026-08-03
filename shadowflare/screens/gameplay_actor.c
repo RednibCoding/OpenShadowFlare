@@ -72,7 +72,8 @@ bool sf_gameplay_actor_visible(
 void sf_gameplay_actor_draw(
     SfRenderer *renderer, const SfScenarioActorAssets *assets,
     const SfScenarioActor *actor, const SfWorldRenderView *view,
-    uint16_t interpolation, bool shadow, const SfRect *clip) {
+    uint16_t interpolation, bool shadow, bool hovered,
+    const SfRect *clip) {
   const SfScenarioActorVisual *visual;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
@@ -120,11 +121,14 @@ void sf_gameplay_actor_draw(
           cell->transparency > 1000 ? 1000u :
           (uint16_t) cell->transparency;
         red_strength = actor->red_strength[source_part] < 0 ? 0u :
-          (uint16_t) actor->red_strength[source_part];
+          (uint16_t) (actor->red_strength[source_part] +
+            (hovered ? 300 : 0));
         green_strength = actor->green_strength[source_part] < 0 ? 0u :
-          (uint16_t) actor->green_strength[source_part];
+          (uint16_t) (actor->green_strength[source_part] +
+            (hovered ? 300 : 0));
         blue_strength = actor->blue_strength[source_part] < 0 ? 0u :
-          (uint16_t) actor->blue_strength[source_part];
+          (uint16_t) (actor->blue_strength[source_part] +
+            (hovered ? 300 : 0));
         blend = (cell->status & 0x10) != 0
           ? SF_BLEND_ADDITIVE : SF_BLEND_MASKED;
       }

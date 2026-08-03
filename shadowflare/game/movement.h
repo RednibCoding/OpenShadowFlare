@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_MOVEMENT_H
 
 #include "core/coordinates.h"
+#include "core/bounds.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,5 +35,8 @@ typedef struct SfMovementStep {
 SfMovementStep sf_movement_step_toward(
   SfWorldPoint position, SfWorldPoint destination, uint32_t speed);
 uint8_t sf_movement_direction(SfWorldPoint from, SfWorldPoint to);
+int32_t sf_movement_bounds_distance(
+  SfWorldPoint first_position, SfObjectBounds first_bounds,
+  SfWorldPoint second_position, SfObjectBounds second_bounds);
 
 #endif

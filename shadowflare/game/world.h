@@ -31,7 +31,15 @@
 #define SF_WORLD_MOVEMENT_BLOCKER_LIMIT (SF_MCT_PERSON_LIMIT + 1u)
 
 typedef struct SfWorldPointerControl {
+  int32_t hovered_actor_id;
+  int32_t pending_actor_id;
+  int16_t screen_x;
+  int16_t screen_y;
   uint8_t hold_updates;
+  uint8_t range;
+  bool active;
+  bool range_enabled;
+  bool interaction_command_active;
   bool ground_command_active;
   bool continuous_movement;
   bool previous_down;

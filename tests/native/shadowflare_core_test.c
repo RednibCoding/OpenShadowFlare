@@ -196,6 +196,54 @@ static int test_world_pointer_movement(void) {
   return 0;
 }
 
+static int test_actor_interaction_approach(void) {
+  SfWorldState world;
+  SfMctScenario scenario;
+  SfScsScript script;
+  SfGameInput input;
+  unsigned update;
+  memset(&scenario, 0, sizeof(scenario));
+  memset(&script, 0, sizeof(script));
+  scenario.people_count = 1u;
+  scenario.people[0].id = 0;
+  scenario.people[0].resource_id = 1;
+  scenario.people[0].world_x = 500;
+  scenario.people[0].judgement_left = -10;
+  scenario.people[0].judgement_top = -10;
+  scenario.people[0].judgement_right = 10;
+  scenario.people[0].judgement_bottom = 10;
+  scenario.people[0].initial_state[SF_SCENARIO_VISIBLE] = 1;
+  scenario.people[0].initial_state[SF_SCENARIO_POINTER] = 1;
+  scenario.people[0].initial_state[SF_SCENARIO_JUDGEMENT] = 1;
+  sf_world_state_init(&world, 0, 0, 1u);
+  if (check(sf_world_state_bind_scenario(&world, &scenario, &script),
+            "a valid actor scenario did not bind")) return 1;
+  sf_world_state_enter(&world, 0, 0, 1u);
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.world_pointer_resolved = true;
+  input.pointed_actor_id = 0;
+  input.pointer_primary_pressed = true;
+  sf_world_state_update(&world, &input);
+  if (check(world.pointer.hovered_actor_id == 0 &&
+            world.pointer.pending_actor_id == 0 &&
+            world.player.position.x > 0,
+            "an actor click became a ground movement command")) return 1;
+  input.pointer_primary_pressed = false;
+  for (update = 0u; update < 100u &&
+       world.pointer.pending_actor_id >= 0; ++update)
+    sf_world_state_update(&world, &input);
+  if (check(world.pointer.pending_actor_id < 0 &&
+            world.player.motion == SF_PLAYER_IDLE &&
+            sf_movement_bounds_distance(
+              world.player.position, world.player.judgement,
+              world.actors.actors[0].position,
+              world.actors.actors[0].judgement) <= 0x9f,
+            "the player did not stop at the retail actor interaction range"))
+    return 1;
+  return 0;
+}
+
 static int test_collision_route(void) {
   SfMapObject object;
   SfObjectMap objects;
@@ -472,6 +520,11 @@ static int test_renderer(void) {
             pixels[2u * 8u + 1u] == 0x7fffu,
             "renderer did not draw a masked indexed image")) return 1;
   sf_renderer_clear(&renderer, 0u);
+  sf_renderer_fill_rect_blended(
+    &renderer, (SfRect) {1, 1, 2, 2}, 0x7fffu, 500u);
+  if (check(pixels[1u * 8u + 1u] == sf_rgb555(15u, 15u, 15u),
+            "renderer did not blend a translucent UI rectangle")) return 1;
+  sf_renderer_clear(&renderer, 0u);
   sf_renderer_draw_indexed_tinted(
     &renderer, &image, 1, 1, 1000u, 500u, 0u, 1000u,
     SF_BLEND_MASKED, NULL);
@@ -735,7 +788,8 @@ int main(void) {
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 3579904u,
             "video asset budget is wrong") ||
       test_arena() || test_world_coordinates() || test_player_movement() ||
-      test_world_pointer_movement() || test_collision_route() ||
+      test_world_pointer_movement() || test_actor_interaction_approach() ||
+      test_collision_route() ||
       test_dynamic_collision_route() || test_scenario_actor_movement() ||
       test_retail_random() ||
       test_remote_town_collision() || test_depth_order() ||

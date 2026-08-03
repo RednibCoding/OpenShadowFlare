@@ -33,6 +33,6 @@ bool sf_gameplay_actor_visible(
 void sf_gameplay_actor_draw(
   SfRenderer *renderer, const SfScenarioActorAssets *assets,
   const SfScenarioActor *actor, const SfWorldRenderView *view,
-  uint16_t interpolation, bool shadow, const SfRect *clip);
+  uint16_t interpolation, bool shadow, bool hovered, const SfRect *clip);
 
 #endif

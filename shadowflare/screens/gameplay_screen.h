@@ -40,8 +40,12 @@ typedef struct SfGameplayScreen {
   int32_t rendered_player_y;
   int32_t rendered_camera_x;
   int32_t rendered_camera_y;
+  int32_t rendered_hovered_actor_id;
+  int16_t rendered_pointer_x;
+  int16_t rendered_pointer_y;
   uint8_t rendered_motion;
   uint8_t rendered_direction;
+  bool rendered_pointer_active;
   SfRect player_damage;
   bool drawn;
 } SfGameplayScreen;

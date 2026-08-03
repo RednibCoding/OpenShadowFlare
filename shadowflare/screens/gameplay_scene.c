@@ -257,7 +257,9 @@ static void sf_gameplay_draw_object_pass(
       if (default_class && actor)
         sf_gameplay_actor_draw(
           renderer, &assets->actors, actor, view,
-          interpolation, shadow, clip);
+          interpolation, shadow,
+          !shadow && world->pointer.hovered_actor_id == actor->id,
+          clip);
     } else {
       const SfMapObject *object = &assets->objects.objects[indices[index]];
       if ((sf_depth_class(object->status) == 0) != default_class) continue;

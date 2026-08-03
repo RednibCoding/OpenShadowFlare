@@ -25,6 +25,7 @@
 #include "game/world.h"
 #include "screens/gameplay_screen.h"
 #include "screens/gameplay_object_visual.h"
+#include "ui/world_pointer.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -213,6 +214,58 @@ static int test_scenario_actors(
   return 0;
 }
 
+static int test_actor_pointer(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  const SfScenarioActor *actor = &world->actors.actors[0];
+  SfWorldRenderView view;
+  SfScreenPoint anchor;
+  SfGameInput input;
+  int exact_x = -1;
+  int exact_y = -1;
+  int y;
+  sf_world_render_view(world, 1000u, &view);
+  anchor = sf_world_to_screen(actor->position);
+  anchor.x -= view.camera_x;
+  anchor.y -= view.camera_y;
+  world->pointer.range_enabled = false;
+  for (y = anchor.y - 100; y <= anchor.y + 40 && exact_x < 0; ++y) {
+    int x;
+    for (x = anchor.x - 80; x <= anchor.x + 80; ++x) {
+      memset(&input, 0, sizeof(input));
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) x;
+      input.pointer_y = (int16_t) y;
+      sf_world_pointer_resolve(assets, world, &input);
+      if (input.pointed_actor_id == actor->id) {
+        exact_x = x;
+        exact_y = y;
+        break;
+      }
+    }
+  }
+  if (exact_x < 0) {
+    fprintf(stderr, "Ostare has no exact opaque pointer cell\n");
+    return 1;
+  }
+  for (y = exact_y - 16; y <= exact_y + 16; ++y) {
+    int x;
+    for (x = exact_x - 16; x <= exact_x + 16; ++x) {
+      memset(&input, 0, sizeof(input));
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) x;
+      input.pointer_y = (int16_t) y;
+      sf_world_pointer_resolve(assets, world, &input);
+      if (input.pointed_actor_id >= 0) continue;
+      world->pointer.range_enabled = true;
+      sf_world_pointer_resolve(assets, world, &input);
+      if (input.pointed_actor_id == actor->id) return 0;
+      world->pointer.range_enabled = false;
+    }
+  }
+  fprintf(stderr, "Ostare was not selectable through the retail range square\n");
+  return 1;
+}
+
 int main(void) {
 #if defined(OPENSHADOWFLARE_SOURCE_DIR)
   SfGameplayAssets assets;
@@ -295,6 +348,8 @@ int main(void) {
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);
+  if (test_actor_pointer(&assets, &world)) return 1;
+  world.pointer.range_enabled = true;
   if (!sf_gameplay_screen_init(&screen, &assets, &world) ||
       screen.scene.visible_count != 22u || screen.scene.shadow_count != 10u) {
     fprintf(stderr,

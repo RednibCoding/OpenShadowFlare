@@ -58,6 +58,7 @@ static void sf_read_event(
   if (event->type == TWL_EVENT_POINTER_MOVE ||
       event->type == TWL_EVENT_POINTER_DOWN ||
       event->type == TWL_EVENT_POINTER_UP) {
+    input->pointer_active = true;
     uint32_t width;
     uint32_t height;
     twl_get_display_size(window, &width, &height);
@@ -143,6 +144,8 @@ static void sf_read_event(
 }
 
 static void sf_clear_input(SfGameInput *input) {
+  input->world_pointer_resolved = false;
+  input->pointed_actor_id = -1;
   input->pointer_primary_pressed = false;
   input->up_pressed = false;
   input->down_pressed = false;
@@ -363,6 +366,7 @@ int sf_application_run(
     {
       unsigned updates = 0u;
       while (now >= next_update && updates < 3u) {
+        sf_screen_runtime_resolve_input(screen_runtime, game, &input);
         sf_game_update(game, &input);
         sf_play_menu_events(
           audio, menu_assets,

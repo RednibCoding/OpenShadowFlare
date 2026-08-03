@@ -74,3 +74,38 @@ uint8_t sf_movement_direction(SfWorldPoint from, SfWorldPoint to) {
   if (dx >= 0) return dy < 0 ? 2u : 0u;
   return dy < 0 ? 4u : 6u;
 }
+
+static int64_t sf_separated_edge_distance(
+    int64_t first_start, int64_t first_end,
+    int64_t second_start, int64_t second_end) {
+  if (first_end < second_start) return second_start - first_end;
+  if (second_end < first_start) return first_start - second_end;
+  return 0;
+}
+
+int32_t sf_movement_bounds_distance(
+    SfWorldPoint first_position, SfObjectBounds first_bounds,
+    SfWorldPoint second_position, SfObjectBounds second_bounds) {
+  const int64_t horizontal = sf_separated_edge_distance(
+    (int64_t) first_position.x + first_bounds.left,
+    (int64_t) first_position.x + first_bounds.right,
+    (int64_t) second_position.x + second_bounds.left,
+    (int64_t) second_position.x + second_bounds.right);
+  const int64_t vertical = sf_separated_edge_distance(
+    (int64_t) first_position.y + first_bounds.top,
+    (int64_t) first_position.y + first_bounds.bottom,
+    (int64_t) second_position.y + second_bounds.top,
+    (int64_t) second_position.y + second_bounds.bottom);
+  uint32_t distance;
+  if (horizontal == 0 && vertical == 0) return 0;
+  if (horizontal == 0 || vertical == 0) {
+    const int64_t result = horizontal + vertical - 1;
+    return result > INT32_MAX ? INT32_MAX : (int32_t) result;
+  }
+  distance = sf_integer_sqrt(
+    (uint64_t) (horizontal * horizontal) +
+    (uint64_t) (vertical * vertical));
+  if (distance == 0u) return 0;
+  return distance > (uint32_t) INT32_MAX
+    ? INT32_MAX : (int32_t) distance - 1;
+}

@@ -19,6 +19,8 @@
 
 #include "runtime/screen_runtime.h"
 
+#include "ui/world_pointer.h"
+
 #include <string.h>
 
 bool sf_screen_runtime_init(
@@ -120,6 +122,18 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
   return sf_load_game_assets_select_preview(
     assets, runtime->data_root, game->load_game.selection,
     runtime->decode_scratch, runtime->decode_scratch_size);
+}
+
+void sf_screen_runtime_resolve_input(
+    const SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
+  if (!input) return;
+  input->world_pointer_resolved = false;
+  input->pointed_actor_id = -1;
+  if (!runtime || !runtime->loaded || !game ||
+      runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
+      game->mode != SF_GAME_MODE_GAMEPLAY) return;
+  sf_world_pointer_resolve(
+    &runtime->assets.gameplay, &game->world, input);
 }
 
 const SfTitleAssets *sf_screen_runtime_title_assets(

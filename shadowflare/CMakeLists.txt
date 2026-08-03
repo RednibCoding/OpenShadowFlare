@@ -82,6 +82,9 @@ add_library(
   screens/gameplay_player.c
   screens/load_game_screen.c
   screens/title_screen.c
+  ui/actor_nameplate.c
+  ui/world_pointer.c
+  ui/world_pointer_overlay.c
 )
 add_library(ShadowFlare::Core ALIAS shadowflare_core)
 sf_configure_c99_target(shadowflare_core)

@@ -101,6 +101,33 @@ void sf_renderer_fill_rect(
     rectangle.width, rectangle.height, color);
 }
 
+void sf_renderer_fill_rect_blended(
+    SfRenderer *renderer, SfRect rectangle, uint16_t color,
+    uint16_t opacity) {
+  int first_x = rectangle.x;
+  int first_y = rectangle.y;
+  int last_x = rectangle.x + rectangle.width;
+  int last_y = rectangle.y + rectangle.height;
+  int y;
+  if (!renderer || rectangle.width <= 0 || rectangle.height <= 0 ||
+      opacity == 0u) return;
+  if (opacity >= 1000u) {
+    sf_renderer_fill_rect(renderer, rectangle, color);
+    return;
+  }
+  if (first_x < 0) first_x = 0;
+  if (first_y < 0) first_y = 0;
+  if (last_x > renderer->target.width) last_x = renderer->target.width;
+  if (last_y > renderer->target.height) last_y = renderer->target.height;
+  for (y = first_y; y < last_y; ++y) {
+    uint16_t *row = renderer->target.pixels +
+      (size_t) y * renderer->target.stride;
+    int x;
+    for (x = first_x; x < last_x; ++x)
+      row[x] = sf_blend(row[x], color, opacity, false);
+  }
+}
+
 void sf_renderer_draw_indexed_tinted(
     SfRenderer *renderer, const SfIndexedImage *image,
     int x, int y, uint16_t red_strength, uint16_t green_strength,

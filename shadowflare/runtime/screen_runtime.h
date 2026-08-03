@@ -68,6 +68,8 @@ bool sf_screen_runtime_init(
   void *decode_scratch, size_t decode_scratch_size);
 bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game);
 bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game);
+void sf_screen_runtime_resolve_input(
+  const SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input);
 const SfTitleAssets *sf_screen_runtime_title_assets(
   const SfScreenRuntime *runtime);
 void sf_screen_runtime_draw(

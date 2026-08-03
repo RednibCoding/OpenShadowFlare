@@ -178,6 +178,7 @@ bool sf_gameplay_assets_load(
   const SfMctEntry *entry;
   char map_name[SF_PATTERN_NAME_CAPACITY];
   char path[SF_RETAIL_PATH_CAPACITY];
+  static const uint8_t font_pattern = 0u;
   size_t mark;
   bool success = false;
   if (!assets || !data_root || scenario_id < 0 || !arena) return false;
@@ -217,6 +218,10 @@ bool sf_gameplay_assets_load(
         &selection, &patterns, &assets->objects) ||
       !sf_gameplay_load_patterns(
         assets, &selection, &patterns, data_root, arena) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.font) ||
+      !sf_njp_load_selected(
+        path, &font_pattern, 1u, arena, &assets->font) ||
       !sf_player_assets_load(
         &assets->player, data_root, player_gender,
         appearance_parts, appearance_part_count,

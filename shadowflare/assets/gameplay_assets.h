@@ -46,6 +46,7 @@ typedef struct SfGameplayAssets {
   SfMctScenario scenario;
   SfScsScript *script;
   SfMctEntry entry;
+  SfNjpSelected font;
   SfPlayerAssets player;
   SfScenarioActorAssets actors;
   SfGameplayPatternSet *pattern_sets;
