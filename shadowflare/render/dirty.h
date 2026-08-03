@@ -17,23 +17,24 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "game/game.h"
+#ifndef SHADOWFLARE_RENDER_DIRTY_H
+#define SHADOWFLARE_RENDER_DIRTY_H
 
-#include "game/title.h"
+#include "render/renderer.h"
 
-#include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-void sf_game_init(SfGame *game, const SfGameConfig *config) {
-  if (!game) return;
-  memset(game, 0, sizeof(*game));
-  if (config) game->config = *config;
-  game->mode = SF_GAME_MODE_TITLE;
-  sf_title_state_init(game);
-}
+#define SF_DIRTY_RECT_CAPACITY 16u
 
-void sf_game_update(SfGame *game, const SfGameInput *input) {
-  if (!game || !input) return;
-  ++game->ticks;
-  if (game->mode == SF_GAME_MODE_TITLE) sf_title_state_update(game, input);
-  else game->title.sound_events = 0u;
-}
+typedef struct SfDirtyRects {
+  SfRect rectangles[SF_DIRTY_RECT_CAPACITY];
+  uint8_t count;
+  bool full;
+} SfDirtyRects;
+
+void sf_dirty_clear(SfDirtyRects *dirty);
+void sf_dirty_add(
+  SfDirtyRects *dirty, SfRect rectangle, uint16_t width, uint16_t height);
+
+#endif

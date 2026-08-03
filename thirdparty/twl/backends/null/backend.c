@@ -54,3 +54,8 @@ uint64_t twl_backend_time_microseconds(const Twl *twl) {
   (void) twl;
   return 0u;
 }
+
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration) {
+  (void) twl;
+  (void) duration;
+}

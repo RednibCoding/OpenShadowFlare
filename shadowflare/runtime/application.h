@@ -24,6 +24,7 @@
 
 int sf_application_run(
   void *main_memory, size_t main_memory_size,
-  void *video_memory, size_t video_memory_size);
+  void *video_memory, size_t video_memory_size,
+  const char *data_root);
 
 #endif

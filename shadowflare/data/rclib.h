@@ -17,23 +17,18 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "game/game.h"
+#ifndef SHADOWFLARE_DATA_RCLIB_H
+#define SHADOWFLARE_DATA_RCLIB_H
 
-#include "game/title.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
 
-#include <string.h>
+bool sf_rclib_decode_memory(
+  const uint8_t *encoded, size_t encoded_size,
+  uint8_t *decoded, size_t decoded_size);
+bool sf_rclib_decode_stream(
+  FILE *file, uint8_t *decoded, size_t decoded_size);
 
-void sf_game_init(SfGame *game, const SfGameConfig *config) {
-  if (!game) return;
-  memset(game, 0, sizeof(*game));
-  if (config) game->config = *config;
-  game->mode = SF_GAME_MODE_TITLE;
-  sf_title_state_init(game);
-}
-
-void sf_game_update(SfGame *game, const SfGameInput *input) {
-  if (!game || !input) return;
-  ++game->ticks;
-  if (game->mode == SF_GAME_MODE_TITLE) sf_title_state_update(game, input);
-  else game->title.sound_events = 0u;
-}
+#endif

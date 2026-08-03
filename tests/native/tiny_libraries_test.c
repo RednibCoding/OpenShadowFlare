@@ -82,6 +82,7 @@ static int test_tal(void) {
   TalConfig config = tal_config_default();
   TalPlayOptions options = tal_play_options_default();
   static const int16_t samples[] = {0, 12000, -12000, 6000};
+  static const uint8_t samples_u8[] = {0u, 128u, 255u, 128u};
   TalPcm pcm;
   TalVoice voice;
   Tal *tal = NULL;
@@ -105,6 +106,7 @@ static int test_tal(void) {
   pcm.frame_count = 4u;
   pcm.sample_rate = 16000u;
   pcm.channels = 1u;
+  pcm.format = TAL_SAMPLE_S16;
   TEST_CHECK(
     tal_play(tal, &pcm, &options, &voice) == TAL_RESULT_OK &&
       voice != TAL_INVALID_VOICE,
@@ -121,6 +123,18 @@ static int test_tal(void) {
   TEST_CHECK(
     !tal_voice_playing(tal, voice),
     "TAL voice remained active after its final frame");
+  pcm.samples = samples_u8;
+  pcm.format = TAL_SAMPLE_U8;
+  TEST_CHECK(
+    tal_play(tal, &pcm, &options, &voice) == TAL_RESULT_OK,
+    "TAL could not start unsigned 8-bit PCM");
+  TEST_CHECK(
+    tal_render(tal, output, 4u) == TAL_RESULT_OK &&
+      output[0] == -32768 && output[1] == -32768 &&
+      output[2] == 0 && output[3] == 0 &&
+      output[4] == 32512 && output[5] == 32512 &&
+      output[6] == 0 && output[7] == 0,
+    "TAL rendered unexpected unsigned 8-bit PCM samples");
   tal_shutdown(tal);
   return 1;
 }

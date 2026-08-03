@@ -30,9 +30,9 @@ The baseline is deliberately harsh:
 - 2 MiB main RAM;
 - 1 MiB video RAM;
 - 640×480 output using packed RGB555;
-- 60 Hz game updates where retail behavior requires them.
+- 30 Hz game updates and presentation, matching the retail game.
 
-At 60 Hz, 33 MHz is only about 550,000 CPU cycles per update. A 640×480 image
+At 30 Hz, 33 MHz is only about 1.1 million CPU cycles per frame. A 640×480 image
 contains 307,200 pixels. Touching the complete framebuffer is therefore a
 serious operation, not a harmless default.
 
@@ -52,6 +52,10 @@ for visible artwork and other video resources.
 - `core/` cannot depend on game, rendering, or runtime code.
 - `game/` owns rules and state. It cannot depend on rendering or runtime code.
 - `render/` may read game state, but cannot depend on runtime integration.
+- `screens/` composes complete screens from game state, assets, and renderer
+  operations. Title, loading, load/save, and gameplay screens belong there.
+- `render/` contains only the small render API and its reusable primitives;
+  it must not accumulate game screens.
 - TWL and TAL belong at the outer runtime boundary only.
 - Platform SDK headers and operating-system calls stay out of `shadowflare/`.
   Future target adapters belong outside the game folder.
@@ -77,9 +81,6 @@ headers, legacy libraries, and heap allocation.
 
 - Keep game renderers independent from a CPU framebuffer. They use a small
   renderer API whose implementation is selected when building the target.
-- The current geometric title bring-up screen predates that renderer seam. It
-  is temporary scaffolding and must move onto the renderer API before retail
-  title rendering is added; do not expand the direct framebuffer path.
 - The initial renderer operations are clear, rectangle fill, opaque sprite,
   masked sprite, translucent sprite, and dirty-region restoration. Add another
   operation only when recovered game behavior needs it.
@@ -87,8 +88,10 @@ headers, legacy libraries, and heap allocation.
   A future PS1 adapter can submit native GPU sprites and primitives instead.
 - Backend choice is compile-time. Do not put virtual dispatch, callbacks, or
   target checks in pixel and sprite hot paths.
-- Runtime images stay packed. Do not convert formats, scale artwork, decode
-  files, or allocate memory during an ordinary rendered frame.
+- Runtime images stay packed. Do not convert formats, scale artwork, or
+  allocate memory during an ordinary rendered frame. A bounded animation may
+  decode its current packed frame into fixed scratch memory when retaining all
+  frames would break the RAM limit; document and measure that work.
 - Cull invisible objects before drawing them.
 - Dirty rectangles are useful for mostly static screens such as the title and
   inventory. Do not force them onto a scrolling world when most of the view is
@@ -118,7 +121,7 @@ Every completed slice should answer four questions:
 
 1. What is its steady and peak main-RAM cost?
 2. What is its steady and peak video-RAM cost?
-3. What work does it add to a normal 60 Hz update and rendered frame?
+3. What work does it add to a normal 30 Hz update and rendered frame?
 4. Does it preserve the layer and platform boundaries above?
 
 If we cannot answer those yet, the slice is not finished.

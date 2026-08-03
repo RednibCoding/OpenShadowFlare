@@ -34,10 +34,19 @@ endfunction()
 
 add_library(
   shadowflare_core STATIC
+  assets/retail_paths.c
+  assets/title_assets.c
   core/arena.c
+  data/caf.c
+  data/njp.c
+  data/rclib.c
+  data/voc.c
   game/game.c
+  game/title.c
+  render/dirty.c
   render/framebuffer.c
-  render/title.c
+  render/renderer.c
+  screens/title_screen.c
 )
 add_library(ShadowFlare::Core ALIAS shadowflare_core)
 sf_configure_c99_target(shadowflare_core)

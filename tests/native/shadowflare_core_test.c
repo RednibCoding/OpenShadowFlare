@@ -19,9 +19,11 @@
 
 #include "core/arena.h"
 #include "core/memory_budget.h"
+#include "data/rclib.h"
 #include "game/game.h"
+#include "render/dirty.h"
 #include "render/framebuffer.h"
-#include "render/title.h"
+#include "render/renderer.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -77,24 +79,80 @@ static int test_framebuffer(void) {
   return 0;
 }
 
+static int test_renderer(void) {
+  uint16_t pixels[8u * 4u];
+  static const uint8_t indices[4] = {0u, 1u, 1u, 0u};
+  static const uint16_t palette[2] = {0u, 0x7fffu};
+  SfIndexedImage image;
+  SfRenderer renderer;
+  SfDirtyRects dirty;
+  SfRect rectangle = {1, 1, 2, 2};
+  image.pixels = indices;
+  image.palette = palette;
+  image.width = 2u;
+  image.height = 2u;
+  image.stride = 2u;
+  image.palette_size = 2u;
+  image.bits_per_pixel = 8u;
+  image.bottom_up = false;
+  if (check(sf_renderer_init(
+        &renderer, pixels, sizeof(pixels), 8u, 4u),
+        "renderer rejected a valid target")) return 1;
+  sf_renderer_clear(&renderer, 0u);
+  sf_renderer_draw_indexed(
+    &renderer, &image, 1, 1, 1000u, 1000u,
+    SF_BLEND_MASKED, NULL);
+  if (check(pixels[1u * 8u + 2u] == 0x7fffu &&
+            pixels[2u * 8u + 1u] == 0x7fffu,
+            "renderer did not draw a masked indexed image")) return 1;
+  sf_dirty_clear(&dirty);
+  sf_dirty_add(&dirty, rectangle, 8u, 4u);
+  rectangle.x = 2;
+  sf_dirty_add(&dirty, rectangle, 8u, 4u);
+  if (check(dirty.count == 1u && dirty.rectangles[0].width == 3,
+            "dirty rectangles did not merge touching damage")) return 1;
+  return 0;
+}
+
+static int test_rclib(void) {
+  static const uint8_t encoded[] = {
+    'R', 'C', 'L', 'I', 'B', '-', 'L', 0,
+    4, 0, 0, 0, 5, 0, 0, 0,
+    0, 1, 2, 3, 4
+  };
+  uint8_t decoded[4];
+  if (check(sf_rclib_decode_memory(
+        encoded, sizeof(encoded), decoded, sizeof(decoded)),
+        "RCLIB rejected a valid literal block") ||
+      check(decoded[0] == 1u && decoded[1] == 2u &&
+            decoded[2] == 3u && decoded[3] == 4u,
+            "RCLIB decoded the wrong literal bytes")) return 1;
+  return 0;
+}
+
 static int test_game(void) {
-  uint16_t pixels[64u * 48u];
-  SfFramebuffer framebuffer;
+  SfGameConfig config;
   SfGame game;
-  SfGameInput input = {false, true, false, false};
-  sf_game_init(&game);
+  SfGameInput input;
+  size_t index;
+  for (index = 0u; index < sizeof(config); ++index)
+    ((uint8_t *) &config)[index] = 0u;
+  for (index = 0u; index < SF_GAME_TITLE_SMOKE_COUNT; ++index)
+    config.title_smoke_frame_count[index] = 46u;
+  config.next_save_available = true;
+  for (index = 0u; index < sizeof(input); ++index)
+    ((uint8_t *) &input)[index] = 0u;
+  input.down_pressed = true;
+  sf_game_init(&game, &config);
   sf_game_update(&game, &input);
-  if (check(game.title_selection == 1u,
+  if (check(game.title.selection == 2u,
             "title input did not move the selection")) return 1;
   input.down_pressed = false;
   input.cancel_pressed = true;
   sf_game_update(&game, &input);
-  if (check(game.quit_requested, "cancel did not request a clean exit"))
+  if (check(game.title.transition_started,
+            "cancel did not start the retail exit transition"))
     return 1;
-  if (check(sf_framebuffer_init(
-        &framebuffer, pixels, sizeof(pixels), 64u, 48u),
-        "small test framebuffer failed to initialize")) return 1;
-  sf_title_render(&game, &framebuffer);
   return 0;
 }
 
@@ -107,6 +165,8 @@ int main(void) {
             "RGB555 framebuffer size is wrong") ||
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 434176u,
             "video asset budget is wrong") ||
-      test_arena() || test_framebuffer() || test_game()) return 1;
+      test_arena() || test_framebuffer() || test_renderer() ||
+      test_rclib() || test_game())
+    return 1;
   return 0;
 }

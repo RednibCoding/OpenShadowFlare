@@ -39,8 +39,9 @@ typedef union SfAlignedVideoMemory {
 static SfAlignedMainMemory sf_main_memory;
 static SfAlignedVideoMemory sf_video_memory;
 
-int main(void) {
+int main(int argument_count, char **arguments) {
+  const char *data_root = argument_count > 1 ? arguments[1] : "tmp/ShadowFlare";
   return sf_application_run(
     sf_main_memory.bytes, sizeof(sf_main_memory.bytes),
-    sf_video_memory.bytes, sizeof(sf_video_memory.bytes));
+    sf_video_memory.bytes, sizeof(sf_video_memory.bytes), data_root);
 }

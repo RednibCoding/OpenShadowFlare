@@ -338,3 +338,8 @@ uint64_t twl_time_microseconds(const Twl *twl) {
            ? twl_backend_time_microseconds(twl)
            : 0u;
 }
+
+void twl_sleep_microseconds(Twl *twl, uint64_t duration) {
+  if (twl && twl->backend_ready && duration != 0u)
+    twl_backend_sleep_microseconds(twl, duration);
+}

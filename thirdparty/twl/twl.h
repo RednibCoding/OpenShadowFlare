@@ -223,6 +223,7 @@ TwlResult twl_present(Twl *twl, const TwlSurface *surface);
 void twl_get_display_size(
   const Twl *twl, uint32_t *width, uint32_t *height);
 uint64_t twl_time_microseconds(const Twl *twl);
+void twl_sleep_microseconds(Twl *twl, uint64_t duration);
 
 #ifdef __cplusplus
 }

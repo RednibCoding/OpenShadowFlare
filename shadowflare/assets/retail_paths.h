@@ -17,23 +17,17 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "game/game.h"
+#ifndef SHADOWFLARE_ASSETS_RETAIL_PATHS_H
+#define SHADOWFLARE_ASSETS_RETAIL_PATHS_H
 
-#include "game/title.h"
+typedef struct SfRetailTitlePaths {
+  const char *artwork;
+  const char *smoke_artwork_format;
+  const char *smoke_animation_format;
+  const char *music;
+  const char *common_sounds;
+} SfRetailTitlePaths;
 
-#include <string.h>
+extern const SfRetailTitlePaths sf_retail_title_paths;
 
-void sf_game_init(SfGame *game, const SfGameConfig *config) {
-  if (!game) return;
-  memset(game, 0, sizeof(*game));
-  if (config) game->config = *config;
-  game->mode = SF_GAME_MODE_TITLE;
-  sf_title_state_init(game);
-}
-
-void sf_game_update(SfGame *game, const SfGameInput *input) {
-  if (!game || !input) return;
-  ++game->ticks;
-  if (game->mode == SF_GAME_MODE_TITLE) sf_title_state_update(game, input);
-  else game->title.sound_events = 0u;
-}
+#endif

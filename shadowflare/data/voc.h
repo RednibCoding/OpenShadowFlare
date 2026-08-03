@@ -17,23 +17,24 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "game/game.h"
+#ifndef SHADOWFLARE_DATA_VOC_H
+#define SHADOWFLARE_DATA_VOC_H
 
-#include "game/title.h"
+#include "core/arena.h"
 
-#include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 
-void sf_game_init(SfGame *game, const SfGameConfig *config) {
-  if (!game) return;
-  memset(game, 0, sizeof(*game));
-  if (config) game->config = *config;
-  game->mode = SF_GAME_MODE_TITLE;
-  sf_title_state_init(game);
-}
+#define SF_VOC_SELECTED_LIMIT 8u
 
-void sf_game_update(SfGame *game, const SfGameInput *input) {
-  if (!game || !input) return;
-  ++game->ticks;
-  if (game->mode == SF_GAME_MODE_TITLE) sf_title_state_update(game, input);
-  else game->title.sound_events = 0u;
-}
+typedef struct SfPcmU8 {
+  const uint8_t *samples;
+  uint32_t frame_count;
+  uint32_t sample_rate;
+} SfPcmU8;
+
+bool sf_voc_load_u8_mono_samples(
+  const char *path, const uint16_t *indices, uint8_t count,
+  SfArena *arena, SfPcmU8 *output);
+
+#endif

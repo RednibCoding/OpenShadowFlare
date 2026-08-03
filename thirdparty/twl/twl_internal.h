@@ -57,5 +57,6 @@ void twl_backend_shutdown(Twl *twl);
 void twl_backend_pump_events(Twl *twl);
 TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface);
 uint64_t twl_backend_time_microseconds(const Twl *twl);
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration);
 
 #endif

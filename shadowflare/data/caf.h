@@ -17,23 +17,27 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "game/game.h"
+#ifndef SHADOWFLARE_DATA_CAF_H
+#define SHADOWFLARE_DATA_CAF_H
 
-#include "game/title.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-#include <string.h>
+#define SF_CAF_FRAME_LIMIT 64u
 
-void sf_game_init(SfGame *game, const SfGameConfig *config) {
-  if (!game) return;
-  memset(game, 0, sizeof(*game));
-  if (config) game->config = *config;
-  game->mode = SF_GAME_MODE_TITLE;
-  sf_title_state_init(game);
-}
+typedef struct SfCafFrame {
+  int16_t pattern;
+  uint16_t opacity;
+  bool additive;
+} SfCafFrame;
 
-void sf_game_update(SfGame *game, const SfGameInput *input) {
-  if (!game || !input) return;
-  ++game->ticks;
-  if (game->mode == SF_GAME_MODE_TITLE) sf_title_state_update(game, input);
-  else game->title.sound_events = 0u;
-}
+typedef struct SfCafSequence {
+  SfCafFrame frames[SF_CAF_FRAME_LIMIT];
+  uint8_t frame_count;
+  bool looping;
+} SfCafSequence;
+
+bool sf_caf_load_first_chart_direction(
+  const char *path, uint8_t direction, SfCafSequence *output);
+
+#endif
