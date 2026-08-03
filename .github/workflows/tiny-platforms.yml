@@ -78,6 +78,7 @@ jobs:
         if: runner.os == 'macOS'
         run: >-
           ctest --test-dir build/${{ matrix.platform }}/debug
+          -C Debug
           --output-on-failure
           -R "tiny_libraries|tiny_library_boundaries"
 
@@ -86,6 +87,7 @@ jobs:
         shell: pwsh
         run: |
           $output = & ctest --test-dir build/${{ matrix.platform }}/debug `
+            -C Debug `
             --output-on-failure `
             -R "tiny_libraries|tiny_library_boundaries" 2>&1
           $exitCode = $LASTEXITCODE
@@ -101,5 +103,6 @@ jobs:
         if: runner.os == 'Windows'
         run: >-
           ctest --test-dir build/${{ matrix.platform }}/debug
+          -C Debug
           --output-on-failure
           -R "^twl_backend_smoke$"
