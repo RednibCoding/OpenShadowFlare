@@ -41,6 +41,8 @@ set_property(
 
 add_subdirectory(thirdparty/lwl)
 add_subdirectory(thirdparty/lal)
+add_subdirectory(thirdparty/twl)
+add_subdirectory(thirdparty/tal)
 if(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl" OR BUILD_TESTING)
   add_subdirectory(thirdparty/lgl)
 endif()
