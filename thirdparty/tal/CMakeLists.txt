@@ -18,7 +18,7 @@ add_library(tal STATIC tal.c)
 add_library(Tal::Tal ALIAS tal)
 
 target_include_directories(tal PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_compile_features(tal PUBLIC c_std_11)
+target_compile_features(tal PRIVATE c_std_11)
 set_target_properties(tal PROPERTIES C_EXTENSIONS OFF)
 
 if(MSVC)
