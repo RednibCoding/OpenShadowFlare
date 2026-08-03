@@ -40,6 +40,7 @@ add_library(
   assets/menu_assets.c
   assets/player_assets.c
   assets/retail_paths.c
+  assets/scenario_actor_assets.c
   assets/title_assets.c
   core/arena.c
   core/coordinates.c
@@ -54,6 +55,7 @@ add_library(
   data/pattern_list.c
   data/rclib.c
   data/save.c
+  data/scs.c
   data/voc.c
   game/character_create.c
   game/collision.c
@@ -63,13 +65,17 @@ add_library(
   game/player.c
   game/route.c
   game/route_tables.c
+  game/scenario_actor.c
   game/title.c
   game/world.c
+  interpreter/scenario_actor_script.c
   render/depth.c
   render/dirty.c
   render/framebuffer.c
   render/renderer.c
   screens/character_create_screen.c
+  screens/gameplay_actor.c
+  screens/gameplay_scene.c
   screens/gameplay_screen.c
   screens/gameplay_object_visual.c
   screens/gameplay_player.c

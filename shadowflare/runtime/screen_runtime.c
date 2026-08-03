@@ -77,10 +77,13 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       sf_world_state_bind_collision(
         &game->world, &runtime->assets.gameplay.ground,
         &runtime->assets.gameplay.objects);
-      sf_world_state_enter(
-        &game->world, entry->world_x, entry->world_y,
-        (uint8_t) entry->direction);
-      success = sf_gameplay_screen_init(
+      success = sf_world_state_bind_scenario(
+        &game->world, &runtime->assets.gameplay.scenario,
+        runtime->assets.gameplay.script);
+      if (success) sf_world_state_enter(
+          &game->world, entry->world_x, entry->world_y,
+          (uint8_t) entry->direction);
+      if (success) success = sf_gameplay_screen_init(
         &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
     }
   }

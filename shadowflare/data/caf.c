@@ -43,6 +43,71 @@ static bool sf_caf_i32(FILE *file, int32_t *value) {
   return true;
 }
 
+static bool sf_caf_skip(FILE *file, uint64_t size) {
+  while (size > 0u) {
+    const long amount = size > UINT32_C(0x7fffffff)
+      ? 0x7fffffffL : (long) size;
+    if (fseek(file, amount, SEEK_CUR) != 0) return false;
+    size -= (uint64_t) amount;
+  }
+  return true;
+}
+
+bool sf_caf_chart_direction_part_count(
+    const char *path, uint16_t wanted_chart, uint8_t wanted_direction,
+    uint8_t *part_count) {
+  FILE *file;
+  char header[16];
+  int version;
+  int32_t chart_count;
+  int32_t chart;
+  bool success = false;
+  if (!path || wanted_direction >= 9u || !part_count) return false;
+  *part_count = 0u;
+  file = fopen(path, "rb");
+  if (!file) return false;
+  if (!sf_caf_read(file, header, sizeof(header)) ||
+      memcmp(header, "CHRAnimation", 12u) != 0 ||
+      header[12] < '0' || header[12] > '9' ||
+      header[13] < '0' || header[13] > '9' ||
+      header[14] < '0' || header[14] > '9') goto done;
+  version = (header[12] - '0') * 100 + (header[13] - '0') * 10 +
+    header[14] - '0';
+  if (version > 3 || !sf_caf_i32(file, &chart_count) ||
+      wanted_chart >= chart_count) goto done;
+  for (chart = 0; chart < chart_count; ++chart) {
+    int16_t status;
+    uint8_t direction;
+    if (!sf_caf_i16(file, &status)) goto done;
+    for (direction = 0u; direction < 9u; ++direction) {
+      int32_t source_part_count;
+      int16_t frame_count;
+      int32_t source_part;
+      if (!sf_caf_i32(file, &source_part_count) ||
+          !sf_caf_i16(file, &frame_count) ||
+          source_part_count < 0 || frame_count < 0) goto done;
+      if (chart == wanted_chart && direction == wanted_direction) {
+        if (source_part_count > UINT8_MAX) goto done;
+        *part_count = (uint8_t) source_part_count;
+      }
+      for (source_part = 0; source_part < source_part_count; ++source_part) {
+        int32_t cell_count;
+        if (!sf_caf_i32(file, &cell_count) || cell_count < 0 ||
+            !sf_caf_skip(
+              file, (uint64_t) cell_count * (version < 2 ? 8u : 10u)))
+          goto done;
+      }
+      (void) frame_count;
+    }
+    (void) status;
+  }
+  success = *part_count > 0u;
+done:
+  fclose(file);
+  if (!success) *part_count = 0u;
+  return success;
+}
+
 bool sf_caf_load_first_chart_direction(
     const char *path, uint8_t wanted_direction, SfCafSequence *output) {
   FILE *file;
@@ -200,21 +265,25 @@ bool sf_caf_load_selected_animations(
         ? &outputs[selected_index] : NULL;
       if (!sf_caf_i32(file, &source_part_count) ||
           !sf_caf_i16(file, &frame_count) || source_part_count < 0 ||
-          frame_count < 0 || frame_count > (int16_t) SF_CAF_FRAME_LIMIT)
+          frame_count < 0 ||
+          (output && frame_count > (int16_t) SF_CAF_SELECTED_FRAME_LIMIT))
         goto done;
       if (output) {
         uint8_t selected;
         output->looping = (status & 1) != 0;
-        output->frame_count = (uint8_t) frame_count;
+        output->frame_count = (uint16_t) frame_count;
         if (source_part_count > UINT8_MAX) goto done;
         output->priority_count = (uint8_t) source_part_count;
         for (selected = 0u; selected < part_count; ++selected) {
+          uint16_t frame;
           if (parts[selected] >= source_part_count) goto done;
           output->parts[selected].source_index = parts[selected];
-          output->parts[selected].cells = (SfCafCell *) sf_arena_push(
+          output->parts[selected].cells = (SfCafCell *) sf_arena_push_zero(
             arena, (size_t) frame_count * sizeof(SfCafCell),
             sizeof(int32_t));
           if (!output->parts[selected].cells) goto done;
+          for (frame = 0u; frame < frame_count; ++frame)
+            output->parts[selected].cells[frame].pattern = -1;
         }
         output->part_count = part_count;
       }
@@ -226,7 +295,8 @@ bool sf_caf_load_selected_animations(
           sf_caf_selected_part(
             parts, part_count, source_part, &selected_slot);
         if (!sf_caf_i32(file, &cell_count) || cell_count < 0 ||
-            (selected && cell_count != frame_count)) goto done;
+            (selected && cell_count != 0 && cell_count != frame_count))
+          goto done;
         for (cell = 0; cell < cell_count; ++cell) {
           int16_t status;
           int16_t transparency;

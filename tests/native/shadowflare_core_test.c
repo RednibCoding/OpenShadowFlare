@@ -372,6 +372,14 @@ static int test_renderer(void) {
   if (check(pixels[1u * 8u + 2u] == 0x7fffu &&
             pixels[2u * 8u + 1u] == 0x7fffu,
             "renderer did not draw a masked indexed image")) return 1;
+  sf_renderer_clear(&renderer, 0u);
+  sf_renderer_draw_indexed_tinted(
+    &renderer, &image, 1, 1, 1000u, 500u, 0u, 1000u,
+    SF_BLEND_MASKED, NULL);
+  if (check(
+        pixels[1u * 8u + 2u] == sf_rgb555(31u, 15u, 0u),
+        "renderer did not apply authored per-channel sprite strength"))
+    return 1;
   sf_dirty_clear(&dirty);
   sf_dirty_add(&dirty, rectangle, 8u, 4u);
   rectangle.x = 2;

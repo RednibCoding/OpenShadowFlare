@@ -45,6 +45,7 @@ const SfRetailSavePaths sf_retail_save_paths = {
 
 const SfRetailWorldPaths sf_retail_world_paths = {
   "Scenario/%08d/Scenario.Mct",
+  "Scenario/%08d/Scenario.Scs",
   "Map/Ground/%s.Gnd",
   "Map/Object/%s.Obl",
   "Map/Pattern/%s.Lst",
@@ -55,6 +56,12 @@ const SfRetailPlayerPaths sf_retail_player_paths = {
   "Player/%s/Animation00.Caf",
   "Player/%s/Animation00.Njp",
   "Player/%s/Animation00.Sdw"
+};
+
+const SfRetailPeoplePaths sf_retail_people_paths = {
+  "Character/PEOPLE/%08d/Animation.Caf",
+  "Character/PEOPLE/%08d/Animation.Njp",
+  "Character/PEOPLE/%08d/Animation.Sdw"
 };
 
 const SfRetailGamePaths sf_retail_game_paths = {

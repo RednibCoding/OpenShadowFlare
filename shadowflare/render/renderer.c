@@ -34,15 +34,26 @@ static uint8_t sf_indexed_pixel(
   return (uint8_t) ((row[x >> 3u] >> (7u - (x & 7u))) & 1u);
 }
 
-static uint16_t sf_brighten(uint16_t color, uint16_t brightness) {
+static uint16_t sf_tint(
+    uint16_t color, uint16_t red_strength,
+    uint16_t green_strength, uint16_t blue_strength) {
   uint16_t red;
   uint16_t green;
   uint16_t blue;
-  if (brightness >= 1000u) return color;
-  red = (uint16_t) ((color & 31u) * brightness / 1000u);
-  green = (uint16_t) (((color >> 5u) & 31u) * brightness / 1000u);
-  blue = (uint16_t) (((color >> 10u) & 31u) * brightness / 1000u);
+  red = (uint16_t) ((color & 31u) * red_strength / 1000u);
+  green = (uint16_t) (
+    ((color >> 5u) & 31u) * green_strength / 1000u);
+  blue = (uint16_t) (
+    ((color >> 10u) & 31u) * blue_strength / 1000u);
+  if (red > 31u) red = 31u;
+  if (green > 31u) green = 31u;
+  if (blue > 31u) blue = 31u;
   return sf_rgb555((uint8_t) red, (uint8_t) green, (uint8_t) blue);
+}
+
+static uint16_t sf_brighten(uint16_t color, uint16_t brightness) {
+  if (brightness >= 1000u) return color;
+  return sf_tint(color, brightness, brightness, brightness);
 }
 
 static uint16_t sf_blend(uint16_t destination, uint16_t source,
@@ -90,9 +101,10 @@ void sf_renderer_fill_rect(
     rectangle.width, rectangle.height, color);
 }
 
-void sf_renderer_draw_indexed(
+void sf_renderer_draw_indexed_tinted(
     SfRenderer *renderer, const SfIndexedImage *image,
-    int x, int y, uint16_t brightness, uint16_t opacity,
+    int x, int y, uint16_t red_strength, uint16_t green_strength,
+    uint16_t blue_strength, uint16_t opacity,
     SfBlendMode blend, const SfRect *clip) {
   int first_x = 0;
   int first_y = 0;
@@ -107,14 +119,16 @@ void sf_renderer_draw_indexed(
       image->palette_size == 0u || image->palette_size > 256u ||
       (image->bits_per_pixel != 1u && image->bits_per_pixel != 4u &&
        image->bits_per_pixel != 8u) || opacity == 0u) return;
-  if (brightness > 1000u) brightness = 1000u;
   if (opacity > 1000u) opacity = 1000u;
   palette = image->palette;
-  if (brightness != 1000u) {
+  if (red_strength != 1000u || green_strength != 1000u ||
+      blue_strength != 1000u) {
     for (palette_index = 0u; palette_index < image->palette_size;
          ++palette_index)
       adjusted_palette[palette_index] =
-        sf_brighten(image->palette[palette_index], brightness);
+        sf_tint(
+          image->palette[palette_index], red_strength,
+          green_strength, blue_strength);
     palette = adjusted_palette;
   }
   last_x = image->width;
@@ -155,6 +169,16 @@ void sf_renderer_draw_indexed(
       }
     }
   }
+}
+
+void sf_renderer_draw_indexed(
+    SfRenderer *renderer, const SfIndexedImage *image,
+    int x, int y, uint16_t brightness, uint16_t opacity,
+    SfBlendMode blend, const SfRect *clip) {
+  if (brightness > 1000u) brightness = 1000u;
+  sf_renderer_draw_indexed_tinted(
+    renderer, image, x, y,
+    brightness, brightness, brightness, opacity, blend, clip);
 }
 
 void sf_renderer_draw_rgb555(

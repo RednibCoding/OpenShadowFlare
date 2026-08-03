@@ -55,6 +55,18 @@ void sf_world_state_bind_collision(
   world->collision.objects = objects;
 }
 
+bool sf_world_state_bind_scenario(
+    SfWorldState *world,
+    const SfMctScenario *scenario, const SfScsScript *script) {
+  if (!world || !scenario || !script) return false;
+  sf_scenario_actors_init(&world->actors, scenario);
+  sf_scenario_actor_script_init(&world->actor_script_state, script);
+  world->script = script;
+  return sf_scenario_actor_script_run_periodic(
+    &world->actor_script_state, script,
+    world->companion_type, &world->actors);
+}
+
 static SfWorldPoint sf_world_pointer_target(
     const SfWorldState *world, const SfGameInput *input) {
   return sf_screen_to_world((SfScreenPoint) {
@@ -96,6 +108,10 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     pointer->hold_updates = 0u;
   }
   sf_player_update(&world->player, &world->collision);
+  sf_scenario_actors_update(&world->actors);
+  if (world->script) (void) sf_scenario_actor_script_run_periodic(
+    &world->actor_script_state, world->script,
+    world->companion_type, &world->actors);
   player_screen = sf_world_to_screen(world->player.position);
   world->camera_x = player_screen.x - 320;
   world->camera_y = player_screen.y - 240;

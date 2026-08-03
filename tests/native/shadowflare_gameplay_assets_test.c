@@ -92,6 +92,87 @@ static int test_object_intersection(const SfGameplayAssets *assets) {
   return 1;
 }
 
+static int test_scenario_actors(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  static const char *expected_names[7] = {
+    "Ostare", "Malse", "Syria", "Kerberos", "Gravity", "Dune", "Harley"
+  };
+  static const int32_t expected_resources[7] = {
+    13, 8, 9, 1000000, 1000000, 1000000, 1000001
+  };
+  uint8_t index;
+  if (assets->scenario.people_count != 7u ||
+      assets->actors.visual_count != 5u || !assets->script ||
+      assets->script->temporary_flag_count != 66u ||
+      assets->script->status_count != 23u ||
+      assets->script->sentence_count != 220u ||
+      assets->script->command_count != 608u ||
+      assets->script->operand_count != 1895u) {
+    fprintf(stderr, "Remote Town actor or script counts differ from retail\n");
+    return 1;
+  }
+  for (index = 0u; index < 7u; ++index) {
+    const SfMctPerson *person = &assets->scenario.people[index];
+    const SfScenarioActorVisual *visual = sf_scenario_actor_visual(
+      &assets->actors, expected_resources[index]);
+    uint8_t direction;
+    if (strcmp(person->name, expected_names[index]) != 0 ||
+        person->resource_id != expected_resources[index] || !visual ||
+        visual->artwork.pattern_count == 0u ||
+        visual->shadows.pattern_count == 0u) {
+      fprintf(stderr, "Remote Town PEOPLE resource %u differs from retail\n",
+        (unsigned) index);
+      return 1;
+    }
+    for (direction = 0u; direction < 8u; ++direction) {
+      if (visual->animations[direction].frame_count == 0u) {
+        fprintf(stderr, "Remote Town actor %u has an empty idle direction\n",
+          (unsigned) index);
+        return 1;
+      }
+    }
+  }
+  if (assets->scenario.people[0].id != 0 ||
+      assets->scenario.people[0].world_x != 91467 ||
+      assets->scenario.people[0].world_y != 1532 ||
+      assets->scenario.people[0].direction != 7 ||
+      assets->scenario.people[0].part_visibility[4] != 0u ||
+      assets->scenario.people[0].part_visibility[5] != 0u ||
+      assets->scenario.people[0].part_visibility[6] == 0u ||
+      !sf_world_state_bind_scenario(
+        world, &assets->scenario, assets->script) ||
+      world->actors.count != 7u ||
+      world->actors.actors[4].red_strength[1] != 400 ||
+      world->actors.actors[4].green_strength[1] != 400 ||
+      world->actors.actors[4].blue_strength[1] != 400 ||
+      world->actors.actors[5].red_strength[1] != 900 ||
+      world->actors.actors[5].green_strength[1] != 800 ||
+      world->actors.actors[5].blue_strength[1] != 700) {
+    fprintf(stderr, "Ostare or the actor runtime differs from retail\n");
+    return 1;
+  }
+  for (index = 0u; index < 7u; ++index) {
+    const SfScenarioActor *actor = &world->actors.actors[index];
+    const bool expected_visible = index != 3u;
+    if (sf_scenario_actor_state(actor, SF_SCENARIO_VISIBLE) !=
+          expected_visible ||
+        sf_scenario_actor_state(actor, SF_SCENARIO_POINTER) !=
+          expected_visible ||
+        sf_scenario_actor_state(actor, SF_SCENARIO_JUDGEMENT) !=
+          expected_visible) {
+      fprintf(stderr,
+        "Remote Town companion visibility was not projected from SCS\n");
+      return 1;
+    }
+  }
+  sf_scenario_actors_update(&world->actors);
+  if (world->actors.actors[0].animation_frame != 1u) {
+    fprintf(stderr, "Remote Town actors do not animate at update cadence\n");
+    return 1;
+  }
+  return 0;
+}
+
 int main(void) {
 #if defined(OPENSHADOWFLARE_SOURCE_DIR)
   SfGameplayAssets assets;
@@ -170,11 +251,12 @@ int main(void) {
   if (test_object_intersection(&assets)) return 1;
   sf_world_state_init(&world, 0, 0, player.gender);
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+  if (test_scenario_actors(&assets, &world)) return 1;
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);
   if (!sf_gameplay_screen_init(&screen, &assets, &world) ||
-      screen.visible_count != 22u || screen.shadow_count != 10u) {
+      screen.scene.visible_count != 22u || screen.scene.shadow_count != 10u) {
     fprintf(stderr,
       "Remote Town viewport culling changed before retail depth sorting\n");
     return 1;

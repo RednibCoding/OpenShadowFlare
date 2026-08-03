@@ -21,11 +21,13 @@
 #define SHADOWFLARE_ASSETS_GAMEPLAY_ASSETS_H
 
 #include "assets/player_assets.h"
+#include "assets/scenario_actor_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
 #include "data/mct.h"
 #include "data/njp.h"
 #include "data/obl.h"
+#include "data/scs.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -42,8 +44,10 @@ typedef struct SfGameplayAssets {
   SfGroundMap ground;
   SfObjectMap objects;
   SfMctScenario scenario;
+  SfScsScript *script;
   SfMctEntry entry;
   SfPlayerAssets player;
+  SfScenarioActorAssets actors;
   SfGameplayPatternSet *pattern_sets;
   size_t memory_bytes;
   uint8_t pattern_set_count;

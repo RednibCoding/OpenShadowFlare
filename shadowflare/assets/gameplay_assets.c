@@ -184,10 +184,17 @@ bool sf_gameplay_assets_load(
   mark = sf_arena_mark(arena);
   memset(assets, 0, sizeof(*assets));
   memset(&selection, 0, sizeof(selection));
+  assets->script = (SfScsScript *) sf_arena_push_zero(
+    arena, sizeof(*assets->script), sizeof(int32_t));
+  if (!assets->script) goto done;
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_format, NULL, scenario_id) ||
       !sf_mct_load(path, &assets->scenario)) goto done;
+  if (!sf_gameplay_path(
+        path, sizeof(path), data_root,
+        sf_retail_world_paths.scenario_script_format, NULL, scenario_id) ||
+      !sf_scs_load(path, assets->script)) goto done;
   entry = sf_mct_find_entry(&assets->scenario, entry_key);
   if (!entry || !sf_gameplay_map_stem(
         assets->scenario.map_path, map_name, sizeof(map_name))) goto done;
@@ -213,7 +220,9 @@ bool sf_gameplay_assets_load(
       !sf_player_assets_load(
         &assets->player, data_root, player_gender,
         appearance_parts, appearance_part_count,
-        visible_items, visible_item_count, arena)) goto done;
+        visible_items, visible_item_count, arena) ||
+      !sf_scenario_actor_assets_load(
+        &assets->actors, data_root, &assets->scenario, arena)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:

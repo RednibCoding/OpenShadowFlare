@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #define SF_CAF_FRAME_LIMIT 64u
+#define SF_CAF_SELECTED_FRAME_LIMIT 512u
 #define SF_CAF_SELECTED_PART_LIMIT 8u
 
 typedef struct SfCafFrame {
@@ -58,7 +59,7 @@ typedef struct SfCafSelectedAnimation {
   int32_t chart_priority_stride;
   uint8_t part_count;
   uint8_t priority_count;
-  uint8_t frame_count;
+  uint16_t frame_count;
   bool looping;
 } SfCafSelectedAnimation;
 
@@ -69,6 +70,9 @@ typedef struct SfCafAnimationSelection {
 
 bool sf_caf_load_first_chart_direction(
   const char *path, uint8_t direction, SfCafSequence *output);
+bool sf_caf_chart_direction_part_count(
+  const char *path, uint16_t chart, uint8_t direction,
+  uint8_t *part_count);
 bool sf_caf_load_selected_chart_direction(
   const char *path, uint16_t chart, uint8_t direction,
   const uint8_t *parts, uint8_t part_count,

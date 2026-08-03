@@ -73,6 +73,11 @@ void sf_renderer_draw_indexed(
   SfRenderer *renderer, const SfIndexedImage *image,
   int x, int y, uint16_t brightness, uint16_t opacity,
   SfBlendMode blend, const SfRect *clip);
+void sf_renderer_draw_indexed_tinted(
+  SfRenderer *renderer, const SfIndexedImage *image,
+  int x, int y, uint16_t red_strength, uint16_t green_strength,
+  uint16_t blue_strength, uint16_t opacity,
+  SfBlendMode blend, const SfRect *clip);
 void sf_renderer_draw_rgb555(
   SfRenderer *renderer, const SfRgb555Image *image,
   int x, int y, uint16_t brightness);

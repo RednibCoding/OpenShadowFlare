@@ -23,20 +23,18 @@
 #include "assets/gameplay_assets.h"
 #include "game/game.h"
 #include "render/renderer.h"
+#include "screens/gameplay_scene.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT 256u
-#define SF_GAMEPLAY_DRAW_ENTRY_LIMIT (SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT + 1u)
-
 typedef struct SfGameplayScreen {
-  uint16_t visible_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
-  uint16_t shadow_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
-  uint8_t translucent_objects[SF_GAMEPLAY_DRAW_ENTRY_LIMIT];
-  uint16_t visible_count;
-  uint16_t shadow_count;
+  SfGameplayScene scene;
   uint32_t rendered_animation_frame;
+  uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
+  int32_t rendered_actor_x[SF_MCT_PERSON_LIMIT];
+  int32_t rendered_actor_y[SF_MCT_PERSON_LIMIT];
+  bool rendered_actor_visible[SF_MCT_PERSON_LIMIT];
   int32_t rendered_player_x;
   int32_t rendered_player_y;
   int32_t rendered_camera_x;

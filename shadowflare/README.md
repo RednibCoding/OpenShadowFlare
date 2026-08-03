@@ -52,8 +52,12 @@ and a held pointer that stops on release, while `R` switches between the
 recovered walk and run speeds. Static map collision and the retail cardinal
 edge-following route controller are now active as well, including the full
 route around the sacks beside Ostare. This is deliberately not an A* search.
-Dynamic actor blockers and scripts are later layers and remain separate from
-the small player state machine.
+Remote Town's seven PEOPLE records now come from `Scenario.Mct`. Their idle
+animations, shadows, part masks, and depth ordering use the retail character
+archives, while the periodic actor rows in `Scenario.Scs` decide which of the
+four town companions is visible for the current companion type. Actor
+collision, wandering, pointer interaction, and conversations are later
+slices; none of those rules have been hidden inside the renderer.
 
 ## Hard limits
 
@@ -79,6 +83,7 @@ streaming and cache eviction into the general game implementation.
 - `assets/` owns screen assets and the centralized retail archive path table;
 - `data/` reads the retail scenario, map, artwork, audio, and save formats;
 - `game/` owns game state and rules, including the current world and camera;
+- `interpreter/` applies the implemented parts of retail scripts to game state;
 - `render/` contains the small backend-neutral drawing API and damage helper;
 - `screens/` composes title, loading, load/save, and future gameplay screens;
 - `runtime/` connects the game to the platform-neutral TWL and TAL APIs;
@@ -134,8 +139,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,424,093 bytes of the 7 MiB main arena,
-leaving 5,915,939 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,429,173 bytes of the 7 MiB main arena,
+leaving 5,910,859 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -148,24 +153,24 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 737,016 bytes of the main arena, leaving 6,603,016 bytes free;
+assets. It uses 742,096 bytes of the main arena, leaving 6,597,936 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 697,232 bytes of the main arena, leaving 6,642,800
+The load-game screen uses 702,312 bytes of the main arena, leaving 6,637,720
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 2,709,136 bytes of the main
-arena, leaving 4,630,896 bytes free. Its map- and player-scoped data and
-artwork account for 2,386,225 bytes. GND rendering data is decoded directly
-from its compressed three-plane stream into two bytes per tile, so the 300x300
-town grid occupies 180,000 bytes instead of retaining the 540,000-byte source
-layout.
+The complete Remote Town gameplay screen uses 4,136,244 bytes of the main
+arena, leaving 3,203,788 bytes free. Its screen-owned scenario, script, map,
+player, and PEOPLE data and artwork account for 3,808,253 bytes. GND rendering
+data is decoded directly from its compressed three-plane stream into two bytes
+per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
+the 540,000-byte source layout.
 
 The GND movement plane is active without retaining its 1,451,808-byte raw
 16-bit expansion. Retail movement only reads its low two flags, so the 852x852
@@ -197,6 +202,13 @@ is arena-sized to the selected bank rather than embedded in every screen.
 fields without keeping its 2.27 MiB decoded payload. Stationary frames restore
 and redraw only the measured player rectangle in full retail depth order;
 scrolling frames redraw the changing world once.
+
+PEOPLE artwork follows the same sparse rule. The loader first combines the
+parts needed by actors that share a retail resource, then keeps only the idle
+patterns referenced by their eight directions. Offscreen actors are removed
+before depth sorting and drawing. The decoded SCS tables live in the gameplay
+screen arena as well, so returning to a menu releases them with the rest of
+the map instead of making every screen pay for script memory.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

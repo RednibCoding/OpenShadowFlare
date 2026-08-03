@@ -22,6 +22,8 @@
 
 #include "game/input.h"
 #include "game/player.h"
+#include "game/scenario_actor.h"
+#include "interpreter/scenario_actor_script.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -45,8 +47,12 @@ typedef struct SfWorldState {
   int32_t camera_x;
   int32_t camera_y;
   SfPlayerState player;
+  SfScenarioActorSet actors;
+  SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
+  const SfScsScript *script;
   SfWorldPointerControl pointer;
+  int32_t companion_type;
   bool entered;
 } SfWorldState;
 
@@ -59,6 +65,9 @@ void sf_world_state_enter(
 void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
+bool sf_world_state_bind_scenario(
+  SfWorldState *world,
+  const SfMctScenario *scenario, const SfScsScript *script);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
 void sf_world_render_view(
   const SfWorldState *world, uint16_t interpolation,
