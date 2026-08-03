@@ -22,6 +22,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef LAL_USE_LINEAR_RESAMPLER
+#define LAL_USE_LINEAR_RESAMPLER 0
+#endif
+
+#if !LAL_USE_LINEAR_RESAMPLER
 enum {
   LAL_RESAMPLE_PHASES = 256,
   LAL_RESAMPLE_TAPS = 32
@@ -31,6 +36,7 @@ static const double LAL_PI = 3.14159265358979323846;
 static const double LAL_MONO_GAIN = 0.70710678118654752440;
 static const double LAL_MONO_LIMIT_START = 0.80;
 static const double LAL_MONO_MAX_INPUT = 1.41421356237309504880;
+#endif
 
 static uint16_t read_u16_le(const uint8_t *p) {
   return (uint16_t) ((uint16_t) p[0] | ((uint16_t) p[1] << 8));
@@ -55,6 +61,7 @@ static int16_t pcm_sample(
   return (int16_t) read_u16_le(sample);
 }
 
+#if !LAL_USE_LINEAR_RESAMPLER
 static double smooth_limit(double sample) {
   double magnitude;
   double sign;
@@ -162,6 +169,28 @@ static int16_t clamp_sample(double sample) {
   }
   return (int16_t) (sample < 0.0 ? sample - 0.5 : sample + 0.5);
 }
+#endif
+
+#if LAL_USE_LINEAR_RESAMPLER
+static int32_t linear_source_sample(
+    const uint8_t *data,
+    size_t frame,
+    int channel,
+    int channels,
+    int bits_per_sample,
+    int frame_stride,
+    bool force_mono) {
+  if (force_mono && channels == 2) {
+    return (
+      (int32_t) pcm_sample(
+        data, frame, 0, channels, bits_per_sample, frame_stride) +
+      (int32_t) pcm_sample(
+        data, frame, 1, channels, bits_per_sample, frame_stride)) / 2;
+  }
+  return pcm_sample(
+    data, frame, channel, channels, bits_per_sample, frame_stride);
+}
+#endif
 
 static bool validate_input(
     const uint8_t *sample_data,
@@ -209,7 +238,9 @@ bool lal_convert_pcm(
     uint32_t maximum_sample_rate,
     bool force_mono,
     LalConvertedPcm *output) {
+#if !LAL_USE_LINEAR_RESAMPLER
   double (*kernel)[LAL_RESAMPLE_TAPS];
+#endif
   size_t input_frames;
   size_t output_frames;
   uint32_t output_sample_rate;
@@ -270,6 +301,52 @@ bool lal_convert_pcm(
   output->sample_rate = output_sample_rate;
   output->channels = output_channels;
 
+#if LAL_USE_LINEAR_RESAMPLER
+  for (frame = 0; frame < output_frames; ++frame) {
+    uint64_t source_position;
+    size_t source_frame;
+    size_t next_frame;
+    uint32_t fraction;
+    int channel;
+
+    source_position = (uint64_t) frame * sample_rate;
+    source_frame = (size_t) (source_position / output_sample_rate);
+    fraction = (uint32_t) (source_position % output_sample_rate);
+    if (source_frame >= input_frames) {
+      source_frame = input_frames - 1;
+    }
+    next_frame = source_frame + 1 < input_frames
+      ? source_frame + 1
+      : source_frame;
+
+    for (channel = 0; channel < output_channels; ++channel) {
+      const int32_t first = linear_source_sample(
+        sample_data,
+        source_frame,
+        channel,
+        channels,
+        bits_per_sample,
+        frame_stride,
+        force_mono);
+      const int32_t second = linear_source_sample(
+        sample_data,
+        next_frame,
+        channel,
+        channels,
+        bits_per_sample,
+        frame_stride,
+        force_mono);
+      const int32_t converted = (int32_t) (
+        ((int64_t) first * (output_sample_rate - fraction) +
+         (int64_t) second * fraction) /
+        output_sample_rate);
+      output->samples[
+        frame * (size_t) output_channels + (size_t) channel] =
+          (int16_t) converted;
+    }
+  }
+  return true;
+#else
   kernel = NULL;
   if (output_sample_rate < sample_rate) {
     kernel = (double (*)[LAL_RESAMPLE_TAPS]) malloc(
@@ -352,4 +429,5 @@ bool lal_convert_pcm(
 
   free(kernel);
   return true;
+#endif
 }
