@@ -2155,14 +2155,18 @@ The measured allocation breakdown and the working headroom target live in
 [`documentation/memory-budget.md`](documentation/memory-budget.md). Keep that
 table current as each resource group is reduced.
 
-The first memory pass moved frontend assets into a portable resource manager
-with explicit common, title, character-select, and gameplay lifetimes. Leaving
-a screen now destroys everything owned by that screen, including decoded save
-previews, while the common fonts and cursor remain alive. Map exploration now
-uses one packed bit per pixel, and player NJP files decode only the body and
-equipment layers selected by the CAF appearance mask. The next useful work is
-to scope common fonts and loading art, make inventory sheets lazy, give every
-scenario its own world/effect/item resource scope, and remove the temporary
+The first memory passes moved frontend assets into a portable resource manager
+with explicit title, character-select, loading, gameplay, and panel lifetimes.
+Leaving a screen destroys everything owned by it, including decoded save
+previews. The English fonts retain only their Latin sheet, loading art is freed
+at the world handoff, and optional gameplay and inventory sheets follow the
+visible panels and exact visible item patterns. Map exploration uses one packed
+bit per pixel, map artwork decodes only patterns referenced by the active GND
+and OBL, and player NJP files decode only the body and equipment layers selected
+by the CAF appearance mask. Closed starter gameplay now measures 22.28 MiB of
+tracked game resources including the software framebuffer. Scenario changes
+release stale ground-item and transient-effect artwork while preserving active
+spell-owned resources. The next useful memory work is to remove the temporary
 two-map peak during transitions without weakening failure-safe loading.
 
 The profiler now reports game and decoded-audio memory separately, followed by

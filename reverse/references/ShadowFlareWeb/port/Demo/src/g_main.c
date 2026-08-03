@@ -258,7 +258,7 @@ static void OnRender(void *userData)
         {
             
             if (!LoadScenario(state, scenarioPath, entryPoint))
-                
+                printf("warning: failed to load scenario %s\n", scenarioPath);
             else if (state->pendingWarpValid)
             {
                 
@@ -268,7 +268,7 @@ static void OnRender(void *userData)
             }
         }
         else
-            
+            printf("warning: unable to derive scenario %08ld\n", scenarioId);
         state->pendingWarpValid = 0; 
     }
 
@@ -1193,12 +1193,12 @@ int main(int argc, char **argv)
     {
         state.hudBarLoaded = RKC_UPDIB_Read(&state.hudBar, hudBarPath) && RKC_UPDIB_GetFrameCount(&state.hudBar) > 0;
         if (state.hudBarLoaded)
-            
+            printf("loaded HUD sheet: %s\n", hudBarPath);
         else
-            
+            printf("warning: failed to load %s\n", hudBarPath);
     }
     else
-        
+        printf("warning: unable to derive the HUD sheet path\n");
 
     
     char fontPath[1024];
@@ -1206,12 +1206,12 @@ int main(int argc, char **argv)
     {
         state.fontLoaded = RKC_UPDIB_Read(&state.font, fontPath) && RKC_UPDIB_GetFrameCount(&state.font) > 0;
         if (state.fontLoaded)
-            
+            printf("loaded font sheet: %s\n", fontPath);
         else
-            
+            printf("warning: failed to load %s\n", fontPath);
     }
     else
-        
+        printf("warning: unable to derive the font sheet path\n");
 
     
     char hukidasiPath[1024];
@@ -1220,12 +1220,12 @@ int main(int argc, char **argv)
         state.hukidasiLoaded =
             RKC_UPDIB_Read(&state.hukidasi, hukidasiPath) && RKC_UPDIB_GetFrameCount(&state.hukidasi) > 0;
         if (state.hukidasiLoaded)
-            
+            printf("loaded dialogue sheet: %s\n", hukidasiPath);
         else
-            
+            printf("warning: failed to load %s\n", hukidasiPath);
     }
     else
-        
+        printf("warning: unable to derive the dialogue sheet path\n");
 
     
     char statusSheetPath[1024];
@@ -1240,10 +1240,10 @@ int main(int argc, char **argv)
             RemapEnclosedColorKeyPixels(RKC_UPDIB_GetFrame(&state.statusSheet, INVENTORY_BG_FRAME_GRID_EXT));
         }
         else
-            
+            printf("warning: failed to load %s\n", statusSheetPath);
     }
     else
-        
+        printf("warning: unable to derive the status sheet path\n");
 
     
     char magicBarIconPath[1024];
@@ -1252,12 +1252,12 @@ int main(int argc, char **argv)
         state.magicBarIconLoaded = RKC_UPDIB_Read(&state.magicBarIcon, magicBarIconPath) &&
                                    RKC_UPDIB_GetFrameCount(&state.magicBarIcon) > 0;
         if (state.magicBarIconLoaded)
-            
+            printf("loaded magic slot sheet: %s\n", magicBarIconPath);
         else
-            
+            printf("warning: failed to load %s\n", magicBarIconPath);
     }
     else
-        
+        printf("warning: unable to derive the magic slot sheet path\n");
 
     
     char statusIconPath[1024];
@@ -1267,9 +1267,9 @@ int main(int argc, char **argv)
             RKC_UPDIB_Read(&state.statusIconSheet, statusIconPath) &&
             RKC_UPDIB_GetFrameCount(&state.statusIconSheet) > 0;
         if (state.statusIconSheetLoaded)
-            
+            printf("loaded status icon sheet: %s\n", statusIconPath);
         else
-            
+            printf("warning: failed to load %s\n", statusIconPath);
     }
 
     
@@ -1279,12 +1279,12 @@ int main(int argc, char **argv)
         state.darknessTemplateLoaded =
             RKC_UPDIB_Read(&state.darknessTemplate, darknessPath) && RKC_UPDIB_GetFrameCount(&state.darknessTemplate) > 0;
         if (state.darknessTemplateLoaded)
-            
+            printf("loaded darkness sheet: %s\n", darknessPath);
         else
-            
+            printf("warning: failed to load %s\n", darknessPath);
     }
     else
-        
+        printf("warning: unable to derive the darkness sheet path\n");
 
     
     int itemIconSheetsLoadedCount = 0;
@@ -1293,7 +1293,7 @@ int main(int argc, char **argv)
         char itemIconSheetPath[1024];
         if (!DeriveItemIconSheetPath(state.mapRoot, s, itemIconSheetPath, sizeof(itemIconSheetPath)))
         {
-            
+            printf("warning: unable to derive item icon sheet %d\n", s);
             break; 
         }
         state.itemIconSheetLoaded[s] = RKC_UPDIB_Read(&state.itemIconSheets[s], itemIconSheetPath) &&
@@ -1301,7 +1301,7 @@ int main(int argc, char **argv)
         if (state.itemIconSheetLoaded[s])
             itemIconSheetsLoadedCount++;
         else
-            
+            printf("warning: failed to load %s\n", itemIconSheetPath);
     }
     
 
@@ -1313,23 +1313,25 @@ int main(int argc, char **argv)
         for (int s = 0; s < WEAPON_WORLD_SHEET_COUNT; s++)
         {
             char weaponWorldSheetPath[1200];
-            
+            snprintf(weaponWorldSheetPath, sizeof(weaponWorldSheetPath), "%s/ITEM/%08d/Animation.Njp",
+                     characterRootForWeaponSheets, s);
             state.weaponWorldSheetLoaded[s] = RKC_UPDIB_Read(&state.weaponWorldSheets[s], weaponWorldSheetPath) &&
                                               RKC_UPDIB_GetFrameCount(&state.weaponWorldSheets[s]) > 0;
             if (!state.weaponWorldSheetLoaded[s])
             {
-                
+                snprintf(weaponWorldSheetPath, sizeof(weaponWorldSheetPath), "%s/ITEM/%08d/Pattern.njp",
+                         characterRootForWeaponSheets, s);
                 state.weaponWorldSheetLoaded[s] = RKC_UPDIB_Read(&state.weaponWorldSheets[s], weaponWorldSheetPath) &&
                                                   RKC_UPDIB_GetFrameCount(&state.weaponWorldSheets[s]) > 0;
             }
             if (state.weaponWorldSheetLoaded[s])
                 weaponWorldSheetsLoadedCount++;
             else
-                
+                printf("warning: failed to load weapon sheet %d\n", s);
         }
     }
     else
-        
+        printf("warning: unable to derive weapon sprite paths\n");
     
 
     
@@ -1339,12 +1341,12 @@ int main(int argc, char **argv)
         state.cursorSheetLoaded =
             RKC_UPDIB_Read(&state.cursorSheet, cursorSheetPath) && RKC_UPDIB_GetFrameCount(&state.cursorSheet) > 0;
         if (state.cursorSheetLoaded)
-            
+            printf("loaded cursor sheet: %s\n", cursorSheetPath);
         else
-            
+            printf("warning: failed to load %s\n", cursorSheetPath);
     }
     else
-        
+        printf("warning: unable to derive the cursor sheet path\n");
 
     
     char bloodDecalPath[1024];
@@ -1353,12 +1355,12 @@ int main(int argc, char **argv)
         state.bloodDecalSheetLoaded =
             RKC_UPDIB_Read(&state.bloodDecalSheet, bloodDecalPath) && RKC_UPDIB_GetFrameCount(&state.bloodDecalSheet) > 0;
         if (state.bloodDecalSheetLoaded)
-            
+            printf("loaded blood decal sheet: %s\n", bloodDecalPath);
         else
-            
+            printf("warning: failed to load %s\n", bloodDecalPath);
     }
     else
-        
+        printf("warning: unable to derive the blood decal path\n");
 
     
     char waitingSheetPath[1024];
@@ -1367,46 +1369,46 @@ int main(int argc, char **argv)
         state.waitingSheetLoaded = RKC_UPDIB_Read(&state.waitingSheet, waitingSheetPath) &&
                                    RKC_UPDIB_GetFrameCount(&state.waitingSheet) > 0;
         if (state.waitingSheetLoaded)
-            
+            printf("loaded loading-screen sheet: %s\n", waitingSheetPath);
         else
-            
+            printf("warning: failed to load %s\n", waitingSheetPath);
     }
     else
-        
+        printf("warning: unable to derive the loading-screen sheet path\n");
 
     
     char playerRoot[1024];
     if (DerivePlayerRoot(state.mapRoot, playerRoot, sizeof(playerRoot)))
     {
         char playerDir[sizeof(playerRoot) + 32];
-        
+        snprintf(playerDir, sizeof(playerDir), "%s/%s", playerRoot, playerGender);
         LoadCafTemplate(&state.playerTemplate, playerDir, "Animation00");
         if (state.playerTemplate.kind == LIVE_SPAWN_SPRITE_CAF)
-            
+            printf("loaded player sprite: %s\n", playerDir);
         else
-            
+            printf("warning: failed to load player sprite from %s\n", playerDir);
     }
     else
-        
+        printf("warning: unable to derive the player sprite path\n");
 
     
     char compassRoot[1024];
     if (DerivePlayerRoot(state.mapRoot, compassRoot, sizeof(compassRoot)))
     {
         char compassDir[sizeof(compassRoot) + 16];
-        
+        snprintf(compassDir, sizeof(compassDir), "%s/OPTION/%s", compassRoot, playerGender);
         LoadCafTemplate(&state.compassTemplate, compassDir, "compasses");
         if (state.compassTemplate.kind == LIVE_SPAWN_SPRITE_CAF)
-            
+            printf("loaded compass sprite: %s\n", compassDir);
         else
-            
+            printf("warning: failed to load compass sprite from %s\n", compassDir);
 
         
         LoadCafTemplate(&state.unlockSwTemplate, compassDir, "UnlockSW");
         if (state.unlockSwTemplate.kind == LIVE_SPAWN_SPRITE_CAF)
-            
+            printf("loaded UnlockSW sprite: %s\n", compassDir);
         else
-            
+            printf("warning: failed to load UnlockSW sprite from %s\n", compassDir);
     }
 
     
@@ -1414,28 +1416,28 @@ int main(int argc, char **argv)
     if (DeriveCharacterRoot(state.mapRoot, gateRingRoot, sizeof(gateRingRoot)))
     {
         char gateRingDir[sizeof(gateRingRoot) + 32];
-        
+        snprintf(gateRingDir, sizeof(gateRingDir), "%s/OBJECT/00000015", gateRingRoot);
         LoadCafTemplate(&state.gateRingTemplate, gateRingDir, "Animation");
         if (state.gateRingTemplate.kind == LIVE_SPAWN_SPRITE_CAF)
-            
+            printf("loaded gate ring sprite: %s\n", gateRingDir);
         else
-            
+            printf("warning: failed to load gate ring sprite from %s\n", gateRingDir);
 
         
         char tcDir[sizeof(gateRingRoot) + 32];
-        
+        snprintf(tcDir, sizeof(tcDir), "%s/OPTION/10000020", gateRingRoot);
         LoadCafTemplate(&state.transportCircleTemplate, tcDir, "Animation");
         char tcPattern[sizeof(tcDir) + 16];
-        
+        snprintf(tcPattern, sizeof(tcPattern), "%s/Pattern.Njp", tcDir);
         if (!RKC_UPDIB_Read(&state.transportCircleTemplate.staticNjp, tcPattern))
         {
-            
+            snprintf(tcPattern, sizeof(tcPattern), "%s/Pattern.njp", tcDir);
             RKC_UPDIB_Read(&state.transportCircleTemplate.staticNjp, tcPattern);
         }
         if (RKC_UPDIB_GetFrameCount(&state.transportCircleTemplate.staticNjp) > 0)
-            
+            printf("loaded transport circle sprite: %s\n", tcDir);
         else
-            
+            printf("warning: failed to load transport circle sprite from %s\n", tcDir);
     }
 
     
@@ -1446,12 +1448,12 @@ int main(int argc, char **argv)
         for (int i = 0; i < HIT_VFX_VARIANT_COUNT; i++)
         {
             char hitVfxDir[sizeof(hitVfxRoot) + 32];
-            
+            snprintf(hitVfxDir, sizeof(hitVfxDir), "%s/OPTION/%s", hitVfxRoot, kHitVfxIds[i]);
             LoadCafTemplate(&state.hitVfxTemplates[i], hitVfxDir, "Animation");
             if (state.hitVfxTemplates[i].kind == LIVE_SPAWN_SPRITE_CAF)
-                
+                printf("loaded hit-effect VFX variant %d: %s\n", i, hitVfxDir);
             else
-                
+                printf("warning: failed to load hit-effect VFX variant %d from %s\n", i, hitVfxDir);
         }
     }
 
@@ -1460,7 +1462,7 @@ int main(int argc, char **argv)
     
     RKC_DSOUND_Init(&state.dsound);
     if (!RKC_DSOUND_Initialize(&state.dsound, NULL, 0))
-        
+        printf("warning: audio initialization failed\n");
 #endif
 
     if (scenarioDir && scenarioDir[0] != '\0')
@@ -1468,13 +1470,13 @@ int main(int argc, char **argv)
         
         if (!LoadScenario(&state, scenarioDir, 0))
         {
-            
+            printf("failed to load scenario %s\n", scenarioDir);
             return 1;
         }
     }
     else if (!LoadArea(&state, stem))
     {
-        
+        printf("failed to load map %s\n", stem);
         return 1;
     }
 
@@ -1483,7 +1485,7 @@ int main(int argc, char **argv)
 
     if (!App_Init("ShadowFlare port -- ground tile viewer"))
     {
-        
+        printf("failed to initialize SDL\n");
         return 1;
     }
 
@@ -1511,7 +1513,7 @@ int main(int argc, char **argv)
                 
             }
             else
-                
+                printf("warning: failed to load BGM %s\n", bgmPath);
         }
         if (sfxPath)
         {
@@ -1521,7 +1523,7 @@ int main(int argc, char **argv)
                 
             }
             else
-                
+                printf("warning: failed to load SFX %s\n", sfxPath);
         }
     }
 #endif

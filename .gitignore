@@ -42,6 +42,7 @@ __pycache__/
 .vs
 .vscode
 /build/
+build*/
 tmp/
 ShadowEngine/
 

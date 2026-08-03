@@ -71,6 +71,9 @@ GameplayFrameResult GameplayState::update(
             (input.confirm_pressed ||
              arrowClicked)) {
             phase_ = GameplayPhase::world;
+            if (hooks_.release_loading_artwork) {
+                hooks_.release_loading_artwork();
+            }
         }
     } else {
         const bool companion_hud_pressed =

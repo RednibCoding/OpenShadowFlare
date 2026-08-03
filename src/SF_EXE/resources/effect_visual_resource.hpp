@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 namespace osf {
 
@@ -41,6 +42,8 @@ public:
         std::string* error = nullptr);
     const EffectVisualResource* find(
         std::int32_t resource_id) const;
+    void retainOnly(
+        const std::vector<std::int32_t>& resource_ids);
     void clear();
     std::uint64_t memoryUsageBytes() const;
 

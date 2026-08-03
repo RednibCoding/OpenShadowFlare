@@ -6,6 +6,7 @@
 #include "resources/retail_filesystem.hpp"
 #include "runtime/application_loop.hpp"
 #include "runtime/audio_system.hpp"
+#include "runtime/gameplay_artwork.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
 #include "runtime/presentation/surface_presenter.hpp"
@@ -119,13 +120,6 @@ public:
         });
 
         if (!resources_.loadCommonPattern(
-                0, "System\\Common\\Pattern\\Font00.njp") ||
-            !resources_.loadCommonPattern(
-                1, "System\\Common\\Pattern\\Font01.njp") ||
-            !resources_.loadCommonPattern(
-                2,
-                "System\\Common\\Pattern\\Waiting.njp") ||
-            !resources_.loadCommonPattern(
                 3,
                 "System\\Common\\Pattern\\System.njp")) {
             return false;
@@ -485,6 +479,27 @@ private:
             break;
         }
 
+        if (gameState_.currentState() == osf::GameState::gameplay &&
+            gameplayFrame_.phase == osf::GameplayPhase::world &&
+            world_.hasPlayer()) {
+            std::string artwork_error;
+            const bool artwork_ready =
+                osf::runtime::synchronizeGameplayArtwork(
+                    resources_,
+                    world_,
+                    gameplayUi_,
+                    &artwork_error);
+            if (!artwork_ready && !artworkSyncFailed_) {
+                std::fprintf(
+                    stderr,
+                    "Could not prepare gameplay artwork: %s\n",
+                    artwork_error.c_str());
+            }
+            artworkSyncFailed_ = !artwork_ready;
+        } else {
+            artworkSyncFailed_ = false;
+        }
+
         input_.clearTransientInput();
     }
 
@@ -523,6 +538,7 @@ private:
     bool configDirty_ = false;
     bool running_ = false;
     bool smokeTest_ = false;
+    bool artworkSyncFailed_ = false;
     int renderedFrames_ = 0;
     double previousTime_ = 0.0;
     double nextFrame_ = 0.0;

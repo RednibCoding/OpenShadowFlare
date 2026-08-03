@@ -230,153 +230,37 @@ static bool read_file(
   return true;
 }
 
-static int16_t pcm_sample(
-    const uint8_t *data, size_t frame, int channel,
-    int channels, int bits_per_sample, int block_align) {
-  const uint8_t *sample;
-  int source_channel;
-
-  source_channel = channels == 1 ? 0 : channel;
-  sample = data + frame * (size_t) block_align +
-           (size_t) source_channel * (size_t) (bits_per_sample / 8);
-
-  if (bits_per_sample == 8) {
-    return (int16_t) (((int) sample[0] - 128) * 256);
-  }
-
-  return (int16_t) read_u16_le(sample);
-}
-
 static LalSound *create_converted_pcm(
     const uint8_t *sample_data, size_t sample_size,
     uint32_t sample_rate, uint16_t channels,
     uint16_t bits_per_sample, uint16_t frame_stride) {
-  size_t input_frames;
-  size_t output_frames;
-  uint32_t output_sample_rate;
-  uint16_t output_channels;
-  size_t frame;
+  LalConvertedPcm converted;
   LalSound *sound;
-  uint16_t packed_stride;
 
-  packed_stride = (uint16_t) (channels * (bits_per_sample / 8));
-  if (sample_data == NULL || sample_size == 0) {
-    lal_set_error("PCM sample data is empty.");
+  memset(&converted, 0, sizeof(converted));
+  if (!lal_convert_pcm(
+        sample_data,
+        sample_size,
+        sample_rate,
+        channels,
+        bits_per_sample,
+        frame_stride,
+        g_config.maximum_sample_rate,
+        g_config.force_mono,
+        &converted)) {
     return NULL;
-  }
-  if (channels != 1 && channels != 2) {
-    lal_set_error("Only mono and stereo PCM data is supported.");
-    return NULL;
-  }
-  if (bits_per_sample != 8 && bits_per_sample != 16) {
-    lal_set_error("Only 8-bit and 16-bit PCM data is supported.");
-    return NULL;
-  }
-  if (sample_rate == 0) {
-    lal_set_error("PCM sample rate must be greater than zero.");
-    return NULL;
-  }
-  if (frame_stride == 0) {
-    frame_stride = packed_stride;
-  }
-  if (frame_stride < packed_stride) {
-    lal_set_error("PCM frame stride is smaller than one sample frame.");
-    return NULL;
-  }
-
-  input_frames = sample_size / frame_stride;
-  if (input_frames == 0) {
-    lal_set_error("PCM data contains no complete sample frames.");
-    return NULL;
-  }
-  output_sample_rate = sample_rate < g_config.maximum_sample_rate
-    ? sample_rate
-    : g_config.maximum_sample_rate;
-  output_channels = g_config.force_mono ? 1 : channels;
-  {
-    uint64_t computed_output_frames =
-      ((uint64_t) input_frames * output_sample_rate + sample_rate / 2) /
-      sample_rate;
-    if (computed_output_frames == 0 ||
-        computed_output_frames >
-          (uint64_t) (SIZE_MAX /
-            ((size_t) output_channels * sizeof(int16_t)))) {
-      lal_set_error("Converted PCM sample count is invalid.");
-      return NULL;
-    }
-    output_frames = (size_t) computed_output_frames;
   }
 
   sound = (LalSound *) calloc(1, sizeof(*sound));
   if (sound == NULL) {
+    free(converted.samples);
     lal_set_error("Out of memory while creating sound.");
     return NULL;
   }
-  sound->samples = (int16_t *) malloc(
-    output_frames * (size_t) output_channels * sizeof(*sound->samples));
-  if (sound->samples == NULL) {
-    free(sound);
-    lal_set_error("Out of memory while converting PCM samples.");
-    return NULL;
-  }
-  sound->frame_count = output_frames;
-  sound->sample_rate = output_sample_rate;
-  sound->channels = output_channels;
-
-  for (frame = 0; frame < output_frames; ++frame) {
-    uint64_t source_position;
-    size_t source_frame;
-    size_t next_frame;
-    uint32_t fraction;
-    int channel;
-
-    source_position = (uint64_t) frame * sample_rate;
-    source_frame = (size_t) (source_position / output_sample_rate);
-    fraction = (uint32_t) (source_position % output_sample_rate);
-    if (source_frame >= input_frames) {
-      source_frame = input_frames - 1;
-    }
-    next_frame = source_frame + 1 < input_frames
-      ? source_frame + 1
-      : source_frame;
-
-    for (channel = 0; channel < output_channels; ++channel) {
-      int32_t first;
-      int32_t second;
-      int32_t converted;
-
-      if (output_channels == 1 && channels == 2) {
-        first = (
-          pcm_sample(
-            sample_data, source_frame, 0, channels,
-            bits_per_sample, frame_stride) +
-          pcm_sample(
-            sample_data, source_frame, 1, channels,
-            bits_per_sample, frame_stride)) / 2;
-        second = (
-          pcm_sample(
-            sample_data, next_frame, 0, channels,
-            bits_per_sample, frame_stride) +
-          pcm_sample(
-            sample_data, next_frame, 1, channels,
-            bits_per_sample, frame_stride)) / 2;
-      } else {
-        first = pcm_sample(
-          sample_data, source_frame, channel, channels,
-          bits_per_sample, frame_stride);
-        second = pcm_sample(
-          sample_data, next_frame, channel, channels,
-          bits_per_sample, frame_stride);
-      }
-      converted = (int32_t) (
-        ((int64_t) first * (output_sample_rate - fraction) +
-         (int64_t) second * fraction) /
-        output_sample_rate);
-      sound->samples[
-        frame * (size_t) output_channels + (size_t) channel] =
-          (int16_t) converted;
-    }
-  }
+  sound->samples = converted.samples;
+  sound->frame_count = converted.frame_count;
+  sound->sample_rate = converted.sample_rate;
+  sound->channels = converted.channels;
 
   return sound;
 }

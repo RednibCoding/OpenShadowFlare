@@ -538,7 +538,7 @@ int LoadScenario(DemoState *state, const char *scenarioDir, long entryPoint)
 
     
     if (!DeriveCharacterRoot(state->mapRoot, state->characterRoot, sizeof(state->characterRoot)))
-        
+        printf("warning: unable to derive the Character directory from %s\n", state->mapRoot);
 
     
     char aidFilePath[1024];
@@ -546,12 +546,12 @@ int LoadScenario(DemoState *state, const char *scenarioDir, long entryPoint)
     {
         state->aiControlLoaded = RKC_RPG_AICONTROL_Read(&state->aiControl, aidFilePath);
         if (state->aiControlLoaded)
-            
+            printf("loaded AI control data: %s\n", aidFilePath);
         else
-            
+            printf("warning: failed to load %s\n", aidFilePath);
     }
     else
-        
+        printf("warning: unable to derive Control.aid from %s\n", state->mapRoot);
 
     BuildLiveSpawns(state);
     long resolved = 0, aiResolved = 0, block3Total = 0;
@@ -585,12 +585,12 @@ int LoadScenario(DemoState *state, const char *scenarioDir, long entryPoint)
         {
             state->itemDataLoaded = RKC_RPG_ITEMDATA_Read(&state->itemData, itemFilePath);
             if (state->itemDataLoaded)
-                
+                printf("loaded item data: %s\n", itemFilePath);
             else
-                
+                printf("warning: failed to load %s\n", itemFilePath);
         }
         else
-            
+            printf("warning: unable to derive Item.Ibn from %s\n", state->mapRoot);
     }
 
     
@@ -683,12 +683,12 @@ int LoadScenario(DemoState *state, const char *scenarioDir, long entryPoint)
         {
             state->tableLoaded = RKC_RPG_TABLE_Read(&state->table, tableFilePath);
             if (state->tableLoaded)
-                
+                printf("loaded item table: %s\n", tableFilePath);
             else
-                
+                printf("warning: failed to load %s\n", tableFilePath);
         }
         else
-            
+            printf("warning: unable to derive Table.Tbd from %s\n", state->mapRoot);
     }
 
     
@@ -715,9 +715,9 @@ int LoadScenario(DemoState *state, const char *scenarioDir, long entryPoint)
             if (shown < 3)
             {
                 if (state->worldItems[i].isGold)
-                    
+                    printf("  ground item: %ld gold\n", state->worldItems[i].amount);
                 else
-                    
+                    printf("  ground item: %s\n", state->worldItems[i].name);
                 shown++;
             }
         }
@@ -785,10 +785,11 @@ int LoadScenario(DemoState *state, const char *scenarioDir, long entryPoint)
         
         for (long i = 0; i < state->script.messageCount && i < 3; i++)
             if (state->script.messages[i].textLen > 0)
-                
+                printf("  message: %.*s\n", (int)state->script.messages[i].textLen,
+                       state->script.messages[i].text);
     }
     else
-        
+        printf("warning: failed to load scenario script %s\n", scsPath);
 
     
     ResolveGateDestinationNames(state);

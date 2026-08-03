@@ -10,10 +10,13 @@
 #include "render/loading_renderer.hpp"
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
+#include "resources/font_resource.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -947,6 +950,43 @@ bool testSoftwareLineDrawing() {
         "The software GAPI line missed an endpoint or blended incorrectly.");
 }
 
+bool testEnglishRetailFontSelection() {
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::gapi::NjpImage font;
+    std::string error;
+    if (!check(
+            font.loadSelectedPatterns(
+                data_root / "System" / "Common" / "Pattern" /
+                    "Font01.njp",
+                osf::englishRetailFontPatternSelection(),
+                &error),
+            "The selected English retail font could not be loaded.")) {
+        return false;
+    }
+
+    osf::gapi::SoftwareBackend backend(96, 16);
+    backend.beginFrame({0, 0, 0, 255});
+    const bool rendered = backend.drawText(
+        font,
+        std::string("\x81\x40Goblin", 8),
+        {0, 0, {255, 255, 255, 255}});
+    const osf::gapi::SurfaceView surface = backend.surface();
+    const bool visible = std::any_of(
+        surface.pixels,
+        surface.pixels +
+            static_cast<std::size_t>(surface.width) *
+                static_cast<std::size_t>(surface.height),
+        [](osf::gapi::Color pixel) {
+            return pixel.red != 0 || pixel.green != 0 ||
+                   pixel.blue != 0;
+        });
+    return check(
+        rendered && visible,
+        "The compact English font omitted enemy-nameplate glyphs.");
+}
+
 }  // namespace
 
 int main() {
@@ -959,6 +999,7 @@ int main() {
         !testBitMaskDrawing() ||
         !testCafAndTitleAnimation() ||
         !testCafCharacterDrawModes() ||
+        !testEnglishRetailFontSelection() ||
         !testSoftwareLineDrawing() ||
         !testInitialLoadingPackets() ||
         !testSystemCursorPackets() ||

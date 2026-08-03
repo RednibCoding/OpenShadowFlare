@@ -22,6 +22,11 @@ public:
     bool loadCommonPattern(
         std::int32_t id,
         std::string_view retail_path);
+    bool loadCommonPattern(
+        std::int32_t id,
+        std::string_view retail_path,
+        const std::vector<std::uint8_t>& enabled_patterns);
+    void releaseCommonPattern(std::int32_t id);
 
     bool loadTitlePattern(
         std::int32_t id,
@@ -43,6 +48,16 @@ public:
     bool loadGameplayPattern(
         std::int32_t id,
         std::string_view retail_path);
+    bool prepareGameplayPattern(
+        std::int32_t id,
+        std::string_view retail_path,
+        bool required);
+    bool prepareGameplayPattern(
+        std::int32_t id,
+        std::string_view retail_path,
+        const std::vector<std::uint8_t>& enabled_patterns,
+        bool required);
+    void releaseGameplayPattern(std::int32_t id);
     void releaseGameplayResources();
 
     const gapi::NjpImage* pattern(std::int32_t id) const;
@@ -72,6 +87,11 @@ private:
         PatternMap& patterns,
         std::int32_t id,
         std::string_view retail_path);
+    bool loadPattern(
+        PatternMap& patterns,
+        std::int32_t id,
+        std::string_view retail_path,
+        const std::vector<std::uint8_t>& enabled_patterns);
     const gapi::NjpImage* findPattern(
         const PatternMap& patterns,
         std::int32_t id) const;

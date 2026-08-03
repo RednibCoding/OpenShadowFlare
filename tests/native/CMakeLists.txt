@@ -17,6 +17,48 @@ target_include_directories(
 
 add_test(NAME portable_libraries COMMAND portable_libraries_test)
 
+add_executable(lal_conversion_test lal_conversion_test.c)
+target_link_libraries(lal_conversion_test PRIVATE Lal::Lal)
+target_include_directories(
+  lal_conversion_test
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/thirdparty/lal"
+)
+add_test(NAME lal_conversion COMMAND lal_conversion_test)
+
+add_executable(tiny_libraries_test tiny_libraries_test.c)
+target_link_libraries(
+  tiny_libraries_test
+  PRIVATE
+    Twl::Twl
+    Tal::Tal
+)
+add_test(NAME tiny_libraries COMMAND tiny_libraries_test)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+  if(XVFB_RUN_EXECUTABLE)
+    add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+    target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+    add_test(
+      NAME twl_backend_smoke
+      COMMAND "${XVFB_RUN_EXECUTABLE}" -a "$<TARGET_FILE:twl_backend_smoke_test>")
+  endif()
+elseif(EMSCRIPTEN)
+  add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+  target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+  target_link_options(twl_backend_smoke_test PRIVATE "SHELL:-sEXIT_RUNTIME=1")
+  set_target_properties(twl_backend_smoke_test PROPERTIES SUFFIX ".html")
+endif()
+
+add_test(
+  NAME tiny_library_boundaries
+  COMMAND
+    "${CMAKE_COMMAND}"
+    "-DPROJECT_ROOT=${PROJECT_SOURCE_DIR}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/check_tiny_libraries.cmake"
+)
+
 if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
   add_executable(frame_profiler_test frame_profiler_test.cpp)
   target_link_libraries(
@@ -253,6 +295,7 @@ if(TARGET sf_game_core)
     gameplay_ui_controller_test
     gameplay_ui_controller_test.cpp
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_artwork.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_ui_controller.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/input_adapter.cpp"
   )
@@ -2251,6 +2294,10 @@ if(TARGET sf_game_core)
       OpenShadowFlare::RKC_DBFCONTROL
   )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gapi_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
   set_target_properties(gapi_test PROPERTIES CXX_EXTENSIONS OFF)
 
   if(MSVC)

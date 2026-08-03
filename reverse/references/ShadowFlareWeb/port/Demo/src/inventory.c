@@ -197,13 +197,12 @@ static void EquipWeapon(DemoState *state, long templateId, const char *name)
 
     RKC_RPG_ITEMDATA_RollKind0Instance(tmpl, &state->weapon);
     state->hasWeapon = 1;
-    
-    
+    snprintf(state->weaponName, sizeof(state->weaponName), "%s", name ? name : "(unnamed weapon)");
     if (state->hasArmor[EQUIPMENT_SHIELD_SLOT_INDEX] &&
         IsShieldItemName(state->armorName[EQUIPMENT_SHIELD_SLOT_INDEX]) && IsShieldIncompatibleWeapon(tmpl))
-        
+        printf("equipped %s (shield is ineffective with this weapon)\n", state->weaponName);
     else
-        
+        printf("equipped %s\n", state->weaponName);
 }
 
 
@@ -519,14 +518,14 @@ void ApplyPlayerPickup(DemoState *state, long index)
             item->amount = leftover; 
             item->jumpEffectTick = (long)state->tick;
             if (picked > 0)
-                
+                printf("picked up %ld gold, %ld left on the ground -- inventory full\n", picked, leftover);
             else
-                
+                printf("can't pick up gold -- inventory full\n");
         }
         else
         {
             item->pickedUp = 1;
-            
+            printf("picked up %ld gold\n", picked);
         }
         RecomputePlayerGold(state);
         

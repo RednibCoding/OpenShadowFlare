@@ -119,6 +119,7 @@ bool WorldScene::updatePlayerTransportContact() {
         scenario_world_.mapExploration().reveal(
             player_.position());
         player_transport_spell_.consume();
+        releaseInactiveEffectResources();
         return true;
     }
 

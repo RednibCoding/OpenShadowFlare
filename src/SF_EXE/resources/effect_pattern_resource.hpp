@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace osf {
 
@@ -19,6 +20,8 @@ public:
         std::string* error = nullptr);
     const gapi::NjpImage* find(
         std::int32_t resource_id) const;
+    void retainOnly(
+        const std::vector<std::int32_t>& resource_ids);
     void clear();
     std::uint64_t memoryUsageBytes() const;
 
