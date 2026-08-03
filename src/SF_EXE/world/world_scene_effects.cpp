@@ -95,7 +95,9 @@ WorldScene::runtimeEffectTargets() const {
         target.position = companion_.position();
         target.judgement = companion_.judgement();
         target.current_life = companion_.currentLife();
-        target.active = companion_.currentLife() > 0;
+        target.active =
+            !owned_companion_inactive_ &&
+            companion_.currentLife() > 0;
         target.physical_evasion =
             companion_.profile().physical_evasion;
         target.magical_evasion =

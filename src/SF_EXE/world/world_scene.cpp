@@ -1,9 +1,11 @@
 #include "world_scene.hpp"
-#include "enemy_death_rewards.hpp"
+#include "companion_status_message.hpp"
 #include "core/retail_integer.hpp"
+#include "enemy_death_rewards.hpp"
 #include "items/item_audio.hpp"
 #include "movement_controller.hpp"
 #include "player_voice.hpp"
+#include "resources/resource_memory.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -69,6 +71,32 @@ WorldScene::WorldScene()
           [this]() {
               return item_random_.next();
           },
+          [this](
+              std::int32_t companion_type,
+              std::string& message) {
+              return buildRetailCompanionStatusMessage(
+                  parameter_tables_,
+                  player_data_,
+                  companion_type,
+                  message);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& state) {
+              return queryScriptEnemyLifecycleState(
+                  character_number, state);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t lower_distance,
+              std::int32_t upper_distance,
+              script::LocalPlayerTarget& target) {
+              return queryScriptLocalPlayerTarget(
+                  character_number,
+                  lower_distance,
+                  upper_distance,
+                  target);
+          },
       }) {}
 
 
@@ -83,10 +111,16 @@ void WorldScene::clear() {
     companion_.clear();
     effect_visuals_.clear();
     player_powerup_visual_.clear();
+    player_unlock_switch_visual_.clear();
     effect_pattern_resources_.clear();
     speech_patterns_.clear();
     player_appearance_.clear();
     pending_audio_samples_.clear();
+    scenario_text_labels_.clear();
+    scenario_visual_.clear();
+    scenario_visual_patterns_.clear();
+    scenario_visual_continue_patterns_.clear();
+    scenario_screen_particles_.clear();
     level_up_notice_ = {};
     pending_combat_effects_.clear();
     combat_effects_.clear();
@@ -135,13 +169,36 @@ void WorldScene::clear() {
     camera_shake_duration_ = 0;
     camera_shake_magnitude_ = 0;
     gameplay_service_request_ = {};
+    script_transport_service_ = -1;
     blackjack_result_ = 0;
     pending_script_travel_ = {};
     script_travel_pending_ = false;
     scenario_changed_ = false;
     player_identify_mode_active_ = false;
+    player_unlock_switch_active_ = false;
     player_infinite_life_ = false;
     player_infinite_mana_ = false;
+    owned_companion_inactive_ = true;
+}
+
+std::uint64_t WorldScene::resourceMemoryUsageBytes() const {
+    std::uint64_t bytes = scenario_world_.resourceMemoryUsageBytes() +
+        player_visual_.memoryUsageBytes() +
+        companion_visuals_.memoryUsageBytes() +
+        effect_visuals_.memoryUsageBytes() +
+        player_powerup_visual_.memoryUsageBytes() +
+        player_unlock_switch_visual_.memoryUsageBytes() +
+        effect_pattern_resources_.memoryUsageBytes() +
+        decodedMemoryUsageBytes(speech_patterns_) +
+        decodedMemoryUsageBytes(scenario_visual_patterns_) +
+        decodedMemoryUsageBytes(scenario_visual_continue_patterns_) +
+        item_inventory_patterns_.memoryUsageBytes();
+    for (const auto& resource : item_world_resources_) {
+        if (resource) {
+            bytes += resource->memoryUsageBytes();
+        }
+    }
+    return bytes;
 }
 
 std::int32_t WorldScene::playerExperienceThreshold() const {
@@ -194,6 +251,23 @@ bool WorldScene::hasCompanion() const {
 
 const CompanionActor& WorldScene::companion() const {
     return companion_;
+}
+
+bool WorldScene::ownedCompanionInactive() const {
+    return owned_companion_inactive_;
+}
+
+void WorldScene::toggleOwnedCompanionActivity() {
+    if (!hasCompanion()) {
+        return;
+    }
+    owned_companion_inactive_ =
+        !owned_companion_inactive_;
+    if (owned_companion_inactive_) {
+        // Both retail toggle paths clear the pending companion command.
+        // An attack already presenting is allowed to finish normally.
+        companion_.clearCombatIntent();
+    }
 }
 
 const std::vector<CombatEffectActor>&
@@ -329,6 +403,21 @@ std::int32_t WorldScene::playerIncreasedPowerFrame() const {
     return player_increased_power_.auraFrame();
 }
 
+bool WorldScene::playerUnlockSwitchActive() const {
+    return player_unlock_switch_active_;
+}
+
+const EffectVisualResource*
+WorldScene::playerUnlockSwitchVisual() const {
+    return player_unlock_switch_visual_.animation().charts().empty()
+        ? nullptr
+        : &player_unlock_switch_visual_;
+}
+
+std::int32_t WorldScene::playerUnlockSwitchFrame() const {
+    return player_.damagePresentation().counter;
+}
+
 std::size_t
 WorldScene::runtimeEffectControllerCount() const {
     return runtime_effects_.controllerCount();
@@ -340,6 +429,42 @@ const TransportCatalog& WorldScene::transports() const {
 
 const std::vector<GroundItem>& WorldScene::groundItems() const {
     return scenario_world_.groundItems();
+}
+
+const std::vector<ScenarioTextLabel>&
+WorldScene::scenarioTextLabels() const {
+    return scenario_text_labels_;
+}
+
+const ScenarioVisualPresentation&
+WorldScene::scenarioVisual() const {
+    return scenario_visual_;
+}
+
+const gapi::NjpImage& WorldScene::scenarioVisualPatterns() const {
+    return scenario_visual_patterns_;
+}
+
+const gapi::NjpImage&
+WorldScene::scenarioVisualContinuePatterns() const {
+    return scenario_visual_continue_patterns_;
+}
+
+bool WorldScene::scenarioVisualActive() const {
+    return scenario_visual_.active();
+}
+
+void WorldScene::requestScenarioVisualAdvance() {
+    scenario_visual_.requestAdvance();
+}
+
+void WorldScene::advanceScenarioVisualFrame() {
+    scenario_visual_.advanceFrame();
+}
+
+const ScenarioScreenParticles&
+WorldScene::scenarioScreenParticles() const {
+    return scenario_screen_particles_;
 }
 
 const QuestState& WorldScene::quests() const {
@@ -364,7 +489,14 @@ RetailSaveProgress WorldScene::retailSaveProgress() const {
         quests_.states(),
         transports_.enabledFlags(),
         script_state_flags_,
+    };
+}
+
+RetailSaveWorldState WorldScene::retailSaveWorldState() const {
+    return {
         player_.movementPace() == MovementPace::run,
+        scenario_world_.id(),
+        scenario_world_.entryValue(),
     };
 }
 
@@ -440,6 +572,22 @@ const VendorInventory* WorldScene::vendorInventory(
 const ItemInventoryResource&
 WorldScene::itemInventoryPatterns() const {
     return item_inventory_patterns_;
+}
+
+bool WorldScene::prepareItemInventoryPatterns(
+    const std::array<
+        std::uint8_t,
+        ItemInventoryResource::group_count>& enabled_groups,
+    std::string* error) {
+    return item_inventory_patterns_.prepareGroups(
+        enabled_groups, error);
+}
+
+bool WorldScene::prepareItemInventoryPatterns(
+    const ItemInventoryResource::PatternSelection& enabled_patterns,
+    std::string* error) {
+    return item_inventory_patterns_.preparePatterns(
+        enabled_patterns, error);
 }
 
 const PlayerData& WorldScene::playerData() const {
@@ -603,11 +751,13 @@ std::int32_t WorldScene::playerPartBlueStrength(
     return player_appearance_.blueStrength(part);
 }
 
-void WorldScene::refreshPlayerAppearance() {
+bool WorldScene::refreshPlayerAppearance(std::string* error) {
     player_appearance_.refresh(
         player_visual_.animation().maxPartCount(),
         player_equipment_,
         item_database_);
+    return player_visual_.loadSelectedParts(
+        player_appearance_.enabledParts(), error);
 }
 
 std::int32_t WorldScene::playerEquipmentColor(
@@ -649,6 +799,13 @@ bool WorldScene::activatePlayerIncreasedPower() {
 }
 
 void WorldScene::update() {
+    scenario_text_labels_.clear();
+    if (scenario_visual_.active()) {
+        return;
+    }
+    // The retail player update clears +0x159c before the scenario's status
+    // kind-five sentences can refresh the one-update UnlockSW marker.
+    player_unlock_switch_active_ = false;
     // FUN_00443490 drops Magic Shield and Counter Burst at the start of the
     // next player update when no mana remains. Keeping this before the cast
     // action lets an exact-cost activation show its marker frame once, as in
@@ -676,16 +833,8 @@ void WorldScene::update() {
     pending_player_attack_impact_target_id_ = -1;
     level_up_notice_.update();
     quests_.updateNotice();
-    std::vector<EnemyActor>& live_enemies =
-        scenario_world_.enemies();
-    live_enemies.erase(
-        std::remove_if(
-            live_enemies.begin(),
-            live_enemies.end(),
-            [](const EnemyActor& enemy) {
-                return enemy.expired();
-            }),
-        live_enemies.end());
+    // MCT enemy slots remain stable after expiry: scenario scripts can find
+    // an inactive slot and reactivate that same actor through opcode 25.
     for (CombatEffectActor& effect : combat_effects_) {
         effect.update();
     }
@@ -699,6 +848,10 @@ void WorldScene::update() {
         combat_effects_.end());
     if (!scenario_script_.messageActive()) {
         scenario_script_.runStatusKind(5);
+    }
+    scenario_screen_particles_.update(item_random_);
+    if (scenario_visual_.active()) {
+        return;
     }
     NpcActor* interaction_npc = nullptr;
     ScenarioObjectActor* interaction_object = nullptr;

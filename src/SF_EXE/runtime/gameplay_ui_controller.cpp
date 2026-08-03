@@ -7,6 +7,7 @@
 #include "runtime/input_adapter.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
+#include "ui/gameplay_hud_input.hpp"
 #include "ui/quest_notice_layout.hpp"
 #include "world/player_data.hpp"
 #include "world/retail_save_file.hpp"
@@ -59,7 +60,9 @@ GameplayMagicModel gameplayMagicModel(
 void GameplayUiController::reset() {
     options_.close();
     blackjack_.close();
+#if OSF_ENABLE_DEBUG_TOOLS
     debug_.close();
+#endif
     equipment_color_.close();
     inventory_.close();
     map_.close();
@@ -68,6 +71,7 @@ void GameplayUiController::reset() {
     mission_list_.close();
     transport_.close();
     vendor_.close();
+    world_drop_pointer_guard_.reset();
     pending_action_ = GameplayOptionsAction::none;
 }
 
@@ -138,11 +142,24 @@ bool GameplayUiController::update(
         return false;
     }
 
+#if OSF_ENABLE_DEBUG_TOOLS
     world.playerMagic().setAllSpellsAvailable(
         debug_.allSpellsEnabled());
     world.configurePlayerDebugResources(
         debug_.infiniteLifeEnabled(),
         debug_.infiniteManaEnabled());
+#endif
+
+    if (world_drop_pointer_guard_.update(
+            input.pointerPrimaryDown())) {
+        return true;
+    }
+
+    const GameplayHudButton hud_button =
+        gameplayHudButtonAtPointer(
+            input.menu().pointer_primary_pressed,
+            input.menu().pointer_x,
+            input.menu().pointer_y);
 
     // Retail routes a dead player directly through its locked death action.
     // Menus cannot pause that action or expose save commands before revival.
@@ -187,6 +204,7 @@ bool GameplayUiController::update(
         return true;
     }
 
+#if OSF_ENABLE_DEBUG_TOOLS
     const bool debug_was_active = debug_.active();
     const bool debug_toggle = input.gameplayDebugPressed();
     if (debug_toggle && !debug_was_active) {
@@ -215,6 +233,7 @@ bool GameplayUiController::update(
         }
         return true;
     }
+#endif
 
     if (equipment_color_.active()) {
         const GameplayEquipmentColorResult result =
@@ -262,8 +281,16 @@ bool GameplayUiController::update(
     // The options and confirmation pages are modal. Process them before
     // inventory, status, magic, and other panels so an open panel cannot
     // claim a click intended for the confirmation dialog.
+    const bool options_hud_toggle =
+        hud_button == GameplayHudButton::options;
+    if (options_hud_toggle && !options_.active()) {
+        closeGameplayPanels(world);
+        world.cancelPlayerIdentifyMode();
+        world.setCameraAnchor(320, 240);
+    }
     if (updateOptions(
             input,
+            options_hud_toggle,
             world,
             audio,
             game_config,
@@ -338,6 +365,22 @@ bool GameplayUiController::update(
     const GameplayServiceRequest service =
         world.takeGameplayServiceRequest();
     if (service.kind != GameplayServiceKind::none) {
+        if (service.kind == GameplayServiceKind::close_transport) {
+            transport_.close();
+            const bool left_panel_active =
+                magic_.active() ||
+                status_.active() ||
+                map_.active() ||
+                mission_list_.active() ||
+                vendor_.active() ||
+                inventory_.leftStorageActive();
+            world.setCameraAnchor(
+                gameplayCameraAnchorX(
+                    left_panel_active,
+                    inventory_.active()),
+                240);
+            return false;
+        }
         if (service.kind ==
             GameplayServiceKind::identify_item) {
             if (!inventory_.active()) {
@@ -361,7 +404,9 @@ bool GameplayUiController::update(
         if (service.kind == GameplayServiceKind::blackjack) {
             closeGameplayPanels(world);
             options_.close();
+#if OSF_ENABLE_DEBUG_TOOLS
             debug_.close();
+#endif
             blackjack_.open();
             world.cancelPlayerMovement();
             world.setCameraAnchor(320, 240);
@@ -524,11 +569,7 @@ bool GameplayUiController::update(
 
     const bool status_was_active = status_.active();
     const bool status_hud_toggle =
-        input.menu().pointer_primary_pressed &&
-        input.menu().pointer_x >= 524 &&
-        input.menu().pointer_x < 584 &&
-        input.menu().pointer_y >= 440 &&
-        input.menu().pointer_y < 464;
+        hud_button == GameplayHudButton::status;
     const bool status_toggle =
         (input.gameplayStatusPressed() ||
          status_hud_toggle) &&
@@ -665,11 +706,7 @@ bool GameplayUiController::update(
     const bool inventory_was_active =
         inventory_.anyItemPanelActive();
     const bool inventory_hud_toggle =
-        input.menu().pointer_primary_pressed &&
-        input.menu().pointer_x >= 584 &&
-        input.menu().pointer_x < 640 &&
-        input.menu().pointer_y >= 440 &&
-        input.menu().pointer_y < 464;
+        hud_button == GameplayHudButton::inventory;
     const bool inventory_toggle =
         (input.gameplayInventoryPressed() ||
          inventory_hud_toggle) &&
@@ -762,6 +799,8 @@ bool GameplayUiController::update(
                 result.item_sound_sample);
         }
         if (result.world_drop_requested) {
+            world_drop_pointer_guard_.consumeUntilRelease(
+                input.pointerPrimaryDown());
             const InventoryItem* held_item =
                 inventory_.heldItem();
             const ItemDefinition* definition =
@@ -868,6 +907,7 @@ bool GameplayUiController::update(
 
 bool GameplayUiController::updateOptions(
     InputAdapter& input,
+    bool hud_toggle,
     WorldScene& world,
     AudioSystem& audio,
     GameConfig& game_config,
@@ -877,8 +917,9 @@ bool GameplayUiController::updateOptions(
     RetailSavePreview& save_preview,
     std::int32_t& shadow_opacity) {
     const bool was_active = options_.active();
+    const GameplayOptionsPage previous_page = options_.page();
     const bool toggle =
-        input.gameplayOptionsPressed() &&
+        (input.gameplayOptionsPressed() || hud_toggle) &&
         (!world.conversationActive() || was_active);
     const GameplayOptionsResult result =
         options_.update(
@@ -891,6 +932,17 @@ bool GameplayUiController::updateOptions(
                 input.gameplayHelpPressed(),
             },
             game_config);
+    const GameplayOptionsPage current_page = options_.page();
+    const bool opened_save_confirmation =
+        current_page != previous_page &&
+        (current_page ==
+             GameplayOptionsPage::return_to_title_confirmation ||
+         current_page ==
+             GameplayOptionsPage::exit_game_confirmation);
+    if (opened_save_confirmation &&
+        game_config.save_image_at_game_end) {
+        save_preview.requestCapture();
+    }
     if (!was_active && options_.active()) {
         world.cancelPlayerMovement();
     }
@@ -932,6 +984,7 @@ bool GameplayUiController::updateOptions(
                 world.retailSaveProgress(),
                 world.playerMagic(),
                 world.playerMineCount(),
+                world.retailSaveWorldState(),
                 world.playerGiantWarehouse(),
                 world.playerAutomaticItems(),
                 static_cast<std::uint8_t>(
@@ -963,7 +1016,7 @@ bool GameplayUiController::updateOptions(
     }
     return was_active ||
            options_.active() ||
-           (input.gameplayOptionsPressed() &&
+           ((input.gameplayOptionsPressed() || hud_toggle) &&
             !world.conversationActive()) ||
            input.gameplayHelpPressed();
 }
@@ -978,10 +1031,12 @@ GameplayUiController::blackjack() const {
     return blackjack_;
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 const GameplayDebugMenu&
 GameplayUiController::debug() const {
     return debug_;
 }
+#endif
 
 const GameplayEquipmentColor&
 GameplayUiController::equipmentColor() const {

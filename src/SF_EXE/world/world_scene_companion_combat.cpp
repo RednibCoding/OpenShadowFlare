@@ -116,6 +116,16 @@ void WorldScene::updateCompanionActor(
         return;
     }
 
+    if (owned_companion_inactive_) {
+        companion_.updateFollow(
+            player_.position(),
+            player_.judgement(),
+            scenario_world_.ground(),
+            scenario_world_.objectMap(),
+            &blockers);
+        return;
+    }
+
     const std::vector<CompanionEnemyTargetState> targets =
         enemyTargets(scenario_world_.enemies());
     const std::int32_t owner_distance =

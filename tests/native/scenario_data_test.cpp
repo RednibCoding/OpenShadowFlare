@@ -13,9 +13,12 @@
 #include "world/enemy_effect_impact.hpp"
 #include "world/ground_item.hpp"
 #include "world/movement_controller.hpp"
+#include "world/npc_script_action.hpp"
 #include "world/retail_save_file.hpp"
 #include "world/scenario_data.hpp"
+#include "world/script/scenario_attached_effect_command.hpp"
 #include "world/script/scenario_effect_command.hpp"
+#include "world/script/scenario_numeric_label_command.hpp"
 #include "world/script/scenario_placed_effect_command.hpp"
 #include "world/world_scene.hpp"
 
@@ -40,6 +43,99 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool referencedMapPatternsDecoded(const osf::WorldScene& world) {
+    const auto& patterns = world.mapPatterns();
+    const auto decoded = [&patterns](
+        std::int32_t pattern_set,
+        std::int32_t pattern) {
+        return pattern_set >= 0 && pattern >= 0 &&
+            static_cast<std::size_t>(pattern_set) < patterns.size() &&
+            patterns[static_cast<std::size_t>(pattern_set)] &&
+            patterns[static_cast<std::size_t>(pattern_set)]
+                ->patternDecoded(static_cast<std::size_t>(pattern));
+    };
+    for (std::int32_t y = 0; y < world.ground().height(); ++y) {
+        for (std::int32_t x = 0; x < world.ground().width(); ++x) {
+            const osf::GroundCell* cell = world.ground().cell(x, y);
+            if (cell && cell->pattern_set >= 0 &&
+                static_cast<std::size_t>(cell->pattern_set) <
+                    patterns.size() &&
+                patterns[static_cast<std::size_t>(
+                    cell->pattern_set)] &&
+                !decoded(cell->pattern_set, cell->pattern)) {
+                std::cerr << "Missing ground map pattern set "
+                          << cell->pattern_set << ", pattern "
+                          << cell->pattern << " at " << x << ',' << y
+                          << '\n';
+                return false;
+            }
+        }
+    }
+    for (const osf::MapObject& object : world.objectMap().objects()) {
+        if (object.pattern_set < 0 || object.pattern < 0) {
+            continue;
+        }
+        if (static_cast<std::size_t>(object.pattern_set) <
+                patterns.size() &&
+            patterns[static_cast<std::size_t>(object.pattern_set)] &&
+            !decoded(object.pattern_set, object.pattern)) {
+            std::cerr << "Missing object map pattern set "
+                      << object.pattern_set << ", pattern "
+                      << object.pattern << '\n';
+            return false;
+        }
+        const std::int32_t shadow_set = object.pattern_set + 1;
+        if (shadow_set >= 0 &&
+            static_cast<std::size_t>(shadow_set) < patterns.size() &&
+            patterns[static_cast<std::size_t>(shadow_set)] &&
+            patterns[static_cast<std::size_t>(shadow_set)]->isShadow() &&
+            !decoded(shadow_set, object.pattern)) {
+            std::cerr << "Missing object shadow pattern set "
+                      << shadow_set << ", pattern "
+                      << object.pattern << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
+bool testNpcScriptAction() {
+    osf::NpcScriptActionController action;
+    if (!check(
+            action.start(4, -1, -1, -1),
+            "A valid retail PEOPLE one-shot action was rejected.")) {
+        return false;
+    }
+    const osf::NpcScriptActionUpdate first = action.update(3);
+    const osf::NpcScriptActionUpdate second = action.update(3);
+    const osf::NpcScriptActionUpdate third = action.update(3);
+    if (!check(
+            first.handled && first.action == 4 && first.frame == 0 &&
+                !first.completed && second.frame == 1 &&
+                !second.completed && third.frame == 2 &&
+                third.completed && !action.active() &&
+                action.action() == 1,
+            "The PEOPLE one-shot action did not preserve its retail "
+            "first and final frames.")) {
+        return false;
+    }
+    if (!check(
+            action.start(4, 1, 1, 2),
+            "A valid retail PEOPLE repeated action was rejected.")) {
+        return false;
+    }
+    std::array<std::int32_t, 5> frames{};
+    for (std::int32_t& frame : frames) {
+        frame = action.update(4).frame;
+    }
+    return check(
+        frames == std::array<std::int32_t, 5>{0, 1, 2, 1, 2} &&
+            action.active() &&
+            !action.start(3, -1, -1, -1),
+        "The PEOPLE repeated-action restart and range validation differ "
+        "from retail.");
 }
 
 bool testScenarioEffectCommand() {
@@ -179,6 +275,89 @@ bool testScenarioPlacedEffectCommand() {
                 std::vector<std::int32_t>(6), request),
         "Opcode 36 did not preserve its retail OPTION resources or "
         "operand count.");
+}
+
+bool testScenarioAttachedEffectCommand() {
+    const std::vector<std::int32_t> arguments{
+        20018,
+        10000001,
+    };
+    const osf::ObjectBounds judgement{-80, -60, 79, 99};
+    osf::CombatEffectSpawnRequest request;
+    if (!check(
+            osf::makeScenarioAttachedEffectRequest(
+                arguments, 4, judgement, request),
+            "The retail actor-attached effect descriptor was rejected.")) {
+        return false;
+    }
+    if (!check(
+            request.valid && request.effect_number == 20018 &&
+                request.owner_kind == 4 &&
+                request.source_character_number == 10000001 &&
+                request.target_kind == 0 &&
+                request.target_identifier == 0 &&
+                request.constructor_value_6 == 0 &&
+                request.constructor_value_7 == 0 &&
+                request.direction_radians == 0.0 &&
+                !request.has_explicit_origin &&
+                request.has_source_judgement &&
+                request.source_judgement.left == -80 &&
+                request.source_judgement.top == -60 &&
+                request.source_judgement.right == 79 &&
+                request.source_judgement.bottom == 99 &&
+                request.constructor_value_12 == 0 &&
+                !request.has_packet && request.packet_kind == 8 &&
+                request.instance_identifier == -1 &&
+                request.constructor_value_16 == 0 &&
+                request.constructor_value_17 == 0 &&
+                request.constructor_value_18 == 0 &&
+                request.constructor_value_19 == 0 &&
+                request.constructor_value_20 == 0 &&
+                request.constructor_value_21 == 200 &&
+                request.constructor_value_22 == 0,
+            "Opcode 40 did not reproduce the retail 22-field effect "
+            "request.")) {
+        return false;
+    }
+    if (!check(
+            osf::retailCombatEffectResourceId(20010) == 11000008 &&
+            osf::retailCombatEffectResourceId(20018) == 10000020 &&
+            !osf::makeScenarioAttachedEffectRequest(
+                std::vector<std::int32_t>(1),
+                4,
+                judgement,
+                request) &&
+            !osf::makeScenarioAttachedEffectRequest(
+                arguments, 0, judgement, request),
+            "Opcode 40 did not preserve its retail OPTION resources, owner "
+            "kinds, or operand count.")) {
+        return false;
+    }
+
+    return true;
+}
+
+bool testScenarioNumericLabelCommand() {
+    osf::ScenarioTextLabel label;
+    const std::vector<std::int32_t> arguments{
+        10041000, 20, -60, 14, 224, 192, 160,
+    };
+    return check(
+        osf::makeScenarioNumericLabel(
+            arguments, {1234, 5678}, label) &&
+            label.anchor.x == 1234 &&
+            label.anchor.y == 5678 &&
+            label.offset_x == 20 &&
+            label.offset_y == -60 &&
+            label.text == "14" &&
+            label.red == 224 &&
+            label.green == 192 &&
+            label.blue == 160 &&
+            label.background_opacity == 0 &&
+            !osf::makeScenarioNumericLabel(
+                std::vector<std::int32_t>(6), {}, label),
+        "Opcode 26 did not preserve its actor anchor, decimal format, "
+        "offsets, shadow-only backing, color, or operand count.");
 }
 
 bool updateUntilConversation(
@@ -1578,6 +1757,18 @@ bool testWorldItemSaveRoundTrip() {
         return false;
     }
     if (!check(
+            saved_world.transitionScenario({6, 4, 0}, &error) ==
+                    osf::ScenarioTravelResult::loaded &&
+                saved_world.scenarioId() == 6 &&
+                saved_world.retailSaveWorldState().entry_value == 4 &&
+                saved_world.playerWorldX() == 35105 &&
+                saved_world.playerWorldY() == -6156,
+            "The save-location fixture could not enter Wasteland of "
+            "Pillars through retail entry four.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    if (!check(
             osf::writeRetailSave(
                 save_path,
                 saved_world.playerData(),
@@ -1589,6 +1780,7 @@ bool testWorldItemSaveRoundTrip() {
                 saved_world.retailSaveProgress(),
                 saved_world.playerMagic(),
                 saved_world.playerMineCount(),
+                saved_world.retailSaveWorldState(),
                 saved_world.playerGiantWarehouse(),
                 saved_world.playerAutomaticItems(),
                 0x5a,
@@ -1610,6 +1802,12 @@ bool testWorldItemSaveRoundTrip() {
     std::filesystem::remove_all(save_root, cleanup_error);
     if (!check(
             loaded &&
+                loaded_world.scenarioId() == 6 &&
+                loaded_world.playerMagic().targeting() &&
+                loaded_world.playerMagic().selectedSpell() == -1 &&
+                loaded_world.retailSaveWorldState().entry_value == 4 &&
+                loaded_world.playerWorldX() == 35105 &&
+                loaded_world.playerWorldY() == -6156 &&
                 loaded_world.playerInventory().items().size() ==
                     saved_world.playerInventory().items().size() &&
                 loaded_world.playerBelt().items().size() ==
@@ -1670,8 +1868,8 @@ bool testWorldItemSaveRoundTrip() {
                         .page(2)
                         .items()[0]
                         .grid_y == 0,
-            "World loading discarded backpack, belt, equipped, Warehouse, "
-            "or automatic items.")) {
+            "World loading discarded the default attack command, backpack, "
+            "belt, equipped, Warehouse, or automatic items.")) {
         std::cerr << error << '\n';
         return false;
     }
@@ -1742,6 +1940,11 @@ bool testPersistentConversationAndMovementState() {
                 world.playerBelt(),
                 world.playerSpecialItems(),
                 world.retailSaveProgress(),
+                world.playerMagic(),
+                world.playerMineCount(),
+                world.retailSaveWorldState(),
+                world.playerGiantWarehouse(),
+                world.playerAutomaticItems(),
                 0x6d,
                 &error),
             "The conversation and movement state could not be saved.")) {
@@ -1904,11 +2107,12 @@ bool testGeneralScenarioStart() {
                 wasteland.ground().height() > 0 &&
                 !wasteland.objectMap().objects().empty() &&
                 !wasteland.mapPatterns().empty() &&
+                referencedMapPatternsDecoded(wasteland) &&
                 !wasteland.mapOverviewPatterns()
                      .patterns()
                      .empty(),
-            "The decimal scenario directory, entry key, map, actors, "
-            "or music differ from retail scenario 6.")) {
+            "The decimal scenario directory, entry key, selectively "
+            "decoded map, actors, or music differ from retail scenario 6.")) {
         return false;
     }
 
@@ -2437,6 +2641,51 @@ bool testRetailScenarioEntryInitialization() {
                 "Dusty Ruins, B2F\n",
         "A same-map relocation did not rerun retail status kind seven "
         "with the new entry value.");
+#else
+    return true;
+#endif
+}
+
+bool testRetailGenderedScenarioText() {
+#ifdef OPENSHADOWFLARE_SOURCE_DIR
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::PlayerLoadRequest player;
+    player.name = "Woman";
+    player.gender =
+        osf::playerGenderValue(osf::PlayerGender::female);
+    std::string error;
+    osf::WorldScene world;
+    if (!check(
+            world.loadInitialScenario(
+                data_root, player, {10000, 0, 2}, &error),
+            "The gendered Dusty Ruins scenario fixture could not load.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    world.update();
+    const auto& labels = world.scenarioTextLabels();
+    const auto found = std::find_if(
+        labels.begin(),
+        labels.end(),
+        [&world](const osf::ScenarioTextLabel& label) {
+            return label.anchor.x == world.playerWorldX() &&
+                   label.anchor.y == world.playerWorldY() &&
+                   label.offset_x == 0 &&
+                   label.offset_y == -80 &&
+                   label.text ==
+                       "What an unpleasant smell..\n"
+                       "I cannot breathe.\n" &&
+                   label.red == 224 &&
+                   label.green == 224 &&
+                   label.blue == 224 &&
+                   label.background_opacity == 1000;
+        });
+    return check(
+        found != labels.end(),
+        "Dusty Ruins did not use the live local-player slot and stored "
+        "female value for its retail ambient message.");
 #else
     return true;
 #endif
@@ -4018,6 +4267,86 @@ bool testRetailRemoteTown() {
         return false;
     }
 
+    const std::int32_t player_maximum_life =
+        world.playerRuntimeProfile().maximum_life;
+    const std::int32_t player_maximum_mana =
+        world.playerRuntimeProfile().maximum_mana;
+    osf::PlayerData& wounded_player =
+        const_cast<osf::PlayerData&>(world.playerData());
+    wounded_player.setCurrentLife(1, player_maximum_life);
+    wounded_player.setCurrentMana(1, player_maximum_mana);
+    if (!check(
+            world.hasCompanion(),
+            "The Syria recovery fixture has no owned companion.")) {
+        return false;
+    }
+    osf::CompanionActor& wounded_companion =
+        const_cast<osf::CompanionActor&>(world.companion());
+    osf::CompanionDamageReceiverState companion_state =
+        wounded_companion.damageReceiverState();
+    companion_state.current_life = 1;
+    wounded_companion.applyDamageReceiverState(companion_state);
+    world.takeAudioSamples();
+
+    osf::ScreenPosition syria_blessing_pointer;
+    const bool syria_blessing_click =
+        findNpcPointerPoint(
+            world, 2, syria_blessing_pointer) &&
+        world.commandWorldInteraction(
+            syria_blessing_pointer.x,
+            syria_blessing_pointer.y);
+    updateUntilConversation(world);
+    if (!check(
+            syria_blessing_click &&
+                world.conversationActive() &&
+                world.conversationMessageId() == 1000037,
+            "A wounded player did not reach Syria's retail recovery "
+            "message.")) {
+        return false;
+    }
+    world.advanceConversation();
+    const std::vector<std::int32_t> blessing_audio =
+        world.takeAudioSamples();
+    if (!check(
+            !world.conversationActive() &&
+                world.playerCurrentLife() == player_maximum_life &&
+                world.playerCurrentMana() == player_maximum_mana &&
+                world.companion().currentLife() ==
+                    world.companion().maximumLife() &&
+                world.npcs()[2].animationChart() == 3 &&
+                world.npcs()[2].animationFrame() == 0 &&
+                !blessing_audio.empty(),
+            "Syria's retail callback did not restore the living party, "
+            "start PEOPLE chart three, and play its authored sample.")) {
+        return false;
+    }
+
+    const osf::NpcActor& blessing_syria = world.npcs()[2];
+    const osf::gapi::CafDirection& blessing_direction =
+        blessing_syria.animation().charts()[3].directions[
+            static_cast<std::size_t>(blessing_syria.direction())];
+    for (std::int32_t update = 0;
+         update < blessing_direction.frame_count;
+         ++update) {
+        world.update();
+    }
+    if (!check(
+            blessing_syria.animationChart() == 3 &&
+                blessing_syria.animationFrame() ==
+                    blessing_direction.frame_count - 1,
+            "Syria's one-shot blessing did not retain its retail final "
+            "CAF frame.")) {
+        return false;
+    }
+    world.update();
+    if (!check(
+            blessing_syria.animationChart() == 0 &&
+                blessing_syria.animationFrame() == 0,
+            "Syria did not return to PEOPLE idle after her one-shot "
+            "blessing.")) {
+        return false;
+    }
+
     osf::WorldScene companion_world;
     if (!check(
             companion_world.loadInitialScenario(
@@ -4104,10 +4433,14 @@ bool testRetailRemoteTown() {
                 companion_world.npcs()[6].judgementEnabled() &&
                 object_animation_frame == 0 &&
                 companion_world.scenarioObjects()[4]
-                        .animationFrame() == 1,
+                        .animationFrame() == 0 &&
+                companion_world.scenarioObjects()[4]
+                        .drawStrength() == 0 &&
+                companion_world.scenarioObjects()[5]
+                        .drawStrength() == 0,
             "The periodic companion scripts did not hide the player's "
-            "own dog, activate the other town companions, or advance "
-            "type-zero actors in retail order.")) {
+            "own dog, activate the other town companions, or hide the "
+            "inactive transport visuals in retail order.")) {
         return false;
     }
     osf::ScreenPosition kerberos_pointer;
@@ -4375,6 +4708,60 @@ bool testRetailRemoteTown() {
             "between companion choices.")) {
         return false;
     }
+    companion_world.chooseConversationOption(0);
+    if (!check(
+            companion_world.conversationActive() &&
+                !companion_world.conversationRequiresSelection() &&
+                companion_world.conversationActorId() == 10001 &&
+                companion_world.conversationText().find(
+                    "Gravity\n\nLevel") == 0 &&
+                companion_world.conversationText().find(
+                    "Attribute") != std::string::npos &&
+                companion_world.conversationText().find(
+                    "Attack Speed") != std::string::npos &&
+                companion_world.conversationText().find(
+                    "Experience") != std::string::npos,
+            "Gravity's Check Status choice did not open its retail "
+            "table-backed speech bubble.")) {
+        return false;
+    }
+    NpcRecordingBackend status_renderer;
+    status_renderer.speech = &companion_world.speechPatterns();
+    osf::renderWorld(
+        status_renderer,
+        companion_world,
+        500,
+        &font);
+    if (!check(
+            std::any_of(
+                status_renderer.text_calls.begin(),
+                status_renderer.text_calls.end(),
+                [&companion_world](const TextCall& call) {
+                    return call.text ==
+                        companion_world.conversationText();
+                }),
+            "Gravity's companion status text was not rendered in the "
+            "actor speech bubble.")) {
+        return false;
+    }
+    companion_world.advanceConversation();
+    if (!check(
+            !companion_world.conversationActive() &&
+                companion_world.conversationActorId() == -1,
+            "Closing Gravity's status did not release the actor through "
+            "the authored status-one branch.")) {
+        return false;
+    }
+    if (!check(
+            companion_world.commandWorldInteraction(
+                gravity_pointer.x,
+                gravity_pointer.y) &&
+                updateUntilConversation(companion_world, 5000) &&
+                companion_world.conversationRequiresSelection(),
+            "Gravity's companion menu could not be reopened after Check "
+            "Status.")) {
+        return false;
+    }
     const std::int32_t quit_x =
         choice_text->draw.x +
         quit->column * cell_width +
@@ -4463,6 +4850,7 @@ bool testRetailRemoteTown() {
                 companion_world.retailSaveProgress(),
                 companion_world.playerMagic(),
                 companion_world.playerMineCount(),
+                companion_world.retailSaveWorldState(),
                 companion_world.playerGiantWarehouse(),
                 companion_world.playerAutomaticItems(),
                 0x34,
@@ -4554,12 +4942,134 @@ bool testRetailRemoteTown() {
                     osf::ScenarioTravelResult::relocated &&
                 world.playerWorldX() == 94685 &&
                 world.playerWorldY() == -2756 &&
-                world.playerDirection() == 7 &&
+                world.playerDirection() == 7,
+            "Remote Town's first transport destination did not relocate "
+            "to its authored entry point.")) {
+        return false;
+    }
+    world.update();
+    const auto transport_label_object = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000200;
+        });
+    const auto transport_fade_a = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000203;
+        });
+    const auto transport_fade_b = std::find_if(
+        world.scenarioObjects().begin(),
+        world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10000204;
+        });
+    const std::vector<std::int32_t> transport_audio =
+        world.takeAudioSamples();
+    if (!check(
+            transport_label_object !=
+                    world.scenarioObjects().end() &&
+                transport_fade_a != world.scenarioObjects().end() &&
+                transport_fade_b != world.scenarioObjects().end() &&
+                transport_fade_a->drawStrength() == 50 &&
+                transport_fade_b->drawStrength() == 50 &&
+                world.scenarioTextLabels().size() == 1 &&
+                world.scenarioTextLabels()[0].anchor.x ==
+                    transport_label_object->position().x &&
+                world.scenarioTextLabels()[0].anchor.y ==
+                    transport_label_object->position().y &&
+                world.scenarioTextLabels()[0].offset_x == 0 &&
+                world.scenarioTextLabels()[0].offset_y == -160 &&
+                world.scenarioTextLabels()[0].text == "Remote Town\n" &&
+                world.scenarioTextLabels()[0].red == 224 &&
+                world.scenarioTextLabels()[0].green == 224 &&
+                world.scenarioTextLabels()[0].blue == 224 &&
+                world.scenarioTextLabels()[0].background_opacity == 1000 &&
+                std::count(
+                    transport_audio.begin(),
+                    transport_audio.end(),
+                    80) == 1,
+            "Remote Town's active transport point did not begin both "
+            "object fades, show its authored label, and sound once.")) {
+        return false;
+    }
+    renderer.calls.clear();
+    renderer.speech_calls.clear();
+    renderer.item_calls.clear();
+    renderer.status_icon_calls.clear();
+    renderer.text_calls.clear();
+    renderer.rectangles.clear();
+    osf::renderWorld(renderer, world, 500, &font);
+    const osf::ScenarioTextLabel& transport_label =
+        world.scenarioTextLabels()[0];
+    const osf::ScreenPosition transport_anchor =
+        osf::calculateRealPosition(transport_label.anchor);
+    const std::int32_t transport_text_width =
+        osf::bitmapTextPixelWidth(transport_label.text, 6);
+    const std::int32_t transport_text_x =
+        transport_anchor.x - world.cameraScreenX() -
+        transport_text_width / 2;
+    const std::int32_t transport_text_y =
+        transport_anchor.y - world.cameraScreenY() - 160 - 12;
+    const auto transport_backing = std::find_if(
+        renderer.rectangles.begin(),
+        renderer.rectangles.end(),
+        [transport_text_x,
+         transport_text_y,
+         transport_text_width](const osf::gapi::RectangleDraw& draw) {
+            return draw.x == transport_text_x - 3 &&
+                   draw.y == transport_text_y - 3 &&
+                   draw.width == transport_text_width + 6 &&
+                   draw.height == 18;
+        });
+    const auto transport_shadow = std::find_if(
+        renderer.text_calls.begin(),
+        renderer.text_calls.end(),
+        [transport_text_x,
+         transport_text_y](const TextCall& call) {
+            return call.text == "Remote Town\n" &&
+                   call.draw.x == transport_text_x + 1 &&
+                   call.draw.y == transport_text_y + 1;
+        });
+    const auto transport_text = std::find_if(
+        renderer.text_calls.begin(),
+        renderer.text_calls.end(),
+        [transport_text_x,
+         transport_text_y](const TextCall& call) {
+            return call.text == "Remote Town\n" &&
+                   call.draw.x == transport_text_x &&
+                   call.draw.y == transport_text_y;
+        });
+    if (!check(
+            transport_backing != renderer.rectangles.end() &&
+                transport_backing->color.red == 0 &&
+                transport_backing->opacity == 1000 &&
+                transport_shadow != renderer.text_calls.end() &&
+                transport_shadow->draw.color.red == 0 &&
+                transport_text != renderer.text_calls.end() &&
+                transport_text->draw.color.red == 224 &&
+                transport_text->draw.color.green == 224 &&
+                transport_text->draw.color.blue == 224,
+            "Opcode 27 lost its retail text centering, bottom anchor, "
+            "three-pixel backing, shadow, or color.")) {
+        return false;
+    }
+    for (std::int32_t update = 0; update < 19; ++update) {
+        world.update();
+    }
+    if (!check(
+            transport_fade_a->drawStrength() == 1000 &&
+                transport_fade_b->drawStrength() == 1000 &&
+                world.scenarioTextLabels().size() == 1 &&
+                world.takeAudioSamples().empty() &&
                 findScenarioObjectPointerPoint(
                     world, 200, transport_pointer) &&
                 world.hoveredScenarioObjectId() == 200,
-            "Remote Town's type-zero transport object was not selectable "
-            "at its retail entry point.")) {
+            "Remote Town's transport presentation did not finish its "
+            "twenty-update fade, latch its sound, or keep the object "
+            "selectable.")) {
         return false;
     }
     if (!check(
@@ -4587,6 +5097,88 @@ bool testRetailRemoteTown() {
                 !world.interactionPending(),
             "The transport object did not route through status zero and "
             "opcode 37.")) {
+        return false;
+    }
+    if (!check(
+            world.transitionScenario({0, 0, 0}) ==
+                    osf::ScenarioTravelResult::relocated,
+            "The transport close fixture could not leave the active point.")) {
+        return false;
+    }
+    world.update();
+    const osf::GameplayServiceRequest close_transport_request =
+        world.takeGameplayServiceRequest();
+    if (!check(
+            close_transport_request.kind ==
+                    osf::GameplayServiceKind::close_transport &&
+                close_transport_request.argument == 0 &&
+                transport_fade_a->drawStrength() == 950 &&
+                transport_fade_b->drawStrength() == 950 &&
+                world.scenarioTextLabels().empty(),
+            "Leaving Remote Town's transport point did not remove its "
+            "label, begin both fade-outs, and close only transport zero.")) {
+        return false;
+    }
+
+    osf::WorldScene unlock_world;
+    if (!check(
+            unlock_world.loadInitialScenario(
+                data_root,
+                osf::PlayerLoadRequest{},
+                {4070000, 0, 0},
+                &error),
+            "The shipped unlock-switch fixture could not be loaded.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    const auto unlock_switch = std::find_if(
+        unlock_world.scenarioObjects().begin(),
+        unlock_world.scenarioObjects().end(),
+        [](const osf::ScenarioObjectActor& object) {
+            return object.characterNumber() == 10041001;
+        });
+    if (!check(
+            unlock_switch != unlock_world.scenarioObjects().end(),
+            "The shipped unlock-switch actor is missing.")) {
+        return false;
+    }
+    const osf::ScreenPosition unlock_screen =
+        osf::calculateRealPosition(unlock_switch->position());
+    unlock_world.commandPlayerMovement(
+        unlock_screen.x - unlock_world.cameraScreenX(),
+        unlock_screen.y - unlock_world.cameraScreenY());
+    for (std::int32_t update = 0; update < 300; ++update) {
+        unlock_world.update();
+    }
+    if (!check(
+            !unlock_world.playerUnlockSwitchActive() &&
+                unlock_world.scenarioTextLabels().empty(),
+            "Approaching a switch incorrectly activated it before its "
+            "status-zero interaction.")) {
+        return false;
+    }
+    unlock_world.commandWorldInteraction(
+        unlock_screen.x - unlock_world.cameraScreenX(),
+        unlock_screen.y - unlock_world.cameraScreenY());
+    for (std::int32_t update = 0;
+         update < 200 &&
+         !unlock_world.playerUnlockSwitchActive();
+         ++update) {
+        unlock_world.update();
+    }
+    if (!check(
+            unlock_world.playerUnlockSwitchActive() &&
+                unlock_world.playerUnlockSwitchVisual() != nullptr &&
+                unlock_world.scenarioTextLabels().size() == 1 &&
+                unlock_world.scenarioTextLabels()[0].anchor.x ==
+                    unlock_switch->position().x &&
+                unlock_world.scenarioTextLabels()[0].anchor.y ==
+                    unlock_switch->position().y &&
+                unlock_world.scenarioTextLabels()[0].text == "30" &&
+                unlock_world.scenarioTextLabels()[0]
+                        .background_opacity == 0,
+            "The shipped switch did not gate on interaction range or "
+            "publish its numeric label and player marker.")) {
         return false;
     }
 
@@ -4657,8 +5249,11 @@ bool testRetailRemoteTown() {
 }  // namespace
 
 int main() {
-    return testScenarioEffectCommand() &&
+    return testNpcScriptAction() &&
+                   testScenarioEffectCommand() &&
                    testScenarioPlacedEffectCommand() &&
+                   testScenarioAttachedEffectCommand() &&
+                   testScenarioNumericLabelCommand() &&
                    testGroundItemCreation() &&
                    testConversationChoiceMarkup() &&
                    testPlayerLevelUpNoticeLayout() &&
@@ -4669,6 +5264,7 @@ int main() {
                    testGeneralScenarioStart() &&
                    testLiveScenarioTransition() &&
                    testRetailScenarioEntryInitialization() &&
+                   testRetailGenderedScenarioText() &&
                    testRetailScenarioObjectOverride() &&
                    testScriptedRemoteTownExit() &&
                    testPlacedScenarioItems() &&

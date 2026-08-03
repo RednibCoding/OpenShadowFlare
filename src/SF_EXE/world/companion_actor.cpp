@@ -383,6 +383,17 @@ void CompanionActor::leaveCombat() {
     selectMotion(CompanionMotion::idle);
 }
 
+void CompanionActor::clearCombatIntent() {
+    combat_target_character_number_ = -1;
+    movement_controller_.reset();
+    if (!attack_action_.active() &&
+        !explosion_action_.active() &&
+        action_lock_ == 0 &&
+        presentation_action_ == 2) {
+        selectMotion(CompanionMotion::idle);
+    }
+}
+
 CompanionPresentationUpdate
 CompanionActor::updateDamagePresentation(
     const GroundMap& ground,

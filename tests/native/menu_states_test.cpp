@@ -3,6 +3,7 @@
 #include "render/gameplay_debug_renderer.hpp"
 #include "render/gameplay_help_renderer.hpp"
 #include "render/gameplay_options_renderer.hpp"
+#include "resources/save_catalog.hpp"
 #include "states/character_select_state.hpp"
 #include "states/gameplay_debug_menu.hpp"
 #include "states/gameplay_options_menu.hpp"
@@ -13,6 +14,8 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -121,6 +124,69 @@ bool testSaveNameSearch() {
             full.path == "Save\\0005.Ssv" &&
             probes == 6,
         "The six-save retail limit behavior is incorrect.");
+}
+
+bool testRetailSaveCatalogFields() {
+    const std::filesystem::path root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_save_catalog_test";
+    std::error_code filesystem_error;
+    std::filesystem::remove_all(root, filesystem_error);
+    std::filesystem::create_directories(
+        root / "Save", filesystem_error);
+    if (!check(
+            !filesystem_error,
+            "The save-catalog fixture directory could not be created.")) {
+        return false;
+    }
+
+    std::array<std::uint8_t, 16 + 0x160> bytes{};
+    const std::string name = "asof";
+    std::copy(name.begin(), name.end(), bytes.begin() + 16);
+    const auto writeI32 = [&bytes](
+                              std::size_t record_offset,
+                              std::int32_t value) {
+        const std::uint32_t raw =
+            static_cast<std::uint32_t>(value);
+        const std::size_t offset = 16 + record_offset;
+        bytes[offset] = static_cast<std::uint8_t>(raw);
+        bytes[offset + 1] =
+            static_cast<std::uint8_t>(raw >> 8u);
+        bytes[offset + 2] =
+            static_cast<std::uint8_t>(raw >> 16u);
+        bytes[offset + 3] =
+            static_cast<std::uint8_t>(raw >> 24u);
+    };
+    writeI32(0x18, 0);
+    writeI32(0x1c, 16);
+    writeI32(0x24, 1);
+    writeI32(0x34, 260);
+    writeI32(0x3c, 160);
+    writeI32(0xd8, 18);
+
+    const std::filesystem::path save_path =
+        root / "Save" / "0000.Ssv";
+    std::ofstream stream(save_path, std::ios::binary);
+    stream.write(
+        reinterpret_cast<const char*>(bytes.data()),
+        static_cast<std::streamsize>(bytes.size()));
+    stream.close();
+
+    const std::vector<osf::RetailSaveSummary> catalog =
+        osf::loadRetailSaveCatalog(root);
+    const bool passed = check(
+        catalog.size() == 1 &&
+            catalog[0].slot == 0 &&
+            catalog[0].name == "asof" &&
+            catalog[0].gender == 0 &&
+            catalog[0].job == 16 &&
+            catalog[0].level == 1 &&
+            catalog[0].life == 260 &&
+            catalog[0].mana == 160 &&
+            catalog[0].experience == 18,
+        "The save catalog did not decode the retail row fields.");
+    std::filesystem::remove_all(root, filesystem_error);
+    return passed;
 }
 
 bool testTitleLifecycle() {
@@ -1231,6 +1297,14 @@ bool testNewCharacterRetailDrawing() {
     input.pointer_x = 100;
     input.pointer_y = 200;
     frame.save_slot_hovered[0] = true;
+    osf::RetailSaveSummary save;
+    save.name = "asof";
+    save.gender = 0;
+    save.job = 16;
+    save.level = 1;
+    save.life = 260;
+    save.mana = 160;
+    save.experience = 18;
     backend = {};
     osf::renderCharacterSelect(
         backend,
@@ -1238,12 +1312,59 @@ bool testNewCharacterRetailDrawing() {
         &font,
         data,
         frame,
-        {},
+        {save},
         {});
+    if (!check(
+            backend.patterns[4].index == 45 &&
+                backend.patterns[6].index == 49,
+            "The retail hover pulse affected more than one save number.")) {
+        return false;
+    }
+
+    const auto hasText = [&backend](
+                             std::string_view text,
+                             std::int32_t x,
+                             std::int32_t y,
+                             osf::gapi::Color color) {
+        return std::any_of(
+            backend.texts.begin(),
+            backend.texts.end(),
+            [=](const TextCall& call) {
+                return call.text == text &&
+                       call.draw.x == x &&
+                       call.draw.y == y &&
+                       call.draw.color.red == color.red &&
+                       call.draw.color.green == color.green &&
+                       call.draw.color.blue == color.blue &&
+                       call.draw.color.alpha == color.alpha;
+            });
+    };
+    constexpr osf::gapi::Color labelColor{
+        224, 192, 128, 255};
+    constexpr osf::gapi::Color valueColor{
+        224, 224, 224, 255};
     return check(
-        backend.patterns[4].index == 45 &&
-            backend.patterns[6].index == 49,
-        "The retail hover pulse affected more than one save number.");
+        hasText("Level.", 71, 200, labelColor) &&
+            hasText("       1", 71, 200, valueColor) &&
+            hasText("Job.", 136, 200, labelColor) &&
+            hasText("     Mercenary", 136, 200, valueColor) &&
+            hasText("Sex.", 232, 200, labelColor) &&
+            hasText("     Female", 232, 200, valueColor) &&
+            hasText("Name.", 71, 220, labelColor) &&
+            hasText("      asof", 71, 220, valueColor) &&
+            hasText("HP.", 71, 240, labelColor) &&
+            hasText("    260", 71, 240, valueColor) &&
+            hasText("MP.", 132, 240, labelColor) &&
+            hasText("    160", 132, 240, valueColor) &&
+            hasText("EXP.", 192, 240, labelColor) &&
+            hasText("     18", 192, 240, valueColor) &&
+            hasText(
+                "No Data",
+                375,
+                200,
+                {112, 112, 112, 255}),
+        "The saved-character row fields, colors, or retail positions "
+        "differ.");
 }
 
 bool testGameplayOptionsDrawing() {
@@ -1369,6 +1490,7 @@ bool testGameplayOptionsDrawing() {
         "color.");
 }
 
+#if OSF_ENABLE_DEBUG_TOOLS
 bool testGameplayDebugDrawing() {
     osf::GameplayDebugMenu menu;
     menu.update({true});
@@ -1376,6 +1498,7 @@ bool testGameplayDebugDrawing() {
     menu.update({false, false, true, 400, 134});
     menu.update({false, false, true, 400, 150});
     menu.update({false, false, true, 400, 166});
+    menu.update({false, false, true, 400, 182});
 
     osf::gapi::NjpImage status;
     osf::gapi::NjpImage font;
@@ -1394,7 +1517,7 @@ bool testGameplayDebugDrawing() {
         backend.texts.begin(),
         backend.texts.end(),
         [](const TextCall& call) {
-            return call.text == "All Spells" &&
+            return call.text == "Profiling" &&
                    call.draw.x == 184 &&
                    call.draw.y == 134;
         });
@@ -1404,7 +1527,7 @@ bool testGameplayDebugDrawing() {
         [](const TextCall& call) {
             return call.text == "Infinite MP" &&
                    call.draw.x == 184 &&
-                   call.draw.y == 166;
+                   call.draw.y == 182;
         });
     if (!check(
             backend.patterns.size() == 2 &&
@@ -1431,12 +1554,77 @@ bool testGameplayDebugDrawing() {
                    call.draw.y == 4 &&
                    call.draw.color.red == 255;
         });
-    return check(
-        backend.texts.size() == 2 &&
+    if (!check(
+            backend.texts.size() == 2 &&
             fps != backend.texts.end(),
         "The debug FPS counter is not anchored to the top-right with a "
-        "shadowed readable draw.");
+        "shadowed readable draw.")) {
+        return false;
+    }
+
+    backend = {};
+    osf::debug::ProfilingMetrics metrics;
+    metrics.game_memory_bytes = 32ULL * 1024ULL * 1024ULL;
+    metrics.audio_memory_bytes = 8ULL * 1024ULL * 1024ULL;
+    metrics.video_memory_bytes = 4ULL * 1024ULL * 1024ULL;
+    metrics.average_framebuffer_fill_ms = 2.5;
+    metrics.average_present_ms = 1.25;
+    osf::renderGameplayProfiling(
+        backend, font, metrics, true);
+    const auto game_memory = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "GAME 32.00 MiB" &&
+                   call.draw.y == 16;
+        });
+    const auto audio_memory = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "AUDIO 8.00 MiB" &&
+                   call.draw.y == 28;
+        });
+    const auto vram = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "VRAM 4.00 MiB" &&
+                   call.draw.y == 52;
+        });
+    const auto total_ram = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "TOTAL RAM 40.00 MiB" &&
+                   call.draw.y == 40;
+        });
+    const auto fill = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "FILL 2.50 ms" &&
+                   call.draw.y == 64;
+        });
+    const auto present = std::find_if(
+        backend.texts.begin(),
+        backend.texts.end(),
+        [](const TextCall& call) {
+            return call.text == "PRESENT 1.25 ms" &&
+                   call.draw.y == 76;
+        });
+    return check(
+        backend.texts.size() == 12 &&
+            game_memory != backend.texts.end() &&
+            audio_memory != backend.texts.end() &&
+            total_ram != backend.texts.end() &&
+            vram != backend.texts.end() &&
+            fill != backend.texts.end() &&
+            present != backend.texts.end(),
+        "The profiling metrics are not stacked below FPS with stable "
+        "units and right alignment.");
 }
+#endif
 
 bool testGameplayHelpDrawing() {
     osf::gapi::NjpImage status;
@@ -1502,8 +1690,14 @@ bool testGameplayHelpDrawing() {
 }  // namespace
 
 int main() {
+#if OSF_ENABLE_DEBUG_TOOLS
+    const bool debug_tests_passed = testGameplayDebugDrawing();
+#else
+    constexpr bool debug_tests_passed = true;
+#endif
     if (!testRetailRandom() ||
         !testSaveNameSearch() ||
+        !testRetailSaveCatalogFields() ||
         !testTitleLifecycle() ||
         !testTitleLoadFailure() ||
         !testTitleFrames() ||
@@ -1515,7 +1709,7 @@ int main() {
         !testNewCharacterCreationAndModeScreens() ||
         !testNewCharacterRetailDrawing() ||
         !testGameplayOptionsDrawing() ||
-        !testGameplayDebugDrawing() ||
+        !debug_tests_passed ||
         !testGameplayHelpDrawing()) {
         return 1;
     }

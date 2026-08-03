@@ -17,6 +17,32 @@ target_include_directories(
 
 add_test(NAME portable_libraries COMMAND portable_libraries_test)
 
+add_executable(lal_conversion_test lal_conversion_test.c)
+target_link_libraries(lal_conversion_test PRIVATE Lal::Lal)
+target_include_directories(
+  lal_conversion_test
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/thirdparty/lal"
+)
+add_test(NAME lal_conversion COMMAND lal_conversion_test)
+
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  add_executable(frame_profiler_test frame_profiler_test.cpp)
+  target_link_libraries(
+    frame_profiler_test PRIVATE OpenShadowFlare::DebugTools)
+  target_compile_features(frame_profiler_test PRIVATE cxx_std_17)
+  set_target_properties(
+    frame_profiler_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      frame_profiler_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      frame_profiler_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME frame_profiler COMMAND frame_profiler_test)
+endif()
+
 add_test(
   NAME source_boundaries
   COMMAND
@@ -26,11 +52,32 @@ add_test(
 )
 
 if(TARGET sf_game_core)
+  add_executable(resource_manager_test resource_manager_test.cpp)
+  target_link_libraries(
+    resource_manager_test PRIVATE OpenShadowFlare::Resources)
+  target_compile_features(resource_manager_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    resource_manager_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    resource_manager_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      resource_manager_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      resource_manager_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME resource_manager COMMAND resource_manager_test)
+
   add_executable(game_core_test game_core_test.cpp)
   target_link_libraries(
     game_core_test
     PRIVATE
       OpenShadowFlare::States
+      OpenShadowFlare::Ui
       OpenShadowFlare::RKC_RPGSCRN
   )
   target_compile_features(game_core_test PRIVATE cxx_std_17)
@@ -215,6 +262,7 @@ if(TARGET sf_game_core)
     gameplay_ui_controller_test
     gameplay_ui_controller_test.cpp
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_artwork.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_ui_controller.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/input_adapter.cpp"
   )
@@ -1405,6 +1453,780 @@ if(TARGET sf_game_core)
     NAME first_goblin_combat
     COMMAND first_goblin_combat_test)
 
+  add_executable(
+    episode_one_quest_test
+    episode_one_quest_test.cpp
+  )
+  target_link_libraries(
+    episode_one_quest_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_quest_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_quest_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_quest_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_quest_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_quest_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_quest
+    COMMAND episode_one_quest_test)
+
+  add_executable(
+    episode_one_dusty_ruins_test
+    episode_one_dusty_ruins_test.cpp
+  )
+  target_link_libraries(
+    episode_one_dusty_ruins_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_dusty_ruins_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_dusty_ruins_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_dusty_ruins_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_dusty_ruins_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_dusty_ruins_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_dusty_ruins
+    COMMAND episode_one_dusty_ruins_test)
+
+  add_executable(
+    episode_one_spirit_stone_test
+    episode_one_spirit_stone_test.cpp
+  )
+  target_link_libraries(
+    episode_one_spirit_stone_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_spirit_stone_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_spirit_stone_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_spirit_stone_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_spirit_stone_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_spirit_stone_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_spirit_stone
+    COMMAND episode_one_spirit_stone_test)
+
+  add_executable(
+    episode_one_town_rewards_test
+    episode_one_town_rewards_test.cpp
+  )
+  target_link_libraries(
+    episode_one_town_rewards_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_town_rewards_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_town_rewards_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_town_rewards_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_town_rewards_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_town_rewards_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_town_rewards
+    COMMAND episode_one_town_rewards_test)
+
+  add_executable(
+    episode_one_cold_svalt_route_test
+    episode_one_cold_svalt_route_test.cpp
+  )
+  target_link_libraries(
+    episode_one_cold_svalt_route_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_cold_svalt_route_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_cold_svalt_route_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_cold_svalt_route_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_cold_svalt_route_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_cold_svalt_route_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_cold_svalt_route
+    COMMAND episode_one_cold_svalt_route_test)
+
+  add_executable(
+    episode_one_memorable_ruby_test
+    episode_one_memorable_ruby_test.cpp
+  )
+  target_link_libraries(
+    episode_one_memorable_ruby_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_memorable_ruby_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_memorable_ruby_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_memorable_ruby_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_memorable_ruby_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_memorable_ruby_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_memorable_ruby
+    COMMAND episode_one_memorable_ruby_test)
+
+  add_executable(
+    episode_one_cold_ruins_test
+    episode_one_cold_ruins_test.cpp
+  )
+  target_link_libraries(
+    episode_one_cold_ruins_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_cold_ruins_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_cold_ruins_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_cold_ruins_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_cold_ruins_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_cold_ruins_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_cold_ruins
+    COMMAND episode_one_cold_ruins_test)
+
+  add_executable(
+    episode_one_purgatory_test
+    episode_one_purgatory_test.cpp
+  )
+  target_link_libraries(
+    episode_one_purgatory_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_purgatory_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_purgatory_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_purgatory_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_purgatory_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_purgatory_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_purgatory
+    COMMAND episode_one_purgatory_test)
+
+  add_executable(
+    episode_one_remains_test
+    episode_one_remains_test.cpp
+  )
+  target_link_libraries(
+    episode_one_remains_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_remains_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_remains_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_remains_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_remains_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_remains_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_remains
+    COMMAND episode_one_remains_test)
+
+  add_executable(
+    episode_one_immortal_route_test
+    episode_one_immortal_route_test.cpp
+  )
+  target_link_libraries(
+    episode_one_immortal_route_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_immortal_route_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_immortal_route_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_immortal_route_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_immortal_route_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_immortal_route_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_immortal_route
+    COMMAND episode_one_immortal_route_test)
+
+  add_executable(
+    episode_one_immortal_battle_test
+    episode_one_immortal_battle_test.cpp
+  )
+  target_link_libraries(
+    episode_one_immortal_battle_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_one_immortal_battle_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_one_immortal_battle_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_one_immortal_battle_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_one_immortal_battle_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_one_immortal_battle_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_one_immortal_battle
+    COMMAND episode_one_immortal_battle_test)
+
+  add_executable(
+    episode_two_mining_town_route_test
+    episode_two_mining_town_route_test.cpp
+  )
+  target_link_libraries(
+    episode_two_mining_town_route_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_mining_town_route_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_mining_town_route_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_mining_town_route_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_mining_town_route_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_mining_town_route_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_mining_town_route
+    COMMAND episode_two_mining_town_route_test)
+
+  add_executable(
+    episode_two_forest_of_claws_test
+    episode_two_forest_of_claws_test.cpp
+  )
+  target_link_libraries(
+    episode_two_forest_of_claws_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_forest_of_claws_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_forest_of_claws_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_forest_of_claws_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_forest_of_claws_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_forest_of_claws_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_forest_of_claws
+    COMMAND episode_two_forest_of_claws_test)
+
+  add_executable(
+    episode_two_elf_gate_test
+    episode_two_elf_gate_test.cpp
+  )
+  target_link_libraries(
+    episode_two_elf_gate_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_elf_gate_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_elf_gate_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_elf_gate_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_elf_gate_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_elf_gate_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_elf_gate
+    COMMAND episode_two_elf_gate_test)
+
+  add_executable(
+    episode_two_wizard_tower_test
+    episode_two_wizard_tower_test.cpp
+  )
+  target_link_libraries(
+    episode_two_wizard_tower_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_wizard_tower_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_wizard_tower_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_wizard_tower_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_wizard_tower_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_wizard_tower_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_wizard_tower
+    COMMAND episode_two_wizard_tower_test)
+
+  add_executable(
+    episode_two_seal_crystal_test
+    episode_two_seal_crystal_test.cpp
+  )
+  target_link_libraries(
+    episode_two_seal_crystal_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_seal_crystal_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_seal_crystal_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_seal_crystal_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_seal_crystal_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_seal_crystal_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_seal_crystal
+    COMMAND episode_two_seal_crystal_test)
+
+  add_executable(
+    episode_two_fanann_handoff_test
+    episode_two_fanann_handoff_test.cpp
+  )
+  target_link_libraries(
+    episode_two_fanann_handoff_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_fanann_handoff_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_fanann_handoff_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_fanann_handoff_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_fanann_handoff_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_fanann_handoff_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_fanann_handoff
+    COMMAND episode_two_fanann_handoff_test)
+
+  add_executable(
+    episode_two_yugunos_blockade_test
+    episode_two_yugunos_blockade_test.cpp
+  )
+  target_link_libraries(
+    episode_two_yugunos_blockade_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_yugunos_blockade_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_yugunos_blockade_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_yugunos_blockade_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_yugunos_blockade_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_yugunos_blockade_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_yugunos_blockade
+    COMMAND episode_two_yugunos_blockade_test)
+
+  add_executable(
+    episode_two_yugunos_seal_test
+    episode_two_yugunos_seal_test.cpp
+  )
+  target_link_libraries(
+    episode_two_yugunos_seal_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_yugunos_seal_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_yugunos_seal_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_yugunos_seal_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_yugunos_seal_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_yugunos_seal_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_executable(
+    episode_two_control_room_test
+    episode_two_control_room_test.cpp
+  )
+  target_link_libraries(
+    episode_two_control_room_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_control_room_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_control_room_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_control_room_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_control_room_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_control_room_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_control_room
+    COMMAND episode_two_control_room_test)
+  add_test(
+    NAME episode_two_yugunos_seal
+    COMMAND episode_two_yugunos_seal_test)
+
+  add_executable(
+    episode_two_power_supply_test
+    episode_two_power_supply_test.cpp
+  )
+  target_link_libraries(
+    episode_two_power_supply_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_power_supply_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_power_supply_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_power_supply_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_power_supply_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_power_supply_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_power_supply
+    COMMAND episode_two_power_supply_test)
+
+  add_executable(
+    episode_two_dragons_test
+    episode_two_dragons_test.cpp
+  )
+  target_link_libraries(
+    episode_two_dragons_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_dragons_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_dragons_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_dragons_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_dragons_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_dragons_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_dragons
+    COMMAND episode_two_dragons_test)
+
+  add_executable(
+    episode_two_central_front_test
+    episode_two_central_front_test.cpp
+  )
+  target_link_libraries(
+    episode_two_central_front_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_central_front_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_central_front_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_central_front_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_central_front_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_central_front_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_central_front
+    COMMAND episode_two_central_front_test)
+
+  add_executable(
+    episode_two_south_camp_test
+    episode_two_south_camp_test.cpp
+  )
+  target_link_libraries(
+    episode_two_south_camp_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_south_camp_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_south_camp_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_south_camp_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_south_camp_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_south_camp_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_south_camp
+    COMMAND episode_two_south_camp_test)
+
+  add_executable(
+    episode_two_sacred_wing_test
+    episode_two_sacred_wing_test.cpp
+  )
+  target_link_libraries(
+    episode_two_sacred_wing_test
+    PRIVATE
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    episode_two_sacred_wing_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    episode_two_sacred_wing_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    episode_two_sacred_wing_test
+    PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      episode_two_sacred_wing_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      episode_two_sacred_wing_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME episode_two_sacred_wing
+    COMMAND episode_two_sacred_wing_test)
+
   add_executable(script_engine_test script_engine_test.cpp)
   target_link_libraries(
     script_engine_test
@@ -1439,6 +2261,10 @@ if(TARGET sf_game_core)
       OpenShadowFlare::RKC_DBFCONTROL
   )
   target_compile_features(gapi_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    gapi_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
   set_target_properties(gapi_test PROPERTIES CXX_EXTENSIONS OFF)
 
   if(MSVC)
@@ -1448,6 +2274,37 @@ if(TARGET sf_game_core)
   endif()
 
   add_test(NAME gapi COMMAND gapi_test)
+
+  add_executable(
+    scenario_presentation_test
+    scenario_presentation_test.cpp
+  )
+  target_link_libraries(
+    scenario_presentation_test
+    PRIVATE
+      OpenShadowFlare::Render
+      OpenShadowFlare::World
+  )
+  target_compile_features(
+    scenario_presentation_test PRIVATE cxx_std_17)
+  target_compile_definitions(
+    scenario_presentation_test
+    PRIVATE
+      "OPENSHADOWFLARE_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\""
+  )
+  set_target_properties(
+    scenario_presentation_test PROPERTIES CXX_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(
+      scenario_presentation_test PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(
+      scenario_presentation_test PRIVATE
+        -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME scenario_presentation
+    COMMAND scenario_presentation_test)
 
   add_executable(menu_states_test menu_states_test.cpp)
   target_link_libraries(

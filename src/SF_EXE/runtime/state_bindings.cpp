@@ -1,10 +1,11 @@
 #include "state_bindings.hpp"
 
 #include "lwl.h"
+#include "resources/font_resource.hpp"
+#include "resources/resource_manager.hpp"
 #include "ui/conversation_layout.hpp"
 #include "resources/retail_filesystem.hpp"
 #include "runtime/audio_system.hpp"
-#include "runtime/frontend_assets.hpp"
 #include "world/player_data.hpp"
 #include "world/world_scene.hpp"
 
@@ -17,27 +18,27 @@ namespace osf::runtime {
 
 TitleStateHooks makeTitleStateHooks(
     const std::filesystem::path& data_root,
-    FrontendAssets& assets,
+    ResourceManager& resources,
     AudioSystem& audio) {
     TitleStateHooks hooks;
     hooks.load_pattern =
-        [&assets](
+        [&resources](
             std::int32_t id,
             std::string_view path) {
-            return assets.loadPattern(id, path);
+            return resources.loadTitlePattern(id, path);
         };
     hooks.load_animation =
-        [&assets](
+        [&resources](
             std::size_t index,
             std::int32_t,
             std::string_view path) {
-            return assets.loadTitleAnimation(index, path);
+            return resources.loadTitleAnimation(index, path);
         };
-    hooks.release_pattern = [&assets](std::int32_t id) {
-        assets.releasePattern(id);
+    hooks.release_pattern = [&resources](std::int32_t id) {
+        resources.releaseTitlePattern(id);
     };
-    hooks.release_animation = [&assets](std::size_t index) {
-        assets.releaseTitleAnimation(index);
+    hooks.release_animation = [&resources](std::size_t index) {
+        resources.releaseTitleAnimation(index);
     };
     hooks.load_voice =
         [&audio](
@@ -61,30 +62,39 @@ TitleStateHooks makeTitleStateHooks(
 
 CharacterSelectStateHooks makeCharacterSelectStateHooks(
     const std::filesystem::path& data_root,
-    FrontendAssets& assets,
+    ResourceManager& resources,
     AudioSystem& audio,
     LwlWindow*& window) {
     CharacterSelectStateHooks hooks;
+    hooks.begin_scene = [&resources] {
+        resources.loadCommonPattern(
+            0,
+            "System\\Common\\Pattern\\Font00.njp",
+            englishRetailFontPatternSelection());
+    };
+    hooks.clear_scene = [&resources] {
+        resources.releaseCommonPattern(0);
+    };
     hooks.load_pattern =
-        [&assets](
+        [&resources](
             std::int32_t id,
             std::string_view path) {
-            return assets.loadPattern(id, path);
+            return resources.loadCharacterSelectPattern(id, path);
         };
-    hooks.release_pattern = [&assets](std::int32_t id) {
-        assets.releasePattern(id);
+    hooks.release_pattern = [&resources](std::int32_t id) {
+        resources.releaseCharacterSelectPattern(id);
     };
     hooks.file_exists =
         [&data_root](std::string_view path) {
             return retailFileExists(data_root, path);
         };
-    hooks.load_saved_characters = [&assets] {
-        assets.loadSavedCharacters();
+    hooks.load_saved_characters = [&resources] {
+        resources.loadSavedCharacters();
     };
     hooks.delete_saved_character =
-        [&data_root, &assets](std::int32_t index) {
+        [&data_root, &resources](std::int32_t index) {
             deleteRetailSave(data_root, index);
-            assets.loadSavedCharacters();
+            resources.loadSavedCharacters();
         };
     hooks.read_clipboard = [&window] {
         char* text = lwl_clipboard_get(window);
@@ -115,71 +125,42 @@ CharacterSelectStateHooks makeCharacterSelectStateHooks(
 GameplayStateHooks makeGameplayStateHooks(
     const std::filesystem::path& data_root,
     PlayerLoadRequest& player,
-    FrontendAssets& assets,
+    ResourceManager& resources,
     AudioSystem& audio,
     WorldScene& world) {
     GameplayStateHooks hooks;
-    hooks.prepare_interface = [&assets] {
-        if (!assets.loadPattern(
-                5, "System\\Game\\Pattern\\Bar.njp")) {
-            return false;
-        }
-        if (!assets.loadPattern(
-                6, "System\\Game\\Pattern\\Status.njp")) {
-            assets.releasePattern(5);
-            return false;
-        }
-        if (!assets.loadPattern(
-                7, "System\\Game\\Pattern\\MapIcon.njp")) {
-            assets.releasePattern(5);
-            assets.releasePattern(6);
-            return false;
-        }
-        if (!assets.loadPattern(
-                8, "System\\Game\\Pattern\\StatusIcon.njp")) {
-            assets.releasePattern(5);
-            assets.releasePattern(6);
-            assets.releasePattern(7);
-            return false;
-        }
-        if (!assets.loadPattern(
-                9, "System\\Game\\Pattern\\MagicIcon.njp")) {
-            assets.releasePattern(5);
-            assets.releasePattern(6);
-            assets.releasePattern(7);
-            assets.releasePattern(8);
-            return false;
-        }
-        if (!assets.loadPattern(
+    hooks.prepare_interface = [&resources] {
+        const bool ready = resources.loadCommonPattern(
+                1,
+                "System\\Common\\Pattern\\Font01.njp",
+                englishRetailFontPatternSelection()) &&
+            resources.loadCommonPattern(
+                2,
+                "System\\Common\\Pattern\\Waiting.njp") &&
+            resources.loadGameplayPattern(
+                5, "System\\Game\\Pattern\\Bar.njp") &&
+            resources.loadGameplayPattern(
+                8, "System\\Game\\Pattern\\StatusIcon.njp") &&
+            resources.loadGameplayPattern(
+                9, "System\\Game\\Pattern\\MagicIcon.njp") &&
+            resources.loadGameplayPattern(
                 10,
-                "System\\Game\\Pattern\\MagicBarIcon.njp")) {
-            assets.releasePattern(5);
-            assets.releasePattern(6);
-            assets.releasePattern(7);
-            assets.releasePattern(8);
-            assets.releasePattern(9);
-            return false;
-        }
-        if (!assets.loadPattern(
-                11, "System\\Game\\Pattern\\Card.njp")) {
-            assets.releasePattern(5);
-            assets.releasePattern(6);
-            assets.releasePattern(7);
-            assets.releasePattern(8);
-            assets.releasePattern(9);
-            assets.releasePattern(10);
+                "System\\Game\\Pattern\\MagicBarIcon.njp");
+        if (!ready) {
+            resources.releaseCommonPattern(1);
+            resources.releaseCommonPattern(2);
+            resources.releaseGameplayResources();
             return false;
         }
         return true;
     };
-    hooks.release_interface = [&assets] {
-        assets.releasePattern(5);
-        assets.releasePattern(6);
-        assets.releasePattern(7);
-        assets.releasePattern(8);
-        assets.releasePattern(9);
-        assets.releasePattern(10);
-        assets.releasePattern(11);
+    hooks.release_loading_artwork = [&resources] {
+        resources.releaseCommonPattern(2);
+    };
+    hooks.release_interface = [&resources] {
+        resources.releaseCommonPattern(1);
+        resources.releaseCommonPattern(2);
+        resources.releaseGameplayResources();
     };
     hooks.prepare_world =
         [&data_root, &player, &world] {
@@ -212,11 +193,11 @@ GameplayStateHooks makeGameplayStateHooks(
         world.cancelPlayerMovement();
     };
     hooks.update_pointer_hover =
-        [&assets, &world](
+        [&resources, &world](
             std::int32_t x,
             std::int32_t y) {
             world.updatePointerHover(x, y);
-            const auto* font = assets.pattern(1);
+            const auto* font = resources.pattern(1);
             if (!font ||
                 !world.conversationRequiresSelection()) {
                 return;
@@ -250,14 +231,20 @@ GameplayStateHooks makeGameplayStateHooks(
     hooks.conversation_active = [&world] {
         return world.conversationActive();
     };
+    hooks.scenario_visual_active = [&world] {
+        return world.scenarioVisualActive();
+    };
+    hooks.advance_scenario_visual = [&world] {
+        world.requestScenarioVisualAdvance();
+    };
     hooks.conversation_requires_selection = [&world] {
         return world.conversationRequiresSelection();
     };
     hooks.choose_conversation_option =
-        [&assets, &world](
+        [&resources, &world](
             std::int32_t x,
             std::int32_t y) {
-            const auto* font = assets.pattern(1);
+            const auto* font = resources.pattern(1);
             if (!font) {
                 return false;
             }
@@ -280,6 +267,9 @@ GameplayStateHooks makeGameplayStateHooks(
     };
     hooks.toggle_player_run = [&world] {
         world.togglePlayerRun();
+    };
+    hooks.toggle_companion_activity = [&world] {
+        world.toggleOwnedCompanionActivity();
     };
     hooks.activate_increased_power = [&world] {
         world.activatePlayerIncreasedPower();

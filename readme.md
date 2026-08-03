@@ -27,11 +27,11 @@ into a bug, please tell us on
 [GitHub](https://github.com/RednibCoding/OpenShadowFlare/issues) or Discord so
 we can look into it.
 
-While testing in-game, press `F12` for the debug menu. It can show the FPS
-counter, temporarily unlock every spell, and provide infinite HP or MP, which
-is handy for checking the parts that are currently being reconstructed. These
-debug switches do not grant spell progress or replace the saved resource
-values in your character.
+While testing in-game, press `F12` for the debug menu. It can show the FPS and
+[runtime profiling numbers](documentation/profiling.md), temporarily unlock
+every spell, and provide infinite HP or MP, which is handy for checking the
+parts that are currently being reconstructed. These debug switches do not
+grant spell progress or replace the saved resource values in your character.
 
 ## Table of Contents
 

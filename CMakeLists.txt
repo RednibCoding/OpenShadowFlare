@@ -6,18 +6,33 @@ project(
   LANGUAGES C CXX
 )
 
+if(NINTENDO_SWITCH)
+  set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+endif()
+
 include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
+option(
+  OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS
+  "Compile the F12 debug menu and runtime profiling tools"
+  ON
+)
+
+if(NINTENDO_SWITCH)
+  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "nxfb")
+else()
+  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "lgl")
+endif()
 set(
   OPENSHADOWFLARE_PRESENTATION_BACKEND
-  "lgl"
+  "${OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND}"
   CACHE STRING
   "Surface presentation backend used by the portable executable"
 )
 set_property(
   CACHE OPENSHADOWFLARE_PRESENTATION_BACKEND
-  PROPERTY STRINGS lgl
+  PROPERTY STRINGS lgl nxfb
 )
 
 add_subdirectory(thirdparty/lwl)

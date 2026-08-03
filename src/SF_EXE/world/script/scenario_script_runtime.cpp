@@ -72,6 +72,32 @@ ScenarioScriptRuntime::ScenarioScriptRuntime(
               value = hooks_.next_random();
               return true;
           },
+          [this](
+              std::int32_t companion_type,
+              std::string& message) {
+              return hooks_.build_companion_status_message &&
+                     hooks_.build_companion_status_message(
+                         companion_type, message);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t& state) {
+              return hooks_.query_enemy_lifecycle_state &&
+                     hooks_.query_enemy_lifecycle_state(
+                         character_number, state);
+          },
+          [this](
+              std::int32_t character_number,
+              std::int32_t lower_distance,
+              std::int32_t upper_distance,
+              script::LocalPlayerTarget& target) {
+              return hooks_.query_local_player_target &&
+                     hooks_.query_local_player_target(
+                         character_number,
+                         lower_distance,
+                         upper_distance,
+                         target);
+          },
       }) {}
 
 bool ScenarioScriptRuntime::load(

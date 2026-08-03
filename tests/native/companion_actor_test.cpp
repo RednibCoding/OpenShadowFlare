@@ -10,6 +10,7 @@
 #include "world/companion_attack_impact.hpp"
 #include "world/companion_explosion_action.hpp"
 #include "world/companion_profile.hpp"
+#include "world/companion_status_message.hpp"
 #include "world/companion_respawn.hpp"
 #include "world/companion_target_selector.hpp"
 #include "world/player_data.hpp"
@@ -211,6 +212,7 @@ int main() {
     }
     if (!check(
             world.hasCompanion() &&
+                world.ownedCompanionInactive() &&
                 world.companion().characterNumber() ==
                     16000000 &&
                 world.companion().profile().name ==
@@ -222,6 +224,41 @@ int main() {
                 world.companion().animationChart() == 0,
             "The local player's owned companion was not created at "
             "the scenario entry.")) {
+        return 1;
+    }
+    world.toggleOwnedCompanionActivity();
+    if (!check(
+            !world.ownedCompanionInactive(),
+            "The owned companion did not switch from retail's "
+            "initial inactive mode to active mode.")) {
+        return 1;
+    }
+    world.toggleOwnedCompanionActivity();
+    if (!check(
+            world.ownedCompanionInactive(),
+            "The owned companion did not return to inactive mode.")) {
+        return 1;
+    }
+    std::string status_message;
+    if (!check(
+            osf::buildRetailCompanionStatusMessage(
+                tables,
+                world.playerData(),
+                0,
+                status_message,
+                &error) &&
+                status_message ==
+                    "Kerberos\n\n"
+                    "Level              1\n"
+                    "HP               400\n"
+                    "Attribute       Fire\n"
+                    "Attack            30  Defense           50\n"
+                    "Hit Rate         250  Evasion Rate      20\n"
+                    "M Defense         50  M Evasion Rate    50\n"
+                    "Attack Speed     128  Walking Speed    125\n"
+                    "Experience         0\n",
+            "Kerberos's opcode-3 status text does not match retail.")) {
+        std::cerr << error << '\n' << status_message;
         return 1;
     }
     CompanionPreviewBackend preview_backend{
@@ -775,6 +812,7 @@ int main() {
     if (!check(
             world.transitionScenario({1, 0, 0}, &error) ==
                 osf::ScenarioTravelResult::loaded &&
+                world.ownedCompanionInactive() &&
                 world.companion().position().x ==
                     world.playerWorldX() &&
                 world.companion().position().y ==
@@ -784,6 +822,22 @@ int main() {
         std::cerr << error << '\n';
         return 1;
     }
+
+    bool inactive_attack_seen = false;
+    for (int update = 0; update < 60; ++update) {
+        world.update();
+        inactive_attack_seen =
+            inactive_attack_seen ||
+            world.companion().attackActive() ||
+            world.companion().combatTargetCharacterNumber() >= 0;
+        world.takeAudioSamples();
+    }
+    if (!check(
+            !inactive_attack_seen,
+            "An inactive owned companion acquired an outdoor enemy.")) {
+        return 1;
+    }
+    world.toggleOwnedCompanionActivity();
 
     bool attack_chart_seen = false;
     bool swing_sample_seen = false;

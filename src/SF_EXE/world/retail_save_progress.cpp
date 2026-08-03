@@ -13,11 +13,6 @@ namespace {
 constexpr std::int32_t kMaximumFlagCount = 100000;
 constexpr std::uint32_t kLegacySwappedFlagVersion = 1;
 
-// The three flag arrays below are retail fields. The executable does not
-// serialize its live walk/run word in FUN_0044b580. Older sparse portable
-// saves also lack the later retail Mine field, so the versioned tail remains
-// a migration fallback which the retail reader safely leaves unread.
-
 void setError(std::string* error, std::string message) {
     if (error) {
         *error = std::move(message);
@@ -157,9 +152,6 @@ bool restoreRetailProgress(
         restored.quest_flags = std::move(first_flags);
         restored.script_state_flags = std::move(third_flags);
     }
-    if (extension.present) {
-        restored.running = extension.running;
-    }
     progress = std::move(restored);
     if (serialized_end) {
         *serialized_end = offset;
@@ -233,6 +225,11 @@ bool replaceRetailProgress(
             static_cast<std::ptrdiff_t>(old_progress_end),
         payload.begin() +
             static_cast<std::ptrdiff_t>(suffix_end));
+    replacement.insert(
+        replacement.end(),
+        payload.begin() +
+            static_cast<std::ptrdiff_t>(suffix_end),
+        payload.end());
     const std::size_t new_progress_end =
         owned_items_end +
         12u +
@@ -240,19 +237,6 @@ bool replaceRetailProgress(
          progress.transport_flags.size() +
          progress.script_state_flags.size()) *
             4u;
-    if (!extension.additional_state.empty()) {
-        replaceRetailSavePortableExtensionState(
-            replacement,
-            progress.running,
-            extension.mine_count,
-            extension.additional_state);
-    } else {
-        replaceRetailSavePortableExtension(
-            replacement,
-            progress.running,
-            extension.mine_count,
-            extension.has_mine_count);
-    }
     payload = std::move(replacement);
     if (serialized_end) {
         *serialized_end = new_progress_end;

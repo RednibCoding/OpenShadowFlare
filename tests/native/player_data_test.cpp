@@ -22,6 +22,7 @@
 #include "world/retail_save_mines.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/retail_save_progress.hpp"
+#include "world/retail_save_world_state.hpp"
 #include "world/transport_catalog.hpp"
 #include "core/retail_random.hpp"
 
@@ -1028,6 +1029,8 @@ int main() {
         std::size_t retail_companion_end = 0;
         std::int32_t retail_mine_count = 5;
         std::size_t retail_mine_end = 0;
+        osf::RetailSaveWorldState retail_world_state;
+        std::size_t retail_world_state_end = 0;
         osf::PlayerGiantWarehouse retail_giant_warehouse;
         retail_giant_warehouse.initializeNew();
         std::size_t retail_giant_end = retail_mine_end;
@@ -1057,9 +1060,15 @@ int main() {
                         retail_mine_count,
                         &retail_mine_end,
                         &error) &&
-                    osf::restoreRetailGiantWarehouse(
+                    osf::restoreRetailWorldState(
                         retail_fixture_payload,
                         retail_mine_end,
+                        retail_world_state,
+                        &retail_world_state_end,
+                        &error) &&
+                    osf::restoreRetailGiantWarehouse(
+                        retail_fixture_payload,
+                        retail_world_state_end,
                         items,
                         retail_giant_warehouse,
                         &retail_giant_end,
@@ -1072,11 +1081,14 @@ int main() {
                         nullptr,
                         &error) &&
                     retail_mine_count >= 0 &&
+                    retail_world_state.running &&
+                    retail_world_state.scenario_id == 0 &&
+                    retail_world_state.entry_value == 0 &&
                     retail_fixture_player.companionCount() ==
                         companion_count,
-                "The original retail companion progression, mine count, "
-                "or ten-page Giant Warehouse could not be restored after "
-                "magic.")) {
+                "The original retail companion progression, Mine count, "
+                "world state, or ten-page Giant Warehouse could not be "
+                "restored after magic.")) {
             std::cerr << error << '\n';
             return 1;
         }
@@ -1102,7 +1114,8 @@ int main() {
         std::vector<std::uint8_t> rewritten_late_items =
             retail_fixture_payload;
         std::size_t rewritten_companion_end = retail_magic_end;
-        std::size_t rewritten_giant_end = retail_mine_end;
+        std::size_t rewritten_world_state_end = retail_mine_end;
+        std::size_t rewritten_giant_end = retail_world_state_end;
         if (!check(
                 osf::replaceRetailCompanionProgress(
                     rewritten_late_items,
@@ -1112,9 +1125,17 @@ int main() {
                     &error) &&
                 rewritten_companion_end ==
                     retail_companion_end &&
-                osf::replaceRetailGiantWarehouse(
+                osf::replaceRetailWorldState(
                     rewritten_late_items,
                     retail_mine_end,
+                    retail_world_state,
+                    &rewritten_world_state_end,
+                    &error) &&
+                rewritten_world_state_end ==
+                    retail_world_state_end &&
+                osf::replaceRetailGiantWarehouse(
+                    rewritten_late_items,
+                    rewritten_world_state_end,
                     items,
                     retail_giant_warehouse,
                     &rewritten_giant_end,
@@ -1127,8 +1148,8 @@ int main() {
                     nullptr,
                     &error) &&
                 rewritten_late_items == retail_fixture_payload,
-            "Re-encoding the retail Giant Warehouse and four automatic "
-            "item pages altered their bytes or later state.")) {
+            "Re-encoding retail world state, Giant Warehouse, and four "
+            "automatic-item pages altered their bytes or later state.")) {
             std::cerr << error << '\n';
             return 1;
         }
@@ -1152,12 +1173,29 @@ int main() {
         }
     }
     osf::RetailSavePreview preview;
-    preview.capture(
-        {
-            surface_pixels.data(),
-            surface_width,
-            surface_height,
-        });
+    const osf::gapi::SurfaceView preview_surface{
+        surface_pixels.data(),
+        surface_width,
+        surface_height,
+    };
+    preview.captureIfRequested(preview_surface);
+    if (!check(
+            !preview.valid() && !preview.captureRequested(),
+            "A save preview was copied without a capture request.")) {
+        return 1;
+    }
+    preview.requestCapture();
+    if (!check(
+            preview.captureRequested(),
+            "The save-preview capture request was not retained.")) {
+        return 1;
+    }
+    preview.captureIfRequested(preview_surface);
+    if (!check(
+            preview.valid() && !preview.captureRequested(),
+            "The requested save preview was not captured exactly once.")) {
+        return 1;
+    }
     if (!check(
             preview.writeForSave(new_save_path, &error),
             "The retail save preview could not be written.")) {

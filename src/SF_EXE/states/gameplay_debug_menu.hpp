@@ -27,6 +27,7 @@ public:
 
     bool active() const;
     bool fpsCounterEnabled() const;
+    bool profilingEnabled() const;
     bool allSpellsEnabled() const;
     bool infiniteLifeEnabled() const;
     bool infiniteManaEnabled() const;
@@ -36,6 +37,7 @@ public:
 private:
     bool active_ = false;
     bool fps_counter_enabled_ = false;
+    bool profiling_enabled_ = false;
     bool all_spells_enabled_ = false;
     bool infinite_life_enabled_ = false;
     bool infinite_mana_enabled_ = false;

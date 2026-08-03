@@ -23,8 +23,11 @@ The portable executable already has a solid front half:
 
 - portable windowing, input, audio, and presentation through LWL, LAL, and LGL
 - a backend-neutral graphics API with a 640×480 software renderer
+- an optional F12 profiler for portable game/audio memory, presenter-owned
+  video memory, software framebuffer time, and presentation time
 - the title screen, its smoke animation, music, fades, and menu sounds
 - new-character creation and the complete saved-game selection flow
+- full retail save-row summaries (Level, Job, Sex, Name, HP, MP, and EXP)
 - the original initial loading screen
 - Remote Town's ground, static objects, shadows, player sprite, and music
 - click-to-move movement, walk/run switching, matching animation, static
@@ -33,12 +36,14 @@ The portable executable already has a solid front half:
 - the shared Status/Magic window, derived character values, elemental display,
   four spell pages, drag-and-drop bar, and live spell selection
 - the inventory, equipment, belt, Special Item, tooltip, and retail save owners
+- working Menu, Status, and Item HUD buttons with UI-owned item-drop clicks
 - the authored Remote Town exit and return loading transitions
 - ordinary melee and basic ranged combat through death, rewards, and pickup
 - the player's table-backed owned companion, including its PARTNER visual,
   depth sorting, collision, scenario travel, retail follow distances, enemy
   acquisition, ordinary melee attack, damage reactions, death, timed revival,
-  and capped table-backed progression
+  capped table-backed progression, Space/HUD activity control, and the
+  original bottom-left life and active/inactive display
 
 In other words, the game can reach the world and the player can now walk
 around it, leave through the south gate, and fight the first Goblin outside.
@@ -98,12 +103,13 @@ the portable shell presents at 60 Hz. The runtime uses separate fixed-step
 clocks so rendering and window presentation do not decide how quickly the
 simulation runs.
 
-## Current milestone: scenario coverage and the Episode 1 playthrough
+## Current milestone: scenario coverage and the Episode 2 playthrough
 
 The player's 22 ordinary spell actions, Increased Power, and Land Mines are
-now reconstructed. Work has moved back to the script-driven scenario layer:
-each newly exercised opcode should unlock real Episode 1 behavior through the
-shared world owners, rather than adding map-specific shortcuts.
+now reconstructed, and the main Episode 1 route is covered through its
+Epilogue. Work has moved back to the script-driven scenario layer for Episode
+2: each new slice should unlock shipped behavior through the shared world
+owners, rather than adding map-specific shortcuts.
 
 The ordinary melee, basic ranged, and owned-companion encounter paths are now
 proven in the live outdoor world. The companion can acquire and attack enemies,
@@ -124,6 +130,22 @@ rebuilt at the hero with full life. The periodic town scripts then expose the
 old dog and hide the newly owned one. All six shipped opcode-45 calls remain
 data-driven across their three scenarios, and a save/load regression keeps the
 selected dog and every inactive progression row intact.
+
+The companion `Check Status` choices now run opcode 3 as well. The selected
+Table 60 row and its saved level build the retail multiline status text, and
+the result stays an ordinary actor speech bubble rather than becoming a new
+menu. Closing it writes the command's result operand and follows the authored
+status-one release branch. All six calls across the three shipped scenarios
+remain script-driven, including retail's slightly odd magical-stat labels.
+
+Syria's normal recovery callback is complete now too. The script itself
+decides whether life, mana, or the optional condition needs attention, then
+uses opcodes 20, 7, and 8 to play her resource-9 chart-three blessing and
+restore the live party pools. The hero uses the derived equipment-adjusted
+maximums; a living owned companion is fully healed, while a defeated companion
+stays defeated. PEOPLE one-shot and repeated frame ranges now have their own
+small controller, preserving the first and final frames and returning to idle
+at the retail update boundary. Her authored sample still comes from opcode 16.
 
 Player death and recovery are now reconstructed. Retail locks ordinary input,
 plays chart four facing direction eight, holds its final frame for 120 game
@@ -515,10 +537,11 @@ script, player, inventory, equipment, belt, Special Items, missions, quests,
 and transport flags untouched. Successful changes restart the scenario's BGM
 and return directly to the new world once its synchronous load is complete.
 An earlier pass had mistaken the Epilogue/`VisualNN` presenter at `0x00417bd0`
-for the ordinary map loader and held it on screen for 120 frames. Retail only
-shows its black crossed-swords loading image while work is actually pending;
-the current synchronous portable load is normally too quick to expose an
-intermediate frame.
+for the ordinary map loader. Retail only shows its black crossed-swords loading
+image while work is actually pending; the current synchronous portable load is
+normally too quick to expose an intermediate frame. The separate story and
+briefing presenter now comes from script opcode 64 instead, so those authored
+pages still appear where the scenario asks for them.
 
 The next slices identified the three resource preload lists, the variable
 common entity record, and all four entity-group shapes. Objects and `PEOPLE`
@@ -728,8 +751,6 @@ transition path around `0x00426200`:
   target, and selected-action state, then implement its native movement
   actions on top of the shared movement controller;
 - release the old scenario in the same order the original does;
-- identify the story/briefing owner that requests the Epilogue and alternate
-  `VisualNN.njp` artwork rendered by `0x00417bd0`;
 - support returning to the title cleanly when loading fails.
 
 Remote Town should then be one input to the loader, not a special hard-coded
@@ -763,8 +784,18 @@ claim full save loading or writing.
 The first layer is live. `0x004039f0` supplies the exact `Bar.njp` patterns,
 screen coordinates, digit placement, and 206-pixel life and mana calculations.
 The renderer draws those packets after the camera-driven world and before
-actor speech. The HUD owns y=400 through y=479, so clicks there no longer pass
-through as movement commands.
+actor speech. The lower interface owns y=400 through y=479, and the companion
+strip additionally owns its exact y=393 through y=408 rectangle, so those
+clicks no longer pass through as movement commands.
+
+The companion part of that layer is live as well. New play sessions start the
+owned companion inactive, matching the retail player runtime. Space or the
+exact bottom-left HUD strip toggles it. Inactive companions keep following and
+colliding, but they do not acquire targets and enemies or hostile effects do
+not select them. The HUD uses patterns 29 through 32 for the right-aligned
+109-pixel life fill, its low-health pulse, and the `ACTIVE`/`INACTIVE` label.
+The state stays intact between maps and is not written into the character
+save.
 
 The retail window class loads the ordinary system arrow and never replaces it
 with another cursor. LWL already supplies that native arrow on every desktop
@@ -817,9 +848,9 @@ The remaining layers are:
 
 The bar currently shows full new-character life and mana from `PlayerData`,
 the centered one-to-three-digit level display, and the persistent walk/run
-indicator. Damage/healing lag colors, bar particles, condition icons, a
-companion bar, and the level-up pulse can be added when the corresponding
-gameplay state exists. HUD coordinates and visibility rules must continue to
+indicator. Damage/healing lag colors, bar particles, condition icons, and
+other transient values can be added when the corresponding gameplay state
+exists. HUD coordinates and visibility rules must continue to
 come from retail draw packets; the interface stays separate from the world
 camera.
 
@@ -902,11 +933,32 @@ shipped effect numbers resolve to their real OPTION resources, all 353 calls
 across 26 scenarios keep their audited shape, and Near Remote Town's first
 six placed effects now enter the ordinary depth-sorted effect pass.
 
+The two remaining shipped presentation commands are connected now too.
+Opcode 64 opens the authored Epilogue or `Visual01` through `Visual06` page,
+fades it over 120 presented frames, freezes rather than cancels the current
+player action, blocks ordinary world input, and waits 300 frames before Return,
+Escape, or the primary mouse button can advance it. Multi-page `Visual02` uses
+the same counter reset as retail. Opcode 65 refreshes the screen-space
+falling-streak emitter from evaluated RGB and count values; it
+uses the shared retail random stream, per-particle opacity, the original DDA
+line path, and the 479-pixel expiry boundary. The shipped catalog contains all
+seven visual IDs and 22 particle calls across 21 scenarios, including the two
+distance-driven density expressions.
+
 The basic writable arithmetic set is complete now as well. Opcodes 13 through
 15 preserve retail's wrapped multiply, signed quotient and remainder, operand
 order, and zero-divisor no-write path. Corpus coverage holds all 388 shipped
 calls across their original scenarios, giving later spawn and encounter
 sentences the calculations they expect before their native actions run.
+
+The paired enemy-group searches are reconstructed too. Opcodes 31 and 32 scan
+an inclusive authored range for the first registered active or inactive enemy,
+skip character numbers which do not exist in the current scenario, and write
+`-1` when there is no match. The world keeps a zero-life enemy active through
+its complete death chart and 120-update fade, just as retail does, and only
+publishes the inactive state when the actor expires. Corpus tests hold the 134
+active searches across 90 scenarios and 34 inactive searches across 13
+scenarios to their retail operand shape.
 
 Type-zero pointing and the first two object services are now live as well.
 Static objects use their opaque NJP pixels, animated objects use their current
@@ -925,6 +977,15 @@ The matching discovery path is live too. Periodic status-kind-5 sentences use
 opcode 34 to measure the hero against each teleporter's hidden activation
 object. Overlap enables that scenario's Table 40 row, immediately adds it to
 the compact transport list, and survives the normal save/load round trip.
+
+The matching transport-point presentation is live now as well. Opcode 27
+draws the SCS message above its authored type-zero object with retail's
+6-by-12 centering, bottom anchor, three-pixel black backing, one-pixel shadow,
+RGB, and opacity. Opcode 46 drives both Remote Town transport visuals from
+zero to 1,000 in steps of 50 and back again, including the hidden-animation
+stop at zero. The activation sample uses the script's one-shot latch. Leaving
+removes the label and opcode 38 closes only the matching transport panel;
+an open right-side inventory and its camera anchor remain intact.
 
 The named Warehouse object follows the same pointer and range path. Its
 status-zero sentence reaches opcode 41 with argument zero and toggles the
@@ -960,6 +1021,13 @@ raw authored area caption. Dusty Ruins selects `B1F` and `B2F` correctly and
 initial vendor setup can query the live player level. No caption is drawn yet:
 the known executable references only write its buffer, so adding a visible
 banner would be guesswork rather than reconstruction.
+
+Dusty Ruins' entry-zero ambient line now follows its script too. Opcodes 66
+and 57 write the live local-player slot and the saved gender value, then the
+authored sentence anchors either the female or male line above that player
+through opcode 27. This is not a map special case: all ten paired uses across
+the shipped scenarios go through the same small script-host queries, with a
+catalog audit holding their one-output shape and pairing in place.
 
 The first checkpoint is now live. Remote Town's SCS decoder reads all 66
 temporary flags, 61 messages, 23 status triggers, 220 sentences, and 608
@@ -1004,9 +1072,47 @@ shadow, exact clickable title rectangle, and the script's samples 65 and 66;
 clicking it opens the Mission List. The persistent StatusIcon lock shortcut is
 drawn and clickable while any quest remains active. Syria's subsequent
 interactions now read the real type-12 quest owner and follow her normal
-healing/blessing branch. Near Remote Town's authored status-kind-four callback
-also completes quest zero after Red Goblin `14010000` finishes its death
-presentation.
+healing/blessing branch. A wounded branch runs the authored PEOPLE action,
+fully restores hero life and mana plus any living owned companion, plays its
+positioned sample, and returns Syria to idle after the last CAF frame. Near
+Remote Town's authored status-kind-four callback also completes quest zero
+after Red Goblin `14010000` finishes its death presentation.
+
+The next enemy-script lifecycle is reconstructed too. Operand type 3 now reads
+the same MCT enemy registry as opcodes 31 and 32, opcode 28 runs the target's
+status-kind-six sentence without losing caller context, and opcode 25 restores
+an inactive slot at the script's position and direction. Expired enemies keep
+their stable scenario slots while rendering, picking, collision, effects, and
+companion targeting continue to ignore them. Scenario `04000003` is covered
+end to end: its controller selects one dead slot, shows the authored two-layer
+wave effect, waits 40 updates, and returns that slot at full life.
+
+Scripted target geometry now follows the executable as well. Opcode 33 asks
+the world for the nearest living local player inside its inclusive
+judgement-bound distance range and returns the player slot and authored world
+coordinates without giving the script library ownership of actors. Opcode 35
+turns those coordinate deltas into retail's unnormalized, truncated direction
+degrees. Their 206 shipped calls are covered by a full scenario-catalog shape
+audit, including the unusual literal output operands.
+
+The matching actor-attached visual command is reconstructed too. Opcode 40
+evaluates an effect and source character, distinguishes local-player owner
+kind one from scenario-actor owner kind four, snapshots that actor's
+judgement rectangle, and submits the packetless one-pass request through the
+existing effect owner. Missing actors remain successful no-ops. All 54
+shipped calls across 45 scenarios are audited; effects 20010 and 20018 map to
+their retail OPTION resources 11000008 and 10000020 without adding any
+scenario-specific rules.
+
+The authored unlock-switch feedback is reconstructed too. Operand type nine
+now gates a switch sentence on the idle hero actually reaching its displayed
+actor and 159-unit judgement range. Opcode 26 draws the script's evaluated
+decimal progress above that actor, while opcode 60 refreshes the original
+`Player/Common/UnlockSW` animation on the hero for one update at a time.
+Opcode 29 remains the client-only packet notification it is in retail instead
+of gaining invented single-player behavior. A catalog audit covers the 60
+matching gates, labels, and markers across 22 scenarios, plus all 61 network
+notifications.
 
 Malse's next authored branch is live too. Completing the Red Goblin quest is
 what advances his script into the merchant introduction and later service
@@ -1027,6 +1133,235 @@ alternate weapon set, handles zero-price and insufficient-Gold branches, and
 uses opcodes 9 and 54 for mutation and payment. Item values come from Table 34
 and the executable's wrapped integer arithmetic; repaired durability and both
 alternate equipment pointers survive the retail save stream.
+
+The same post-Red-Goblin branch is now covered through its first complete
+follow-up mission. Malse offers the stolen-gem quest through SCS state alone;
+Black Hammer in West Ruins uses fixed Table 30/31 loot to drop category-four
+item `99000000`, pickup routes it into automatic-item page zero, and Malse's
+return sentence removes it before completing mission one and playing sample
+66. The immediate work after message `1000028`, the remaining three callbacks,
+quest notice, progress flags, and completed save/reload all stay data-driven.
+
+Ostare's next Episode 1 assignment is covered across maps as well. Completed
+quest zero is only half of its gate: the hero must also reach retail level 30
+before messages `1000007` through `1000009` start mission three. The Room of
+Judgment periodic script waits for all eight authored enemy slots to finish
+their death fades, completes the mission with its object changes and sound,
+then lets Ostare create the Table 30 row-4 reward exactly once. The mission,
+notice and cue order, Cold Svalt follow-up, and saved reward latch all come
+from SCS and table data rather than an Ostare or Dusty Ruins special case.
+
+Syria's Spirit Stone branch is covered alongside it. Once mission three is
+active, her script starts mission two; Stone Spike in continued Dusty Ruins
+uses fixed loot row 23 to create category-four item `99000001` in automatic
+page zero. Returning it removes the real item before completing the mission,
+then the next callback drops Syria's category-two reward. The similarly named
+page-two Spirit Stone is a different definition and stays separate. Offer,
+drop, owner, return, reward, ordinary-healing fallback, and completed
+save/reload all remain authored rather than hard-coded.
+
+Remote Town's two post-recovery gifts are covered now too. Malse waits for the
+completed Dusty Ruins mission and Ostare's reward latch, thanks the hero,
+mentions his brother in Cold Svalt, and creates category-two definition
+`1100000` only on the third callback. Syria follows her own saved latch,
+thanks the hero, and creates definition `1100002` on the callback after her
+Cold Svalt message. Both gifts use the normal airborne ground-item path and
+sample 93 landing sound. Their separate latches survive save/load and prevent
+either conversation or item from repeating.
+
+The outdoor handoff to Cold Svalt is covered as a real map-edge chain rather
+than a transport shortcut. Near Remote Town scenario 1 enters Wasteland of
+Hesitation scenario 3, which leads through Frozen Forest scenario 5 and
+Wasteland of Pillars scenario 6. The final overlap trigger checks mission
+three itself: while Dusty Ruins is active it leaves the hero in scenario 6;
+once complete, opcode 17 loads occupied Cold Svalt scenario `01000001` at
+entry zero. Titles, entry values, quest state, and every transition remain
+owned by the shipped MCT and SCS data.
+
+The first Cold Svalt mission is covered end to end. Occupied outskirts
+scenario `01000001` loads all 108 enemies and its object-two edge enters the
+inhabited town in scenario `01000000`. Alex's seven-message introduction and
+saved first-visit latch run before Rosanna's two-conversation request. Wild
+Ice owns loot row 56, which creates the fixed Memorable Ruby in automatic-item
+page zero at cell `(2,0)`. Returning it removes the real item, completes
+mission four with sample 66, and creates Rosanna's category-two definition
+`1100003` reward on the following callback. Its sample 93 landing sound,
+completed save, ordinary follow-up, and no-repeat behavior are covered too.
+
+Alex's next assignment is covered through the Cold Ruins and back. After the
+Ruby mission, messages `1000009` through `1000012` start mission six with its
+normal notice and sound. Bottom-floor scenario `01020002` waits for all seven
+authored enemies to finish their death fades before changing the room objects
+and completing the mission. Back in Cold Svalt, Alex drops exactly 2,000 Gold,
+then message `1000015` immediately starts mission seven, Purgatory of
+Judgments. The Gold landing sound, both quest cues, saved handoff, and
+no-repeat return branch are held by the same end-to-end regression.
+
+Purgatory of Judgments now continues that playthrough without a shortcut.
+Vaporous Forest object two enters scenario `01030000`; its object-one edge
+reaches the clear room in `01030002`. Three Arc Shamans and four Arc Thunder
+Bats all remain active through their death fades, and only the empty scan
+changes the room objects and completes mission seven. Alex then drops 4,000
+Gold and uses messages `1000018` through `1000020` to start the Remains of
+Reincarnation mission. Both map edges, the exact roster, quest sounds, Gold
+landing, saved handoff, and ordinary no-repeat message are covered.
+
+The Remains of Reincarnation assignment is covered through its real entrance
+and inner maps. Hanged Men's Forest leads into scenario `01040000`, then the
+authored object-one edges reach `01040001` and the clear room in `01040002`.
+Two Earth Golems, two King Earth Goblins, and three Arc Goblin Shamans must
+finish fading before both door pairs open, samples 34 and 31 play, Table 30
+row 63 creates its room loot, and mission eight completes. Alex's 6,000-Gold
+reward, the following mission-nine notice, landing sounds, and saved
+no-repeat branch are covered in the same regression.
+
+The following scouting mission now ends at the place the shipped script says
+it does. Remains scenario `01040002` object five enters Sea of Trees scenario
+`01000004`; its object-zero edge reaches Immortal Remains scenario `01050000`.
+That map's initialization completes mission nine immediately with sample 66.
+Alex uses messages `1000026` through `1000028` to turn the report into mission
+ten, without creating an intermediate item reward. The route, entry values,
+notice sound, saved active branch, and no-repeat behavior are covered.
+
+Mission ten now closes the main Episode 1 assignment through the shipped
+Gargoyle room. The object-one exits through scenarios `01050000` and
+`01050001` lead into `01050002`, whose seven Gargoyles use the authored four
+ordinary and three magic variants. The periodic script waits for every death
+fade, opens objects `10011000..10011002`, plays sample 34, and completes the
+mission with sample 66. Alex then drops exactly 10,000 Gold, follows with his
+Tower of Ordeal message, and starts opcode 64's Episode 1 Epilogue. The next
+visit points toward Mining Town. The reward landing sound, episode flags,
+Epilogue handoff, save/load state, and no-repeat branch are covered together.
+
+The first Episode 2 route is covered too. Alex's post-Epilogue message leaves
+saved flag 71 at one. Near Remote Town uses that flag to swap objects
+`10001030` and `10001031`, and only then lets object four send the player to
+Caravan. The normal route does not show Caravan's unrelated scenario visual;
+it continues through scenarios `02000000` and `02000001`, both titled
+`Forest`, into `Kanfore, Mining Town` (`02100000`). The town initializes all
+14 PEOPLE actors, including Beboba, and fills vendor inventories zero through
+two from Tables 6, 23, and 32. Saving in town keeps the route flag, scenario,
+entry, and services, and its return edge leads back to the second Forest map.
+
+Kyle's first Mining Town assignment is covered from briefing to the following
+handoff. His messages `1000002..1000008` start mission 11, `Destroy thieves
+staying SE of Kanfore.`, and the southeast town edge leads through Forest of
+Four Leaves into Forest of Claws. Three Oak Knights using loot row 85 open the
+inner gate; a second group of three completes the mission. Returning to Kyle
+creates exactly 20,000 Gold as two retail-sized stacks, then messages
+`1000011..1000012` start mission 12, `Head for the Mining Tunnel of Yugunos.`
+The gate state, quest sounds and notices, Gold landing sounds, conversation
+latch, mission states, and no-repeat save/load branch all stay data-driven.
+
+The first mining-tunnel detour is covered at its real gate. With mission 12
+active, the Cross Agora elf Garshwin refuses passage in messages
+`1000003..1000004` and sets saved flag 24. The southern object-three edge
+still refuses to enter Fanann because mission 14 is not complete. Kyle reads
+that latch, explains the sleeping dragon through messages `1000020..1000029`,
+and starts mission 13, `Meet with the Wizard Kirushutat.` Mission 12 remains
+active while this prerequisite runs. The route, refusal, physical gate, quest
+notice and sound, both mission states, and saved no-repeat branch are covered
+without teaching the world owner about Garshwin or Kirushutat.
+
+The detour now reaches Kirushutat through the shipped route as well. Cross
+Agora's eastern edge enters `Forest of Sprits` (`02100005`), and that map's
+far edge enters `Tower of the Wizard` (`02110000`). Entry 18 places the hero
+on Kirushutat's floor. His messages `1000012..1000027` complete mission 13
+and start mission 14, `Take back the Seal Crystal.`, with the ordinary quest
+notice and sound. The route, exact message chain, mission handoff, saved state,
+and `1000028` return branch are covered without adding a tower-specific case
+to the runtime.
+
+Mission 14 is covered through its real item handoff. Cross Agora's western
+edge enters `Forest of Knight's Misery` (`02100006`), whose fort entrance
+leads to `Fort of Thieves` (`02120000`). The special Oak Warrior uses loot row
+76; Tables 30 and 31 turn that into the guaranteed automatic item
+`99000003`, the Seal Crystal. Kirushutat finds and removes that exact item,
+completes mission 14 through messages `1000029..1000031`, and stops the
+handoff from repeating after a save. Cross Agora's southern edge then opens
+normally into `Fanann, Village of Elves` (`02200000`). The route, guardian,
+fixed item owner, completion cue, persistence, and newly opened gate all stay
+data-driven.
+
+The opened gate now has a playable handoff on the other side. Fanann fills
+vendor inventories zero through two from Tables 7, 24, and 33. Lytle's first
+visit shows messages `1000002..1000004`, keeps mission 12 active, and saves
+flag 41 so that a later visit uses `1000006` instead of replaying the
+directions. Fanann's western edge enters `Butterfly Hill` (`02200001`), and
+its object-one edge continues to `Dragon Road` (`02200003`), matching Lytle's
+route toward the Mining Tunnel of Yugunos. Town services, briefing state,
+save/load behavior, and both route edges are covered by shipped-data tests.
+
+The first Yugunos investigation is covered without skipping its authored
+blockade. Dragon Road object two enters `Mining Tunnel of Yugunos, B1F`
+(`02210000`), whose object one descends to B2F (`02210001`). The separate B2F
+protection trigger sets saved flag 38 and, while flag 40 remains zero, pushes
+the hero back to entry two. Mission 12 stays active and mission 15 has not
+started yet. The matching object-zero return edges lead back through B1F to
+Dragon Road, and saving there preserves the discovery and exact entry. Back
+in Fanann, Kirarru keeps her `1000048..1000050` introduction separate from
+the `1000052..1000055` blockade report, starts mission 15 with sample 65, and
+uses `1000051` after a reload without awarding it twice.
+
+Mission 15 now clears that blockade through the intended detour. Dragon Road's
+southern edge enters `Underground Passage, B1F` (`02220000`), whose stair leads
+to B2F (`02220001`). The named Black Wing is the authored objective: mission
+15 completes only after its death presentation expires, then Kirarru's
+`1000056..1000057` response saves flag 40. Saving and reloading keeps the
+completion, and B2F's protection trigger then permits the ordinary object-one
+route into B3F instead of pushing the hero back.
+
+Only after that handoff does the deeper Yugunos route open. B3F (`02210002`)
+uses both of its authored switches and its internal stair before object one
+reaches B5F (`02210003`). B5F needs both switches as well: each opens one of
+the two gates on the long route to object 800, whose contact saves flag 39.
+Kirarru then delivers the complete `1000058..1000068` dragon warning and
+advances flag 39 to two. The collision routes, switch sounds, quest cues,
+dialogue branches, and save state are covered in their actual story order.
+
+That warning now leads through the next complete assignment. Lytle's
+`1000007..1000009` briefing starts mission 16, `Recapture the power supply
+facility.`, and saves cleanly into the active `1000010` branch. Butterfly
+Hill's southern edge enters `Labyrinth of Mauve` (`02200004`), followed by
+`Near The Power Supply Facility` (`02200005`) and `Fort of the Power Supply`
+(`02230000`). Only the named Crimson Sword completes the mission, after its
+death presentation expires. Returning to Lytle creates four 10,000-Gold
+stacks, plays all four landing sounds, runs `1000011..1000016`, and starts
+mission 17, `Defeat the Dragons!`, once. The route, boss trigger, reward,
+quest cues, and no-repeat save branch remain entirely script-driven.
+
+Mission 17 now reaches its full authored ending. Kirarru's
+`1000070..1000072` conversation explains that the rebuilt seal will weaken
+the dragons without changing the active quest. On B5F, mission 17 is the gate
+that lets object one enter the second `02210004` B5F scenario. Its periodic
+script waits for the named Ancient Dragon's registry slot to become inactive
+after the complete death fade, then completes `Defeat the Dragons!` and plays
+the usual completion sound. Object zero returns to the matching B5F entry.
+Back in Fanann, Lytle's `1000018` report advances flag 41 to two and Kirarru's
+`1000073` response acknowledges the victory. The preparation, guarded route,
+boss lifecycle, return edge, both reports, quest cue, and saved completion are
+covered without adding map-specific game logic.
+
+The post-dragon handoff now reaches the central front. Lytle's complete
+`1000018..1000025` victory conversation advances flag 41 to two; while the
+older Yugunos mission is still active, later visits use `1000026..1000027`.
+Kyle then recognizes mission 17's completion, silently closes mission 12,
+drops four 10,000-Gold stacks, and runs `1000014..1000017`. His no-repeat
+branch uses `1000018..1000019`. Back in Fanann, Lytle's
+`1000028..1000029` directions advance flag 41 to four and enable transport
+row 25; `1000030` is the saved repeat. That transport lands at the shipped
+`South Camp of Yugunos ` scenario and entry. Dialogue, reward sounds, silent
+quest update, flags, transport persistence, and the actual trip are covered.
+
+South Camp's first assignment is complete too. The saved one-time flag opens
+the real `Visual03` briefing, Jeel keeps his introduction separate from the
+mission-20 offer, and the ordinary overlap exits lead through East Antalusia
+to the Foot of Mt. Tedoron. The objective is the shipped Flame Warrior and
+Dread Warrior pair—not a guessed count of the other 420 enemies on that map.
+Their inactive lifecycle slots complete the quest, and Jeel's return grants
+the authored experience reward and Morris handoff once. The visual, dialogue
+branches, route, exact targets, cues, sound, reward, and repeat state all run
+from the shipped script and map data.
 
 The first Tower of Ordeal minigame service is reconstructed through the same
 boundary. Opcodes 73 and 74 launch Blackjack and return its draw/player/dealer
@@ -1294,7 +1629,8 @@ movement smooth without changing the 30 Hz simulation.
 Action 11 selects CAF chart three, uses direction eight only when that chart
 really supplies it, scans the same three sound markers, and plays the separate
 resource-specific death sample on update one. It holds the final frame through
-the original 120-update fade and then removes the enemy from the scenario.
+the original 120-update fade and then removes the enemy from live presentation
+while retaining its inactive MCT slot for later script queries or activation.
 Its first update creates the authored item drops and Gold first, then effect
 21010 with the next random direction, preserving the executable's order.
 
@@ -1601,6 +1937,14 @@ summed through the saved companion level for movement and combat values.
 Kerberos therefore starts with the retail level-one profile rather than a
 copy of a town NPC.
 
+Script opcode 3 completes the visible `Check Status` branch for the same six
+profiles. It takes a companion type, rebuilds that row at its saved level, and
+formats the name, active level, HP, element, combat values, movement values,
+and experience state into the normal speech-bubble owner. The player-level
+cap still decides between a number, `Experience Limit`, and `Experience Max`.
+The portable formatter deliberately keeps the original executable's mislabeled
+magical-stat reads instead of silently correcting what players saw.
+
 The default follow half of `0x004622b0` is live too. A companion idles inside
 160 judgement units, waits five updates before leaving that close band, walks
 below 600, runs at 600 or farther, and snaps to the player plus `(200,200)`
@@ -1610,6 +1954,13 @@ actor collision, and is relocated with the player on scenario changes. Its
 1200-unit living-enemy search, attack-mode approach, chart-five marker timing,
 enemy receiver handoff, damage lifecycle, and progression are now live as
 separate companion concerns rather than shortcuts in the follower.
+
+The player-owned mode around that AI is reconstructed too. Retail initializes
+it inactive, toggles it from Space or the bottom-left HUD strip, and clears a
+pending combat command when it becomes inactive. Follow behavior remains
+live, while autonomous acquisition and enemy/effect targeting require active
+mode. `0x004039f0` renders the matching life bar and activity label from the
+original `Bar.njp` patterns.
 
 A fidelity cleanup now protects that checkpoint too. The first Goblin must
 acquire and attack a passive player, continue retaliating after being struck,
@@ -1686,10 +2037,12 @@ signed-byte checksum, substitution pass, and safe preservation of an existing
 unknown payload. New saves carry the player record and owned items we currently
 own. The three counted retail arrays after the item stream now preserve
 type-12 quest state, type-10 transport unlocks, and type-11 general script
-state; this is
-covered by saving after Ostare's opening and proving his starter reward does
-not repeat after loading. Walk/run also survives a portable round trip through
-a small versioned tail until its exact retail save owner is identified.
+state; this is covered by saving after Ostare's opening and proving his starter
+reward does not repeat after loading. The exact post-mine world words are now
+owned too: walk/run, scenario ID, and scenario entry restore through the retail
+stream, while the old versioned tail remains a migration fallback. A live save
+from scenario 6, entry 4 reloads at that entry's retail coordinates rather than
+silently returning to Remote Town.
 Writing captures the retail-sized paired preview from the world-only render
 when the option is enabled. Saving is not complete yet: the remaining
 persistent gameplay owners still have to contribute their real payload fields
@@ -1719,6 +2072,31 @@ to the retail executable.
 Once Episode 1 is solid, run the same process through Episodes 2–4. Most of the
 engine should already exist by then, but later content will expose less common
 script commands, AI actions, effects, items, and map combinations.
+
+Episode 2 has started with the complete post-Epilogue route through Caravan
+and the two Forest road maps into Kanfore, Mining Town. The detour through
+Kirushutat's Seal Crystal now opens Fanann and follows Lytle's directions
+through Butterfly Hill and Dragon Road to the first Mining Tunnel of Yugunos
+blockade. The mine's authored B3F/B5F stair, switches, two gates, and deeper
+seal are now in their real order: Kirarru starts mission 15 after the first
+B2F blockade report, the Black Wing in the southern Underground Passage
+completes it, and her response opens B2F before the deeper seal can be reached.
+The seal report ends with her dragon warning. Lytle's next assignment now
+retakes the Power Supply Fort through the Labyrinth of Mauve;
+Crimson Sword's defeat and the 40,000-Gold return reward carry the story into
+mission 17. Kirarru's seal preparation, the guarded B5F dragon chamber, the
+Ancient Dragon objective, and both Fanann victory reports are covered too.
+The following Lytle/Kyle handoff now closes mission 12, awards 40,000 Gold,
+and unlocks the South Camp of Yugunos transport. South Camp now opens its
+one-time Visual03 briefing, starts mission 20 through Jeel's split
+introduction and assignment, follows the East Antalusia route, completes on
+the two named warrior lifecycle slots at the Foot of Mt. Tedoron, and returns
+for Jeel's one-time experience reward and Morris handoff. Morris's Sacred Wing
+mission now follows the full Edgar/Morris/Berini authorization loop, clears
+the authored gates on all five Tower of Nazzle floors, recovers the relic from
+the fixed Dark Golem loot row, and returns it for Berini's one-time experience
+reward and saved Giant Warehouse III unlock. Continue with Angel's Hair and
+the underground church cave.
 
 Keep fixes general. If a later map needs a special case, first prove that the
 original really has one.
@@ -1764,6 +2142,42 @@ drifting:
 - run the boundary test so DLL-derived code stays in `SF_EXE/libs/`;
 - keep Linux and Windows builds green and regularly test real macOS hardware.
 
+Performance work now has a concrete low-end target too: a future PlayStation 2
+port should fit its game-side work into 32 MiB of RAM and its presenter into a
+4 MiB video-memory budget while keeping the reconstructed 30 Hz simulation and
+smooth 60 Hz presentation. Use the F12 profiler to establish representative
+town, combat, inventory, and effect-heavy baselines before changing code.
+Optimizations still need the same fidelity tests as any other slice; a faster
+result that changes update order, animation timing, blending, or game rules is
+not a win.
+
+The measured allocation breakdown and the working headroom target live in
+[`documentation/memory-budget.md`](documentation/memory-budget.md). Keep that
+table current as each resource group is reduced.
+
+The first memory passes moved frontend assets into a portable resource manager
+with explicit title, character-select, loading, gameplay, and panel lifetimes.
+Leaving a screen destroys everything owned by it, including decoded save
+previews. The English fonts retain only their Latin sheet, loading art is freed
+at the world handoff, and optional gameplay and inventory sheets follow the
+visible panels and exact visible item patterns. Map exploration uses one packed
+bit per pixel, map artwork decodes only patterns referenced by the active GND
+and OBL, and player NJP files decode only the body and equipment layers selected
+by the CAF appearance mask. Closed starter gameplay now measures 22.28 MiB of
+tracked game resources including the software framebuffer. Scenario changes
+release stale ground-item and transient-effect artwork while preserving active
+spell-owned resources. The next useful memory work is to remove the temporary
+two-map peak during transitions without weakening failure-safe loading.
+
+The profiler now reports game and decoded-audio memory separately, followed by
+their TOTAL RAM sum, instead of process RSS. This keeps Linux graphics-driver
+and window-system allocations out of console budgeting.
+LAL also retains each sound's mono/stereo layout and original rate instead of
+expanding everything to the output mix format. The project defaults to 16 kHz
+mono on every target; LAL still exposes 16 kHz, 22.05 kHz, and 48 kHz ceilings
+and an optional stereo layout for applications that need a different quality
+tradeoff. That policy remains in LAL rather than game or platform code.
+
 ## What can wait
 
 These are good ideas, just not reconstruction blockers:
@@ -1773,12 +2187,11 @@ These are good ideas, just not reconstruction blockers:
 - Vulkan, Metal, or Direct3D GAPI backends;
 - a public modding or plug-in API;
 - balance changes and new gameplay;
-- asset conversion tools that the reconstruction itself does not need;
-- major optimization before a representative gameplay scene can be profiled.
+- asset conversion tools that the reconstruction itself does not need.
 
-The software renderer and LGL presenter are intentionally enough for now. A
-new backend becomes worthwhile when the complete 640×480 game gives us
-something meaningful to measure.
+The software renderer and LGL presenter remain the reference path. Optimize
+that measured path before adding another graphics backend, so a new API does
+not hide avoidable renderer or asset-memory costs.
 
 ## Checks before a slice is ready to commit
 

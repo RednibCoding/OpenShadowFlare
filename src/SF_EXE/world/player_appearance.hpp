@@ -19,6 +19,7 @@ public:
         const ItemDatabase& item_database);
 
     bool partEnabled(std::size_t part) const;
+    const std::vector<std::uint8_t>& enabledParts() const;
     std::int32_t redStrength(std::size_t part) const;
     std::int32_t greenStrength(std::size_t part) const;
     std::int32_t blueStrength(std::size_t part) const;

@@ -2,6 +2,7 @@
 
 #include "gapi/gapi.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
+#include "world/companion_actor.hpp"
 #include "world/player_actor.hpp"
 #include "world/player_data.hpp"
 #include "world/player_runtime_profile.hpp"
@@ -13,6 +14,7 @@ namespace osf {
 namespace {
 
 constexpr std::int32_t kRetailBarWidth = 206;
+constexpr std::int32_t kRetailCompanionBarWidth = 109;
 
 void drawClippedBar(
     gapi::Backend& renderer,
@@ -70,8 +72,10 @@ GameplayHudValues gameplayHudValues(
     std::int32_t current_mana,
     bool increased_power_ready,
     bool increased_power_activation_feedback,
-    std::int32_t increased_power_blink_counter) {
-    return {
+    std::int32_t animation_counter,
+    const CompanionActor* companion,
+    bool companion_inactive) {
+    GameplayHudValues values{
         player.level(),
         current_life,
         profile.maximum_life,
@@ -82,8 +86,31 @@ GameplayHudValues gameplayHudValues(
         movement_pace == MovementPace::run,
         increased_power_ready,
         increased_power_activation_feedback,
-        increased_power_blink_counter,
+        animation_counter,
     };
+    if (companion) {
+        values.companion_present = true;
+        values.companion_current_life =
+            companion->currentLife();
+        values.companion_maximum_life =
+            companion->maximumLife();
+        values.companion_inactive = companion_inactive;
+    }
+    return values;
+}
+
+std::int32_t gameplayHudCompanionBarWidth(
+    std::int32_t current,
+    std::int32_t maximum) {
+    if (current <= 0 || maximum <= 0) {
+        return 0;
+    }
+    if (current == maximum) {
+        return kRetailCompanionBarWidth;
+    }
+    return static_cast<std::int32_t>(
+        static_cast<std::int64_t>(current) *
+        kRetailCompanionBarWidth / maximum);
 }
 
 std::int32_t gameplayHudExperienceBarWidth(
@@ -134,6 +161,36 @@ void renderGameplayHud(
         {0, 0, 0, 255},
     });
 
+    if (values.companion_present) {
+        renderer.drawPattern(bar_patterns, 30);
+        const std::int32_t width =
+            gameplayHudCompanionBarWidth(
+                values.companion_current_life,
+                values.companion_maximum_life);
+        if (width > 0) {
+            std::int32_t strength = 1000;
+            if (width * 100 /
+                    kRetailCompanionBarWidth < 30 &&
+                values.animation_counter % 4 < 2) {
+                strength = 1500;
+            }
+            gapi::PatternDraw draw;
+            draw.clip = {
+                110 - width,
+                396,
+                width,
+                11,
+            };
+            draw.red_strength = strength;
+            draw.green_strength = strength;
+            draw.blue_strength = strength;
+            renderer.drawPattern(bar_patterns, 29, draw);
+        }
+        renderer.drawPattern(
+            bar_patterns,
+            values.companion_inactive ? 32 : 31);
+    }
+
     // FUN_004039f0 draws the two fixed pieces before the live values.
     renderer.drawPattern(bar_patterns, 7);
     renderer.drawPattern(bar_patterns, 8);
@@ -165,7 +222,7 @@ void renderGameplayHud(
 
     if (values.increased_power_ready) {
         const std::int32_t phase =
-            values.increased_power_blink_counter % 4;
+            values.animation_counter % 4;
         const std::int32_t strength =
             phase < 2 ? 1000 : 800;
         renderer.drawPattern(

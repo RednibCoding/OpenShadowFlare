@@ -5,6 +5,7 @@
 #include "states/gameplay_status.hpp"
 #include "world/player_data.hpp"
 #include "world/player_combat_defense.hpp"
+#include "world/player_job.hpp"
 #include "world/player_runtime_profile.hpp"
 #include "world/world_scene.hpp"
 
@@ -68,24 +69,6 @@ void drawNumber(
         {x, y, color, 1000, 2});
 }
 
-std::string_view jobName(const PlayerData& player) {
-    switch (player.job()) {
-    case 5:
-        return "Hunter";
-    case 6:
-        return "Warrior";
-    case 9:
-        return player.gender() ==
-                    playerGenderValue(PlayerGender::male)
-            ? "Wizard"
-            : "Witch";
-    case 16:
-        return "Mercenary";
-    default:
-        return {};
-    }
-}
-
 }  // namespace
 
 void renderGameplayStatusPanel(
@@ -106,7 +89,13 @@ void renderGameplayStatusPanel(
     const PlayerData& player = world.playerData();
     const PlayerRuntimeProfile profile =
         world.playerRuntimeProfile();
-    drawText(renderer, font, jobName(player), 22, 42);
+    drawText(
+        renderer,
+        font,
+        retailPlayerJobName(
+            player.job(), player.gender()),
+        22,
+        42);
     drawText(renderer, font, player.name(), 92, 42);
     drawNumber(
         renderer, font, player.level(), 303, 43,

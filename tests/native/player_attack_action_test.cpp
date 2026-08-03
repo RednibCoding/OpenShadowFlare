@@ -8,6 +8,7 @@
 #include "world/player_attack_target.hpp"
 #include "world/player_data.hpp"
 #include "world/player_voice.hpp"
+#include "world/retail_save_file.hpp"
 #include "world/world_scene.hpp"
 
 #include <cstdint>
@@ -497,17 +498,24 @@ bool testLiveRightClickCombo(
         std::cerr << error << '\n';
         return false;
     }
-
-    const osf::ItemDefinition* one_handed = nullptr;
-    for (const osf::ItemDefinition& definition :
-         world.itemDatabase().definitions(0)) {
-        if (definition.subtype == 0) {
-            one_handed = &definition;
-            break;
-        }
-    }
     if (!check(
-            one_handed &&
+            world.playerMagic().targeting() &&
+                world.playerMagic().selectedSpell() == -1,
+            "Gameplay entry did not select retail's normal-attack "
+            "command.")) {
+        return false;
+    }
+
+    const osf::ItemDefinition* one_handed =
+        world.itemDatabase().find(0, 0);
+    const osf::ItemDefinition* dagger =
+        world.itemDatabase().find(0, 100);
+    if (!check(
+            one_handed && one_handed->name == "Short Sword" &&
+                one_handed->subtype == 0 &&
+                one_handed->derived_parameter_bonuses[8] == 0 &&
+                dagger && dagger->name == "Dagger" &&
+                dagger->derived_parameter_bonuses[8] == 50 &&
                 world.playerEquipment()
                     .place(
                         osf::EquipmentSlot::main_hand,
@@ -519,7 +527,6 @@ bool testLiveRightClickCombo(
         return false;
     }
     world.refreshPlayerAppearance();
-    world.playerMagic().setTargeting(true);
     if (!check(
             world.commandPlayerMagic(480, 240) &&
                 world.playerMotion() == osf::PlayerMotion::attacking &&
@@ -530,22 +537,109 @@ bool testLiveRightClickCombo(
     }
 
     std::vector<std::int32_t> voices;
+    std::int32_t initial_updates = 0;
     for (std::int32_t update = 0;
          update < 160 &&
          world.playerMotion() == osf::PlayerMotion::attacking;
          ++update) {
         world.update();
+        ++initial_updates;
         for (std::int32_t sample : world.takeAudioSamples()) {
             if (sample >= 96 && sample <= 98) {
                 voices.push_back(sample);
             }
         }
     }
+    if (!check(
+            voices == std::vector<std::int32_t>{96, 97, 98} &&
+                world.playerMotion() == osf::PlayerMotion::idle,
+            "The gameplay right-click path did not finish all three "
+            "voiced combo phases.")) {
+        return false;
+    }
+
+    const std::filesystem::path fixture_root =
+        std::filesystem::temp_directory_path() /
+        "openshadowflare_player_combo_timing_test";
+    const std::filesystem::path save_path =
+        fixture_root / "Save" / "0000.Ssv";
+    std::error_code cleanup_error;
+    std::filesystem::remove_all(fixture_root, cleanup_error);
+    if (!check(
+            osf::writeRetailSave(
+                save_path,
+                world.playerData(),
+                world.itemDatabase(),
+                world.playerInventory(),
+                world.playerEquipment(),
+                world.playerBelt(),
+                world.playerSpecialItems(),
+                world.retailSaveProgress(),
+                world.playerMagic(),
+                world.playerMineCount(),
+                {true, world.scenarioId(), 3},
+                world.playerGiantWarehouse(),
+                world.playerAutomaticItems(),
+                0x51,
+                &error),
+            "The combo timing fixture could not save its equipped hero.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    osf::PlayerLoadRequest saved_request;
+    saved_request.source = osf::PlayerDataSource::retail_save;
+    saved_request.save_path = save_path;
+    osf::WorldScene saved_world;
+    if (!check(
+            saved_world.loadInitialScenario(
+                game_root, saved_request, &error) &&
+                saved_world.playerData().baseAttackSpeed() == 100 &&
+                saved_world.playerEquipment()
+                        .item(osf::EquipmentSlot::main_hand) &&
+                saved_world.playerEquipment()
+                        .item(osf::EquipmentSlot::main_hand)
+                        ->definition_id == 0 &&
+                saved_world.playerMagic().targeting() &&
+                saved_world.playerMagic().selectedSpell() == -1 &&
+                saved_world.commandPlayerMagic(480, 240),
+            "The saved hero did not restore its retail combo baseline.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::int32_t saved_updates = 0;
+    while (saved_world.playerMotion() ==
+               osf::PlayerMotion::attacking &&
+           saved_updates < 160) {
+        saved_world.update();
+        ++saved_updates;
+    }
+
+    if (!check(
+            saved_world.transitionScenario(
+                {saved_world.scenarioId(), 3, 0}, &error) ==
+                osf::ScenarioTravelResult::relocated &&
+                saved_world.commandPlayerMagic(480, 240),
+            "The combo timing fixture could not reproduce a same-entry "
+            "revival transition.")) {
+        std::cerr << error << '\n';
+        return false;
+    }
+    std::int32_t relocated_updates = 0;
+    while (saved_world.playerMotion() ==
+               osf::PlayerMotion::attacking &&
+           relocated_updates < 160) {
+        saved_world.update();
+        ++relocated_updates;
+    }
+    const bool matched =
+        saved_updates == initial_updates &&
+        relocated_updates == initial_updates &&
+        saved_world.playerMotion() == osf::PlayerMotion::idle;
+    std::filesystem::remove_all(fixture_root, cleanup_error);
     return check(
-        voices == std::vector<std::int32_t>{96, 97, 98} &&
-            world.playerMotion() == osf::PlayerMotion::idle,
-        "The gameplay right-click path did not finish all three voiced "
-        "combo phases.");
+        matched,
+        "Loading and same-entry revival used different right-click combo "
+        "timing.");
 }
 
 bool testRetailAssetsAndSpeedTable() {

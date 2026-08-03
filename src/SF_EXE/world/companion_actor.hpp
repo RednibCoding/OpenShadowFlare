@@ -85,6 +85,7 @@ public:
     bool activatePendingExplosion();
     CompanionExplosionUpdate updateExplosion();
     void leaveCombat();
+    void clearCombatIntent();
     CompanionPresentationUpdate
     updateDamagePresentation(
         const GroundMap& ground,

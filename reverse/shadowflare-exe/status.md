@@ -275,6 +275,22 @@ five attack, owner companion level, native element, random effect
 approach, both markers, the enemy receiver, and actual damage outside Remote
 Town.
 
+Owned-companion activity follows the player runtime flag at `+0x15a0`.
+`0x00440f70` initializes it to one (`INACTIVE`). Both the Space command in
+`0x004429b0` and the x `0..111`, y `393..408` strip in `0x00445bd0` toggle it
+with `1 - current`; the pointer strip consumes its click before world movement.
+Switching inactive clears pending combat intent without interrupting a locked
+attack presentation. Inactive companions still run the normal follow bands
+and remain visible and solid, but `0x004622b0` skips autonomous acquisition
+and enemy/effect target selection rejects owner mode one.
+
+The matching HUD path in `0x004039f0` draws `Bar.njp` pattern 30, clips
+pattern 29 from the right to `life * 109 / maximum`, and uses patterns 31 and
+32 for `ACTIVE` and `INACTIVE`. A sub-30-percent fill pulses at RGB strength
+1500 for two of every four updates. The mode survives scenario transitions
+inside a play session but is deliberately absent from the save stream, as in
+retail.
+
 The rest of the owned-companion combat lifecycle is live too. `0x004616d0`
 scales PARTNER chart three across the receiver duration and applies its
 collision-aware diminishing 120-unit hit impulse. `0x00461990` locks chart
@@ -301,6 +317,17 @@ type and calls `0x00450500`. That function stores the current row, restores the
 new row, clears `+0x15c`, replaces the owned companion actor at the player, and
 sets its life to maximum. All six shipped types are selected by six calls in
 three scenarios.
+
+Opcode 3 at `0x0043167d` supplies the companion `Check Status` branch. It reads
+one constant companion type, uses that type's saved array level for
+`0x004136f0`, and formats the result into the normal actor speech buffer. The
+printed level and experience still come from the active record fields at
+`+0x154` and `+0x158`. Its cap is player level divided by three plus two,
+clamped to 35, with separate limit and maximum strings. The original display
+also reads profile `+0x54` under `M Defense` and `+0x44` under `M Evasion
+Rate`; these are magical hit rate and physical defense, not the fields the
+labels imply. All six shipped calls across three scenarios are covered by a
+catalog audit and live Remote Town interaction.
 
 The save path stores the current row before writing count, all levels, and all
 experiences, followed by player Land Mines at `+0x328`. The portable player and
@@ -362,6 +389,10 @@ The first game-core slice covers:
 - new-character gender selection and portable 15-byte name entry
 - Online/Single and New/Join mode menus plus portable host-address entry
 - saved-game summary parsing, BMP previews, and Delete confirmation
+- complete saved-game row text from the player record: Level, Job, Sex, Name,
+  HP, MP, and EXP as the original separate same-origin label and padded-value
+  packets, including gold labels, pale-white values, and half-intensity idle
+  rows
 - software drawing with the original Select and bitmap-font pattern sheets
 - the six-slot save-name search used by both menu states
 - both retail menu input-binding tables
@@ -373,7 +404,8 @@ The first game-core slice covers:
   status requests, kill metadata, and death presentation selection
 - the live enemy hit and death actions, including chart-two reaction timing,
   collision-aware displacement, chart-three direction selection, marker and
-  death audio, fade timing, and final actor removal
+  death audio, fade timing, and removal from live presentation while retaining
+  the inactive scenario slot
 - lethal kill accounting, proportional experience, novice level growth,
   weapon/effect counters, authored Table 30/31 item rolls, Gold Find, and
   complete ground-item instance ownership
@@ -427,12 +459,18 @@ the config before creating its LWL window, just as the retail entry point does.
 
 The first gameplay HUD layer now follows `0x004039f0`. `Bar.njp` supplies the
 fixed lower interface, walk/run marker, level digits, life and mana fills, and
-the Table 13-driven 109-pixel experience fill and frame. GAPI has a general
+the Table 13-driven 109-pixel experience fill and frame. The owned companion
+uses the original bottom-left frame, reverse life fill, low-life pulse, and
+active/inactive marker. GAPI has a general
 destination clip for the live fills, so the original artwork is revealed
 rather than stretched. The HUD
 is a screen-space renderer outside the world camera and owns the lower input
 band. Retail registers the standard Windows arrow once and never calls
 `SetCursor`; LWL's native platform arrow is therefore the portable equivalent.
+The Menu, Status, and Item labels now use `0x00445bd0`'s exact inclusive
+rectangles and open their real owners. Interface clicks are consumed before
+world commands, including every held update through release after dropping an
+inventory item onto the map.
 
 World feedback now follows `0x004165d0`, `0x0040ee70`, and `0x00416bb0`.
 Portable `RKC_RPGSCRN` tests the configured inclusive square against the
@@ -1139,12 +1177,38 @@ It uses opcodes 42 and 43 to compare current/maximum life and mana, and opcode
 63 for the optional player-condition pair, before choosing her ordinary
 healing or blessing response instead of restarting the quest.
 
+Type 13 is the ten-entry Giant Warehouse unlock array. The shipped corpus has
+ten uses, all at indices two through nine; its first exercised story write is
+Town of Antalusia sentence 55, which sets index two after Berini promises the
+right to use Giant Warehouse III. These values are the ten flags written
+immediately before the ten warehouse item containers in the retail save. The
+portable operand owner now reads and writes `PlayerGiantWarehouse` directly,
+so script grants and later conditions share the UI and save state.
+
 Scenario `00000001` owns the completion side. Red Goblin MCT ID `10000` maps
 to script character `14010000`; its status-kind-four sentence 12 reaches
 opcode 62 with `{0,2,1}` in single-player mode. The retail enemy lifecycle
 calls `0x004309a0` only after the death presentation and fade expire. The
 portable enemy owner now does the same, keeping the quest consequence in the
 authored SCS rather than attaching it to an enemy name.
+
+The scenario enemy registry now covers scripted reactivation as well. Operand
+type 3 adds `14000000` to its local enemy number and reads the same entry used
+by opcodes 31 and 32; a missing entry returns `-1`. All 160 shipped type-three
+uses are opcode-0 reads. Opcode 28 at `0x00433022` calls `0x004309f0` to run a
+target's status-kind-six sentence inline, preserving that target's character
+context and succeeding when no such status exists. The corpus contains 181
+calls across 32 scenarios and every shipped target has kind six.
+
+Opcode 25 at `0x004326c9` evaluates enemy, X, Y, and direction before calling
+`0x0045a140`. A living enemy is an ignored successful command. An inactive one
+has its life, action, animation, movement, AI, reaction, attribution, death,
+and opacity state reset, then moves to the supplied point without changing its
+authored spawn rectangle. All 34 calls across 13 scenarios use operand shape
+`{4,6,7,1}`. Expired portable enemies therefore remain in stable MCT slots.
+Scenario `04000003` now proves the complete shipped flow from inactive search,
+through kind-six effects 20007/20008 and sample 27, to delayed full-life
+activation.
 
 The callback for message `1000003` reads Ostare's live position through
 operand types 6 and 7. Opcodes 11 and 12 form the offsets, and four opcode-10
@@ -1338,6 +1402,16 @@ single-player path. The executable has direct writes but no discovered reads
 of either global. OpenShadowFlare retains the raw ID and text in the script
 owner and deliberately does not render a guessed area caption.
 
+The player identity queries beside that path are reconstructed as general
+host reads. Opcode 66 at `0x00433682` calls `0x00434cd0`, which returns the
+player-list current slot from `+0x08`. Opcode 57 at `0x00433b1f` resolves that
+player through `0x00434cb0` and reads runtime `+0x28`, corresponding to saved
+gender at record `+0x18`; zero remains female and one remains male. Ten
+shipped scenarios contain exactly one paired call of each, each with one
+temporary-flag destination. Dusty Ruins entry zero now exercises the complete
+status-kind-5 path with local slot two and both gender branches through the
+normal opcode-27 label owner.
+
 The script's inclusive random command is reconstructed at `0x00431c43`.
 Opcode 39 evaluates lower and upper operands, calls the executable's Visual
 C++ random routine at `0x00467c6e` once, computes the signed remainder over
@@ -1393,9 +1467,21 @@ immediately because the synchronous load has already completed. The previous
 120-frame Epilogue fade was removed after a closer trace showed that
 `0x00417bd0` owns story/briefing visuals rather than ordinary map loading.
 Retail's black crossed-swords screen exists only while loading work is
-pending. The alternate `VisualNN` selector remains pending. All 51
+pending. The alternate presenter is now tied to script opcode 64 at
+`0x00434001`: value zero selects the Epilogue page and values one through six
+select the matching `VisualNN.njp`. Its 120-frame strength fade, 300-frame
+advance gate, Return/Escape/primary-click inputs, multi-page reset, WaitIcon
+offsets, input lock, and resource release are reconstructed. All 51
 Table 40 rows are also checked against their shipped scenario directory and
 single-player MCT entry.
+
+Opcode 65 at `0x0043403e` owns the adjacent falling-streak emitter. It refreshes
+one spawn flag plus evaluated RGB and count values. `0x0041fe20` consumes five
+shared Visual C++ random draws per particle, starts it at Y `-30`, projects a
+short DDA line from the exact `4.712388` and `3.141592` constants, applies a
+random 300-through-1,000 opacity, and removes it at Y `479`. The shipped audit
+holds seven opcode-64 calls across six scenarios and 22 opcode-65 calls across
+21 scenarios, including both temporary distance-density operands.
 
 The authored Remote Town exit is reconstructed too. `0x004305d0` runs status
 kind five records, then scans kind three records and resolves each status
@@ -1502,8 +1588,9 @@ its weight and instance effects, but `0x0044ea60` excludes its base derived
 values and elemental strengths. Deterministic packet tests and a live
 Wasteland enemy click cover both the passive boundary and actual world
 attachment. Hit/death CAF presentation, reaction displacement, common
-effect-list ownership, marker and death audio, fading, and actor removal now
-run at the live boundary. Packet effects 21000 through 21003 are ordinary
+effect-list ownership, marker and death audio, fading, and removal from live
+presentation now run at the live boundary while the inactive MCT slot remains
+script-addressable. Packet effects 21000 through 21003 are ordinary
 impact splatters and play for both surviving and lethal hits. Their one-pass
 CAF owner is separate from enemy death effect 21010, which reaches its last
 frame normally, holds it, and fades during updates 91 through 119.
@@ -1600,6 +1687,391 @@ bypasses the weighted selection. Weighted rows compare against a separate
 Item.Ibn loot-level field rather than the player's required-level field. This
 means loot row zero's shipped profiles yield their authored low-level fixed
 consumables and mine instead of accidentally selecting high-level equipment.
+
+The first quest-critical fixed row is covered end to end too. Black Hammer in
+scenario `00000004` owns Table 30 row 6: zero attempts become the one active
+single-player slot, its 100-percent check always succeeds, and all ten choices
+point to Table 31 row 400. That row fixes category 4, definition `99000000`,
+the stolen gem stored on automatic-item page zero. Remote Town sentence 37
+opens message `1000028` and then immediately removes that item and completes
+quest one before waiting for the bubble acknowledgement. Sample 66, the next
+three messages, save/load of quest and script state, and the absent returned
+item are held by one live regression.
+
+The next Episode 1 mission now has a live regression instead of only catalog
+coverage. Ostare's Remote Town script requires completed quest zero and hero
+level 30 before messages `1000007` through `1000009` start quest three. Dusty
+Ruins scenario `00010004` then waits for enemy registry entries
+`14000000..14000007` to become inactive; zero life is deliberately not enough
+while a Garam Goblin is still fading. The all-clear branch runs its authored
+object toggles and sound before opcode 62 produces sample 66. Returning to
+Ostare creates Table 30 row 4 exactly once, sets persistent flag two, and
+continues to the Cold Svalt message. Quest state and the reward latch both
+survive save/load.
+
+Syria's linked side mission is covered through the real item owners too.
+Mission three being active lets message `1000044` start mission two. Stone
+Spike in scenario `00010005` owns fixed loot row 23, which resolves through
+Table 31 row 401 to category 4 definition `99000001`. That stolen Spirit Stone
+belongs to automatic page zero at `(1,0)`; it must not be confused with the
+later definition `98000001` on page two. Syria's message `1000045` immediately
+removes the item and completes the mission, then callback `1000046` creates
+category 2 definition `1100001`. The completed save keeps the item absent and
+returns later visits to the normal recovery branch without repeating sample
+66 or the reward.
+
+The two one-time Remote Town gifts after Dusty Ruins are covered through the
+same script state. Malse's status chain requires completed mission three,
+Ostare's saved reward flag, and clear flag eight, then runs messages
+`1000025..1000027` before opcode 10 creates category two definition `1100000`.
+Syria uses her separate flag seven and messages `1000042..1000043` before
+creating definition `1100002`. Both items take the normal airborne landing
+path and sample 93. Saving and loading the two latches keeps later Malse and
+Syria visits on their ordinary branches without repeating either gift.
+
+The authored Cold Svalt route is now held by a live map-edge regression too.
+Scenario 1 object 6 leads to scenario 3 entry 1, scenario 3 object 0 leads to
+scenario 5 entry 0, and scenario 5 object 1 leads to scenario 6 entry 1.
+Wasteland of Pillars object 3 has a separate mission-three-complete branch;
+before completion it is a no-op, and afterward opcode 17 enters enemy-occupied
+Cold Svalt scenario `1000001` at entry zero. This keeps the route, gate, map
+titles, and entry coordinates in MCT/SCS ownership rather than a portable
+quest-name special case.
+
+Cold Svalt's first mission is covered through the same owners. Occupied
+scenario `1000001` has 108 enemies and its object-two overlap enters inhabited
+scenario `1000000`, entry zero. Alex's messages `1000000..1000006` latch flag
+11, while Rosanna uses flag 15 and two visits for messages `1000047..1000051`
+before starting mission four. Wild Ice character `14000001` owns loot row 56,
+which resolves to fixed category four definition `99000002` on automatic page
+zero at `(2,0)`. Rosanna's return sentence removes it and completes the mission
+before message acknowledgement, then callback `1000054` creates category two
+definition `1100003`. Completion sample 66, reward landing sample 93, saved
+quest and latch state, and the no-repeat `1000055` follow-up are all covered.
+
+Alex's following Cold Ruins assignment now has the same end-to-end coverage.
+Once mission four is complete, messages `1000009..1000012` start mission six
+and its normal notice. Bottom-floor scenario `1020002` scans its seven enemy
+slots until both Frost Golems, all four Knight Frost Goblins, and the King
+Frost Goblin have finished fading. The clear branch hides object `10011000`,
+shows `10011001` and `10011002`, and completes the mission with sample 66.
+Returning to Alex creates category four definition zero with quantity 2,000,
+which is the authored Gold reward and uses sample 85 when it lands. Callback
+message `1000015` immediately starts mission seven with sample 65, while saved
+active state returns through `1000016` without repeating either reward.
+
+Mission seven is covered from its outdoor entrance through Alex's next
+assignment. Vaporous Forest object two enters Purgatory scenario `1030000`,
+and object one there enters the clear room in `1030002`. That room contains
+exactly three Arc Shamans and four Arc Thunder Bats; its periodic opcode-31
+scan waits for every death fade before toggling objects `10011000..10011002`
+and completing the mission with sample 66. Alex then creates 4,000 Gold, whose
+normal landing queues sample 85, and messages `1000018..1000020` start mission
+eight with sample 65. A saved reload follows message `1000021` without
+repeating the reward or handoff.
+
+The Remains of Reincarnation path now follows it. Hanged Men's Forest object
+one enters scenario `1040000`; the object-one edges through `1040001` reach
+clear room `1040002`. Its two Earth Golems, two King Earth Goblins, and three
+Arc Goblin Shamans stay active through their fades. The empty opcode-31 scan
+opens both authored door pairs, plays samples 34 and 31, runs Table 30 row 63
+for the room loot, and completes mission eight with sample 66. Alex then drops
+6,000 Gold and messages `1000023..1000024` start mission nine with sample 65.
+The item landing paths and saved `1000025` no-repeat branch are covered too.
+
+Mission nine is now held by its actual discovery transition. Remains scenario
+`1040002` object five enters Sea of Trees scenario `1000004`, entry one, and
+object zero there enters Immortal Remains scenario `1050000`, entry zero. The
+destination initialization completes mission nine with sample 66 immediately;
+it does not wait for an enemy clear. Alex's `1000026..1000028` chain then
+starts mission ten with sample 65 and intentionally creates no item reward.
+Saving and reloading returns through active message `1000029` without
+replaying the handoff.
+
+The Immortal Remains battle now completes the same chain. Object one in
+scenario `1050000` enters `1050001`, and object one there enters Gargoyle room
+`1050002`. Characters `14000000..14000003` are ordinary Gargoyles using loot
+row 55 and a 50-percent 200..300 Gold range; `14000004..14000006` are the
+magic variants with guaranteed 600..800 Gold. The periodic opcode-31 scan
+waits through all seven death fades before swapping objects
+`10011000..10011002`, playing positioned sample 34, and completing mission ten
+with sample 66.
+
+Alex's message `1000030` creates 10,000 Gold and changes global flag 11 from
+one to two. Message `1000031` follows on callback, then opcode 64 value zero
+opens the Episode 1 Epilogue presenter. Once it closes, the flag-two branch
+uses message `1000033` to send the player toward Mining Town and latches flag
+71. The Gold landing sample 85, Epilogue launch, both saved flags, completed
+quest, and no-repeat return branch are covered by the live shipped-data test.
+
+The post-Epilogue route into Episode 2 is now traced and covered with shipped
+data. Near Remote Town status kind five reads saved flag 71 and uses opcode 56
+to swap characters `10001030` and `10001031`. Object four only follows its
+sentence-eight branch to opcode 17 `{2999999, 0}` when that flag is one. With
+flag zero, walking into the same authored trigger leaves the player in the
+scenario.
+
+Scenario `2999999` is `Caravan`; its object-one edge leads to `2000000`, then
+object one leads to `2000001`, and the next object-one edge leads to `2100000`
+entry zero. The two road scenarios are both titled `Forest` and use music one.
+Caravan's visual-one branch belongs to object two when flag 71 is zero and
+then writes value two, so the ordinary flag-one Episode route must not present
+that visual.
+
+Scenario `2100000` is `Kanfore, Mining Town`. Status kind seven issues opcode
+6 for vendor indexes 0, 1, and 2 with Tables 6, 23, and 32. The decoded town
+has 14 PEOPLE actors: IDs 0 through 12 plus Beboba at ID 100. Its object-zero
+edge returns to `2000001`, entry one. The native route regression proves the
+gate object swap, Caravan branch, road titles and music, town actors and
+vendors, save/load persistence, and return edge without adding production
+map-specific code.
+
+Kyle's first Episode 2 mission is now traced and covered as well. PEOPLE zero
+uses saved flag 23 for its first-visit latch. Messages `1000002..1000008`
+finish by setting mission 11 active with opcode 62 and publishing it with
+opcode 48. Table 41 row 11 is `Destroy thieves staying SE of Kanfore.` The
+active return branch is message `1000009`.
+
+Mining Town object one enters `2100001` (`Forest of Four Leaves`) at entry
+zero, and its object one enters `2100002` (`Forest of Claws`) at entry zero.
+The first periodic opcode-31 scan watches Oak Knights
+`14010000..14010002`. After their death presentations expire, opcodes 23 hide
+objects `10000700` and `10000701`, and positional opcode 16 requests sample
+81. A second scan watches `14020000..14020002` and completes mission 11 with
+sample 66. Both triples use loot row 85 and a ten-percent Gold chance.
+
+Kyle's completed branch opens message `1000010`. Temporary flag `1000018` is
+20,000, so opcode 10's equal minimum and maximum create exactly 20,000 Gold;
+the common 10,000 cap splits it into two airborne stacks with two sample-85
+landings. Messages `1000011..1000012` then start mission 12, `Head for the
+Mining Tunnel of Yugunos.`, and the active branch becomes `1000013`. Native
+coverage keeps both mission states, flag 23, map route, gate, quest cues, Gold,
+landing sounds, and saved no-repeat behavior under shipped data.
+
+The first mission-12 gate is now traced and covered. Mining Town object one
+enters Forest of Four Leaves scenario `2100001`; object three there points to
+Cross Agora scenario `2100004`. Garshwin is PEOPLE zero near the southern
+edge. His status starts with default message `1000002`, but active mission 12
+replaces it before display with `1000003`; its embedded continuation shows
+`1000004`. The status writes saved flag 24 on this refusal branch.
+
+Cross Agora object three checks mission 14 for state two before opcode 17 can
+enter Fanann scenario `2200000`. At this point mission 14 is zero, so reaching
+the live trigger rectangle leaves the player in Cross Agora. Kyle reads flag
+24 on return and runs messages `1000020..1000029`, describing the dragon seal
+and Kirushutat. The final callback starts mission 13 with opcode 62 and its
+notice with opcode 48; Table 41 row 13 is `Meet with the Wizard Kirushutat.`
+Mission 12 stays active. Native coverage preserves the refusal, locked edge,
+flag, cue, sound, both mission states, and `1000013` saved return branch.
+
+The mission-13 route continues from Cross Agora object one to scenario
+`2100005`, whose authored title is `Forest of Sprits`, then from its object one
+to `2110000`, `Tower of the Wizard`. The tower uses entries for its ten floors;
+entry 18 places the player near Kirushutat, PEOPLE zero.
+
+Kirushutat's active-mission-13 sentence shows messages `1000012..1000027`.
+It first executes opcode 62 with mission 13, state two, and the last callback
+executes opcode 62 with mission 14, state one, followed by opcode 48. Table 41
+row 14 is `Take back the Seal Crystal.` The active-mission-14 return branch is
+message `1000028`. A shipped-data regression covers both route edges, the
+entry, full briefing, mission notice/sample 65, persistence, and the no-repeat
+branch through the existing generic owners.
+
+Mission 14's item chain is also recovered. Cross Agora object two enters
+scenario `2100006`, `Forest of Knight's Misery`, and its object one enters
+`2120000`, `Fort of Thieves`. Scenario enemy 65 is an Oak Warrior with loot
+row 76. Table 30 row 76 guarantees Table 31 row 403, which constructs category
+four definition `99000003`; `Item.Ibn` names it `Seal Crystal` and assigns
+automatic page zero, cell `(3,0)`.
+
+Kirushutat sentence 28 passes `(4,99000003)` to opcode 58. When present,
+sentence 29 removes it with opcode 59, shows message `1000029`, sets temporary
+conversation state 300, and completes mission 14 through opcode 62. The
+callback continues through `1000030..1000031`; subsequent visits use
+`1000032` until mission 17 is complete. With mission 14 in state two, Cross
+Agora object three reaches `2200000`, `Fanann, Village of Elves`. Native
+coverage preserves the route, fixed loot result, automatic owner, removal,
+completion sample 66, save/no-repeat branch, and reopened gate.
+
+Fanann's entry script fills vendor owners zero, one, and two with opcode 6 and
+Table rows 7, 24, and 33. PEOPLE zero is Lytle. His flag-41-zero branch shows
+message `1000002`; its MTP continuation chain supplies `1000003..1000004`,
+then the saved flag becomes one. The next interaction takes message `1000006`
+while mission 12 stays active and mission 14 stays complete.
+
+Object one in Fanann executes opcode 17 for `2200001`, entry zero,
+`Butterfly Hill`. Object one there executes the same general command for
+`2200003`, entry zero, `Dragon Road`. Native coverage enters through the
+newly opened Cross Agora gate, checks all three vendors and Lytle, round-trips
+flag 41 through the retail save owner, proves the no-repeat text, and follows
+both authored route edges. No Fanann-specific behavior was added to the world
+owner.
+
+Dragon Road object two enters `2210000`, `Mining Tunnel of Yugunos, B1F`, at
+entry zero. B1F object one enters `2210001`, `Mining Tunnel of Yugunos, B2F`,
+at entry zero. B2F object two is the protected-area trigger rather than a
+floor exit. On first contact its kind-three sentence writes saved flag 38;
+while saved flag 40 is zero, opcode 17 relocates the player within B2F to
+entry two. Mission 12 stays active and mission 15 stays at zero.
+
+B2F object zero returns to B1F entry one, and B1F object zero returns to
+Dragon Road entry two. A shipped-data regression walks those four edges,
+touches the live B2F protection rectangle, checks the same-scenario pushback,
+and saves and reloads flag 38 with the exact Dragon Road entry.
+
+Fanann PEOPLE four, Kirarru, handles the resulting report. Her first visit
+shows messages `1000048..1000050` and writes saved flag 45. With flag 38 set
+while flags 39 and 40 remain zero, the next interaction shows
+`1000052..1000055`, starts mission 15, and plays sample 65. Mission 12 remains
+active. Saving and loading preserves the flags and mission states; the active
+mission branch uses message `1000051` without replaying sample 65.
+
+Dragon Road object three enters `2220000`, `Underground Passage, B1F`, at
+entry zero. Its object one reaches `2220001`, B2F. That scenario's periodic
+sentence checks only enemy character `14010000`, the named Black Wing, and
+runs opcode 62 `{15,2,1}` once its registry slot becomes inactive after the
+death fade. This completes mission 15 and plays sample 66; ordinary enemies
+are not part of the completion condition. Object zero on each floor provides
+the authored return route to Dragon Road.
+
+With mission 15 complete and flag 39 still zero, Kirarru selects messages
+`1000056..1000057` and writes saved flag 40. The B2F protection sentence then
+falls through instead of relocating the player, allowing object one to enter
+B3F. A native regression covers both passage transitions, the exact Black
+Wing lifecycle trigger, return dialogue, quest cue and sound, flag-40 save
+round-trip, and the newly usable B3F edge.
+
+The deeper Yugunos route follows that control-room handoff rather than
+bypassing it. Mission 15 is complete and flag 40 is already set before the
+route begins.
+B3F scenario `2210002` requires switches 40000 and 40002, uses object two for
+its same-scenario entry-two stair, and reaches B5F scenario `2210003` through
+object one. B5F again requires both switch pairs: 40002 opens the 11000 gate
+group and 40000 opens the 11003 group. Object 800 then writes saved flag 39.
+The regression walks the real collision maps and gate actors rather than
+relocating between those interactions.
+
+Returning to Kirarru with flag 39 at one and mission 15 complete selects the
+full `1000058..1000068` dragon warning and advances flag 39 to two. The saved
+result no longer re-enters the control-room or first-seal branches. This
+ordering matters: the deeper seal is physically inaccessible until mission
+15 has opened the B2F protection device.
+
+Lytle's flag-41-one branch then observes saved flag 39 at two. Messages
+`1000007..1000009` describe the Power Supply Facility beyond the Labyrinth of
+Mauve; continuation 202 runs opcode 62 `{16,1,0}` and opcode 48, producing
+the ordinary mission-update cue, sample 65, and notice for mission 16. A
+saved active mission returns through message `1000010` without repeating the
+cue.
+
+Butterfly Hill object two enters `2200004`, `Labyrinth of Mauve`, at entry
+zero. Its object one enters `2200005`, `Near The Power Supply Facility`, and
+that map's object one enters `2230000`, `Fort of the Power Supply`. The fort's
+periodic sentence checks only enemy character `14010000`, the named Crimson
+Sword. Once that actor's death presentation expires, opcode 62 `{16,2,1}`
+completes mission 16 and plays sample 66. Fort object zero returns to the
+approach map at entry one.
+
+Back in Fanann, Lytle's mission-16-complete branch selects
+`1000011..1000016`. Its opcode-10 request creates category-four definition-zero
+quantity 40,000 at Lytle, which the shared item owner splits into four retail
+10,000-Gold ground stacks; all four play sample 85 on their first landing.
+Continuation 405 then runs opcode 62 `{17,1,0}` and selects mission 17,
+`Defeat the Dragons!`. Saving preserves missions 16 complete and 17 active;
+the next interaction uses `1000017` without recreating Gold or replaying
+sample 65. A shipped-data regression covers the complete dialogue, route,
+boss lifecycle, reward audio, quest handoff, and save branch.
+
+Mission 17 then stays inside the same script boundary. Kirarru's active branch
+selects `1000070` with continuation 600; the MTP chain supplies `1000071` and
+`1000072`, describing the seal's temporary increase without changing the
+quest. B5F scenario `2210003` object one tests mission 17 and enters scenario
+`2210004`, entry zero. Both MCT files call themselves B5F (the first shipped
+title spells Yugnos without the second `u`); object zero in the dragon chamber
+returns to `2210003`, entry one.
+
+The chamber's named Ancient Dragon is enemy 10000, character `14010000`.
+Status kind five first excludes network-server mode, then opcode 31 reads that
+exact enemy lifecycle slot. Only the inactive `-1` state reached after the
+death animation and fade continues to opcode 62 `{17,2,1}` and the normal
+sample-66 completion cue. Other enemies on the map are not objectives.
+Returning to Fanann with mission 17 complete gives Lytle message `1000018`
+and writes saved flag 41 to two; Kirarru independently selects `1000073`.
+Native coverage follows the guarded object edge, waits for the real lifecycle
+boundary, returns through object zero, round-trips the completed quest, and
+checks both reports.
+
+The main route continues through an older quest rather than starting a new
+mission in Fanann. Lytle's mission-17-complete branch begins at `1000018`;
+the MTP chain continues through `1000025`, while the status writes saved flag
+41 to two. Mission 12 is still active, so repeat interactions select
+`1000026..1000027` and do not unlock a transport yet.
+
+Kanfore's Kyle checks mission 17 before mission 12. With 17 complete and 12
+active, sentence 19 runs opcode 62 `{12,2,0}`, deliberately producing no
+quest notice or sample, selects `1000014`, and creates category-four,
+definition-zero quantity 40,000 at Kyle. The shared ground-item owner splits
+that into four 10,000-Gold stacks and plays four sample-85 landing sounds.
+The first conversation ends at `1000017`; the no-reward repeat uses
+`1000018..1000019`.
+
+Once mission 12 is complete, Lytle selects `1000028..1000029`, writes flag 41
+to four, and writes transport operand 25 to one. Table 40 row 25 is
+`South Camp of Yugunos`, scenario `3900000`, entry 50. Later visits use
+`1000030`. Save data retains both the flag and transport bit, and activating
+that row loads shipped scenario `03900000`, whose MCT title includes one
+trailing space. Native coverage follows the complete report, reward,
+no-repeat branches, save round-trip, and transport transition.
+
+South Camp's first periodic update checks general flag 104. Zero launches
+opcode 64 value three and then saves one, so `Visual03` is a one-time story
+briefing rather than a loading screen. Jeel's status-zero branch uses flag 74:
+messages `1000002..1000004` are the introduction, a second interaction runs
+`1000005..1000006` and starts mission 20, and `1000007` is the active reminder.
+
+The authored north route is South Camp object zero to scenario `3000507`
+(`East Antalusia`), then object one to scenario `3000407` (`The Foot of Mt.
+Tedoron`). That destination has 422 enemies, but mission 20 does not count all
+of them. Its periodic sentence calls opcode 31 for characters
+`14020000..14020001`, the MCT's Flame Warrior and Dread Warrior at local IDs
+20000 and 20001. Only after both death fades leave those slots at lifecycle
+`-1` does opcode 62 `{20,2,1}` complete `Sweep vicinity of S. Camp of
+Yugunos.` and request sample 66.
+
+Jeel's completed branch begins at `1000008`, writes flag 74 to two, awards 50
+percent of the current level's experience threshold with opcode 68, and plays
+sample 64 before messages `1000009..1000011`. The later handoff reminder is
+`1000012`; neither the experience nor sound repeats. A native regression uses
+the shipped SCS/MCT data for the one-time visual, dialogue split, overlap
+route, exact two-enemy lifecycle range, quest cues, reward, and saved branch.
+
+Morris's follow-up uses general flag 77. His first `1000027` remark writes one;
+the `1000028..1000033` chain on the next visit writes two and starts mission
+21, `Get the sacred relic, Sacred Wing.` East Antalusia object three enters
+Tower of Nazzle 1F. Edgar's initial refusal writes flag 79, which makes Morris
+run `1000035..1000037`, advance flag 77 to three, and open East Antalusia
+object two into the Town of Antalusia. Berini's full `1000002..1000008`
+letter response writes flag 80 to one. Returning to Edgar then runs
+`1000002..1000004`, writes flag 79 to two, and swaps the first-floor gate to
+its open presentation.
+
+Tower scenarios `03020000..03020004` link 1F through 5F with their ordinary
+paired overlap objects. The 2F and 3F scripts each scan all 25 enemies before
+opening object `10011000`; 4F scans all 29. The Dark Golem at local enemy zero
+on 5F is the only shipped carrier of Table 30 row 154. That row's ten choices
+all point to profile 405, a fixed 100-percent category-four definition
+`99000005` drop. `Item.Ibn` names it Sacred Wing and assigns automatic page
+zero, cell `(5,0)`.
+
+Berini's flag-80-one sentence checks and removes that exact item, completes
+mission 21, writes flag 80 to two, awards 50 percent of the current level
+threshold, and plays samples 66 and 64 before `1000010..1000016`. Sentence 55
+also unlocks Giant Warehouse III through type-13 index two. Shipped-data
+coverage follows the outward and return routes, exact floor rosters and gate
+states, fixed drop construction, dialogue, item removal, experience and audio,
+then round-trips flags 77/79/80, the completed quest, automatic item owner, and
+warehouse unlock without repeating the reward. The saved next branch begins
+at `1000017`.
 
 Outdoor containers use ordinary scenario scripts rather than a separate
 hard-coded chest owner. Their status hides the closed object, shows its open
@@ -1738,6 +2210,14 @@ weapon swing sound, hits all valid nearby enemies, and uses consecutive male
 samples 96..98 or female samples 99..101. Native coverage starts this through
 the actual normal-target secondary-click command as well as the isolated
 retail CAF controller.
+
+The opening speed is character-owned, not a starter-item exception. A new
+Mercenary has raw attack speed 100, Table 4 maps it to tier five, and the combo
+factor at that tier is 1.3. The Short Sword contributes zero to derived
+attack-speed parameter eight; the Dagger contributes 50. Native coverage now
+saves and reloads the Short-Sword-equipped hero and compares the full combo
+update count before and after a same-entry revival transition; the cadence
+stays identical.
 
 Spell zero now reaches action 22. `FUN_0043a260` uses Table 20 row zero and
 the clicked dominant axis, tries the exact 500-unit cardinal offsets and four
@@ -2158,3 +2638,67 @@ secondary click or panel close cancels the mode. `FUN_004087b0` draws pattern
 one from `System.njp` instead of the normal pattern zero while the mode is
 active. Unidentified tooltips use the item description as their base name and
 hide all instance values.
+
+## Script target geometry
+
+The opcode-33 handler at `0x0043288d` resolves a scenario character and calls
+`FUN_00430b30` with mode one. That helper scans player slots zero through
+three, accepts only active living players in the same scenario, applies
+inclusive lower and upper judgement-distance bounds with `-1` as an open end,
+and keeps the first slot at equal distance. A match writes slot, world X, and
+world Y. No match writes only slot `-1`; an unresolved source writes nothing.
+
+Opcode 35 at `0x00432831` passes its evaluated operands to
+`FUN_00414080`, which calculates `atan2(-Y, X)`. It multiplies the result by
+the double at `0x00475178` (`57.29579143313326`) and uses the truncating x87
+conversion at `0x00467fe0`. Negative results are not normalized. The shipped
+catalog has 126 target calls across 25 scenarios and 80 direction calls across
+17 scenarios; all operand shapes are covered by the portable audit.
+
+## Script actor-attached effects
+
+The opcode-40 handler at `0x00433409` evaluates an effect number followed by
+a source character. Source values zero through three resolve a live player
+slot and use owner kind one with the judgement rectangle at player offset
+`+0x2e8`. Every other value resolves through the scenario-character registry,
+uses owner kind four, and copies the rectangle at the common actor offset
+`+0x20`. A missing source returns successfully without creating anything.
+
+The handler calls `FUN_0042fdc0` with target kind and identifier zero, no
+explicit origin, the copied source rectangle, no combat packet, direction
+eight, instance `-1`, common lifetime value 200, and zero in every remaining
+constructor field. `FUN_0042b860` resolves the owner position when the request
+is presented and turns the copied lower-right bound plus one into the effect's
+point judgement. Effect 20010 selects OPTION resource 11000008 and effect
+20018 selects resource 10000020. The shipped catalog contains 54 calls across
+45 scenarios, all with two literal operands: eight use 20010 and 46 use
+20018.
+
+## Scripted unlock switches
+
+`FUN_004346b0` operand type nine is the common switch-interaction gate. It
+requires the local player to be in the running script's scenario with action
+one, finds the requested character in the live object-display registry, and
+uses `FUN_004143c0` to compare their judgement rectangles with player field
+`+0x3f4`. The ordinary range is `0x9f`. A missing or undisplayed character,
+different scenario, busy player, or distance above 159 returns zero.
+
+The opcode-26 handler at `0x00432b02` resolves a player slot or scenario actor,
+projects its position, and draws the evaluated fourth operand as `%d`. It uses
+the supplied X/Y offsets and RGB strengths, six pixels per character for
+centering, a fixed twelve-pixel upward baseline, and a black `(1,1)` shadow.
+There is no backing rectangle. Missing actors and absent remote player slots
+are successful no-ops.
+
+Opcode 60 at `0x00433edf` writes the evaluated marker to local-player field
+`+0x159c`. The player update clears it before status kind five. The player pass
+at `0x00434ef0` maps animation 502 to `Player/Common/UnlockSW` and draws chart
+zero, direction eight at the player with full RGB strengths while the script
+keeps that field set.
+
+Opcode 29 at `0x00433056` is only the network-client notification. It passes
+scenario event kind six and the evaluated value to `FUN_00419050`, which emits
+packet `0x22` only in client mode; it performs no local state mutation. The
+shipped corpus contains 60 matching type-nine gates, opcode-26 labels, and
+opcode-60 markers across 22 scenarios. Opcode 29 appears 61 times across 23
+scenarios.

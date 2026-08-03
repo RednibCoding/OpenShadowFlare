@@ -18,6 +18,7 @@ class PlayerMagic;
 class PlayerAutomaticItems;
 class PlayerSpecialItems;
 struct RetailSaveProgress;
+struct RetailSaveWorldState;
 
 bool readRetailSavePayload(
     const std::filesystem::path& path,
@@ -73,6 +74,7 @@ bool writeRetailSave(
     const RetailSaveProgress& progress,
     const PlayerMagic& magic,
     std::int32_t mine_count,
+    const RetailSaveWorldState& world_state,
     const PlayerGiantWarehouse& giant_warehouse,
     const PlayerAutomaticItems& automatic_items,
     std::uint8_t xor_key,

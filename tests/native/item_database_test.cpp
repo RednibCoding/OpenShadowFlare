@@ -113,6 +113,8 @@ bool testRetailDatabase() {
         database.find(4, 0);
     const osf::ItemDefinition* malse_gem =
         database.find(4, 99000000);
+    const osf::ItemDefinition* syria_spirit_stone =
+        database.find(4, 99000001);
     const osf::ItemDefinition* spirit_stone =
         database.find(4, 98000001);
     if (!check(
@@ -163,6 +165,10 @@ bool testRetailDatabase() {
                 malse_gem->automatic_inventory_page == 0 &&
                 malse_gem->automatic_inventory_x == 0 &&
                 malse_gem->automatic_inventory_y == 0 &&
+            syria_spirit_stone &&
+                syria_spirit_stone->automatic_inventory_page == 0 &&
+                syria_spirit_stone->automatic_inventory_x == 1 &&
+                syria_spirit_stone->automatic_inventory_y == 0 &&
             spirit_stone &&
                 spirit_stone->automatic_inventory_page == 2 &&
                 spirit_stone->automatic_inventory_x == 1 &&

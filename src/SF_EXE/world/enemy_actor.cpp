@@ -228,6 +228,44 @@ bool EnemyActor::initialize(
     return true;
 }
 
+bool EnemyActor::activate(
+    WorldPosition position,
+    std::int32_t direction) {
+    if (current_life_ > 0) {
+        return false;
+    }
+
+    position_ = position;
+    previous_position_ = position;
+    walk_point_ = position;
+    direction_ = direction;
+    animation_chart_ = 0;
+    animation_frame_ = 0;
+    action_counter_ = 0;
+    current_life_ = maximum_life_;
+    presentation_action_ = kIdlePresentationAction;
+    action_lock_ = 0;
+    reaction_duration_ = 0;
+    reaction_stage_ = 0;
+    reaction_displacement_suppressed_ = false;
+    reaction_additive_ = 0;
+    reaction_angle_ = 0.0;
+    event_number_ = 0;
+    attributed_damage_.fill(0);
+    death_counter_ = 0;
+    defeated_by_effect_ = false;
+    defeat_source_character_number_ = -1;
+    draw_strength_ = 1000;
+    expired_ = false;
+    ai_action_.reset();
+    presentation_.reset();
+    movement_destination_.reset();
+    movement_controller_.reset();
+    movement_speed_ = 0;
+    movement_action_counter_ = 0;
+    return true;
+}
+
 void EnemyActor::clear() {
     id_ = -1;
     resource_id_ = -1;

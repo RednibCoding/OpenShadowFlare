@@ -16,8 +16,34 @@
 
 add_library(lal STATIC
   lal.c
+  lal_convert.c
 )
 add_library(Lal::Lal ALIAS lal)
+
+set(
+  LAL_MAXIMUM_SAMPLE_RATE
+  "16000"
+  CACHE STRING
+  "Highest sample rate retained by LAL (16000, 22050, or 48000)"
+)
+set_property(
+  CACHE LAL_MAXIMUM_SAMPLE_RATE
+  PROPERTY STRINGS 16000 22050 48000
+)
+if(NOT LAL_MAXIMUM_SAMPLE_RATE MATCHES "^(16000|22050|48000)$")
+  message(FATAL_ERROR
+    "LAL_MAXIMUM_SAMPLE_RATE must be 16000, 22050, or 48000")
+endif()
+option(
+  LAL_FORCE_MONO
+  "Downmix retained LAL sounds to mono"
+  ON
+)
+if(LAL_FORCE_MONO)
+  set(LAL_DEFAULT_FORCE_MONO_VALUE 1)
+else()
+  set(LAL_DEFAULT_FORCE_MONO_VALUE 0)
+endif()
 
 target_include_directories(
   lal
@@ -25,6 +51,15 @@ target_include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 target_compile_features(lal PUBLIC c_std_99)
+if(NOT MSVC)
+  target_link_libraries(lal PRIVATE m)
+endif()
+target_compile_definitions(
+  lal
+  PRIVATE
+    LAL_DEFAULT_MAXIMUM_SAMPLE_RATE=${LAL_MAXIMUM_SAMPLE_RATE}
+    LAL_DEFAULT_FORCE_MONO=${LAL_DEFAULT_FORCE_MONO_VALUE}
+)
 set_target_properties(
   lal
   PROPERTIES
@@ -52,6 +87,8 @@ elseif(APPLE)
       "${AUDIOTOOLBOX_FRAMEWORK}"
       Threads::Threads
   )
+elseif(NINTENDO_SWITCH)
+  target_sources(lal PRIVATE lal_switch.c)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lal PRIVATE lal_alsa.c)
   find_package(ALSA REQUIRED)

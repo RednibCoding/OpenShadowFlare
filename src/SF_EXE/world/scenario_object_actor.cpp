@@ -186,6 +186,10 @@ void ScenarioObjectActor::setStateOverride(
     state_.setOverride(visible, pointer, judgement);
 }
 
+void ScenarioObjectActor::setDrawStrength(std::int32_t strength) {
+    draw_strength_ = strength;
+}
+
 bool ScenarioObjectActor::stateOverrideEnabled() const {
     return state_.overrideEnabled();
 }
