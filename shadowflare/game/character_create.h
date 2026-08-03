@@ -17,34 +17,13 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_TITLE_ASSETS_H
-#define SHADOWFLARE_ASSETS_TITLE_ASSETS_H
+#ifndef SHADOWFLARE_GAME_CHARACTER_CREATE_H
+#define SHADOWFLARE_GAME_CHARACTER_CREATE_H
 
-#include "core/arena.h"
-#include "data/caf.h"
-#include "data/njp.h"
+#include "game/game.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-
-#define SF_TITLE_SMOKE_COUNT 10u
-#define SF_TITLE_DECODE_SCRATCH_BYTES 60000u
-
-typedef struct SfTitleSmokeAsset {
-  SfNjpAnimation images;
-  SfCafSequence animation;
-} SfTitleSmokeAsset;
-
-typedef struct SfTitleAssets {
-  SfNjpSelected artwork;
-  SfTitleSmokeAsset smoke[SF_TITLE_SMOKE_COUNT];
-  size_t decode_scratch_bytes;
-  size_t memory_bytes;
-  bool loaded;
-} SfTitleAssets;
-
-bool sf_title_assets_load(
-  SfTitleAssets *assets, const char *data_root, SfArena *arena,
-  void *decode_scratch, size_t decode_scratch_size);
+void sf_character_create_state_init(SfGame *game);
+void sf_character_create_state_update(
+  SfGame *game, const SfGameInput *input);
 
 #endif

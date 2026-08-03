@@ -34,6 +34,8 @@ endfunction()
 
 add_library(
   shadowflare_core STATIC
+  assets/character_create_assets.c
+  assets/menu_assets.c
   assets/retail_paths.c
   assets/title_assets.c
   core/arena.c
@@ -41,11 +43,13 @@ add_library(
   data/njp.c
   data/rclib.c
   data/voc.c
+  game/character_create.c
   game/game.c
   game/title.c
   render/dirty.c
   render/framebuffer.c
   render/renderer.c
+  screens/character_create_screen.c
   screens/title_screen.c
 )
 add_library(ShadowFlare::Core ALIAS shadowflare_core)
@@ -55,6 +59,7 @@ add_executable(
   osf
   main.c
   runtime/application.c
+  runtime/screen_runtime.c
 )
 add_executable(ShadowFlare::Game ALIAS osf)
 sf_configure_c99_target(osf)

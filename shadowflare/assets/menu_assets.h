@@ -17,34 +17,30 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_TITLE_ASSETS_H
-#define SHADOWFLARE_ASSETS_TITLE_ASSETS_H
+#ifndef SHADOWFLARE_ASSETS_MENU_ASSETS_H
+#define SHADOWFLARE_ASSETS_MENU_ASSETS_H
 
 #include "core/arena.h"
-#include "data/caf.h"
-#include "data/njp.h"
+#include "data/voc.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 
-#define SF_TITLE_SMOKE_COUNT 10u
-#define SF_TITLE_DECODE_SCRATCH_BYTES 60000u
+#define SF_MENU_SOUND_COUNT 4u
 
-typedef struct SfTitleSmokeAsset {
-  SfNjpAnimation images;
-  SfCafSequence animation;
-} SfTitleSmokeAsset;
+typedef enum SfMenuSound {
+  SF_MENU_SOUND_CONFIRM = 0,
+  SF_MENU_SOUND_TITLE_CONFIRM,
+  SF_MENU_SOUND_MOVE,
+  SF_MENU_SOUND_TITLE_CUE
+} SfMenuSound;
 
-typedef struct SfTitleAssets {
-  SfNjpSelected artwork;
-  SfTitleSmokeAsset smoke[SF_TITLE_SMOKE_COUNT];
-  size_t decode_scratch_bytes;
-  size_t memory_bytes;
+typedef struct SfMenuAssets {
+  SfPcmU8 music;
+  SfPcmU8 sounds[SF_MENU_SOUND_COUNT];
   bool loaded;
-} SfTitleAssets;
+} SfMenuAssets;
 
-bool sf_title_assets_load(
-  SfTitleAssets *assets, const char *data_root, SfArena *arena,
-  void *decode_scratch, size_t decode_scratch_size);
+bool sf_menu_assets_load(
+  SfMenuAssets *assets, const char *data_root, SfArena *arena);
 
 #endif

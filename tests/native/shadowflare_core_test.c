@@ -20,6 +20,7 @@
 #include "core/arena.h"
 #include "core/memory_budget.h"
 #include "data/rclib.h"
+#include "game/character_create.h"
 #include "game/game.h"
 #include "render/dirty.h"
 #include "render/framebuffer.h"
@@ -27,6 +28,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 static int check(int condition, const char *message) {
   if (condition) return 0;
@@ -81,11 +83,13 @@ static int test_framebuffer(void) {
 
 static int test_renderer(void) {
   uint16_t pixels[8u * 4u];
+  uint8_t font_pixels[16u * 16u] = {0};
   static const uint8_t indices[4] = {0u, 1u, 1u, 0u};
   static const uint16_t palette[2] = {0u, 0x7fffu};
   SfIndexedImage image;
   SfRenderer renderer;
   SfDirtyRects dirty;
+  SfIndexedImage font;
   SfRect rectangle = {1, 1, 2, 2};
   image.pixels = indices;
   image.palette = palette;
@@ -111,6 +115,20 @@ static int test_renderer(void) {
   sf_dirty_add(&dirty, rectangle, 8u, 4u);
   if (check(dirty.count == 1u && dirty.rectangles[0].width == 3,
             "dirty rectangles did not merge touching damage")) return 1;
+  font_pixels[4u * 16u + 1u] = 1u;
+  font.pixels = font_pixels;
+  font.palette = palette;
+  font.width = 16u;
+  font.height = 16u;
+  font.stride = 16u;
+  font.palette_size = 2u;
+  font.bits_per_pixel = 8u;
+  font.bottom_up = false;
+  sf_renderer_clear(&renderer, 0u);
+  sf_renderer_draw_text(
+    &renderer, &font, "A", 0, 0, sf_rgb555(31u, 0u, 0u), 1000u);
+  if (check(pixels[0] == sf_rgb555(31u, 0u, 0u),
+            "renderer did not draw a bitmap-font glyph")) return 1;
   return 0;
 }
 
@@ -156,6 +174,46 @@ static int test_game(void) {
   return 0;
 }
 
+static int test_character_creation(void) {
+  SfGame game;
+  SfGameInput input;
+  memset(&game, 0, sizeof(game));
+  memset(&input, 0, sizeof(input));
+  game.mode = SF_GAME_MODE_CHARACTER_SELECT;
+  sf_character_create_state_init(&game);
+  game.character_create.fade_steps_remaining = 0u;
+  game.character_create.fade_value = 1000;
+  game.character_create.fade_target = 1000;
+  game.character_create.input_latch = false;
+  input.right_pressed = true;
+  sf_character_create_state_update(&game, &input);
+  if (check(game.character_create.selection == 1u,
+            "character creation did not select the female hero")) return 1;
+  input.right_pressed = false;
+  input.confirm_pressed = true;
+  sf_character_create_state_update(&game, &input);
+  if (check(game.character_create.screen == 1u &&
+            game.character_create.gender == 0u &&
+            game.character_create.rendered_transition_counter == 1000,
+            "character creation did not begin retail name entry")) return 1;
+  input.confirm_pressed = true;
+  memcpy(input.text, "Mina", 5u);
+  input.text_length = 4u;
+  sf_character_create_state_update(&game, &input);
+  if (check(game.character_create.screen == 10u &&
+            strcmp(game.character_create.name, "Mina") == 0,
+            "a valid character name did not open the mode menu")) return 1;
+  memset(&input, 0, sizeof(input));
+  input.down_pressed = true;
+  sf_character_create_state_update(&game, &input);
+  memset(&input, 0, sizeof(input));
+  input.confirm_pressed = true;
+  sf_character_create_state_update(&game, &input);
+  if (check(game.character_create.screen == 20u,
+            "Single Mode did not start the gameplay hand-off")) return 1;
+  return 0;
+}
+
 int main(void) {
   if (check(SF_MAIN_MEMORY_LIMIT_BYTES == 2u * 1024u * 1024u,
             "main-memory limit changed") ||
@@ -166,7 +224,7 @@ int main(void) {
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 434176u,
             "video asset budget is wrong") ||
       test_arena() || test_framebuffer() || test_renderer() ||
-      test_rclib() || test_game())
+      test_rclib() || test_game() || test_character_creation())
     return 1;
   return 0;
 }

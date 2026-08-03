@@ -29,11 +29,21 @@ typedef struct SfRetailTitlePaths {
   const char *artwork;
   const char *smoke_artwork_format;
   const char *smoke_animation_format;
-  const char *music;
-  const char *common_sounds;
 } SfRetailTitlePaths;
 
+typedef struct SfRetailMenuPaths {
+  const char *music;
+  const char *common_sounds;
+} SfRetailMenuPaths;
+
+typedef struct SfRetailCharacterCreatePaths {
+  const char *artwork;
+  const char *font;
+} SfRetailCharacterCreatePaths;
+
 extern const SfRetailTitlePaths sf_retail_title_paths;
+extern const SfRetailMenuPaths sf_retail_menu_paths;
+extern const SfRetailCharacterCreatePaths sf_retail_character_create_paths;
 
 bool sf_retail_path_join(
   char *path, size_t capacity, const char *root, const char *relative);

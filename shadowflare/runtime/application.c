@@ -19,13 +19,13 @@
 
 #include "runtime/application.h"
 
-#include "assets/title_assets.h"
+#include "assets/menu_assets.h"
 #include "assets/retail_paths.h"
 #include "core/arena.h"
 #include "core/memory_budget.h"
 #include "game/game.h"
 #include "render/renderer.h"
-#include "screens/title_screen.h"
+#include "runtime/screen_runtime.h"
 
 #include "tal.h"
 #include "twl.h"
@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define SF_FRAME_MICROSECONDS UINT64_C(33333)
 #define SF_MAX_FRAME_MICROSECONDS UINT64_C(100000)
@@ -66,14 +67,51 @@ static void sf_read_event(
   if (event->type == TWL_EVENT_KEY_DOWN && !event->repeat) {
     if (event->key == TWL_KEY_UP) input->up_pressed = true;
     if (event->key == TWL_KEY_DOWN) input->down_pressed = true;
+    if (event->key == TWL_KEY_LEFT) input->left_pressed = true;
+    if (event->key == TWL_KEY_RIGHT) input->right_pressed = true;
     if (event->key == TWL_KEY_RETURN) input->confirm_pressed = true;
     if (event->key == TWL_KEY_ESCAPE) input->cancel_pressed = true;
+    if (event->key == TWL_KEY_BACKSPACE) input->backspace_pressed = true;
+  }
+  if (event->type == TWL_EVENT_TEXT && input->text_length < 15u) {
+    uint8_t encoded[4];
+    uint8_t length = 0u;
+    const uint32_t codepoint = event->codepoint;
+    if (codepoint >= 0x20u && codepoint <= 0x7eu) {
+      encoded[0] = (uint8_t) codepoint;
+      length = 1u;
+    } else if (codepoint >= 0x80u && codepoint <= 0x7ffu) {
+      encoded[0] = (uint8_t) (0xc0u | (codepoint >> 6u));
+      encoded[1] = (uint8_t) (0x80u | (codepoint & 0x3fu));
+      length = 2u;
+    } else if (codepoint <= 0xffffu &&
+               (codepoint < 0xd800u || codepoint > 0xdfffu)) {
+      encoded[0] = (uint8_t) (0xe0u | (codepoint >> 12u));
+      encoded[1] = (uint8_t) (0x80u | ((codepoint >> 6u) & 0x3fu));
+      encoded[2] = (uint8_t) (0x80u | (codepoint & 0x3fu));
+      length = 3u;
+    } else if (codepoint <= 0x10ffffu) {
+      encoded[0] = (uint8_t) (0xf0u | (codepoint >> 18u));
+      encoded[1] = (uint8_t) (0x80u | ((codepoint >> 12u) & 0x3fu));
+      encoded[2] = (uint8_t) (0x80u | ((codepoint >> 6u) & 0x3fu));
+      encoded[3] = (uint8_t) (0x80u | (codepoint & 0x3fu));
+      length = 4u;
+    }
+    if (length > 0u && length <= 15u - input->text_length) {
+      memcpy(input->text + input->text_length, encoded, length);
+      input->text_length = (uint8_t) (input->text_length + length);
+      input->text[input->text_length] = '\0';
+    }
   }
   if (event->type == TWL_EVENT_CONTROLLER_BUTTON_DOWN) {
     if (event->controller_button == TWL_CONTROLLER_BUTTON_DPAD_UP)
       input->up_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_DPAD_DOWN)
       input->down_pressed = true;
+    if (event->controller_button == TWL_CONTROLLER_BUTTON_DPAD_LEFT)
+      input->left_pressed = true;
+    if (event->controller_button == TWL_CONTROLLER_BUTTON_DPAD_RIGHT)
+      input->right_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_SOUTH)
       input->confirm_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_EAST ||
@@ -86,16 +124,21 @@ static void sf_clear_input(SfGameInput *input) {
   input->pointer_primary_pressed = false;
   input->up_pressed = false;
   input->down_pressed = false;
+  input->left_pressed = false;
+  input->right_pressed = false;
   input->confirm_pressed = false;
   input->cancel_pressed = false;
+  input->backspace_pressed = false;
+  input->text_length = 0u;
+  input->text[0] = '\0';
 }
 
-static void sf_play_pcm(Tal *audio, const SfPcmU8 *source, bool loop) {
+static bool sf_play_pcm(Tal *audio, const SfPcmU8 *source, bool loop) {
   TalPcm pcm;
   TalPlayOptions options;
   TalVoice voice;
   if (!audio || !source || !source->samples || source->frame_count == 0u)
-    return;
+    return false;
   pcm.samples = source->samples;
   pcm.frame_count = source->frame_count;
   pcm.sample_rate = source->sample_rate;
@@ -103,19 +146,24 @@ static void sf_play_pcm(Tal *audio, const SfPcmU8 *source, bool loop) {
   pcm.format = TAL_SAMPLE_U8;
   options = tal_play_options_default();
   options.loop = loop;
-  (void) tal_play(audio, &pcm, &options, &voice);
+  return tal_play(audio, &pcm, &options, &voice) == TAL_RESULT_OK;
 }
 
-static void sf_play_title_events(
-    Tal *audio, const SfTitleAssets *assets, uint8_t events) {
+static void sf_play_menu_events(
+    Tal *audio, const SfMenuAssets *assets, uint8_t events,
+    bool *music_started) {
   if ((events & SF_GAME_SOUND_TITLE_CUE) != 0u)
-    sf_play_pcm(audio, &assets->sounds[SF_TITLE_SOUND_CUE], false);
+    (void) sf_play_pcm(
+      audio, &assets->sounds[SF_MENU_SOUND_TITLE_CUE], false);
   if ((events & SF_GAME_SOUND_MENU_MOVE) != 0u)
-    sf_play_pcm(audio, &assets->sounds[SF_TITLE_SOUND_MOVE], false);
+    (void) sf_play_pcm(audio, &assets->sounds[SF_MENU_SOUND_MOVE], false);
   if ((events & SF_GAME_SOUND_TITLE_CONFIRM) != 0u)
-    sf_play_pcm(audio, &assets->sounds[SF_TITLE_SOUND_CONFIRM], false);
-  if ((events & SF_GAME_SOUND_TITLE_MUSIC) != 0u)
-    sf_play_pcm(audio, &assets->music, true);
+    (void) sf_play_pcm(
+      audio, &assets->sounds[SF_MENU_SOUND_TITLE_CONFIRM], false);
+  if ((events & SF_GAME_SOUND_MENU_CONFIRM) != 0u)
+    (void) sf_play_pcm(audio, &assets->sounds[SF_MENU_SOUND_CONFIRM], false);
+  if ((events & SF_GAME_SOUND_TITLE_MUSIC) != 0u && !*music_started)
+    *music_started = sf_play_pcm(audio, &assets->music, true);
 }
 
 int sf_application_run(
@@ -126,8 +174,9 @@ int sf_application_run(
   SfArena video_arena;
   SfRenderer renderer;
   const SfFramebuffer *framebuffer;
-  SfTitleScreen title_screen;
-  SfTitleAssets *title_assets;
+  SfScreenRuntime *screen_runtime;
+  SfMenuAssets *menu_assets;
+  const SfTitleAssets *title_assets;
   SfGame *game;
   SfGameConfig game_config;
   SfGameInput input;
@@ -144,7 +193,9 @@ int sf_application_run(
   size_t audio_bytes;
   uint64_t next_frame;
   char data_root[SF_RETAIL_PATH_CAPACITY];
+  SfGameMode audio_mode = SF_GAME_MODE_TITLE;
   bool running = true;
+  bool menu_music_started = false;
 
   if (!main_memory || main_memory_size > SF_MAIN_ARENA_BYTES ||
       !video_memory || video_memory_size > SF_VIDEO_MEMORY_LIMIT_BYTES)
@@ -189,15 +240,19 @@ int sf_application_run(
 
   game = (SfGame *) sf_arena_push_zero(
     &main_arena, sizeof(*game), sizeof(void *));
-  title_assets = (SfTitleAssets *) sf_arena_push_zero(
-    &main_arena, sizeof(*title_assets), sizeof(void *));
+  menu_assets = (SfMenuAssets *) sf_arena_push_zero(
+    &main_arena, sizeof(*menu_assets), sizeof(void *));
+  screen_runtime = (SfScreenRuntime *) sf_arena_push_zero(
+    &main_arena, sizeof(*screen_runtime), sizeof(void *));
   decode_scratch = sf_arena_push(
     &main_arena, SF_TITLE_DECODE_SCRATCH_BYTES, 4u);
-  if (!game || !title_assets || !decode_scratch ||
-      !sf_title_assets_load(
-        title_assets, data_root, &main_arena,
-        decode_scratch, SF_TITLE_DECODE_SCRATCH_BYTES)) {
-    fprintf(stderr, "Could not load the retail title assets from '%s'.\n",
+  if (!game || !menu_assets || !screen_runtime || !decode_scratch ||
+      !sf_menu_assets_load(menu_assets, data_root, &main_arena) ||
+      !sf_screen_runtime_init(
+        screen_runtime, &main_arena, data_root,
+        decode_scratch, SF_TITLE_DECODE_SCRATCH_BYTES) ||
+      !sf_screen_runtime_load(screen_runtime, SF_GAME_MODE_TITLE)) {
+    fprintf(stderr, "Could not load the retail menu assets from '%s'.\n",
       data_root);
     if (audio) tal_shutdown(audio);
     twl_shutdown(window);
@@ -207,15 +262,18 @@ int sf_application_run(
     &video_arena, SF_FRAMEBUFFER_BYTES, sizeof(uint16_t));
   if (!frame_memory || !sf_renderer_init(
         &renderer, frame_memory, SF_FRAMEBUFFER_BYTES,
-        SF_FRAME_WIDTH, SF_FRAME_HEIGHT) ||
-      !sf_title_screen_init(
-        &title_screen, decode_scratch, SF_TITLE_DECODE_SCRATCH_BYTES,
-        title_assets->decode_scratch_bytes)) {
+        SF_FRAME_WIDTH, SF_FRAME_HEIGHT)) {
     if (audio) tal_shutdown(audio);
     twl_shutdown(window);
     return 4;
   }
   framebuffer = sf_renderer_framebuffer(&renderer);
+  title_assets = sf_screen_runtime_title_assets(screen_runtime);
+  if (!title_assets) {
+    if (audio) tal_shutdown(audio);
+    twl_shutdown(window);
+    return 4;
+  }
 
   game_config.saved_game_exists = false;
   game_config.next_save_available = true;
@@ -226,8 +284,7 @@ int sf_application_run(
         title_assets->smoke[smoke].animation.frame_count;
   }
   sf_game_init(game, &game_config);
-  input.pointer_x = 0;
-  input.pointer_y = 0;
+  memset(&input, 0, sizeof(input));
   sf_clear_input(&input);
   surface.pixels = framebuffer->pixels;
   surface.width = framebuffer->width;
@@ -254,7 +311,11 @@ int sf_application_run(
       unsigned updates = 0u;
       while (now >= next_frame && updates < 3u) {
         sf_game_update(game, &input);
-        sf_play_title_events(audio, title_assets, game->title.sound_events);
+        sf_play_menu_events(
+          audio, menu_assets,
+          (uint8_t) (game->title.sound_events |
+            game->character_create.sound_events),
+          &menu_music_started);
         sf_clear_input(&input);
         next_frame += SF_FRAME_MICROSECONDS;
         ++updates;
@@ -263,11 +324,27 @@ int sf_application_run(
         next_frame = now + SF_FRAME_MICROSECONDS;
     }
 
-    if (game->mode == SF_GAME_MODE_TITLE) {
-      sf_title_screen_draw(&title_screen, &renderer, title_assets, game);
-    } else {
-      sf_renderer_clear(&renderer, 0u);
+    if (audio_mode == SF_GAME_MODE_CHARACTER_SELECT &&
+        game->mode != SF_GAME_MODE_CHARACTER_SELECT) {
+      if (audio) tal_stop_all(audio);
+      menu_music_started = false;
     }
+    if (audio_mode != SF_GAME_MODE_CHARACTER_SELECT &&
+        game->mode == SF_GAME_MODE_CHARACTER_SELECT &&
+        !menu_music_started) {
+      menu_music_started = sf_play_pcm(audio, &menu_assets->music, true);
+    }
+    audio_mode = game->mode;
+
+    if ((!screen_runtime->loaded ||
+         screen_runtime->loaded_mode != game->mode) &&
+        !sf_screen_runtime_load(screen_runtime, game->mode)) {
+      fprintf(stderr, "Could not load assets for game mode %d.\n",
+        (int) game->mode);
+      running = false;
+      continue;
+    }
+    sf_screen_runtime_draw(screen_runtime, &renderer, game);
     if (twl_present(window, &surface) != TWL_RESULT_OK) running = false;
     if (audio) (void) tal_update(audio);
   }

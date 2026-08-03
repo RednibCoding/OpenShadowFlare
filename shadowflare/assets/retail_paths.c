@@ -25,9 +25,17 @@
 const SfRetailTitlePaths sf_retail_title_paths = {
   "System/Title/Pattern/Title.njp",
   "System/Title/Pattern/Smoke%02u.Njp",
-  "System/Title/Pattern/Smoke%02u.Caf",
+  "System/Title/Pattern/Smoke%02u.Caf"
+};
+
+const SfRetailMenuPaths sf_retail_menu_paths = {
   "System/Title/Music/BGM00.Voc",
   "System/Game/Voice/Voice00.Voc"
+};
+
+const SfRetailCharacterCreatePaths sf_retail_character_create_paths = {
+  "System/Select/Pattern/Select.njp",
+  "System/Common/Pattern/Font00.njp"
 };
 
 static bool sf_retail_path_copy(

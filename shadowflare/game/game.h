@@ -28,14 +28,16 @@
 
 typedef enum SfGameMode {
   SF_GAME_MODE_TITLE = 0,
-  SF_GAME_MODE_CHARACTER_SELECT
+  SF_GAME_MODE_CHARACTER_SELECT,
+  SF_GAME_MODE_LOADING
 } SfGameMode;
 
 typedef enum SfGameSoundEvent {
   SF_GAME_SOUND_TITLE_CUE = 1u << 0u,
   SF_GAME_SOUND_MENU_MOVE = 1u << 1u,
   SF_GAME_SOUND_TITLE_CONFIRM = 1u << 2u,
-  SF_GAME_SOUND_TITLE_MUSIC = 1u << 3u
+  SF_GAME_SOUND_TITLE_MUSIC = 1u << 3u,
+  SF_GAME_SOUND_MENU_CONFIRM = 1u << 4u
 } SfGameSoundEvent;
 
 typedef struct SfGameInput {
@@ -44,8 +46,13 @@ typedef struct SfGameInput {
   bool pointer_primary_pressed;
   bool up_pressed;
   bool down_pressed;
+  bool left_pressed;
+  bool right_pressed;
   bool confirm_pressed;
   bool cancel_pressed;
+  bool backspace_pressed;
+  char text[16];
+  uint8_t text_length;
 } SfGameInput;
 
 typedef struct SfGameConfig {
@@ -75,9 +82,32 @@ typedef struct SfTitleState {
   bool music_started;
 } SfTitleState;
 
+typedef struct SfCharacterCreateState {
+  int32_t fade_value;
+  int32_t fade_target;
+  int16_t character_transition_counter;
+  int16_t rendered_transition_counter;
+  int16_t launch_counter;
+  int16_t previous_pointer_x;
+  int16_t previous_pointer_y;
+  uint16_t background_brightness;
+  uint16_t mode_brightness;
+  uint8_t fade_steps_remaining;
+  uint8_t screen;
+  uint8_t selection;
+  uint8_t gender;
+  uint8_t name_length;
+  uint8_t sound_events;
+  char name[16];
+  bool input_latch;
+  bool name_entry_active;
+  bool name_confirm_hovered;
+} SfCharacterCreateState;
+
 typedef struct SfGame {
   SfGameConfig config;
   SfTitleState title;
+  SfCharacterCreateState character_create;
   SfGameMode mode;
   uint32_t ticks;
   uint8_t character_select_argument;

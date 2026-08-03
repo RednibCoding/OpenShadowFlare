@@ -17,34 +17,23 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_TITLE_ASSETS_H
-#define SHADOWFLARE_ASSETS_TITLE_ASSETS_H
+#ifndef SHADOWFLARE_SCREENS_CHARACTER_CREATE_SCREEN_H
+#define SHADOWFLARE_SCREENS_CHARACTER_CREATE_SCREEN_H
 
-#include "core/arena.h"
-#include "data/caf.h"
-#include "data/njp.h"
+#include "assets/character_create_assets.h"
+#include "game/game.h"
+#include "render/renderer.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 
-#define SF_TITLE_SMOKE_COUNT 10u
-#define SF_TITLE_DECODE_SCRATCH_BYTES 60000u
+typedef struct SfCharacterCreateScreen {
+  SfCharacterCreateState previous;
+  bool initialized;
+} SfCharacterCreateScreen;
 
-typedef struct SfTitleSmokeAsset {
-  SfNjpAnimation images;
-  SfCafSequence animation;
-} SfTitleSmokeAsset;
-
-typedef struct SfTitleAssets {
-  SfNjpSelected artwork;
-  SfTitleSmokeAsset smoke[SF_TITLE_SMOKE_COUNT];
-  size_t decode_scratch_bytes;
-  size_t memory_bytes;
-  bool loaded;
-} SfTitleAssets;
-
-bool sf_title_assets_load(
-  SfTitleAssets *assets, const char *data_root, SfArena *arena,
-  void *decode_scratch, size_t decode_scratch_size);
+void sf_character_create_screen_init(SfCharacterCreateScreen *screen);
+void sf_character_create_screen_draw(
+  SfCharacterCreateScreen *screen, SfRenderer *renderer,
+  const SfCharacterCreateAssets *assets, const SfGame *game);
 
 #endif

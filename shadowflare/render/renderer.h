@@ -69,5 +69,8 @@ void sf_renderer_draw_indexed(
 void sf_renderer_restore_indexed(
   SfRenderer *renderer, const SfIndexedImage *image,
   int x, int y, uint16_t brightness, SfRect region);
+void sf_renderer_draw_text(
+  SfRenderer *renderer, const SfIndexedImage *font,
+  const char *text, int x, int y, uint16_t color, uint16_t brightness);
 
 #endif

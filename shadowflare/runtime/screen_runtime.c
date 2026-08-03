@@ -1,0 +1,87 @@
+/*
+ * Copyright (C) 2026 Michael Binder and contributors
+ *
+ * This file is part of OpenShadowFlare.
+ *
+ * OpenShadowFlare is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenShadowFlare is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "runtime/screen_runtime.h"
+
+#include <string.h>
+
+bool sf_screen_runtime_init(
+    SfScreenRuntime *runtime, SfArena *arena, const char *data_root,
+    void *decode_scratch, size_t decode_scratch_size) {
+  if (!runtime || !arena || !data_root || !decode_scratch ||
+      decode_scratch_size == 0u) return false;
+  memset(runtime, 0, sizeof(*runtime));
+  runtime->arena = arena;
+  runtime->data_root = data_root;
+  runtime->decode_scratch = decode_scratch;
+  runtime->decode_scratch_size = decode_scratch_size;
+  runtime->arena_mark = sf_arena_mark(arena);
+  return true;
+}
+
+bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGameMode mode) {
+  bool success = true;
+  if (!runtime || !runtime->arena) return false;
+  if (runtime->loaded && runtime->loaded_mode == mode) return true;
+  if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+  memset(&runtime->assets, 0, sizeof(runtime->assets));
+  memset(&runtime->screen, 0, sizeof(runtime->screen));
+  if (mode == SF_GAME_MODE_TITLE) {
+    success = sf_title_assets_load(
+      &runtime->assets.title, runtime->data_root, runtime->arena,
+      runtime->decode_scratch, runtime->decode_scratch_size);
+    if (success) success = sf_title_screen_init(
+      &runtime->screen.title,
+      runtime->decode_scratch, runtime->decode_scratch_size,
+      runtime->assets.title.decode_scratch_bytes);
+  } else if (mode == SF_GAME_MODE_CHARACTER_SELECT) {
+    success = sf_character_create_assets_load(
+      &runtime->assets.character_create,
+      runtime->data_root, runtime->arena);
+    if (success)
+      sf_character_create_screen_init(&runtime->screen.character_create);
+  }
+  runtime->loaded = success;
+  runtime->loaded_mode = mode;
+  runtime->blank_drawn = false;
+  return success;
+}
+
+const SfTitleAssets *sf_screen_runtime_title_assets(
+    const SfScreenRuntime *runtime) {
+  if (!runtime || !runtime->loaded ||
+      runtime->loaded_mode != SF_GAME_MODE_TITLE) return NULL;
+  return &runtime->assets.title;
+}
+
+void sf_screen_runtime_draw(
+    SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game) {
+  if (!runtime || !renderer || !game || !runtime->loaded) return;
+  if (game->mode == SF_GAME_MODE_TITLE) {
+    sf_title_screen_draw(
+      &runtime->screen.title, renderer, &runtime->assets.title, game);
+  } else if (game->mode == SF_GAME_MODE_CHARACTER_SELECT) {
+    sf_character_create_screen_draw(
+      &runtime->screen.character_create, renderer,
+      &runtime->assets.character_create, game);
+  } else if (!runtime->blank_drawn) {
+    sf_renderer_clear(renderer, 0u);
+    runtime->blank_drawn = true;
+  }
+}

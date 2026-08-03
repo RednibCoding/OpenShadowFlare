@@ -162,3 +162,49 @@ void sf_renderer_restore_indexed(
     renderer, image, x, y, brightness, 1000u,
     SF_BLEND_OPAQUE, &region);
 }
+
+void sf_renderer_draw_text(
+    SfRenderer *renderer, const SfIndexedImage *font,
+    const char *text, int x, int y, uint16_t color, uint16_t brightness) {
+  int cursor_x = x;
+  int cursor_y = y;
+  int cell_width;
+  int cell_height;
+  if (!renderer || !font || !font->pixels || !text ||
+      font->width < 16u || font->height < 16u) return;
+  cell_width = font->width / 16u;
+  cell_height = font->height / 16u;
+  if (brightness > 1000u) brightness = 1000u;
+  color = sf_brighten(color, brightness);
+  while (*text) {
+    const uint8_t glyph = (uint8_t) *text++;
+    int row;
+    if (glyph == '\n') {
+      cursor_x = x;
+      cursor_y += cell_height;
+      continue;
+    }
+    if (glyph == ' ') {
+      cursor_x += cell_width;
+      continue;
+    }
+    for (row = 0; row < cell_height; ++row) {
+      const int target_y = cursor_y + row;
+      const uint16_t source_y = (uint16_t) (
+        (uint16_t) (glyph >> 4u) * cell_height + row);
+      int column;
+      if (target_y < 0 || target_y >= renderer->target.height) continue;
+      for (column = 0; column < cell_width; ++column) {
+        const int target_x = cursor_x + column;
+        const uint16_t source_x = (uint16_t) (
+          (uint16_t) (glyph & 15u) * cell_width + column);
+        if (target_x < 0 || target_x >= renderer->target.width) continue;
+        if (sf_indexed_pixel(font, source_x, source_y) != 0u) {
+          renderer->target.pixels[
+            (size_t) target_y * renderer->target.stride + target_x] = color;
+        }
+      }
+    }
+    cursor_x += cell_width;
+  }
+}

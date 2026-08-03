@@ -32,8 +32,11 @@ The current executable opens a 640×480 RGB555 surface and reconstructs the
 retail title screen from the original NJP, CAF, and VOC files. It runs at the
 retail 30 Hz cadence, supports mouse, keyboard, and controller menu input, and
 keeps the fade, menu brightness, smoke timing, music, and effects in their
-recovered order. The character screen is still the next unfinished screen, so
-choosing New Game currently reaches a black hand-off rather than a usable menu.
+recovered order. New Game now continues through the retail character-creation
+screen: gender selection, the portrait slide and fade, 15-byte name entry,
+visible caret, menu sounds, and the Online/Single/Back choices are present.
+Choosing a game mode currently reaches the black loading hand-off because the
+new C99 gameplay screen has not been reconstructed yet.
 
 ## Hard limits
 
@@ -85,16 +88,23 @@ An unpacked retail game directory can still be passed explicitly as the first
 argument. An explicit path is never silently replaced by an automatic one if
 it is invalid.
 
-## Current title budget
+## Current screen budgets
 
-The complete title currently uses 1,417,018 bytes of the 1.5 MiB main arena,
-leaving 155,846 bytes free. That includes TWL/TAL state, game and asset
-metadata, the indexed background and menu art, all ten compact smoke streams,
-8-bit music and effects, and one reusable 60,000-byte decode buffer. The video
-pool contains only the 614,400-byte RGB555 framebuffer, leaving 434,176 bytes.
+The complete title currently uses 1,422,733 bytes of the 1.5 MiB main arena,
+leaving 150,131 bytes free. Its screen-scoped artwork accounts for 1,101,182
+bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
+8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
+video pool contains only the 614,400-byte RGB555 framebuffer, leaving 434,176
+bytes.
 
 Static title frames do not redraw the whole screen. A fixed 16-entry damage
 list restores only the areas touched by changing menu highlights and smoke.
 Blank animation frames are detected while loading and skipped. In the worst
 nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
+
+Character creation releases all title-only artwork before loading its own
+assets. It uses 732,064 bytes of the main arena, leaving 840,800 bytes free;
+410,513 bytes of that total are character-screen artwork and font data. Shared
+NJP parts are decoded only once even when several patterns reference them, and
+a static character screen is not filled again until a visible state changes.

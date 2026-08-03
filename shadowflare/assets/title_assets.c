@@ -28,8 +28,6 @@ bool sf_title_assets_load(
     SfTitleAssets *assets, const char *data_root, SfArena *arena,
     void *decode_scratch, size_t decode_scratch_size) {
   static const uint8_t title_patterns[4] = {0u, 1u, 2u, 3u};
-  static const uint16_t sound_indices[SF_TITLE_SOUND_COUNT] = {56u, 58u, 62u};
-  static const uint16_t music_index = 0u;
   char path[SF_RETAIL_PATH_CAPACITY];
   size_t mark;
   unsigned smoke;
@@ -68,15 +66,6 @@ bool sf_title_assets_load(
       }
     }
   }
-  if (!sf_retail_path_join(path, sizeof(path), data_root,
-        sf_retail_title_paths.music) ||
-      !sf_voc_load_u8_mono_samples(
-        path, &music_index, 1u, arena, &assets->music) ||
-      !sf_retail_path_join(path, sizeof(path), data_root,
-        sf_retail_title_paths.common_sounds) ||
-      !sf_voc_load_u8_mono_samples(
-        path, sound_indices, SF_TITLE_SOUND_COUNT, arena, assets->sounds))
-    goto failed;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   assets->loaded = true;
   return true;

@@ -28,8 +28,11 @@
 #include <stdint.h>
 
 #define SF_NJP_SELECTED_LIMIT 8u
-#define SF_NJP_PALETTE_LIMIT 4u
+#define SF_NJP_PALETTE_LIMIT 8u
 #define SF_NJP_FRAME_LIMIT 64u
+#define SF_NJP_DECODED_PATTERN_LIMIT 32u
+#define SF_NJP_DECODED_PART_LIMIT 40u
+#define SF_NJP_DECODED_REFERENCE_LIMIT 64u
 
 typedef struct SfNjpPatternImage {
   SfIndexedImage image;
@@ -65,11 +68,45 @@ typedef struct SfNjpAnimation {
   uint16_t palette_size;
 } SfNjpAnimation;
 
+typedef struct SfNjpDecodedPart {
+  SfIndexedImage image;
+  uint8_t source_index;
+} SfNjpDecodedPart;
+
+typedef struct SfNjpDecodedReference {
+  int16_t x;
+  int16_t y;
+  uint8_t part;
+} SfNjpDecodedReference;
+
+typedef struct SfNjpDecodedPattern {
+  uint8_t source_index;
+  uint8_t palette;
+  uint8_t first_reference;
+  uint8_t reference_count;
+} SfNjpDecodedPattern;
+
+typedef struct SfNjpDecodedResource {
+  SfNjpDecodedPart parts[SF_NJP_DECODED_PART_LIMIT];
+  SfNjpDecodedReference references[SF_NJP_DECODED_REFERENCE_LIMIT];
+  SfNjpDecodedPattern patterns[SF_NJP_DECODED_PATTERN_LIMIT];
+  uint16_t palettes[SF_NJP_PALETTE_LIMIT][256];
+  uint8_t part_count;
+  uint8_t reference_count;
+  uint8_t pattern_count;
+  uint8_t palette_count;
+} SfNjpDecodedResource;
+
 bool sf_njp_load_selected(
   const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
   SfArena *arena, SfNjpSelected *output);
 bool sf_njp_load_animation(
   const char *path, SfArena *arena, SfNjpAnimation *output);
+bool sf_njp_load_decoded_patterns(
+  const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
+  SfArena *arena, SfNjpDecodedResource *output);
+const SfNjpDecodedPattern *sf_njp_decoded_pattern(
+  const SfNjpDecodedResource *resource, uint8_t source_index);
 bool sf_njp_decode_frame(
   const SfNjpAnimation *animation, uint8_t frame,
   void *scratch, size_t scratch_size, SfNjpPatternImage *output);
