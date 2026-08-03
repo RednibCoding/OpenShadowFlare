@@ -30,7 +30,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      PS2DEV: ${{ runner.temp }}/ps2dev
+      PS2DEV: /tmp/ps2dev
 
     steps:
       - name: Check out the repository
