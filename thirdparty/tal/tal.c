@@ -21,6 +21,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef union {
+  void *pointer;
+  uint64_t integer;
+  long double floating_point;
+} TalNaturalAlignment;
+
 size_t tal_internal_align_up(size_t value, size_t alignment) {
   const size_t remainder = value % alignment;
   return remainder == 0u ? value : value + alignment - remainder;
@@ -61,7 +67,7 @@ TalPlayOptions tal_play_options_default(void) {
 }
 
 size_t tal_memory_alignment(void) {
-  const size_t common_alignment = _Alignof(max_align_t);
+  const size_t common_alignment = _Alignof(TalNaturalAlignment);
   const size_t backend_alignment = tal_backend_memory_alignment();
   return backend_alignment > common_alignment
            ? backend_alignment

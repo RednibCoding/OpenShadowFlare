@@ -24,7 +24,9 @@
 #include <stdint.h>
 
 typedef union {
-  max_align_t alignment;
+  void *pointer_alignment;
+  uint64_t integer_alignment;
+  long double floating_point_alignment;
   uint8_t bytes[16384];
 } AlignedStorage;
 
