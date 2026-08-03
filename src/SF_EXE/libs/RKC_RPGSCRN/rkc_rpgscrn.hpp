@@ -108,6 +108,7 @@ public:
     const std::int16_t* judge(
         std::int32_t x,
         std::int32_t y) const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::int32_t width_ = 0;
@@ -169,6 +170,7 @@ public:
 
     std::int32_t version() const;
     const std::vector<MapObject>& objects() const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::int32_t version_ = 0;

@@ -27,11 +27,11 @@ into a bug, please tell us on
 [GitHub](https://github.com/RednibCoding/OpenShadowFlare/issues) or Discord so
 we can look into it.
 
-While testing in-game, press `F12` for the debug menu. It can show the FPS
-counter, temporarily unlock every spell, and provide infinite HP or MP, which
-is handy for checking the parts that are currently being reconstructed. These
-debug switches do not grant spell progress or replace the saved resource
-values in your character.
+While testing in-game, press `F12` for the debug menu. It can show the FPS and
+[runtime profiling numbers](documentation/profiling.md), temporarily unlock
+every spell, and provide infinite HP or MP, which is handy for checking the
+parts that are currently being reconstructed. These debug switches do not
+grant spell progress or replace the saved resource values in your character.
 
 ## Table of Contents
 
@@ -244,6 +244,13 @@ original DLL. They are clean static libraries rather than dependencies on the
 Win32 DLL binaries. The tested compatibility reconstructions live separately
 in `src/reconstructed` and remain the reference as their behavior is brought
 into the portable executable piece by piece.
+
+There is also an early low-memory platform layer under `thirdparty/twl` and
+`thirdparty/tal`. Those libraries are being built for TinyFlare: they use
+caller-owned memory, keep their common C11 code freestanding-friendly, and can
+present a packed RGB555 framebuffer without converting it on the CPU. SF_EXE
+still uses LWL and LAL for now, so this work can settle without disrupting the
+playable build.
 
 ### Web (WebAssembly) build
 

@@ -70,6 +70,7 @@ public:
     void setVolume(std::int32_t direct_sound_volume);
     bool isPlaying(std::size_t sample_index) const;
     bool loaded() const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     const LalSound* resolveSound(std::size_t sample_index) const;

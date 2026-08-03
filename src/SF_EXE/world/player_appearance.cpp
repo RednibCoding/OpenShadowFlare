@@ -106,6 +106,11 @@ bool PlayerAppearance::partEnabled(std::size_t part) const {
     return part < enabled_.size() && enabled_[part] != 0;
 }
 
+const std::vector<std::uint8_t>&
+PlayerAppearance::enabledParts() const {
+    return enabled_;
+}
+
 std::int32_t PlayerAppearance::redStrength(
     std::size_t part) const {
     return part < red_strengths_.size()

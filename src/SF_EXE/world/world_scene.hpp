@@ -98,6 +98,7 @@ public:
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,
         std::string* error = nullptr);
+    std::uint64_t resourceMemoryUsageBytes() const;
     bool loadInitialScenario(
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,
@@ -183,6 +184,14 @@ public:
     VendorInventory* vendorInventory(std::int32_t index);
     const VendorInventory* vendorInventory(std::int32_t index) const;
     const ItemInventoryResource& itemInventoryPatterns() const;
+    bool prepareItemInventoryPatterns(
+        const std::array<
+            std::uint8_t,
+            ItemInventoryResource::group_count>& enabled_groups,
+        std::string* error = nullptr);
+    bool prepareItemInventoryPatterns(
+        const ItemInventoryResource::PatternSelection& enabled_patterns,
+        std::string* error = nullptr);
     const PlayerData& playerData() const;
     PlayerRuntimeProfile playerRuntimeProfile() const;
     void configurePlayerDebugResources(
@@ -221,7 +230,7 @@ public:
         std::size_t part) const;
     std::int32_t playerPartBlueStrength(
         std::size_t part) const;
-    void refreshPlayerAppearance();
+    bool refreshPlayerAppearance(std::string* error = nullptr);
     std::int32_t playerEquipmentColor(
         EquipmentSlot slot) const;
     bool setPlayerEquipmentColor(
@@ -393,6 +402,8 @@ private:
         std::size_t first_item,
         std::int32_t& next_item_id,
         std::string* error = nullptr);
+    void releaseInactiveEffectResources();
+    void releaseUnusedItemWorldResources();
     bool startNpcInteraction(NpcActor& npc);
     bool startScenarioObjectInteraction(
         ScenarioObjectActor& object);

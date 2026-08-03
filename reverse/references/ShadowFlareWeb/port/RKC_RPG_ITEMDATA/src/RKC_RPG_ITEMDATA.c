@@ -217,7 +217,10 @@ static int ReadFromMemory(RKC_RPG_ITEMDATA *self, const unsigned char *src, unsi
     for (unsigned long i = 0; i < payloadSize; i++)
         sum += (signed char)payload[i];
     if (sum != checksum)
-        
+    {
+        free(toFree);
+        return 0;
+    }
 
     Reader r = {payload, payload + payloadSize, 1};
     RKC_RPG_ITEMDATA parsed;

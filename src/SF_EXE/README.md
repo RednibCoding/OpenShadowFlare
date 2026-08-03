@@ -52,8 +52,11 @@ character-select enter/leave lifecycles are reconstructed too, including their
 asset manifests, save-slot behavior, input tables, random smoke delays, and
 shared menu music.
 The original VOC containers are decoded portably and played through LAL, with
-the configured effect and BGM volumes. Gameplay's Escape menu can change those
-volumes, pointer range and priority, and the other reconstructed config fields
+the configured effect and BGM volumes. OpenShadowFlare explicitly retains
+audio at up to 11.025 kHz in mono on every target; this game-wide memory policy
+is separate from LAL's higher-quality defaults. Gameplay's Escape menu can
+change those volumes, pointer range and priority, and the other reconstructed
+config fields
 using the retail panel and coordinates. The portable executable always opens
 in a window; the old fullscreen setting is intentionally not exposed. Its
 Help row and the `H` shortcut open the original mouse/keyboard reference page,
@@ -62,8 +65,10 @@ broader reconstruction order and the current slice are tracked in the
 repository's [`roadmap.md`](../../roadmap.md).
 
 For reconstruction testing, `F12` opens a separate debug menu in the same
-visual style without changing the retail Escape menu. Its FPS counter, All
-Spells, Infinite HP, and Infinite MP entries are independent runtime toggles.
+visual style without changing the retail Escape menu. Its FPS counter,
+profiling overlay, All Spells, Infinite HP, and Infinite MP entries are
+independent runtime toggles. The profiler's portable memory accounting is
+described in [`documentation/profiling.md`](../../documentation/profiling.md).
 The spell override affects the live Magic window and bar only, while the
 resource overrides are applied at the combat and spell-cost boundaries. None
 of them changes the character's saved progress or resource values.
@@ -523,7 +528,7 @@ implementations:
 - `states/` contains the top-level dispatcher and reconstructed game states
 - `ui/` contains layout shared by input handling and drawing
 - `world/` contains actors, scenario orchestration, and script-to-world glue
-- `runtime/` contains startup, input/audio adapters, and frontend assets
+- `runtime/` contains startup and the input/audio adapters
 - `runtime/platform/` owns application-loop and lifecycle adapters
 - `runtime/presentation/` owns the final-surface presentation interface and
   concrete graphics backends

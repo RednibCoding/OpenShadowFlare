@@ -13,6 +13,11 @@ endif()
 include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
+option(
+  OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS
+  "Compile the F12 debug menu and runtime profiling tools"
+  ON
+)
 
 if(NINTENDO_SWITCH)
   set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "nxfb")
@@ -34,6 +39,8 @@ set_property(
 
 add_subdirectory(thirdparty/lwl)
 add_subdirectory(thirdparty/lal)
+add_subdirectory(thirdparty/twl)
+add_subdirectory(thirdparty/tal)
 if(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl" OR BUILD_TESTING)
   add_subdirectory(thirdparty/lgl)
 endif()

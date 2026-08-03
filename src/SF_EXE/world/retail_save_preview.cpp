@@ -7,8 +7,25 @@
 
 namespace osf {
 
+void RetailSavePreview::requestCapture() {
+    capture_requested_ = true;
+}
+
+bool RetailSavePreview::captureRequested() const {
+    return capture_requested_;
+}
+
+void RetailSavePreview::captureIfRequested(
+    gapi::SurfaceView world_surface) {
+    if (!capture_requested_) {
+        return;
+    }
+    capture(world_surface);
+}
+
 void RetailSavePreview::capture(
     gapi::SurfaceView world_surface) {
+    capture_requested_ = false;
     if (!world_surface.pixels ||
         world_surface.width < width ||
         world_surface.height < height) {
@@ -38,6 +55,7 @@ void RetailSavePreview::capture(
 }
 
 void RetailSavePreview::clear() {
+    capture_requested_ = false;
     pixels_.clear();
 }
 
