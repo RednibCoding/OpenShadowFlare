@@ -34,10 +34,57 @@ endfunction()
 
 add_library(
   shadowflare_core STATIC
+  assets/character_create_assets.c
+  assets/gameplay_assets.c
+  assets/load_game_assets.c
+  assets/menu_assets.c
+  assets/player_assets.c
+  assets/retail_paths.c
+  assets/scenario_actor_assets.c
+  assets/title_assets.c
   core/arena.c
+  core/coordinates.c
+  core/retail_random.c
+  data/caf.c
+  data/bmp.c
+  data/gnd.c
+  data/item.c
+  data/mct.c
+  data/njp.c
+  data/njp_sparse.c
+  data/obl.c
+  data/pattern_list.c
+  data/rclib.c
+  data/save.c
+  data/scs.c
+  data/voc.c
+  game/character_create.c
+  game/collision.c
   game/game.c
+  game/load_game.c
+  game/movement.c
+  game/player.c
+  game/route.c
+  game/route_tables.c
+  game/scenario_actor.c
+  game/title.c
+  game/world.c
+  interpreter/scenario_actor_script.c
+  render/depth.c
+  render/dirty.c
   render/framebuffer.c
-  render/title.c
+  render/renderer.c
+  screens/character_create_screen.c
+  screens/gameplay_actor.c
+  screens/gameplay_scene.c
+  screens/gameplay_screen.c
+  screens/gameplay_object_visual.c
+  screens/gameplay_player.c
+  screens/load_game_screen.c
+  screens/title_screen.c
+  ui/actor_nameplate.c
+  ui/world_pointer.c
+  ui/world_pointer_overlay.c
 )
 add_library(ShadowFlare::Core ALIAS shadowflare_core)
 sf_configure_c99_target(shadowflare_core)
@@ -46,9 +93,24 @@ add_executable(
   osf
   main.c
   runtime/application.c
+  runtime/screen_runtime.c
 )
 add_executable(ShadowFlare::Game ALIAS osf)
 sf_configure_c99_target(osf)
+set(
+  OPENSHADOWFLARE_C99_PRESENTATION_HZ
+  "60"
+  CACHE STRING
+  "Presentation rate for the C99 game (30 or 60 Hz)"
+)
+set_property(
+  CACHE OPENSHADOWFLARE_C99_PRESENTATION_HZ PROPERTY STRINGS 30 60)
+if(NOT OPENSHADOWFLARE_C99_PRESENTATION_HZ STREQUAL "30" AND
+   NOT OPENSHADOWFLARE_C99_PRESENTATION_HZ STREQUAL "60")
+  message(FATAL_ERROR "C99 presentation rate must be 30 or 60 Hz")
+endif()
+target_compile_definitions(
+  osf PRIVATE SF_PRESENTATION_HZ=${OPENSHADOWFLARE_C99_PRESENTATION_HZ})
 target_link_libraries(
   osf
   PRIVATE
@@ -56,3 +118,25 @@ target_link_libraries(
     Tal::Tal
     Twl::Twl
 )
+
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  add_library(shadowflare_profiler STATIC runtime/profiler.c)
+  add_library(ShadowFlare::Profiler ALIAS shadowflare_profiler)
+  sf_configure_c99_target(shadowflare_profiler)
+  target_link_libraries(osf PRIVATE ShadowFlare::Profiler)
+  target_compile_definitions(osf PRIVATE SF_ENABLE_PROFILING=1)
+
+  add_executable(
+    osf-measure
+    ../utils/osf-measure.c
+    runtime/screen_runtime.c
+  )
+  sf_configure_c99_target(osf-measure)
+  target_link_libraries(
+    osf-measure
+    PRIVATE
+      ShadowFlare::Core
+      Tal::Tal
+      Twl::Twl
+  )
+endif()

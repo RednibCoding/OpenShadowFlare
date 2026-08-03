@@ -45,6 +45,14 @@ renderer should draw directly into its target's packed format; asset or pixel
 conversion belongs in offline tools or a one-time loading path, never in
 `twl_present()`.
 
+`twl_prepare_frame()` performs the surface upload and scaling/draw submission.
+`twl_display_frame()` then makes that prepared frame visible and may wait for
+the display. Keeping these calls separate lets a profiler measure preparation
+without including swap or vertical-blank wait. `twl_present()` remains the
+simple convenience call that performs both in order. Backends with no separate
+swap boundary, such as GDI and WebGL, do their work during preparation and use
+a no-op display step.
+
 ## Controllers
 
 Controllers are part of the base API. Capacity is selected in `TwlConfig` and

@@ -108,7 +108,7 @@ void twl_macos_presentation_shutdown(TwlMacos *macos) {
   macos->program = 0u;
 }
 
-TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
+TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   TwlMacos *macos = twl ? (TwlMacos *) twl->backend : NULL;
   GLenum internal_format;
   GLenum source_format;
@@ -163,6 +163,13 @@ TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
   glTexCoord2f(1.0f, 0.0f); glVertex2f(1.0f, 1.0f);
   glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, 1.0f);
   glEnd();
+  return TWL_RESULT_OK;
+}
+
+TwlResult twl_backend_display_frame(Twl *twl) {
+  TwlMacos *macos = twl ? (TwlMacos *) twl->backend : NULL;
+  if (!macos || !macos->context) return TWL_RESULT_INVALID_ARGUMENT;
+  twl_msg_void(macos->context, "makeCurrentContext");
   twl_msg_void(macos->context, "flushBuffer");
   return TWL_RESULT_OK;
 }
