@@ -5,6 +5,12 @@
 
 namespace osf::gapi {
 
+bool Backend::drawBitMask(
+    const BitMaskImage&,
+    const BitMaskDraw&) {
+    return false;
+}
+
 Viewport fitViewport(
     std::int32_t source_width,
     std::int32_t source_height,

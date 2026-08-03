@@ -1173,12 +1173,29 @@ int main() {
         }
     }
     osf::RetailSavePreview preview;
-    preview.capture(
-        {
-            surface_pixels.data(),
-            surface_width,
-            surface_height,
-        });
+    const osf::gapi::SurfaceView preview_surface{
+        surface_pixels.data(),
+        surface_width,
+        surface_height,
+    };
+    preview.captureIfRequested(preview_surface);
+    if (!check(
+            !preview.valid() && !preview.captureRequested(),
+            "A save preview was copied without a capture request.")) {
+        return 1;
+    }
+    preview.requestCapture();
+    if (!check(
+            preview.captureRequested(),
+            "The save-preview capture request was not retained.")) {
+        return 1;
+    }
+    preview.captureIfRequested(preview_surface);
+    if (!check(
+            preview.valid() && !preview.captureRequested(),
+            "The requested save preview was not captured exactly once.")) {
+        return 1;
+    }
     if (!check(
             preview.writeForSave(new_save_path, &error),
             "The retail save preview could not be written.")) {

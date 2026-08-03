@@ -1,5 +1,6 @@
 #include "object_visual_resource.hpp"
 
+#include "resource_memory.hpp"
 #include "retail_filesystem.hpp"
 
 #include <iomanip>
@@ -158,6 +159,13 @@ ObjectVisualResource::animation() const {
     return animation_;
 }
 
+std::uint64_t ObjectVisualResource::memoryUsageBytes() const {
+    return decodedMemoryUsageBytes(static_patterns_) +
+        decodedMemoryUsageBytes(static_shadows_) +
+        decodedMemoryUsageBytes(animation_patterns_) +
+        decodedMemoryUsageBytes(animation_);
+}
+
 const ObjectVisualResource* ObjectVisualResources::load(
     const std::filesystem::path& data_root,
     std::int32_t resource_id,
@@ -195,6 +203,14 @@ const ObjectVisualResource* ObjectVisualResources::find(
 
 void ObjectVisualResources::clear() {
     resources_.clear();
+}
+
+std::uint64_t ObjectVisualResources::memoryUsageBytes() const {
+    std::uint64_t bytes = 0;
+    for (const auto& entry : resources_) {
+        bytes += entry.second->memoryUsageBytes();
+    }
+    return bytes;
 }
 
 }  // namespace osf

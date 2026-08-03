@@ -1,5 +1,7 @@
 #include "item_world_resource.hpp"
 
+#include "resource_memory.hpp"
+
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -93,6 +95,12 @@ ItemWorldResource::shadowPatterns() const {
 
 const gapi::CafAnimation& ItemWorldResource::animation() const {
     return animation_;
+}
+
+std::uint64_t ItemWorldResource::memoryUsageBytes() const {
+    return decodedMemoryUsageBytes(patterns_) +
+        decodedMemoryUsageBytes(shadow_patterns_) +
+        decodedMemoryUsageBytes(animation_);
 }
 
 }  // namespace osf

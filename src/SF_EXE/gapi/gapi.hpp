@@ -8,6 +8,7 @@
 namespace osf::gapi {
 
 class BitmapImage;
+class BitMaskImage;
 class NjpImage;
 
 struct Color {
@@ -100,6 +101,32 @@ struct BitmapDraw {
     Viewport clip;
 };
 
+struct BitMaskDraw {
+    constexpr BitMaskDraw(
+        std::int32_t draw_x = 0,
+        std::int32_t draw_y = 0,
+        std::int32_t draw_scale_x = 1000,
+        std::int32_t draw_scale_y = 1000,
+        Color draw_color = {0, 0, 0, 255},
+        std::int32_t draw_opacity = 1000,
+        Viewport draw_clip = {})
+        : x(draw_x),
+          y(draw_y),
+          scale_x(draw_scale_x),
+          scale_y(draw_scale_y),
+          color(draw_color),
+          opacity(draw_opacity),
+          clip(draw_clip) {}
+
+    std::int32_t x = 0;
+    std::int32_t y = 0;
+    std::int32_t scale_x = 1000;
+    std::int32_t scale_y = 1000;
+    Color color{0, 0, 0, 255};
+    std::int32_t opacity = 1000;
+    Viewport clip;
+};
+
 struct TextDraw {
     std::int32_t x = 0;
     std::int32_t y = 0;
@@ -148,6 +175,9 @@ public:
     virtual bool drawBitmap(
         const BitmapImage& image,
         const BitmapDraw& draw = {}) = 0;
+    virtual bool drawBitMask(
+        const BitMaskImage& image,
+        const BitMaskDraw& draw = {});
     virtual bool drawText(
         const NjpImage& font,
         std::string_view text,

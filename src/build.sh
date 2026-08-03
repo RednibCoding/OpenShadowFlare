@@ -109,10 +109,14 @@ find "$OBJECT_DIR" -mindepth 1 -maxdepth 1 -type f -delete
     "$SCRIPT_DIR/../thirdparty/lal/lal.c" \
     -o "$OBJECT_DIR/lal.o"
 "$CC" -std=c99 "${OPT_FLAGS[@]}" -c \
+    "$SCRIPT_DIR/../thirdparty/lal/lal_convert.c" \
+    -o "$OBJECT_DIR/lal_convert.o"
+"$CC" -std=c99 "${OPT_FLAGS[@]}" -c \
     "$SCRIPT_DIR/../thirdparty/lal/lal_waveout.c" \
     -o "$OBJECT_DIR/lal_waveout.o"
 "$AR" rcs "$OBJECT_DIR/liblal.a" \
     "$OBJECT_DIR/lal.o" \
+    "$OBJECT_DIR/lal_convert.o" \
     "$OBJECT_DIR/lal_waveout.o"
 
 echo "Building Windows DLLs with MinGW ($CONFIG)..."

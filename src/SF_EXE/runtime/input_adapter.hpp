@@ -35,7 +35,9 @@ public:
     bool increasedPowerPressed() const;
     bool landMinePressed() const;
     bool gameplayOptionsPressed() const;
+#if OSF_ENABLE_DEBUG_TOOLS
     bool gameplayDebugPressed() const;
+#endif
     bool gameplayHelpPressed() const;
     bool gameplayMissionListPressed() const;
     bool gameplayMapPressed() const;
@@ -80,14 +82,18 @@ private:
     bool status_held_ = false;
     bool inventory_held_ = false;
     bool special_items_held_ = false;
+#if OSF_ENABLE_DEBUG_TOOLS
     bool debug_held_ = false;
+#endif
     std::array<bool, 8> belt_pocket_held_{};
     bool run_toggle_pressed_ = false;
     bool companion_toggle_pressed_ = false;
     bool increased_power_pressed_ = false;
     bool land_mine_pressed_ = false;
     bool gameplay_options_pressed_ = false;
+#if OSF_ENABLE_DEBUG_TOOLS
     bool gameplay_debug_pressed_ = false;
+#endif
     bool gameplay_help_pressed_ = false;
     bool gameplay_mission_list_pressed_ = false;
     bool gameplay_map_pressed_ = false;

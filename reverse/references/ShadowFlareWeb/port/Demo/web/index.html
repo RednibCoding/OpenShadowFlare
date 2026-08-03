@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>ShadowFlare Web Port</title>
+    <style>
+      body { font: 14px/1.4 sans-serif; margin: 0; padding: 1rem; background: #1b1b1b; color: #ddd; }
+      h1 { font-size: 1.1rem; margin: 0 0 .5rem; }
+      .controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: .75rem; }
+      select, button, input { font: inherit; }
+      button:disabled, select:disabled { opacity: .5; }
+      canvas { display: block; width: 100%; max-width: 960px; height: auto; aspect-ratio: 640 / 480;
+               margin: auto; background: #000; border: 1px solid #444; outline: none; box-sizing: border-box; }
+    </style>
+  </head>
+  <body>
+    <h1>ShadowFlare Web Port</h1>
+    <div class="controls">
+      <label>1. Game folder: <input type="file" id="folder" webkitdirectory multiple disabled /></label>
+      <label>2. Area: <select id="area" disabled><option>(pick a folder first)</option></select></label>
+      <label>3. Scenario: <select id="scenario" disabled><option>(pick a folder first)</option></select></label>
+      <button id="play" disabled>Play</button>
+    </div>
+    <canvas id="canvas" width="640" height="480" tabindex="0"></canvas>
+
+    <script>
+      async function loadGroundDemo() {
+        if (!window.crossOriginIsolated) {
+          if (!('serviceWorker' in navigator)) {
+            document.body.insertAdjacentHTML('beforeend', '<p>This browser cannot enable the isolation required by the threaded WebAssembly build.</p>')
+            return
+          }
+          await navigator.serviceWorker.register('./cross-origin-isolation-worker.js')
+          await navigator.serviceWorker.ready
+          window.location.reload()
+          return
+        }
+
+        const runtime = document.createElement('script')
+        runtime.src = './GroundDemo.js'
+        runtime.onload = startGroundDemo
+        document.head.appendChild(runtime)
+      }
+
+      function startGroundDemo() {
+      const folder = document.getElementById('folder')
+      const area = document.getElementById('area')
+      const scenario = document.getElementById('scenario')
+      const play = document.getElementById('play')
+      const canvas = document.getElementById('canvas')
+      const filesByPath = new Map()
+      const mountRoots = ['Map', 'Scenario', 'System', 'Character', 'Player']
+      const bgmPath = 'System/Game/Music/BGM00.Voc'
+      const sfxPath = 'System/Game/Voice/Voice00.Voc'
+      let moduleInstance
+
+      canvas.addEventListener('contextmenu', event => event.preventDefault())
+
+      folder.addEventListener('change', async event => {
+        filesByPath.clear()
+        const areas = new Set()
+        const scenarios = new Set()
+
+        for (const file of event.target.files) {
+          const relativePath = (file.webkitRelativePath || file.name).replace(/\\/g, '/')
+          for (const root of mountRoots) {
+            const match = relativePath.match(new RegExp('(?:^|/)(' + root + '/.+)$', 'i'))
+            if (!match) continue
+            filesByPath.set(root + '/' + match[1].slice(root.length + 1), file)
+            break
+          }
+          const areaMatch = relativePath.match(/(?:^|\/)Map\/Ground\/(.+)\.Gnd$/i)
+          if (areaMatch) areas.add(areaMatch[1])
+          const scenarioMatch = relativePath.match(/(?:^|\/)Scenario\/([^/]+)\/Scenario\.Mct$/i)
+          if (scenarioMatch) scenarios.add(scenarioMatch[1])
+        }
+
+        for (const [relativePath, file] of filesByPath) {
+          const destination = '/game/' + relativePath
+          moduleInstance.FS.mkdirTree(destination.substring(0, destination.lastIndexOf('/')))
+          moduleInstance.FS.writeFile(destination, new Uint8Array(await file.arrayBuffer()))
+        }
+
+        area.innerHTML = ''
+        for (const name of [...areas].sort()) area.add(new Option(name, name))
+        scenario.innerHTML = ''
+        scenario.add(new Option('(none -- use selected area)', ''))
+        for (const id of [...scenarios].sort()) scenario.add(new Option(id, 'Scenario/' + id))
+        area.disabled = areas.size === 0
+        scenario.disabled = scenarios.size === 0
+        play.disabled = areas.size === 0
+      })
+
+      scenario.addEventListener('change', () => { area.disabled = scenario.value !== '' })
+      play.addEventListener('click', () => {
+        const args = ['/game/Map', area.value]
+        const selectedScenario = scenario.value
+        if (selectedScenario || filesByPath.has(bgmPath) || filesByPath.has(sfxPath)) {
+          args.push(selectedScenario ? '/game/' + selectedScenario : '')
+          args.push(filesByPath.has(bgmPath) ? '/game/' + bgmPath : '')
+          if (filesByPath.has(sfxPath)) args.push('/game/' + sfxPath)
+        }
+        folder.disabled = area.disabled = scenario.disabled = play.disabled = true
+        moduleInstance.callMain(args)
+        canvas.focus()
+      })
+
+      GroundDemoModule({ canvas, noInitialRun: true, print: console.log, printErr: console.error })
+        .then(module => { moduleInstance = module; folder.disabled = false })
+      }
+
+      loadGroundDemo().catch(error => console.error('Could not start the WebAssembly build:', error))
+    </script>
+  </body>
+</html>
