@@ -133,11 +133,11 @@ TalResult tal_init(
 
 void tal_shutdown(Tal *tal) {
   if (!tal) return;
+  tal_stop_all(tal);
   if (tal->backend_ready) {
     tal_backend_shutdown(tal);
     tal->backend_ready = false;
   }
-  tal_stop_all(tal);
 }
 
 static TalVoice tal_voice_handle(uint16_t index, uint16_t generation) {
@@ -183,6 +183,7 @@ TalResult tal_play(
   if (options->volume_q15 > TAL_GAIN_FULL ||
       options->pan_q15 == INT16_MIN ||
       options->playback_rate_q16 == 0u) return TAL_RESULT_INVALID_ARGUMENT;
+  tal_backend_lock(tal);
   for (index = 0u; index < tal->config.max_voices; ++index) {
     TalVoiceSlot *slot = &tal->voices[index];
     if (!slot->active) {
@@ -201,63 +202,98 @@ TalResult tal_play(
       if (slot->step_q16 == 0u) slot->step_q16 = 1u;
       slot->active = true;
       *out_voice = tal_voice_handle(index, generation);
+      tal_backend_unlock(tal);
       return TAL_RESULT_OK;
     }
   }
+  tal_backend_unlock(tal);
   return TAL_RESULT_NO_FREE_VOICE;
 }
 
 bool tal_voice_playing(const Tal *tal, TalVoice voice) {
-  return tal_voice_slot((Tal *) tal, voice) != NULL;
+  bool playing;
+  if (!tal) return false;
+  tal_backend_lock((Tal *) tal);
+  playing = tal_voice_slot((Tal *) tal, voice) != NULL;
+  tal_backend_unlock((Tal *) tal);
+  return playing;
 }
 
 TalResult tal_voice_stop(Tal *tal, TalVoice voice) {
-  TalVoiceSlot *slot = tal_voice_slot(tal, voice);
-  if (!slot) return TAL_RESULT_INVALID_ARGUMENT;
+  TalVoiceSlot *slot;
+  if (!tal) return TAL_RESULT_INVALID_ARGUMENT;
+  tal_backend_lock(tal);
+  slot = tal_voice_slot(tal, voice);
+  if (!slot) {
+    tal_backend_unlock(tal);
+    return TAL_RESULT_INVALID_ARGUMENT;
+  }
   slot->active = false;
+  tal_backend_unlock(tal);
   return TAL_RESULT_OK;
 }
 
 TalResult tal_voice_set_volume(
     Tal *tal, TalVoice voice, uint16_t volume_q15) {
   TalVoiceSlot *slot;
-  if (volume_q15 > TAL_GAIN_FULL) return TAL_RESULT_INVALID_ARGUMENT;
+  if (!tal || volume_q15 > TAL_GAIN_FULL)
+    return TAL_RESULT_INVALID_ARGUMENT;
+  tal_backend_lock(tal);
   slot = tal_voice_slot(tal, voice);
-  if (!slot) return TAL_RESULT_INVALID_ARGUMENT;
+  if (!slot) {
+    tal_backend_unlock(tal);
+    return TAL_RESULT_INVALID_ARGUMENT;
+  }
   slot->volume_q15 = volume_q15;
   tal_update_voice_gains(tal, slot);
+  tal_backend_unlock(tal);
   return TAL_RESULT_OK;
 }
 
 TalResult tal_voice_set_pan(Tal *tal, TalVoice voice, int16_t pan_q15) {
-  if (pan_q15 == INT16_MIN) return TAL_RESULT_INVALID_ARGUMENT;
-  TalVoiceSlot *slot = tal_voice_slot(tal, voice);
-  if (!slot) return TAL_RESULT_INVALID_ARGUMENT;
+  TalVoiceSlot *slot;
+  if (!tal || pan_q15 == INT16_MIN) return TAL_RESULT_INVALID_ARGUMENT;
+  tal_backend_lock(tal);
+  slot = tal_voice_slot(tal, voice);
+  if (!slot) {
+    tal_backend_unlock(tal);
+    return TAL_RESULT_INVALID_ARGUMENT;
+  }
   slot->pan_q15 = pan_q15;
   tal_update_voice_gains(tal, slot);
+  tal_backend_unlock(tal);
   return TAL_RESULT_OK;
 }
 
 void tal_stop_all(Tal *tal) {
   uint16_t index;
   if (!tal) return;
+  tal_backend_lock(tal);
   for (index = 0u; index < tal->config.max_voices; ++index)
     tal->voices[index].active = false;
+  tal_backend_unlock(tal);
 }
 
 void tal_set_master_volume(Tal *tal, uint16_t volume_q15) {
   uint16_t index;
   if (!tal) return;
+  tal_backend_lock(tal);
   tal->master_volume_q15 =
     volume_q15 > TAL_GAIN_FULL ? TAL_GAIN_FULL : volume_q15;
   for (index = 0u; index < tal->config.max_voices; ++index) {
     if (tal->voices[index].active)
       tal_update_voice_gains(tal, &tal->voices[index]);
   }
+  tal_backend_unlock(tal);
 }
 
 uint16_t tal_master_volume(const Tal *tal) {
-  return tal ? tal->master_volume_q15 : 0u;
+  uint16_t volume;
+  if (!tal) return 0u;
+  tal_backend_lock((Tal *) tal);
+  volume = tal->master_volume_q15;
+  tal_backend_unlock((Tal *) tal);
+  return volume;
 }
 
 static int16_t tal_interpolate(
@@ -343,7 +379,12 @@ TalResult tal_internal_render(
 }
 
 TalResult tal_render(Tal *tal, int16_t *output, uint32_t frame_count) {
-  return tal_internal_render(tal, output, frame_count);
+  TalResult result;
+  if (!tal) return TAL_RESULT_INVALID_ARGUMENT;
+  tal_backend_lock(tal);
+  result = tal_internal_render(tal, output, frame_count);
+  tal_backend_unlock(tal);
+  return result;
 }
 
 int16_t *tal_internal_mix_buffer(Tal *tal) {
@@ -351,6 +392,10 @@ int16_t *tal_internal_mix_buffer(Tal *tal) {
 }
 
 TalResult tal_update(Tal *tal) {
+  TalResult result;
   if (!tal) return TAL_RESULT_INVALID_ARGUMENT;
-  return tal->backend_ready ? tal_backend_update(tal) : TAL_RESULT_OK;
+  tal_backend_lock(tal);
+  result = tal->backend_ready ? tal_backend_update(tal) : TAL_RESULT_OK;
+  tal_backend_unlock(tal);
+  return result;
 }

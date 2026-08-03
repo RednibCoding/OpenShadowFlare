@@ -57,5 +57,7 @@ TalResult tal_backend_init(
   Tal *tal, void *memory, size_t memory_size, const TalConfig *config);
 void tal_backend_shutdown(Tal *tal);
 TalResult tal_backend_update(Tal *tal);
+void tal_backend_lock(Tal *tal);
+void tal_backend_unlock(Tal *tal);
 
 #endif

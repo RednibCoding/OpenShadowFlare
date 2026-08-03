@@ -29,6 +29,21 @@ endif()
 
 if(EMSCRIPTEN)
   target_sources(twl PRIVATE twl_web.c)
+elseif(WIN32)
+  target_sources(twl PRIVATE twl_win32.c)
+  target_link_libraries(twl PRIVATE user32 gdi32 xinput9_1_0)
+elseif(APPLE)
+  target_sources(twl PRIVATE twl_macos.c)
+  find_library(TWL_APPKIT_FRAMEWORK AppKit REQUIRED)
+  find_library(TWL_GAMECONTROLLER_FRAMEWORK GameController REQUIRED)
+  find_library(TWL_OPENGL_FRAMEWORK OpenGL REQUIRED)
+  target_link_libraries(
+    twl
+    PRIVATE
+      "${TWL_APPKIT_FRAMEWORK}"
+      "${TWL_GAMECONTROLLER_FRAMEWORK}"
+      "${TWL_OPENGL_FRAMEWORK}"
+  )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(twl PRIVATE twl_x11.c)
   find_package(X11 REQUIRED)

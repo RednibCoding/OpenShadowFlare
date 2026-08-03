@@ -1,0 +1,64 @@
+name: Test tiny platform libraries
+
+on:
+  push:
+    paths:
+      - '.github/workflows/tiny-platforms.yml'
+      - 'CMakeLists.txt'
+      - 'tests/native/CMakeLists.txt'
+      - 'tests/native/check_tiny_libraries.cmake'
+      - 'tests/native/tiny_libraries_test.c'
+      - 'tests/native/twl_backend_smoke_test.c'
+      - 'thirdparty/tal/**'
+      - 'thirdparty/twl/**'
+  pull_request:
+    paths:
+      - '.github/workflows/tiny-platforms.yml'
+      - 'CMakeLists.txt'
+      - 'tests/native/CMakeLists.txt'
+      - 'tests/native/check_tiny_libraries.cmake'
+      - 'tests/native/tiny_libraries_test.c'
+      - 'tests/native/twl_backend_smoke_test.c'
+      - 'thirdparty/tal/**'
+      - 'thirdparty/twl/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Configure
+        run: >-
+          cmake
+          -S .
+          -B build/${{ matrix.platform }}/debug
+          -DCMAKE_BUILD_TYPE=Debug
+          -DOPENSHADOWFLARE_BUILD_EXE=OFF
+          -DOPENSHADOWFLARE_ENABLE_DEBUG_TOOLS=OFF
+
+      - name: Build TWL and TAL tests
+        run: >-
+          cmake --build build/${{ matrix.platform }}/debug
+          --target tiny_libraries_test twl_backend_smoke_test
+          --parallel
+
+      - name: Run TWL and TAL tests
+        run: >-
+          ctest --test-dir build/${{ matrix.platform }}/debug
+          --output-on-failure
+          -R "tiny_libraries|tiny_library_boundaries|twl_backend_smoke"

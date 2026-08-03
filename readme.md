@@ -250,7 +250,8 @@ There is also an early low-memory platform layer under `thirdparty/twl` and
 caller-owned memory, keep their common C11 code freestanding-friendly, and can
 present a packed RGB555 framebuffer without converting it on the CPU. SF_EXE
 still uses LWL and LAL for now, so this work can settle without disrupting the
-playable build.
+playable build. TWL and TAL currently have real Linux, Windows, macOS, and web
+backends; console and mobile backends will come later.
 
 ### Web (WebAssembly) build
 

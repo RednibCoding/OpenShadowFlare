@@ -49,6 +49,12 @@ elseif(EMSCRIPTEN)
   target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
   target_link_options(twl_backend_smoke_test PRIVATE "SHELL:-sEXIT_RUNTIME=1")
   set_target_properties(twl_backend_smoke_test PROPERTIES SUFFIX ".html")
+elseif(WIN32 OR APPLE)
+  add_executable(twl_backend_smoke_test twl_backend_smoke_test.c)
+  target_link_libraries(twl_backend_smoke_test PRIVATE Twl::Twl)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME twl_backend_smoke COMMAND twl_backend_smoke_test)
+  endif()
 endif()
 
 add_test(
