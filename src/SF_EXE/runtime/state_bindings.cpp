@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace osf::runtime {
 
@@ -65,6 +66,15 @@ CharacterSelectStateHooks makeCharacterSelectStateHooks(
     AudioSystem& audio,
     LwlWindow*& window) {
     CharacterSelectStateHooks hooks;
+    hooks.begin_scene = [&resources] {
+        resources.loadCommonPattern(
+            0,
+            "System\\Common\\Pattern\\Font00.njp",
+            std::vector<std::uint8_t>{1});
+    };
+    hooks.clear_scene = [&resources] {
+        resources.releaseCommonPattern(0);
+    };
     hooks.load_pattern =
         [&resources](
             std::int32_t id,
@@ -120,44 +130,36 @@ GameplayStateHooks makeGameplayStateHooks(
     WorldScene& world) {
     GameplayStateHooks hooks;
     hooks.prepare_interface = [&resources] {
-        if (!resources.loadGameplayPattern(
-                5, "System\\Game\\Pattern\\Bar.njp")) {
-            return false;
-        }
-        if (!resources.loadGameplayPattern(
-                6, "System\\Game\\Pattern\\Status.njp")) {
-            resources.releaseGameplayResources();
-            return false;
-        }
-        if (!resources.loadGameplayPattern(
-                7, "System\\Game\\Pattern\\MapIcon.njp")) {
-            resources.releaseGameplayResources();
-            return false;
-        }
-        if (!resources.loadGameplayPattern(
-                8, "System\\Game\\Pattern\\StatusIcon.njp")) {
-            resources.releaseGameplayResources();
-            return false;
-        }
-        if (!resources.loadGameplayPattern(
-                9, "System\\Game\\Pattern\\MagicIcon.njp")) {
-            resources.releaseGameplayResources();
-            return false;
-        }
-        if (!resources.loadGameplayPattern(
+        const bool ready = resources.loadCommonPattern(
+                1,
+                "System\\Common\\Pattern\\Font01.njp",
+                std::vector<std::uint8_t>{1}) &&
+            resources.loadCommonPattern(
+                2,
+                "System\\Common\\Pattern\\Waiting.njp") &&
+            resources.loadGameplayPattern(
+                5, "System\\Game\\Pattern\\Bar.njp") &&
+            resources.loadGameplayPattern(
+                8, "System\\Game\\Pattern\\StatusIcon.njp") &&
+            resources.loadGameplayPattern(
+                9, "System\\Game\\Pattern\\MagicIcon.njp") &&
+            resources.loadGameplayPattern(
                 10,
-                "System\\Game\\Pattern\\MagicBarIcon.njp")) {
-            resources.releaseGameplayResources();
-            return false;
-        }
-        if (!resources.loadGameplayPattern(
-                11, "System\\Game\\Pattern\\Card.njp")) {
+                "System\\Game\\Pattern\\MagicBarIcon.njp");
+        if (!ready) {
+            resources.releaseCommonPattern(1);
+            resources.releaseCommonPattern(2);
             resources.releaseGameplayResources();
             return false;
         }
         return true;
     };
+    hooks.release_loading_artwork = [&resources] {
+        resources.releaseCommonPattern(2);
+    };
     hooks.release_interface = [&resources] {
+        resources.releaseCommonPattern(1);
+        resources.releaseCommonPattern(2);
         resources.releaseGameplayResources();
     };
     hooks.prepare_world =

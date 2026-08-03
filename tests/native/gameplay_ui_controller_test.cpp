@@ -1,10 +1,12 @@
 #include "core/game_config.hpp"
 #include "core/retail_random.hpp"
 #include "runtime/audio_system.hpp"
+#include "runtime/gameplay_artwork.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
 #include "states/game_state.hpp"
 #include "states/gameplay_state.hpp"
+#include "resources/resource_manager.hpp"
 #include "world/player_data.hpp"
 #include "world/retail_save_preview.hpp"
 #include "world/world_scene.hpp"
@@ -12,6 +14,7 @@
 #include "lwl.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <iostream>
@@ -25,6 +28,61 @@ bool check(bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+bool testClosedGameplayArtworkBudget() {
+#ifndef __EMSCRIPTEN__
+    const std::filesystem::path data_root =
+        std::filesystem::path(OPENSHADOWFLARE_SOURCE_DIR) /
+        "tmp" / "ShadowFlare";
+    osf::WorldScene world;
+    osf::PlayerLoadRequest player;
+    player.name = "Mina";
+    osf::ResourceManager resources(data_root);
+    osf::runtime::GameplayUiController ui;
+    std::string error;
+    if (!check(
+            resources.loadCommonPattern(
+                3, "System\\Common\\Pattern\\System.njp") &&
+                resources.loadCommonPattern(
+                    1,
+                    "System\\Common\\Pattern\\Font01.njp",
+                    std::vector<std::uint8_t>{1}) &&
+                resources.loadGameplayPattern(
+                    5, "System\\Game\\Pattern\\Bar.njp") &&
+                resources.loadGameplayPattern(
+                    8, "System\\Game\\Pattern\\StatusIcon.njp") &&
+                resources.loadGameplayPattern(
+                    9, "System\\Game\\Pattern\\MagicIcon.njp") &&
+                resources.loadGameplayPattern(
+                    10,
+                    "System\\Game\\Pattern\\MagicBarIcon.njp") &&
+                world.loadInitialScenario(data_root, player, &error) &&
+                osf::runtime::synchronizeGameplayArtwork(
+                    resources, world, ui, &error),
+            error.empty()
+                ? "The closed gameplay artwork fixture could not load."
+                : error.c_str())) {
+        return false;
+    }
+
+    constexpr std::uint64_t framebuffer_bytes = 640u * 480u * 4u;
+    constexpr std::uint64_t budget_bytes = 25u * 1024u * 1024u;
+    const std::uint64_t tracked_bytes =
+        resources.memoryUsageBytes() +
+        world.resourceMemoryUsageBytes() +
+        framebuffer_bytes;
+    std::cout << "closed gameplay artwork: "
+              << tracked_bytes << " bytes\n";
+    return check(
+        tracked_bytes <= budget_bytes &&
+            resources.pattern(6) == nullptr &&
+            resources.pattern(7) == nullptr &&
+            resources.pattern(11) == nullptr,
+        "Closed gameplay exceeds 25 MiB or retains panel artwork.");
+#else
+    return true;
+#endif
 }
 
 struct Fixture {
@@ -530,7 +588,8 @@ bool testScriptTransportClosesOutsidePoint() {
 }  // namespace
 
 int main() {
-    return testEscapeClosesPanelsBeforeSettings() &&
+    return testClosedGameplayArtworkBudget() &&
+                   testEscapeClosesPanelsBeforeSettings() &&
                    testHudButtonsOpenRetailPanels() &&
                    testSaveTransitionsOwnModalInput() &&
                    testIncreasedPowerKeyEdge() &&

@@ -20,9 +20,9 @@ profiler total.
 | Remote Town exploration mask | 10.55 MiB | 0.33 MiB bit mask; completed |
 | Female player graphics | 18.97 MiB | 6.86 MiB with the new-character body and armour; completed |
 | Male player graphics | 24.93 MiB | 8.14 MiB with the new-character body and armour; completed |
-| Common fonts and loading art | 5.20 MiB | Load glyphs and loading art on demand |
-| All inventory sheets | 2.59 MiB | Load only the groups currently needed |
-| Gameplay interface artwork | 2.09 MiB | Scope optional panels such as Card artwork |
+| Common fonts and loading art | 5.20 MiB | 0.03 MiB in steady English gameplay; loading art lives only on the loading page |
+| All inventory sheets | 2.59 MiB | 0.21 MiB for the starter belt while panels are closed; visible groups only |
+| Gameplay interface artwork | 2.09 MiB | 0.17 MiB with panels closed; Status, MapIcon, and Card are panel-scoped |
 | Remote Town map patterns | 2.47 MiB | Already compact; stream only if still needed |
 | Software framebuffer | 1.17 MiB | Consider a general RGB565 surface later |
 
@@ -44,12 +44,29 @@ different amounts, so the current figures are useful baselines rather than hard
 caps. Selected NJP loading also streams individual compressed blocks from disk;
 it does not temporarily copy the complete 9–12 MiB source file into memory.
 
-The next targets are common fonts and loading art, followed by lazy inventory
-groups and optional interface artwork. After that, bound scenario-owned actor,
-item, and effect caches. Map transitions also need to release the old scenario
-before allocating the complete replacement; the current failure-safe
-preparation briefly holds both maps and would exceed a 32 MiB machine even if
-steady gameplay fits.
+The artwork lifetime pass keeps only pattern zero of each English font. That is
+the Latin sheet used by the current English retail data, reducing either font
+from 2,386,357 bytes to 25,269 bytes without changing its glyph pixels. Font00
+exists only in character selection. Font01 exists only in gameplay. The
+680,281-byte loading page is released at the exact handoff to the world.
+
+Gameplay starts with only Bar, StatusIcon, MagicIcon, and MagicBarIcon. The
+1.27 MiB Status sheet, MapIcon, and 0.65 MiB Card sheet follow their panels.
+Inventory sheets follow the always-visible belt plus whichever backpack,
+equipment, warehouse, or vendor container is visible. Synchronization occurs
+at the 30 Hz UI/state boundary and performs no file access while that state is
+unchanged; the render loop only reads prepared resources.
+
+A deterministic Remote Town starter test now measures 25,110,203 bytes
+(23.95 MiB) for tracked game resources and the software framebuffer with all
+panels closed. With the current roughly 0.39 MiB decoded-audio baseline, this
+puts the representative tracked total around 24.34 MiB. Heavier equipment,
+open panels, actors, and effects still need their own representative budgets.
+
+The next target is to bound scenario-owned actor, item, and effect caches. Map
+transitions also need to release the old scenario before allocating the
+complete replacement; the current failure-safe preparation briefly holds both
+maps and would exceed a 32 MiB machine even if steady gameplay fits.
 
 Memory work must remain portable and fidelity-safe. Resource budgets and cache
 lifetimes belong in shared resource code, never in target adapters. Streaming

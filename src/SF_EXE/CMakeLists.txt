@@ -370,6 +370,7 @@ target_link_libraries(
 add_executable(
   ShadowFlare_rebuilt
   runtime/audio_system.cpp
+  runtime/gameplay_artwork.cpp
   runtime/game_runtime.cpp
   runtime/gameplay_ui_controller.cpp
   runtime/input_adapter.cpp

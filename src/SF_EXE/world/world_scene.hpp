@@ -184,6 +184,11 @@ public:
     VendorInventory* vendorInventory(std::int32_t index);
     const VendorInventory* vendorInventory(std::int32_t index) const;
     const ItemInventoryResource& itemInventoryPatterns() const;
+    bool prepareItemInventoryPatterns(
+        const std::array<
+            std::uint8_t,
+            ItemInventoryResource::group_count>& enabled_groups,
+        std::string* error = nullptr);
     const PlayerData& playerData() const;
     PlayerRuntimeProfile playerRuntimeProfile() const;
     void configurePlayerDebugResources(

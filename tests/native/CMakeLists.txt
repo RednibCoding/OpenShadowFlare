@@ -253,6 +253,7 @@ if(TARGET sf_game_core)
     gameplay_ui_controller_test
     gameplay_ui_controller_test.cpp
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/audio_system.cpp"
+    "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_artwork.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/gameplay_ui_controller.cpp"
     "${PROJECT_SOURCE_DIR}/src/SF_EXE/runtime/input_adapter.cpp"
   )

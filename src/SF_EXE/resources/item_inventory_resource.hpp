@@ -17,6 +17,9 @@ public:
     bool load(
         const std::filesystem::path& data_root,
         std::string* error = nullptr);
+    bool prepareGroups(
+        const std::array<std::uint8_t, group_count>& enabled_groups,
+        std::string* error = nullptr);
     void clear();
 
     const gapi::NjpImage* group(
@@ -24,7 +27,9 @@ public:
     std::uint64_t memoryUsageBytes() const;
 
 private:
+    std::filesystem::path data_root_;
     std::array<gapi::NjpImage, group_count> groups_;
+    std::array<bool, group_count> loaded_groups_{};
 };
 
 }  // namespace osf
