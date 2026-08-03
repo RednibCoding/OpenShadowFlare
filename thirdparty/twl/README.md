@@ -33,11 +33,11 @@ TWL accepts caller-owned RGB555, RGB565, and XRGB8888 surfaces. RGB555 uses the
 PS1-friendly layout with red in bits 0-4, green in bits 5-9, blue in bits
 10-14, and bit 15 left available to the renderer.
 
-Presentation is deliberately not a CPU format-conversion pass. The Linux/X11
-backend uploads the packed surface directly to an OpenGL texture, and the Web
-backend does the same with a WebGL 2 integer texture. Expansion and scaling
-happen on the GPU. A future console backend can consume its native packed
-format directly.
+Presentation is deliberately not an application-side CPU format-conversion
+pass. Linux and macOS upload the packed surface directly to an OpenGL texture,
+the Web backend does the same with a WebGL 2 integer texture, and Windows hands
+the packed DIB directly to GDI. A future console backend can consume its native
+packed format directly.
 
 TWL does not own the software framebuffer and never clears, fills, resizes, or
 copies it. Rendering remains the application's responsibility. A constrained
@@ -56,9 +56,10 @@ use a platform-neutral layout:
 - D-pad buttons;
 - two signed stick pairs and two positive trigger axes.
 
-Linux currently discovers `/dev/input/js*` devices without a helper library.
-The Web backend uses the browser Gamepad API and its standard mapping. Both
-backends generate the same connection, button, and axis events.
+Linux discovers `/dev/input/js*` devices without a helper library. Windows
+uses XInput, macOS uses GameController, and the Web backend uses the browser
+Gamepad API. Every backend generates the same connection, button, and axis
+events.
 
 Call `twl_pump_events()` once at the start of a frame, then drain the fixed
 queue with `twl_poll_event()`. Polling the queue never calls into a platform
@@ -69,12 +70,22 @@ backend or rescans controllers.
 Implemented backends are:
 
 - Linux: X11, OpenGL presentation, keyboard, pointer, and joystick input;
+- Windows: Win32, direct packed DIB presentation, keyboard, pointer, and
+  XInput controllers;
+- macOS: Cocoa, OpenGL presentation, keyboard, pointer, and GameController;
 - WebAssembly: HTML canvas, WebGL 2 presentation, browser input, and Gamepad;
 - null: used on targets whose real backend has not been written yet.
 
-Each backend lives in one source file and implements the private contract in
-`twl_internal.h`. Adding another backend does not change `twl.c` or the public
-API.
+Each backend has its own folder under `backends/`. Window lifecycle, input,
+and presentation live in separate source files and share only their backend's
+private `backend.h`. The macOS backend also has a `support.c` file for shared
+Objective-C runtime calls. These are real compilation boundaries: one concern
+cannot reach another concern's file-local helpers or state by accident.
+
+A new platform starts as a new backend folder and implements the private
+contract in `twl_internal.h`. Platform headers and APIs stay inside that
+folder; adding a backend does not change `twl.c` or the public API. The null
+backend is intentionally small enough to remain a single file.
 
 ## Memory guarantees
 
