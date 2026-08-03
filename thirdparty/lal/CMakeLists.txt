@@ -23,15 +23,15 @@ set(
   LAL_MAXIMUM_SAMPLE_RATE
   "16000"
   CACHE STRING
-  "Highest sample rate retained by LAL (16000, 22050, or 48000)"
+  "Highest sample rate retained by LAL (11025, 16000, 22050, or 48000)"
 )
 set_property(
   CACHE LAL_MAXIMUM_SAMPLE_RATE
-  PROPERTY STRINGS 16000 22050 48000
+  PROPERTY STRINGS 11025 16000 22050 48000
 )
-if(NOT LAL_MAXIMUM_SAMPLE_RATE MATCHES "^(16000|22050|48000)$")
+if(NOT LAL_MAXIMUM_SAMPLE_RATE MATCHES "^(11025|16000|22050|48000)$")
   message(FATAL_ERROR
-    "LAL_MAXIMUM_SAMPLE_RATE must be 16000, 22050, or 48000")
+    "LAL_MAXIMUM_SAMPLE_RATE must be 11025, 16000, 22050, or 48000")
 endif()
 option(
   LAL_FORCE_MONO
@@ -85,9 +85,9 @@ elseif(APPLE)
   )
 elseif(PSP)
   target_sources(lal PRIVATE lal_psp.c)
-  # The PSP hardware output is fixed at 44.1 kHz. Mix at half that rate and
-  # duplicate frames in the PSP backend to avoid costly software resampling.
-  target_compile_definitions(lal PRIVATE LAL_OUTPUT_SAMPLE_RATE=22050)
+  # The PSP hardware output is fixed at 44.1 kHz. The port retains audio at
+  # 11.025 kHz, then expands each mixed frame for the hardware output.
+  target_compile_definitions(lal PRIVATE LAL_OUTPUT_SAMPLE_RATE=11025)
 elseif(NINTENDO_SWITCH)
   target_sources(lal PRIVATE lal_switch.c)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")

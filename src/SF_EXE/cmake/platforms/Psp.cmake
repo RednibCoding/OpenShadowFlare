@@ -13,6 +13,7 @@ function(osf_configure_psp_platform target)
         pspctrl
         pspnet
         pspnet_apctl
+        psppower
         psputility
     )
   endif()
@@ -31,6 +32,9 @@ function(osf_configure_psp_platform target)
     create_pbp_file(
       TARGET ${target}
       TITLE "OpenShadowFlare"
+      # MEMSIZE=1 is the Slim/Go large-memory request understood by PPSSPP and
+      # custom firmware. MEMSIZE=2 leaves this homebrew in the 24 MB layout.
+      MEMSIZE 1
     )
   else()
     message(FATAL_ERROR

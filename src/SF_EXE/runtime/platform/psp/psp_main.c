@@ -1,4 +1,5 @@
 #include <pspkernel.h>
+#include <psppower.h>
 #include <pspthreadman.h>
 
 PSP_MODULE_INFO("OpenShadowFlare", 0, 1, 0);
@@ -27,6 +28,10 @@ static int osf_psp_callback_thread(SceSize args, void *argp) {
 }
 
 void osf_psp_setup_callbacks(void) {
+  // Homebrew starts at the PSP's conservative 222 MHz clock. The software
+  // renderer and audio mixer share the main CPU, so use the performance clock.
+  scePowerSetClockFrequency(333, 333, 166);
+
   const int thread_id = sceKernelCreateThread(
       "osf_callbacks", osf_psp_callback_thread, 0x11, 0xFA0,
       THREAD_ATTR_USER, NULL);

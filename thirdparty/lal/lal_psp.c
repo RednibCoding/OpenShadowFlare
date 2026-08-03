@@ -12,7 +12,7 @@
 enum {
   LAL_PSP_BUFFER_COUNT = 2,
   LAL_PSP_OUTPUT_FRAMES = 1024,
-  LAL_PSP_MIX_FRAMES = LAL_PSP_OUTPUT_FRAMES / 2,
+  LAL_PSP_MIX_FRAMES = LAL_PSP_OUTPUT_FRAMES / 4,
   LAL_PSP_THREAD_PRIORITY = 0x20,
   LAL_PSP_THREAD_STACK_SIZE = 0x4000
 };
@@ -51,7 +51,7 @@ static int lal_psp_thread(SceSize args, void *argp) {
 
     buffer = g_buffers[buffer_index];
     for (frame = 0; frame < LAL_PSP_OUTPUT_FRAMES; ++frame) {
-      const size_t source = frame / 2;
+      const size_t source = frame / 4;
       buffer[frame * LAL_OUTPUT_CHANNELS] =
           g_mix_buffer[source * LAL_OUTPUT_CHANNELS];
       buffer[frame * LAL_OUTPUT_CHANNELS + 1] =
