@@ -74,11 +74,28 @@ jobs:
             exit $exitCode
           }
 
-      - name: Run common TWL and TAL tests
+      - name: Run common TWL and TAL tests (macOS)
+        if: runner.os == 'macOS'
         run: >-
           ctest --test-dir build/${{ matrix.platform }}/debug
           --output-on-failure
           -R "tiny_libraries|tiny_library_boundaries"
+
+      - name: Run common TWL and TAL tests (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = & ctest --test-dir build/${{ matrix.platform }}/debug `
+            --output-on-failure `
+            -R "tiny_libraries|tiny_library_boundaries" 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Write-Host
+          if ($exitCode -ne 0) {
+            $tail = ($output | Select-Object -Last 60 | Out-String)
+            $tail = $tail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows TWL/TAL tests failed::$tail"
+            exit $exitCode
+          }
 
       - name: Run Windows presentation smoke test
         if: runner.os == 'Windows'
