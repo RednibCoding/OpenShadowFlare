@@ -225,7 +225,7 @@ bool WorldScene::loadInitialScenario(
     const std::filesystem::path player_root =
         data_root / "Player" / player_directory;
     std::string player_error;
-    if (!player_visual_.load(
+    if (!player_visual_.loadAnimation(
             player_root, "Animation00", &player_error)) {
         setError(
             error,
@@ -288,7 +288,14 @@ bool WorldScene::loadInitialScenario(
         clear();
         return false;
     }
-    refreshPlayerAppearance();
+    if (!refreshPlayerAppearance(&player_error)) {
+        setError(
+            error,
+            "The selected player graphics could not be loaded: " +
+                player_error);
+        clear();
+        return false;
+    }
     scenario_world_ = std::move(prepared_scenario);
     item_random_ = prepared_item_random;
     next_ground_item_id_ =

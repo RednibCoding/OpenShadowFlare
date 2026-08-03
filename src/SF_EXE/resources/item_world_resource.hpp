@@ -23,6 +23,7 @@ public:
     const gapi::NjpImage& patterns() const;
     const gapi::NjpImage& shadowPatterns() const;
     const gapi::CafAnimation& animation() const;
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::int32_t id_ = -1;

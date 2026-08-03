@@ -11,9 +11,9 @@
 namespace osf::gapi {
 namespace {
 
-class Reader {
+class MemoryReader {
 public:
-    explicit Reader(const std::vector<std::uint8_t>& bytes)
+    explicit MemoryReader(const std::vector<std::uint8_t>& bytes)
         : bytes_(bytes) {}
 
     bool readBytes(void* destination, std::size_t size) {
@@ -25,29 +25,6 @@ public:
                 destination, bytes_.data() + position_, size);
         }
         position_ += size;
-        return true;
-    }
-
-    bool readI32(std::int32_t& value) {
-        std::uint8_t bytes[4]{};
-        if (!readBytes(bytes, sizeof(bytes))) {
-            return false;
-        }
-        const std::uint32_t unsigned_value =
-            static_cast<std::uint32_t>(bytes[0]) |
-            (static_cast<std::uint32_t>(bytes[1]) << 8u) |
-            (static_cast<std::uint32_t>(bytes[2]) << 16u) |
-            (static_cast<std::uint32_t>(bytes[3]) << 24u);
-        value = static_cast<std::int32_t>(unsigned_value);
-        return true;
-    }
-
-    bool readU32(std::uint32_t& value) {
-        std::int32_t signed_value = 0;
-        if (!readI32(signed_value)) {
-            return false;
-        }
-        value = static_cast<std::uint32_t>(signed_value);
         return true;
     }
 
@@ -63,13 +40,68 @@ public:
         return position_;
     }
 
-    const std::uint8_t* current() const {
-        return bytes_.data() + position_;
-    }
-
 private:
     const std::vector<std::uint8_t>& bytes_;
     std::size_t position_ = 0;
+};
+
+class StreamReader {
+public:
+    StreamReader(std::ifstream& stream, std::size_t size)
+        : stream_(stream), size_(size) {}
+
+    bool readBytes(void* destination, std::size_t size) {
+        if (size > size_ - position_ ||
+            size > static_cast<std::size_t>(
+                       std::numeric_limits<std::streamsize>::max())) {
+            return false;
+        }
+        if (size != 0 &&
+            !stream_.read(
+                static_cast<char*>(destination),
+                static_cast<std::streamsize>(size))) {
+            return false;
+        }
+        position_ += size;
+        return true;
+    }
+
+    bool skip(std::size_t size) {
+        if (size > size_ - position_) {
+            return false;
+        }
+        position_ += size;
+        stream_.seekg(
+            static_cast<std::streamoff>(position_),
+            std::ios::beg);
+        return static_cast<bool>(stream_);
+    }
+
+    std::size_t position() const {
+        return position_;
+    }
+
+private:
+    std::ifstream& stream_;
+    std::size_t size_ = 0;
+    std::size_t position_ = 0;
+};
+
+struct EncodedPart {
+    std::size_t offset = 0;
+    std::size_t encoded_size = 0;
+    std::size_t decoded_size = 0;
+    bool compressed = false;
+};
+
+struct ParsedNjp {
+    std::int32_t version = 0;
+    bool shadow = false;
+    std::vector<NjpPart> parts;
+    std::vector<EncodedPart> encoded_parts;
+    std::vector<NjpPattern> patterns;
+    std::vector<NjpPalette> palettes;
+    std::vector<std::uint8_t> decoded_pattern_flags;
 };
 
 void setError(std::string* error, std::string message) {
@@ -117,14 +149,36 @@ bool calculateStride(
     return true;
 }
 
-}  // namespace
+template <typename Reader>
+bool readI32(Reader& input, std::int32_t& value) {
+    std::uint8_t bytes[4]{};
+    if (!input.readBytes(bytes, sizeof(bytes))) {
+        return false;
+    }
+    const std::uint32_t unsigned_value =
+        static_cast<std::uint32_t>(bytes[0]) |
+        (static_cast<std::uint32_t>(bytes[1]) << 8u) |
+        (static_cast<std::uint32_t>(bytes[2]) << 16u) |
+        (static_cast<std::uint32_t>(bytes[3]) << 24u);
+    value = static_cast<std::int32_t>(unsigned_value);
+    return true;
+}
 
-bool NjpImage::decode(
-    const std::vector<std::uint8_t>& bytes,
+template <typename Reader>
+bool readU32(Reader& input, std::uint32_t& value) {
+    std::int32_t signed_value = 0;
+    if (!readI32(input, signed_value)) {
+        return false;
+    }
+    value = static_cast<std::uint32_t>(signed_value);
+    return true;
+}
+
+template <typename Reader>
+bool parseNjp(
+    Reader& input,
+    ParsedNjp& parsed,
     std::string* error) {
-    clear();
-    Reader input(bytes);
-
     char header[16]{};
     if (!input.readBytes(header, sizeof(header))) {
         setError(error, "The NJP header is truncated.");
@@ -147,37 +201,38 @@ bool NjpImage::decode(
         return false;
     }
 
-    version_ =
+    parsed.version =
         (header[12] - '0') * 100 +
         (header[13] - '0') * 10 +
         (header[14] - '0');
-    if (version_ < 0 || version_ > 3) {
+    if (parsed.version < 0 || parsed.version > 3) {
         setError(error, "The NJP version is unsupported.");
         return false;
     }
-    shadow_ = shadow;
+    parsed.shadow = shadow;
 
     std::int32_t part_count = 0;
-    if (!input.readI32(part_count) || part_count < 0) {
+    if (!readI32(input, part_count) || part_count < 0) {
         setError(error, "The NJP part count is invalid.");
         return false;
     }
-    if (version_ > 2 && !input.skip(4)) {
+    if (parsed.version > 2 && !input.skip(4)) {
         setError(error, "The NJP combined-part header is truncated.");
         return false;
     }
 
-    parts_.reserve(static_cast<std::size_t>(part_count));
+    parsed.parts.reserve(static_cast<std::size_t>(part_count));
+    parsed.encoded_parts.reserve(
+        static_cast<std::size_t>(part_count));
     for (std::int32_t index = 0; index < part_count; ++index) {
         NjpPart part;
         std::int32_t compressed = 0;
-        if (!input.readI32(part.bits_per_pixel) ||
-            !input.readI32(part.width) ||
-            !input.readI32(part.height) ||
-            !input.readI32(compressed) ||
+        if (!readI32(input, part.bits_per_pixel) ||
+            !readI32(input, part.width) ||
+            !readI32(input, part.height) ||
+            !readI32(input, compressed) ||
             part.height < 0) {
             setError(error, "An NJP part header is invalid.");
-            clear();
             return false;
         }
         if (shadow) {
@@ -186,95 +241,90 @@ bool NjpImage::decode(
         if (!calculateStride(
                 part.bits_per_pixel, part.width, part.stride)) {
             setError(error, "An NJP part has unsupported dimensions.");
-            clear();
             return false;
         }
 
-        std::size_t bitmap_size = 0;
+        EncodedPart encoded;
         if (!multiplySize(
                 static_cast<std::size_t>(part.stride),
                 static_cast<std::size_t>(part.height),
-                bitmap_size)) {
+                encoded.decoded_size)) {
             setError(error, "An NJP part is too large.");
-            clear();
             return false;
         }
-
-        if (compressed == 0) {
-            part.pixels.resize(bitmap_size);
-            if (!input.readBytes(
-                    part.pixels.data(), part.pixels.size())) {
+        encoded.offset = input.position();
+        encoded.compressed = compressed != 0;
+        if (!encoded.compressed) {
+            encoded.encoded_size = encoded.decoded_size;
+            if (!input.skip(encoded.encoded_size)) {
                 setError(error, "An NJP bitmap is truncated.");
-                clear();
                 return false;
             }
         } else {
-            if (bytes.size() - input.position() < 16) {
-                setError(error, "An NJP compression header is truncated.");
-                clear();
+            std::uint8_t compression_header[16]{};
+            if (!input.readBytes(
+                    compression_header,
+                    sizeof(compression_header))) {
+                setError(
+                    error,
+                    "An NJP compression header is truncated.");
                 return false;
             }
-            const std::uint8_t* compressed_bytes = input.current();
             const std::uint32_t payload_size =
-                static_cast<std::uint32_t>(compressed_bytes[12]) |
-                (static_cast<std::uint32_t>(compressed_bytes[13]) << 8u) |
-                (static_cast<std::uint32_t>(compressed_bytes[14]) << 16u) |
-                (static_cast<std::uint32_t>(compressed_bytes[15]) << 24u);
-            const std::size_t block_size =
+                static_cast<std::uint32_t>(
+                    compression_header[12]) |
+                (static_cast<std::uint32_t>(
+                     compression_header[13]) << 8u) |
+                (static_cast<std::uint32_t>(
+                     compression_header[14]) << 16u) |
+                (static_cast<std::uint32_t>(
+                     compression_header[15]) << 24u);
+            encoded.encoded_size =
                 static_cast<std::size_t>(payload_size) + 16u;
-            if (block_size < payload_size ||
-                bytes.size() - input.position() < block_size ||
-                !osf::decodeRclibLz(
-                    compressed_bytes,
-                    block_size,
-                    bitmap_size,
-                    part.pixels) ||
-                part.pixels.size() != bitmap_size ||
-                !input.skip(block_size)) {
-                setError(error, "An NJP bitmap could not be decompressed.");
-                clear();
+            if (encoded.encoded_size < payload_size ||
+                !input.skip(static_cast<std::size_t>(payload_size))) {
+                setError(
+                    error,
+                    "An NJP bitmap could not be decompressed.");
                 return false;
             }
         }
-        parts_.push_back(std::move(part));
+        parsed.parts.push_back(std::move(part));
+        parsed.encoded_parts.push_back(encoded);
     }
 
     std::int32_t pattern_count = 0;
-    if (!input.readI32(pattern_count) || pattern_count < 0) {
+    if (!readI32(input, pattern_count) || pattern_count < 0) {
         setError(error, "The NJP pattern count is invalid.");
-        clear();
         return false;
     }
-    if (version_ > 2 && !input.skip(4)) {
+    if (parsed.version > 2 && !input.skip(4)) {
         setError(error, "The NJP combined-list header is truncated.");
-        clear();
         return false;
     }
 
-    patterns_.reserve(static_cast<std::size_t>(pattern_count));
+    parsed.patterns.reserve(
+        static_cast<std::size_t>(pattern_count));
     for (std::int32_t pattern_index = 0;
          pattern_index < pattern_count;
          ++pattern_index) {
         NjpPattern pattern;
         std::int32_t list_count = 0;
-        if (!input.readI32(list_count) || list_count < 0 ||
-            !input.readI32(pattern.x) ||
-            !input.readI32(pattern.y) ||
-            !input.readI32(pattern.width) ||
-            !input.readI32(pattern.height)) {
+        if (!readI32(input, list_count) || list_count < 0 ||
+            !readI32(input, pattern.x) ||
+            !readI32(input, pattern.y) ||
+            !readI32(input, pattern.width) ||
+            !readI32(input, pattern.height)) {
             setError(error, "An NJP pattern header is invalid.");
-            clear();
             return false;
         }
         if (united && !input.skip(0xa8)) {
             setError(error, "An NJP judgement block is truncated.");
-            clear();
             return false;
         }
-        if (version_ > 0 &&
-            !input.readI32(pattern.default_palette)) {
+        if (parsed.version > 0 &&
+            !readI32(input, pattern.default_palette)) {
             setError(error, "An NJP pattern palette is missing.");
-            clear();
             return false;
         }
 
@@ -283,29 +333,30 @@ bool NjpImage::decode(
              list_index < list_count;
              ++list_index) {
             NjpPatternPart item;
-            if (!input.readU32(item.flags) ||
-                !input.readI32(item.part_index) ||
-                !input.readI32(item.x) ||
-                !input.readI32(item.y) ||
-                !input.readI32(item.palette_offset) ||
-                !input.readI32(item.scale_x) ||
-                !input.readI32(item.scale_y)) {
+            if (!readU32(input, item.flags) ||
+                !readI32(input, item.part_index) ||
+                !readI32(input, item.x) ||
+                !readI32(input, item.y) ||
+                !readI32(input, item.palette_offset) ||
+                !readI32(input, item.scale_x) ||
+                !readI32(input, item.scale_y)) {
                 setError(error, "An NJP pattern part is truncated.");
-                clear();
                 return false;
             }
             pattern.parts.push_back(item);
         }
-        patterns_.push_back(std::move(pattern));
+        parsed.patterns.push_back(std::move(pattern));
     }
+    parsed.decoded_pattern_flags.assign(
+        parsed.patterns.size(), 1);
 
     std::int32_t palette_count = 0;
-    if (!input.readI32(palette_count) || palette_count < 0) {
+    if (!readI32(input, palette_count) || palette_count < 0) {
         setError(error, "The NJP palette count is invalid.");
-        clear();
         return false;
     }
-    palettes_.reserve(static_cast<std::size_t>(palette_count));
+    parsed.palettes.reserve(
+        static_cast<std::size_t>(palette_count));
     for (std::int32_t palette_index = 0;
          palette_index < palette_count;
          ++palette_index) {
@@ -314,14 +365,254 @@ bool NjpImage::decode(
             std::uint8_t entry[4]{};
             if (!input.readBytes(entry, sizeof(entry))) {
                 setError(error, "An NJP palette is truncated.");
-                clear();
                 return false;
             }
             color = {entry[0], entry[1], entry[2], 255};
         }
-        palettes_.push_back(palette);
+        parsed.palettes.push_back(palette);
     }
+    return true;
+}
 
+std::vector<std::uint8_t> requiredParts(
+    const ParsedNjp& parsed,
+    const std::vector<std::uint8_t>* enabled_patterns) {
+    std::vector<std::uint8_t> required(
+        parsed.parts.size(), enabled_patterns ? 0 : 1);
+    if (!enabled_patterns) {
+        return required;
+    }
+    const std::size_t pattern_count = std::min(
+        parsed.patterns.size(), enabled_patterns->size());
+    for (std::size_t pattern_index = 0;
+         pattern_index < pattern_count;
+         ++pattern_index) {
+        if ((*enabled_patterns)[pattern_index] == 0) {
+            continue;
+        }
+        for (const NjpPatternPart& item :
+             parsed.patterns[pattern_index].parts) {
+            if (item.part_index >= 0 &&
+                static_cast<std::size_t>(item.part_index) <
+                    required.size()) {
+                required[static_cast<std::size_t>(
+                    item.part_index)] = 1;
+            }
+        }
+    }
+    return required;
+}
+
+void discardDisabledPatterns(
+    ParsedNjp& parsed,
+    const std::vector<std::uint8_t>* enabled_patterns) {
+    if (!enabled_patterns) {
+        return;
+    }
+    for (std::size_t index = 0;
+         index < parsed.patterns.size();
+         ++index) {
+        if (index < enabled_patterns->size() &&
+            (*enabled_patterns)[index] != 0) {
+            continue;
+        }
+        std::vector<NjpPatternPart>().swap(
+            parsed.patterns[index].parts);
+        parsed.decoded_pattern_flags[index] = 0;
+    }
+}
+
+bool decodePartBlock(
+    std::vector<std::uint8_t> block,
+    const EncodedPart& encoded,
+    NjpPart& part) {
+    if (!encoded.compressed) {
+        if (block.size() != encoded.decoded_size) {
+            return false;
+        }
+        part.pixels = std::move(block);
+        return true;
+    }
+    return osf::decodeRclibLz(
+               block.data(),
+               block.size(),
+               encoded.decoded_size,
+               part.pixels) &&
+        part.pixels.size() == encoded.decoded_size;
+}
+
+bool decodeSelectedMemoryParts(
+    const std::vector<std::uint8_t>& bytes,
+    const std::vector<std::uint8_t>* enabled_patterns,
+    ParsedNjp& parsed,
+    std::string* error) {
+    const std::vector<std::uint8_t> required =
+        requiredParts(parsed, enabled_patterns);
+    for (std::size_t index = 0;
+         index < parsed.parts.size();
+         ++index) {
+        if (required[index] == 0) {
+            continue;
+        }
+        const EncodedPart& encoded = parsed.encoded_parts[index];
+        if (encoded.offset > bytes.size() ||
+            encoded.encoded_size > bytes.size() - encoded.offset) {
+            setError(error, "An NJP bitmap is truncated.");
+            return false;
+        }
+        std::vector<std::uint8_t> block(
+            bytes.begin() + static_cast<std::ptrdiff_t>(encoded.offset),
+            bytes.begin() + static_cast<std::ptrdiff_t>(
+                                encoded.offset + encoded.encoded_size));
+        if (!decodePartBlock(
+                std::move(block),
+                encoded,
+                parsed.parts[index])) {
+            setError(
+                error,
+                "An NJP bitmap could not be decompressed.");
+            return false;
+        }
+    }
+    discardDisabledPatterns(parsed, enabled_patterns);
+    return true;
+}
+
+bool decodeSelectedFileParts(
+    std::ifstream& stream,
+    const std::vector<std::uint8_t>* enabled_patterns,
+    ParsedNjp& parsed,
+    std::string* error) {
+    const std::vector<std::uint8_t> required =
+        requiredParts(parsed, enabled_patterns);
+    for (std::size_t index = 0;
+         index < parsed.parts.size();
+         ++index) {
+        if (required[index] == 0) {
+            continue;
+        }
+        const EncodedPart& encoded = parsed.encoded_parts[index];
+        if (encoded.encoded_size > static_cast<std::size_t>(
+                std::numeric_limits<std::streamsize>::max())) {
+            setError(error, "An NJP bitmap is too large to read.");
+            return false;
+        }
+        stream.clear();
+        stream.seekg(
+            static_cast<std::streamoff>(encoded.offset),
+            std::ios::beg);
+        std::vector<std::uint8_t> block(encoded.encoded_size);
+        if (!stream ||
+            (!block.empty() &&
+             !stream.read(
+                 reinterpret_cast<char*>(block.data()),
+                 static_cast<std::streamsize>(block.size()))) ||
+            !decodePartBlock(
+                std::move(block),
+                encoded,
+                parsed.parts[index])) {
+            setError(
+                error,
+                "An NJP bitmap could not be decompressed.");
+            return false;
+        }
+    }
+    discardDisabledPatterns(parsed, enabled_patterns);
+    return true;
+}
+
+bool decodeNjpMemory(
+    const std::vector<std::uint8_t>& bytes,
+    const std::vector<std::uint8_t>* enabled_patterns,
+    ParsedNjp& parsed,
+    std::string* error) {
+    MemoryReader input(bytes);
+    return parseNjp(input, parsed, error) &&
+        decodeSelectedMemoryParts(
+            bytes, enabled_patterns, parsed, error);
+}
+
+bool decodeNjpFile(
+    const std::filesystem::path& path,
+    const std::vector<std::uint8_t>* enabled_patterns,
+    ParsedNjp& parsed,
+    std::string* error) {
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream) {
+        setError(error, "Could not open the NJP file.");
+        return false;
+    }
+    stream.seekg(0, std::ios::end);
+    const std::streamoff stream_size = stream.tellg();
+    if (stream_size < 0 ||
+        static_cast<std::uintmax_t>(stream_size) >
+            std::numeric_limits<std::size_t>::max()) {
+        setError(error, "Could not determine the NJP file size.");
+        return false;
+    }
+    stream.seekg(0, std::ios::beg);
+    StreamReader input(
+        stream, static_cast<std::size_t>(stream_size));
+    return parseNjp(input, parsed, error) &&
+        decodeSelectedFileParts(
+            stream, enabled_patterns, parsed, error);
+}
+
+}  // namespace
+
+bool NjpPart::hasDecodedPixels() const {
+    if (width <= 0 || height <= 0) {
+        return true;
+    }
+    if (stride <= 0 ||
+        static_cast<std::size_t>(height) >
+            std::numeric_limits<std::size_t>::max() /
+                static_cast<std::size_t>(stride)) {
+        return false;
+    }
+    return pixels.size() >=
+        static_cast<std::size_t>(stride) *
+            static_cast<std::size_t>(height);
+}
+
+bool NjpImage::decode(
+    const std::vector<std::uint8_t>& bytes,
+    std::string* error) {
+    clear();
+    ParsedNjp parsed;
+    if (!decodeNjpMemory(bytes, nullptr, parsed, error)) {
+        return false;
+    }
+    version_ = parsed.version;
+    shadow_ = parsed.shadow;
+    parts_ = std::move(parsed.parts);
+    patterns_ = std::move(parsed.patterns);
+    palettes_ = std::move(parsed.palettes);
+    decoded_pattern_flags_ =
+        std::move(parsed.decoded_pattern_flags);
+    if (error) {
+        error->clear();
+    }
+    return true;
+}
+
+bool NjpImage::decodeSelectedPatterns(
+    const std::vector<std::uint8_t>& bytes,
+    const std::vector<std::uint8_t>& enabled_patterns,
+    std::string* error) {
+    clear();
+    ParsedNjp parsed;
+    if (!decodeNjpMemory(
+            bytes, &enabled_patterns, parsed, error)) {
+        return false;
+    }
+    version_ = parsed.version;
+    shadow_ = parsed.shadow;
+    parts_ = std::move(parsed.parts);
+    patterns_ = std::move(parsed.patterns);
+    palettes_ = std::move(parsed.palettes);
+    decoded_pattern_flags_ =
+        std::move(parsed.decoded_pattern_flags);
     if (error) {
         error->clear();
     }
@@ -332,27 +623,44 @@ bool NjpImage::load(
     const std::filesystem::path& path,
     std::string* error) {
     clear();
-    std::ifstream stream(path, std::ios::binary);
-    if (!stream) {
-        setError(error, "Could not open the NJP file.");
+    ParsedNjp parsed;
+    if (!decodeNjpFile(path, nullptr, parsed, error)) {
         return false;
     }
-    stream.seekg(0, std::ios::end);
-    const std::streamoff size = stream.tellg();
-    if (size < 0) {
-        setError(error, "Could not determine the NJP file size.");
+    version_ = parsed.version;
+    shadow_ = parsed.shadow;
+    parts_ = std::move(parsed.parts);
+    patterns_ = std::move(parsed.patterns);
+    palettes_ = std::move(parsed.palettes);
+    decoded_pattern_flags_ =
+        std::move(parsed.decoded_pattern_flags);
+    if (error) {
+        error->clear();
+    }
+    return true;
+}
+
+bool NjpImage::loadSelectedPatterns(
+    const std::filesystem::path& path,
+    const std::vector<std::uint8_t>& enabled_patterns,
+    std::string* error) {
+    clear();
+    ParsedNjp parsed;
+    if (!decodeNjpFile(
+            path, &enabled_patterns, parsed, error)) {
         return false;
     }
-    stream.seekg(0, std::ios::beg);
-    std::vector<std::uint8_t> bytes(
-        static_cast<std::size_t>(size));
-    if (!bytes.empty() &&
-        !stream.read(
-            reinterpret_cast<char*>(bytes.data()), size)) {
-        setError(error, "Could not read the complete NJP file.");
-        return false;
+    version_ = parsed.version;
+    shadow_ = parsed.shadow;
+    parts_ = std::move(parsed.parts);
+    patterns_ = std::move(parsed.patterns);
+    palettes_ = std::move(parsed.palettes);
+    decoded_pattern_flags_ =
+        std::move(parsed.decoded_pattern_flags);
+    if (error) {
+        error->clear();
     }
-    return decode(bytes, error);
+    return true;
 }
 
 void NjpImage::clear() {
@@ -361,6 +669,7 @@ void NjpImage::clear() {
     parts_.clear();
     patterns_.clear();
     palettes_.clear();
+    decoded_pattern_flags_.clear();
 }
 
 std::int32_t NjpImage::version() const {
@@ -381,6 +690,16 @@ const std::vector<NjpPattern>& NjpImage::patterns() const {
 
 const std::vector<NjpPalette>& NjpImage::palettes() const {
     return palettes_;
+}
+
+bool NjpImage::patternDecoded(std::size_t pattern_index) const {
+    return pattern_index < decoded_pattern_flags_.size() &&
+        decoded_pattern_flags_[pattern_index] != 0;
+}
+
+const std::vector<std::uint8_t>&
+NjpImage::decodedPatternFlags() const {
+    return decoded_pattern_flags_;
 }
 
 }  // namespace osf::gapi

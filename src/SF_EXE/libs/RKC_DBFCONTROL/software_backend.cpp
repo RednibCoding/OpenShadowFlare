@@ -1,5 +1,6 @@
 #include "libs/RKC_DBFCONTROL/rkc_dbfcontrol.hpp"
 
+#include "gapi/bit_mask_image.hpp"
 #include "libs/RKC_DIB/rkc_dib.hpp"
 #include "libs/RKC_UPDIB/rkc_updib.hpp"
 
@@ -38,7 +39,6 @@ std::uint8_t blendChannel(
     std::uint8_t destination,
     std::uint8_t source,
     std::int32_t opacity) {
-    opacity = std::clamp(opacity, 0, 1000);
     return static_cast<std::uint8_t>(
         (static_cast<std::int32_t>(source) * opacity +
          static_cast<std::int32_t>(destination) *
@@ -50,7 +50,6 @@ std::uint8_t addChannel(
     std::uint8_t destination,
     std::uint8_t source,
     std::int32_t opacity) {
-    opacity = std::clamp(opacity, 0, 2000);
     const std::int32_t source_amount =
         opacity <= 1000
             ? static_cast<std::int32_t>(source) * opacity / 1000
@@ -111,6 +110,9 @@ bool SoftwareBackend::drawPattern(
         return false;
     }
     const NjpPattern& pattern = image.patterns()[pattern_index];
+    if (!image.patternDecoded(pattern_index)) {
+        return false;
+    }
     const std::int32_t palette_index =
         draw.palette >= 0
             ? draw.palette
@@ -124,24 +126,38 @@ bool SoftwareBackend::drawPattern(
         image.palettes()[static_cast<std::size_t>(
             palette_index)];
     NjpPalette adjusted_palette;
-    for (std::size_t index = 0;
-         index < adjusted_palette.size();
-         ++index) {
-        Color color = palette[index];
-        color.red =
-            applyBrightness(color.red, draw.brightness);
-        color.green =
-            applyBrightness(color.green, draw.brightness);
-        color.blue =
-            applyBrightness(color.blue, draw.brightness);
-        color.red = applyColorStrength(
-            color.red, draw.red_strength);
-        color.green = applyColorStrength(
-            color.green, draw.green_strength);
-        color.blue = applyColorStrength(
-            color.blue, draw.blue_strength);
-        adjusted_palette[index] = color;
+    const bool palette_unchanged =
+        draw.brightness == 1000 &&
+        draw.red_strength == 1000 &&
+        draw.green_strength == 1000 &&
+        draw.blue_strength == 1000;
+    const NjpPalette* render_palette = &palette;
+    if (!palette_unchanged) {
+        for (std::size_t index = 0;
+             index < adjusted_palette.size();
+             ++index) {
+            Color color = palette[index];
+            color.red =
+                applyBrightness(color.red, draw.brightness);
+            color.green =
+                applyBrightness(color.green, draw.brightness);
+            color.blue =
+                applyBrightness(color.blue, draw.brightness);
+            color.red = applyColorStrength(
+                color.red, draw.red_strength);
+            color.green = applyColorStrength(
+                color.green, draw.green_strength);
+            color.blue = applyColorStrength(
+                color.blue, draw.blue_strength);
+            adjusted_palette[index] = color;
+        }
+        render_palette = &adjusted_palette;
     }
+
+    const bool additive =
+        draw.blend_mode == PatternBlendMode::additive;
+    const std::int32_t opacity = std::clamp(
+        draw.opacity, 0, additive ? 2000 : 1000);
 
     for (const NjpPatternPart& item : pattern.parts) {
         if (item.part_index < 0 ||
@@ -151,6 +167,9 @@ bool SoftwareBackend::drawPattern(
         }
         const NjpPart& part =
             image.parts()[static_cast<std::size_t>(item.part_index)];
+        if (!part.hasDecodedPixels()) {
+            return false;
+        }
         if (part.width <= 0 || part.height <= 0 ||
             item.scale_x <= 0 || item.scale_y <= 0 ||
             draw.scale_x <= 0 || draw.scale_y <= 0) {
@@ -217,15 +236,49 @@ bool SoftwareBackend::drawPattern(
             destination_width == part.width;
         const bool identity_scale_y =
             destination_height == part.height;
+
+        if (identity_scale_x && identity_scale_y &&
+            part.bits_per_pixel == 8 && !additive &&
+            opacity >= 1000) {
+            for (std::int32_t y = first_y; y < last_y; ++y) {
+                const std::size_t source_row_index =
+                    static_cast<std::size_t>(part.height - y - 1) *
+                    part.stride;
+                const std::uint8_t* source_row =
+                    part.pixels.data() + source_row_index;
+                Color* destination_row =
+                    pixels_.data() +
+                    static_cast<std::size_t>(destination_y + y) *
+                        static_cast<std::size_t>(width_) +
+                    static_cast<std::size_t>(
+                        destination_x + first_x);
+                for (std::int32_t x = first_x; x < last_x; ++x) {
+                    std::uint8_t palette_index = source_row[x];
+                    if (palette_index == 0) {
+                        continue;
+                    }
+                    palette_index = static_cast<std::uint8_t>(
+                        palette_index + item.palette_offset);
+                    destination_row[x - first_x] =
+                        (*render_palette)[palette_index];
+                }
+            }
+            continue;
+        }
+
         for (std::int32_t y = first_y; y < last_y; ++y) {
-            const std::int32_t target_y = destination_y + y;
             const std::int32_t source_y = identity_scale_y
                 ? y
                 : static_cast<std::int32_t>(
                     static_cast<std::int64_t>(y) *
                     part.height / destination_height);
+            Color* destination_row =
+                pixels_.data() +
+                static_cast<std::size_t>(destination_y + y) *
+                    static_cast<std::size_t>(width_) +
+                static_cast<std::size_t>(
+                    destination_x + first_x);
             for (std::int32_t x = first_x; x < last_x; ++x) {
-                const std::int32_t target_x = destination_x + x;
                 const std::int32_t source_x = identity_scale_x
                     ? x
                     : static_cast<std::int32_t>(
@@ -239,34 +292,29 @@ bool SoftwareBackend::drawPattern(
                 palette_index = static_cast<std::uint8_t>(
                     palette_index + item.palette_offset);
                 const Color color =
-                    adjusted_palette[palette_index];
-                Color& destination =
-                    pixels_[
-                        static_cast<std::size_t>(target_y) *
-                            width_ +
-                        static_cast<std::size_t>(target_x)];
-                if (draw.blend_mode ==
-                    PatternBlendMode::additive) {
+                    (*render_palette)[palette_index];
+                Color& destination = destination_row[x - first_x];
+                if (additive) {
                     destination.red = addChannel(
-                        destination.red, color.red, draw.opacity);
+                        destination.red, color.red, opacity);
                     destination.green = addChannel(
                         destination.green,
                         color.green,
-                        draw.opacity);
+                        opacity);
                     destination.blue = addChannel(
-                        destination.blue, color.blue, draw.opacity);
+                        destination.blue, color.blue, opacity);
                     destination.alpha = 255;
-                } else if (draw.opacity >= 1000) {
+                } else if (opacity >= 1000) {
                     destination = color;
-                } else if (draw.opacity > 0) {
+                } else if (opacity > 0) {
                     destination.red = blendChannel(
-                        destination.red, color.red, draw.opacity);
+                        destination.red, color.red, opacity);
                     destination.green = blendChannel(
                         destination.green,
                         color.green,
-                        draw.opacity);
+                        opacity);
                     destination.blue = blendChannel(
-                        destination.blue, color.blue, draw.opacity);
+                        destination.blue, color.blue, opacity);
                     destination.alpha = 255;
                 }
             }
@@ -325,23 +373,27 @@ bool SoftwareBackend::drawBitmap(
     const bool identityScaleY = destinationHeight == sourceHeight;
     const bool identityBrightness = draw.brightness == 1000;
     for (std::int32_t y = firstY; y < lastY; ++y) {
-        const std::int32_t targetY = draw.y + y;
         const std::int32_t sourceY = identityScaleY
             ? y
             : static_cast<std::int32_t>(
                 static_cast<std::int64_t>(y) *
                 sourceHeight / destinationHeight);
+        const Color* sourceRow =
+            sourcePixels.data() +
+            static_cast<std::size_t>(sourceY) *
+                static_cast<std::size_t>(sourceWidth);
+        Color* destinationRow =
+            pixels_.data() +
+            static_cast<std::size_t>(draw.y + y) *
+                static_cast<std::size_t>(width_) +
+            static_cast<std::size_t>(draw.x + firstX);
         for (std::int32_t x = firstX; x < lastX; ++x) {
-            const std::int32_t targetX = draw.x + x;
             const std::int32_t sourceX = identityScaleX
                 ? x
                 : static_cast<std::int32_t>(
                     static_cast<std::int64_t>(x) *
                     sourceWidth / destinationWidth);
-            Color color = sourcePixels[
-                static_cast<std::size_t>(sourceY) *
-                    static_cast<std::size_t>(sourceWidth) +
-                static_cast<std::size_t>(sourceX)];
+            Color color = sourceRow[sourceX];
             if (color.alpha == 0) {
                 continue;
             }
@@ -353,10 +405,7 @@ bool SoftwareBackend::drawBitmap(
                 color.blue =
                     applyBrightness(color.blue, draw.brightness);
             }
-            Color& destination = pixels_[
-                static_cast<std::size_t>(targetY) *
-                    static_cast<std::size_t>(width_) +
-                static_cast<std::size_t>(targetX)];
+            Color& destination = destinationRow[x - firstX];
             if (color.alpha == 255) {
                 destination = color;
             } else {
@@ -381,6 +430,101 @@ bool SoftwareBackend::drawBitmap(
                          destination.blue) *
                          (255u - color.alpha)) /
                     255u);
+                destination.alpha = 255;
+            }
+        }
+    }
+    return true;
+}
+
+bool SoftwareBackend::drawBitMask(
+    const BitMaskImage& image,
+    const BitMaskDraw& draw) {
+    if (image.width() <= 0 || image.height() <= 0 ||
+        draw.scale_x <= 0 || draw.scale_y <= 0) {
+        return false;
+    }
+    const std::int32_t destination_width =
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(image.width()) *
+            draw.scale_x / 1000);
+    const std::int32_t destination_height =
+        static_cast<std::int32_t>(
+            static_cast<std::int64_t>(image.height()) *
+            draw.scale_y / 1000);
+    if (destination_width <= 0 || destination_height <= 0) {
+        return false;
+    }
+
+    std::int32_t first_y = 0;
+    std::int32_t last_y = destination_height;
+    std::int32_t first_x = 0;
+    std::int32_t last_x = destination_width;
+    if (draw.clip.width > 0 && draw.clip.height > 0) {
+        first_y = std::max(first_y, draw.clip.y - draw.y);
+        last_y = std::min(
+            last_y,
+            draw.clip.y + draw.clip.height - draw.y);
+        first_x = std::max(first_x, draw.clip.x - draw.x);
+        last_x = std::min(
+            last_x,
+            draw.clip.x + draw.clip.width - draw.x);
+    }
+    first_y = std::max(first_y, -draw.y);
+    last_y = std::min(last_y, height_ - draw.y);
+    first_x = std::max(first_x, -draw.x);
+    last_x = std::min(last_x, width_ - draw.x);
+    if (first_x >= last_x || first_y >= last_y) {
+        return true;
+    }
+
+    const std::int32_t opacity =
+        std::clamp(draw.opacity, 0, 1000) * draw.color.alpha / 255;
+    if (opacity <= 0) {
+        return true;
+    }
+    Color color = draw.color;
+    color.alpha = 255;
+    const bool identity_scale_x =
+        destination_width == image.width();
+    const bool identity_scale_y =
+        destination_height == image.height();
+    const std::vector<std::uint8_t>& source = image.bytes();
+    for (std::int32_t y = first_y; y < last_y; ++y) {
+        const std::int32_t source_y = identity_scale_y
+            ? y
+            : static_cast<std::int32_t>(
+                  static_cast<std::int64_t>(y) *
+                  image.height() / destination_height);
+        const std::uint8_t* source_row =
+            source.data() +
+            static_cast<std::size_t>(source_y) *
+                image.strideBytes();
+        Color* destination_row =
+            pixels_.data() +
+            static_cast<std::size_t>(draw.y + y) *
+                static_cast<std::size_t>(width_) +
+            static_cast<std::size_t>(draw.x + first_x);
+        for (std::int32_t x = first_x; x < last_x; ++x) {
+            const std::int32_t source_x = identity_scale_x
+                ? x
+                : static_cast<std::int32_t>(
+                      static_cast<std::int64_t>(x) *
+                      image.width() / destination_width);
+            if ((source_row[source_x / 8] &
+                 (0x80u >> (source_x & 7))) == 0) {
+                continue;
+            }
+            Color& destination = destination_row[x - first_x];
+            if (opacity >= 1000) {
+                destination = color;
+            } else {
+                destination.red = blendChannel(
+                    destination.red, color.red, opacity);
+                destination.green = blendChannel(
+                    destination.green, color.green, opacity);
+                destination.blue = blendChannel(
+                    destination.blue, color.blue, opacity);
                 destination.alpha = 255;
             }
         }
@@ -446,6 +590,9 @@ bool SoftwareBackend::drawText(
         }
 
         const NjpPattern& pattern = font.patterns()[patternIndex];
+        if (!font.patternDecoded(patternIndex)) {
+            return false;
+        }
         if (pattern.default_palette < 0 ||
             static_cast<std::size_t>(pattern.default_palette) >=
                 font.palettes().size()) {
@@ -464,6 +611,9 @@ bool SoftwareBackend::drawText(
             const NjpPart& part =
                 font.parts()[static_cast<std::size_t>(
                     item.part_index)];
+            if (!part.hasDecodedPixels()) {
+                return false;
+            }
             for (std::int32_t y = 0; y < cellHeight; ++y) {
                 const std::int32_t targetY = cursorY + y;
                 const std::int32_t sourceY =
@@ -522,19 +672,30 @@ bool SoftwareBackend::drawRectangle(
     if (right <= left || bottom <= top) {
         return true;
     }
-    for (std::int32_t y = top; y < bottom; ++y) {
-        for (std::int32_t x = left; x < right; ++x) {
-            Color& destination =
-                pixels_[static_cast<std::size_t>(y) * width_ + x];
-            if (draw.opacity >= 1000) {
-                destination = color;
-            } else if (draw.opacity > 0) {
+    const std::int32_t opacity =
+        std::clamp(draw.opacity, 0, 1000);
+    if (opacity >= 1000) {
+        for (std::int32_t y = top; y < bottom; ++y) {
+            Color* row = pixels_.data() +
+                static_cast<std::size_t>(y) *
+                    static_cast<std::size_t>(width_) +
+                static_cast<std::size_t>(left);
+            std::fill(row, row + (right - left), color);
+        }
+    } else if (opacity > 0) {
+        for (std::int32_t y = top; y < bottom; ++y) {
+            Color* row = pixels_.data() +
+                static_cast<std::size_t>(y) *
+                    static_cast<std::size_t>(width_) +
+                static_cast<std::size_t>(left);
+            for (std::int32_t x = 0; x < right - left; ++x) {
+                Color& destination = row[x];
                 destination.red = blendChannel(
-                    destination.red, color.red, draw.opacity);
+                    destination.red, color.red, opacity);
                 destination.green = blendChannel(
-                    destination.green, color.green, draw.opacity);
+                    destination.green, color.green, opacity);
                 destination.blue = blendChannel(
-                    destination.blue, color.blue, draw.opacity);
+                    destination.blue, color.blue, opacity);
                 destination.alpha = 255;
             }
         }
@@ -550,7 +711,9 @@ bool SoftwareBackend::drawLine(const LineDraw& draw) {
 
     const bool clipped =
         draw.clip.width > 0 && draw.clip.height > 0;
-    const auto draw_point = [this, &draw, color, clipped](
+    const std::int32_t opacity =
+        std::clamp(draw.opacity, 0, 1000);
+    const auto draw_point = [this, &draw, color, clipped, opacity](
                                 std::int32_t x,
                                 std::int32_t y) {
         if (x < 0 || x >= width_ || y < 0 || y >= height_ ||
@@ -566,15 +729,15 @@ bool SoftwareBackend::drawLine(const LineDraw& draw) {
         }
         Color& destination =
             pixels_[static_cast<std::size_t>(y) * width_ + x];
-        if (draw.opacity >= 1000) {
+        if (opacity >= 1000) {
             destination = color;
-        } else if (draw.opacity > 0) {
+        } else if (opacity > 0) {
             destination.red = blendChannel(
-                destination.red, color.red, draw.opacity);
+                destination.red, color.red, opacity);
             destination.green = blendChannel(
-                destination.green, color.green, draw.opacity);
+                destination.green, color.green, opacity);
             destination.blue = blendChannel(
-                destination.blue, color.blue, draw.opacity);
+                destination.blue, color.blue, opacity);
             destination.alpha = 255;
         }
     };

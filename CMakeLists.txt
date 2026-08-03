@@ -13,6 +13,11 @@ endif()
 include(CTest)
 
 option(OPENSHADOWFLARE_BUILD_EXE "Build the portable ShadowFlare executable" ON)
+option(
+  OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS
+  "Compile the F12 debug menu and runtime profiling tools"
+  ON
+)
 
 if(NINTENDO_SWITCH)
   set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "nxfb")

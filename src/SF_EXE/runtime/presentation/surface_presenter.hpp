@@ -4,6 +4,10 @@
 
 #include <memory>
 #include <string>
+#if OSF_ENABLE_DEBUG_TOOLS
+#include <cstdint>
+#include <optional>
+#endif
 
 struct LwlWindow;
 
@@ -19,7 +23,19 @@ public:
     virtual bool initialize(
         LwlWindow* window,
         std::string* error = nullptr) = 0;
-    virtual void present(gapi::SurfaceView surface) = 0;
+    virtual bool setDisplaySynchronization(bool enabled) {
+        (void) enabled;
+        return false;
+    }
+    // Prepare the finished software surface without waiting for display
+    // synchronization. The common runtime profiles this work.
+    virtual void prepareFrame(gapi::SurfaceView surface) = 0;
+    // Make the prepared frame visible. This may wait for the display.
+    virtual void displayFrame() = 0;
+#if OSF_ENABLE_DEBUG_TOOLS
+    virtual std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const = 0;
+#endif
 
 protected:
     SurfacePresenter() = default;

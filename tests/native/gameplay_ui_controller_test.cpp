@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -263,6 +264,7 @@ bool testSaveTransitionsOwnModalInput() {
     }
 
     Fixture fixture;
+    fixture.config.save_image_at_game_end = true;
     if (!check(
             world.placePlayerLandMine() &&
                 world.playerMineCount() == 4,
@@ -273,13 +275,25 @@ bool testSaveTransitionsOwnModalInput() {
             fixture, world, player, false)) {
         return false;
     }
+    if (!check(
+            fixture.preview.captureRequested(),
+            "Save and Return did not request a fresh world preview.")) {
+        return false;
+    }
+    std::vector<osf::gapi::Color> preview_pixels(
+        640u * 480u, {10, 20, 30, 255});
+    fixture.preview.captureIfRequested(
+        {preview_pixels.data(), 640, 480});
     fixture.click(340, 206, world, player);
     fixture.update(world, player);
     if (!check(
             std::filesystem::is_regular_file(player.save_path) &&
+                std::filesystem::is_regular_file(
+                    save_root / "Save" / "0000.Bmp") &&
                 fixture.game_state.currentState() ==
                     osf::GameState::title,
-            "Save and Return did not save and enter the title state.")) {
+            "Save and Return did not save its preview and enter the "
+            "title state.")) {
         return false;
     }
     osf::WorldScene restored_world;
@@ -300,6 +314,13 @@ bool testSaveTransitionsOwnModalInput() {
             fixture, world, player, true)) {
         return false;
     }
+    if (!check(
+            fixture.preview.captureRequested(),
+            "Save and Exit did not request a fresh world preview.")) {
+        return false;
+    }
+    fixture.preview.captureIfRequested(
+        {preview_pixels.data(), 640, 480});
     fixture.click(340, 206, world, player);
     fixture.update(world, player);
     const bool passed = check(

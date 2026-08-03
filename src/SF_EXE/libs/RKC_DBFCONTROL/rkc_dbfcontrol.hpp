@@ -25,6 +25,9 @@ public:
     bool drawBitmap(
         const BitmapImage& image,
         const BitmapDraw& draw = {}) override;
+    bool drawBitMask(
+        const BitMaskImage& image,
+        const BitMaskDraw& draw = {}) override;
     bool drawText(
         const NjpImage& font,
         std::string_view text,

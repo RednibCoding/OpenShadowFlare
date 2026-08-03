@@ -102,7 +102,13 @@ public:
     bool initialize(
         LwlWindow* window,
         std::string* error) override;
-    void present(osf::gapi::SurfaceView surface) override;
+    bool setDisplaySynchronization(bool enabled) override;
+    void prepareFrame(osf::gapi::SurfaceView surface) override;
+    void displayFrame() override;
+#if OSF_ENABLE_DEBUG_TOOLS
+    std::optional<std::uint64_t>
+        videoMemoryUsageBytes() const override;
+#endif
 
 private:
     void shutdown();
@@ -118,6 +124,7 @@ private:
     unsigned int vertex_array_ = 0;
     std::int32_t texture_width_ = 0;
     std::int32_t texture_height_ = 0;
+    bool frame_prepared_ = false;
 };
 
 bool LglSurfacePresenter::initialize(
@@ -231,14 +238,21 @@ void LglSurfacePresenter::shutdown() {
     program_ = 0;
     texture_width_ = 0;
     texture_height_ = 0;
+    frame_prepared_ = false;
     lgl_reset();
     lwl_gl_context_destroy(context_);
     context_ = nullptr;
     window_ = nullptr;
 }
 
-void LglSurfacePresenter::present(
+bool LglSurfacePresenter::setDisplaySynchronization(bool enabled) {
+    return context_ &&
+        lwl_gl_context_set_swap_interval(context_, enabled ? 1 : 0);
+}
+
+void LglSurfacePresenter::prepareFrame(
     osf::gapi::SurfaceView surface) {
+    frame_prepared_ = false;
     int window_width = 0;
     int window_height = 0;
     lwl_window_get_size(
@@ -299,8 +313,28 @@ void LglSurfacePresenter::present(
     lglUseProgram(program_);
     lglBindVertexArray(vertex_array_);
     lglDrawArrays(LGL_TRIANGLES, 0, 3);
-    lwl_gl_context_swap_buffers(context_);
+    frame_prepared_ = true;
 }
+
+void LglSurfacePresenter::displayFrame() {
+    if (!frame_prepared_ || !context_) {
+        return;
+    }
+    lwl_gl_context_swap_buffers(context_);
+    frame_prepared_ = false;
+}
+
+#if OSF_ENABLE_DEBUG_TOOLS
+std::optional<std::uint64_t>
+LglSurfacePresenter::videoMemoryUsageBytes() const {
+    if (texture_width_ <= 0 || texture_height_ <= 0) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint64_t>(texture_width_) *
+           static_cast<std::uint64_t>(texture_height_) *
+           sizeof(osf::gapi::Color);
+}
+#endif
 
 unsigned int LglSurfacePresenter::compileShader(
     unsigned int type,

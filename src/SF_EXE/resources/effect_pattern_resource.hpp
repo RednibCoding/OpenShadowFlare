@@ -20,6 +20,7 @@ public:
     const gapi::NjpImage* find(
         std::int32_t resource_id) const;
     void clear();
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     std::unordered_map<

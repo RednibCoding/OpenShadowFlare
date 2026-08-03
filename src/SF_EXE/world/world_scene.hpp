@@ -98,6 +98,7 @@ public:
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,
         std::string* error = nullptr);
+    std::uint64_t resourceMemoryUsageBytes() const;
     bool loadInitialScenario(
         const std::filesystem::path& data_root,
         const PlayerLoadRequest& player_request,
@@ -221,7 +222,7 @@ public:
         std::size_t part) const;
     std::int32_t playerPartBlueStrength(
         std::size_t part) const;
-    void refreshPlayerAppearance();
+    bool refreshPlayerAppearance(std::string* error = nullptr);
     std::int32_t playerEquipmentColor(
         EquipmentSlot slot) const;
     bool setPlayerEquipmentColor(

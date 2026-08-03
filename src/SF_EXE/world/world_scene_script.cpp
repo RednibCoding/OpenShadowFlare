@@ -146,13 +146,13 @@ bool WorldScene::readScriptWorldOperand(
         return true;
     }
     if (operand.type == 13) {
-        const auto found =
-            script_persistent_values_.find(
-                scriptOperandKey(operand));
-        value =
-            found == script_persistent_values_.end()
-                ? 0
-                : found->second;
+        if (operand.value < 0 ||
+            static_cast<std::size_t>(operand.value) >=
+                PlayerGiantWarehouse::page_count) {
+            return false;
+        }
+        value = player_giant_warehouse_.enabledFlags()[
+            static_cast<std::size_t>(operand.value)];
         return true;
     }
     if (operand.type == 5) {
@@ -268,9 +268,10 @@ bool WorldScene::writeScriptWorldOperand(
         return true;
     }
     if (operand.type == 13) {
-        script_persistent_values_.insert_or_assign(
-            scriptOperandKey(operand), value);
-        return true;
+        return operand.value >= 0 &&
+               player_giant_warehouse_.setPageEnabled(
+                   static_cast<std::size_t>(operand.value),
+                   value);
     }
     if (operand.type != 5) {
         return false;

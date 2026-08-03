@@ -1,5 +1,7 @@
 #include "effect_pattern_resource.hpp"
 
+#include "resource_memory.hpp"
+
 #include "retail_filesystem.hpp"
 
 #include <iomanip>
@@ -70,6 +72,14 @@ const gapi::NjpImage* EffectPatternResources::find(
 
 void EffectPatternResources::clear() {
     resources_.clear();
+}
+
+std::uint64_t EffectPatternResources::memoryUsageBytes() const {
+    std::uint64_t bytes = 0;
+    for (const auto& entry : resources_) {
+        bytes += decodedMemoryUsageBytes(*entry.second);
+    }
+    return bytes;
 }
 
 }  // namespace osf

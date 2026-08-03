@@ -46,6 +46,7 @@ public:
     void playOptionsConfirm();
     void playGameplayMenuMove();
     void playGameplayEffect(std::int32_t sample);
+    std::uint64_t memoryUsageBytes() const;
 
 private:
     bool loadVoc(VocPlayer& player, std::string_view retail_path);

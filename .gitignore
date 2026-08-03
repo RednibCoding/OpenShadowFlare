@@ -43,6 +43,7 @@ __pycache__/
 .vscode
 /build/
 tmp/
+ShadowEngine/
 
 # Gradle build products
 /platform/android/.gradle/

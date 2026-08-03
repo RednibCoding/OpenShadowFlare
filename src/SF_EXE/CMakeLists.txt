@@ -6,6 +6,11 @@ function(osf_configure_game_library target)
       "${CMAKE_CURRENT_SOURCE_DIR}"
   )
   set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
+  target_compile_definitions(
+    ${target}
+    PUBLIC
+      OSF_ENABLE_DEBUG_TOOLS=$<BOOL:${OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS}>
+  )
 
   if(MSVC)
     target_compile_options(${target} PRIVATE /W4 /permissive-)
@@ -15,10 +20,23 @@ function(osf_configure_game_library target)
   endif()
 endfunction()
 
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  add_library(
+    osf_debug_tools STATIC
+    debug/frame_profiler.cpp
+  )
+  add_library(OpenShadowFlare::DebugTools ALIAS osf_debug_tools)
+  osf_configure_game_library(osf_debug_tools)
+endif()
+
 include(cmake/configure_platform.cmake)
 include(cmake/configure_presentation.cmake)
 
-add_library(osf_gapi STATIC gapi/gapi.cpp)
+add_library(
+  osf_gapi STATIC
+  gapi/bit_mask_image.cpp
+  gapi/gapi.cpp
+)
 add_library(OpenShadowFlare::Gapi ALIAS osf_gapi)
 osf_configure_game_library(osf_gapi)
 
@@ -78,6 +96,8 @@ add_library(
   resources/item_inventory_resource.cpp
   resources/item_world_resource.cpp
   resources/object_visual_resource.cpp
+  resources/resource_manager.cpp
+  resources/resource_memory.cpp
   resources/retail_filesystem.cpp
   resources/save_catalog.cpp
 )
@@ -86,6 +106,7 @@ osf_configure_game_library(osf_resources)
 target_link_libraries(
   osf_resources
   PUBLIC
+    OpenShadowFlare::RKC_DIB
     OpenShadowFlare::RKC_RPGSCRN
     OpenShadowFlare::RKC_UPDIB
 )
@@ -94,7 +115,6 @@ add_library(
   osf_states STATIC
   states/game_state.cpp
   states/gameplay_blackjack.cpp
-  states/gameplay_debug_menu.cpp
   states/gameplay_equipment_color.cpp
   states/gameplay_inventory.cpp
   states/gameplay_magic.cpp
@@ -112,6 +132,13 @@ add_library(
   states/character_select/saved_game_flow.cpp
   states/title_state.cpp
 )
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  target_sources(
+    osf_states
+    PRIVATE
+      states/gameplay_debug_menu.cpp
+  )
+endif()
 add_library(OpenShadowFlare::States ALIAS osf_states)
 osf_configure_game_library(osf_states)
 target_link_libraries(
@@ -277,7 +304,6 @@ add_library(
   render/character_select_renderer.cpp
   render/enemy_nameplate_renderer.cpp
   render/gameplay_blackjack_renderer.cpp
-  render/gameplay_debug_renderer.cpp
   render/gameplay_equipment_color_renderer.cpp
   render/gameplay_help_renderer.cpp
   render/gameplay_hud_renderer.cpp
@@ -299,6 +325,13 @@ add_library(
   render/system_cursor_renderer.cpp
   render/title_renderer.cpp
 )
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  target_sources(
+    osf_render
+    PRIVATE
+      render/gameplay_debug_renderer.cpp
+  )
+endif()
 add_library(OpenShadowFlare::Render ALIAS osf_render)
 osf_configure_game_library(osf_render)
 target_link_libraries(
@@ -312,6 +345,13 @@ target_link_libraries(
     OpenShadowFlare::RKC_RPGSCRN
     OpenShadowFlare::RKC_UPDIB
 )
+if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  target_link_libraries(
+    osf_render
+    PUBLIC
+      OpenShadowFlare::DebugTools
+  )
+endif()
 
 add_library(sf_game_core INTERFACE)
 add_library(OpenShadowFlare::GameCore ALIAS sf_game_core)
@@ -337,7 +377,6 @@ target_sources(
   ShadowFlare_rebuilt
   PRIVATE
   runtime/audio_system.cpp
-  runtime/frontend_assets.cpp
   runtime/game_runtime.cpp
   runtime/gameplay_ui_controller.cpp
   runtime/input_adapter.cpp
@@ -348,6 +387,11 @@ target_sources(
 
 target_compile_features(ShadowFlare_rebuilt PRIVATE cxx_std_17)
 set_target_properties(ShadowFlare_rebuilt PROPERTIES CXX_EXTENSIONS OFF)
+target_compile_definitions(
+  ShadowFlare_rebuilt
+  PRIVATE
+    OSF_ENABLE_DEBUG_TOOLS=$<BOOL:${OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS}>
+)
 
 target_link_libraries(
   ShadowFlare_rebuilt

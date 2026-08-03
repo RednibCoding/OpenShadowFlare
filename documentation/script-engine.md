@@ -793,7 +793,7 @@ The currently understood domains are:
 | 10 | Persistent transport flags (Table 40 rows) |
 | 11 | Persistent script and conversation flags |
 | 12 | Persistent quest state |
-| 13 | Local-player array |
+| 13 | Giant Warehouse page-unlock values |
 
 Type `5` includes three confirmed live scenario-entity ranges. A key beginning
 at `100000000` controls visibility, `300000000` controls pointer selection,
@@ -825,8 +825,11 @@ DLL boundary. Retail writes types `12`, `10`, and `11` as three counted arrays
 immediately after the owned-item stream, in that order. The reconstruction now
 restores and rewrites those arrays through their real owners. This includes
 Ostare's type-11 flag at index 4, so his opening conversation and starter drop
-do not repeat after a save/load. Type `13` is still held for the lifetime of
-the player but its later save location has not been mapped yet.
+do not repeat after a save/load. Type `13` addresses the ten Giant Warehouse
+page-unlock values which retail saves beside the ten page containers. All ten
+shipped operands use indices two through nine; Berini's Sacred Wing reward,
+for example, writes one to index two and unlocks Giant Warehouse III. The
+portable operand callback now reads and writes that saved owner directly.
 
 ## Working conversations
 
@@ -1191,7 +1194,90 @@ zero enters B1F at entry one, and B1F object zero enters Dragon Road at entry
 two. Native coverage walks both inward edges, touches the real protection
 rectangle, confirms the same-scenario relocation, walks both return edges,
 and round-trips flag 38 plus the Dragon Road entry through the retail save
-owner. The later mine switches and Kirarru handoff remain the next slice.
+owner.
+
+The later mine route uses the same general pieces. Kirarru starts mission 15
+after the first blockade report; the Black Wing's inactive enemy slot
+completes it, and her return conversation saves flag 40 so B2F can enter B3F.
+The B3F and B5F switches control ordinary script entities, while B5F object
+800 saves flag 39. Kirarru's `1000058..1000068` warning advances that flag to
+two. Lytle then starts mission 16, whose route ends at the Power Supply Fort.
+The named Crimson Sword's inactive slot completes it, and Lytle's return
+creates 40,000 Gold before starting mission 17.
+
+Mission 17 also needs no executable-side quest special case. Kirarru's
+`1000070..1000072` chain prepares the seal. B5F object one checks the active
+quest before entering scenario `2210004`. That scenario's periodic sentence
+uses opcode 31 to read Ancient Dragon character `14010000`; only lifecycle
+`-1`, after its full death presentation, reaches opcode 62 and completes the
+quest. Object zero returns to the previous B5F entry. Lytle's completed branch
+shows `1000018` and writes flag 41 to two, while Kirarru uses `1000073`.
+Shipped-data coverage follows this whole chain and saves the completed state.
+
+The aftermath also remains script-owned. Lytle's `1000018..1000025` chain
+writes flag 41 to two, then uses `1000026..1000027` while mission 12 remains
+active. Kyle's corresponding Kanfore branch sees mission 17 complete, uses
+opcode 62 `{12,2,0}` to close mission 12 without a notice, and creates 40,000
+Gold through opcode 10 before messages `1000014..1000017`. A later visit uses
+`1000018..1000019` and does not recreate the reward.
+
+Back in Fanann, completed mission 12 selects `1000028..1000029`, writes flag
+41 to four, and assigns one to type-10 operand 25. That is the persistent
+transport domain: Table 40 row 25 names South Camp of Yugunos and maps it to
+scenario `3900000`, entry 50. The saved repeat is `1000030`. Native coverage
+round-trips the quest, flag, and transport owners and follows the enabled row
+into the real South Camp scenario.
+
+South Camp starts with another script-owned one-time event. Its first periodic
+pass sees saved flag 104 at zero, calls opcode 64 with value three, and writes
+the flag to one. That is the real `Visual03` briefing; it freezes gameplay
+until acknowledged and does not turn ordinary map loading into a story page.
+Jeel then uses saved flag 74 to keep his `1000002..1000004` introduction
+separate from the assignment. The following `1000005..1000006` conversation
+starts mission 20, `Sweep vicinity of S. Camp of Yugunos.`, while `1000007`
+is its active reminder.
+
+The route is made from ordinary overlap triggers. South Camp object zero
+enters `East Antalusia` (`3000507`), and that map's object one enters
+`The Foot of Mt. Tedoron` (`3000407`). Its mission sentence scans only enemy
+characters `14020000..14020001` with opcode 31. Those are MCT enemies 20000
+and 20001, Flame Warrior and Dread Warrior; the hundreds of other enemies on
+the map are not part of the clear condition. When both slots finish their
+death presentation and become inactive, opcode 62 `{20,2,1}` completes the
+mission. Jeel's return branch plays sample 64, awards 50 percent of the
+current level threshold through opcode 68, advances flag 74 to two, and runs
+`1000008..1000011`. Later visits use `1000012` and leave the next request to
+Morris. Shipped-data coverage follows the briefing, both conversations, both
+map edges, exact enemy range, completion cue, reward, handoff, and no-repeat
+branch without adding a South Camp case to the interpreter.
+
+Morris continues that same data-owned story through saved flags 77, 79, and
+80. His separate `1000027` remark is followed on the next visit by
+`1000028..1000033`; the latter chain starts mission 21, `Get the sacred relic,
+Sacred Wing.` East Antalusia object three enters Tower of Nazzle 1F, where
+Bishop Edgar first refuses entry and writes flag 79. Morris then responds with
+`1000035..1000037`, advances flag 77 to three, and opens East Antalusia object
+two into the Town of Antalusia. Berini's `1000002..1000008` response writes
+flag 80, after which Edgar's `1000002..1000004` branch advances flag 79 and
+opens the tower stair.
+
+The tower climb remains entirely authored. Objects one and zero link floors
+one through five in opposite directions. Floors 2F, 3F, and 4F use opcode 31
+over enemy ranges `14000000..14000024`, `14000000..14000024`, and
+`14000000..14000028`; only after all 25, 25, and 29 slots respectively become
+inactive do opcodes 22 and 23 swap each closed gate for its open state. On 5F,
+MCT enemy zero is a Dark Golem with Table 30 loot row 154. That row has a
+100-percent fixed profile for category four definition `99000005`, Sacred
+Wing, whose automatic-item location is page zero at cell `(5,0)`.
+
+Berini's flag-80 branch uses opcode 58 to find that exact item and opcode 59
+to remove it. Opcode 62 completes mission 21, opcode 68 awards 50 percent of
+the current level threshold, sample 64 plays with the reward, and
+`1000010..1000016` grants Giant Warehouse III through type-13 index two.
+Mission state, all three conversation flags, the removed relic, experience,
+and the warehouse unlock survive saving; the next `1000017` branch does not
+repeat the reward. Native coverage follows both directions through every map
+edge and the complete gate sequence.
 
 Opcode 25 is the other half of that lifecycle. Its four evaluated operands are
 absolute enemy character number, world X, world Y, and direction. The native

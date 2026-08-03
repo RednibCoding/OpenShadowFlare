@@ -71,6 +71,7 @@ public:
         std::int32_t character_number) const;
     std::vector<GroundItem>& groundItems();
     const std::vector<GroundItem>& groundItems() const;
+    std::uint64_t resourceMemoryUsageBytes() const;
 
 private:
     std::int32_t id_ = -1;
