@@ -17,22 +17,36 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_DATA_OBL_H
+#define SHADOWFLARE_DATA_OBL_H
+
+#include "core/arena.h"
+#include "core/bounds.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+typedef struct SfMapObject {
+  int32_t world_x;
+  int32_t world_y;
+  SfObjectBounds judgement;
+  int16_t pattern_set;
+  int16_t pattern;
+  int16_t palette;
+  int16_t opacity;
+  int16_t status;
+  int16_t height;
+  int16_t red_strength;
+  int16_t green_strength;
+  int16_t blue_strength;
+} SfMapObject;
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+typedef struct SfObjectMap {
+  SfMapObject *objects;
+  uint16_t count;
+  uint8_t version;
+} SfObjectMap;
+
+bool sf_obl_load(const char *path, SfArena *arena, SfObjectMap *map);
 
 #endif

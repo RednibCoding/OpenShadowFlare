@@ -17,22 +17,30 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_SCREEN_H
+#define SHADOWFLARE_SCREENS_GAMEPLAY_SCREEN_H
+
+#include "assets/gameplay_assets.h"
+#include "game/game.h"
+#include "render/renderer.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+#define SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT 256u
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+typedef struct SfGameplayScreen {
+  uint16_t visible_objects[SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT];
+  uint16_t shadow_objects[SF_GAMEPLAY_VISIBLE_OBJECT_LIMIT];
+  uint16_t visible_count;
+  uint16_t shadow_count;
+  bool drawn;
+} SfGameplayScreen;
+
+bool sf_gameplay_screen_init(
+  SfGameplayScreen *screen, const SfGameplayAssets *assets);
+void sf_gameplay_screen_draw(
+  SfGameplayScreen *screen, SfRenderer *renderer,
+  const SfGameplayAssets *assets, const SfGame *game);
 
 #endif

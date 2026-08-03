@@ -28,6 +28,7 @@
 #define SF_NJP_PART_LIMIT 80u
 #define SF_NJP_PATTERN_LIMIT 80u
 #define SF_NJP_REFERENCE_LIMIT 128u
+#define SF_NJP_META_PALETTE_LIMIT 80u
 
 typedef struct SfNjpPartMeta {
   long offset;
@@ -59,7 +60,7 @@ typedef struct SfNjpMeta {
   SfNjpPartMeta parts[SF_NJP_PART_LIMIT];
   SfNjpPatternMeta patterns[SF_NJP_PATTERN_LIMIT];
   SfNjpReferenceMeta references[SF_NJP_REFERENCE_LIMIT];
-  uint16_t palettes[SF_NJP_PALETTE_LIMIT][256];
+  uint16_t palettes[SF_NJP_META_PALETTE_LIMIT][256];
   uint8_t part_count;
   uint8_t pattern_count;
   uint8_t palette_count;
@@ -191,7 +192,7 @@ static bool sf_njp_parse(FILE *file, SfNjpMeta *meta) {
     }
   }
   if (!sf_i32(file, &count) || count < 0 ||
-      count > (int32_t) SF_NJP_PALETTE_LIMIT) return false;
+      count > (int32_t) SF_NJP_META_PALETTE_LIMIT) return false;
   meta->palette_count = (uint8_t) count;
   for (index = 0; index < count; ++index) {
     unsigned entry;
@@ -244,24 +245,36 @@ bool sf_njp_load_selected(
     return false;
   }
   memset(output, 0, sizeof(*output));
-  output->palette_count = meta.palette_count;
-  memcpy(output->palettes, meta.palettes,
-    (size_t) meta.palette_count * sizeof(meta.palettes[0]));
   for (index = 0u; index < pattern_count; ++index) {
     const SfNjpPatternMeta *pattern;
     const SfNjpReferenceMeta *reference;
     const SfNjpPartMeta *part;
     SfNjpPatternImage *image = &output->images[index];
     uint8_t *pixels;
+    uint8_t palette_slot;
     if (!sf_single_reference(&meta, pattern_indices[index],
           &pattern, &reference, &part)) break;
+    for (palette_slot = 0u; palette_slot < output->palette_count;
+         ++palette_slot) {
+      if (output->palette_sources[palette_slot] ==
+          pattern->default_palette) break;
+    }
+    if (palette_slot == output->palette_count) {
+      if (output->palette_count >= SF_NJP_SELECTED_PALETTE_LIMIT) break;
+      output->palette_sources[palette_slot] =
+        (uint8_t) pattern->default_palette;
+      memcpy(output->palettes[palette_slot],
+        meta.palettes[pattern->default_palette],
+        sizeof(output->palettes[palette_slot]));
+      ++output->palette_count;
+    }
     pixels = (uint8_t *) sf_arena_push(arena, part->decoded_size, 4u);
     if (!pixels || fseek(file, part->offset, SEEK_SET) != 0) break;
     if (part->compressed) {
       if (!sf_rclib_decode_stream(file, pixels, part->decoded_size)) break;
     } else if (!sf_read(file, pixels, part->decoded_size)) break;
     image->image.pixels = pixels;
-    image->image.palette = output->palettes[pattern->default_palette];
+    image->image.palette = output->palettes[palette_slot];
     image->image.width = part->width;
     image->image.height = part->height;
     image->image.stride = part->stride;
@@ -347,6 +360,8 @@ bool sf_njp_load_decoded_patterns(
   SfNjpMeta meta;
   size_t mark;
   uint8_t selected;
+  int8_t palette_slots[SF_NJP_META_PALETTE_LIMIT];
+  uint8_t selected_palette_count = 0u;
   bool success = false;
   if (!path || !pattern_indices || pattern_count == 0u ||
       pattern_count > SF_NJP_DECODED_PATTERN_LIMIT || !arena || !output)
@@ -356,9 +371,33 @@ bool sf_njp_load_decoded_patterns(
   if (!file) return false;
   memset(output, 0, sizeof(*output));
   if (!sf_njp_parse(file, &meta)) goto done;
-  output->palette_count = meta.palette_count;
-  memcpy(output->palettes, meta.palettes,
-    (size_t) meta.palette_count * sizeof(meta.palettes[0]));
+  memset(palette_slots, -1, sizeof(palette_slots));
+  for (selected = 0u; selected < pattern_count; ++selected) {
+    const uint8_t source_pattern = pattern_indices[selected];
+    const SfNjpPatternMeta *pattern;
+    if (source_pattern >= meta.pattern_count) goto done;
+    pattern = &meta.patterns[source_pattern];
+    if (pattern->default_palette < 0 ||
+        pattern->default_palette >= meta.palette_count) goto done;
+    if (palette_slots[pattern->default_palette] < 0) {
+      palette_slots[pattern->default_palette] =
+        (int8_t) selected_palette_count++;
+    }
+  }
+  output->palettes = (uint16_t (*)[256]) sf_arena_push(
+    arena, (size_t) selected_palette_count * sizeof(*output->palettes),
+    sizeof(uint16_t));
+  output->palette_sources = (uint8_t *) sf_arena_push(
+    arena, selected_palette_count, sizeof(uint8_t));
+  if (!output->palettes || !output->palette_sources) goto done;
+  output->palette_count = selected_palette_count;
+  for (selected = 0u; selected < meta.palette_count; ++selected) {
+    const int8_t slot = palette_slots[selected];
+    if (slot < 0) continue;
+    memcpy(output->palettes[(uint8_t) slot], meta.palettes[selected],
+      sizeof(*output->palettes));
+    output->palette_sources[(uint8_t) slot] = selected;
+  }
   for (selected = 0u; selected < pattern_count; ++selected) {
     const uint8_t source_pattern = pattern_indices[selected];
     const SfNjpPatternMeta *pattern;
@@ -374,7 +413,8 @@ bool sf_njp_load_decoded_patterns(
           output->reference_count) goto done;
     decoded_pattern = &output->patterns[output->pattern_count++];
     decoded_pattern->source_index = source_pattern;
-    decoded_pattern->palette = (uint8_t) pattern->default_palette;
+    decoded_pattern->palette =
+      (uint8_t) palette_slots[pattern->default_palette];
     decoded_pattern->first_reference = output->reference_count;
     decoded_pattern->reference_count = (uint8_t) pattern->reference_count;
     for (reference = 0u; reference < pattern->reference_count; ++reference) {
@@ -430,6 +470,67 @@ done:
   return false;
 }
 
+bool sf_njp_read_pattern_bounds(
+    const char *path, SfNjpPatternBounds *bounds,
+    uint8_t capacity, uint8_t *pattern_count) {
+  FILE *file;
+  SfNjpMeta meta;
+  uint8_t pattern_index;
+  bool success = false;
+  if (!path || !bounds || capacity == 0u || !pattern_count) return false;
+  memset(bounds, 0, (size_t) capacity * sizeof(*bounds));
+  *pattern_count = 0u;
+  file = fopen(path, "rb");
+  if (!file) return false;
+  if (!sf_njp_parse(file, &meta) || meta.pattern_count > capacity) goto done;
+  for (pattern_index = 0u; pattern_index < meta.pattern_count;
+       ++pattern_index) {
+    const SfNjpPatternMeta *pattern = &meta.patterns[pattern_index];
+    SfNjpPatternBounds *output = &bounds[pattern_index];
+    uint16_t reference_index;
+    int64_t left = INT32_MAX;
+    int64_t top = INT32_MAX;
+    int64_t right = INT32_MIN;
+    int64_t bottom = INT32_MIN;
+    for (reference_index = 0u; reference_index < pattern->reference_count;
+         ++reference_index) {
+      const SfNjpReferenceMeta *reference =
+        &meta.references[pattern->first_reference + reference_index];
+      const SfNjpPartMeta *part;
+      int64_t reference_right;
+      int64_t reference_bottom;
+      if (reference->part < 0 || reference->part >= meta.part_count ||
+          reference->scale_x != 1000 || reference->scale_y != 1000)
+        goto done;
+      part = &meta.parts[reference->part];
+      reference_right = (int64_t) reference->x + part->width;
+      reference_bottom = (int64_t) reference->y + part->height;
+      if (reference->x < left) left = reference->x;
+      if (reference->y < top) top = reference->y;
+      if (reference_right > right) right = reference_right;
+      if (reference_bottom > bottom) bottom = reference_bottom;
+    }
+    if (pattern->reference_count > 0u) {
+      if (left < INT32_MIN || top < INT32_MIN || right > INT32_MAX ||
+          bottom > INT32_MAX || right <= left || bottom <= top) goto done;
+      output->x = (int32_t) left;
+      output->y = (int32_t) top;
+      output->width = (int32_t) (right - left);
+      output->height = (int32_t) (bottom - top);
+      output->valid = true;
+    }
+  }
+  *pattern_count = meta.pattern_count;
+  success = true;
+done:
+  fclose(file);
+  if (!success) {
+    memset(bounds, 0, (size_t) capacity * sizeof(*bounds));
+    *pattern_count = 0u;
+  }
+  return success;
+}
+
 const SfNjpDecodedPattern *sf_njp_decoded_pattern(
     const SfNjpDecodedResource *resource, uint8_t source_index) {
   uint8_t pattern;
@@ -437,6 +538,18 @@ const SfNjpDecodedPattern *sf_njp_decoded_pattern(
   for (pattern = 0u; pattern < resource->pattern_count; ++pattern) {
     if (resource->patterns[pattern].source_index == source_index)
       return &resource->patterns[pattern];
+  }
+  return NULL;
+}
+
+const uint16_t *sf_njp_decoded_palette(
+    const SfNjpDecodedResource *resource, uint16_t source_index) {
+  uint8_t palette;
+  if (!resource || !resource->palettes || !resource->palette_sources)
+    return NULL;
+  for (palette = 0u; palette < resource->palette_count; ++palette) {
+    if (resource->palette_sources[palette] == source_index)
+      return resource->palettes[palette];
   }
   return NULL;
 }

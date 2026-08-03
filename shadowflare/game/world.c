@@ -17,22 +17,30 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#include "game/world.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "core/coordinates.h"
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+#include <string.h>
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+void sf_world_state_init(
+    SfWorldState *world, int32_t scenario_id, int32_t entry_key) {
+  if (!world) return;
+  memset(world, 0, sizeof(*world));
+  world->scenario_id = scenario_id;
+  world->entry_key = entry_key;
+}
 
-#endif
+void sf_world_state_enter(
+    SfWorldState *world,
+    int32_t player_x, int32_t player_y, uint8_t direction) {
+  SfScreenPoint screen;
+  if (!world || direction > 7u) return;
+  world->player_x = player_x;
+  world->player_y = player_y;
+  world->player_direction = direction;
+  screen = sf_world_to_screen((SfWorldPoint) {player_x, player_y});
+  world->camera_x = screen.x - 320;
+  world->camera_y = screen.y - 240;
+  world->entered = true;
+}

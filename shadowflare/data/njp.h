@@ -28,11 +28,12 @@
 #include <stdint.h>
 
 #define SF_NJP_SELECTED_LIMIT 8u
-#define SF_NJP_PALETTE_LIMIT 8u
+#define SF_NJP_SELECTED_PALETTE_LIMIT 8u
 #define SF_NJP_FRAME_LIMIT 64u
 #define SF_NJP_DECODED_PATTERN_LIMIT 64u
 #define SF_NJP_DECODED_PART_LIMIT 80u
 #define SF_NJP_DECODED_REFERENCE_LIMIT 128u
+#define SF_NJP_PATTERN_FILE_LIMIT 80u
 
 typedef struct SfNjpPatternImage {
   SfIndexedImage image;
@@ -42,7 +43,8 @@ typedef struct SfNjpPatternImage {
 
 typedef struct SfNjpSelected {
   SfNjpPatternImage images[SF_NJP_SELECTED_LIMIT];
-  uint16_t palettes[SF_NJP_PALETTE_LIMIT][256];
+  uint16_t palettes[SF_NJP_SELECTED_PALETTE_LIMIT][256];
+  uint8_t palette_sources[SF_NJP_SELECTED_PALETTE_LIMIT];
   uint8_t image_count;
   uint8_t palette_count;
 } SfNjpSelected;
@@ -90,12 +92,21 @@ typedef struct SfNjpDecodedResource {
   SfNjpDecodedPart parts[SF_NJP_DECODED_PART_LIMIT];
   SfNjpDecodedReference references[SF_NJP_DECODED_REFERENCE_LIMIT];
   SfNjpDecodedPattern patterns[SF_NJP_DECODED_PATTERN_LIMIT];
-  uint16_t palettes[SF_NJP_PALETTE_LIMIT][256];
+  uint16_t (*palettes)[256];
+  uint8_t *palette_sources;
   uint8_t part_count;
   uint8_t reference_count;
   uint8_t pattern_count;
   uint8_t palette_count;
 } SfNjpDecodedResource;
+
+typedef struct SfNjpPatternBounds {
+  int32_t x;
+  int32_t y;
+  int32_t width;
+  int32_t height;
+  bool valid;
+} SfNjpPatternBounds;
 
 bool sf_njp_load_selected(
   const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
@@ -105,8 +116,13 @@ bool sf_njp_load_animation(
 bool sf_njp_load_decoded_patterns(
   const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
   SfArena *arena, SfNjpDecodedResource *output);
+bool sf_njp_read_pattern_bounds(
+  const char *path, SfNjpPatternBounds *bounds,
+  uint8_t capacity, uint8_t *pattern_count);
 const SfNjpDecodedPattern *sf_njp_decoded_pattern(
   const SfNjpDecodedResource *resource, uint8_t source_index);
+const uint16_t *sf_njp_decoded_palette(
+  const SfNjpDecodedResource *resource, uint16_t source_index);
 bool sf_njp_decode_frame(
   const SfNjpAnimation *animation, uint8_t frame,
   void *scratch, size_t scratch_size, SfNjpPatternImage *output);

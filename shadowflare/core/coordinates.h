@@ -17,22 +17,22 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_CORE_COORDINATES_H
+#define SHADOWFLARE_CORE_COORDINATES_H
 
-#include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+typedef struct SfWorldPoint {
+  int32_t x;
+  int32_t y;
+} SfWorldPoint;
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+typedef struct SfScreenPoint {
+  int32_t x;
+  int32_t y;
+} SfScreenPoint;
+
+SfScreenPoint sf_world_to_screen(SfWorldPoint point);
+int32_t sf_floor_divide(int32_t numerator, int32_t denominator);
 
 #endif

@@ -35,14 +35,20 @@ endfunction()
 add_library(
   shadowflare_core STATIC
   assets/character_create_assets.c
+  assets/gameplay_assets.c
   assets/load_game_assets.c
   assets/menu_assets.c
   assets/retail_paths.c
   assets/title_assets.c
   core/arena.c
+  core/coordinates.c
   data/caf.c
   data/bmp.c
+  data/gnd.c
+  data/mct.c
   data/njp.c
+  data/obl.c
+  data/pattern_list.c
   data/rclib.c
   data/save.c
   data/voc.c
@@ -50,10 +56,13 @@ add_library(
   game/game.c
   game/load_game.c
   game/title.c
+  game/world.c
+  render/depth.c
   render/dirty.c
   render/framebuffer.c
   render/renderer.c
   screens/character_create_screen.c
+  screens/gameplay_screen.c
   screens/load_game_screen.c
   screens/title_screen.c
 )

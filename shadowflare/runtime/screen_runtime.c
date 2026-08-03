@@ -35,9 +35,11 @@ bool sf_screen_runtime_init(
   return true;
 }
 
-bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGameMode mode) {
+bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
   bool success = true;
-  if (!runtime || !runtime->arena) return false;
+  SfGameMode mode;
+  if (!runtime || !runtime->arena || !game) return false;
+  mode = game->mode;
   if (runtime->loaded && runtime->loaded_mode == mode) return true;
   if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
   memset(&runtime->assets, 0, sizeof(runtime->assets));
@@ -62,6 +64,18 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGameMode mode) {
       runtime->data_root, runtime->arena,
       runtime->decode_scratch, runtime->decode_scratch_size);
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
+  } else if (mode == SF_GAME_MODE_GAMEPLAY) {
+    success = sf_gameplay_assets_load(
+      &runtime->assets.gameplay, runtime->data_root,
+      game->world.scenario_id, game->world.entry_key, runtime->arena);
+    if (success) {
+      const SfMctEntry *entry = &runtime->assets.gameplay.entry;
+      sf_world_state_enter(
+        &game->world, entry->world_x, entry->world_y,
+        (uint8_t) entry->direction);
+      success = sf_gameplay_screen_init(
+        &runtime->screen.gameplay, &runtime->assets.gameplay);
+    }
   }
   runtime->loaded = success;
   runtime->loaded_mode = mode;
@@ -116,6 +130,10 @@ void sf_screen_runtime_draw(
     sf_load_game_screen_draw(
       &runtime->screen.load_game, renderer,
       &runtime->assets.load_game, game);
+  } else if (game->mode == SF_GAME_MODE_GAMEPLAY) {
+    sf_gameplay_screen_draw(
+      &runtime->screen.gameplay, renderer,
+      &runtime->assets.gameplay, game);
   } else if (!runtime->blank_drawn) {
     sf_renderer_clear(renderer, 0u);
     runtime->blank_drawn = true;

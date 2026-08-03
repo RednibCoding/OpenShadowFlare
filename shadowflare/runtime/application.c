@@ -267,7 +267,7 @@ int sf_application_run(
       !sf_screen_runtime_init(
         screen_runtime, &main_arena, data_root,
         decode_scratch, SF_TITLE_DECODE_SCRATCH_BYTES) ||
-      !sf_screen_runtime_load(screen_runtime, SF_GAME_MODE_TITLE)) {
+      !sf_screen_runtime_load(screen_runtime, game)) {
     fprintf(stderr, "Could not load the retail menu assets from '%s'.\n",
       data_root);
     if (audio) tal_shutdown(audio);
@@ -366,7 +366,7 @@ int sf_application_run(
 
     if ((!screen_runtime->loaded ||
          screen_runtime->loaded_mode != game->mode) &&
-        !sf_screen_runtime_load(screen_runtime, game->mode)) {
+        !sf_screen_runtime_load(screen_runtime, game)) {
       fprintf(stderr, "Could not load assets for game mode %d.\n",
         (int) game->mode);
       running = false;

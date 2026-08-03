@@ -53,6 +53,12 @@ void sf_game_update(SfGame *game, const SfGameInput *input) {
     game->title.sound_events = 0u;
     game->character_create.sound_events = 0u;
     sf_load_game_state_update(game, input);
+  } else if (game->mode == SF_GAME_MODE_LOADING) {
+    game->title.sound_events = 0u;
+    game->character_create.sound_events = 0u;
+    game->load_game.sound_events = 0u;
+    sf_world_state_init(&game->world, 0, 0);
+    game->mode = SF_GAME_MODE_GAMEPLAY;
   } else {
     game->title.sound_events = 0u;
     game->character_create.sound_events = 0u;

@@ -17,22 +17,23 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_RENDER_DEPTH_H
+#define SHADOWFLARE_RENDER_DEPTH_H
 
-#include <stdbool.h>
+#include "core/bounds.h"
+#include "core/coordinates.h"
+
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+typedef struct SfDepthEntry {
+  SfWorldPoint position;
+  SfObjectBounds judgement;
+  uint16_t source_index;
+  int16_t status;
+} SfDepthEntry;
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+int sf_depth_class(int16_t status);
+void sf_depth_sort(SfDepthEntry *entries, size_t count);
 
 #endif

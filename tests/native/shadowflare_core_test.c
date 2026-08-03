@@ -18,12 +18,15 @@
  */
 
 #include "core/arena.h"
+#include "core/coordinates.h"
 #include "core/memory_budget.h"
+#include "data/gnd.h"
 #include "data/rclib.h"
 #include "game/character_create.h"
 #include "game/game.h"
 #include "game/load_game.h"
 #include "render/dirty.h"
+#include "render/depth.h"
 #include "render/framebuffer.h"
 #include "render/renderer.h"
 
@@ -79,6 +82,45 @@ static int test_framebuffer(void) {
               "framebuffer did not initialize every visible pixel"))
       return 1;
   }
+  return 0;
+}
+
+static int test_world_coordinates(void) {
+  const SfScreenPoint screen = sf_world_to_screen(
+    (SfWorldPoint) {89898, 2811});
+  if (check(screen.x == 13063 && screen.y == 9270,
+            "world projection did not match the retail entry point") ||
+      check(sf_floor_divide(-1, 64) == -1 &&
+            sf_floor_divide(64, 64) == 1,
+            "floor division broke map-cell culling") ||
+      check(sizeof(SfGroundCell) == 2u,
+            "render ground cells no longer fit their two-byte budget"))
+    return 1;
+  return 0;
+}
+
+static int test_depth_order(void) {
+  SfDepthEntry entries[3];
+  memset(entries, 0, sizeof(entries));
+  entries[0].source_index = 0u;
+  entries[0].position.x = 300;
+  entries[0].position.y = 300;
+  entries[0].judgement.right = 100;
+  entries[0].judgement.bottom = 100;
+  entries[1].source_index = 1u;
+  entries[1].position.x = 100;
+  entries[1].position.y = 100;
+  entries[1].judgement.right = 100;
+  entries[1].judgement.bottom = 100;
+  entries[2].source_index = 2u;
+  entries[2].status = 0x20;
+  sf_depth_sort(entries, 3u);
+  if (check(entries[0].source_index == 2u &&
+            entries[1].source_index == 1u &&
+            entries[2].source_index == 0u &&
+            sf_depth_class(entries[0].status) == 3,
+            "display entries did not retain the retail class/depth order"))
+    return 1;
   return 0;
 }
 
@@ -253,6 +295,13 @@ static int test_game(void) {
   if (check(game.title.transition_started,
             "cancel did not start the retail exit transition"))
     return 1;
+  memset(&input, 0, sizeof(input));
+  game.mode = SF_GAME_MODE_LOADING;
+  sf_game_update(&game, &input);
+  if (check(game.mode == SF_GAME_MODE_GAMEPLAY &&
+            game.world.scenario_id == 0 && game.world.entry_key == 0,
+            "loading did not hand off to the first retail scenario"))
+    return 1;
   return 0;
 }
 
@@ -305,7 +354,8 @@ int main(void) {
             "RGB555 framebuffer size is wrong") ||
       check(SF_VIDEO_ASSET_BUDGET_BYTES == 434176u,
             "video asset budget is wrong") ||
-      test_arena() || test_framebuffer() || test_renderer() ||
+      test_arena() || test_world_coordinates() || test_depth_order() ||
+      test_framebuffer() || test_renderer() ||
       test_rclib() || test_game() || test_character_creation() ||
       test_load_game())
     return 1;

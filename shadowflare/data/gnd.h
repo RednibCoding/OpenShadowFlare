@@ -17,22 +17,34 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_DATA_GND_H
+#define SHADOWFLARE_DATA_GND_H
+
+#include "core/arena.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+#define SF_GROUND_EMPTY_PATTERN 0xffu
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+typedef struct SfGroundCell {
+  uint8_t pattern_set;
+  uint8_t pattern;
+} SfGroundCell;
+
+typedef struct SfGroundMap {
+  SfGroundCell *cells;
+  uint16_t width;
+  uint16_t height;
+  uint16_t chip_width;
+  uint16_t chip_height;
+  int32_t base_magnification_x;
+  int32_t base_magnification_y;
+} SfGroundMap;
+
+bool sf_gnd_load_render_map(
+  const char *path, SfArena *arena, SfGroundMap *map);
+const SfGroundCell *sf_ground_cell(
+  const SfGroundMap *map, int32_t x, int32_t y);
 
 #endif

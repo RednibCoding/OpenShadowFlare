@@ -38,9 +38,11 @@ visible caret, menu sounds, and the Online/Single/Back choices are present.
 Load Game now opens the retail six-entry save screen, reads the original save
 summaries, swaps the selected thumbnail, supports mouse and two-column
 keyboard/controller navigation, and includes Continue, Delete, Back, Exit,
-the delete confirmation, and game-mode dialogs. Choosing a game mode currently
-reaches the black loading hand-off because the new C99 gameplay screen has not
-been reconstructed yet.
+the delete confirmation, and game-mode dialogs. Choosing Single Mode now
+continues through the loading hand-off into the first gameplay slice: a static
+Remote Town viewport loaded entirely from scenario, GND, OBL, LST, NJP, and
+SDW retail data. Player actors, movement, collision, and scripts are the next
+layers; they are deliberately not faked in the map screen.
 
 ## Hard limits
 
@@ -62,8 +64,8 @@ allocates from the heap.
 
 - `core/` contains small utilities and the memory budgets;
 - `assets/` owns screen assets and the centralized retail archive path table;
-- `data/` reads the retail NJP, CAF, RCLIB, and VOC formats;
-- `game/` owns game state and rules;
+- `data/` reads the retail scenario, map, artwork, audio, and save formats;
+- `game/` owns game state and rules, including the current world and camera;
 - `render/` contains the small backend-neutral drawing API and damage helper;
 - `screens/` composes title, loading, load/save, and future gameplay screens;
 - `runtime/` connects the game to the platform-neutral TWL and TAL APIs;
@@ -113,8 +115,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,422,773 bytes of the 1.5 MiB main arena,
-leaving 150,091 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,423,669 bytes of the 1.5 MiB main arena,
+leaving 149,195 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 434,176
@@ -127,14 +129,30 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 732,104 bytes of the main arena, leaving 840,760 bytes free;
-410,513 bytes of that total are character-screen artwork and font data. Shared
+assets. It uses 736,592 bytes of the main arena, leaving 836,272 bytes free;
+414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 693,860 bytes of the main arena, leaving 879,004
+The load-game screen uses 696,808 bytes of the main arena, leaving 876,056
 bytes free. Its screen-scoped artwork, font, and selected save preview account
-for 372,269 bytes. Save headers stay in a fixed six-entry catalog, while only
+for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
+
+The first Remote Town gameplay viewport uses 983,072 bytes of the main arena,
+leaving 589,792 bytes free. Its map-scoped data and selected artwork account
+for 660,585 bytes. GND rendering data is decoded directly from its compressed
+three-plane stream into two bytes per tile, so the 300x300 town grid occupies
+180,000 bytes instead of retaining the 540,000-byte source layout. Collision
+judgement is not loaded by this rendering-only slice yet.
+
+Map artwork follows the current camera rather than a scenario-specific asset
+list. The loader reads the map's own ground cells and OBL objects, checks exact
+NJP/SDW pattern bounds against the 640x480 viewport, and retains only the
+referenced pattern pixels and palettes. The static world is then drawn in the
+retail ground, non-default shadow/object, and default shadow/object passes.
+The framebuffer still occupies 614,400 bytes of video memory, leaving 434,176
+bytes there; map artwork remains packed in main RAM for the desktop software
+backend.

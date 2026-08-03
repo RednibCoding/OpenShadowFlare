@@ -17,22 +17,31 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_DATA_MCT_H
+#define SHADOWFLARE_DATA_MCT_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+#define SF_MCT_ENTRY_LIMIT 64u
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+typedef struct SfMctEntry {
+  int32_t key;
+  int32_t world_x;
+  int32_t world_y;
+  int32_t direction;
+} SfMctEntry;
+
+typedef struct SfMctScenario {
+  char map_path[260];
+  char title[256];
+  SfMctEntry entries[SF_MCT_ENTRY_LIMIT];
+  int32_t music_track;
+  uint8_t entry_count;
+} SfMctScenario;
+
+bool sf_mct_load(const char *path, SfMctScenario *scenario);
+const SfMctEntry *sf_mct_find_entry(
+  const SfMctScenario *scenario, int32_t key);
 
 #endif

@@ -21,12 +21,14 @@
 #define SHADOWFLARE_RUNTIME_SCREEN_RUNTIME_H
 
 #include "assets/character_create_assets.h"
+#include "assets/gameplay_assets.h"
 #include "assets/load_game_assets.h"
 #include "assets/title_assets.h"
 #include "core/arena.h"
 #include "game/game.h"
 #include "render/renderer.h"
 #include "screens/character_create_screen.h"
+#include "screens/gameplay_screen.h"
 #include "screens/load_game_screen.h"
 #include "screens/title_screen.h"
 
@@ -37,12 +39,14 @@ typedef union SfRuntimeScreenAssets {
   SfTitleAssets title;
   SfCharacterCreateAssets character_create;
   SfLoadGameAssets load_game;
+  SfGameplayAssets gameplay;
 } SfRuntimeScreenAssets;
 
 typedef union SfRuntimeScreenState {
   SfTitleScreen title;
   SfCharacterCreateScreen character_create;
   SfLoadGameScreen load_game;
+  SfGameplayScreen gameplay;
 } SfRuntimeScreenState;
 
 typedef struct SfScreenRuntime {
@@ -61,7 +65,7 @@ typedef struct SfScreenRuntime {
 bool sf_screen_runtime_init(
   SfScreenRuntime *runtime, SfArena *arena, const char *data_root,
   void *decode_scratch, size_t decode_scratch_size);
-bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGameMode mode);
+bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game);
 bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game);
 const SfTitleAssets *sf_screen_runtime_title_assets(
   const SfScreenRuntime *runtime);

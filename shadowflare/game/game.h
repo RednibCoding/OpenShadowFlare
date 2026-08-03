@@ -23,6 +23,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "game/world.h"
+
 #define SF_GAME_TITLE_ENTRY_COUNT 3u
 #define SF_GAME_TITLE_SMOKE_COUNT 10u
 
@@ -30,7 +32,8 @@ typedef enum SfGameMode {
   SF_GAME_MODE_TITLE = 0,
   SF_GAME_MODE_CHARACTER_SELECT,
   SF_GAME_MODE_LOAD_GAME,
-  SF_GAME_MODE_LOADING
+  SF_GAME_MODE_LOADING,
+  SF_GAME_MODE_GAMEPLAY
 } SfGameMode;
 
 typedef enum SfGameSoundEvent {
@@ -136,6 +139,7 @@ typedef struct SfGame {
   SfTitleState title;
   SfCharacterCreateState character_create;
   SfLoadGameState load_game;
+  SfWorldState world;
   SfGameMode mode;
   uint32_t ticks;
   uint8_t character_select_argument;

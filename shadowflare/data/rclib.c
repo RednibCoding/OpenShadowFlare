@@ -22,6 +22,8 @@
 #include <string.h>
 
 typedef int (*SfRclibReadByte)(void *source);
+typedef bool (*SfRclibWriteByte)(
+  void *destination, size_t offset, uint8_t value);
 
 typedef struct SfMemoryBytes {
   const uint8_t *current;
@@ -43,18 +45,25 @@ static int sf_read_file_byte(void *source) {
   return fgetc((FILE *) source);
 }
 
+static bool sf_write_memory_byte(
+    void *destination, size_t offset, uint8_t value) {
+  ((uint8_t *) destination)[offset] = value;
+  return true;
+}
+
 static bool sf_rclib_decode(
     SfRclibReadByte read_byte, void *source,
-    uint8_t *decoded, size_t decoded_size) {
+    SfRclibWriteByte write_byte, void *output,
+    size_t decoded_size) {
   uint8_t window[4096];
-  size_t destination = 0u;
+  size_t output_offset = 0u;
   uint16_t window_position = 0x0feeu;
   memset(window, 0, sizeof(window));
-  while (destination < decoded_size) {
+  while (output_offset < decoded_size) {
     const int flags = read_byte(source);
     uint8_t mask;
     if (flags < 0) return false;
-    for (mask = 0x80u; mask != 0u && destination < decoded_size;
+    for (mask = 0x80u; mask != 0u && output_offset < decoded_size;
          mask >>= 1u) {
       if (((uint8_t) flags & mask) != 0u) {
         const int first = read_byte(source);
@@ -66,17 +75,20 @@ static bool sf_rclib_decode(
         offset = (uint16_t) ((uint8_t) first |
           ((uint16_t) ((uint8_t) second & 0xf0u) << 4u));
         length = (uint8_t) (((uint8_t) second & 15u) + 3u);
-        for (index = 0u; index < length && destination < decoded_size;
+        for (index = 0u; index < length && output_offset < decoded_size;
              ++index) {
           const uint8_t value = window[(offset + index) & 0x0fffu];
-          decoded[destination++] = value;
+          if (!write_byte(output, output_offset, value)) return false;
+          ++output_offset;
           window[window_position] = value;
           window_position = (uint16_t) ((window_position + 1u) & 0x0fffu);
         }
       } else {
         const int literal = read_byte(source);
         if (literal < 0) return false;
-        decoded[destination++] = (uint8_t) literal;
+        if (!write_byte(output, output_offset, (uint8_t) literal))
+          return false;
+        ++output_offset;
         window[window_position] = (uint8_t) literal;
         window_position = (uint16_t) ((window_position + 1u) & 0x0fffu);
       }
@@ -98,7 +110,8 @@ bool sf_rclib_decode_memory(
   source.current = encoded + 16u;
   source.end = source.current + payload_size;
   return sf_rclib_decode(
-    sf_read_memory_byte, &source, decoded, decoded_size);
+    sf_read_memory_byte, &source,
+    sf_write_memory_byte, decoded, decoded_size);
 }
 
 bool sf_rclib_decode_stream(
@@ -107,5 +120,19 @@ bool sf_rclib_decode_stream(
   if (!file || !decoded || fread(header, 1u, sizeof(header), file) !=
       sizeof(header) || memcmp(header, "RCLIB-L", 7u) != 0 ||
       sf_u32(header + 8u) != decoded_size) return false;
-  return sf_rclib_decode(sf_read_file_byte, file, decoded, decoded_size);
+  return sf_rclib_decode(
+    sf_read_file_byte, file,
+    sf_write_memory_byte, decoded, decoded_size);
+}
+
+bool sf_rclib_decode_stream_to(
+    FILE *file, size_t decoded_size,
+    SfRclibByteSink sink, void *user) {
+  uint8_t header[16];
+  if (!file || !sink || fread(header, 1u, sizeof(header), file) !=
+      sizeof(header) || memcmp(header, "RCLIB-L", 7u) != 0 ||
+      sf_u32(header + 8u) != decoded_size) return false;
+  return sf_rclib_decode(
+    sf_read_file_byte, file,
+    sink, user, decoded_size);
 }

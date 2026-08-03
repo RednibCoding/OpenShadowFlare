@@ -43,6 +43,14 @@ const SfRetailSavePaths sf_retail_save_paths = {
   "Save/%04u.Bmp"
 };
 
+const SfRetailWorldPaths sf_retail_world_paths = {
+  "Scenario/%08d/Scenario.Mct",
+  "Map/Ground/%s.Gnd",
+  "Map/Object/%s.Obl",
+  "Map/Pattern/%s.Lst",
+  "Map/Pattern/%s"
+};
+
 static bool sf_retail_path_copy(
     char *destination, size_t capacity, const char *source) {
   const size_t length = source ? strlen(source) : 0u;

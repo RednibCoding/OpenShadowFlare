@@ -47,14 +47,19 @@ static size_t sf_measure_screen_bytes(
     return runtime->assets.character_create.memory_bytes;
   if (mode == SF_GAME_MODE_LOAD_GAME)
     return runtime->assets.load_game.memory_bytes;
+  if (mode == SF_GAME_MODE_GAMEPLAY)
+    return runtime->assets.gameplay.memory_bytes;
   return 0u;
 }
 
 static bool sf_measure_screen(
-    SfScreenRuntime *runtime, SfArena *arena,
+    SfScreenRuntime *runtime, SfArena *arena, SfGame *game,
     SfGameMode mode, const char *name) {
   size_t screen_bytes;
-  if (!sf_screen_runtime_load(runtime, mode)) return false;
+  game->mode = mode;
+  if (mode == SF_GAME_MODE_GAMEPLAY)
+    sf_world_state_init(&game->world, 0, 0);
+  if (!sf_screen_runtime_load(runtime, game)) return false;
   screen_bytes = sf_measure_screen_bytes(runtime, mode);
   printf("%-18s %10zu %13zu %10zu\n",
     name, arena->used, screen_bytes, arena->capacity - arena->used);
@@ -65,6 +70,7 @@ int main(int argument_count, char **arguments) {
   SfArena arena;
   SfMenuAssets *menu_assets;
   SfScreenRuntime *screen_runtime;
+  SfGame *game;
   TwlConfig window_config;
   TalConfig audio_config;
   void *scratch;
@@ -96,7 +102,8 @@ int main(int argument_count, char **arguments) {
       !sf_arena_push(
         &arena, tal_memory_required(&audio_config),
         tal_memory_alignment()) ||
-      !sf_arena_push_zero(&arena, sizeof(SfGame), sizeof(void *))) return 2;
+      !(game = (SfGame *) sf_arena_push_zero(
+          &arena, sizeof(SfGame), sizeof(void *)))) return 2;
   menu_assets = (SfMenuAssets *) sf_arena_push_zero(
     &arena, sizeof(*menu_assets), sizeof(void *));
   screen_runtime = (SfScreenRuntime *) sf_arena_push_zero(
@@ -111,12 +118,16 @@ int main(int argument_count, char **arguments) {
 
   puts("screen             total bytes  screen bytes free bytes");
   if (!sf_measure_screen(
-        screen_runtime, &arena, SF_GAME_MODE_TITLE, "title") ||
+        screen_runtime, &arena, game, SF_GAME_MODE_TITLE, "title") ||
       !sf_measure_screen(
-        screen_runtime, &arena,
+        screen_runtime, &arena, game,
         SF_GAME_MODE_CHARACTER_SELECT, "character create") ||
       !sf_measure_screen(
-        screen_runtime, &arena, SF_GAME_MODE_LOAD_GAME, "load game")) {
+        screen_runtime, &arena, game,
+        SF_GAME_MODE_LOAD_GAME, "load game") ||
+      !sf_measure_screen(
+        screen_runtime, &arena, game,
+        SF_GAME_MODE_GAMEPLAY, "Remote Town map")) {
     fprintf(stderr, "Could not load one of the measured screens.\n");
     return 4;
   }

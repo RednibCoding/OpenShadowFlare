@@ -17,22 +17,27 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_RCLIB_H
-#define SHADOWFLARE_DATA_RCLIB_H
+#ifndef SHADOWFLARE_GAME_WORLD_H
+#define SHADOWFLARE_GAME_WORLD_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 
-typedef bool (*SfRclibByteSink)(void *user, size_t offset, uint8_t value);
+typedef struct SfWorldState {
+  int32_t scenario_id;
+  int32_t entry_key;
+  int32_t player_x;
+  int32_t player_y;
+  int32_t camera_x;
+  int32_t camera_y;
+  uint8_t player_direction;
+  bool entered;
+} SfWorldState;
 
-bool sf_rclib_decode_memory(
-  const uint8_t *encoded, size_t encoded_size,
-  uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream(
-  FILE *file, uint8_t *decoded, size_t decoded_size);
-bool sf_rclib_decode_stream_to(
-  FILE *file, size_t decoded_size, SfRclibByteSink sink, void *user);
+void sf_world_state_init(
+  SfWorldState *world, int32_t scenario_id, int32_t entry_key);
+void sf_world_state_enter(
+  SfWorldState *world,
+  int32_t player_x, int32_t player_y, uint8_t direction);
 
 #endif
