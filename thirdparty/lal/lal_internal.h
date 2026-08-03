@@ -31,11 +31,11 @@ typedef struct {
 } LalConvertedPcm;
 
 #ifndef LAL_DEFAULT_MAXIMUM_SAMPLE_RATE
-#define LAL_DEFAULT_MAXIMUM_SAMPLE_RATE 16000
+#define LAL_DEFAULT_MAXIMUM_SAMPLE_RATE 44100
 #endif
 
 #ifndef LAL_DEFAULT_FORCE_MONO
-#define LAL_DEFAULT_FORCE_MONO 1
+#define LAL_DEFAULT_FORCE_MONO 0
 #endif
 
 enum {

@@ -52,8 +52,11 @@ character-select enter/leave lifecycles are reconstructed too, including their
 asset manifests, save-slot behavior, input tables, random smoke delays, and
 shared menu music.
 The original VOC containers are decoded portably and played through LAL, with
-the configured effect and BGM volumes. Gameplay's Escape menu can change those
-volumes, pointer range and priority, and the other reconstructed config fields
+the configured effect and BGM volumes. OpenShadowFlare explicitly retains
+audio at up to 11.025 kHz in mono on every target; this game-wide memory policy
+is separate from LAL's higher-quality defaults. Gameplay's Escape menu can
+change those volumes, pointer range and priority, and the other reconstructed
+config fields
 using the retail panel and coordinates. The portable executable always opens
 in a window; the old fullscreen setting is intentionally not exposed. Its
 Help row and the `H` shortcut open the original mouse/keyboard reference page,
