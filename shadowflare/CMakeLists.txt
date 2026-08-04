@@ -46,11 +46,14 @@ add_library(
   assets/player_assets.c
   assets/retail_paths.c
   assets/scenario_actor_assets.c
+  assets/scenario_enemy_assets.c
+  assets/scenario_object_assets.c
   assets/title_assets.c
   core/arena.c
   core/coordinates.c
   core/retail_random.c
   data/caf.c
+  data/ai_control.c
   data/companion_parameters.c
   data/bmp.c
   data/gnd.c
@@ -78,13 +81,18 @@ add_library(
   data/scs.c
   data/spell_parameters.c
   data/table.c
+  data/transport.c
   data/voc.c
   game/character_create.c
   game/companion.c
   game/belt.c
   game/collision.c
   game/equipment.c
+  game/enemy_ai_selection.c
+  game/enemy_action.c
+  game/enemy_movement.c
   game/game.c
+  game/gameplay_service.c
   game/ground_item.c
   game/inventory.c
   game/item_condition.c
@@ -101,15 +109,23 @@ add_library(
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
+  game/scenario_enemy.c
+  game/scenario_enemy_controller.c
+  game/scenario_effect.c
+  game/scenario_label.c
+  game/scenario_object.c
+  game/scenario_travel.c
   game/sound_event.c
   game/special_items.c
   game/title.c
   game/world.c
   game/world_conversation.c
   game/world_inventory.c
+  game/world_interaction.c
   game/world_magic.c
   game/world_save.c
   game/world_script.c
+  game/world_transport.c
   interpreter/scenario_actor_script.c
   interpreter/scenario_script_commands.c
   interpreter/scenario_script_values.c
@@ -120,11 +136,13 @@ add_library(
   screens/character_create_screen.c
   screens/gameplay_actor.c
   screens/gameplay_companion.c
+  screens/gameplay_enemy.c
   screens/gameplay_ground_item.c
   screens/gameplay_scene.c
   screens/gameplay_screen.c
   screens/gameplay_object_visual.c
   screens/gameplay_player.c
+  screens/gameplay_scenario_object.c
   screens/load_game_screen.c
   screens/title_screen.c
   ui/actor_nameplate.c
@@ -150,7 +168,11 @@ add_library(
   ui/gameplay_status_pattern.c
   ui/gameplay_status.c
   ui/gameplay_special_items.c
+  ui/gameplay_service_controller.c
+  ui/gameplay_transport.c
   ui/ground_item_nameplate.c
+  ui/scenario_object_nameplate.c
+  ui/scenario_label.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c
 )
@@ -162,6 +184,7 @@ if(ANDROID)
     osf
     SHARED
     runtime/application.c
+    runtime/gameplay_runtime.c
     runtime/screen_runtime.c
   )
   set_target_properties(osf PROPERTIES OUTPUT_NAME main)
@@ -189,6 +212,7 @@ else()
     osf
     main.c
     runtime/application.c
+    runtime/gameplay_runtime.c
     runtime/screen_runtime.c
   )
   add_executable(ShadowFlare::Game ALIAS osf)
@@ -222,13 +246,11 @@ if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
   sf_configure_c99_target(shadowflare_profiler)
   target_link_libraries(osf PRIVATE ShadowFlare::Profiler)
   target_compile_definitions(osf PRIVATE SF_ENABLE_PROFILING=1)
-
-  # osf-measure is a host measurement tool with a main(); Android ships only the
-  # NativeActivity shared library, so skip it there.
   if(NOT ANDROID)
     add_executable(
       osf-measure
       ../utils/osf-measure.c
+      runtime/gameplay_runtime.c
       runtime/screen_runtime.c
     )
     sf_configure_c99_target(osf-measure)

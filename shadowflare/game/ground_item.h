@@ -63,6 +63,7 @@ typedef struct SfGroundItemSet {
 } SfGroundItemSet;
 
 void sf_ground_items_init(SfGroundItemSet *items);
+void sf_ground_items_change_scenario(SfGroundItemSet *items);
 void sf_ground_items_bind_definitions(
   SfGroundItemSet *items, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);

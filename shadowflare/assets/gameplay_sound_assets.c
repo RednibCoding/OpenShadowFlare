@@ -23,8 +23,8 @@
 
 #include <string.h>
 
-static const uint16_t sf_gameplay_interface_samples[
-    SF_GAMEPLAY_INTERFACE_SOUND_COUNT] = {57u, 58u};
+static const uint16_t sf_gameplay_samples[
+    SF_GAMEPLAY_SOUND_COUNT] = {57u, 58u, 80u};
 
 bool sf_gameplay_sound_assets_load(
     SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena) {
@@ -34,16 +34,16 @@ bool sf_gameplay_sound_assets_load(
   return sf_retail_path_join(
       path, sizeof(path), data_root, sf_retail_game_paths.common_sounds) &&
     sf_voc_load_u8_mono_samples(
-      path, sf_gameplay_interface_samples,
-      SF_GAMEPLAY_INTERFACE_SOUND_COUNT, arena, assets->interface_sounds);
+      path, sf_gameplay_samples,
+      SF_GAMEPLAY_SOUND_COUNT, arena, assets->sounds);
 }
 
-const SfPcmU8 *sf_gameplay_interface_sound(
+const SfPcmU8 *sf_gameplay_sound(
     const SfGameplaySoundAssets *assets, uint16_t sample) {
   uint8_t index;
   if (!assets) return NULL;
-  for (index = 0u; index < SF_GAMEPLAY_INTERFACE_SOUND_COUNT; ++index)
-    if (sf_gameplay_interface_samples[index] == sample)
-      return &assets->interface_sounds[index];
+  for (index = 0u; index < SF_GAMEPLAY_SOUND_COUNT; ++index)
+    if (sf_gameplay_samples[index] == sample)
+      return &assets->sounds[index];
   return NULL;
 }

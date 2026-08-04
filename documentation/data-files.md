@@ -282,6 +282,17 @@ resource 15 contains both static pattern data and
 `Animation.Caf`/`Animation.Njp`.
 Scenario `00000000` has zero enemy and zero item records.
 
+The small C99 runtime keeps these records separate from OBL scenery and from
+PEOPLE. It resolves only the three object resources referenced by the active
+MCT, retains the requested static patterns or CAF cells, and uses the MCT state
+channels for visibility, pointing, and judgement. The named Warehouse is a
+useful proof that object labels belong to authored scenario data rather than a
+map-specific UI table.
+Its status-kind-zero sentence calls opcode 41 with argument zero. The C99
+runtime preserves that route: object selection starts the authored sentence,
+the world emits one service request, and the UI toggles the existing Special
+Item panel without giving the interpreter access to panel state.
+
 After the item group is a 32-bit entry count followed by 16-byte entry records.
 Each record stores a signed 32-bit key, world X, world Y, and eight-way
 direction, in that order. Three more 32-bit scenario fields close the file;
@@ -666,6 +677,15 @@ scenario zero, entry 50. The transport panel only displays enabled rows and
 packs them into ten visible slots per page; disabled rows do not leave gaps.
 For a same-scenario single-player move, the executable looks up the MCT entry
 key as `local player number + entry * 4`, so row zero resolves entry key 200.
+The small C99 runtime streams exactly these 51 records into a fixed catalog;
+it does not retain the rest of `Table.Tbd`. The UI reads names and enabled-row
+state from that catalog, while `game/world_transport.c` resolves the selected
+entry through the active MCT. Periodic SCS activation now enables the matching
+row in that same catalog, so newly discovered destinations appear without a
+second hardcoded list. Cross-scenario rows publish the same fixed travel
+request as script opcode 17. The screen runtime then releases the active
+scenario arena and loads the destination folder and MCT entry; it never
+pretends a foreign row belongs to the current MCT.
 
 Scenario folders use zero-padded decimal IDs, not hexadecimal IDs. For
 example, Table 40 row one names scenario `6`, which lives at

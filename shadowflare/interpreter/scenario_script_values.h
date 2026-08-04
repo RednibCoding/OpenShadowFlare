@@ -24,10 +24,11 @@
 
 int32_t sf_scenario_script_read(
   const SfScenarioActorScriptState *state, const SfScsScript *script,
-  const SfScsOperand *operand, const SfScenarioActorSet *actors);
+  const SfScsOperand *operand,
+  const SfScenarioScriptEnvironment *environment);
 bool sf_scenario_script_write(
   SfScenarioActorScriptState *state, const SfScsScript *script,
   const SfScsOperand *operand, int32_t value,
-  SfScenarioActorSet *actors);
+  const SfScenarioScriptEnvironment *environment);
 
 #endif

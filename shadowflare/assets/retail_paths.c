@@ -64,6 +64,21 @@ const SfRetailPeoplePaths sf_retail_people_paths = {
   "Character/PEOPLE/%08d/Animation.Sdw"
 };
 
+const SfRetailEnemyPaths sf_retail_enemy_paths = {
+  "Character/ENEMY/%08d/Animation.Caf",
+  "Character/ENEMY/%08d/Animation.Njp",
+  "Character/ENEMY/%08d/Animation.Sdw"
+};
+
+const SfRetailObjectPaths sf_retail_object_paths = {
+  "Character/OBJECT/%08d/Pattern.Njp",
+  "Character/OBJECT/%08d/Pattern.njp",
+  "Character/OBJECT/%08d/Pattern.Sdw",
+  "Character/OBJECT/%08d/Pattern.sdw",
+  "Character/OBJECT/%08d/Animation.Njp",
+  "Character/OBJECT/%08d/Animation.Caf"
+};
+
 const SfRetailCompanionPaths sf_retail_companion_paths = {
   "Character/PARTNER/%08d/Animation.Caf",
   "Character/PARTNER/%08d/Animation.Njp",
@@ -78,6 +93,7 @@ const SfRetailGroundItemPaths sf_retail_ground_item_paths = {
 
 const SfRetailGamePaths sf_retail_game_paths = {
   "System/Game/Parameter/Table.Tbd",
+  "System/Game/Parameter/Control.aid",
   "System/Game/Parameter/Item.Ibn",
   "System/Game/Voice/Voice00.Voc",
   "System/Common/Pattern/Font00.njp",

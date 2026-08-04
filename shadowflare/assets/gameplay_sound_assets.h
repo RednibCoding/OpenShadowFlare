@@ -26,15 +26,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_INTERFACE_SOUND_COUNT 2u
+#define SF_GAMEPLAY_SOUND_COUNT 3u
 
 typedef struct SfGameplaySoundAssets {
-  SfPcmU8 interface_sounds[SF_GAMEPLAY_INTERFACE_SOUND_COUNT];
+  SfPcmU8 sounds[SF_GAMEPLAY_SOUND_COUNT];
 } SfGameplaySoundAssets;
 
 bool sf_gameplay_sound_assets_load(
   SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena);
-const SfPcmU8 *sf_gameplay_interface_sound(
+const SfPcmU8 *sf_gameplay_sound(
   const SfGameplaySoundAssets *assets, uint16_t sample);
 
 #endif

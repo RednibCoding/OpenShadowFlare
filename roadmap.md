@@ -25,8 +25,22 @@ The standing details and measured screen budgets live in
 
 The front-end, Remote Town map, player movement, retail PEOPLE actors,
 collision, pointing, speech bubbles, and interactive script-driven choices are
-live. Ostare's opening chain reaches its four opcode 10 starter drops, with the
-original item definitions, artwork, palettes, bounce, and landing sounds.
+live. All seven MCT type-zero objects are live too. Their sparse static or
+animated `Character/OBJECT` resources, shadows, state channels, judgement,
+depth, hover tint, authored nameplate, and opaque-pixel picking remain separate
+from both OBL scenery and PEOPLE actors. Object clicks are consumed through
+the retail interaction range instead of leaking into movement. The Warehouse
+now runs its authored status-zero sentence and opcode 41 through a one-shot
+game-service request. Its existing left Special Item panel opens without
+closing an independent right Inventory; only the UI layer changes panel state.
+The transport object now follows that same route. Opcode 37 opens its authored
+left panel, all 51 destination records come from Table 40, enabled rows are
+packed into ten slots per page, and a right Inventory stays independent.
+Remote Town's default row resolves MCT entry 200 and relocates the hero without
+leaking its click into movement. Opcode 38 only closes the matching service.
+Ostare's opening chain reaches its four opcode 10 starter
+drops, with the original item definitions, artwork, palettes, bounce, and
+landing sounds.
 Those drops can now be hovered, approached, and picked up into the player's
 fixed 9x4 inventory, including retail dimensions, gold stacks, failure bounce,
 and pickup sounds. Harley's complete `Explanation` branch also runs from the
@@ -110,6 +124,43 @@ warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
+
+The shared scenario-transition seam is live now. Authored teleporter
+discovery, its saved Table 40 row, activation sound and fades, opcode-27
+label, cross-scenario transport rows, and opcode-17 contact exits all converge
+on one fixed travel request. The runtime releases one scenario before loading
+the next, while player, inventory, companion, quest, script, and transport
+owners survive. The actual Remote Town south gate now reaches Near Remote
+Town and its authored return trigger completes the round trip.
+
+The first outdoor enemy slice is live. Near Remote Town's 127 MCT enemy rows
+decode into a fixed world owner with their authored identity, state channels,
+judgement, direction, colors, life, experience, loot row, and AI control name.
+The entry vicinity retains only the idle directions and NJP/SDW cells it can
+actually present; this is a general screen-space preload rule rather than a
+scenario list. Visible living enemies join ordinary depth sorting and their
+judgement rectangles join the shared collision query. `Enemy Hole` records
+remain in the registry without requesting nonexistent visual resources.
+
+The first retail enemy-controller slice is live. `Control.aid` is scanned
+without retaining its 90 KiB file image, and Near Remote Town keeps only its
+three referenced control lists and 48 actions. Every live enemy resolves its
+exact Shift-JIS MCT control name before the world starts. The event evaluator
+now applies the retail life/target conditions, priority quirk, reverse file
+order, weighted random draw, and fallback events. Actions zero, one, and ten
+drive wait, patrol, and player/active-companion approach through authored
+durations, speed scaling, target refresh, integer random turning, and the same
+collision route used by the player and PEOPLE. Only enemies within the retail
+inclusive 0..5000 living-target range run their controller. Walk chart one is
+retained for all eight directions of each prepared resource, and blockers move
+with their owning enemy.
+
+The immediate target is the first attack boundary: add enemy pointer picking
+and the retail health/name/element plate in `ui/`, then implement the ordinary
+action-two presentation through its CAF marker without inventing a second
+combat actor. The small enemy resource working set still needs a predictable
+reload boundary before later maps can move into resources outside their entry
+vicinity.
 
 ## Where we are now
 

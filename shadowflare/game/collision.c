@@ -132,7 +132,7 @@ static bool sf_collision_static_position_walkable(
 bool sf_collision_query_position_walkable(
     const SfCollisionQuery *query, SfWorldPoint position,
     SfObjectBounds bounds, bool exclude_special_objects) {
-  uint8_t index;
+  uint16_t index;
   if (!query) return true;
   if (!sf_collision_static_position_walkable(
         query->world, position, bounds, exclude_special_objects))

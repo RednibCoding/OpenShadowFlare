@@ -67,7 +67,8 @@ bool sf_ground_item_collect_definitions(
           script, &operands[0], &category) ||
         !sf_ground_item_request_value(
           script, &operands[1], &definition_id)) continue;
-    if (category < 0 || category > 4 || definition_id < 0) return false;
+    if (category < 0 || definition_id < 0) continue;
+    if (category > 4) return false;
     if (sf_ground_item_definition(
           definitions, *definition_count, (uint8_t) category,
           definition_id) >= 0) continue;

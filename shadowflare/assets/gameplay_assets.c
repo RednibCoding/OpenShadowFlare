@@ -71,12 +71,21 @@ static bool sf_gameplay_map_stem(
   return true;
 }
 
-static bool sf_gameplay_ends_with_shadow(const char *name) {
+static bool sf_gameplay_ends_with(
+    const char *name, const char *extension) {
   const size_t length = name ? strlen(name) : 0u;
-  return length >= 4u && name[length - 4u] == '.' &&
-    tolower((unsigned char) name[length - 3u]) == 's' &&
-    tolower((unsigned char) name[length - 2u]) == 'd' &&
-    tolower((unsigned char) name[length - 1u]) == 'w';
+  size_t extension_length = extension ? strlen(extension) : 0u;
+  size_t index;
+  if (extension_length == 0u || length < extension_length) return false;
+  for (index = 0u; index < extension_length; ++index)
+    if (tolower((unsigned char) name[length - extension_length + index]) !=
+        tolower((unsigned char) extension[index])) return false;
+  return true;
+}
+
+static bool sf_gameplay_pattern_file(const char *name) {
+  return sf_gameplay_ends_with(name, ".njp") ||
+    sf_gameplay_ends_with(name, ".sdw");
 }
 
 static void sf_gameplay_select(
@@ -121,8 +130,8 @@ static bool sf_gameplay_select_objects(
       selection, (uint8_t) object->pattern_set, (uint8_t) object->pattern);
     if ((object->status & 8) != 0 &&
         object->pattern_set + 1 < patterns->count &&
-        sf_gameplay_ends_with_shadow(
-          patterns->names[object->pattern_set + 1]))
+        sf_gameplay_ends_with(
+          patterns->names[object->pattern_set + 1], ".sdw"))
       sf_gameplay_select(
         selection, (uint8_t) (object->pattern_set + 1),
         (uint8_t) object->pattern);
@@ -136,7 +145,8 @@ static bool sf_gameplay_load_patterns(
   uint8_t set;
   uint8_t set_count = 0u;
   for (set = 0u; set < patterns->count; ++set) {
-    if (selection->counts[set] > 0u) ++set_count;
+    if (selection->counts[set] > 0u &&
+        sf_gameplay_pattern_file(patterns->names[set])) ++set_count;
   }
   if (set_count == 0u || set_count > SF_GAMEPLAY_PATTERN_SET_LIMIT)
     return false;
@@ -149,7 +159,8 @@ static bool sf_gameplay_load_patterns(
     uint8_t index;
     uint8_t count = 0u;
     char path[SF_RETAIL_PATH_CAPACITY];
-    if (selection->counts[set] == 0u) continue;
+    if (selection->counts[set] == 0u ||
+        !sf_gameplay_pattern_file(patterns->names[set])) continue;
     if (selection->counts[set] > SF_NJP_DECODED_PATTERN_LIMIT) return false;
     for (index = 0u; index < SF_NJP_PATTERN_FILE_LIMIT; ++index) {
       if (selection->selected[set][index]) indices[count++] = index;
@@ -228,11 +239,12 @@ bool sf_gameplay_assets_load(
     19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u,
     29u, 30u, 31u, 32u
   };
-  static const uint8_t inventory_patterns[37] = {
+  static const uint8_t inventory_patterns[43] = {
     0u, 1u, 2u, 3u, 5u, 6u, 14u, 15u, 16u, 32u,
     36u, 37u, 38u, 39u, 40u, 41u, 42u, 43u, 44u, 45u, 46u,
     47u, 48u, 49u, 50u, 51u, 52u, 53u, 54u, 55u, 56u, 57u,
-    67u, 69u, 70u, 116u, 117u
+    67u, 69u, 70u, 116u, 117u,
+    11u, 12u, 13u, 22u, 23u, 24u
   };
   static const uint8_t magic_icon_patterns[23] = {
     0u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u,
@@ -298,7 +310,7 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
-        path, inventory_patterns, 37u, arena, &assets->inventory_panel) ||
+        path, inventory_patterns, 43u, arena, &assets->inventory_panel) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.magic_icons) ||
       !sf_njp_stream_decoded_patterns(
@@ -316,6 +328,11 @@ bool sf_gameplay_assets_load(
       !sf_companion_profile_load(
         path, companion_type, companion_level, &assets->companion_profile) ||
       !sf_spell_parameters_load(path, assets->spell_parameters) ||
+      !sf_transport_catalog_load(path, &assets->transports) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.ai_control) ||
+      !sf_ai_control_catalog_load(
+        path, &assets->scenario, arena, &assets->ai_controls) ||
       !sf_gameplay_sound_assets_load(
         &assets->sounds, data_root, arena) ||
       !sf_ground_item_assets_load(
@@ -329,6 +346,11 @@ bool sf_gameplay_assets_load(
         &assets->companion, data_root, &assets->companion_profile, arena) ||
       !sf_scenario_actor_assets_load(
         &assets->actors, data_root, &assets->scenario, arena) ||
+      !sf_scenario_enemy_assets_load(
+        &assets->enemies, data_root, &assets->scenario,
+        (SfWorldPoint) {assets->entry.world_x, assets->entry.world_y}, arena) ||
+      !sf_scenario_object_assets_load(
+        &assets->scenario_objects, data_root, &assets->scenario, arena) ||
       !sf_inventory_item_assets_load(
         &assets->inventory_items, data_root,
         assets->ground_items.definitions,

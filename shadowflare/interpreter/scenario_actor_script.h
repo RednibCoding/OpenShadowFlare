@@ -22,12 +22,14 @@
 
 #include "data/scs.h"
 #include "game/scenario_actor.h"
+#include "game/scenario_object.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #define SF_SCENARIO_SCRIPT_STACK_LIMIT 16u
 #define SF_SCENARIO_SCRIPT_VALUE_LIMIT 1000
+#define SF_SCENARIO_NATIVE_ARGUMENT_LIMIT 14u
 
 typedef enum SfScenarioScriptResult {
   SF_SCENARIO_SCRIPT_COMPLETE = 0,
@@ -76,18 +78,23 @@ typedef struct SfScenarioActorScriptState {
 typedef bool (*SfScenarioNativeCommand)(
   void *user, int32_t opcode, const int32_t *arguments,
   uint8_t argument_count);
+typedef bool (*SfScenarioNextRandom)(void *user, int32_t *value);
 
 typedef struct SfScenarioScriptEnvironment {
   const SfMctScenario *scenario;
   SfScenarioActorSet *actors;
+  SfScenarioObjectSet *objects;
   SfWorldPoint player_position;
   SfObjectBounds player_bounds;
   int32_t companion_type;
   SfScenarioNativeCommand native_command;
+  SfScenarioNextRandom next_random;
   void *native_user;
 } SfScenarioScriptEnvironment;
 
 void sf_scenario_actor_script_init(
+  SfScenarioActorScriptState *state, const SfScsScript *script);
+void sf_scenario_actor_script_change_scenario(
   SfScenarioActorScriptState *state, const SfScsScript *script);
 bool sf_scenario_actor_script_restore_progress(
   SfScenarioActorScriptState *state,

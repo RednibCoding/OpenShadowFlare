@@ -75,6 +75,16 @@ uint8_t sf_movement_direction(SfWorldPoint from, SfWorldPoint to) {
   return dy < 0 ? 4u : 6u;
 }
 
+int32_t sf_movement_point_distance(
+    SfWorldPoint first, SfWorldPoint second) {
+  const int64_t dx = (int64_t) first.x - second.x;
+  const int64_t dy = (int64_t) first.y - second.y;
+  const uint32_t distance = sf_integer_sqrt(
+    (uint64_t) (dx * dx) + (uint64_t) (dy * dy));
+  return distance > (uint32_t) INT32_MAX
+    ? INT32_MAX : (int32_t) distance;
+}
+
 static int64_t sf_separated_edge_distance(
     int64_t first_start, int64_t first_end,
     int64_t second_start, int64_t second_end) {

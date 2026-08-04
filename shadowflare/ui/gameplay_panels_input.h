@@ -24,11 +24,19 @@
 #include "game/player.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_character_panel.h"
+#include "ui/gameplay_transport.h"
 
 #include <stdbool.h>
 
 bool sf_gameplay_panels_input_resolve(
   SfGameplayCharacterPanelUi *character, SfGameplayInventoryUi *inventory,
+  const SfPlayerState *player, bool conversation_active,
+  SfGameInput *input);
+bool sf_gameplay_panels_input_resolve_with_transport(
+  SfGameplayCharacterPanelUi *character, SfGameplayInventoryUi *inventory,
+  SfGameplayTransportUi *transport,
+  const SfTransportCatalog *transport_catalog,
+  const SfScenarioProgressState *progress,
   const SfPlayerState *player, bool conversation_active,
   SfGameInput *input);
 

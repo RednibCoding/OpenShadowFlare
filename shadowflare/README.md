@@ -59,6 +59,31 @@ which of the four town companions is visible for the current companion type.
 The authored PEOPLE timing and wander bounds drive Ostare's movement. PEOPLE
 actors and the player share the same dynamic collision query and retail edge
 controller, so they route around one another without a second pathfinder.
+The seven type-zero records in the same MCT are live objects rather than map
+scenery. Their separate `Character/OBJECT` static and animated resources,
+shadows, script state, color strengths, opacity, judgement boxes, and display
+order now feed the ordinary world passes. That makes the Warehouse and both
+transport points solid when their authored state says they are solid. Opaque
+object pixels also participate in hover and click selection, including the
+MCT-owned nameplate. Clicking the Warehouse now routes into range, starts its
+authored status-zero sentence, and lets opcode 41 toggle the existing Special
+Item panel. The script emits a one-shot game request; the UI owns the panel and
+keeps an independent right Inventory open. The matching transport object now
+uses the same boundary: its real status-zero sentence reaches opcode 37 and
+opens the retail left-hand destination panel while an independent Inventory
+can remain open on the right. All 51 names and scenario/entry pairs are
+streamed from Table 40, enabled rows are compacted into ten slots per page,
+and the arrows, hover rows, frame, and sample 58 come from the original game.
+Selecting Remote Town resolves entry key 200 through the active MCT instead of
+hardcoding world coordinates, consumes the panel click before world movement,
+and closes only the transport panel. Opcode 38 supplies the matching scripted
+close request. The real periodic activation sentence now discovers row zero,
+plays sample 80 once, fades both authored transport objects, and draws its
+opcode-27 `Remote Town` label above the script-selected object. Cross-scenario
+rows now use the same fixed travel request as opcode 17. The screen runtime
+releases the old scenario arena, loads the selected scenario and MCT entry,
+and preserves the live player, inventory, companion, quest, script, and
+transport owners.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
@@ -172,7 +197,10 @@ through the world boundary too. Maps which the C99 runtime does not implement
 yet still fail honestly instead of silently moving that character back to
 Remote Town. A failed entry returns to the same highlighted Load Game row;
 it no longer closes the application and looks like a crash when `osf` was
-started from the desktop.
+started from the desktop. Non-town maps may contain `?` pattern-list slots and
+no PEOPLE records; both are valid retail data. Their periodic scripts can also
+retain placed-effect descriptors and use the shared integer random source
+without preventing a saved character from entering the world.
 
 ## Hard limits
 
@@ -255,8 +283,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,458,533 bytes of the 7 MiB main arena,
-leaving 5,881,499 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,538,693 bytes of the 7 MiB main arena,
+leaving 5,801,339 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -269,26 +297,32 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 771,456 bytes of the main arena, leaving 6,568,576 bytes free;
+assets. It uses 851,616 bytes of the main arena, leaving 6,488,416 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 731,672 bytes of the main arena, leaving 6,608,360
+The load-game screen uses 811,832 bytes of the main arena, leaving 6,528,200
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 6,744,124 bytes of the main
-arena, leaving 595,908 bytes free. Its screen-owned scenario, script, map,
-player, owned companion, PEOPLE, ground-item, inventory-panel, equipment, and
-UI data and artwork account for 6,386,773
-bytes. GND rendering data is decoded directly from its compressed three-plane
+The complete Remote Town gameplay screen uses 7,271,724 bytes of the main
+arena, leaving 68,308 bytes free. Its screen-owned scenario, script, map,
+player, owned companion, PEOPLE, type-zero objects, ground-item,
+inventory-panel, transport, equipment, and UI data and artwork account for
+6,834,213 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
+
+The same runtime reload measured in Near Remote Town uses 7,236,496 bytes,
+leaving 103,536 bytes free; 6,798,985 bytes belong to that screen. The
+transition never retains two maps at once. Its fixed request lives with the
+game owner, while the screen arena is rewound before the next scenario is
+decoded.
 
 The GND movement plane is active without retaining its 1,451,808-byte raw
 16-bit expansion. Retail movement only reads its low two flags, so the 852x852
@@ -336,13 +370,59 @@ The interpreter uses fixed temporary, persistent, quest, and 16-frame call
 stack storage. Command semantics, operand access, and the resumable status loop
 are separate small files rather than one growing interpreter source.
 
+Type-zero object artwork is prepared from the active MCT in the same way.
+Remote Town retains only its three referenced `Character/OBJECT` resources:
+the exact static NJP patterns, the SDW patterns which actually exist, and the
+CAF cells needed by the animated transport point. This slice adds 328,656
+bytes to the measured gameplay total. Loading, decoding, and filename-case
+fallback all happen at the screen boundary; object update, picking, and draw
+passes perform no file access or allocation.
+
 The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 595,908-byte headroom is now a hard warning for upcoming combat and
+remaining 68,308-byte headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
+
+Outdoor enemies follow the same sparse policy without a scenario-specific
+resource list. The MCT decoder retains all 127 Near Remote Town records, while
+the visual loader groups only nonnegative ENEMY resources in a fixed
+1,280-by-960-pixel radius around the active entry. For each resource it keeps
+only authored idle directions, enabled parts, CAF cells, and the referenced
+NJP/SDW patterns. The world owns live life, position, state, direction, and
+animation counters separately from those immutable definitions. Living
+judgement-enabled rows share the ordinary movement blockers, and visible rows
+share the ordinary depth list; resource-less `Enemy Hole` rows stay valid but
+request no artwork. This first cache is prepared only at the loading boundary,
+so the next controller slice must refresh it at another predictable boundary
+before enemies can roam beyond the prepared locality.
+
+Enemy control data has an equally narrow owner. The active scenario supplies
+the exact fixed Shift-JIS names to a two-pass `Control.aid` scan. The first pass
+counts only matching lists and actions; the second writes their event spans,
+nine parameters, and six conditions directly into the screen arena. Near
+Remote Town therefore keeps three of the retail file's 64 lists and 48 actions
+without retaining a 90 KiB input buffer or using heap memory. Each live enemy
+holds one immutable resolved control pointer, and a missing authored name makes
+world preparation fail instead of silently selecting a made-up behavior.
+
+The first controller consumes those compact rows directly. Its evaluator
+preserves the DLL's condition checks, priority-list quirk, reverse traversal,
+weighted draw, and fallback events. Wait, patrol, and approach actions keep
+their authored counters and movement scale. The gate Goblin therefore starts
+with its event-zero patrol row, publishes event 12, and enters the matching
+action-ten approach while the player remains in range. Target refresh and the
+retail random turn use a fixed CORDIC rotation, so the hot path remains entirely
+integer-only. Walk chart one is prepared in all eight directions for each
+entry-vicinity resource, movement uses the shared route controller, and the
+enemy's dynamic blocker is updated in the same tick as its position. Attack
+selection and cadence, route movement, and the small per-enemy coordinator
+live in separate files so adding more actions does not grow one controller. The
+attack presentations are deliberately still dormant; the next slice will
+connect their CAF marker, pointer plate, and damage boundary rather than
+applying damage from the movement controller.
 
 World pointer hit testing lives in `ui/`, where the loaded sparse actor cells
 are already available. It produces a small actor intent before each game
@@ -382,7 +462,7 @@ grid placement, single-item swaps, invalid-placement rollback, and partial
 Gold merges all stay in `game/inventory.c`.
 
 The inventory and character panels follow the same lifetime. `Status.njp` is
-streamed to retain only 37 required patterns, without constructing
+streamed to retain only 43 required patterns, without constructing
 metadata for its other 115 patterns. Item definitions provide the inventory
 group, pattern, and optional palette directly; only groups and cells referenced
 by the active map's retained definitions are decoded.

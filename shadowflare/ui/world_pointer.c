@@ -20,6 +20,7 @@
 #include "ui/world_pointer.h"
 
 #include "core/coordinates.h"
+#include "screens/gameplay_scenario_object.h"
 
 #include <limits.h>
 
@@ -158,6 +159,7 @@ void sf_world_pointer_resolve(
   if (!input) return;
   input->world_pointer_resolved = true;
   input->pointed_actor_id = -1;
+  input->pointed_scenario_object_id = -1;
   input->pointed_ground_item_id = -1;
   if (!assets || !world || !world->entered || !input->pointer_active ||
       input->pointer_y >= 408 || world->actor_script_state.message_active)
@@ -185,6 +187,28 @@ void sf_world_pointer_resolve(
       best_distance = distance;
     }
   }
+  for (index = 0u; index < world->scenario_objects.count; ++index) {
+    const SfScenarioObject *object = &world->scenario_objects.objects[index];
+    bool exact = false;
+    const bool intersects = sf_gameplay_scenario_object_pixel_hit(
+      &assets->scenario_objects, object, &view,
+      input->pointer_x, input->pointer_y,
+      sf_world_pointer_half_size(&world->pointer), &exact);
+    const int64_t dx = (int64_t) object->position.x - pointer_world.x;
+    const int64_t dy = (int64_t) object->position.y - pointer_world.y;
+    const int64_t distance = dx * dx + dy * dy;
+    if (!sf_scenario_object_state(object, SF_SCENARIO_VISIBLE) ||
+        !sf_scenario_object_state(object, SF_SCENARIO_POINTER) ||
+        !intersects) continue;
+    if ((input->pointed_actor_id < 0 &&
+         input->pointed_scenario_object_id < 0) ||
+        (exact != best_exact ? exact : distance <= best_distance)) {
+      input->pointed_actor_id = -1;
+      input->pointed_scenario_object_id = object->id;
+      best_exact = exact;
+      best_distance = distance;
+    }
+  }
   best_distance = INT64_MAX;
   best_exact = false;
   for (index = 0u; index < world->ground_items.count; ++index) {
@@ -204,5 +228,8 @@ void sf_world_pointer_resolve(
       best_distance = distance;
     }
   }
-  if (input->pointed_ground_item_id >= 0) input->pointed_actor_id = -1;
+  if (input->pointed_ground_item_id >= 0) {
+    input->pointed_actor_id = -1;
+    input->pointed_scenario_object_id = -1;
+  }
 }

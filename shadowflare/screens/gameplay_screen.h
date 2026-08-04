@@ -27,6 +27,7 @@
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_character_panel.h"
 #include "ui/gameplay_status.h"
+#include "ui/gameplay_transport.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -35,14 +36,19 @@ typedef struct SfGameplayScreen {
   SfGameplayScene scene;
   SfGameplayInventoryUi inventory;
   SfGameplayCharacterPanelUi character_panel;
+  SfGameplayTransportUi transport;
   uint32_t rendered_animation_frame;
   uint32_t rendered_ground_item_revision;
+  uint32_t rendered_scenario_label_revision;
   uint32_t rendered_companion_frame;
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
+  uint32_t rendered_scenario_object_frames[SF_MCT_OBJECT_LIMIT];
+  int32_t rendered_scenario_object_strengths[SF_MCT_OBJECT_LIMIT];
   int32_t rendered_actor_x[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_y[SF_MCT_PERSON_LIMIT];
   uint8_t rendered_actor_chart[SF_MCT_PERSON_LIMIT];
   bool rendered_actor_visible[SF_MCT_PERSON_LIMIT];
+  bool rendered_scenario_object_visible[SF_MCT_OBJECT_LIMIT];
   int32_t rendered_player_x;
   int32_t rendered_player_y;
   int32_t rendered_camera_x;
@@ -51,6 +57,7 @@ typedef struct SfGameplayScreen {
   int32_t rendered_companion_y;
   int32_t rendered_companion_life;
   int32_t rendered_hovered_actor_id;
+  int32_t rendered_hovered_scenario_object_id;
   int32_t rendered_hovered_ground_item_id;
   int32_t rendered_message_id;
   int32_t rendered_selected_option;

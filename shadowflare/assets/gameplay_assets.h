@@ -26,14 +26,18 @@
 #include "assets/gameplay_sound_assets.h"
 #include "assets/inventory_item_assets.h"
 #include "assets/scenario_actor_assets.h"
+#include "assets/scenario_enemy_assets.h"
+#include "assets/scenario_object_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
+#include "data/ai_control.h"
 #include "data/mct.h"
 #include "data/njp.h"
 #include "data/obl.h"
 #include "data/player_parameters.h"
 #include "data/scs.h"
 #include "data/spell_parameters.h"
+#include "data/transport.h"
 #include "data/companion_parameters.h"
 
 #include <stdbool.h>
@@ -62,9 +66,13 @@ typedef struct SfGameplayAssets {
   SfPlayerInitialParameters player_parameters;
   SfCompanionProfile companion_profile;
   SfSpellParameters *spell_parameters;
+  SfTransportCatalog transports;
+  SfAiControlCatalog ai_controls;
   SfPlayerAssets player;
   SfCompanionAssets companion;
   SfScenarioActorAssets actors;
+  SfScenarioEnemyAssets enemies;
+  SfScenarioObjectAssets scenario_objects;
   SfGroundItemAssets ground_items;
   SfGameplaySoundAssets sounds;
   SfInventoryItemAssets inventory_items;

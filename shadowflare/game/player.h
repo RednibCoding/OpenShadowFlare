@@ -106,6 +106,7 @@ void sf_player_enter(
 void sf_player_move_to(SfPlayerState *player, SfWorldPoint destination);
 void sf_player_follow_to(SfPlayerState *player, SfWorldPoint destination);
 void sf_player_cancel_movement(SfPlayerState *player);
+void sf_player_face_toward(SfPlayerState *player, SfWorldPoint target);
 void sf_player_toggle_pace(SfPlayerState *player);
 SfWorldPoint sf_player_render_position(
   const SfPlayerState *player, uint16_t interpolation);
