@@ -79,7 +79,7 @@ static bool sf_scenario_actor_requests(
     else if (requests[request].animation_count == 0u)
       requests[request].animation_count = 1u;
   }
-  return *request_count > 0u;
+  return true;
 }
 
 static bool sf_scenario_actor_add_pattern(
@@ -190,13 +190,15 @@ bool sf_scenario_actor_assets_load(
   memset(requests, 0, sizeof(requests));
   if (!sf_scenario_actor_requests(
         scenario, requests, &request_count)) goto done;
-  assets->visuals = (SfScenarioActorVisual *) sf_arena_push_zero(
-    arena, (size_t) request_count * sizeof(*assets->visuals), sizeof(void *));
-  if (!assets->visuals) goto done;
-  for (index = 0u; index < request_count; ++index) {
-    if (!sf_scenario_actor_visual_load(
-          &assets->visuals[index], data_root, requests[index], arena))
-      goto done;
+  if (request_count > 0u) {
+    assets->visuals = (SfScenarioActorVisual *) sf_arena_push_zero(
+      arena, (size_t) request_count * sizeof(*assets->visuals), sizeof(void *));
+    if (!assets->visuals) goto done;
+    for (index = 0u; index < request_count; ++index) {
+      if (!sf_scenario_actor_visual_load(
+            &assets->visuals[index], data_root, requests[index], arena))
+        goto done;
+    }
   }
   assets->visual_count = request_count;
   assets->memory_bytes = sf_arena_mark(arena) - mark;

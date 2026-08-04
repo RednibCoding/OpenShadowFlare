@@ -29,6 +29,7 @@
 
 #define SF_SCENARIO_SCRIPT_STACK_LIMIT 16u
 #define SF_SCENARIO_SCRIPT_VALUE_LIMIT 1000
+#define SF_SCENARIO_NATIVE_ARGUMENT_LIMIT 14u
 
 typedef enum SfScenarioScriptResult {
   SF_SCENARIO_SCRIPT_COMPLETE = 0,
@@ -77,6 +78,7 @@ typedef struct SfScenarioActorScriptState {
 typedef bool (*SfScenarioNativeCommand)(
   void *user, int32_t opcode, const int32_t *arguments,
   uint8_t argument_count);
+typedef bool (*SfScenarioNextRandom)(void *user, int32_t *value);
 
 typedef struct SfScenarioScriptEnvironment {
   const SfMctScenario *scenario;
@@ -86,6 +88,7 @@ typedef struct SfScenarioScriptEnvironment {
   SfObjectBounds player_bounds;
   int32_t companion_type;
   SfScenarioNativeCommand native_command;
+  SfScenarioNextRandom next_random;
   void *native_user;
 } SfScenarioScriptEnvironment;
 

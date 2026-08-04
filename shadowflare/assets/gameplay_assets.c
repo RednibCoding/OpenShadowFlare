@@ -71,12 +71,21 @@ static bool sf_gameplay_map_stem(
   return true;
 }
 
-static bool sf_gameplay_ends_with_shadow(const char *name) {
+static bool sf_gameplay_ends_with(
+    const char *name, const char *extension) {
   const size_t length = name ? strlen(name) : 0u;
-  return length >= 4u && name[length - 4u] == '.' &&
-    tolower((unsigned char) name[length - 3u]) == 's' &&
-    tolower((unsigned char) name[length - 2u]) == 'd' &&
-    tolower((unsigned char) name[length - 1u]) == 'w';
+  size_t extension_length = extension ? strlen(extension) : 0u;
+  size_t index;
+  if (extension_length == 0u || length < extension_length) return false;
+  for (index = 0u; index < extension_length; ++index)
+    if (tolower((unsigned char) name[length - extension_length + index]) !=
+        tolower((unsigned char) extension[index])) return false;
+  return true;
+}
+
+static bool sf_gameplay_pattern_file(const char *name) {
+  return sf_gameplay_ends_with(name, ".njp") ||
+    sf_gameplay_ends_with(name, ".sdw");
 }
 
 static void sf_gameplay_select(
@@ -121,8 +130,8 @@ static bool sf_gameplay_select_objects(
       selection, (uint8_t) object->pattern_set, (uint8_t) object->pattern);
     if ((object->status & 8) != 0 &&
         object->pattern_set + 1 < patterns->count &&
-        sf_gameplay_ends_with_shadow(
-          patterns->names[object->pattern_set + 1]))
+        sf_gameplay_ends_with(
+          patterns->names[object->pattern_set + 1], ".sdw"))
       sf_gameplay_select(
         selection, (uint8_t) (object->pattern_set + 1),
         (uint8_t) object->pattern);
@@ -136,7 +145,8 @@ static bool sf_gameplay_load_patterns(
   uint8_t set;
   uint8_t set_count = 0u;
   for (set = 0u; set < patterns->count; ++set) {
-    if (selection->counts[set] > 0u) ++set_count;
+    if (selection->counts[set] > 0u &&
+        sf_gameplay_pattern_file(patterns->names[set])) ++set_count;
   }
   if (set_count == 0u || set_count > SF_GAMEPLAY_PATTERN_SET_LIMIT)
     return false;
@@ -149,7 +159,8 @@ static bool sf_gameplay_load_patterns(
     uint8_t index;
     uint8_t count = 0u;
     char path[SF_RETAIL_PATH_CAPACITY];
-    if (selection->counts[set] == 0u) continue;
+    if (selection->counts[set] == 0u ||
+        !sf_gameplay_pattern_file(patterns->names[set])) continue;
     if (selection->counts[set] > SF_NJP_DECODED_PATTERN_LIMIT) return false;
     for (index = 0u; index < SF_NJP_PATTERN_FILE_LIMIT; ++index) {
       if (selection->selected[set][index]) indices[count++] = index;

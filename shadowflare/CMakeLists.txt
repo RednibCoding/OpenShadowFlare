@@ -103,6 +103,7 @@ add_library(
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
+  game/scenario_effect.c
   game/scenario_object.c
   game/sound_event.c
   game/special_items.c

@@ -183,7 +183,10 @@ through the world boundary too. Maps which the C99 runtime does not implement
 yet still fail honestly instead of silently moving that character back to
 Remote Town. A failed entry returns to the same highlighted Load Game row;
 it no longer closes the application and looks like a crash when `osf` was
-started from the desktop.
+started from the desktop. Non-town maps may contain `?` pattern-list slots and
+no PEOPLE records; both are valid retail data. Their periodic scripts can also
+retain placed-effect descriptors and use the shared integer random source
+without preventing a saved character from entering the world.
 
 ## Hard limits
 
@@ -266,8 +269,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,482,397 bytes of the 7 MiB main arena,
-leaving 5,857,635 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,485,989 bytes of the 7 MiB main arena,
+leaving 5,854,043 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -280,20 +283,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 795,320 bytes of the main arena, leaving 6,544,712 bytes free;
+assets. It uses 798,912 bytes of the main arena, leaving 6,541,120 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 755,536 bytes of the main arena, leaving 6,584,496
+The load-game screen uses 759,128 bytes of the main arena, leaving 6,580,904
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,072,788 bytes of the main
-arena, leaving 267,244 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,076,380 bytes of the main
+arena, leaving 263,652 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
 inventory-panel, equipment, and UI data and artwork account for 6,691,573
 bytes. GND rendering data is decoded directly from its compressed three-plane

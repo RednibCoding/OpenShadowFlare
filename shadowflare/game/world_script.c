@@ -19,6 +19,8 @@
 
 #include "game/world_script.h"
 
+#include "core/retail_random.h"
+
 static bool sf_world_native_command(
     void *user, int32_t opcode, const int32_t *arguments,
     uint8_t argument_count) {
@@ -29,6 +31,9 @@ static bool sf_world_native_command(
       &world->ground_items, arguments[0], arguments[1],
       (SfWorldPoint) {arguments[2], arguments[3]},
       arguments[4], arguments[5]);
+  if (opcode == 36)
+    return sf_scenario_placed_effect_add(
+      &world->placed_effects, arguments, argument_count);
   if (opcode == 41 && argument_count == 1u)
     return sf_gameplay_service_request(
       &world->service_request,
@@ -49,6 +54,13 @@ static bool sf_world_native_command(
   return false;
 }
 
+static bool sf_world_next_random(void *user, int32_t *value) {
+  SfWorldState *world = (SfWorldState *) user;
+  if (!world || !value) return false;
+  *value = sf_retail_random_next(&world->random_state);
+  return true;
+}
+
 SfScenarioScriptEnvironment sf_world_script_environment(
     SfWorldState *world) {
   const SfScenarioScriptEnvironment environment = {
@@ -59,6 +71,7 @@ SfScenarioScriptEnvironment sf_world_script_environment(
     world ? world->player.judgement : (SfObjectBounds) {0, 0, 0, 0},
     world ? world->companion_type : 0,
     sf_world_native_command,
+    sf_world_next_random,
     world};
   return environment;
 }

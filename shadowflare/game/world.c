@@ -33,6 +33,7 @@ void sf_world_state_init(
     uint8_t player_gender) {
   if (!world) return;
   memset(world, 0, sizeof(*world));
+  world->random_state = 1u;
   world->scenario_id = scenario_id;
   world->entry_key = entry_key;
   sf_ground_items_init(&world->ground_items);
@@ -93,6 +94,7 @@ bool sf_world_state_bind_scenario_progress(
     const SfScenarioProgressState *progress) {
   SfScenarioScriptEnvironment environment;
   if (!world || !scenario || !script) return false;
+  memset(&world->placed_effects, 0, sizeof(world->placed_effects));
   sf_scenario_objects_init(&world->scenario_objects, scenario);
   sf_scenario_actors_init(&world->actors, scenario);
   sf_scenario_actor_script_init(&world->actor_script_state, script);

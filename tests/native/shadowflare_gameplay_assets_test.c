@@ -59,6 +59,62 @@ static int is_shadow_name(const char *name) {
     tolower((unsigned char) name[length - 1u]) == 'w';
 }
 
+static int is_pattern_file(const char *name) {
+  const size_t length = name ? strlen(name) : 0u;
+  if (length < 4u || name[length - 4u] != '.') return 0;
+  return (tolower((unsigned char) name[length - 3u]) == 'n' &&
+      tolower((unsigned char) name[length - 2u]) == 'j' &&
+      tolower((unsigned char) name[length - 1u]) == 'p') ||
+    (tolower((unsigned char) name[length - 3u]) == 's' &&
+      tolower((unsigned char) name[length - 2u]) == 'd' &&
+      tolower((unsigned char) name[length - 1u]) == 'w');
+}
+
+static int test_non_town_gameplay_load(
+    const char *root, SfArena *arena, const SfPlayerState *player,
+    const SfItemReference *retained_items, uint8_t retained_item_count) {
+  SfGameplayAssets assets;
+  SfPatternList patterns;
+  SfWorldState world;
+  char path[1024];
+  size_t mark = sf_arena_mark(arena);
+  uint8_t index;
+  (void) snprintf(path, sizeof(path), "%s/Map/Pattern/f00_02.Lst", root);
+  if (!sf_pattern_list_load(path, &patterns) ||
+      !sf_gameplay_assets_load(
+        &assets, root, 1, 0, player->gender, player->level,
+        player->companions.type,
+        sf_player_companion_level(&player->companions),
+        player->appearance_parts, player->appearance_part_count,
+        player->visible_items, player->visible_item_count,
+        retained_items, retained_item_count, arena)) {
+    fprintf(stderr, "A saved non-town world could not load its retail assets\n");
+    return 1;
+  }
+  for (index = 0u; index < assets.pattern_set_count; ++index) {
+    const uint8_t source = assets.pattern_sets[index].source_index;
+    if (source >= patterns.count || !is_pattern_file(patterns.names[source])) {
+      fprintf(stderr, "A placeholder map pattern was treated as artwork\n");
+      return 1;
+    }
+  }
+  sf_world_state_init(&world, 1, 0, player->gender);
+  if (assets.scenario.people_count != 0u || assets.actors.visual_count != 0u ||
+      assets.scenario.object_count != 48u ||
+      !sf_player_apply_initial_parameters(
+        &world.player, &assets.player_parameters) ||
+      !sf_world_state_bind_ground_items(
+        &world, assets.ground_items.definitions,
+        assets.ground_items.definition_count) ||
+      !sf_world_state_bind_scenario(
+        &world, &assets.scenario, assets.script) ||
+      world.placed_effects.count == 0u) {
+    fprintf(stderr, "A saved world without PEOPLE records could not start\n");
+    return 1;
+  }
+  return sf_arena_rewind(arena, mark) ? 0 : 1;
+}
+
 static int check_pattern(
     const SfGameplayAssets *assets, int32_t set, int32_t pattern,
     const char *kind) {
@@ -1052,8 +1108,10 @@ int main(void) {
   sf_player_init(&player, 1u);
   if (!sf_player_required_item_definitions(
         &player, retained_items, SF_GROUND_ITEM_DEFINITION_LIMIT,
-        &retained_item_count) ||
-      !sf_gameplay_assets_load(
+        &retained_item_count)) return 1;
+  if (test_non_town_gameplay_load(
+        root, &arena, &player, retained_items, retained_item_count)) return 1;
+  if (!sf_gameplay_assets_load(
         &assets, root, 0, 0, player.gender, player.level,
         player.companions.type,
         sf_player_companion_level(&player.companions),
