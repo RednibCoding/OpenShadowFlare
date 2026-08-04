@@ -2,6 +2,7 @@
     <application
         android:allowBackup="false"
         android:hasCode="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="OpenShadowFlare"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
         <activity

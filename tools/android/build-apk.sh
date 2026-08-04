@@ -29,7 +29,6 @@ fi
 
 sh "$GRADLE_WRAPPER" \
     -p "$ANDROID_DIR" \
-    --no-daemon \
     :app:assembleDebug \
     "$@"
 

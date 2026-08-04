@@ -44,6 +44,9 @@ elseif(APPLE)
       "${TAL_AUDIOUNIT_FRAMEWORK}"
       Threads::Threads
   )
+elseif(ANDROID)
+  target_sources(tal PRIVATE tal_android.c)
+  target_link_libraries(tal PRIVATE aaudio)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(tal PRIVATE tal_alsa.c)
   find_package(ALSA REQUIRED)

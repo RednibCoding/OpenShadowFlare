@@ -178,19 +178,11 @@ if(ANDROID)
     osf_android_entry
     PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}"
+      "${PROJECT_SOURCE_DIR}/thirdparty/twl"
       "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue"
   )
   target_link_libraries(osf_android_entry PRIVATE android log)
-  target_link_libraries(
-    osf
-    PRIVATE
-      osf_android_entry
-      android
-      log
-      EGL
-      GLESv3
-      aaudio
-  )
+  target_link_libraries(osf PRIVATE osf_android_entry)
   target_link_options(osf PRIVATE "LINKER:-u,ANativeActivity_onCreate")
 else()
   add_executable(

@@ -17,17 +17,9 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*
- * Android entry glue for the C99 runtime. The app is a NativeActivity, so the
- * entry point is android_main (via native_app_glue), not main(): this file
- * provides the fixed memory pools (the job main.c does on other platforms),
- * hands the android_app to the TWL Android backend, and resolves the retail
- * data from the app's external files directory. It lives outside shadowflare/
- * because it uses the Android SDK.
- */
-
 #include <android_native_app_glue.h>
 
+#include "backends/android/twl_android.h"
 #include "core/memory_budget.h"
 #include "runtime/application.h"
 
@@ -44,11 +36,10 @@ void android_main(struct android_app *app) {
     (app && app->activity) ? app->activity->externalDataPath : NULL;
   const char *requested = NULL;
   if (external) {
-    /* App-scoped external storage, e.g.
-     * /sdcard/Android/data/org.openshadowflare.game/files/ShadowFlare */
     snprintf(data_root, sizeof(data_root), "%s/ShadowFlare", external);
     requested = data_root;
   }
+  twl_android_set_app(app);
   sf_application_run(
     g_main_memory, sizeof(g_main_memory),
     g_video_memory, sizeof(g_video_memory),
