@@ -1,1 +1,1 @@
-Implement retail enemy direct-attack variants
+Publish retail enemy direct-special requests

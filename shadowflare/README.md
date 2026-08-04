@@ -286,8 +286,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,549,493 bytes of the 7 MiB main arena,
-leaving 5,790,539 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,554,845 bytes of the 7 MiB main arena,
+leaving 5,785,187 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -300,20 +300,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 862,416 bytes of the main arena, leaving 6,477,616 bytes free;
+assets. It uses 867,768 bytes of the main arena, leaving 6,472,264 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 822,632 bytes of the main arena, leaving 6,517,400
+The load-game screen uses 827,984 bytes of the main arena, leaving 6,512,048
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,296,364 bytes of the main
-arena, leaving 43,668 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,301,716 bytes of the main
+arena, leaving 38,316 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
 inventory-panel, transport, equipment, combat tables and sounds, and UI data
 and artwork account for 6,848,053 bytes. GND rendering data is decoded directly from its compressed three-plane
@@ -321,8 +321,8 @@ stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
-The same runtime reload measured in Near Remote Town uses 7,261,136 bytes,
-leaving 78,896 bytes free; 6,812,825 bytes belong to that screen. The
+The same runtime reload measured in Near Remote Town uses 7,266,488 bytes,
+leaving 73,544 bytes free; 6,812,825 bytes belong to that screen. The
 transition never retains two maps at once. Its fixed request lives with the
 game owner, while the screen arena is rewound before the next scenario is
 decoded.
@@ -438,6 +438,16 @@ consumes its visual random draw. Ordinary hits use the retail 20..98 chance
 clamp, table-scaled physical or elemental defense, durability and reflection
 draw order, revival item, reaction chance and duration, hit/death state, event
 17, and common hit or revival sound.
+
+MCT's alternative direct-special branch stays separate from ordinary damage.
+It retains the exact entry target vector using integer coordinates, consumes
+both retail visual draws, applies the raw effect-kind packet switch, and writes
+the complete 22-argument request into a fixed eight-entry frame queue. The
+queue reports saturation and clears by resetting two small fields; it does not
+zero or allocate packet storage in the update hot path. The raw retail kinds
+`0/1/4/5/6/7` deliberately remain requests until their executable consumer is
+reconstructed, rather than being misidentified as the unrelated `10001+`
+projectile family.
 Those rules live in small `game/` files and never enter movement or rendering.
 
 Only the needed cells from combat tables 7, 11, 24, 25, and 26 are retained in

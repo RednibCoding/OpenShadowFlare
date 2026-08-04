@@ -88,7 +88,7 @@ static int sf_test_direct_variant(uint8_t variant) {
   context.random_state = &random_state;
   context.attack_request = &request;
   context.player.valid = true;
-  context.player.position = (SfWorldPoint) {180, 100};
+  context.player.position = (SfWorldPoint) {180, 140};
   context.player.judgement = (SfObjectBounds) {-10, -10, 10, 10};
   sf_scenario_enemy_controller_update(&enemy, &context);
   if (request.resource_id != 7 || request.chart != chart ||
@@ -103,6 +103,11 @@ static int sf_test_direct_variant(uint8_t variant) {
       enemy.presentation_action != variant + 1u ||
       enemy.animation_chart != chart || !enemy.direct_impact_pending) {
     fprintf(stderr, "Direct variant %u did not enter its CAF marker\n", variant);
+    return 1;
+  }
+  if (enemy.presentation_direction.x != 80 ||
+      enemy.presentation_direction.y != 40) {
+    fprintf(stderr, "Direct variant %u lost its entry target vector\n", variant);
     return 1;
   }
   sf_scenario_enemy_controller_update(&enemy, &context);

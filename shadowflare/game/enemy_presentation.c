@@ -64,6 +64,16 @@ static const SfEnemyControllerTarget *sf_enemy_direct_target(
   return NULL;
 }
 
+static SfWorldPoint sf_enemy_facing_vector(uint8_t direction) {
+  static const int8_t vectors[8][2] = {
+    {1, 1}, {1, 0}, {1, -1}, {0, -1},
+    {-1, -1}, {-1, 0}, {-1, 1}, {0, 1}
+  };
+  if (direction >= 8u) return (SfWorldPoint) {1, 0};
+  return (SfWorldPoint) {
+    vectors[direction][0], vectors[direction][1]};
+}
+
 void sf_enemy_presentation_reset(SfScenarioEnemy *enemy) {
   if (!enemy) return;
   enemy->presentation_action = SF_ENEMY_IDLE_PRESENTATION;
@@ -105,8 +115,17 @@ bool sf_enemy_presentation_begin_direct(
   enemy->presentation_target = UINT8_MAX;
   target = sf_enemy_direct_target(
     enemy, context, variant, &enemy->presentation_target);
-  if (target)
+  if (target) {
+    const int64_t dx = (int64_t) target->position.x - enemy->position.x;
+    const int64_t dy = (int64_t) target->position.y - enemy->position.y;
     enemy->direction = sf_movement_direction(enemy->position, target->position);
+    enemy->presentation_direction.x = dx < INT32_MIN ? INT32_MIN :
+      dx > INT32_MAX ? INT32_MAX : (int32_t) dx;
+    enemy->presentation_direction.y = dy < INT32_MIN ? INT32_MIN :
+      dy > INT32_MAX ? INT32_MAX : (int32_t) dy;
+  } else {
+    enemy->presentation_direction = sf_enemy_facing_vector(enemy->direction);
+  }
   return true;
 }
 

@@ -91,6 +91,7 @@ add_library(
   game/belt.c
   game/collision.c
   game/combat_damage.c
+  game/combat_effect_request.c
   game/equipment.c
   game/enemy_ai_selection.c
   game/enemy_action.c

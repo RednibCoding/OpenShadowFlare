@@ -114,6 +114,26 @@ if(TARGET shadowflare_core)
   add_test(NAME shadowflare_combat COMMAND shadowflare_combat_test)
 
   add_executable(
+    shadowflare_enemy_special_test
+    shadowflare_enemy_special_test.c)
+  target_link_libraries(
+    shadowflare_enemy_special_test PRIVATE ShadowFlare::Core)
+  target_compile_features(
+    shadowflare_enemy_special_test PRIVATE c_std_99)
+  set_target_properties(
+    shadowflare_enemy_special_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_enemy_special_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_enemy_special_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_enemy_special
+    COMMAND shadowflare_enemy_special_test)
+
+  add_executable(
     shadowflare_gameplay_assets_test
     shadowflare_gameplay_assets_test.c)
   target_link_libraries(

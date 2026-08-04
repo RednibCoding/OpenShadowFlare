@@ -47,8 +47,8 @@ bool sf_world_enemy_combat_apply_direct(
     SfScenarioEnemyControllerContext *context) {
   SfEnemyDirectImpactResult impact;
   bool accepted = false;
-  if (!world || !enemy || !context || !world->combat_tables ||
-      !enemy->direct_impact_pending || enemy->presentation_action < 1u ||
+  if (!world || !enemy || !context || !enemy->direct_impact_pending ||
+      enemy->presentation_action < 1u ||
       enemy->presentation_action > 3u) return false;
   impact = sf_enemy_direct_impact_resolve(
     enemy, context, (int32_t) enemy->presentation_action - 1,
@@ -56,6 +56,11 @@ bool sf_world_enemy_combat_apply_direct(
   if (!impact.valid) return false;
   if (impact.post_hit_event != -1)
     enemy->event_number = impact.post_hit_event;
+  if (impact.special_effect) {
+    return sf_combat_effect_requests_push(
+      &world->combat_effect_requests, &impact.effect_request);
+  }
+  if (!world->combat_tables) return false;
   if (!impact.apply_damage) return false;
   if (impact.target == SF_ENEMY_IMPACT_TARGET_PLAYER) {
     const SfPlayerDamageResult result = sf_player_receive_damage(

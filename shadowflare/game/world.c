@@ -63,6 +63,7 @@ void sf_world_state_enter(
   world->pointer.range = 2u;
   world->pointer.range_enabled = true;
   sf_gameplay_service_clear(&world->service_request);
+  sf_combat_effect_requests_reset(&world->combat_effect_requests);
   world->script_transport_service = -1;
   world->enemy_attack_request.resource_id = -1;
   world->enemy_attack_request.chart = -1;
@@ -307,6 +308,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   if (!world || !world->entered || !input) return;
   world->enemy_attack_request.resource_id = -1;
   world->enemy_attack_request.chart = -1;
+  sf_combat_effect_requests_reset(&world->combat_effect_requests);
   sf_scenario_labels_begin(&world->scenario_labels);
   sf_ground_items_update(&world->ground_items);
   sf_sound_events_reset(&world->sounds);

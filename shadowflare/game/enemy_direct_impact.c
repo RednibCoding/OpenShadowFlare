@@ -133,6 +133,30 @@ static void sf_enemy_direct_special_packet(
   }
 }
 
+static void sf_enemy_direct_special_request(
+    SfCombatEffectRequest *request, const SfCombatPacket *packet,
+    const SfScenarioEnemy *enemy) {
+  const SfMctEnemy *definition = enemy->definition;
+  memset(request, 0, sizeof(*request));
+  request->packet = *packet;
+  request->direction_vector = enemy->presentation_direction;
+  request->effect_number = definition->post_ai_values[
+    SF_ENEMY_DIRECT_SPECIAL_EFFECT];
+  request->owner_kind = 4;
+  request->source_character_number = sf_scenario_enemy_character_number(enemy);
+  request->target_kind = 19;
+  request->target_identifier = -1;
+  request->constructor_value_6 = definition->post_ai_values[23];
+  request->constructor_value_7 = definition->post_ai_values[22];
+  request->packet_kind = 8;
+  request->instance_identifier = -1;
+  request->constructor_values_16_to_22[
+    SF_COMBAT_EFFECT_CONSTRUCTOR_21] =
+    definition->post_ai_values[24];
+  request->valid = true;
+  request->has_packet = true;
+}
+
 SfEnemyDirectImpactResult sf_enemy_direct_impact_resolve(
     const SfScenarioEnemy *enemy,
     const SfScenarioEnemyControllerContext *context,
@@ -150,6 +174,8 @@ SfEnemyDirectImpactResult sf_enemy_direct_impact_resolve(
   if (result.special_effect) {
     sf_enemy_direct_special_packet(
       &result.packet, enemy->definition, random_state);
+    sf_enemy_direct_special_request(
+      &result.effect_request, &result.packet, enemy);
     return result;
   }
   result.target = sf_enemy_direct_target(

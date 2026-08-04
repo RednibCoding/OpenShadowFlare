@@ -26,6 +26,7 @@
 #include "game/gameplay_service.h"
 #include "game/ground_item.h"
 #include "game/companion.h"
+#include "game/combat_effect_request.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
 #include "game/scenario_enemy.h"
@@ -83,6 +84,7 @@ typedef struct SfWorldState {
   SfScenarioLabelSet scenario_labels;
   SfScenarioObjectSet scenario_objects;
   SfGroundItemSet ground_items;
+  SfCombatEffectRequestQueue combat_effect_requests;
   SfSoundEventQueue sounds;
   SfGameplayServiceRequest service_request;
   SfScenarioTravelRequest travel_request;

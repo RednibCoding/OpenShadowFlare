@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_ENEMY_DIRECT_IMPACT_H
 
 #include "game/combat_packet.h"
+#include "game/combat_effect_request.h"
 #include "game/scenario_enemy_controller.h"
 
 #include <stdbool.h>
@@ -34,6 +35,7 @@ typedef enum SfEnemyImpactTargetKind {
 
 typedef struct SfEnemyDirectImpactResult {
   SfCombatPacket packet;
+  SfCombatEffectRequest effect_request;
   SfWorldPoint damage_origin;
   int32_t hit_chance;
   int32_t hit_roll;

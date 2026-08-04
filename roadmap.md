@@ -179,6 +179,15 @@ target seen at animation start. It builds the retail 77-word packet, preserves
 the original random draws and 20..98 hit clamp, and sends an ordinary hit
 through the player or active-companion defense and damage receiver.
 
+The alternative direct-special branch reaches its exact enqueue boundary too.
+The presentation retains the full target vector at action entry rather than
+reducing it to one of eight directions. When MCT value 21 is enabled and value
+25 selects the current variant, the marker skips ordinary targeting, consumes
+the two retail visual draws, applies the effect-kind `0/4/5/7/default` packet
+switch, and publishes all 22 constructor arguments into a fixed eight-entry
+frame queue. Overflow is explicit, ordinary updates only reset the queue's
+count, and no target backend or renderer owns this combat state.
+
 The receiver streams only tables 7, 11, 24, 25, and 26 into a compact fixed
 owner. Physical and elemental defense scaling, equipment durability rolls,
 the revival item, hit/death state, reaction chance and duration, event 17, and
@@ -195,11 +204,13 @@ the main screen arena untouched, and can be rewound without touching the
 fixed framebuffer. This is a generic resource/chart boundary, not a list of
 special maps or Goblin IDs.
 
-The immediate target is the direct-special branch and enemy effect actions.
-They must publish bounded effect requests from the existing packet path rather
-than turning authored effects into direct damage or introducing another combat
-owner. Hit/death CAF presentation and queued combat-effect artwork can then
-consume the reaction state already published by the receivers.
+The immediate target is the retail consumer for raw direct-special effect kinds
+`0/1/4/5/6/7`, followed by enemy presentation actions five through seven.
+Those raw kinds must not be guessed to be the already reconstructed `10001+`
+projectile controllers. Retail tracing should identify their lifetime and
+resource rules before the bounded request queue is consumed. Hit/death CAF
+presentation can then consume the reaction state already published by the
+receivers.
 
 ## Where we are now
 

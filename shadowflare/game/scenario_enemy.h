@@ -38,6 +38,7 @@ typedef struct SfScenarioEnemy {
   SfWorldPoint previous_position;
   SfWorldPoint spawn_position;
   SfWorldPoint movement_destination;
+  SfWorldPoint presentation_direction;
   SfObjectBounds judgement;
   SfObjectBounds patrol_bounds;
   SfRouteController route;
