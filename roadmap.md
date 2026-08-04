@@ -147,13 +147,16 @@ without retaining its 90 KiB file image, and Near Remote Town keeps only its
 three referenced control lists and 48 actions. Every live enemy resolves its
 exact Shift-JIS MCT control name before the world starts. The event evaluator
 now applies the retail life/target conditions, priority quirk, reverse file
-order, weighted random draw, and fallback events. Actions zero, one, and ten
-drive wait, patrol, and player/active-companion approach through authored
-durations, speed scaling, target refresh, integer random turning, and the same
-collision route used by the player and PEOPLE. Only enemies within the retail
-inclusive 0..5000 living-target range run their controller. Walk chart one is
-retained for all eight directions of each prepared resource, and blockers move
-with their owning enemy.
+order, weighted random draw, and fallback events. Actions zero, one, nine, and
+ten drive wait, patrol, retreat, and player/active-companion approach through
+authored durations, speed scaling, target refresh, integer random turning, and
+the same collision route used by the player and PEOPLE. Retreat uses the exact
+10,000-unit stop boundary, event 14 while moving, event 9 on completion, and
+the retail companion-target no-step quirk. Its center-point projection keeps
+sub-unit precision using integer fixed-point math. Only enemies within the
+retail inclusive 0..5000 living-target range run their controller. Walk chart
+one is retained for all eight directions of each prepared resource, and
+blockers move with their owning enemy.
 
 Enemy pointer presentation is live too. The configured click square tests the
 opaque pixels of the current CAF cells, enemies retain their higher retail

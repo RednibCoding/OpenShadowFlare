@@ -158,12 +158,25 @@ int main(void) {
   {
     SfScenarioEnemy *goblin = NULL;
     const SfAiAction *direct_attack = NULL;
+    bool retreat_action_seen = false;
     uint16_t enemy_index;
     uint16_t action_index;
     bool presentation_seen = false;
     bool impact_seen = false;
     bool completion_seen = false;
     uint8_t update;
+    for (action_index = 0u;
+         action_index < game->world.ai_controls->action_count;
+         ++action_index) {
+      if (game->world.ai_controls->actions[action_index].action_number == 9) {
+        retreat_action_seen = true;
+        break;
+      }
+    }
+    if (!retreat_action_seen) {
+      fprintf(stderr, "Near Remote Town lost its retail retreat action\n");
+      return 1;
+    }
     for (enemy_index = 0u; enemy_index < game->world.enemies.count;
          ++enemy_index) {
       SfScenarioEnemy *candidate =

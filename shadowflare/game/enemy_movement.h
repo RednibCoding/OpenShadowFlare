@@ -30,7 +30,7 @@ struct SfScenarioEnemyControllerContext;
 void sf_enemy_movement_stop(SfScenarioEnemy *enemy);
 bool sf_enemy_movement_begin_patrol(
   SfScenarioEnemy *enemy, int32_t duration, uint32_t *random_state);
-bool sf_enemy_movement_begin_approach(
+bool sf_enemy_movement_begin_target(
   SfScenarioEnemy *enemy, SfWorldPoint target);
 void sf_enemy_movement_update(
   SfScenarioEnemy *enemy,

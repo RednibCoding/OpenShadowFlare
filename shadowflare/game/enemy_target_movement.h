@@ -17,30 +17,17 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_MOVEMENT_H
-#define SHADOWFLARE_GAME_MOVEMENT_H
+#ifndef SHADOWFLARE_GAME_ENEMY_TARGET_MOVEMENT_H
+#define SHADOWFLARE_GAME_ENEMY_TARGET_MOVEMENT_H
 
-#include "core/coordinates.h"
-#include "core/bounds.h"
+#include "game/scenario_enemy.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 
-typedef struct SfMovementStep {
-  SfWorldPoint position;
-  bool moved;
-  bool arrived;
-} SfMovementStep;
+struct SfScenarioEnemyControllerContext;
 
-SfMovementStep sf_movement_step_toward(
-  SfWorldPoint position, SfWorldPoint destination, uint32_t speed);
-uint8_t sf_movement_direction(SfWorldPoint from, SfWorldPoint to);
-int32_t sf_movement_point_distance(SfWorldPoint first, SfWorldPoint second);
-bool sf_movement_point_at_distance(
-  SfWorldPoint from, SfWorldPoint toward, uint32_t distance,
-  SfWorldPoint *result);
-int32_t sf_movement_bounds_distance(
-  SfWorldPoint first_position, SfObjectBounds first_bounds,
-  SfWorldPoint second_position, SfObjectBounds second_bounds);
+bool sf_enemy_target_movement_refresh(
+  SfScenarioEnemy *enemy,
+  const struct SfScenarioEnemyControllerContext *context);
 
 #endif

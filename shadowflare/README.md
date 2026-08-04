@@ -413,14 +413,17 @@ world preparation fail instead of silently selecting a made-up behavior.
 
 The first controller consumes those compact rows directly. Its evaluator
 preserves the DLL's condition checks, priority-list quirk, reverse traversal,
-weighted draw, and fallback events. Wait, patrol, and approach actions keep
-their authored counters and movement scale. The gate Goblin therefore starts
-with its event-zero patrol row, publishes event 12, and enters the matching
-action-ten approach while the player remains in range. Target refresh and the
-retail random turn use a fixed CORDIC rotation, so the hot path remains entirely
-integer-only. Walk chart one is prepared in all eight directions for each
-entry-vicinity resource, movement uses the shared route controller, and the
-enemy's dynamic blocker is updated in the same tick as its position. Attack
+weighted draw, and fallback events. Wait, patrol, retreat, and approach actions
+keep their authored counters and movement scale. The gate Goblin therefore
+starts with its event-zero patrol row, publishes event 12, and enters the
+matching action-ten approach while the player remains in range. Action nine
+uses retail's 10,000-unit retreat boundary, inclusive duration, events 14 and
+9, and even preserves the companion-target no-step quirk. Target refresh and
+the retail random turn use fixed-point projection and a fixed CORDIC rotation,
+so the hot path remains entirely integer-only. Walk chart one is prepared in
+all eight directions for each entry-vicinity resource, movement uses the shared
+route controller, and the enemy's dynamic blocker is updated in the same tick
+as its position. Attack
 selection and cadence, route movement, and the small per-enemy coordinator
 live in separate files so adding more actions does not grow one controller. The
 ordinary action-two presentation now lives in its own game file. It uses the

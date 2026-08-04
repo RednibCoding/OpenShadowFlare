@@ -22,24 +22,17 @@
 #include "core/retail_random.h"
 #include "game/movement.h"
 #include "game/scenario_enemy_controller.h"
+#include "game/enemy_target_movement.h"
 
 #include <limits.h>
 
 #define SF_ENEMY_PATROL_ACTION 1
+#define SF_ENEMY_RETREAT_ACTION 9
 #define SF_ENEMY_APPROACH_ACTION 10
 #define SF_ENEMY_IDLE_PRESENTATION 7u
 #define SF_ENEMY_WALK_PRESENTATION 8u
 #define SF_ENEMY_MOVEMENT_SPEED_PARAMETER 3u
-#define SF_ENEMY_TARGET_REFRESH_PARAMETER 7u
-#define SF_ENEMY_RANDOM_TURN_PARAMETER 8u
 #define SF_ENEMY_MOVEMENT_SCALE_INDEX 54u
-
-static const SfEnemyControllerTarget *sf_enemy_current_target(
-    const SfScenarioEnemy *enemy,
-    const SfScenarioEnemyControllerContext *context) {
-  return enemy->movement_target == 1u
-    ? &context->companion : &context->player;
-}
 
 void sf_enemy_movement_stop(SfScenarioEnemy *enemy) {
   const bool was_walking = enemy->animation_chart != 0u;
@@ -86,39 +79,6 @@ static bool sf_enemy_patrol_destination(
   return true;
 }
 
-static void sf_enemy_rotate_destination(
-    SfScenarioEnemy *enemy, SfWorldPoint target, int32_t angle_step) {
-  static const int16_t arctangent[15] = {
-    8192, 4836, 2555, 1297, 651, 326, 163, 81,
-    41, 20, 10, 5, 3, 1, 1
-  };
-  int32_t cosine = 19898;
-  int32_t sine = 0;
-  int32_t angle = angle_step * 32768 / 3000;
-  uint8_t shift;
-  const int64_t dx = (int64_t) target.x - enemy->position.x;
-  const int64_t dy = (int64_t) target.y - enemy->position.y;
-  for (shift = 0u; shift < 15u; ++shift) {
-    const int32_t old_cosine = cosine;
-    const int32_t divisor = (int32_t) (1u << shift);
-    const int32_t shifted_cosine = old_cosine / divisor;
-    const int32_t shifted_sine = sine / divisor;
-    if (angle >= 0) {
-      cosine -= shifted_sine;
-      sine += shifted_cosine;
-      angle -= arctangent[shift];
-    } else {
-      cosine += shifted_sine;
-      sine -= shifted_cosine;
-      angle += arctangent[shift];
-    }
-  }
-  enemy->movement_destination.x = enemy->position.x +
-    (int32_t) ((dx * cosine - dy * sine) / 32768);
-  enemy->movement_destination.y = enemy->position.y +
-    (int32_t) ((dx * sine + dy * cosine) / 32768);
-}
-
 bool sf_enemy_movement_begin_patrol(
     SfScenarioEnemy *enemy, int32_t duration, uint32_t *random_state) {
   if (!sf_enemy_scaled_speed(
@@ -134,7 +94,7 @@ bool sf_enemy_movement_begin_patrol(
   return true;
 }
 
-bool sf_enemy_movement_begin_approach(
+bool sf_enemy_movement_begin_target(
     SfScenarioEnemy *enemy, SfWorldPoint target) {
   if (!sf_enemy_scaled_speed(
         enemy, enemy->selected_action->parameters[
@@ -150,39 +110,6 @@ bool sf_enemy_movement_begin_approach(
   return true;
 }
 
-static void sf_enemy_refresh_approach(
-    SfScenarioEnemy *enemy,
-    const SfScenarioEnemyControllerContext *context) {
-  const SfEnemyControllerTarget *target =
-    sf_enemy_current_target(enemy, context);
-  int32_t refresh;
-  bool should_refresh;
-  if (!target->valid || sf_movement_bounds_distance(
-        enemy->position, enemy->judgement,
-        target->position, target->judgement) <= 0) {
-    sf_enemy_movement_stop(enemy);
-    return;
-  }
-  refresh = enemy->selected_action->parameters[
-    SF_ENEMY_TARGET_REFRESH_PARAMETER];
-  if (refresh == 0) refresh = 1;
-  should_refresh = enemy->movement_counter % refresh == 0 ||
-    (enemy->movement_destination.x == enemy->position.x &&
-     enemy->movement_destination.y == enemy->position.y);
-  if (should_refresh) {
-    const int32_t chance = enemy->selected_action->parameters[
-      SF_ENEMY_RANDOM_TURN_PARAMETER];
-    enemy->movement_destination = target->position;
-    if (sf_retail_random_next(context->random_state) % 100 < chance) {
-      const int32_t angle_step =
-        sf_retail_random_next(context->random_state) % 2001 - 1000;
-      sf_enemy_rotate_destination(enemy, target->position, angle_step);
-    }
-    sf_route_reset(&enemy->route);
-  }
-  ++enemy->movement_counter;
-}
-
 void sf_enemy_movement_update(
     SfScenarioEnemy *enemy,
     const SfScenarioEnemyControllerContext *context) {
@@ -194,9 +121,9 @@ void sf_enemy_movement_update(
       return;
     }
     ++enemy->movement_counter;
-  } else if (enemy->current_action == SF_ENEMY_APPROACH_ACTION) {
-    sf_enemy_refresh_approach(enemy, context);
-    if (!enemy->movement_active) return;
+  } else if (enemy->current_action == SF_ENEMY_RETREAT_ACTION ||
+             enemy->current_action == SF_ENEMY_APPROACH_ACTION) {
+    if (!sf_enemy_target_movement_refresh(enemy, context)) return;
   }
   movement = sf_route_advance_query(
     &enemy->route, context->collision, enemy->judgement,

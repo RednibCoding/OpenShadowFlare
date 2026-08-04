@@ -221,7 +221,98 @@ static int test_direct_attack_presentation(void) {
   return 0;
 }
 
+static int test_retreat_controller(void) {
+  SfMctEnemy definition;
+  SfAiAction retreat;
+  SfAiControl control;
+  SfAiControlCatalog catalog;
+  SfScenarioEnemy enemy;
+  SfCollisionQuery collision;
+  SfScenarioEnemyControllerContext context;
+  uint32_t random_state = 1u;
+  memset(&definition, 0, sizeof(definition));
+  memset(&retreat, 0, sizeof(retreat));
+  memset(&control, 0, sizeof(control));
+  memset(&catalog, 0, sizeof(catalog));
+  memset(&enemy, 0, sizeof(enemy));
+  memset(&collision, 0, sizeof(collision));
+  memset(&context, 0, sizeof(context));
+  definition.post_ai_values[54] = 3000;
+  retreat.action_number = 9;
+  retreat.parameters[1] = 2;
+  retreat.parameters[3] = 15;
+  retreat.parameters[7] = 4;
+  retreat.parameters[8] = 25;
+  retreat.conditions[3] = 1;
+  retreat.conditions[4] = 100;
+  retreat.conditions[5] = 500;
+  enemy.definition = &definition;
+  enemy.control = &control;
+  enemy.selected_action = &retreat;
+  enemy.position = (SfWorldPoint) {100, 100};
+  enemy.previous_position = enemy.position;
+  enemy.judgement = (SfObjectBounds) {-10, -10, 10, 10};
+  enemy.state[SF_SCENARIO_VISIBLE] = 1;
+  enemy.current_life = 40;
+  enemy.maximum_life = 40;
+  enemy.event_number = -1;
+  enemy.current_action = -1;
+  enemy.presentation_action = 7u;
+  catalog.controls = &control;
+  catalog.actions = &retreat;
+  catalog.control_count = 1u;
+  catalog.action_count = 1u;
+  context.catalog = &catalog;
+  context.collision = &collision;
+  context.random_state = &random_state;
+  context.player.valid = true;
+  context.player.position = (SfWorldPoint) {300, 100};
+  context.player.judgement = (SfObjectBounds) {-10, -10, 10, 10};
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.current_action != 9 || enemy.event_number != 14 ||
+      !enemy.movement_active || enemy.movement_speed != 45 ||
+      enemy.position.x != 55 || enemy.position.y != 100 ||
+      enemy.direction != 5u || enemy.animation_chart != 1u ||
+      random_state != 2745024u) {
+    fprintf(stderr, "Action nine did not enter retail player retreat\n");
+    return 1;
+  }
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.event_number != 9 || enemy.action_counter != 3 ||
+      enemy.position.x != -35) {
+    fprintf(stderr, "Action nine missed its inclusive completion event\n");
+    return 1;
+  }
+
+  enemy.position = (SfWorldPoint) {100, 100};
+  enemy.previous_position = enemy.position;
+  enemy.selected_action = &retreat;
+  enemy.current_action = -1;
+  enemy.event_number = -1;
+  enemy.presentation_action = 7u;
+  enemy.movement_active = false;
+  context.player.valid = false;
+  context.companion.valid = true;
+  context.companion.position = (SfWorldPoint) {300, 100};
+  context.companion.judgement = (SfObjectBounds) {-10, -10, 10, 10};
+  random_state = 1u;
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.event_number != 14 || enemy.movement_active ||
+      enemy.presentation_action != 7u || enemy.position.x != 100 ||
+      random_state != 2745024u) {
+    fprintf(stderr, "Companion retreat lost the retail no-step quirk\n");
+    return 1;
+  }
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.event_number != 9) {
+    fprintf(stderr, "Companion retreat did not publish completion\n");
+    return 1;
+  }
+  return 0;
+}
+
 int main(void) {
   return test_event_selection() || test_patrol_controller() ||
-    test_direct_attack_presentation();
+    test_direct_attack_presentation() || test_retreat_controller();
 }

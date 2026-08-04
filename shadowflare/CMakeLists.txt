@@ -95,6 +95,7 @@ add_library(
   game/enemy_ai_selection.c
   game/enemy_action.c
   game/enemy_movement.c
+  game/enemy_target_movement.c
   game/enemy_presentation.c
   game/enemy_direct_impact.c
   game/game.c
