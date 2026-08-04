@@ -51,6 +51,7 @@ typedef struct SfGameplayScreen {
   int16_t rendered_pointer_y;
   uint8_t rendered_motion;
   uint8_t rendered_direction;
+  uint8_t rendered_condition_phase;
   bool rendered_pointer_active;
   bool rendered_message_active;
   SfRect player_damage;

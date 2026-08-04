@@ -20,10 +20,12 @@
 #include "assets/gameplay_assets.h"
 #include "core/memory_budget.h"
 #include "game/inventory.h"
+#include "game/item_condition.h"
 #include "game/world.h"
 #include "render/renderer.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
 
 #include <stdio.h>
@@ -37,6 +39,7 @@ typedef union SfInventoryTestMemory {
 
 static SfInventoryTestMemory sf_inventory_test_memory;
 static uint16_t sf_inventory_test_pixels[640u * 480u];
+static uint16_t sf_inventory_test_comparison[640u * 480u];
 
 static int test_inventory_transactions(void) {
   SfInventoryState inventory;
@@ -153,6 +156,7 @@ static int test_live_inventory(
   SfWorldPoint offset;
   const SfItemGroundDefinition *dagger;
   const SfGroundItem *dropped;
+  SfInventoryItem condition_item;
   char information[768];
   int32_t dropped_id;
   size_t changed = 0u;
@@ -210,6 +214,28 @@ static int test_live_inventory(
     fprintf(stderr, "The Dagger information text does not match retail\n");
     return 1;
   }
+  condition_item = world.player.inventory.items[0];
+  condition_item.durability = 30;
+  if (sf_item_condition_warning_visible(&condition_item, dagger, 0u) ||
+      sf_item_condition_warning_blinks(&condition_item, dagger)) {
+    fprintf(stderr, "Ten-percent durability incorrectly shows a warning\n");
+    return 1;
+  }
+  condition_item.durability = 29;
+  if (!sf_item_condition_warning_visible(&condition_item, dagger, 0u) ||
+      !sf_item_condition_warning_visible(&condition_item, dagger, 7u) ||
+      sf_item_condition_warning_visible(&condition_item, dagger, 8u) ||
+      !sf_item_condition_warning_blinks(&condition_item, dagger)) {
+    fprintf(stderr, "The low-condition warning does not blink 8-on/8-off\n");
+    return 1;
+  }
+  condition_item.durability = 0;
+  if (!sf_item_condition_warning_visible(&condition_item, dagger, 8u) ||
+      sf_item_condition_warning_blinks(&condition_item, dagger) ||
+      !sf_njp_decoded_pattern(&assets.inventory_panel, 16u)) {
+    fprintf(stderr, "A broken item did not keep the authored warning visible\n");
+    return 1;
+  }
   memset(&input, 0, sizeof(input));
   input.pointer_active = true;
   input.pointer_x = SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT + 4;
@@ -231,6 +257,23 @@ static int test_live_inventory(
   if (!sf_renderer_init(
         &renderer, sf_inventory_test_pixels,
         sizeof(sf_inventory_test_pixels), 640u, 480u)) return 1;
+  condition_item.durability = 30;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_item_condition_draw(
+    &renderer, &assets, &condition_item, 100, 100, 0u, NULL);
+  memcpy(
+    sf_inventory_test_comparison, sf_inventory_test_pixels,
+    sizeof(sf_inventory_test_pixels));
+  condition_item.durability = 29;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_item_condition_draw(
+    &renderer, &assets, &condition_item, 100, 100, 0u, NULL);
+  if (memcmp(
+        sf_inventory_test_comparison, sf_inventory_test_pixels,
+        sizeof(sf_inventory_test_pixels)) == 0) {
+    fprintf(stderr, "The authored condition marker was not drawn\n");
+    return 1;
+  }
   sf_renderer_clear(&renderer, 0x1234u);
   sf_gameplay_item_information_draw(
     &renderer, &assets, &world.player, &ui);
@@ -250,7 +293,8 @@ static int test_live_inventory(
     return 1;
   }
   sf_renderer_clear(&renderer, 0x1234u);
-  sf_gameplay_inventory_draw_held(&renderer, &assets, &world.player, &ui);
+  sf_gameplay_inventory_draw_held(
+    &renderer, &assets, &world.player, &ui, 0u);
   for (pixel = 0u; pixel < 640u * 480u; ++pixel)
     if (sf_inventory_test_pixels[pixel] != 0x1234u) ++changed;
   if (changed < 10u) {

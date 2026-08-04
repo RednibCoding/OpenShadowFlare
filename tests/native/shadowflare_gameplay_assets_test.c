@@ -289,12 +289,13 @@ static int test_gameplay_inventory(
   uint16_t empty_item[32u * 96u];
   size_t changed = 0u;
   int y;
-  if (!dagger || assets->inventory_panel.pattern_count != 7u ||
+  if (!dagger || assets->inventory_panel.pattern_count != 8u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 2u) ||
       sf_njp_decoded_pattern(
         &assets->inventory_panel, 2u)->reference_count != 3u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 116u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 117u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 16u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 67u) ||
       sf_njp_decoded_pattern(&assets->inventory_panel, 74u)) {
     fprintf(stderr, "The retail inventory panel patterns are incomplete\n");
@@ -334,7 +335,7 @@ static int test_gameplay_inventory(
   sf_inventory_init(&empty_player.inventory);
   sf_renderer_clear(&renderer, 0x1234u);
   sf_gameplay_inventory_draw(
-    &renderer, assets, &empty_player, &inventory, NULL);
+    &renderer, assets, &empty_player, &inventory, 0u, NULL);
   for (y = 0; y < 96; ++y)
     memcpy(
       empty_item + (size_t) y * 32u,
@@ -342,7 +343,7 @@ static int test_gameplay_inventory(
       32u * sizeof(uint16_t));
   sf_renderer_clear(&renderer, 0x1234u);
   sf_gameplay_inventory_draw(
-    &renderer, assets, player, &inventory, NULL);
+    &renderer, assets, player, &inventory, 0u, NULL);
   for (y = 0; y < 96; ++y) {
     int x;
     for (x = 0; x < 32; ++x) {

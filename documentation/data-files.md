@@ -768,6 +768,12 @@ appearance block is shorter. The small C99 runtime retains these named fields,
 plus the active record's name and description, during its existing streaming
 scan so item information never needs the complete decoded database.
 
+`Status.njp` pattern 16 is the 16-by-16 item-condition marker. Retail places
+its origin at the lower-right 16 pixels of the complete inventory footprint.
+It is shown for weapon and armor durability from zero through nine percent,
+blinks for eight gameplay updates on and eight off while above zero, and stays
+visible when the item is completely broken.
+
 For the Short Sword these values are requirement level 1, CAF part 12, RGB
 strengths `1000, 1000, 1000`, and first derived contributions 20 and 100.
 Those are decoded from the table rather than attached to the item by name.

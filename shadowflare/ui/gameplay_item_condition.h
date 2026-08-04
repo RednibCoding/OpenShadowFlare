@@ -17,39 +17,23 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_INVENTORY_H
-#define SHADOWFLARE_UI_GAMEPLAY_INVENTORY_H
+#ifndef SHADOWFLARE_UI_GAMEPLAY_ITEM_CONDITION_H
+#define SHADOWFLARE_UI_GAMEPLAY_ITEM_CONDITION_H
 
 #include "assets/gameplay_assets.h"
 #include "game/player.h"
 #include "render/renderer.h"
+#include "ui/gameplay_inventory.h"
 
 #include <stdbool.h>
+#include <stdint.h>
 
-#define SF_GAMEPLAY_INVENTORY_PANEL_LEFT 320
-#define SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT 336
-#define SF_GAMEPLAY_INVENTORY_BACKPACK_TOP 264
-#define SF_GAMEPLAY_INVENTORY_CELL_SIZE 32
-#define SF_GAMEPLAY_INVENTORY_VIEW_OFFSET 160
-
-typedef struct SfGameplayInventoryUi {
-  int16_t pointer_x;
-  int16_t pointer_y;
-  int8_t hovered_item_index;
-  int8_t hovered_equipment_slot;
-  uint8_t item_hover_updates;
-  bool open;
-  bool close_hovered;
-} SfGameplayInventoryUi;
-
-void sf_gameplay_inventory_init(SfGameplayInventoryUi *inventory);
-void sf_gameplay_inventory_draw(
+void sf_gameplay_item_condition_draw(
   SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfGameplayInventoryUi *inventory,
+  const SfInventoryItem *item, int x, int y,
   uint32_t gameplay_counter, const SfRect *clip);
-void sf_gameplay_inventory_draw_held(
-  SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfGameplayInventoryUi *inventory,
-  uint32_t gameplay_counter);
+bool sf_gameplay_item_condition_animation_active(
+  const SfGameplayAssets *assets, const SfPlayerState *player,
+  const SfGameplayInventoryUi *inventory);
 
 #endif

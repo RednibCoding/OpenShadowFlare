@@ -82,6 +82,7 @@ add_library(
   game/game.c
   game/ground_item.c
   game/inventory.c
+  game/item_condition.c
   game/load_game.c
   game/movement.c
   game/player.c
@@ -125,6 +126,8 @@ add_library(
   ui/gameplay_inventory_input.c
   ui/gameplay_item_information.c
   ui/gameplay_item_icon.c
+  ui/gameplay_item_condition.c
+  ui/gameplay_status_pattern.c
   ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c

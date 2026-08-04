@@ -54,7 +54,11 @@ now share the retail three-update information overlay too. Its active
 `Item.Ibn` definition supplies the name, price, combat values, durability,
 weight, requirement, and elemental strengths. Pointer-relative placement,
 the translucent backing, faint frame, tier color, and wide Gold/medicine
-layout stay entirely in `ui/`.
+layout stay entirely in `ui/`. Low-condition weapons and armor now compose
+`Status.njp` pattern 16 over backpack, equipment, and pointer-held icons too.
+The exact 0–9% threshold, eight-update blink halves, and permanently visible
+broken state live in a small game rule; only the marker composition lives in
+`ui/`.
 Selecting a retail save now
 streams and verifies its `ShadowFlare0005` envelope without allocating a
 payload buffer. The plain player record and exact backpack, belt, visible

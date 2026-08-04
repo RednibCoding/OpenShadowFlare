@@ -25,6 +25,7 @@
 #include "ui/gameplay_belt.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
+#include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
@@ -109,9 +110,11 @@ void sf_gameplay_screen_draw(
   SfRect damage;
   SfRect ui_damage;
   bool scene_moved;
+  uint8_t condition_phase;
   if (!screen || !renderer || !assets || !game ||
       !game->world.entered) return;
   player = &game->world.player;
+  condition_phase = (uint8_t) ((game->ticks >> 3u) & 1u);
   sf_world_render_view(&game->world, interpolation, &view);
   if (screen->inventory.open)
     view.camera_x += SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
@@ -137,6 +140,9 @@ void sf_gameplay_screen_draw(
     screen->rendered_direction != player->direction ||
     screen->rendered_ground_item_revision !=
       game->world.ground_items.presentation_revision ||
+    (screen->rendered_condition_phase != condition_phase &&
+     sf_gameplay_item_condition_animation_active(
+       assets, player, &screen->inventory)) ||
     sf_gameplay_actor_frames_changed(screen, &game->world, interpolation);
   if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame == player->animation_frame) return;
@@ -170,11 +176,11 @@ void sf_gameplay_screen_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
   sf_gameplay_inventory_draw(
-    renderer, assets, player, &screen->inventory, clip);
+    renderer, assets, player, &screen->inventory, game->ticks, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);
   sf_gameplay_inventory_draw_held(
-    renderer, assets, player, &screen->inventory);
+    renderer, assets, player, &screen->inventory, game->ticks);
   sf_gameplay_item_information_draw(
     renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;
@@ -200,5 +206,6 @@ void sf_gameplay_screen_draw(
   screen->rendered_direction = player->direction;
   screen->rendered_ground_item_revision =
     game->world.ground_items.presentation_revision;
+  screen->rendered_condition_phase = condition_phase;
   screen->drawn = true;
 }

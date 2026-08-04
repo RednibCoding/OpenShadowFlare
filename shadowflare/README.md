@@ -107,7 +107,12 @@ description, price, combat bonuses, and elemental values during the same
 streaming `Item.Ibn` pass; the full database is still discarded. The tooltip
 uses the original translucent backing, faint frame, tier color, sale-price
 rule, and wide one-cell-item layout, and follows the pointer without becoming
-game state or renderer behavior.
+game state or renderer behavior. Weapons and armor below ten percent
+durability now add the authored `Status.njp` condition marker at the lower
+right of their backpack, equipment, or pointer-held footprint. It blinks for
+eight 30 Hz updates on and eight off while durability remains above zero; a
+broken item keeps it visible. The belt remains unchanged because retail only
+allows consumables there.
 
 Choosing a retail save now restores more than its load-screen summary. The
 `ShadowFlare0005` envelope is decoded and checksummed as a stream, so even a
@@ -231,10 +236,10 @@ the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,920,020 bytes of the main
-arena, leaving 2,420,012 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 4,920,260 bytes of the main
+arena, leaving 2,419,772 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
-artwork account for 4,570,725
+artwork account for 4,570,965
 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
