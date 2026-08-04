@@ -17,18 +17,20 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_INTERPRETER_SCENARIO_SCRIPT_VALUES_H
-#define SHADOWFLARE_INTERPRETER_SCENARIO_SCRIPT_VALUES_H
+#ifndef SHADOWFLARE_UI_SCENARIO_OBJECT_NAMEPLATE_H
+#define SHADOWFLARE_UI_SCENARIO_OBJECT_NAMEPLATE_H
 
-#include "interpreter/scenario_actor_script.h"
+#include "assets/gameplay_assets.h"
+#include "game/world.h"
+#include "render/renderer.h"
 
-int32_t sf_scenario_script_read(
-  const SfScenarioActorScriptState *state, const SfScsScript *script,
-  const SfScsOperand *operand,
-  const SfScenarioScriptEnvironment *environment);
-bool sf_scenario_script_write(
-  SfScenarioActorScriptState *state, const SfScsScript *script,
-  const SfScsOperand *operand, int32_t value,
-  const SfScenarioScriptEnvironment *environment);
+#include <stdbool.h>
+
+bool sf_scenario_object_nameplate_bounds(
+  const SfGameplayAssets *assets, const SfWorldState *world,
+  const SfWorldRenderView *view, SfRect *bounds);
+void sf_scenario_object_nameplate_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfWorldState *world, const SfWorldRenderView *view);
 
 #endif

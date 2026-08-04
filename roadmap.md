@@ -25,8 +25,15 @@ The standing details and measured screen budgets live in
 
 The front-end, Remote Town map, player movement, retail PEOPLE actors,
 collision, pointing, speech bubbles, and interactive script-driven choices are
-live. Ostare's opening chain reaches its four opcode 10 starter drops, with the
-original item definitions, artwork, palettes, bounce, and landing sounds.
+live. All seven MCT type-zero objects are live too. Their sparse static or
+animated `Character/OBJECT` resources, shadows, state channels, judgement,
+depth, hover tint, authored nameplate, and opaque-pixel picking remain separate
+from both OBL scenery and PEOPLE actors. Object clicks are consumed through
+the retail interaction range instead of leaking into movement; opening the
+Warehouse or transport service from the object's status script is the next
+small object slice. Ostare's opening chain reaches its four opcode 10 starter
+drops, with the original item definitions, artwork, palettes, bounce, and
+landing sounds.
 Those drops can now be hovered, approached, and picked up into the player's
 fixed 9x4 inventory, including retail dimensions, gold stacks, failure bounce,
 and pickup sounds. Harley's complete `Explanation` branch also runs from the
@@ -110,6 +117,13 @@ warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
+
+The immediate C99 target is the first complete type-zero interaction. Start
+the selected object's authored status sentence, keep the object/people script
+path shared where retail shares it, and connect one service without moving UI
+ownership out of `ui/`. Warehouse is the useful first case because its panel
+and item owner already provide a clear parity reference in `SF_EXE`; transport
+can follow through the same boundary once the common interaction is proven.
 
 ## Where we are now
 

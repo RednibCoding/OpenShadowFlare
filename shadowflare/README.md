@@ -59,6 +59,14 @@ which of the four town companions is visible for the current companion type.
 The authored PEOPLE timing and wander bounds drive Ostare's movement. PEOPLE
 actors and the player share the same dynamic collision query and retail edge
 controller, so they route around one another without a second pathfinder.
+The seven type-zero records in the same MCT are live objects rather than map
+scenery. Their separate `Character/OBJECT` static and animated resources,
+shadows, script state, color strengths, opacity, judgement boxes, and display
+order now feed the ordinary world passes. That makes the Warehouse and both
+transport points solid when their authored state says they are solid. Opaque
+object pixels also participate in hover and click selection, including the
+MCT-owned nameplate. Clicking one is consumed as an object interaction; the
+status scripts that open its actual service are the next slice.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
@@ -255,8 +263,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,458,533 bytes of the 7 MiB main arena,
-leaving 5,881,499 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,482,389 bytes of the 7 MiB main arena,
+leaving 5,857,643 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -269,22 +277,22 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 771,456 bytes of the main arena, leaving 6,568,576 bytes free;
+assets. It uses 795,312 bytes of the main arena, leaving 6,544,720 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 731,672 bytes of the main arena, leaving 6,608,360
+The load-game screen uses 755,528 bytes of the main arena, leaving 6,584,504
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 6,744,124 bytes of the main
-arena, leaving 595,908 bytes free. Its screen-owned scenario, script, map,
-player, owned companion, PEOPLE, ground-item, inventory-panel, equipment, and
-UI data and artwork account for 6,386,773
+The complete Remote Town gameplay screen uses 7,072,780 bytes of the main
+arena, leaving 267,252 bytes free. Its screen-owned scenario, script, map,
+player, owned companion, PEOPLE, type-zero objects, ground-item,
+inventory-panel, equipment, and UI data and artwork account for 6,691,573
 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
@@ -336,11 +344,19 @@ The interpreter uses fixed temporary, persistent, quest, and 16-frame call
 stack storage. Command semantics, operand access, and the resumable status loop
 are separate small files rather than one growing interpreter source.
 
+Type-zero object artwork is prepared from the active MCT in the same way.
+Remote Town retains only its three referenced `Character/OBJECT` resources:
+the exact static NJP patterns, the SDW patterns which actually exist, and the
+CAF cells needed by the animated transport point. This slice adds 328,656
+bytes to the measured gameplay total. Loading, decoding, and filename-case
+fallback all happen at the screen boundary; object update, picking, and draw
+passes perform no file access or allocation.
+
 The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 595,908-byte headroom is now a hard warning for upcoming combat and
+remaining 267,252-byte headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 

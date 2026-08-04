@@ -39,6 +39,16 @@ static void sf_mct_copy_object_common(
   object->direction = common->direction;
   memcpy(object->initial_state, common->initial_state,
     sizeof(object->initial_state));
+  memcpy(object->part_red_strength, common->red_strength,
+    sizeof(object->part_red_strength));
+  memcpy(object->part_green_strength, common->green_strength,
+    sizeof(object->part_green_strength));
+  memcpy(object->part_blue_strength, common->blue_strength,
+    sizeof(object->part_blue_strength));
+  memcpy(object->part_visibility, common->part_visibility,
+    sizeof(object->part_visibility));
+  object->custom_part_count = common->custom_part_count;
+  object->custom_parts = common->custom_parts;
 }
 
 static bool sf_mct_read_objects(

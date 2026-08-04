@@ -25,18 +25,22 @@
 #include "game/companion.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
+#include "game/scenario_object.h"
 #include "game/sound_event.h"
 #include "interpreter/scenario_actor_script.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT (SF_MCT_PERSON_LIMIT + 2u)
+#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT \
+  (SF_MCT_OBJECT_LIMIT + SF_MCT_PERSON_LIMIT + 2u)
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
+  int32_t hovered_scenario_object_id;
   int32_t hovered_ground_item_id;
   int32_t pending_actor_id;
+  int32_t pending_scenario_object_id;
   int32_t pending_ground_item_id;
   int16_t screen_x;
   int16_t screen_y;
@@ -65,6 +69,7 @@ typedef struct SfWorldState {
   SfPlayerState player;
   SfCompanionState companion;
   SfScenarioActorSet actors;
+  SfScenarioObjectSet scenario_objects;
   SfGroundItemSet ground_items;
   SfSoundEventQueue sounds;
   SfScenarioActorScriptState actor_script_state;

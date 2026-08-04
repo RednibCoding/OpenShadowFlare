@@ -47,6 +47,7 @@ typedef enum SfMagicAction {
 
 typedef struct SfGameInput {
   int32_t pointed_actor_id;
+  int32_t pointed_scenario_object_id;
   int32_t pointed_ground_item_id;
   int8_t pointed_conversation_option;
   int16_t pointer_x;

@@ -27,17 +27,24 @@
 #include "screens/gameplay_ground_item.h"
 #include "screens/gameplay_object_visual.h"
 #include "screens/gameplay_player.h"
+#include "screens/gameplay_scenario_object.h"
 
 #include <string.h>
 
 #define SF_GAMEPLAY_PLAYER_ENTRY UINT16_MAX
 #define SF_GAMEPLAY_COMPANION_ENTRY UINT16_C(0x3fff)
+#define SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE UINT16_C(0x1000)
 #define SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE UINT16_C(0x4000)
 #define SF_GAMEPLAY_ACTOR_ENTRY_BASE UINT16_C(0x8000)
 
 static bool sf_gameplay_ground_item_entry(uint16_t entry) {
   return entry >= SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE &&
     entry < SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE + SF_GROUND_ITEM_LIMIT;
+}
+
+static bool sf_gameplay_scenario_object_entry(uint16_t entry) {
+  return entry >= SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE &&
+    entry < SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE + SF_MCT_OBJECT_LIMIT;
 }
 
 static bool sf_gameplay_actor_entry(uint16_t entry) {
@@ -89,6 +96,22 @@ static uint16_t sf_gameplay_collect_objects(
     ++count;
   }
   if (world) {
+    uint8_t scenario_object_index;
+    for (scenario_object_index = 0u;
+         scenario_object_index < world->scenario_objects.count;
+         ++scenario_object_index) {
+      const SfScenarioObject *object =
+        &world->scenario_objects.objects[scenario_object_index];
+      if (!sf_gameplay_scenario_object_visible(
+            &assets->scenario_objects, object, view, shadow)) continue;
+      if (count >= SF_GAMEPLAY_DRAW_ENTRY_LIMIT) return UINT16_MAX;
+      entries[count].position = object->position;
+      entries[count].judgement = object->judgement;
+      entries[count].source_index = (uint16_t) (
+        SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE + scenario_object_index);
+      entries[count].status = object->display_status;
+      ++count;
+    }
     uint8_t item_index;
     for (item_index = 0u; item_index < world->ground_items.count;
          ++item_index) {
@@ -153,6 +176,7 @@ static void sf_gameplay_mark_translucent_objects(
       continue;
     }
     if (object_index == SF_GAMEPLAY_COMPANION_ENTRY ||
+        sf_gameplay_scenario_object_entry(object_index) ||
         sf_gameplay_actor_entry(object_index) ||
         sf_gameplay_ground_item_entry(object_index) ||
         !player_reached) continue;
@@ -301,6 +325,17 @@ static void sf_gameplay_draw_object_pass(
           renderer, &assets->actors, actor, view,
           interpolation, shadow,
           !shadow && world->pointer.hovered_actor_id == actor->id,
+          clip);
+    } else if (sf_gameplay_scenario_object_entry(indices[index])) {
+      const uint16_t object_index = (uint16_t) (
+        indices[index] - SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE);
+      const SfScenarioObject *object = sf_scenario_object_at(
+        &world->scenario_objects, (uint8_t) object_index);
+      if (object &&
+          (sf_depth_class(object->display_status) == 0) == default_class)
+        sf_gameplay_scenario_object_draw(
+          renderer, &assets->scenario_objects, object, view, shadow,
+          !shadow && world->pointer.hovered_scenario_object_id == object->id,
           clip);
     } else if (sf_gameplay_ground_item_entry(indices[index])) {
       const uint16_t item_index = (uint16_t) (

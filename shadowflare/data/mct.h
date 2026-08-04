@@ -63,6 +63,12 @@ typedef struct SfMctObject {
   int32_t red_strength;
   int32_t green_strength;
   int32_t blue_strength;
+  int16_t part_red_strength[SF_MCT_PERSON_PART_LIMIT];
+  int16_t part_green_strength[SF_MCT_PERSON_PART_LIMIT];
+  int16_t part_blue_strength[SF_MCT_PERSON_PART_LIMIT];
+  uint8_t part_visibility[SF_MCT_PERSON_PART_LIMIT];
+  uint8_t custom_part_count;
+  bool custom_parts;
 } SfMctObject;
 
 typedef struct SfMctPerson {

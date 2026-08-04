@@ -17,18 +17,13 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_INTERPRETER_SCENARIO_SCRIPT_VALUES_H
-#define SHADOWFLARE_INTERPRETER_SCENARIO_SCRIPT_VALUES_H
+#ifndef SHADOWFLARE_GAME_SCENARIO_ENTITY_H
+#define SHADOWFLARE_GAME_SCENARIO_ENTITY_H
 
-#include "interpreter/scenario_actor_script.h"
-
-int32_t sf_scenario_script_read(
-  const SfScenarioActorScriptState *state, const SfScsScript *script,
-  const SfScsOperand *operand,
-  const SfScenarioScriptEnvironment *environment);
-bool sf_scenario_script_write(
-  SfScenarioActorScriptState *state, const SfScsScript *script,
-  const SfScsOperand *operand, int32_t value,
-  const SfScenarioScriptEnvironment *environment);
+typedef enum SfScenarioEntityChannel {
+  SF_SCENARIO_VISIBLE = 0,
+  SF_SCENARIO_POINTER = 1,
+  SF_SCENARIO_JUDGEMENT = 2
+} SfScenarioEntityChannel;
 
 #endif

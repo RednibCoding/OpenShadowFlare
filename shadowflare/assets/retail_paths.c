@@ -64,6 +64,15 @@ const SfRetailPeoplePaths sf_retail_people_paths = {
   "Character/PEOPLE/%08d/Animation.Sdw"
 };
 
+const SfRetailObjectPaths sf_retail_object_paths = {
+  "Character/OBJECT/%08d/Pattern.Njp",
+  "Character/OBJECT/%08d/Pattern.njp",
+  "Character/OBJECT/%08d/Pattern.Sdw",
+  "Character/OBJECT/%08d/Pattern.sdw",
+  "Character/OBJECT/%08d/Animation.Njp",
+  "Character/OBJECT/%08d/Animation.Caf"
+};
+
 const SfRetailCompanionPaths sf_retail_companion_paths = {
   "Character/PARTNER/%08d/Animation.Caf",
   "Character/PARTNER/%08d/Animation.Njp",

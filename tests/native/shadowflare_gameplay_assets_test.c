@@ -32,6 +32,7 @@
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
+#include "ui/scenario_object_nameplate.h"
 #include "ui/world_pointer.h"
 
 #include <ctype.h>
@@ -548,6 +549,128 @@ static int test_scenario_actors(
   return 0;
 }
 
+static int test_scenario_objects(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  const SfScenarioObjectVisual *switch_visual =
+    sf_scenario_object_visual(&assets->scenario_objects, 8);
+  const SfScenarioObjectVisual *warehouse_visual =
+    sf_scenario_object_visual(&assets->scenario_objects, 14);
+  const SfScenarioObjectVisual *pulse_visual =
+    sf_scenario_object_visual(&assets->scenario_objects, 15);
+  SfScenarioObject *animated;
+  SfScenarioObject *warehouse;
+  SfScenarioScriptEnvironment environment;
+  SfWorldRenderView view;
+  SfGameInput input;
+  SfRect nameplate;
+  int pointer_x = -1;
+  uint8_t blocker;
+  int y;
+  if (assets->scenario_objects.visual_count != 3u || !switch_visual ||
+      !warehouse_visual || !pulse_visual ||
+      !sf_njp_decoded_pattern(&switch_visual->static_artwork, 0u) ||
+      !sf_njp_decoded_pattern(&switch_visual->static_artwork, 1u) ||
+      !sf_njp_decoded_pattern(&switch_visual->static_shadows, 0u) ||
+      sf_njp_decoded_pattern(&switch_visual->static_shadows, 1u) ||
+      !sf_njp_decoded_pattern(&warehouse_visual->static_artwork, 0u) ||
+      !sf_njp_decoded_pattern(&warehouse_visual->static_shadows, 0u) ||
+      !sf_njp_decoded_pattern(&pulse_visual->static_artwork, 0u) ||
+      !sf_scenario_object_animation(pulse_visual, 0, 8u) ||
+      pulse_visual->animation_artwork.pattern_count == 0u ||
+      world->scenario_objects.count != 7u) {
+    fprintf(stderr, "Remote Town OBJECT resources differ from retail\n");
+    return 1;
+  }
+  animated = sf_scenario_object_find(&world->scenario_objects, 10000203);
+  warehouse = sf_scenario_object_find(&world->scenario_objects, 10000300);
+  if (!animated || !warehouse || warehouse->resource_id != 14 ||
+      !sf_scenario_object_state(warehouse, SF_SCENARIO_VISIBLE) ||
+      !sf_scenario_object_state(warehouse, SF_SCENARIO_POINTER) ||
+      !sf_scenario_object_state(warehouse, SF_SCENARIO_JUDGEMENT) ||
+      warehouse->static_pattern != 0 || warehouse->visual_mode == 0u) {
+    fprintf(stderr, "The Warehouse live object differs from its MCT record\n");
+    return 1;
+  }
+  {
+    const uint32_t frame = animated->animation_frame;
+    animated->draw_strength = 1000;
+    sf_scenario_objects_update(&world->scenario_objects);
+    if (animated->animation_frame != frame + 1u) {
+      fprintf(stderr, "The active type-zero CAF did not advance at 30 Hz\n");
+      return 1;
+    }
+  }
+  environment = sf_world_script_environment(world);
+  {
+    const int32_t arguments[2] = {10000203, 417};
+    if (!environment.native_command(
+          environment.native_user, 46, arguments, 2u) ||
+        animated->draw_strength != 417) {
+      fprintf(stderr, "Opcode 46 did not update the live object strength\n");
+      return 1;
+    }
+  }
+  {
+    const int32_t arguments[4] = {10000203, 1, 0, 0};
+    const int32_t base_visible = animated->state[SF_SCENARIO_VISIBLE];
+    if (!environment.native_command(
+          environment.native_user, 56, arguments, 4u) ||
+        !animated->state_override_enabled ||
+        !sf_scenario_object_state(animated, SF_SCENARIO_VISIBLE) ||
+        sf_scenario_object_state(animated, SF_SCENARIO_POINTER) ||
+        sf_scenario_object_state(animated, SF_SCENARIO_JUDGEMENT) ||
+        animated->state[SF_SCENARIO_VISIBLE] != base_visible) {
+      fprintf(stderr, "Opcode 56 did not preserve the base object state\n");
+      return 1;
+    }
+  }
+  sf_world_state_enter(
+    world, assets->entry.world_x, assets->entry.world_y,
+    (uint8_t) assets->entry.direction);
+  memset(&input, 0, sizeof(input));
+  sf_world_state_update(world, &input);
+  for (blocker = 0u; blocker < world->movement_blocker_count; ++blocker)
+    if (world->movement_blockers[blocker].id == 10000300) break;
+  if (blocker == world->movement_blocker_count) {
+    fprintf(stderr, "The Warehouse was not registered as a live blocker\n");
+    return 1;
+  }
+  {
+    const SfScreenPoint anchor = sf_world_to_screen(warehouse->position);
+    world->camera_x = anchor.x - 320;
+    world->camera_y = anchor.y - 240;
+  }
+  for (y = 0; y < 393 && pointer_x < 0; ++y) {
+    int x;
+    for (x = 0; x < 640; ++x) {
+      memset(&input, 0, sizeof(input));
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) x;
+      input.pointer_y = (int16_t) y;
+      sf_world_pointer_resolve(assets, world, &input);
+      if (input.pointed_scenario_object_id == warehouse->id) {
+        pointer_x = x;
+        break;
+      }
+    }
+  }
+  if (pointer_x < 0) {
+    fprintf(stderr, "The Warehouse has no pixel-aware pointer hit\n");
+    return 1;
+  }
+  world->pointer.hovered_scenario_object_id = warehouse->id;
+  sf_world_render_view(world, 1000u, &view);
+  view.camera_x = sf_world_to_screen(warehouse->position).x - 320;
+  view.camera_y = sf_world_to_screen(warehouse->position).y - 240;
+  if (!sf_scenario_object_nameplate_bounds(
+        assets, world, &view, &nameplate) || nameplate.width <= 5 ||
+      nameplate.height != 15) {
+    fprintf(stderr, "The Warehouse authored nameplate was not composed\n");
+    return 1;
+  }
+  return 0;
+}
+
 static int test_ostare_conversation(
     const SfGameplayAssets *assets, SfWorldState *world) {
   SfScenarioScriptEnvironment environment;
@@ -942,6 +1065,7 @@ int main(void) {
     &world, assets.ground_items.definitions,
     assets.ground_items.definition_count);
   if (test_scenario_actors(&assets, &world)) return 1;
+  if (test_scenario_objects(&assets, &world)) return 1;
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);

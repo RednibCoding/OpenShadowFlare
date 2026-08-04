@@ -32,6 +32,7 @@
 #include "ui/gameplay_special_items.h"
 #include "ui/gameplay_status.h"
 #include "ui/ground_item_nameplate.h"
+#include "ui/scenario_object_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
 #include <string.h>
@@ -87,6 +88,22 @@ static bool sf_gameplay_actor_frames_changed(
   return false;
 }
 
+static bool sf_gameplay_scenario_object_frames_changed(
+    const SfGameplayScreen *screen, const SfWorldState *world) {
+  uint8_t index;
+  for (index = 0u; index < world->scenario_objects.count; ++index) {
+    const SfScenarioObject *object = &world->scenario_objects.objects[index];
+    const bool visible = sf_scenario_object_draw_requested(object);
+    if (screen->rendered_scenario_object_visible[index] != visible ||
+        (visible &&
+         (screen->rendered_scenario_object_frames[index] !=
+            object->animation_frame ||
+          screen->rendered_scenario_object_strengths[index] !=
+            object->draw_strength))) return true;
+  }
+  return false;
+}
+
 static void sf_gameplay_remember_actor_frames(
     SfGameplayScreen *screen, const SfWorldState *world,
     uint16_t interpolation) {
@@ -102,6 +119,18 @@ static void sf_gameplay_remember_actor_frames(
     screen->rendered_actor_chart[index] = actor->animation_chart;
     screen->rendered_actor_visible[index] = sf_scenario_actor_state(
       actor, SF_SCENARIO_VISIBLE);
+  }
+}
+
+static void sf_gameplay_remember_scenario_object_frames(
+    SfGameplayScreen *screen, const SfWorldState *world) {
+  uint8_t index;
+  for (index = 0u; index < world->scenario_objects.count; ++index) {
+    const SfScenarioObject *object = &world->scenario_objects.objects[index];
+    screen->rendered_scenario_object_frames[index] = object->animation_frame;
+    screen->rendered_scenario_object_strengths[index] = object->draw_strength;
+    screen->rendered_scenario_object_visible[index] =
+      sf_scenario_object_draw_requested(object);
   }
 }
 
@@ -134,6 +163,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_camera_y != view.camera_y ||
     screen->rendered_hovered_actor_id !=
       game->world.pointer.hovered_actor_id ||
+    screen->rendered_hovered_scenario_object_id !=
+      game->world.pointer.hovered_scenario_object_id ||
     screen->rendered_hovered_ground_item_id !=
       game->world.pointer.hovered_ground_item_id ||
     screen->rendered_message_id !=
@@ -158,7 +189,8 @@ void sf_gameplay_screen_draw(
     (screen->rendered_condition_phase != condition_phase &&
      sf_gameplay_item_condition_animation_active(
        assets, player, &screen->inventory)) ||
-    sf_gameplay_actor_frames_changed(screen, &game->world, interpolation);
+    sf_gameplay_actor_frames_changed(screen, &game->world, interpolation) ||
+    sf_gameplay_scenario_object_frames_changed(screen, &game->world);
   if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame == player->animation_frame) return;
     damage = screen->player_damage;
@@ -166,6 +198,9 @@ void sf_gameplay_screen_draw(
       damage = sf_gameplay_damage_union(damage, ui_damage);
     if (sf_actor_nameplate_bounds(
           assets, &game->world, &view, interpolation, &ui_damage))
+      damage = sf_gameplay_damage_union(damage, ui_damage);
+    if (sf_scenario_object_nameplate_bounds(
+          assets, &game->world, &view, &ui_damage))
       damage = sf_gameplay_damage_union(damage, ui_damage);
     if (sf_ground_item_nameplate_bounds(
           assets, &game->world, &view, &ui_damage))
@@ -185,6 +220,8 @@ void sf_gameplay_screen_draw(
     interpolation, clip);
   sf_actor_nameplate_draw(
     renderer, assets, &game->world, &view, interpolation);
+  sf_scenario_object_nameplate_draw(
+    renderer, assets, &game->world, &view);
   sf_ground_item_nameplate_draw(
     renderer, assets, &game->world, &view);
   sf_conversation_bubble_draw(
@@ -215,12 +252,15 @@ void sf_gameplay_screen_draw(
     renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
+  sf_gameplay_remember_scenario_object_frames(screen, &game->world);
   screen->rendered_player_x = view.player_position.x;
   screen->rendered_player_y = view.player_position.y;
   screen->rendered_camera_x = view.camera_x;
   screen->rendered_camera_y = view.camera_y;
   screen->rendered_hovered_actor_id =
     game->world.pointer.hovered_actor_id;
+  screen->rendered_hovered_scenario_object_id =
+    game->world.pointer.hovered_scenario_object_id;
   screen->rendered_hovered_ground_item_id =
     game->world.pointer.hovered_ground_item_id;
   screen->rendered_message_id =

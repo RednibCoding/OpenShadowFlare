@@ -145,12 +145,12 @@ SfScenarioScriptResult sf_scenario_actor_script_resume(
   state->message_active = false;
   if (state->message_result_pending && !sf_scenario_script_write(
         state, script, &state->message_result_operand,
-        selection, environment->actors)) return SF_SCENARIO_SCRIPT_INVALID;
+        selection, environment)) return SF_SCENARIO_SCRIPT_INVALID;
   if (state->message_selection_pending) {
     const int32_t selected = selection >= 0 ? selection : state->initial_selection;
     if (selected < 0 || !sf_scenario_script_write(
           state, script, &state->message_selection_operand,
-          selected, environment->actors)) return SF_SCENARIO_SCRIPT_INVALID;
+          selected, environment)) return SF_SCENARIO_SCRIPT_INVALID;
   }
   state->message_result_pending = false;
   state->message_selection_pending = false;

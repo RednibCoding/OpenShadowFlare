@@ -22,6 +22,7 @@
 
 #include "data/scs.h"
 #include "game/scenario_actor.h"
+#include "game/scenario_object.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -80,6 +81,7 @@ typedef bool (*SfScenarioNativeCommand)(
 typedef struct SfScenarioScriptEnvironment {
   const SfMctScenario *scenario;
   SfScenarioActorSet *actors;
+  SfScenarioObjectSet *objects;
   SfWorldPoint player_position;
   SfObjectBounds player_bounds;
   int32_t companion_type;

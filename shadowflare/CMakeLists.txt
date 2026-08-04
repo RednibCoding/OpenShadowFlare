@@ -46,6 +46,7 @@ add_library(
   assets/player_assets.c
   assets/retail_paths.c
   assets/scenario_actor_assets.c
+  assets/scenario_object_assets.c
   assets/title_assets.c
   core/arena.c
   core/coordinates.c
@@ -101,6 +102,7 @@ add_library(
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
+  game/scenario_object.c
   game/sound_event.c
   game/special_items.c
   game/title.c
@@ -125,6 +127,7 @@ add_library(
   screens/gameplay_screen.c
   screens/gameplay_object_visual.c
   screens/gameplay_player.c
+  screens/gameplay_scenario_object.c
   screens/load_game_screen.c
   screens/title_screen.c
   ui/actor_nameplate.c
@@ -151,6 +154,7 @@ add_library(
   ui/gameplay_status.c
   ui/gameplay_special_items.c
   ui/ground_item_nameplate.c
+  ui/scenario_object_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c
 )

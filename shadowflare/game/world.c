@@ -47,8 +47,10 @@ void sf_world_state_enter(
   if (!world || direction > 7u) return;
   memset(&world->pointer, 0, sizeof(world->pointer));
   world->pointer.hovered_actor_id = -1;
+  world->pointer.hovered_scenario_object_id = -1;
   world->pointer.hovered_ground_item_id = -1;
   world->pointer.pending_actor_id = -1;
+  world->pointer.pending_scenario_object_id = -1;
   world->pointer.pending_ground_item_id = -1;
   world->pointer.range = 2u;
   world->pointer.range_enabled = true;
@@ -91,6 +93,7 @@ bool sf_world_state_bind_scenario_progress(
     const SfScenarioProgressState *progress) {
   SfScenarioScriptEnvironment environment;
   if (!world || !scenario || !script) return false;
+  sf_scenario_objects_init(&world->scenario_objects, scenario);
   sf_scenario_actors_init(&world->actors, scenario);
   sf_scenario_actor_script_init(&world->actor_script_state, script);
   if (progress && !sf_scenario_actor_script_restore_progress(
@@ -128,6 +131,16 @@ static SfScenarioActor *sf_world_actor_by_id(
   for (index = 0u; index < world->actors.count; ++index) {
     if (world->actors.actors[index].id == actor_id)
       return &world->actors.actors[index];
+  }
+  return NULL;
+}
+
+static SfScenarioObject *sf_world_scenario_object_by_id(
+    SfWorldState *world, int32_t object_id) {
+  uint8_t index;
+  for (index = 0u; index < world->scenario_objects.count; ++index) {
+    if (world->scenario_objects.objects[index].id == object_id)
+      return &world->scenario_objects.objects[index];
   }
   return NULL;
 }
@@ -230,10 +243,43 @@ static void sf_world_refresh_pending_actor(SfWorldState *world) {
   sf_player_follow_to(&world->player, actor->position);
 }
 
+static void sf_world_refresh_pending_scenario_object(SfWorldState *world) {
+  SfScenarioObject *object;
+  if (world->pointer.pending_scenario_object_id < 0) return;
+  object = sf_world_scenario_object_by_id(
+    world, world->pointer.pending_scenario_object_id);
+  if (!object || !sf_scenario_object_state(object, SF_SCENARIO_VISIBLE) ||
+      !sf_scenario_object_state(object, SF_SCENARIO_POINTER)) {
+    world->pointer.pending_scenario_object_id = -1;
+    return;
+  }
+  if (sf_movement_bounds_distance(
+        world->player.position, world->player.judgement,
+        object->position, object->judgement) <= 0x9f) {
+    sf_player_cancel_movement(&world->player);
+    world->pointer.pending_scenario_object_id = -1;
+    world->pointer.hovered_scenario_object_id = -1;
+    return;
+  }
+  sf_player_follow_to(&world->player, object->position);
+}
+
+static void sf_world_build_scenario_object_blockers(SfWorldState *world) {
+  uint8_t index;
+  world->movement_blocker_count = 0u;
+  for (index = 0u; index < world->scenario_objects.count; ++index) {
+    const SfScenarioObject *object = &world->scenario_objects.objects[index];
+    if (!sf_scenario_object_state(object, SF_SCENARIO_JUDGEMENT)) continue;
+    world->movement_blockers[world->movement_blocker_count++] =
+      (SfMovementBlocker) {
+        object->position, object->judgement,
+        sf_scenario_object_character_number(object)};
+  }
+}
+
 static void sf_world_build_actor_blockers(
     SfWorldState *world, uint8_t *actor_blocker_indices) {
   uint8_t actor_index;
-  world->movement_blocker_count = 0u;
   for (actor_index = 0u; actor_index < world->actors.count; ++actor_index) {
     const SfScenarioActor *actor = &world->actors.actors[actor_index];
     actor_blocker_indices[actor_index] = UINT8_MAX;
@@ -300,6 +346,8 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   pointer->active = input->pointer_active;
   pointer->hovered_actor_id = input->world_pointer_resolved
     ? input->pointed_actor_id : -1;
+  pointer->hovered_scenario_object_id = input->world_pointer_resolved
+    ? input->pointed_scenario_object_id : -1;
   pointer->hovered_ground_item_id = input->world_pointer_resolved
     ? input->pointed_ground_item_id : -1;
   inventory_consumed_input = sf_world_inventory_update(world, input);
@@ -307,6 +355,8 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     inventory_consumed_input;
   if (message_consumed_input)
     pointer->hovered_actor_id = -1;
+  if (message_consumed_input)
+    pointer->hovered_scenario_object_id = -1;
   if (message_consumed_input)
     pointer->hovered_ground_item_id = -1;
   if (!message_consumed_input && input->pace_toggle_pressed)
@@ -324,6 +374,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     SfGroundItem *item = sf_ground_items_find(
       &world->ground_items, pointer->hovered_ground_item_id);
     pointer->pending_actor_id = -1;
+    pointer->pending_scenario_object_id = -1;
     pointer->pending_ground_item_id = pointer->hovered_ground_item_id;
     pointer->interaction_command_active = true;
     pointer->ground_command_active = false;
@@ -336,6 +387,17 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   } else if (!message_consumed_input && input->pointer_primary_pressed &&
       pointer->hovered_actor_id >= 0) {
     pointer->pending_actor_id = pointer->hovered_actor_id;
+    pointer->pending_scenario_object_id = -1;
+    pointer->pending_ground_item_id = -1;
+    pointer->interaction_command_active = true;
+    pointer->ground_command_active = false;
+    pointer->continuous_movement = false;
+    pointer->hold_updates = 0u;
+  } else if (!message_consumed_input && input->pointer_primary_pressed &&
+      pointer->hovered_scenario_object_id >= 0) {
+    pointer->pending_actor_id = -1;
+    pointer->pending_scenario_object_id =
+      pointer->hovered_scenario_object_id;
     pointer->pending_ground_item_id = -1;
     pointer->interaction_command_active = true;
     pointer->ground_command_active = false;
@@ -348,6 +410,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
              !pointer->interaction_command_active) {
     const SfWorldPoint target = sf_world_pointer_target(world, input);
     pointer->pending_actor_id = -1;
+    pointer->pending_scenario_object_id = -1;
     pointer->pending_ground_item_id = -1;
     if (input->pointer_primary_down)
       sf_player_follow_to(&world->player, target);
@@ -377,7 +440,9 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   if (!input->pointer_primary_down)
     pointer->inventory_pointer_guard = false;
   sf_world_refresh_pending_actor(world);
+  sf_world_refresh_pending_scenario_object(world);
   sf_world_refresh_pending_ground_item(world);
+  sf_world_build_scenario_object_blockers(world);
   sf_world_build_actor_blockers(world, actor_blocker_indices);
   collision.world = &world->collision;
   collision.blockers = world->movement_blockers;
@@ -385,10 +450,12 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   collision.ignored_blocker_id = INT32_MIN;
   sf_player_update_query(&world->player, &collision);
   sf_world_refresh_pending_actor(world);
+  sf_world_refresh_pending_scenario_object(world);
   sf_world_refresh_pending_ground_item(world);
   sf_world_add_player_blocker(world);
   companion_blocker_index = sf_world_add_companion_blocker(world);
   collision.blocker_count = world->movement_blocker_count;
+  sf_scenario_objects_update(&world->scenario_objects);
   sf_world_update_scenario_actors(
     world, actor_blocker_indices, collision);
   collision.blocker_count = world->movement_blocker_count;

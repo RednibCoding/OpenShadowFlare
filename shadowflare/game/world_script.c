@@ -29,6 +29,19 @@ static bool sf_world_native_command(
       &world->ground_items, arguments[0], arguments[1],
       (SfWorldPoint) {arguments[2], arguments[3]},
       arguments[4], arguments[5]);
+  if (opcode == 46 && argument_count == 2u) {
+    SfScenarioObject *object = sf_scenario_object_find(
+      &world->scenario_objects, arguments[0]);
+    if (object) object->draw_strength = arguments[1];
+    return true;
+  }
+  if (opcode == 56 && argument_count == 4u) {
+    SfScenarioObject *object = sf_scenario_object_find(
+      &world->scenario_objects, arguments[0]);
+    if (object) sf_scenario_object_set_state_override(
+      object, arguments[1], arguments[2], arguments[3]);
+    return true;
+  }
   return false;
 }
 
@@ -37,6 +50,7 @@ SfScenarioScriptEnvironment sf_world_script_environment(
   const SfScenarioScriptEnvironment environment = {
     world ? world->scenario : NULL,
     world ? &world->actors : NULL,
+    world ? &world->scenario_objects : NULL,
     world ? world->player.position : (SfWorldPoint) {0, 0},
     world ? world->player.judgement : (SfObjectBounds) {0, 0, 0, 0},
     world ? world->companion_type : 0,

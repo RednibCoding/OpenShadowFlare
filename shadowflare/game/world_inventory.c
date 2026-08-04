@@ -34,8 +34,10 @@ static uint16_t sf_world_inventory_move_sound(
 static void sf_world_inventory_cancel_world_command(SfWorldState *world) {
   sf_player_cancel_movement(&world->player);
   world->pointer.pending_actor_id = -1;
+  world->pointer.pending_scenario_object_id = -1;
   world->pointer.pending_ground_item_id = -1;
   world->pointer.hovered_actor_id = -1;
+  world->pointer.hovered_scenario_object_id = -1;
   world->pointer.hovered_ground_item_id = -1;
   world->pointer.interaction_command_active = false;
   world->pointer.ground_command_active = false;
