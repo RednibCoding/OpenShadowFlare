@@ -27,6 +27,7 @@
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
+#include "ui/gameplay_special_items.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
@@ -118,6 +119,8 @@ void sf_gameplay_screen_draw(
   sf_world_render_view(&game->world, interpolation, &view);
   if (screen->inventory.open)
     view.camera_x += SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
+  if (screen->inventory.special_open)
+    view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   scene_moved = !screen->drawn ||
     screen->rendered_player_x != view.player_position.x ||
     screen->rendered_player_y != view.player_position.y ||
@@ -176,6 +179,8 @@ void sf_gameplay_screen_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
   sf_gameplay_inventory_draw(
+    renderer, assets, player, &screen->inventory, game->ticks, clip);
+  sf_gameplay_special_items_draw(
     renderer, assets, player, &screen->inventory, game->ticks, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);

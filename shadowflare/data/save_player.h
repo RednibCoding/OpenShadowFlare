@@ -31,6 +31,7 @@
 #define SF_SAVED_EQUIPMENT_COUNT 11u
 #define SF_SAVED_BACKPACK_ITEM_LIMIT 36u
 #define SF_SAVED_BELT_ITEM_LIMIT 8u
+#define SF_SAVED_SPECIAL_ITEM_LIMIT 90u
 
 typedef struct SfSavedItem {
   int32_t definition_id;
@@ -49,6 +50,7 @@ typedef struct SfSavedPlayer {
   SfSavedItem equipment[SF_SAVED_EQUIPMENT_COUNT];
   SfSavedItem backpack[SF_SAVED_BACKPACK_ITEM_LIMIT];
   SfSavedItem belt[SF_SAVED_BELT_ITEM_LIMIT];
+  SfSavedItem special_items[SF_SAVED_SPECIAL_ITEM_LIMIT];
   int32_t gender;
   int32_t job;
   int32_t level;
@@ -57,6 +59,7 @@ typedef struct SfSavedPlayer {
   int32_t experience;
   uint8_t backpack_count;
   uint8_t belt_count;
+  uint8_t special_item_count;
 } SfSavedPlayer;
 
 bool sf_saved_player_required_items(

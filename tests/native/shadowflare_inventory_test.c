@@ -27,6 +27,7 @@
 #include "ui/gameplay_inventory_input.h"
 #include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
+#include "ui/gameplay_special_items.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -108,6 +109,43 @@ static int test_inventory_transactions(void) {
       inventory.items[0].quantity != 10000 ||
       placement.held_item.quantity != 10) {
     fprintf(stderr, "A gold merge lost its retail cursor remainder\n");
+    return 1;
+  }
+  return 0;
+}
+
+static int test_special_item_transactions(void) {
+  SfSpecialItemState items;
+  SfInventoryItem first = {
+    .definition_id = 1, .quantity = 1, .category = 0u,
+    .width = 2u, .height = 2u};
+  SfInventoryItem second = {
+    .definition_id = 2, .quantity = 1, .category = 1u,
+    .width = 1u, .height = 3u};
+  SfInventoryPlacement placement;
+  SfInventoryItem taken;
+  SfInventoryItem gold = {
+    .definition_id = 0, .quantity = 9990, .category = 4u,
+    .width = 1u, .height = 1u};
+  sf_special_items_init(&items);
+  if (!sf_special_items_place(&items, first, 7, 8).accepted ||
+      sf_special_items_item_at(&items, 8u, 9u) != 0) return 1;
+  placement = sf_special_items_place(&items, second, 7, 7);
+  if (!placement.accepted || !placement.holding_item ||
+      placement.held_item.definition_id != 1 || items.count != 1u ||
+      items.items[0].definition_id != 2) {
+    fprintf(stderr, "Special Item did not perform its one-item swap\n");
+    return 1;
+  }
+  if (!sf_special_items_take(&items, 0u, &taken) ||
+      taken.definition_id != 2 || items.count != 0u) return 1;
+  if (!sf_special_items_place(&items, gold, 0, 0).accepted) return 1;
+  gold.quantity = 20;
+  placement = sf_special_items_place(&items, gold, 0, 0);
+  if (!placement.accepted || !placement.holding_item ||
+      items.items[0].quantity != 10000 ||
+      placement.held_item.quantity != 10) {
+    fprintf(stderr, "Special Item lost its Gold stack remainder\n");
     return 1;
   }
   return 0;
@@ -284,6 +322,77 @@ static int test_live_inventory(
     fprintf(stderr, "The item information overlay was not rendered\n");
     return 1;
   }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_x = 100;
+  input.pointer_y = 200;
+  input.special_items_pressed = true;
+  if (!sf_gameplay_inventory_input_resolve(
+        &ui, &world.player, false, &input) || !ui.special_open ||
+      input.world_view_offset_x != 0) {
+    fprintf(stderr, "Special Item did not open beside Inventory\n");
+    return 1;
+  }
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_special_items_draw(
+    &renderer, &assets, &world.player, &ui, 0u, NULL);
+  changed = 0u;
+  for (pixel = 0u; pixel < 640u * 480u; ++pixel)
+    if (sf_inventory_test_pixels[pixel] != 0x1234u) ++changed;
+  if (changed < 1000u) {
+    fprintf(stderr, "The authored Special Item panel was not drawn\n");
+    return 1;
+  }
+  destination = world.player.destination;
+  if (resolve_take(&ui, &world, &input, 0)) return 1;
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_primary_down = true;
+  input.pointer_x = SF_GAMEPLAY_SPECIAL_LEFT + 16;
+  input.pointer_y = SF_GAMEPLAY_SPECIAL_TOP + 48;
+  (void) sf_gameplay_inventory_input_resolve(
+    &ui, &world.player, false, &input);
+  if (input.inventory_action != SF_INVENTORY_ACTION_PLACE_SPECIAL ||
+      input.special_grid_x != 0 || input.special_grid_y != 0) return 1;
+  sf_world_state_update(&world, &input);
+  if (world.player.inventory_transfer.holding_item ||
+      world.player.special_items.count != 1u ||
+      world.player.inventory.count != 0u ||
+      world.player.destination.x != destination.x ||
+      world.player.destination.y != destination.y) {
+    fprintf(stderr, "Backpack to Special Item transfer lost state\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_primary_down = true;
+  input.pointer_x = SF_GAMEPLAY_SPECIAL_LEFT + 4;
+  input.pointer_y = SF_GAMEPLAY_SPECIAL_TOP + 4;
+  (void) sf_gameplay_inventory_input_resolve(
+    &ui, &world.player, false, &input);
+  if (input.inventory_action != SF_INVENTORY_ACTION_TAKE_SPECIAL) return 1;
+  sf_world_state_update(&world, &input);
+  if (!world.player.inventory_transfer.holding_item ||
+      world.player.special_items.count != 0u) return 1;
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_primary_down = true;
+  input.pointer_x = SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT + 16;
+  input.pointer_y = SF_GAMEPLAY_INVENTORY_BACKPACK_TOP + 48;
+  (void) sf_gameplay_inventory_input_resolve(
+    &ui, &world.player, false, &input);
+  if (input.inventory_action != SF_INVENTORY_ACTION_PLACE) return 1;
+  sf_world_state_update(&world, &input);
+  if (world.player.inventory_transfer.holding_item ||
+      world.player.inventory.count != 1u) return 1;
+  memset(&input, 0, sizeof(input));
+  input.special_items_pressed = true;
+  (void) sf_gameplay_inventory_input_resolve(
+    &ui, &world.player, false, &input);
+  if (ui.special_open) return 1;
   destination = world.player.destination;
   if (resolve_take(&ui, &world, &input, 0) ||
       world.player.inventory.count != 0u ||
@@ -390,7 +499,8 @@ int main(void) {
   char root[1024];
   char probe_path[1024];
   FILE *probe;
-  if (test_inventory_transactions()) return 1;
+  if (test_inventory_transactions() || test_special_item_transactions())
+    return 1;
   (void) snprintf(
     root, sizeof(root), "%s/tmp/ShadowFlare", OPENSHADOWFLARE_SOURCE_DIR);
   (void) snprintf(

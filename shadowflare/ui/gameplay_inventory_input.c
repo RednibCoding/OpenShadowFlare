@@ -39,6 +39,7 @@ bool sf_gameplay_inventory_input_resolve(
   bool holding;
   bool pointer_moved = false;
   int8_t hovered = -1;
+  int8_t hovered_special = -1;
   SfEquipmentSlot equipment_slot = SF_EQUIPMENT_SLOT_COUNT;
   SfEquipmentSlot information_slot = SF_EQUIPMENT_SLOT_COUNT;
   uint8_t belt_x = 0u;
@@ -60,6 +61,13 @@ bool sf_gameplay_inventory_input_resolve(
       SF_GAMEPLAY_HUD_BUTTON_INVENTORY;
   if (toggle && (!conversation_active || inventory->open)) {
     inventory->open = !inventory->open;
+    changed = true;
+  }
+  if (input->special_items_pressed &&
+      (!conversation_active || inventory->special_open)) {
+    inventory->special_open = !inventory->special_open;
+    inventory->hovered_special_item_index = -1;
+    inventory->item_hover_updates = 0u;
     changed = true;
   }
   close_hovered = inventory->open && sf_inventory_pointer_inside(
@@ -84,6 +92,22 @@ bool sf_gameplay_inventory_input_resolve(
         SF_GAMEPLAY_INVENTORY_BACKPACK_TOP) /
         SF_GAMEPLAY_INVENTORY_CELL_SIZE));
   }
+  if (inventory->special_open && !holding &&
+      (!inventory->open || input->pointer_x <
+        SF_GAMEPLAY_INVENTORY_PANEL_LEFT) &&
+      sf_inventory_pointer_inside(
+        input, SF_GAMEPLAY_SPECIAL_LEFT, SF_GAMEPLAY_SPECIAL_TOP,
+        SF_GAMEPLAY_SPECIAL_LEFT +
+          SF_SPECIAL_ITEM_WIDTH * SF_GAMEPLAY_INVENTORY_CELL_SIZE,
+        SF_GAMEPLAY_SPECIAL_TOP +
+          SF_SPECIAL_ITEM_HEIGHT * SF_GAMEPLAY_INVENTORY_CELL_SIZE)) {
+    hovered_special = sf_special_items_item_at(
+      &player->special_items,
+      (uint8_t) ((input->pointer_x - SF_GAMEPLAY_SPECIAL_LEFT) /
+        SF_GAMEPLAY_INVENTORY_CELL_SIZE),
+      (uint8_t) ((input->pointer_y - SF_GAMEPLAY_SPECIAL_TOP) /
+        SF_GAMEPLAY_INVENTORY_CELL_SIZE));
+  }
   if (inventory->open && input->pointer_active)
     equipment_slot = sf_gameplay_equipment_slot_at(
       input->pointer_x, input->pointer_y);
@@ -91,10 +115,12 @@ bool sf_gameplay_inventory_input_resolve(
       sf_equipment_item(&player->equipment, equipment_slot))
     information_slot = equipment_slot;
   if (inventory->hovered_item_index == hovered &&
+      inventory->hovered_special_item_index == hovered_special &&
       inventory->hovered_equipment_slot ==
         (information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
           ? (int8_t) information_slot : -1)) {
-    if (hovered >= 0 || information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT) {
+    if (hovered >= 0 || hovered_special >= 0 ||
+        information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT) {
       if (inventory->item_hover_updates < 3u) {
         ++inventory->item_hover_updates;
         if (inventory->item_hover_updates == 3u) changed = true;
@@ -106,17 +132,22 @@ bool sf_gameplay_inventory_input_resolve(
     }
   } else {
     inventory->item_hover_updates =
-      hovered >= 0 || information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
+      hovered >= 0 || hovered_special >= 0 ||
+        information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
         ? 1u : 0u;
     inventory->hovered_item_index = hovered;
+    inventory->hovered_special_item_index = hovered_special;
     inventory->hovered_equipment_slot =
       information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
         ? (int8_t) information_slot : -1;
     changed = true;
   }
-  if (inventory->open && input->cancel_pressed) {
+  if ((inventory->open || inventory->special_open) &&
+      input->cancel_pressed) {
     inventory->open = false;
+    inventory->special_open = false;
     inventory->close_hovered = false;
+    inventory->hovered_special_item_index = -1;
     input->cancel_pressed = false;
     changed = true;
   } else if (inventory->open && inventory->close_hovered &&
@@ -134,6 +165,33 @@ bool sf_gameplay_inventory_input_resolve(
       input->inventory_action = SF_INVENTORY_ACTION_TAKE_BELT;
       input->belt_grid_x = (int8_t) belt_x;
       input->belt_grid_y = (int8_t) belt_y;
+    }
+    input->pointer_over_gameplay_ui = true;
+    changed = true;
+  } else if (inventory->special_open && input->pointer_primary_pressed &&
+             sf_inventory_pointer_inside(
+               input, SF_GAMEPLAY_SPECIAL_LEFT, SF_GAMEPLAY_SPECIAL_TOP,
+               SF_GAMEPLAY_SPECIAL_LEFT +
+                 SF_SPECIAL_ITEM_WIDTH * SF_GAMEPLAY_INVENTORY_CELL_SIZE,
+               SF_GAMEPLAY_SPECIAL_TOP +
+                 SF_SPECIAL_ITEM_HEIGHT * SF_GAMEPLAY_INVENTORY_CELL_SIZE)) {
+    if (holding) {
+      const SfInventoryItem *item = &player->inventory_transfer.held_item;
+      input->inventory_action = SF_INVENTORY_ACTION_PLACE_SPECIAL;
+      input->special_grid_x = (int8_t) (
+        (input->pointer_x - item->width * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2 -
+         (SF_GAMEPLAY_SPECIAL_LEFT -
+          SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2)) /
+        SF_GAMEPLAY_INVENTORY_CELL_SIZE);
+      input->special_grid_y = (int8_t) (
+        (input->pointer_y - item->height * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2 -
+         (SF_GAMEPLAY_SPECIAL_TOP -
+          SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2)) /
+        SF_GAMEPLAY_INVENTORY_CELL_SIZE);
+    } else if (inventory->hovered_special_item_index >= 0) {
+      input->inventory_action = SF_INVENTORY_ACTION_TAKE_SPECIAL;
+      input->special_item_index = inventory->hovered_special_item_index;
+      inventory->hovered_special_item_index = -1;
     }
     input->pointer_over_gameplay_ui = true;
     changed = true;
@@ -159,7 +217,9 @@ bool sf_gameplay_inventory_input_resolve(
   } else if (input->pointer_primary_pressed && holding &&
              input->pointer_y < 412 &&
              (!inventory->open ||
-              input->pointer_x < SF_GAMEPLAY_INVENTORY_PANEL_LEFT)) {
+              input->pointer_x < SF_GAMEPLAY_INVENTORY_PANEL_LEFT) &&
+             (!inventory->special_open ||
+              input->pointer_x >= SF_GAMEPLAY_INVENTORY_PANEL_LEFT)) {
     input->inventory_action = SF_INVENTORY_ACTION_DROP_WORLD;
     input->pointer_over_gameplay_ui = true;
     changed = true;
@@ -209,8 +269,13 @@ bool sf_gameplay_inventory_input_resolve(
   }
   input->world_view_offset_x = inventory->open
     ? SF_GAMEPLAY_INVENTORY_VIEW_OFFSET : 0;
+  if (inventory->special_open)
+    input->world_view_offset_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   if (inventory->open && input->pointer_active &&
       input->pointer_x >= SF_GAMEPLAY_INVENTORY_PANEL_LEFT &&
+      input->pointer_y < 412) input->pointer_over_gameplay_ui = true;
+  if (inventory->special_open && input->pointer_active &&
+      input->pointer_x < SF_GAMEPLAY_INVENTORY_PANEL_LEFT &&
       input->pointer_y < 412) input->pointer_over_gameplay_ui = true;
   if (holding && pointer_moved) changed = true;
   return changed;

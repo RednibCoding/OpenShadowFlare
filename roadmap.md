@@ -59,13 +59,21 @@ layout stay entirely in `ui/`. Low-condition weapons and armor now compose
 The exact 0–9% threshold, eight-update blink halves, and permanently visible
 broken state live in a small game rule; only the marker composition lives in
 `ui/`.
+The left-hand Special Item panel is live now as well. `X` opens its authored
+9x10 grid, either side can remain open on its own or beside Inventory, and the
+same pointer owner moves items directly between them. Special Item placement,
+single-item swaps, partial Gold merges, hover information, and condition
+markers use the ordinary shared rules. Its fourth retail save container is
+decoded into a separate fixed owner and its required definitions stay in the
+active resource request.
+
 Selecting a retail save now
 streams and verifies its `ShadowFlare0005` envelope without allocating a
 payload buffer. The plain player record and exact backpack, belt, visible
-equipment, and hidden alternate-weapon slots all populate the same fixed game
-owners used by new characters. The four development saves currently in the
-retail tree have been decoded through the complete save path. Quest state,
-unlocked transports, and all 1,000 persistent script/conversation values now
+equipment, hidden alternate-weapon slots, and Special Item cells all populate
+the same fixed game owners used by new characters. The four development saves
+currently in the retail tree have been decoded through the complete save path.
+Quest state, unlocked transports, and all 1,000 persistent script/conversation values now
 reach the interpreter before its first periodic pass, so one-time handoffs such
 as Ostare's starter items stay complete. Mine count, walk/run pace, scenario,
 and authored entry reach the world owner as well. The three Remote Town saves

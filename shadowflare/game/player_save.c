@@ -37,9 +37,9 @@ static bool sf_player_saved_item(
     SfInventoryItem *item) {
   if (!saved || !definition || !item || !saved->present ||
       saved->quantity <= 0 || definition->inventory_width <= 0 ||
-      definition->inventory_width > (int32_t) SF_INVENTORY_WIDTH ||
+      definition->inventory_width > (int32_t) SF_SPECIAL_ITEM_WIDTH ||
       definition->inventory_height <= 0 ||
-      definition->inventory_height > (int32_t) SF_INVENTORY_HEIGHT)
+      definition->inventory_height > (int32_t) SF_SPECIAL_ITEM_HEIGHT)
     return false;
   *item = (SfInventoryItem) {
     saved->definition_id, saved->quantity, saved->durability,
@@ -115,6 +115,25 @@ static bool sf_player_restore_belt(
   return true;
 }
 
+static bool sf_player_restore_special_items(
+    SfSpecialItemState *items, const SfSavedPlayer *saved,
+    const SfItemGroundDefinition *definitions, uint8_t definition_count) {
+  uint8_t index;
+  for (index = 0u; index < saved->special_item_count; ++index) {
+    const SfSavedItem *source = &saved->special_items[index];
+    const SfItemGroundDefinition *definition = sf_player_saved_definition(
+      definitions, definition_count, source);
+    SfInventoryItem item;
+    SfInventoryPlacement placement;
+    if (!definition || !sf_player_saved_item(source, definition, &item))
+      return false;
+    placement = sf_special_items_place(
+      items, item, source->grid_x, source->grid_y);
+    if (!placement.accepted || placement.holding_item) return false;
+  }
+  return true;
+}
+
 bool sf_player_restore_save(
     SfPlayerState *player, const SfSavedPlayer *saved,
     const SfItemGroundDefinition *definitions, uint8_t definition_count,
@@ -122,6 +141,7 @@ bool sf_player_restore_save(
   SfInventoryState inventory;
   SfEquipmentState equipment;
   SfBeltState belt;
+  SfSpecialItemState special_items;
   int32_t speed_tier;
   if (!player || !saved || !definitions || experience_threshold < 0 ||
       saved->level <= 0 || saved->parameters.values[2] <= 0 ||
@@ -129,15 +149,19 @@ bool sf_player_restore_save(
   sf_inventory_init(&inventory);
   sf_equipment_init(&equipment);
   sf_belt_init(&belt);
+  sf_special_items_init(&special_items);
   if (!sf_player_restore_equipment(
         &equipment, saved, definitions, definition_count) ||
       !sf_player_restore_backpack(
         &inventory, saved, definitions, definition_count) ||
       !sf_player_restore_belt(
-        &belt, saved, definitions, definition_count)) return false;
+        &belt, saved, definitions, definition_count) ||
+      !sf_player_restore_special_items(
+        &special_items, saved, definitions, definition_count)) return false;
   player->inventory = inventory;
   player->equipment = equipment;
   player->belt = belt;
+  player->special_items = special_items;
   player->inventory_transfer.holding_item = false;
   player->initial_parameters = saved->parameters;
   player->initial_parameters.experience_threshold = experience_threshold;

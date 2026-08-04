@@ -34,10 +34,11 @@ into simple choice intent, and the bubble code only draws the result with the
 original frame patterns. None of them advances scripts or changes actor
 behavior.
 
-The gameplay inventory follows the same split. Its draw file composes the
-authored Status frame, retained item cells, and the pointer-held icon from the
-player owner. Its input file owns the `I`, ITEM-button, panel, backpack, and
-Close rectangles, then produces the shared world-view offset and simple take,
-place, or world-drop intent. Inventory ownership, transactional swaps, drop
-placement, and the until-release pointer guard remain in `game/`; neither UI
-file talks to a target backend.
+The gameplay inventory follows the same split. Its draw files compose the
+authored right Inventory and left Special Item frames, retained item cells,
+and the pointer-held icon from the player owners. The input file owns the `I`,
+`X`, ITEM-button, panel, backpack, Special Item, and Close rectangles, then
+produces the shared world-view offset and simple take, place, or world-drop
+intent. Inventory ownership, transactional swaps, drop placement, and the
+until-release pointer guard remain in `game/`; no UI file talks to a target
+backend.

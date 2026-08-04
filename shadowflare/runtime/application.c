@@ -98,6 +98,7 @@ static void sf_read_event(
     if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
     if (event->key == TWL_KEY_R) input->pace_toggle_pressed = true;
     if (event->key == TWL_KEY_I) input->inventory_pressed = true;
+    if (event->key == TWL_KEY_X) input->special_items_pressed = true;
     if (event->key >= TWL_KEY_1 && event->key <= TWL_KEY_8) {
       input->belt_pocket_pressed = (int8_t) (event->key - TWL_KEY_1);
       input->belt_pocket_key_pressed = true;
@@ -171,6 +172,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->delete_pressed = false;
   input->pace_toggle_pressed = false;
   input->inventory_pressed = false;
+  input->special_items_pressed = false;
   input->belt_pocket_pressed = -1;
   input->belt_pocket_key_pressed = false;
   input->text_length = 0u;

@@ -304,10 +304,10 @@ int main(int argument_count, char **arguments) {
       }
     }
     printf(
-      "%s: level %d, %u backpack, %u belt, %u definitions, "
+      "%s: level %d, %u backpack, %u belt, %u special, %u definitions, "
       "flags %u/%u/%u, mines %d, world %d:%d, run %d\n",
       saved.name, saved.level, saved.backpack_count, saved.belt_count,
-      required_count, saved_game.progress.quest_count,
+      saved.special_item_count, required_count, saved_game.progress.quest_count,
       saved_game.progress.transport_count, saved_game.progress.script_count,
       saved_game.world.mine_count, saved_game.world.scenario_id,
       saved_game.world.entry_value, saved_game.world.running ? 1 : 0);
@@ -321,7 +321,9 @@ int main(int argument_count, char **arguments) {
       !append_item(&payload, 4, 0, 2, 1, true, 0, 455) ||
       !append_i32(&payload, 1) ||
       !append_item(&payload, 3, 10000000, 3, 1, true, 0, 1) ||
-      !append_i32(&payload, 0) || !append_progress(&payload) ||
+      !append_i32(&payload, 1) ||
+      !append_item(&payload, 4, 0, 3, 2, true, 0, 75) ||
+      !append_progress(&payload) ||
       !write_fixture(path, record, &payload)) {
     fprintf(stderr, "Could not create the retail save fixture\n");
     goto done;
@@ -336,6 +338,7 @@ int main(int argument_count, char **arguments) {
       saved.job != 16 || saved.level != 4 || saved.current_life != 123 ||
       saved.current_mana != 77 || saved.experience != 42 ||
       saved.backpack_count != 2u || saved.belt_count != 1u ||
+      saved.special_item_count != 1u ||
       !saved.equipment[9].present || saved.equipment[9].durability != 40 ||
       !saved_game.progress.present || saved_game.progress.quest_count != 3u ||
       saved_game.progress.transport_count != 2u ||
@@ -360,7 +363,7 @@ int main(int argument_count, char **arguments) {
       player.job != 16 || player.level != 4 || player.current_life != 123 ||
       player.current_mana != 77 || player.experience != 42 ||
       !player.loadout_initialized || player.inventory.count != 2u ||
-      player.belt.count != 1u ||
+      player.belt.count != 1u || player.special_items.count != 1u ||
       !(player.equipment.occupied &
         (uint16_t) (1u << SF_EQUIPMENT_ALTERNATE_MAIN_HAND))) {
     fprintf(stderr, "The decoded save did not populate player owners\n");
@@ -384,7 +387,9 @@ int main(int argument_count, char **arguments) {
   item_index = sf_inventory_item_at(&player.inventory, 2u, 1u);
   item = item_index >= 0 ? &player.inventory.items[(uint8_t) item_index] : NULL;
   if (!item || item->category != 4u || item->quantity != 455 ||
-      !sf_belt_item_at(&player.belt, 3u, 1u)) {
+      !sf_belt_item_at(&player.belt, 3u, 1u) ||
+      sf_special_items_item_at(&player.special_items, 3u, 2u) < 0 ||
+      player.special_items.items[0].quantity != 75) {
     fprintf(stderr, "Saved backpack or belt placement changed\n");
     goto done;
   }

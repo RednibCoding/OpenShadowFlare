@@ -86,5 +86,9 @@ bool sf_saved_player_required_items(
     if (!sf_saved_player_add_item(
           items, item_count, capacity, &player->belt[index]))
       return false;
+  for (index = 0u; index < player->special_item_count; ++index)
+    if (!sf_saved_player_add_item(
+          items, item_count, capacity, &player->special_items[index]))
+      return false;
   return true;
 }

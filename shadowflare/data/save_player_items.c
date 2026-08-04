@@ -21,8 +21,6 @@
 
 #include <string.h>
 
-#define SF_SAVE_SPECIAL_ITEM_LIMIT 4096
-
 static bool sf_saved_read_i32(
     SfSavePayloadReader *reader, int32_t *value) {
   uint8_t bytes[4];
@@ -100,18 +98,6 @@ static bool sf_saved_read_container(
   return true;
 }
 
-static bool sf_saved_skip_special_items(SfSavePayloadReader *reader) {
-  int32_t count;
-  int32_t index;
-  if (!sf_saved_read_i32(reader, &count) ||
-      count < 0 || count > SF_SAVE_SPECIAL_ITEM_LIMIT) return false;
-  for (index = 0; index < count; ++index) {
-    SfSavedItem ignored;
-    if (!sf_saved_read_item(reader, true, &ignored)) return false;
-  }
-  return true;
-}
-
 bool sf_save_player_read_items(
     SfSavePayloadReader *reader, SfSavedPlayer *player) {
   if (!reader || !player) return false;
@@ -123,5 +109,7 @@ bool sf_save_player_read_items(
     sf_saved_read_container(
       reader, player->belt, SF_SAVED_BELT_ITEM_LIMIT,
       &player->belt_count) &&
-    sf_saved_skip_special_items(reader);
+    sf_saved_read_container(
+      reader, player->special_items, SF_SAVED_SPECIAL_ITEM_LIMIT,
+      &player->special_item_count);
 }

@@ -92,6 +92,7 @@ add_library(
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
+  game/special_items.c
   game/title.c
   game/world.c
   game/world_conversation.c
@@ -128,6 +129,7 @@ add_library(
   ui/gameplay_item_icon.c
   ui/gameplay_item_condition.c
   ui/gameplay_status_pattern.c
+  ui/gameplay_special_items.c
   ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c

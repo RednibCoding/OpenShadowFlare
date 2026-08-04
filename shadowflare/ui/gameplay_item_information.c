@@ -139,8 +139,14 @@ bool sf_gameplay_item_information_text(
 static const SfInventoryItem *sf_item_information_hovered(
     const SfPlayerState *player,
     const SfGameplayInventoryUi *inventory) {
-  if (!inventory->open || inventory->item_hover_updates < 3u ||
+  if (inventory->item_hover_updates < 3u ||
       player->inventory_transfer.holding_item) return NULL;
+  if (inventory->special_open &&
+      inventory->hovered_special_item_index >= 0 &&
+      inventory->hovered_special_item_index < player->special_items.count)
+    return &player->special_items.items[
+      (uint8_t) inventory->hovered_special_item_index];
+  if (!inventory->open) return NULL;
   if (inventory->hovered_equipment_slot >= 0)
     return sf_equipment_item(
       &player->equipment,

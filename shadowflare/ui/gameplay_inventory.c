@@ -33,6 +33,7 @@ void sf_gameplay_inventory_init(SfGameplayInventoryUi *inventory) {
   memset(inventory, 0, sizeof(*inventory));
   inventory->hovered_item_index = -1;
   inventory->hovered_equipment_slot = -1;
+  inventory->hovered_special_item_index = -1;
 }
 
 static bool sf_inventory_intersects_panel(const SfRect *clip) {

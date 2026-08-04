@@ -24,6 +24,7 @@
 #include "data/item.h"
 #include "data/player_parameters.h"
 #include "game/route.h"
+#include "game/special_items.h"
 #include "game/inventory.h"
 #include "game/equipment.h"
 #include "game/belt.h"
@@ -57,6 +58,7 @@ typedef struct SfPlayerState {
   SfInventoryTransferState inventory_transfer;
   SfEquipmentState equipment;
   SfBeltState belt;
+  SfSpecialItemState special_items;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;

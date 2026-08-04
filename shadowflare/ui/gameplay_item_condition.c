@@ -51,14 +51,19 @@ bool sf_gameplay_item_condition_animation_active(
   if (!assets || !player || !inventory) return false;
   if (player->inventory_transfer.holding_item && sf_gameplay_item_blinks(
         assets, &player->inventory_transfer.held_item)) return true;
-  if (!inventory->open) return false;
-  for (index = 0u; index < SF_EQUIPMENT_VISIBLE_SLOT_COUNT; ++index) {
-    const SfInventoryItem *item = sf_equipment_item(
-      &player->equipment, (SfEquipmentSlot) index);
-    if (item && sf_gameplay_item_blinks(assets, item)) return true;
+  if (inventory->open) {
+    for (index = 0u; index < SF_EQUIPMENT_VISIBLE_SLOT_COUNT; ++index) {
+      const SfInventoryItem *item = sf_equipment_item(
+        &player->equipment, (SfEquipmentSlot) index);
+      if (item && sf_gameplay_item_blinks(assets, item)) return true;
+    }
+    for (index = 0u; index < player->inventory.count; ++index)
+      if (sf_gameplay_item_blinks(assets, &player->inventory.items[index]))
+        return true;
   }
-  for (index = 0u; index < player->inventory.count; ++index)
-    if (sf_gameplay_item_blinks(assets, &player->inventory.items[index]))
-      return true;
+  if (inventory->special_open)
+    for (index = 0u; index < player->special_items.count; ++index)
+      if (sf_gameplay_item_blinks(
+            assets, &player->special_items.items[index])) return true;
   return false;
 }
