@@ -29,7 +29,8 @@
 #define SF_ENEMY_PATROL_ACTION 1
 #define SF_ENEMY_RETREAT_ACTION 9
 #define SF_ENEMY_APPROACH_ACTION 10
-#define SF_ENEMY_DIRECT_ATTACK_ACTION 2
+#define SF_ENEMY_FIRST_DIRECT_ATTACK_ACTION 2
+#define SF_ENEMY_LAST_DIRECT_ATTACK_ACTION 4
 #define SF_ENEMY_IDLE_PRESENTATION 7u
 #define SF_ENEMY_WALK_PRESENTATION 8u
 #define SF_ENEMY_WAIT_EVENT 11
@@ -165,18 +166,21 @@ static void sf_enemy_update_target_movement(
 static void sf_enemy_update_direct_attack(
     SfScenarioEnemy *enemy,
     const SfScenarioEnemyControllerContext *context) {
-  if (enemy->presentation_action == 1u) return;
-  if (!enemy->direct_attack_animations) {
+  const uint8_t variant = (uint8_t) (
+    enemy->current_action - SF_ENEMY_FIRST_DIRECT_ATTACK_ACTION);
+  const int32_t chart = enemy->definition->post_ai_values[41u + variant] + 4;
+  if (enemy->presentation_action == (uint8_t) (variant + 1u)) return;
+  if (!enemy->direct_attack_animations || chart < 0 || chart > UINT16_MAX ||
+      enemy->direct_attack_chart != (uint16_t) chart) {
     if (context->attack_request && context->attack_request->resource_id < 0) {
       context->attack_request->resource_id = enemy->definition->resource_id;
-      context->attack_request->chart =
-        enemy->definition->post_ai_values[41] + 4;
+      context->attack_request->chart = chart;
     }
     return;
   }
   sf_enemy_movement_stop(enemy);
-  if (!sf_enemy_presentation_begin_direct(enemy, context))
-    enemy->event_number = SF_ENEMY_DIRECT_ATTACK_ACTION;
+  if (!sf_enemy_presentation_begin_direct(enemy, context, variant))
+    enemy->event_number = enemy->current_action;
 }
 
 void sf_enemy_action_update(
@@ -203,7 +207,8 @@ void sf_enemy_action_update(
   } else if (action == SF_ENEMY_APPROACH_ACTION) {
     sf_enemy_update_target_movement(
       enemy, entering, SF_ENEMY_APPROACH_EVENT, context, distances);
-  } else if (action == SF_ENEMY_DIRECT_ATTACK_ACTION) {
+  } else if (action >= SF_ENEMY_FIRST_DIRECT_ATTACK_ACTION &&
+             action <= SF_ENEMY_LAST_DIRECT_ATTACK_ACTION) {
     sf_enemy_update_direct_attack(enemy, context);
   } else {
     enemy->event_number = 0;

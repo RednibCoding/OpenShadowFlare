@@ -48,9 +48,11 @@ bool sf_world_enemy_combat_apply_direct(
   SfEnemyDirectImpactResult impact;
   bool accepted = false;
   if (!world || !enemy || !context || !world->combat_tables ||
-      !enemy->direct_impact_pending) return false;
+      !enemy->direct_impact_pending || enemy->presentation_action < 1u ||
+      enemy->presentation_action > 3u) return false;
   impact = sf_enemy_direct_impact_resolve(
-    enemy, context, 0, &world->random_state);
+    enemy, context, (int32_t) enemy->presentation_action - 1,
+    &world->random_state);
   if (!impact.valid) return false;
   if (impact.post_hit_event != -1)
     enemy->event_number = impact.post_hit_event;

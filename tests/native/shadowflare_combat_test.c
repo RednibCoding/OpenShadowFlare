@@ -74,12 +74,18 @@ static int sf_test_direct_packet(void) {
   definition.pre_ai_values[6] = 3;
   definition.pre_ai_values[7] = 310;
   definition.post_ai_values[0] = 40;
+  definition.post_ai_values[1] = 50;
   definition.post_ai_values[3] = 159;
+  definition.post_ai_values[4] = 259;
   definition.post_ai_values[6] = 200;
+  definition.post_ai_values[7] = 190;
   definition.post_ai_values[21] = -1;
   definition.post_ai_values[29] = 410;
+  definition.post_ai_values[30] = 411;
   definition.post_ai_values[32] = 430;
+  definition.post_ai_values[33] = 431;
   definition.post_ai_values[35] = 400;
+  definition.post_ai_values[36] = 401;
   enemy.definition = &definition;
   enemy.position = (SfWorldPoint) {500, 600};
   enemy.judgement = (SfObjectBounds) {-10, -10, 10, 10};
@@ -98,6 +104,16 @@ static int sf_test_direct_packet(void) {
       result.packet.words[34] != 21001 ||
       random_state != 3357800067u) {
     fprintf(stderr, "Direct impact lost its marker-time packet or hit roll\n");
+    return 1;
+  }
+  random_state = 1u;
+  result = sf_enemy_direct_impact_resolve(
+    &enemy, &context, 1, &random_state);
+  if (!result.valid || !result.apply_damage ||
+      result.packet.words[4] != 50 || result.packet.words[36] != 190 ||
+      result.packet.words[40] != 401 || result.packet.words[41] != 411 ||
+      result.packet.words[43] != 431) {
+    fprintf(stderr, "Direct variant one lost its own retail packet columns\n");
     return 1;
   }
   return 0;
@@ -192,6 +208,7 @@ static int sf_test_live_dispatch(const SfCombatTables *tables) {
   enemy.judgement = (SfObjectBounds) {-10, -10, 10, 10};
   enemy.direction = 1u;
   enemy.event_number = -1;
+  enemy.presentation_action = 1u;
   enemy.direct_impact_pending = true;
   context.random_state = &world.random_state;
   sf_world_enemy_combat_targets(&world, &context);

@@ -53,9 +53,13 @@ static bool sf_enemy_attack_request(
   bool found = false;
   for (enemy_index = 0u; enemy_index < scenario->enemy_count; ++enemy_index) {
     const SfMctEnemy *enemy = &scenario->enemies[enemy_index];
-    const int32_t enemy_chart = enemy->post_ai_values[41] + 4;
+    uint8_t variant;
     uint8_t part;
-    if (enemy->resource_id != resource_id || enemy_chart != chart) continue;
+    if (enemy->resource_id != resource_id) continue;
+    for (variant = 0u; variant < 3u; ++variant) {
+      if (enemy->post_ai_values[41u + variant] + 4 == chart) break;
+    }
+    if (variant == 3u) continue;
     found = true;
     for (part = 0u; part < SF_MCT_PERSON_PART_LIMIT; ++part) {
       if (!enemy->custom_parts || enemy->part_visibility[part] != 0u)

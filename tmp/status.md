@@ -1,1 +1,1 @@
-Implement retail enemy retreat movement
+Implement retail enemy direct-attack variants

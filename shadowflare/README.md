@@ -426,16 +426,18 @@ route controller, and the enemy's dynamic blocker is updated in the same tick
 as its position. Attack
 selection and cadence, route movement, and the small per-enemy coordinator
 live in separate files so adding more actions does not grow one controller. The
-ordinary action-two presentation now lives in its own game file. It uses the
-MCT direct-attack chart, range, and speed index, faces the retained target,
-scans crossed CAF cells for the three audio bits and `0x40` impact bit, holds
-the final frame, and returns its retail event. The impact marker always fires;
-at that exact update a separate combat owner searches the attack cone again,
-preferring the player before an active companion, and builds the original
-77-word packet. A target-less swing still consumes its visual random draw.
-Hits use the retail 20..98 chance clamp, table-scaled physical or elemental
-defense, durability and reflection draw order, revival item, reaction chance
-and duration, hit/death state, event 17, and common hit or revival sound.
+three direct presentations now live in their own game file. AI actions two
+through four select variants zero through two, with the matching MCT range,
+chart, speed index, packet columns, and completion event. The controller faces
+the retained target, scans crossed CAF cells for the three audio bits and
+`0x40` impact bit, holds the final frame, and returns its retail event. The
+impact marker always fires; at that exact update a separate combat owner
+searches the attack cone again, preferring the player before an active
+companion, and builds the original 77-word packet. A target-less swing still
+consumes its visual random draw. Ordinary hits use the retail 20..98 chance
+clamp, table-scaled physical or elemental defense, durability and reflection
+draw order, revival item, reaction chance and duration, hit/death state, event
+17, and common hit or revival sound.
 Those rules live in small `game/` files and never enter movement or rendering.
 
 Only the needed cells from combat tables 7, 11, 24, 25, and 26 are retained in

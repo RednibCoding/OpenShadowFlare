@@ -195,6 +195,7 @@ static int test_direct_attack_presentation(void) {
     return 1;
   }
   enemy.direct_attack_animations = animations;
+  enemy.direct_attack_chart = 4u;
   sf_scenario_enemy_controller_update(&enemy, &context);
   if (enemy.presentation_action != 1u || enemy.animation_chart != 4u ||
       enemy.animation_frame != 0u) {
