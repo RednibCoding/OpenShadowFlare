@@ -21,6 +21,7 @@
 
 #include "core/coordinates.h"
 #include "game/movement.h"
+#include "game/player_item.h"
 
 static uint16_t sf_world_inventory_move_sound(
     const SfItemGroundDefinition *definition) {
@@ -121,6 +122,61 @@ bool sf_world_inventory_update(
         transfer->holding_item = placement.holding_item;
         sound = definition->category == 2u ? 93u : 49u;
         equipment_changed = true;
+        changed = true;
+      }
+    }
+  } else if (input->inventory_action == SF_INVENTORY_ACTION_TAKE_BELT &&
+             !transfer->holding_item && input->belt_grid_x >= 0 &&
+             input->belt_grid_y >= 0 && sf_belt_take_at(
+               &world->player.belt, (uint8_t) input->belt_grid_x,
+               (uint8_t) input->belt_grid_y, &transfer->held_item)) {
+    transfer->holding_item = true;
+    moved_item = transfer->held_item;
+    changed = true;
+  } else if (input->inventory_action == SF_INVENTORY_ACTION_PLACE_BELT &&
+             transfer->holding_item && input->belt_grid_x >= 0 &&
+             input->belt_grid_y >= 0) {
+    definition = sf_ground_items_definition(
+      &world->ground_items, transfer->held_item.category,
+      transfer->held_item.definition_id);
+    if (definition) {
+      const SfInventoryPlacement placement = sf_belt_place(
+        &world->player.belt, transfer->held_item,
+        input->belt_grid_x, input->belt_grid_y, definition);
+      if (placement.accepted) {
+        transfer->held_item = placement.held_item;
+        transfer->holding_item = placement.holding_item;
+        changed = true;
+      }
+    }
+  } else if (input->inventory_action == SF_INVENTORY_ACTION_USE_BACKPACK &&
+             !transfer->holding_item && input->inventory_item_index >= 0 &&
+             input->inventory_item_index < world->player.inventory.count) {
+    const uint8_t index = (uint8_t) input->inventory_item_index;
+    moved_item = world->player.inventory.items[index];
+    definition = sf_ground_items_definition(
+      &world->ground_items, moved_item.category, moved_item.definition_id);
+    if (definition && sf_player_use_medicine(
+          &world->player, definition) && sf_inventory_take(
+          &world->player.inventory, index, &moved_item)) {
+      sound = 16u;
+      changed = true;
+    }
+  } else if (input->inventory_action == SF_INVENTORY_ACTION_USE_BELT &&
+             !transfer->holding_item && input->belt_grid_x >= 0 &&
+             input->belt_grid_y >= 0) {
+    const SfInventoryItem *item = sf_belt_item_at(
+      &world->player.belt, (uint8_t) input->belt_grid_x,
+      (uint8_t) input->belt_grid_y);
+    if (item) {
+      moved_item = *item;
+      definition = sf_ground_items_definition(
+        &world->ground_items, item->category, item->definition_id);
+      if (definition && sf_player_use_medicine(
+            &world->player, definition) && sf_belt_take_at(
+            &world->player.belt, (uint8_t) input->belt_grid_x,
+            (uint8_t) input->belt_grid_y, &moved_item)) {
+        sound = 16u;
         changed = true;
       }
     }

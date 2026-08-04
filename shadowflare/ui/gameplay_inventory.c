@@ -21,6 +21,7 @@
 
 #include "game/inventory.h"
 #include "ui/gameplay_equipment_layout.h"
+#include "ui/gameplay_item_icon.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -77,55 +78,15 @@ static void sf_inventory_draw_number(
     renderer, font, text, right - length * 8, y, color);
 }
 
-static const SfItemGroundDefinition *sf_inventory_definition(
-    const SfGameplayAssets *assets, const SfInventoryItem *item) {
-  uint8_t index;
-  for (index = 0u; index < assets->ground_items.definition_count; ++index) {
-    const SfItemGroundDefinition *definition =
-      &assets->ground_items.definitions[index];
-    if (definition->category == item->category &&
-        definition->definition_id == item->definition_id) return definition;
-  }
-  return NULL;
-}
-
-static void sf_inventory_draw_item_at(
-    SfRenderer *renderer, const SfGameplayAssets *assets,
-    const SfInventoryItem *item, int x, int y) {
-  const SfItemGroundDefinition *definition =
-    sf_inventory_definition(assets, item);
-  const SfNjpSparseResource *resource;
-  const SfNjpSparsePattern *pattern;
-  SfIndexedImage image;
-  if (!definition || definition->inventory_pattern_group < 0 ||
-      definition->inventory_pattern < 0) return;
-  resource = sf_inventory_item_artwork(
-    &assets->inventory_items, definition->inventory_pattern_group);
-  pattern = sf_njp_sparse_pattern(
-    resource, definition->inventory_pattern);
-  if (!pattern) return;
-  image = pattern->image.image;
-  if (definition->inventory_palette >= 0) {
-    const uint16_t *palette = sf_njp_sparse_palette(
-      resource, definition->inventory_palette);
-    if (!palette) return;
-    image.palette = palette;
-  }
-  sf_renderer_draw_indexed(
-    renderer, &image,
-    x + pattern->image.x, y + pattern->image.y,
-    1000u, 1000u, SF_BLEND_MASKED, NULL);
-}
-
 static void sf_inventory_draw_item(
     SfRenderer *renderer, const SfGameplayAssets *assets,
     const SfInventoryItem *item) {
-  sf_inventory_draw_item_at(
+  sf_gameplay_item_icon_draw(
     renderer, assets, item,
     SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT +
       item->grid_x * SF_GAMEPLAY_INVENTORY_CELL_SIZE,
     SF_GAMEPLAY_INVENTORY_BACKPACK_TOP +
-      item->grid_y * SF_GAMEPLAY_INVENTORY_CELL_SIZE);
+      item->grid_y * SF_GAMEPLAY_INVENTORY_CELL_SIZE, NULL);
 }
 
 void sf_gameplay_inventory_draw(
@@ -151,9 +112,14 @@ void sf_gameplay_inventory_draw(
   sf_inventory_draw_number(
     renderer, font, sf_inventory_gold(&player->inventory),
     471, 28, value_color);
-  sf_inventory_draw_number(renderer, font, 0, 446, 118, normal_color);
+  if (player->mine_count != 0)
+    sf_inventory_draw_panel_pattern(
+      renderer, &assets->inventory_panel, 67u);
+  sf_inventory_draw_number(
+    renderer, font, player->mine_count, 446, 118, normal_color);
   sf_inventory_draw_text(renderer, font, "/", 445, 117, normal_color);
-  sf_inventory_draw_number(renderer, font, 10, 471, 118, normal_color);
+  sf_inventory_draw_number(
+    renderer, font, player->maximum_mines, 471, 118, normal_color);
   sf_inventory_draw_number(
     renderer, font,
     sf_equipment_total_weight(
@@ -168,7 +134,7 @@ void sf_gameplay_inventory_draw(
     if (!equipped) continue;
     sf_gameplay_equipment_item_origin(
       (SfEquipmentSlot) item, equipped, &x, &y);
-    sf_inventory_draw_item_at(renderer, assets, equipped, x, y);
+    sf_gameplay_item_icon_draw(renderer, assets, equipped, x, y, clip);
   }
   for (item = 0u; item < player->inventory.count; ++item)
     sf_inventory_draw_item(
@@ -185,10 +151,10 @@ void sf_gameplay_inventory_draw_held(
   if (!renderer || !assets || !player || !inventory ||
       !player->inventory_transfer.holding_item) return;
   item = &player->inventory_transfer.held_item;
-  sf_inventory_draw_item_at(
+  sf_gameplay_item_icon_draw(
     renderer, assets, item,
     inventory->pointer_x -
       item->width * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2,
     inventory->pointer_y -
-      item->height * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2);
+      item->height * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2, NULL);
 }

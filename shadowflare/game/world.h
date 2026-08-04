@@ -83,7 +83,7 @@ void sf_world_state_enter(
 void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
-void sf_world_state_bind_ground_items(
+bool sf_world_state_bind_ground_items(
   SfWorldState *world, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);
 bool sf_world_state_bind_scenario(

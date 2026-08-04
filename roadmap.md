@@ -42,10 +42,16 @@ command. All nine visible equipment regions now use that same pointer owner.
 The new hero starts with the table-backed Leather Cloth in the body slot;
 weapons, shields, body armor, and accessories validate their retail slot and
 level rules, equipped weight is live, and only the active CAF appearance parts
-are drawn with their original color strengths. The next slice should add the
-separate belt owner and finish the retail starter loadout before moving on to
-the next native services needed by Remote Town, saves, scenario travel,
-combat, companions, and finally the remaining `SF_EXE` feature set.
+are drawn with their original color strengths. The lower HUD now has its own
+fixed 4x2 belt owner with the original staggered pockets. Pointer pickup,
+swapping, the `1` through `8` shortcuts, and right-click medicine use share the
+same item-transfer path as the backpack. A new hero receives the full retail
+loadout: Leather Cloth, four Tablets and four Capsules in both backpack and
+belt, and five mines in the separate 5/10 counter. Full life or mana leaves a
+medicine untouched, successful use plays the authored sound, and mine pickups
+fill their counter instead of entering the bag. The next slice should make
+that growing player record survive gameplay saves before more Remote Town,
+travel, combat, and companion state is layered onto it.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

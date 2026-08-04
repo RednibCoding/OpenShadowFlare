@@ -19,6 +19,7 @@
 
 #include "ui/gameplay_inventory_input.h"
 
+#include "ui/gameplay_belt.h"
 #include "ui/gameplay_equipment_layout.h"
 #include "ui/gameplay_hud_input.h"
 
@@ -38,6 +39,9 @@ bool sf_gameplay_inventory_input_resolve(
   bool holding;
   int8_t hovered = -1;
   SfEquipmentSlot equipment_slot = SF_EQUIPMENT_SLOT_COUNT;
+  uint8_t belt_x = 0u;
+  uint8_t belt_y = 0u;
+  bool belt_pocket;
   if (!inventory || !player || !input) return false;
   sf_gameplay_hud_input_resolve(input);
   if (input->pointer_active) {
@@ -45,6 +49,8 @@ bool sf_gameplay_inventory_input_resolve(
     inventory->pointer_y = input->pointer_y;
   }
   holding = player->inventory_transfer.holding_item;
+  belt_pocket = input->pointer_active && sf_gameplay_belt_pocket_at(
+    input->pointer_x, input->pointer_y, &belt_x, &belt_y);
   toggle = input->inventory_pressed ||
     sf_gameplay_hud_button_at_pointer(input) ==
       SF_GAMEPLAY_HUD_BUTTON_INVENTORY;
@@ -98,6 +104,37 @@ bool sf_gameplay_inventory_input_resolve(
              input->pointer_primary_pressed) {
     inventory->open = false;
     inventory->close_hovered = false;
+    input->pointer_over_gameplay_ui = true;
+    changed = true;
+  } else if (input->pointer_primary_pressed && belt_pocket) {
+    if (holding) {
+      input->inventory_action = SF_INVENTORY_ACTION_PLACE_BELT;
+      input->belt_grid_x = (int8_t) belt_x;
+      input->belt_grid_y = (int8_t) belt_y;
+    } else if (sf_belt_item_at(&player->belt, belt_x, belt_y)) {
+      input->inventory_action = SF_INVENTORY_ACTION_TAKE_BELT;
+      input->belt_grid_x = (int8_t) belt_x;
+      input->belt_grid_y = (int8_t) belt_y;
+    }
+    input->pointer_over_gameplay_ui = true;
+    changed = true;
+  } else if (input->pointer_secondary_pressed && belt_pocket && !holding) {
+    input->inventory_action = SF_INVENTORY_ACTION_USE_BELT;
+    input->belt_grid_x = (int8_t) belt_x;
+    input->belt_grid_y = (int8_t) belt_y;
+    input->pointer_over_gameplay_ui = true;
+    changed = true;
+  } else if (input->belt_pocket_key_pressed &&
+             input->belt_pocket_pressed >= 0 &&
+             input->belt_pocket_pressed < 8 && !holding) {
+    input->inventory_action = SF_INVENTORY_ACTION_USE_BELT;
+    input->belt_grid_x = (int8_t) (input->belt_pocket_pressed % 4);
+    input->belt_grid_y = (int8_t) (input->belt_pocket_pressed / 4);
+    changed = true;
+  } else if (inventory->open && input->pointer_secondary_pressed &&
+             !holding && inventory->hovered_item_index >= 0) {
+    input->inventory_action = SF_INVENTORY_ACTION_USE_BACKPACK;
+    input->inventory_item_index = inventory->hovered_item_index;
     input->pointer_over_gameplay_ui = true;
     changed = true;
   } else if (input->pointer_primary_pressed && holding &&

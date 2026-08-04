@@ -140,6 +140,8 @@ static int test_live_equipment(const char *root, SfArena *arena) {
   SfGameplayAssets assets;
   SfGameplayInventoryUi ui;
   SfPlayerState loader_player;
+  SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t retained_item_count;
   SfWorldState world;
   SfWorldRenderView view;
   SfGameInput input;
@@ -154,10 +156,14 @@ static int test_live_equipment(const char *root, SfArena *arena) {
   uint8_t part;
   bool leather_part_loaded = false;
   sf_player_init(&loader_player, 1u);
-  if (!sf_gameplay_assets_load(
+  if (!sf_player_required_item_definitions(
+        &loader_player, retained_items, SF_GROUND_ITEM_DEFINITION_LIMIT,
+        &retained_item_count) ||
+      !sf_gameplay_assets_load(
         &assets, root, 0, 0, loader_player.gender,
         loader_player.appearance_parts, loader_player.appearance_part_count,
-        loader_player.visible_items, loader_player.visible_item_count, arena))
+        loader_player.visible_items, loader_player.visible_item_count,
+        retained_items, retained_item_count, arena))
     return 1;
   leather = find_definition(&assets, 1u, 0);
   short_sword = find_definition(&assets, 0u, 0);

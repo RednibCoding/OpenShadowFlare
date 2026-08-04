@@ -68,6 +68,7 @@ bool sf_gameplay_assets_load(
   int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
   const uint8_t *appearance_parts, uint8_t appearance_part_count,
   const SfItemReference *visible_items, uint8_t visible_item_count,
+  const SfItemReference *retained_items, uint8_t retained_item_count,
   SfArena *arena);
 const SfNjpDecodedResource *sf_gameplay_pattern_set(
   const SfGameplayAssets *assets, uint8_t source_index);

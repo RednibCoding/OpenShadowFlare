@@ -71,6 +71,7 @@ add_library(
   data/table.c
   data/voc.c
   game/character_create.c
+  game/belt.c
   game/collision.c
   game/equipment.c
   game/game.c
@@ -79,6 +80,8 @@ add_library(
   game/load_game.c
   game/movement.c
   game/player.c
+  game/player_item.c
+  game/player_loadout.c
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
@@ -107,11 +110,13 @@ add_library(
   ui/conversation_bubble.c
   ui/conversation_input.c
   ui/conversation_layout.c
+  ui/gameplay_belt.c
   ui/gameplay_equipment_layout.c
   ui/gameplay_hud.c
   ui/gameplay_hud_input.c
   ui/gameplay_inventory.c
   ui/gameplay_inventory_input.c
+  ui/gameplay_item_icon.c
   ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c

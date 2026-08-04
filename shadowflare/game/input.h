@@ -29,6 +29,10 @@ typedef enum SfInventoryAction {
   SF_INVENTORY_ACTION_PLACE,
   SF_INVENTORY_ACTION_TAKE_EQUIPMENT,
   SF_INVENTORY_ACTION_PLACE_EQUIPMENT,
+  SF_INVENTORY_ACTION_TAKE_BELT,
+  SF_INVENTORY_ACTION_PLACE_BELT,
+  SF_INVENTORY_ACTION_USE_BACKPACK,
+  SF_INVENTORY_ACTION_USE_BELT,
   SF_INVENTORY_ACTION_DROP_WORLD
 } SfInventoryAction;
 
@@ -43,6 +47,9 @@ typedef struct SfGameInput {
   int8_t inventory_grid_x;
   int8_t inventory_grid_y;
   int8_t equipment_slot;
+  int8_t belt_grid_x;
+  int8_t belt_grid_y;
+  int8_t belt_pocket_pressed;
   uint8_t conversation_option_count;
   SfInventoryAction inventory_action;
   bool pointer_active;
@@ -51,6 +58,7 @@ typedef struct SfGameInput {
   bool conversation_choices_resolved;
   bool pointer_primary_pressed;
   bool pointer_primary_down;
+  bool pointer_secondary_pressed;
   bool up_pressed;
   bool down_pressed;
   bool left_pressed;
@@ -61,6 +69,7 @@ typedef struct SfGameInput {
   bool delete_pressed;
   bool pace_toggle_pressed;
   bool inventory_pressed;
+  bool belt_pocket_key_pressed;
   char text[16];
   uint8_t text_length;
 } SfGameInput;

@@ -70,13 +70,20 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->decode_scratch, runtime->decode_scratch_size);
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
-    success = sf_gameplay_assets_load(
-      &runtime->assets.gameplay, runtime->data_root,
-      game->world.scenario_id, game->world.entry_key,
-      game->world.player.gender, game->world.player.appearance_parts,
-      game->world.player.appearance_part_count,
-      game->world.player.visible_items, game->world.player.visible_item_count,
-      runtime->arena);
+    SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+    uint8_t retained_item_count;
+    success = sf_player_required_item_definitions(
+      &game->world.player, retained_items,
+      SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
+    if (success)
+      success = sf_gameplay_assets_load(
+        &runtime->assets.gameplay, runtime->data_root,
+        game->world.scenario_id, game->world.entry_key,
+        game->world.player.gender, game->world.player.appearance_parts,
+        game->world.player.appearance_part_count,
+        game->world.player.visible_items,
+        game->world.player.visible_item_count,
+        retained_items, retained_item_count, runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
       if (!game->world.player.parameters_initialized)
@@ -87,7 +94,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
         sf_world_state_bind_collision(
           &game->world, &runtime->assets.gameplay.ground,
           &runtime->assets.gameplay.objects);
-        sf_world_state_bind_ground_items(
+        success = sf_world_state_bind_ground_items(
           &game->world,
           runtime->assets.gameplay.ground_items.definitions,
           runtime->assets.gameplay.ground_items.definition_count);
@@ -153,6 +160,8 @@ void sf_screen_runtime_resolve_input(
   input->inventory_grid_x = -1;
   input->inventory_grid_y = -1;
   input->equipment_slot = -1;
+  input->belt_grid_x = -1;
+  input->belt_grid_y = -1;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;

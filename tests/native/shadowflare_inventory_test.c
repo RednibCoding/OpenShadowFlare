@@ -143,6 +143,8 @@ static int test_live_inventory(
   SfGameplayAssets assets;
   SfGameplayInventoryUi ui;
   SfPlayerState loader_player;
+  SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t retained_item_count;
   SfWorldState world;
   SfRenderer renderer;
   SfGameInput input;
@@ -154,10 +156,14 @@ static int test_live_inventory(
   size_t changed = 0u;
   size_t pixel;
   sf_player_init(&loader_player, 1u);
-  if (!sf_gameplay_assets_load(
+  if (!sf_player_required_item_definitions(
+        &loader_player, retained_items, SF_GROUND_ITEM_DEFINITION_LIMIT,
+        &retained_item_count) ||
+      !sf_gameplay_assets_load(
         &assets, root, 0, 0, loader_player.gender,
         loader_player.appearance_parts, loader_player.appearance_part_count,
-        loader_player.visible_items, loader_player.visible_item_count, arena)) {
+        loader_player.visible_items, loader_player.visible_item_count,
+        retained_items, retained_item_count, arena)) {
     fprintf(stderr, "Inventory fixture could not load Remote Town assets\n");
     return 1;
   }
@@ -176,6 +182,7 @@ static int test_live_inventory(
   sf_world_state_bind_ground_items(
     &world, assets.ground_items.definitions,
     assets.ground_items.definition_count);
+  sf_inventory_init(&world.player.inventory);
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);

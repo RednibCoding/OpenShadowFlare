@@ -110,10 +110,13 @@ static int test_ground_item_assets(const SfGameplayAssets *assets) {
   static const int32_t palettes[4] = {0, 10, 72, 60};
   static const int32_t charts[4] = {0, 5, 36, 30};
   uint8_t index;
-  if (assets->ground_items.definition_count != 9u ||
+  if (assets->ground_items.definition_count != 11u ||
       assets->ground_items.visual_count != 1u || !visual ||
       !sf_ground_item_animation(visual, 13) ||
+      !sf_ground_item_animation(visual, 6) ||
+      !sf_ground_item_animation(visual, 7) ||
       !sf_ground_item_sound(&assets->ground_items, 15u) ||
+      !sf_ground_item_sound(&assets->ground_items, 16u) ||
       !sf_ground_item_sound(&assets->ground_items, 48u) ||
       !sf_ground_item_sound(&assets->ground_items, 49u)) {
     fprintf(stderr, "Remote Town ground-item resources differ from retail\n");
@@ -286,12 +289,13 @@ static int test_gameplay_inventory(
   uint16_t empty_item[32u * 96u];
   size_t changed = 0u;
   int y;
-  if (!dagger || assets->inventory_panel.pattern_count != 6u ||
+  if (!dagger || assets->inventory_panel.pattern_count != 7u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 2u) ||
       sf_njp_decoded_pattern(
         &assets->inventory_panel, 2u)->reference_count != 3u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 116u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 117u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 67u) ||
       sf_njp_decoded_pattern(&assets->inventory_panel, 74u)) {
     fprintf(stderr, "The retail inventory panel patterns are incomplete\n");
     return 1;
@@ -818,6 +822,8 @@ int main(void) {
   SfGameplayScreen screen;
   SfPatternList patterns;
   SfPlayerState player;
+  SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t retained_item_count;
   SfWorldState world;
   SfArena arena;
   char root[1024];
@@ -843,10 +849,14 @@ int main(void) {
     &arena, sf_gameplay_test_memory.bytes,
     sizeof(sf_gameplay_test_memory.bytes));
   sf_player_init(&player, 1u);
-  if (!sf_gameplay_assets_load(
+  if (!sf_player_required_item_definitions(
+        &player, retained_items, SF_GROUND_ITEM_DEFINITION_LIMIT,
+        &retained_item_count) ||
+      !sf_gameplay_assets_load(
         &assets, root, 0, 0, player.gender,
         player.appearance_parts, player.appearance_part_count,
-        player.visible_items, player.visible_item_count, &arena)) {
+        player.visible_items, player.visible_item_count,
+        retained_items, retained_item_count, &arena)) {
     fprintf(stderr, "Remote Town gameplay assets did not fit the game arena\n");
     return 1;
   }
@@ -912,6 +922,7 @@ int main(void) {
       "Remote Town viewport culling changed before retail depth sorting\n");
     return 1;
   }
+  sf_inventory_init(&world.player.inventory);
   if (test_ground_item_pickup(&assets, &world)) return 1;
   if (test_gameplay_inventory(&assets, &world.player)) return 1;
   if (test_gameplay_ui_conversation_guard(&world)) return 1;

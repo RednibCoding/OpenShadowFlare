@@ -182,8 +182,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,440,269 bytes of the 7 MiB main arena,
-leaving 5,899,763 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,440,445 bytes of the 7 MiB main arena,
+leaving 5,899,587 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -196,22 +196,22 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 753,192 bytes of the main arena, leaving 6,586,840 bytes free;
+assets. It uses 753,368 bytes of the main arena, leaving 6,586,664 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 713,408 bytes of the main arena, leaving 6,626,624
+The load-game screen uses 713,584 bytes of the main arena, leaving 6,626,448
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,896,700 bytes of the main
-arena, leaving 2,443,332 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 4,907,748 bytes of the main
+arena, leaving 2,432,284 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
-artwork account for 4,557,613
+artwork account for 4,568,485
 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining

@@ -90,6 +90,24 @@ static bool sf_item_ground_word(
     definition->maximum_durability = value;
   if (offset == 100u && category == 2u)
     definition->required_level = value;
+  if (category == 3u && offset == 100u)
+    definition->required_level = value;
+  if (category == 3u && offset == 108u)
+    definition->restore_life = value;
+  if (category == 3u && offset == 112u)
+    definition->restore_mana = value;
+  if (category == 3u && offset == 116u)
+    definition->restore_life_percent = value;
+  if (category == 3u && offset == 120u)
+    definition->restore_mana_percent = value;
+  if (category == 3u && offset == 124u)
+    definition->restore_companion_life = value;
+  if (category == 3u && offset == 128u)
+    definition->restore_companion_life_percent = value;
+  if (category == 3u && offset == 132u)
+    definition->consumable_effect = value;
+  if (category == 3u && offset == 136u)
+    definition->consumable_effect_value = value;
   if (offset == 148u && category <= 1u)
     definition->required_level = value;
   if (category == 0u && offset == 168u)
@@ -137,6 +155,7 @@ bool sf_item_read_ground_definitions(
     definitions[index].appearance_red_strength = 1000;
     definitions[index].appearance_green_strength = 1000;
     definitions[index].appearance_blue_strength = 1000;
+    definitions[index].consumable_effect = -1;
     definitions[index].suppresses_off_hand = false;
     definitions[index].name[0] = '\0';
   }

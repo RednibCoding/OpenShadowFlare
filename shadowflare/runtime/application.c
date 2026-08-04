@@ -80,6 +80,8 @@ static void sf_read_event(
       if (event->type == TWL_EVENT_POINTER_UP)
         input->pointer_primary_down = false;
     }
+    if (event->button == 3u && event->type == TWL_EVENT_POINTER_DOWN)
+      input->pointer_secondary_pressed = true;
   }
   if (event->type == TWL_EVENT_QUIT) {
     *running = false;
@@ -96,6 +98,10 @@ static void sf_read_event(
     if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
     if (event->key == TWL_KEY_R) input->pace_toggle_pressed = true;
     if (event->key == TWL_KEY_I) input->inventory_pressed = true;
+    if (event->key >= TWL_KEY_1 && event->key <= TWL_KEY_8) {
+      input->belt_pocket_pressed = (int8_t) (event->key - TWL_KEY_1);
+      input->belt_pocket_key_pressed = true;
+    }
   }
   if (event->type == TWL_EVENT_TEXT && input->text_length < 15u) {
     uint8_t encoded[4];
@@ -154,6 +160,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;
   input->pointer_primary_pressed = false;
+  input->pointer_secondary_pressed = false;
   input->up_pressed = false;
   input->down_pressed = false;
   input->left_pressed = false;
@@ -164,6 +171,8 @@ static void sf_clear_input(SfGameInput *input) {
   input->delete_pressed = false;
   input->pace_toggle_pressed = false;
   input->inventory_pressed = false;
+  input->belt_pocket_pressed = -1;
+  input->belt_pocket_key_pressed = false;
   input->text_length = 0u;
   input->text[0] = '\0';
 }

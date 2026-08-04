@@ -21,6 +21,7 @@
 
 #include "core/coordinates.h"
 #include "game/movement.h"
+#include "game/player_item.h"
 #include "game/world_conversation.h"
 #include "game/world_inventory.h"
 #include "game/world_script.h"
@@ -66,13 +67,13 @@ void sf_world_state_bind_collision(
   world->collision.objects = objects;
 }
 
-void sf_world_state_bind_ground_items(
+bool sf_world_state_bind_ground_items(
     SfWorldState *world, const SfItemGroundDefinition *definitions,
     uint8_t definition_count) {
-  if (!world) return;
+  if (!world) return false;
   sf_ground_items_bind_definitions(
     &world->ground_items, definitions, definition_count);
-  sf_player_initialize_equipment(
+  return sf_player_initialize_loadout(
     &world->player, definitions, definition_count);
 }
 
@@ -117,6 +118,17 @@ static bool sf_world_take_ground_item(
     &world->ground_items, item->category, item->definition_id);
   sf_player_cancel_movement(&world->player);
   world->pointer.pending_ground_item_id = -1;
+  if (definition && item->category == 4u && item->definition_id == 1) {
+    if (!sf_player_collect_mine(&world->player)) {
+      sf_ground_item_restart_drop(item);
+      ++world->ground_items.presentation_revision;
+      world->pointer.hovered_ground_item_id = -1;
+      return true;
+    }
+    sf_ground_items_emit_sound(&world->ground_items, 48u);
+    world->pointer.hovered_ground_item_id = -1;
+    return sf_ground_items_remove(&world->ground_items, id);
+  }
   if (!definition || definition->inventory_width <= 0 ||
       definition->inventory_width > (int32_t) SF_INVENTORY_WIDTH ||
       definition->inventory_height <= 0 ||

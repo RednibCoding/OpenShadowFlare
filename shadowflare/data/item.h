@@ -57,6 +57,14 @@ typedef struct SfItemGroundDefinition {
   int32_t appearance_red_strength;
   int32_t appearance_green_strength;
   int32_t appearance_blue_strength;
+  int32_t restore_life;
+  int32_t restore_mana;
+  int32_t restore_life_percent;
+  int32_t restore_mana_percent;
+  int32_t restore_companion_life;
+  int32_t restore_companion_life_percent;
+  int32_t consumable_effect;
+  int32_t consumable_effect_value;
   uint8_t category;
   bool suppresses_off_hand;
 } SfItemGroundDefinition;

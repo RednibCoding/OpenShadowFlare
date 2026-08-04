@@ -212,6 +212,7 @@ bool sf_gameplay_assets_load(
     int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
     const uint8_t *appearance_parts, uint8_t appearance_part_count,
     const SfItemReference *visible_items, uint8_t visible_item_count,
+    const SfItemReference *retained_items, uint8_t retained_item_count,
     SfArena *arena) {
   SfPatternList patterns;
   SfGameplaySelection selection;
@@ -224,8 +225,8 @@ bool sf_gameplay_assets_load(
     0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
     19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
   };
-  static const uint8_t inventory_patterns[6] = {
-    0u, 1u, 2u, 3u, 116u, 117u
+  static const uint8_t inventory_patterns[7] = {
+    0u, 1u, 2u, 3u, 67u, 116u, 117u
   };
   size_t mark;
   bool success = false;
@@ -281,7 +282,7 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
-        path, inventory_patterns, 6u, arena, &assets->inventory_panel) ||
+        path, inventory_patterns, 7u, arena, &assets->inventory_panel) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root,
         sf_retail_game_paths.parameter_tables) ||
@@ -289,7 +290,7 @@ bool sf_gameplay_assets_load(
         path, player_gender, &assets->player_parameters) ||
       !sf_ground_item_assets_load(
         &assets->ground_items, data_root, assets->script,
-        visible_items, visible_item_count, arena) ||
+        retained_items, retained_item_count, arena) ||
       !sf_gameplay_load_player(
         assets, data_root, player_gender,
         appearance_parts, appearance_part_count,

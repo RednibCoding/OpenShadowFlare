@@ -26,6 +26,7 @@
 #include "game/route.h"
 #include "game/inventory.h"
 #include "game/equipment.h"
+#include "game/belt.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -53,11 +54,14 @@ typedef struct SfPlayerState {
   SfInventoryState inventory;
   SfInventoryTransferState inventory_transfer;
   SfEquipmentState equipment;
+  SfBeltState belt;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;
   int32_t experience;
   int32_t level;
+  int32_t mine_count;
+  int32_t maximum_mines;
   uint32_t action_counter;
   uint32_t animation_frame;
   uint8_t appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];
@@ -71,15 +75,19 @@ typedef struct SfPlayerState {
   SfPlayerMotion previous_motion;
   SfPlayerPace pace;
   bool parameters_initialized;
+  bool loadout_initialized;
 } SfPlayerState;
 
 void sf_player_init(SfPlayerState *player, uint8_t gender);
 bool sf_player_apply_initial_parameters(
   SfPlayerState *player, const SfPlayerInitialParameters *parameters);
-void sf_player_initialize_equipment(
+bool sf_player_initialize_loadout(
   SfPlayerState *player, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);
 void sf_player_refresh_visible_items(SfPlayerState *player);
+bool sf_player_required_item_definitions(
+  const SfPlayerState *player, SfItemReference *items,
+  uint8_t capacity, uint8_t *item_count);
 void sf_player_enter(
   SfPlayerState *player, SfWorldPoint position, uint8_t direction);
 void sf_player_move_to(SfPlayerState *player, SfWorldPoint destination);
