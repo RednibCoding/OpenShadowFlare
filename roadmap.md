@@ -49,7 +49,13 @@ same item-transfer path as the backpack. A new hero receives the full retail
 loadout: Leather Cloth, four Tablets and four Capsules in both backpack and
 belt, and five mines in the separate 5/10 counter. Full life or mana leaves a
 medicine untouched, successful use plays the authored sound, and mine pickups
-fill their counter instead of entering the bag. Selecting a retail save now
+fill their counter instead of entering the bag. Backpack and equipped items
+now share the retail three-update information overlay too. Its active
+`Item.Ibn` definition supplies the name, price, combat values, durability,
+weight, requirement, and elemental strengths. Pointer-relative placement,
+the translucent backing, faint frame, tier color, and wide Gold/medicine
+layout stay entirely in `ui/`.
+Selecting a retail save now
 streams and verifies its `ShadowFlare0005` envelope without allocating a
 payload buffer. The plain player record and exact backpack, belt, visible
 equipment, and hidden alternate-weapon slots all populate the same fixed game

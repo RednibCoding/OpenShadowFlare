@@ -123,6 +123,7 @@ add_library(
   ui/gameplay_hud_input.c
   ui/gameplay_inventory.c
   ui/gameplay_inventory_input.c
+  ui/gameplay_item_information.c
   ui/gameplay_item_icon.c
   ui/ground_item_nameplate.c
   ui/world_pointer.c

@@ -24,6 +24,7 @@
 #include "render/renderer.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_item_information.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -152,6 +153,7 @@ static int test_live_inventory(
   SfWorldPoint offset;
   const SfItemGroundDefinition *dagger;
   const SfGroundItem *dropped;
+  char information[768];
   int32_t dropped_id;
   size_t changed = 0u;
   size_t pixel;
@@ -170,6 +172,14 @@ static int test_live_inventory(
   dagger = find_dagger(&assets);
   if (!dagger) {
     fprintf(stderr, "Inventory fixture could not find the Dagger\n");
+    return 1;
+  }
+  if (dagger->base_price != 400 || dagger->maximum_durability != 300 ||
+      dagger->parameter_bonuses[0] != 10 ||
+      dagger->parameter_bonuses[1] != 120 ||
+      dagger->parameter_bonuses[8] != 50 ||
+      dagger->description[0] == '\0') {
+    fprintf(stderr, "The streamed Dagger information is incomplete\n");
     return 1;
   }
   sf_world_state_init(&world, 0, 0, loader_player.gender);
@@ -192,6 +202,45 @@ static int test_live_inventory(
   }
   sf_gameplay_inventory_init(&ui);
   ui.open = true;
+  if (!sf_gameplay_item_information_text(
+        information, sizeof(information), &world.player.inventory.items[0],
+        dagger) || strstr(information, "[Dagger]\n\n") != information ||
+      !strstr(information, "Attack                    :       10\n") ||
+      !strstr(information, "Sale Price                :      100\n")) {
+    fprintf(stderr, "The Dagger information text does not match retail\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_x = SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT + 4;
+  input.pointer_y = SF_GAMEPLAY_INVENTORY_BACKPACK_TOP + 4;
+  (void) sf_gameplay_inventory_input_resolve(
+    &ui, &world.player, false, &input);
+  (void) sf_gameplay_inventory_input_resolve(
+    &ui, &world.player, false, &input);
+  if (ui.item_hover_updates != 2u) {
+    fprintf(stderr, "The retail three-update item hover opened too early\n");
+    return 1;
+  }
+  if (!sf_gameplay_inventory_input_resolve(
+        &ui, &world.player, false, &input) ||
+      ui.item_hover_updates != 3u) {
+    fprintf(stderr, "The item information did not open on update three\n");
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_inventory_test_pixels,
+        sizeof(sf_inventory_test_pixels), 640u, 480u)) return 1;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_item_information_draw(
+    &renderer, &assets, &world.player, &ui);
+  changed = 0u;
+  for (pixel = 0u; pixel < 640u * 480u; ++pixel)
+    if (sf_inventory_test_pixels[pixel] != 0x1234u) ++changed;
+  if (changed < 1000u) {
+    fprintf(stderr, "The item information overlay was not rendered\n");
+    return 1;
+  }
   destination = world.player.destination;
   if (resolve_take(&ui, &world, &input, 0) ||
       world.player.inventory.count != 0u ||
@@ -200,9 +249,6 @@ static int test_live_inventory(
     fprintf(stderr, "Taking a backpack item leaked into movement\n");
     return 1;
   }
-  if (!sf_renderer_init(
-        &renderer, sf_inventory_test_pixels,
-        sizeof(sf_inventory_test_pixels), 640u, 480u)) return 1;
   sf_renderer_clear(&renderer, 0x1234u);
   sf_gameplay_inventory_draw_held(&renderer, &assets, &world.player, &ui);
   for (pixel = 0u; pixel < 640u * 480u; ++pixel)

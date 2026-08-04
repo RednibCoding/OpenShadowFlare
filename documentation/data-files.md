@@ -721,6 +721,7 @@ known offsets are shared by all five field blocks:
 | `0x08` | Quality/variant number |
 | `0x0c` | Episode mask used by loot profiles |
 | `0x10` | Weighted loot-selection value |
+| `0x14` | Base purchase price; ordinary sale price starts at one quarter |
 | `0x1c` | Inventory width in 32-pixel cells |
 | `0x20` | Inventory height in 32-pixel cells |
 | `0x24` | Item weight |
@@ -752,12 +753,20 @@ Weapon records also expose the fields used by the first equipment slice:
 
 | Field offset | Meaning |
 |--------------|---------|
+| `0x64` | Maximum durability |
 | `0x68`..`0x8c` | Ten contributions consumed by the derived-stat refresh |
 | `0x94` | Required player level |
 | `0xa8` | Player CAF appearance part |
 | `0xac` | Appearance-part red strength |
 | `0xb0` | Appearance-part green strength |
 | `0xb4` | Appearance-part blue strength |
+| `0xd0`..`0xec` | Eight base elemental strengths |
+
+Armor records use the same durability, contribution, and required-level
+offsets. Their eight elemental strengths begin at `0xa8` because their
+appearance block is shorter. The small C99 runtime retains these named fields,
+plus the active record's name and description, during its existing streaming
+scan so item information never needs the complete decoded database.
 
 For the Short Sword these values are requirement level 1, CAF part 12, RGB
 strengths `1000, 1000, 1000`, and first derived contributions 20 and 100.

@@ -17,22 +17,22 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_ITEM_RECORDS_H
-#define SHADOWFLARE_DATA_ITEM_RECORDS_H
+#ifndef SHADOWFLARE_UI_GAMEPLAY_ITEM_INFORMATION_H
+#define SHADOWFLARE_UI_GAMEPLAY_ITEM_INFORMATION_H
+
+#include "assets/gameplay_assets.h"
+#include "game/player.h"
+#include "render/renderer.h"
+#include "ui/gameplay_inventory.h"
 
 #include <stdbool.h>
-#include <stdint.h>
+#include <stddef.h>
 
-typedef bool (*SfItemRecordWord)(
-  void *user, uint8_t category, uint16_t offset, int32_t value);
-typedef bool (*SfItemRecordText)(
-  void *user, uint8_t category,
-  const char *name, const char *description);
-
-bool sf_item_scan_records(
-  const char *path, SfItemRecordWord word, void *user);
-bool sf_item_scan_named_records(
-  const char *path, SfItemRecordText text,
-  SfItemRecordWord word, void *user);
+bool sf_gameplay_item_information_text(
+  char *text, size_t capacity, const SfInventoryItem *item,
+  const SfItemGroundDefinition *definition);
+void sf_gameplay_item_information_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfPlayerState *player, const SfGameplayInventoryUi *inventory);
 
 #endif

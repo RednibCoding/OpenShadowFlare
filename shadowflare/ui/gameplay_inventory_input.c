@@ -37,14 +37,18 @@ bool sf_gameplay_inventory_input_resolve(
   bool toggle;
   bool close_hovered;
   bool holding;
+  bool pointer_moved = false;
   int8_t hovered = -1;
   SfEquipmentSlot equipment_slot = SF_EQUIPMENT_SLOT_COUNT;
+  SfEquipmentSlot information_slot = SF_EQUIPMENT_SLOT_COUNT;
   uint8_t belt_x = 0u;
   uint8_t belt_y = 0u;
   bool belt_pocket;
   if (!inventory || !player || !input) return false;
   sf_gameplay_hud_input_resolve(input);
   if (input->pointer_active) {
+    pointer_moved = inventory->pointer_x != input->pointer_x ||
+      inventory->pointer_y != input->pointer_y;
     inventory->pointer_x = input->pointer_x;
     inventory->pointer_y = input->pointer_y;
   }
@@ -80,19 +84,34 @@ bool sf_gameplay_inventory_input_resolve(
         SF_GAMEPLAY_INVENTORY_BACKPACK_TOP) /
         SF_GAMEPLAY_INVENTORY_CELL_SIZE));
   }
-  if (inventory->hovered_item_index != hovered) {
-    inventory->hovered_item_index = hovered;
-    changed = true;
-  }
   if (inventory->open && input->pointer_active)
     equipment_slot = sf_gameplay_equipment_slot_at(
       input->pointer_x, input->pointer_y);
-  if (inventory->hovered_equipment_slot !=
-      (equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
-        ? (int8_t) equipment_slot : -1)) {
+  if (!holding && equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT &&
+      sf_equipment_item(&player->equipment, equipment_slot))
+    information_slot = equipment_slot;
+  if (inventory->hovered_item_index == hovered &&
+      inventory->hovered_equipment_slot ==
+        (information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
+          ? (int8_t) information_slot : -1)) {
+    if (hovered >= 0 || information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT) {
+      if (inventory->item_hover_updates < 3u) {
+        ++inventory->item_hover_updates;
+        if (inventory->item_hover_updates == 3u) changed = true;
+      } else if (pointer_moved) {
+        changed = true;
+      }
+    } else {
+      inventory->item_hover_updates = 0u;
+    }
+  } else {
+    inventory->item_hover_updates =
+      hovered >= 0 || information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
+        ? 1u : 0u;
+    inventory->hovered_item_index = hovered;
     inventory->hovered_equipment_slot =
-      equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
-        ? (int8_t) equipment_slot : -1;
+      information_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
+        ? (int8_t) information_slot : -1;
     changed = true;
   }
   if (inventory->open && input->cancel_pressed) {
@@ -193,5 +212,6 @@ bool sf_gameplay_inventory_input_resolve(
   if (inventory->open && input->pointer_active &&
       input->pointer_x >= SF_GAMEPLAY_INVENTORY_PANEL_LEFT &&
       input->pointer_y < 412) input->pointer_over_gameplay_ui = true;
+  if (holding && pointer_moved) changed = true;
   return changed;
 }

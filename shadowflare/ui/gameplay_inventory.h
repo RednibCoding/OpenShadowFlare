@@ -37,6 +37,7 @@ typedef struct SfGameplayInventoryUi {
   int16_t pointer_y;
   int8_t hovered_item_index;
   int8_t hovered_equipment_slot;
+  uint8_t item_hover_updates;
   bool open;
   bool close_hovered;
 } SfGameplayInventoryUi;

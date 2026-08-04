@@ -25,6 +25,7 @@
 #include "ui/gameplay_belt.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
+#include "ui/gameplay_item_information.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
@@ -173,6 +174,8 @@ void sf_gameplay_screen_draw(
   sf_gameplay_hud_draw(renderer, assets, player, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);
   sf_gameplay_inventory_draw_held(
+    renderer, assets, player, &screen->inventory);
+  sf_gameplay_item_information_draw(
     renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);

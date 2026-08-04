@@ -101,6 +101,13 @@ values, and Close tab come from the required pieces of `Status.njp`; unrelated
 parts of those large archives are never retained. The lower HUD also owns the
 retail 4x2 belt: `1` through `8` and right-click consume Tablets and Capsules,
 while mines use their separate 5/10 counter instead of occupying bag cells.
+Leaving the pointer over a backpack or equipped item for three game updates
+now opens the retail information overlay. The active definitions gain their
+description, price, combat bonuses, and elemental values during the same
+streaming `Item.Ibn` pass; the full database is still discarded. The tooltip
+uses the original translucent backing, faint frame, tier color, sale-price
+rule, and wide one-cell-item layout, and follows the pointer without becoming
+game state or renderer behavior.
 
 Choosing a retail save now restores more than its load-screen summary. The
 `ShadowFlare0005` envelope is decoded and checksummed as a stream, so even a
@@ -224,10 +231,10 @@ the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,917,780 bytes of the main
-arena, leaving 2,422,252 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 4,920,020 bytes of the main
+arena, leaving 2,420,012 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
-artwork account for 4,568,485
+artwork account for 4,570,725
 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
