@@ -193,17 +193,32 @@ static int test_world_pointer_movement(void) {
             world.player.motion == SF_PLAYER_IDLE,
             "releasing a held pointer did not stop movement immediately"))
     return 1;
+
+  sf_world_state_enter(&world, 1000, 1000, 1u);
+  memset(&input, 0, sizeof(input));
+  input.pointer_x = 420;
+  input.pointer_y = 440;
+  input.pointer_primary_pressed = true;
+  input.pointer_over_gameplay_ui = true;
+  sf_world_state_update(&world, &input);
+  if (check(world.player.position.x == 1000 &&
+            world.player.position.y == 1000 &&
+            world.player.motion == SF_PLAYER_IDLE,
+            "a HUD click leaked into world movement")) return 1;
   return 0;
 }
 
 static int test_actor_interaction_approach(void) {
   SfWorldState world;
   SfMctScenario scenario;
+  SfMctPerson people[1];
   SfScsScript script;
   SfGameInput input;
   unsigned update;
   memset(&scenario, 0, sizeof(scenario));
+  memset(people, 0, sizeof(people));
   memset(&script, 0, sizeof(script));
+  scenario.people = people;
   scenario.people_count = 1u;
   scenario.people[0].id = 0;
   scenario.people[0].resource_id = 1;
@@ -223,6 +238,7 @@ static int test_actor_interaction_approach(void) {
   input.pointer_active = true;
   input.world_pointer_resolved = true;
   input.pointed_actor_id = 0;
+  input.pointed_ground_item_id = -1;
   input.pointer_primary_pressed = true;
   sf_world_state_update(&world, &input);
   if (check(world.pointer.hovered_actor_id == 0 &&
@@ -326,6 +342,7 @@ static int test_dynamic_collision_route(void) {
 
 static int test_scenario_actor_movement(void) {
   SfMctScenario scenario;
+  SfMctPerson people[1];
   SfScenarioActorSet actors;
   SfScenarioActor *actor;
   SfMovementBlocker blockers[2];
@@ -334,6 +351,8 @@ static int test_scenario_actor_movement(void) {
   int32_t greatest_detour = 0;
   unsigned update;
   memset(&scenario, 0, sizeof(scenario));
+  memset(people, 0, sizeof(people));
+  scenario.people = people;
   scenario.people_count = 1u;
   scenario.people[0].id = 7;
   scenario.people[0].resource_id = 1;

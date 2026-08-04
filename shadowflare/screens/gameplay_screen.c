@@ -21,6 +21,10 @@
 
 #include "screens/gameplay_player.h"
 #include "ui/actor_nameplate.h"
+#include "ui/conversation_bubble.h"
+#include "ui/gameplay_hud.h"
+#include "ui/gameplay_inventory.h"
+#include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
 #include <string.h>
@@ -45,6 +49,7 @@ bool sf_gameplay_screen_init(
   SfWorldRenderView view;
   if (!screen || !assets || !world) return false;
   memset(screen, 0, sizeof(*screen));
+  sf_gameplay_inventory_init(&screen->inventory);
   sf_world_render_view(world, 1000u, &view);
   if (!sf_gameplay_scene_update(
         &screen->scene, assets, world, &view, 1000u))
@@ -106,6 +111,8 @@ void sf_gameplay_screen_draw(
       !game->world.entered) return;
   player = &game->world.player;
   sf_world_render_view(&game->world, interpolation, &view);
+  if (screen->inventory.open)
+    view.camera_x += SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   scene_moved = !screen->drawn ||
     screen->rendered_player_x != view.player_position.x ||
     screen->rendered_player_y != view.player_position.y ||
@@ -113,11 +120,21 @@ void sf_gameplay_screen_draw(
     screen->rendered_camera_y != view.camera_y ||
     screen->rendered_hovered_actor_id !=
       game->world.pointer.hovered_actor_id ||
+    screen->rendered_hovered_ground_item_id !=
+      game->world.pointer.hovered_ground_item_id ||
+    screen->rendered_message_id !=
+      game->world.actor_script_state.message_id ||
+    screen->rendered_selected_option !=
+      game->world.actor_script_state.selected_option ||
+    screen->rendered_message_active !=
+      game->world.actor_script_state.message_active ||
     screen->rendered_pointer_x != game->world.pointer.screen_x ||
     screen->rendered_pointer_y != game->world.pointer.screen_y ||
     screen->rendered_pointer_active != game->world.pointer.active ||
     screen->rendered_motion != (uint8_t) player->motion ||
     screen->rendered_direction != player->direction ||
+    screen->rendered_ground_item_revision !=
+      game->world.ground_items.presentation_revision ||
     sf_gameplay_actor_frames_changed(screen, &game->world, interpolation);
   if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame == player->animation_frame) return;
@@ -126,6 +143,9 @@ void sf_gameplay_screen_draw(
       damage = sf_gameplay_damage_union(damage, ui_damage);
     if (sf_actor_nameplate_bounds(
           assets, &game->world, &view, interpolation, &ui_damage))
+      damage = sf_gameplay_damage_union(damage, ui_damage);
+    if (sf_ground_item_nameplate_bounds(
+          assets, &game->world, &view, &ui_damage))
       damage = sf_gameplay_damage_union(damage, ui_damage);
     clip = &damage;
     sf_renderer_fill_rect(renderer, *clip, 0u);
@@ -142,7 +162,16 @@ void sf_gameplay_screen_draw(
     interpolation, clip);
   sf_actor_nameplate_draw(
     renderer, assets, &game->world, &view, interpolation);
+  sf_ground_item_nameplate_draw(
+    renderer, assets, &game->world, &view);
+  sf_conversation_bubble_draw(
+    renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
+  sf_gameplay_inventory_draw(
+    renderer, assets, player, &screen->inventory, clip);
+  sf_gameplay_hud_draw(renderer, assets, player, clip);
+  sf_gameplay_inventory_draw_held(
+    renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
   screen->rendered_player_x = view.player_position.x;
@@ -151,10 +180,20 @@ void sf_gameplay_screen_draw(
   screen->rendered_camera_y = view.camera_y;
   screen->rendered_hovered_actor_id =
     game->world.pointer.hovered_actor_id;
+  screen->rendered_hovered_ground_item_id =
+    game->world.pointer.hovered_ground_item_id;
+  screen->rendered_message_id =
+    game->world.actor_script_state.message_id;
+  screen->rendered_selected_option =
+    game->world.actor_script_state.selected_option;
+  screen->rendered_message_active =
+    game->world.actor_script_state.message_active;
   screen->rendered_pointer_x = game->world.pointer.screen_x;
   screen->rendered_pointer_y = game->world.pointer.screen_y;
   screen->rendered_pointer_active = game->world.pointer.active;
   screen->rendered_motion = (uint8_t) player->motion;
   screen->rendered_direction = player->direction;
+  screen->rendered_ground_item_revision =
+    game->world.ground_items.presentation_revision;
   screen->drawn = true;
 }

@@ -64,9 +64,21 @@ const SfRetailPeoplePaths sf_retail_people_paths = {
   "Character/PEOPLE/%08d/Animation.Sdw"
 };
 
+const SfRetailGroundItemPaths sf_retail_ground_item_paths = {
+  "Character/ITEM/%08d/Animation.Caf",
+  "Character/ITEM/%08d/Animation.Njp",
+  "Character/ITEM/%08d/Animation.Sdw"
+};
+
 const SfRetailGamePaths sf_retail_game_paths = {
+  "System/Game/Parameter/Table.Tbd",
   "System/Game/Parameter/Item.Ibn",
-  "System/Common/Pattern/Font00.njp"
+  "System/Game/Voice/Voice00.Voc",
+  "System/Common/Pattern/Font00.njp",
+  "System/Game/Pattern/Hukidasi.njp",
+  "System/Game/Pattern/Bar.njp",
+  "System/Game/Pattern/Status.njp",
+  "System/Game/Pattern/Item%04u.njp"
 };
 
 static bool sf_retail_path_copy(

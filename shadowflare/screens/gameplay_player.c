@@ -28,6 +28,24 @@ static const SfCafSelectedAnimation *sf_gameplay_player_animation(
     assets, (uint8_t) player->motion, player->direction);
 }
 
+static bool sf_gameplay_player_part_style(
+    const SfWorldState *world, uint8_t source_part,
+    const SfItemGroundDefinition **definition) {
+  uint8_t index;
+  *definition = sf_equipment_part_definition(
+    &world->player.equipment, world->ground_items.definitions,
+    world->ground_items.definition_count, source_part);
+  if (*definition) return true;
+  for (index = 0u; index < world->player.appearance_part_count; ++index)
+    if (world->player.appearance_parts[index] == source_part) return true;
+  return false;
+}
+
+static uint16_t sf_gameplay_player_strength(int32_t strength) {
+  if (strength <= 0) return 0u;
+  return strength > UINT16_MAX ? UINT16_MAX : (uint16_t) strength;
+}
+
 SfRect sf_gameplay_player_bounds(
     const SfPlayerAssets *assets, const SfWorldState *world,
     const SfWorldRenderView *view) {
@@ -46,7 +64,10 @@ SfRect sf_gameplay_player_bounds(
   anchor.x -= view->camera_x;
   anchor.y -= view->camera_y;
   for (part = 0u; part < animation->part_count; ++part) {
+    const SfItemGroundDefinition *definition;
     uint8_t frame;
+    if (!sf_gameplay_player_part_style(
+          world, animation->parts[part].source_index, &definition)) continue;
     for (frame = 0u; frame < animation->frame_count; ++frame) {
       const SfCafCell *cell = &animation->parts[part].cells[frame];
       const SfNjpSparseResource *resource = (cell->status & 8) != 0
@@ -97,10 +118,13 @@ void sf_gameplay_player_draw(
     uint8_t part;
     for (part = 0u; part < animation->part_count; ++part) {
       const SfCafCell *cell = &animation->parts[part].cells[frame];
+      const SfItemGroundDefinition *definition;
       const SfNjpSparsePattern *pattern;
       uint16_t opacity;
       SfBlendMode blend;
-      if (cell->priority != (int16_t) (priority - 1u) || cell->pattern < 0 ||
+      if (!sf_gameplay_player_part_style(
+            world, animation->parts[part].source_index, &definition) ||
+          cell->priority != (int16_t) (priority - 1u) || cell->pattern < 0 ||
           (shadow != ((cell->status & 8) != 0))) continue;
       pattern = sf_njp_sparse_pattern(resource, cell->pattern);
       if (!pattern) continue;
@@ -114,10 +138,20 @@ void sf_gameplay_player_draw(
         blend = (cell->status & 0x10) != 0
           ? SF_BLEND_ADDITIVE : SF_BLEND_MASKED;
       }
-      sf_renderer_draw_indexed(
-        renderer, &pattern->image.image,
-        anchor.x + pattern->image.x, anchor.y + pattern->image.y,
-        1000u, opacity, blend, clip);
+      if (!shadow && definition) {
+        sf_renderer_draw_indexed_tinted(
+          renderer, &pattern->image.image,
+          anchor.x + pattern->image.x, anchor.y + pattern->image.y,
+          sf_gameplay_player_strength(definition->appearance_red_strength),
+          sf_gameplay_player_strength(definition->appearance_green_strength),
+          sf_gameplay_player_strength(definition->appearance_blue_strength),
+          opacity, blend, clip);
+      } else {
+        sf_renderer_draw_indexed(
+          renderer, &pattern->image.image,
+          anchor.x + pattern->image.x, anchor.y + pattern->image.y,
+          1000u, opacity, blend, clip);
+      }
     }
   }
 }

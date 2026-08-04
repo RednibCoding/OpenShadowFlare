@@ -496,8 +496,10 @@ ownership unchanged when no complete placement is available.
 The first inventory screen follows `0x00404760`, `0x00407170`, and
 `0x00408a80`. `I` and the lower ITEM button toggle the live right-hand panel,
 move the camera anchor to x=160, and restrict world picking to x=0..319.
-`Status.njp` patterns 2, 3, 0/1, and 74/75 supply the original frame, gender
-silhouette, and Close tab. Gold is summed from the owned stacks; equipped
+`Status.njp` patterns 2, 3, 0/1, and 116/117 supply the original frame, gender
+silhouette, and Close tab. The last pair is retail's hexadecimal `0x74/0x75`;
+decimal patterns 74/75 belong to the Giant Warehouse page strip. Gold is
+summed from the owned stacks; equipped
 weight comes from the equipment owner. Backpack
 items draw from the separate `Item0000.njp` through `Item0013.njp` groups at
 `(336 + grid_x*32, 264 + grid_y*32)`. The inventory and lower HUD regions are

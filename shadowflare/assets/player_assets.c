@@ -66,7 +66,6 @@ bool sf_player_assets_load(
   bool success = false;
   if (!assets || !data_root || !appearance_parts ||
       appearance_part_count == 0u ||
-      appearance_part_count + visible_item_count > SF_CAF_SELECTED_PART_LIMIT ||
       (visible_item_count > 0u && !visible_items) || !arena) return false;
   mark = sf_arena_mark(arena);
   memset(assets, 0, sizeof(*assets));
@@ -79,10 +78,16 @@ bool sf_player_assets_load(
           sf_retail_game_paths.item_database)) goto done;
     for (item = 0u; item < visible_item_count; ++item) {
       SfItemAppearance appearance;
+      uint8_t selected;
       if (!sf_item_read_appearance(
             item_path, visible_items[item].category,
             visible_items[item].definition_id, &appearance) ||
-          appearance.part < 0 || appearance.part > UINT8_MAX) goto done;
+          appearance.part > UINT8_MAX) goto done;
+      if (appearance.part < 0) continue;
+      for (selected = 0u; selected < appearance_part_count; ++selected)
+        if (selected_parts[selected] == (uint8_t) appearance.part) break;
+      if (selected < appearance_part_count) continue;
+      if (appearance_part_count >= SF_CAF_SELECTED_PART_LIMIT) goto done;
       selected_parts[appearance_part_count++] = (uint8_t) appearance.part;
     }
   }

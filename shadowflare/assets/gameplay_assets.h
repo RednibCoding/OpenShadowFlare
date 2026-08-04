@@ -21,12 +21,15 @@
 #define SHADOWFLARE_ASSETS_GAMEPLAY_ASSETS_H
 
 #include "assets/player_assets.h"
+#include "assets/ground_item_assets.h"
+#include "assets/inventory_item_assets.h"
 #include "assets/scenario_actor_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
 #include "data/mct.h"
 #include "data/njp.h"
 #include "data/obl.h"
+#include "data/player_parameters.h"
 #include "data/scs.h"
 
 #include <stdbool.h>
@@ -47,8 +50,14 @@ typedef struct SfGameplayAssets {
   SfScsScript *script;
   SfMctEntry entry;
   SfNjpSelected font;
+  SfNjpSelected speech_frame;
+  SfNjpDecodedResource hud;
+  SfNjpDecodedResource inventory_panel;
+  SfPlayerInitialParameters player_parameters;
   SfPlayerAssets player;
   SfScenarioActorAssets actors;
+  SfGroundItemAssets ground_items;
+  SfInventoryItemAssets inventory_items;
   SfGameplayPatternSet *pattern_sets;
   size_t memory_bytes;
   uint8_t pattern_set_count;

@@ -87,6 +87,7 @@ void sf_scenario_actors_init(
     }
     actor->wandering_enabled = person->wandering_enabled &&
       actor->walk_speed > 0u && actor->walk_duration > 0u;
+    actor->scripted_turning_enabled = person->scripted_turning_enabled;
     actor->random_state = (uint32_t) person->id + 1u;
     sf_route_reset(&actor->route);
     for (part = 0u; part < SF_MCT_PERSON_PART_LIMIT; ++part) {
@@ -109,6 +110,11 @@ void sf_scenario_actor_update(
   SfRouteStep movement;
   if (!actor) return;
   actor->previous_position = actor->position;
+  if (actor->interaction_active) {
+    actor->animation_chart = 0u;
+    actor->animation_frame = actor->action_counter++;
+    return;
+  }
   if (!actor->walking) {
     actor->animation_chart = 0u;
     actor->animation_frame = actor->action_counter;
@@ -155,6 +161,31 @@ SfWorldPoint sf_scenario_actor_render_position(
   if (!actor) return (SfWorldPoint) {0, 0};
   return sf_world_point_interpolate(
     actor->previous_position, actor->position, interpolation);
+}
+
+void sf_scenario_actor_begin_interaction(SfScenarioActor *actor) {
+  if (!actor) return;
+  actor->walking = false;
+  actor->destination = actor->position;
+  actor->action_counter = 0u;
+  actor->animation_chart = 0u;
+  actor->animation_frame = 0u;
+  actor->interaction_active = true;
+  sf_route_reset(&actor->route);
+}
+
+void sf_scenario_actor_face_toward(
+    SfScenarioActor *actor, SfWorldPoint target) {
+  if (!actor || !actor->scripted_turning_enabled ||
+      (actor->position.x == target.x && actor->position.y == target.y))
+    return;
+  actor->direction = sf_movement_direction(actor->position, target);
+}
+
+void sf_scenario_actor_release_interaction(SfScenarioActor *actor) {
+  if (!actor) return;
+  actor->interaction_active = false;
+  actor->action_counter = 0u;
 }
 
 SfScenarioActor *sf_scenario_actor_find(

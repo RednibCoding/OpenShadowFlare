@@ -62,8 +62,44 @@ controller, so they route around one another without a second pathfinder.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
-ground command behind the actor. Conversations are the next interpreter
-slice; none of these rules have been hidden inside the renderer.
+ground command behind the actor. The SCS interpreter now enters Ostare's
+status-zero conversation, keeps its fixed call stack across message waits,
+runs the first two status-one callbacks, and reads the original Shift-JIS
+message table. Ostare stops wandering, turns toward the player, and speaks
+through the actor-anchored five-piece `Hukidasi.njp` bubble. Authored `~`
+choice markers are hidden, their exact text ranges are clickable, hover changes
+the selected red option, and clicks outside a choice cannot leak through as
+movement. Harley's complete `Explanation` branch proves choice selection, two
+ordinary follow-up messages, and the final actor release. Layout and pointer
+resolution stay in `ui/`; script state and actor behavior stay in
+`interpreter/` and `game/`. Ostare's next callback now executes the shipped
+opcode 10 commands through a small world-service boundary. It creates the
+Short Sword, Round Shield, Dagger, and 200 Gold with their retail positions,
+colors, two-bounce motion, and landing sounds. Their CAF cells, sparse
+NJP/SDW patterns, and explicit palettes are discovered from the active script
+and `Item.Ibn`; Remote Town IDs are not hardcoded into the game or renderer.
+Those drops can now be selected through their opaque CAF artwork, approached
+through the same retail edge-routing path as actors, and picked up into a
+fixed 9x4 inventory owner. Item names, dimensions, weight, durability, and
+identification state come from the streamed `Item.Ibn` records. Gold keeps
+the original 10,000-piece stack limit, failed pickups leave the inventory
+untouched and replay the drop bounce, and pickup sounds follow the retail
+item category and weight rules. Hovering an item applies the original pale
+tint and draws its quantity or decoded name above the world sprite.
+The first always-visible gameplay HUD is live too. It draws the authored
+`Bar.njp` pieces over retail's black lower surface, with the level digit,
+life, mana, experience, and walk/run indicator coming from the player owner.
+A streaming `Table.Tbd` reader extracts only the active gender's 13 starting
+parameters and level-one experience threshold; the 460,387-byte decoded table
+payload is never retained. HUD input is resolved in `ui/`, so clicking its
+surface cannot leak through as a movement command. `I` and the authored ITEM
+button now open the right-hand inventory panel while the live world shifts to
+the retail x=160 camera anchor. The panel reads Gold from the fixed owner and
+draws picked-up items in their real 9x4 cells from the separate inventory
+patterns in `Item0000.njp` through `Item0013.njp`. Its frame, gender silhouette,
+values, and Close tab come from the required pieces of `Status.njp`; unrelated
+parts of those large archives are never retained. Belt items, selected magic,
+companion controls, and the Menu and Status panels remain later HUD slices.
 
 ## Hard limits
 
@@ -146,8 +182,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,431,693 bytes of the 7 MiB main arena,
-leaving 5,908,339 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,440,269 bytes of the 7 MiB main arena,
+leaving 5,899,763 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -160,23 +196,24 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 744,616 bytes of the main arena, leaving 6,595,416 bytes free;
+assets. It uses 753,192 bytes of the main arena, leaving 6,586,840 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 704,832 bytes of the main arena, leaving 6,635,200
+The load-game screen uses 713,408 bytes of the main arena, leaving 6,626,624
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,268,676 bytes of the main
-arena, leaving 3,071,356 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, and UI data and artwork account for 3,938,165 bytes. GND
-rendering
-data is decoded directly from its compressed three-plane stream into two bytes
+The complete Remote Town gameplay screen uses 4,896,700 bytes of the main
+arena, leaving 2,443,332 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
+artwork account for 4,557,613
+bytes. GND rendering data is decoded directly from its compressed three-plane
+stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
@@ -207,24 +244,86 @@ without retaining its full metadata and decodes only the body, equipped armor,
 weapon, and shadow patterns used by idle, walk, and run. Its pattern metadata
 is arena-sized to the selected bank rather than embedded in every screen.
 `Item.Ibn` is streamed in the same way to recover the Leather Cloth appearance
-fields without keeping its 2.27 MiB decoded payload. Stationary frames restore
-and redraw only the measured player rectangle in full retail depth order;
-scrolling frames redraw the changing world once.
+fields without keeping its 2.27 MiB decoded payload. The active map also
+preloads only the distinct player CAF parts referenced by its retained weapon
+and armor definitions, so equipping an item never performs file access during
+play. The equipment owner selects and tints those retained parts; inactive
+candidate parts do not draw. Stationary frames restore and redraw only the
+measured player rectangle in full retail depth order; scrolling frames redraw
+the changing world once.
 
 PEOPLE artwork follows the same sparse rule. The loader first combines the
 parts needed by actors that share a retail resource, keeps the idle patterns
 referenced by their eight directions, and adds walk patterns only when an
 authored actor using that resource can wander. Offscreen actors are removed
-before depth sorting and drawing. The decoded SCS tables live in the gameplay
-screen arena as well, so returning to a menu releases them with the rest of
-the map instead of making every screen pay for script memory.
+before depth sorting and drawing. The decoded SCS tables and message bytes live
+in the gameplay screen arena as well, so returning to a menu releases them
+with the rest of the map instead of making every screen pay for script memory.
+The interpreter uses fixed temporary, persistent, quest, and 16-frame call
+stack storage. Command semantics, operand access, and the resumable status loop
+are separate small files rather than one growing interpreter source.
 
 World pointer hit testing lives in `ui/`, where the loaded sparse actor cells
 are already available. It produces a small actor intent before each game
 update; `game/` owns the actual approach and distance rule. The common font is
-loaded once with the map for authored nameplates. The translucent click square
-and nameplate background use a general RGB555 rectangle blend operation, not a
+loaded once with the map for authored nameplates, along with the five small
+speech-frame patterns used by conversations. The translucent click square and
+nameplate background use a general RGB555 rectangle blend operation, not a
 platform or gameplay-specific renderer path.
+
+Conversation input follows the same boundary. `ui/conversation_input.c` turns
+the rendered choice spans into an option number and count. The small game-side
+conversation owner changes selection, resumes the interpreter, and releases
+the speaking actor. No renderer or target backend knows about script choices.
+
+The bottom HUD follows that rule as well. `data/table.c` walks compressed or
+plain retail parameter tables through a numeric callback without allocating a
+database. `game/player.c` owns the selected starting values, while
+`ui/gameplay_hud.c` composes the 18 currently required `Bar.njp` patterns.
+Only the active patterns and their 19 referenced parts are decoded. The
+renderer remains unaware of gauges, levels, pace, or HUD hit areas.
+
+Ground items follow the same ownership rule. The active SCS is scanned for
+its fixed or initial temporary category/definition pairs, and `Item.Ibn` is
+streamed once to retain those eight Remote Town records plus the equipped
+Leather Cloth needed by a new hero. The active map
+owns one fixed 64-entry item set. The interpreter only evaluates opcode 10
+operands and calls the world service; it does not know about item storage,
+artwork, rendering, or audio. The screen helper draws the selected CAF cells
+in the ordinary depth passes, while TAL playback stays at the outer runtime
+boundary. Pointer hit testing and hover labels stay in `ui/`; approach,
+fixed-grid placement, gold stacking, rollback on failure, and pickup sound
+selection stay in `game/`. The player owns the resulting 36-entry fixed array,
+so no heap allocation or retained item-database copy is needed. A second fixed
+owner holds the one item currently carried by the pointer. Taking, centered
+grid placement, single-item swaps, invalid-placement rollback, and partial
+Gold merges all stay in `game/inventory.c`.
+
+The first inventory panel follows the same lifetime. `Status.njp` is streamed
+twice to retain only six multi-part patterns, without constructing metadata for
+its other 115 patterns. Item definitions provide the inventory group, pattern,
+and optional palette directly; only groups and cells referenced by the active
+map's retained definitions are decoded. `ui/gameplay_inventory.c` composes the
+panel, while `ui/gameplay_inventory_input.c` owns its authored rectangles and
+camera intent. World drawing, opaque-pixel picking, and movement targeting all
+receive the same integer x offset, so an open panel cannot make what the player
+sees disagree with what a click selects. The UI emits take, place, and world
+drop intent without owning the item. `game/world_inventory.c` applies that
+intent, keeps durability and identification state across a backpack/ground
+round trip, places world drops 200 units away in the selected eight-way
+direction, and guards the pointer until release so the drop cannot become a
+movement command. The full held icon is drawn last over the HUD and survives
+closing the panel, as it does in retail.
+
+The same held-item path now owns all nine visible equipment regions. Their
+retail rectangles live in one small UI layout file, while category, subtype,
+level requirement, swapping, equipped weight, and off-hand suppression remain
+in `game/equipment.c`. A new hero's Leather Cloth begins as a concrete body
+item with its original durability. Taking it uses the ordinary pointer owner;
+placing armor, weapons, shields, or one-cell accessories validates the target
+before replacing anything and emits the original equip sound. Complete item
+footprints are centered in the authored regions, and equipment clicks are
+consumed before world movement.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

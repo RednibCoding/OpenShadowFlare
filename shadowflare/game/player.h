@@ -22,12 +22,16 @@
 
 #include "core/coordinates.h"
 #include "data/item.h"
+#include "data/player_parameters.h"
 #include "game/route.h"
+#include "game/inventory.h"
+#include "game/equipment.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define SF_PLAYER_APPEARANCE_PART_LIMIT 8u
-#define SF_PLAYER_VISIBLE_ITEM_LIMIT 3u
+#define SF_PLAYER_VISIBLE_ITEM_LIMIT 5u
 
 typedef enum SfPlayerMotion {
   SF_PLAYER_IDLE = 0,
@@ -46,6 +50,14 @@ typedef struct SfPlayerState {
   SfWorldPoint destination;
   SfObjectBounds judgement;
   SfRouteController route;
+  SfInventoryState inventory;
+  SfInventoryTransferState inventory_transfer;
+  SfEquipmentState equipment;
+  SfPlayerInitialParameters initial_parameters;
+  int32_t current_life;
+  int32_t current_mana;
+  int32_t experience;
+  int32_t level;
   uint32_t action_counter;
   uint32_t animation_frame;
   uint8_t appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];
@@ -58,9 +70,16 @@ typedef struct SfPlayerState {
   SfPlayerMotion motion;
   SfPlayerMotion previous_motion;
   SfPlayerPace pace;
+  bool parameters_initialized;
 } SfPlayerState;
 
 void sf_player_init(SfPlayerState *player, uint8_t gender);
+bool sf_player_apply_initial_parameters(
+  SfPlayerState *player, const SfPlayerInitialParameters *parameters);
+void sf_player_initialize_equipment(
+  SfPlayerState *player, const SfItemGroundDefinition *definitions,
+  uint8_t definition_count);
+void sf_player_refresh_visible_items(SfPlayerState *player);
 void sf_player_enter(
   SfPlayerState *player, SfWorldPoint position, uint8_t direction);
 void sf_player_move_to(SfPlayerState *player, SfWorldPoint destination);

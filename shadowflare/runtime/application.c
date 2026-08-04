@@ -95,6 +95,7 @@ static void sf_read_event(
     if (event->key == TWL_KEY_BACKSPACE) input->backspace_pressed = true;
     if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
     if (event->key == TWL_KEY_R) input->pace_toggle_pressed = true;
+    if (event->key == TWL_KEY_I) input->inventory_pressed = true;
   }
   if (event->type == TWL_EVENT_TEXT && input->text_length < 15u) {
     uint8_t encoded[4];
@@ -144,8 +145,14 @@ static void sf_read_event(
 }
 
 static void sf_clear_input(SfGameInput *input) {
+  input->pointer_over_gameplay_ui = false;
+  input->world_view_offset_x = 0;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->pointed_ground_item_id = -1;
+  input->conversation_choices_resolved = false;
+  input->pointed_conversation_option = -1;
+  input->conversation_option_count = 0u;
   input->pointer_primary_pressed = false;
   input->up_pressed = false;
   input->down_pressed = false;
@@ -156,6 +163,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->backspace_pressed = false;
   input->delete_pressed = false;
   input->pace_toggle_pressed = false;
+  input->inventory_pressed = false;
   input->text_length = 0u;
   input->text[0] = '\0';
 }
@@ -191,6 +199,17 @@ static void sf_play_menu_events(
     (void) sf_play_pcm(audio, &assets->sounds[SF_MENU_SOUND_CONFIRM], false);
   if ((events & SF_GAME_SOUND_TITLE_MUSIC) != 0u && !*music_started)
     *music_started = sf_play_pcm(audio, &assets->music, true);
+}
+
+static void sf_play_world_events(
+    Tal *audio, const SfGameplayAssets *assets,
+    const SfWorldState *world) {
+  uint8_t index;
+  if (!assets || !world) return;
+  for (index = 0u; index < world->ground_items.sound_count; ++index)
+    (void) sf_play_pcm(audio, sf_ground_item_sound(
+      &assets->ground_items, world->ground_items.sound_samples[index]),
+      false);
 }
 
 static bool sf_menu_game_mode(SfGameMode mode) {
@@ -374,6 +393,10 @@ int sf_application_run(
             game->character_create.sound_events |
             game->load_game.sound_events),
           &menu_music_started);
+        if (game->mode == SF_GAME_MODE_GAMEPLAY)
+          sf_play_world_events(
+            audio, sf_screen_runtime_gameplay_assets(screen_runtime),
+            &game->world);
         sf_clear_input(&input);
         next_update += SF_UPDATE_MICROSECONDS;
         ++updates;

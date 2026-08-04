@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_WORLD_H
 
 #include "game/input.h"
+#include "game/ground_item.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
 #include "interpreter/scenario_actor_script.h"
@@ -32,7 +33,9 @@
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
+  int32_t hovered_ground_item_id;
   int32_t pending_actor_id;
+  int32_t pending_ground_item_id;
   int16_t screen_x;
   int16_t screen_y;
   uint8_t hold_updates;
@@ -43,6 +46,7 @@ typedef struct SfWorldPointerControl {
   bool ground_command_active;
   bool continuous_movement;
   bool previous_down;
+  bool inventory_pointer_guard;
 } SfWorldPointerControl;
 
 typedef struct SfWorldRenderView {
@@ -58,9 +62,11 @@ typedef struct SfWorldState {
   int32_t camera_y;
   SfPlayerState player;
   SfScenarioActorSet actors;
+  SfGroundItemSet ground_items;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
+  const SfMctScenario *scenario;
   const SfScsScript *script;
   SfWorldPointerControl pointer;
   int32_t companion_type;
@@ -77,6 +83,9 @@ void sf_world_state_enter(
 void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
+void sf_world_state_bind_ground_items(
+  SfWorldState *world, const SfItemGroundDefinition *definitions,
+  uint8_t definition_count);
 bool sf_world_state_bind_scenario(
   SfWorldState *world,
   const SfMctScenario *scenario, const SfScsScript *script);

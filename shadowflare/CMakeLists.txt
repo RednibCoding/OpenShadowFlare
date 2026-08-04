@@ -35,6 +35,9 @@ endfunction()
 add_library(
   shadowflare_core STATIC
   assets/character_create_assets.c
+  assets/ground_item_assets.c
+  assets/ground_item_requests.c
+  assets/inventory_item_assets.c
   assets/gameplay_assets.c
   assets/load_game_assets.c
   assets/menu_assets.c
@@ -49,18 +52,30 @@ add_library(
   data/bmp.c
   data/gnd.c
   data/item.c
+  data/item_decode.c
+  data/item_ground.c
+  data/item_records.c
   data/mct.c
+  data/mct_reader.c
+  data/mct_sections.c
   data/njp.c
+  data/njp_stream.c
+  data/njp_stream_reader.c
   data/njp_sparse.c
   data/obl.c
   data/pattern_list.c
+  data/player_parameters.c
   data/rclib.c
   data/save.c
   data/scs.c
+  data/table.c
   data/voc.c
   game/character_create.c
   game/collision.c
+  game/equipment.c
   game/game.c
+  game/ground_item.c
+  game/inventory.c
   game/load_game.c
   game/movement.c
   game/player.c
@@ -69,13 +84,19 @@ add_library(
   game/scenario_actor.c
   game/title.c
   game/world.c
+  game/world_conversation.c
+  game/world_inventory.c
+  game/world_script.c
   interpreter/scenario_actor_script.c
+  interpreter/scenario_script_commands.c
+  interpreter/scenario_script_values.c
   render/depth.c
   render/dirty.c
   render/framebuffer.c
   render/renderer.c
   screens/character_create_screen.c
   screens/gameplay_actor.c
+  screens/gameplay_ground_item.c
   screens/gameplay_scene.c
   screens/gameplay_screen.c
   screens/gameplay_object_visual.c
@@ -83,6 +104,15 @@ add_library(
   screens/load_game_screen.c
   screens/title_screen.c
   ui/actor_nameplate.c
+  ui/conversation_bubble.c
+  ui/conversation_input.c
+  ui/conversation_layout.c
+  ui/gameplay_equipment_layout.c
+  ui/gameplay_hud.c
+  ui/gameplay_hud_input.c
+  ui/gameplay_inventory.c
+  ui/gameplay_inventory_input.c
+  ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c
 )

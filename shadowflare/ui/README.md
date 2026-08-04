@@ -26,3 +26,18 @@ rules stay in `game/` or `interpreter/`.
 Screens compose these pieces and control their lifetime. The `render/` folder
 only supplies reusable drawing primitives; UI layout and behavior never belong
 there.
+
+Conversation text layout, pointer resolution, and bubble composition are
+separate on purpose. The layout code understands the retail Shift-JIS column
+rules and hidden choice markers. The input code turns those rendered spans
+into simple choice intent, and the bubble code only draws the result with the
+original frame patterns. None of them advances scripts or changes actor
+behavior.
+
+The gameplay inventory follows the same split. Its draw file composes the
+authored Status frame, retained item cells, and the pointer-held icon from the
+player owner. Its input file owns the `I`, ITEM-button, panel, backpack, and
+Close rectangles, then produces the shared world-view offset and simple take,
+place, or world-drop intent. Inventory ownership, transactional swaps, drop
+placement, and the until-release pointer guard remain in `game/`; neither UI
+file talks to a target backend.

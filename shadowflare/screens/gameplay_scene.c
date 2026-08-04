@@ -23,13 +23,20 @@
 #include "core/memory_budget.h"
 #include "render/depth.h"
 #include "screens/gameplay_actor.h"
+#include "screens/gameplay_ground_item.h"
 #include "screens/gameplay_object_visual.h"
 #include "screens/gameplay_player.h"
 
 #include <string.h>
 
 #define SF_GAMEPLAY_PLAYER_ENTRY UINT16_MAX
+#define SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE UINT16_C(0x4000)
 #define SF_GAMEPLAY_ACTOR_ENTRY_BASE UINT16_C(0x8000)
+
+static bool sf_gameplay_ground_item_entry(uint16_t entry) {
+  return entry >= SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE &&
+    entry < SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE + SF_GROUND_ITEM_LIMIT;
+}
 
 static bool sf_gameplay_actor_entry(uint16_t entry) {
   return entry >= SF_GAMEPLAY_ACTOR_ENTRY_BASE &&
@@ -69,6 +76,20 @@ static uint16_t sf_gameplay_collect_objects(
     ++count;
   }
   if (world) {
+    uint8_t item_index;
+    for (item_index = 0u; item_index < world->ground_items.count;
+         ++item_index) {
+      const SfGroundItem *item = &world->ground_items.items[item_index];
+      if (!sf_gameplay_ground_item_visible(
+            &assets->ground_items, item, view, shadow)) continue;
+      if (count >= SF_GAMEPLAY_DRAW_ENTRY_LIMIT) return UINT16_MAX;
+      entries[count].position = item->position;
+      entries[count].judgement = item->judgement;
+      entries[count].source_index = (uint16_t) (
+        SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE + item_index);
+      entries[count].status = 0;
+      ++count;
+    }
     uint8_t actor_index;
     for (actor_index = 0u; actor_index < world->actors.count;
          ++actor_index) {
@@ -118,7 +139,9 @@ static void sf_gameplay_mark_translucent_objects(
       player_reached = true;
       continue;
     }
-    if (sf_gameplay_actor_entry(object_index) || !player_reached) continue;
+    if (sf_gameplay_actor_entry(object_index) ||
+        sf_gameplay_ground_item_entry(object_index) ||
+        !player_reached) continue;
     object = &assets->objects.objects[object_index];
     if ((object->status & 0x2000) != 0 ||
         !sf_gameplay_object_visual_find(
@@ -259,6 +282,16 @@ static void sf_gameplay_draw_object_pass(
           renderer, &assets->actors, actor, view,
           interpolation, shadow,
           !shadow && world->pointer.hovered_actor_id == actor->id,
+          clip);
+    } else if (sf_gameplay_ground_item_entry(indices[index])) {
+      const uint16_t item_index = (uint16_t) (
+        indices[index] - SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE);
+      if (default_class && item_index < world->ground_items.count)
+        sf_gameplay_ground_item_draw(
+          renderer, &assets->ground_items,
+          &world->ground_items.items[item_index], view, shadow,
+          !shadow && world->pointer.hovered_ground_item_id ==
+            world->ground_items.items[item_index].id,
           clip);
     } else {
       const SfMapObject *object = &assets->objects.objects[indices[index]];

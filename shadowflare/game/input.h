@@ -23,12 +23,32 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef enum SfInventoryAction {
+  SF_INVENTORY_ACTION_NONE = 0,
+  SF_INVENTORY_ACTION_TAKE,
+  SF_INVENTORY_ACTION_PLACE,
+  SF_INVENTORY_ACTION_TAKE_EQUIPMENT,
+  SF_INVENTORY_ACTION_PLACE_EQUIPMENT,
+  SF_INVENTORY_ACTION_DROP_WORLD
+} SfInventoryAction;
+
 typedef struct SfGameInput {
   int32_t pointed_actor_id;
+  int32_t pointed_ground_item_id;
+  int8_t pointed_conversation_option;
   int16_t pointer_x;
   int16_t pointer_y;
+  int16_t world_view_offset_x;
+  int8_t inventory_item_index;
+  int8_t inventory_grid_x;
+  int8_t inventory_grid_y;
+  int8_t equipment_slot;
+  uint8_t conversation_option_count;
+  SfInventoryAction inventory_action;
   bool pointer_active;
+  bool pointer_over_gameplay_ui;
   bool world_pointer_resolved;
+  bool conversation_choices_resolved;
   bool pointer_primary_pressed;
   bool pointer_primary_down;
   bool up_pressed;
@@ -40,6 +60,7 @@ typedef struct SfGameInput {
   bool backspace_pressed;
   bool delete_pressed;
   bool pace_toggle_pressed;
+  bool inventory_pressed;
   char text[16];
   uint8_t text_length;
 } SfGameInput;

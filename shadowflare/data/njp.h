@@ -35,7 +35,8 @@
 #define SF_NJP_DECODED_REFERENCE_LIMIT 128u
 #define SF_NJP_PATTERN_FILE_LIMIT 80u
 #define SF_NJP_SPARSE_PATTERN_LIMIT 4096u
-#define SF_NJP_SPARSE_PALETTE_LIMIT 8u
+#define SF_NJP_SPARSE_PALETTE_LIMIT 16u
+#define SF_NJP_SPARSE_DEFAULT_PALETTE_LIMIT 8u
 
 typedef struct SfNjpPatternImage {
   SfIndexedImage image;
@@ -125,6 +126,7 @@ typedef struct SfNjpSparseResource {
   int32_t *palette_sources;
   uint16_t pattern_count;
   uint8_t palette_count;
+  uint8_t palette_capacity;
 } SfNjpSparseResource;
 
 bool sf_njp_load_selected(
@@ -135,13 +137,26 @@ bool sf_njp_load_animation(
 bool sf_njp_load_decoded_patterns(
   const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
   SfArena *arena, SfNjpDecodedResource *output);
+bool sf_njp_stream_decoded_patterns(
+  const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
+  SfArena *arena, SfNjpDecodedResource *output);
 bool sf_njp_read_pattern_bounds(
   const char *path, SfNjpPatternBounds *bounds,
   uint8_t capacity, uint8_t *pattern_count);
 bool sf_njp_load_sparse_patterns(
   const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
   SfArena *arena, SfNjpSparseResource *output);
+bool sf_njp_load_sparse_patterns_with_palettes(
+  const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
+  const int32_t *palette_indices, uint8_t palette_count,
+  SfArena *arena, SfNjpSparseResource *output);
+bool sf_njp_load_sparse_patterns_with_palette_capacity(
+  const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
+  const int32_t *palette_indices, uint8_t palette_count,
+  uint8_t palette_capacity, SfArena *arena, SfNjpSparseResource *output);
 const SfNjpSparsePattern *sf_njp_sparse_pattern(
+  const SfNjpSparseResource *resource, int32_t source_index);
+const uint16_t *sf_njp_sparse_palette(
   const SfNjpSparseResource *resource, int32_t source_index);
 const SfNjpDecodedPattern *sf_njp_decoded_pattern(
   const SfNjpDecodedResource *resource, uint8_t source_index);

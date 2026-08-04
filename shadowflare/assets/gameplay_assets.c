@@ -167,6 +167,46 @@ static bool sf_gameplay_load_patterns(
   return assets->pattern_set_count == set_count;
 }
 
+static bool sf_gameplay_add_player_item(
+    SfItemReference *items, uint8_t *count, uint8_t capacity,
+    uint8_t category, int32_t definition_id) {
+  uint8_t index;
+  for (index = 0u; index < *count; ++index)
+    if (items[index].category == category &&
+        items[index].definition_id == definition_id) return true;
+  if (*count >= capacity) return false;
+  items[*count].category = category;
+  items[*count].definition_id = definition_id;
+  ++*count;
+  return true;
+}
+
+static bool sf_gameplay_load_player(
+    SfGameplayAssets *assets, const char *data_root, uint8_t gender,
+    const uint8_t *appearance_parts, uint8_t appearance_part_count,
+    const SfItemReference *visible_items, uint8_t visible_item_count,
+    SfArena *arena) {
+  SfItemReference items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t count = 0u;
+  uint8_t index;
+  for (index = 0u; index < visible_item_count; ++index)
+    if (visible_items[index].category <= 1u && !sf_gameplay_add_player_item(
+          items, &count, SF_GROUND_ITEM_DEFINITION_LIMIT,
+          visible_items[index].category,
+          visible_items[index].definition_id)) return false;
+  for (index = 0u; index < assets->ground_items.definition_count; ++index) {
+    const SfItemGroundDefinition *definition =
+      &assets->ground_items.definitions[index];
+    if (definition->category <= 1u && !sf_gameplay_add_player_item(
+          items, &count, SF_GROUND_ITEM_DEFINITION_LIMIT,
+          definition->category,
+          definition->definition_id)) return false;
+  }
+  return sf_player_assets_load(
+    &assets->player, data_root, gender,
+    appearance_parts, appearance_part_count, items, count, arena);
+}
+
 bool sf_gameplay_assets_load(
     SfGameplayAssets *assets, const char *data_root,
     int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
@@ -179,6 +219,14 @@ bool sf_gameplay_assets_load(
   char map_name[SF_PATTERN_NAME_CAPACITY];
   char path[SF_RETAIL_PATH_CAPACITY];
   static const uint8_t font_pattern = 0u;
+  static const uint8_t speech_patterns[5] = {0u, 1u, 2u, 3u, 4u};
+  static const uint8_t hud_patterns[18] = {
+    0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
+    19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
+  };
+  static const uint8_t inventory_patterns[6] = {
+    0u, 1u, 2u, 3u, 116u, 117u
+  };
   size_t mark;
   bool success = false;
   if (!assets || !data_root || scenario_id < 0 || !arena) return false;
@@ -191,7 +239,7 @@ bool sf_gameplay_assets_load(
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_format, NULL, scenario_id) ||
-      !sf_mct_load(path, &assets->scenario)) goto done;
+      !sf_mct_load(path, arena, &assets->scenario)) goto done;
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_script_format, NULL, scenario_id) ||
@@ -222,12 +270,36 @@ bool sf_gameplay_assets_load(
         path, sizeof(path), data_root, sf_retail_game_paths.font) ||
       !sf_njp_load_selected(
         path, &font_pattern, 1u, arena, &assets->font) ||
-      !sf_player_assets_load(
-        &assets->player, data_root, player_gender,
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.speech_frame) ||
+      !sf_njp_load_selected(
+        path, speech_patterns, 5u, arena, &assets->speech_frame) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.hud) ||
+      !sf_njp_load_decoded_patterns(
+        path, hud_patterns, 18u, arena, &assets->hud) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.status) ||
+      !sf_njp_stream_decoded_patterns(
+        path, inventory_patterns, 6u, arena, &assets->inventory_panel) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root,
+        sf_retail_game_paths.parameter_tables) ||
+      !sf_player_initial_parameters_load(
+        path, player_gender, &assets->player_parameters) ||
+      !sf_ground_item_assets_load(
+        &assets->ground_items, data_root, assets->script,
+        visible_items, visible_item_count, arena) ||
+      !sf_gameplay_load_player(
+        assets, data_root, player_gender,
         appearance_parts, appearance_part_count,
         visible_items, visible_item_count, arena) ||
       !sf_scenario_actor_assets_load(
-        &assets->actors, data_root, &assets->scenario, arena)) goto done;
+        &assets->actors, data_root, &assets->scenario, arena) ||
+      !sf_inventory_item_assets_load(
+        &assets->inventory_items, data_root,
+        assets->ground_items.definitions,
+        assets->ground_items.definition_count, arena)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:

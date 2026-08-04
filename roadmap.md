@@ -8,6 +8,48 @@ will move around when the evidence tells us they should.
 The rule is simple: get one small part behaving like the original, test it,
 and only then build the next part on top of it.
 
+## Current track: the small C99 game
+
+The implementation under `shadowflare/` is now the active replacement track.
+It uses the mature `src/SF_EXE/` reconstruction as a strong behavioral
+reference, checks uncertain details against retail, and is intended to replace
+`SF_EXE` once it reaches the same playable coverage.
+
+This version deliberately has a smaller shape: plain C99, fixed caller-owned
+memory, integer game math, TWL/TAL at the platform edge, and an 8 MiB main-RAM
+plus 4 MiB video-memory ceiling. Rendering primitives stay in `render/`, all
+HUD and interface composition stays in `ui/`, and the game must remain easy
+enough for a junior contributor to follow without learning a framework first.
+The standing details and measured screen budgets live in
+`shadowflare/RULES.md` and `shadowflare/README.md`.
+
+The front-end, Remote Town map, player movement, retail PEOPLE actors,
+collision, pointing, speech bubbles, and interactive script-driven choices are
+live. Ostare's opening chain reaches its four opcode 10 starter drops, with the
+original item definitions, artwork, palettes, bounce, and landing sounds.
+Those drops can now be hovered, approached, and picked up into the player's
+fixed 9x4 inventory, including retail dimensions, gold stacks, failure bounce,
+and pickup sounds. Harley's complete `Explanation` branch also runs from the
+shipped SCS data. The authored bottom HUD now reads level, life, mana,
+experience, and walk/run state from the player owner. Its initial values come
+from a streaming scan of retail's parameter tables, and HUD clicks cannot leak
+into world movement. The first right-side inventory panel now exposes those
+owned items using the authored Status and Item sheets, keeps the left-hand
+world live around an x=160 camera anchor, and consumes its own input. Items can
+now be taken from that 9x4 owner, carried under the pointer, placed or swapped,
+and dropped back into the live world without turning the UI click into a move
+command. All nine visible equipment regions now use that same pointer owner.
+The new hero starts with the table-backed Leather Cloth in the body slot;
+weapons, shields, body armor, and accessories validate their retail slot and
+level rules, equipped weight is live, and only the active CAF appearance parts
+are drawn with their original color strengths. The next slice should add the
+separate belt owner and finish the retail starter loadout before moving on to
+the next native services needed by Remote Town, saves, scenario travel,
+combat, companions, and finally the remaining `SF_EXE` feature set.
+A slice is only done after the C99/TWL/TAL tests, a release build, a practical
+check when visible behavior changed, and a fresh measured budget when assets
+changed.
+
 ## Where we are now
 
 The compatibility-DLL milestone is complete. All fourteen DLLs build, reproduce

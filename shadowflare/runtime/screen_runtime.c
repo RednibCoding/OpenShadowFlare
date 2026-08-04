@@ -19,6 +19,9 @@
 
 #include "runtime/screen_runtime.h"
 
+#include "ui/conversation_input.h"
+#include "ui/gameplay_hud_input.h"
+#include "ui/gameplay_inventory_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -76,12 +79,22 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
-      sf_world_state_bind_collision(
-        &game->world, &runtime->assets.gameplay.ground,
-        &runtime->assets.gameplay.objects);
-      success = sf_world_state_bind_scenario(
-        &game->world, &runtime->assets.gameplay.scenario,
-        runtime->assets.gameplay.script);
+      if (!game->world.player.parameters_initialized)
+        success = sf_player_apply_initial_parameters(
+          &game->world.player,
+          &runtime->assets.gameplay.player_parameters);
+      if (success) {
+        sf_world_state_bind_collision(
+          &game->world, &runtime->assets.gameplay.ground,
+          &runtime->assets.gameplay.objects);
+        sf_world_state_bind_ground_items(
+          &game->world,
+          runtime->assets.gameplay.ground_items.definitions,
+          runtime->assets.gameplay.ground_items.definition_count);
+        success = sf_world_state_bind_scenario(
+          &game->world, &runtime->assets.gameplay.scenario,
+          runtime->assets.gameplay.script);
+      }
       if (success) sf_world_state_enter(
           &game->world, entry->world_x, entry->world_y,
           (uint8_t) entry->direction);
@@ -125,15 +138,38 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
 }
 
 void sf_screen_runtime_resolve_input(
-    const SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
+    SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
   if (!input) return;
+  input->pointer_over_gameplay_ui = false;
+  input->world_view_offset_x = 0;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->pointed_ground_item_id = -1;
+  input->conversation_choices_resolved = false;
+  input->pointed_conversation_option = -1;
+  input->conversation_option_count = 0u;
+  input->inventory_action = SF_INVENTORY_ACTION_NONE;
+  input->inventory_item_index = -1;
+  input->inventory_grid_x = -1;
+  input->inventory_grid_y = -1;
+  input->equipment_slot = -1;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
-  sf_world_pointer_resolve(
-    &runtime->assets.gameplay, &game->world, input);
+  if (sf_gameplay_inventory_input_resolve(
+        &runtime->screen.gameplay.inventory,
+        &game->world.player,
+        game->world.actor_script_state.message_active, input))
+    runtime->screen.gameplay.drawn = false;
+  if (game->world.actor_script_state.message_active &&
+      !input->pointer_over_gameplay_ui)
+    sf_conversation_input_resolve(
+      &runtime->assets.gameplay, &game->world, input);
+  else if (!game->world.actor_script_state.message_active) {
+    if (input->pointer_over_gameplay_ui) return;
+    sf_world_pointer_resolve(
+      &runtime->assets.gameplay, &game->world, input);
+  }
 }
 
 const SfTitleAssets *sf_screen_runtime_title_assets(
@@ -141,6 +177,13 @@ const SfTitleAssets *sf_screen_runtime_title_assets(
   if (!runtime || !runtime->loaded ||
       runtime->loaded_mode != SF_GAME_MODE_TITLE) return NULL;
   return &runtime->assets.title;
+}
+
+const SfGameplayAssets *sf_screen_runtime_gameplay_assets(
+    const SfScreenRuntime *runtime) {
+  if (!runtime || !runtime->loaded ||
+      runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY) return NULL;
+  return &runtime->assets.gameplay;
 }
 
 void sf_screen_runtime_draw(

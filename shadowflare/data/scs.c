@@ -22,15 +22,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SF_SCS_MESSAGE_SIZE_LIMIT (16u * 1024u * 1024u)
-
 static bool sf_scs_read(FILE *file, void *output, size_t size) {
   return size == 0u || fread(output, 1u, size, file) == size;
-}
-
-static bool sf_scs_skip(FILE *file, uint32_t size) {
-  return size <= UINT32_C(0x7fffffff) &&
-    fseek(file, (long) size, SEEK_CUR) == 0;
 }
 
 static bool sf_scs_i32(FILE *file, int32_t *value) {
@@ -88,13 +81,28 @@ bool sf_scs_load(const char *path, SfScsScript *script) {
         file, script->temporary_flags, SF_SCS_FLAG_LIMIT,
         &script->temporary_flag_count) ||
       !sf_scs_flags(file, NULL, SF_SCS_FLAG_LIMIT, NULL) ||
-      !sf_scs_count(file, UINT16_MAX, &count)) goto done;
+      !sf_scs_count(file, SF_SCS_MESSAGE_LIMIT, &count)) goto done;
+  script->message_count = (uint16_t) count;
   for (index = 0u; index < count; ++index) {
-    int32_t ignored_id;
+    SfScsMessage *message = &script->messages[index];
     int32_t size;
-    if (!sf_scs_i32(file, &ignored_id) || !sf_scs_i32(file, &size) ||
-        size < 0 || (uint32_t) size > SF_SCS_MESSAGE_SIZE_LIMIT ||
-        !sf_scs_skip(file, (uint32_t) size)) goto done;
+    uint32_t byte;
+    if (!sf_scs_i32(file, &message->id) || !sf_scs_i32(file, &size) ||
+        size < 0 || size > UINT16_MAX ||
+        (uint32_t) size + 1u >
+          SF_SCS_MESSAGE_BYTES_LIMIT - script->message_bytes_count)
+      goto done;
+    message->offset = script->message_bytes_count;
+    message->length = (uint16_t) size;
+    if (!sf_scs_read(
+          file, script->message_bytes + message->offset,
+          (size_t) size)) goto done;
+    for (byte = 0u; byte < (uint32_t) size; ++byte)
+      script->message_bytes[message->offset + byte] = (char) ~
+        (uint8_t) script->message_bytes[message->offset + byte];
+    script->message_bytes[message->offset + size] = '\0';
+    script->message_bytes_count = (uint16_t) (
+      script->message_bytes_count + size + 1);
   }
   if (!sf_scs_count(file, SF_SCS_STATUS_LIMIT, &count)) goto done;
   script->status_count = (uint16_t) count;
@@ -148,4 +156,22 @@ const SfScsSentence *sf_scs_sentence(
     const SfScsScript *script, int32_t index) {
   return script && index >= 0 && index < script->sentence_count
     ? &script->sentences[index] : NULL;
+}
+
+const SfScsMessage *sf_scs_message(
+    const SfScsScript *script, int32_t id) {
+  uint16_t index;
+  if (!script) return NULL;
+  for (index = 0u; index < script->message_count; ++index) {
+    if (script->messages[index].id == id) return &script->messages[index];
+  }
+  return NULL;
+}
+
+const char *sf_scs_message_text(
+    const SfScsScript *script, const SfScsMessage *message) {
+  if (!script || !message ||
+      message->offset + message->length >= script->message_bytes_count)
+    return NULL;
+  return script->message_bytes + message->offset;
 }

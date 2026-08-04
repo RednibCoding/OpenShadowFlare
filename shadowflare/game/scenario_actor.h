@@ -59,6 +59,8 @@ typedef struct SfScenarioActor {
   uint8_t enabled_parts;
   bool wandering_enabled;
   bool walking;
+  bool scripted_turning_enabled;
+  bool interaction_active;
 } SfScenarioActor;
 
 typedef struct SfScenarioActorSet {
@@ -73,6 +75,10 @@ void sf_scenario_actor_update(
 int32_t sf_scenario_actor_character_number(const SfScenarioActor *actor);
 SfWorldPoint sf_scenario_actor_render_position(
   const SfScenarioActor *actor, uint16_t interpolation);
+void sf_scenario_actor_begin_interaction(SfScenarioActor *actor);
+void sf_scenario_actor_face_toward(
+  SfScenarioActor *actor, SfWorldPoint target);
+void sf_scenario_actor_release_interaction(SfScenarioActor *actor);
 SfScenarioActor *sf_scenario_actor_find(
   SfScenarioActorSet *actors, int32_t character_number);
 const SfScenarioActor *sf_scenario_actor_find_const(

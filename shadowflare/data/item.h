@@ -35,8 +35,37 @@ typedef struct SfItemReference {
   uint8_t category;
 } SfItemReference;
 
+typedef struct SfItemGroundDefinition {
+  char name[64];
+  int32_t definition_id;
+  int32_t resource_id;
+  int32_t animation_chart;
+  int32_t red_strength;
+  int32_t green_strength;
+  int32_t blue_strength;
+  int32_t inventory_width;
+  int32_t inventory_height;
+  int32_t inventory_pattern_group;
+  int32_t inventory_pattern;
+  int32_t inventory_palette;
+  int32_t weight;
+  int32_t maximum_durability;
+  int32_t variant;
+  int32_t subtype;
+  int32_t required_level;
+  int32_t appearance_part;
+  int32_t appearance_red_strength;
+  int32_t appearance_green_strength;
+  int32_t appearance_blue_strength;
+  uint8_t category;
+  bool suppresses_off_hand;
+} SfItemGroundDefinition;
+
 bool sf_item_read_appearance(
   const char *path, uint8_t category, int32_t definition_id,
   SfItemAppearance *appearance);
+bool sf_item_read_ground_definitions(
+  const char *path, SfItemGroundDefinition *definitions,
+  uint8_t definition_count);
 
 #endif
