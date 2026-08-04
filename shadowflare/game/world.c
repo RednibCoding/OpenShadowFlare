@@ -36,6 +36,7 @@ void sf_world_state_init(
   world->random_state = 1u;
   world->scenario_id = scenario_id;
   world->entry_key = entry_key;
+  world->script_transport_service = -1;
   sf_ground_items_init(&world->ground_items);
   sf_player_init(&world->player, player_gender);
 }
@@ -55,12 +56,19 @@ void sf_world_state_enter(
   world->pointer.range = 2u;
   world->pointer.range_enabled = true;
   sf_gameplay_service_clear(&world->service_request);
+  world->script_transport_service = -1;
   sf_player_enter(
     &world->player, (SfWorldPoint) {player_x, player_y}, direction);
   screen = sf_world_to_screen(world->player.position);
   world->camera_x = screen.x - 320;
   world->camera_y = screen.y - 240;
   world->entered = true;
+}
+
+void sf_world_state_bind_transports(
+    SfWorldState *world, const SfTransportCatalog *transports) {
+  if (!world) return;
+  world->transports = transports;
 }
 
 void sf_world_state_bind_collision(
@@ -102,6 +110,7 @@ bool sf_world_state_bind_scenario_progress(
         &world->actor_script_state, progress)) return false;
   world->scenario = scenario;
   world->script = script;
+  world->script_transport_service = -1;
   world->companion_type = world->player.companions.type;
   environment = sf_world_script_environment(world);
   return sf_scenario_actor_script_run_periodic(

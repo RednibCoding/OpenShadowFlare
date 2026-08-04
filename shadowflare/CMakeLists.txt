@@ -79,6 +79,7 @@ add_library(
   data/scs.c
   data/spell_parameters.c
   data/table.c
+  data/transport.c
   data/voc.c
   game/character_create.c
   game/companion.c
@@ -115,6 +116,7 @@ add_library(
   game/world_magic.c
   game/world_save.c
   game/world_script.c
+  game/world_transport.c
   interpreter/scenario_actor_script.c
   interpreter/scenario_script_commands.c
   interpreter/scenario_script_values.c
@@ -157,6 +159,7 @@ add_library(
   ui/gameplay_status.c
   ui/gameplay_special_items.c
   ui/gameplay_service_controller.c
+  ui/gameplay_transport.c
   ui/ground_item_nameplate.c
   ui/scenario_object_nameplate.c
   ui/world_pointer.c

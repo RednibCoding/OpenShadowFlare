@@ -20,6 +20,7 @@
 #ifndef SHADOWFLARE_GAME_WORLD_H
 #define SHADOWFLARE_GAME_WORLD_H
 
+#include "data/transport.h"
 #include "game/input.h"
 #include "game/gameplay_service.h"
 #include "game/ground_item.h"
@@ -82,7 +83,9 @@ typedef struct SfWorldState {
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
   const SfMctScenario *scenario;
   const SfScsScript *script;
+  const SfTransportCatalog *transports;
   SfWorldPointerControl pointer;
+  int32_t script_transport_service;
   int32_t companion_type;
   uint8_t movement_blocker_count;
   bool entered;
@@ -97,6 +100,8 @@ void sf_world_state_enter(
 void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
+void sf_world_state_bind_transports(
+  SfWorldState *world, const SfTransportCatalog *transports);
 bool sf_world_state_bind_ground_items(
   SfWorldState *world, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);

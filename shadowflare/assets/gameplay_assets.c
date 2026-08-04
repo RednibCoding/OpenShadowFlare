@@ -239,11 +239,12 @@ bool sf_gameplay_assets_load(
     19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u,
     29u, 30u, 31u, 32u
   };
-  static const uint8_t inventory_patterns[37] = {
+  static const uint8_t inventory_patterns[43] = {
     0u, 1u, 2u, 3u, 5u, 6u, 14u, 15u, 16u, 32u,
     36u, 37u, 38u, 39u, 40u, 41u, 42u, 43u, 44u, 45u, 46u,
     47u, 48u, 49u, 50u, 51u, 52u, 53u, 54u, 55u, 56u, 57u,
-    67u, 69u, 70u, 116u, 117u
+    67u, 69u, 70u, 116u, 117u,
+    11u, 12u, 13u, 22u, 23u, 24u
   };
   static const uint8_t magic_icon_patterns[23] = {
     0u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u,
@@ -309,7 +310,7 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
-        path, inventory_patterns, 37u, arena, &assets->inventory_panel) ||
+        path, inventory_patterns, 43u, arena, &assets->inventory_panel) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.magic_icons) ||
       !sf_njp_stream_decoded_patterns(
@@ -327,6 +328,7 @@ bool sf_gameplay_assets_load(
       !sf_companion_profile_load(
         path, companion_type, companion_level, &assets->companion_profile) ||
       !sf_spell_parameters_load(path, assets->spell_parameters) ||
+      !sf_transport_catalog_load(path, &assets->transports) ||
       !sf_gameplay_sound_assets_load(
         &assets->sounds, data_root, arena) ||
       !sf_ground_item_assets_load(

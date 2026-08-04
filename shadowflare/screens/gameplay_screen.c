@@ -31,6 +31,7 @@
 #include "ui/gameplay_item_information.h"
 #include "ui/gameplay_special_items.h"
 #include "ui/gameplay_status.h"
+#include "ui/gameplay_transport.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/scenario_object_nameplate.h"
 #include "ui/world_pointer_overlay.h"
@@ -59,6 +60,7 @@ bool sf_gameplay_screen_init(
   memset(screen, 0, sizeof(*screen));
   sf_gameplay_inventory_init(&screen->inventory);
   sf_gameplay_character_panel_init(&screen->character_panel);
+  sf_gameplay_transport_init(&screen->transport);
   sf_world_render_view(world, 1000u, &view);
   if (!sf_gameplay_scene_update(
         &screen->scene, assets, world, &view, 1000u))
@@ -156,6 +158,8 @@ void sf_gameplay_screen_draw(
     view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   if (screen->character_panel.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED)
     view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
+  if (screen->transport.active)
+    view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   scene_moved = !screen->drawn ||
     screen->rendered_player_x != view.player_position.x ||
     screen->rendered_player_y != view.player_position.y ||
@@ -231,6 +235,9 @@ void sf_gameplay_screen_draw(
     renderer, assets, player, &screen->inventory, game->ticks, clip);
   sf_gameplay_special_items_draw(
     renderer, assets, player, &screen->inventory, game->ticks, clip);
+  sf_gameplay_transport_draw(
+    renderer, assets, &game->world.actor_script_state.progress,
+    &screen->transport, clip);
   sf_gameplay_status_draw(
     renderer, assets, player, &screen->character_panel, clip);
   sf_gameplay_magic_draw(
@@ -242,7 +249,7 @@ void sf_gameplay_screen_draw(
   sf_gameplay_magic_bar_draw(
     renderer, assets, player,
     screen->character_panel.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
-      screen->inventory.special_open,
+      screen->inventory.special_open || screen->transport.active,
     screen->inventory.open, clip);
   sf_gameplay_inventory_draw_held(
     renderer, assets, player, &screen->inventory, game->ticks);

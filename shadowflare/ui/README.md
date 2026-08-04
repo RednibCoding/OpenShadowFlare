@@ -57,9 +57,12 @@ panel, Escape, the common camera offset, and click consumption.
 Script-opened panels cross one narrow boundary too. The world publishes a
 one-shot gameplay-service request without including a UI header.
 `gameplay_service_controller.c` consumes that request at the screen boundary
-and changes only UI-owned panel state. The Warehouse currently uses it to
-toggle Special Item while preserving an open right Inventory; later services
-can extend the same explicit request without teaching scripts about layouts.
+and changes only UI-owned panel state. The Warehouse uses it to toggle Special
+Item while preserving an open right Inventory. The transport object uses the
+same seam for matching open and close requests. `gameplay_transport.c` owns
+the retail left panel, compact ten-row paging, hover and click rectangles, and
+camera intent; Table 40 and script progress remain data/game concerns, and
+entry relocation remains in `game/`.
 
 The owned-companion strip follows the same rule. Its draw file composes the
 retail life bar and active/inactive `Bar.njp` cells, while its input file owns

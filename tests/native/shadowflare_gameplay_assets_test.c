@@ -32,6 +32,7 @@
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_panels_input.h"
 #include "ui/gameplay_service_controller.h"
 #include "ui/scenario_object_nameplate.h"
 #include "ui/world_pointer.h"
@@ -347,7 +348,7 @@ static int test_gameplay_inventory(
   uint16_t empty_item[32u * 96u];
   size_t changed = 0u;
   int y;
-  if (!dagger || assets->inventory_panel.pattern_count != 37u ||
+  if (!dagger || assets->inventory_panel.pattern_count != 43u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 2u) ||
       sf_njp_decoded_pattern(
         &assets->inventory_panel, 2u)->reference_count != 3u ||
@@ -364,8 +365,21 @@ static int test_gameplay_inventory(
       !sf_njp_decoded_pattern(&assets->inventory_panel, 67u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 69u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 70u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 11u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 12u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 13u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 22u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 23u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 24u) ||
       sf_njp_decoded_pattern(&assets->inventory_panel, 74u)) {
     fprintf(stderr, "The retail inventory panel patterns are incomplete\n");
+    return 1;
+  }
+  if (assets->transports.count != SF_TRANSPORT_DESTINATION_COUNT ||
+      strcmp(assets->transports.destinations[0].name, "Remote Town") != 0 ||
+      assets->transports.destinations[0].scenario_id != 0 ||
+      assets->transports.destinations[0].entry_value != 50) {
+    fprintf(stderr, "Retail Table 40 was not retained exactly\n");
     return 1;
   }
   if (assets->magic_icons.pattern_count != 23u ||
@@ -728,6 +742,7 @@ static int test_scenario_objects(
   {
     SfGameplayCharacterPanelUi character;
     SfGameplayInventoryUi inventory;
+    SfGameplayTransportUi transport;
     SfGameplayServiceRequest request;
     world->player.position = warehouse->position;
     world->player.previous_position = warehouse->position;
@@ -754,9 +769,11 @@ static int test_scenario_objects(
     }
     sf_gameplay_character_panel_init(&character);
     sf_gameplay_inventory_init(&inventory);
+    sf_gameplay_transport_init(&transport);
     character.tab = SF_GAMEPLAY_CHARACTER_TAB_STATUS;
     inventory.open = true;
-    if (!sf_gameplay_service_apply(&character, &inventory, request) ||
+    if (!sf_gameplay_service_apply(
+          &character, &inventory, &transport, request) ||
         character.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
         !inventory.open || !inventory.special_open) {
       fprintf(stderr,
@@ -765,11 +782,126 @@ static int test_scenario_objects(
     }
     request = (SfGameplayServiceRequest) {
       SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS, 0};
-    if (!sf_gameplay_service_apply(&character, &inventory, request) ||
+    if (!sf_gameplay_service_apply(
+          &character, &inventory, &transport, request) ||
         inventory.special_open) {
       fprintf(stderr, "The second Warehouse request did not close its panel\n");
       return 1;
     }
+  }
+  return 0;
+}
+
+static int test_transport_service(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  SfGameplayCharacterPanelUi character;
+  SfGameplayInventoryUi inventory;
+  SfGameplayTransportUi transport;
+  SfGameplayServiceRequest request;
+  SfScenarioScriptEnvironment environment;
+  SfScenarioScriptResult result;
+  SfScenarioProgressState paging_progress;
+  SfGameInput input;
+  SfRenderer renderer;
+  size_t changed = 0u;
+  size_t pixel;
+  uint8_t index;
+  environment = sf_world_script_environment(world);
+  result = sf_scenario_actor_script_start_status(
+    &world->actor_script_state, assets->script,
+    0, 10000200, &environment);
+  if (result != SF_SCENARIO_SCRIPT_COMPLETE ||
+      world->service_request.kind != SF_GAMEPLAY_SERVICE_OPEN_TRANSPORT ||
+      world->service_request.argument != 0 ||
+      world->script_transport_service != 0) {
+    fprintf(stderr, "The Remote Town transporter did not run opcode 37\n");
+    return 1;
+  }
+  sf_gameplay_character_panel_init(&character);
+  sf_gameplay_inventory_init(&inventory);
+  sf_gameplay_transport_init(&transport);
+  character.tab = SF_GAMEPLAY_CHARACTER_TAB_STATUS;
+  inventory.open = true;
+  inventory.special_open = true;
+  request = sf_gameplay_service_take(&world->service_request);
+  if (!sf_gameplay_service_apply(
+        &character, &inventory, &transport, request) ||
+      character.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+      !inventory.open || inventory.special_open || !transport.active ||
+      transport.service_argument != 0) {
+    fprintf(stderr, "The transport panel violated the left/right split\n");
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_gameplay_test_pixels,
+        sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_transport_draw(
+    &renderer, assets, &world->actor_script_state.progress,
+    &transport, NULL);
+  for (pixel = 0u; pixel < 640u * 412u; ++pixel)
+    if (sf_gameplay_test_pixels[pixel] != 0x1234u) ++changed;
+  if (changed < 10000u) {
+    fprintf(stderr, "The authored transport panel was not composed\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.transport_destination = -1;
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = 80;
+  input.pointer_y = 65;
+  if (!sf_gameplay_panels_input_resolve_with_transport(
+        &character, &inventory, &transport, &assets->transports,
+        &world->actor_script_state.progress, &world->player, false,
+        &input) || input.transport_destination != 0 ||
+      !input.transport_selected ||
+      transport.active || !input.pointer_over_gameplay_ui ||
+      input.interface_sound != 58u) {
+    fprintf(stderr, "The Remote Town transport row was not selectable\n");
+    return 1;
+  }
+  sf_world_state_update(world, &input);
+  if (world->entry_key != 200 || world->player.position.x != 94685 ||
+      world->player.position.y != -2756 || world->player.direction != 7u ||
+      world->player.motion != SF_PLAYER_IDLE) {
+    fprintf(stderr, "The Remote Town destination did not use MCT entry 200\n");
+    return 1;
+  }
+  paging_progress = world->actor_script_state.progress;
+  paging_progress.transport_count = 11u;
+  for (index = 0u; index < 11u; ++index)
+    paging_progress.transport_values[index] = 1;
+  sf_gameplay_transport_open(&transport, 0);
+  memset(&input, 0, sizeof(input));
+  input.transport_destination = -1;
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = 250;
+  input.pointer_y = 375;
+  if (!sf_gameplay_transport_input_resolve(
+        &transport, &assets->transports, &paging_progress, &input) ||
+      transport.page != 1u || input.interface_sound != 58u) {
+    fprintf(stderr,
+      "The compact transport destination pages did not advance\n");
+    return 1;
+  }
+  sf_gameplay_transport_open(&transport, 7);
+  world->script_transport_service = 7;
+  {
+    const int32_t argument = 7;
+    if (!environment.native_command(
+          environment.native_user, 38, &argument, 1u) ||
+        world->service_request.kind != SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT) {
+      fprintf(stderr, "Opcode 38 did not request the matching panel close\n");
+      return 1;
+    }
+  }
+  request = sf_gameplay_service_take(&world->service_request);
+  if (!sf_gameplay_service_apply(
+        &character, &inventory, &transport, request) || transport.active) {
+    fprintf(stderr, "The matching transport panel did not close\n");
+    return 1;
   }
   return 0;
 }
@@ -1166,11 +1298,13 @@ int main(void) {
   if (!sf_player_apply_initial_parameters(
         &world.player, &assets.player_parameters)) return 1;
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+  sf_world_state_bind_transports(&world, &assets.transports);
   sf_world_state_bind_ground_items(
     &world, assets.ground_items.definitions,
     assets.ground_items.definition_count);
   if (test_scenario_actors(&assets, &world)) return 1;
   if (test_scenario_objects(&assets, &world)) return 1;
+  if (test_transport_service(&assets, &world)) return 1;
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);

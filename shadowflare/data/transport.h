@@ -17,29 +17,29 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_GAMEPLAY_SERVICE_H
-#define SHADOWFLARE_GAME_GAMEPLAY_SERVICE_H
+#ifndef SHADOWFLARE_DATA_TRANSPORT_H
+#define SHADOWFLARE_DATA_TRANSPORT_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef enum SfGameplayServiceKind {
-  SF_GAMEPLAY_SERVICE_NONE = 0,
-  SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS,
-  SF_GAMEPLAY_SERVICE_OPEN_TRANSPORT,
-  SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT
-} SfGameplayServiceKind;
+#define SF_TRANSPORT_DESTINATION_COUNT 51u
+#define SF_TRANSPORT_NAME_CAPACITY 48u
 
-typedef struct SfGameplayServiceRequest {
-  SfGameplayServiceKind kind;
-  int32_t argument;
-} SfGameplayServiceRequest;
+typedef struct SfTransportDestination {
+  char name[SF_TRANSPORT_NAME_CAPACITY];
+  int32_t scenario_id;
+  int32_t entry_value;
+} SfTransportDestination;
 
-void sf_gameplay_service_clear(SfGameplayServiceRequest *request);
-bool sf_gameplay_service_request(
-  SfGameplayServiceRequest *request,
-  SfGameplayServiceKind kind, int32_t argument);
-SfGameplayServiceRequest sf_gameplay_service_take(
-  SfGameplayServiceRequest *request);
+typedef struct SfTransportCatalog {
+  SfTransportDestination destinations[SF_TRANSPORT_DESTINATION_COUNT];
+  uint8_t count;
+} SfTransportCatalog;
+
+bool sf_transport_catalog_load(
+  const char *table_path, SfTransportCatalog *catalog);
+const SfTransportDestination *sf_transport_destination(
+  const SfTransportCatalog *catalog, int32_t row);
 
 #endif

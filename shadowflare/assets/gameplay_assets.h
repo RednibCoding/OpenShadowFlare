@@ -35,6 +35,7 @@
 #include "data/player_parameters.h"
 #include "data/scs.h"
 #include "data/spell_parameters.h"
+#include "data/transport.h"
 #include "data/companion_parameters.h"
 
 #include <stdbool.h>
@@ -63,6 +64,7 @@ typedef struct SfGameplayAssets {
   SfPlayerInitialParameters player_parameters;
   SfCompanionProfile companion_profile;
   SfSpellParameters *spell_parameters;
+  SfTransportCatalog transports;
   SfPlayerAssets player;
   SfCompanionAssets companion;
   SfScenarioActorAssets actors;

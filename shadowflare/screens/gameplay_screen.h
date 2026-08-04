@@ -27,6 +27,7 @@
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_character_panel.h"
 #include "ui/gameplay_status.h"
+#include "ui/gameplay_transport.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -35,6 +36,7 @@ typedef struct SfGameplayScreen {
   SfGameplayScene scene;
   SfGameplayInventoryUi inventory;
   SfGameplayCharacterPanelUi character_panel;
+  SfGameplayTransportUi transport;
   uint32_t rendered_animation_frame;
   uint32_t rendered_ground_item_revision;
   uint32_t rendered_companion_frame;

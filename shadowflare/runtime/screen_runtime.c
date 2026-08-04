@@ -136,6 +136,8 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
         (void) sf_player_magic_set_targeting(
           &game->world.player.magic, true);
       if (success) {
+        sf_world_state_bind_transports(
+          &game->world, &runtime->assets.gameplay.transports);
         sf_world_state_bind_collision(
           &game->world, &runtime->assets.gameplay.ground,
           &runtime->assets.gameplay.objects);
@@ -176,7 +178,8 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
       &game->world.service_request);
     if (!sf_gameplay_service_apply(
           &runtime->screen.gameplay.character_panel,
-          &runtime->screen.gameplay.inventory, request)) return false;
+          &runtime->screen.gameplay.inventory,
+          &runtime->screen.gameplay.transport, request)) return false;
     if (request.kind != SF_GAMEPLAY_SERVICE_NONE)
       runtime->screen.gameplay.drawn = false;
     return true;
@@ -233,13 +236,18 @@ void sf_screen_runtime_resolve_input(
   input->special_item_index = -1;
   input->special_grid_x = -1;
   input->special_grid_y = -1;
+  input->transport_destination = -1;
+  input->transport_selected = false;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
   sf_gameplay_companion_hud_input_resolve(input);
-  if (sf_gameplay_panels_input_resolve(
+  if (sf_gameplay_panels_input_resolve_with_transport(
         &runtime->screen.gameplay.character_panel,
         &runtime->screen.gameplay.inventory,
+        &runtime->screen.gameplay.transport,
+        &runtime->assets.gameplay.transports,
+        &game->world.actor_script_state.progress,
         &game->world.player,
         game->world.actor_script_state.message_active, input))
     runtime->screen.gameplay.drawn = false;

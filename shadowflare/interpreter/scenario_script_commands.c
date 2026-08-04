@@ -252,31 +252,35 @@ SfScenarioScriptResult sf_scenario_script_execute_command(
   }
   if (command->opcode == 36)
     return sf_scenario_script_native(context, command, operands, 7u);
+  if (command->opcode == 37 || command->opcode == 38) {
+    if (command->operand_count != 1u) return SF_SCENARIO_SCRIPT_INVALID;
+    return sf_scenario_script_native(context, command, operands, 1u);
+  }
   if (command->opcode == 39) {
-    const int32_t lower = sf_scenario_script_read(
-      state, context->script, &operands[0], context->environment);
-    const int32_t upper = sf_scenario_script_read(
-      state, context->script, &operands[1], context->environment);
-    const uint32_t range = (uint32_t) upper - (uint32_t) lower + 1u;
+    int32_t lower;
+    int32_t upper;
+    int32_t range;
     int32_t random;
     int32_t value;
-    if (command->operand_count < 3u || range == 0u ||
-        !context->environment->next_random ||
+    if (command->operand_count < 3u) return SF_SCENARIO_SCRIPT_INVALID;
+    lower = sf_scenario_script_read(
+      state, context->script, &operands[0], context->environment);
+    upper = sf_scenario_script_read(
+      state, context->script, &operands[1], context->environment);
+    range = sf_scenario_script_wrapped_i32(
+      (uint32_t) upper - (uint32_t) lower + 1u);
+    if (range == 0 || !context->environment->next_random ||
         !context->environment->next_random(
           context->environment->native_user, &random)) {
       state->unsupported_opcode = command->opcode;
       return SF_SCENARIO_SCRIPT_UNSUPPORTED_COMMAND;
     }
     value = sf_scenario_script_wrapped_i32(
-      (uint32_t) lower + (uint32_t) random % range);
+      (uint32_t) lower + (uint32_t) (random % range));
     return sf_scenario_script_write(
         state, context->script, &operands[2], value,
         context->environment)
       ? SF_SCENARIO_SCRIPT_COMPLETE : SF_SCENARIO_SCRIPT_INVALID;
-  }
-  if (command->opcode == 38) {
-    if (command->operand_count != 1u) return SF_SCENARIO_SCRIPT_INVALID;
-    return SF_SCENARIO_SCRIPT_COMPLETE;
   }
   if (command->opcode == 41) {
     if (command->operand_count != 1u) return SF_SCENARIO_SCRIPT_INVALID;

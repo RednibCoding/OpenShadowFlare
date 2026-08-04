@@ -62,6 +62,7 @@ typedef struct SfGameInput {
   int8_t special_item_index;
   int8_t special_grid_x;
   int8_t special_grid_y;
+  int8_t transport_destination;
   int8_t belt_pocket_pressed;
   uint8_t conversation_option_count;
   SfInventoryAction inventory_action;
@@ -90,6 +91,7 @@ typedef struct SfGameInput {
   bool status_pressed;
   bool magic_pressed;
   bool special_items_pressed;
+  bool transport_selected;
   bool belt_pocket_key_pressed;
   char text[16];
   uint8_t text_length;

@@ -23,12 +23,14 @@
 #include "game/gameplay_service.h"
 #include "ui/gameplay_character_panel.h"
 #include "ui/gameplay_inventory.h"
+#include "ui/gameplay_transport.h"
 
 #include <stdbool.h>
 
 bool sf_gameplay_service_apply(
   SfGameplayCharacterPanelUi *character,
   SfGameplayInventoryUi *inventory,
+  SfGameplayTransportUi *transport,
   SfGameplayServiceRequest request);
 
 #endif

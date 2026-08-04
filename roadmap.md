@@ -33,6 +33,11 @@ the retail interaction range instead of leaking into movement. The Warehouse
 now runs its authored status-zero sentence and opcode 41 through a one-shot
 game-service request. Its existing left Special Item panel opens without
 closing an independent right Inventory; only the UI layer changes panel state.
+The transport object now follows that same route. Opcode 37 opens its authored
+left panel, all 51 destination records come from Table 40, enabled rows are
+packed into ten slots per page, and a right Inventory stays independent.
+Remote Town's default row resolves MCT entry 200 and relocates the hero without
+leaking its click into movement. Opcode 38 only closes the matching service.
 Ostare's opening chain reaches its four opcode 10 starter
 drops, with the original item definitions, artwork, palettes, bounce, and
 landing sounds.
@@ -120,12 +125,11 @@ A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
 
-The immediate C99 target is the matching transport interaction. Reuse the
-proven object-status and one-shot service boundary for opcode 37, load the
-enabled destination rows from retail Table 40, and keep the live shifted world
-beside a UI-owned transport panel. Opcode 38 should close only that matching
-service. Discovery and travel can then grow from the same authored script path
-instead of hardcoded Remote Town destinations.
+The immediate C99 target is the rest of the authored transport path. Periodic
+teleporter status should discover and save its Table 40 row, opcode 27 should
+draw the activation label, and cross-scenario selection should go through one
+clean screen-runtime reload rather than a map-specific shortcut. That same
+transition seam can then serve the ordinary opcode 17 exits around Remote Town.
 
 ## Where we are now
 

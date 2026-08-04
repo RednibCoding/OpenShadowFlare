@@ -182,6 +182,8 @@ static void sf_clear_input(SfGameInput *input) {
   input->status_pressed = false;
   input->magic_pressed = false;
   input->special_items_pressed = false;
+  input->transport_destination = -1;
+  input->transport_selected = false;
   input->belt_pocket_pressed = -1;
   input->belt_pocket_key_pressed = false;
   input->text_length = 0u;

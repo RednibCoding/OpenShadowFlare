@@ -68,8 +68,17 @@ object pixels also participate in hover and click selection, including the
 MCT-owned nameplate. Clicking the Warehouse now routes into range, starts its
 authored status-zero sentence, and lets opcode 41 toggle the existing Special
 Item panel. The script emits a one-shot game request; the UI owns the panel and
-keeps an independent right Inventory open. The transport objects are the next
-service case rather than a special branch in object rendering.
+keeps an independent right Inventory open. The matching transport object now
+uses the same boundary: its real status-zero sentence reaches opcode 37 and
+opens the retail left-hand destination panel while an independent Inventory
+can remain open on the right. All 51 names and scenario/entry pairs are
+streamed from Table 40, enabled rows are compacted into ten slots per page,
+and the arrows, hover rows, frame, and sample 58 come from the original game.
+Selecting Remote Town resolves entry key 200 through the active MCT instead of
+hardcoding world coordinates, consumes the panel click before world movement,
+and closes only the transport panel. Opcode 38 supplies the matching scripted
+close request. Cross-scenario reloads and discovery presentation remain the
+next transport slice.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
@@ -269,8 +278,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,485,989 bytes of the 7 MiB main arena,
-leaving 5,854,043 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,488,877 bytes of the 7 MiB main arena,
+leaving 5,851,155 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -283,23 +292,23 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 798,912 bytes of the main arena, leaving 6,541,120 bytes free;
+assets. It uses 801,800 bytes of the main arena, leaving 6,538,232 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 759,128 bytes of the main arena, leaving 6,580,904
+The load-game screen uses 762,016 bytes of the main arena, leaving 6,578,016
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,076,380 bytes of the main
-arena, leaving 263,652 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,213,588 bytes of the main
+arena, leaving 126,444 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
-inventory-panel, equipment, and UI data and artwork account for 6,691,573
-bytes. GND rendering data is decoded directly from its compressed three-plane
+inventory-panel, transport, equipment, and UI data and artwork account for
+6,825,893 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
@@ -362,7 +371,7 @@ The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 267,244-byte headroom is now a hard warning for upcoming combat and
+remaining 126,444-byte headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 
@@ -404,7 +413,7 @@ grid placement, single-item swaps, invalid-placement rollback, and partial
 Gold merges all stay in `game/inventory.c`.
 
 The inventory and character panels follow the same lifetime. `Status.njp` is
-streamed to retain only 37 required patterns, without constructing
+streamed to retain only 43 required patterns, without constructing
 metadata for its other 115 patterns. Item definitions provide the inventory
 group, pattern, and optional palette directly; only groups and cells referenced
 by the active map's retained definitions are decoded.

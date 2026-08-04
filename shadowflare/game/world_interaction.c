@@ -25,6 +25,7 @@
 #include "game/world_conversation.h"
 #include "game/world_inventory.h"
 #include "game/world_script.h"
+#include "game/world_transport.h"
 
 #include <limits.h>
 
@@ -206,6 +207,14 @@ void sf_world_interaction_read_input(
     ? input->pointed_scenario_object_id : -1;
   pointer->hovered_ground_item_id = input->world_pointer_resolved
     ? input->pointed_ground_item_id : -1;
+  if (input->transport_selected) {
+    (void) sf_world_transport_activate(
+      world, input->transport_destination);
+    pointer->hovered_actor_id = -1;
+    pointer->hovered_scenario_object_id = -1;
+    pointer->hovered_ground_item_id = -1;
+    return;
+  }
   inventory_consumed_input = sf_world_inventory_update(world, input);
   message_consumed_input = sf_world_conversation_update(world, input) ||
     inventory_consumed_input;

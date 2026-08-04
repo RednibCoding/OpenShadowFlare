@@ -22,16 +22,36 @@
 bool sf_gameplay_service_apply(
     SfGameplayCharacterPanelUi *character,
     SfGameplayInventoryUi *inventory,
+    SfGameplayTransportUi *transport,
     SfGameplayServiceRequest request) {
-  if (!character || !inventory) return false;
+  if (!character || !inventory || !transport) return false;
   if (request.kind == SF_GAMEPLAY_SERVICE_NONE) return true;
-  if (request.kind != SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS ||
-      request.argument != 0) return false;
-  character->tab = SF_GAMEPLAY_CHARACTER_TAB_CLOSED;
-  character->held_spell = -1;
-  inventory->special_open = !inventory->special_open;
-  inventory->close_hovered = false;
-  inventory->hovered_special_item_index = -1;
-  inventory->item_hover_updates = 0u;
-  return true;
+  if (request.kind == SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS &&
+      request.argument == 0) {
+    character->tab = SF_GAMEPLAY_CHARACTER_TAB_CLOSED;
+    character->held_spell = -1;
+    sf_gameplay_transport_close(transport);
+    inventory->special_open = !inventory->special_open;
+    inventory->close_hovered = false;
+    inventory->hovered_special_item_index = -1;
+    inventory->item_hover_updates = 0u;
+    return true;
+  }
+  if (request.kind == SF_GAMEPLAY_SERVICE_OPEN_TRANSPORT) {
+    character->tab = SF_GAMEPLAY_CHARACTER_TAB_CLOSED;
+    character->held_spell = -1;
+    inventory->special_open = false;
+    inventory->close_hovered = false;
+    inventory->hovered_special_item_index = -1;
+    inventory->item_hover_updates = 0u;
+    sf_gameplay_transport_open(transport, request.argument);
+    return true;
+  }
+  if (request.kind == SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT) {
+    if (transport->active &&
+        transport->service_argument == request.argument)
+      sf_gameplay_transport_close(transport);
+    return true;
+  }
+  return false;
 }

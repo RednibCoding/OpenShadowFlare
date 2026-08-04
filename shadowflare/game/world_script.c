@@ -34,6 +34,21 @@ static bool sf_world_native_command(
   if (opcode == 36)
     return sf_scenario_placed_effect_add(
       &world->placed_effects, arguments, argument_count);
+  if (opcode == 37 && argument_count == 1u) {
+    if (!sf_gameplay_service_request(
+          &world->service_request,
+          SF_GAMEPLAY_SERVICE_OPEN_TRANSPORT, arguments[0])) return false;
+    world->script_transport_service = arguments[0];
+    return true;
+  }
+  if (opcode == 38 && argument_count == 1u) {
+    if (world->script_transport_service != arguments[0]) return true;
+    if (!sf_gameplay_service_request(
+          &world->service_request,
+          SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT, arguments[0])) return false;
+    world->script_transport_service = -1;
+    return true;
+  }
   if (opcode == 41 && argument_count == 1u)
     return sf_gameplay_service_request(
       &world->service_request,

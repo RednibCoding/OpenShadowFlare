@@ -97,6 +97,8 @@ void sf_scenario_actor_script_init(
   state->message_actor_id = -1;
   state->selected_option = -1;
   state->unsupported_opcode = -1;
+  state->progress.transport_values[0] = 1;
+  state->progress.transport_count = 1u;
   if (!script) return;
   state->temporary_count = script->temporary_flag_count;
   for (index = 0u; index < state->temporary_count; ++index)
@@ -112,6 +114,10 @@ bool sf_scenario_actor_script_restore_progress(
       progress->transport_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT)
     return false;
   state->progress = *progress;
+  if (state->progress.transport_count == 0u) {
+    state->progress.transport_values[0] = 1;
+    state->progress.transport_count = 1u;
+  }
   return true;
 }
 
