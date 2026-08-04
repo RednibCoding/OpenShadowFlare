@@ -22,6 +22,7 @@
 #include "screens/gameplay_player.h"
 #include "ui/actor_nameplate.h"
 #include "ui/conversation_bubble.h"
+#include "ui/enemy_nameplate.h"
 #include "ui/gameplay_belt.h"
 #include "ui/gameplay_companion_hud.h"
 #include "ui/gameplay_hud.h"
@@ -47,7 +48,8 @@ static SfRect sf_gameplay_damage_union(SfRect first, SfRect second) {
   const int first_bottom = first.y + first.height;
   const int second_bottom = second.y + second.height;
   const int right = first_right > second_right ? first_right : second_right;
-  const int bottom = first_bottom > second_bottom ? first_bottom : second_bottom;
+  const int bottom = first_bottom > second_bottom
+    ? first_bottom : second_bottom;
   return (SfRect) {
     (int16_t) left, (int16_t) top,
     (int16_t) (right - left), (int16_t) (bottom - top)};
@@ -168,6 +170,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_camera_y != view.camera_y ||
     screen->rendered_hovered_actor_id !=
       game->world.pointer.hovered_actor_id ||
+    screen->rendered_hovered_enemy_id !=
+      game->world.pointer.hovered_enemy_id ||
     screen->rendered_hovered_scenario_object_id !=
       game->world.pointer.hovered_scenario_object_id ||
     screen->rendered_hovered_ground_item_id !=
@@ -191,6 +195,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_companion_life != game->world.companion.current_life ||
     screen->rendered_ground_item_revision !=
       game->world.ground_items.presentation_revision ||
+    screen->rendered_enemy_revision !=
+      game->world.enemies.presentation_revision ||
     screen->rendered_scenario_label_revision !=
       game->world.scenario_labels.revision ||
     (screen->rendered_condition_phase != condition_phase &&
@@ -204,6 +210,9 @@ void sf_gameplay_screen_draw(
     if (sf_world_pointer_overlay_bounds(&game->world, &ui_damage))
       damage = sf_gameplay_damage_union(damage, ui_damage);
     if (sf_actor_nameplate_bounds(
+          assets, &game->world, &view, interpolation, &ui_damage))
+      damage = sf_gameplay_damage_union(damage, ui_damage);
+    if (sf_enemy_nameplate_bounds(
           assets, &game->world, &view, interpolation, &ui_damage))
       damage = sf_gameplay_damage_union(damage, ui_damage);
     if (sf_scenario_object_nameplate_bounds(
@@ -228,6 +237,8 @@ void sf_gameplay_screen_draw(
   sf_scenario_labels_draw(
     renderer, assets, &game->world, &view, clip);
   sf_actor_nameplate_draw(
+    renderer, assets, &game->world, &view, interpolation);
+  sf_enemy_nameplate_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_scenario_object_nameplate_draw(
     renderer, assets, &game->world, &view);
@@ -271,6 +282,8 @@ void sf_gameplay_screen_draw(
   screen->rendered_camera_y = view.camera_y;
   screen->rendered_hovered_actor_id =
     game->world.pointer.hovered_actor_id;
+  screen->rendered_hovered_enemy_id =
+    game->world.pointer.hovered_enemy_id;
   screen->rendered_hovered_scenario_object_id =
     game->world.pointer.hovered_scenario_object_id;
   screen->rendered_hovered_ground_item_id =
@@ -294,6 +307,8 @@ void sf_gameplay_screen_draw(
   screen->rendered_companion_life = game->world.companion.current_life;
   screen->rendered_ground_item_revision =
     game->world.ground_items.presentation_revision;
+  screen->rendered_enemy_revision =
+    game->world.enemies.presentation_revision;
   screen->rendered_scenario_label_revision =
     game->world.scenario_labels.revision;
   screen->rendered_condition_phase = condition_phase;

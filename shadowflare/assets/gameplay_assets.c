@@ -246,6 +246,9 @@ bool sf_gameplay_assets_load(
     67u, 69u, 70u, 116u, 117u,
     11u, 12u, 13u, 22u, 23u, 24u
   };
+  static const uint8_t status_icon_patterns[8] = {
+    3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u
+  };
   static const uint8_t magic_icon_patterns[23] = {
     0u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u,
     13u, 14u, 15u, 16u, 17u, 18u, 19u, 20u, 21u, 22u, 23u
@@ -311,6 +314,10 @@ bool sf_gameplay_assets_load(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
         path, inventory_patterns, 43u, arena, &assets->inventory_panel) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.status_icons) ||
+      !sf_njp_load_selected(
+        path, status_icon_patterns, 8u, arena, &assets->status_icons) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.magic_icons) ||
       !sf_njp_stream_decoded_patterns(

@@ -307,6 +307,7 @@ static int test_live_belt(const char *root, SfArena *arena) {
   input.world_pointer_resolved = true;
   input.pointed_ground_item_id = world.ground_items.items[0].id;
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   sf_world_state_update(&world, &input);
   if (world.player.mine_count != 6 || world.ground_items.count != 0u ||
       world.ground_items.sound_count != 1u ||
@@ -324,6 +325,7 @@ static int test_live_belt(const char *root, SfArena *arena) {
   input.world_pointer_resolved = true;
   input.pointed_ground_item_id = world.ground_items.items[0].id;
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   sf_world_state_update(&world, &input);
   if (world.ground_items.count != 1u ||
       world.ground_items.items[0].bounce_state != 0u ||

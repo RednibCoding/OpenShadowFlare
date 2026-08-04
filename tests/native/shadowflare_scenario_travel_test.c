@@ -37,6 +37,7 @@ static SfScenarioTravelTestMemory sf_scenario_travel_memory;
 static void sf_scenario_travel_test_input(SfGameInput *input) {
   memset(input, 0, sizeof(*input));
   input->pointed_actor_id = -1;
+  input->pointed_enemy_id = -1;
   input->pointed_scenario_object_id = -1;
   input->pointed_ground_item_id = -1;
   input->transport_destination = -1;

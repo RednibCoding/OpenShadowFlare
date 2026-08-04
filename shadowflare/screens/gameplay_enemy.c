@@ -74,7 +74,7 @@ bool sf_gameplay_enemy_visible(
 void sf_gameplay_enemy_draw(
     SfRenderer *renderer, const SfScenarioEnemyAssets *assets,
     const SfScenarioEnemy *enemy, const SfWorldRenderView *view,
-    uint16_t interpolation, bool shadow, const SfRect *clip) {
+    uint16_t interpolation, bool shadow, bool hovered, const SfRect *clip) {
   const SfScenarioEnemyVisual *visual;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
@@ -128,6 +128,11 @@ void sf_gameplay_enemy_draw(
           ? 0u : (uint16_t) enemy->definition->green_strength[source_part];
         blue_strength = enemy->definition->blue_strength[source_part] < 0
           ? 0u : (uint16_t) enemy->definition->blue_strength[source_part];
+        if (hovered) {
+          red_strength = (uint16_t) (red_strength + 300u);
+          green_strength = (uint16_t) (green_strength + 300u);
+          blue_strength = (uint16_t) (blue_strength + 300u);
+        }
         blend = (cell->status & 0x10) != 0
           ? SF_BLEND_ADDITIVE : SF_BLEND_MASKED;
       }

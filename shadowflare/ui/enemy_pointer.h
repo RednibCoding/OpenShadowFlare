@@ -17,22 +17,18 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_ENEMY_H
-#define SHADOWFLARE_SCREENS_GAMEPLAY_ENEMY_H
+#ifndef SHADOWFLARE_UI_ENEMY_POINTER_H
+#define SHADOWFLARE_UI_ENEMY_POINTER_H
 
 #include "assets/scenario_enemy_assets.h"
 #include "game/scenario_enemy.h"
 #include "game/world.h"
-#include "render/renderer.h"
 
 #include <stdbool.h>
 
-bool sf_gameplay_enemy_visible(
+bool sf_enemy_pointer_hit(
   const SfScenarioEnemyAssets *assets, const SfScenarioEnemy *enemy,
-  const SfWorldRenderView *view, uint16_t interpolation, bool shadow);
-void sf_gameplay_enemy_draw(
-  SfRenderer *renderer, const SfScenarioEnemyAssets *assets,
-  const SfScenarioEnemy *enemy, const SfWorldRenderView *view,
-  uint16_t interpolation, bool shadow, bool hovered, const SfRect *clip);
+  const SfWorldRenderView *view, int pointer_x, int pointer_y,
+  int half_size, bool *exact);
 
 #endif

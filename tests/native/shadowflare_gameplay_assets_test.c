@@ -24,12 +24,14 @@
 #include "game/player.h"
 #include "game/world.h"
 #include "game/world_conversation.h"
+#include "game/world_interaction.h"
 #include "game/world_script.h"
 #include "screens/gameplay_screen.h"
 #include "screens/gameplay_enemy.h"
 #include "screens/gameplay_object_visual.h"
 #include "ui/conversation_input.h"
 #include "ui/conversation_layout.h"
+#include "ui/enemy_nameplate.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
@@ -200,7 +202,9 @@ static int test_non_town_gameplay_load(
       SfRenderer renderer;
       SfWorldRenderView view;
       SfScreenPoint screen = sf_world_to_screen(live_goblin->position);
+      SfRect nameplate;
       size_t pixel;
+      size_t hit_pixel = 0u;
       bool drawn = false;
       memset(sf_gameplay_test_pixels, 0, sizeof(sf_gameplay_test_pixels));
       if (!sf_renderer_init(
@@ -211,15 +215,46 @@ static int test_non_town_gameplay_load(
       view.camera_y = screen.y - 240;
       sf_gameplay_enemy_draw(
         &renderer, &assets.enemies, live_goblin, &view,
-        1000u, false, NULL);
+        1000u, false, false, NULL);
       for (pixel = 0u; pixel < 640u * 480u; ++pixel) {
         if (sf_gameplay_test_pixels[pixel] != 0u) {
           drawn = true;
+          hit_pixel = pixel;
           break;
         }
       }
       if (!drawn) {
         fprintf(stderr, "The first authored Goblin rendered no artwork\n");
+        return 1;
+      }
+      memset(&input, 0, sizeof(input));
+      world.camera_x = view.camera_x;
+      world.camera_y = view.camera_y;
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) (hit_pixel % 640u);
+      input.pointer_y = (int16_t) (hit_pixel / 640u);
+      sf_world_pointer_resolve(&assets, &world, &input);
+      if (input.pointed_enemy_id != goblin->id ||
+          input.pointed_actor_id >= 0 ||
+          input.pointed_scenario_object_id >= 0 ||
+          input.pointed_ground_item_id >= 0) {
+        fprintf(stderr, "Opaque Goblin pixels did not win pointer picking\n");
+        return 1;
+      }
+      sf_world_interaction_read_input(&world, &input);
+      memset(sf_gameplay_test_pixels, 0, sizeof(sf_gameplay_test_pixels));
+      if (assets.status_icons.image_count != 8u ||
+          !sf_enemy_nameplate_bounds(
+            &assets, &world, &view, 1000u, &nameplate) ||
+          nameplate.width != 56 || nameplate.height != 18) {
+        fprintf(stderr, "The Goblin nameplate layout differs from retail\n");
+        return 1;
+      }
+      sf_enemy_nameplate_draw(
+        &renderer, &assets, &world, &view, 1000u);
+      if (sf_gameplay_test_pixels[
+            (size_t) (nameplate.y + 1) * 640u + nameplate.x + 1] == 0u) {
+        fprintf(stderr, "The Goblin nameplate has no life fill\n");
         return 1;
       }
     }
@@ -879,6 +914,7 @@ static int test_scenario_objects(
     memset(&input, 0, sizeof(input));
     input.world_pointer_resolved = true;
     input.pointed_actor_id = -1;
+    input.pointed_enemy_id = -1;
     input.pointed_scenario_object_id = warehouse->id;
     input.pointed_ground_item_id = -1;
     input.pointer_primary_pressed = true;
@@ -1058,6 +1094,7 @@ static int test_transport_discovery(
     world, activation->position.x, activation->position.y, 7u);
   memset(&input, 0, sizeof(input));
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_scenario_object_id = -1;
   input.pointed_ground_item_id = -1;
   input.transport_destination = -1;
@@ -1122,6 +1159,7 @@ static int test_transport_discovery(
   world->script_transport_service = 0;
   memset(&input, 0, sizeof(input));
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_scenario_object_id = -1;
   input.pointed_ground_item_id = -1;
   input.transport_destination = -1;
@@ -1414,10 +1452,12 @@ static int test_ground_item_pickup(
   input.pointer_primary_pressed = true;
   input.world_pointer_resolved = true;
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = item_id;
   sf_world_state_update(world, &input);
   memset(&input, 0, sizeof(input));
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = -1;
   {
     uint16_t update;

@@ -149,6 +149,8 @@ add_library(
   ui/conversation_bubble.c
   ui/conversation_input.c
   ui/conversation_layout.c
+  ui/enemy_nameplate.c
+  ui/enemy_pointer.c
   ui/gameplay_character_panel.c
   ui/gameplay_companion_hud.c
   ui/gameplay_companion_hud_input.c

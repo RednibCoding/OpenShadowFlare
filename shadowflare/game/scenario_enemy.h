@@ -62,6 +62,7 @@ typedef struct SfScenarioEnemy {
 
 typedef struct SfScenarioEnemySet {
   SfScenarioEnemy enemies[SF_MCT_ENEMY_LIMIT];
+  uint32_t presentation_revision;
   uint16_t count;
 } SfScenarioEnemySet;
 
