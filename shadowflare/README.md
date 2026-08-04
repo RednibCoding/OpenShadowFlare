@@ -65,8 +65,11 @@ shadows, script state, color strengths, opacity, judgement boxes, and display
 order now feed the ordinary world passes. That makes the Warehouse and both
 transport points solid when their authored state says they are solid. Opaque
 object pixels also participate in hover and click selection, including the
-MCT-owned nameplate. Clicking one is consumed as an object interaction; the
-status scripts that open its actual service are the next slice.
+MCT-owned nameplate. Clicking the Warehouse now routes into range, starts its
+authored status-zero sentence, and lets opcode 41 toggle the existing Special
+Item panel. The script emits a one-shot game request; the UI owns the panel and
+keeps an independent right Inventory open. The transport objects are the next
+service case rather than a special branch in object rendering.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
@@ -263,8 +266,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,482,389 bytes of the 7 MiB main arena,
-leaving 5,857,643 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,482,397 bytes of the 7 MiB main arena,
+leaving 5,857,635 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -277,20 +280,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 795,312 bytes of the main arena, leaving 6,544,720 bytes free;
+assets. It uses 795,320 bytes of the main arena, leaving 6,544,712 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 755,528 bytes of the main arena, leaving 6,584,504
+The load-game screen uses 755,536 bytes of the main arena, leaving 6,584,496
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,072,780 bytes of the main
-arena, leaving 267,252 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,072,788 bytes of the main
+arena, leaving 267,244 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
 inventory-panel, equipment, and UI data and artwork account for 6,691,573
 bytes. GND rendering data is decoded directly from its compressed three-plane
@@ -356,7 +359,7 @@ The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 267,252-byte headroom is now a hard warning for upcoming combat and
+remaining 267,244-byte headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 

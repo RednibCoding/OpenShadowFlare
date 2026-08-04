@@ -129,6 +129,12 @@ void sf_player_cancel_movement(SfPlayerState *player) {
   sf_route_reset(&player->route);
 }
 
+void sf_player_face_toward(SfPlayerState *player, SfWorldPoint target) {
+  if (!player || (player->position.x == target.x &&
+                  player->position.y == target.y)) return;
+  player->direction = sf_movement_direction(player->position, target);
+}
+
 void sf_player_toggle_pace(SfPlayerState *player) {
   if (!player) return;
   player->pace = player->pace == SF_PLAYER_PACE_WALK

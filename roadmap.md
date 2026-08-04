@@ -29,9 +29,11 @@ live. All seven MCT type-zero objects are live too. Their sparse static or
 animated `Character/OBJECT` resources, shadows, state channels, judgement,
 depth, hover tint, authored nameplate, and opaque-pixel picking remain separate
 from both OBL scenery and PEOPLE actors. Object clicks are consumed through
-the retail interaction range instead of leaking into movement; opening the
-Warehouse or transport service from the object's status script is the next
-small object slice. Ostare's opening chain reaches its four opcode 10 starter
+the retail interaction range instead of leaking into movement. The Warehouse
+now runs its authored status-zero sentence and opcode 41 through a one-shot
+game-service request. Its existing left Special Item panel opens without
+closing an independent right Inventory; only the UI layer changes panel state.
+Ostare's opening chain reaches its four opcode 10 starter
 drops, with the original item definitions, artwork, palettes, bounce, and
 landing sounds.
 Those drops can now be hovered, approached, and picked up into the player's
@@ -118,12 +120,12 @@ A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
 
-The immediate C99 target is the first complete type-zero interaction. Start
-the selected object's authored status sentence, keep the object/people script
-path shared where retail shares it, and connect one service without moving UI
-ownership out of `ui/`. Warehouse is the useful first case because its panel
-and item owner already provide a clear parity reference in `SF_EXE`; transport
-can follow through the same boundary once the common interaction is proven.
+The immediate C99 target is the matching transport interaction. Reuse the
+proven object-status and one-shot service boundary for opcode 37, load the
+enabled destination rows from retail Table 40, and keep the live shifted world
+beside a UI-owned transport panel. Opcode 38 should close only that matching
+service. Discovery and travel can then grow from the same authored script path
+instead of hardcoded Remote Town destinations.
 
 ## Where we are now
 

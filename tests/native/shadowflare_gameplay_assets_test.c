@@ -32,6 +32,7 @@
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_service_controller.h"
 #include "ui/scenario_object_nameplate.h"
 #include "ui/world_pointer.h"
 
@@ -667,6 +668,52 @@ static int test_scenario_objects(
       nameplate.height != 15) {
     fprintf(stderr, "The Warehouse authored nameplate was not composed\n");
     return 1;
+  }
+  {
+    SfGameplayCharacterPanelUi character;
+    SfGameplayInventoryUi inventory;
+    SfGameplayServiceRequest request;
+    world->player.position = warehouse->position;
+    world->player.previous_position = warehouse->position;
+    memset(&input, 0, sizeof(input));
+    input.world_pointer_resolved = true;
+    input.pointed_actor_id = -1;
+    input.pointed_scenario_object_id = warehouse->id;
+    input.pointed_ground_item_id = -1;
+    input.pointer_primary_pressed = true;
+    sf_world_state_update(world, &input);
+    if (world->pointer.pending_scenario_object_id >= 0 ||
+        world->player.motion != SF_PLAYER_IDLE ||
+        world->service_request.kind !=
+          SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS ||
+        world->service_request.argument != 0) {
+      fprintf(stderr,
+        "The Warehouse click did not run its authored status sentence\n");
+      return 1;
+    }
+    request = sf_gameplay_service_take(&world->service_request);
+    if (world->service_request.kind != SF_GAMEPLAY_SERVICE_NONE) {
+      fprintf(stderr, "The Warehouse service request was not one-shot\n");
+      return 1;
+    }
+    sf_gameplay_character_panel_init(&character);
+    sf_gameplay_inventory_init(&inventory);
+    character.tab = SF_GAMEPLAY_CHARACTER_TAB_STATUS;
+    inventory.open = true;
+    if (!sf_gameplay_service_apply(&character, &inventory, request) ||
+        character.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+        !inventory.open || !inventory.special_open) {
+      fprintf(stderr,
+        "The Warehouse service did not preserve the right Inventory panel\n");
+      return 1;
+    }
+    request = (SfGameplayServiceRequest) {
+      SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS, 0};
+    if (!sf_gameplay_service_apply(&character, &inventory, request) ||
+        inventory.special_open) {
+      fprintf(stderr, "The second Warehouse request did not close its panel\n");
+      return 1;
+    }
   }
   return 0;
 }

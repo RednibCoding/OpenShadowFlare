@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_WORLD_H
 
 #include "game/input.h"
+#include "game/gameplay_service.h"
 #include "game/ground_item.h"
 #include "game/companion.h"
 #include "game/player.h"
@@ -72,6 +73,7 @@ typedef struct SfWorldState {
   SfScenarioObjectSet scenario_objects;
   SfGroundItemSet ground_items;
   SfSoundEventQueue sounds;
+  SfGameplayServiceRequest service_request;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];

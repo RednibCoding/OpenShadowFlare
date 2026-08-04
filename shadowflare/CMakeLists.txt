@@ -86,6 +86,7 @@ add_library(
   game/collision.c
   game/equipment.c
   game/game.c
+  game/gameplay_service.c
   game/ground_item.c
   game/inventory.c
   game/item_condition.c
@@ -109,6 +110,7 @@ add_library(
   game/world.c
   game/world_conversation.c
   game/world_inventory.c
+  game/world_interaction.c
   game/world_magic.c
   game/world_save.c
   game/world_script.c
@@ -153,6 +155,7 @@ add_library(
   ui/gameplay_status_pattern.c
   ui/gameplay_status.c
   ui/gameplay_special_items.c
+  ui/gameplay_service_controller.c
   ui/ground_item_nameplate.c
   ui/scenario_object_nameplate.c
   ui/world_pointer.c

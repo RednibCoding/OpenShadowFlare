@@ -253,6 +253,10 @@ SfScenarioScriptResult sf_scenario_script_execute_command(
     if (command->operand_count != 1u) return SF_SCENARIO_SCRIPT_INVALID;
     return SF_SCENARIO_SCRIPT_COMPLETE;
   }
+  if (command->opcode == 41) {
+    if (command->operand_count != 1u) return SF_SCENARIO_SCRIPT_INVALID;
+    return sf_scenario_script_native(context, command, operands, 1u);
+  }
   if (command->opcode == 46) {
     if (command->operand_count != 2u) return SF_SCENARIO_SCRIPT_INVALID;
     return sf_scenario_script_native(context, command, operands, 2u);

@@ -29,6 +29,10 @@ static bool sf_world_native_command(
       &world->ground_items, arguments[0], arguments[1],
       (SfWorldPoint) {arguments[2], arguments[3]},
       arguments[4], arguments[5]);
+  if (opcode == 41 && argument_count == 1u)
+    return sf_gameplay_service_request(
+      &world->service_request,
+      SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS, arguments[0]);
   if (opcode == 46 && argument_count == 2u) {
     SfScenarioObject *object = sf_scenario_object_find(
       &world->scenario_objects, arguments[0]);

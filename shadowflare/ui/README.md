@@ -54,6 +54,13 @@ remains the sole owner of saved spell state. `gameplay_panels_input.c`
 coordinates both tabs with Special Item, the independent right Inventory
 panel, Escape, the common camera offset, and click consumption.
 
+Script-opened panels cross one narrow boundary too. The world publishes a
+one-shot gameplay-service request without including a UI header.
+`gameplay_service_controller.c` consumes that request at the screen boundary
+and changes only UI-owned panel state. The Warehouse currently uses it to
+toggle Special Item while preserving an open right Inventory; later services
+can extend the same explicit request without teaching scripts about layouts.
+
 The owned-companion strip follows the same rule. Its draw file composes the
 retail life bar and active/inactive `Bar.njp` cells, while its input file owns
 the exact bottom-left hit rectangle and emits only a toggle intent. Companion

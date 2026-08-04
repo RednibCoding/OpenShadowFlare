@@ -288,6 +288,10 @@ MCT, retains the requested static patterns or CAF cells, and uses the MCT state
 channels for visibility, pointing, and judgement. The named Warehouse is a
 useful proof that object labels belong to authored scenario data rather than a
 map-specific UI table.
+Its status-kind-zero sentence calls opcode 41 with argument zero. The C99
+runtime preserves that route: object selection starts the authored sentence,
+the world emits one service request, and the UI toggles the existing Special
+Item panel without giving the interpreter access to panel state.
 
 After the item group is a 32-bit entry count followed by 16-byte entry records.
 Each record stores a signed 32-bit key, world X, world Y, and eight-way

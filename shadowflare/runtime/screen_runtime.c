@@ -25,6 +25,7 @@
 #include "ui/conversation_input.h"
 #include "ui/gameplay_panels_input.h"
 #include "ui/gameplay_companion_hud_input.h"
+#include "ui/gameplay_service_controller.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -169,6 +170,17 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
 bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
   SfLoadGameAssets *assets;
   if (!runtime || !game || !runtime->loaded) return false;
+  if (runtime->loaded_mode == SF_GAME_MODE_GAMEPLAY &&
+      game->mode == SF_GAME_MODE_GAMEPLAY) {
+    const SfGameplayServiceRequest request = sf_gameplay_service_take(
+      &game->world.service_request);
+    if (!sf_gameplay_service_apply(
+          &runtime->screen.gameplay.character_panel,
+          &runtime->screen.gameplay.inventory, request)) return false;
+    if (request.kind != SF_GAMEPLAY_SERVICE_NONE)
+      runtime->screen.gameplay.drawn = false;
+    return true;
+  }
   if (runtime->loaded_mode != SF_GAME_MODE_LOAD_GAME ||
       game->mode != SF_GAME_MODE_LOAD_GAME) return true;
   assets = &runtime->assets.load_game;
