@@ -18,6 +18,7 @@
  */
 
 #include "core/memory_budget.h"
+#include "data/save.h"
 #include "game/game.h"
 #include "game/scenario_object.h"
 #include "game/world_transport.h"
@@ -80,6 +81,7 @@ int main(void) {
   uint8_t town_direction;
   bool companion_inactive;
   bool save_zero_available;
+  SfSaveCatalog save_catalog;
   char root[1024];
   char probe_path[2048];
   FILE *probe;
@@ -254,6 +256,31 @@ int main(void) {
         game->world.scenario_id != 1 || !game->world.entered) {
       fprintf(stderr, "A saved non-town world regressed at the runtime seam\n");
       return 1;
+    }
+  }
+  if (!sf_save_catalog_load(root, &save_catalog)) {
+    fprintf(stderr, "The save catalog could not be inspected\n");
+    return 1;
+  }
+  {
+    uint8_t save_index;
+    for (save_index = 0u; save_index < save_catalog.count; ++save_index) {
+      game->mode = SF_GAME_MODE_LOAD_GAME;
+      if (!sf_screen_runtime_load(runtime, game)) {
+        fprintf(stderr, "The load screen could not replace a saved world\n");
+        return 1;
+      }
+      sf_world_state_init(&game->world, 0, 0, game->player_gender);
+      game->load_game.selected_file_slot = (int8_t)
+        save_catalog.entries[save_index].file_slot;
+      game->mode = SF_GAME_MODE_GAMEPLAY;
+      if (!sf_screen_runtime_load(runtime, game) ||
+          game->load_game.selected_file_slot != -1 ||
+          !game->world.entered) {
+        fprintf(stderr, "Save catalog entry %u could not enter its world\n",
+          (unsigned) save_catalog.entries[save_index].file_slot);
+        return 1;
+      }
     }
   }
 #endif

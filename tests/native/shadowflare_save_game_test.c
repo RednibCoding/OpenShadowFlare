@@ -418,6 +418,30 @@ int main(int argument_count, char **arguments) {
     fprintf(stderr, "The decoded save did not populate player owners\n");
     goto done;
   }
+  {
+    SfSavedMagic missing_magic;
+    SfSavedCompanions missing_companions;
+    memset(&missing_magic, 0, sizeof(missing_magic));
+    memset(&missing_companions, 0, sizeof(missing_companions));
+    player.magic.availability[0] = 3;
+    player.companions.levels[0] = 35;
+    if (!sf_player_restore_magic(&player, &missing_magic) ||
+        !sf_player_restore_companions(
+          &player, &saved, &missing_companions) ||
+        player.magic.availability[0] != 0 ||
+        player.magic.levels[0] != 1 ||
+        player.magic.selected_spell != -1 ||
+        player.companions.type != saved.companion_type ||
+        sf_player_companion_level(&player.companions) !=
+          saved.companion_level ||
+        player.companions.experience[player.companions.type] !=
+          saved.companion_experience ||
+        player.companions.defeated_updates !=
+          saved.companion_defeated_updates) {
+      fprintf(stderr, "An older save did not restore optional defaults\n");
+      goto done;
+    }
+  }
   sf_world_state_init(&world, 0, 0, player.gender);
   world.player = player;
   memset(&scenario, 0, sizeof(scenario));
