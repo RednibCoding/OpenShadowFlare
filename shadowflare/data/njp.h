@@ -135,6 +135,9 @@ bool sf_njp_load_animation(
 bool sf_njp_load_decoded_patterns(
   const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
   SfArena *arena, SfNjpDecodedResource *output);
+bool sf_njp_stream_decoded_patterns(
+  const char *path, const uint8_t *pattern_indices, uint8_t pattern_count,
+  SfArena *arena, SfNjpDecodedResource *output);
 bool sf_njp_read_pattern_bounds(
   const char *path, SfNjpPatternBounds *bounds,
   uint8_t capacity, uint8_t *pattern_count);

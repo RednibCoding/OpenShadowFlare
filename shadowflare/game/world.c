@@ -90,7 +90,7 @@ bool sf_world_state_bind_scenario(
 static SfWorldPoint sf_world_pointer_target(
     const SfWorldState *world, const SfGameInput *input) {
   return sf_screen_to_world((SfScreenPoint) {
-    input->pointer_x + world->camera_x,
+    input->pointer_x + world->camera_x + input->world_view_offset_x,
     input->pointer_y + world->camera_y});
 }
 

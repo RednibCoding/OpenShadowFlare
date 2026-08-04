@@ -17,38 +17,33 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_INPUT_H
-#define SHADOWFLARE_GAME_INPUT_H
+#ifndef SHADOWFLARE_ASSETS_INVENTORY_ITEM_ASSETS_H
+#define SHADOWFLARE_ASSETS_INVENTORY_ITEM_ASSETS_H
+
+#include "core/arena.h"
+#include "data/item.h"
+#include "data/njp.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfGameInput {
-  int32_t pointed_actor_id;
-  int32_t pointed_ground_item_id;
-  int8_t pointed_conversation_option;
-  int16_t pointer_x;
-  int16_t pointer_y;
-  int16_t world_view_offset_x;
-  uint8_t conversation_option_count;
-  bool pointer_active;
-  bool pointer_over_gameplay_ui;
-  bool world_pointer_resolved;
-  bool conversation_choices_resolved;
-  bool pointer_primary_pressed;
-  bool pointer_primary_down;
-  bool up_pressed;
-  bool down_pressed;
-  bool left_pressed;
-  bool right_pressed;
-  bool confirm_pressed;
-  bool cancel_pressed;
-  bool backspace_pressed;
-  bool delete_pressed;
-  bool pace_toggle_pressed;
-  bool inventory_pressed;
-  char text[16];
-  uint8_t text_length;
-} SfGameInput;
+#define SF_INVENTORY_ARTWORK_GROUP_LIMIT 14u
+
+typedef struct SfInventoryArtworkGroup {
+  SfNjpSparseResource resource;
+  uint8_t source_group;
+} SfInventoryArtworkGroup;
+
+typedef struct SfInventoryItemAssets {
+  SfInventoryArtworkGroup groups[SF_INVENTORY_ARTWORK_GROUP_LIMIT];
+  uint8_t group_count;
+} SfInventoryItemAssets;
+
+bool sf_inventory_item_assets_load(
+  SfInventoryItemAssets *assets, const char *data_root,
+  const SfItemGroundDefinition *definitions, uint8_t definition_count,
+  SfArena *arena);
+const SfNjpSparseResource *sf_inventory_item_artwork(
+  const SfInventoryItemAssets *assets, int32_t source_group);
 
 #endif

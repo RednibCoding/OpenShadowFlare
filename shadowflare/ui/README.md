@@ -33,3 +33,9 @@ rules and hidden choice markers. The input code turns those rendered spans
 into simple choice intent, and the bubble code only draws the result with the
 original frame patterns. None of them advances scripts or changes actor
 behavior.
+
+The gameplay inventory follows the same split. Its draw file composes the
+authored Status frame and retained item cells from the player owner. Its input
+file owns the `I`, ITEM-button, panel, and Close rectangles and produces the
+shared world-view offset. Inventory storage, stacking, and placement remain in
+`game/`; neither UI file talks to a target backend.

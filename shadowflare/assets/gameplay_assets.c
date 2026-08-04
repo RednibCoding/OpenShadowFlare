@@ -184,6 +184,9 @@ bool sf_gameplay_assets_load(
     0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
     19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
   };
+  static const uint8_t inventory_patterns[6] = {
+    0u, 1u, 2u, 3u, 116u, 117u
+  };
   size_t mark;
   bool success = false;
   if (!assets || !data_root || scenario_id < 0 || !arena) return false;
@@ -236,6 +239,10 @@ bool sf_gameplay_assets_load(
       !sf_njp_load_decoded_patterns(
         path, hud_patterns, 18u, arena, &assets->hud) ||
       !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.status) ||
+      !sf_njp_stream_decoded_patterns(
+        path, inventory_patterns, 6u, arena, &assets->inventory_panel) ||
+      !sf_retail_path_join(
         path, sizeof(path), data_root,
         sf_retail_game_paths.parameter_tables) ||
       !sf_player_initial_parameters_load(
@@ -247,7 +254,11 @@ bool sf_gameplay_assets_load(
       !sf_scenario_actor_assets_load(
         &assets->actors, data_root, &assets->scenario, arena) ||
       !sf_ground_item_assets_load(
-        &assets->ground_items, data_root, assets->script, arena)) goto done;
+        &assets->ground_items, data_root, assets->script, arena) ||
+      !sf_inventory_item_assets_load(
+        &assets->inventory_items, data_root,
+        assets->ground_items.definitions,
+        assets->ground_items.definition_count, arena)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:

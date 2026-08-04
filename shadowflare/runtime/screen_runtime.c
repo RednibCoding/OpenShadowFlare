@@ -21,6 +21,7 @@
 
 #include "ui/conversation_input.h"
 #include "ui/gameplay_hud_input.h"
+#include "ui/gameplay_inventory_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -137,9 +138,10 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
 }
 
 void sf_screen_runtime_resolve_input(
-    const SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
+    SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
   if (!input) return;
   input->pointer_over_gameplay_ui = false;
+  input->world_view_offset_x = 0;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
   input->pointed_ground_item_id = -1;
@@ -149,11 +151,15 @@ void sf_screen_runtime_resolve_input(
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
-  if (game->world.actor_script_state.message_active)
+  if (sf_gameplay_inventory_input_resolve(
+        &runtime->screen.gameplay.inventory,
+        game->world.actor_script_state.message_active, input))
+    runtime->screen.gameplay.drawn = false;
+  if (game->world.actor_script_state.message_active &&
+      !input->pointer_over_gameplay_ui)
     sf_conversation_input_resolve(
       &runtime->assets.gameplay, &game->world, input);
-  else {
-    sf_gameplay_hud_input_resolve(input);
+  else if (!game->world.actor_script_state.message_active) {
     if (input->pointer_over_gameplay_ui) return;
     sf_world_pointer_resolve(
       &runtime->assets.gameplay, &game->world, input);

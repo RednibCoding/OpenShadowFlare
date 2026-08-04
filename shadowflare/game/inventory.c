@@ -129,3 +129,17 @@ bool sf_inventory_store(
   *inventory = updated;
   return true;
 }
+
+int32_t sf_inventory_gold(const SfInventoryState *inventory) {
+  int32_t total = 0;
+  uint8_t index;
+  if (!inventory) return 0;
+  for (index = 0u; index < inventory->count; ++index) {
+    const SfInventoryItem *item = &inventory->items[index];
+    if (item->category != SF_INVENTORY_GOLD_CATEGORY ||
+        item->definition_id != SF_INVENTORY_GOLD_DEFINITION) continue;
+    if (item->quantity > INT32_MAX - total) return INT32_MAX;
+    total += item->quantity;
+  }
+  return total;
+}

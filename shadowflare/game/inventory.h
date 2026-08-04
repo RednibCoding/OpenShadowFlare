@@ -50,5 +50,6 @@ void sf_inventory_init(SfInventoryState *inventory);
 bool sf_inventory_store(
   SfInventoryState *inventory, const SfItemGroundDefinition *definition,
   int32_t quantity);
+int32_t sf_inventory_gold(const SfInventoryState *inventory);
 
 #endif

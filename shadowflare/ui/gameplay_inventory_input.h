@@ -17,20 +17,16 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_HUD_INPUT_H
-#define SHADOWFLARE_UI_GAMEPLAY_HUD_INPUT_H
+#ifndef SHADOWFLARE_UI_GAMEPLAY_INVENTORY_INPUT_H
+#define SHADOWFLARE_UI_GAMEPLAY_INVENTORY_INPUT_H
 
 #include "game/input.h"
+#include "ui/gameplay_inventory.h"
 
-typedef enum SfGameplayHudButton {
-  SF_GAMEPLAY_HUD_BUTTON_NONE = 0,
-  SF_GAMEPLAY_HUD_BUTTON_OPTIONS,
-  SF_GAMEPLAY_HUD_BUTTON_STATUS,
-  SF_GAMEPLAY_HUD_BUTTON_INVENTORY
-} SfGameplayHudButton;
+#include <stdbool.h>
 
-void sf_gameplay_hud_input_resolve(SfGameInput *input);
-SfGameplayHudButton sf_gameplay_hud_button_at_pointer(
-  const SfGameInput *input);
+bool sf_gameplay_inventory_input_resolve(
+  SfGameplayInventoryUi *inventory, bool conversation_active,
+  SfGameInput *input);
 
 #endif

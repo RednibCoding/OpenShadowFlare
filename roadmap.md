@@ -33,10 +33,13 @@ and pickup sounds. Harley's complete `Explanation` branch also runs from the
 shipped SCS data. The authored bottom HUD now reads level, life, mana,
 experience, and walk/run state from the player owner. Its initial values come
 from a streaming scan of retail's parameter tables, and HUD clicks cannot leak
-into world movement. The next slices should keep growing shared systems in
-dependency order: expose the owned items through the first inventory panel,
-then add the next native services needed by Remote Town, saves, scenario
-travel, combat and companions, and finally the remaining `SF_EXE` feature set.
+into world movement. The first right-side inventory panel now exposes those
+owned items using the authored Status and Item sheets, keeps the left-hand
+world live around an x=160 camera anchor, and consumes its own input. The next
+slices should keep growing shared systems in dependency order: add owned-item
+movement, world dropping, and equipment on top of that panel, then the next
+native services needed by Remote Town, saves, scenario travel, combat and
+companions, and finally the remaining `SF_EXE` feature set.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

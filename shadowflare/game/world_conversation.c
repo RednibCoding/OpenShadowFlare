@@ -62,7 +62,8 @@ bool sf_world_conversation_update(
   state = &world->actor_script_state;
   sf_player_cancel_movement(&world->player);
   if (!state->message_selection_pending) {
-    if (input->pointer_primary_pressed || input->confirm_pressed)
+    if ((input->pointer_primary_pressed &&
+         !input->pointer_over_gameplay_ui) || input->confirm_pressed)
       sf_world_resume_conversation(world, -1);
     return true;
   }

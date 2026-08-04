@@ -45,6 +45,9 @@ typedef struct SfItemGroundDefinition {
   int32_t blue_strength;
   int32_t inventory_width;
   int32_t inventory_height;
+  int32_t inventory_pattern_group;
+  int32_t inventory_pattern;
+  int32_t inventory_palette;
   int32_t weight;
   int32_t maximum_durability;
   int32_t variant;

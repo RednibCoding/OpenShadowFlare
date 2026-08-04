@@ -163,6 +163,7 @@ void sf_world_pointer_resolve(
       input->pointer_y >= 408 || world->actor_script_state.message_active)
     return;
   sf_world_render_view(world, 1000u, &view);
+  view.camera_x += input->world_view_offset_x;
   pointer_world = sf_screen_to_world((SfScreenPoint) {
     input->pointer_x + view.camera_x,
     input->pointer_y + view.camera_y});

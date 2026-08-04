@@ -80,6 +80,8 @@ typedef struct SfRetailGamePaths {
   const char *font;
   const char *speech_frame;
   const char *hud;
+  const char *status;
+  const char *inventory_item_format;
 } SfRetailGamePaths;
 
 extern const SfRetailTitlePaths sf_retail_title_paths;

@@ -22,6 +22,7 @@
 
 #include "assets/player_assets.h"
 #include "assets/ground_item_assets.h"
+#include "assets/inventory_item_assets.h"
 #include "assets/scenario_actor_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
@@ -51,10 +52,12 @@ typedef struct SfGameplayAssets {
   SfNjpSelected font;
   SfNjpSelected speech_frame;
   SfNjpDecodedResource hud;
+  SfNjpDecodedResource inventory_panel;
   SfPlayerInitialParameters player_parameters;
   SfPlayerAssets player;
   SfScenarioActorAssets actors;
   SfGroundItemAssets ground_items;
+  SfInventoryItemAssets inventory_items;
   SfGameplayPatternSet *pattern_sets;
   size_t memory_bytes;
   uint8_t pattern_set_count;

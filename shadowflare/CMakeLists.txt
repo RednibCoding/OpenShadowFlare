@@ -37,6 +37,7 @@ add_library(
   assets/character_create_assets.c
   assets/ground_item_assets.c
   assets/ground_item_requests.c
+  assets/inventory_item_assets.c
   assets/gameplay_assets.c
   assets/load_game_assets.c
   assets/menu_assets.c
@@ -58,6 +59,8 @@ add_library(
   data/mct_reader.c
   data/mct_sections.c
   data/njp.c
+  data/njp_stream.c
+  data/njp_stream_reader.c
   data/njp_sparse.c
   data/obl.c
   data/pattern_list.c
@@ -104,6 +107,8 @@ add_library(
   ui/conversation_layout.c
   ui/gameplay_hud.c
   ui/gameplay_hud_input.c
+  ui/gameplay_inventory.c
+  ui/gameplay_inventory_input.c
   ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c

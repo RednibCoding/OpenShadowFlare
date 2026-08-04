@@ -92,8 +92,14 @@ life, mana, experience, and walk/run indicator coming from the player owner.
 A streaming `Table.Tbd` reader extracts only the active gender's 13 starting
 parameters and level-one experience threshold; the 460,387-byte decoded table
 payload is never retained. HUD input is resolved in `ui/`, so clicking its
-surface cannot leak through as a movement command. Belt items, selected magic,
-companion controls, and the three panel buttons remain later HUD slices.
+surface cannot leak through as a movement command. `I` and the authored ITEM
+button now open the right-hand inventory panel while the live world shifts to
+the retail x=160 camera anchor. The panel reads Gold from the fixed owner and
+draws picked-up items in their real 9x4 cells from the separate inventory
+patterns in `Item0000.njp` through `Item0013.njp`. Its frame, gender silhouette,
+values, and Close tab come from the required pieces of `Status.njp`; unrelated
+parts of those large archives are never retained. Belt items, selected magic,
+companion controls, and the Menu and Status panels remain later HUD slices.
 
 ## Hard limits
 
@@ -202,9 +208,10 @@ the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,413,906 bytes of the main
-arena, leaving 2,926,126 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, ground-item, and UI data and artwork account for 4,075,307
+The complete Remote Town gameplay screen uses 4,696,800 bytes of the main
+arena, leaving 2,643,232 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, ground-item, inventory-panel, and UI data and artwork account
+for 4,358,201
 bytes. GND
 rendering
 data is decoded directly from its compressed three-plane stream into two bytes
@@ -284,6 +291,16 @@ boundary. Pointer hit testing and hover labels stay in `ui/`; approach,
 fixed-grid placement, gold stacking, rollback on failure, and pickup sound
 selection stay in `game/`. The player owns the resulting 36-entry fixed array,
 so no heap allocation or retained item-database copy is needed.
+
+The first inventory panel follows the same lifetime. `Status.njp` is streamed
+twice to retain only six multi-part patterns, without constructing metadata for
+its other 115 patterns. Item definitions provide the inventory group, pattern,
+and optional palette directly; only groups and cells referenced by the active
+map's retained definitions are decoded. `ui/gameplay_inventory.c` composes the
+panel, while `ui/gameplay_inventory_input.c` owns its authored rectangles and
+camera intent. World drawing, opaque-pixel picking, and movement targeting all
+receive the same integer x offset, so an open panel cannot make what the player
+sees disagree with what a click selects.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

@@ -23,6 +23,7 @@
 #include "ui/actor_nameplate.h"
 #include "ui/conversation_bubble.h"
 #include "ui/gameplay_hud.h"
+#include "ui/gameplay_inventory.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
@@ -48,6 +49,7 @@ bool sf_gameplay_screen_init(
   SfWorldRenderView view;
   if (!screen || !assets || !world) return false;
   memset(screen, 0, sizeof(*screen));
+  sf_gameplay_inventory_init(&screen->inventory);
   sf_world_render_view(world, 1000u, &view);
   if (!sf_gameplay_scene_update(
         &screen->scene, assets, world, &view, 1000u))
@@ -109,6 +111,8 @@ void sf_gameplay_screen_draw(
       !game->world.entered) return;
   player = &game->world.player;
   sf_world_render_view(&game->world, interpolation, &view);
+  if (screen->inventory.open)
+    view.camera_x += SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   scene_moved = !screen->drawn ||
     screen->rendered_player_x != view.player_position.x ||
     screen->rendered_player_y != view.player_position.y ||
@@ -163,6 +167,8 @@ void sf_gameplay_screen_draw(
   sf_conversation_bubble_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
+  sf_gameplay_inventory_draw(
+    renderer, assets, player, &screen->inventory, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);

@@ -23,12 +23,15 @@
 #include "data/pattern_list.h"
 #include "game/player.h"
 #include "game/world.h"
+#include "game/world_conversation.h"
 #include "game/world_script.h"
 #include "screens/gameplay_screen.h"
 #include "screens/gameplay_object_visual.h"
 #include "ui/conversation_input.h"
 #include "ui/conversation_layout.h"
 #include "ui/gameplay_hud.h"
+#include "ui/gameplay_inventory.h"
+#include "ui/gameplay_inventory_input.h"
 #include "ui/world_pointer.h"
 
 #include <ctype.h>
@@ -231,7 +234,8 @@ static int test_inventory_storage(const SfGameplayAssets *assets) {
       inventory.count != 3u ||
       inventory.items[0].quantity != 10000 ||
       inventory.items[1].quantity != 10000 ||
-      inventory.items[2].quantity != 1) {
+      inventory.items[2].quantity != 1 ||
+      sf_inventory_gold(&inventory) != 20001) {
     fprintf(stderr, "Retail gold stacks are not stored transactionally\n");
     return 1;
   }
@@ -246,6 +250,112 @@ static int test_inventory_storage(const SfGameplayAssets *assets) {
   if (sf_inventory_store(&inventory, dagger, 1) ||
       memcmp(&inventory, &full, sizeof(inventory)) != 0) {
     fprintf(stderr, "A failed pickup partially changed the inventory\n");
+    return 1;
+  }
+  return 0;
+}
+
+static int test_gameplay_inventory(
+    const SfGameplayAssets *assets, const SfPlayerState *player) {
+  const SfItemGroundDefinition *dagger =
+    find_ground_definition(assets, 0u, 100);
+  const SfNjpSparseResource *artwork;
+  SfGameplayInventoryUi inventory;
+  SfPlayerState empty_player;
+  SfRenderer renderer;
+  SfGameInput input;
+  uint16_t empty_item[32u * 96u];
+  size_t changed = 0u;
+  int y;
+  if (!dagger || assets->inventory_panel.pattern_count != 6u ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 2u) ||
+      sf_njp_decoded_pattern(
+        &assets->inventory_panel, 2u)->reference_count != 3u ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 116u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 117u) ||
+      sf_njp_decoded_pattern(&assets->inventory_panel, 74u)) {
+    fprintf(stderr, "The retail inventory panel patterns are incomplete\n");
+    return 1;
+  }
+  artwork = sf_inventory_item_artwork(
+    &assets->inventory_items, dagger->inventory_pattern_group);
+  if (!artwork || !sf_njp_sparse_pattern(
+        artwork, dagger->inventory_pattern)) {
+    fprintf(stderr, "The Dagger inventory artwork was not retained\n");
+    return 1;
+  }
+  sf_gameplay_inventory_init(&inventory);
+  memset(&input, 0, sizeof(input));
+  input.inventory_pressed = true;
+  if (!sf_gameplay_inventory_input_resolve(
+        &inventory, false, &input) || !inventory.open ||
+      input.world_view_offset_x != SF_GAMEPLAY_INVENTORY_VIEW_OFFSET) {
+    fprintf(stderr, "The inventory key did not open the retail panel\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_x = 500;
+  input.pointer_y = 100;
+  (void) sf_gameplay_inventory_input_resolve(&inventory, false, &input);
+  if (!input.pointer_over_gameplay_ui ||
+      input.world_view_offset_x != SF_GAMEPLAY_INVENTORY_VIEW_OFFSET) {
+    fprintf(stderr, "The open inventory leaked its pointer into the world\n");
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_gameplay_test_pixels,
+        sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+  empty_player = *player;
+  sf_inventory_init(&empty_player.inventory);
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_inventory_draw(
+    &renderer, assets, &empty_player, &inventory, NULL);
+  for (y = 0; y < 96; ++y)
+    memcpy(
+      empty_item + (size_t) y * 32u,
+      sf_gameplay_test_pixels + (size_t) (264 + y) * 640u + 336u,
+      32u * sizeof(uint16_t));
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_inventory_draw(
+    &renderer, assets, player, &inventory, NULL);
+  for (y = 0; y < 96; ++y) {
+    int x;
+    for (x = 0; x < 32; ++x) {
+      if (sf_gameplay_test_pixels[
+            (size_t) (264 + y) * 640u + 336u + x] !=
+          empty_item[(size_t) y * 32u + x]) ++changed;
+    }
+  }
+  if (changed < 10u) {
+    fprintf(stderr, "The picked-up Dagger was not drawn in its backpack cells\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = 380;
+  input.pointer_y = 398;
+  if (!sf_gameplay_inventory_input_resolve(
+        &inventory, false, &input) || inventory.open ||
+      !input.pointer_over_gameplay_ui || input.world_view_offset_x != 0) {
+    fprintf(stderr, "The authored inventory close control did not close\n");
+    return 1;
+  }
+  return 0;
+}
+
+static int test_gameplay_ui_conversation_guard(SfWorldState *world) {
+  SfWorldState guarded = *world;
+  SfGameInput input;
+  guarded.actor_script_state.message_active = true;
+  guarded.actor_script_state.message_selection_pending = false;
+  memset(&input, 0, sizeof(input));
+  input.pointer_primary_pressed = true;
+  input.pointer_over_gameplay_ui = true;
+  if (!sf_world_conversation_update(&guarded, &input) ||
+      !guarded.actor_script_state.message_active) {
+    fprintf(stderr, "A panel click advanced the conversation behind it\n");
     return 1;
   }
   return 0;
@@ -585,6 +695,21 @@ static int test_actor_pointer(
     fprintf(stderr, "Ostare has no exact opaque pointer cell\n");
     return 1;
   }
+  if (exact_x < SF_GAMEPLAY_INVENTORY_VIEW_OFFSET) {
+    fprintf(stderr, "Ostare's exact cell cannot exercise the shifted view\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_x = (int16_t) (
+    exact_x - SF_GAMEPLAY_INVENTORY_VIEW_OFFSET);
+  input.pointer_y = (int16_t) exact_y;
+  input.world_view_offset_x = SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
+  sf_world_pointer_resolve(assets, world, &input);
+  if (input.pointed_actor_id != actor->id) {
+    fprintf(stderr, "World picking did not follow the inventory camera shift\n");
+    return 1;
+  }
   for (y = exact_y - 16; y <= exact_y + 16; ++y) {
     int x;
     for (x = exact_x - 16; x <= exact_x + 16; ++x) {
@@ -768,6 +893,8 @@ int main(void) {
     return 1;
   }
   if (test_ground_item_pickup(&assets, &world)) return 1;
+  if (test_gameplay_inventory(&assets, &world.player)) return 1;
+  if (test_gameplay_ui_conversation_guard(&world)) return 1;
 #endif
   return 0;
 }

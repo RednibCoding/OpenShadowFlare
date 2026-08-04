@@ -73,8 +73,11 @@ static bool sf_item_ground_word(
   if (offset == 28u) definition->inventory_width = value;
   if (offset == 32u) definition->inventory_height = value;
   if (offset == 36u) definition->weight = value;
+  if (offset == 40u) definition->inventory_pattern_group = value;
+  if (offset == 44u) definition->inventory_pattern = value;
   if (offset == 48u) definition->resource_id = value;
   if (offset == 52u) definition->animation_chart = value;
+  if (offset == 56u) definition->inventory_palette = value;
   if (offset == 60u) definition->red_strength = value;
   if (offset == 64u) definition->green_strength = value;
   if (offset == 68u) definition->blue_strength = value;

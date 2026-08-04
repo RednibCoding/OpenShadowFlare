@@ -17,38 +17,30 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_INPUT_H
-#define SHADOWFLARE_GAME_INPUT_H
+#ifndef SHADOWFLARE_DATA_NJP_STREAM_READER_H
+#define SHADOWFLARE_DATA_NJP_STREAM_READER_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
-typedef struct SfGameInput {
-  int32_t pointed_actor_id;
-  int32_t pointed_ground_item_id;
-  int8_t pointed_conversation_option;
-  int16_t pointer_x;
-  int16_t pointer_y;
-  int16_t world_view_offset_x;
-  uint8_t conversation_option_count;
-  bool pointer_active;
-  bool pointer_over_gameplay_ui;
-  bool world_pointer_resolved;
-  bool conversation_choices_resolved;
-  bool pointer_primary_pressed;
-  bool pointer_primary_down;
-  bool up_pressed;
-  bool down_pressed;
-  bool left_pressed;
-  bool right_pressed;
-  bool confirm_pressed;
-  bool cancel_pressed;
-  bool backspace_pressed;
-  bool delete_pressed;
-  bool pace_toggle_pressed;
-  bool inventory_pressed;
-  char text[16];
-  uint8_t text_length;
-} SfGameInput;
+typedef struct SfNjpStreamHeader {
+  int32_t part_count;
+  uint8_t version;
+  bool united;
+  bool shadow;
+} SfNjpStreamHeader;
+
+bool sf_njp_stream_read(FILE *file, void *destination, size_t size);
+bool sf_njp_stream_skip(FILE *file, long size);
+bool sf_njp_stream_i32(FILE *file, int32_t *value);
+uint32_t sf_njp_stream_u32(const uint8_t *bytes);
+bool sf_njp_stream_header(FILE *file, SfNjpStreamHeader *header);
+bool sf_njp_stream_part(
+  FILE *file, bool shadow, int32_t *bits, uint16_t *width,
+  uint16_t *height, uint16_t *stride, bool *compressed,
+  uint32_t *decoded_size);
+bool sf_njp_stream_skip_part(FILE *file, bool shadow);
 
 #endif

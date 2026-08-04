@@ -76,7 +76,9 @@ const SfRetailGamePaths sf_retail_game_paths = {
   "System/Game/Voice/Voice00.Voc",
   "System/Common/Pattern/Font00.njp",
   "System/Game/Pattern/Hukidasi.njp",
-  "System/Game/Pattern/Bar.njp"
+  "System/Game/Pattern/Bar.njp",
+  "System/Game/Pattern/Status.njp",
+  "System/Game/Pattern/Item%04u.njp"
 };
 
 static bool sf_retail_path_copy(
