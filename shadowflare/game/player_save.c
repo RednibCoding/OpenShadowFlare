@@ -202,3 +202,15 @@ bool sf_player_restore_magic(
   player->magic.targeting = false;
   return true;
 }
+
+bool sf_player_restore_companions(
+    SfPlayerState *player, const SfSavedPlayer *saved_player,
+    const SfSavedCompanions *saved_companions) {
+  if (!player || !saved_player || !saved_companions ||
+      !saved_companions->present) return false;
+  return sf_player_companion_progress_restore(
+    &player->companions, saved_player->companion_type,
+    saved_player->companion_defeated_updates,
+    saved_companions->levels, saved_companions->experience,
+    saved_companions->count);
+}

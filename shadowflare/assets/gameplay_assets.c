@@ -211,6 +211,7 @@ bool sf_gameplay_assets_load(
     SfGameplayAssets *assets, const char *data_root,
     int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
     int32_t player_level,
+    int32_t companion_type, int32_t companion_level,
     const uint8_t *appearance_parts, uint8_t appearance_part_count,
     const SfItemReference *visible_items, uint8_t visible_item_count,
     const SfItemReference *retained_items, uint8_t retained_item_count,
@@ -222,9 +223,10 @@ bool sf_gameplay_assets_load(
   char path[SF_RETAIL_PATH_CAPACITY];
   static const uint8_t font_pattern = 0u;
   static const uint8_t speech_patterns[5] = {0u, 1u, 2u, 3u, 4u};
-  static const uint8_t hud_patterns[18] = {
+  static const uint8_t hud_patterns[22] = {
     0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
-    19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
+    19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u,
+    29u, 30u, 31u, 32u
   };
   static const uint8_t inventory_patterns[37] = {
     0u, 1u, 2u, 3u, 5u, 6u, 14u, 15u, 16u, 32u,
@@ -292,7 +294,7 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.hud) ||
       !sf_njp_load_decoded_patterns(
-        path, hud_patterns, 18u, arena, &assets->hud) ||
+        path, hud_patterns, 22u, arena, &assets->hud) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
@@ -311,6 +313,8 @@ bool sf_gameplay_assets_load(
         sf_retail_game_paths.parameter_tables) ||
       !sf_player_initial_parameters_load(
         path, player_gender, player_level, &assets->player_parameters) ||
+      !sf_companion_profile_load(
+        path, companion_type, companion_level, &assets->companion_profile) ||
       !sf_spell_parameters_load(path, assets->spell_parameters) ||
       !sf_gameplay_sound_assets_load(
         &assets->sounds, data_root, arena) ||
@@ -321,6 +325,8 @@ bool sf_gameplay_assets_load(
         assets, data_root, player_gender,
         appearance_parts, appearance_part_count,
         visible_items, visible_item_count, arena) ||
+      !sf_companion_assets_load(
+        &assets->companion, data_root, &assets->companion_profile, arena) ||
       !sf_scenario_actor_assets_load(
         &assets->actors, data_root, &assets->scenario, arena) ||
       !sf_inventory_item_assets_load(

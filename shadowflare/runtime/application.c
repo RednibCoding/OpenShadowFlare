@@ -97,6 +97,7 @@ static void sf_read_event(
     if (event->key == TWL_KEY_BACKSPACE) input->backspace_pressed = true;
     if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
     if (event->key == TWL_KEY_R) input->pace_toggle_pressed = true;
+    if (event->key == TWL_KEY_SPACE) input->companion_toggle_pressed = true;
     if (event->key == TWL_KEY_I) input->inventory_pressed = true;
     if (event->key == TWL_KEY_S) input->status_pressed = true;
     if (event->key == TWL_KEY_M) input->magic_pressed = true;
@@ -147,6 +148,8 @@ static void sf_read_event(
       input->right_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_SOUTH)
       input->confirm_pressed = true;
+    if (event->controller_button == TWL_CONTROLLER_BUTTON_LEFT_SHOULDER)
+      input->companion_toggle_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_EAST ||
         event->controller_button == TWL_CONTROLLER_BUTTON_BACK)
       input->cancel_pressed = true;
@@ -173,6 +176,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->backspace_pressed = false;
   input->delete_pressed = false;
   input->pace_toggle_pressed = false;
+  input->companion_toggle_pressed = false;
   input->inventory_pressed = false;
   input->status_pressed = false;
   input->magic_pressed = false;

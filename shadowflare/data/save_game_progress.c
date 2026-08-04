@@ -21,8 +21,6 @@
 
 #include <string.h>
 
-#define SF_SAVED_COMPANION_LIMIT 256u
-
 static bool sf_saved_game_i32(
     SfSavePayloadReader *reader, int32_t *value) {
   uint8_t bytes[4];
@@ -93,14 +91,20 @@ static bool sf_saved_game_magic(
   return true;
 }
 
-static bool sf_saved_game_skip_companions(SfSavePayloadReader *reader) {
+static bool sf_saved_game_companions(
+    SfSavePayloadReader *reader, SfSavedCompanions *companions) {
   int32_t count;
-  uint32_t bytes;
-  if (!sf_saved_game_i32(reader, &count) || count <= 0 ||
-      count > (int32_t) SF_SAVED_COMPANION_LIMIT) return false;
-  bytes = (uint32_t) count * 8u;
-  return sf_save_payload_content_remaining(reader) >= bytes &&
-    sf_save_payload_skip(reader, bytes);
+  uint8_t index;
+  if (!sf_saved_game_i32(reader, &count) ||
+      count != (int32_t) SF_COMPANION_COUNT) return false;
+  for (index = 0u; index < SF_COMPANION_COUNT; ++index)
+    if (!sf_saved_game_i32(reader, &companions->levels[index])) return false;
+  for (index = 0u; index < SF_COMPANION_COUNT; ++index)
+    if (!sf_saved_game_i32(reader, &companions->experience[index]))
+      return false;
+  companions->count = SF_COMPANION_COUNT;
+  companions->present = true;
+  return true;
 }
 
 static bool sf_saved_game_world(
@@ -126,7 +130,7 @@ bool sf_save_game_read_progress(
   if (sf_save_payload_content_remaining(reader) == 0u) return true;
   if (!sf_saved_game_magic(reader, &game->magic)) return false;
   if (sf_save_payload_content_remaining(reader) == 0u) return true;
-  if (!sf_saved_game_skip_companions(reader)) return false;
+  if (!sf_saved_game_companions(reader, &game->companions)) return false;
   if (sf_save_payload_content_remaining(reader) == 0u) return true;
   return sf_saved_game_world(reader, &game->world);
 }

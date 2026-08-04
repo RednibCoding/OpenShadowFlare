@@ -17,23 +17,29 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_HUD_H
-#define SHADOWFLARE_UI_GAMEPLAY_HUD_H
+#ifndef SHADOWFLARE_DATA_COMPANION_PARAMETERS_H
+#define SHADOWFLARE_DATA_COMPANION_PARAMETERS_H
 
-#include "assets/gameplay_assets.h"
-#include "game/player.h"
-#include "render/renderer.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-void sf_gameplay_hud_draw(
-  SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern_strength(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, uint16_t strength,
-  const SfRect *clip);
-int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width);
+#define SF_COMPANION_COUNT 6u
+#define SF_COMPANION_NAME_CAPACITY 24u
+#define SF_COMPANION_PARAMETER_COUNT 19u
+
+typedef struct SfCompanionProfile {
+  char name[SF_COMPANION_NAME_CAPACITY];
+  int32_t values[SF_COMPANION_PARAMETER_COUNT];
+  int32_t type;
+  int32_t level;
+  int32_t resource_id;
+  int32_t red_strength;
+  int32_t green_strength;
+  int32_t blue_strength;
+} SfCompanionProfile;
+
+bool sf_companion_profile_load(
+  const char *path, int32_t type, int32_t level,
+  SfCompanionProfile *profile);
 
 #endif

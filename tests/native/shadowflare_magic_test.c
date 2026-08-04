@@ -169,6 +169,8 @@ static int test_magic_rendering(void) {
     &arena, sf_magic_test_memory.bytes, sizeof(sf_magic_test_memory.bytes));
   if (!sf_gameplay_assets_load(
         &assets, root, 0, 0, player.gender, player.level,
+        player.companions.type,
+        sf_player_companion_level(&player.companions),
         player.appearance_parts, player.appearance_part_count,
         player.visible_items, player.visible_item_count,
         retained, retained_count, &arena)) return 1;

@@ -24,6 +24,7 @@
 #include "game/world_save.h"
 #include "ui/conversation_input.h"
 #include "ui/gameplay_panels_input.h"
+#include "ui/gameplay_companion_hud_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -76,6 +77,9 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
     SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
     uint8_t retained_item_count = 0u;
     int32_t player_level = game->world.player.level;
+    int32_t companion_type = game->world.player.companions.type;
+    int32_t companion_level = sf_player_companion_level(
+      &game->world.player.companions);
     const bool loading_save = game->load_game.selected_file_slot >= 0;
     if (loading_save) {
       success = sf_save_game_load(
@@ -86,6 +90,8 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       if (success) {
         game->world.player.gender = saved_game.player.gender == 1 ? 1u : 0u;
         player_level = saved_game.player.level;
+        companion_type = saved_game.player.companion_type;
+        companion_level = saved_game.player.companion_level;
         success = sf_saved_player_required_items(
           &saved_game.player, retained_items,
           SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
@@ -100,6 +106,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
         &runtime->assets.gameplay, runtime->data_root,
         game->world.scenario_id, game->world.entry_key,
         game->world.player.gender, player_level,
+        companion_type, companion_level,
         game->world.player.appearance_parts,
         game->world.player.appearance_part_count,
         game->world.player.visible_items,
@@ -120,6 +127,10 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       if (success && loading_save)
         success = sf_player_restore_magic(
           &game->world.player, &saved_game.magic);
+      if (success && loading_save)
+        success = sf_player_restore_companions(
+          &game->world.player, &saved_game.player,
+          &saved_game.companions);
       if (success)
         (void) sf_player_magic_set_targeting(
           &game->world.player.magic, true);
@@ -142,6 +153,8 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       if (success) sf_world_state_enter(
           &game->world, entry->world_x, entry->world_y,
           (uint8_t) entry->direction);
+      if (success) success = sf_world_state_bind_companion(
+        &game->world, &runtime->assets.gameplay.companion_profile);
       if (success) success = sf_gameplay_screen_init(
         &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
       if (success && loading_save) game->load_game.selected_file_slot = -1;
@@ -210,6 +223,7 @@ void sf_screen_runtime_resolve_input(
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
+  sf_gameplay_companion_hud_input_resolve(input);
   if (sf_gameplay_panels_input_resolve(
         &runtime->screen.gameplay.character_panel,
         &runtime->screen.gameplay.inventory,

@@ -84,6 +84,7 @@ typedef struct SfGameInput {
   bool backspace_pressed;
   bool delete_pressed;
   bool pace_toggle_pressed;
+  bool companion_toggle_pressed;
   bool inventory_pressed;
   bool status_pressed;
   bool magic_pressed;

@@ -17,24 +17,34 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_PLAYER_SAVE_H
-#define SHADOWFLARE_GAME_PLAYER_SAVE_H
+#ifndef SHADOWFLARE_ASSETS_COMPANION_ASSETS_H
+#define SHADOWFLARE_ASSETS_COMPANION_ASSETS_H
 
-#include "data/save_player.h"
-#include "data/save_game.h"
-#include "game/player.h"
+#include "core/arena.h"
+#include "data/caf.h"
+#include "data/companion_parameters.h"
+#include "data/njp.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-bool sf_player_restore_save(
-  SfPlayerState *player, const SfSavedPlayer *saved,
-  const SfItemGroundDefinition *definitions, uint8_t definition_count,
-  int32_t experience_threshold);
-bool sf_player_restore_magic(
-  SfPlayerState *player, const SfSavedMagic *saved);
-bool sf_player_restore_companions(
-  SfPlayerState *player, const SfSavedPlayer *saved_player,
-  const SfSavedCompanions *saved_companions);
+#define SF_COMPANION_ANIMATION_COUNT 3u
+#define SF_COMPANION_DIRECTION_COUNT 8u
+#define SF_COMPANION_PART_LIMIT 8u
+
+typedef struct SfCompanionAssets {
+  SfCafSelectedAnimation animations
+    [SF_COMPANION_ANIMATION_COUNT][SF_COMPANION_DIRECTION_COUNT];
+  SfNjpSparseResource artwork;
+  SfNjpSparseResource shadows;
+  int32_t resource_id;
+  size_t memory_bytes;
+  uint8_t selected_parts;
+} SfCompanionAssets;
+
+bool sf_companion_assets_load(
+  SfCompanionAssets *assets, const char *data_root,
+  const SfCompanionProfile *profile, SfArena *arena);
 
 #endif

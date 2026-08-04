@@ -37,6 +37,7 @@ typedef struct SfGameplayScreen {
   SfGameplayCharacterPanelUi character_panel;
   uint32_t rendered_animation_frame;
   uint32_t rendered_ground_item_revision;
+  uint32_t rendered_companion_frame;
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_x[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_y[SF_MCT_PERSON_LIMIT];
@@ -46,6 +47,9 @@ typedef struct SfGameplayScreen {
   int32_t rendered_player_y;
   int32_t rendered_camera_x;
   int32_t rendered_camera_y;
+  int32_t rendered_companion_x;
+  int32_t rendered_companion_y;
+  int32_t rendered_companion_life;
   int32_t rendered_hovered_actor_id;
   int32_t rendered_hovered_ground_item_id;
   int32_t rendered_message_id;
@@ -54,8 +58,10 @@ typedef struct SfGameplayScreen {
   int16_t rendered_pointer_y;
   uint8_t rendered_motion;
   uint8_t rendered_direction;
+  uint8_t rendered_companion_motion;
   uint8_t rendered_condition_phase;
   bool rendered_pointer_active;
+  bool rendered_companion_inactive;
   bool rendered_message_active;
   SfRect player_damage;
   bool drawn;

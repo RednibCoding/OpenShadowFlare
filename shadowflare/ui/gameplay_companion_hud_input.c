@@ -17,23 +17,14 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_HUD_H
-#define SHADOWFLARE_UI_GAMEPLAY_HUD_H
+#include "ui/gameplay_companion_hud_input.h"
 
-#include "assets/gameplay_assets.h"
-#include "game/player.h"
-#include "render/renderer.h"
-
-void sf_gameplay_hud_draw(
-  SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern_strength(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, uint16_t strength,
-  const SfRect *clip);
-int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width);
-
-#endif
+void sf_gameplay_companion_hud_input_resolve(SfGameInput *input) {
+  if (!input || !input->pointer_active) return;
+  if (input->pointer_x >= 0 && input->pointer_x < 112 &&
+      input->pointer_y > 392 && input->pointer_y < 409) {
+    input->pointer_over_gameplay_ui = true;
+    if (input->pointer_primary_pressed)
+      input->companion_toggle_pressed = true;
+  }
+}

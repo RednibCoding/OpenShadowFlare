@@ -50,9 +50,10 @@ static bool sf_hud_intersection(
   return true;
 }
 
-static void sf_hud_draw_image(
+void sf_gameplay_hud_draw_pattern_strength(
     SfRenderer *renderer, const SfNjpDecodedResource *hud,
-    uint8_t source_pattern, int x, int y, const SfRect *clip) {
+    uint8_t source_pattern, int x, int y, uint16_t strength,
+    const SfRect *clip) {
   const SfNjpDecodedPattern *pattern =
     sf_njp_decoded_pattern(hud, source_pattern);
   uint8_t reference;
@@ -64,13 +65,20 @@ static void sf_hud_draw_image(
     if (item->part >= hud->part_count) continue;
     image = hud->parts[item->part].image;
     image.palette = hud->palettes[pattern->palette];
-    sf_renderer_draw_indexed(
+    sf_renderer_draw_indexed_tinted(
       renderer, &image, x + item->x, y + item->y,
-      1000u, 1000u, SF_BLEND_MASKED, clip);
+      strength, strength, strength, 1000u, SF_BLEND_MASKED, clip);
   }
 }
 
-static int sf_hud_bar_width(int32_t current, int32_t maximum, int width) {
+void sf_gameplay_hud_draw_pattern(
+    SfRenderer *renderer, const SfNjpDecodedResource *hud,
+    uint8_t source_pattern, int x, int y, const SfRect *clip) {
+  sf_gameplay_hud_draw_pattern_strength(
+    renderer, hud, source_pattern, x, y, 1000u, clip);
+}
+
+int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width) {
   int64_t result;
   if (current <= 0 || maximum <= 0) return 0;
   if (current >= maximum) return width;
@@ -84,7 +92,7 @@ static void sf_hud_draw_bar(
   SfRect draw_clip;
   if (bounds.width <= 0 || !sf_hud_intersection(
         bounds, clip, &draw_clip)) return;
-  sf_hud_draw_image(renderer, hud, image, 0, 0, &draw_clip);
+  sf_gameplay_hud_draw_pattern(renderer, hud, image, 0, 0, &draw_clip);
 }
 
 static void sf_hud_draw_level(
@@ -101,7 +109,7 @@ static void sf_hud_draw_level(
   digits = level > 99 ? 3 : level > 9 ? 2 : 1;
   for (index = 0; index < digits; ++index) {
     const uint8_t digit = (uint8_t) ((level / divisor) % 10);
-    sf_hud_draw_image(
+    sf_gameplay_hud_draw_pattern(
       renderer, hud, (uint8_t) (SF_HUD_FIRST_DIGIT_PATTERN + digit),
       positions[digits - 1][index], 465, clip);
     divisor *= 10;
@@ -114,30 +122,30 @@ void sf_gameplay_hud_draw(
   SfRect reserved = {0, 412, 640, 68};
   SfRect background;
   int width;
-  if (!renderer || !assets || !player || assets->hud.pattern_count != 18u ||
+  if (!renderer || !assets || !player || assets->hud.pattern_count != 22u ||
       !sf_hud_intersection(reserved, clip, &background)) return;
   sf_renderer_fill_rect(renderer, background, 0u);
-  sf_hud_draw_image(
+  sf_gameplay_hud_draw_pattern(
     renderer, &assets->hud, SF_HUD_LEFT_FRAME_PATTERN, 0, 0, clip);
-  sf_hud_draw_image(
+  sf_gameplay_hud_draw_pattern(
     renderer, &assets->hud, SF_HUD_RIGHT_FRAME_PATTERN, 0, 0, clip);
-  sf_hud_draw_image(
+  sf_gameplay_hud_draw_pattern(
     renderer, &assets->hud,
     player->pace == SF_PLAYER_PACE_RUN ?
       SF_HUD_RUN_PATTERN : SF_HUD_WALK_PATTERN,
     0, 0, clip);
   sf_hud_draw_level(renderer, &assets->hud, player->level, clip);
-  width = sf_hud_bar_width(
+  width = sf_gameplay_hud_bar_width(
     player->current_life, player->initial_parameters.values[2], 206);
   sf_hud_draw_bar(renderer, &assets->hud, SF_HUD_LIFE_PATTERN,
     (SfRect) {81, 425, (int16_t) width, 12}, clip);
-  width = sf_hud_bar_width(
+  width = sf_gameplay_hud_bar_width(
     player->current_mana, player->initial_parameters.values[3], 206);
   sf_hud_draw_bar(renderer, &assets->hud, SF_HUD_MANA_PATTERN,
     (SfRect) {106, 452, (int16_t) width, 12}, clip);
-  sf_hud_draw_image(
+  sf_gameplay_hud_draw_pattern(
     renderer, &assets->hud, SF_HUD_EXPERIENCE_FRAME_PATTERN, 0, 0, clip);
-  width = sf_hud_bar_width(
+  width = sf_gameplay_hud_bar_width(
     player->experience,
     player->initial_parameters.experience_threshold, 109);
   sf_hud_draw_bar(renderer, &assets->hud, SF_HUD_EXPERIENCE_PATTERN,

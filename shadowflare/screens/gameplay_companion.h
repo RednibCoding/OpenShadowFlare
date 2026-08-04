@@ -17,23 +17,23 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_HUD_H
-#define SHADOWFLARE_UI_GAMEPLAY_HUD_H
+#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_COMPANION_H
+#define SHADOWFLARE_SCREENS_GAMEPLAY_COMPANION_H
 
-#include "assets/gameplay_assets.h"
-#include "game/player.h"
+#include "assets/companion_assets.h"
+#include "game/companion.h"
+#include "game/world.h"
 #include "render/renderer.h"
 
-void sf_gameplay_hud_draw(
-  SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern_strength(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, uint16_t strength,
-  const SfRect *clip);
-int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width);
+#include <stdbool.h>
+#include <stdint.h>
+
+bool sf_gameplay_companion_visible(
+  const SfCompanionAssets *assets, const SfCompanionState *companion,
+  const SfWorldRenderView *view, uint16_t interpolation, bool shadow);
+void sf_gameplay_companion_draw(
+  SfRenderer *renderer, const SfCompanionAssets *assets,
+  const SfCompanionState *companion, const SfWorldRenderView *view,
+  uint16_t interpolation, bool shadow, const SfRect *clip);
 
 #endif

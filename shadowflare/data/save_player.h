@@ -21,6 +21,7 @@
 #define SHADOWFLARE_DATA_SAVE_PLAYER_H
 
 #include "data/item.h"
+#include "data/companion_parameters.h"
 #include "data/player_parameters.h"
 
 #include <stdbool.h>
@@ -59,6 +60,10 @@ typedef struct SfSavedPlayer {
   int32_t experience;
   int32_t element_x;
   int32_t element_y;
+  int32_t companion_type;
+  int32_t companion_level;
+  int32_t companion_experience;
+  int32_t companion_defeated_updates;
   uint8_t backpack_count;
   uint8_t belt_count;
   uint8_t special_item_count;

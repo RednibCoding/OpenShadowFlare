@@ -47,6 +47,10 @@ bool sf_save_player_read_record(
   player->experience = sf_saved_i32(record + 0xd8u);
   player->element_x = sf_saved_i32(record + 0x64u);
   player->element_y = sf_saved_i32(record + 0x68u);
+  player->companion_type = sf_saved_i32(record + 0x140u);
+  player->companion_level = sf_saved_i32(record + 0x144u);
+  player->companion_experience = sf_saved_i32(record + 0x148u);
+  player->companion_defeated_updates = sf_saved_i32(record + 0x14cu);
   for (index = 0u; index < SF_PLAYER_INITIAL_PARAMETER_COUNT; ++index)
     player->parameters.values[index] = sf_saved_i32(
       record + parameter_offsets[index]);
@@ -54,6 +58,11 @@ bool sf_save_player_read_record(
     player->level > 0 && player->level <= 100 &&
     player->element_x >= -20000 && player->element_x <= 20000 &&
     player->element_y >= -20000 && player->element_y <= 20000 &&
+    player->companion_type >= 0 &&
+    player->companion_type < (int32_t) SF_COMPANION_COUNT &&
+    player->companion_level >= 1 && player->companion_level <= 35 &&
+    player->companion_experience >= 0 &&
+    player->companion_defeated_updates >= 0 &&
     player->parameters.values[2] > 0 && player->parameters.values[3] > 0;
 }
 

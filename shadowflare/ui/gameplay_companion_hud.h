@@ -17,23 +17,18 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_HUD_H
-#define SHADOWFLARE_UI_GAMEPLAY_HUD_H
+#ifndef SHADOWFLARE_UI_GAMEPLAY_COMPANION_HUD_H
+#define SHADOWFLARE_UI_GAMEPLAY_COMPANION_HUD_H
 
 #include "assets/gameplay_assets.h"
-#include "game/player.h"
+#include "game/companion.h"
 #include "render/renderer.h"
 
-void sf_gameplay_hud_draw(
+#include <stdint.h>
+
+void sf_gameplay_companion_hud_draw(
   SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern_strength(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, uint16_t strength,
+  const SfCompanionState *companion, uint32_t ticks,
   const SfRect *clip);
-int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width);
 
 #endif

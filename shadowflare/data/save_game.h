@@ -56,10 +56,18 @@ typedef struct SfSavedMagic {
   bool present;
 } SfSavedMagic;
 
+typedef struct SfSavedCompanions {
+  int32_t levels[SF_COMPANION_COUNT];
+  int32_t experience[SF_COMPANION_COUNT];
+  uint8_t count;
+  bool present;
+} SfSavedCompanions;
+
 typedef struct SfSavedGame {
   SfSavedPlayer player;
   SfSavedProgress progress;
   SfSavedMagic magic;
+  SfSavedCompanions companions;
   SfSavedWorldState world;
 } SfSavedGame;
 

@@ -17,23 +17,26 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_HUD_H
-#define SHADOWFLARE_UI_GAMEPLAY_HUD_H
+#ifndef SHADOWFLARE_GAME_PLAYER_COMPANION_H
+#define SHADOWFLARE_GAME_PLAYER_COMPANION_H
 
-#include "assets/gameplay_assets.h"
-#include "game/player.h"
-#include "render/renderer.h"
+#include "data/companion_parameters.h"
 
-void sf_gameplay_hud_draw(
-  SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, const SfRect *clip);
-void sf_gameplay_hud_draw_pattern_strength(
-  SfRenderer *renderer, const SfNjpDecodedResource *hud,
-  uint8_t source_pattern, int x, int y, uint16_t strength,
-  const SfRect *clip);
-int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width);
+#include <stdbool.h>
+#include <stdint.h>
+
+typedef struct SfPlayerCompanionProgress {
+  int32_t levels[SF_COMPANION_COUNT];
+  int32_t experience[SF_COMPANION_COUNT];
+  int32_t type;
+  int32_t defeated_updates;
+} SfPlayerCompanionProgress;
+
+void sf_player_companion_progress_init(SfPlayerCompanionProgress *progress);
+bool sf_player_companion_progress_restore(
+  SfPlayerCompanionProgress *progress, int32_t type,
+  int32_t defeated_updates, const int32_t *levels,
+  const int32_t *experience, uint8_t count);
+int32_t sf_player_companion_level(const SfPlayerCompanionProgress *progress);
 
 #endif

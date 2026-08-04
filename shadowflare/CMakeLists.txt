@@ -35,6 +35,7 @@ endfunction()
 add_library(
   shadowflare_core STATIC
   assets/character_create_assets.c
+  assets/companion_assets.c
   assets/ground_item_assets.c
   assets/ground_item_requests.c
   assets/inventory_item_assets.c
@@ -50,6 +51,7 @@ add_library(
   core/coordinates.c
   core/retail_random.c
   data/caf.c
+  data/companion_parameters.c
   data/bmp.c
   data/gnd.c
   data/item.c
@@ -78,6 +80,7 @@ add_library(
   data/table.c
   data/voc.c
   game/character_create.c
+  game/companion.c
   game/belt.c
   game/collision.c
   game/equipment.c
@@ -88,6 +91,7 @@ add_library(
   game/load_game.c
   game/movement.c
   game/player.c
+  game/player_companion.c
   game/player_magic.c
   game/player_elements.c
   game/player_item.c
@@ -115,6 +119,7 @@ add_library(
   render/renderer.c
   screens/character_create_screen.c
   screens/gameplay_actor.c
+  screens/gameplay_companion.c
   screens/gameplay_ground_item.c
   screens/gameplay_scene.c
   screens/gameplay_screen.c
@@ -127,6 +132,8 @@ add_library(
   ui/conversation_input.c
   ui/conversation_layout.c
   ui/gameplay_character_panel.c
+  ui/gameplay_companion_hud.c
+  ui/gameplay_companion_hud_input.c
   ui/gameplay_belt.c
   ui/gameplay_equipment_layout.c
   ui/gameplay_hud.c

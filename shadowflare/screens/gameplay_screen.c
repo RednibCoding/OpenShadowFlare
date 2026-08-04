@@ -23,6 +23,7 @@
 #include "ui/actor_nameplate.h"
 #include "ui/conversation_bubble.h"
 #include "ui/gameplay_belt.h"
+#include "ui/gameplay_companion_hud.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_magic.h"
@@ -146,6 +147,12 @@ void sf_gameplay_screen_draw(
     screen->rendered_pointer_active != game->world.pointer.active ||
     screen->rendered_motion != (uint8_t) player->motion ||
     screen->rendered_direction != player->direction ||
+    screen->rendered_companion_frame != game->world.companion.animation_frame ||
+    screen->rendered_companion_x != game->world.companion.position.x ||
+    screen->rendered_companion_y != game->world.companion.position.y ||
+    screen->rendered_companion_motion != game->world.companion.motion ||
+    screen->rendered_companion_inactive != game->world.companion.inactive ||
+    screen->rendered_companion_life != game->world.companion.current_life ||
     screen->rendered_ground_item_revision !=
       game->world.ground_items.presentation_revision ||
     (screen->rendered_condition_phase != condition_phase &&
@@ -192,6 +199,8 @@ void sf_gameplay_screen_draw(
   sf_gameplay_magic_draw(
     renderer, assets, player, &screen->character_panel, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
+  sf_gameplay_companion_hud_draw(
+    renderer, assets, &game->world.companion, game->ticks, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);
   sf_gameplay_magic_bar_draw(
     renderer, assets, player,
@@ -225,6 +234,12 @@ void sf_gameplay_screen_draw(
   screen->rendered_pointer_active = game->world.pointer.active;
   screen->rendered_motion = (uint8_t) player->motion;
   screen->rendered_direction = player->direction;
+  screen->rendered_companion_frame = game->world.companion.animation_frame;
+  screen->rendered_companion_x = game->world.companion.position.x;
+  screen->rendered_companion_y = game->world.companion.position.y;
+  screen->rendered_companion_motion = game->world.companion.motion;
+  screen->rendered_companion_inactive = game->world.companion.inactive;
+  screen->rendered_companion_life = game->world.companion.current_life;
   screen->rendered_ground_item_revision =
     game->world.ground_items.presentation_revision;
   screen->rendered_condition_phase = condition_phase;

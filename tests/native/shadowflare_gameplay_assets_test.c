@@ -181,7 +181,7 @@ static int test_gameplay_hud(
   SfRenderer renderer;
   size_t index;
   size_t changed = 0u;
-  if (assets->hud.pattern_count != 18u ||
+  if (assets->hud.pattern_count != 22u ||
       assets->player_parameters.values[0] != 100 ||
       assets->player_parameters.values[1] != 128 ||
       assets->player_parameters.values[2] != 150 ||
@@ -885,6 +885,8 @@ int main(void) {
         &retained_item_count) ||
       !sf_gameplay_assets_load(
         &assets, root, 0, 0, player.gender, player.level,
+        player.companions.type,
+        sf_player_companion_level(&player.companions),
         player.appearance_parts, player.appearance_part_count,
         player.visible_items, player.visible_item_count,
         retained_items, retained_item_count, &arena)) {

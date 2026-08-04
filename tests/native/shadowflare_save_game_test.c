@@ -98,13 +98,6 @@ static bool append_equipment(FixtureBytes *payload) {
   return true;
 }
 
-static bool append_zeroes(FixtureBytes *output, uint16_t count) {
-  uint16_t index;
-  for (index = 0u; index < count; ++index)
-    if (!append_i32(output, 0)) return false;
-  return true;
-}
-
 static bool append_magic(FixtureBytes *payload) {
   uint8_t index;
   if (!append_i32(payload, 22)) return false;
@@ -119,6 +112,16 @@ static bool append_magic(FixtureBytes *payload) {
   return true;
 }
 
+static bool append_companions(FixtureBytes *payload) {
+  uint8_t index;
+  if (!append_i32(payload, SF_COMPANION_COUNT)) return false;
+  for (index = 0u; index < SF_COMPANION_COUNT; ++index)
+    if (!append_i32(payload, index == 0u ? 4 : 1)) return false;
+  for (index = 0u; index < SF_COMPANION_COUNT; ++index)
+    if (!append_i32(payload, index == 0u ? 12 : 0)) return false;
+  return true;
+}
+
 static bool append_progress(FixtureBytes *payload) {
   static const uint8_t extension_signature[8] = {
     'O', 'S', 'F', 'S', 'T', '0', '1', 0
@@ -129,8 +132,7 @@ static bool append_progress(FixtureBytes *payload) {
     append_i32(payload, 5) && append_i32(payload, 4) &&
     append_i32(payload, 6) && append_i32(payload, 7) &&
     append_i32(payload, 8) && append_i32(payload, 9) &&
-    append_magic(payload) &&
-    append_i32(payload, 6) && append_zeroes(payload, 12u) &&
+    append_magic(payload) && append_companions(payload) &&
     append_i32(payload, 7) && append_i32(payload, 1) &&
     append_i32(payload, 0) && append_i32(payload, 0) &&
     append_bytes(
@@ -158,6 +160,10 @@ static void make_record(uint8_t record[SF_SAVED_PLAYER_RECORD_SIZE]) {
   store_i32(record, 0x64u, 10000);
   store_i32(record, 0x68u, -10000);
   store_i32(record, 0xd8u, 42);
+  store_i32(record, 0x140u, 0);
+  store_i32(record, 0x144u, 4);
+  store_i32(record, 0x148u, 12);
+  store_i32(record, 0x14cu, 0);
   for (index = 0u; index < SF_PLAYER_INITIAL_PARAMETER_COUNT; ++index)
     store_i32(record, offsets[index], values[index]);
 }
@@ -297,6 +303,7 @@ int main(int argument_count, char **arguments) {
           !sf_gameplay_assets_load(
             &assets, arguments[2], world.scenario_id, world.entry_key,
             saved.gender == 1 ? 1u : 0u, saved.level,
+            saved.companion_type, saved.companion_level,
             parts, 2u, NULL, 0u,
             required, required_count, &arena)) {
         fprintf(stderr, "Could not load gameplay assets for %s\n", saved.name);
@@ -360,6 +367,8 @@ int main(int argument_count, char **arguments) {
       saved.job != 16 || saved.level != 4 || saved.current_life != 123 ||
       saved.current_mana != 77 || saved.experience != 42 ||
       saved.element_x != 10000 || saved.element_y != -10000 ||
+      saved.companion_type != 0 || saved.companion_level != 4 ||
+      saved.companion_experience != 12 ||
       saved.backpack_count != 2u || saved.belt_count != 1u ||
       saved.special_item_count != 1u ||
       !saved.equipment[9].present || saved.equipment[9].durability != 40 ||
@@ -371,6 +380,9 @@ int main(int argument_count, char **arguments) {
       saved_game.magic.levels[0] != 4 ||
       saved_game.magic.experience[0] != 5 ||
       saved_game.magic.bar_slots[0] != 0 ||
+      !saved_game.companions.present || saved_game.companions.count != 6u ||
+      saved_game.companions.levels[0] != 4 ||
+      saved_game.companions.experience[0] != 12 ||
       !saved_game.world.present || !saved_game.world.running ||
       saved_game.world.mine_count != 7 || saved_game.world.scenario_id != 0 ||
       saved_game.world.entry_value != 0 ||
@@ -387,6 +399,8 @@ int main(int argument_count, char **arguments) {
   sf_player_init(&player, 1u);
   if (!sf_player_restore_save(&player, &saved, definitions, 5u, 100) ||
       !sf_player_restore_magic(&player, &saved_game.magic) ||
+      !sf_player_restore_companions(
+        &player, &saved, &saved_game.companions) ||
       strcmp(player.name, "Save Hero") != 0 || player.gender != 0u ||
       player.job != 16 || player.level != 4 || player.current_life != 123 ||
       player.current_mana != 77 || player.experience != 42 ||
@@ -394,6 +408,9 @@ int main(int argument_count, char **arguments) {
       !sf_player_magic_learned(&player.magic, 0) ||
       player.magic.levels[0] != 4 || player.magic.experience[0] != 5 ||
       player.magic.bar_slots[0] != 0 ||
+      player.companions.type != 0 ||
+      sf_player_companion_level(&player.companions) != 4 ||
+      player.companions.experience[0] != 12 ||
       !player.loadout_initialized || player.inventory.count != 2u ||
       player.belt.count != 1u || player.special_items.count != 1u ||
       !(player.equipment.occupied &

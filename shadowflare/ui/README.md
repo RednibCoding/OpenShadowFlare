@@ -53,3 +53,9 @@ rectangles and emits only selection/assignment intent. `game/player_magic.c`
 remains the sole owner of saved spell state. `gameplay_panels_input.c`
 coordinates both tabs with Special Item, the independent right Inventory
 panel, Escape, the common camera offset, and click consumption.
+
+The owned-companion strip follows the same rule. Its draw file composes the
+retail life bar and active/inactive `Bar.njp` cells, while its input file owns
+the exact bottom-left hit rectangle and emits only a toggle intent. Companion
+life, follow behavior, collision, and activity state remain in `game/`; Space
+and controller bindings stay at the platform-neutral runtime edge.

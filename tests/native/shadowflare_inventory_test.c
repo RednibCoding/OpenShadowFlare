@@ -210,6 +210,8 @@ static int test_live_inventory(
         &retained_item_count) ||
       !sf_gameplay_assets_load(
         &assets, root, 0, 0, loader_player.gender, loader_player.level,
+        loader_player.companions.type,
+        sf_player_companion_level(&loader_player.companions),
         loader_player.appearance_parts, loader_player.appearance_part_count,
         loader_player.visible_items, loader_player.visible_item_count,
         retained_items, retained_item_count, arena)) {

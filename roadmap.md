@@ -79,6 +79,18 @@ does. UI state only emits actions; persistent spell ownership remains in
 general world event queue. Both tabs coexist with right-side Inventory,
 replace Special Item on the left, and share the same camera and input offset.
 
+The player's owned companion has its first complete C99 owner now. Table 60
+selects one of the six companion types, tables 800 through 805 build its
+level-backed profile, and only that type's idle, walk, run, artwork, and shadow
+cells are retained from PARTNER. It enters beside the hero, follows through the
+same collision-aware edge controller used by other actors, routes around live
+PEOPLE, and keeps following while inactive. Space and the exact bottom-left HUD
+strip toggle the retail active/inactive state. The active type, all six level
+and experience rows, and the defeated countdown restore from their original
+save fields. Combat, death presentation, timed revival, Moon, swapping, and
+companion dialogue remain later slices rather than being folded into the
+follower.
+
 Selecting a retail save now
 streams and verifies its `ShadowFlare0005` envelope without allocating a
 payload buffer. The plain player record and exact backpack, belt, visible
@@ -91,7 +103,7 @@ handoffs such as Ostare's starter items stay complete. Mine count, walk/run
 pace, scenario, and authored entry reach the world owner as well. The three
 Remote Town saves also pass the complete asset-and-owner restore path. The
 remaining save work belongs to systems which are not in the small runtime yet:
-companions, warehouse pages, automatic-item pages, and writing saves.
+warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
