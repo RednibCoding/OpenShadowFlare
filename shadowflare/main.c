@@ -22,25 +22,13 @@
 
 #include <stdint.h>
 
-typedef union SfAlignedMainMemory {
-  long double floating_point;
-  void *pointer;
-  uint64_t integer;
-  uint8_t bytes[SF_MAIN_ARENA_BYTES];
-} SfAlignedMainMemory;
+static uint8_t sf_main_memory[SF_MAIN_ARENA_BYTES];
+static uint8_t sf_video_memory[SF_VIDEO_MEMORY_LIMIT_BYTES];
 
-typedef union SfAlignedVideoMemory {
-  long double floating_point;
-  void *pointer;
-  uint64_t integer;
-  uint8_t bytes[SF_VIDEO_MEMORY_LIMIT_BYTES];
-} SfAlignedVideoMemory;
-
-static SfAlignedMainMemory sf_main_memory;
-static SfAlignedVideoMemory sf_video_memory;
-
-int main(void) {
+int main(int argument_count, char **arguments) {
   return sf_application_run(
-    sf_main_memory.bytes, sizeof(sf_main_memory.bytes),
-    sf_video_memory.bytes, sizeof(sf_video_memory.bytes));
+    sf_main_memory, sizeof(sf_main_memory),
+    sf_video_memory, sizeof(sf_video_memory),
+    argument_count > 0 ? arguments[0] : NULL,
+    argument_count > 1 ? arguments[1] : NULL);
 }

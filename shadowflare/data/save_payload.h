@@ -1,0 +1,56 @@
+/*
+ * Copyright (C) 2026 Michael Binder and contributors
+ *
+ * This file is part of OpenShadowFlare.
+ *
+ * OpenShadowFlare is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenShadowFlare is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#ifndef SHADOWFLARE_DATA_SAVE_PAYLOAD_H
+#define SHADOWFLARE_DATA_SAVE_PAYLOAD_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#define SF_SAVE_PLAYER_RECORD_SIZE 0x160u
+
+typedef struct SfSavePayloadReader {
+  FILE *file;
+  uint32_t remaining;
+  uint32_t checksum;
+  uint32_t expected_checksum;
+  uint32_t extension_size;
+  uint32_t extension_version;
+  int32_t extension_mine_count;
+  uint8_t substitution[256];
+  uint8_t xor_key;
+  bool extension_present;
+  bool extension_running;
+  bool extension_has_mine_count;
+} SfSavePayloadReader;
+
+bool sf_save_payload_open(
+  SfSavePayloadReader *reader, const char *path,
+  uint8_t player_record[SF_SAVE_PLAYER_RECORD_SIZE], bool *has_envelope);
+bool sf_save_payload_read(
+  SfSavePayloadReader *reader, void *bytes, size_t size);
+bool sf_save_payload_skip(SfSavePayloadReader *reader, size_t size);
+uint32_t sf_save_payload_content_remaining(
+  const SfSavePayloadReader *reader);
+bool sf_save_payload_finish(SfSavePayloadReader *reader);
+void sf_save_payload_close(SfSavePayloadReader *reader);
+
+#endif

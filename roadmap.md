@@ -8,6 +8,109 @@ will move around when the evidence tells us they should.
 The rule is simple: get one small part behaving like the original, test it,
 and only then build the next part on top of it.
 
+## Current track: the small C99 game
+
+The implementation under `shadowflare/` is now the active replacement track.
+It uses the mature `src/SF_EXE/` reconstruction as a strong behavioral
+reference, checks uncertain details against retail, and is intended to replace
+`SF_EXE` once it reaches the same playable coverage.
+
+This version deliberately has a smaller shape: plain C99, fixed caller-owned
+memory, integer game math, TWL/TAL at the platform edge, and an 8 MiB main-RAM
+plus 4 MiB video-memory ceiling. Rendering primitives stay in `render/`, all
+HUD and interface composition stays in `ui/`, and the game must remain easy
+enough for a junior contributor to follow without learning a framework first.
+The standing details and measured screen budgets live in
+`shadowflare/RULES.md` and `shadowflare/README.md`.
+
+The front-end, Remote Town map, player movement, retail PEOPLE actors,
+collision, pointing, speech bubbles, and interactive script-driven choices are
+live. Ostare's opening chain reaches its four opcode 10 starter drops, with the
+original item definitions, artwork, palettes, bounce, and landing sounds.
+Those drops can now be hovered, approached, and picked up into the player's
+fixed 9x4 inventory, including retail dimensions, gold stacks, failure bounce,
+and pickup sounds. Harley's complete `Explanation` branch also runs from the
+shipped SCS data. The authored bottom HUD now reads level, life, mana,
+experience, and walk/run state from the player owner. Its initial values come
+from a streaming scan of retail's parameter tables, and HUD clicks cannot leak
+into world movement. The first right-side inventory panel now exposes those
+owned items using the authored Status and Item sheets, keeps the left-hand
+world live around an x=160 camera anchor, and consumes its own input. Items can
+now be taken from that 9x4 owner, carried under the pointer, placed or swapped,
+and dropped back into the live world without turning the UI click into a move
+command. All nine visible equipment regions now use that same pointer owner.
+The new hero starts with the table-backed Leather Cloth in the body slot;
+weapons, shields, body armor, and accessories validate their retail slot and
+level rules, equipped weight is live, and only the active CAF appearance parts
+are drawn with their original color strengths. The lower HUD now has its own
+fixed 4x2 belt owner with the original staggered pockets. Pointer pickup,
+swapping, the `1` through `8` shortcuts, and right-click medicine use share the
+same item-transfer path as the backpack. A new hero receives the full retail
+loadout: Leather Cloth, four Tablets and four Capsules in both backpack and
+belt, and five mines in the separate 5/10 counter. Full life or mana leaves a
+medicine untouched, successful use plays the authored sound, and mine pickups
+fill their counter instead of entering the bag. Backpack and equipped items
+now share the retail three-update information overlay too. Its active
+`Item.Ibn` definition supplies the name, price, combat values, durability,
+weight, requirement, and elemental strengths. Pointer-relative placement,
+the translucent backing, faint frame, tier color, and wide Gold/medicine
+layout stay entirely in `ui/`. Low-condition weapons and armor now compose
+`Status.njp` pattern 16 over backpack, equipment, and pointer-held icons too.
+The exact 0–9% threshold, eight-update blink halves, and permanently visible
+broken state live in a small game rule; only the marker composition lives in
+`ui/`.
+The left-hand Special Item panel is live now as well. `X` opens its authored
+9x10 grid, either side can remain open on its own or beside Inventory, and the
+same pointer owner moves items directly between them. Special Item placement,
+single-item swaps, partial Gold merges, hover information, and condition
+markers use the ordinary shared rules. Its fourth retail save container is
+decoded into a separate fixed owner and its required definitions stay in the
+active resource request.
+The shared Status/Magic window now has both retail tabs. `S` and the HUD button
+open Status with the saved identity, current pools, table-backed base values,
+valid equipment bonuses, affinities, and elemental marker. `M` or the top tab
+opens Magic's four six-spell pages, including availability states, saved
+levels and experience, table-backed MP/effect values, help text, arrows, and
+the authored large icons. Learned spells drag into eight persistent save-owned
+slots, while the small gameplay bar keeps retail's dynamic position beside
+left and right panels. Every gameplay load starts on normal attack as retail
+does. UI state only emits actions; persistent spell ownership remains in
+`game/`, table scanning in `data/`, and samples 57/58 reach TAL through a small
+general world event queue. Both tabs coexist with right-side Inventory,
+replace Special Item on the left, and share the same camera and input offset.
+
+The player's owned companion has its first complete C99 owner now. Table 60
+selects one of the six companion types, tables 800 through 805 build its
+level-backed profile, and only that type's idle, walk, run, artwork, and shadow
+cells are retained from PARTNER. It enters beside the hero, follows through the
+same collision-aware edge controller used by other actors, routes around live
+PEOPLE, and keeps following while inactive. Space and the exact bottom-left HUD
+strip toggle the retail active/inactive state. The active type, all six level
+and experience rows, and the defeated countdown restore from their original
+save fields. Combat, death presentation, timed revival, Moon, swapping, and
+companion dialogue remain later slices rather than being folded into the
+follower.
+
+Selecting a retail save now
+streams and verifies its `ShadowFlare0005` envelope without allocating a
+payload buffer. The plain player record and exact backpack, belt, visible
+equipment, hidden alternate-weapon slots, and Special Item cells all populate
+the same fixed game owners used by new characters. The four development saves
+currently in the retail tree have been decoded through the complete save path.
+Quest state, unlocked transports, and all 1,000 persistent script/conversation
+values now reach the interpreter before its first periodic pass, so one-time
+handoffs such as Ostare's starter items stay complete. Mine count, walk/run
+pace, scenario, and authored entry reach the world owner as well. The three
+Remote Town saves also pass the complete asset-and-owner restore path. The
+load hand-off now recovers to the same selected row when a save belongs to a
+map which has not reached the C99 runtime yet, rather than closing the whole
+application after the honest asset-load failure. The
+remaining save work belongs to systems which are not in the small runtime yet:
+warehouse pages, automatic-item pages, and writing saves.
+A slice is only done after the C99/TWL/TAL tests, a release build, a practical
+check when visible behavior changed, and a fresh measured budget when assets
+changed.
+
 ## Where we are now
 
 The compatibility-DLL milestone is complete. All fourteen DLLs build, reproduce

@@ -20,6 +20,7 @@
 
 #include <X11/Xutil.h>
 
+#include <errno.h>
 #include <time.h>
 
 static size_t twl_x11_controller_offset(void) {
@@ -144,4 +145,12 @@ uint64_t twl_backend_time_microseconds(const Twl *twl) {
   if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0u;
   return (uint64_t) now.tv_sec * UINT64_C(1000000) +
          (uint64_t) now.tv_nsec / UINT64_C(1000);
+}
+
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration) {
+  struct timespec delay;
+  (void) twl;
+  delay.tv_sec = (time_t) (duration / UINT64_C(1000000));
+  delay.tv_nsec = (long) ((duration % UINT64_C(1000000)) * UINT64_C(1000));
+  while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
 }

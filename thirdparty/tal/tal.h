@@ -53,11 +53,17 @@ typedef enum {
   TAL_OUTPUT_DEVICE
 } TalOutputMode;
 
+typedef enum {
+  TAL_SAMPLE_S16 = 0,
+  TAL_SAMPLE_U8
+} TalSampleFormat;
+
 typedef struct {
-  const int16_t *samples;
+  const void *samples;
   uint32_t frame_count;
   uint32_t sample_rate;
   uint8_t channels;
+  TalSampleFormat format;
 } TalPcm;
 
 typedef struct {

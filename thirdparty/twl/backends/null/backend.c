@@ -44,13 +44,23 @@ void twl_backend_pump_events(Twl *twl) {
   (void) twl;
 }
 
-TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
+TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   (void) twl;
   (void) surface;
+  return TWL_RESULT_BACKEND_UNAVAILABLE;
+}
+
+TwlResult twl_backend_display_frame(Twl *twl) {
+  (void) twl;
   return TWL_RESULT_BACKEND_UNAVAILABLE;
 }
 
 uint64_t twl_backend_time_microseconds(const Twl *twl) {
   (void) twl;
   return 0u;
+}
+
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration) {
+  (void) twl;
+  (void) duration;
 }

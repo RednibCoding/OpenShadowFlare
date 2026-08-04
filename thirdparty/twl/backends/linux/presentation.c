@@ -116,7 +116,7 @@ void twl_x11_presentation_shutdown(TwlX11 *x11) {
   x11->program = 0u;
 }
 
-TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
+TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   TwlX11 *x11 = twl ? (TwlX11 *) twl->backend : NULL;
   GLenum internal_format;
   GLenum source_format;
@@ -172,6 +172,12 @@ TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
   glTexCoord2f(1.0f, 0.0f); glVertex2f( 1.0f,  1.0f);
   glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f,  1.0f);
   glEnd();
+  return TWL_RESULT_OK;
+}
+
+TwlResult twl_backend_display_frame(Twl *twl) {
+  TwlX11 *x11 = twl ? (TwlX11 *) twl->backend : NULL;
+  if (!x11 || !x11->display) return TWL_RESULT_INVALID_ARGUMENT;
   glXSwapBuffers(x11->display, x11->window);
   return TWL_RESULT_OK;
 }

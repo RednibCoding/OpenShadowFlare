@@ -18,7 +18,9 @@
 
 #include "backend.h"
 
+#include <errno.h>
 #include <mach/mach_time.h>
+#include <time.h>
 
 static Class twl_macos_delegate_class;
 static mach_timebase_info_data_t twl_macos_timebase;
@@ -212,4 +214,12 @@ uint64_t twl_backend_time_microseconds(const Twl *twl) {
     mach_timebase_info(&twl_macos_timebase);
   return ticks * twl_macos_timebase.numer /
     twl_macos_timebase.denom / UINT64_C(1000);
+}
+
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration) {
+  struct timespec delay;
+  (void) twl;
+  delay.tv_sec = (time_t) (duration / UINT64_C(1000000));
+  delay.tv_nsec = (long) ((duration % UINT64_C(1000000)) * UINT64_C(1000));
+  while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
 }
