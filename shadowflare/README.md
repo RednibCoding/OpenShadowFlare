@@ -418,9 +418,11 @@ retail random turn use a fixed CORDIC rotation, so the hot path remains entirely
 integer-only. Walk chart one is prepared in all eight directions for each
 entry-vicinity resource, movement uses the shared route controller, and the
 enemy's dynamic blocker is updated in the same tick as its position. Attack
-presentations are deliberately still dormant; the next slice will connect
-their CAF marker, pointer plate, and damage boundary rather than applying
-damage from the movement controller.
+selection and cadence, route movement, and the small per-enemy coordinator
+live in separate files so adding more actions does not grow one controller. The
+attack presentations are deliberately still dormant; the next slice will
+connect their CAF marker, pointer plate, and damage boundary rather than
+applying damage from the movement controller.
 
 World pointer hit testing lives in `ui/`, where the loaded sparse actor cells
 are already available. It produces a small actor intent before each game

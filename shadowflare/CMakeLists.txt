@@ -89,6 +89,8 @@ add_library(
   game/collision.c
   game/equipment.c
   game/enemy_ai_selection.c
+  game/enemy_action.c
+  game/enemy_movement.c
   game/game.c
   game/gameplay_service.c
   game/ground_item.c
