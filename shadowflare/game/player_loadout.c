@@ -146,6 +146,11 @@ bool sf_player_required_item_definitions(
           items, item_count, capacity,
           player->belt.items[index].category,
           player->belt.items[index].definition_id)) return false;
+  for (index = 0u; index < player->special_items.count; ++index)
+    if (!sf_player_add_required_item(
+          items, item_count, capacity,
+          player->special_items.items[index].category,
+          player->special_items.items[index].definition_id)) return false;
   if (player->inventory_transfer.holding_item &&
       !sf_player_add_required_item(
         items, item_count, capacity,

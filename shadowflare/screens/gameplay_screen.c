@@ -23,8 +23,14 @@
 #include "ui/actor_nameplate.h"
 #include "ui/conversation_bubble.h"
 #include "ui/gameplay_belt.h"
+#include "ui/gameplay_companion_hud.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
+#include "ui/gameplay_magic.h"
+#include "ui/gameplay_item_condition.h"
+#include "ui/gameplay_item_information.h"
+#include "ui/gameplay_special_items.h"
+#include "ui/gameplay_status.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
@@ -51,6 +57,7 @@ bool sf_gameplay_screen_init(
   if (!screen || !assets || !world) return false;
   memset(screen, 0, sizeof(*screen));
   sf_gameplay_inventory_init(&screen->inventory);
+  sf_gameplay_character_panel_init(&screen->character_panel);
   sf_world_render_view(world, 1000u, &view);
   if (!sf_gameplay_scene_update(
         &screen->scene, assets, world, &view, 1000u))
@@ -108,12 +115,18 @@ void sf_gameplay_screen_draw(
   SfRect damage;
   SfRect ui_damage;
   bool scene_moved;
+  uint8_t condition_phase;
   if (!screen || !renderer || !assets || !game ||
       !game->world.entered) return;
   player = &game->world.player;
+  condition_phase = (uint8_t) ((game->ticks >> 3u) & 1u);
   sf_world_render_view(&game->world, interpolation, &view);
   if (screen->inventory.open)
     view.camera_x += SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
+  if (screen->inventory.special_open)
+    view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
+  if (screen->character_panel.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED)
+    view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   scene_moved = !screen->drawn ||
     screen->rendered_player_x != view.player_position.x ||
     screen->rendered_player_y != view.player_position.y ||
@@ -134,8 +147,17 @@ void sf_gameplay_screen_draw(
     screen->rendered_pointer_active != game->world.pointer.active ||
     screen->rendered_motion != (uint8_t) player->motion ||
     screen->rendered_direction != player->direction ||
+    screen->rendered_companion_frame != game->world.companion.animation_frame ||
+    screen->rendered_companion_x != game->world.companion.position.x ||
+    screen->rendered_companion_y != game->world.companion.position.y ||
+    screen->rendered_companion_motion != game->world.companion.motion ||
+    screen->rendered_companion_inactive != game->world.companion.inactive ||
+    screen->rendered_companion_life != game->world.companion.current_life ||
     screen->rendered_ground_item_revision !=
       game->world.ground_items.presentation_revision ||
+    (screen->rendered_condition_phase != condition_phase &&
+     sf_gameplay_item_condition_animation_active(
+       assets, player, &screen->inventory)) ||
     sf_gameplay_actor_frames_changed(screen, &game->world, interpolation);
   if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame == player->animation_frame) return;
@@ -169,10 +191,27 @@ void sf_gameplay_screen_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
   sf_gameplay_inventory_draw(
-    renderer, assets, player, &screen->inventory, clip);
+    renderer, assets, player, &screen->inventory, game->ticks, clip);
+  sf_gameplay_special_items_draw(
+    renderer, assets, player, &screen->inventory, game->ticks, clip);
+  sf_gameplay_status_draw(
+    renderer, assets, player, &screen->character_panel, clip);
+  sf_gameplay_magic_draw(
+    renderer, assets, player, &screen->character_panel, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
+  sf_gameplay_companion_hud_draw(
+    renderer, assets, &game->world.companion, game->ticks, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);
+  sf_gameplay_magic_bar_draw(
+    renderer, assets, player,
+    screen->character_panel.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+      screen->inventory.special_open,
+    screen->inventory.open, clip);
   sf_gameplay_inventory_draw_held(
+    renderer, assets, player, &screen->inventory, game->ticks);
+  sf_gameplay_magic_held_draw(
+    renderer, assets, &screen->character_panel);
+  sf_gameplay_item_information_draw(
     renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
@@ -195,7 +234,14 @@ void sf_gameplay_screen_draw(
   screen->rendered_pointer_active = game->world.pointer.active;
   screen->rendered_motion = (uint8_t) player->motion;
   screen->rendered_direction = player->direction;
+  screen->rendered_companion_frame = game->world.companion.animation_frame;
+  screen->rendered_companion_x = game->world.companion.position.x;
+  screen->rendered_companion_y = game->world.companion.position.y;
+  screen->rendered_companion_motion = game->world.companion.motion;
+  screen->rendered_companion_inactive = game->world.companion.inactive;
+  screen->rendered_companion_life = game->world.companion.current_life;
   screen->rendered_ground_item_revision =
     game->world.ground_items.presentation_revision;
+  screen->rendered_condition_phase = condition_phase;
   screen->drawn = true;
 }

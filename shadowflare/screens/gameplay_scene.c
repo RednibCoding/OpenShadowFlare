@@ -23,6 +23,7 @@
 #include "core/memory_budget.h"
 #include "render/depth.h"
 #include "screens/gameplay_actor.h"
+#include "screens/gameplay_companion.h"
 #include "screens/gameplay_ground_item.h"
 #include "screens/gameplay_object_visual.h"
 #include "screens/gameplay_player.h"
@@ -30,6 +31,7 @@
 #include <string.h>
 
 #define SF_GAMEPLAY_PLAYER_ENTRY UINT16_MAX
+#define SF_GAMEPLAY_COMPANION_ENTRY UINT16_C(0x3fff)
 #define SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE UINT16_C(0x4000)
 #define SF_GAMEPLAY_ACTOR_ENTRY_BASE UINT16_C(0x8000)
 
@@ -72,6 +74,17 @@ static uint16_t sf_gameplay_collect_objects(
     entries[count].position = view->player_position;
     entries[count].judgement = world->player.judgement;
     entries[count].source_index = SF_GAMEPLAY_PLAYER_ENTRY;
+    entries[count].status = 0;
+    ++count;
+  }
+  if (world && world->companion.valid && world->companion.current_life > 0 &&
+      sf_gameplay_companion_visible(
+        &assets->companion, &world->companion, view, interpolation, shadow)) {
+    if (count >= SF_GAMEPLAY_DRAW_ENTRY_LIMIT) return UINT16_MAX;
+    entries[count].position = sf_companion_render_position(
+      &world->companion, interpolation);
+    entries[count].judgement = world->companion.judgement;
+    entries[count].source_index = SF_GAMEPLAY_COMPANION_ENTRY;
     entries[count].status = 0;
     ++count;
   }
@@ -139,7 +152,8 @@ static void sf_gameplay_mark_translucent_objects(
       player_reached = true;
       continue;
     }
-    if (sf_gameplay_actor_entry(object_index) ||
+    if (object_index == SF_GAMEPLAY_COMPANION_ENTRY ||
+        sf_gameplay_actor_entry(object_index) ||
         sf_gameplay_ground_item_entry(object_index) ||
         !player_reached) continue;
     object = &assets->objects.objects[object_index];
@@ -272,6 +286,11 @@ static void sf_gameplay_draw_object_pass(
       if (default_class)
         sf_gameplay_player_draw(
           renderer, &assets->player, world, view, shadow, clip);
+    } else if (indices[index] == SF_GAMEPLAY_COMPANION_ENTRY) {
+      if (default_class)
+        sf_gameplay_companion_draw(
+          renderer, &assets->companion, &world->companion,
+          view, interpolation, shadow, clip);
     } else if (sf_gameplay_actor_entry(indices[index])) {
       const uint16_t actor_index = (uint16_t) (
         indices[index] - SF_GAMEPLAY_ACTOR_ENTRY_BASE);

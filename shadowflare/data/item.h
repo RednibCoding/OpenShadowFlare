@@ -37,6 +37,7 @@ typedef struct SfItemReference {
 
 typedef struct SfItemGroundDefinition {
   char name[64];
+  char description[64];
   int32_t definition_id;
   int32_t resource_id;
   int32_t animation_chart;
@@ -48,8 +49,11 @@ typedef struct SfItemGroundDefinition {
   int32_t inventory_pattern_group;
   int32_t inventory_pattern;
   int32_t inventory_palette;
+  int32_t base_price;
   int32_t weight;
   int32_t maximum_durability;
+  int32_t parameter_bonuses[10];
+  int32_t element_strengths[8];
   int32_t variant;
   int32_t subtype;
   int32_t required_level;

@@ -22,14 +22,16 @@
 
 #include "game/input.h"
 #include "game/ground_item.h"
+#include "game/companion.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
+#include "game/sound_event.h"
 #include "interpreter/scenario_actor_script.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT (SF_MCT_PERSON_LIMIT + 1u)
+#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT (SF_MCT_PERSON_LIMIT + 2u)
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
@@ -61,8 +63,10 @@ typedef struct SfWorldState {
   int32_t camera_x;
   int32_t camera_y;
   SfPlayerState player;
+  SfCompanionState companion;
   SfScenarioActorSet actors;
   SfGroundItemSet ground_items;
+  SfSoundEventQueue sounds;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
@@ -89,6 +93,12 @@ bool sf_world_state_bind_ground_items(
 bool sf_world_state_bind_scenario(
   SfWorldState *world,
   const SfMctScenario *scenario, const SfScsScript *script);
+bool sf_world_state_bind_scenario_progress(
+  SfWorldState *world,
+  const SfMctScenario *scenario, const SfScsScript *script,
+  const SfScenarioProgressState *progress);
+bool sf_world_state_bind_companion(
+  SfWorldState *world, const SfCompanionProfile *profile);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
 void sf_world_render_view(
   const SfWorldState *world, uint16_t interpolation,

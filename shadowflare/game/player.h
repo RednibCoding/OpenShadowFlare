@@ -24,9 +24,12 @@
 #include "data/item.h"
 #include "data/player_parameters.h"
 #include "game/route.h"
+#include "game/special_items.h"
 #include "game/inventory.h"
 #include "game/equipment.h"
 #include "game/belt.h"
+#include "game/player_magic.h"
+#include "game/player_companion.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -57,6 +60,9 @@ typedef struct SfPlayerState {
   SfInventoryTransferState inventory_transfer;
   SfEquipmentState equipment;
   SfBeltState belt;
+  SfSpecialItemState special_items;
+  SfPlayerMagicState magic;
+  SfPlayerCompanionProgress companions;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;
@@ -65,6 +71,8 @@ typedef struct SfPlayerState {
   int32_t job;
   int32_t mine_count;
   int32_t maximum_mines;
+  int32_t element_x;
+  int32_t element_y;
   uint32_t action_counter;
   uint32_t animation_frame;
   uint8_t appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];

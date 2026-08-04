@@ -49,15 +49,64 @@ same item-transfer path as the backpack. A new hero receives the full retail
 loadout: Leather Cloth, four Tablets and four Capsules in both backpack and
 belt, and five mines in the separate 5/10 counter. Full life or mana leaves a
 medicine untouched, successful use plays the authored sound, and mine pickups
-fill their counter instead of entering the bag. Selecting a retail save now
+fill their counter instead of entering the bag. Backpack and equipped items
+now share the retail three-update information overlay too. Its active
+`Item.Ibn` definition supplies the name, price, combat values, durability,
+weight, requirement, and elemental strengths. Pointer-relative placement,
+the translucent backing, faint frame, tier color, and wide Gold/medicine
+layout stay entirely in `ui/`. Low-condition weapons and armor now compose
+`Status.njp` pattern 16 over backpack, equipment, and pointer-held icons too.
+The exact 0–9% threshold, eight-update blink halves, and permanently visible
+broken state live in a small game rule; only the marker composition lives in
+`ui/`.
+The left-hand Special Item panel is live now as well. `X` opens its authored
+9x10 grid, either side can remain open on its own or beside Inventory, and the
+same pointer owner moves items directly between them. Special Item placement,
+single-item swaps, partial Gold merges, hover information, and condition
+markers use the ordinary shared rules. Its fourth retail save container is
+decoded into a separate fixed owner and its required definitions stay in the
+active resource request.
+The shared Status/Magic window now has both retail tabs. `S` and the HUD button
+open Status with the saved identity, current pools, table-backed base values,
+valid equipment bonuses, affinities, and elemental marker. `M` or the top tab
+opens Magic's four six-spell pages, including availability states, saved
+levels and experience, table-backed MP/effect values, help text, arrows, and
+the authored large icons. Learned spells drag into eight persistent save-owned
+slots, while the small gameplay bar keeps retail's dynamic position beside
+left and right panels. Every gameplay load starts on normal attack as retail
+does. UI state only emits actions; persistent spell ownership remains in
+`game/`, table scanning in `data/`, and samples 57/58 reach TAL through a small
+general world event queue. Both tabs coexist with right-side Inventory,
+replace Special Item on the left, and share the same camera and input offset.
+
+The player's owned companion has its first complete C99 owner now. Table 60
+selects one of the six companion types, tables 800 through 805 build its
+level-backed profile, and only that type's idle, walk, run, artwork, and shadow
+cells are retained from PARTNER. It enters beside the hero, follows through the
+same collision-aware edge controller used by other actors, routes around live
+PEOPLE, and keeps following while inactive. Space and the exact bottom-left HUD
+strip toggle the retail active/inactive state. The active type, all six level
+and experience rows, and the defeated countdown restore from their original
+save fields. Combat, death presentation, timed revival, Moon, swapping, and
+companion dialogue remain later slices rather than being folded into the
+follower.
+
+Selecting a retail save now
 streams and verifies its `ShadowFlare0005` envelope without allocating a
 payload buffer. The plain player record and exact backpack, belt, visible
-equipment, and hidden alternate-weapon slots all populate the same fixed game
-owners used by new characters. The four development saves currently in the
-retail tree have been checked through the complete Remote Town asset and owner
-restore path. The next save slice should carry over the retail progress arrays
-and world entry so Ostare's starter handoff, conversation state, and map
-position do not reset; mine and walk/run persistence belong with that work.
+equipment, hidden alternate-weapon slots, and Special Item cells all populate
+the same fixed game owners used by new characters. The four development saves
+currently in the retail tree have been decoded through the complete save path.
+Quest state, unlocked transports, and all 1,000 persistent script/conversation
+values now reach the interpreter before its first periodic pass, so one-time
+handoffs such as Ostare's starter items stay complete. Mine count, walk/run
+pace, scenario, and authored entry reach the world owner as well. The three
+Remote Town saves also pass the complete asset-and-owner restore path. The
+load hand-off now recovers to the same selected row when a save belongs to a
+map which has not reached the C99 runtime yet, rather than closing the whole
+application after the honest asset-load failure. The
+remaining save work belongs to systems which are not in the small runtime yet:
+warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

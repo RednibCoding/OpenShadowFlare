@@ -650,6 +650,20 @@ static int test_load_game(void) {
   if (check(game.mode == SF_GAME_MODE_LOADING,
             "Single Mode did not start the saved-game loading hand-off"))
     return 1;
+  memset(&input, 0, sizeof(input));
+  sf_game_update(&game, &input);
+  if (check(game.mode == SF_GAME_MODE_GAMEPLAY &&
+            game.load_game.selected_file_slot == 0,
+            "the selected save did not reach gameplay loading") ||
+      check(sf_game_recover_saved_game_load_failure(&game),
+            "a failed saved-game load was not recoverable") ||
+      check(game.mode == SF_GAME_MODE_LOAD_GAME &&
+            game.load_game.selected_file_slot == -1 &&
+            game.load_game.selection == 0u,
+            "saved-game recovery did not restore the selected load row") ||
+      check(!sf_game_recover_saved_game_load_failure(&game),
+            "load recovery repeated outside a failed gameplay entry"))
+    return 1;
   return 0;
 }
 

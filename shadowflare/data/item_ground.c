@@ -31,14 +31,20 @@ typedef struct SfItemGroundScan {
   int8_t active;
   uint8_t count;
   char record_name[64];
+  char record_description[64];
 } SfItemGroundScan;
 
-static bool sf_item_ground_name(
-    void *user, uint8_t category, const char *name) {
+static bool sf_item_ground_text(
+    void *user, uint8_t category,
+    const char *name, const char *description) {
   SfItemGroundScan *scan = (SfItemGroundScan *) user;
   (void) category;
   memcpy(scan->record_name, name, sizeof(scan->record_name));
   scan->record_name[sizeof(scan->record_name) - 1u] = '\0';
+  memcpy(
+    scan->record_description, description,
+    sizeof(scan->record_description));
+  scan->record_description[sizeof(scan->record_description) - 1u] = '\0';
   return true;
 }
 
@@ -63,6 +69,10 @@ static bool sf_item_ground_word(
       definition = &scan->definitions[(uint8_t) scan->active];
       memcpy(definition->name, scan->record_name, sizeof(definition->name));
       definition->name[sizeof(definition->name) - 1u] = '\0';
+      memcpy(
+        definition->description, scan->record_description,
+        sizeof(definition->description));
+      definition->description[sizeof(definition->description) - 1u] = '\0';
       scan->found = (uint16_t) (
         scan->found | (uint16_t) (1u << (uint8_t) scan->active));
     }
@@ -75,6 +85,7 @@ static bool sf_item_ground_word(
       definition->suppresses_off_hand = true;
   }
   if (offset == 8u) definition->variant = value;
+  if (offset == 20u) definition->base_price = value;
   if (offset == 28u) definition->inventory_width = value;
   if (offset == 32u) definition->inventory_height = value;
   if (offset == 36u) definition->weight = value;
@@ -88,6 +99,8 @@ static bool sf_item_ground_word(
   if (offset == 68u) definition->blue_strength = value;
   if (offset == 100u && category <= 1u)
     definition->maximum_durability = value;
+  if (category <= 1u && offset >= 104u && offset < 144u)
+    definition->parameter_bonuses[(offset - 104u) / 4u] = value;
   if (offset == 100u && category == 2u)
     definition->required_level = value;
   if (category == 3u && offset == 100u)
@@ -128,6 +141,10 @@ static bool sf_item_ground_word(
     definition->appearance_green_strength = value;
   if (category == 1u && offset == 164u)
     definition->appearance_blue_strength = value;
+  if (category == 0u && offset >= 208u && offset < 240u)
+    definition->element_strengths[(offset - 208u) / 4u] = value;
+  if (category == 1u && offset >= 168u && offset < 200u)
+    definition->element_strengths[(offset - 168u) / 4u] = value;
   return true;
 }
 
@@ -148,7 +165,14 @@ bool sf_item_read_ground_definitions(
     definitions[index].blue_strength = 1000;
     definitions[index].inventory_width = 1;
     definitions[index].inventory_height = 1;
+    definitions[index].base_price = 0;
     definitions[index].maximum_durability = 0;
+    memset(
+      definitions[index].parameter_bonuses, 0,
+      sizeof(definitions[index].parameter_bonuses));
+    memset(
+      definitions[index].element_strengths, 0,
+      sizeof(definitions[index].element_strengths));
     definitions[index].subtype = -1;
     definitions[index].required_level = 1;
     definitions[index].appearance_part = -1;
@@ -158,11 +182,14 @@ bool sf_item_read_ground_definitions(
     definitions[index].consumable_effect = -1;
     definitions[index].suppresses_off_hand = false;
     definitions[index].name[0] = '\0';
+    definitions[index].description[0] = '\0';
   }
-  scan = (SfItemGroundScan) {
-    definitions, 0u, -1, definition_count, {0}};
+  memset(&scan, 0, sizeof(scan));
+  scan.definitions = definitions;
+  scan.active = -1;
+  scan.count = definition_count;
   all = (uint16_t) ((1u << definition_count) - 1u);
   return sf_item_scan_named_records(
-      path, sf_item_ground_name, sf_item_ground_word, &scan) &&
+      path, sf_item_ground_text, sf_item_ground_word, &scan) &&
     scan.found == all;
 }

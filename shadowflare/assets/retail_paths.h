@@ -67,6 +67,12 @@ typedef struct SfRetailPeoplePaths {
   const char *shadow_format;
 } SfRetailPeoplePaths;
 
+typedef struct SfRetailCompanionPaths {
+  const char *animation_format;
+  const char *artwork_format;
+  const char *shadow_format;
+} SfRetailCompanionPaths;
+
 typedef struct SfRetailGroundItemPaths {
   const char *animation_format;
   const char *artwork_format;
@@ -81,6 +87,8 @@ typedef struct SfRetailGamePaths {
   const char *speech_frame;
   const char *hud;
   const char *status;
+  const char *magic_icons;
+  const char *magic_bar_icons;
   const char *inventory_item_format;
 } SfRetailGamePaths;
 
@@ -91,6 +99,7 @@ extern const SfRetailSavePaths sf_retail_save_paths;
 extern const SfRetailWorldPaths sf_retail_world_paths;
 extern const SfRetailPlayerPaths sf_retail_player_paths;
 extern const SfRetailPeoplePaths sf_retail_people_paths;
+extern const SfRetailCompanionPaths sf_retail_companion_paths;
 extern const SfRetailGroundItemPaths sf_retail_ground_item_paths;
 extern const SfRetailGamePaths sf_retail_game_paths;
 

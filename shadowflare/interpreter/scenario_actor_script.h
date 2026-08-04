@@ -27,7 +27,7 @@
 #include <stdint.h>
 
 #define SF_SCENARIO_SCRIPT_STACK_LIMIT 16u
-#define SF_SCENARIO_SCRIPT_VALUE_LIMIT 256
+#define SF_SCENARIO_SCRIPT_VALUE_LIMIT 1000
 
 typedef enum SfScenarioScriptResult {
   SF_SCENARIO_SCRIPT_COMPLETE = 0,
@@ -42,10 +42,18 @@ typedef struct SfScenarioScriptFrame {
   uint16_t command;
 } SfScenarioScriptFrame;
 
-typedef struct SfScenarioActorScriptState {
-  int32_t temporary_values[SF_SCS_FLAG_LIMIT];
+typedef struct SfScenarioProgressState {
   int32_t persistent_values[SF_SCENARIO_SCRIPT_VALUE_LIMIT];
   int32_t quest_values[SF_SCENARIO_SCRIPT_VALUE_LIMIT];
+  int32_t transport_values[SF_SCENARIO_SCRIPT_VALUE_LIMIT];
+  uint16_t persistent_count;
+  uint16_t quest_count;
+  uint16_t transport_count;
+} SfScenarioProgressState;
+
+typedef struct SfScenarioActorScriptState {
+  int32_t temporary_values[SF_SCS_FLAG_LIMIT];
+  SfScenarioProgressState progress;
   SfScenarioScriptFrame frames[SF_SCENARIO_SCRIPT_STACK_LIMIT];
   SfScsOperand message_result_operand;
   SfScsOperand message_selection_operand;
@@ -81,6 +89,9 @@ typedef struct SfScenarioScriptEnvironment {
 
 void sf_scenario_actor_script_init(
   SfScenarioActorScriptState *state, const SfScsScript *script);
+bool sf_scenario_actor_script_restore_progress(
+  SfScenarioActorScriptState *state,
+  const SfScenarioProgressState *progress);
 bool sf_scenario_actor_script_run_periodic(
   SfScenarioActorScriptState *state, const SfScsScript *script,
   const SfScenarioScriptEnvironment *environment);

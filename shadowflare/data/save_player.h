@@ -21,6 +21,7 @@
 #define SHADOWFLARE_DATA_SAVE_PLAYER_H
 
 #include "data/item.h"
+#include "data/companion_parameters.h"
 #include "data/player_parameters.h"
 
 #include <stdbool.h>
@@ -31,6 +32,7 @@
 #define SF_SAVED_EQUIPMENT_COUNT 11u
 #define SF_SAVED_BACKPACK_ITEM_LIMIT 36u
 #define SF_SAVED_BELT_ITEM_LIMIT 8u
+#define SF_SAVED_SPECIAL_ITEM_LIMIT 90u
 
 typedef struct SfSavedItem {
   int32_t definition_id;
@@ -49,19 +51,24 @@ typedef struct SfSavedPlayer {
   SfSavedItem equipment[SF_SAVED_EQUIPMENT_COUNT];
   SfSavedItem backpack[SF_SAVED_BACKPACK_ITEM_LIMIT];
   SfSavedItem belt[SF_SAVED_BELT_ITEM_LIMIT];
+  SfSavedItem special_items[SF_SAVED_SPECIAL_ITEM_LIMIT];
   int32_t gender;
   int32_t job;
   int32_t level;
   int32_t current_life;
   int32_t current_mana;
   int32_t experience;
+  int32_t element_x;
+  int32_t element_y;
+  int32_t companion_type;
+  int32_t companion_level;
+  int32_t companion_experience;
+  int32_t companion_defeated_updates;
   uint8_t backpack_count;
   uint8_t belt_count;
+  uint8_t special_item_count;
 } SfSavedPlayer;
 
-bool sf_save_player_load(
-  const char *data_root, uint8_t file_slot, SfSavedPlayer *player);
-bool sf_save_player_load_path(const char *path, SfSavedPlayer *player);
 bool sf_saved_player_required_items(
   const SfSavedPlayer *player, SfItemReference *items,
   uint8_t capacity, uint8_t *item_count);

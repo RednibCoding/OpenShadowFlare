@@ -19,11 +19,12 @@
 
 #include "runtime/screen_runtime.h"
 
-#include "data/save_player.h"
+#include "data/save_game.h"
 #include "game/player_save.h"
+#include "game/world_save.h"
 #include "ui/conversation_input.h"
-#include "ui/gameplay_hud_input.h"
-#include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_panels_input.h"
+#include "ui/gameplay_companion_hud_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -72,20 +73,27 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->decode_scratch, runtime->decode_scratch_size);
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
-    SfSavedPlayer saved_player;
+    SfSavedGame saved_game;
     SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
     uint8_t retained_item_count = 0u;
     int32_t player_level = game->world.player.level;
+    int32_t companion_type = game->world.player.companions.type;
+    int32_t companion_level = sf_player_companion_level(
+      &game->world.player.companions);
     const bool loading_save = game->load_game.selected_file_slot >= 0;
     if (loading_save) {
-      success = sf_save_player_load(
+      success = sf_save_game_load(
         runtime->data_root,
-        (uint8_t) game->load_game.selected_file_slot, &saved_player);
+        (uint8_t) game->load_game.selected_file_slot, &saved_game);
+      if (success) success = sf_world_prepare_save_load(
+        &game->world, &saved_game);
       if (success) {
-        game->world.player.gender = saved_player.gender == 1 ? 1u : 0u;
-        player_level = saved_player.level;
+        game->world.player.gender = saved_game.player.gender == 1 ? 1u : 0u;
+        player_level = saved_game.player.level;
+        companion_type = saved_game.player.companion_type;
+        companion_level = saved_game.player.companion_level;
         success = sf_saved_player_required_items(
-          &saved_player, retained_items,
+          &saved_game.player, retained_items,
           SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
       }
     } else {
@@ -98,6 +106,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
         &runtime->assets.gameplay, runtime->data_root,
         game->world.scenario_id, game->world.entry_key,
         game->world.player.gender, player_level,
+        companion_type, companion_level,
         game->world.player.appearance_parts,
         game->world.player.appearance_part_count,
         game->world.player.visible_items,
@@ -107,7 +116,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
       if (loading_save)
         success = sf_player_restore_save(
-          &game->world.player, &saved_player,
+          &game->world.player, &saved_game.player,
           runtime->assets.gameplay.ground_items.definitions,
           runtime->assets.gameplay.ground_items.definition_count,
           runtime->assets.gameplay.player_parameters.experience_threshold);
@@ -115,6 +124,16 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
         success = sf_player_apply_initial_parameters(
           &game->world.player,
           &runtime->assets.gameplay.player_parameters);
+      if (success && loading_save)
+        success = sf_player_restore_magic(
+          &game->world.player, &saved_game.magic);
+      if (success && loading_save)
+        success = sf_player_restore_companions(
+          &game->world.player, &saved_game.player,
+          &saved_game.companions);
+      if (success)
+        (void) sf_player_magic_set_targeting(
+          &game->world.player.magic, true);
       if (success) {
         sf_world_state_bind_collision(
           &game->world, &runtime->assets.gameplay.ground,
@@ -123,13 +142,19 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
           &game->world,
           runtime->assets.gameplay.ground_items.definitions,
           runtime->assets.gameplay.ground_items.definition_count);
-        if (success) success = sf_world_state_bind_scenario(
-          &game->world, &runtime->assets.gameplay.scenario,
-          runtime->assets.gameplay.script);
+        if (success) success = loading_save
+          ? sf_world_bind_saved_scenario(
+              &game->world, &runtime->assets.gameplay.scenario,
+              runtime->assets.gameplay.script, &saved_game)
+          : sf_world_state_bind_scenario(
+              &game->world, &runtime->assets.gameplay.scenario,
+              runtime->assets.gameplay.script);
       }
       if (success) sf_world_state_enter(
           &game->world, entry->world_x, entry->world_y,
           (uint8_t) entry->direction);
+      if (success) success = sf_world_state_bind_companion(
+        &game->world, &runtime->assets.gameplay.companion_profile);
       if (success) success = sf_gameplay_screen_init(
         &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
       if (success && loading_save) game->load_game.selected_file_slot = -1;
@@ -182,16 +207,25 @@ void sf_screen_runtime_resolve_input(
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;
   input->inventory_action = SF_INVENTORY_ACTION_NONE;
+  input->magic_action = SF_MAGIC_ACTION_NONE;
+  input->magic_spell = -1;
+  input->magic_bar_slot = -1;
+  input->interface_sound = 0u;
   input->inventory_item_index = -1;
   input->inventory_grid_x = -1;
   input->inventory_grid_y = -1;
   input->equipment_slot = -1;
   input->belt_grid_x = -1;
   input->belt_grid_y = -1;
+  input->special_item_index = -1;
+  input->special_grid_x = -1;
+  input->special_grid_y = -1;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
-  if (sf_gameplay_inventory_input_resolve(
+  sf_gameplay_companion_hud_input_resolve(input);
+  if (sf_gameplay_panels_input_resolve(
+        &runtime->screen.gameplay.character_panel,
         &runtime->screen.gameplay.inventory,
         &game->world.player,
         game->world.actor_script_state.message_active, input))

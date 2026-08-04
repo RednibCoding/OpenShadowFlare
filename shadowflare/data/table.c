@@ -40,6 +40,8 @@ typedef enum SfTableField {
 typedef struct SfTableScanner {
   SfTableNumericValue output;
   void *user;
+  SfTableTextByte text_output;
+  void *text_user;
   int32_t table_count;
   int32_t table_number;
   int32_t rows;
@@ -48,6 +50,7 @@ typedef struct SfTableScanner {
   uint32_t cell_index;
   uint32_t string_index;
   uint32_t string_bytes;
+  uint32_t string_length;
   uint32_t value;
   uint8_t value_bytes;
   SfTableField field;
@@ -100,7 +103,7 @@ static bool sf_table_finish_i32(SfTableScanner *scanner) {
     sf_table_begin_i32(scanner, SF_TABLE_VALUE);
   } else if (scanner->field == SF_TABLE_VALUE) {
     const uint32_t cell = scanner->cell_index++;
-    if (!scanner->output(
+    if (scanner->output && !scanner->output(
           scanner->user, scanner->table_number,
           (int32_t) (cell / (uint32_t) scanner->columns),
           (int32_t) (cell % (uint32_t) scanner->columns), value))
@@ -112,6 +115,7 @@ static bool sf_table_finish_i32(SfTableScanner *scanner) {
   } else if (scanner->field == SF_TABLE_STRING_LENGTH) {
     if (value < 0) return false;
     scanner->string_bytes = (uint32_t) value;
+    scanner->string_length = (uint32_t) value;
     if (scanner->string_bytes == 0u) {
       ++scanner->string_index;
       if (scanner->string_index == scanner->cell_count)
@@ -129,7 +133,15 @@ static bool sf_table_byte(void *user, size_t offset, uint8_t value) {
   (void) offset;
   if (!scanner->valid || scanner->field == SF_TABLE_DONE) return false;
   if (scanner->field == SF_TABLE_STRING) {
+    const uint32_t cell = scanner->string_index;
+    const uint32_t byte_index =
+      scanner->string_length - scanner->string_bytes;
     if (scanner->string_bytes == 0u) return false;
+    if (scanner->text_output && !scanner->text_output(
+          scanner->text_user, scanner->table_number,
+          (int32_t) (cell / (uint32_t) scanner->columns),
+          (int32_t) (cell % (uint32_t) scanner->columns),
+          byte_index, scanner->string_length, (uint8_t) ~value)) return false;
     --scanner->string_bytes;
     if (scanner->string_bytes == 0u) {
       ++scanner->string_index;
@@ -146,14 +158,15 @@ static bool sf_table_byte(void *user, size_t offset, uint8_t value) {
   return scanner->valid;
 }
 
-bool sf_table_scan_numeric(
-    const char *path, SfTableNumericValue output, void *user) {
+bool sf_table_scan(
+    const char *path, SfTableNumericValue output, void *user,
+    SfTableTextByte text_output, void *text_user) {
   uint8_t header[20];
   uint8_t compression_header[16];
   SfTableScanner scanner;
   FILE *file;
   bool decoded = false;
-  if (!path || !output) return false;
+  if (!path || (!output && !text_output)) return false;
   file = fopen(path, "rb");
   if (!file) return false;
   if (fread(header, 1u, sizeof(header), file) != sizeof(header) ||
@@ -161,6 +174,8 @@ bool sf_table_scan_numeric(
   memset(&scanner, 0, sizeof(scanner));
   scanner.output = output;
   scanner.user = user;
+  scanner.text_output = text_output;
+  scanner.text_user = text_user;
   scanner.field = SF_TABLE_COUNT;
   scanner.valid = true;
   if (sf_table_u32(header + 16u) == 1u) {
@@ -193,4 +208,9 @@ done:
   fclose(file);
   return decoded && scanner.valid && scanner.field == SF_TABLE_DONE &&
     scanner.table_count == 0;
+}
+
+bool sf_table_scan_numeric(
+    const char *path, SfTableNumericValue output, void *user) {
+  return sf_table_scan(path, output, user, NULL, NULL);
 }

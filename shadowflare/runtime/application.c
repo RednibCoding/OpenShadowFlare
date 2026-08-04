@@ -97,7 +97,11 @@ static void sf_read_event(
     if (event->key == TWL_KEY_BACKSPACE) input->backspace_pressed = true;
     if (event->key == TWL_KEY_DELETE) input->delete_pressed = true;
     if (event->key == TWL_KEY_R) input->pace_toggle_pressed = true;
+    if (event->key == TWL_KEY_SPACE) input->companion_toggle_pressed = true;
     if (event->key == TWL_KEY_I) input->inventory_pressed = true;
+    if (event->key == TWL_KEY_S) input->status_pressed = true;
+    if (event->key == TWL_KEY_M) input->magic_pressed = true;
+    if (event->key == TWL_KEY_X) input->special_items_pressed = true;
     if (event->key >= TWL_KEY_1 && event->key <= TWL_KEY_8) {
       input->belt_pocket_pressed = (int8_t) (event->key - TWL_KEY_1);
       input->belt_pocket_key_pressed = true;
@@ -144,6 +148,8 @@ static void sf_read_event(
       input->right_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_SOUTH)
       input->confirm_pressed = true;
+    if (event->controller_button == TWL_CONTROLLER_BUTTON_LEFT_SHOULDER)
+      input->companion_toggle_pressed = true;
     if (event->controller_button == TWL_CONTROLLER_BUTTON_EAST ||
         event->controller_button == TWL_CONTROLLER_BUTTON_BACK)
       input->cancel_pressed = true;
@@ -170,7 +176,11 @@ static void sf_clear_input(SfGameInput *input) {
   input->backspace_pressed = false;
   input->delete_pressed = false;
   input->pace_toggle_pressed = false;
+  input->companion_toggle_pressed = false;
   input->inventory_pressed = false;
+  input->status_pressed = false;
+  input->magic_pressed = false;
+  input->special_items_pressed = false;
   input->belt_pocket_pressed = -1;
   input->belt_pocket_key_pressed = false;
   input->text_length = 0u;
@@ -219,6 +229,9 @@ static void sf_play_world_events(
     (void) sf_play_pcm(audio, sf_ground_item_sound(
       &assets->ground_items, world->ground_items.sound_samples[index]),
       false);
+  for (index = 0u; index < world->sounds.count; ++index)
+    (void) sf_play_pcm(audio, sf_gameplay_interface_sound(
+      &assets->sounds, world->sounds.samples[index]), false);
 }
 
 static bool sf_menu_game_mode(SfGameMode mode) {
@@ -429,6 +442,8 @@ int sf_application_run(
         !sf_screen_runtime_load(screen_runtime, game)) {
       fprintf(stderr, "Could not load assets for game mode %d.\n",
         (int) game->mode);
+      if (sf_game_recover_saved_game_load_failure(game) &&
+          sf_screen_runtime_load(screen_runtime, game)) continue;
       running = false;
       continue;
     }

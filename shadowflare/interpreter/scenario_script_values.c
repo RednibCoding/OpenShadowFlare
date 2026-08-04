@@ -71,12 +71,15 @@ int32_t sf_scenario_script_read(
     if (!actor) return 0;
     return operand->type == 6 ? actor->position.x : actor->position.y;
   }
+  if (operand->type == 10 && operand->value >= 0 &&
+      operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT)
+    return state->progress.transport_values[operand->value];
   if (operand->type == 11 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT)
-    return state->persistent_values[operand->value];
+    return state->progress.persistent_values[operand->value];
   if (operand->type == 12 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT)
-    return state->quest_values[operand->value];
+    return state->progress.quest_values[operand->value];
   return 0;
 }
 
@@ -102,14 +105,25 @@ bool sf_scenario_script_write(
     if (actor) sf_scenario_actor_set_state(actor, channel, value);
     return true;
   }
+  if (operand->type == 10 && operand->value >= 0 &&
+      operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT) {
+    state->progress.transport_values[operand->value] = value != 0 ? 1 : 0;
+    if ((uint32_t) operand->value >= state->progress.transport_count)
+      state->progress.transport_count = (uint16_t) (operand->value + 1);
+    return true;
+  }
   if (operand->type == 11 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT) {
-    state->persistent_values[operand->value] = value;
+    state->progress.persistent_values[operand->value] = value;
+    if ((uint32_t) operand->value >= state->progress.persistent_count)
+      state->progress.persistent_count = (uint16_t) (operand->value + 1);
     return true;
   }
   if (operand->type == 12 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT) {
-    state->quest_values[operand->value] = value;
+    state->progress.quest_values[operand->value] = value;
+    if ((uint32_t) operand->value >= state->progress.quest_count)
+      state->progress.quest_count = (uint16_t) (operand->value + 1);
     return true;
   }
   return true;

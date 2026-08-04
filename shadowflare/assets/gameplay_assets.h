@@ -21,7 +21,9 @@
 #define SHADOWFLARE_ASSETS_GAMEPLAY_ASSETS_H
 
 #include "assets/player_assets.h"
+#include "assets/companion_assets.h"
 #include "assets/ground_item_assets.h"
+#include "assets/gameplay_sound_assets.h"
 #include "assets/inventory_item_assets.h"
 #include "assets/scenario_actor_assets.h"
 #include "core/arena.h"
@@ -31,6 +33,8 @@
 #include "data/obl.h"
 #include "data/player_parameters.h"
 #include "data/scs.h"
+#include "data/spell_parameters.h"
+#include "data/companion_parameters.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -53,10 +57,16 @@ typedef struct SfGameplayAssets {
   SfNjpSelected speech_frame;
   SfNjpDecodedResource hud;
   SfNjpDecodedResource inventory_panel;
+  SfNjpDecodedResource magic_icons;
+  SfNjpDecodedResource magic_bar_icons;
   SfPlayerInitialParameters player_parameters;
+  SfCompanionProfile companion_profile;
+  SfSpellParameters *spell_parameters;
   SfPlayerAssets player;
+  SfCompanionAssets companion;
   SfScenarioActorAssets actors;
   SfGroundItemAssets ground_items;
+  SfGameplaySoundAssets sounds;
   SfInventoryItemAssets inventory_items;
   SfGameplayPatternSet *pattern_sets;
   size_t memory_bytes;
@@ -67,6 +77,7 @@ bool sf_gameplay_assets_load(
   SfGameplayAssets *assets, const char *data_root,
   int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
   int32_t player_level,
+  int32_t companion_type, int32_t companion_level,
   const uint8_t *appearance_parts, uint8_t appearance_part_count,
   const SfItemReference *visible_items, uint8_t visible_item_count,
   const SfItemReference *retained_items, uint8_t retained_item_count,

@@ -63,6 +63,74 @@ static void sf_save_build_substitution(uint8_t table[256]) {
   }
 }
 
+static bool sf_save_decode_at(
+    SfSavePayloadReader *reader, uint32_t offset,
+    uint8_t *bytes, size_t size) {
+  const long payload_start = (long) (SF_SAVE_PLAIN_SIZE + SF_SAVE_ENVELOPE_SIZE);
+  const long current = ftell(reader->file);
+  size_t index;
+  if (current < 0 || size > reader->remaining ||
+      offset > reader->remaining - (uint32_t) size ||
+      fseek(reader->file, payload_start + (long) offset, SEEK_SET) != 0)
+    return false;
+  for (index = 0u; index < size; ++index) {
+    const int encoded = fgetc(reader->file);
+    if (encoded == EOF) return false;
+    bytes[index] = (uint8_t) (
+      reader->substitution[(uint8_t) encoded] ^ reader->xor_key);
+  }
+  return fseek(reader->file, current, SEEK_SET) == 0;
+}
+
+static bool sf_save_extension_header(
+    SfSavePayloadReader *reader, uint32_t size,
+    uint32_t expected_version) {
+  static const uint8_t signature[8] = {
+    'O', 'S', 'F', 'S', 'T', '0', '1', 0
+  };
+  uint8_t header[24];
+  const size_t header_size = size < sizeof(header) ? size : sizeof(header);
+  const uint32_t start = reader->remaining - size;
+  memset(header, 0, sizeof(header));
+  if (!sf_save_decode_at(reader, start, header, header_size) ||
+      memcmp(header, signature, sizeof(signature)) != 0 ||
+      sf_save_u32(header + 8u) != size ||
+      sf_save_u32(header + 12u) != expected_version) return false;
+  reader->extension_size = size;
+  reader->extension_version = expected_version;
+  reader->extension_running = sf_save_u32(header + 16u) != 0u;
+  reader->extension_has_mine_count = size >= 24u;
+  if (reader->extension_has_mine_count)
+    reader->extension_mine_count = (int32_t) sf_save_u32(header + 20u);
+  reader->extension_present = true;
+  return true;
+}
+
+static bool sf_save_inspect_extension(SfSavePayloadReader *reader) {
+  uint8_t tail[4];
+  uint32_t size;
+  if (reader->remaining >= 28u && sf_save_decode_at(
+        reader, reader->remaining - 4u, tail, sizeof(tail))) {
+    size = sf_save_u32(tail);
+    if (size >= 28u && size <= reader->remaining &&
+        sf_save_extension_header(reader, size, 4u)) return true;
+  }
+  if (reader->remaining >= 24u &&
+      sf_save_extension_header(reader, 24u, 3u)) return true;
+  if (reader->remaining >= 20u) {
+    uint8_t header[16];
+    const uint32_t start = reader->remaining - 20u;
+    if (sf_save_decode_at(reader, start, header, sizeof(header)) &&
+        memcmp(header, "OSFST01", 7u) == 0 && header[7] == 0u &&
+        sf_save_u32(header + 8u) == 20u &&
+        (sf_save_u32(header + 12u) == 1u ||
+         sf_save_u32(header + 12u) == 2u))
+      return sf_save_extension_header(
+        reader, 20u, sf_save_u32(header + 12u));
+  }
+  return true;
+}
+
 bool sf_save_payload_open(
     SfSavePayloadReader *reader, const char *path,
     uint8_t player_record[SF_SAVE_PLAYER_RECORD_SIZE], bool *has_envelope) {
@@ -95,6 +163,7 @@ bool sf_save_payload_open(
       (unsigned long) file_size != SF_SAVE_PLAIN_SIZE +
         SF_SAVE_ENVELOPE_SIZE + reader->remaining) goto failed;
   sf_save_build_substitution(reader->substitution);
+  if (!sf_save_inspect_extension(reader)) goto failed;
   *has_envelope = true;
   return true;
 failed:
@@ -130,6 +199,12 @@ bool sf_save_payload_skip(SfSavePayloadReader *reader, size_t size) {
     size -= chunk;
   }
   return true;
+}
+
+uint32_t sf_save_payload_content_remaining(
+    const SfSavePayloadReader *reader) {
+  if (!reader || reader->extension_size > reader->remaining) return 0u;
+  return reader->remaining - reader->extension_size;
 }
 
 bool sf_save_payload_finish(SfSavePayloadReader *reader) {

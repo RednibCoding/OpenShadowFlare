@@ -103,6 +103,18 @@ void sf_scenario_actor_script_init(
     state->temporary_values[index] = script->temporary_flags[index].initial_value;
 }
 
+bool sf_scenario_actor_script_restore_progress(
+    SfScenarioActorScriptState *state,
+    const SfScenarioProgressState *progress) {
+  if (!state || !progress ||
+      progress->persistent_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT ||
+      progress->quest_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT ||
+      progress->transport_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT)
+    return false;
+  state->progress = *progress;
+  return true;
+}
+
 SfScenarioScriptResult sf_scenario_actor_script_start_status(
     SfScenarioActorScriptState *state, const SfScsScript *script,
     int32_t kind, int32_t character_number,

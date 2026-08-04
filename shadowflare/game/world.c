@@ -24,6 +24,7 @@
 #include "game/player_item.h"
 #include "game/world_conversation.h"
 #include "game/world_inventory.h"
+#include "game/world_magic.h"
 #include "game/world_script.h"
 
 #include <string.h>
@@ -80,15 +81,38 @@ bool sf_world_state_bind_ground_items(
 bool sf_world_state_bind_scenario(
     SfWorldState *world,
     const SfMctScenario *scenario, const SfScsScript *script) {
+  return sf_world_state_bind_scenario_progress(
+    world, scenario, script, NULL);
+}
+
+bool sf_world_state_bind_scenario_progress(
+    SfWorldState *world,
+    const SfMctScenario *scenario, const SfScsScript *script,
+    const SfScenarioProgressState *progress) {
   SfScenarioScriptEnvironment environment;
   if (!world || !scenario || !script) return false;
   sf_scenario_actors_init(&world->actors, scenario);
   sf_scenario_actor_script_init(&world->actor_script_state, script);
+  if (progress && !sf_scenario_actor_script_restore_progress(
+        &world->actor_script_state, progress)) return false;
   world->scenario = scenario;
   world->script = script;
+  world->companion_type = world->player.companions.type;
   environment = sf_world_script_environment(world);
   return sf_scenario_actor_script_run_periodic(
     &world->actor_script_state, script, &environment);
+}
+
+bool sf_world_state_bind_companion(
+    SfWorldState *world, const SfCompanionProfile *profile) {
+  if (!world || !world->entered || !profile ||
+      profile->type != world->player.companions.type ||
+      profile->level != sf_player_companion_level(
+        &world->player.companions)) return false;
+  return sf_companion_init(
+    &world->companion, profile, world->player.position,
+    world->player.direction,
+    world->player.companions.defeated_updates > 0);
 }
 
 static SfWorldPoint sf_world_pointer_target(
@@ -230,6 +254,17 @@ static void sf_world_add_player_blocker(SfWorldState *world) {
       world->player.position, world->player.judgement, INT32_MIN + 1};
 }
 
+static uint8_t sf_world_add_companion_blocker(SfWorldState *world) {
+  const uint8_t index = world->movement_blocker_count;
+  if (!world->companion.valid || world->companion.current_life <= 0 ||
+      index >= SF_WORLD_MOVEMENT_BLOCKER_LIMIT) return UINT8_MAX;
+  world->movement_blockers[world->movement_blocker_count++] =
+    (SfMovementBlocker) {
+      world->companion.position, world->companion.judgement,
+      SF_COMPANION_CHARACTER_NUMBER};
+  return index;
+}
+
 static void sf_world_update_scenario_actors(
     SfWorldState *world, const uint8_t *actor_blocker_indices,
     SfCollisionQuery collision) {
@@ -250,10 +285,15 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   SfCollisionQuery collision;
   SfScreenPoint player_screen;
   uint8_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
+  uint8_t companion_blocker_index;
   bool message_consumed_input;
   bool inventory_consumed_input;
   if (!world || !world->entered || !input) return;
   sf_ground_items_update(&world->ground_items);
+  sf_sound_events_reset(&world->sounds);
+  if (input->interface_sound != 0u)
+    sf_sound_events_push(&world->sounds, input->interface_sound);
+  sf_world_magic_update(&world->player, input);
   pointer = &world->pointer;
   pointer->screen_x = input->pointer_x;
   pointer->screen_y = input->pointer_y;
@@ -271,6 +311,8 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     pointer->hovered_ground_item_id = -1;
   if (!message_consumed_input && input->pace_toggle_pressed)
     sf_player_toggle_pace(&world->player);
+  if (!message_consumed_input && input->companion_toggle_pressed)
+    sf_companion_toggle_activity(&world->companion);
   if (!message_consumed_input && input->pointer_primary_down &&
       pointer->ground_command_active && !pointer->inventory_pointer_guard) {
     if (input->pointer_primary_pressed) pointer->hold_updates = 1u;
@@ -345,9 +387,17 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   sf_world_refresh_pending_actor(world);
   sf_world_refresh_pending_ground_item(world);
   sf_world_add_player_blocker(world);
+  companion_blocker_index = sf_world_add_companion_blocker(world);
   collision.blocker_count = world->movement_blocker_count;
   sf_world_update_scenario_actors(
     world, actor_blocker_indices, collision);
+  collision.blocker_count = world->movement_blocker_count;
+  collision.ignored_blocker_id = SF_COMPANION_CHARACTER_NUMBER;
+  sf_companion_update_follow(
+    &world->companion, &world->player, &collision);
+  if (companion_blocker_index != UINT8_MAX)
+    world->movement_blockers[companion_blocker_index].position =
+      world->companion.position;
   if (world->script) {
     const SfScenarioScriptEnvironment environment =
       sf_world_script_environment(world);

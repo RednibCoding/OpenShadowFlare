@@ -149,6 +149,25 @@ bool sf_world_inventory_update(
         changed = true;
       }
     }
+  } else if (input->inventory_action == SF_INVENTORY_ACTION_TAKE_SPECIAL &&
+             !transfer->holding_item && input->special_item_index >= 0 &&
+             sf_special_items_take(
+               &world->player.special_items,
+               (uint8_t) input->special_item_index,
+               &transfer->held_item)) {
+    transfer->holding_item = true;
+    moved_item = transfer->held_item;
+    changed = true;
+  } else if (input->inventory_action == SF_INVENTORY_ACTION_PLACE_SPECIAL &&
+             transfer->holding_item) {
+    const SfInventoryPlacement placement = sf_special_items_place(
+      &world->player.special_items, transfer->held_item,
+      input->special_grid_x, input->special_grid_y);
+    if (placement.accepted) {
+      transfer->held_item = placement.held_item;
+      transfer->holding_item = placement.holding_item;
+      changed = true;
+    }
   } else if (input->inventory_action == SF_INVENTORY_ACTION_USE_BACKPACK &&
              !transfer->holding_item && input->inventory_item_index >= 0 &&
              input->inventory_item_index < world->player.inventory.count) {

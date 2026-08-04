@@ -32,8 +32,14 @@ typedef struct SfSavePayloadReader {
   uint32_t remaining;
   uint32_t checksum;
   uint32_t expected_checksum;
+  uint32_t extension_size;
+  uint32_t extension_version;
+  int32_t extension_mine_count;
   uint8_t substitution[256];
   uint8_t xor_key;
+  bool extension_present;
+  bool extension_running;
+  bool extension_has_mine_count;
 } SfSavePayloadReader;
 
 bool sf_save_payload_open(
@@ -42,6 +48,8 @@ bool sf_save_payload_open(
 bool sf_save_payload_read(
   SfSavePayloadReader *reader, void *bytes, size_t size);
 bool sf_save_payload_skip(SfSavePayloadReader *reader, size_t size);
+uint32_t sf_save_payload_content_remaining(
+  const SfSavePayloadReader *reader);
 bool sf_save_payload_finish(SfSavePayloadReader *reader);
 void sf_save_payload_close(SfSavePayloadReader *reader);
 
