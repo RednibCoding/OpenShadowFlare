@@ -93,6 +93,7 @@ const SfRetailGroundItemPaths sf_retail_ground_item_paths = {
 
 const SfRetailGamePaths sf_retail_game_paths = {
   "System/Game/Parameter/Table.Tbd",
+  "System/Game/Parameter/Control.aid",
   "System/Game/Parameter/Item.Ibn",
   "System/Game/Voice/Voice00.Voc",
   "System/Common/Pattern/Font00.njp",

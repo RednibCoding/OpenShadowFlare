@@ -58,6 +58,19 @@ void sf_scenario_enemies_init(
   }
 }
 
+bool sf_scenario_enemies_bind_controls(
+    SfScenarioEnemySet *enemies, const SfAiControlCatalog *catalog) {
+  uint16_t index;
+  if (!enemies || !catalog) return false;
+  for (index = 0u; index < enemies->count; ++index) {
+    SfScenarioEnemy *enemy = &enemies->enemies[index];
+    enemy->control = enemy->definition
+      ? sf_ai_control_find(catalog, enemy->definition->ai_control_name) : NULL;
+    if (!enemy->control) return false;
+  }
+  return true;
+}
+
 void sf_scenario_enemy_update(SfScenarioEnemy *enemy) {
   if (!enemy) return;
   enemy->previous_position = enemy->position;

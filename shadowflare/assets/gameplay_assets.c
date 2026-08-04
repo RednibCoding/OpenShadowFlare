@@ -329,6 +329,10 @@ bool sf_gameplay_assets_load(
         path, companion_type, companion_level, &assets->companion_profile) ||
       !sf_spell_parameters_load(path, assets->spell_parameters) ||
       !sf_transport_catalog_load(path, &assets->transports) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.ai_control) ||
+      !sf_ai_control_catalog_load(
+        path, &assets->scenario, arena, &assets->ai_controls) ||
       !sf_gameplay_sound_assets_load(
         &assets->sounds, data_root, arena) ||
       !sf_ground_item_assets_load(

@@ -96,6 +96,7 @@ typedef struct SfRetailGroundItemPaths {
 
 typedef struct SfRetailGamePaths {
   const char *parameter_tables;
+  const char *ai_control;
   const char *item_database;
   const char *common_sounds;
   const char *font;

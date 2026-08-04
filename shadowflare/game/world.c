@@ -77,6 +77,11 @@ void sf_world_state_bind_transports(
   world->transports = transports;
 }
 
+bool sf_world_state_bind_ai_controls(
+    SfWorldState *world, const SfAiControlCatalog *catalog) {
+  return world && sf_scenario_enemies_bind_controls(&world->enemies, catalog);
+}
+
 void sf_world_state_bind_collision(
     SfWorldState *world,
     const SfGroundMap *ground, const SfObjectMap *objects) {

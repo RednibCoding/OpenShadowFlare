@@ -84,6 +84,8 @@ static int test_non_town_gameplay_load(
   uint8_t index;
   const SfMctEnemy *goblin = NULL;
   const SfScenarioEnemyVisual *goblin_visual;
+  const SfAiControl *goblin_control;
+  const SfAiAction *patrol_action;
   uint16_t enemy_index;
   (void) snprintf(path, sizeof(path), "%s/Map/Pattern/f00_02.Lst", root);
   if (!sf_pattern_list_load(path, &patterns) ||
@@ -113,6 +115,11 @@ static int test_non_town_gameplay_load(
   }
   goblin_visual = goblin
     ? sf_scenario_enemy_visual(&assets.enemies, goblin->resource_id) : NULL;
+  goblin_control = goblin
+    ? sf_ai_control_find(&assets.ai_controls, goblin->ai_control_name) : NULL;
+  patrol_action = goblin_control
+    ? sf_ai_control_action(
+        &assets.ai_controls, goblin_control, 0u, 0u) : NULL;
   sf_world_state_init(&world, 1, 0, player->gender);
   if (assets.scenario.people_count != 0u || assets.actors.visual_count != 0u ||
       assets.scenario.object_count != 48u ||
@@ -120,6 +127,14 @@ static int test_non_town_gameplay_load(
       strcmp(goblin->name, "Goblin") != 0 ||
       goblin->pre_ai_values[8] != 40 ||
       goblin->pre_ai_values[13] != 1 || goblin->pre_ai_values[14] != 0 ||
+      assets.ai_controls.control_count != 3u ||
+      assets.ai_controls.action_count != 48u || !goblin_control ||
+      goblin_control->walk_point_speed != 20 || !patrol_action ||
+      patrol_action->action_number != 1 ||
+      patrol_action->parameters[1] != 300 ||
+      patrol_action->parameters[3] != 15 ||
+      patrol_action->parameters[4] != 120 ||
+      patrol_action->parameters[5] != 20 ||
       !goblin_visual || goblin->direction < 0 || goblin->direction > 7 ||
       goblin_visual->animations[goblin->direction].frame_count == 0u ||
       !sf_player_apply_initial_parameters(
@@ -129,6 +144,7 @@ static int test_non_town_gameplay_load(
         assets.ground_items.definition_count) ||
       !sf_world_state_bind_scenario(
         &world, &assets.scenario, assets.script) ||
+      !sf_world_state_bind_ai_controls(&world, &assets.ai_controls) ||
       world.enemies.count != 127u ||
       world.placed_effects.count == 0u) {
     fprintf(stderr, "A saved world without PEOPLE records could not start\n");
@@ -140,7 +156,8 @@ static int test_non_town_gameplay_load(
       &world.enemies, 14000101);
     bool blocker_found = false;
     uint16_t blocker_index;
-    if (!live_goblin || live_goblin->current_life != 40) {
+    if (!live_goblin || live_goblin->current_life != 40 ||
+        live_goblin->control != goblin_control) {
       fprintf(stderr, "The first authored Goblin did not enter world state\n");
       return 1;
     }

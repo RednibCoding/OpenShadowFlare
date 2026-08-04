@@ -53,6 +53,7 @@ add_library(
   core/coordinates.c
   core/retail_random.c
   data/caf.c
+  data/ai_control.c
   data/companion_parameters.c
   data/bmp.c
   data/gnd.c

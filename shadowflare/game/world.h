@@ -108,6 +108,8 @@ void sf_world_state_bind_collision(
   const SfGroundMap *ground, const SfObjectMap *objects);
 void sf_world_state_bind_transports(
   SfWorldState *world, const SfTransportCatalog *transports);
+bool sf_world_state_bind_ai_controls(
+  SfWorldState *world, const SfAiControlCatalog *catalog);
 bool sf_world_state_bind_ground_items(
   SfWorldState *world, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);

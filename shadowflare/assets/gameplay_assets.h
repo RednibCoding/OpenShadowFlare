@@ -30,6 +30,7 @@
 #include "assets/scenario_object_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
+#include "data/ai_control.h"
 #include "data/mct.h"
 #include "data/njp.h"
 #include "data/obl.h"
@@ -66,6 +67,7 @@ typedef struct SfGameplayAssets {
   SfCompanionProfile companion_profile;
   SfSpellParameters *spell_parameters;
   SfTransportCatalog transports;
+  SfAiControlCatalog ai_controls;
   SfPlayerAssets player;
   SfCompanionAssets companion;
   SfScenarioActorAssets actors;

@@ -23,6 +23,7 @@
 #include "core/bounds.h"
 #include "core/coordinates.h"
 #include "data/mct.h"
+#include "data/ai_control.h"
 #include "game/scenario_entity.h"
 
 #include <stdbool.h>
@@ -30,6 +31,7 @@
 
 typedef struct SfScenarioEnemy {
   const SfMctEnemy *definition;
+  const SfAiControl *control;
   SfWorldPoint position;
   SfWorldPoint previous_position;
   SfObjectBounds judgement;
@@ -48,6 +50,8 @@ typedef struct SfScenarioEnemySet {
 
 void sf_scenario_enemies_init(
   SfScenarioEnemySet *enemies, const SfMctScenario *scenario);
+bool sf_scenario_enemies_bind_controls(
+  SfScenarioEnemySet *enemies, const SfAiControlCatalog *catalog);
 void sf_scenario_enemy_update(SfScenarioEnemy *enemy);
 int32_t sf_scenario_enemy_character_number(const SfScenarioEnemy *enemy);
 SfWorldPoint sf_scenario_enemy_render_position(

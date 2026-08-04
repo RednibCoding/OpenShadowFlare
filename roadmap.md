@@ -146,9 +146,12 @@ The immediate C99 target is the first retail enemy-controller slice. Decode
 the action and timing values used by the ordinary Goblin, connect its idle and
 walk decisions to the existing collision-aware movement boundary, and refresh
 the small enemy visual working set at a predictable loading boundary when its
-directions or locality change. Picking, nameplates, attacks, and damage should
-then grow from that same live actor instead of creating a parallel combat-only
-enemy representation.
+directions or locality change. The data half is already in place: `Control.aid`
+is scanned without retaining its 90 KiB file image, and Near Remote Town keeps
+only its three referenced control lists and 48 actions. Every live enemy must
+resolve its exact Shift-JIS MCT control name before the world starts. Picking,
+nameplates, attacks, and damage should then grow from that same live actor
+instead of creating a parallel combat-only enemy representation.
 
 ## Where we are now
 

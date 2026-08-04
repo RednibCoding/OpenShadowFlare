@@ -283,8 +283,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,516,133 bytes of the 7 MiB main arena,
-leaving 5,823,899 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,518,205 bytes of the 7 MiB main arena,
+leaving 5,821,827 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -297,20 +297,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 829,056 bytes of the main arena, leaving 6,510,976 bytes free;
+assets. It uses 831,128 bytes of the main arena, leaving 6,508,904 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 789,272 bytes of the main arena, leaving 6,550,760
+The load-game screen uses 791,344 bytes of the main arena, leaving 6,548,688
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,249,164 bytes of the main
-arena, leaving 90,868 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,251,236 bytes of the main
+arena, leaving 88,796 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
 inventory-panel, transport, equipment, and UI data and artwork account for
 6,834,213 bytes. GND rendering data is decoded directly from its compressed three-plane
@@ -318,8 +318,8 @@ stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
-The same runtime reload measured in Near Remote Town uses 6,485,944 bytes,
-leaving 854,088 bytes free; 6,070,993 bytes belong to that screen. The
+The same runtime reload measured in Near Remote Town uses 6,491,424 bytes,
+leaving 848,608 bytes free; 6,074,401 bytes belong to that screen. The
 transition never retains two maps at once. Its fixed request lives with the
 game owner, while the screen arena is rewound before the next scenario is
 decoded.
@@ -382,7 +382,7 @@ The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 90,868-byte headroom is now a hard warning for upcoming combat and
+remaining 88,796-byte headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 
@@ -398,6 +398,15 @@ share the ordinary depth list; resource-less `Enemy Hole` rows stay valid but
 request no artwork. This first cache is prepared only at the loading boundary,
 so the next controller slice must refresh it at another predictable boundary
 before enemies can roam beyond the prepared locality.
+
+Enemy control data has an equally narrow owner. The active scenario supplies
+the exact fixed Shift-JIS names to a two-pass `Control.aid` scan. The first pass
+counts only matching lists and actions; the second writes their event spans,
+nine parameters, and six conditions directly into the screen arena. Near
+Remote Town therefore keeps three of the retail file's 64 lists and 48 actions
+without retaining a 90 KiB input buffer or using heap memory. Each live enemy
+holds one immutable resolved control pointer, and a missing authored name makes
+world preparation fail instead of silently selecting a made-up behavior.
 
 World pointer hit testing lives in `ui/`, where the loaded sparse actor cells
 are already available. It produces a small actor intent before each game
