@@ -56,6 +56,7 @@ add_library(
   data/caf.c
   data/ai_control.c
   data/companion_parameters.c
+  data/combat_tables.c
   data/bmp.c
   data/gnd.c
   data/item.c
@@ -86,13 +87,16 @@ add_library(
   data/voc.c
   game/character_create.c
   game/companion.c
+  game/companion_damage.c
   game/belt.c
   game/collision.c
+  game/combat_damage.c
   game/equipment.c
   game/enemy_ai_selection.c
   game/enemy_action.c
   game/enemy_movement.c
   game/enemy_presentation.c
+  game/enemy_direct_impact.c
   game/game.c
   game/gameplay_service.c
   game/ground_item.c
@@ -101,6 +105,7 @@ add_library(
   game/load_game.c
   game/movement.c
   game/player.c
+  game/player_damage.c
   game/player_companion.c
   game/player_magic.c
   game/player_elements.c
@@ -121,6 +126,7 @@ add_library(
   game/special_items.c
   game/title.c
   game/world.c
+  game/world_enemy_combat.c
   game/world_conversation.c
   game/world_inventory.c
   game/world_interaction.c

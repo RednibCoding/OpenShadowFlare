@@ -113,15 +113,6 @@ static uint8_t sf_enemy_audio_markers(int16_t status) {
   return markers;
 }
 
-static bool sf_enemy_impact_target_valid(
-    const SfScenarioEnemy *enemy,
-    const SfScenarioEnemyControllerContext *context) {
-  uint8_t target_index = UINT8_MAX;
-  const SfEnemyControllerTarget *target = sf_enemy_direct_target(
-    enemy, context, &target_index);
-  return target && target_index == enemy->presentation_target;
-}
-
 void sf_enemy_presentation_update(
     SfScenarioEnemy *enemy,
     const SfScenarioEnemyControllerContext *context) {
@@ -159,8 +150,7 @@ void sf_enemy_presentation_update(
       const int16_t status = cells[scan].status;
       enemy->presentation_audio_markers = (uint8_t) (
         enemy->presentation_audio_markers | sf_enemy_audio_markers(status));
-      if ((status & SF_ENEMY_IMPACT_MARKER) != 0 &&
-          sf_enemy_impact_target_valid(enemy, context))
+      if ((status & SF_ENEMY_IMPACT_MARKER) != 0)
         enemy->direct_impact_pending = true;
     }
   }

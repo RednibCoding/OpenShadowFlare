@@ -17,34 +17,28 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
-#define SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
+#ifndef SHADOWFLARE_GAME_COMPANION_DAMAGE_H
+#define SHADOWFLARE_GAME_COMPANION_DAMAGE_H
 
-#include "data/ai_control.h"
-#include "game/collision.h"
-#include "game/scenario_enemy.h"
+#include "data/combat_tables.h"
+#include "game/combat_packet.h"
+#include "game/companion.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfEnemyControllerTarget {
-  SfWorldPoint position;
-  SfObjectBounds judgement;
-  int32_t combat_defense;
+typedef struct SfCompanionDamageResult {
+  int32_t damage;
   bool valid;
-} SfEnemyControllerTarget;
+  bool accepted;
+} SfCompanionDamageResult;
 
-typedef struct SfScenarioEnemyControllerContext {
-  const SfAiControlCatalog *catalog;
-  const SfCollisionQuery *collision;
-  SfEnemyControllerTarget player;
-  SfEnemyControllerTarget companion;
-  SfEnemyAttackRequest *attack_request;
-  uint32_t *random_state;
-} SfScenarioEnemyControllerContext;
-
-void sf_scenario_enemy_controller_update(
-  SfScenarioEnemy *enemy,
-  const SfScenarioEnemyControllerContext *context);
+void sf_companion_combat_defense(
+  const SfCompanionState *companion,
+  SfCombatDefense *defense, int32_t *physical_evasion);
+SfCompanionDamageResult sf_companion_receive_damage(
+  SfCompanionState *companion, const SfCombatPacket *packet,
+  SfWorldPoint impact_origin, const SfCombatTables *tables,
+  uint32_t *random_state);
 
 #endif

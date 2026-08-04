@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_WORLD_H
 
 #include "data/transport.h"
+#include "data/combat_tables.h"
 #include "game/input.h"
 #include "game/gameplay_service.h"
 #include "game/ground_item.h"
@@ -92,6 +93,7 @@ typedef struct SfWorldState {
   const SfScsScript *script;
   const SfTransportCatalog *transports;
   const SfAiControlCatalog *ai_controls;
+  const SfCombatTables *combat_tables;
   SfWorldPointerControl pointer;
   int32_t script_transport_service;
   SfEnemyAttackRequest enemy_attack_request;
@@ -113,6 +115,8 @@ void sf_world_state_bind_transports(
   SfWorldState *world, const SfTransportCatalog *transports);
 bool sf_world_state_bind_ai_controls(
   SfWorldState *world, const SfAiControlCatalog *catalog);
+void sf_world_state_bind_combat_tables(
+  SfWorldState *world, const SfCombatTables *tables);
 bool sf_world_state_bind_ground_items(
   SfWorldState *world, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);

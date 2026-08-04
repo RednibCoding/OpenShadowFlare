@@ -50,6 +50,7 @@ bool sf_companion_init(
   companion->previous_position = position;
   companion->judgement = (SfObjectBounds) {-80, -80, 79, 79};
   companion->current_life = defeated ? 0 : profile->values[3];
+  companion->damage.action = 2;
   companion->direction = direction;
   companion->inactive = true;
   companion->valid = true;

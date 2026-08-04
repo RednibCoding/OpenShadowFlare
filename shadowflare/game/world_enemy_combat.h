@@ -17,24 +17,16 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
-#define SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
+#ifndef SHADOWFLARE_GAME_WORLD_ENEMY_COMBAT_H
+#define SHADOWFLARE_GAME_WORLD_ENEMY_COMBAT_H
 
-#include "core/arena.h"
-#include "data/voc.h"
+#include "game/scenario_enemy_controller.h"
+#include "game/world.h"
 
-#include <stdbool.h>
-#include <stdint.h>
-
-#define SF_GAMEPLAY_SOUND_COUNT 5u
-
-typedef struct SfGameplaySoundAssets {
-  SfPcmU8 sounds[SF_GAMEPLAY_SOUND_COUNT];
-} SfGameplaySoundAssets;
-
-bool sf_gameplay_sound_assets_load(
-  SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena);
-const SfPcmU8 *sf_gameplay_sound(
-  const SfGameplaySoundAssets *assets, uint16_t sample);
+void sf_world_enemy_combat_targets(
+  const SfWorldState *world, SfScenarioEnemyControllerContext *context);
+bool sf_world_enemy_combat_apply_direct(
+  SfWorldState *world, SfScenarioEnemy *enemy,
+  SfScenarioEnemyControllerContext *context);
 
 #endif

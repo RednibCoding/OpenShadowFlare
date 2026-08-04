@@ -17,34 +17,33 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
-#define SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
+#ifndef SHADOWFLARE_GAME_PLAYER_DAMAGE_H
+#define SHADOWFLARE_GAME_PLAYER_DAMAGE_H
 
-#include "data/ai_control.h"
-#include "game/collision.h"
-#include "game/scenario_enemy.h"
+#include "data/combat_tables.h"
+#include "data/item.h"
+#include "game/combat_packet.h"
+#include "game/player.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfEnemyControllerTarget {
-  SfWorldPoint position;
-  SfObjectBounds judgement;
-  int32_t combat_defense;
+typedef struct SfPlayerDamageResult {
+  int32_t damage;
+  uint16_t audio_sample;
   bool valid;
-} SfEnemyControllerTarget;
+  bool accepted;
+  bool revived;
+} SfPlayerDamageResult;
 
-typedef struct SfScenarioEnemyControllerContext {
-  const SfAiControlCatalog *catalog;
-  const SfCollisionQuery *collision;
-  SfEnemyControllerTarget player;
-  SfEnemyControllerTarget companion;
-  SfEnemyAttackRequest *attack_request;
-  uint32_t *random_state;
-} SfScenarioEnemyControllerContext;
-
-void sf_scenario_enemy_controller_update(
-  SfScenarioEnemy *enemy,
-  const SfScenarioEnemyControllerContext *context);
+void sf_player_combat_defense(
+  const SfPlayerState *player,
+  const SfItemGroundDefinition *definitions, uint8_t definition_count,
+  SfCombatDefense *defense, int32_t *physical_evasion);
+SfPlayerDamageResult sf_player_receive_damage(
+  SfPlayerState *player, const SfCombatPacket *packet,
+  SfWorldPoint impact_origin,
+  const SfItemGroundDefinition *definitions, uint8_t definition_count,
+  const SfCombatTables *tables, uint32_t *random_state);
 
 #endif

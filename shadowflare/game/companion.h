@@ -25,6 +25,7 @@
 #include "game/collision.h"
 #include "game/player.h"
 #include "game/route.h"
+#include "game/damage_presentation.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -43,6 +44,7 @@ typedef struct SfCompanionState {
   SfWorldPoint previous_position;
   SfObjectBounds judgement;
   SfRouteController route;
+  SfDamagePresentationState damage;
   int32_t current_life;
   uint32_t action_counter;
   uint32_t animation_frame;

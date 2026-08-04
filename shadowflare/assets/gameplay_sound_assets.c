@@ -24,7 +24,7 @@
 #include <string.h>
 
 static const uint16_t sf_gameplay_samples[
-    SF_GAMEPLAY_SOUND_COUNT] = {57u, 58u, 80u};
+    SF_GAMEPLAY_SOUND_COUNT] = {6u, 17u, 57u, 58u, 80u};
 
 bool sf_gameplay_sound_assets_load(
     SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena) {

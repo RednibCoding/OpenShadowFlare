@@ -187,6 +187,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_pointer_active != game->world.pointer.active ||
     screen->rendered_motion != (uint8_t) player->motion ||
     screen->rendered_direction != player->direction ||
+    screen->rendered_player_life != player->current_life ||
+    screen->rendered_player_mana != player->current_mana ||
     screen->rendered_companion_frame != game->world.companion.animation_frame ||
     screen->rendered_companion_x != game->world.companion.position.x ||
     screen->rendered_companion_y != game->world.companion.position.y ||
@@ -278,6 +280,8 @@ void sf_gameplay_screen_draw(
   sf_gameplay_remember_scenario_object_frames(screen, &game->world);
   screen->rendered_player_x = view.player_position.x;
   screen->rendered_player_y = view.player_position.y;
+  screen->rendered_player_life = player->current_life;
+  screen->rendered_player_mana = player->current_mana;
   screen->rendered_camera_x = view.camera_x;
   screen->rendered_camera_y = view.camera_y;
   screen->rendered_hovered_actor_id =

@@ -52,6 +52,8 @@ typedef struct SfGameplayScreen {
   bool rendered_scenario_object_visible[SF_MCT_OBJECT_LIMIT];
   int32_t rendered_player_x;
   int32_t rendered_player_y;
+  int32_t rendered_player_life;
+  int32_t rendered_player_mana;
   int32_t rendered_camera_x;
   int32_t rendered_camera_y;
   int32_t rendered_companion_x;

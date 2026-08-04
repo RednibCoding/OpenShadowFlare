@@ -17,34 +17,24 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
-#define SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
+#ifndef SHADOWFLARE_GAME_COMBAT_DAMAGE_H
+#define SHADOWFLARE_GAME_COMBAT_DAMAGE_H
 
-#include "data/ai_control.h"
-#include "game/collision.h"
-#include "game/scenario_enemy.h"
+#include "data/combat_tables.h"
+#include "game/combat_packet.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfEnemyControllerTarget {
-  SfWorldPoint position;
-  SfObjectBounds judgement;
-  int32_t combat_defense;
+typedef struct SfCombatDamageResult {
+  int32_t damage;
+  int32_t source_character_number;
   bool valid;
-} SfEnemyControllerTarget;
+  bool requests_source_lookup;
+} SfCombatDamageResult;
 
-typedef struct SfScenarioEnemyControllerContext {
-  const SfAiControlCatalog *catalog;
-  const SfCollisionQuery *collision;
-  SfEnemyControllerTarget player;
-  SfEnemyControllerTarget companion;
-  SfEnemyAttackRequest *attack_request;
-  uint32_t *random_state;
-} SfScenarioEnemyControllerContext;
-
-void sf_scenario_enemy_controller_update(
-  SfScenarioEnemy *enemy,
-  const SfScenarioEnemyControllerContext *context);
+SfCombatDamageResult sf_combat_damage_resolve(
+  const SfCombatPacket *packet, const SfCombatDefense *defense,
+  const SfCombatTables *tables, uint32_t *random_state);
 
 #endif

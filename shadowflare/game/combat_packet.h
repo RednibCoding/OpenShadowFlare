@@ -17,24 +17,20 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
-#define SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
+#ifndef SHADOWFLARE_GAME_COMBAT_PACKET_H
+#define SHADOWFLARE_GAME_COMBAT_PACKET_H
 
-#include "core/arena.h"
-#include "data/voc.h"
-
-#include <stdbool.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_SOUND_COUNT 5u
+#define SF_COMBAT_PACKET_WORD_COUNT 77u
+#define SF_COMBAT_DEFENSE_WORD_COUNT 14u
 
-typedef struct SfGameplaySoundAssets {
-  SfPcmU8 sounds[SF_GAMEPLAY_SOUND_COUNT];
-} SfGameplaySoundAssets;
+typedef struct SfCombatPacket {
+  int32_t words[SF_COMBAT_PACKET_WORD_COUNT];
+} SfCombatPacket;
 
-bool sf_gameplay_sound_assets_load(
-  SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena);
-const SfPcmU8 *sf_gameplay_sound(
-  const SfGameplaySoundAssets *assets, uint16_t sample);
+typedef struct SfCombatDefense {
+  int32_t words[SF_COMBAT_DEFENSE_WORD_COUNT];
+} SfCombatDefense;
 
 #endif

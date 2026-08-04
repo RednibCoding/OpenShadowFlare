@@ -162,13 +162,22 @@ draws the authored name and color over the proportional life fill, with the
 native-element marker from `StatusIcon.njp`. Enemy animation and movement now
 invalidate the world presentation even while the player stands still.
 
-The first ordinary enemy attack presentation is live as well. Action two asks
-for direct presentation one, faces the retained player or companion target,
-and advances the MCT-selected CAF with the retail ten-entry speed table using
-integer ratios. It scans every crossed frame for the three sound bits and the
-`0x40` impact marker, holds the final frame for one update, then publishes
-completion event two. The game still owns the one live enemy; there is no
-second presentation actor or renderer-side combat rule.
+The first ordinary enemy attack is live end to end. Action two asks for direct
+presentation one, faces the retained player or companion target, and advances
+the MCT-selected CAF with the retail ten-entry speed table using integer
+ratios. It scans every crossed frame for the three sound bits and the `0x40`
+impact marker, holds the final frame for one update, then publishes its retail
+event. The marker performs a fresh directional target search instead of
+trusting the target seen at animation start. It builds the retail 77-word
+packet, preserves the original random draws and 20..98 hit clamp, and sends a
+hit through the player or active-companion defense and damage receiver.
+
+The receiver streams only tables 7, 11, 24, 25, and 26 into a compact fixed
+owner. Physical and elemental defense scaling, equipment durability rolls,
+the revival item, hit/death state, reaction chance and duration, event 17, and
+common hit and revival sounds now stay in `game/`; neither the enemy renderer
+nor the target backend owns combat rules. A focused test covers the packet,
+damage tables, both receivers, and the live marker-to-life/audio seam.
 
 Attack art has a separate predictable lifetime. An action whose resource is
 not resident publishes a small request and waits. Between update and draw, the
@@ -179,10 +188,11 @@ the main screen arena untouched, and can be rewound without touching the
 fixed framebuffer. This is a generic resource/chart boundary, not a list of
 special maps or Goblin IDs.
 
-The immediate target is the direct impact receiver behind that marker:
-reconstruct the retail hit packet, defense and damage result, player or
-companion reaction, and presentation sounds. After that, the same working-set
-boundary can grow to direct variants two and three and the effect actions.
+The immediate target is direct variants two and three, followed by enemy
+effect actions. They should extend the same packet and receiver path rather
+than introducing another combat owner. Hit/death CAF presentation and queued
+combat-effect artwork can then consume the reaction state already published
+by the receivers.
 
 ## Where we are now
 

@@ -286,8 +286,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,548,485 bytes of the 7 MiB main arena,
-leaving 5,791,547 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,549,493 bytes of the 7 MiB main arena,
+leaving 5,790,539 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -300,29 +300,29 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 861,408 bytes of the main arena, leaving 6,478,624 bytes free;
+assets. It uses 862,416 bytes of the main arena, leaving 6,477,616 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 821,624 bytes of the main arena, leaving 6,518,408
+The load-game screen uses 822,632 bytes of the main arena, leaving 6,517,400
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,282,572 bytes of the main
-arena, leaving 57,460 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,296,364 bytes of the main
+arena, leaving 43,668 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
-inventory-panel, transport, equipment, and UI data and artwork account for
-6,835,269 bytes. GND rendering data is decoded directly from its compressed three-plane
+inventory-panel, transport, equipment, combat tables and sounds, and UI data
+and artwork account for 6,848,053 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
-The same runtime reload measured in Near Remote Town uses 7,247,344 bytes,
-leaving 92,688 bytes free; 6,800,041 bytes belong to that screen. The
+The same runtime reload measured in Near Remote Town uses 7,261,136 bytes,
+leaving 78,896 bytes free; 6,812,825 bytes belong to that screen. The
 transition never retains two maps at once. Its fixed request lives with the
 game owner, while the screen arena is rewound before the next scenario is
 decoded.
@@ -385,7 +385,7 @@ The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 68,308-byte headroom is now a hard warning for upcoming combat and
+remaining gameplay headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 
@@ -426,9 +426,20 @@ live in separate files so adding more actions does not grow one controller. The
 ordinary action-two presentation now lives in its own game file. It uses the
 MCT direct-attack chart, range, and speed index, faces the retained target,
 scans crossed CAF cells for the three audio bits and `0x40` impact bit, holds
-the final frame, and returns retail event two. Damage is deliberately not
-applied by the movement controller; the next slice will connect the marker to
-the direct-impact receiver.
+the final frame, and returns its retail event. The impact marker always fires;
+at that exact update a separate combat owner searches the attack cone again,
+preferring the player before an active companion, and builds the original
+77-word packet. A target-less swing still consumes its visual random draw.
+Hits use the retail 20..98 chance clamp, table-scaled physical or elemental
+defense, durability and reflection draw order, revival item, reaction chance
+and duration, hit/death state, event 17, and common hit or revival sound.
+Those rules live in small `game/` files and never enter movement or rendering.
+
+Only the needed cells from combat tables 7, 11, 24, 25, and 26 are retained in
+a fixed 912-byte owner shared by every screen runtime. Common samples 6 and
+17 add the hit and revival cues to the gameplay sound bank. Ordinary updates
+allocate nothing and read no files; the extra work happens only on a crossed
+CAF impact marker. The measured gameplay totals above include both additions.
 
 Direct-attack artwork uses the previously empty video-memory tail instead of
 consuming the final main-RAM headroom. Only one inactive resource bank is

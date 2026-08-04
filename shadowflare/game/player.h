@@ -30,6 +30,7 @@
 #include "game/belt.h"
 #include "game/player_magic.h"
 #include "game/player_companion.h"
+#include "game/damage_presentation.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -63,6 +64,7 @@ typedef struct SfPlayerState {
   SfSpecialItemState special_items;
   SfPlayerMagicState magic;
   SfPlayerCompanionProgress companions;
+  SfDamagePresentationState damage;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;

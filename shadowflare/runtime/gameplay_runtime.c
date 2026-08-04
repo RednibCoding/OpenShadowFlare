@@ -129,6 +129,8 @@ bool sf_gameplay_runtime_load(
           &game->world, &assets->scenario, assets->script);
   if (success) success = sf_world_state_bind_ai_controls(
     &game->world, &assets->ai_controls);
+  if (success) sf_world_state_bind_combat_tables(
+    &game->world, &assets->combat_tables);
   if (success && !travel)
     sf_world_state_enter(
       &game->world, entry->world_x, entry->world_y,
