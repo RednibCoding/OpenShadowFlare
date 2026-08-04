@@ -21,6 +21,41 @@
 
 #include "core/retail_random.h"
 
+static bool sf_world_script_bounds_intersect(
+    SfWorldPoint first_position, SfObjectBounds first,
+    SfWorldPoint second_position, SfObjectBounds second) {
+  const int64_t first_left = (int64_t) first_position.x + first.left;
+  const int64_t first_right = (int64_t) first_position.x + first.right;
+  const int64_t first_top = (int64_t) first_position.y + first.top;
+  const int64_t first_bottom = (int64_t) first_position.y + first.bottom;
+  const int64_t second_left = (int64_t) second_position.x + second.left;
+  const int64_t second_right = (int64_t) second_position.x + second.right;
+  const int64_t second_top = (int64_t) second_position.y + second.top;
+  const int64_t second_bottom = (int64_t) second_position.y + second.bottom;
+  return first_left <= second_right && second_left <= first_right &&
+    first_top <= second_bottom && second_top <= first_bottom;
+}
+
+static bool sf_world_script_character_bounds(
+    SfWorldState *world, int32_t character_number,
+    SfWorldPoint *position, SfObjectBounds *bounds) {
+  const SfScenarioActor *actor;
+  const SfScenarioObject *object;
+  if (!world || !position || !bounds) return false;
+  actor = sf_scenario_actor_find_const(&world->actors, character_number);
+  if (actor) {
+    *position = actor->position;
+    *bounds = actor->judgement;
+    return true;
+  }
+  object = sf_scenario_object_find_const(
+    &world->scenario_objects, character_number);
+  if (!object) return false;
+  *position = object->position;
+  *bounds = object->judgement;
+  return true;
+}
+
 static bool sf_world_script_anchor(
     const SfWorldState *world, int32_t character_number,
     SfWorldPoint *anchor) {
@@ -63,6 +98,9 @@ static bool sf_world_native_command(
     sf_sound_events_push(&world->sounds, (uint16_t) arguments[0]);
     return true;
   }
+  if (opcode == 17 && argument_count == 2u)
+    return sf_scenario_travel_request(
+      &world->travel_request, arguments[0], arguments[1]);
   if (opcode == 27 && argument_count == 8u) {
     SfWorldPoint anchor;
     if (!world->script ||
@@ -109,6 +147,32 @@ static bool sf_world_native_command(
     return true;
   }
   return false;
+}
+
+bool sf_world_script_run_contact_triggers(SfWorldState *world) {
+  SfScenarioScriptEnvironment environment;
+  uint16_t index;
+  if (!world || !world->script ||
+      world->actor_script_state.message_active) return false;
+  environment = sf_world_script_environment(world);
+  for (index = 0u; index < world->script->status_count; ++index) {
+    const SfScsStatus *status = &world->script->statuses[index];
+    SfWorldPoint position;
+    SfObjectBounds bounds;
+    SfScenarioScriptResult result;
+    if (status->kind != 3 || !sf_world_script_character_bounds(
+          world, status->character_number, &position, &bounds) ||
+        !sf_world_script_bounds_intersect(
+          world->player.position, world->player.judgement,
+          position, bounds)) continue;
+    result = sf_scenario_actor_script_start_status(
+      &world->actor_script_state, world->script, 3,
+      status->character_number, &environment);
+    if (result == SF_SCENARIO_SCRIPT_INVALID ||
+        result == SF_SCENARIO_SCRIPT_UNSUPPORTED_COMMAND) return false;
+    if (world->travel_request.pending) break;
+  }
+  return true;
 }
 
 static bool sf_world_next_random(void *user, int32_t *value) {

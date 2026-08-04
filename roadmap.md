@@ -125,12 +125,19 @@ A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
 
-The immediate C99 target is the shared scenario-transition seam. Authored
-teleporter discovery, its saved Table 40 row, activation sound and fades, and
-opcode-27 label are now live. Cross-scenario transport selection should next
-go through one clean screen-runtime reload rather than a map-specific
-shortcut. That same seam can then serve the ordinary opcode-17 exits around
-Remote Town.
+The shared scenario-transition seam is live now. Authored teleporter
+discovery, its saved Table 40 row, activation sound and fades, opcode-27
+label, cross-scenario transport rows, and opcode-17 contact exits all converge
+on one fixed travel request. The runtime releases one scenario before loading
+the next, while player, inventory, companion, quest, script, and transport
+owners survive. The actual Remote Town south gate now reaches Near Remote
+Town and its authored return trigger completes the round trip.
+
+The immediate C99 target is the first outdoor enemy slice. Near Remote Town's
+MCT enemy rows should become fixed live actors with their table-backed stats,
+sparse animation assets, depth, collision, and idle/walk behavior. Combat can
+then grow from the first real Goblin instead of adding another town-only
+special case.
 
 ## Where we are now
 

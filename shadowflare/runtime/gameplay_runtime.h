@@ -17,16 +17,21 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_WORLD_TRANSPORT_H
-#define SHADOWFLARE_GAME_WORLD_TRANSPORT_H
+#ifndef SHADOWFLARE_RUNTIME_GAMEPLAY_RUNTIME_H
+#define SHADOWFLARE_RUNTIME_GAMEPLAY_RUNTIME_H
 
-#include "game/world.h"
+#include "assets/gameplay_assets.h"
+#include "core/arena.h"
+#include "data/save_game.h"
+#include "game/game.h"
+#include "screens/gameplay_screen.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 
-bool sf_world_transport_activate(
-  SfWorldState *world, int32_t destination_index);
-bool sf_world_travel_apply_local(SfWorldState *world);
+bool sf_gameplay_runtime_load(
+  SfGameplayAssets *assets, SfGameplayScreen *screen,
+  SfArena *arena, const char *data_root, SfGame *game,
+  const SfSavedGame *saved_game,
+  const SfScenarioTravelRequest *travel);
 
 #endif

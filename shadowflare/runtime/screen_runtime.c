@@ -20,8 +20,7 @@
 #include "runtime/screen_runtime.h"
 
 #include "data/save_game.h"
-#include "game/player_save.h"
-#include "game/world_save.h"
+#include "runtime/gameplay_runtime.h"
 #include "ui/conversation_input.h"
 #include "ui/gameplay_panels_input.h"
 #include "ui/gameplay_companion_hud_input.h"
@@ -75,93 +74,17 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
     SfSavedGame saved_game;
-    SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
-    uint8_t retained_item_count = 0u;
-    int32_t player_level = game->world.player.level;
-    int32_t companion_type = game->world.player.companions.type;
-    int32_t companion_level = sf_player_companion_level(
-      &game->world.player.companions);
     const bool loading_save = game->load_game.selected_file_slot >= 0;
-    if (loading_save) {
+    if (loading_save)
       success = sf_save_game_load(
         runtime->data_root,
         (uint8_t) game->load_game.selected_file_slot, &saved_game);
-      if (success) success = sf_world_prepare_save_load(
-        &game->world, &saved_game);
-      if (success) {
-        game->world.player.gender = saved_game.player.gender == 1 ? 1u : 0u;
-        player_level = saved_game.player.level;
-        companion_type = saved_game.player.companion_type;
-        companion_level = saved_game.player.companion_level;
-        success = sf_saved_player_required_items(
-          &saved_game.player, retained_items,
-          SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
-      }
-    } else {
-      success = sf_player_required_item_definitions(
-        &game->world.player, retained_items,
-        SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
-    }
     if (success)
-      success = sf_gameplay_assets_load(
-        &runtime->assets.gameplay, runtime->data_root,
-        game->world.scenario_id, game->world.entry_key,
-        game->world.player.gender, player_level,
-        companion_type, companion_level,
-        game->world.player.appearance_parts,
-        game->world.player.appearance_part_count,
-        game->world.player.visible_items,
-        game->world.player.visible_item_count,
-        retained_items, retained_item_count, runtime->arena);
-    if (success) {
-      const SfMctEntry *entry = &runtime->assets.gameplay.entry;
-      if (loading_save)
-        success = sf_player_restore_save(
-          &game->world.player, &saved_game.player,
-          runtime->assets.gameplay.ground_items.definitions,
-          runtime->assets.gameplay.ground_items.definition_count,
-          runtime->assets.gameplay.player_parameters.experience_threshold);
-      else if (!game->world.player.parameters_initialized)
-        success = sf_player_apply_initial_parameters(
-          &game->world.player,
-          &runtime->assets.gameplay.player_parameters);
-      if (success && loading_save)
-        success = sf_player_restore_magic(
-          &game->world.player, &saved_game.magic);
-      if (success && loading_save)
-        success = sf_player_restore_companions(
-          &game->world.player, &saved_game.player,
-          &saved_game.companions);
-      if (success)
-        (void) sf_player_magic_set_targeting(
-          &game->world.player.magic, true);
-      if (success) {
-        sf_world_state_bind_transports(
-          &game->world, &runtime->assets.gameplay.transports);
-        sf_world_state_bind_collision(
-          &game->world, &runtime->assets.gameplay.ground,
-          &runtime->assets.gameplay.objects);
-        success = sf_world_state_bind_ground_items(
-          &game->world,
-          runtime->assets.gameplay.ground_items.definitions,
-          runtime->assets.gameplay.ground_items.definition_count);
-        if (success) success = loading_save
-          ? sf_world_bind_saved_scenario(
-              &game->world, &runtime->assets.gameplay.scenario,
-              runtime->assets.gameplay.script, &saved_game)
-          : sf_world_state_bind_scenario(
-              &game->world, &runtime->assets.gameplay.scenario,
-              runtime->assets.gameplay.script);
-      }
-      if (success) sf_world_state_enter(
-          &game->world, entry->world_x, entry->world_y,
-          (uint8_t) entry->direction);
-      if (success) success = sf_world_state_bind_companion(
-        &game->world, &runtime->assets.gameplay.companion_profile);
-      if (success) success = sf_gameplay_screen_init(
-        &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
-      if (success && loading_save) game->load_game.selected_file_slot = -1;
-    }
+      success = sf_gameplay_runtime_load(
+        &runtime->assets.gameplay, &runtime->screen.gameplay,
+        runtime->arena, runtime->data_root, game,
+        loading_save ? &saved_game : NULL, NULL);
+    if (success && loading_save) game->load_game.selected_file_slot = -1;
   }
   runtime->loaded = success;
   runtime->loaded_mode = mode;
@@ -174,6 +97,21 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
   if (!runtime || !game || !runtime->loaded) return false;
   if (runtime->loaded_mode == SF_GAME_MODE_GAMEPLAY &&
       game->mode == SF_GAME_MODE_GAMEPLAY) {
+    if (game->world.travel_request.pending &&
+        game->world.travel_request.scenario_id != game->world.scenario_id) {
+      const SfScenarioTravelRequest travel = game->world.travel_request;
+      if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+      memset(&runtime->assets, 0, sizeof(runtime->assets));
+      memset(&runtime->screen, 0, sizeof(runtime->screen));
+      if (!sf_gameplay_runtime_load(
+            &runtime->assets.gameplay, &runtime->screen.gameplay,
+            runtime->arena, runtime->data_root, game, NULL, &travel)) {
+        runtime->loaded = false;
+        return false;
+      }
+      runtime->blank_drawn = false;
+      return true;
+    }
     const SfGameplayServiceRequest request = sf_gameplay_service_take(
       &game->world.service_request);
     if (!sf_gameplay_service_apply(

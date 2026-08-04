@@ -57,6 +57,36 @@ bool sf_companion_init(
   return true;
 }
 
+void sf_companion_relocate(
+    SfCompanionState *companion, SfWorldPoint position, uint8_t direction) {
+  if (!companion || !companion->valid || direction >= 8u) return;
+  companion->position = position;
+  companion->previous_position = position;
+  companion->direction = direction;
+  companion->motion = SF_COMPANION_IDLE;
+  companion->action_counter = 0u;
+  companion->animation_frame = 0u;
+  companion->close_linger_updates = 0u;
+  sf_route_reset(&companion->route);
+}
+
+bool sf_companion_bind_profile(
+    SfCompanionState *companion, const SfCompanionProfile *profile,
+    SfWorldPoint position, uint8_t direction, bool defeated) {
+  if (!companion || !profile) return false;
+  if (!companion->valid)
+    return sf_companion_init(
+      companion, profile, position, direction, defeated);
+  if (profile->type != companion->profile.type)
+    return sf_companion_init(
+      companion, profile, position, direction, defeated);
+  companion->profile = *profile;
+  if (companion->current_life > profile->values[3])
+    companion->current_life = profile->values[3];
+  sf_companion_relocate(companion, position, direction);
+  return true;
+}
+
 void sf_companion_toggle_activity(SfCompanionState *companion) {
   if (!companion || !companion->valid) return;
   companion->inactive = !companion->inactive;

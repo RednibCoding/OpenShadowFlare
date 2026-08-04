@@ -21,13 +21,9 @@
 
 #include "data/mct.h"
 
-#include <limits.h>
-
 bool sf_world_transport_activate(
     SfWorldState *world, int32_t destination_index) {
   const SfTransportDestination *destination;
-  const SfMctEntry *entry;
-  int32_t entry_key;
   if (!world || !world->transports || !world->scenario ||
       destination_index < 0 ||
       destination_index >= world->transports->count ||
@@ -35,10 +31,18 @@ bool sf_world_transport_activate(
       world->actor_script_state.progress
         .transport_values[destination_index] == 0) return false;
   destination = &world->transports->destinations[destination_index];
-  if (destination->scenario_id != world->scenario_id ||
-      destination->entry_value < 0 ||
-      destination->entry_value > INT32_MAX / 4) return false;
-  entry_key = destination->entry_value * 4;
+  return sf_scenario_travel_request(
+    &world->travel_request, destination->scenario_id,
+    destination->entry_value);
+}
+
+bool sf_world_travel_apply_local(SfWorldState *world) {
+  const SfMctEntry *entry;
+  int32_t entry_key;
+  if (!world || !world->travel_request.pending || !world->scenario ||
+      world->travel_request.scenario_id != world->scenario_id) return false;
+  entry_key = world->travel_request.entry_value * 4;
+  sf_scenario_travel_clear(&world->travel_request);
   entry = sf_mct_find_entry(world->scenario, entry_key);
   if (!entry || entry->direction < 0 || entry->direction > 7) return false;
   world->entry_key = entry_key;

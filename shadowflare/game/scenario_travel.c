@@ -17,16 +17,24 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_WORLD_TRANSPORT_H
-#define SHADOWFLARE_GAME_WORLD_TRANSPORT_H
+#include "game/scenario_travel.h"
 
-#include "game/world.h"
+#include <limits.h>
 
-#include <stdbool.h>
-#include <stdint.h>
+void sf_scenario_travel_clear(SfScenarioTravelRequest *request) {
+  if (!request) return;
+  request->scenario_id = 0;
+  request->entry_value = 0;
+  request->pending = false;
+}
 
-bool sf_world_transport_activate(
-  SfWorldState *world, int32_t destination_index);
-bool sf_world_travel_apply_local(SfWorldState *world);
-
-#endif
+bool sf_scenario_travel_request(
+    SfScenarioTravelRequest *request,
+    int32_t scenario_id, int32_t entry_value) {
+  if (!request || request->pending || scenario_id < 0 || entry_value < 0 ||
+      entry_value > INT32_MAX / 4) return false;
+  request->scenario_id = scenario_id;
+  request->entry_value = entry_value;
+  request->pending = true;
+  return true;
+}

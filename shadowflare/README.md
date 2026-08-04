@@ -80,7 +80,10 @@ and closes only the transport panel. Opcode 38 supplies the matching scripted
 close request. The real periodic activation sentence now discovers row zero,
 plays sample 80 once, fades both authored transport objects, and draws its
 opcode-27 `Remote Town` label above the script-selected object. Cross-scenario
-reloads remain the next transport slice.
+rows now use the same fixed travel request as opcode 17. The screen runtime
+releases the old scenario arena, loads the selected scenario and MCT entry,
+and preserves the live player, inventory, companion, quest, script, and
+transport owners.
 The default retail click-range square now selects opaque PEOPLE pixels, hover
 adds the pale tint and authored nameplate, and clicking a distant actor routes
 the player to the recovered `0x9f` interaction distance without issuing a
@@ -280,8 +283,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,489,197 bytes of the 7 MiB main arena,
-leaving 5,850,835 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,489,205 bytes of the 7 MiB main arena,
+leaving 5,850,827 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -294,26 +297,32 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 802,120 bytes of the main arena, leaving 6,537,912 bytes free;
+assets. It uses 802,128 bytes of the main arena, leaving 6,537,904 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 762,336 bytes of the main arena, leaving 6,577,696
+The load-game screen uses 762,344 bytes of the main arena, leaving 6,577,688
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,222,228 bytes of the main
-arena, leaving 117,804 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,222,236 bytes of the main
+arena, leaving 117,796 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
 inventory-panel, transport, equipment, and UI data and artwork account for
 6,834,213 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
+
+The same runtime reload measured in Near Remote Town uses 6,280,168 bytes,
+leaving 1,059,864 bytes free; 5,892,145 bytes belong to that screen. The
+transition never retains two maps at once. Its fixed request lives with the
+game owner, while the screen arena is rewound before the next scenario is
+decoded.
 
 The GND movement plane is active without retaining its 1,451,808-byte raw
 16-bit expansion. Retail movement only reads its low two flags, so the 852x852
@@ -373,7 +382,7 @@ The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 117,804-byte headroom is now a hard warning for upcoming combat and
+remaining 117,796-byte headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 

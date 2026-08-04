@@ -682,8 +682,10 @@ it does not retain the rest of `Table.Tbd`. The UI reads names and enabled-row
 state from that catalog, while `game/world_transport.c` resolves the selected
 entry through the active MCT. Periodic SCS activation now enables the matching
 row in that same catalog, so newly discovered destinations appear without a
-second hardcoded list. Cross-scenario rows deliberately wait for the shared
-scenario-reload boundary instead of pretending they are local entries.
+second hardcoded list. Cross-scenario rows publish the same fixed travel
+request as script opcode 17. The screen runtime then releases the active
+scenario arena and loads the destination folder and MCT entry; it never
+pretends a foreign row belongs to the current MCT.
 
 Scenario folders use zero-padded decimal IDs, not hexadecimal IDs. For
 example, Table 40 row one names scenario `6`, which lives at

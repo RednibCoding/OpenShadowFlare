@@ -94,6 +94,8 @@ typedef struct SfScenarioScriptEnvironment {
 
 void sf_scenario_actor_script_init(
   SfScenarioActorScriptState *state, const SfScsScript *script);
+void sf_scenario_actor_script_change_scenario(
+  SfScenarioActorScriptState *state, const SfScsScript *script);
 bool sf_scenario_actor_script_restore_progress(
   SfScenarioActorScriptState *state,
   const SfScenarioProgressState *progress);

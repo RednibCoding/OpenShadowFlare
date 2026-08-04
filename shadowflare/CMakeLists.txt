@@ -107,6 +107,7 @@ add_library(
   game/scenario_effect.c
   game/scenario_label.c
   game/scenario_object.c
+  game/scenario_travel.c
   game/sound_event.c
   game/special_items.c
   game/title.c
@@ -174,6 +175,7 @@ add_executable(
   osf
   main.c
   runtime/application.c
+  runtime/gameplay_runtime.c
   runtime/screen_runtime.c
 )
 add_executable(ShadowFlare::Game ALIAS osf)
@@ -210,6 +212,7 @@ if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
   add_executable(
     osf-measure
     ../utils/osf-measure.c
+    runtime/gameplay_runtime.c
     runtime/screen_runtime.c
   )
   sf_configure_c99_target(osf-measure)

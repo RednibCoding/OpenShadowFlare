@@ -24,6 +24,7 @@
 #include "game/world_interaction.h"
 #include "game/world_magic.h"
 #include "game/world_script.h"
+#include "game/world_transport.h"
 
 #include <limits.h>
 #include <string.h>
@@ -37,6 +38,7 @@ void sf_world_state_init(
   world->scenario_id = scenario_id;
   world->entry_key = entry_key;
   world->script_transport_service = -1;
+  sf_scenario_travel_clear(&world->travel_request);
   sf_ground_items_init(&world->ground_items);
   sf_player_init(&world->player, player_gender);
 }
@@ -61,6 +63,8 @@ void sf_world_state_enter(
   sf_scenario_labels_end(&world->scenario_labels);
   sf_player_enter(
     &world->player, (SfWorldPoint) {player_x, player_y}, direction);
+  sf_companion_relocate(
+    &world->companion, world->player.position, direction);
   screen = sf_world_to_screen(world->player.position);
   world->camera_x = screen.x - 320;
   world->camera_y = screen.y - 240;
@@ -98,18 +102,23 @@ bool sf_world_state_bind_scenario(
     world, scenario, script, NULL);
 }
 
-bool sf_world_state_bind_scenario_progress(
+static bool sf_world_state_bind_scenario_internal(
     SfWorldState *world,
     const SfMctScenario *scenario, const SfScsScript *script,
-    const SfScenarioProgressState *progress) {
+    const SfScenarioProgressState *progress, bool changing_scenario) {
   SfScenarioScriptEnvironment environment;
   if (!world || !scenario || !script) return false;
   memset(&world->placed_effects, 0, sizeof(world->placed_effects));
   sf_scenario_objects_init(&world->scenario_objects, scenario);
   sf_scenario_actors_init(&world->actors, scenario);
-  sf_scenario_actor_script_init(&world->actor_script_state, script);
-  if (progress && !sf_scenario_actor_script_restore_progress(
-        &world->actor_script_state, progress)) return false;
+  if (changing_scenario) {
+    sf_scenario_actor_script_change_scenario(
+      &world->actor_script_state, script);
+  } else {
+    sf_scenario_actor_script_init(&world->actor_script_state, script);
+    if (progress && !sf_scenario_actor_script_restore_progress(
+          &world->actor_script_state, progress)) return false;
+  }
   world->scenario = scenario;
   world->script = script;
   world->script_transport_service = -1;
@@ -124,13 +133,32 @@ bool sf_world_state_bind_scenario_progress(
   }
 }
 
+bool sf_world_state_bind_scenario_progress(
+    SfWorldState *world,
+    const SfMctScenario *scenario, const SfScsScript *script,
+    const SfScenarioProgressState *progress) {
+  return sf_world_state_bind_scenario_internal(
+    world, scenario, script, progress, false);
+}
+
+bool sf_world_state_change_scenario(
+    SfWorldState *world, int32_t scenario_id, int32_t entry_key,
+    const SfMctScenario *scenario, const SfScsScript *script) {
+  if (!world || scenario_id < 0 || entry_key < 0) return false;
+  world->scenario_id = scenario_id;
+  world->entry_key = entry_key;
+  sf_ground_items_change_scenario(&world->ground_items);
+  return sf_world_state_bind_scenario_internal(
+    world, scenario, script, NULL, true);
+}
+
 bool sf_world_state_bind_companion(
     SfWorldState *world, const SfCompanionProfile *profile) {
   if (!world || !world->entered || !profile ||
       profile->type != world->player.companions.type ||
       profile->level != sf_player_companion_level(
         &world->player.companions)) return false;
-  return sf_companion_init(
+  return sf_companion_bind_profile(
     &world->companion, profile, world->player.position,
     world->player.direction,
     world->player.companions.defeated_updates > 0);
@@ -204,6 +232,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   uint8_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
   uint8_t companion_blocker_index;
   if (!world || !world->entered || !input) return;
+  sf_scenario_labels_begin(&world->scenario_labels);
   sf_ground_items_update(&world->ground_items);
   sf_sound_events_reset(&world->sounds);
   if (input->interface_sound != 0u)
@@ -232,13 +261,15 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   if (companion_blocker_index != UINT8_MAX)
     world->movement_blockers[companion_blocker_index].position =
       world->companion.position;
-  sf_scenario_labels_begin(&world->scenario_labels);
   if (world->script) {
     const SfScenarioScriptEnvironment environment =
       sf_world_script_environment(world);
     (void) sf_scenario_actor_script_run_periodic(
       &world->actor_script_state, world->script, &environment);
   }
+  if (world->script)
+    (void) sf_world_script_run_contact_triggers(world);
+  (void) sf_world_travel_apply_local(world);
   sf_scenario_labels_end(&world->scenario_labels);
   player_screen = sf_world_to_screen(world->player.position);
   world->camera_x = player_screen.x - 320;

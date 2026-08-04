@@ -30,6 +30,7 @@
 #include "game/scenario_effect.h"
 #include "game/scenario_label.h"
 #include "game/scenario_object.h"
+#include "game/scenario_travel.h"
 #include "game/sound_event.h"
 #include "interpreter/scenario_actor_script.h"
 
@@ -80,6 +81,7 @@ typedef struct SfWorldState {
   SfGroundItemSet ground_items;
   SfSoundEventQueue sounds;
   SfGameplayServiceRequest service_request;
+  SfScenarioTravelRequest travel_request;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
@@ -114,6 +116,9 @@ bool sf_world_state_bind_scenario_progress(
   SfWorldState *world,
   const SfMctScenario *scenario, const SfScsScript *script,
   const SfScenarioProgressState *progress);
+bool sf_world_state_change_scenario(
+  SfWorldState *world, int32_t scenario_id, int32_t entry_key,
+  const SfMctScenario *scenario, const SfScsScript *script);
 bool sf_world_state_bind_companion(
   SfWorldState *world, const SfCompanionProfile *profile);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);

@@ -56,6 +56,11 @@ typedef struct SfCompanionState {
 bool sf_companion_init(
   SfCompanionState *companion, const SfCompanionProfile *profile,
   SfWorldPoint position, uint8_t direction, bool defeated);
+bool sf_companion_bind_profile(
+  SfCompanionState *companion, const SfCompanionProfile *profile,
+  SfWorldPoint position, uint8_t direction, bool defeated);
+void sf_companion_relocate(
+  SfCompanionState *companion, SfWorldPoint position, uint8_t direction);
 void sf_companion_toggle_activity(SfCompanionState *companion);
 void sf_companion_update_follow(
   SfCompanionState *companion, const SfPlayerState *owner,

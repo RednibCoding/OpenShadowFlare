@@ -524,6 +524,15 @@ gate therefore loads scenario 1, `Near the Remote Town`, at entry key zero.
 That outdoor scenario uses the same mechanism in reverse: object zero supplies
 `{0, 0}` and returns to Remote Town's entry key zero.
 
+The C99 interpreter forwards those two values without loading anything. The
+world's status-kind-three pass resolves each authored entity, performs the
+same inclusive judgement-rectangle overlap, and publishes one fixed travel
+request after the sentence completes. Same-scenario entries relocate through
+the active MCT. A cross-scenario request reaches `runtime/gameplay_runtime.c`,
+which rewinds only screen-scoped memory, loads the new scenario and entry, and
+rebinds the preserved player and progress owners. A native regression crosses
+the shipped trigger in both directions.
+
 Opcodes 37 and 41 show why native commands remain hooks. Remote Town object
 200 has script character `10000200`; its status-zero sentence calls opcode 37
 with argument zero, which asks the executable to open the transport panel.
@@ -549,7 +558,7 @@ script-opened selector, leaving an independently open right-side inventory
 and its camera layout untouched.
 
 The C99 runtime now follows that split directly. The interpreter forwards 16,
-27, 37, and 38 through its native hook. The world queues opcode 16's sound,
+17, 27, 37, and 38 through its native hook. The world queues opcode 16's sound,
 keeps opcode 27's fixed actor-relative label values, and records service
 requests. A stable label revision avoids redrawing an unchanged label every
 30 Hz update. The screen-side service controller opens or closes UI state,
