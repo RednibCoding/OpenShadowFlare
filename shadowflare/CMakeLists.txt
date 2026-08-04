@@ -183,15 +183,45 @@ add_library(
 add_library(ShadowFlare::Core ALIAS shadowflare_core)
 sf_configure_c99_target(shadowflare_core)
 
-add_executable(
-  osf
-  main.c
-  runtime/application.c
-  runtime/gameplay_runtime.c
-  runtime/screen_runtime.c
-)
-add_executable(ShadowFlare::Game ALIAS osf)
-sf_configure_c99_target(osf)
+if(ANDROID)
+  add_library(
+    osf
+    SHARED
+    runtime/application.c
+    runtime/gameplay_runtime.c
+    runtime/screen_runtime.c
+  )
+  set_target_properties(osf PROPERTIES OUTPUT_NAME main)
+  add_library(ShadowFlare::Game ALIAS osf)
+  sf_configure_c99_target(osf)
+
+  add_library(
+    osf_android_entry
+    STATIC
+    "${PROJECT_SOURCE_DIR}/platform/android/native/osf_android_main.c"
+    "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c"
+  )
+  target_include_directories(
+    osf_android_entry
+    PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}"
+      "${PROJECT_SOURCE_DIR}/thirdparty/twl"
+      "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue"
+  )
+  target_link_libraries(osf_android_entry PRIVATE android log)
+  target_link_libraries(osf PRIVATE osf_android_entry)
+  target_link_options(osf PRIVATE "LINKER:-u,ANativeActivity_onCreate")
+else()
+  add_executable(
+    osf
+    main.c
+    runtime/application.c
+    runtime/gameplay_runtime.c
+    runtime/screen_runtime.c
+  )
+  add_executable(ShadowFlare::Game ALIAS osf)
+  sf_configure_c99_target(osf)
+endif()
 set(
   OPENSHADOWFLARE_C99_PRESENTATION_HZ
   "60"
@@ -220,19 +250,20 @@ if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
   sf_configure_c99_target(shadowflare_profiler)
   target_link_libraries(osf PRIVATE ShadowFlare::Profiler)
   target_compile_definitions(osf PRIVATE SF_ENABLE_PROFILING=1)
-
-  add_executable(
-    osf-measure
-    ../utils/osf-measure.c
-    runtime/gameplay_runtime.c
-    runtime/screen_runtime.c
-  )
-  sf_configure_c99_target(osf-measure)
-  target_link_libraries(
-    osf-measure
-    PRIVATE
-      ShadowFlare::Core
-      Tal::Tal
-      Twl::Twl
-  )
+  if(NOT ANDROID)
+    add_executable(
+      osf-measure
+      ../utils/osf-measure.c
+      runtime/gameplay_runtime.c
+      runtime/screen_runtime.c
+    )
+    sf_configure_c99_target(osf-measure)
+    target_link_libraries(
+      osf-measure
+      PRIVATE
+        ShadowFlare::Core
+        Tal::Tal
+        Twl::Twl
+    )
+  endif()
 endif()

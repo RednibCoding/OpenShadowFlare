@@ -1,0 +1,70 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/android.yml'
+      - 'CMakeLists.txt'
+      - 'platform/android/**'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/android/**'
+  pull_request:
+    paths:
+      - '.github/workflows/android.yml'
+      - 'CMakeLists.txt'
+      - 'platform/android/**'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/android/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install Android build dependencies
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" \
+            'platforms;android-35' \
+            'build-tools;35.0.0' \
+            'ndk;27.0.12077973' \
+            'cmake;4.1.2'
+
+      - name: Set the SDK location for Gradle
+        run: printf 'sdk.dir=%s\n' "$ANDROID_HOME" > platform/android/local.properties
+
+      - name: Build the debug APK
+        run: sh tools/android/build-apk.sh
+
+      - name: Verify the APK
+        run: test -s build/android/debug/OpenShadowFlare-android-debug.apk
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openshadowflare-android-debug
+          path: build/android/debug/OpenShadowFlare-android-debug.apk
+          if-no-files-found: error

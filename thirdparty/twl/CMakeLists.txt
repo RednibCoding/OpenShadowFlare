@@ -74,6 +74,20 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(X11 REQUIRED)
   find_package(OpenGL REQUIRED)
   target_link_libraries(twl PRIVATE X11::X11 OpenGL::GL)
+elseif(ANDROID)
+  target_sources(
+    twl
+    PRIVATE
+      backends/android/window.c
+      backends/android/presentation.c
+      backends/android/input.c
+  )
+  target_include_directories(
+    twl
+    PRIVATE
+      "${CMAKE_ANDROID_NDK}/sources/android/native_app_glue"
+  )
+  target_link_libraries(twl PUBLIC EGL GLESv2 android log)
 else()
   target_sources(twl PRIVATE backends/null/backend.c)
 endif()
