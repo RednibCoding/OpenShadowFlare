@@ -25,6 +25,8 @@
 #include "render/renderer.h"
 #include "screens/gameplay_scene.h"
 #include "ui/gameplay_inventory.h"
+#include "ui/gameplay_character_panel.h"
+#include "ui/gameplay_status.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -32,6 +34,7 @@
 typedef struct SfGameplayScreen {
   SfGameplayScene scene;
   SfGameplayInventoryUi inventory;
+  SfGameplayCharacterPanelUi character_panel;
   uint32_t rendered_animation_frame;
   uint32_t rendered_ground_item_revision;
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];

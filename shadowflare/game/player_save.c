@@ -168,6 +168,8 @@ bool sf_player_restore_save(
   player->gender = saved->gender == 1 ? 1u : 0u;
   player->level = saved->level;
   player->experience = saved->experience;
+  player->element_x = saved->element_x;
+  player->element_y = saved->element_y;
   player->current_life = saved->current_life;
   player->current_mana = saved->current_mana;
   if (player->current_life <= 0) {

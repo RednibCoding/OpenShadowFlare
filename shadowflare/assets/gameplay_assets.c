@@ -226,8 +226,11 @@ bool sf_gameplay_assets_load(
     0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
     19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
   };
-  static const uint8_t inventory_patterns[10] = {
-    0u, 1u, 2u, 3u, 14u, 15u, 16u, 67u, 116u, 117u
+  static const uint8_t inventory_patterns[33] = {
+    0u, 1u, 2u, 3u, 5u, 14u, 15u, 16u,
+    36u, 37u, 38u, 39u, 40u, 41u, 42u, 43u, 44u, 45u, 46u,
+    47u, 48u, 49u, 50u, 51u, 52u, 53u, 54u, 55u, 56u, 57u,
+    67u, 116u, 117u
   };
   size_t mark;
   bool success = false;
@@ -283,7 +286,7 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
-        path, inventory_patterns, 10u, arena, &assets->inventory_panel) ||
+        path, inventory_patterns, 33u, arena, &assets->inventory_panel) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root,
         sf_retail_game_paths.parameter_tables) ||

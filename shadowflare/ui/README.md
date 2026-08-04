@@ -42,3 +42,12 @@ produces the shared world-view offset and simple take, place, or world-drop
 intent. Inventory ownership, transactional swaps, drop placement, and the
 until-release pointer guard remain in `game/`; no UI file talks to a target
 backend.
+
+Status and Magic are two tabs of one left-hand character panel owner. The
+Status draw file composes retail pattern 5, identity and derived values, and
+the affinity display. The game-side player profile owns the arithmetic; UI
+code does not become the source of combat stats. `gameplay_panels_input.c`
+coordinates this shared left window with Special Item, the independent right
+Inventory panel, Escape, the common camera offset, and click consumption. This
+keeps cross-panel rules out of the individual draw files and leaves one clear
+place for the Magic tab to join.

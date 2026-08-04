@@ -23,8 +23,7 @@
 #include "game/player_save.h"
 #include "game/world_save.h"
 #include "ui/conversation_input.h"
-#include "ui/gameplay_hud_input.h"
-#include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_panels_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -201,7 +200,8 @@ void sf_screen_runtime_resolve_input(
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
-  if (sf_gameplay_inventory_input_resolve(
+  if (sf_gameplay_panels_input_resolve(
+        &runtime->screen.gameplay.character_panel,
         &runtime->screen.gameplay.inventory,
         &game->world.player,
         game->world.actor_script_state.message_active, input))

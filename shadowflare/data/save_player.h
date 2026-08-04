@@ -57,6 +57,8 @@ typedef struct SfSavedPlayer {
   int32_t current_life;
   int32_t current_mana;
   int32_t experience;
+  int32_t element_x;
+  int32_t element_y;
   uint8_t backpack_count;
   uint8_t belt_count;
   uint8_t special_item_count;

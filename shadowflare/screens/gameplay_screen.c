@@ -28,6 +28,7 @@
 #include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
 #include "ui/gameplay_special_items.h"
+#include "ui/gameplay_status.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
@@ -54,6 +55,7 @@ bool sf_gameplay_screen_init(
   if (!screen || !assets || !world) return false;
   memset(screen, 0, sizeof(*screen));
   sf_gameplay_inventory_init(&screen->inventory);
+  sf_gameplay_character_panel_init(&screen->character_panel);
   sf_world_render_view(world, 1000u, &view);
   if (!sf_gameplay_scene_update(
         &screen->scene, assets, world, &view, 1000u))
@@ -121,6 +123,8 @@ void sf_gameplay_screen_draw(
     view.camera_x += SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   if (screen->inventory.special_open)
     view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
+  if (screen->character_panel.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED)
+    view.camera_x -= SF_GAMEPLAY_INVENTORY_VIEW_OFFSET;
   scene_moved = !screen->drawn ||
     screen->rendered_player_x != view.player_position.x ||
     screen->rendered_player_y != view.player_position.y ||
@@ -182,6 +186,8 @@ void sf_gameplay_screen_draw(
     renderer, assets, player, &screen->inventory, game->ticks, clip);
   sf_gameplay_special_items_draw(
     renderer, assets, player, &screen->inventory, game->ticks, clip);
+  sf_gameplay_status_draw(
+    renderer, assets, player, &screen->character_panel, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);
   sf_gameplay_inventory_draw_held(

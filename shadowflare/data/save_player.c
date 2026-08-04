@@ -45,11 +45,15 @@ bool sf_save_player_read_record(
   player->current_life = sf_saved_i32(record + 0x34u);
   player->current_mana = sf_saved_i32(record + 0x3cu);
   player->experience = sf_saved_i32(record + 0xd8u);
+  player->element_x = sf_saved_i32(record + 0x64u);
+  player->element_y = sf_saved_i32(record + 0x68u);
   for (index = 0u; index < SF_PLAYER_INITIAL_PARAMETER_COUNT; ++index)
     player->parameters.values[index] = sf_saved_i32(
       record + parameter_offsets[index]);
   return (player->gender == 0 || player->gender == 1) &&
     player->level > 0 && player->level <= 100 &&
+    player->element_x >= -20000 && player->element_x <= 20000 &&
+    player->element_y >= -20000 && player->element_y <= 20000 &&
     player->parameters.values[2] > 0 && player->parameters.values[3] > 0;
 }
 

@@ -96,11 +96,12 @@ clicking its surface cannot leak through as a movement command. `I` and the
 authored ITEM button now open the right-hand inventory panel while the live
 world shifts to the retail x=160 camera anchor. The panel reads Gold from the
 fixed owner and draws picked-up items in their real 9x4 cells from the separate
-inventory patterns in `Item0000.njp` through `Item0013.njp`. Its frame, gender silhouette,
-values, and Close tab come from the required pieces of `Status.njp`; unrelated
-parts of those large archives are never retained. The lower HUD also owns the
-retail 4x2 belt: `1` through `8` and right-click consume Tablets and Capsules,
-while mines use their separate 5/10 counter instead of occupying bag cells.
+inventory patterns in `Item0000.njp` through `Item0013.njp`. Its frame, gender
+silhouette, values, and Close tab come from the required pieces of
+`Status.njp`; unrelated parts of those large archives are never retained. The
+lower HUD also owns the retail 4x2 belt: `1` through `8` and right-click
+consume Tablets and Capsules, while mines use their separate 5/10 counter
+instead of occupying bag cells.
 Leaving the pointer over a backpack or equipped item for three game updates
 now opens the retail information overlay. The active definitions gain their
 description, price, combat bonuses, and elemental values during the same
@@ -120,6 +121,16 @@ left and right panels can remain open together; opening only one shifts the
 live world and its input anchor to the exposed half of the screen. Items move
 directly between either owner without a second transfer path, and the fourth
 retail save container restores exact Special Item cells on load.
+`S` and the authored STATUS button open the first tab of the shared
+Status/Magic window. The live Status page uses retail pattern 5 for its frame
+and labels, then overlays the character identity, current pools, base and
+equipment-adjusted physical and magical values, eight elemental affinities,
+and the saved elemental marker. Its game-side profile ignores broken gear and
+suppressed off-hand items; the UI only formats and draws the result. Status can
+remain open beside Inventory, replaces Special Item on the left, shifts the
+world and input by the same integer offset, and is closed together with other
+open panels by Escape. The shared panel owner already has a separate Magic tab
+state so that the next slice can add Magic without creating another window.
 
 Choosing a retail save now restores more than its load-screen summary. The
 `ShadowFlare0005` envelope is decoded and checksummed as a stream, so even a
@@ -129,8 +140,8 @@ parameters. Its following owned-item stream restores exact backpack, belt, and
 Special Item cells plus all eleven equipment slots, including the two hidden
 alternate weapon slots. Item definitions and artwork are still loaded through
 the active map's ordinary resource request, not from save-specific shortcuts.
-The three counted progress owners restore quest state, unlocked transports, and all
-1,000 persistent script/conversation values before the scenario's first
+The three counted progress owners restore quest state, unlocked transports,
+and all 1,000 persistent script/conversation values before the scenario's first
 periodic pass. Mine count, walk/run pace, scenario, and authored entry restore
 through the world boundary too. Maps which the C99 runtime does not implement
 yet still fail honestly instead of silently moving that character back to
@@ -217,8 +228,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,452,285 bytes of the 7 MiB main arena,
-leaving 5,887,747 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,452,293 bytes of the 7 MiB main arena,
+leaving 5,887,739 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -231,22 +242,22 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 765,208 bytes of the main arena, leaving 6,574,824 bytes free;
+assets. It uses 765,216 bytes of the main arena, leaving 6,574,816 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 725,424 bytes of the main arena, leaving 6,614,608
+The load-game screen uses 725,432 bytes of the main arena, leaving 6,614,600
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 5,059,292 bytes of the main
-arena, leaving 2,280,740 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 5,199,068 bytes of the main
+arena, leaving 2,140,964 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
-artwork account for 4,708,189
+artwork account for 4,847,957
 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
@@ -334,14 +345,14 @@ owner holds the one item currently carried by the pointer. Taking, centered
 grid placement, single-item swaps, invalid-placement rollback, and partial
 Gold merges all stay in `game/inventory.c`.
 
-The inventory panels follow the same lifetime. `Status.njp` is streamed twice
-to retain only ten required patterns, without constructing metadata for
-its other 115 patterns. Item definitions provide the inventory group, pattern,
-and optional palette directly; only groups and cells referenced by the active
-map's retained definitions are decoded. `ui/gameplay_inventory.c` composes the
-panel, while `ui/gameplay_inventory_input.c` owns its authored rectangles and
-camera intent. World drawing, opaque-pixel picking, and movement targeting all
-receive the same integer x offset, so an open panel cannot make what the player
+The inventory and character panels follow the same lifetime. `Status.njp` is
+streamed twice to retain only 33 required patterns, without constructing
+metadata for its other 115 patterns. Item definitions provide the inventory
+group, pattern, and optional palette directly; only groups and cells referenced
+by the active map's retained definitions are decoded.
+`ui/gameplay_inventory.c` composes the panel, while
+`ui/gameplay_inventory_input.c` owns its authored rectangles and camera intent.
+World drawing, opaque-pixel picking, and movement targeting all receive the same integer x offset, so an open panel cannot make what the player
 sees disagree with what a click selects. The UI emits take, place, and world
 drop intent without owning the item. `game/world_inventory.c` applies that
 intent, keeps durability and identification state across a backpack/ground

@@ -141,6 +141,8 @@ static void make_record(uint8_t record[SF_SAVED_PLAYER_RECORD_SIZE]) {
   store_i32(record, 0x24u, 4);
   store_i32(record, 0x34u, 123);
   store_i32(record, 0x3cu, 77);
+  store_i32(record, 0x64u, 10000);
+  store_i32(record, 0x68u, -10000);
   store_i32(record, 0xd8u, 42);
   for (index = 0u; index < SF_PLAYER_INITIAL_PARAMETER_COUNT; ++index)
     store_i32(record, offsets[index], values[index]);
@@ -337,6 +339,7 @@ int main(int argument_count, char **arguments) {
       strcmp(saved.name, "Save Hero") != 0 || saved.gender != 0 ||
       saved.job != 16 || saved.level != 4 || saved.current_life != 123 ||
       saved.current_mana != 77 || saved.experience != 42 ||
+      saved.element_x != 10000 || saved.element_y != -10000 ||
       saved.backpack_count != 2u || saved.belt_count != 1u ||
       saved.special_item_count != 1u ||
       !saved.equipment[9].present || saved.equipment[9].durability != 40 ||
@@ -362,6 +365,7 @@ int main(int argument_count, char **arguments) {
       strcmp(player.name, "Save Hero") != 0 || player.gender != 0u ||
       player.job != 16 || player.level != 4 || player.current_life != 123 ||
       player.current_mana != 77 || player.experience != 42 ||
+      player.element_x != 10000 || player.element_y != -10000 ||
       !player.loadout_initialized || player.inventory.count != 2u ||
       player.belt.count != 1u || player.special_items.count != 1u ||
       !(player.equipment.occupied &

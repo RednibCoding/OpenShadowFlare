@@ -21,13 +21,16 @@
 #include "core/memory_budget.h"
 #include "game/inventory.h"
 #include "game/item_condition.h"
+#include "game/player_profile.h"
 #include "game/world.h"
 #include "render/renderer.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
 #include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
+#include "ui/gameplay_panels_input.h"
 #include "ui/gameplay_special_items.h"
+#include "ui/gameplay_status.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -184,6 +187,8 @@ static int test_live_inventory(
     const char *root, SfArena *arena) {
   SfGameplayAssets assets;
   SfGameplayInventoryUi ui;
+  SfGameplayCharacterPanelUi status;
+  SfPlayerProfile profile;
   SfPlayerState loader_player;
   SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
   uint8_t retained_item_count;
@@ -243,7 +248,17 @@ static int test_live_inventory(
     return 1;
   }
   sf_gameplay_inventory_init(&ui);
+  sf_gameplay_character_panel_init(&status);
   ui.open = true;
+  sf_player_profile_build(
+    &world.player, assets.ground_items.definitions,
+    assets.ground_items.definition_count, &profile);
+  if (profile.physical_attack !=
+        world.player.initial_parameters.values[5] ||
+      profile.maximum_life != world.player.initial_parameters.values[2]) {
+    fprintf(stderr, "The base player profile changed without equipment\n");
+    return 1;
+  }
   if (!sf_gameplay_item_information_text(
         information, sizeof(information), &world.player.inventory.items[0],
         dagger) || strstr(information, "[Dagger]\n\n") != information ||
@@ -322,6 +337,69 @@ static int test_live_inventory(
     fprintf(stderr, "The item information overlay was not rendered\n");
     return 1;
   }
+  memset(&input, 0, sizeof(input));
+  input.status_pressed = true;
+  if (!sf_gameplay_panels_input_resolve(
+        &status, &ui, &world.player, false, &input) ||
+      status.tab != SF_GAMEPLAY_CHARACTER_TAB_STATUS ||
+      input.world_view_offset_x != 0) {
+    fprintf(stderr, "Status did not open beside Inventory\n");
+    return 1;
+  }
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_status_draw(
+    &renderer, &assets, &world.player, &status, NULL);
+  changed = 0u;
+  for (pixel = 0u; pixel < 640u * 480u; ++pixel)
+    if (sf_inventory_test_pixels[pixel] != 0x1234u) ++changed;
+  if (changed < 1000u) {
+    fprintf(stderr, "The authored Status panel was not drawn\n");
+    return 1;
+  }
+  world.player.inventory_transfer.held_item =
+    world.player.inventory.items[0];
+  world.player.inventory_transfer.holding_item = true;
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_primary_down = true;
+  input.pointer_x = 100;
+  input.pointer_y = 100;
+  (void) sf_gameplay_panels_input_resolve(
+    &status, &ui, &world.player, false, &input);
+  if (input.inventory_action != SF_INVENTORY_ACTION_NONE ||
+      !input.pointer_over_gameplay_ui) {
+    fprintf(stderr, "A Status click leaked into an item drop\n");
+    return 1;
+  }
+  world.player.inventory_transfer.holding_item = false;
+  memset(&input, 0, sizeof(input));
+  input.cancel_pressed = true;
+  if (!sf_gameplay_panels_input_resolve(
+        &status, &ui, &world.player, false, &input) ||
+      status.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+      ui.open || input.cancel_pressed) {
+    fprintf(stderr, "Escape did not close both live panels\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = 550;
+  input.pointer_y = 425;
+  if (!sf_gameplay_panels_input_resolve(
+        &status, &ui, &world.player, false, &input) ||
+      status.tab != SF_GAMEPLAY_CHARACTER_TAB_STATUS ||
+      !input.pointer_over_gameplay_ui) {
+    fprintf(stderr, "The authored STATUS button did not open Status\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.status_pressed = true;
+  (void) sf_gameplay_panels_input_resolve(
+    &status, &ui, &world.player, false, &input);
+  if (status.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED) return 1;
+  ui.open = true;
   memset(&input, 0, sizeof(input));
   input.pointer_active = true;
   input.pointer_x = 100;

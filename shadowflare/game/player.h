@@ -67,6 +67,8 @@ typedef struct SfPlayerState {
   int32_t job;
   int32_t mine_count;
   int32_t maximum_mines;
+  int32_t element_x;
+  int32_t element_y;
   uint32_t action_counter;
   uint32_t animation_frame;
   uint8_t appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];

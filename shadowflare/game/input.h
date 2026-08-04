@@ -74,6 +74,7 @@ typedef struct SfGameInput {
   bool delete_pressed;
   bool pace_toggle_pressed;
   bool inventory_pressed;
+  bool status_pressed;
   bool special_items_pressed;
   bool belt_pocket_key_pressed;
   char text[16];
