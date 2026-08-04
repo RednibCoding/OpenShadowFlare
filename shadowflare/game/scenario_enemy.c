@@ -40,15 +40,25 @@ void sf_scenario_enemies_init(
     enemy->position.x = definition->world_x;
     enemy->position.y = definition->world_y;
     enemy->previous_position = enemy->position;
+    enemy->spawn_position = enemy->position;
+    enemy->movement_destination = enemy->position;
     enemy->judgement.left = definition->judgement_left;
     enemy->judgement.top = definition->judgement_top;
     enemy->judgement.right = definition->judgement_right;
     enemy->judgement.bottom = definition->judgement_bottom;
+    enemy->patrol_bounds.left = definition->pre_ai_values[1];
+    enemy->patrol_bounds.top = definition->pre_ai_values[2];
+    enemy->patrol_bounds.right = definition->pre_ai_values[3];
+    enemy->patrol_bounds.bottom = definition->pre_ai_values[4];
     memcpy(enemy->state, definition->initial_state, sizeof(enemy->state));
     enemy->maximum_life = definition->pre_ai_values[
       SF_MCT_ENEMY_MAXIMUM_LIFE_INDEX];
     enemy->current_life = enemy->maximum_life;
     enemy->direction = (uint8_t) definition->direction;
+    enemy->event_number = 0;
+    enemy->current_action = -1;
+    enemy->presentation_action = 7u;
+    sf_route_reset(&enemy->route);
     for (part = 0u; part < SF_MCT_PERSON_PART_LIMIT; ++part) {
       if (!definition->custom_parts ||
           definition->part_visibility[part] != 0u)
@@ -69,15 +79,6 @@ bool sf_scenario_enemies_bind_controls(
     if (!enemy->control) return false;
   }
   return true;
-}
-
-void sf_scenario_enemy_update(SfScenarioEnemy *enemy) {
-  if (!enemy) return;
-  enemy->previous_position = enemy->position;
-  if (enemy->definition && enemy->definition->resource_id >= 0 &&
-      enemy->current_life > 0 &&
-      sf_scenario_enemy_state(enemy, SF_SCENARIO_VISIBLE))
-    ++enemy->animation_frame;
 }
 
 int32_t sf_scenario_enemy_character_number(const SfScenarioEnemy *enemy) {

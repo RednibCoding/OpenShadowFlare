@@ -108,8 +108,10 @@ static bool sf_scenario_enemy_add_pattern(
 static bool sf_scenario_enemy_visual_load(
     SfScenarioEnemyVisual *visual, const char *data_root,
     SfScenarioEnemyRequest request, SfArena *arena) {
-  SfCafAnimationSelection selections[SF_SCENARIO_ENEMY_DIRECTION_COUNT];
-  SfCafSelectedAnimation loaded[SF_SCENARIO_ENEMY_DIRECTION_COUNT];
+  SfCafAnimationSelection selections[
+    SF_SCENARIO_ENEMY_ANIMATION_COUNT * SF_SCENARIO_ENEMY_DIRECTION_COUNT];
+  SfCafSelectedAnimation loaded[
+    SF_SCENARIO_ENEMY_ANIMATION_COUNT * SF_SCENARIO_ENEMY_DIRECTION_COUNT];
   uint8_t selected_parts[SF_MCT_PERSON_PART_LIMIT];
   int32_t artwork_patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
   int32_t shadow_patterns[SF_NJP_SPARSE_PATTERN_LIMIT];
@@ -120,6 +122,7 @@ static bool sf_scenario_enemy_visual_load(
   uint8_t selected_count = 0u;
   uint8_t direction;
   uint8_t selection_count = 0u;
+  uint8_t animation;
   uint8_t part;
   memset(visual, 0, sizeof(*visual));
   memset(loaded, 0, sizeof(loaded));
@@ -128,16 +131,20 @@ static bool sf_scenario_enemy_visual_load(
         path, sizeof(path), data_root,
         sf_retail_enemy_paths.animation_format, request.resource_id))
     return false;
-  for (direction = 0u; direction < SF_SCENARIO_ENEMY_DIRECTION_COUNT;
-       ++direction) {
-    uint8_t count;
-    if ((request.directions & (uint8_t) (1u << direction)) == 0u) continue;
-    if (!sf_caf_chart_direction_part_count(
-          path, 0u, direction, &count)) return false;
-    if (count < available_parts) available_parts = count;
-    selections[selection_count].chart = 0u;
-    selections[selection_count].direction = direction;
-    ++selection_count;
+  for (animation = 0u; animation < SF_SCENARIO_ENEMY_ANIMATION_COUNT;
+       ++animation) {
+    for (direction = 0u; direction < SF_SCENARIO_ENEMY_DIRECTION_COUNT;
+         ++direction) {
+      uint8_t count;
+      if (animation == 0u &&
+          (request.directions & (uint8_t) (1u << direction)) == 0u) continue;
+      if (!sf_caf_chart_direction_part_count(
+            path, animation, direction, &count)) return false;
+      if (count < available_parts) available_parts = count;
+      selections[selection_count].chart = animation;
+      selections[selection_count].direction = direction;
+      ++selection_count;
+    }
   }
   if (available_parts > SF_MCT_PERSON_PART_LIMIT)
     available_parts = SF_MCT_PERSON_PART_LIMIT;
@@ -151,23 +158,29 @@ static bool sf_scenario_enemy_visual_load(
         selected_parts, selected_count, arena, loaded))
     return false;
   for (direction = 0u; direction < selection_count; ++direction) {
-    visual->animations[selections[direction].direction] = loaded[direction];
+    visual->animations[selections[direction].chart]
+      [selections[direction].direction] = loaded[direction];
   }
-  for (direction = 0u; direction < SF_SCENARIO_ENEMY_DIRECTION_COUNT;
-       ++direction) {
-    const SfCafSelectedAnimation *animation = &visual->animations[direction];
-    if ((request.directions & (uint8_t) (1u << direction)) == 0u) continue;
-    for (part = 0u; part < animation->part_count; ++part) {
-      uint16_t frame;
-      visual->selected_parts = (uint8_t) (
-        visual->selected_parts |
-        (uint8_t) (1u << animation->parts[part].source_index));
-      for (frame = 0u; frame < animation->frame_count; ++frame) {
-        const SfCafCell *cell = &animation->parts[part].cells[frame];
-        if (((cell->status & 8) == 0 && !sf_scenario_enemy_add_pattern(
-              artwork_patterns, &artwork_count, cell->pattern)) ||
-            ((cell->status & 8) != 0 && !sf_scenario_enemy_add_pattern(
-              shadow_patterns, &shadow_count, cell->pattern))) return false;
+  for (animation = 0u; animation < SF_SCENARIO_ENEMY_ANIMATION_COUNT;
+       ++animation) {
+    for (direction = 0u; direction < SF_SCENARIO_ENEMY_DIRECTION_COUNT;
+         ++direction) {
+      const SfCafSelectedAnimation *selected =
+        &visual->animations[animation][direction];
+      if (animation == 0u &&
+          (request.directions & (uint8_t) (1u << direction)) == 0u) continue;
+      for (part = 0u; part < selected->part_count; ++part) {
+        uint16_t frame;
+        visual->selected_parts = (uint8_t) (
+          visual->selected_parts |
+          (uint8_t) (1u << selected->parts[part].source_index));
+        for (frame = 0u; frame < selected->frame_count; ++frame) {
+          const SfCafCell *cell = &selected->parts[part].cells[frame];
+          if (((cell->status & 8) == 0 && !sf_scenario_enemy_add_pattern(
+                artwork_patterns, &artwork_count, cell->pattern)) ||
+              ((cell->status & 8) != 0 && !sf_scenario_enemy_add_pattern(
+                shadow_patterns, &shadow_count, cell->pattern))) return false;
+        }
       }
     }
   }

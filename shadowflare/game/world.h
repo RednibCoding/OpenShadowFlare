@@ -90,6 +90,7 @@ typedef struct SfWorldState {
   const SfMctScenario *scenario;
   const SfScsScript *script;
   const SfTransportCatalog *transports;
+  const SfAiControlCatalog *ai_controls;
   SfWorldPointerControl pointer;
   int32_t script_transport_service;
   int32_t companion_type;

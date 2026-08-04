@@ -21,6 +21,7 @@
 
 #include "core/coordinates.h"
 #include "game/movement.h"
+#include "game/scenario_enemy_controller.h"
 #include "game/world_interaction.h"
 #include "game/world_magic.h"
 #include "game/world_script.h"
@@ -79,7 +80,10 @@ void sf_world_state_bind_transports(
 
 bool sf_world_state_bind_ai_controls(
     SfWorldState *world, const SfAiControlCatalog *catalog) {
-  return world && sf_scenario_enemies_bind_controls(&world->enemies, catalog);
+  if (!world || !sf_scenario_enemies_bind_controls(
+        &world->enemies, catalog)) return false;
+  world->ai_controls = catalog;
+  return true;
 }
 
 void sf_world_state_bind_collision(
@@ -198,14 +202,17 @@ static void sf_world_build_actor_blockers(
   }
 }
 
-static void sf_world_build_enemy_blockers(SfWorldState *world) {
+static void sf_world_build_enemy_blockers(
+    SfWorldState *world, uint16_t *enemy_blocker_indices) {
   uint16_t enemy_index;
   for (enemy_index = 0u; enemy_index < world->enemies.count; ++enemy_index) {
     const SfScenarioEnemy *enemy = &world->enemies.enemies[enemy_index];
+    enemy_blocker_indices[enemy_index] = UINT16_MAX;
     if (enemy->current_life <= 0 ||
         !sf_scenario_enemy_state(enemy, SF_SCENARIO_JUDGEMENT)) continue;
     if (world->movement_blocker_count >= SF_WORLD_MOVEMENT_BLOCKER_LIMIT)
       return;
+    enemy_blocker_indices[enemy_index] = world->movement_blocker_count;
     world->movement_blockers[world->movement_blocker_count++] =
       (SfMovementBlocker) {
         enemy->position, enemy->judgement,
@@ -247,16 +254,38 @@ static void sf_world_update_scenario_actors(
   }
 }
 
-static void sf_world_update_scenario_enemies(SfWorldState *world) {
+static void sf_world_update_scenario_enemies(
+    SfWorldState *world, const uint16_t *enemy_blocker_indices,
+    SfCollisionQuery collision) {
+  SfScenarioEnemyControllerContext context;
   uint16_t enemy_index;
-  for (enemy_index = 0u; enemy_index < world->enemies.count; ++enemy_index)
-    sf_scenario_enemy_update(&world->enemies.enemies[enemy_index]);
+  memset(&context, 0, sizeof(context));
+  context.catalog = world->ai_controls;
+  context.collision = &collision;
+  context.random_state = &world->random_state;
+  context.player.valid = world->player.current_life > 0;
+  context.player.position = world->player.position;
+  context.player.judgement = world->player.judgement;
+  context.companion.valid = world->companion.valid &&
+    !world->companion.inactive && world->companion.current_life > 0;
+  context.companion.position = world->companion.position;
+  context.companion.judgement = world->companion.judgement;
+  for (enemy_index = 0u; enemy_index < world->enemies.count; ++enemy_index) {
+    SfScenarioEnemy *enemy = &world->enemies.enemies[enemy_index];
+    collision.ignored_blocker_id = sf_scenario_enemy_character_number(enemy);
+    context.collision = &collision;
+    sf_scenario_enemy_controller_update(enemy, &context);
+    if (enemy_blocker_indices[enemy_index] != UINT16_MAX)
+      world->movement_blockers[
+        enemy_blocker_indices[enemy_index]].position = enemy->position;
+  }
 }
 
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   SfCollisionQuery collision;
   SfScreenPoint player_screen;
   uint16_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
+  uint16_t enemy_blocker_indices[SF_MCT_ENEMY_LIMIT];
   uint16_t companion_blocker_index;
   if (!world || !world->entered || !input) return;
   sf_scenario_labels_begin(&world->scenario_labels);
@@ -269,7 +298,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   sf_world_interaction_refresh(world);
   sf_world_build_scenario_object_blockers(world);
   sf_world_build_actor_blockers(world, actor_blocker_indices);
-  sf_world_build_enemy_blockers(world);
+  sf_world_build_enemy_blockers(world, enemy_blocker_indices);
   collision.world = &world->collision;
   collision.blockers = world->movement_blockers;
   collision.blocker_count = world->movement_blocker_count;
@@ -280,7 +309,8 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   companion_blocker_index = sf_world_add_companion_blocker(world);
   collision.blocker_count = world->movement_blocker_count;
   sf_scenario_objects_update(&world->scenario_objects);
-  sf_world_update_scenario_enemies(world);
+  sf_world_update_scenario_enemies(
+    world, enemy_blocker_indices, collision);
   sf_world_update_scenario_actors(
     world, actor_blocker_indices, collision);
   collision.blocker_count = world->movement_blocker_count;

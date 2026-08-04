@@ -142,16 +142,25 @@ scenario list. Visible living enemies join ordinary depth sorting and their
 judgement rectangles join the shared collision query. `Enemy Hole` records
 remain in the registry without requesting nonexistent visual resources.
 
-The immediate C99 target is the first retail enemy-controller slice. Decode
-the action and timing values used by the ordinary Goblin, connect its idle and
-walk decisions to the existing collision-aware movement boundary, and refresh
-the small enemy visual working set at a predictable loading boundary when its
-directions or locality change. The data half is already in place: `Control.aid`
-is scanned without retaining its 90 KiB file image, and Near Remote Town keeps
-only its three referenced control lists and 48 actions. Every live enemy must
-resolve its exact Shift-JIS MCT control name before the world starts. Picking,
-nameplates, attacks, and damage should then grow from that same live actor
-instead of creating a parallel combat-only enemy representation.
+The first retail enemy-controller slice is live. `Control.aid` is scanned
+without retaining its 90 KiB file image, and Near Remote Town keeps only its
+three referenced control lists and 48 actions. Every live enemy resolves its
+exact Shift-JIS MCT control name before the world starts. The event evaluator
+now applies the retail life/target conditions, priority quirk, reverse file
+order, weighted random draw, and fallback events. Actions zero, one, and ten
+drive wait, patrol, and player/active-companion approach through authored
+durations, speed scaling, target refresh, integer random turning, and the same
+collision route used by the player and PEOPLE. Only enemies within the retail
+inclusive 0..5000 living-target range run their controller. Walk chart one is
+retained for all eight directions of each prepared resource, and blockers move
+with their owning enemy.
+
+The immediate target is the first attack boundary: add enemy pointer picking
+and the retail health/name/element plate in `ui/`, then implement the ordinary
+action-two presentation through its CAF marker without inventing a second
+combat actor. The small enemy resource working set still needs a predictable
+reload boundary before later maps can move into resources outside their entry
+vicinity.
 
 ## Where we are now
 

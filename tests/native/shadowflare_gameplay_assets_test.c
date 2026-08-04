@@ -87,6 +87,7 @@ static int test_non_town_gameplay_load(
   const SfAiControl *goblin_control;
   const SfAiAction *patrol_action;
   uint16_t enemy_index;
+  uint8_t direction;
   (void) snprintf(path, sizeof(path), "%s/Map/Pattern/f00_02.Lst", root);
   if (!sf_pattern_list_load(path, &patterns) ||
       !sf_gameplay_assets_load(
@@ -120,6 +121,14 @@ static int test_non_town_gameplay_load(
   patrol_action = goblin_control
     ? sf_ai_control_action(
         &assets.ai_controls, goblin_control, 0u, 0u) : NULL;
+  if (goblin_visual) {
+    for (direction = 0u; direction < 8u; ++direction) {
+      if (goblin_visual->animations[1][direction].frame_count == 0u) {
+        fprintf(stderr, "The gate Goblin is missing a walk direction\n");
+        return 1;
+      }
+    }
+  }
   sf_world_state_init(&world, 1, 0, player->gender);
   if (assets.scenario.people_count != 0u || assets.actors.visual_count != 0u ||
       assets.scenario.object_count != 48u ||
@@ -136,7 +145,7 @@ static int test_non_town_gameplay_load(
       patrol_action->parameters[4] != 120 ||
       patrol_action->parameters[5] != 20 ||
       !goblin_visual || goblin->direction < 0 || goblin->direction > 7 ||
-      goblin_visual->animations[goblin->direction].frame_count == 0u ||
+      goblin_visual->animations[0][goblin->direction].frame_count == 0u ||
       !sf_player_apply_initial_parameters(
         &world.player, &assets.player_parameters) ||
       !sf_world_state_bind_ground_items(
@@ -155,6 +164,7 @@ static int test_non_town_gameplay_load(
     const SfScenarioEnemy *live_goblin = sf_scenario_enemy_find_const(
       &world.enemies, 14000101);
     bool blocker_found = false;
+    SfWorldPoint blocker_position = {0, 0};
     uint16_t blocker_index;
     if (!live_goblin || live_goblin->current_life != 40 ||
         live_goblin->control != goblin_control) {
@@ -171,13 +181,19 @@ static int test_non_town_gameplay_load(
          ++blocker_index) {
       if (world.movement_blockers[blocker_index].id == 14000101) {
         blocker_found = true;
+        blocker_position = world.movement_blockers[blocker_index].position;
         break;
       }
     }
     live_goblin = sf_scenario_enemy_find_const(&world.enemies, 14000101);
-    if (!live_goblin || live_goblin->animation_frame != 1u ||
-        !blocker_found) {
-      fprintf(stderr, "The authored Goblin did not animate or block movement\n");
+    if (!live_goblin || live_goblin->current_action != 1 ||
+        live_goblin->event_number != 12 ||
+        live_goblin->animation_chart != 1u ||
+        (live_goblin->position.x == goblin->world_x &&
+         live_goblin->position.y == goblin->world_y) || !blocker_found ||
+        blocker_position.x != live_goblin->position.x ||
+        blocker_position.y != live_goblin->position.y) {
+      fprintf(stderr, "The authored Goblin did not walk or update collision\n");
       return 1;
     }
     {
@@ -204,6 +220,24 @@ static int test_non_town_gameplay_load(
       }
       if (!drawn) {
         fprintf(stderr, "The first authored Goblin rendered no artwork\n");
+        return 1;
+      }
+    }
+    {
+      const int32_t first_distance = sf_movement_bounds_distance(
+        live_goblin->position, live_goblin->judgement,
+        world.player.position, world.player.judgement);
+      uint8_t update;
+      for (update = 0u; update < 30u; ++update)
+        sf_world_state_update(&world, &input);
+      live_goblin = sf_scenario_enemy_find_const(
+        &world.enemies, 14000101);
+      if (!live_goblin || live_goblin->current_action != 10 ||
+          !live_goblin->movement_active ||
+          sf_movement_bounds_distance(
+            live_goblin->position, live_goblin->judgement,
+            world.player.position, world.player.judgement) >= first_distance) {
+        fprintf(stderr, "The first Goblin did not enter its retail approach\n");
         return 1;
       }
     }

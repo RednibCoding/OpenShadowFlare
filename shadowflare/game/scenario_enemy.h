@@ -25,6 +25,7 @@
 #include "data/mct.h"
 #include "data/ai_control.h"
 #include "game/scenario_entity.h"
+#include "game/route.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -34,13 +35,29 @@ typedef struct SfScenarioEnemy {
   const SfAiControl *control;
   SfWorldPoint position;
   SfWorldPoint previous_position;
+  SfWorldPoint spawn_position;
+  SfWorldPoint movement_destination;
   SfObjectBounds judgement;
+  SfObjectBounds patrol_bounds;
+  SfRouteController route;
+  const SfAiAction *selected_action;
   int32_t state[SF_MCT_ENTITY_STATE_COUNT];
   int32_t current_life;
   int32_t maximum_life;
+  int32_t event_number;
+  int32_t current_action;
+  int32_t action_counter;
+  int32_t patrol_counter;
+  int32_t movement_counter;
+  int32_t movement_speed;
+  int32_t movement_duration;
   uint32_t animation_frame;
   uint8_t direction;
   uint8_t enabled_parts;
+  uint8_t animation_chart;
+  uint8_t presentation_action;
+  uint8_t movement_target;
+  bool movement_active;
 } SfScenarioEnemy;
 
 typedef struct SfScenarioEnemySet {
@@ -52,7 +69,6 @@ void sf_scenario_enemies_init(
   SfScenarioEnemySet *enemies, const SfMctScenario *scenario);
 bool sf_scenario_enemies_bind_controls(
   SfScenarioEnemySet *enemies, const SfAiControlCatalog *catalog);
-void sf_scenario_enemy_update(SfScenarioEnemy *enemy);
 int32_t sf_scenario_enemy_character_number(const SfScenarioEnemy *enemy);
 SfWorldPoint sf_scenario_enemy_render_position(
   const SfScenarioEnemy *enemy, uint16_t interpolation);

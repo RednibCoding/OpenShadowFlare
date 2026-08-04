@@ -88,6 +88,7 @@ add_library(
   game/belt.c
   game/collision.c
   game/equipment.c
+  game/enemy_ai_selection.c
   game/game.c
   game/gameplay_service.c
   game/ground_item.c
@@ -107,6 +108,7 @@ add_library(
   game/route_tables.c
   game/scenario_actor.c
   game/scenario_enemy.c
+  game/scenario_enemy_controller.c
   game/scenario_effect.c
   game/scenario_label.c
   game/scenario_object.c

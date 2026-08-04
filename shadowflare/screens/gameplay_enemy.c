@@ -46,7 +46,9 @@ bool sf_gameplay_enemy_visible(
   visual = sf_scenario_enemy_visual(
     assets, enemy->definition->resource_id);
   if (!visual) return false;
-  animation = &visual->animations[enemy->direction];
+  if (enemy->animation_chart >= SF_SCENARIO_ENEMY_ANIMATION_COUNT)
+    return false;
+  animation = &visual->animations[enemy->animation_chart][enemy->direction];
   resource = shadow ? &visual->shadows : &visual->artwork;
   if (animation->frame_count == 0u) return false;
   frame = (uint16_t) (enemy->animation_frame % animation->frame_count);
@@ -84,7 +86,8 @@ void sf_gameplay_enemy_draw(
   visual = sf_scenario_enemy_visual(
     assets, enemy->definition->resource_id);
   if (!visual) return;
-  animation = &visual->animations[enemy->direction];
+  if (enemy->animation_chart >= SF_SCENARIO_ENEMY_ANIMATION_COUNT) return;
+  animation = &visual->animations[enemy->animation_chart][enemy->direction];
   resource = shadow ? &visual->shadows : &visual->artwork;
   if (animation->frame_count == 0u) return;
   frame = (uint16_t) (enemy->animation_frame % animation->frame_count);
