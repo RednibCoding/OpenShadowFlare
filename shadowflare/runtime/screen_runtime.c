@@ -152,6 +152,7 @@ void sf_screen_runtime_resolve_input(
   input->inventory_item_index = -1;
   input->inventory_grid_x = -1;
   input->inventory_grid_y = -1;
+  input->equipment_slot = -1;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;

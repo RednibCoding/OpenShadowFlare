@@ -27,6 +27,8 @@ typedef enum SfInventoryAction {
   SF_INVENTORY_ACTION_NONE = 0,
   SF_INVENTORY_ACTION_TAKE,
   SF_INVENTORY_ACTION_PLACE,
+  SF_INVENTORY_ACTION_TAKE_EQUIPMENT,
+  SF_INVENTORY_ACTION_PLACE_EQUIPMENT,
   SF_INVENTORY_ACTION_DROP_WORLD
 } SfInventoryAction;
 
@@ -40,6 +42,7 @@ typedef struct SfGameInput {
   int8_t inventory_item_index;
   int8_t inventory_grid_x;
   int8_t inventory_grid_y;
+  int8_t equipment_slot;
   uint8_t conversation_option_count;
   SfInventoryAction inventory_action;
   bool pointer_active;

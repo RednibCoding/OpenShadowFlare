@@ -110,12 +110,31 @@ static int test_ground_item_assets(const SfGameplayAssets *assets) {
   static const int32_t palettes[4] = {0, 10, 72, 60};
   static const int32_t charts[4] = {0, 5, 36, 30};
   uint8_t index;
-  if (assets->ground_items.definition_count != 8u ||
+  if (assets->ground_items.definition_count != 9u ||
       assets->ground_items.visual_count != 1u || !visual ||
+      !sf_ground_item_animation(visual, 13) ||
       !sf_ground_item_sound(&assets->ground_items, 15u) ||
-      !sf_ground_item_sound(&assets->ground_items, 48u)) {
+      !sf_ground_item_sound(&assets->ground_items, 48u) ||
+      !sf_ground_item_sound(&assets->ground_items, 49u)) {
     fprintf(stderr, "Remote Town ground-item resources differ from retail\n");
     return 1;
+  }
+  {
+    const SfItemGroundDefinition *leather = NULL;
+    for (index = 0u; index < assets->ground_items.definition_count; ++index) {
+      const SfItemGroundDefinition *candidate =
+        &assets->ground_items.definitions[index];
+      if (candidate->category == 1u && candidate->definition_id == 0) {
+        leather = candidate;
+        break;
+      }
+    }
+    if (!leather || strcmp(leather->name, "Leather Cloth") != 0 ||
+        leather->subtype != 1 || leather->required_level != 1 ||
+        leather->appearance_part != 5 || leather->weight != 70) {
+      fprintf(stderr, "Starter body equipment differs from retail data\n");
+      return 1;
+    }
   }
   for (index = 0u; index < 4u; ++index) {
     if (!sf_ground_item_animation(visual, charts[index]) ||

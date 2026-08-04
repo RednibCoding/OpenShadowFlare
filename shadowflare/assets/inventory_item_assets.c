@@ -82,8 +82,9 @@ bool sf_inventory_item_assets_load(
         !sf_retail_path_join(
           path, sizeof(path), data_root, relative)) goto failed;
     output = &assets->groups[assets->group_count];
-    if (!sf_njp_load_sparse_patterns_with_palettes(
+    if (!sf_njp_load_sparse_patterns_with_palette_capacity(
           path, patterns, pattern_count, palettes, palette_count,
+          SF_NJP_SPARSE_PALETTE_LIMIT,
           arena, &output->resource)) goto failed;
     output->source_group = group;
     ++assets->group_count;

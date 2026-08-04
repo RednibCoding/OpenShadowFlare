@@ -19,6 +19,7 @@
 
 #include "ui/gameplay_inventory_input.h"
 
+#include "ui/gameplay_equipment_layout.h"
 #include "ui/gameplay_hud_input.h"
 
 static bool sf_inventory_pointer_inside(
@@ -36,6 +37,7 @@ bool sf_gameplay_inventory_input_resolve(
   bool close_hovered;
   bool holding;
   int8_t hovered = -1;
+  SfEquipmentSlot equipment_slot = SF_EQUIPMENT_SLOT_COUNT;
   if (!inventory || !player || !input) return false;
   sf_gameplay_hud_input_resolve(input);
   if (input->pointer_active) {
@@ -76,6 +78,17 @@ bool sf_gameplay_inventory_input_resolve(
     inventory->hovered_item_index = hovered;
     changed = true;
   }
+  if (inventory->open && input->pointer_active)
+    equipment_slot = sf_gameplay_equipment_slot_at(
+      input->pointer_x, input->pointer_y);
+  if (inventory->hovered_equipment_slot !=
+      (equipment_slot < SF_EQUIPMENT_SLOT_COUNT
+        ? (int8_t) equipment_slot : -1)) {
+    inventory->hovered_equipment_slot =
+      equipment_slot < SF_EQUIPMENT_SLOT_COUNT
+        ? (int8_t) equipment_slot : -1;
+    changed = true;
+  }
   if (inventory->open && input->cancel_pressed) {
     inventory->open = false;
     inventory->close_hovered = false;
@@ -92,6 +105,20 @@ bool sf_gameplay_inventory_input_resolve(
              (!inventory->open ||
               input->pointer_x < SF_GAMEPLAY_INVENTORY_PANEL_LEFT)) {
     input->inventory_action = SF_INVENTORY_ACTION_DROP_WORLD;
+    input->pointer_over_gameplay_ui = true;
+    changed = true;
+  } else if (inventory->open && input->pointer_primary_pressed && holding &&
+             equipment_slot < SF_EQUIPMENT_SLOT_COUNT) {
+    input->inventory_action = SF_INVENTORY_ACTION_PLACE_EQUIPMENT;
+    input->equipment_slot = (int8_t) equipment_slot;
+    input->pointer_over_gameplay_ui = true;
+    changed = true;
+  } else if (inventory->open && input->pointer_primary_pressed && !holding &&
+             equipment_slot < SF_EQUIPMENT_SLOT_COUNT &&
+             sf_equipment_item(&player->equipment, equipment_slot)) {
+    input->inventory_action = SF_INVENTORY_ACTION_TAKE_EQUIPMENT;
+    input->equipment_slot = (int8_t) equipment_slot;
+    inventory->hovered_equipment_slot = -1;
     input->pointer_over_gameplay_ui = true;
     changed = true;
   } else if (inventory->open && input->pointer_primary_pressed && holding &&

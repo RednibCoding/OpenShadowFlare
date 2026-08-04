@@ -51,7 +51,14 @@ typedef struct SfItemGroundDefinition {
   int32_t weight;
   int32_t maximum_durability;
   int32_t variant;
+  int32_t subtype;
+  int32_t required_level;
+  int32_t appearance_part;
+  int32_t appearance_red_strength;
+  int32_t appearance_green_strength;
+  int32_t appearance_blue_strength;
   uint8_t category;
+  bool suppresses_off_hand;
 } SfItemGroundDefinition;
 
 bool sf_item_read_appearance(

@@ -182,8 +182,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,440,069 bytes of the 7 MiB main arena,
-leaving 5,899,963 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,440,269 bytes of the 7 MiB main arena,
+leaving 5,899,763 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -196,25 +196,24 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 752,992 bytes of the main arena, leaving 6,587,040 bytes free;
+assets. It uses 753,192 bytes of the main arena, leaving 6,586,840 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 713,208 bytes of the main arena, leaving 6,626,824
+The load-game screen uses 713,408 bytes of the main arena, leaving 6,626,624
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,697,088 bytes of the main
-arena, leaving 2,642,944 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, ground-item, inventory-panel, and UI data and artwork account
-for 4,358,201
-bytes. GND
-rendering
-data is decoded directly from its compressed three-plane stream into two bytes
+The complete Remote Town gameplay screen uses 4,896,700 bytes of the main
+arena, leaving 2,443,332 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
+artwork account for 4,557,613
+bytes. GND rendering data is decoded directly from its compressed three-plane
+stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
@@ -245,9 +244,13 @@ without retaining its full metadata and decodes only the body, equipped armor,
 weapon, and shadow patterns used by idle, walk, and run. Its pattern metadata
 is arena-sized to the selected bank rather than embedded in every screen.
 `Item.Ibn` is streamed in the same way to recover the Leather Cloth appearance
-fields without keeping its 2.27 MiB decoded payload. Stationary frames restore
-and redraw only the measured player rectangle in full retail depth order;
-scrolling frames redraw the changing world once.
+fields without keeping its 2.27 MiB decoded payload. The active map also
+preloads only the distinct player CAF parts referenced by its retained weapon
+and armor definitions, so equipping an item never performs file access during
+play. The equipment owner selects and tints those retained parts; inactive
+candidate parts do not draw. Stationary frames restore and redraw only the
+measured player rectangle in full retail depth order; scrolling frames redraw
+the changing world once.
 
 PEOPLE artwork follows the same sparse rule. The loader first combines the
 parts needed by actors that share a retail resource, keeps the idle patterns
@@ -282,7 +285,8 @@ renderer remains unaware of gauges, levels, pace, or HUD hit areas.
 
 Ground items follow the same ownership rule. The active SCS is scanned for
 its fixed or initial temporary category/definition pairs, and `Item.Ibn` is
-streamed once to retain only those eight Remote Town records. The active map
+streamed once to retain those eight Remote Town records plus the equipped
+Leather Cloth needed by a new hero. The active map
 owns one fixed 64-entry item set. The interpreter only evaluates opcode 10
 operands and calls the world service; it does not know about item storage,
 artwork, rendering, or audio. The screen helper draws the selected CAF cells
@@ -310,6 +314,16 @@ round trip, places world drops 200 units away in the selected eight-way
 direction, and guards the pointer until release so the drop cannot become a
 movement command. The full held icon is drawn last over the HUD and survives
 closing the panel, as it does in retail.
+
+The same held-item path now owns all nine visible equipment regions. Their
+retail rectangles live in one small UI layout file, while category, subtype,
+level requirement, swapping, equipped weight, and off-hand suppression remain
+in `game/equipment.c`. A new hero's Leather Cloth begins as a concrete body
+item with its original durability. Taking it uses the ordinary pointer owner;
+placing armor, weapons, shields, or one-cell accessories validates the target
+before replacing anything and emits the original equip sound. Complete item
+footprints are centered in the authored regions, and equipment clicks are
+consumed before world movement.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

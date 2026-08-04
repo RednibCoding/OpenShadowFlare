@@ -20,6 +20,7 @@
 #include "ui/gameplay_inventory.h"
 
 #include "game/inventory.h"
+#include "ui/gameplay_equipment_layout.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,6 +29,7 @@ void sf_gameplay_inventory_init(SfGameplayInventoryUi *inventory) {
   if (!inventory) return;
   memset(inventory, 0, sizeof(*inventory));
   inventory->hovered_item_index = -1;
+  inventory->hovered_equipment_slot = -1;
 }
 
 static bool sf_inventory_intersects_panel(const SfRect *clip) {
@@ -152,7 +154,22 @@ void sf_gameplay_inventory_draw(
   sf_inventory_draw_number(renderer, font, 0, 446, 118, normal_color);
   sf_inventory_draw_text(renderer, font, "/", 445, 117, normal_color);
   sf_inventory_draw_number(renderer, font, 10, 471, 118, normal_color);
-  sf_inventory_draw_number(renderer, font, 0, 471, 224, value_color);
+  sf_inventory_draw_number(
+    renderer, font,
+    sf_equipment_total_weight(
+      &player->equipment, assets->ground_items.definitions,
+      assets->ground_items.definition_count),
+    471, 224, value_color);
+  for (item = 0u; item < SF_EQUIPMENT_SLOT_COUNT; ++item) {
+    const SfInventoryItem *equipped = sf_equipment_item(
+      &player->equipment, (SfEquipmentSlot) item);
+    int x;
+    int y;
+    if (!equipped) continue;
+    sf_gameplay_equipment_item_origin(
+      (SfEquipmentSlot) item, equipped, &x, &y);
+    sf_inventory_draw_item_at(renderer, assets, equipped, x, y);
+  }
   for (item = 0u; item < player->inventory.count; ++item)
     sf_inventory_draw_item(
       renderer, assets, &player->inventory.items[item]);

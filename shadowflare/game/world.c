@@ -72,6 +72,8 @@ void sf_world_state_bind_ground_items(
   if (!world) return;
   sf_ground_items_bind_definitions(
     &world->ground_items, definitions, definition_count);
+  sf_player_initialize_equipment(
+    &world->player, definitions, definition_count);
 }
 
 bool sf_world_state_bind_scenario(

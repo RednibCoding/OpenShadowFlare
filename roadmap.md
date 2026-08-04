@@ -38,10 +38,14 @@ owned items using the authored Status and Item sheets, keeps the left-hand
 world live around an x=160 camera anchor, and consumes its own input. Items can
 now be taken from that 9x4 owner, carried under the pointer, placed or swapped,
 and dropped back into the live world without turning the UI click into a move
-command. The next slices should keep growing shared systems in dependency
-order: add equipment on top of that same held-item path, then the next
-native services needed by Remote Town, saves, scenario travel, combat and
-companions, and finally the remaining `SF_EXE` feature set.
+command. All nine visible equipment regions now use that same pointer owner.
+The new hero starts with the table-backed Leather Cloth in the body slot;
+weapons, shields, body armor, and accessories validate their retail slot and
+level rules, equipped weight is live, and only the active CAF appearance parts
+are drawn with their original color strengths. The next slice should add the
+separate belt owner and finish the retail starter loadout before moving on to
+the next native services needed by Remote Town, saves, scenario travel,
+combat, companions, and finally the remaining `SF_EXE` feature set.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

@@ -157,13 +157,21 @@ static int test_live_inventory(
   if (!sf_gameplay_assets_load(
         &assets, root, 0, 0, loader_player.gender,
         loader_player.appearance_parts, loader_player.appearance_part_count,
-        loader_player.visible_items, loader_player.visible_item_count, arena))
+        loader_player.visible_items, loader_player.visible_item_count, arena)) {
+    fprintf(stderr, "Inventory fixture could not load Remote Town assets\n");
     return 1;
+  }
   dagger = find_dagger(&assets);
-  if (!dagger) return 1;
+  if (!dagger) {
+    fprintf(stderr, "Inventory fixture could not find the Dagger\n");
+    return 1;
+  }
   sf_world_state_init(&world, 0, 0, loader_player.gender);
   if (!sf_player_apply_initial_parameters(
-        &world.player, &assets.player_parameters)) return 1;
+        &world.player, &assets.player_parameters)) {
+    fprintf(stderr, "Inventory fixture could not initialize the player\n");
+    return 1;
+  }
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
   sf_world_state_bind_ground_items(
     &world, assets.ground_items.definitions,
@@ -171,7 +179,10 @@ static int test_live_inventory(
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);
-  if (!sf_inventory_store(&world.player.inventory, dagger, 1)) return 1;
+  if (!sf_inventory_store(&world.player.inventory, dagger, 1)) {
+    fprintf(stderr, "Inventory fixture could not store its Dagger\n");
+    return 1;
+  }
   sf_gameplay_inventory_init(&ui);
   ui.open = true;
   destination = world.player.destination;

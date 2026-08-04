@@ -69,6 +69,11 @@ static bool sf_item_ground_word(
   }
   if (scan->active < 0) return true;
   definition = &scan->definitions[(uint8_t) scan->active];
+  if (offset == 0u) {
+    definition->subtype = value;
+    if (category == 0u && (value == 1 || value == 3))
+      definition->suppresses_off_hand = true;
+  }
   if (offset == 8u) definition->variant = value;
   if (offset == 28u) definition->inventory_width = value;
   if (offset == 32u) definition->inventory_height = value;
@@ -83,6 +88,28 @@ static bool sf_item_ground_word(
   if (offset == 68u) definition->blue_strength = value;
   if (offset == 100u && category <= 1u)
     definition->maximum_durability = value;
+  if (offset == 100u && category == 2u)
+    definition->required_level = value;
+  if (offset == 148u && category <= 1u)
+    definition->required_level = value;
+  if (category == 0u && offset == 168u)
+    definition->appearance_part = value;
+  if (category == 0u && offset == 172u)
+    definition->appearance_red_strength = value;
+  if (category == 0u && offset == 176u)
+    definition->appearance_green_strength = value;
+  if (category == 0u && offset == 180u)
+    definition->appearance_blue_strength = value;
+  if (category == 0u && offset == 204u && value != 0)
+    definition->suppresses_off_hand = true;
+  if (category == 1u && offset == 152u)
+    definition->appearance_part = value;
+  if (category == 1u && offset == 156u)
+    definition->appearance_red_strength = value;
+  if (category == 1u && offset == 160u)
+    definition->appearance_green_strength = value;
+  if (category == 1u && offset == 164u)
+    definition->appearance_blue_strength = value;
   return true;
 }
 
@@ -104,6 +131,13 @@ bool sf_item_read_ground_definitions(
     definitions[index].inventory_width = 1;
     definitions[index].inventory_height = 1;
     definitions[index].maximum_durability = 0;
+    definitions[index].subtype = -1;
+    definitions[index].required_level = 1;
+    definitions[index].appearance_part = -1;
+    definitions[index].appearance_red_strength = 1000;
+    definitions[index].appearance_green_strength = 1000;
+    definitions[index].appearance_blue_strength = 1000;
+    definitions[index].suppresses_off_hand = false;
     definitions[index].name[0] = '\0';
   }
   scan = (SfItemGroundScan) {

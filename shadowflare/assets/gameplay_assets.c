@@ -167,6 +167,46 @@ static bool sf_gameplay_load_patterns(
   return assets->pattern_set_count == set_count;
 }
 
+static bool sf_gameplay_add_player_item(
+    SfItemReference *items, uint8_t *count, uint8_t capacity,
+    uint8_t category, int32_t definition_id) {
+  uint8_t index;
+  for (index = 0u; index < *count; ++index)
+    if (items[index].category == category &&
+        items[index].definition_id == definition_id) return true;
+  if (*count >= capacity) return false;
+  items[*count].category = category;
+  items[*count].definition_id = definition_id;
+  ++*count;
+  return true;
+}
+
+static bool sf_gameplay_load_player(
+    SfGameplayAssets *assets, const char *data_root, uint8_t gender,
+    const uint8_t *appearance_parts, uint8_t appearance_part_count,
+    const SfItemReference *visible_items, uint8_t visible_item_count,
+    SfArena *arena) {
+  SfItemReference items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t count = 0u;
+  uint8_t index;
+  for (index = 0u; index < visible_item_count; ++index)
+    if (visible_items[index].category <= 1u && !sf_gameplay_add_player_item(
+          items, &count, SF_GROUND_ITEM_DEFINITION_LIMIT,
+          visible_items[index].category,
+          visible_items[index].definition_id)) return false;
+  for (index = 0u; index < assets->ground_items.definition_count; ++index) {
+    const SfItemGroundDefinition *definition =
+      &assets->ground_items.definitions[index];
+    if (definition->category <= 1u && !sf_gameplay_add_player_item(
+          items, &count, SF_GROUND_ITEM_DEFINITION_LIMIT,
+          definition->category,
+          definition->definition_id)) return false;
+  }
+  return sf_player_assets_load(
+    &assets->player, data_root, gender,
+    appearance_parts, appearance_part_count, items, count, arena);
+}
+
 bool sf_gameplay_assets_load(
     SfGameplayAssets *assets, const char *data_root,
     int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
@@ -247,14 +287,15 @@ bool sf_gameplay_assets_load(
         sf_retail_game_paths.parameter_tables) ||
       !sf_player_initial_parameters_load(
         path, player_gender, &assets->player_parameters) ||
-      !sf_player_assets_load(
-        &assets->player, data_root, player_gender,
+      !sf_ground_item_assets_load(
+        &assets->ground_items, data_root, assets->script,
+        visible_items, visible_item_count, arena) ||
+      !sf_gameplay_load_player(
+        assets, data_root, player_gender,
         appearance_parts, appearance_part_count,
         visible_items, visible_item_count, arena) ||
       !sf_scenario_actor_assets_load(
         &assets->actors, data_root, &assets->scenario, arena) ||
-      !sf_ground_item_assets_load(
-        &assets->ground_items, data_root, assets->script, arena) ||
       !sf_inventory_item_assets_load(
         &assets->inventory_items, data_root,
         assets->ground_items.definitions,

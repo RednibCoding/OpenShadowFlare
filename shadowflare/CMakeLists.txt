@@ -72,6 +72,7 @@ add_library(
   data/voc.c
   game/character_create.c
   game/collision.c
+  game/equipment.c
   game/game.c
   game/ground_item.c
   game/inventory.c
@@ -106,6 +107,7 @@ add_library(
   ui/conversation_bubble.c
   ui/conversation_input.c
   ui/conversation_layout.c
+  ui/gameplay_equipment_layout.c
   ui/gameplay_hud.c
   ui/gameplay_hud_input.c
   ui/gameplay_inventory.c

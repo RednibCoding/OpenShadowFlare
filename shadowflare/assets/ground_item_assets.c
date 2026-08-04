@@ -55,7 +55,7 @@ static bool sf_ground_item_visual_load(
   uint8_t selected_parts[SF_CAF_SELECTED_PART_LIMIT];
   int32_t artwork_patterns[SF_GROUND_ITEM_PATTERN_LIMIT];
   int32_t shadow_patterns[SF_GROUND_ITEM_PATTERN_LIMIT];
-  int32_t palettes[SF_NJP_SPARSE_PALETTE_LIMIT];
+  int32_t palettes[SF_NJP_SPARSE_DEFAULT_PALETTE_LIMIT];
   uint16_t artwork_count = 0u;
   uint16_t shadow_count = 0u;
   uint16_t palette_count = 0u;
@@ -115,7 +115,7 @@ static bool sf_ground_item_visual_load(
           if (animation->palette_mode == 1 &&
               !sf_ground_item_add_value(
                 palettes, &palette_count,
-                SF_NJP_SPARSE_PALETTE_LIMIT,
+                SF_NJP_SPARSE_DEFAULT_PALETTE_LIMIT,
                 animation->chart_priority_stride *
                   request.charts[chart_index] + cell->priority)) return false;
         }
@@ -142,14 +142,16 @@ static bool sf_ground_item_visual_load(
 
 bool sf_ground_item_assets_load(
     SfGroundItemAssets *assets, const char *data_root,
-    const SfScsScript *script, SfArena *arena) {
+    const SfScsScript *script,
+    const SfItemReference *equipped_items, uint8_t equipped_item_count,
+    SfArena *arena) {
   SfGroundItemResourceRequest requests[SF_GROUND_ITEM_RESOURCE_LIMIT];
   uint8_t request_count;
   uint8_t index;
   char path[SF_RETAIL_PATH_CAPACITY];
   size_t mark;
   bool success = false;
-  static const uint16_t samples[5] = {15u, 85u, 47u, 48u, 93u};
+  static const uint16_t samples[6] = {15u, 85u, 47u, 48u, 49u, 93u};
   if (!assets || !data_root || !script || !arena) return false;
   mark = sf_arena_mark(arena);
   memset(assets, 0, sizeof(*assets));
@@ -158,8 +160,24 @@ bool sf_ground_item_assets_load(
     arena, SF_GROUND_ITEM_DEFINITION_LIMIT * sizeof(*assets->definitions),
     sizeof(void *));
   if (!assets->definitions || !sf_ground_item_collect_definitions(
-        script, assets->definitions, &assets->definition_count) ||
-      !sf_retail_path_join(
+        script, assets->definitions, &assets->definition_count)) goto done;
+  for (index = 0u; index < equipped_item_count; ++index) {
+    uint8_t existing;
+    if (!equipped_items || equipped_items[index].category > 4u) goto done;
+    for (existing = 0u; existing < assets->definition_count; ++existing)
+      if (assets->definitions[existing].category ==
+            equipped_items[index].category &&
+          assets->definitions[existing].definition_id ==
+            equipped_items[index].definition_id) break;
+    if (existing < assets->definition_count) continue;
+    if (assets->definition_count >= SF_GROUND_ITEM_DEFINITION_LIMIT) goto done;
+    assets->definitions[assets->definition_count].category =
+      equipped_items[index].category;
+    assets->definitions[assets->definition_count].definition_id =
+      equipped_items[index].definition_id;
+    ++assets->definition_count;
+  }
+  if (!sf_retail_path_join(
         path, sizeof(path), data_root,
         sf_retail_game_paths.item_database) ||
       !sf_item_read_ground_definitions(
@@ -179,7 +197,7 @@ bool sf_ground_item_assets_load(
         path, sizeof(path), data_root,
         sf_retail_game_paths.common_sounds) ||
       !sf_voc_load_u8_mono_samples(
-        path, samples, 5u, arena, assets->sounds)) goto done;
+        path, samples, 6u, arena, assets->sounds)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:
@@ -192,10 +210,10 @@ done:
 
 const SfPcmU8 *sf_ground_item_sound(
     const SfGroundItemAssets *assets, uint16_t sample) {
-  static const uint16_t samples[5] = {15u, 85u, 47u, 48u, 93u};
+  static const uint16_t samples[6] = {15u, 85u, 47u, 48u, 49u, 93u};
   uint8_t index;
   if (!assets) return NULL;
-  for (index = 0u; index < 5u; ++index)
+  for (index = 0u; index < 6u; ++index)
     if (samples[index] == sample) return &assets->sounds[index];
   return NULL;
 }
