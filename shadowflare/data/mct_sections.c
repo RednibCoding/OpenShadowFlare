@@ -149,6 +149,64 @@ static bool sf_mct_read_people(
   return true;
 }
 
+static void sf_mct_copy_enemy_common(
+    SfMctEnemy *enemy, const SfMctCommonEntity *common) {
+  memcpy(enemy->name, common->name, sizeof(enemy->name));
+  enemy->id = common->id;
+  enemy->resource_id = common->resource_id;
+  enemy->name_color = common->name_color;
+  enemy->label_height = common->label_height;
+  enemy->world_x = common->world_x;
+  enemy->world_y = common->world_y;
+  enemy->judgement_left = common->judgement_left;
+  enemy->judgement_top = common->judgement_top;
+  enemy->judgement_right = common->judgement_right;
+  enemy->judgement_bottom = common->judgement_bottom;
+  enemy->direction = common->direction;
+  memcpy(enemy->initial_state, common->initial_state,
+    sizeof(enemy->initial_state));
+  memcpy(enemy->red_strength, common->red_strength,
+    sizeof(enemy->red_strength));
+  memcpy(enemy->green_strength, common->green_strength,
+    sizeof(enemy->green_strength));
+  memcpy(enemy->blue_strength, common->blue_strength,
+    sizeof(enemy->blue_strength));
+  memcpy(enemy->part_visibility, common->part_visibility,
+    sizeof(enemy->part_visibility));
+  enemy->custom_part_count = common->custom_part_count;
+  enemy->custom_parts = common->custom_parts;
+}
+
+static bool sf_mct_read_enemies(
+    FILE *file, SfArena *arena, SfMctScenario *scenario) {
+  uint32_t count;
+  uint32_t index;
+  if (!sf_mct_reader_u32(file, &count) || count > SF_MCT_ENEMY_LIMIT)
+    return false;
+  scenario->enemies = (SfMctEnemy *) sf_arena_push_zero(
+    arena, (size_t) count * sizeof(*scenario->enemies), sizeof(void *));
+  if (count > 0u && !scenario->enemies) return false;
+  for (index = 0u; index < count; ++index) {
+    SfMctCommonEntity common;
+    SfMctEnemy *enemy = &scenario->enemies[index];
+    uint32_t field;
+    if (!sf_mct_reader_common(file, &common) ||
+        common.direction < 0 || common.direction > 7) return false;
+    for (field = 0u; field < 15u; ++field)
+      if (!sf_mct_reader_i32(file, &enemy->pre_ai_values[field]))
+        return false;
+    if (!sf_mct_reader_string(
+          file, 32u, enemy->ai_control_name,
+          sizeof(enemy->ai_control_name))) return false;
+    for (field = 0u; field < 56u; ++field)
+      if (!sf_mct_reader_i32(file, &enemy->post_ai_values[field]))
+        return false;
+    sf_mct_copy_enemy_common(enemy, &common);
+  }
+  scenario->enemy_count = (uint16_t) count;
+  return true;
+}
+
 static bool sf_mct_skip_entity_group(FILE *file, uint32_t tail_size) {
   uint32_t count;
   uint32_t index;
@@ -190,7 +248,7 @@ bool sf_mct_read_sections(
     sf_mct_reader_skip_values(file, 4u) &&
     sf_mct_read_objects(file, arena, scenario) &&
     sf_mct_read_people(file, arena, scenario) &&
-    sf_mct_skip_entity_group(file, 0x13cu) &&
+    sf_mct_read_enemies(file, arena, scenario) &&
     sf_mct_skip_entity_group(file, 0x10u) &&
     sf_mct_read_entries(file, arena, scenario);
 }

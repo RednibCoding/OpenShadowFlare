@@ -133,11 +133,22 @@ the next, while player, inventory, companion, quest, script, and transport
 owners survive. The actual Remote Town south gate now reaches Near Remote
 Town and its authored return trigger completes the round trip.
 
-The immediate C99 target is the first outdoor enemy slice. Near Remote Town's
-MCT enemy rows should become fixed live actors with their table-backed stats,
-sparse animation assets, depth, collision, and idle/walk behavior. Combat can
-then grow from the first real Goblin instead of adding another town-only
-special case.
+The first outdoor enemy slice is live. Near Remote Town's 127 MCT enemy rows
+decode into a fixed world owner with their authored identity, state channels,
+judgement, direction, colors, life, experience, loot row, and AI control name.
+The entry vicinity retains only the idle directions and NJP/SDW cells it can
+actually present; this is a general screen-space preload rule rather than a
+scenario list. Visible living enemies join ordinary depth sorting and their
+judgement rectangles join the shared collision query. `Enemy Hole` records
+remain in the registry without requesting nonexistent visual resources.
+
+The immediate C99 target is the first retail enemy-controller slice. Decode
+the action and timing values used by the ordinary Goblin, connect its idle and
+walk decisions to the existing collision-aware movement boundary, and refresh
+the small enemy visual working set at a predictable loading boundary when its
+directions or locality change. Picking, nameplates, attacks, and damage should
+then grow from that same live actor instead of creating a parallel combat-only
+enemy representation.
 
 ## Where we are now
 

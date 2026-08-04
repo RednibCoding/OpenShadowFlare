@@ -27,6 +27,7 @@
 #include "game/companion.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
+#include "game/scenario_enemy.h"
 #include "game/scenario_effect.h"
 #include "game/scenario_label.h"
 #include "game/scenario_object.h"
@@ -38,7 +39,7 @@
 #include <stdint.h>
 
 #define SF_WORLD_MOVEMENT_BLOCKER_LIMIT \
-  (SF_MCT_OBJECT_LIMIT + SF_MCT_PERSON_LIMIT + 2u)
+  (SF_MCT_OBJECT_LIMIT + SF_MCT_PERSON_LIMIT + SF_MCT_ENEMY_LIMIT + 2u)
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
@@ -75,6 +76,7 @@ typedef struct SfWorldState {
   SfPlayerState player;
   SfCompanionState companion;
   SfScenarioActorSet actors;
+  SfScenarioEnemySet enemies;
   SfScenarioPlacedEffectSet placed_effects;
   SfScenarioLabelSet scenario_labels;
   SfScenarioObjectSet scenario_objects;
@@ -91,7 +93,7 @@ typedef struct SfWorldState {
   SfWorldPointerControl pointer;
   int32_t script_transport_service;
   int32_t companion_type;
-  uint8_t movement_blocker_count;
+  uint16_t movement_blocker_count;
   bool entered;
 } SfWorldState;
 

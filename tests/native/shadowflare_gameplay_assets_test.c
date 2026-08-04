@@ -26,6 +26,7 @@
 #include "game/world_conversation.h"
 #include "game/world_script.h"
 #include "screens/gameplay_screen.h"
+#include "screens/gameplay_enemy.h"
 #include "screens/gameplay_object_visual.h"
 #include "ui/conversation_input.h"
 #include "ui/conversation_layout.h"
@@ -81,6 +82,9 @@ static int test_non_town_gameplay_load(
   char path[1024];
   size_t mark = sf_arena_mark(arena);
   uint8_t index;
+  const SfMctEnemy *goblin = NULL;
+  const SfScenarioEnemyVisual *goblin_visual;
+  uint16_t enemy_index;
   (void) snprintf(path, sizeof(path), "%s/Map/Pattern/f00_02.Lst", root);
   if (!sf_pattern_list_load(path, &patterns) ||
       !sf_gameplay_assets_load(
@@ -100,9 +104,24 @@ static int test_non_town_gameplay_load(
       return 1;
     }
   }
+  for (enemy_index = 0u; enemy_index < assets.scenario.enemy_count;
+       ++enemy_index) {
+    if (assets.scenario.enemies[enemy_index].id == 101) {
+      goblin = &assets.scenario.enemies[enemy_index];
+      break;
+    }
+  }
+  goblin_visual = goblin
+    ? sf_scenario_enemy_visual(&assets.enemies, goblin->resource_id) : NULL;
   sf_world_state_init(&world, 1, 0, player->gender);
   if (assets.scenario.people_count != 0u || assets.actors.visual_count != 0u ||
       assets.scenario.object_count != 48u ||
+      assets.scenario.enemy_count != 127u || !goblin ||
+      strcmp(goblin->name, "Goblin") != 0 ||
+      goblin->pre_ai_values[8] != 40 ||
+      goblin->pre_ai_values[13] != 1 || goblin->pre_ai_values[14] != 0 ||
+      !goblin_visual || goblin->direction < 0 || goblin->direction > 7 ||
+      goblin_visual->animations[goblin->direction].frame_count == 0u ||
       !sf_player_apply_initial_parameters(
         &world.player, &assets.player_parameters) ||
       !sf_world_state_bind_ground_items(
@@ -110,9 +129,67 @@ static int test_non_town_gameplay_load(
         assets.ground_items.definition_count) ||
       !sf_world_state_bind_scenario(
         &world, &assets.scenario, assets.script) ||
+      world.enemies.count != 127u ||
       world.placed_effects.count == 0u) {
     fprintf(stderr, "A saved world without PEOPLE records could not start\n");
     return 1;
+  }
+  {
+    SfGameInput input;
+    const SfScenarioEnemy *live_goblin = sf_scenario_enemy_find_const(
+      &world.enemies, 14000101);
+    bool blocker_found = false;
+    uint16_t blocker_index;
+    if (!live_goblin || live_goblin->current_life != 40) {
+      fprintf(stderr, "The first authored Goblin did not enter world state\n");
+      return 1;
+    }
+    sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+    sf_world_state_enter(
+      &world, assets.entry.world_x, assets.entry.world_y,
+      (uint8_t) assets.entry.direction);
+    memset(&input, 0, sizeof(input));
+    sf_world_state_update(&world, &input);
+    for (blocker_index = 0u; blocker_index < world.movement_blocker_count;
+         ++blocker_index) {
+      if (world.movement_blockers[blocker_index].id == 14000101) {
+        blocker_found = true;
+        break;
+      }
+    }
+    live_goblin = sf_scenario_enemy_find_const(&world.enemies, 14000101);
+    if (!live_goblin || live_goblin->animation_frame != 1u ||
+        !blocker_found) {
+      fprintf(stderr, "The authored Goblin did not animate or block movement\n");
+      return 1;
+    }
+    {
+      SfRenderer renderer;
+      SfWorldRenderView view;
+      SfScreenPoint screen = sf_world_to_screen(live_goblin->position);
+      size_t pixel;
+      bool drawn = false;
+      memset(sf_gameplay_test_pixels, 0, sizeof(sf_gameplay_test_pixels));
+      if (!sf_renderer_init(
+            &renderer, sf_gameplay_test_pixels,
+            sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+      view.player_position = live_goblin->position;
+      view.camera_x = screen.x - 320;
+      view.camera_y = screen.y - 240;
+      sf_gameplay_enemy_draw(
+        &renderer, &assets.enemies, live_goblin, &view,
+        1000u, false, NULL);
+      for (pixel = 0u; pixel < 640u * 480u; ++pixel) {
+        if (sf_gameplay_test_pixels[pixel] != 0u) {
+          drawn = true;
+          break;
+        }
+      }
+      if (!drawn) {
+        fprintf(stderr, "The first authored Goblin rendered no artwork\n");
+        return 1;
+      }
+    }
   }
   return sf_arena_rewind(arena, mark) ? 0 : 1;
 }

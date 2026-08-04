@@ -24,6 +24,7 @@
 #include "render/depth.h"
 #include "screens/gameplay_actor.h"
 #include "screens/gameplay_companion.h"
+#include "screens/gameplay_enemy.h"
 #include "screens/gameplay_ground_item.h"
 #include "screens/gameplay_object_visual.h"
 #include "screens/gameplay_player.h"
@@ -35,6 +36,7 @@
 #define SF_GAMEPLAY_COMPANION_ENTRY UINT16_C(0x3fff)
 #define SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE UINT16_C(0x1000)
 #define SF_GAMEPLAY_GROUND_ITEM_ENTRY_BASE UINT16_C(0x4000)
+#define SF_GAMEPLAY_ENEMY_ENTRY_BASE UINT16_C(0x5000)
 #define SF_GAMEPLAY_ACTOR_ENTRY_BASE UINT16_C(0x8000)
 
 static bool sf_gameplay_ground_item_entry(uint16_t entry) {
@@ -50,6 +52,11 @@ static bool sf_gameplay_scenario_object_entry(uint16_t entry) {
 static bool sf_gameplay_actor_entry(uint16_t entry) {
   return entry >= SF_GAMEPLAY_ACTOR_ENTRY_BASE &&
     entry < SF_GAMEPLAY_ACTOR_ENTRY_BASE + SF_MCT_PERSON_LIMIT;
+}
+
+static bool sf_gameplay_enemy_entry(uint16_t entry) {
+  return entry >= SF_GAMEPLAY_ENEMY_ENTRY_BASE &&
+    entry < SF_GAMEPLAY_ENEMY_ENTRY_BASE + SF_MCT_ENEMY_LIMIT;
 }
 
 static uint16_t sf_gameplay_collect_objects(
@@ -145,6 +152,29 @@ static uint16_t sf_gameplay_collect_objects(
       entries[count].status = 0;
       ++count;
     }
+    {
+      uint16_t enemy_index;
+      for (enemy_index = 0u; enemy_index < world->enemies.count;
+           ++enemy_index) {
+        const SfScenarioEnemy *enemy = &world->enemies.enemies[enemy_index];
+        const SfScenarioEnemyVisual *visual;
+        if (!enemy->definition || enemy->current_life <= 0 ||
+            !sf_scenario_enemy_state(enemy, SF_SCENARIO_VISIBLE)) continue;
+        visual = sf_scenario_enemy_visual(
+          &assets->enemies, enemy->definition->resource_id);
+        if (!visual || (shadow && visual->shadows.pattern_count == 0u) ||
+            !sf_gameplay_enemy_visible(
+              &assets->enemies, enemy, view, interpolation, shadow)) continue;
+        if (count >= SF_GAMEPLAY_DRAW_ENTRY_LIMIT) return UINT16_MAX;
+        entries[count].position = sf_scenario_enemy_render_position(
+          enemy, interpolation);
+        entries[count].judgement = enemy->judgement;
+        entries[count].source_index = (uint16_t) (
+          SF_GAMEPLAY_ENEMY_ENTRY_BASE + enemy_index);
+        entries[count].status = 0;
+        ++count;
+      }
+    }
   }
   sf_depth_sort(entries, count);
   for (object_index = 0u; object_index < count; ++object_index)
@@ -178,6 +208,7 @@ static void sf_gameplay_mark_translucent_objects(
     if (object_index == SF_GAMEPLAY_COMPANION_ENTRY ||
         sf_gameplay_scenario_object_entry(object_index) ||
         sf_gameplay_actor_entry(object_index) ||
+        sf_gameplay_enemy_entry(object_index) ||
         sf_gameplay_ground_item_entry(object_index) ||
         !player_reached) continue;
     object = &assets->objects.objects[object_index];
@@ -326,6 +357,15 @@ static void sf_gameplay_draw_object_pass(
           interpolation, shadow,
           !shadow && world->pointer.hovered_actor_id == actor->id,
           clip);
+    } else if (sf_gameplay_enemy_entry(indices[index])) {
+      const uint16_t enemy_index = (uint16_t) (
+        indices[index] - SF_GAMEPLAY_ENEMY_ENTRY_BASE);
+      const SfScenarioEnemy *enemy = sf_scenario_enemy_at(
+        &world->enemies, enemy_index);
+      if (default_class && enemy)
+        sf_gameplay_enemy_draw(
+          renderer, &assets->enemies, enemy, view,
+          interpolation, shadow, clip);
     } else if (sf_gameplay_scenario_object_entry(indices[index])) {
       const uint16_t object_index = (uint16_t) (
         indices[index] - SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE);

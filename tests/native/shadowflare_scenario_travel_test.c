@@ -132,7 +132,9 @@ int main(void) {
       game->world.companion.inactive != companion_inactive ||
       game->world.travel_request.pending ||
       runtime->assets.gameplay.scenario.object_count != 48u ||
-      runtime->assets.gameplay.scenario.people_count != 0u) {
+      runtime->assets.gameplay.scenario.people_count != 0u ||
+      runtime->assets.gameplay.scenario.enemy_count != 127u ||
+      game->world.enemies.count != 127u) {
     fprintf(stderr, "The Remote Town exit did not preserve the live owners\n");
     return 1;
   }

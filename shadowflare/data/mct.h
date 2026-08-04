@@ -28,6 +28,7 @@
 #define SF_MCT_ENTRY_LIMIT 64u
 #define SF_MCT_OBJECT_LIMIT 128u
 #define SF_MCT_PERSON_LIMIT 32u
+#define SF_MCT_ENEMY_LIMIT 256u
 #define SF_MCT_PERSON_NAME_CAPACITY 64u
 #define SF_MCT_PERSON_PART_LIMIT 8u
 #define SF_MCT_ENTITY_STATE_COUNT 3u
@@ -104,16 +105,43 @@ typedef struct SfMctPerson {
   bool scripted_turning_enabled;
 } SfMctPerson;
 
+typedef struct SfMctEnemy {
+  char name[SF_MCT_PERSON_NAME_CAPACITY];
+  char ai_control_name[33];
+  int32_t id;
+  int32_t resource_id;
+  uint32_t name_color;
+  int32_t label_height;
+  int32_t world_x;
+  int32_t world_y;
+  int32_t judgement_left;
+  int32_t judgement_top;
+  int32_t judgement_right;
+  int32_t judgement_bottom;
+  int32_t direction;
+  int32_t initial_state[SF_MCT_ENTITY_STATE_COUNT];
+  int32_t pre_ai_values[15];
+  int32_t post_ai_values[56];
+  int16_t red_strength[SF_MCT_PERSON_PART_LIMIT];
+  int16_t green_strength[SF_MCT_PERSON_PART_LIMIT];
+  int16_t blue_strength[SF_MCT_PERSON_PART_LIMIT];
+  uint8_t part_visibility[SF_MCT_PERSON_PART_LIMIT];
+  uint8_t custom_part_count;
+  bool custom_parts;
+} SfMctEnemy;
+
 typedef struct SfMctScenario {
   char map_path[260];
   char title[256];
   SfMctEntry *entries;
   SfMctObject *objects;
   SfMctPerson *people;
+  SfMctEnemy *enemies;
   int32_t music_track;
   uint8_t entry_count;
   uint8_t object_count;
   uint8_t people_count;
+  uint16_t enemy_count;
 } SfMctScenario;
 
 bool sf_mct_load(

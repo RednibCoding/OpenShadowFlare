@@ -342,6 +342,9 @@ bool sf_gameplay_assets_load(
         &assets->companion, data_root, &assets->companion_profile, arena) ||
       !sf_scenario_actor_assets_load(
         &assets->actors, data_root, &assets->scenario, arena) ||
+      !sf_scenario_enemy_assets_load(
+        &assets->enemies, data_root, &assets->scenario,
+        (SfWorldPoint) {assets->entry.world_x, assets->entry.world_y}, arena) ||
       !sf_scenario_object_assets_load(
         &assets->scenario_objects, data_root, &assets->scenario, arena) ||
       !sf_inventory_item_assets_load(

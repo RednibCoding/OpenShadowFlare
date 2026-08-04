@@ -26,6 +26,7 @@
 #include "assets/gameplay_sound_assets.h"
 #include "assets/inventory_item_assets.h"
 #include "assets/scenario_actor_assets.h"
+#include "assets/scenario_enemy_assets.h"
 #include "assets/scenario_object_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
@@ -68,6 +69,7 @@ typedef struct SfGameplayAssets {
   SfPlayerAssets player;
   SfCompanionAssets companion;
   SfScenarioActorAssets actors;
+  SfScenarioEnemyAssets enemies;
   SfScenarioObjectAssets scenario_objects;
   SfGroundItemAssets ground_items;
   SfGameplaySoundAssets sounds;

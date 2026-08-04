@@ -46,6 +46,7 @@ add_library(
   assets/player_assets.c
   assets/retail_paths.c
   assets/scenario_actor_assets.c
+  assets/scenario_enemy_assets.c
   assets/scenario_object_assets.c
   assets/title_assets.c
   core/arena.c
@@ -104,6 +105,7 @@ add_library(
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
+  game/scenario_enemy.c
   game/scenario_effect.c
   game/scenario_label.c
   game/scenario_object.c
@@ -129,6 +131,7 @@ add_library(
   screens/character_create_screen.c
   screens/gameplay_actor.c
   screens/gameplay_companion.c
+  screens/gameplay_enemy.c
   screens/gameplay_ground_item.c
   screens/gameplay_scene.c
   screens/gameplay_screen.c
