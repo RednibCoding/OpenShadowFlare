@@ -36,6 +36,7 @@ typedef struct SfGroundItem {
   int32_t resource_id;
   int32_t animation_chart;
   int32_t quantity;
+  int32_t durability;
   int32_t height;
   int32_t vertical_velocity;
   int32_t vertical_gravity;
@@ -45,6 +46,7 @@ typedef struct SfGroundItem {
   int32_t id;
   uint8_t category;
   uint8_t bounce_state;
+  bool identified;
   bool visible;
 } SfGroundItem;
 
@@ -68,6 +70,10 @@ bool sf_ground_items_create(
   SfGroundItemSet *items, int32_t category, int32_t definition_id,
   SfWorldPoint position, int32_t minimum_quantity,
   int32_t maximum_quantity);
+bool sf_ground_items_create_instance(
+  SfGroundItemSet *items, uint8_t category, int32_t definition_id,
+  int32_t quantity, int32_t durability, bool identified,
+  SfWorldPoint position);
 void sf_ground_items_update(SfGroundItemSet *items);
 const SfItemGroundDefinition *sf_ground_items_definition(
   const SfGroundItemSet *items, uint8_t category, int32_t definition_id);

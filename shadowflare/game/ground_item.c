@@ -76,14 +76,33 @@ static bool sf_ground_item_add(
   item->resource_id = definition->resource_id;
   item->animation_chart = definition->animation_chart;
   item->quantity = quantity;
+  item->durability = definition->maximum_durability;
   item->vertical_velocity = 1600;
   item->vertical_gravity = 280;
   item->red_strength = definition->red_strength;
   item->green_strength = definition->green_strength;
   item->blue_strength = definition->blue_strength;
+  item->identified = definition->variant != 1 && definition->variant != 2;
   item->id = items->next_id++;
   item->visible = true;
   ++items->presentation_revision;
+  return true;
+}
+
+bool sf_ground_items_create_instance(
+    SfGroundItemSet *items, uint8_t category, int32_t definition_id,
+    int32_t quantity, int32_t durability, bool identified,
+    SfWorldPoint position) {
+  const SfItemGroundDefinition *definition;
+  SfGroundItem *ground_item;
+  if (!items || quantity <= 0) return false;
+  definition = sf_ground_items_definition(
+    items, category, definition_id);
+  if (!definition || !sf_ground_item_add(
+        items, definition, position, quantity)) return false;
+  ground_item = &items->items[items->count - 1u];
+  ground_item->durability = durability;
+  ground_item->identified = identified;
   return true;
 }
 

@@ -35,9 +35,11 @@ experience, and walk/run state from the player owner. Its initial values come
 from a streaming scan of retail's parameter tables, and HUD clicks cannot leak
 into world movement. The first right-side inventory panel now exposes those
 owned items using the authored Status and Item sheets, keeps the left-hand
-world live around an x=160 camera anchor, and consumes its own input. The next
-slices should keep growing shared systems in dependency order: add owned-item
-movement, world dropping, and equipment on top of that panel, then the next
+world live around an x=160 camera anchor, and consumes its own input. Items can
+now be taken from that 9x4 owner, carried under the pointer, placed or swapped,
+and dropped back into the live world without turning the UI click into a move
+command. The next slices should keep growing shared systems in dependency
+order: add equipment on top of that same held-item path, then the next
 native services needed by Remote Town, saves, scenario travel, combat and
 companions, and finally the remaining `SF_EXE` feature set.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical

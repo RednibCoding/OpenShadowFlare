@@ -25,7 +25,9 @@
 #include <string.h>
 
 void sf_gameplay_inventory_init(SfGameplayInventoryUi *inventory) {
-  if (inventory) memset(inventory, 0, sizeof(*inventory));
+  if (!inventory) return;
+  memset(inventory, 0, sizeof(*inventory));
+  inventory->hovered_item_index = -1;
 }
 
 static bool sf_inventory_intersects_panel(const SfRect *clip) {
@@ -85,9 +87,9 @@ static const SfItemGroundDefinition *sf_inventory_definition(
   return NULL;
 }
 
-static void sf_inventory_draw_item(
+static void sf_inventory_draw_item_at(
     SfRenderer *renderer, const SfGameplayAssets *assets,
-    const SfInventoryItem *item) {
+    const SfInventoryItem *item, int x, int y) {
   const SfItemGroundDefinition *definition =
     sf_inventory_definition(assets, item);
   const SfNjpSparseResource *resource;
@@ -109,11 +111,19 @@ static void sf_inventory_draw_item(
   }
   sf_renderer_draw_indexed(
     renderer, &image,
-    SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT +
-      item->grid_x * SF_GAMEPLAY_INVENTORY_CELL_SIZE + pattern->image.x,
-    SF_GAMEPLAY_INVENTORY_BACKPACK_TOP +
-      item->grid_y * SF_GAMEPLAY_INVENTORY_CELL_SIZE + pattern->image.y,
+    x + pattern->image.x, y + pattern->image.y,
     1000u, 1000u, SF_BLEND_MASKED, NULL);
+}
+
+static void sf_inventory_draw_item(
+    SfRenderer *renderer, const SfGameplayAssets *assets,
+    const SfInventoryItem *item) {
+  sf_inventory_draw_item_at(
+    renderer, assets, item,
+    SF_GAMEPLAY_INVENTORY_BACKPACK_LEFT +
+      item->grid_x * SF_GAMEPLAY_INVENTORY_CELL_SIZE,
+    SF_GAMEPLAY_INVENTORY_BACKPACK_TOP +
+      item->grid_y * SF_GAMEPLAY_INVENTORY_CELL_SIZE);
 }
 
 void sf_gameplay_inventory_draw(
@@ -149,4 +159,19 @@ void sf_gameplay_inventory_draw(
   sf_inventory_draw_panel_pattern(
     renderer, &assets->inventory_panel,
     inventory->close_hovered ? 117u : 116u);
+}
+
+void sf_gameplay_inventory_draw_held(
+    SfRenderer *renderer, const SfGameplayAssets *assets,
+    const SfPlayerState *player, const SfGameplayInventoryUi *inventory) {
+  const SfInventoryItem *item;
+  if (!renderer || !assets || !player || !inventory ||
+      !player->inventory_transfer.holding_item) return;
+  item = &player->inventory_transfer.held_item;
+  sf_inventory_draw_item_at(
+    renderer, assets, item,
+    inventory->pointer_x -
+      item->width * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2,
+    inventory->pointer_y -
+      item->height * SF_GAMEPLAY_INVENTORY_CELL_SIZE / 2);
 }

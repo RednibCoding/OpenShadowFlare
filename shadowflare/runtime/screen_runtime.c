@@ -148,11 +148,16 @@ void sf_screen_runtime_resolve_input(
   input->conversation_choices_resolved = false;
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;
+  input->inventory_action = SF_INVENTORY_ACTION_NONE;
+  input->inventory_item_index = -1;
+  input->inventory_grid_x = -1;
+  input->inventory_grid_y = -1;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
   if (sf_gameplay_inventory_input_resolve(
         &runtime->screen.gameplay.inventory,
+        &game->world.player,
         game->world.actor_script_state.message_active, input))
     runtime->screen.gameplay.drawn = false;
   if (game->world.actor_script_state.message_active &&

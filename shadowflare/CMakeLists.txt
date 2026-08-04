@@ -84,6 +84,7 @@ add_library(
   game/title.c
   game/world.c
   game/world_conversation.c
+  game/world_inventory.c
   game/world_script.c
   interpreter/scenario_actor_script.c
   interpreter/scenario_script_commands.c

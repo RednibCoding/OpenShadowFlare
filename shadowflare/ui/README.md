@@ -35,7 +35,9 @@ original frame patterns. None of them advances scripts or changes actor
 behavior.
 
 The gameplay inventory follows the same split. Its draw file composes the
-authored Status frame and retained item cells from the player owner. Its input
-file owns the `I`, ITEM-button, panel, and Close rectangles and produces the
-shared world-view offset. Inventory storage, stacking, and placement remain in
-`game/`; neither UI file talks to a target backend.
+authored Status frame, retained item cells, and the pointer-held icon from the
+player owner. Its input file owns the `I`, ITEM-button, panel, backpack, and
+Close rectangles, then produces the shared world-view offset and simple take,
+place, or world-drop intent. Inventory ownership, transactional swaps, drop
+placement, and the until-release pointer guard remain in `game/`; neither UI
+file talks to a target backend.

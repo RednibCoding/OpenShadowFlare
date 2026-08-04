@@ -22,6 +22,7 @@
 #include "core/coordinates.h"
 #include "game/movement.h"
 #include "game/world_conversation.h"
+#include "game/world_inventory.h"
 #include "game/world_script.h"
 
 #include <string.h>
@@ -107,14 +108,29 @@ static SfScenarioActor *sf_world_actor_by_id(
 static bool sf_world_take_ground_item(
     SfWorldState *world, SfGroundItem *item) {
   const SfItemGroundDefinition *definition;
+  SfInventoryItem inventory_item;
   const int32_t id = item ? item->id : -1;
   if (!item) return false;
   definition = sf_ground_items_definition(
     &world->ground_items, item->category, item->definition_id);
   sf_player_cancel_movement(&world->player);
   world->pointer.pending_ground_item_id = -1;
-  if (!definition || !sf_inventory_store(
-        &world->player.inventory, definition, item->quantity)) {
+  if (!definition || definition->inventory_width <= 0 ||
+      definition->inventory_width > (int32_t) SF_INVENTORY_WIDTH ||
+      definition->inventory_height <= 0 ||
+      definition->inventory_height > (int32_t) SF_INVENTORY_HEIGHT) {
+    sf_ground_item_restart_drop(item);
+    ++world->ground_items.presentation_revision;
+    world->pointer.hovered_ground_item_id = -1;
+    return true;
+  }
+  inventory_item = (SfInventoryItem) {
+    item->definition_id, item->quantity, item->durability,
+    item->category, 0u, 0u,
+    (uint8_t) definition->inventory_width,
+    (uint8_t) definition->inventory_height, item->identified};
+  if (!sf_inventory_store_item(
+        &world->player.inventory, inventory_item)) {
     sf_ground_item_restart_drop(item);
     ++world->ground_items.presentation_revision;
     world->pointer.hovered_ground_item_id = -1;
@@ -221,6 +237,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   SfScreenPoint player_screen;
   uint8_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
   bool message_consumed_input;
+  bool inventory_consumed_input;
   if (!world || !world->entered || !input) return;
   sf_ground_items_update(&world->ground_items);
   pointer = &world->pointer;
@@ -231,7 +248,9 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     ? input->pointed_actor_id : -1;
   pointer->hovered_ground_item_id = input->world_pointer_resolved
     ? input->pointed_ground_item_id : -1;
-  message_consumed_input = sf_world_conversation_update(world, input);
+  inventory_consumed_input = sf_world_inventory_update(world, input);
+  message_consumed_input = sf_world_conversation_update(world, input) ||
+    inventory_consumed_input;
   if (message_consumed_input)
     pointer->hovered_actor_id = -1;
   if (message_consumed_input)
@@ -239,7 +258,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   if (!message_consumed_input && input->pace_toggle_pressed)
     sf_player_toggle_pace(&world->player);
   if (!message_consumed_input && input->pointer_primary_down &&
-      pointer->ground_command_active) {
+      pointer->ground_command_active && !pointer->inventory_pointer_guard) {
     if (input->pointer_primary_pressed) pointer->hold_updates = 1u;
     else if (pointer->hold_updates < UINT8_MAX) ++pointer->hold_updates;
     pointer->continuous_movement = pointer->hold_updates > 9u;
@@ -269,6 +288,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   } else if (!message_consumed_input &&
              (input->pointer_primary_pressed || input->pointer_primary_down) &&
              !input->pointer_over_gameplay_ui &&
+             !pointer->inventory_pointer_guard &&
              !pointer->interaction_command_active) {
     const SfWorldPoint target = sf_world_pointer_target(world, input);
     pointer->pending_actor_id = -1;
@@ -290,6 +310,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     pointer->continuous_movement = false;
     pointer->hold_updates = 0u;
     pointer->interaction_command_active = false;
+    pointer->inventory_pointer_guard = false;
   } else if (input->pointer_primary_pressed && !input->pointer_primary_down) {
     pointer->ground_command_active = false;
     pointer->hold_updates = 0u;
@@ -297,6 +318,8 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
              !input->pointer_primary_down) {
     pointer->interaction_command_active = false;
   }
+  if (!input->pointer_primary_down)
+    pointer->inventory_pointer_guard = false;
   sf_world_refresh_pending_actor(world);
   sf_world_refresh_pending_ground_item(world);
   sf_world_build_actor_blockers(world, actor_blocker_indices);

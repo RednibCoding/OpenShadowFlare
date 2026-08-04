@@ -33,6 +33,9 @@
 #define SF_GAMEPLAY_INVENTORY_VIEW_OFFSET 160
 
 typedef struct SfGameplayInventoryUi {
+  int16_t pointer_x;
+  int16_t pointer_y;
+  int8_t hovered_item_index;
   bool open;
   bool close_hovered;
 } SfGameplayInventoryUi;
@@ -42,5 +45,8 @@ void sf_gameplay_inventory_draw(
   SfRenderer *renderer, const SfGameplayAssets *assets,
   const SfPlayerState *player, const SfGameplayInventoryUi *inventory,
   const SfRect *clip);
+void sf_gameplay_inventory_draw_held(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfPlayerState *player, const SfGameplayInventoryUi *inventory);
 
 #endif

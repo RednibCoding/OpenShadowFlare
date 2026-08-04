@@ -288,7 +288,7 @@ static int test_gameplay_inventory(
   memset(&input, 0, sizeof(input));
   input.inventory_pressed = true;
   if (!sf_gameplay_inventory_input_resolve(
-        &inventory, false, &input) || !inventory.open ||
+        &inventory, player, false, &input) || !inventory.open ||
       input.world_view_offset_x != SF_GAMEPLAY_INVENTORY_VIEW_OFFSET) {
     fprintf(stderr, "The inventory key did not open the retail panel\n");
     return 1;
@@ -297,7 +297,8 @@ static int test_gameplay_inventory(
   input.pointer_active = true;
   input.pointer_x = 500;
   input.pointer_y = 100;
-  (void) sf_gameplay_inventory_input_resolve(&inventory, false, &input);
+  (void) sf_gameplay_inventory_input_resolve(
+    &inventory, player, false, &input);
   if (!input.pointer_over_gameplay_ui ||
       input.world_view_offset_x != SF_GAMEPLAY_INVENTORY_VIEW_OFFSET) {
     fprintf(stderr, "The open inventory leaked its pointer into the world\n");
@@ -337,7 +338,7 @@ static int test_gameplay_inventory(
   input.pointer_x = 380;
   input.pointer_y = 398;
   if (!sf_gameplay_inventory_input_resolve(
-        &inventory, false, &input) || inventory.open ||
+        &inventory, player, false, &input) || inventory.open ||
       !input.pointer_over_gameplay_ui || input.world_view_offset_x != 0) {
     fprintf(stderr, "The authored inventory close control did not close\n");
     return 1;

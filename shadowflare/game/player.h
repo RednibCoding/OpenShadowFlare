@@ -50,6 +50,7 @@ typedef struct SfPlayerState {
   SfObjectBounds judgement;
   SfRouteController route;
   SfInventoryState inventory;
+  SfInventoryTransferState inventory_transfer;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;

@@ -182,8 +182,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,439,781 bytes of the 7 MiB main arena,
-leaving 5,900,251 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,440,069 bytes of the 7 MiB main arena,
+leaving 5,899,963 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -196,20 +196,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 752,704 bytes of the main arena, leaving 6,587,328 bytes free;
+assets. It uses 752,992 bytes of the main arena, leaving 6,587,040 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 712,920 bytes of the main arena, leaving 6,627,112
+The load-game screen uses 713,208 bytes of the main arena, leaving 6,626,824
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,696,800 bytes of the main
-arena, leaving 2,643,232 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 4,697,088 bytes of the main
+arena, leaving 2,642,944 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, and UI data and artwork account
 for 4,358,201
 bytes. GND
@@ -290,7 +290,10 @@ in the ordinary depth passes, while TAL playback stays at the outer runtime
 boundary. Pointer hit testing and hover labels stay in `ui/`; approach,
 fixed-grid placement, gold stacking, rollback on failure, and pickup sound
 selection stay in `game/`. The player owns the resulting 36-entry fixed array,
-so no heap allocation or retained item-database copy is needed.
+so no heap allocation or retained item-database copy is needed. A second fixed
+owner holds the one item currently carried by the pointer. Taking, centered
+grid placement, single-item swaps, invalid-placement rollback, and partial
+Gold merges all stay in `game/inventory.c`.
 
 The first inventory panel follows the same lifetime. `Status.njp` is streamed
 twice to retain only six multi-part patterns, without constructing metadata for
@@ -300,7 +303,13 @@ map's retained definitions are decoded. `ui/gameplay_inventory.c` composes the
 panel, while `ui/gameplay_inventory_input.c` owns its authored rectangles and
 camera intent. World drawing, opaque-pixel picking, and movement targeting all
 receive the same integer x offset, so an open panel cannot make what the player
-sees disagree with what a click selects.
+sees disagree with what a click selects. The UI emits take, place, and world
+drop intent without owning the item. `game/world_inventory.c` applies that
+intent, keeps durability and identification state across a backpack/ground
+round trip, places world drops 200 units away in the selected eight-way
+direction, and guards the pointer until release so the drop cannot become a
+movement command. The full held icon is drawn last over the HUD and survives
+closing the panel, as it does in retail.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

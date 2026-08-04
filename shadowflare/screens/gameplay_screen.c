@@ -170,6 +170,8 @@ void sf_gameplay_screen_draw(
   sf_gameplay_inventory_draw(
     renderer, assets, player, &screen->inventory, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
+  sf_gameplay_inventory_draw_held(
+    renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
   screen->rendered_player_x = view.player_position.x;

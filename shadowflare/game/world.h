@@ -46,6 +46,7 @@ typedef struct SfWorldPointerControl {
   bool ground_command_active;
   bool continuous_movement;
   bool previous_down;
+  bool inventory_pointer_guard;
 } SfWorldPointerControl;
 
 typedef struct SfWorldRenderView {

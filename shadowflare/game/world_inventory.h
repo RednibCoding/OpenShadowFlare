@@ -17,16 +17,14 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_UI_GAMEPLAY_INVENTORY_INPUT_H
-#define SHADOWFLARE_UI_GAMEPLAY_INVENTORY_INPUT_H
+#ifndef SHADOWFLARE_GAME_WORLD_INVENTORY_H
+#define SHADOWFLARE_GAME_WORLD_INVENTORY_H
 
-#include "game/input.h"
-#include "ui/gameplay_inventory.h"
+#include "game/world.h"
 
 #include <stdbool.h>
 
-bool sf_gameplay_inventory_input_resolve(
-  SfGameplayInventoryUi *inventory, const SfPlayerState *player,
-  bool conversation_active, SfGameInput *input);
+bool sf_world_inventory_update(
+  SfWorldState *world, const SfGameInput *input);
 
 #endif

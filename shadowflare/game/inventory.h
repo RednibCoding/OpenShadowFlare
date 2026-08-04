@@ -46,10 +46,30 @@ typedef struct SfInventoryState {
   uint8_t count;
 } SfInventoryState;
 
+typedef struct SfInventoryPlacement {
+  SfInventoryItem held_item;
+  bool accepted;
+  bool holding_item;
+} SfInventoryPlacement;
+
+typedef struct SfInventoryTransferState {
+  SfInventoryItem held_item;
+  bool holding_item;
+} SfInventoryTransferState;
+
 void sf_inventory_init(SfInventoryState *inventory);
 bool sf_inventory_store(
   SfInventoryState *inventory, const SfItemGroundDefinition *definition,
   int32_t quantity);
+bool sf_inventory_store_item(
+  SfInventoryState *inventory, SfInventoryItem item);
+int8_t sf_inventory_item_at(
+  const SfInventoryState *inventory, uint8_t grid_x, uint8_t grid_y);
+bool sf_inventory_take(
+  SfInventoryState *inventory, uint8_t index, SfInventoryItem *item);
+SfInventoryPlacement sf_inventory_place(
+  SfInventoryState *inventory, SfInventoryItem item,
+  int32_t grid_x, int32_t grid_y);
 int32_t sf_inventory_gold(const SfInventoryState *inventory);
 
 #endif
