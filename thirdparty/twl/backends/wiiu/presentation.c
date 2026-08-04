@@ -17,12 +17,12 @@
 
 #include <gx2/draw.h>
 #include <gx2/enum.h>
-#include <gx2/mem.h>
 #include <gx2/registers.h>
 #include <gx2/sampler.h>
 #include <gx2/shaders.h>
 #include <gx2/texture.h>
 #include <gx2r/draw.h>
+#include <gx2r/surface.h>
 #include <whb/gfx.h>
 #include <whb/log.h>
 
@@ -32,7 +32,7 @@
 /* Expand the RGB555 frame (red in the low 5 bits) into the RGBA8 texture. */
 static void twl_wiiu_upload(TwlWiiU *wiiu, const TwlSurface *surface) {
   const uint16_t *src = (const uint16_t *) surface->pixels;
-  uint8_t *dst = (uint8_t *) wiiu->texture.surface.image;
+  uint8_t *dst = (uint8_t *) GX2RLockSurfaceEx(&wiiu->texture.surface, 0, 0);
   const size_t src_stride = surface->stride_bytes / sizeof(uint16_t);
   const uint32_t dst_pitch = wiiu->texture.surface.pitch;
   const uint32_t width = wiiu->frame_width;
@@ -57,9 +57,7 @@ static void twl_wiiu_upload(TwlWiiU *wiiu, const TwlSurface *surface) {
       texel[3] = 0xffu;
     }
   }
-  GX2Invalidate(
-    GX2_INVALIDATE_MODE_CPU_TEXTURE, wiiu->texture.surface.image,
-    wiiu->texture.surface.imageSize);
+  GX2RUnlockSurfaceEx(&wiiu->texture.surface, 0, 0);
 }
 
 static void twl_wiiu_draw(TwlWiiU *wiiu) {

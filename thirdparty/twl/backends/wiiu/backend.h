@@ -40,10 +40,14 @@ typedef struct {
   GX2Sampler sampler;
   uint32_t frame_width;
   uint32_t frame_height;
+  int32_t pointer_x;
+  int32_t pointer_y;
+  bool touching;
   bool proc_ready;
   bool gfx_ready;
   bool shader_ready;
   bool texture_ready;
+  bool vpad_ready;
   bool quit_pushed;
 } TwlWiiU;
 

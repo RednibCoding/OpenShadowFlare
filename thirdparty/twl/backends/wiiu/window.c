@@ -18,11 +18,12 @@
 #include <coreinit/thread.h>
 #include <coreinit/time.h>
 #include <gx2/enum.h>
-#include <gx2/mem.h>
 #include <gx2/sampler.h>
 #include <gx2/surface.h>
 #include <gx2/texture.h>
 #include <gx2r/buffer.h>
+#include <gx2r/surface.h>
+#include <vpad/input.h>
 #include <whb/file.h>
 #include <whb/gfx.h>
 #include <whb/log.h>
@@ -30,7 +31,6 @@
 #include <whb/log_udp.h>
 #include <whb/proc.h>
 
-#include <malloc.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -90,17 +90,13 @@ static bool twl_wiiu_create_texture(
   texture->viewFirstSlice = 0;
   texture->viewNumSlices = 1;
   texture->compMap = 0x00010203u;
-  GX2CalcSurfaceSizeAndAlignment(&texture->surface);
-  GX2InitTextureRegs(texture);
-  texture->surface.image =
-    memalign(texture->surface.alignment, texture->surface.imageSize);
-  if (!texture->surface.image) {
+  if (!GX2RCreateSurface(
+        &texture->surface,
+        GX2R_RESOURCE_BIND_TEXTURE | GX2R_RESOURCE_USAGE_CPU_WRITE |
+          GX2R_RESOURCE_USAGE_GPU_READ)) {
     return false;
   }
-  memset(texture->surface.image, 0, texture->surface.imageSize);
-  GX2Invalidate(
-    GX2_INVALIDATE_MODE_CPU_TEXTURE, texture->surface.image,
-    texture->surface.imageSize);
+  GX2InitTextureRegs(texture);
   return true;
 }
 
@@ -109,8 +105,7 @@ static void twl_wiiu_teardown(TwlWiiU *wiiu) {
     return;
   }
   if (wiiu->texture_ready) {
-    free(wiiu->texture.surface.image);
-    wiiu->texture.surface.image = NULL;
+    GX2RDestroySurfaceEx(&wiiu->texture.surface, 0);
     wiiu->texture_ready = false;
   }
   if (wiiu->position_buffer.flags) {
@@ -126,6 +121,10 @@ static void twl_wiiu_teardown(TwlWiiU *wiiu) {
   if (wiiu->gfx_ready) {
     WHBGfxShutdown();
     wiiu->gfx_ready = false;
+  }
+  if (wiiu->vpad_ready) {
+    VPADShutdown();
+    wiiu->vpad_ready = false;
   }
   if (wiiu->proc_ready) {
     WHBProcShutdown();
@@ -155,6 +154,8 @@ TwlResult twl_backend_init(
 
   WHBProcInit();
   wiiu->proc_ready = true;
+  VPADInit();
+  wiiu->vpad_ready = true;
   WHBLogCafeInit();
   WHBLogUdpInit();
 
