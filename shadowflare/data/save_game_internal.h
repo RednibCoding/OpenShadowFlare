@@ -17,16 +17,13 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_SAVE_PLAYER_INTERNAL_H
-#define SHADOWFLARE_DATA_SAVE_PLAYER_INTERNAL_H
+#ifndef SHADOWFLARE_DATA_SAVE_GAME_INTERNAL_H
+#define SHADOWFLARE_DATA_SAVE_GAME_INTERNAL_H
 
+#include "data/save_game.h"
 #include "data/save_payload.h"
-#include "data/save_player.h"
 
-bool sf_save_player_read_record(
-  const uint8_t record[SF_SAVED_PLAYER_RECORD_SIZE],
-  SfSavedPlayer *player);
-bool sf_save_player_read_items(
-  SfSavePayloadReader *reader, SfSavedPlayer *player);
+bool sf_save_game_read_progress(
+  SfSavePayloadReader *reader, SfSavedGame *game);
 
 #endif

@@ -59,9 +59,6 @@ typedef struct SfSavedPlayer {
   uint8_t belt_count;
 } SfSavedPlayer;
 
-bool sf_save_player_load(
-  const char *data_root, uint8_t file_slot, SfSavedPlayer *player);
-bool sf_save_player_load_path(const char *path, SfSavedPlayer *player);
 bool sf_saved_player_required_items(
   const SfSavedPlayer *player, SfItemReference *items,
   uint8_t capacity, uint8_t *item_count);

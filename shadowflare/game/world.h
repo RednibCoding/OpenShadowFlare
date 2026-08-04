@@ -89,6 +89,10 @@ bool sf_world_state_bind_ground_items(
 bool sf_world_state_bind_scenario(
   SfWorldState *world,
   const SfMctScenario *scenario, const SfScsScript *script);
+bool sf_world_state_bind_scenario_progress(
+  SfWorldState *world,
+  const SfMctScenario *scenario, const SfScsScript *script,
+  const SfScenarioProgressState *progress);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
 void sf_world_render_view(
   const SfWorldState *world, uint16_t interpolation,

@@ -599,8 +599,12 @@ Each concrete item stores category, definition ID, an instance value, optional
 grid coordinates, its category-sized state-block length, and that state block.
 The nine known player equipment slots, backpack, belt, and Special Item
 container are restored and rewritten. The extra two equipment records remain
-byte-for-byte preserved. Three counted arrays follow for scenario, transport,
-and quest/conversation state. After them retail writes the spell state as:
+byte-for-byte preserved. Three counted arrays follow in this order: quest
+state (operand type 12), unlocked transports (type 10), and persistent script
+and conversation values (type 11). The development saves use counts 48, 51,
+and up to 1,000 respectively, so the small C99 runtime keeps the full fixed
+1,000-value owner and restores it before the scenario's first periodic pass.
+After them retail writes the spell state as:
 
 | Field | Size |
 |-------|------|

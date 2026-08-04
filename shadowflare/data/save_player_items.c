@@ -115,7 +115,7 @@ static bool sf_saved_skip_special_items(SfSavePayloadReader *reader) {
 bool sf_save_player_read_items(
     SfSavePayloadReader *reader, SfSavedPlayer *player) {
   if (!reader || !player) return false;
-  if (reader->remaining == 0u) return true;
+  if (sf_save_payload_content_remaining(reader) == 0u) return true;
   return sf_saved_read_equipment(reader, player) &&
     sf_saved_read_container(
       reader, player->backpack, SF_SAVED_BACKPACK_ITEM_LIMIT,

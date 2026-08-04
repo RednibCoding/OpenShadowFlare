@@ -67,6 +67,8 @@ add_library(
   data/player_parameters.c
   data/rclib.c
   data/save.c
+  data/save_game.c
+  data/save_game_progress.c
   data/save_payload.c
   data/save_player.c
   data/save_player_items.c
@@ -93,6 +95,7 @@ add_library(
   game/world.c
   game/world_conversation.c
   game/world_inventory.c
+  game/world_save.c
   game/world_script.c
   interpreter/scenario_actor_script.c
   interpreter/scenario_script_commands.c

@@ -54,10 +54,14 @@ streams and verifies its `ShadowFlare0005` envelope without allocating a
 payload buffer. The plain player record and exact backpack, belt, visible
 equipment, and hidden alternate-weapon slots all populate the same fixed game
 owners used by new characters. The four development saves currently in the
-retail tree have been checked through the complete Remote Town asset and owner
-restore path. The next save slice should carry over the retail progress arrays
-and world entry so Ostare's starter handoff, conversation state, and map
-position do not reset; mine and walk/run persistence belong with that work.
+retail tree have been decoded through the complete save path. Quest state,
+unlocked transports, and all 1,000 persistent script/conversation values now
+reach the interpreter before its first periodic pass, so one-time handoffs such
+as Ostare's starter items stay complete. Mine count, walk/run pace, scenario,
+and authored entry reach the world owner as well. The three Remote Town saves
+also pass the complete asset-and-owner restore path. The remaining save work
+belongs to the systems which are not in the small runtime yet: magic,
+companions, warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

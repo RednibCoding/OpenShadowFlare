@@ -80,10 +80,20 @@ bool sf_world_state_bind_ground_items(
 bool sf_world_state_bind_scenario(
     SfWorldState *world,
     const SfMctScenario *scenario, const SfScsScript *script) {
+  return sf_world_state_bind_scenario_progress(
+    world, scenario, script, NULL);
+}
+
+bool sf_world_state_bind_scenario_progress(
+    SfWorldState *world,
+    const SfMctScenario *scenario, const SfScsScript *script,
+    const SfScenarioProgressState *progress) {
   SfScenarioScriptEnvironment environment;
   if (!world || !scenario || !script) return false;
   sf_scenario_actors_init(&world->actors, scenario);
   sf_scenario_actor_script_init(&world->actor_script_state, script);
+  if (progress && !sf_scenario_actor_script_restore_progress(
+        &world->actor_script_state, progress)) return false;
   world->scenario = scenario;
   world->script = script;
   environment = sf_world_script_environment(world);

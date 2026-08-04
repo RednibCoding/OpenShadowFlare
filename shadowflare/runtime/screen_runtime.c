@@ -19,8 +19,9 @@
 
 #include "runtime/screen_runtime.h"
 
-#include "data/save_player.h"
+#include "data/save_game.h"
 #include "game/player_save.h"
+#include "game/world_save.h"
 #include "ui/conversation_input.h"
 #include "ui/gameplay_hud_input.h"
 #include "ui/gameplay_inventory_input.h"
@@ -72,20 +73,22 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->decode_scratch, runtime->decode_scratch_size);
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
-    SfSavedPlayer saved_player;
+    SfSavedGame saved_game;
     SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
     uint8_t retained_item_count = 0u;
     int32_t player_level = game->world.player.level;
     const bool loading_save = game->load_game.selected_file_slot >= 0;
     if (loading_save) {
-      success = sf_save_player_load(
+      success = sf_save_game_load(
         runtime->data_root,
-        (uint8_t) game->load_game.selected_file_slot, &saved_player);
+        (uint8_t) game->load_game.selected_file_slot, &saved_game);
+      if (success) success = sf_world_prepare_save_load(
+        &game->world, &saved_game);
       if (success) {
-        game->world.player.gender = saved_player.gender == 1 ? 1u : 0u;
-        player_level = saved_player.level;
+        game->world.player.gender = saved_game.player.gender == 1 ? 1u : 0u;
+        player_level = saved_game.player.level;
         success = sf_saved_player_required_items(
-          &saved_player, retained_items,
+          &saved_game.player, retained_items,
           SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
       }
     } else {
@@ -107,7 +110,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
       if (loading_save)
         success = sf_player_restore_save(
-          &game->world.player, &saved_player,
+          &game->world.player, &saved_game.player,
           runtime->assets.gameplay.ground_items.definitions,
           runtime->assets.gameplay.ground_items.definition_count,
           runtime->assets.gameplay.player_parameters.experience_threshold);
@@ -123,9 +126,13 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
           &game->world,
           runtime->assets.gameplay.ground_items.definitions,
           runtime->assets.gameplay.ground_items.definition_count);
-        if (success) success = sf_world_state_bind_scenario(
-          &game->world, &runtime->assets.gameplay.scenario,
-          runtime->assets.gameplay.script);
+        if (success) success = loading_save
+          ? sf_world_bind_saved_scenario(
+              &game->world, &runtime->assets.gameplay.scenario,
+              runtime->assets.gameplay.script, &saved_game)
+          : sf_world_state_bind_scenario(
+              &game->world, &runtime->assets.gameplay.scenario,
+              runtime->assets.gameplay.script);
       }
       if (success) sf_world_state_enter(
           &game->world, entry->world_x, entry->world_y,

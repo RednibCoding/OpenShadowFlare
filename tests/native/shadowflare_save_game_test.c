@@ -20,8 +20,10 @@
 #include "assets/gameplay_assets.h"
 #include "core/arena.h"
 #include "core/memory_budget.h"
-#include "data/save_player.h"
+#include "data/save_game.h"
+#include "data/save_payload.h"
 #include "game/player_save.h"
+#include "game/world_save.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -94,6 +96,33 @@ static bool append_equipment(FixtureBytes *payload) {
       return false;
   }
   return true;
+}
+
+static bool append_zeroes(FixtureBytes *output, uint16_t count) {
+  uint16_t index;
+  for (index = 0u; index < count; ++index)
+    if (!append_i32(output, 0)) return false;
+  return true;
+}
+
+static bool append_progress(FixtureBytes *payload) {
+  static const uint8_t extension_signature[8] = {
+    'O', 'S', 'F', 'S', 'T', '0', '1', 0
+  };
+  return append_i32(payload, 3) && append_i32(payload, 1) &&
+    append_i32(payload, 2) && append_i32(payload, 3) &&
+    append_i32(payload, 2) && append_i32(payload, 4) &&
+    append_i32(payload, 5) && append_i32(payload, 4) &&
+    append_i32(payload, 6) && append_i32(payload, 7) &&
+    append_i32(payload, 8) && append_i32(payload, 9) &&
+    append_i32(payload, 22) && append_zeroes(payload, 74u) &&
+    append_i32(payload, 6) && append_zeroes(payload, 12u) &&
+    append_i32(payload, 7) && append_i32(payload, 1) &&
+    append_i32(payload, 0) && append_i32(payload, 0) &&
+    append_bytes(
+      payload, extension_signature, sizeof(extension_signature)) &&
+    append_i32(payload, 24) && append_i32(payload, 3) &&
+    append_i32(payload, 1) && append_i32(payload, 7);
 }
 
 static void make_record(uint8_t record[SF_SAVED_PLAYER_RECORD_SIZE]) {
@@ -190,23 +219,53 @@ static SfItemGroundDefinition definition(
   return item;
 }
 
+static void make_progress_script(SfScsScript *script) {
+  memset(script, 0, sizeof(*script));
+  script->temporary_flags[0] = (SfScsFlag) {123, 0};
+  script->temporary_flag_count = 1u;
+  script->statuses[0] = (SfScsStatus) {5, 0, 0, false};
+  script->status_count = 1u;
+  script->sentences[0] = (SfScsSentence) {0u, 1u};
+  script->sentence_count = 1u;
+  script->commands[0] = (SfScsCommand) {1, 0u, 2u};
+  script->command_count = 1u;
+  script->operands[0] = (SfScsOperand) {4, 123};
+  script->operands[1] = (SfScsOperand) {11, 3};
+  script->operand_count = 2u;
+}
+
 int main(int argument_count, char **arguments) {
   static const char path[] = "shadowflare_save_player_fixture.Ssv";
   uint8_t record[SF_SAVED_PLAYER_RECORD_SIZE];
   FixtureBytes payload = {{0}, 0u};
   SfSavedPlayer saved;
+  SfSavedGame saved_game;
   SfItemReference required[64];
   uint8_t required_count;
   SfItemGroundDefinition definitions[5];
   SfPlayerState player;
+  SfWorldState world;
+  SfMctScenario scenario;
+  SfScsScript script;
   const SfInventoryItem *item;
   int8_t item_index;
   int result = 1;
   if (argument_count == 2 || argument_count == 3) {
-    if (!sf_save_player_load_path(arguments[1], &saved)) {
+    SfSavePayloadReader reader;
+    uint8_t header_record[SF_SAVE_PLAYER_RECORD_SIZE];
+    bool envelope;
+    if (!sf_save_payload_open(
+          &reader, arguments[1], header_record, &envelope)) return 1;
+    printf(
+      "payload %u, content %u, extension %u v%u\n",
+      reader.remaining, sf_save_payload_content_remaining(&reader),
+      reader.extension_size, reader.extension_version);
+    sf_save_payload_close(&reader);
+    if (!sf_save_game_load_path(arguments[1], &saved_game)) {
       fprintf(stderr, "Could not decode %s\n", arguments[1]);
       return 1;
     }
+    saved = saved_game.player;
     if (!sf_saved_player_required_items(
           &saved, required, 64u, &required_count)) return 1;
     if (argument_count == 3) {
@@ -215,9 +274,12 @@ int main(int argument_count, char **arguments) {
       uint8_t parts[2] = {0u, 1u};
       sf_arena_init(
         &arena, gameplay_memory.bytes, sizeof(gameplay_memory.bytes));
+      sf_world_state_init(
+        &world, 0, 0, saved.gender == 1 ? 1u : 0u);
       if (required_count > SF_GROUND_ITEM_DEFINITION_LIMIT ||
+          !sf_world_prepare_save_load(&world, &saved_game) ||
           !sf_gameplay_assets_load(
-            &assets, arguments[2], 0, 0,
+            &assets, arguments[2], world.scenario_id, world.entry_key,
             saved.gender == 1 ? 1u : 0u, saved.level,
             parts, 2u, NULL, 0u,
             required, required_count, &arena)) {
@@ -232,11 +294,23 @@ int main(int argument_count, char **arguments) {
         fprintf(stderr, "Could not restore gameplay owners for %s\n", saved.name);
         return 1;
       }
+      sf_world_state_init(&world, 0, 0, player.gender);
+      world.player = player;
+      if (!sf_world_prepare_save_load(&world, &saved_game) ||
+          !sf_world_bind_saved_scenario(
+            &world, &assets.scenario, assets.script, &saved_game)) {
+        fprintf(stderr, "Could not restore world progress for %s\n", saved.name);
+        return 1;
+      }
     }
     printf(
-      "%s: level %d, %u backpack, %u belt, %u definitions\n",
+      "%s: level %d, %u backpack, %u belt, %u definitions, "
+      "flags %u/%u/%u, mines %d, world %d:%d, run %d\n",
       saved.name, saved.level, saved.backpack_count, saved.belt_count,
-      required_count);
+      required_count, saved_game.progress.quest_count,
+      saved_game.progress.transport_count, saved_game.progress.script_count,
+      saved_game.world.mine_count, saved_game.world.scenario_id,
+      saved_game.world.entry_value, saved_game.world.running ? 1 : 0);
     return 0;
   }
   make_record(record);
@@ -247,16 +321,29 @@ int main(int argument_count, char **arguments) {
       !append_item(&payload, 4, 0, 2, 1, true, 0, 455) ||
       !append_i32(&payload, 1) ||
       !append_item(&payload, 3, 10000000, 3, 1, true, 0, 1) ||
-      !append_i32(&payload, 0) || !write_fixture(path, record, &payload)) {
+      !append_i32(&payload, 0) || !append_progress(&payload) ||
+      !write_fixture(path, record, &payload)) {
     fprintf(stderr, "Could not create the retail save fixture\n");
     goto done;
   }
-  if (!sf_save_player_load_path(path, &saved) ||
+  if (!sf_save_game_load_path(path, &saved_game)) {
+    fprintf(stderr, "The retail game stream was not restored\n");
+    goto done;
+  }
+  saved = saved_game.player;
+  if (
       strcmp(saved.name, "Save Hero") != 0 || saved.gender != 0 ||
       saved.job != 16 || saved.level != 4 || saved.current_life != 123 ||
       saved.current_mana != 77 || saved.experience != 42 ||
       saved.backpack_count != 2u || saved.belt_count != 1u ||
       !saved.equipment[9].present || saved.equipment[9].durability != 40 ||
+      !saved_game.progress.present || saved_game.progress.quest_count != 3u ||
+      saved_game.progress.transport_count != 2u ||
+      saved_game.progress.script_count != 4u ||
+      saved_game.progress.script_values[3] != 9 ||
+      !saved_game.world.present || !saved_game.world.running ||
+      saved_game.world.mine_count != 7 || saved_game.world.scenario_id != 0 ||
+      saved_game.world.entry_value != 0 ||
       !sf_saved_player_required_items(
         &saved, required, 8u, &required_count) || required_count != 5u) {
     fprintf(stderr, "The retail player/item stream was not restored\n");
@@ -277,6 +364,21 @@ int main(int argument_count, char **arguments) {
       !(player.equipment.occupied &
         (uint16_t) (1u << SF_EQUIPMENT_ALTERNATE_MAIN_HAND))) {
     fprintf(stderr, "The decoded save did not populate player owners\n");
+    goto done;
+  }
+  sf_world_state_init(&world, 0, 0, player.gender);
+  world.player = player;
+  memset(&scenario, 0, sizeof(scenario));
+  make_progress_script(&script);
+  if (!sf_world_prepare_save_load(&world, &saved_game) ||
+      world.player.mine_count != 7 ||
+      world.player.pace != SF_PLAYER_PACE_RUN ||
+      !sf_world_bind_saved_scenario(
+        &world, &scenario, &script, &saved_game) ||
+      world.actor_script_state.temporary_values[0] != 9 ||
+      world.actor_script_state.progress.quest_values[2] != 3 ||
+      world.actor_script_state.progress.persistent_values[3] != 9) {
+    fprintf(stderr, "Saved progress did not reach the world owner\n");
     goto done;
   }
   item_index = sf_inventory_item_at(&player.inventory, 2u, 1u);

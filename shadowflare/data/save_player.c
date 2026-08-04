@@ -19,9 +19,6 @@
 
 #include "data/save_player.h"
 
-#include "assets/retail_paths.h"
-#include "data/save.h"
-#include "data/save_payload.h"
 #include "data/save_player_internal.h"
 
 #include <string.h>
@@ -32,8 +29,8 @@ static int32_t sf_saved_i32(const uint8_t *bytes) {
     ((uint32_t) bytes[3] << 24u));
 }
 
-static bool sf_save_player_read_record(
-    const uint8_t record[SF_SAVE_PLAYER_RECORD_SIZE],
+bool sf_save_player_read_record(
+    const uint8_t record[SF_SAVED_PLAYER_RECORD_SIZE],
     SfSavedPlayer *player) {
   static const uint16_t parameter_offsets[SF_PLAYER_INITIAL_PARAMETER_COUNT] = {
     0x28u, 0x2cu, 0x30u, 0x38u, 0x40u, 0x44u, 0x48u,
@@ -54,40 +51,6 @@ static bool sf_save_player_read_record(
   return (player->gender == 0 || player->gender == 1) &&
     player->level > 0 && player->level <= 100 &&
     player->parameters.values[2] > 0 && player->parameters.values[3] > 0;
-}
-
-bool sf_save_player_load_path(const char *path, SfSavedPlayer *player) {
-  SfSavePayloadReader reader;
-  uint8_t record[SF_SAVE_PLAYER_RECORD_SIZE];
-  uint8_t duplicate[SF_SAVE_PLAYER_RECORD_SIZE];
-  bool has_envelope;
-  bool success = false;
-  if (!path || !player) return false;
-  memset(player, 0, sizeof(*player));
-  if (!sf_save_payload_open(&reader, path, record, &has_envelope) ||
-      !sf_save_player_read_record(record, player)) goto done;
-  if (!has_envelope) {
-    success = true;
-    goto done;
-  }
-  if (!sf_save_payload_read(&reader, duplicate, sizeof(duplicate)) ||
-      memcmp(record, duplicate, sizeof(record)) != 0 ||
-      !sf_save_player_read_items(&reader, player) ||
-      !sf_save_payload_finish(&reader)) goto done;
-  success = true;
-done:
-  sf_save_payload_close(&reader);
-  if (!success) memset(player, 0, sizeof(*player));
-  return success;
-}
-
-bool sf_save_player_load(
-    const char *data_root, uint8_t file_slot, SfSavedPlayer *player) {
-  char path[SF_RETAIL_PATH_CAPACITY];
-  return data_root && player &&
-    sf_save_slot_data_path(
-      path, sizeof(path), data_root, file_slot) &&
-    sf_save_player_load_path(path, player);
 }
 
 static bool sf_saved_player_add_item(
