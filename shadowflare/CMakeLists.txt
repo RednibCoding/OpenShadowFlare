@@ -46,6 +46,7 @@ add_library(
   assets/player_assets.c
   assets/retail_paths.c
   assets/scenario_actor_assets.c
+  assets/scenario_enemy_attack_assets.c
   assets/scenario_enemy_assets.c
   assets/scenario_object_assets.c
   assets/title_assets.c
@@ -91,6 +92,7 @@ add_library(
   game/enemy_ai_selection.c
   game/enemy_action.c
   game/enemy_movement.c
+  game/enemy_presentation.c
   game/game.c
   game/gameplay_service.c
   game/ground_item.c

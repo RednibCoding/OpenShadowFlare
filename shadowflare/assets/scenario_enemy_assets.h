@@ -42,7 +42,24 @@ typedef struct SfScenarioEnemyVisual {
   uint8_t selected_parts;
 } SfScenarioEnemyVisual;
 
+typedef struct SfScenarioEnemyAttackAssets {
+  SfCafSelectedAnimation animations[SF_SCENARIO_ENEMY_DIRECTION_COUNT];
+  SfNjpSparseResource artwork;
+  SfNjpSparseResource shadows;
+  size_t memory_bytes;
+  int32_t resource_id;
+  uint16_t chart;
+  bool loaded;
+} SfScenarioEnemyAttackAssets;
+
+typedef struct SfScenarioEnemyFrameAssets {
+  const SfCafSelectedAnimation *animation;
+  const SfNjpSparseResource *artwork;
+  const SfNjpSparseResource *shadows;
+} SfScenarioEnemyFrameAssets;
+
 typedef struct SfScenarioEnemyAssets {
+  SfScenarioEnemyAttackAssets attack;
   SfScenarioEnemyVisual *visuals;
   size_t memory_bytes;
   uint16_t visual_count;
@@ -53,5 +70,12 @@ bool sf_scenario_enemy_assets_load(
   const SfMctScenario *scenario, SfWorldPoint focus, SfArena *arena);
 const SfScenarioEnemyVisual *sf_scenario_enemy_visual(
   const SfScenarioEnemyAssets *assets, int32_t resource_id);
+bool sf_scenario_enemy_attack_assets_load(
+  SfScenarioEnemyAttackAssets *attack, const char *data_root,
+  const SfMctScenario *scenario, int32_t resource_id, uint16_t chart,
+  SfArena *arena);
+bool sf_scenario_enemy_frame_assets(
+  const SfScenarioEnemyAssets *assets, int32_t resource_id,
+  uint16_t chart, uint8_t direction, SfScenarioEnemyFrameAssets *frame);
 
 #endif

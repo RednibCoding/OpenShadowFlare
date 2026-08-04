@@ -200,6 +200,7 @@ static bool sf_scenario_enemy_visual_load(
   return true;
 }
 
+
 bool sf_scenario_enemy_assets_load(
     SfScenarioEnemyAssets *assets, const char *data_root,
     const SfMctScenario *scenario, SfWorldPoint focus, SfArena *arena) {
@@ -244,4 +245,27 @@ const SfScenarioEnemyVisual *sf_scenario_enemy_visual(
       return &assets->visuals[index];
   }
   return NULL;
+}
+
+bool sf_scenario_enemy_frame_assets(
+    const SfScenarioEnemyAssets *assets, int32_t resource_id,
+    uint16_t chart, uint8_t direction, SfScenarioEnemyFrameAssets *frame) {
+  const SfScenarioEnemyVisual *visual;
+  if (!assets || !frame || direction >= SF_SCENARIO_ENEMY_DIRECTION_COUNT)
+    return false;
+  memset(frame, 0, sizeof(*frame));
+  if (assets->attack.loaded && assets->attack.resource_id == resource_id &&
+      assets->attack.chart == chart) {
+    frame->animation = &assets->attack.animations[direction];
+    frame->artwork = &assets->attack.artwork;
+    frame->shadows = &assets->attack.shadows;
+    return frame->animation->frame_count > 0u;
+  }
+  if (chart >= SF_SCENARIO_ENEMY_ANIMATION_COUNT) return false;
+  visual = sf_scenario_enemy_visual(assets, resource_id);
+  if (!visual) return false;
+  frame->animation = &visual->animations[chart][direction];
+  frame->artwork = &visual->artwork;
+  frame->shadows = &visual->shadows;
+  return frame->animation->frame_count > 0u;
 }

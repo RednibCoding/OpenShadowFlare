@@ -65,6 +65,7 @@ bool sf_enemy_pointer_hit(
     const SfWorldRenderView *view, int pointer_x, int pointer_y,
     int half_size, bool *exact) {
   const SfScenarioEnemyVisual *visual;
+  SfScenarioEnemyFrameAssets frame_assets;
   const SfCafSelectedAnimation *animation;
   SfScreenPoint anchor;
   uint16_t frame;
@@ -75,14 +76,15 @@ bool sf_enemy_pointer_hit(
       enemy->current_life <= 0 ||
       !sf_scenario_enemy_state(enemy, SF_SCENARIO_VISIBLE) ||
       !sf_scenario_enemy_state(enemy, SF_SCENARIO_POINTER) ||
-      enemy->direction >= SF_SCENARIO_ENEMY_DIRECTION_COUNT ||
-      enemy->animation_chart >= SF_SCENARIO_ENEMY_ANIMATION_COUNT)
+      enemy->direction >= SF_SCENARIO_ENEMY_DIRECTION_COUNT)
     return false;
   visual = sf_scenario_enemy_visual(
     assets, enemy->definition->resource_id);
   if (!visual) return false;
-  animation = &visual->animations[enemy->animation_chart][enemy->direction];
-  if (animation->frame_count == 0u) return false;
+  if (!sf_scenario_enemy_frame_assets(
+        assets, enemy->definition->resource_id, enemy->animation_chart,
+        enemy->direction, &frame_assets)) return false;
+  animation = frame_assets.animation;
   frame = (uint16_t) (enemy->animation_frame % animation->frame_count);
   anchor = sf_world_to_screen(enemy->position);
   anchor.x -= view->camera_x;
@@ -94,7 +96,7 @@ bool sf_enemy_pointer_hit(
     if (source_part >= SF_MCT_PERSON_PART_LIMIT ||
         (enemy->enabled_parts & (uint8_t) (1u << source_part)) == 0u ||
         cell->pattern < 0 || (cell->status & 8) != 0) continue;
-    pattern = sf_njp_sparse_pattern(&visual->artwork, cell->pattern);
+    pattern = sf_njp_sparse_pattern(frame_assets.artwork, cell->pattern);
     if (pattern && sf_enemy_pointer_image_hit(
           &pattern->image.image,
           anchor.x + pattern->image.x, anchor.y + pattern->image.y,

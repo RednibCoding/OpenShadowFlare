@@ -38,6 +38,7 @@ typedef union SfMeasureMemory {
 } SfMeasureMemory;
 
 static SfMeasureMemory sf_measure_memory;
+static uint8_t sf_measure_video_memory[SF_VIDEO_MEMORY_LIMIT_BYTES];
 
 static size_t sf_measure_screen_bytes(
     const SfScreenRuntime *runtime, SfGameMode mode) {
@@ -80,6 +81,7 @@ static bool sf_measure_scenario_travel(
 
 int main(int argument_count, char **arguments) {
   SfArena arena;
+  SfArena video_arena;
   SfMenuAssets *menu_assets;
   SfScreenRuntime *screen_runtime;
   SfGame *game;
@@ -96,6 +98,11 @@ int main(int argument_count, char **arguments) {
   }
   sf_arena_init(
     &arena, sf_measure_memory.bytes, sizeof(sf_measure_memory.bytes));
+  sf_arena_init(
+    &video_arena, sf_measure_video_memory,
+    sizeof(sf_measure_video_memory));
+  if (!sf_arena_push(
+        &video_arena, SF_FRAMEBUFFER_BYTES, sizeof(uint16_t))) return 2;
   window_config = twl_config_default();
   window_config.title = "OpenShadowFlare";
   window_config.width = SF_FRAME_WIDTH;
@@ -125,7 +132,7 @@ int main(int argument_count, char **arguments) {
   if (!menu_assets || !screen_runtime || !scratch ||
       !sf_menu_assets_load(menu_assets, data_root, &arena) ||
       !sf_screen_runtime_init(
-        screen_runtime, &arena, data_root,
+        screen_runtime, &arena, &video_arena, data_root,
         scratch, SF_TITLE_DECODE_SCRATCH_BYTES)) return 3;
   sf_game_init(game, NULL);
 

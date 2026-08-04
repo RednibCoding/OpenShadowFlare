@@ -22,6 +22,7 @@
 
 #include "core/bounds.h"
 #include "core/coordinates.h"
+#include "data/caf.h"
 #include "data/mct.h"
 #include "data/ai_control.h"
 #include "game/scenario_entity.h"
@@ -41,6 +42,7 @@ typedef struct SfScenarioEnemy {
   SfObjectBounds patrol_bounds;
   SfRouteController route;
   const SfAiAction *selected_action;
+  const SfCafSelectedAnimation *direct_attack_animations;
   int32_t state[SF_MCT_ENTITY_STATE_COUNT];
   int32_t current_life;
   int32_t maximum_life;
@@ -51,12 +53,17 @@ typedef struct SfScenarioEnemy {
   int32_t movement_counter;
   int32_t movement_speed;
   int32_t movement_duration;
+  int32_t presentation_elapsed;
+  int16_t presentation_previous_frame;
   uint32_t animation_frame;
   uint8_t direction;
   uint8_t enabled_parts;
   uint8_t animation_chart;
   uint8_t presentation_action;
+  uint8_t presentation_target;
+  uint8_t presentation_audio_markers;
   uint8_t movement_target;
+  bool direct_impact_pending;
   bool movement_active;
 } SfScenarioEnemy;
 
@@ -66,10 +73,21 @@ typedef struct SfScenarioEnemySet {
   uint16_t count;
 } SfScenarioEnemySet;
 
+typedef struct SfEnemyAttackRequest {
+  int32_t resource_id;
+  int32_t chart;
+} SfEnemyAttackRequest;
+
 void sf_scenario_enemies_init(
   SfScenarioEnemySet *enemies, const SfMctScenario *scenario);
 bool sf_scenario_enemies_bind_controls(
   SfScenarioEnemySet *enemies, const SfAiControlCatalog *catalog);
+bool sf_scenario_enemies_bind_direct_attack(
+  SfScenarioEnemySet *enemies, int32_t resource_id, uint16_t chart,
+  const SfCafSelectedAnimation *animations);
+void sf_scenario_enemies_unbind_direct_attack(SfScenarioEnemySet *enemies);
+bool sf_scenario_enemies_attack_resource_active(
+  const SfScenarioEnemySet *enemies, int32_t resource_id, uint16_t chart);
 int32_t sf_scenario_enemy_character_number(const SfScenarioEnemy *enemy);
 SfWorldPoint sf_scenario_enemy_render_position(
   const SfScenarioEnemy *enemy, uint16_t interpolation);

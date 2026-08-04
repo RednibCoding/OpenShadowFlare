@@ -21,6 +21,7 @@
 
 #include "game/enemy_action.h"
 #include "game/enemy_movement.h"
+#include "game/enemy_presentation.h"
 #include "game/movement.h"
 
 #define SF_ENEMY_ACTIVATION_DISTANCE 5000
@@ -40,6 +41,8 @@ void sf_scenario_enemy_controller_update(
   if (!enemy || !enemy->definition || !enemy->control || !context ||
       !context->catalog || !context->collision || !context->random_state)
     return;
+  enemy->presentation_audio_markers = 0u;
+  enemy->direct_impact_pending = false;
   enemy->previous_position = enemy->position;
   if (enemy->current_life <= 0 ||
       !sf_scenario_enemy_state(enemy, SF_SCENARIO_VISIBLE)) return;
@@ -54,11 +57,13 @@ void sf_scenario_enemy_controller_update(
     enemy->current_action = -1;
     enemy->event_number = 0;
     sf_enemy_movement_stop(enemy);
+    sf_enemy_presentation_reset(enemy);
     ++enemy->animation_frame;
     return;
   }
   sf_enemy_action_update(enemy, context, distances);
   sf_enemy_movement_update(enemy, context);
+  sf_enemy_presentation_update(enemy, context);
   if (!enemy->movement_active && enemy->animation_chart == 0u)
     ++enemy->animation_frame;
 }

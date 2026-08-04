@@ -52,10 +52,12 @@ typedef union SfRuntimeScreenState {
 
 typedef struct SfScreenRuntime {
   SfArena *arena;
+  SfArena *video_arena;
   const char *data_root;
   void *decode_scratch;
   size_t decode_scratch_size;
   size_t arena_mark;
+  size_t video_arena_mark;
   SfRuntimeScreenAssets assets;
   SfRuntimeScreenState screen;
   SfGameMode loaded_mode;
@@ -64,7 +66,8 @@ typedef struct SfScreenRuntime {
 } SfScreenRuntime;
 
 bool sf_screen_runtime_init(
-  SfScreenRuntime *runtime, SfArena *arena, const char *data_root,
+  SfScreenRuntime *runtime, SfArena *arena, SfArena *video_arena,
+  const char *data_root,
   void *decode_scratch, size_t decode_scratch_size);
 bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game);
 bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game);

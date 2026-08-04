@@ -58,6 +58,8 @@ void sf_scenario_enemies_init(
     enemy->event_number = 0;
     enemy->current_action = -1;
     enemy->presentation_action = 7u;
+    enemy->presentation_target = UINT8_MAX;
+    enemy->presentation_previous_frame = -1;
     sf_route_reset(&enemy->route);
     for (part = 0u; part < SF_MCT_PERSON_PART_LIMIT; ++part) {
       if (!definition->custom_parts ||
@@ -66,6 +68,43 @@ void sf_scenario_enemies_init(
           enemy->enabled_parts | (uint8_t) (1u << part));
     }
   }
+}
+
+bool sf_scenario_enemies_bind_direct_attack(
+    SfScenarioEnemySet *enemies, int32_t resource_id, uint16_t chart,
+    const SfCafSelectedAnimation *animations) {
+  uint16_t index;
+  bool matched = false;
+  if (!enemies || resource_id < 0 || !animations) return false;
+  for (index = 0u; index < enemies->count; ++index) {
+    SfScenarioEnemy *enemy = &enemies->enemies[index];
+    if (!enemy->definition || enemy->definition->resource_id != resource_id)
+      continue;
+    if (enemy->definition->post_ai_values[41] + 4 != chart) continue;
+    enemy->direct_attack_animations = animations;
+    matched = true;
+  }
+  return matched;
+}
+
+void sf_scenario_enemies_unbind_direct_attack(SfScenarioEnemySet *enemies) {
+  uint16_t index;
+  if (!enemies) return;
+  for (index = 0u; index < enemies->count; ++index)
+    enemies->enemies[index].direct_attack_animations = NULL;
+}
+
+bool sf_scenario_enemies_attack_resource_active(
+    const SfScenarioEnemySet *enemies, int32_t resource_id, uint16_t chart) {
+  uint16_t index;
+  if (!enemies || resource_id < 0) return false;
+  for (index = 0u; index < enemies->count; ++index) {
+    const SfScenarioEnemy *enemy = &enemies->enemies[index];
+    if (enemy->definition && enemy->definition->resource_id == resource_id &&
+        enemy->definition->post_ai_values[41] + 4 == chart &&
+        enemy->presentation_action == 1u) return true;
+  }
+  return false;
 }
 
 bool sf_scenario_enemies_bind_controls(

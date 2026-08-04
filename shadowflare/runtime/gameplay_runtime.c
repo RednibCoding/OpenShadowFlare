@@ -23,6 +23,7 @@
 #include "game/world_save.h"
 
 #include <limits.h>
+#include <string.h>
 
 static bool sf_gameplay_runtime_required_items(
     SfGame *game, const SfSavedGame *saved_game,
@@ -139,4 +140,30 @@ bool sf_gameplay_runtime_load(
   if (success && travel)
     sf_scenario_travel_clear(&game->world.travel_request);
   return success;
+}
+
+bool sf_gameplay_runtime_prepare_enemy_attack(
+    SfGameplayAssets *assets, SfArena *video_arena, size_t video_mark,
+    const char *data_root, SfWorldState *world) {
+  SfScenarioEnemyAttackAssets *attack;
+  const SfEnemyAttackRequest requested = world
+    ? world->enemy_attack_request : (SfEnemyAttackRequest) {-1, -1};
+  if (!assets || !video_arena || !data_root || !world) return false;
+  if (requested.resource_id < 0 || requested.chart < 0 ||
+      requested.chart > UINT16_MAX) return true;
+  attack = &assets->enemies.attack;
+  if (attack->loaded && attack->resource_id == requested.resource_id &&
+      attack->chart == (uint16_t) requested.chart) return true;
+  if (attack->loaded && sf_scenario_enemies_attack_resource_active(
+        &world->enemies, attack->resource_id, attack->chart)) return true;
+  sf_scenario_enemies_unbind_direct_attack(&world->enemies);
+  if (!sf_arena_rewind(video_arena, video_mark)) return false;
+  memset(attack, 0, sizeof(*attack));
+  if (!sf_scenario_enemy_attack_assets_load(
+        attack, data_root, &assets->scenario,
+        requested.resource_id, (uint16_t) requested.chart,
+        video_arena)) return false;
+  return sf_scenario_enemies_bind_direct_attack(
+    &world->enemies, attack->resource_id, attack->chart,
+    attack->animations);
 }

@@ -17,33 +17,19 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
-#define SHADOWFLARE_GAME_SCENARIO_ENEMY_CONTROLLER_H
+#ifndef SHADOWFLARE_GAME_ENEMY_PRESENTATION_H
+#define SHADOWFLARE_GAME_ENEMY_PRESENTATION_H
 
-#include "data/ai_control.h"
-#include "game/collision.h"
-#include "game/scenario_enemy.h"
+#include "game/scenario_enemy_controller.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 
-typedef struct SfEnemyControllerTarget {
-  SfWorldPoint position;
-  SfObjectBounds judgement;
-  bool valid;
-} SfEnemyControllerTarget;
-
-typedef struct SfScenarioEnemyControllerContext {
-  const SfAiControlCatalog *catalog;
-  const SfCollisionQuery *collision;
-  SfEnemyControllerTarget player;
-  SfEnemyControllerTarget companion;
-  SfEnemyAttackRequest *attack_request;
-  uint32_t *random_state;
-} SfScenarioEnemyControllerContext;
-
-void sf_scenario_enemy_controller_update(
+bool sf_enemy_presentation_begin_direct(
   SfScenarioEnemy *enemy,
   const SfScenarioEnemyControllerContext *context);
+void sf_enemy_presentation_update(
+  SfScenarioEnemy *enemy,
+  const SfScenarioEnemyControllerContext *context);
+void sf_enemy_presentation_reset(SfScenarioEnemy *enemy);
 
 #endif

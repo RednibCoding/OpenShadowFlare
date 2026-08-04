@@ -33,5 +33,8 @@ bool sf_gameplay_runtime_load(
   SfArena *arena, const char *data_root, SfGame *game,
   const SfSavedGame *saved_game,
   const SfScenarioTravelRequest *travel);
+bool sf_gameplay_runtime_prepare_enemy_attack(
+  SfGameplayAssets *assets, SfArena *video_arena, size_t video_mark,
+  const char *data_root, SfWorldState *world);
 
 #endif

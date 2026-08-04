@@ -129,6 +129,99 @@ static int test_patrol_controller(void) {
   return 0;
 }
 
+static int test_direct_attack_presentation(void) {
+  SfMctEnemy definition;
+  SfAiAction attack;
+  SfAiControl control;
+  SfAiControlCatalog catalog;
+  SfScenarioEnemy enemy;
+  SfCollisionQuery collision;
+  SfScenarioEnemyControllerContext context;
+  SfCafSelectedAnimation animations[8];
+  SfCafCell cells[3];
+  uint32_t random_state = 1u;
+  SfEnemyAttackRequest resource_request = {-1, -1};
+  uint8_t direction;
+  memset(&definition, 0, sizeof(definition));
+  memset(&attack, 0, sizeof(attack));
+  memset(&control, 0, sizeof(control));
+  memset(&catalog, 0, sizeof(catalog));
+  memset(&enemy, 0, sizeof(enemy));
+  memset(&collision, 0, sizeof(collision));
+  memset(&context, 0, sizeof(context));
+  memset(animations, 0, sizeof(animations));
+  memset(cells, 0, sizeof(cells));
+  definition.resource_id = 1;
+  definition.post_ai_values[3] = 159;
+  definition.post_ai_values[41] = 0;
+  definition.post_ai_values[47] = 4;
+  attack.action_number = 2;
+  enemy.definition = &definition;
+  enemy.control = &control;
+  enemy.selected_action = &attack;
+  enemy.position = (SfWorldPoint) {100, 100};
+  enemy.previous_position = enemy.position;
+  enemy.judgement = (SfObjectBounds) {-10, -10, 10, 10};
+  enemy.state[SF_SCENARIO_VISIBLE] = 1;
+  enemy.current_life = 40;
+  enemy.maximum_life = 40;
+  enemy.event_number = -1;
+  enemy.current_action = -1;
+  enemy.presentation_action = 7u;
+  enemy.presentation_previous_frame = -1;
+  enemy.presentation_target = UINT8_MAX;
+  cells[1].status = 0x440;
+  for (direction = 0u; direction < 8u; ++direction) {
+    animations[direction].parts[0].cells = cells;
+    animations[direction].part_count = 1u;
+    animations[direction].frame_count = 3u;
+  }
+  catalog.controls = &control;
+  catalog.actions = &attack;
+  catalog.control_count = 1u;
+  catalog.action_count = 1u;
+  context.catalog = &catalog;
+  context.collision = &collision;
+  context.random_state = &random_state;
+  context.attack_request = &resource_request;
+  context.player.valid = true;
+  context.player.position = (SfWorldPoint) {180, 100};
+  context.player.judgement = (SfObjectBounds) {-10, -10, 10, 10};
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (resource_request.resource_id != 1 || resource_request.chart != 4 ||
+      enemy.current_action != 2 ||
+      enemy.presentation_action != 7u) {
+    fprintf(stderr, "An unloaded direct attack did not request its artwork\n");
+    return 1;
+  }
+  enemy.direct_attack_animations = animations;
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.presentation_action != 1u || enemy.animation_chart != 4u ||
+      enemy.animation_frame != 0u) {
+    fprintf(stderr, "The direct attack did not enter its retail CAF chart\n");
+    return 1;
+  }
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.animation_frame != 1u || !enemy.direct_impact_pending ||
+      enemy.presentation_audio_markers != 1u) {
+    fprintf(stderr, "The direct attack missed its CAF impact marker\n");
+    return 1;
+  }
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.presentation_action != 1u || enemy.animation_frame != 2u) {
+    fprintf(stderr, "The direct attack did not hold its final retail frame\n");
+    return 1;
+  }
+  sf_scenario_enemy_controller_update(&enemy, &context);
+  if (enemy.presentation_action != 7u || enemy.animation_chart != 0u ||
+      enemy.event_number != 2) {
+    fprintf(stderr, "The direct attack did not publish its completion event\n");
+    return 1;
+  }
+  return 0;
+}
+
 int main(void) {
-  return test_event_selection() || test_patrol_controller();
+  return test_event_selection() || test_patrol_controller() ||
+    test_direct_attack_presentation();
 }
