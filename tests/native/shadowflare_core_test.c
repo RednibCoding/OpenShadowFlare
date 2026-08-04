@@ -199,11 +199,14 @@ static int test_world_pointer_movement(void) {
 static int test_actor_interaction_approach(void) {
   SfWorldState world;
   SfMctScenario scenario;
+  SfMctPerson people[1];
   SfScsScript script;
   SfGameInput input;
   unsigned update;
   memset(&scenario, 0, sizeof(scenario));
+  memset(people, 0, sizeof(people));
   memset(&script, 0, sizeof(script));
+  scenario.people = people;
   scenario.people_count = 1u;
   scenario.people[0].id = 0;
   scenario.people[0].resource_id = 1;
@@ -326,6 +329,7 @@ static int test_dynamic_collision_route(void) {
 
 static int test_scenario_actor_movement(void) {
   SfMctScenario scenario;
+  SfMctPerson people[1];
   SfScenarioActorSet actors;
   SfScenarioActor *actor;
   SfMovementBlocker blockers[2];
@@ -334,6 +338,8 @@ static int test_scenario_actor_movement(void) {
   int32_t greatest_detour = 0;
   unsigned update;
   memset(&scenario, 0, sizeof(scenario));
+  memset(people, 0, sizeof(people));
+  scenario.people = people;
   scenario.people_count = 1u;
   scenario.people[0].id = 7;
   scenario.people[0].resource_id = 1;

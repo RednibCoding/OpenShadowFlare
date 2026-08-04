@@ -21,6 +21,7 @@
 
 #include "core/coordinates.h"
 #include "game/movement.h"
+#include "game/world_conversation.h"
 
 #include <string.h>
 
@@ -169,13 +170,6 @@ static void sf_world_update_scenario_actors(
   }
 }
 
-static void sf_world_release_actor_interactions(SfWorldState *world) {
-  uint8_t actor_index;
-  for (actor_index = 0u; actor_index < world->actors.count; ++actor_index)
-    sf_scenario_actor_release_interaction(
-      &world->actors.actors[actor_index]);
-}
-
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   SfWorldPointerControl *pointer;
   SfCollisionQuery collision;
@@ -189,19 +183,9 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   pointer->active = input->pointer_active;
   pointer->hovered_actor_id = input->world_pointer_resolved
     ? input->pointed_actor_id : -1;
-  message_consumed_input = world->actor_script_state.message_active;
-  if (message_consumed_input) {
+  message_consumed_input = sf_world_conversation_update(world, input);
+  if (message_consumed_input)
     pointer->hovered_actor_id = -1;
-    sf_player_cancel_movement(&world->player);
-    if (input->pointer_primary_pressed || input->confirm_pressed) {
-      const SfScenarioScriptEnvironment environment =
-        sf_world_script_environment(world);
-      (void) sf_scenario_actor_script_resume(
-        &world->actor_script_state, world->script, -1, &environment);
-      if (!world->actor_script_state.message_active)
-        sf_world_release_actor_interactions(world);
-    }
-  }
   if (!message_consumed_input && input->pace_toggle_pressed)
     sf_player_toggle_pace(&world->player);
   if (!message_consumed_input && input->pointer_primary_down &&

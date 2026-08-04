@@ -17,34 +17,12 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_INPUT_H
-#define SHADOWFLARE_GAME_INPUT_H
+#ifndef SHADOWFLARE_GAME_WORLD_CONVERSATION_H
+#define SHADOWFLARE_GAME_WORLD_CONVERSATION_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "game/world.h"
 
-typedef struct SfGameInput {
-  int32_t pointed_actor_id;
-  int8_t pointed_conversation_option;
-  int16_t pointer_x;
-  int16_t pointer_y;
-  uint8_t conversation_option_count;
-  bool pointer_active;
-  bool world_pointer_resolved;
-  bool conversation_choices_resolved;
-  bool pointer_primary_pressed;
-  bool pointer_primary_down;
-  bool up_pressed;
-  bool down_pressed;
-  bool left_pressed;
-  bool right_pressed;
-  bool confirm_pressed;
-  bool cancel_pressed;
-  bool backspace_pressed;
-  bool delete_pressed;
-  bool pace_toggle_pressed;
-  char text[16];
-  uint8_t text_length;
-} SfGameInput;
+bool sf_world_conversation_update(
+  SfWorldState *world, const SfGameInput *input);
 
 #endif

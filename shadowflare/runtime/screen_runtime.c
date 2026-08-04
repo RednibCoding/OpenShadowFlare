@@ -19,6 +19,7 @@
 
 #include "runtime/screen_runtime.h"
 
+#include "ui/conversation_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -129,11 +130,18 @@ void sf_screen_runtime_resolve_input(
   if (!input) return;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->conversation_choices_resolved = false;
+  input->pointed_conversation_option = -1;
+  input->conversation_option_count = 0u;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
-  sf_world_pointer_resolve(
-    &runtime->assets.gameplay, &game->world, input);
+  if (game->world.actor_script_state.message_active)
+    sf_conversation_input_resolve(
+      &runtime->assets.gameplay, &game->world, input);
+  else
+    sf_world_pointer_resolve(
+      &runtime->assets.gameplay, &game->world, input);
 }
 
 const SfTitleAssets *sf_screen_runtime_title_assets(

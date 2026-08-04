@@ -24,13 +24,14 @@ The standing details and measured screen budgets live in
 `shadowflare/RULES.md` and `shadowflare/README.md`.
 
 The front-end, Remote Town map, player movement, retail PEOPLE actors,
-collision, pointing, and the first script-driven Ostare conversation are live.
-The next slices should keep growing shared systems in dependency order:
-complete conversation choices and native script services, then HUD and panel
-owners, items and saves, scenario travel, combat and companions, and finally
-the remaining `SF_EXE` feature set. A slice is only done after the C99/TWL/TAL
-tests, a release build, a practical check when visible behavior changed, and a
-fresh measured budget when assets changed.
+collision, pointing, speech bubbles, and interactive script-driven choices are
+live. Ostare's opening chain and Harley's complete `Explanation` branch now run
+from the shipped SCS data. The next slices should keep growing shared systems
+in dependency order: add the native script services needed by Remote Town,
+then HUD and panel owners, items and saves, scenario travel, combat and
+companions, and finally the remaining `SF_EXE` feature set. A slice is only
+done after the C99/TWL/TAL tests, a release build, a practical check when
+visible behavior changed, and a fresh measured budget when assets changed.
 
 ## Where we are now
 

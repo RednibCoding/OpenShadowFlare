@@ -116,6 +116,8 @@ void sf_gameplay_screen_draw(
       game->world.pointer.hovered_actor_id ||
     screen->rendered_message_id !=
       game->world.actor_script_state.message_id ||
+    screen->rendered_selected_option !=
+      game->world.actor_script_state.selected_option ||
     screen->rendered_message_active !=
       game->world.actor_script_state.message_active ||
     screen->rendered_pointer_x != game->world.pointer.screen_x ||
@@ -160,6 +162,8 @@ void sf_gameplay_screen_draw(
     game->world.pointer.hovered_actor_id;
   screen->rendered_message_id =
     game->world.actor_script_state.message_id;
+  screen->rendered_selected_option =
+    game->world.actor_script_state.selected_option;
   screen->rendered_message_active =
     game->world.actor_script_state.message_active;
   screen->rendered_pointer_x = game->world.pointer.screen_x;

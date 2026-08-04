@@ -66,9 +66,13 @@ ground command behind the actor. The SCS interpreter now enters Ostare's
 status-zero conversation, keeps its fixed call stack across message waits,
 runs the first two status-one callbacks, and reads the original Shift-JIS
 message table. Ostare stops wandering, turns toward the player, and speaks
-through the actor-anchored five-piece `Hukidasi.njp` bubble. Its layout and
-drawing stay in `ui/`; script state and actor behavior stay in `interpreter/`
-and `game/`.
+through the actor-anchored five-piece `Hukidasi.njp` bubble. Authored `~`
+choice markers are hidden, their exact text ranges are clickable, hover changes
+the selected red option, and clicks outside a choice cannot leak through as
+movement. Harley's complete `Explanation` branch proves choice selection, two
+ordinary follow-up messages, and the final actor release. Layout and pointer
+resolution stay in `ui/`; script state and actor behavior stay in
+`interpreter/` and `game/`.
 
 ## Hard limits
 
@@ -234,6 +238,11 @@ loaded once with the map for authored nameplates, along with the five small
 speech-frame patterns used by conversations. The translucent click square and
 nameplate background use a general RGB555 rectangle blend operation, not a
 platform or gameplay-specific renderer path.
+
+Conversation input follows the same boundary. `ui/conversation_input.c` turns
+the rendered choice spans into an option number and count. The small game-side
+conversation owner changes selection, resumes the interpreter, and releases
+the speaking actor. No renderer or target backend knows about script choices.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

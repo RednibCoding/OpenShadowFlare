@@ -146,6 +146,9 @@ static void sf_read_event(
 static void sf_clear_input(SfGameInput *input) {
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->conversation_choices_resolved = false;
+  input->pointed_conversation_option = -1;
+  input->conversation_option_count = 0u;
   input->pointer_primary_pressed = false;
   input->up_pressed = false;
   input->down_pressed = false;

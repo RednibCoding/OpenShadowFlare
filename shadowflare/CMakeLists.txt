@@ -71,6 +71,7 @@ add_library(
   game/scenario_actor.c
   game/title.c
   game/world.c
+  game/world_conversation.c
   interpreter/scenario_actor_script.c
   interpreter/scenario_script_commands.c
   interpreter/scenario_script_values.c
@@ -88,6 +89,7 @@ add_library(
   screens/title_screen.c
   ui/actor_nameplate.c
   ui/conversation_bubble.c
+  ui/conversation_input.c
   ui/conversation_layout.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c

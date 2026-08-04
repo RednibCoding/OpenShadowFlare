@@ -25,6 +25,7 @@
 #include "game/world.h"
 #include "screens/gameplay_screen.h"
 #include "screens/gameplay_object_visual.h"
+#include "ui/conversation_input.h"
 #include "ui/conversation_layout.h"
 #include "ui/world_pointer.h"
 
@@ -268,6 +269,80 @@ static int test_ostare_conversation(
   return 0;
 }
 
+static int test_harley_conversation(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  SfScenarioScriptEnvironment environment;
+  SfScenarioScriptResult result;
+  SfConversationLayout layout;
+  SfWorldRenderView view;
+  SfScreenPoint actor_screen;
+  SfWorldPoint destination;
+  SfGameInput input;
+  const SfConversationChoice *choice;
+  sf_scenario_actor_release_interaction(&world->actors.actors[0]);
+  environment = (SfScenarioScriptEnvironment) {
+    &assets->scenario, &world->actors, world->player.position,
+    world->player.judgement, world->companion_type};
+  result = sf_scenario_actor_script_start_status(
+    &world->actor_script_state, assets->script,
+    0, sf_scenario_actor_character_number(&world->actors.actors[6]),
+    &environment);
+  actor_screen = sf_world_to_screen(world->actors.actors[6].position);
+  world->camera_x = actor_screen.x - 320;
+  world->camera_y = actor_screen.y - 240;
+  sf_world_render_view(world, 1000u, &view);
+  if (result != SF_SCENARIO_SCRIPT_WAITING_FOR_MESSAGE ||
+      world->actor_script_state.message_id != 1000056 ||
+      !world->actor_script_state.message_selection_pending ||
+      !sf_conversation_layout_build(
+        assets, world, &view, 1000u, &layout) ||
+      layout.choice_count != 4u || strchr(layout.text, '~')) {
+    fprintf(stderr,
+      "Harley's authored choice menu differs from retail "
+      "(result=%d id=%d pending=%d choices=%u text=%s)\n",
+      (int) result, (int) world->actor_script_state.message_id,
+      world->actor_script_state.message_selection_pending ? 1 : 0,
+      (unsigned) layout.choice_count, layout.text);
+    return 1;
+  }
+  choice = &layout.choices[1];
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = (int16_t) (
+    layout.x + 4 + choice->column * layout.cell_width + 1);
+  input.pointer_y = (int16_t) (
+    layout.y + 4 + choice->line * layout.cell_height + 1);
+  sf_conversation_input_resolve(assets, world, &input);
+  destination = world->player.destination;
+  sf_world_state_update(world, &input);
+  if (!input.conversation_choices_resolved ||
+      input.conversation_option_count != 4u ||
+      input.pointed_conversation_option != 1 ||
+      world->actor_script_state.message_id != 1000057 ||
+      world->actor_script_state.message_selection_pending ||
+      world->player.destination.x != destination.x ||
+      world->player.destination.y != destination.y) {
+    fprintf(stderr, "Harley's Explanation choice did not consume its click\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_primary_pressed = true;
+  sf_world_state_update(world, &input);
+  if (world->actor_script_state.message_id != 1000058 ||
+      world->actor_script_state.message_selection_pending) {
+    fprintf(stderr, "Harley's explanation did not reach its second line\n");
+    return 1;
+  }
+  sf_world_state_update(world, &input);
+  if (world->actor_script_state.message_active ||
+      world->actors.actors[6].interaction_active) {
+    fprintf(stderr, "Harley was not released after his explanation\n");
+    return 1;
+  }
+  return 0;
+}
+
 static int test_actor_pointer(
     const SfGameplayAssets *assets, SfWorldState *world) {
   const SfScenarioActor *actor = &world->actors.actors[0];
@@ -404,6 +479,7 @@ int main(void) {
     (uint8_t) assets.entry.direction);
   if (test_actor_pointer(&assets, &world)) return 1;
   if (test_ostare_conversation(&assets, &world)) return 1;
+  if (test_harley_conversation(&assets, &world)) return 1;
   world.pointer.range_enabled = true;
   if (!sf_gameplay_screen_init(&screen, &assets, &world) ||
       screen.scene.visible_count != 22u || screen.scene.shadow_count != 10u) {

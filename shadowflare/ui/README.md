@@ -27,7 +27,9 @@ Screens compose these pieces and control their lifetime. The `render/` folder
 only supplies reusable drawing primitives; UI layout and behavior never belong
 there.
 
-Conversation text layout and bubble composition are separate on purpose. The
-layout code understands the retail Shift-JIS column rules and hidden choice
-markers. The bubble code only draws that result with the original frame
-patterns. Neither file advances scripts or changes actor behavior.
+Conversation text layout, pointer resolution, and bubble composition are
+separate on purpose. The layout code understands the retail Shift-JIS column
+rules and hidden choice markers. The input code turns those rendered spans
+into simple choice intent, and the bubble code only draws the result with the
+original frame patterns. None of them advances scripts or changes actor
+behavior.
