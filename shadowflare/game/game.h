@@ -138,5 +138,6 @@ void sf_game_update(SfGame *game, const SfGameInput *input);
 void sf_game_saved_catalog_changed(
   SfGame *game, const uint8_t *file_slots, const uint8_t *genders,
   uint8_t saved_game_count);
+bool sf_game_recover_saved_game_load_failure(SfGame *game);
 
 #endif

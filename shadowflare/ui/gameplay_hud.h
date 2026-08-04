@@ -27,5 +27,13 @@
 void sf_gameplay_hud_draw(
   SfRenderer *renderer, const SfGameplayAssets *assets,
   const SfPlayerState *player, const SfRect *clip);
+void sf_gameplay_hud_draw_pattern(
+  SfRenderer *renderer, const SfNjpDecodedResource *hud,
+  uint8_t source_pattern, int x, int y, const SfRect *clip);
+void sf_gameplay_hud_draw_pattern_strength(
+  SfRenderer *renderer, const SfNjpDecodedResource *hud,
+  uint8_t source_pattern, int x, int y, uint16_t strength,
+  const SfRect *clip);
+int sf_gameplay_hud_bar_width(int32_t current, int32_t maximum, int width);
 
 #endif

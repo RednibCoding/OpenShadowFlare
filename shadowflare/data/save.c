@@ -40,7 +40,18 @@ static bool sf_save_path(
     sf_retail_path_join(path, capacity, data_root, relative);
 }
 
+bool sf_save_slot_data_path(
+    char *path, size_t capacity, const char *data_root, uint8_t file_slot) {
+  return sf_save_path(
+    path, capacity, data_root,
+    sf_retail_save_paths.data_format, file_slot);
+}
+
 bool sf_save_catalog_load(const char *data_root, SfSaveCatalog *catalog) {
+  static const uint8_t signature[16] = {
+    'S', 'h', 'a', 'd', 'o', 'w', 'F', 'l',
+    'a', 'r', 'e', '0', '0', '0', '5', 0
+  };
   uint8_t file_slot;
   if (!data_root || !catalog) return false;
   memset(catalog, 0, sizeof(*catalog));
@@ -50,9 +61,8 @@ bool sf_save_catalog_load(const char *data_root, SfSaveCatalog *catalog) {
     SfSaveSummary *summary;
     char path[SF_RETAIL_PATH_CAPACITY];
     FILE *file;
-    if (!sf_save_path(
-          path, sizeof(path), data_root,
-          sf_retail_save_paths.data_format, file_slot)) return false;
+    if (!sf_save_slot_data_path(
+          path, sizeof(path), data_root, file_slot)) return false;
     file = fopen(path, "rb");
     if (!file) continue;
     if (fread(header, 1u, sizeof(header), file) != sizeof(header) ||
@@ -61,7 +71,7 @@ bool sf_save_catalog_load(const char *data_root, SfSaveCatalog *catalog) {
       continue;
     }
     fclose(file);
-    if (memcmp(header, "ShadowFlare", 11u) != 0) continue;
+    if (memcmp(header, signature, sizeof(signature)) != 0) continue;
     summary = &catalog->entries[catalog->count++];
     memcpy(summary->name, bytes, 16u);
     summary->name[16] = '\0';
@@ -83,9 +93,8 @@ bool sf_save_catalog_delete(
   uint8_t file_slot;
   if (!data_root || !catalog || catalog_index >= catalog->count) return false;
   file_slot = catalog->entries[catalog_index].file_slot;
-  if (!sf_save_path(
-        path, sizeof(path), data_root,
-        sf_retail_save_paths.data_format, file_slot) || remove(path) != 0)
+  if (!sf_save_slot_data_path(
+        path, sizeof(path), data_root, file_slot) || remove(path) != 0)
     return false;
   if (sf_save_path(
         path, sizeof(path), data_root,

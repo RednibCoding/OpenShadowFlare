@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define SF_NJP_STREAM_PALETTE_LIMIT 8u
+#define SF_NJP_STREAM_PALETTE_LIMIT 32u
 
 static int sf_stream_request(
     const uint8_t *requests, uint8_t request_count, int32_t source) {

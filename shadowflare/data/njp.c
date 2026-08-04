@@ -378,11 +378,13 @@ bool sf_njp_load_decoded_patterns(
   if (!sf_njp_parse(file, &meta)) goto done;
   output->is_shadow = meta.shadow;
   memset(palette_slots, -1, sizeof(palette_slots));
+  if (meta.shadow) selected_palette_count = 1u;
   for (selected = 0u; selected < pattern_count; ++selected) {
     const uint8_t source_pattern = pattern_indices[selected];
     const SfNjpPatternMeta *pattern;
     if (source_pattern >= meta.pattern_count) goto done;
     pattern = &meta.patterns[source_pattern];
+    if (meta.shadow) continue;
     if (pattern->default_palette < 0 ||
         pattern->default_palette >= meta.palette_count) goto done;
     if (palette_slots[pattern->default_palette] < 0) {
@@ -397,6 +399,10 @@ bool sf_njp_load_decoded_patterns(
     arena, selected_palette_count, sizeof(uint8_t));
   if (!output->palettes || !output->palette_sources) goto done;
   output->palette_count = selected_palette_count;
+  if (meta.shadow) {
+    memset(output->palettes[0], 0, sizeof(*output->palettes));
+    output->palette_sources[0] = 0u;
+  }
   for (selected = 0u; selected < meta.palette_count; ++selected) {
     const int8_t slot = palette_slots[selected];
     if (slot < 0) continue;
@@ -413,8 +419,9 @@ bool sf_njp_load_decoded_patterns(
         output->pattern_count >= SF_NJP_DECODED_PATTERN_LIMIT)
       goto done;
     pattern = &meta.patterns[source_pattern];
-    if (pattern->default_palette < 0 ||
-        pattern->default_palette >= meta.palette_count ||
+    if ((!meta.shadow &&
+         (pattern->default_palette < 0 ||
+          pattern->default_palette >= meta.palette_count)) ||
         pattern->reference_count > SF_NJP_DECODED_REFERENCE_LIMIT -
           output->reference_count) goto done;
     decoded_pattern = &output->patterns[output->pattern_count++];
@@ -425,7 +432,7 @@ bool sf_njp_load_decoded_patterns(
     decoded_pattern->bounds.valid =
       pattern->width > 0 && pattern->height > 0;
     decoded_pattern->source_index = source_pattern;
-    decoded_pattern->palette =
+    decoded_pattern->palette = meta.shadow ? 0u :
       (uint8_t) palette_slots[pattern->default_palette];
     decoded_pattern->first_reference = output->reference_count;
     decoded_pattern->reference_count = (uint8_t) pattern->reference_count;

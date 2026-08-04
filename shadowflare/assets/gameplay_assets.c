@@ -71,12 +71,21 @@ static bool sf_gameplay_map_stem(
   return true;
 }
 
-static bool sf_gameplay_ends_with_shadow(const char *name) {
+static bool sf_gameplay_ends_with(
+    const char *name, const char *extension) {
   const size_t length = name ? strlen(name) : 0u;
-  return length >= 4u && name[length - 4u] == '.' &&
-    tolower((unsigned char) name[length - 3u]) == 's' &&
-    tolower((unsigned char) name[length - 2u]) == 'd' &&
-    tolower((unsigned char) name[length - 1u]) == 'w';
+  size_t extension_length = extension ? strlen(extension) : 0u;
+  size_t index;
+  if (extension_length == 0u || length < extension_length) return false;
+  for (index = 0u; index < extension_length; ++index)
+    if (tolower((unsigned char) name[length - extension_length + index]) !=
+        tolower((unsigned char) extension[index])) return false;
+  return true;
+}
+
+static bool sf_gameplay_pattern_file(const char *name) {
+  return sf_gameplay_ends_with(name, ".njp") ||
+    sf_gameplay_ends_with(name, ".sdw");
 }
 
 static void sf_gameplay_select(
@@ -121,8 +130,8 @@ static bool sf_gameplay_select_objects(
       selection, (uint8_t) object->pattern_set, (uint8_t) object->pattern);
     if ((object->status & 8) != 0 &&
         object->pattern_set + 1 < patterns->count &&
-        sf_gameplay_ends_with_shadow(
-          patterns->names[object->pattern_set + 1]))
+        sf_gameplay_ends_with(
+          patterns->names[object->pattern_set + 1], ".sdw"))
       sf_gameplay_select(
         selection, (uint8_t) (object->pattern_set + 1),
         (uint8_t) object->pattern);
@@ -136,7 +145,8 @@ static bool sf_gameplay_load_patterns(
   uint8_t set;
   uint8_t set_count = 0u;
   for (set = 0u; set < patterns->count; ++set) {
-    if (selection->counts[set] > 0u) ++set_count;
+    if (selection->counts[set] > 0u &&
+        sf_gameplay_pattern_file(patterns->names[set])) ++set_count;
   }
   if (set_count == 0u || set_count > SF_GAMEPLAY_PATTERN_SET_LIMIT)
     return false;
@@ -149,7 +159,8 @@ static bool sf_gameplay_load_patterns(
     uint8_t index;
     uint8_t count = 0u;
     char path[SF_RETAIL_PATH_CAPACITY];
-    if (selection->counts[set] == 0u) continue;
+    if (selection->counts[set] == 0u ||
+        !sf_gameplay_pattern_file(patterns->names[set])) continue;
     if (selection->counts[set] > SF_NJP_DECODED_PATTERN_LIMIT) return false;
     for (index = 0u; index < SF_NJP_PATTERN_FILE_LIMIT; ++index) {
       if (selection->selected[set][index]) indices[count++] = index;
@@ -210,8 +221,11 @@ static bool sf_gameplay_load_player(
 bool sf_gameplay_assets_load(
     SfGameplayAssets *assets, const char *data_root,
     int32_t scenario_id, int32_t entry_key, uint8_t player_gender,
+    int32_t player_level,
+    int32_t companion_type, int32_t companion_level,
     const uint8_t *appearance_parts, uint8_t appearance_part_count,
     const SfItemReference *visible_items, uint8_t visible_item_count,
+    const SfItemReference *retained_items, uint8_t retained_item_count,
     SfArena *arena) {
   SfPatternList patterns;
   SfGameplaySelection selection;
@@ -220,12 +234,28 @@ bool sf_gameplay_assets_load(
   char path[SF_RETAIL_PATH_CAPACITY];
   static const uint8_t font_pattern = 0u;
   static const uint8_t speech_patterns[5] = {0u, 1u, 2u, 3u, 4u};
-  static const uint8_t hud_patterns[18] = {
+  static const uint8_t hud_patterns[22] = {
     0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
-    19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
+    19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u,
+    29u, 30u, 31u, 32u
   };
-  static const uint8_t inventory_patterns[6] = {
-    0u, 1u, 2u, 3u, 116u, 117u
+  static const uint8_t inventory_patterns[43] = {
+    0u, 1u, 2u, 3u, 5u, 6u, 14u, 15u, 16u, 32u,
+    36u, 37u, 38u, 39u, 40u, 41u, 42u, 43u, 44u, 45u, 46u,
+    47u, 48u, 49u, 50u, 51u, 52u, 53u, 54u, 55u, 56u, 57u,
+    67u, 69u, 70u, 116u, 117u,
+    11u, 12u, 13u, 22u, 23u, 24u
+  };
+  static const uint8_t status_icon_patterns[8] = {
+    3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u
+  };
+  static const uint8_t magic_icon_patterns[23] = {
+    0u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u,
+    13u, 14u, 15u, 16u, 17u, 18u, 19u, 20u, 21u, 22u, 23u
+  };
+  static const uint8_t magic_bar_patterns[24] = {
+    2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u, 13u,
+    14u, 15u, 16u, 17u, 18u, 19u, 20u, 21u, 22u, 23u, 24u, 25u
   };
   size_t mark;
   bool success = false;
@@ -235,7 +265,9 @@ bool sf_gameplay_assets_load(
   memset(&selection, 0, sizeof(selection));
   assets->script = (SfScsScript *) sf_arena_push_zero(
     arena, sizeof(*assets->script), sizeof(int32_t));
-  if (!assets->script) goto done;
+  assets->spell_parameters = (SfSpellParameters *) sf_arena_push_zero(
+    arena, sizeof(*assets->spell_parameters), sizeof(int32_t));
+  if (!assets->script || !assets->spell_parameters) goto done;
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_format, NULL, scenario_id) ||
@@ -277,25 +309,55 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.hud) ||
       !sf_njp_load_decoded_patterns(
-        path, hud_patterns, 18u, arena, &assets->hud) ||
+        path, hud_patterns, 22u, arena, &assets->hud) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
-        path, inventory_patterns, 6u, arena, &assets->inventory_panel) ||
+        path, inventory_patterns, 43u, arena, &assets->inventory_panel) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.status_icons) ||
+      !sf_njp_load_selected(
+        path, status_icon_patterns, 8u, arena, &assets->status_icons) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.magic_icons) ||
+      !sf_njp_stream_decoded_patterns(
+        path, magic_icon_patterns, 23u, arena, &assets->magic_icons) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root,
+        sf_retail_game_paths.magic_bar_icons) ||
+      !sf_njp_stream_decoded_patterns(
+        path, magic_bar_patterns, 24u, arena, &assets->magic_bar_icons) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root,
         sf_retail_game_paths.parameter_tables) ||
       !sf_player_initial_parameters_load(
-        path, player_gender, &assets->player_parameters) ||
+        path, player_gender, player_level, &assets->player_parameters) ||
+      !sf_companion_profile_load(
+        path, companion_type, companion_level, &assets->companion_profile) ||
+      !sf_spell_parameters_load(path, assets->spell_parameters) ||
+      !sf_transport_catalog_load(path, &assets->transports) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.ai_control) ||
+      !sf_ai_control_catalog_load(
+        path, &assets->scenario, arena, &assets->ai_controls) ||
+      !sf_gameplay_sound_assets_load(
+        &assets->sounds, data_root, arena) ||
       !sf_ground_item_assets_load(
         &assets->ground_items, data_root, assets->script,
-        visible_items, visible_item_count, arena) ||
+        retained_items, retained_item_count, arena) ||
       !sf_gameplay_load_player(
         assets, data_root, player_gender,
         appearance_parts, appearance_part_count,
         visible_items, visible_item_count, arena) ||
+      !sf_companion_assets_load(
+        &assets->companion, data_root, &assets->companion_profile, arena) ||
       !sf_scenario_actor_assets_load(
         &assets->actors, data_root, &assets->scenario, arena) ||
+      !sf_scenario_enemy_assets_load(
+        &assets->enemies, data_root, &assets->scenario,
+        (SfWorldPoint) {assets->entry.world_x, assets->entry.world_y}, arena) ||
+      !sf_scenario_object_assets_load(
+        &assets->scenario_objects, data_root, &assets->scenario, arena) ||
       !sf_inventory_item_assets_load(
         &assets->inventory_items, data_root,
         assets->ground_items.definitions,

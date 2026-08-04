@@ -24,5 +24,6 @@
 
 SfScenarioScriptEnvironment sf_world_script_environment(
   SfWorldState *world);
+bool sf_world_script_run_contact_triggers(SfWorldState *world);
 
 #endif

@@ -66,6 +66,18 @@ static bool sf_measure_screen(
   return true;
 }
 
+static bool sf_measure_scenario_travel(
+    SfScreenRuntime *runtime, SfArena *arena, SfGame *game,
+    int32_t scenario_id, int32_t entry_value, const char *name) {
+  if (!sf_scenario_travel_request(
+        &game->world.travel_request, scenario_id, entry_value) ||
+      !sf_screen_runtime_prepare(runtime, game)) return false;
+  printf("%-18s %10zu %13zu %10zu\n",
+    name, arena->used, runtime->assets.gameplay.memory_bytes,
+    arena->capacity - arena->used);
+  return true;
+}
+
 int main(int argument_count, char **arguments) {
   SfArena arena;
   SfMenuAssets *menu_assets;
@@ -115,6 +127,7 @@ int main(int argument_count, char **arguments) {
       !sf_screen_runtime_init(
         screen_runtime, &arena, data_root,
         scratch, SF_TITLE_DECODE_SCRATCH_BYTES)) return 3;
+  sf_game_init(game, NULL);
 
   puts("screen             total bytes  screen bytes free bytes");
   if (!sf_measure_screen(
@@ -127,7 +140,9 @@ int main(int argument_count, char **arguments) {
         SF_GAME_MODE_LOAD_GAME, "load game") ||
       !sf_measure_screen(
         screen_runtime, &arena, game,
-        SF_GAME_MODE_GAMEPLAY, "Remote Town map")) {
+        SF_GAME_MODE_GAMEPLAY, "Remote Town map") ||
+      !sf_measure_scenario_travel(
+        screen_runtime, &arena, game, 1, 0, "Near Remote Town")) {
     fprintf(stderr, "Could not load one of the measured screens.\n");
     return 4;
   }

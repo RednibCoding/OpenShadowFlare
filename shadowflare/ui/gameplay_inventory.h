@@ -31,13 +31,18 @@
 #define SF_GAMEPLAY_INVENTORY_BACKPACK_TOP 264
 #define SF_GAMEPLAY_INVENTORY_CELL_SIZE 32
 #define SF_GAMEPLAY_INVENTORY_VIEW_OFFSET 160
+#define SF_GAMEPLAY_SPECIAL_LEFT 16
+#define SF_GAMEPLAY_SPECIAL_TOP 72
 
 typedef struct SfGameplayInventoryUi {
   int16_t pointer_x;
   int16_t pointer_y;
   int8_t hovered_item_index;
   int8_t hovered_equipment_slot;
+  int8_t hovered_special_item_index;
+  uint8_t item_hover_updates;
   bool open;
+  bool special_open;
   bool close_hovered;
 } SfGameplayInventoryUi;
 
@@ -45,9 +50,10 @@ void sf_gameplay_inventory_init(SfGameplayInventoryUi *inventory);
 void sf_gameplay_inventory_draw(
   SfRenderer *renderer, const SfGameplayAssets *assets,
   const SfPlayerState *player, const SfGameplayInventoryUi *inventory,
-  const SfRect *clip);
+  uint32_t gameplay_counter, const SfRect *clip);
 void sf_gameplay_inventory_draw_held(
   SfRenderer *renderer, const SfGameplayAssets *assets,
-  const SfPlayerState *player, const SfGameplayInventoryUi *inventory);
+  const SfPlayerState *player, const SfGameplayInventoryUi *inventory,
+  uint32_t gameplay_counter);
 
 #endif

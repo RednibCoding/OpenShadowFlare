@@ -41,6 +41,13 @@ void sf_ground_items_init(SfGroundItemSet *items) {
   items->random_state = 1u;
 }
 
+void sf_ground_items_change_scenario(SfGroundItemSet *items) {
+  if (!items) return;
+  items->count = 0u;
+  items->sound_count = 0u;
+  ++items->presentation_revision;
+}
+
 void sf_ground_items_bind_definitions(
     SfGroundItemSet *items, const SfItemGroundDefinition *definitions,
     uint8_t definition_count) {

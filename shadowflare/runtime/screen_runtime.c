@@ -19,9 +19,12 @@
 
 #include "runtime/screen_runtime.h"
 
+#include "data/save_game.h"
+#include "runtime/gameplay_runtime.h"
 #include "ui/conversation_input.h"
-#include "ui/gameplay_hud_input.h"
-#include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_panels_input.h"
+#include "ui/gameplay_companion_hud_input.h"
+#include "ui/gameplay_service_controller.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -70,37 +73,18 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->decode_scratch, runtime->decode_scratch_size);
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
-    success = sf_gameplay_assets_load(
-      &runtime->assets.gameplay, runtime->data_root,
-      game->world.scenario_id, game->world.entry_key,
-      game->world.player.gender, game->world.player.appearance_parts,
-      game->world.player.appearance_part_count,
-      game->world.player.visible_items, game->world.player.visible_item_count,
-      runtime->arena);
-    if (success) {
-      const SfMctEntry *entry = &runtime->assets.gameplay.entry;
-      if (!game->world.player.parameters_initialized)
-        success = sf_player_apply_initial_parameters(
-          &game->world.player,
-          &runtime->assets.gameplay.player_parameters);
-      if (success) {
-        sf_world_state_bind_collision(
-          &game->world, &runtime->assets.gameplay.ground,
-          &runtime->assets.gameplay.objects);
-        sf_world_state_bind_ground_items(
-          &game->world,
-          runtime->assets.gameplay.ground_items.definitions,
-          runtime->assets.gameplay.ground_items.definition_count);
-        success = sf_world_state_bind_scenario(
-          &game->world, &runtime->assets.gameplay.scenario,
-          runtime->assets.gameplay.script);
-      }
-      if (success) sf_world_state_enter(
-          &game->world, entry->world_x, entry->world_y,
-          (uint8_t) entry->direction);
-      if (success) success = sf_gameplay_screen_init(
-        &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
-    }
+    SfSavedGame saved_game;
+    const bool loading_save = game->load_game.selected_file_slot >= 0;
+    if (loading_save)
+      success = sf_save_game_load(
+        runtime->data_root,
+        (uint8_t) game->load_game.selected_file_slot, &saved_game);
+    if (success)
+      success = sf_gameplay_runtime_load(
+        &runtime->assets.gameplay, &runtime->screen.gameplay,
+        runtime->arena, runtime->data_root, game,
+        loading_save ? &saved_game : NULL, NULL);
+    if (success && loading_save) game->load_game.selected_file_slot = -1;
   }
   runtime->loaded = success;
   runtime->loaded_mode = mode;
@@ -111,6 +95,33 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
 bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
   SfLoadGameAssets *assets;
   if (!runtime || !game || !runtime->loaded) return false;
+  if (runtime->loaded_mode == SF_GAME_MODE_GAMEPLAY &&
+      game->mode == SF_GAME_MODE_GAMEPLAY) {
+    if (game->world.travel_request.pending &&
+        game->world.travel_request.scenario_id != game->world.scenario_id) {
+      const SfScenarioTravelRequest travel = game->world.travel_request;
+      if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+      memset(&runtime->assets, 0, sizeof(runtime->assets));
+      memset(&runtime->screen, 0, sizeof(runtime->screen));
+      if (!sf_gameplay_runtime_load(
+            &runtime->assets.gameplay, &runtime->screen.gameplay,
+            runtime->arena, runtime->data_root, game, NULL, &travel)) {
+        runtime->loaded = false;
+        return false;
+      }
+      runtime->blank_drawn = false;
+      return true;
+    }
+    const SfGameplayServiceRequest request = sf_gameplay_service_take(
+      &game->world.service_request);
+    if (!sf_gameplay_service_apply(
+          &runtime->screen.gameplay.character_panel,
+          &runtime->screen.gameplay.inventory,
+          &runtime->screen.gameplay.transport, request)) return false;
+    if (request.kind != SF_GAMEPLAY_SERVICE_NONE)
+      runtime->screen.gameplay.drawn = false;
+    return true;
+  }
   if (runtime->loaded_mode != SF_GAME_MODE_LOAD_GAME ||
       game->mode != SF_GAME_MODE_LOAD_GAME) return true;
   assets = &runtime->assets.load_game;
@@ -144,20 +155,38 @@ void sf_screen_runtime_resolve_input(
   input->world_view_offset_x = 0;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->pointed_enemy_id = -1;
+  input->pointed_scenario_object_id = -1;
   input->pointed_ground_item_id = -1;
   input->conversation_choices_resolved = false;
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;
   input->inventory_action = SF_INVENTORY_ACTION_NONE;
+  input->magic_action = SF_MAGIC_ACTION_NONE;
+  input->magic_spell = -1;
+  input->magic_bar_slot = -1;
+  input->interface_sound = 0u;
   input->inventory_item_index = -1;
   input->inventory_grid_x = -1;
   input->inventory_grid_y = -1;
   input->equipment_slot = -1;
+  input->belt_grid_x = -1;
+  input->belt_grid_y = -1;
+  input->special_item_index = -1;
+  input->special_grid_x = -1;
+  input->special_grid_y = -1;
+  input->transport_destination = -1;
+  input->transport_selected = false;
   if (!runtime || !runtime->loaded || !game ||
       runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
       game->mode != SF_GAME_MODE_GAMEPLAY) return;
-  if (sf_gameplay_inventory_input_resolve(
+  sf_gameplay_companion_hud_input_resolve(input);
+  if (sf_gameplay_panels_input_resolve_with_transport(
+        &runtime->screen.gameplay.character_panel,
         &runtime->screen.gameplay.inventory,
+        &runtime->screen.gameplay.transport,
+        &runtime->assets.gameplay.transports,
+        &game->world.actor_script_state.progress,
         &game->world.player,
         game->world.actor_script_state.message_active, input))
     runtime->screen.gameplay.drawn = false;

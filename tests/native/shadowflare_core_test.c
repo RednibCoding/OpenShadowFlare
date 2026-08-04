@@ -137,6 +137,13 @@ static int test_player_movement(void) {
     (SfWorldPoint) {0, 0}, (SfWorldPoint) {3, 4}, 20u);
   if (check(step.arrived && step.position.x == 3 && step.position.y == 4,
             "a short movement step overshot its destination") ||
+      check(sf_movement_point_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {3, 4}) == 5 &&
+            sf_movement_point_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {3000, 1}) == 3000 &&
+            sf_movement_point_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {3001, 0}) == 3001,
+            "integer point distance did not preserve the retail range floor") ||
       check(sf_movement_direction(
               (SfWorldPoint) {0, 0}, (SfWorldPoint) {1, 1}) == 0u &&
             sf_movement_direction(
@@ -238,6 +245,7 @@ static int test_actor_interaction_approach(void) {
   input.pointer_active = true;
   input.world_pointer_resolved = true;
   input.pointed_actor_id = 0;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = -1;
   input.pointer_primary_pressed = true;
   sf_world_state_update(&world, &input);
@@ -649,6 +657,20 @@ static int test_load_game(void) {
   }
   if (check(game.mode == SF_GAME_MODE_LOADING,
             "Single Mode did not start the saved-game loading hand-off"))
+    return 1;
+  memset(&input, 0, sizeof(input));
+  sf_game_update(&game, &input);
+  if (check(game.mode == SF_GAME_MODE_GAMEPLAY &&
+            game.load_game.selected_file_slot == 0,
+            "the selected save did not reach gameplay loading") ||
+      check(sf_game_recover_saved_game_load_failure(&game),
+            "a failed saved-game load was not recoverable") ||
+      check(game.mode == SF_GAME_MODE_LOAD_GAME &&
+            game.load_game.selected_file_slot == -1 &&
+            game.load_game.selection == 0u,
+            "saved-game recovery did not restore the selected load row") ||
+      check(!sf_game_recover_saved_game_load_failure(&game),
+            "load recovery repeated outside a failed gameplay entry"))
     return 1;
   return 0;
 }

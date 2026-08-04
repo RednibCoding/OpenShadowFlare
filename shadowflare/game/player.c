@@ -48,11 +48,29 @@ void sf_player_init(SfPlayerState *player, uint8_t gender) {
   player->level = 1;
   player->current_life = 1;
   player->current_mana = 1;
+  player->maximum_mines = 10;
   player->motion = SF_PLAYER_IDLE;
   player->previous_motion = SF_PLAYER_IDLE;
   sf_inventory_init(&player->inventory);
   sf_equipment_init(&player->equipment);
+  sf_belt_init(&player->belt);
+  sf_special_items_init(&player->special_items);
+  sf_player_magic_init(&player->magic);
+  sf_player_companion_progress_init(&player->companions);
   sf_route_reset(&player->route);
+}
+
+void sf_player_set_identity(
+    SfPlayerState *player, const char *name, int32_t job) {
+  size_t length = 0u;
+  if (!player) return;
+  memset(player->name, 0, sizeof(player->name));
+  if (name) {
+    while (length + 1u < sizeof(player->name) && name[length] != '\0')
+      ++length;
+    memcpy(player->name, name, length);
+  }
+  player->job = job;
 }
 
 bool sf_player_apply_initial_parameters(
@@ -72,72 +90,6 @@ bool sf_player_apply_initial_parameters(
   player->walking_speed_tier = (uint8_t) speed_tier;
   player->parameters_initialized = true;
   return true;
-}
-
-void sf_player_refresh_visible_items(SfPlayerState *player) {
-  uint8_t slot;
-  uint8_t count = 0u;
-  if (!player) return;
-  for (slot = 0u; slot < SF_EQUIPMENT_SLOT_COUNT &&
-       count < SF_PLAYER_VISIBLE_ITEM_LIMIT; ++slot) {
-    const SfInventoryItem *item = sf_equipment_item(
-      &player->equipment, (SfEquipmentSlot) slot);
-    uint8_t existing;
-    if (!item || item->category > 1u) continue;
-    for (existing = 0u; existing < count; ++existing)
-      if (player->visible_items[existing].category == item->category &&
-          player->visible_items[existing].definition_id ==
-            item->definition_id) break;
-    if (existing < count) continue;
-    player->visible_items[count].category = item->category;
-    player->visible_items[count].definition_id = item->definition_id;
-    ++count;
-  }
-  player->visible_item_count = count;
-}
-
-void sf_player_initialize_equipment(
-    SfPlayerState *player, const SfItemGroundDefinition *definitions,
-    uint8_t definition_count) {
-  SfItemReference initial[SF_PLAYER_VISIBLE_ITEM_LIMIT];
-  uint8_t initial_count;
-  uint8_t index;
-  if (!player || !definitions || player->equipment.occupied != 0u) return;
-  initial_count = player->visible_item_count;
-  memcpy(initial, player->visible_items,
-    (size_t) initial_count * sizeof(initial[0]));
-  for (index = 0u; index < initial_count; ++index) {
-    SfInventoryItem item;
-    const SfItemGroundDefinition *definition;
-    SfEquipmentSlot slot;
-    uint8_t definition_index;
-    definition = NULL;
-    for (definition_index = 0u; definition_index < definition_count;
-         ++definition_index)
-      if (definitions[definition_index].category == initial[index].category &&
-          definitions[definition_index].definition_id ==
-            initial[index].definition_id) {
-        definition = &definitions[definition_index];
-        break;
-      }
-    if (!definition || definition->inventory_width <= 0 ||
-        definition->inventory_width > UINT8_MAX ||
-        definition->inventory_height <= 0 ||
-        definition->inventory_height > UINT8_MAX) continue;
-    slot = sf_equipment_default_slot(definition);
-    while (slot >= SF_EQUIPMENT_ACCESSORY_1 &&
-           slot <= SF_EQUIPMENT_ACCESSORY_4 &&
-           sf_equipment_item(&player->equipment, slot))
-      slot = (SfEquipmentSlot) (slot + 1);
-    item = (SfInventoryItem) {
-      definition->definition_id, 1, definition->maximum_durability,
-      definition->category, 0u, 0u,
-      (uint8_t) definition->inventory_width,
-      (uint8_t) definition->inventory_height, true};
-    (void) sf_equipment_place(
-      &player->equipment, slot, item, definition, player->level);
-  }
-  sf_player_refresh_visible_items(player);
 }
 
 void sf_player_enter(
@@ -175,6 +127,12 @@ void sf_player_cancel_movement(SfPlayerState *player) {
   player->destination = player->position;
   player->motion = SF_PLAYER_IDLE;
   sf_route_reset(&player->route);
+}
+
+void sf_player_face_toward(SfPlayerState *player, SfWorldPoint target) {
+  if (!player || (player->position.x == target.x &&
+                  player->position.y == target.y)) return;
+  player->direction = sf_movement_direction(player->position, target);
 }
 
 void sf_player_toggle_pace(SfPlayerState *player) {

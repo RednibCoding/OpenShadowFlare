@@ -88,19 +88,65 @@ static SfScenarioScriptResult sf_scenario_script_enter_status(
   return sf_scenario_script_run(context);
 }
 
-void sf_scenario_actor_script_init(
+static void sf_scenario_actor_script_reset_runtime(
     SfScenarioActorScriptState *state, const SfScsScript *script) {
   uint16_t index;
   if (!state) return;
-  memset(state, 0, sizeof(*state));
+  memset(state->temporary_values, 0, sizeof(state->temporary_values));
+  memset(state->frames, 0, sizeof(state->frames));
+  memset(&state->message_result_operand, 0,
+    sizeof(state->message_result_operand));
+  memset(&state->message_selection_operand, 0,
+    sizeof(state->message_selection_operand));
+  state->current_character_number = 0;
   state->message_id = -1;
+  state->message_character_number = 0;
   state->message_actor_id = -1;
+  state->callback_character_number = 0;
   state->selected_option = -1;
+  state->initial_selection = 0;
   state->unsupported_opcode = -1;
+  state->temporary_count = 0u;
+  state->frame_depth = 0u;
+  state->message_active = false;
+  state->callback_pending = false;
+  state->message_result_pending = false;
+  state->message_selection_pending = false;
   if (!script) return;
   state->temporary_count = script->temporary_flag_count;
   for (index = 0u; index < state->temporary_count; ++index)
-    state->temporary_values[index] = script->temporary_flags[index].initial_value;
+    state->temporary_values[index] =
+      script->temporary_flags[index].initial_value;
+}
+
+void sf_scenario_actor_script_init(
+    SfScenarioActorScriptState *state, const SfScsScript *script) {
+  if (!state) return;
+  memset(state, 0, sizeof(*state));
+  state->progress.transport_values[0] = 1;
+  state->progress.transport_count = 1u;
+  sf_scenario_actor_script_reset_runtime(state, script);
+}
+
+void sf_scenario_actor_script_change_scenario(
+    SfScenarioActorScriptState *state, const SfScsScript *script) {
+  sf_scenario_actor_script_reset_runtime(state, script);
+}
+
+bool sf_scenario_actor_script_restore_progress(
+    SfScenarioActorScriptState *state,
+    const SfScenarioProgressState *progress) {
+  if (!state || !progress ||
+      progress->persistent_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT ||
+      progress->quest_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT ||
+      progress->transport_count > SF_SCENARIO_SCRIPT_VALUE_LIMIT)
+    return false;
+  state->progress = *progress;
+  if (state->progress.transport_count == 0u) {
+    state->progress.transport_values[0] = 1;
+    state->progress.transport_count = 1u;
+  }
+  return true;
 }
 
 SfScenarioScriptResult sf_scenario_actor_script_start_status(
@@ -133,12 +179,13 @@ SfScenarioScriptResult sf_scenario_actor_script_resume(
   state->message_active = false;
   if (state->message_result_pending && !sf_scenario_script_write(
         state, script, &state->message_result_operand,
-        selection, environment->actors)) return SF_SCENARIO_SCRIPT_INVALID;
+        selection, environment)) return SF_SCENARIO_SCRIPT_INVALID;
   if (state->message_selection_pending) {
-    const int32_t selected = selection >= 0 ? selection : state->initial_selection;
+    const int32_t selected = selection >= 0
+      ? selection : state->initial_selection;
     if (selected < 0 || !sf_scenario_script_write(
           state, script, &state->message_selection_operand,
-          selected, environment->actors)) return SF_SCENARIO_SCRIPT_INVALID;
+          selected, environment)) return SF_SCENARIO_SCRIPT_INVALID;
   }
   state->message_result_pending = false;
   state->message_selection_pending = false;

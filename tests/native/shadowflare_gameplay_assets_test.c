@@ -24,14 +24,21 @@
 #include "game/player.h"
 #include "game/world.h"
 #include "game/world_conversation.h"
+#include "game/world_interaction.h"
 #include "game/world_script.h"
 #include "screens/gameplay_screen.h"
+#include "screens/gameplay_enemy.h"
 #include "screens/gameplay_object_visual.h"
 #include "ui/conversation_input.h"
 #include "ui/conversation_layout.h"
+#include "ui/enemy_nameplate.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
 #include "ui/gameplay_inventory_input.h"
+#include "ui/gameplay_panels_input.h"
+#include "ui/gameplay_service_controller.h"
+#include "ui/scenario_object_nameplate.h"
+#include "ui/scenario_label.h"
 #include "ui/world_pointer.h"
 
 #include <ctype.h>
@@ -55,6 +62,222 @@ static int is_shadow_name(const char *name) {
     tolower((unsigned char) name[length - 3u]) == 's' &&
     tolower((unsigned char) name[length - 2u]) == 'd' &&
     tolower((unsigned char) name[length - 1u]) == 'w';
+}
+
+static int is_pattern_file(const char *name) {
+  const size_t length = name ? strlen(name) : 0u;
+  if (length < 4u || name[length - 4u] != '.') return 0;
+  return (tolower((unsigned char) name[length - 3u]) == 'n' &&
+      tolower((unsigned char) name[length - 2u]) == 'j' &&
+      tolower((unsigned char) name[length - 1u]) == 'p') ||
+    (tolower((unsigned char) name[length - 3u]) == 's' &&
+      tolower((unsigned char) name[length - 2u]) == 'd' &&
+      tolower((unsigned char) name[length - 1u]) == 'w');
+}
+
+static int test_non_town_gameplay_load(
+    const char *root, SfArena *arena, const SfPlayerState *player,
+    const SfItemReference *retained_items, uint8_t retained_item_count) {
+  SfGameplayAssets assets;
+  SfPatternList patterns;
+  SfWorldState world;
+  char path[1024];
+  size_t mark = sf_arena_mark(arena);
+  uint8_t index;
+  const SfMctEnemy *goblin = NULL;
+  const SfScenarioEnemyVisual *goblin_visual;
+  const SfAiControl *goblin_control;
+  const SfAiAction *patrol_action;
+  uint16_t enemy_index;
+  uint8_t direction;
+  (void) snprintf(path, sizeof(path), "%s/Map/Pattern/f00_02.Lst", root);
+  if (!sf_pattern_list_load(path, &patterns) ||
+      !sf_gameplay_assets_load(
+        &assets, root, 1, 0, player->gender, player->level,
+        player->companions.type,
+        sf_player_companion_level(&player->companions),
+        player->appearance_parts, player->appearance_part_count,
+        player->visible_items, player->visible_item_count,
+        retained_items, retained_item_count, arena)) {
+    fprintf(stderr, "A saved non-town world could not load its retail assets\n");
+    return 1;
+  }
+  for (index = 0u; index < assets.pattern_set_count; ++index) {
+    const uint8_t source = assets.pattern_sets[index].source_index;
+    if (source >= patterns.count || !is_pattern_file(patterns.names[source])) {
+      fprintf(stderr, "A placeholder map pattern was treated as artwork\n");
+      return 1;
+    }
+  }
+  for (enemy_index = 0u; enemy_index < assets.scenario.enemy_count;
+       ++enemy_index) {
+    if (assets.scenario.enemies[enemy_index].id == 101) {
+      goblin = &assets.scenario.enemies[enemy_index];
+      break;
+    }
+  }
+  goblin_visual = goblin
+    ? sf_scenario_enemy_visual(&assets.enemies, goblin->resource_id) : NULL;
+  goblin_control = goblin
+    ? sf_ai_control_find(&assets.ai_controls, goblin->ai_control_name) : NULL;
+  patrol_action = goblin_control
+    ? sf_ai_control_action(
+        &assets.ai_controls, goblin_control, 0u, 0u) : NULL;
+  if (goblin_visual) {
+    for (direction = 0u; direction < 8u; ++direction) {
+      if (goblin_visual->animations[1][direction].frame_count == 0u) {
+        fprintf(stderr, "The gate Goblin is missing a walk direction\n");
+        return 1;
+      }
+    }
+  }
+  sf_world_state_init(&world, 1, 0, player->gender);
+  if (assets.scenario.people_count != 0u || assets.actors.visual_count != 0u ||
+      assets.scenario.object_count != 48u ||
+      assets.scenario.enemy_count != 127u || !goblin ||
+      strcmp(goblin->name, "Goblin") != 0 ||
+      goblin->pre_ai_values[8] != 40 ||
+      goblin->pre_ai_values[13] != 1 || goblin->pre_ai_values[14] != 0 ||
+      assets.ai_controls.control_count != 3u ||
+      assets.ai_controls.action_count != 48u || !goblin_control ||
+      goblin_control->walk_point_speed != 20 || !patrol_action ||
+      patrol_action->action_number != 1 ||
+      patrol_action->parameters[1] != 300 ||
+      patrol_action->parameters[3] != 15 ||
+      patrol_action->parameters[4] != 120 ||
+      patrol_action->parameters[5] != 20 ||
+      !goblin_visual || goblin->direction < 0 || goblin->direction > 7 ||
+      goblin_visual->animations[0][goblin->direction].frame_count == 0u ||
+      !sf_player_apply_initial_parameters(
+        &world.player, &assets.player_parameters) ||
+      !sf_world_state_bind_ground_items(
+        &world, assets.ground_items.definitions,
+        assets.ground_items.definition_count) ||
+      !sf_world_state_bind_scenario(
+        &world, &assets.scenario, assets.script) ||
+      !sf_world_state_bind_ai_controls(&world, &assets.ai_controls) ||
+      world.enemies.count != 127u ||
+      world.placed_effects.count == 0u) {
+    fprintf(stderr, "A saved world without PEOPLE records could not start\n");
+    return 1;
+  }
+  {
+    SfGameInput input;
+    const SfScenarioEnemy *live_goblin = sf_scenario_enemy_find_const(
+      &world.enemies, 14000101);
+    bool blocker_found = false;
+    SfWorldPoint blocker_position = {0, 0};
+    uint16_t blocker_index;
+    if (!live_goblin || live_goblin->current_life != 40 ||
+        live_goblin->control != goblin_control) {
+      fprintf(stderr, "The first authored Goblin did not enter world state\n");
+      return 1;
+    }
+    sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+    sf_world_state_enter(
+      &world, assets.entry.world_x, assets.entry.world_y,
+      (uint8_t) assets.entry.direction);
+    memset(&input, 0, sizeof(input));
+    sf_world_state_update(&world, &input);
+    for (blocker_index = 0u; blocker_index < world.movement_blocker_count;
+         ++blocker_index) {
+      if (world.movement_blockers[blocker_index].id == 14000101) {
+        blocker_found = true;
+        blocker_position = world.movement_blockers[blocker_index].position;
+        break;
+      }
+    }
+    live_goblin = sf_scenario_enemy_find_const(&world.enemies, 14000101);
+    if (!live_goblin || live_goblin->current_action != 1 ||
+        live_goblin->event_number != 12 ||
+        live_goblin->animation_chart != 1u ||
+        (live_goblin->position.x == goblin->world_x &&
+         live_goblin->position.y == goblin->world_y) || !blocker_found ||
+        blocker_position.x != live_goblin->position.x ||
+        blocker_position.y != live_goblin->position.y) {
+      fprintf(stderr, "The authored Goblin did not walk or update collision\n");
+      return 1;
+    }
+    {
+      SfRenderer renderer;
+      SfWorldRenderView view;
+      SfScreenPoint screen = sf_world_to_screen(live_goblin->position);
+      SfRect nameplate;
+      size_t pixel;
+      size_t hit_pixel = 0u;
+      bool drawn = false;
+      memset(sf_gameplay_test_pixels, 0, sizeof(sf_gameplay_test_pixels));
+      if (!sf_renderer_init(
+            &renderer, sf_gameplay_test_pixels,
+            sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+      view.player_position = live_goblin->position;
+      view.camera_x = screen.x - 320;
+      view.camera_y = screen.y - 240;
+      sf_gameplay_enemy_draw(
+        &renderer, &assets.enemies, live_goblin, &view,
+        1000u, false, false, NULL);
+      for (pixel = 0u; pixel < 640u * 480u; ++pixel) {
+        if (sf_gameplay_test_pixels[pixel] != 0u) {
+          drawn = true;
+          hit_pixel = pixel;
+          break;
+        }
+      }
+      if (!drawn) {
+        fprintf(stderr, "The first authored Goblin rendered no artwork\n");
+        return 1;
+      }
+      memset(&input, 0, sizeof(input));
+      world.camera_x = view.camera_x;
+      world.camera_y = view.camera_y;
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) (hit_pixel % 640u);
+      input.pointer_y = (int16_t) (hit_pixel / 640u);
+      sf_world_pointer_resolve(&assets, &world, &input);
+      if (input.pointed_enemy_id != goblin->id ||
+          input.pointed_actor_id >= 0 ||
+          input.pointed_scenario_object_id >= 0 ||
+          input.pointed_ground_item_id >= 0) {
+        fprintf(stderr, "Opaque Goblin pixels did not win pointer picking\n");
+        return 1;
+      }
+      sf_world_interaction_read_input(&world, &input);
+      memset(sf_gameplay_test_pixels, 0, sizeof(sf_gameplay_test_pixels));
+      if (assets.status_icons.image_count != 8u ||
+          !sf_enemy_nameplate_bounds(
+            &assets, &world, &view, 1000u, &nameplate) ||
+          nameplate.width != 56 || nameplate.height != 18) {
+        fprintf(stderr, "The Goblin nameplate layout differs from retail\n");
+        return 1;
+      }
+      sf_enemy_nameplate_draw(
+        &renderer, &assets, &world, &view, 1000u);
+      if (sf_gameplay_test_pixels[
+            (size_t) (nameplate.y + 1) * 640u + nameplate.x + 1] == 0u) {
+        fprintf(stderr, "The Goblin nameplate has no life fill\n");
+        return 1;
+      }
+    }
+    {
+      const int32_t first_distance = sf_movement_bounds_distance(
+        live_goblin->position, live_goblin->judgement,
+        world.player.position, world.player.judgement);
+      uint8_t update;
+      for (update = 0u; update < 30u; ++update)
+        sf_world_state_update(&world, &input);
+      live_goblin = sf_scenario_enemy_find_const(
+        &world.enemies, 14000101);
+      if (!live_goblin || live_goblin->current_action != 10 ||
+          !live_goblin->movement_active ||
+          sf_movement_bounds_distance(
+            live_goblin->position, live_goblin->judgement,
+            world.player.position, world.player.judgement) >= first_distance) {
+        fprintf(stderr, "The first Goblin did not enter its retail approach\n");
+        return 1;
+      }
+    }
+  }
+  return sf_arena_rewind(arena, mark) ? 0 : 1;
 }
 
 static int check_pattern(
@@ -110,10 +333,13 @@ static int test_ground_item_assets(const SfGameplayAssets *assets) {
   static const int32_t palettes[4] = {0, 10, 72, 60};
   static const int32_t charts[4] = {0, 5, 36, 30};
   uint8_t index;
-  if (assets->ground_items.definition_count != 9u ||
+  if (assets->ground_items.definition_count != 11u ||
       assets->ground_items.visual_count != 1u || !visual ||
       !sf_ground_item_animation(visual, 13) ||
+      !sf_ground_item_animation(visual, 6) ||
+      !sf_ground_item_animation(visual, 7) ||
       !sf_ground_item_sound(&assets->ground_items, 15u) ||
+      !sf_ground_item_sound(&assets->ground_items, 16u) ||
       !sf_ground_item_sound(&assets->ground_items, 48u) ||
       !sf_ground_item_sound(&assets->ground_items, 49u)) {
     fprintf(stderr, "Remote Town ground-item resources differ from retail\n");
@@ -178,7 +404,7 @@ static int test_gameplay_hud(
   SfRenderer renderer;
   size_t index;
   size_t changed = 0u;
-  if (assets->hud.pattern_count != 18u ||
+  if (assets->hud.pattern_count != 22u ||
       assets->player_parameters.values[0] != 100 ||
       assets->player_parameters.values[1] != 128 ||
       assets->player_parameters.values[2] != 150 ||
@@ -286,14 +512,60 @@ static int test_gameplay_inventory(
   uint16_t empty_item[32u * 96u];
   size_t changed = 0u;
   int y;
-  if (!dagger || assets->inventory_panel.pattern_count != 6u ||
+  if (!dagger || assets->inventory_panel.pattern_count != 43u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 2u) ||
       sf_njp_decoded_pattern(
         &assets->inventory_panel, 2u)->reference_count != 3u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 116u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 117u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 16u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 14u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 15u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 5u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 6u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 32u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 36u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 57u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 67u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 69u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 70u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 11u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 12u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 13u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 22u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 23u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 24u) ||
       sf_njp_decoded_pattern(&assets->inventory_panel, 74u)) {
     fprintf(stderr, "The retail inventory panel patterns are incomplete\n");
+    return 1;
+  }
+  if (assets->transports.count != SF_TRANSPORT_DESTINATION_COUNT ||
+      strcmp(assets->transports.destinations[0].name, "Remote Town") != 0 ||
+      assets->transports.destinations[0].scenario_id != 0 ||
+      assets->transports.destinations[0].entry_value != 50) {
+    fprintf(stderr, "Retail Table 40 was not retained exactly\n");
+    return 1;
+  }
+  if (assets->magic_icons.pattern_count != 23u ||
+      assets->magic_bar_icons.pattern_count != 24u ||
+      !sf_njp_decoded_pattern(&assets->magic_icons, 0u) ||
+      !sf_njp_decoded_pattern(&assets->magic_icons, 23u) ||
+      !sf_njp_decoded_pattern(&assets->magic_bar_icons, 2u) ||
+      !sf_njp_decoded_pattern(&assets->magic_bar_icons, 25u) ||
+      !assets->spell_parameters ||
+      sf_spell_threshold(assets->spell_parameters, 0, 1) <= 0 ||
+      assets->spell_parameters->description_lines[0] < 3u ||
+      strcmp(assets->spell_parameters->descriptions[0][0],
+        "Transport") != 0 ||
+      assets->spell_parameters->descriptions[0][1][0] != '\0') {
+    fprintf(stderr, "The retail Magic resources are incomplete\n");
+    return 1;
+  }
+  if (!sf_gameplay_sound(&assets->sounds, 57u) ||
+      !sf_gameplay_sound(&assets->sounds, 58u) ||
+      !sf_gameplay_sound(&assets->sounds, 80u) ||
+      sf_gameplay_sound(&assets->sounds, 56u)) {
+    fprintf(stderr, "The retained gameplay sound samples are incomplete\n");
     return 1;
   }
   artwork = sf_inventory_item_artwork(
@@ -330,7 +602,7 @@ static int test_gameplay_inventory(
   sf_inventory_init(&empty_player.inventory);
   sf_renderer_clear(&renderer, 0x1234u);
   sf_gameplay_inventory_draw(
-    &renderer, assets, &empty_player, &inventory, NULL);
+    &renderer, assets, &empty_player, &inventory, 0u, NULL);
   for (y = 0; y < 96; ++y)
     memcpy(
       empty_item + (size_t) y * 32u,
@@ -338,7 +610,7 @@ static int test_gameplay_inventory(
       32u * sizeof(uint16_t));
   sf_renderer_clear(&renderer, 0x1234u);
   sf_gameplay_inventory_draw(
-    &renderer, assets, player, &inventory, NULL);
+    &renderer, assets, player, &inventory, 0u, NULL);
   for (y = 0; y < 96; ++y) {
     int x;
     for (x = 0; x < 32; ++x) {
@@ -510,6 +782,400 @@ static int test_scenario_actors(
     fprintf(stderr, "Ostare did not begin the authored retail wander\n");
     return 1;
   }
+  return 0;
+}
+
+static int test_scenario_objects(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  const SfScenarioObjectVisual *switch_visual =
+    sf_scenario_object_visual(&assets->scenario_objects, 8);
+  const SfScenarioObjectVisual *warehouse_visual =
+    sf_scenario_object_visual(&assets->scenario_objects, 14);
+  const SfScenarioObjectVisual *pulse_visual =
+    sf_scenario_object_visual(&assets->scenario_objects, 15);
+  SfScenarioObject *animated;
+  SfScenarioObject *warehouse;
+  SfScenarioScriptEnvironment environment;
+  SfWorldRenderView view;
+  SfGameInput input;
+  SfRect nameplate;
+  int pointer_x = -1;
+  uint8_t blocker;
+  int y;
+  if (assets->scenario_objects.visual_count != 3u || !switch_visual ||
+      !warehouse_visual || !pulse_visual ||
+      !sf_njp_decoded_pattern(&switch_visual->static_artwork, 0u) ||
+      !sf_njp_decoded_pattern(&switch_visual->static_artwork, 1u) ||
+      !sf_njp_decoded_pattern(&switch_visual->static_shadows, 0u) ||
+      sf_njp_decoded_pattern(&switch_visual->static_shadows, 1u) ||
+      !sf_njp_decoded_pattern(&warehouse_visual->static_artwork, 0u) ||
+      !sf_njp_decoded_pattern(&warehouse_visual->static_shadows, 0u) ||
+      !sf_njp_decoded_pattern(&pulse_visual->static_artwork, 0u) ||
+      !sf_scenario_object_animation(pulse_visual, 0, 8u) ||
+      pulse_visual->animation_artwork.pattern_count == 0u ||
+      world->scenario_objects.count != 7u) {
+    fprintf(stderr, "Remote Town OBJECT resources differ from retail\n");
+    return 1;
+  }
+  animated = sf_scenario_object_find(&world->scenario_objects, 10000203);
+  warehouse = sf_scenario_object_find(&world->scenario_objects, 10000300);
+  if (!animated || !warehouse || warehouse->resource_id != 14 ||
+      !sf_scenario_object_state(warehouse, SF_SCENARIO_VISIBLE) ||
+      !sf_scenario_object_state(warehouse, SF_SCENARIO_POINTER) ||
+      !sf_scenario_object_state(warehouse, SF_SCENARIO_JUDGEMENT) ||
+      warehouse->static_pattern != 0 || warehouse->visual_mode == 0u) {
+    fprintf(stderr, "The Warehouse live object differs from its MCT record\n");
+    return 1;
+  }
+  {
+    const uint32_t frame = animated->animation_frame;
+    animated->draw_strength = 1000;
+    sf_scenario_objects_update(&world->scenario_objects);
+    if (animated->animation_frame != frame + 1u) {
+      fprintf(stderr, "The active type-zero CAF did not advance at 30 Hz\n");
+      return 1;
+    }
+  }
+  environment = sf_world_script_environment(world);
+  {
+    const int32_t arguments[2] = {10000203, 417};
+    if (!environment.native_command(
+          environment.native_user, 46, arguments, 2u) ||
+        animated->draw_strength != 417) {
+      fprintf(stderr, "Opcode 46 did not update the live object strength\n");
+      return 1;
+    }
+  }
+  {
+    const int32_t arguments[4] = {10000203, 1, 0, 0};
+    const int32_t base_visible = animated->state[SF_SCENARIO_VISIBLE];
+    if (!environment.native_command(
+          environment.native_user, 56, arguments, 4u) ||
+        !animated->state_override_enabled ||
+        !sf_scenario_object_state(animated, SF_SCENARIO_VISIBLE) ||
+        sf_scenario_object_state(animated, SF_SCENARIO_POINTER) ||
+        sf_scenario_object_state(animated, SF_SCENARIO_JUDGEMENT) ||
+        animated->state[SF_SCENARIO_VISIBLE] != base_visible) {
+      fprintf(stderr, "Opcode 56 did not preserve the base object state\n");
+      return 1;
+    }
+  }
+  sf_world_state_enter(
+    world, assets->entry.world_x, assets->entry.world_y,
+    (uint8_t) assets->entry.direction);
+  memset(&input, 0, sizeof(input));
+  sf_world_state_update(world, &input);
+  for (blocker = 0u; blocker < world->movement_blocker_count; ++blocker)
+    if (world->movement_blockers[blocker].id == 10000300) break;
+  if (blocker == world->movement_blocker_count) {
+    fprintf(stderr, "The Warehouse was not registered as a live blocker\n");
+    return 1;
+  }
+  {
+    const SfScreenPoint anchor = sf_world_to_screen(warehouse->position);
+    world->camera_x = anchor.x - 320;
+    world->camera_y = anchor.y - 240;
+  }
+  for (y = 0; y < 393 && pointer_x < 0; ++y) {
+    int x;
+    for (x = 0; x < 640; ++x) {
+      memset(&input, 0, sizeof(input));
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) x;
+      input.pointer_y = (int16_t) y;
+      sf_world_pointer_resolve(assets, world, &input);
+      if (input.pointed_scenario_object_id == warehouse->id) {
+        pointer_x = x;
+        break;
+      }
+    }
+  }
+  if (pointer_x < 0) {
+    fprintf(stderr, "The Warehouse has no pixel-aware pointer hit\n");
+    return 1;
+  }
+  world->pointer.hovered_scenario_object_id = warehouse->id;
+  sf_world_render_view(world, 1000u, &view);
+  view.camera_x = sf_world_to_screen(warehouse->position).x - 320;
+  view.camera_y = sf_world_to_screen(warehouse->position).y - 240;
+  if (!sf_scenario_object_nameplate_bounds(
+        assets, world, &view, &nameplate) || nameplate.width <= 5 ||
+      nameplate.height != 15) {
+    fprintf(stderr, "The Warehouse authored nameplate was not composed\n");
+    return 1;
+  }
+  {
+    SfGameplayCharacterPanelUi character;
+    SfGameplayInventoryUi inventory;
+    SfGameplayTransportUi transport;
+    SfGameplayServiceRequest request;
+    world->player.position = warehouse->position;
+    world->player.previous_position = warehouse->position;
+    memset(&input, 0, sizeof(input));
+    input.world_pointer_resolved = true;
+    input.pointed_actor_id = -1;
+    input.pointed_enemy_id = -1;
+    input.pointed_scenario_object_id = warehouse->id;
+    input.pointed_ground_item_id = -1;
+    input.pointer_primary_pressed = true;
+    sf_world_state_update(world, &input);
+    if (world->pointer.pending_scenario_object_id >= 0 ||
+        world->player.motion != SF_PLAYER_IDLE ||
+        world->service_request.kind !=
+          SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS ||
+        world->service_request.argument != 0) {
+      fprintf(stderr,
+        "The Warehouse click did not run its authored status sentence\n");
+      return 1;
+    }
+    request = sf_gameplay_service_take(&world->service_request);
+    if (world->service_request.kind != SF_GAMEPLAY_SERVICE_NONE) {
+      fprintf(stderr, "The Warehouse service request was not one-shot\n");
+      return 1;
+    }
+    sf_gameplay_character_panel_init(&character);
+    sf_gameplay_inventory_init(&inventory);
+    sf_gameplay_transport_init(&transport);
+    character.tab = SF_GAMEPLAY_CHARACTER_TAB_STATUS;
+    inventory.open = true;
+    if (!sf_gameplay_service_apply(
+          &character, &inventory, &transport, request) ||
+        character.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+        !inventory.open || !inventory.special_open) {
+      fprintf(stderr,
+        "The Warehouse service did not preserve the right Inventory panel\n");
+      return 1;
+    }
+    request = (SfGameplayServiceRequest) {
+      SF_GAMEPLAY_SERVICE_TOGGLE_SPECIAL_ITEMS, 0};
+    if (!sf_gameplay_service_apply(
+          &character, &inventory, &transport, request) ||
+        inventory.special_open) {
+      fprintf(stderr, "The second Warehouse request did not close its panel\n");
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static int test_transport_service(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  SfGameplayCharacterPanelUi character;
+  SfGameplayInventoryUi inventory;
+  SfGameplayTransportUi transport;
+  SfGameplayServiceRequest request;
+  SfScenarioScriptEnvironment environment;
+  SfScenarioScriptResult result;
+  SfScenarioProgressState paging_progress;
+  SfGameInput input;
+  SfRenderer renderer;
+  size_t changed = 0u;
+  size_t pixel;
+  uint8_t index;
+  environment = sf_world_script_environment(world);
+  result = sf_scenario_actor_script_start_status(
+    &world->actor_script_state, assets->script,
+    0, 10000200, &environment);
+  if (result != SF_SCENARIO_SCRIPT_COMPLETE ||
+      world->service_request.kind != SF_GAMEPLAY_SERVICE_OPEN_TRANSPORT ||
+      world->service_request.argument != 0 ||
+      world->script_transport_service != 0) {
+    fprintf(stderr, "The Remote Town transporter did not run opcode 37\n");
+    return 1;
+  }
+  sf_gameplay_character_panel_init(&character);
+  sf_gameplay_inventory_init(&inventory);
+  sf_gameplay_transport_init(&transport);
+  character.tab = SF_GAMEPLAY_CHARACTER_TAB_STATUS;
+  inventory.open = true;
+  inventory.special_open = true;
+  request = sf_gameplay_service_take(&world->service_request);
+  if (!sf_gameplay_service_apply(
+        &character, &inventory, &transport, request) ||
+      character.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+      !inventory.open || inventory.special_open || !transport.active ||
+      transport.service_argument != 0) {
+    fprintf(stderr, "The transport panel violated the left/right split\n");
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_gameplay_test_pixels,
+        sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_transport_draw(
+    &renderer, assets, &world->actor_script_state.progress,
+    &transport, NULL);
+  for (pixel = 0u; pixel < 640u * 412u; ++pixel)
+    if (sf_gameplay_test_pixels[pixel] != 0x1234u) ++changed;
+  if (changed < 10000u) {
+    fprintf(stderr, "The authored transport panel was not composed\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.transport_destination = -1;
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = 80;
+  input.pointer_y = 65;
+  if (!sf_gameplay_panels_input_resolve_with_transport(
+        &character, &inventory, &transport, &assets->transports,
+        &world->actor_script_state.progress, &world->player, false,
+        &input) || input.transport_destination != 0 ||
+      !input.transport_selected ||
+      transport.active || !input.pointer_over_gameplay_ui ||
+      input.interface_sound != 58u) {
+    fprintf(stderr, "The Remote Town transport row was not selectable\n");
+    return 1;
+  }
+  sf_world_state_update(world, &input);
+  if (world->entry_key != 200 || world->player.position.x != 94685 ||
+      world->player.position.y != -2756 || world->player.direction != 7u ||
+      world->player.motion != SF_PLAYER_IDLE) {
+    fprintf(stderr, "The Remote Town destination did not use MCT entry 200\n");
+    return 1;
+  }
+  paging_progress = world->actor_script_state.progress;
+  paging_progress.transport_count = 11u;
+  for (index = 0u; index < 11u; ++index)
+    paging_progress.transport_values[index] = 1;
+  sf_gameplay_transport_open(&transport, 0);
+  memset(&input, 0, sizeof(input));
+  input.transport_destination = -1;
+  input.pointer_active = true;
+  input.pointer_primary_pressed = true;
+  input.pointer_x = 250;
+  input.pointer_y = 375;
+  if (!sf_gameplay_transport_input_resolve(
+        &transport, &assets->transports, &paging_progress, &input) ||
+      transport.page != 1u || input.interface_sound != 58u) {
+    fprintf(stderr,
+      "The compact transport destination pages did not advance\n");
+    return 1;
+  }
+  sf_gameplay_transport_open(&transport, 7);
+  world->script_transport_service = 7;
+  {
+    const int32_t argument = 7;
+    if (!environment.native_command(
+          environment.native_user, 38, &argument, 1u) ||
+        world->service_request.kind != SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT) {
+      fprintf(stderr, "Opcode 38 did not request the matching panel close\n");
+      return 1;
+    }
+  }
+  request = sf_gameplay_service_take(&world->service_request);
+  if (!sf_gameplay_service_apply(
+        &character, &inventory, &transport, request) || transport.active) {
+    fprintf(stderr, "The matching transport panel did not close\n");
+    return 1;
+  }
+  return 0;
+}
+
+static int test_transport_discovery(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  SfScenarioObject *activation = sf_scenario_object_find(
+    &world->scenario_objects, 10000202);
+  SfScenarioObject *first_visual = sf_scenario_object_find(
+    &world->scenario_objects, 10000203);
+  SfScenarioObject *second_visual = sf_scenario_object_find(
+    &world->scenario_objects, 10000204);
+  SfGameInput input;
+  SfWorldRenderView view;
+  SfRect bounds;
+  SfRenderer renderer;
+  uint32_t label_revision;
+  size_t changed = 0u;
+  int y;
+  if (!activation || !first_visual || !second_visual) return 1;
+  world->actor_script_state.progress.transport_values[0] = 0;
+  world->actor_script_state.progress.transport_count = 0u;
+  sf_world_state_enter(
+    world, activation->position.x, activation->position.y, 7u);
+  memset(&input, 0, sizeof(input));
+  input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
+  input.pointed_scenario_object_id = -1;
+  input.pointed_ground_item_id = -1;
+  input.transport_destination = -1;
+  sf_world_state_update(world, &input);
+  sf_world_render_view(world, 1000u, &view);
+  if (world->actor_script_state.progress.transport_count != 1u ||
+      world->actor_script_state.progress.transport_values[0] != 1 ||
+      world->scenario_labels.count != 1u ||
+      world->scenario_labels.labels[0].message_id != 1000060 ||
+      world->scenario_labels.labels[0].anchor.x != 95259 ||
+      world->scenario_labels.labels[0].anchor.y != -3241 ||
+      world->scenario_labels.labels[0].offset_x != 0 ||
+      world->scenario_labels.labels[0].offset_y != -160 ||
+      world->scenario_labels.labels[0].red != 224 ||
+      world->scenario_labels.labels[0].green != 224 ||
+      world->scenario_labels.labels[0].blue != 224 ||
+      world->scenario_labels.labels[0].background_opacity != 1000 ||
+      world->sounds.count != 1u || world->sounds.samples[0] != 80u ||
+      first_visual->draw_strength != 50 ||
+      second_visual->draw_strength != 50 ||
+      !sf_scenario_label_bounds(assets, world, &view, 0u, &bounds) ||
+      bounds.width != 72 || bounds.height != 18) {
+    fprintf(stderr,
+      "The Remote Town periodic transporter did not discover and label "
+      "itself\n");
+    fprintf(stderr, "unsupported opcode: %d, labels: %u, transport: %d\n",
+      (int) world->actor_script_state.unsupported_opcode,
+      (unsigned) world->scenario_labels.count,
+      (int) world->actor_script_state.progress.transport_values[0]);
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_gameplay_test_pixels,
+        sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_scenario_labels_draw(
+    &renderer, assets, world, &view, NULL);
+  for (y = bounds.y; y < bounds.y + bounds.height; ++y) {
+    int x;
+    for (x = bounds.x; x < bounds.x + bounds.width; ++x)
+      if (x >= 0 && x < 640 && y >= 0 && y < 480 &&
+          sf_gameplay_test_pixels[(size_t) y * 640u + (size_t) x] !=
+            0x1234u) ++changed;
+  }
+  if (changed < 300u) {
+    fprintf(stderr, "The retail teleporter label was not composed\n");
+    return 1;
+  }
+  label_revision = world->scenario_labels.revision;
+  sf_world_state_update(world, &input);
+  if (world->scenario_labels.revision != label_revision ||
+      world->scenario_labels.count != 1u || world->sounds.count != 0u ||
+      first_visual->draw_strength != 100 ||
+      second_visual->draw_strength != 100) {
+    fprintf(stderr,
+      "A steady teleporter label redrew or replayed its activation sound\n");
+    return 1;
+  }
+  sf_world_state_enter(
+    world, assets->entry.world_x, assets->entry.world_y,
+    (uint8_t) assets->entry.direction);
+  world->script_transport_service = 0;
+  memset(&input, 0, sizeof(input));
+  input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
+  input.pointed_scenario_object_id = -1;
+  input.pointed_ground_item_id = -1;
+  input.transport_destination = -1;
+  sf_world_state_update(world, &input);
+  sf_world_state_update(world, &input);
+  if (world->scenario_labels.count != 0u ||
+      first_visual->draw_strength != 0 ||
+      second_visual->draw_strength != 0 ||
+      world->service_request.kind != SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT ||
+      world->service_request.argument != 0 ||
+      world->actor_script_state.progress.transport_values[0] != 1) {
+    fprintf(stderr,
+      "Leaving the Remote Town transporter did not fade and close it\n");
+    return 1;
+  }
+  sf_gameplay_service_clear(&world->service_request);
   return 0;
 }
 
@@ -786,10 +1452,12 @@ static int test_ground_item_pickup(
   input.pointer_primary_pressed = true;
   input.world_pointer_resolved = true;
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = item_id;
   sf_world_state_update(world, &input);
   memset(&input, 0, sizeof(input));
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = -1;
   {
     uint16_t update;
@@ -818,6 +1486,8 @@ int main(void) {
   SfGameplayScreen screen;
   SfPatternList patterns;
   SfPlayerState player;
+  SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t retained_item_count;
   SfWorldState world;
   SfArena arena;
   char root[1024];
@@ -843,10 +1513,18 @@ int main(void) {
     &arena, sf_gameplay_test_memory.bytes,
     sizeof(sf_gameplay_test_memory.bytes));
   sf_player_init(&player, 1u);
+  if (!sf_player_required_item_definitions(
+        &player, retained_items, SF_GROUND_ITEM_DEFINITION_LIMIT,
+        &retained_item_count)) return 1;
+  if (test_non_town_gameplay_load(
+        root, &arena, &player, retained_items, retained_item_count)) return 1;
   if (!sf_gameplay_assets_load(
-        &assets, root, 0, 0, player.gender,
+        &assets, root, 0, 0, player.gender, player.level,
+        player.companions.type,
+        sf_player_companion_level(&player.companions),
         player.appearance_parts, player.appearance_part_count,
-        player.visible_items, player.visible_item_count, &arena)) {
+        player.visible_items, player.visible_item_count,
+        retained_items, retained_item_count, &arena)) {
     fprintf(stderr, "Remote Town gameplay assets did not fit the game arena\n");
     return 1;
   }
@@ -895,10 +1573,14 @@ int main(void) {
   if (!sf_player_apply_initial_parameters(
         &world.player, &assets.player_parameters)) return 1;
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+  sf_world_state_bind_transports(&world, &assets.transports);
   sf_world_state_bind_ground_items(
     &world, assets.ground_items.definitions,
     assets.ground_items.definition_count);
   if (test_scenario_actors(&assets, &world)) return 1;
+  if (test_scenario_objects(&assets, &world)) return 1;
+  if (test_transport_discovery(&assets, &world)) return 1;
+  if (test_transport_service(&assets, &world)) return 1;
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,
     (uint8_t) assets.entry.direction);
@@ -912,6 +1594,7 @@ int main(void) {
       "Remote Town viewport culling changed before retail depth sorting\n");
     return 1;
   }
+  sf_inventory_init(&world.player.inventory);
   if (test_ground_item_pickup(&assets, &world)) return 1;
   if (test_gameplay_inventory(&assets, &world.player)) return 1;
   if (test_gameplay_ui_conversation_guard(&world)) return 1;

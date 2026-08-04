@@ -20,21 +20,34 @@
 #ifndef SHADOWFLARE_GAME_WORLD_H
 #define SHADOWFLARE_GAME_WORLD_H
 
+#include "data/transport.h"
 #include "game/input.h"
+#include "game/gameplay_service.h"
 #include "game/ground_item.h"
+#include "game/companion.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
+#include "game/scenario_enemy.h"
+#include "game/scenario_effect.h"
+#include "game/scenario_label.h"
+#include "game/scenario_object.h"
+#include "game/scenario_travel.h"
+#include "game/sound_event.h"
 #include "interpreter/scenario_actor_script.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT (SF_MCT_PERSON_LIMIT + 1u)
+#define SF_WORLD_MOVEMENT_BLOCKER_LIMIT \
+  (SF_MCT_OBJECT_LIMIT + SF_MCT_PERSON_LIMIT + SF_MCT_ENEMY_LIMIT + 2u)
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
+  int32_t hovered_enemy_id;
+  int32_t hovered_scenario_object_id;
   int32_t hovered_ground_item_id;
   int32_t pending_actor_id;
+  int32_t pending_scenario_object_id;
   int32_t pending_ground_item_id;
   int16_t screen_x;
   int16_t screen_y;
@@ -60,17 +73,29 @@ typedef struct SfWorldState {
   int32_t entry_key;
   int32_t camera_x;
   int32_t camera_y;
+  uint32_t random_state;
   SfPlayerState player;
+  SfCompanionState companion;
   SfScenarioActorSet actors;
+  SfScenarioEnemySet enemies;
+  SfScenarioPlacedEffectSet placed_effects;
+  SfScenarioLabelSet scenario_labels;
+  SfScenarioObjectSet scenario_objects;
   SfGroundItemSet ground_items;
+  SfSoundEventQueue sounds;
+  SfGameplayServiceRequest service_request;
+  SfScenarioTravelRequest travel_request;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
   const SfMctScenario *scenario;
   const SfScsScript *script;
+  const SfTransportCatalog *transports;
+  const SfAiControlCatalog *ai_controls;
   SfWorldPointerControl pointer;
+  int32_t script_transport_service;
   int32_t companion_type;
-  uint8_t movement_blocker_count;
+  uint16_t movement_blocker_count;
   bool entered;
 } SfWorldState;
 
@@ -83,12 +108,25 @@ void sf_world_state_enter(
 void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
-void sf_world_state_bind_ground_items(
+void sf_world_state_bind_transports(
+  SfWorldState *world, const SfTransportCatalog *transports);
+bool sf_world_state_bind_ai_controls(
+  SfWorldState *world, const SfAiControlCatalog *catalog);
+bool sf_world_state_bind_ground_items(
   SfWorldState *world, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);
 bool sf_world_state_bind_scenario(
   SfWorldState *world,
   const SfMctScenario *scenario, const SfScsScript *script);
+bool sf_world_state_bind_scenario_progress(
+  SfWorldState *world,
+  const SfMctScenario *scenario, const SfScsScript *script,
+  const SfScenarioProgressState *progress);
+bool sf_world_state_change_scenario(
+  SfWorldState *world, int32_t scenario_id, int32_t entry_key,
+  const SfMctScenario *scenario, const SfScsScript *script);
+bool sf_world_state_bind_companion(
+  SfWorldState *world, const SfCompanionProfile *profile);
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input);
 void sf_world_render_view(
   const SfWorldState *world, uint16_t interpolation,

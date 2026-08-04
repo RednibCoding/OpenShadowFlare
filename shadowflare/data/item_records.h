@@ -25,13 +25,14 @@
 
 typedef bool (*SfItemRecordWord)(
   void *user, uint8_t category, uint16_t offset, int32_t value);
-typedef bool (*SfItemRecordName)(
-  void *user, uint8_t category, const char *name);
+typedef bool (*SfItemRecordText)(
+  void *user, uint8_t category,
+  const char *name, const char *description);
 
 bool sf_item_scan_records(
   const char *path, SfItemRecordWord word, void *user);
 bool sf_item_scan_named_records(
-  const char *path, SfItemRecordName name,
+  const char *path, SfItemRecordText text,
   SfItemRecordWord word, void *user);
 
 #endif

@@ -29,6 +29,7 @@ void sf_game_init(SfGame *game, const SfGameConfig *config) {
   if (!game) return;
   memset(game, 0, sizeof(*game));
   if (config) game->config = *config;
+  game->load_game.selected_file_slot = -1;
   game->player_gender = 1u;
   game->mode = SF_GAME_MODE_TITLE;
   sf_title_state_init(game);
@@ -59,6 +60,9 @@ void sf_game_update(SfGame *game, const SfGameInput *input) {
     game->character_create.sound_events = 0u;
     game->load_game.sound_events = 0u;
     sf_world_state_init(&game->world, 0, 0, game->player_gender);
+    if (game->load_game.selected_file_slot < 0)
+      sf_player_set_identity(
+        &game->world.player, game->character_create.name, 0x10);
     game->mode = SF_GAME_MODE_GAMEPLAY;
   } else {
     game->title.sound_events = 0u;
@@ -87,4 +91,16 @@ void sf_game_saved_catalog_changed(
   }
   else if (game->load_game.selection >= saved_game_count)
     game->load_game.selection = (uint8_t) (saved_game_count - 1u);
+}
+
+bool sf_game_recover_saved_game_load_failure(SfGame *game) {
+  uint8_t selection;
+  if (!game || game->mode != SF_GAME_MODE_GAMEPLAY ||
+      game->load_game.selected_file_slot < 0) return false;
+  selection = game->load_game.selected_save;
+  game->mode = SF_GAME_MODE_LOAD_GAME;
+  sf_load_game_state_init(game);
+  if (selection < game->config.saved_game_count)
+    game->load_game.selection = selection;
+  return true;
 }

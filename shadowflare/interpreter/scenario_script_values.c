@@ -48,7 +48,8 @@ static bool sf_scenario_state_key(
 
 int32_t sf_scenario_script_read(
     const SfScenarioActorScriptState *state, const SfScsScript *script,
-    const SfScsOperand *operand, const SfScenarioActorSet *actors) {
+    const SfScsOperand *operand,
+    const SfScenarioScriptEnvironment *environment) {
   if (!state || !script || !operand) return 0;
   if (operand->type >= 0 && operand->type <= 2) return operand->value;
   if (operand->type == 4) {
@@ -62,28 +63,43 @@ int32_t sf_scenario_script_read(
     const SfScenarioActor *actor;
     if (!sf_scenario_state_key(
           operand->value, &character_number, &channel)) return 0;
-    actor = sf_scenario_actor_find_const(actors, character_number);
-    return actor ? actor->state[channel] : 0;
+    actor = sf_scenario_actor_find_const(
+      environment ? environment->actors : NULL, character_number);
+    if (actor) return actor->state[channel];
+    {
+      const SfScenarioObject *object = sf_scenario_object_find_const(
+        environment ? environment->objects : NULL, character_number);
+      return object ? object->state[channel] : 0;
+    }
   }
   if (operand->type == 6 || operand->type == 7) {
     const SfScenarioActor *actor = sf_scenario_actor_find_const(
-      actors, operand->value);
-    if (!actor) return 0;
-    return operand->type == 6 ? actor->position.x : actor->position.y;
+      environment ? environment->actors : NULL, operand->value);
+    if (actor)
+      return operand->type == 6 ? actor->position.x : actor->position.y;
+    {
+      const SfScenarioObject *object = sf_scenario_object_find_const(
+        environment ? environment->objects : NULL, operand->value);
+      if (!object) return 0;
+      return operand->type == 6 ? object->position.x : object->position.y;
+    }
   }
+  if (operand->type == 10 && operand->value >= 0 &&
+      operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT)
+    return state->progress.transport_values[operand->value];
   if (operand->type == 11 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT)
-    return state->persistent_values[operand->value];
+    return state->progress.persistent_values[operand->value];
   if (operand->type == 12 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT)
-    return state->quest_values[operand->value];
+    return state->progress.quest_values[operand->value];
   return 0;
 }
 
 bool sf_scenario_script_write(
     SfScenarioActorScriptState *state, const SfScsScript *script,
     const SfScsOperand *operand, int32_t value,
-    SfScenarioActorSet *actors) {
+    const SfScenarioScriptEnvironment *environment) {
   if (!state || !script || !operand) return false;
   if (operand->type >= 0 && operand->type <= 2) return true;
   if (operand->type == 4) {
@@ -98,18 +114,35 @@ bool sf_scenario_script_write(
     SfScenarioActor *actor;
     if (!sf_scenario_state_key(
           operand->value, &character_number, &channel)) return true;
-    actor = sf_scenario_actor_find(actors, character_number);
+    actor = sf_scenario_actor_find(
+      environment ? environment->actors : NULL, character_number);
     if (actor) sf_scenario_actor_set_state(actor, channel, value);
+    else {
+      SfScenarioObject *object = sf_scenario_object_find(
+        environment ? environment->objects : NULL, character_number);
+      if (object) sf_scenario_object_set_state(object, channel, value);
+    }
+    return true;
+  }
+  if (operand->type == 10 && operand->value >= 0 &&
+      operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT) {
+    state->progress.transport_values[operand->value] = value != 0 ? 1 : 0;
+    if ((uint32_t) operand->value >= state->progress.transport_count)
+      state->progress.transport_count = (uint16_t) (operand->value + 1);
     return true;
   }
   if (operand->type == 11 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT) {
-    state->persistent_values[operand->value] = value;
+    state->progress.persistent_values[operand->value] = value;
+    if ((uint32_t) operand->value >= state->progress.persistent_count)
+      state->progress.persistent_count = (uint16_t) (operand->value + 1);
     return true;
   }
   if (operand->type == 12 && operand->value >= 0 &&
       operand->value < SF_SCENARIO_SCRIPT_VALUE_LIMIT) {
-    state->quest_values[operand->value] = value;
+    state->progress.quest_values[operand->value] = value;
+    if ((uint32_t) operand->value >= state->progress.quest_count)
+      state->progress.quest_count = (uint16_t) (operand->value + 1);
     return true;
   }
   return true;

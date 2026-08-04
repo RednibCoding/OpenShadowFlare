@@ -24,15 +24,10 @@
 #include "core/coordinates.h"
 #include "data/mct.h"
 #include "game/route.h"
+#include "game/scenario_entity.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-
-typedef enum SfScenarioEntityChannel {
-  SF_SCENARIO_VISIBLE = 0,
-  SF_SCENARIO_POINTER = 1,
-  SF_SCENARIO_JUDGEMENT = 2
-} SfScenarioEntityChannel;
 
 typedef struct SfScenarioActor {
   SfWorldPoint position;

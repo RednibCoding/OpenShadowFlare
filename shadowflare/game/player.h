@@ -24,14 +24,19 @@
 #include "data/item.h"
 #include "data/player_parameters.h"
 #include "game/route.h"
+#include "game/special_items.h"
 #include "game/inventory.h"
 #include "game/equipment.h"
+#include "game/belt.h"
+#include "game/player_magic.h"
+#include "game/player_companion.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
 #define SF_PLAYER_APPEARANCE_PART_LIMIT 8u
 #define SF_PLAYER_VISIBLE_ITEM_LIMIT 5u
+#define SF_PLAYER_NAME_CAPACITY 25u
 
 typedef enum SfPlayerMotion {
   SF_PLAYER_IDLE = 0,
@@ -45,6 +50,7 @@ typedef enum SfPlayerPace {
 } SfPlayerPace;
 
 typedef struct SfPlayerState {
+  char name[SF_PLAYER_NAME_CAPACITY];
   SfWorldPoint position;
   SfWorldPoint previous_position;
   SfWorldPoint destination;
@@ -53,11 +59,20 @@ typedef struct SfPlayerState {
   SfInventoryState inventory;
   SfInventoryTransferState inventory_transfer;
   SfEquipmentState equipment;
+  SfBeltState belt;
+  SfSpecialItemState special_items;
+  SfPlayerMagicState magic;
+  SfPlayerCompanionProgress companions;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;
   int32_t experience;
   int32_t level;
+  int32_t job;
+  int32_t mine_count;
+  int32_t maximum_mines;
+  int32_t element_x;
+  int32_t element_y;
   uint32_t action_counter;
   uint32_t animation_frame;
   uint8_t appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];
@@ -71,20 +86,27 @@ typedef struct SfPlayerState {
   SfPlayerMotion previous_motion;
   SfPlayerPace pace;
   bool parameters_initialized;
+  bool loadout_initialized;
 } SfPlayerState;
 
 void sf_player_init(SfPlayerState *player, uint8_t gender);
+void sf_player_set_identity(
+  SfPlayerState *player, const char *name, int32_t job);
 bool sf_player_apply_initial_parameters(
   SfPlayerState *player, const SfPlayerInitialParameters *parameters);
-void sf_player_initialize_equipment(
+bool sf_player_initialize_loadout(
   SfPlayerState *player, const SfItemGroundDefinition *definitions,
   uint8_t definition_count);
 void sf_player_refresh_visible_items(SfPlayerState *player);
+bool sf_player_required_item_definitions(
+  const SfPlayerState *player, SfItemReference *items,
+  uint8_t capacity, uint8_t *item_count);
 void sf_player_enter(
   SfPlayerState *player, SfWorldPoint position, uint8_t direction);
 void sf_player_move_to(SfPlayerState *player, SfWorldPoint destination);
 void sf_player_follow_to(SfPlayerState *player, SfWorldPoint destination);
 void sf_player_cancel_movement(SfPlayerState *player);
+void sf_player_face_toward(SfPlayerState *player, SfWorldPoint target);
 void sf_player_toggle_pace(SfPlayerState *player);
 SfWorldPoint sf_player_render_position(
   const SfPlayerState *player, uint16_t interpolation);

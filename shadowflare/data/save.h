@@ -21,6 +21,7 @@
 #define SHADOWFLARE_DATA_SAVE_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define SF_SAVE_SLOT_COUNT 6u
@@ -42,6 +43,8 @@ typedef struct SfSaveCatalog {
 } SfSaveCatalog;
 
 bool sf_save_catalog_load(const char *data_root, SfSaveCatalog *catalog);
+bool sf_save_slot_data_path(
+  char *path, size_t capacity, const char *data_root, uint8_t file_slot);
 bool sf_save_catalog_delete(
   const char *data_root, const SfSaveCatalog *catalog, uint8_t catalog_index);
 

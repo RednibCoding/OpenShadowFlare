@@ -51,7 +51,7 @@ typedef struct SfCollisionQuery {
   const SfCollisionWorld *world;
   const SfMovementBlocker *blockers;
   int32_t ignored_blocker_id;
-  uint8_t blocker_count;
+  uint16_t blocker_count;
 } SfCollisionQuery;
 
 typedef struct SfCollisionSweep {
