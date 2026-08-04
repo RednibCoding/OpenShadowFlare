@@ -102,7 +102,7 @@ static bool sf_njp_sparse_prepare_patterns(
   return true;
 }
 
-static int sf_njp_sparse_palette(
+static int sf_njp_sparse_palette_slot(
     const SfNjpSparseResource *output, int32_t source) {
   uint8_t palette;
   for (palette = 0u; palette < output->palette_count; ++palette) {
@@ -205,7 +205,7 @@ static bool sf_njp_sparse_scan(
             y < INT16_MIN || y > INT16_MAX || palette_offset != 0 ||
             scale_x != 1000 || scale_y != 1000 || palette_source < 0)
           return false;
-        palette_slot = sf_njp_sparse_palette(output, palette_source);
+        palette_slot = sf_njp_sparse_palette_slot(output, palette_source);
         if (palette_slot < 0) {
           if (output->palette_count >= SF_NJP_SPARSE_PALETTE_LIMIT)
             return false;
@@ -225,7 +225,7 @@ static bool sf_njp_sparse_scan(
   }
   if (!sf_i32(file, &palette_count) || palette_count < 0) return false;
   for (pattern = 0; pattern < palette_count; ++pattern) {
-    const int slot = sf_njp_sparse_palette(output, pattern);
+    const int slot = sf_njp_sparse_palette_slot(output, pattern);
     unsigned entry;
     for (entry = 0u; entry < 256u; ++entry) {
       uint8_t color[4];
@@ -312,8 +312,9 @@ static bool sf_njp_sparse_decode(
   return true;
 }
 
-bool sf_njp_load_sparse_patterns(
+bool sf_njp_load_sparse_patterns_with_palettes(
     const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
+    const int32_t *palette_indices, uint8_t palette_count,
     SfArena *arena, SfNjpSparseResource *output) {
   FILE *file;
   size_t mark;
@@ -322,6 +323,8 @@ bool sf_njp_load_sparse_patterns(
   if (!path || !pattern_indices || pattern_count == 0u ||
       pattern_count > SF_NJP_SPARSE_PATTERN_LIMIT || !arena || !output)
     return false;
+  if ((palette_count > 0u && !palette_indices) ||
+      palette_count > SF_NJP_SPARSE_PALETTE_LIMIT) return false;
   mark = sf_arena_mark(arena);
   memset(output, 0, sizeof(*output));
   output->patterns = (SfNjpSparsePattern *) sf_arena_push_zero(
@@ -336,6 +339,13 @@ bool sf_njp_load_sparse_patterns(
     goto done;
   for (pattern = 0u; pattern < SF_NJP_SPARSE_PALETTE_LIMIT; ++pattern)
     output->palette_sources[pattern] = -1;
+  for (pattern = 0u; pattern < palette_count; ++pattern) {
+    if (palette_indices[pattern] < 0 ||
+        sf_njp_sparse_palette_slot(output, palette_indices[pattern]) >= 0)
+      goto done;
+    output->palette_sources[output->palette_count++] =
+      palette_indices[pattern];
+  }
   if (!sf_njp_sparse_prepare_patterns(
         output, pattern_indices, pattern_count)) goto done;
   file = fopen(path, "rb");
@@ -360,6 +370,13 @@ done:
   return success;
 }
 
+bool sf_njp_load_sparse_patterns(
+    const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
+    SfArena *arena, SfNjpSparseResource *output) {
+  return sf_njp_load_sparse_patterns_with_palettes(
+    path, pattern_indices, pattern_count, NULL, 0u, arena, output);
+}
+
 const SfNjpSparsePattern *sf_njp_sparse_pattern(
     const SfNjpSparseResource *resource, int32_t source_index) {
   int pattern;
@@ -367,4 +384,11 @@ const SfNjpSparsePattern *sf_njp_sparse_pattern(
   pattern = sf_njp_sparse_request(
     resource, resource->pattern_count, source_index);
   return pattern >= 0 ? &resource->patterns[pattern] : NULL;
+}
+
+const uint16_t *sf_njp_sparse_palette(
+    const SfNjpSparseResource *resource, int32_t source_index) {
+  const int slot = resource
+    ? sf_njp_sparse_palette_slot(resource, source_index) : -1;
+  return slot >= 0 ? resource->palettes[slot] : NULL;
 }

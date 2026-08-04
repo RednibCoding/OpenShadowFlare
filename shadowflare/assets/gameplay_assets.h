@@ -21,6 +21,7 @@
 #define SHADOWFLARE_ASSETS_GAMEPLAY_ASSETS_H
 
 #include "assets/player_assets.h"
+#include "assets/ground_item_assets.h"
 #include "assets/scenario_actor_assets.h"
 #include "core/arena.h"
 #include "data/gnd.h"
@@ -50,6 +51,7 @@ typedef struct SfGameplayAssets {
   SfNjpSelected speech_frame;
   SfPlayerAssets player;
   SfScenarioActorAssets actors;
+  SfGroundItemAssets ground_items;
   SfGameplayPatternSet *pattern_sets;
   size_t memory_bytes;
   uint8_t pattern_set_count;

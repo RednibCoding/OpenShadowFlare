@@ -72,7 +72,12 @@ the selected red option, and clicks outside a choice cannot leak through as
 movement. Harley's complete `Explanation` branch proves choice selection, two
 ordinary follow-up messages, and the final actor release. Layout and pointer
 resolution stay in `ui/`; script state and actor behavior stay in
-`interpreter/` and `game/`.
+`interpreter/` and `game/`. Ostare's next callback now executes the shipped
+opcode 10 commands through a small world-service boundary. It creates the
+Short Sword, Round Shield, Dagger, and 200 Gold with their retail positions,
+colors, two-bounce motion, and landing sounds. Their CAF cells, sparse
+NJP/SDW patterns, and explicit palettes are discovered from the active script
+and `Item.Ibn`; Remote Town IDs are not hardcoded into the game or renderer.
 
 ## Hard limits
 
@@ -155,8 +160,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,433,997 bytes of the 7 MiB main arena,
-leaving 5,906,035 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,438,957 bytes of the 7 MiB main arena,
+leaving 5,901,075 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -169,21 +174,22 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 746,920 bytes of the main arena, leaving 6,593,112 bytes free;
+assets. It uses 751,880 bytes of the main arena, leaving 6,588,152 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 707,136 bytes of the main arena, leaving 6,632,896
+The load-game screen uses 712,096 bytes of the main arena, leaving 6,627,936
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,309,796 bytes of the main
-arena, leaving 3,030,236 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, and UI data and artwork account for 3,976,981 bytes. GND
+The complete Remote Town gameplay screen uses 4,333,986 bytes of the main
+arena, leaving 3,006,046 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, ground-item, and UI data and artwork account for 3,996,211
+bytes. GND
 rendering
 data is decoded directly from its compressed three-plane stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
@@ -243,6 +249,15 @@ Conversation input follows the same boundary. `ui/conversation_input.c` turns
 the rendered choice spans into an option number and count. The small game-side
 conversation owner changes selection, resumes the interpreter, and releases
 the speaking actor. No renderer or target backend knows about script choices.
+
+Ground items follow the same ownership rule. The active SCS is scanned for
+its fixed or initial temporary category/definition pairs, and `Item.Ibn` is
+streamed once to retain only those eight Remote Town records. The active map
+owns one fixed 64-entry item set. The interpreter only evaluates opcode 10
+operands and calls the world service; it does not know about item storage,
+artwork, rendering, or audio. The screen helper draws the selected CAF cells
+in the ordinary depth passes, while TAL playback stays at the outer runtime
+boundary.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

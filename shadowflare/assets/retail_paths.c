@@ -64,8 +64,15 @@ const SfRetailPeoplePaths sf_retail_people_paths = {
   "Character/PEOPLE/%08d/Animation.Sdw"
 };
 
+const SfRetailGroundItemPaths sf_retail_ground_item_paths = {
+  "Character/ITEM/%08d/Animation.Caf",
+  "Character/ITEM/%08d/Animation.Njp",
+  "Character/ITEM/%08d/Animation.Sdw"
+};
+
 const SfRetailGamePaths sf_retail_game_paths = {
   "System/Game/Parameter/Item.Ibn",
+  "System/Game/Voice/Voice00.Voc",
   "System/Common/Pattern/Font00.njp",
   "System/Game/Pattern/Hukidasi.njp"
 };

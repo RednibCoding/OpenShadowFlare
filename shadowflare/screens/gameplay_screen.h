@@ -31,6 +31,7 @@
 typedef struct SfGameplayScreen {
   SfGameplayScene scene;
   uint32_t rendered_animation_frame;
+  uint32_t rendered_ground_item_revision;
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_x[SF_MCT_PERSON_LIMIT];
   int32_t rendered_actor_y[SF_MCT_PERSON_LIMIT];

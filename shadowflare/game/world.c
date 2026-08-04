@@ -22,6 +22,7 @@
 #include "core/coordinates.h"
 #include "game/movement.h"
 #include "game/world_conversation.h"
+#include "game/world_script.h"
 
 #include <string.h>
 
@@ -32,6 +33,7 @@ void sf_world_state_init(
   memset(world, 0, sizeof(*world));
   world->scenario_id = scenario_id;
   world->entry_key = entry_key;
+  sf_ground_items_init(&world->ground_items);
   sf_player_init(&world->player, player_gender);
 }
 
@@ -61,6 +63,14 @@ void sf_world_state_bind_collision(
   world->collision.objects = objects;
 }
 
+void sf_world_state_bind_ground_items(
+    SfWorldState *world, const SfItemGroundDefinition *definitions,
+    uint8_t definition_count) {
+  if (!world) return;
+  sf_ground_items_bind_definitions(
+    &world->ground_items, definitions, definition_count);
+}
+
 bool sf_world_state_bind_scenario(
     SfWorldState *world,
     const SfMctScenario *scenario, const SfScsScript *script) {
@@ -70,19 +80,9 @@ bool sf_world_state_bind_scenario(
   sf_scenario_actor_script_init(&world->actor_script_state, script);
   world->scenario = scenario;
   world->script = script;
-  environment = (SfScenarioScriptEnvironment) {
-    scenario, &world->actors, world->player.position,
-    world->player.judgement, world->companion_type};
+  environment = sf_world_script_environment(world);
   return sf_scenario_actor_script_run_periodic(
     &world->actor_script_state, script, &environment);
-}
-
-static SfScenarioScriptEnvironment sf_world_script_environment(
-    SfWorldState *world) {
-  const SfScenarioScriptEnvironment environment = {
-    world->scenario, &world->actors, world->player.position,
-    world->player.judgement, world->companion_type};
-  return environment;
 }
 
 static SfWorldPoint sf_world_pointer_target(
@@ -177,6 +177,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   uint8_t actor_blocker_indices[SF_MCT_PERSON_LIMIT];
   bool message_consumed_input;
   if (!world || !world->entered || !input) return;
+  sf_ground_items_update(&world->ground_items);
   pointer = &world->pointer;
   pointer->screen_x = input->pointer_x;
   pointer->screen_y = input->pointer_y;

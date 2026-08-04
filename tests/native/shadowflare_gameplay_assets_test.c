@@ -23,6 +23,7 @@
 #include "data/pattern_list.h"
 #include "game/player.h"
 #include "game/world.h"
+#include "game/world_script.h"
 #include "screens/gameplay_screen.h"
 #include "screens/gameplay_object_visual.h"
 #include "ui/conversation_input.h"
@@ -93,6 +94,33 @@ static int test_object_intersection(const SfGameplayAssets *assets) {
   }
   fprintf(stderr, "Remote Town object pixels did not intersect their bounds\n");
   return 1;
+}
+
+static int test_ground_item_assets(const SfGameplayAssets *assets) {
+  const SfGroundItemVisual *visual = sf_ground_item_visual(
+    &assets->ground_items, 0);
+  static const int32_t artwork_patterns[4] = {77, 82, 113, 107};
+  static const int32_t shadow_patterns[4] = {0, 5, 36, 30};
+  static const int32_t palettes[4] = {0, 10, 72, 60};
+  static const int32_t charts[4] = {0, 5, 36, 30};
+  uint8_t index;
+  if (assets->ground_items.definition_count != 8u ||
+      assets->ground_items.visual_count != 1u || !visual ||
+      !assets->ground_items.landing_sounds[0].samples ||
+      !assets->ground_items.landing_sounds[1].samples) {
+    fprintf(stderr, "Remote Town ground-item resources differ from retail\n");
+    return 1;
+  }
+  for (index = 0u; index < 4u; ++index) {
+    if (!sf_ground_item_animation(visual, charts[index]) ||
+        !sf_njp_sparse_pattern(&visual->artwork, artwork_patterns[index]) ||
+        !sf_njp_sparse_pattern(&visual->shadows, shadow_patterns[index]) ||
+        !sf_njp_sparse_palette(&visual->artwork, palettes[index])) {
+      fprintf(stderr, "A starter drop is missing its retail cells or palette\n");
+      return 1;
+    }
+  }
+  return 0;
 }
 
 static int test_scenario_actors(
@@ -233,9 +261,8 @@ static int test_ostare_conversation(
   SfScenarioScriptResult result;
   SfConversationLayout layout;
   SfWorldRenderView view;
-  environment = (SfScenarioScriptEnvironment) {
-    &assets->scenario, &world->actors, world->player.position,
-    world->player.judgement, world->companion_type};
+  const SfWorldPoint interaction_position = world->actors.actors[0].position;
+  environment = sf_world_script_environment(world);
   result = sf_scenario_actor_script_start_status(
     &world->actor_script_state, assets->script,
     0, 12000000, &environment);
@@ -266,6 +293,57 @@ static int test_ostare_conversation(
     fprintf(stderr, "Ostare's second callback differs from retail\n");
     return 1;
   }
+  result = sf_scenario_actor_script_resume(
+    &world->actor_script_state, assets->script, -1, &environment);
+  if (result != SF_SCENARIO_SCRIPT_WAITING_FOR_MESSAGE ||
+      world->actor_script_state.message_id != 1000003 ||
+      world->ground_items.count != 4u ||
+      world->ground_items.items[0].category != 0u ||
+      world->ground_items.items[0].definition_id != 0 ||
+      world->ground_items.items[0].quantity != 1 ||
+      world->ground_items.items[0].position.x != interaction_position.x + 200 ||
+      world->ground_items.items[0].position.y != interaction_position.y ||
+      world->ground_items.items[0].animation_chart != 0 ||
+      world->ground_items.items[1].category != 1u ||
+      world->ground_items.items[1].definition_id != 1000000 ||
+      world->ground_items.items[1].position.x != interaction_position.x ||
+      world->ground_items.items[1].position.y != interaction_position.y + 200 ||
+      world->ground_items.items[1].animation_chart != 5 ||
+      world->ground_items.items[1].red_strength != 900 ||
+      world->ground_items.items[1].green_strength != 800 ||
+      world->ground_items.items[1].blue_strength != 500 ||
+      world->ground_items.items[2].category != 0u ||
+      world->ground_items.items[2].definition_id != 100 ||
+      world->ground_items.items[2].position.x != interaction_position.x + 200 ||
+      world->ground_items.items[2].position.y != interaction_position.y - 200 ||
+      world->ground_items.items[2].animation_chart != 36 ||
+      world->ground_items.items[3].category != 4u ||
+      world->ground_items.items[3].definition_id != 0 ||
+      world->ground_items.items[3].quantity != 200 ||
+      world->ground_items.items[3].position.x != interaction_position.x + 200 ||
+      world->ground_items.items[3].position.y != interaction_position.y ||
+      world->ground_items.items[3].animation_chart != 30) {
+    fprintf(stderr, "Ostare's retail starter drops differ\n");
+    return 1;
+  }
+  {
+    uint8_t ordinary_sounds = 0u;
+    uint8_t gold_sounds = 0u;
+    uint8_t update;
+    for (update = 0u; update < 19u; ++update) {
+      sf_ground_items_update(&world->ground_items);
+      ordinary_sounds = (uint8_t) (
+        ordinary_sounds + world->ground_items.ordinary_landing_events);
+      gold_sounds = (uint8_t) (
+        gold_sounds + world->ground_items.gold_landing_events);
+    }
+    if (ordinary_sounds != 3u || gold_sounds != 1u ||
+        world->ground_items.items[0].bounce_state != 2u ||
+        world->ground_items.items[3].bounce_state != 2u) {
+      fprintf(stderr, "Ostare's drops do not use the retail bounce sounds\n");
+      return 1;
+    }
+  }
   return 0;
 }
 
@@ -280,9 +358,7 @@ static int test_harley_conversation(
   SfGameInput input;
   const SfConversationChoice *choice;
   sf_scenario_actor_release_interaction(&world->actors.actors[0]);
-  environment = (SfScenarioScriptEnvironment) {
-    &assets->scenario, &world->actors, world->player.position,
-    world->player.judgement, world->companion_type};
+  environment = sf_world_script_environment(world);
   result = sf_scenario_actor_script_start_status(
     &world->actor_script_state, assets->script,
     0, sf_scenario_actor_character_number(&world->actors.actors[6]),
@@ -471,8 +547,12 @@ int main(void) {
     }
   }
   if (test_object_intersection(&assets)) return 1;
+  if (test_ground_item_assets(&assets)) return 1;
   sf_world_state_init(&world, 0, 0, player.gender);
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
+  sf_world_state_bind_ground_items(
+    &world, assets.ground_items.definitions,
+    assets.ground_items.definition_count);
   if (test_scenario_actors(&assets, &world)) return 1;
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,

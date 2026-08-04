@@ -17,39 +17,16 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_ITEM_H
-#define SHADOWFLARE_DATA_ITEM_H
+#ifndef SHADOWFLARE_DATA_ITEM_RECORDS_H
+#define SHADOWFLARE_DATA_ITEM_RECORDS_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfItemAppearance {
-  int32_t part;
-  int32_t red;
-  int32_t green;
-  int32_t blue;
-} SfItemAppearance;
+typedef bool (*SfItemRecordWord)(
+  void *user, uint8_t category, uint16_t offset, int32_t value);
 
-typedef struct SfItemReference {
-  int32_t definition_id;
-  uint8_t category;
-} SfItemReference;
-
-typedef struct SfItemGroundDefinition {
-  int32_t definition_id;
-  int32_t resource_id;
-  int32_t animation_chart;
-  int32_t red_strength;
-  int32_t green_strength;
-  int32_t blue_strength;
-  uint8_t category;
-} SfItemGroundDefinition;
-
-bool sf_item_read_appearance(
-  const char *path, uint8_t category, int32_t definition_id,
-  SfItemAppearance *appearance);
-bool sf_item_read_ground_definitions(
-  const char *path, SfItemGroundDefinition *definitions,
-  uint8_t definition_count);
+bool sf_item_scan_records(
+  const char *path, SfItemRecordWord word, void *user);
 
 #endif

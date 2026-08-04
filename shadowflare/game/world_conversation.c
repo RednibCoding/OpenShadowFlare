@@ -19,6 +19,8 @@
 
 #include "game/world_conversation.h"
 
+#include "game/world_script.h"
+
 static void sf_world_release_conversation_actors(SfWorldState *world) {
   uint8_t index;
   for (index = 0u; index < world->actors.count; ++index)
@@ -27,9 +29,8 @@ static void sf_world_release_conversation_actors(SfWorldState *world) {
 
 static void sf_world_resume_conversation(
     SfWorldState *world, int32_t option) {
-  const SfScenarioScriptEnvironment environment = {
-    world->scenario, &world->actors, world->player.position,
-    world->player.judgement, world->companion_type};
+  const SfScenarioScriptEnvironment environment =
+    sf_world_script_environment(world);
   (void) sf_scenario_actor_script_resume(
     &world->actor_script_state, world->script, option, &environment);
   if (!world->actor_script_state.message_active)

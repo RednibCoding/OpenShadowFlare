@@ -65,12 +65,18 @@ typedef struct SfScenarioActorScriptState {
   bool message_selection_pending;
 } SfScenarioActorScriptState;
 
+typedef bool (*SfScenarioNativeCommand)(
+  void *user, int32_t opcode, const int32_t *arguments,
+  uint8_t argument_count);
+
 typedef struct SfScenarioScriptEnvironment {
   const SfMctScenario *scenario;
   SfScenarioActorSet *actors;
   SfWorldPoint player_position;
   SfObjectBounds player_bounds;
   int32_t companion_type;
+  SfScenarioNativeCommand native_command;
+  void *native_user;
 } SfScenarioScriptEnvironment;
 
 void sf_scenario_actor_script_init(

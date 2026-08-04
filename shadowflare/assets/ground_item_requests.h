@@ -17,39 +17,22 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_ITEM_H
-#define SHADOWFLARE_DATA_ITEM_H
+#ifndef SHADOWFLARE_ASSETS_GROUND_ITEM_REQUESTS_H
+#define SHADOWFLARE_ASSETS_GROUND_ITEM_REQUESTS_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "assets/ground_item_assets.h"
 
-typedef struct SfItemAppearance {
-  int32_t part;
-  int32_t red;
-  int32_t green;
-  int32_t blue;
-} SfItemAppearance;
-
-typedef struct SfItemReference {
-  int32_t definition_id;
-  uint8_t category;
-} SfItemReference;
-
-typedef struct SfItemGroundDefinition {
-  int32_t definition_id;
+typedef struct SfGroundItemResourceRequest {
   int32_t resource_id;
-  int32_t animation_chart;
-  int32_t red_strength;
-  int32_t green_strength;
-  int32_t blue_strength;
-  uint8_t category;
-} SfItemGroundDefinition;
+  uint16_t charts[SF_GROUND_ITEM_DEFINITION_LIMIT];
+  uint8_t chart_count;
+} SfGroundItemResourceRequest;
 
-bool sf_item_read_appearance(
-  const char *path, uint8_t category, int32_t definition_id,
-  SfItemAppearance *appearance);
-bool sf_item_read_ground_definitions(
-  const char *path, SfItemGroundDefinition *definitions,
-  uint8_t definition_count);
+bool sf_ground_item_collect_definitions(
+  const SfScsScript *script, SfItemGroundDefinition *definitions,
+  uint8_t *definition_count);
+bool sf_ground_item_collect_resources(
+  const SfItemGroundDefinition *definitions, uint8_t definition_count,
+  SfGroundItemResourceRequest *requests, uint8_t *request_count);
 
 #endif

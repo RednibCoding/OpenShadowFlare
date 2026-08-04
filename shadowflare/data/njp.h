@@ -141,7 +141,13 @@ bool sf_njp_read_pattern_bounds(
 bool sf_njp_load_sparse_patterns(
   const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
   SfArena *arena, SfNjpSparseResource *output);
+bool sf_njp_load_sparse_patterns_with_palettes(
+  const char *path, const int32_t *pattern_indices, uint16_t pattern_count,
+  const int32_t *palette_indices, uint8_t palette_count,
+  SfArena *arena, SfNjpSparseResource *output);
 const SfNjpSparsePattern *sf_njp_sparse_pattern(
+  const SfNjpSparseResource *resource, int32_t source_index);
+const uint16_t *sf_njp_sparse_palette(
   const SfNjpSparseResource *resource, int32_t source_index);
 const SfNjpDecodedPattern *sf_njp_decoded_pattern(
   const SfNjpDecodedResource *resource, uint8_t source_index);

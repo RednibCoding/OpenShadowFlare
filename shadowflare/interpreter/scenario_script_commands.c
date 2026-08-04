@@ -30,6 +30,32 @@ static bool sf_scenario_script_condition(
   return operation == 3 && left < right;
 }
 
+static int32_t sf_scenario_script_wrapped_i32(uint32_t value) {
+  if (value <= (uint32_t) INT32_MAX) return (int32_t) value;
+  return INT32_MIN + (int32_t) (value - UINT32_C(0x80000000));
+}
+
+static SfScenarioScriptResult sf_scenario_script_native(
+    SfScenarioScriptContext *context, const SfScsCommand *command,
+    const SfScsOperand *operands, uint8_t argument_count) {
+  int32_t arguments[6];
+  uint8_t index;
+  if (command->operand_count < argument_count || argument_count > 6u)
+    return SF_SCENARIO_SCRIPT_INVALID;
+  if (!context->environment->native_command) {
+    context->state->unsupported_opcode = command->opcode;
+    return SF_SCENARIO_SCRIPT_UNSUPPORTED_COMMAND;
+  }
+  for (index = 0u; index < argument_count; ++index)
+    arguments[index] = sf_scenario_script_read(
+      context->state, context->script, &operands[index],
+      context->environment->actors);
+  return context->environment->native_command(
+      context->environment->native_user, command->opcode,
+      arguments, argument_count)
+    ? SF_SCENARIO_SCRIPT_COMPLETE : SF_SCENARIO_SCRIPT_INVALID;
+}
+
 static bool sf_scenario_script_set_actor_enabled(
     SfScenarioActorSet *actors, int32_t character_number, int32_t value) {
   SfScenarioActor *actor = sf_scenario_actor_find(actors, character_number);
@@ -180,6 +206,24 @@ SfScenarioScriptResult sf_scenario_script_execute_command(
   }
   if (command->opcode == 2)
     return sf_scenario_script_show_message(context, command, operands);
+  if (command->opcode == 10)
+    return sf_scenario_script_native(context, command, operands, 6u);
+  if (command->opcode == 11 || command->opcode == 12) {
+    uint32_t left;
+    uint32_t right;
+    int32_t result;
+    if (command->operand_count < 2u) return SF_SCENARIO_SCRIPT_INVALID;
+    left = (uint32_t) sf_scenario_script_read(
+      state, context->script, &operands[0], context->environment->actors);
+    right = (uint32_t) sf_scenario_script_read(
+      state, context->script, &operands[1], context->environment->actors);
+    result = sf_scenario_script_wrapped_i32(command->opcode == 12
+      ? left - right : left + right);
+    if (!sf_scenario_script_write(
+          state, context->script, &operands[0], result,
+          context->environment->actors)) return SF_SCENARIO_SCRIPT_INVALID;
+    return SF_SCENARIO_SCRIPT_COMPLETE;
+  }
   if (command->opcode == 18 || command->opcode == 19 ||
       command->opcode == 21) {
     if (command->operand_count < 1u) return SF_SCENARIO_SCRIPT_INVALID;

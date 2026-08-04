@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_WORLD_H
 
 #include "game/input.h"
+#include "game/ground_item.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
 #include "interpreter/scenario_actor_script.h"
@@ -58,6 +59,7 @@ typedef struct SfWorldState {
   int32_t camera_y;
   SfPlayerState player;
   SfScenarioActorSet actors;
+  SfGroundItemSet ground_items;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];
@@ -78,6 +80,9 @@ void sf_world_state_enter(
 void sf_world_state_bind_collision(
   SfWorldState *world,
   const SfGroundMap *ground, const SfObjectMap *objects);
+void sf_world_state_bind_ground_items(
+  SfWorldState *world, const SfItemGroundDefinition *definitions,
+  uint8_t definition_count);
 bool sf_world_state_bind_scenario(
   SfWorldState *world,
   const SfMctScenario *scenario, const SfScsScript *script);

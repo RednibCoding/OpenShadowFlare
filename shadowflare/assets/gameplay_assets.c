@@ -232,7 +232,9 @@ bool sf_gameplay_assets_load(
         appearance_parts, appearance_part_count,
         visible_items, visible_item_count, arena) ||
       !sf_scenario_actor_assets_load(
-        &assets->actors, data_root, &assets->scenario, arena)) goto done;
+        &assets->actors, data_root, &assets->scenario, arena) ||
+      !sf_ground_item_assets_load(
+        &assets->ground_items, data_root, assets->script, arena)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:

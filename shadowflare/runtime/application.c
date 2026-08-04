@@ -196,6 +196,21 @@ static void sf_play_menu_events(
     *music_started = sf_play_pcm(audio, &assets->music, true);
 }
 
+static void sf_play_world_events(
+    Tal *audio, const SfGameplayAssets *assets,
+    const SfWorldState *world) {
+  uint8_t count;
+  if (!assets || !world) return;
+  for (count = 0u;
+       count < world->ground_items.ordinary_landing_events; ++count)
+    (void) sf_play_pcm(
+      audio, &assets->ground_items.landing_sounds[0], false);
+  for (count = 0u;
+       count < world->ground_items.gold_landing_events; ++count)
+    (void) sf_play_pcm(
+      audio, &assets->ground_items.landing_sounds[1], false);
+}
+
 static bool sf_menu_game_mode(SfGameMode mode) {
   return mode == SF_GAME_MODE_CHARACTER_SELECT ||
     mode == SF_GAME_MODE_LOAD_GAME;
@@ -377,6 +392,10 @@ int sf_application_run(
             game->character_create.sound_events |
             game->load_game.sound_events),
           &menu_music_started);
+        if (game->mode == SF_GAME_MODE_GAMEPLAY)
+          sf_play_world_events(
+            audio, sf_screen_runtime_gameplay_assets(screen_runtime),
+            &game->world);
         sf_clear_input(&input);
         next_update += SF_UPDATE_MICROSECONDS;
         ++updates;

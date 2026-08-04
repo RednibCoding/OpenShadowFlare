@@ -72,6 +72,8 @@ void sf_screen_runtime_resolve_input(
   const SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input);
 const SfTitleAssets *sf_screen_runtime_title_assets(
   const SfScreenRuntime *runtime);
+const SfGameplayAssets *sf_screen_runtime_gameplay_assets(
+  const SfScreenRuntime *runtime);
 void sf_screen_runtime_draw(
   SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game,
   uint16_t interpolation);

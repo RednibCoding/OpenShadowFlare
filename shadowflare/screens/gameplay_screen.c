@@ -125,6 +125,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_pointer_active != game->world.pointer.active ||
     screen->rendered_motion != (uint8_t) player->motion ||
     screen->rendered_direction != player->direction ||
+    screen->rendered_ground_item_revision !=
+      game->world.ground_items.presentation_revision ||
     sf_gameplay_actor_frames_changed(screen, &game->world, interpolation);
   if (screen->drawn && !scene_moved) {
     if (screen->rendered_animation_frame == player->animation_frame) return;
@@ -171,5 +173,7 @@ void sf_gameplay_screen_draw(
   screen->rendered_pointer_active = game->world.pointer.active;
   screen->rendered_motion = (uint8_t) player->motion;
   screen->rendered_direction = player->direction;
+  screen->rendered_ground_item_revision =
+    game->world.ground_items.presentation_revision;
   screen->drawn = true;
 }

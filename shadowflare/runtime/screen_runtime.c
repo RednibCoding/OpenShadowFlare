@@ -80,6 +80,10 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       sf_world_state_bind_collision(
         &game->world, &runtime->assets.gameplay.ground,
         &runtime->assets.gameplay.objects);
+      sf_world_state_bind_ground_items(
+        &game->world,
+        runtime->assets.gameplay.ground_items.definitions,
+        runtime->assets.gameplay.ground_items.definition_count);
       success = sf_world_state_bind_scenario(
         &game->world, &runtime->assets.gameplay.scenario,
         runtime->assets.gameplay.script);
@@ -149,6 +153,13 @@ const SfTitleAssets *sf_screen_runtime_title_assets(
   if (!runtime || !runtime->loaded ||
       runtime->loaded_mode != SF_GAME_MODE_TITLE) return NULL;
   return &runtime->assets.title;
+}
+
+const SfGameplayAssets *sf_screen_runtime_gameplay_assets(
+    const SfScreenRuntime *runtime) {
+  if (!runtime || !runtime->loaded ||
+      runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY) return NULL;
+  return &runtime->assets.gameplay;
 }
 
 void sf_screen_runtime_draw(
