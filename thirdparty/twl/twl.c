@@ -300,8 +300,10 @@ void twl_internal_set_controller_axis(
   twl_internal_push_event(twl, &event);
 }
 
-TwlResult twl_present(Twl *twl, const TwlSurface *surface) {
+TwlResult twl_prepare_frame(Twl *twl, const TwlSurface *surface) {
   const size_t pixel_size = surface ? twl_pixel_size(surface->format) : 0u;
+  TwlResult result;
+  if (twl) twl->frame_prepared = false;
   if (!twl || !surface || !surface->pixels || surface->width == 0u ||
       surface->height == 0u || surface->format < TWL_PIXEL_RGB555 ||
       surface->format > TWL_PIXEL_XRGB8888 ||
@@ -310,9 +312,25 @@ TwlResult twl_present(Twl *twl, const TwlSurface *surface) {
     return TWL_RESULT_INVALID_ARGUMENT;
   }
   if (twl->config.display_mode == TWL_DISPLAY_HEADLESS) {
+    twl->frame_prepared = true;
     return TWL_RESULT_OK;
   }
-  return twl_backend_present(twl, surface);
+  result = twl_backend_prepare_frame(twl, surface);
+  twl->frame_prepared = result == TWL_RESULT_OK;
+  return result;
+}
+
+TwlResult twl_display_frame(Twl *twl) {
+  if (!twl || !twl->frame_prepared) return TWL_RESULT_INVALID_ARGUMENT;
+  twl->frame_prepared = false;
+  if (twl->config.display_mode == TWL_DISPLAY_HEADLESS)
+    return TWL_RESULT_OK;
+  return twl_backend_display_frame(twl);
+}
+
+TwlResult twl_present(Twl *twl, const TwlSurface *surface) {
+  const TwlResult result = twl_prepare_frame(twl, surface);
+  return result == TWL_RESULT_OK ? twl_display_frame(twl) : result;
 }
 
 void twl_internal_set_display_size(
@@ -337,4 +355,9 @@ uint64_t twl_time_microseconds(const Twl *twl) {
   return twl && twl->backend_ready
            ? twl_backend_time_microseconds(twl)
            : 0u;
+}
+
+void twl_sleep_microseconds(Twl *twl, uint64_t duration) {
+  if (twl && twl->backend_ready && duration != 0u)
+    twl_backend_sleep_microseconds(twl, duration);
 }

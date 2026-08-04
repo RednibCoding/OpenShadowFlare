@@ -29,10 +29,12 @@ memory once. No capacity changes at runtime.
 
 ## Mixer
 
-The current common mixer supports signed 16-bit mono and stereo PCM. It uses
-fixed-point playback positions, volume, pan, playback rate, and interpolation.
-There is no floating-point work in the C mixer. Samples can remain at their
-own rate and are resampled as they play.
+The current common mixer supports signed 16-bit and unsigned 8-bit mono or
+stereo PCM. The 8-bit path lets memory-constrained callers keep compact source
+audio instead of expanding it before playback. The mixer uses fixed-point
+playback positions, volume, pan, playback rate, and interpolation. There is no
+floating-point work in the C mixer. Samples can remain at their own rate and
+are resampled as they play.
 
 Manual output mode does not open a device. `tal_render()` writes directly into
 a caller-provided buffer, making the same mixer usable by tests, tools, and

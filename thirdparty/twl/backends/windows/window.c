@@ -202,3 +202,9 @@ uint64_t twl_backend_time_microseconds(const Twl *twl) {
   return ticks / frequency * UINT64_C(1000000) +
     ticks % frequency * UINT64_C(1000000) / frequency;
 }
+
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration) {
+  const uint64_t milliseconds = (duration + UINT64_C(999)) / UINT64_C(1000);
+  (void) twl;
+  Sleep((DWORD) (milliseconds > MAXDWORD ? MAXDWORD : milliseconds));
+}

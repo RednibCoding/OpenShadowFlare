@@ -27,31 +27,68 @@ fit them, we stop and rethink the feature instead of quietly raising a limit.
 The baseline is deliberately harsh:
 
 - roughly 33 MHz CPU;
-- 2 MiB main RAM;
-- 1 MiB video RAM;
+- 8 MiB main RAM;
+- 4 MiB video RAM;
 - 640×480 output using packed RGB555;
-- 60 Hz game updates where retail behavior requires them.
+- 30 Hz game updates, matching the retail game;
+- integer-interpolated 60 Hz presentation where the target can afford it.
 
-At 60 Hz, 33 MHz is only about 550,000 CPU cycles per update. A 640×480 image
-contains 307,200 pixels. Touching the complete framebuffer is therefore a
-serious operation, not a harmless default.
+At 30 Hz, 33 MHz is only about 1.1 million CPU cycles per game update. A
+640×480 image contains 307,200 pixels. Touching the complete framebuffer is
+therefore a serious operation, not a harmless default. Presentation may sample
+the two latest game states at 60 Hz, but it must not run game rules twice or
+introduce floating-point work.
 
-The current memory split reserves 512 KiB of main RAM for executable code,
+The current memory split reserves 1 MiB of main RAM for executable code,
 stacks, and untracked target needs. The caller-owned game arena gets the other
-1.5 MiB. One RGB555 framebuffer occupies 600 KiB of video RAM, leaving 424 KiB
+7 MiB. One RGB555 framebuffer occupies 600 KiB of video RAM, leaving 3,496 KiB
 for visible artwork and other video resources.
+
+The PlayStation's 2 MiB main RAM and 1 MiB video RAM remain a later stretch
+target, not the baseline used while reconstructing the complete game. Reaching
+that target will require dedicated asset packaging and tighter animation and
+texture banks. Those concerns should stay behind the resource and rendering
+boundaries instead of complicating ordinary game code now.
 
 ## Code and boundaries
 
 - Game code is straightforward C99. Do not add C++.
+- Write for the next person reading the code, including someone early in their
+  career. Prefer explicit names, short functions, ordinary control flow, and a
+  visible data path over clever macros, hidden mutation, generic frameworks,
+  or compressed tricks. A junior developer should be able to follow a feature
+  from decoded data, through game state, to presentation without first
+  learning a private architecture vocabulary.
+- Keep abstractions earned and small. Introduce a type or layer when it owns a
+  real lifetime, rule, or boundary; do not introduce one only to avoid a direct
+  function call. When retail behavior is surprising, add a short comment that
+  explains the recovered reason rather than narrating obvious C syntax.
 - Do not recreate the old DLL folder structure or one static library per DLL.
   Reconstructed DLLs and `SF_EXE` are behavioral references, not the new
   architecture.
 - Keep files concerned and reasonably small, but do not invent layers merely
   to avoid a direct function call.
+- When a source file approaches roughly 300 lines, stop before extending it
+  and check whether a real responsibility can move to its own concerned file.
+  Split by ownership, such as player presentation versus screen composition,
+  rather than creating arbitrary `part1` and `part2` files.
 - `core/` cannot depend on game, rendering, or runtime code.
 - `game/` owns rules and state. It cannot depend on rendering or runtime code.
 - `render/` may read game state, but cannot depend on runtime integration.
+- `screens/` composes complete screens from game state, assets, and renderer
+  operations. Title, loading, load/save, and gameplay screens belong there.
+- `render/` contains only the small render API and its reusable primitives;
+  it must not accumulate game screens.
+- `ui/` owns every HUD, panel, button, tooltip, conversation bubble, overlay,
+  and other game-interface component. It may turn game state into draw calls
+  and input into UI intent, but it does not own gameplay rules.
+- `screens/` owns complete screen lifetimes, transitions, and high-level
+  composition. A screen may arrange world presentation and components from
+  `ui/`; it must not grow its own private HUD or conversation implementation.
+- `render/` must never contain UI-specific layout, text, input handling, HUD
+  state, menu state, or conversation behavior. It provides reusable drawing
+  operations only. This rule applies even when putting UI code beside a
+  renderer would save a small function call.
 - TWL and TAL belong at the outer runtime boundary only.
 - Platform SDK headers and operating-system calls stay out of `shadowflare/`.
   Future target adapters belong outside the game folder.
@@ -69,6 +106,9 @@ headers, legacy libraries, and heap allocation.
 - A loading transition must fit its peak budget, not only its final state.
 - Assets are loaded for their current screen, map, or owner and released at a
   clear lifetime boundary.
+- Replaceable video artwork starts after the fixed framebuffer mark. A reload
+  may rewind that tail only when no live presentation still references it;
+  target backends do not own or reimplement this policy.
 - Main-RAM and video-RAM totals need tests whenever a new asset class lands.
 - Do not trade large lookup tables or caches for small CPU wins without
   measuring the memory cost.
@@ -77,9 +117,6 @@ headers, legacy libraries, and heap allocation.
 
 - Keep game renderers independent from a CPU framebuffer. They use a small
   renderer API whose implementation is selected when building the target.
-- The current geometric title bring-up screen predates that renderer seam. It
-  is temporary scaffolding and must move onto the renderer API before retail
-  title rendering is added; do not expand the direct framebuffer path.
 - The initial renderer operations are clear, rectangle fill, opaque sprite,
   masked sprite, translucent sprite, and dirty-region restoration. Add another
   operation only when recovered game behavior needs it.
@@ -87,8 +124,10 @@ headers, legacy libraries, and heap allocation.
   A future PS1 adapter can submit native GPU sprites and primitives instead.
 - Backend choice is compile-time. Do not put virtual dispatch, callbacks, or
   target checks in pixel and sprite hot paths.
-- Runtime images stay packed. Do not convert formats, scale artwork, decode
-  files, or allocate memory during an ordinary rendered frame.
+- Runtime images stay packed. Do not convert formats, scale artwork, or
+  allocate memory during an ordinary rendered frame. A bounded animation may
+  decode its current packed frame into fixed scratch memory when retaining all
+  frames would break the RAM limit; document and measure that work.
 - Cull invisible objects before drawing them.
 - Dirty rectangles are useful for mostly static screens such as the title and
   inventory. Do not force them onto a scrolling world when most of the view is
@@ -106,7 +145,7 @@ headers, legacy libraries, and heap allocation.
   and older research can point us in the right direction, but they do not
   overrule retail behavior.
 - Decode or prepare expensive data while loading, not during gameplay.
-- Prefer integer and fixed-point math in recurring game and render work.
+- Game, render, screen, and runtime code uses integer or fixed-point math only.
 - File access, logging, decompression, and save work do not belong in a frame
   hot path.
 - Optimize measured work, but reject obviously unbounded algorithms before a
@@ -118,7 +157,7 @@ Every completed slice should answer four questions:
 
 1. What is its steady and peak main-RAM cost?
 2. What is its steady and peak video-RAM cost?
-3. What work does it add to a normal 60 Hz update and rendered frame?
+3. What work does it add to a normal 30 Hz update and rendered frame?
 4. Does it preserve the layer and platform boundaries above?
 
 If we cannot answer those yet, the slice is not finished.

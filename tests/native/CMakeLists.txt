@@ -39,6 +39,9 @@ if(TARGET shadowflare_core)
   add_executable(shadowflare_core_test shadowflare_core_test.c)
   target_link_libraries(shadowflare_core_test PRIVATE ShadowFlare::Core)
   target_compile_features(shadowflare_core_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_core_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
   set_target_properties(
     shadowflare_core_test
     PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
@@ -49,6 +52,178 @@ if(TARGET shadowflare_core)
       shadowflare_core_test PRIVATE -Wall -Wextra -Wpedantic)
   endif()
   add_test(NAME shadowflare_core COMMAND shadowflare_core_test)
+
+  add_executable(
+    shadowflare_enemy_controller_test
+    shadowflare_enemy_controller_test.c)
+  target_link_libraries(
+    shadowflare_enemy_controller_test PRIVATE ShadowFlare::Core)
+  target_compile_features(
+    shadowflare_enemy_controller_test PRIVATE c_std_99)
+  set_target_properties(
+    shadowflare_enemy_controller_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_enemy_controller_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_enemy_controller_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_enemy_controller
+    COMMAND shadowflare_enemy_controller_test)
+
+  add_executable(
+    shadowflare_gameplay_assets_test
+    shadowflare_gameplay_assets_test.c)
+  target_link_libraries(
+    shadowflare_gameplay_assets_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_gameplay_assets_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_gameplay_assets_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_gameplay_assets_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_gameplay_assets_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_gameplay_assets_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_gameplay_assets
+    COMMAND shadowflare_gameplay_assets_test)
+
+  add_executable(
+    shadowflare_scenario_travel_test
+    shadowflare_scenario_travel_test.c
+    "${PROJECT_SOURCE_DIR}/shadowflare/runtime/gameplay_runtime.c"
+    "${PROJECT_SOURCE_DIR}/shadowflare/runtime/screen_runtime.c")
+  target_link_libraries(
+    shadowflare_scenario_travel_test PRIVATE ShadowFlare::Core)
+  target_compile_features(
+    shadowflare_scenario_travel_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_scenario_travel_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_scenario_travel_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_scenario_travel_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_scenario_travel_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_scenario_travel
+    COMMAND shadowflare_scenario_travel_test)
+
+  add_executable(shadowflare_inventory_test shadowflare_inventory_test.c)
+  target_link_libraries(
+    shadowflare_inventory_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_inventory_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_inventory_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_inventory_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_inventory_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_inventory_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_inventory COMMAND shadowflare_inventory_test)
+
+  add_executable(shadowflare_equipment_test shadowflare_equipment_test.c)
+  target_link_libraries(
+    shadowflare_equipment_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_equipment_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_equipment_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_equipment_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_equipment_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_equipment_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_equipment COMMAND shadowflare_equipment_test)
+
+  add_executable(shadowflare_belt_test shadowflare_belt_test.c)
+  target_link_libraries(shadowflare_belt_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_belt_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_belt_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_belt_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_belt_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_belt_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_belt COMMAND shadowflare_belt_test)
+
+  add_executable(
+    shadowflare_save_game_test shadowflare_save_game_test.c)
+  target_link_libraries(
+    shadowflare_save_game_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_save_game_test PRIVATE c_std_99)
+  set_target_properties(
+    shadowflare_save_game_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_save_game_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_save_game_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_save_game COMMAND shadowflare_save_game_test)
+
+  add_executable(shadowflare_magic_test shadowflare_magic_test.c)
+  target_link_libraries(shadowflare_magic_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_magic_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_magic_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_magic_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_magic_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_magic_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_magic COMMAND shadowflare_magic_test)
+
+  add_executable(shadowflare_companion_test shadowflare_companion_test.c)
+  target_link_libraries(
+    shadowflare_companion_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_companion_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_companion_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_companion_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_companion_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_companion_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_companion COMMAND shadowflare_companion_test)
+
   add_test(
     NAME shadowflare_c99_boundaries
     COMMAND
@@ -88,6 +263,26 @@ add_test(
 )
 
 if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
+  if(TARGET shadowflare_profiler)
+    add_executable(
+      shadowflare_profiler_test
+      shadowflare_profiler_test.c
+    )
+    target_link_libraries(
+      shadowflare_profiler_test PRIVATE ShadowFlare::Profiler)
+    target_compile_features(shadowflare_profiler_test PRIVATE c_std_99)
+    set_target_properties(
+      shadowflare_profiler_test
+      PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+    if(MSVC)
+      target_compile_options(shadowflare_profiler_test PRIVATE /W4)
+    else()
+      target_compile_options(
+        shadowflare_profiler_test PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME shadowflare_profiler COMMAND shadowflare_profiler_test)
+  endif()
+
   add_executable(frame_profiler_test frame_profiler_test.cpp)
   target_link_libraries(
     frame_profiler_test PRIVATE OpenShadowFlare::DebugTools)

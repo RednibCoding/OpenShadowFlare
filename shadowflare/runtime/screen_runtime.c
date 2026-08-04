@@ -1,0 +1,252 @@
+/*
+ * Copyright (C) 2026 Michael Binder and contributors
+ *
+ * This file is part of OpenShadowFlare.
+ *
+ * OpenShadowFlare is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenShadowFlare is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "runtime/screen_runtime.h"
+
+#include "data/save_game.h"
+#include "runtime/gameplay_runtime.h"
+#include "ui/conversation_input.h"
+#include "ui/gameplay_panels_input.h"
+#include "ui/gameplay_companion_hud_input.h"
+#include "ui/gameplay_service_controller.h"
+#include "ui/world_pointer.h"
+
+#include <string.h>
+
+bool sf_screen_runtime_init(
+    SfScreenRuntime *runtime, SfArena *arena, SfArena *video_arena,
+    const char *data_root,
+    void *decode_scratch, size_t decode_scratch_size) {
+  if (!runtime || !arena || !video_arena || !data_root || !decode_scratch ||
+      decode_scratch_size == 0u) return false;
+  memset(runtime, 0, sizeof(*runtime));
+  runtime->arena = arena;
+  runtime->video_arena = video_arena;
+  runtime->data_root = data_root;
+  runtime->decode_scratch = decode_scratch;
+  runtime->decode_scratch_size = decode_scratch_size;
+  runtime->arena_mark = sf_arena_mark(arena);
+  runtime->video_arena_mark = sf_arena_mark(video_arena);
+  return true;
+}
+
+bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
+  bool success = true;
+  SfGameMode mode;
+  if (!runtime || !runtime->arena || !game) return false;
+  mode = game->mode;
+  if (runtime->loaded && runtime->loaded_mode == mode) return true;
+  if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+  if (!sf_arena_rewind(
+        runtime->video_arena, runtime->video_arena_mark)) return false;
+  memset(&runtime->assets, 0, sizeof(runtime->assets));
+  memset(&runtime->screen, 0, sizeof(runtime->screen));
+  if (mode == SF_GAME_MODE_TITLE) {
+    success = sf_title_assets_load(
+      &runtime->assets.title, runtime->data_root, runtime->arena,
+      runtime->decode_scratch, runtime->decode_scratch_size);
+    if (success) success = sf_title_screen_init(
+      &runtime->screen.title,
+      runtime->decode_scratch, runtime->decode_scratch_size,
+      runtime->assets.title.decode_scratch_bytes);
+  } else if (mode == SF_GAME_MODE_CHARACTER_SELECT) {
+    success = sf_character_create_assets_load(
+      &runtime->assets.character_create,
+      runtime->data_root, runtime->arena);
+    if (success)
+      sf_character_create_screen_init(&runtime->screen.character_create);
+  } else if (mode == SF_GAME_MODE_LOAD_GAME) {
+    success = sf_load_game_assets_load(
+      &runtime->assets.load_game,
+      runtime->data_root, runtime->arena,
+      runtime->decode_scratch, runtime->decode_scratch_size);
+    if (success) sf_load_game_screen_init(&runtime->screen.load_game);
+  } else if (mode == SF_GAME_MODE_GAMEPLAY) {
+    SfSavedGame saved_game;
+    const bool loading_save = game->load_game.selected_file_slot >= 0;
+    if (loading_save)
+      success = sf_save_game_load(
+        runtime->data_root,
+        (uint8_t) game->load_game.selected_file_slot, &saved_game);
+    if (success)
+      success = sf_gameplay_runtime_load(
+        &runtime->assets.gameplay, &runtime->screen.gameplay,
+        runtime->arena, runtime->data_root, game,
+        loading_save ? &saved_game : NULL, NULL);
+    if (success && loading_save) game->load_game.selected_file_slot = -1;
+  }
+  runtime->loaded = success;
+  runtime->loaded_mode = mode;
+  runtime->blank_drawn = false;
+  return success;
+}
+
+bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
+  SfLoadGameAssets *assets;
+  if (!runtime || !game || !runtime->loaded) return false;
+  if (runtime->loaded_mode == SF_GAME_MODE_GAMEPLAY &&
+      game->mode == SF_GAME_MODE_GAMEPLAY) {
+    if (game->world.travel_request.pending &&
+        game->world.travel_request.scenario_id != game->world.scenario_id) {
+      const SfScenarioTravelRequest travel = game->world.travel_request;
+      if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+      if (!sf_arena_rewind(
+            runtime->video_arena, runtime->video_arena_mark)) return false;
+      memset(&runtime->assets, 0, sizeof(runtime->assets));
+      memset(&runtime->screen, 0, sizeof(runtime->screen));
+      if (!sf_gameplay_runtime_load(
+            &runtime->assets.gameplay, &runtime->screen.gameplay,
+            runtime->arena, runtime->data_root, game, NULL, &travel)) {
+        runtime->loaded = false;
+        return false;
+      }
+      runtime->blank_drawn = false;
+      return true;
+    }
+    if (!sf_gameplay_runtime_prepare_enemy_attack(
+          &runtime->assets.gameplay, runtime->video_arena,
+          runtime->video_arena_mark, runtime->data_root, &game->world))
+      return false;
+    const SfGameplayServiceRequest request = sf_gameplay_service_take(
+      &game->world.service_request);
+    if (!sf_gameplay_service_apply(
+          &runtime->screen.gameplay.character_panel,
+          &runtime->screen.gameplay.inventory,
+          &runtime->screen.gameplay.transport, request)) return false;
+    if (request.kind != SF_GAMEPLAY_SERVICE_NONE)
+      runtime->screen.gameplay.drawn = false;
+    return true;
+  }
+  if (runtime->loaded_mode != SF_GAME_MODE_LOAD_GAME ||
+      game->mode != SF_GAME_MODE_LOAD_GAME) return true;
+  assets = &runtime->assets.load_game;
+  if (game->load_game.delete_request >= 0) {
+    const uint8_t index = (uint8_t) game->load_game.delete_request;
+    uint8_t file_slots[SF_SAVE_SLOT_COUNT];
+    uint8_t genders[SF_SAVE_SLOT_COUNT];
+    uint8_t slot;
+    game->load_game.delete_request = -1;
+    if (sf_load_game_assets_delete(
+          assets, runtime->data_root, index,
+          runtime->decode_scratch, runtime->decode_scratch_size)) {
+      for (slot = 0u; slot < assets->catalog.count; ++slot)
+        file_slots[slot] = assets->catalog.entries[slot].file_slot;
+      for (slot = 0u; slot < assets->catalog.count; ++slot)
+        genders[slot] = assets->catalog.entries[slot].gender == 1 ? 1u : 0u;
+      sf_game_saved_catalog_changed(
+        game, file_slots, genders, assets->catalog.count);
+    }
+  }
+  if (assets->catalog.count == 0u) return true;
+  return sf_load_game_assets_select_preview(
+    assets, runtime->data_root, game->load_game.selection,
+    runtime->decode_scratch, runtime->decode_scratch_size);
+}
+
+void sf_screen_runtime_resolve_input(
+    SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
+  if (!input) return;
+  input->pointer_over_gameplay_ui = false;
+  input->world_view_offset_x = 0;
+  input->world_pointer_resolved = false;
+  input->pointed_actor_id = -1;
+  input->pointed_enemy_id = -1;
+  input->pointed_scenario_object_id = -1;
+  input->pointed_ground_item_id = -1;
+  input->conversation_choices_resolved = false;
+  input->pointed_conversation_option = -1;
+  input->conversation_option_count = 0u;
+  input->inventory_action = SF_INVENTORY_ACTION_NONE;
+  input->magic_action = SF_MAGIC_ACTION_NONE;
+  input->magic_spell = -1;
+  input->magic_bar_slot = -1;
+  input->interface_sound = 0u;
+  input->inventory_item_index = -1;
+  input->inventory_grid_x = -1;
+  input->inventory_grid_y = -1;
+  input->equipment_slot = -1;
+  input->belt_grid_x = -1;
+  input->belt_grid_y = -1;
+  input->special_item_index = -1;
+  input->special_grid_x = -1;
+  input->special_grid_y = -1;
+  input->transport_destination = -1;
+  input->transport_selected = false;
+  if (!runtime || !runtime->loaded || !game ||
+      runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY ||
+      game->mode != SF_GAME_MODE_GAMEPLAY) return;
+  sf_gameplay_companion_hud_input_resolve(input);
+  if (sf_gameplay_panels_input_resolve_with_transport(
+        &runtime->screen.gameplay.character_panel,
+        &runtime->screen.gameplay.inventory,
+        &runtime->screen.gameplay.transport,
+        &runtime->assets.gameplay.transports,
+        &game->world.actor_script_state.progress,
+        &game->world.player,
+        game->world.actor_script_state.message_active, input))
+    runtime->screen.gameplay.drawn = false;
+  if (game->world.actor_script_state.message_active &&
+      !input->pointer_over_gameplay_ui)
+    sf_conversation_input_resolve(
+      &runtime->assets.gameplay, &game->world, input);
+  else if (!game->world.actor_script_state.message_active) {
+    if (input->pointer_over_gameplay_ui) return;
+    sf_world_pointer_resolve(
+      &runtime->assets.gameplay, &game->world, input);
+  }
+}
+
+const SfTitleAssets *sf_screen_runtime_title_assets(
+    const SfScreenRuntime *runtime) {
+  if (!runtime || !runtime->loaded ||
+      runtime->loaded_mode != SF_GAME_MODE_TITLE) return NULL;
+  return &runtime->assets.title;
+}
+
+const SfGameplayAssets *sf_screen_runtime_gameplay_assets(
+    const SfScreenRuntime *runtime) {
+  if (!runtime || !runtime->loaded ||
+      runtime->loaded_mode != SF_GAME_MODE_GAMEPLAY) return NULL;
+  return &runtime->assets.gameplay;
+}
+
+void sf_screen_runtime_draw(
+    SfScreenRuntime *runtime, SfRenderer *renderer, const SfGame *game,
+    uint16_t interpolation) {
+  if (!runtime || !renderer || !game || !runtime->loaded) return;
+  if (game->mode == SF_GAME_MODE_TITLE) {
+    sf_title_screen_draw(
+      &runtime->screen.title, renderer, &runtime->assets.title, game);
+  } else if (game->mode == SF_GAME_MODE_CHARACTER_SELECT) {
+    sf_character_create_screen_draw(
+      &runtime->screen.character_create, renderer,
+      &runtime->assets.character_create, game);
+  } else if (game->mode == SF_GAME_MODE_LOAD_GAME) {
+    sf_load_game_screen_draw(
+      &runtime->screen.load_game, renderer,
+      &runtime->assets.load_game, game);
+  } else if (game->mode == SF_GAME_MODE_GAMEPLAY) {
+    sf_gameplay_screen_draw(
+      &runtime->screen.gameplay, renderer,
+      &runtime->assets.gameplay, game, interpolation);
+  } else if (!runtime->blank_drawn) {
+    sf_renderer_clear(renderer, 0u);
+    runtime->blank_drawn = true;
+  }
+}

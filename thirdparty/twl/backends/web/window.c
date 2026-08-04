@@ -77,3 +77,8 @@ uint64_t twl_backend_time_microseconds(const Twl *twl) {
   (void) twl;
   return (uint64_t) (emscripten_get_now() * 1000.0);
 }
+
+void twl_backend_sleep_microseconds(Twl *twl, uint64_t duration) {
+  (void) twl;
+  (void) duration;
+}

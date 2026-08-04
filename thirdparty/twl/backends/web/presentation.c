@@ -149,7 +149,7 @@ EM_JS(void, twl_web_release_canvas, (int presenter_handle), {
   presenters[presenter_handle - 1] = null;
 })
 
-TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
+TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   TwlWeb *web = twl ? (TwlWeb *) twl->backend : NULL;
   if (!web || !surface || surface->width != twl->config.width ||
       surface->height != twl->config.height ||
@@ -162,4 +162,10 @@ TwlResult twl_backend_present(Twl *twl, const TwlSurface *surface) {
            (int) surface->stride_bytes, (int) surface->format)
            ? TWL_RESULT_OK
            : TWL_RESULT_BACKEND_FAILURE;
+}
+
+TwlResult twl_backend_display_frame(Twl *twl) {
+  TwlWeb *web = twl ? (TwlWeb *) twl->backend : NULL;
+  return web && web->presenter != 0
+    ? TWL_RESULT_OK : TWL_RESULT_INVALID_ARGUMENT;
 }

@@ -181,6 +181,7 @@ TalResult tal_play(
   if (out_voice) *out_voice = TAL_INVALID_VOICE;
   if (!tal || !pcm || !pcm->samples || pcm->frame_count == 0u ||
       pcm->sample_rate == 0u || (pcm->channels != 1u && pcm->channels != 2u) ||
+      (pcm->format != TAL_SAMPLE_S16 && pcm->format != TAL_SAMPLE_U8) ||
       !out_voice) return TAL_RESULT_INVALID_ARGUMENT;
   if (!options) {
     defaults = tal_play_options_default();
@@ -311,17 +312,38 @@ static int16_t tal_interpolate(
       (int32_t) second * second_weight) / 65536);
 }
 
+static int16_t tal_u8_sample(const uint8_t *samples, size_t index) {
+  return (int16_t) (((int32_t) samples[index] - 128) * 256);
+}
+
 static void tal_voice_samples(
     const TalVoiceSlot *slot, int16_t *left, int16_t *right) {
   uint32_t next_frame = slot->frame + 1u;
-  const int16_t *samples = slot->pcm.samples;
   if (next_frame >= slot->pcm.frame_count)
     next_frame = slot->loop ? 0u : slot->frame;
-  if (slot->pcm.channels == 1u) {
+  if (slot->pcm.format == TAL_SAMPLE_U8 && slot->pcm.channels == 1u) {
+    const uint8_t *samples = (const uint8_t *) slot->pcm.samples;
+    *left = tal_interpolate(
+      tal_u8_sample(samples, slot->frame),
+      tal_u8_sample(samples, next_frame), slot->fraction_q16);
+    *right = *left;
+  } else if (slot->pcm.format == TAL_SAMPLE_U8) {
+    const uint8_t *samples = (const uint8_t *) slot->pcm.samples;
+    *left = tal_interpolate(
+      tal_u8_sample(samples, (size_t) slot->frame * 2u),
+      tal_u8_sample(samples, (size_t) next_frame * 2u),
+      slot->fraction_q16);
+    *right = tal_interpolate(
+      tal_u8_sample(samples, (size_t) slot->frame * 2u + 1u),
+      tal_u8_sample(samples, (size_t) next_frame * 2u + 1u),
+      slot->fraction_q16);
+  } else if (slot->pcm.channels == 1u) {
+    const int16_t *samples = (const int16_t *) slot->pcm.samples;
     *left = tal_interpolate(
       samples[slot->frame], samples[next_frame], slot->fraction_q16);
     *right = *left;
   } else {
+    const int16_t *samples = (const int16_t *) slot->pcm.samples;
     *left = tal_interpolate(
       samples[(size_t) slot->frame * 2u],
       samples[(size_t) next_frame * 2u], slot->fraction_q16);

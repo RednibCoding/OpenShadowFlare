@@ -17,12 +17,12 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_RENDER_TITLE_H
-#define SHADOWFLARE_RENDER_TITLE_H
+#ifndef SHADOWFLARE_GAME_TITLE_H
+#define SHADOWFLARE_GAME_TITLE_H
 
 #include "game/game.h"
-#include "render/framebuffer.h"
 
-void sf_title_render(const SfGame *game, SfFramebuffer *framebuffer);
+void sf_title_state_init(SfGame *game);
+void sf_title_state_update(SfGame *game, const SfGameInput *input);
 
 #endif
