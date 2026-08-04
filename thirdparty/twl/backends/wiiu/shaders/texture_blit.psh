@@ -1,0 +1,18 @@
+; Wii U texture-blit pixel shader (Latte assembly for latte-assembler).
+;
+; Samples the uploaded framebuffer texture (t0) with sampler s0 using the
+; interpolated texture coordinate (semantic 0, arriving in R0) and writes it to
+; the render target. The framebuffer is uploaded as RGBA8 by the backend, so no
+; channel swizzling is needed here.
+;
+; Compiled to texture_blit.gsh with latte-assembler; see shaders/README.md.
+
+; $MODE = "UniformRegister"
+; $NUM_SPI_PS_INPUT_CNTL = 1
+; $SPI_PS_INPUT_CNTL[0].SEMANTIC = 0
+; $SPI_PS_INPUT_CNTL[0].DEFAULT_VAL = 1
+
+00 TEX: ADDR(32) CNT(1) VALID_PIX
+   0 SAMPLE R0, R0.xy0x, t0, s0
+01 EXP_DONE: PIX0, R0.xyzw
+END_OF_PROGRAM

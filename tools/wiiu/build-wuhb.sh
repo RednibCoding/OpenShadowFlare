@@ -24,7 +24,8 @@ export DEVKITPRO
 "$WIIU_CMAKE" -S "$ROOT_DIR" -B "$BUILD_DIR" \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_TESTING=OFF
+    -DBUILD_TESTING=OFF \
+    -DOPENSHADOWFLARE_BUILD_EXE=OFF
 cmake --build "$BUILD_DIR" --parallel
 
 WUHB=$(find "$BUILD_DIR" -type f -name '*.wuhb' ! -path "$OUTPUT_WUHB" -print -quit)

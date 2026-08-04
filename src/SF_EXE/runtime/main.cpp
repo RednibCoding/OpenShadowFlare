@@ -55,18 +55,6 @@ std::filesystem::path findDataRoot() {
             return std::filesystem::path{};
         };
 
-#ifdef OSF_PLATFORM_WIIU
-    const std::filesystem::path wiiuSdDataPaths[] = {
-        "/vol/external01/wiiu/OpenShadowFlare/ShadowFlare",
-        "/vol/external01/wiiu/apps/OpenShadowFlare/ShadowFlare",
-    };
-    for (const auto& wiiuSdData : wiiuSdDataPaths) {
-        if (isDataRoot(wiiuSdData)) {
-            return wiiuSdData;
-        }
-    }
-#endif
-
     std::error_code error;
     const std::filesystem::path fromWorkingDirectory =
         searchParents(std::filesystem::current_path(error));

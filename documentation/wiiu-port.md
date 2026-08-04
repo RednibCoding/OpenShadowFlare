@@ -1,33 +1,36 @@
 # Wii U port
 
-The Wii U build produces an Aroma-compatible Homebrew Bundle (`.wuhb`). It
-does not include retail game data.
+The Wii U build compiles the small C99 ShadowFlare runtime and packages it as an
+Aroma-compatible Homebrew Bundle (`.wuhb`). It does not include retail game data.
+
+## Install the toolchain
+
+Install devkitPro's Wii U toolchain and Ninja:
+
+```bash
+sudo dkp-pacman -S --needed wiiu-dev ninja
+```
+
+Set `DEVKITPRO` if devkitPro is not installed at `/opt/devkitpro`.
 
 ## Build
 
-Install devkitPro's Wii U toolchain, SDL2 port, and Ninja:
-
-```bash
-sudo dkp-pacman -S --needed wiiu-dev wiiu-sdl2 ninja
-```
-
-From the repository root, build the bundle:
+From the repository root:
 
 ```bash
 sh tools/wiiu/build-wuhb.sh
 ```
 
-Output:
+The bundle is written to:
 
 ```text
 build/wiiu/release/OpenShadowFlare.wuhb
 ```
 
-```bash
-rm -rf build/wiiu/release
-```
+## Move the game files
 
-## Test in Emulator
+The retail data is loaded from the SD card and is never bundled. Copy your
+ShadowFlare `System` folder and `SFlare.Cfg` to:
 
 ```text
 sdcard/wiiu/OpenShadowFlare/ShadowFlare/
@@ -35,22 +38,3 @@ sdcard/wiiu/OpenShadowFlare/ShadowFlare/
   System/
   ...
 ```
-
-Load `build/wiiu/release/OpenShadowFlare.wuhb`. Configure Controller as a **Wii U GamePad**;
-a Pro Controller profile does not provide the VPAD input used by this port.
-
-## Controls
-
-| GamePad control | Game action |
-| --- | --- |
-| Touchscreen | Pointer and primary click |
-| D-pad | Menu navigation and movement |
-| A / Plus | Confirm |
-| B / Minus | Back / cancel |
-| X | Inventory |
-| Y | Map |
-| L | Mission list |
-| R | Toggle walk/run |
-| ZL | Enter `Player` in the name field |
-
-The current SDL2 presenter mirrors the game to the TV and GamePad.
