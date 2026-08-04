@@ -21,7 +21,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags '-std=c++17'
-                arguments '-DBUILD_TESTING=OFF'
+                arguments '-DBUILD_TESTING=OFF', '-DOPENSHADOWFLARE_BUILD_EXE=OFF'
             }
         }
     }
