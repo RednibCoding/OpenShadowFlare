@@ -6,7 +6,7 @@ project(
   LANGUAGES C CXX
 )
 
-if(NINTENDO_SWITCH)
+if(NINTENDO_SWITCH OR WIIU)
   set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 endif()
 
@@ -39,12 +39,14 @@ set_property(
   CACHE OPENSHADOWFLARE_PRESENTATION_BACKEND
   PROPERTY STRINGS lgl nxfb
 )
-
-add_subdirectory(thirdparty/lwl)
-add_subdirectory(thirdparty/lal)
+if(OPENSHADOWFLARE_BUILD_EXE OR BUILD_TESTING)
+  add_subdirectory(thirdparty/lwl)
+  add_subdirectory(thirdparty/lal)
+endif()
 add_subdirectory(thirdparty/twl)
 add_subdirectory(thirdparty/tal)
-if(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl" OR BUILD_TESTING)
+if((OPENSHADOWFLARE_BUILD_EXE AND
+    OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl") OR BUILD_TESTING)
   add_subdirectory(thirdparty/lgl)
 endif()
 

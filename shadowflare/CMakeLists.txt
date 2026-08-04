@@ -234,3 +234,27 @@ if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
       Twl::Twl
   )
 endif()
+if(WIIU)
+  target_compile_definitions(
+    shadowflare_core PRIVATE
+    SF_RETAIL_ROOT_FALLBACK="/vol/external01/wiiu/OpenShadowFlare/ShadowFlare")
+
+  if(NOT COMMAND wut_create_rpx)
+    message(FATAL_ERROR
+      "wut_create_rpx is unavailable. Configure the Wii U build with "
+      "$ENV{DEVKITPRO}/portlibs/wiiu/bin/powerpc-eabi-cmake.")
+  endif()
+  wut_create_rpx(osf)
+  if(COMMAND wut_create_wuhb)
+    wut_create_wuhb(
+      osf
+      NAME "OpenShadowFlare"
+      AUTHOR "OpenShadowFlare contributors"
+      ICON "${PROJECT_SOURCE_DIR}/assets/wiiu/icon.png"
+      CONTENT "${PROJECT_SOURCE_DIR}/thirdparty/twl/backends/wiiu/content"
+    )
+  else()
+    message(WARNING
+      "wut_create_wuhb is unavailable: only osf.rpx will be produced.")
+  endif()
+endif()
