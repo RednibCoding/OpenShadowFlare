@@ -34,7 +34,8 @@
 
 typedef struct {
   WHBGfxShaderGroup shader;
-  GX2RBuffer position_buffer;
+  GX2RBuffer tv_position_buffer;
+  GX2RBuffer drc_position_buffer;
   GX2RBuffer texcoord_buffer;
   GX2Texture texture;
   GX2Sampler sampler;

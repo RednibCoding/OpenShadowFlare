@@ -60,7 +60,7 @@ static void twl_wiiu_upload(TwlWiiU *wiiu, const TwlSurface *surface) {
   GX2RUnlockSurfaceEx(&wiiu->texture.surface, 0, 0);
 }
 
-static void twl_wiiu_draw(TwlWiiU *wiiu) {
+static void twl_wiiu_draw(TwlWiiU *wiiu, GX2RBuffer *positions) {
   GX2SetCullOnlyControl(GX2_FRONT_FACE_CCW, FALSE, FALSE);
   GX2SetDepthOnlyControl(FALSE, FALSE, GX2_COMPARE_FUNC_ALWAYS);
   GX2SetFetchShader(&wiiu->shader.fetchShader);
@@ -68,8 +68,7 @@ static void twl_wiiu_draw(TwlWiiU *wiiu) {
   GX2SetPixelShader(wiiu->shader.pixelShader);
   GX2SetPixelTexture(&wiiu->texture, 0);
   GX2SetPixelSampler(&wiiu->sampler, 0);
-  GX2RSetAttributeBuffer(
-    &wiiu->position_buffer, 0, wiiu->position_buffer.elemSize, 0);
+  GX2RSetAttributeBuffer(positions, 0, positions->elemSize, 0);
   GX2RSetAttributeBuffer(
     &wiiu->texcoord_buffer, 1, wiiu->texcoord_buffer.elemSize, 0);
   GX2DrawEx(GX2_PRIMITIVE_MODE_TRIANGLE_STRIP, 4, 0, 1);
@@ -101,12 +100,12 @@ TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
 
   WHBGfxBeginRenderTV();
   WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  twl_wiiu_draw(wiiu);
+  twl_wiiu_draw(wiiu, &wiiu->tv_position_buffer);
   WHBGfxFinishRenderTV();
 
   WHBGfxBeginRenderDRC();
   WHBGfxClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  twl_wiiu_draw(wiiu);
+  twl_wiiu_draw(wiiu, &wiiu->drc_position_buffer);
   WHBGfxFinishRenderDRC();
 
   return TWL_RESULT_OK;

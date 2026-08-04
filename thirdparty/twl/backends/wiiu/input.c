@@ -98,12 +98,26 @@ static void twl_wiiu_read_touch(
   VPADGetTPCalibratedPointEx(
     VPAD_CHAN_0, VPAD_TP_854X480, &touch, &status->tpNormal);
   if (touch.touched) {
-    const int32_t x =
-      twl_wiiu_clamp((int32_t) touch.x, 0, TWL_WIIU_TP_WIDTH - 1) *
-      (int32_t) wiiu->frame_width / TWL_WIIU_TP_WIDTH;
-    const int32_t y =
-      twl_wiiu_clamp((int32_t) touch.y, 0, TWL_WIIU_TP_HEIGHT - 1) *
-      (int32_t) wiiu->frame_height / TWL_WIIU_TP_HEIGHT;
+    const int32_t frame_w = (int32_t) wiiu->frame_width;
+    const int32_t frame_h = (int32_t) wiiu->frame_height;
+    int32_t content_w = TWL_WIIU_TP_WIDTH;
+    int32_t content_h = TWL_WIIU_TP_HEIGHT;
+    int32_t origin_x = 0;
+    int32_t origin_y = 0;
+    int32_t x;
+    int32_t y;
+    if ((int64_t) TWL_WIIU_TP_WIDTH * frame_h >=
+        (int64_t) TWL_WIIU_TP_HEIGHT * frame_w) {
+      content_w = TWL_WIIU_TP_HEIGHT * frame_w / frame_h;
+      origin_x = (TWL_WIIU_TP_WIDTH - content_w) / 2;
+    } else {
+      content_h = TWL_WIIU_TP_WIDTH * frame_h / frame_w;
+      origin_y = (TWL_WIIU_TP_HEIGHT - content_h) / 2;
+    }
+    x = twl_wiiu_clamp(
+      ((int32_t) touch.x - origin_x) * frame_w / content_w, 0, frame_w - 1);
+    y = twl_wiiu_clamp(
+      ((int32_t) touch.y - origin_y) * frame_h / content_h, 0, frame_h - 1);
     if (!wiiu->touching || x != wiiu->pointer_x || y != wiiu->pointer_y) {
       twl_wiiu_push_pointer(twl, TWL_EVENT_POINTER_MOVE, x, y);
     }

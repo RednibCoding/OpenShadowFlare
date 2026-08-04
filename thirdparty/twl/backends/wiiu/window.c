@@ -34,19 +34,39 @@
 #include <stdint.h>
 #include <string.h>
 
-static const float twl_wiiu_positions[] = {
-  -1.0f, -1.0f, 0.0f, 1.0f,
-   1.0f, -1.0f, 0.0f, 1.0f,
-  -1.0f,  1.0f, 0.0f, 1.0f,
-   1.0f,  1.0f, 0.0f, 1.0f,
-};
-
 static const float twl_wiiu_texcoords[] = {
   0.0f, 1.0f,
   1.0f, 1.0f,
   0.0f, 0.0f,
   1.0f, 0.0f,
 };
+
+static void twl_wiiu_letterbox_positions(
+    float *positions, uint32_t content_w, uint32_t content_h,
+    uint32_t screen_w, uint32_t screen_h) {
+  float scale_x = 1.0f;
+  float scale_y = 1.0f;
+  size_t vertex;
+  if (content_w > 0u && content_h > 0u && screen_w > 0u && screen_h > 0u) {
+    const uint64_t content = (uint64_t) content_w * screen_h;
+    const uint64_t screen = (uint64_t) screen_w * content_h;
+    if (screen > content) {
+      scale_x = (float) content / (float) screen;
+    } else if (content > screen) {
+      scale_y = (float) screen / (float) content;
+    }
+  }
+  {
+    const float xs[4] = {-scale_x, scale_x, -scale_x, scale_x};
+    const float ys[4] = {-scale_y, -scale_y, scale_y, scale_y};
+    for (vertex = 0u; vertex < 4u; ++vertex) {
+      positions[vertex * 4u + 0u] = xs[vertex];
+      positions[vertex * 4u + 1u] = ys[vertex];
+      positions[vertex * 4u + 2u] = 0.0f;
+      positions[vertex * 4u + 3u] = 1.0f;
+    }
+  }
+}
 
 static bool twl_wiiu_create_buffer(
     GX2RBuffer *buffer, uint32_t elem_size, uint32_t elem_count,
@@ -108,8 +128,11 @@ static void twl_wiiu_teardown(TwlWiiU *wiiu) {
     GX2RDestroySurfaceEx(&wiiu->texture.surface, 0);
     wiiu->texture_ready = false;
   }
-  if (wiiu->position_buffer.flags) {
-    GX2RDestroyBufferEx(&wiiu->position_buffer, 0);
+  if (wiiu->tv_position_buffer.flags) {
+    GX2RDestroyBufferEx(&wiiu->tv_position_buffer, 0);
+  }
+  if (wiiu->drc_position_buffer.flags) {
+    GX2RDestroyBufferEx(&wiiu->drc_position_buffer, 0);
   }
   if (wiiu->texcoord_buffer.flags) {
     GX2RDestroyBufferEx(&wiiu->texcoord_buffer, 0);
@@ -187,13 +210,29 @@ TwlResult twl_backend_init(
   WHBFreeWholeFile(shader_file);
   wiiu->shader_ready = true;
 
-  if (!twl_wiiu_create_buffer(
-        &wiiu->position_buffer, 4u * sizeof(float), 4u, twl_wiiu_positions) ||
-      !twl_wiiu_create_buffer(
-        &wiiu->texcoord_buffer, 2u * sizeof(float), 4u, twl_wiiu_texcoords)) {
-    WHBLogPrint("[twl-wiiu] ERROR: attribute buffer creation failed");
-    twl_wiiu_teardown(wiiu);
-    return TWL_RESULT_INSUFFICIENT_MEMORY;
+  {
+    const GX2ColorBuffer *tv = WHBGfxGetTVColourBuffer();
+    const GX2ColorBuffer *drc = WHBGfxGetDRCColourBuffer();
+    float tv_positions[16];
+    float drc_positions[16];
+    twl_wiiu_letterbox_positions(
+      tv_positions, wiiu->frame_width, wiiu->frame_height,
+      tv ? tv->surface.width : wiiu->frame_width,
+      tv ? tv->surface.height : wiiu->frame_height);
+    twl_wiiu_letterbox_positions(
+      drc_positions, wiiu->frame_width, wiiu->frame_height,
+      drc ? drc->surface.width : wiiu->frame_width,
+      drc ? drc->surface.height : wiiu->frame_height);
+    if (!twl_wiiu_create_buffer(
+          &wiiu->tv_position_buffer, 4u * sizeof(float), 4u, tv_positions) ||
+        !twl_wiiu_create_buffer(
+          &wiiu->drc_position_buffer, 4u * sizeof(float), 4u, drc_positions) ||
+        !twl_wiiu_create_buffer(
+          &wiiu->texcoord_buffer, 2u * sizeof(float), 4u, twl_wiiu_texcoords)) {
+      WHBLogPrint("[twl-wiiu] ERROR: attribute buffer creation failed");
+      twl_wiiu_teardown(wiiu);
+      return TWL_RESULT_INSUFFICIENT_MEMORY;
+    }
   }
 
   if (!twl_wiiu_create_texture(
