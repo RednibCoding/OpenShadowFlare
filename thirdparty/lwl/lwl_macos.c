@@ -909,12 +909,6 @@ bool lwl_exe_path(char *buf, int size) {
   return _NSGetExecutablePath(buf, &n) == 0;
 }
 
-bool lwl_data_path(char *buf, int size) {
-  (void) buf;
-  (void) size;
-  return false;
-}
-
 LwlGlConfig lwl_gl_config_default(void) {
   LwlGlConfig config;
   config.api = LWL_GL_API_DESKTOP;

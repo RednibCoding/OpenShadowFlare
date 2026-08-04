@@ -56,11 +56,6 @@ std::filesystem::path findDataRoot() {
         };
 
     std::error_code error;
-    char dataPath[4096]{};
-    if (lwl_data_path(dataPath, static_cast<int>(sizeof(dataPath)))) {
-        return std::filesystem::path(dataPath);
-    }
-
     const std::filesystem::path fromWorkingDirectory =
         searchParents(std::filesystem::current_path(error));
     if (!fromWorkingDirectory.empty()) {
@@ -94,7 +89,7 @@ std::filesystem::path findDataRoot() {
 
 }  // namespace
 
-int osf::runtime::runMain(int argc, char** argv) {
+int main(int argc, char** argv) {
     const std::filesystem::path dataRoot = findDataRoot();
     osf::GameConfig gameConfig;
 
@@ -107,8 +102,4 @@ int osf::runtime::runMain(int argc, char** argv) {
 
     return osf::runtime::runGame(
         dataRoot, gameConfig, isSmokeTest(argc, argv));
-}
-
-int main(int argc, char** argv) {
-    return osf::runtime::runMain(argc, argv);
 }

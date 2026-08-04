@@ -94,22 +94,66 @@ static int32_t twl_android_on_motion(
   return 1;
 }
 
+static void twl_android_push_text(Twl *twl, uint32_t codepoint) {
+  TwlEvent event;
+  twl_internal_zero(&event, sizeof(event));
+  event.type = TWL_EVENT_TEXT;
+  event.codepoint = codepoint;
+  twl_android_push(twl, &event);
+}
+
+static uint32_t twl_android_char_for(int32_t code, int32_t meta) {
+  const int upper =
+    ((meta & AMETA_SHIFT_ON) != 0) ^ ((meta & AMETA_CAPS_LOCK_ON) != 0);
+  if (code >= AKEYCODE_A && code <= AKEYCODE_Z) {
+    return (uint32_t) ((upper ? 'A' : 'a') + (code - AKEYCODE_A));
+  }
+  if (code >= AKEYCODE_0 && code <= AKEYCODE_9) {
+    return (uint32_t) ('0' + (code - AKEYCODE_0));
+  }
+  if (code == AKEYCODE_SPACE) {
+    return (uint32_t) ' ';
+  }
+  return 0u;
+}
+
+static TwlKey twl_android_key_for(int32_t code) {
+  if (code >= AKEYCODE_A && code <= AKEYCODE_Z) {
+    return (TwlKey) (TWL_KEY_A + (code - AKEYCODE_A));
+  }
+  if (code >= AKEYCODE_0 && code <= AKEYCODE_9) {
+    return (TwlKey) (TWL_KEY_0 + (code - AKEYCODE_0));
+  }
+  switch (code) {
+    case AKEYCODE_BACK: return TWL_KEY_ESCAPE;
+    case AKEYCODE_ENTER:
+    case AKEYCODE_DPAD_CENTER: return TWL_KEY_RETURN;
+    case AKEYCODE_DPAD_UP: return TWL_KEY_UP;
+    case AKEYCODE_DPAD_DOWN: return TWL_KEY_DOWN;
+    case AKEYCODE_DPAD_LEFT: return TWL_KEY_LEFT;
+    case AKEYCODE_DPAD_RIGHT: return TWL_KEY_RIGHT;
+    case AKEYCODE_DEL: return TWL_KEY_BACKSPACE;
+    case AKEYCODE_FORWARD_DEL: return TWL_KEY_DELETE;
+    case AKEYCODE_SPACE: return TWL_KEY_SPACE;
+    case AKEYCODE_TAB: return TWL_KEY_TAB;
+    default: return TWL_KEY_UNKNOWN;
+  }
+}
+
 static int32_t twl_android_on_key(Twl *twl, AInputEvent *event) {
   const int32_t action = AKeyEvent_getAction(event);
   const int32_t code = AKeyEvent_getKeyCode(event);
-  TwlKey key = TWL_KEY_UNKNOWN;
-  switch (code) {
-    case AKEYCODE_BACK: key = TWL_KEY_ESCAPE; break;
-    case AKEYCODE_ENTER:
-    case AKEYCODE_DPAD_CENTER: key = TWL_KEY_RETURN; break;
-    case AKEYCODE_DPAD_UP: key = TWL_KEY_UP; break;
-    case AKEYCODE_DPAD_DOWN: key = TWL_KEY_DOWN; break;
-    case AKEYCODE_DPAD_LEFT: key = TWL_KEY_LEFT; break;
-    case AKEYCODE_DPAD_RIGHT: key = TWL_KEY_RIGHT; break;
-    default: return 0;
+  const TwlKey key = twl_android_key_for(code);
+  if (key == TWL_KEY_UNKNOWN) {
+    return 0;
   }
   if (action == AKEY_EVENT_ACTION_DOWN) {
+    const uint32_t codepoint =
+      twl_android_char_for(code, AKeyEvent_getMetaState(event));
     twl_android_push_key(twl, TWL_EVENT_KEY_DOWN, key);
+    if (codepoint != 0u) {
+      twl_android_push_text(twl, codepoint);
+    }
   } else if (action == AKEY_EVENT_ACTION_UP) {
     twl_android_push_key(twl, TWL_EVENT_KEY_UP, key);
   }

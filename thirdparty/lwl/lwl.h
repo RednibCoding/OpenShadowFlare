@@ -134,8 +134,6 @@ void lwl_sleep_until_seconds(double time_seconds);
 const char* lwl_platform_name(void);
 double lwl_display_scale(void);
 bool lwl_exe_path(char *buf, int size);
-// Provides a platform-specific directory for user-managed game data, if any.
-bool lwl_data_path(char *buf, int size);
 
 /*
  * OpenGL contexts are optional. Software-framebuffer users do not need to
