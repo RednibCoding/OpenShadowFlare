@@ -69,6 +69,7 @@ add_library(
   game/collision.c
   game/game.c
   game/ground_item.c
+  game/inventory.c
   game/load_game.c
   game/movement.c
   game/player.c
@@ -99,6 +100,7 @@ add_library(
   ui/conversation_bubble.c
   ui/conversation_input.c
   ui/conversation_layout.c
+  ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c
 )

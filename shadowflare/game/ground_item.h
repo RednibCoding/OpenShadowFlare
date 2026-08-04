@@ -56,8 +56,8 @@ typedef struct SfGroundItemSet {
   int32_t next_id;
   uint8_t definition_count;
   uint8_t count;
-  uint8_t ordinary_landing_events;
-  uint8_t gold_landing_events;
+  uint16_t sound_samples[8];
+  uint8_t sound_count;
 } SfGroundItemSet;
 
 void sf_ground_items_init(SfGroundItemSet *items);
@@ -69,5 +69,11 @@ bool sf_ground_items_create(
   SfWorldPoint position, int32_t minimum_quantity,
   int32_t maximum_quantity);
 void sf_ground_items_update(SfGroundItemSet *items);
+const SfItemGroundDefinition *sf_ground_items_definition(
+  const SfGroundItemSet *items, uint8_t category, int32_t definition_id);
+SfGroundItem *sf_ground_items_find(SfGroundItemSet *items, int32_t id);
+void sf_ground_item_restart_drop(SfGroundItem *item);
+bool sf_ground_items_remove(SfGroundItemSet *items, int32_t id);
+void sf_ground_items_emit_sound(SfGroundItemSet *items, uint16_t sample);
 
 #endif

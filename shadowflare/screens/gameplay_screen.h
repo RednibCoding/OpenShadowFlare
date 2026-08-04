@@ -42,6 +42,7 @@ typedef struct SfGameplayScreen {
   int32_t rendered_camera_x;
   int32_t rendered_camera_y;
   int32_t rendered_hovered_actor_id;
+  int32_t rendered_hovered_ground_item_id;
   int32_t rendered_message_id;
   int32_t rendered_selected_option;
   int16_t rendered_pointer_x;

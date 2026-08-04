@@ -149,7 +149,7 @@ bool sf_ground_item_assets_load(
   char path[SF_RETAIL_PATH_CAPACITY];
   size_t mark;
   bool success = false;
-  static const uint16_t samples[2] = {15u, 85u};
+  static const uint16_t samples[5] = {15u, 85u, 47u, 48u, 93u};
   if (!assets || !data_root || !script || !arena) return false;
   mark = sf_arena_mark(arena);
   memset(assets, 0, sizeof(*assets));
@@ -179,7 +179,7 @@ bool sf_ground_item_assets_load(
         path, sizeof(path), data_root,
         sf_retail_game_paths.common_sounds) ||
       !sf_voc_load_u8_mono_samples(
-        path, samples, 2u, arena, assets->landing_sounds)) goto done;
+        path, samples, 5u, arena, assets->sounds)) goto done;
   assets->memory_bytes = sf_arena_mark(arena) - mark;
   success = true;
 done:
@@ -188,6 +188,16 @@ done:
     memset(assets, 0, sizeof(*assets));
   }
   return success;
+}
+
+const SfPcmU8 *sf_ground_item_sound(
+    const SfGroundItemAssets *assets, uint16_t sample) {
+  static const uint16_t samples[5] = {15u, 85u, 47u, 48u, 93u};
+  uint8_t index;
+  if (!assets) return NULL;
+  for (index = 0u; index < 5u; ++index)
+    if (samples[index] == sample) return &assets->sounds[index];
+  return NULL;
 }
 
 const SfGroundItemVisual *sf_ground_item_visual(

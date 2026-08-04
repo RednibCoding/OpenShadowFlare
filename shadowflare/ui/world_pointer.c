@@ -23,10 +23,10 @@
 
 #include <limits.h>
 
-typedef struct SfActorPointerHit {
+typedef struct SfWorldPointerHit {
   bool intersects;
   bool exact;
-} SfActorPointerHit;
+} SfWorldPointerHit;
 
 static uint8_t sf_world_pointer_pixel(
     const SfIndexedImage *image, uint16_t x, uint16_t y) {
@@ -41,10 +41,10 @@ static uint8_t sf_world_pointer_pixel(
   return (uint8_t) ((row[x >> 3u] >> (7u - (x & 7u))) & 1u);
 }
 
-static SfActorPointerHit sf_world_pointer_image_hit(
+static SfWorldPointerHit sf_world_pointer_image_hit(
     const SfIndexedImage *image, int left, int top,
     int pointer_x, int pointer_y, int half_size) {
-  SfActorPointerHit hit = {false, false};
+  SfWorldPointerHit hit = {false, false};
   int first_x = pointer_x - half_size;
   int first_y = pointer_y - half_size;
   int last_x = pointer_x + half_size + 1;
@@ -67,11 +67,11 @@ static SfActorPointerHit sf_world_pointer_image_hit(
   return hit;
 }
 
-static SfActorPointerHit sf_world_pointer_actor_hit(
+static SfWorldPointerHit sf_world_pointer_actor_hit(
     const SfScenarioActorAssets *assets, const SfScenarioActor *actor,
     const SfWorldRenderView *view, int pointer_x, int pointer_y,
     int half_size) {
-  SfActorPointerHit result = {false, false};
+  SfWorldPointerHit result = {false, false};
   const SfScenarioActorVisual *visual;
   const SfCafSelectedAnimation *animation;
   SfScreenPoint anchor;
@@ -92,10 +92,43 @@ static SfActorPointerHit sf_world_pointer_actor_hit(
     const uint8_t source_part = animation->parts[part].source_index;
     const SfCafCell *cell = &animation->parts[part].cells[frame];
     const SfNjpSparsePattern *pattern;
-    SfActorPointerHit part_hit;
+    SfWorldPointerHit part_hit;
     if (source_part >= 8u ||
         (actor->enabled_parts & (uint8_t) (1u << source_part)) == 0u ||
         cell->pattern < 0 || (cell->status & 8) != 0) continue;
+    pattern = sf_njp_sparse_pattern(&visual->artwork, cell->pattern);
+    if (!pattern) continue;
+    part_hit = sf_world_pointer_image_hit(
+      &pattern->image.image,
+      anchor.x + pattern->image.x, anchor.y + pattern->image.y,
+      pointer_x, pointer_y, half_size);
+    if (part_hit.intersects) result.intersects = true;
+    if (part_hit.exact) result.exact = true;
+  }
+  return result;
+}
+
+static SfWorldPointerHit sf_world_pointer_ground_item_hit(
+    const SfGroundItemAssets *assets, const SfGroundItem *item,
+    const SfWorldRenderView *view, int pointer_x, int pointer_y,
+    int half_size) {
+  SfWorldPointerHit result = {false, false};
+  const SfGroundItemVisual *visual;
+  const SfCafSelectedAnimation *animation;
+  SfScreenPoint anchor;
+  uint8_t part;
+  if (!assets || !item || !item->visible) return result;
+  visual = sf_ground_item_visual(assets, item->resource_id);
+  animation = sf_ground_item_animation(visual, item->animation_chart);
+  if (!visual || !animation || animation->frame_count == 0u) return result;
+  anchor = sf_world_to_screen(item->position);
+  anchor.x -= view->camera_x;
+  anchor.y -= view->camera_y + item->height * 20 / 100;
+  for (part = 0u; part < animation->part_count; ++part) {
+    const SfCafCell *cell = &animation->parts[part].cells[0];
+    const SfNjpSparsePattern *pattern;
+    SfWorldPointerHit part_hit;
+    if (cell->pattern < 0 || (cell->status & 8) != 0) continue;
     pattern = sf_njp_sparse_pattern(&visual->artwork, cell->pattern);
     if (!pattern) continue;
     part_hit = sf_world_pointer_image_hit(
@@ -125,6 +158,7 @@ void sf_world_pointer_resolve(
   if (!input) return;
   input->world_pointer_resolved = true;
   input->pointed_actor_id = -1;
+  input->pointed_ground_item_id = -1;
   if (!assets || !world || !world->entered || !input->pointer_active ||
       input->pointer_y >= 408 || world->actor_script_state.message_active)
     return;
@@ -134,7 +168,7 @@ void sf_world_pointer_resolve(
     input->pointer_y + view.camera_y});
   for (index = 0u; index < world->actors.count; ++index) {
     const SfScenarioActor *actor = &world->actors.actors[index];
-    const SfActorPointerHit hit = sf_world_pointer_actor_hit(
+    const SfWorldPointerHit hit = sf_world_pointer_actor_hit(
       &assets->actors, actor, &view, input->pointer_x, input->pointer_y,
       sf_world_pointer_half_size(&world->pointer));
     const int64_t dx = (int64_t) actor->position.x - pointer_world.x;
@@ -150,4 +184,24 @@ void sf_world_pointer_resolve(
       best_distance = distance;
     }
   }
+  best_distance = INT64_MAX;
+  best_exact = false;
+  for (index = 0u; index < world->ground_items.count; ++index) {
+    const SfGroundItem *item = &world->ground_items.items[index];
+    const SfWorldPointerHit hit = sf_world_pointer_ground_item_hit(
+      &assets->ground_items, item, &view,
+      input->pointer_x, input->pointer_y,
+      sf_world_pointer_half_size(&world->pointer));
+    const int64_t dx = (int64_t) item->position.x - pointer_world.x;
+    const int64_t dy = (int64_t) item->position.y - pointer_world.y;
+    const int64_t distance = dx * dx + dy * dy;
+    if (!item->visible || !hit.intersects) continue;
+    if (input->pointed_ground_item_id < 0 ||
+        (hit.exact != best_exact ? hit.exact : distance <= best_distance)) {
+      input->pointed_ground_item_id = item->id;
+      best_exact = hit.exact;
+      best_distance = distance;
+    }
+  }
+  if (input->pointed_ground_item_id >= 0) input->pointed_actor_id = -1;
 }

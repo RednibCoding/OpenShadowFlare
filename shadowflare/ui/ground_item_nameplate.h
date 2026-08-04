@@ -17,21 +17,20 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_ITEM_RECORDS_H
-#define SHADOWFLARE_DATA_ITEM_RECORDS_H
+#ifndef SHADOWFLARE_UI_GROUND_ITEM_NAMEPLATE_H
+#define SHADOWFLARE_UI_GROUND_ITEM_NAMEPLATE_H
+
+#include "assets/gameplay_assets.h"
+#include "game/world.h"
+#include "render/renderer.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 
-typedef bool (*SfItemRecordWord)(
-  void *user, uint8_t category, uint16_t offset, int32_t value);
-typedef bool (*SfItemRecordName)(
-  void *user, uint8_t category, const char *name);
-
-bool sf_item_scan_records(
-  const char *path, SfItemRecordWord word, void *user);
-bool sf_item_scan_named_records(
-  const char *path, SfItemRecordName name,
-  SfItemRecordWord word, void *user);
+bool sf_ground_item_nameplate_bounds(
+  const SfGameplayAssets *assets, const SfWorldState *world,
+  const SfWorldRenderView *view, SfRect *bounds);
+void sf_ground_item_nameplate_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfWorldState *world, const SfWorldRenderView *view);
 
 #endif

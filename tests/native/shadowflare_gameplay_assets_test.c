@@ -106,8 +106,8 @@ static int test_ground_item_assets(const SfGameplayAssets *assets) {
   uint8_t index;
   if (assets->ground_items.definition_count != 8u ||
       assets->ground_items.visual_count != 1u || !visual ||
-      !assets->ground_items.landing_sounds[0].samples ||
-      !assets->ground_items.landing_sounds[1].samples) {
+      !sf_ground_item_sound(&assets->ground_items, 15u) ||
+      !sf_ground_item_sound(&assets->ground_items, 48u)) {
     fprintf(stderr, "Remote Town ground-item resources differ from retail\n");
     return 1;
   }
@@ -119,6 +119,78 @@ static int test_ground_item_assets(const SfGameplayAssets *assets) {
       fprintf(stderr, "A starter drop is missing its retail cells or palette\n");
       return 1;
     }
+  }
+  {
+    static const uint8_t expected_categories[4] = {0u, 1u, 0u, 4u};
+    static const int32_t expected_ids[4] = {0, 1000000, 100, 0};
+    static const char *expected_names[4] = {
+      "Short Sword", "Round Shield", "Dagger", "Gold"
+    };
+    uint8_t expected;
+    for (expected = 0u; expected < 4u; ++expected) {
+      const SfItemGroundDefinition *definition = NULL;
+      for (index = 0u; index < assets->ground_items.definition_count; ++index) {
+        const SfItemGroundDefinition *candidate =
+          &assets->ground_items.definitions[index];
+        if (candidate->category == expected_categories[expected] &&
+            candidate->definition_id == expected_ids[expected]) {
+          definition = candidate;
+          break;
+        }
+      }
+      if (!definition || strcmp(
+            definition->name, expected_names[expected]) != 0) {
+        fprintf(stderr, "A starter drop has the wrong retail item name\n");
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+static const SfItemGroundDefinition *find_ground_definition(
+    const SfGameplayAssets *assets, uint8_t category, int32_t definition_id) {
+  uint8_t index;
+  for (index = 0u; index < assets->ground_items.definition_count; ++index) {
+    const SfItemGroundDefinition *definition =
+      &assets->ground_items.definitions[index];
+    if (definition->category == category &&
+        definition->definition_id == definition_id) return definition;
+  }
+  return NULL;
+}
+
+static int test_inventory_storage(const SfGameplayAssets *assets) {
+  const SfItemGroundDefinition *dagger =
+    find_ground_definition(assets, 0u, 100);
+  const SfItemGroundDefinition *gold =
+    find_ground_definition(assets, 4u, 0);
+  SfInventoryState inventory;
+  SfInventoryState full;
+  uint8_t index;
+  if (!dagger || !gold) return 1;
+  sf_inventory_init(&inventory);
+  if (!sf_inventory_store(&inventory, gold, 15000) ||
+      !sf_inventory_store(&inventory, gold, 5001) ||
+      inventory.count != 3u ||
+      inventory.items[0].quantity != 10000 ||
+      inventory.items[1].quantity != 10000 ||
+      inventory.items[2].quantity != 1) {
+    fprintf(stderr, "Retail gold stacks are not stored transactionally\n");
+    return 1;
+  }
+  sf_inventory_init(&inventory);
+  for (index = 0u; index < 9u; ++index) {
+    if (!sf_inventory_store(&inventory, dagger, 1)) {
+      fprintf(stderr, "A Dagger did not fit in an empty retail column\n");
+      return 1;
+    }
+  }
+  full = inventory;
+  if (sf_inventory_store(&inventory, dagger, 1) ||
+      memcmp(&inventory, &full, sizeof(inventory)) != 0) {
+    fprintf(stderr, "A failed pickup partially changed the inventory\n");
+    return 1;
   }
   return 0;
 }
@@ -332,10 +404,15 @@ static int test_ostare_conversation(
     uint8_t update;
     for (update = 0u; update < 19u; ++update) {
       sf_ground_items_update(&world->ground_items);
-      ordinary_sounds = (uint8_t) (
-        ordinary_sounds + world->ground_items.ordinary_landing_events);
-      gold_sounds = (uint8_t) (
-        gold_sounds + world->ground_items.gold_landing_events);
+      {
+        uint8_t sound;
+        for (sound = 0u; sound < world->ground_items.sound_count; ++sound) {
+          if (world->ground_items.sound_samples[sound] == 15u)
+            ++ordinary_sounds;
+          if (world->ground_items.sound_samples[sound] == 85u)
+            ++gold_sounds;
+        }
+      }
     }
     if (ordinary_sounds != 3u || gold_sounds != 1u ||
         world->ground_items.items[0].bounce_state != 2u ||
@@ -471,6 +548,69 @@ static int test_actor_pointer(
   return 1;
 }
 
+static int test_ground_item_pickup(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  const int32_t item_id = world->ground_items.items[2].id;
+  const SfWorldPoint item_position = world->ground_items.items[2].position;
+  SfScreenPoint anchor = sf_world_to_screen(item_position);
+  SfGameInput input;
+  int pointer_x = -1;
+  int pointer_y = -1;
+  int y;
+  world->camera_x = anchor.x - 320;
+  world->camera_y = anchor.y - 240;
+  for (y = 140; y < 340 && pointer_x < 0; ++y) {
+    int x;
+    for (x = 220; x < 420; ++x) {
+      memset(&input, 0, sizeof(input));
+      input.pointer_active = true;
+      input.pointer_x = (int16_t) x;
+      input.pointer_y = (int16_t) y;
+      sf_world_pointer_resolve(assets, world, &input);
+      if (input.pointed_ground_item_id == item_id) {
+        pointer_x = x;
+        pointer_y = y;
+        break;
+      }
+    }
+  }
+  if (pointer_x < 0) {
+    fprintf(stderr, "The Dagger has no retail pointer hit\n");
+    return 1;
+  }
+  memset(&input, 0, sizeof(input));
+  input.pointer_active = true;
+  input.pointer_x = (int16_t) pointer_x;
+  input.pointer_y = (int16_t) pointer_y;
+  input.pointer_primary_pressed = true;
+  input.world_pointer_resolved = true;
+  input.pointed_actor_id = -1;
+  input.pointed_ground_item_id = item_id;
+  sf_world_state_update(world, &input);
+  memset(&input, 0, sizeof(input));
+  input.pointed_actor_id = -1;
+  input.pointed_ground_item_id = -1;
+  {
+    uint16_t update;
+    for (update = 0u; update < 2000u &&
+         world->ground_items.count == 4u; ++update)
+      sf_world_state_update(world, &input);
+  }
+  if (world->ground_items.count != 3u ||
+      world->player.inventory.count != 1u ||
+      world->player.inventory.items[0].category != 0u ||
+      world->player.inventory.items[0].definition_id != 100 ||
+      world->player.inventory.items[0].width != 1u ||
+      world->player.inventory.items[0].height != 3u ||
+      world->player.inventory.items[0].durability != 300 ||
+      world->ground_items.sound_count != 1u ||
+      world->ground_items.sound_samples[0] != 48u) {
+    fprintf(stderr, "The retail Dagger approach and pickup differs\n");
+    return 1;
+  }
+  return 0;
+}
+
 int main(void) {
 #if defined(OPENSHADOWFLARE_SOURCE_DIR)
   SfGameplayAssets assets;
@@ -548,6 +688,7 @@ int main(void) {
   }
   if (test_object_intersection(&assets)) return 1;
   if (test_ground_item_assets(&assets)) return 1;
+  if (test_inventory_storage(&assets)) return 1;
   sf_world_state_init(&world, 0, 0, player.gender);
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
   sf_world_state_bind_ground_items(
@@ -567,6 +708,7 @@ int main(void) {
       "Remote Town viewport culling changed before retail depth sorting\n");
     return 1;
   }
+  if (test_ground_item_pickup(&assets, &world)) return 1;
 #endif
   return 0;
 }

@@ -25,15 +25,18 @@ The standing details and measured screen budgets live in
 
 The front-end, Remote Town map, player movement, retail PEOPLE actors,
 collision, pointing, speech bubbles, and interactive script-driven choices are
-live. Ostare's opening chain now reaches its four opcode 10 starter drops, with
-the original item definitions, artwork, palettes, bounce, and landing sounds;
-Harley's complete `Explanation` branch also runs from the shipped SCS data.
-The next slices should keep growing shared systems in dependency order: give
-the new item owner its first HUD and pickup path, add the next native services
-needed by Remote Town, then panels and saves, scenario travel, combat and
-companions, and finally the remaining `SF_EXE` feature set. A slice is only
-done after the C99/TWL/TAL tests, a release build, a practical check when
-visible behavior changed, and a fresh measured budget when assets changed.
+live. Ostare's opening chain reaches its four opcode 10 starter drops, with the
+original item definitions, artwork, palettes, bounce, and landing sounds.
+Those drops can now be hovered, approached, and picked up into the player's
+fixed 9x4 inventory, including retail dimensions, gold stacks, failure bounce,
+and pickup sounds. Harley's complete `Explanation` branch also runs from the
+shipped SCS data. The next slices should keep growing shared systems in
+dependency order: draw the first gameplay HUD and inventory view from these
+real owners, add the next native services needed by Remote Town, then saves,
+scenario travel, combat and companions, and finally the remaining `SF_EXE`
+feature set. A slice is only done after the C99/TWL/TAL tests, a release build,
+a practical check when visible behavior changed, and a fresh measured budget
+when assets changed.
 
 ## Where we are now
 

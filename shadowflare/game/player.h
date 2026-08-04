@@ -23,6 +23,7 @@
 #include "core/coordinates.h"
 #include "data/item.h"
 #include "game/route.h"
+#include "game/inventory.h"
 
 #include <stdint.h>
 
@@ -46,6 +47,7 @@ typedef struct SfPlayerState {
   SfWorldPoint destination;
   SfObjectBounds judgement;
   SfRouteController route;
+  SfInventoryState inventory;
   uint32_t action_counter;
   uint32_t animation_frame;
   uint8_t appearance_parts[SF_PLAYER_APPEARANCE_PART_LIMIT];

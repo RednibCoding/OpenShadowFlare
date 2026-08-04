@@ -33,7 +33,9 @@
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
+  int32_t hovered_ground_item_id;
   int32_t pending_actor_id;
+  int32_t pending_ground_item_id;
   int16_t screen_x;
   int16_t screen_y;
   uint8_t hold_updates;

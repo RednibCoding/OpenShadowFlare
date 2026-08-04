@@ -36,12 +36,18 @@ typedef struct SfItemReference {
 } SfItemReference;
 
 typedef struct SfItemGroundDefinition {
+  char name[64];
   int32_t definition_id;
   int32_t resource_id;
   int32_t animation_chart;
   int32_t red_strength;
   int32_t green_strength;
   int32_t blue_strength;
+  int32_t inventory_width;
+  int32_t inventory_height;
+  int32_t weight;
+  int32_t maximum_durability;
+  int32_t variant;
   uint8_t category;
 } SfItemGroundDefinition;
 

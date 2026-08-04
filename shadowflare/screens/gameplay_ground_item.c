@@ -64,7 +64,7 @@ bool sf_gameplay_ground_item_visible(
 void sf_gameplay_ground_item_draw(
     SfRenderer *renderer, const SfGroundItemAssets *assets,
     const SfGroundItem *item, const SfWorldRenderView *view,
-    bool shadow, const SfRect *clip) {
+    bool shadow, bool hovered, const SfRect *clip) {
   const SfGroundItemVisual *visual;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
@@ -83,11 +83,14 @@ void sf_gameplay_ground_item_draw(
   anchor.y -= view->camera_y;
   if (!shadow) anchor.y -= item->height * 20 / 100;
   red_strength = item->red_strength < 0 ? 0u :
-    item->red_strength > 2000 ? 2000u : (uint16_t) item->red_strength;
+    item->red_strength + (hovered ? 300 : 0) > 2000 ? 2000u :
+    (uint16_t) (item->red_strength + (hovered ? 300 : 0));
   green_strength = item->green_strength < 0 ? 0u :
-    item->green_strength > 2000 ? 2000u : (uint16_t) item->green_strength;
+    item->green_strength + (hovered ? 300 : 0) > 2000 ? 2000u :
+    (uint16_t) (item->green_strength + (hovered ? 300 : 0));
   blue_strength = item->blue_strength < 0 ? 0u :
-    item->blue_strength > 2000 ? 2000u : (uint16_t) item->blue_strength;
+    item->blue_strength + (hovered ? 300 : 0) > 2000 ? 2000u :
+    (uint16_t) (item->blue_strength + (hovered ? 300 : 0));
   for (priority = animation->priority_count; priority > 0u; --priority) {
     uint8_t part;
     for (part = 0u; part < animation->part_count; ++part) {

@@ -22,6 +22,7 @@
 #include "screens/gameplay_player.h"
 #include "ui/actor_nameplate.h"
 #include "ui/conversation_bubble.h"
+#include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
 #include <string.h>
@@ -114,6 +115,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_camera_y != view.camera_y ||
     screen->rendered_hovered_actor_id !=
       game->world.pointer.hovered_actor_id ||
+    screen->rendered_hovered_ground_item_id !=
+      game->world.pointer.hovered_ground_item_id ||
     screen->rendered_message_id !=
       game->world.actor_script_state.message_id ||
     screen->rendered_selected_option !=
@@ -136,6 +139,9 @@ void sf_gameplay_screen_draw(
     if (sf_actor_nameplate_bounds(
           assets, &game->world, &view, interpolation, &ui_damage))
       damage = sf_gameplay_damage_union(damage, ui_damage);
+    if (sf_ground_item_nameplate_bounds(
+          assets, &game->world, &view, &ui_damage))
+      damage = sf_gameplay_damage_union(damage, ui_damage);
     clip = &damage;
     sf_renderer_fill_rect(renderer, *clip, 0u);
   } else {
@@ -151,6 +157,8 @@ void sf_gameplay_screen_draw(
     interpolation, clip);
   sf_actor_nameplate_draw(
     renderer, assets, &game->world, &view, interpolation);
+  sf_ground_item_nameplate_draw(
+    renderer, assets, &game->world, &view);
   sf_conversation_bubble_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
@@ -162,6 +170,8 @@ void sf_gameplay_screen_draw(
   screen->rendered_camera_y = view.camera_y;
   screen->rendered_hovered_actor_id =
     game->world.pointer.hovered_actor_id;
+  screen->rendered_hovered_ground_item_id =
+    game->world.pointer.hovered_ground_item_id;
   screen->rendered_message_id =
     game->world.actor_script_state.message_id;
   screen->rendered_selected_option =

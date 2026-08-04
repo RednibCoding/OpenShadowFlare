@@ -78,6 +78,14 @@ Short Sword, Round Shield, Dagger, and 200 Gold with their retail positions,
 colors, two-bounce motion, and landing sounds. Their CAF cells, sparse
 NJP/SDW patterns, and explicit palettes are discovered from the active script
 and `Item.Ibn`; Remote Town IDs are not hardcoded into the game or renderer.
+Those drops can now be selected through their opaque CAF artwork, approached
+through the same retail edge-routing path as actors, and picked up into a
+fixed 9x4 inventory owner. Item names, dimensions, weight, durability, and
+identification state come from the streamed `Item.Ibn` records. Gold keeps
+the original 10,000-piece stack limit, failed pickups leave the inventory
+untouched and replay the drop bounce, and pickup sounds follow the retail
+item category and weight rules. Hovering an item applies the original pale
+tint and draws its quantity or decoded name above the world sprite.
 
 ## Hard limits
 
@@ -160,8 +168,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,438,957 bytes of the 7 MiB main arena,
-leaving 5,901,075 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,439,709 bytes of the 7 MiB main arena,
+leaving 5,900,323 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -174,21 +182,21 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 751,880 bytes of the main arena, leaving 6,588,152 bytes free;
+assets. It uses 752,632 bytes of the main arena, leaving 6,587,400 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 712,096 bytes of the main arena, leaving 6,627,936
+The load-game screen uses 712,848 bytes of the main arena, leaving 6,627,184
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,333,986 bytes of the main
-arena, leaving 3,006,046 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, ground-item, and UI data and artwork account for 3,996,211
+The complete Remote Town gameplay screen uses 4,353,938 bytes of the main
+arena, leaving 2,986,094 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, ground-item, and UI data and artwork account for 4,015,411
 bytes. GND
 rendering
 data is decoded directly from its compressed three-plane stream into two bytes
@@ -257,7 +265,10 @@ owns one fixed 64-entry item set. The interpreter only evaluates opcode 10
 operands and calls the world service; it does not know about item storage,
 artwork, rendering, or audio. The screen helper draws the selected CAF cells
 in the ordinary depth passes, while TAL playback stays at the outer runtime
-boundary.
+boundary. Pointer hit testing and hover labels stay in `ui/`; approach,
+fixed-grid placement, gold stacking, rollback on failure, and pickup sound
+selection stay in `game/`. The player owns the resulting 36-entry fixed array,
+so no heap allocation or retained item-database copy is needed.
 
 The framebuffer still occupies 614,400 bytes of video memory, leaving 3,579,904
 bytes there; map artwork remains packed in main RAM for the desktop software

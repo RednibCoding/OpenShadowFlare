@@ -22,6 +22,7 @@
 #include "data/item_decode.h"
 
 #include <stddef.h>
+#include <string.h>
 
 typedef enum SfItemRecordField {
   SF_ITEM_RECORD_CATEGORY_COUNT,
@@ -33,6 +34,7 @@ typedef enum SfItemRecordField {
 } SfItemRecordField;
 
 typedef struct SfItemRecordScanner {
+  SfItemRecordName name;
   SfItemRecordWord word;
   void *user;
   int32_t category_records;
@@ -43,6 +45,8 @@ typedef struct SfItemRecordScanner {
   uint8_t category;
   uint8_t value_bytes;
   SfItemRecordField field;
+  char record_name[64];
+  uint8_t name_length;
   bool valid;
 } SfItemRecordScanner;
 
@@ -68,20 +72,27 @@ static void sf_item_record_next(SfItemRecordScanner *scanner) {
   }
 }
 
-static void sf_item_record_begin_words(SfItemRecordScanner *scanner) {
+static bool sf_item_record_begin_words(SfItemRecordScanner *scanner) {
+  if (scanner->name && !scanner->name(
+        scanner->user, scanner->category, scanner->record_name))
+    return false;
   scanner->field = SF_ITEM_RECORD_WORDS;
   scanner->record_offset = 0u;
   scanner->value = 0;
   scanner->value_bytes = 0u;
+  return true;
 }
 
 static bool sf_item_record_text_byte(SfItemRecordScanner *scanner) {
+  if (scanner->field == SF_ITEM_RECORD_NAME &&
+    scanner->name_length + 1u < sizeof(scanner->record_name))
+    scanner->record_name[scanner->name_length++] =
+      (char) ~(uint8_t) scanner->value;
   if (scanner->remaining > 0u) --scanner->remaining;
   if (scanner->remaining != 0u) return true;
   if (scanner->field == SF_ITEM_RECORD_NAME)
     sf_item_record_begin_i32(scanner, SF_ITEM_RECORD_DESCRIPTION_LENGTH);
-  else
-    sf_item_record_begin_words(scanner);
+  else if (!sf_item_record_begin_words(scanner)) return false;
   return true;
 }
 
@@ -117,15 +128,23 @@ static bool sf_item_record_length(SfItemRecordScanner *scanner) {
     }
     return true;
   }
+  if (scanner->field == SF_ITEM_RECORD_NAME_LENGTH) {
+    scanner->name_length = 0u;
+    memset(scanner->record_name, 0, sizeof(scanner->record_name));
+  }
   scanner->remaining = (uint32_t) scanner->value;
   if (scanner->remaining == 0u) {
     if (scanner->field == SF_ITEM_RECORD_NAME_LENGTH)
       sf_item_record_begin_i32(scanner, SF_ITEM_RECORD_DESCRIPTION_LENGTH);
     else
-      sf_item_record_begin_words(scanner);
+      return sf_item_record_begin_words(scanner);
   } else {
     scanner->field = scanner->field == SF_ITEM_RECORD_NAME_LENGTH
       ? SF_ITEM_RECORD_NAME : SF_ITEM_RECORD_DESCRIPTION;
+    if (scanner->field == SF_ITEM_RECORD_NAME) {
+      scanner->name_length = 0u;
+      memset(scanner->record_name, 0, sizeof(scanner->record_name));
+    }
   }
   return true;
 }
@@ -135,8 +154,13 @@ static bool sf_item_record_byte(void *user, size_t offset, uint8_t value) {
   (void) offset;
   if (!scanner->valid || scanner->category >= 5u) return scanner->valid;
   if (scanner->field == SF_ITEM_RECORD_NAME ||
-      scanner->field == SF_ITEM_RECORD_DESCRIPTION)
+      scanner->field == SF_ITEM_RECORD_DESCRIPTION) {
+    scanner->value = value;
+    if (scanner->field == SF_ITEM_RECORD_NAME &&
+        scanner->name_length + 1u < sizeof(scanner->record_name))
+      scanner->record_name[scanner->name_length + 1u] = '\0';
     return sf_item_record_text_byte(scanner);
+  }
   if (scanner->field == SF_ITEM_RECORD_WORDS)
     return sf_item_record_word_byte(scanner, value);
   scanner->value |= (int32_t) ((uint32_t) value <<
@@ -146,13 +170,19 @@ static bool sf_item_record_byte(void *user, size_t offset, uint8_t value) {
   return scanner->valid;
 }
 
-bool sf_item_scan_records(
-    const char *path, SfItemRecordWord word, void *user) {
+bool sf_item_scan_named_records(
+    const char *path, SfItemRecordName name,
+    SfItemRecordWord word, void *user) {
   SfItemRecordScanner scanner;
   if (!path || !word) return false;
   scanner = (SfItemRecordScanner) {
-    word, user, 0, 0, 0, 0u, 0u, 0u, 0u,
-    SF_ITEM_RECORD_CATEGORY_COUNT, true};
+    name, word, user, 0, 0, 0, 0u, 0u, 0u, 0u,
+    SF_ITEM_RECORD_CATEGORY_COUNT, {0}, 0u, true};
   return sf_item_decode_stream(path, sf_item_record_byte, &scanner) &&
     scanner.valid && scanner.category == 5u;
+}
+
+bool sf_item_scan_records(
+    const char *path, SfItemRecordWord word, void *user) {
+  return sf_item_scan_named_records(path, NULL, word, user);
 }

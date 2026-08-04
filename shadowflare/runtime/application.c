@@ -146,6 +146,7 @@ static void sf_read_event(
 static void sf_clear_input(SfGameInput *input) {
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->pointed_ground_item_id = -1;
   input->conversation_choices_resolved = false;
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;
@@ -199,16 +200,12 @@ static void sf_play_menu_events(
 static void sf_play_world_events(
     Tal *audio, const SfGameplayAssets *assets,
     const SfWorldState *world) {
-  uint8_t count;
+  uint8_t index;
   if (!assets || !world) return;
-  for (count = 0u;
-       count < world->ground_items.ordinary_landing_events; ++count)
-    (void) sf_play_pcm(
-      audio, &assets->ground_items.landing_sounds[0], false);
-  for (count = 0u;
-       count < world->ground_items.gold_landing_events; ++count)
-    (void) sf_play_pcm(
-      audio, &assets->ground_items.landing_sounds[1], false);
+  for (index = 0u; index < world->ground_items.sound_count; ++index)
+    (void) sf_play_pcm(audio, sf_ground_item_sound(
+      &assets->ground_items, world->ground_items.sound_samples[index]),
+      false);
 }
 
 static bool sf_menu_game_mode(SfGameMode mode) {

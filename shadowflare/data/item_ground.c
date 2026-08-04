@@ -21,6 +21,8 @@
 
 #include "data/item_records.h"
 
+#include <string.h>
+
 #define SF_ITEM_GROUND_DEFINITION_LIMIT 16u
 
 typedef struct SfItemGroundScan {
@@ -28,7 +30,17 @@ typedef struct SfItemGroundScan {
   uint16_t found;
   int8_t active;
   uint8_t count;
+  char record_name[64];
 } SfItemGroundScan;
+
+static bool sf_item_ground_name(
+    void *user, uint8_t category, const char *name) {
+  SfItemGroundScan *scan = (SfItemGroundScan *) user;
+  (void) category;
+  memcpy(scan->record_name, name, sizeof(scan->record_name));
+  scan->record_name[sizeof(scan->record_name) - 1u] = '\0';
+  return true;
+}
 
 static int sf_item_ground_find(
     const SfItemGroundScan *scan, uint8_t category, int32_t id) {
@@ -45,19 +57,29 @@ static bool sf_item_ground_word(
     void *user, uint8_t category, uint16_t offset, int32_t value) {
   SfItemGroundScan *scan = (SfItemGroundScan *) user;
   SfItemGroundDefinition *definition;
-  if (offset == 4u)
+  if (offset == 4u) {
     scan->active = (int8_t) sf_item_ground_find(scan, category, value);
+    if (scan->active >= 0) {
+      definition = &scan->definitions[(uint8_t) scan->active];
+      memcpy(definition->name, scan->record_name, sizeof(definition->name));
+      definition->name[sizeof(definition->name) - 1u] = '\0';
+      scan->found = (uint16_t) (
+        scan->found | (uint16_t) (1u << (uint8_t) scan->active));
+    }
+  }
   if (scan->active < 0) return true;
   definition = &scan->definitions[(uint8_t) scan->active];
+  if (offset == 8u) definition->variant = value;
+  if (offset == 28u) definition->inventory_width = value;
+  if (offset == 32u) definition->inventory_height = value;
+  if (offset == 36u) definition->weight = value;
   if (offset == 48u) definition->resource_id = value;
   if (offset == 52u) definition->animation_chart = value;
   if (offset == 60u) definition->red_strength = value;
   if (offset == 64u) definition->green_strength = value;
-  if (offset == 68u) {
-    definition->blue_strength = value;
-    scan->found = (uint16_t) (
-      scan->found | (uint16_t) (1u << (uint8_t) scan->active));
-  }
+  if (offset == 68u) definition->blue_strength = value;
+  if (offset == 100u && category <= 1u)
+    definition->maximum_durability = value;
   return true;
 }
 
@@ -76,9 +98,15 @@ bool sf_item_read_ground_definitions(
     definitions[index].red_strength = 1000;
     definitions[index].green_strength = 1000;
     definitions[index].blue_strength = 1000;
+    definitions[index].inventory_width = 1;
+    definitions[index].inventory_height = 1;
+    definitions[index].maximum_durability = 0;
+    definitions[index].name[0] = '\0';
   }
-  scan = (SfItemGroundScan) {definitions, 0u, -1, definition_count};
+  scan = (SfItemGroundScan) {
+    definitions, 0u, -1, definition_count, {0}};
   all = (uint16_t) ((1u << definition_count) - 1u);
-  return sf_item_scan_records(path, sf_item_ground_word, &scan) &&
+  return sf_item_scan_named_records(
+      path, sf_item_ground_name, sf_item_ground_word, &scan) &&
     scan.found == all;
 }

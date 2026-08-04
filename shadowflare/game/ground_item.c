@@ -49,14 +49,14 @@ void sf_ground_items_bind_definitions(
   items->definition_count = definition_count;
 }
 
-static const SfItemGroundDefinition *sf_ground_item_definition(
-    const SfGroundItemSet *items, int32_t category,
+const SfItemGroundDefinition *sf_ground_items_definition(
+    const SfGroundItemSet *items, uint8_t category,
     int32_t definition_id) {
   uint8_t index;
-  if (!items || category < 0 || category > UINT8_MAX) return NULL;
+  if (!items) return NULL;
   for (index = 0u; index < items->definition_count; ++index) {
     const SfItemGroundDefinition *definition = &items->definitions[index];
-    if (definition->category == (uint8_t) category &&
+    if (definition->category == category &&
         definition->definition_id == definition_id) return definition;
   }
   return NULL;
@@ -91,8 +91,10 @@ bool sf_ground_items_create(
     SfGroundItemSet *items, int32_t category, int32_t definition_id,
     SfWorldPoint position, int32_t minimum_quantity,
     int32_t maximum_quantity) {
-  const SfItemGroundDefinition *definition = sf_ground_item_definition(
-    items, category, definition_id);
+  const SfItemGroundDefinition *definition;
+  if (category < 0 || category > UINT8_MAX) return false;
+  definition = sf_ground_items_definition(
+    items, (uint8_t) category, definition_id);
   if (!definition) return false;
   if (category != SF_GROUND_ITEM_GOLD_CATEGORY ||
       definition_id != SF_GROUND_ITEM_GOLD_DEFINITION) {
@@ -128,11 +130,42 @@ bool sf_ground_items_create(
   return true;
 }
 
+SfGroundItem *sf_ground_items_find(SfGroundItemSet *items, int32_t id) {
+  uint8_t index;
+  if (!items) return NULL;
+  for (index = 0u; index < items->count; ++index)
+    if (items->items[index].id == id) return &items->items[index];
+  return NULL;
+}
+
+void sf_ground_item_restart_drop(SfGroundItem *item) {
+  if (!item) return;
+  item->height = 0;
+  item->vertical_velocity = 1600;
+  item->vertical_gravity = 280;
+  item->bounce_state = 0u;
+}
+
+bool sf_ground_items_remove(SfGroundItemSet *items, int32_t id) {
+  uint8_t index;
+  if (!items) return false;
+  for (index = 0u; index < items->count; ++index) {
+    if (items->items[index].id != id) continue;
+    if (index + 1u < items->count)
+      memmove(
+        &items->items[index], &items->items[index + 1u],
+        (size_t) (items->count - index - 1u) * sizeof(items->items[0]));
+    --items->count;
+    ++items->presentation_revision;
+    return true;
+  }
+  return false;
+}
+
 void sf_ground_items_update(SfGroundItemSet *items) {
   uint8_t index;
   if (!items) return;
-  items->ordinary_landing_events = 0u;
-  items->gold_landing_events = 0u;
+  items->sound_count = 0u;
   for (index = 0u; index < items->count; ++index) {
     SfGroundItem *item = &items->items[index];
     if (!item->visible || item->bounce_state >= 2u) continue;
@@ -146,11 +179,18 @@ void sf_ground_items_update(SfGroundItemSet *items) {
       item->vertical_velocity = 700;
       if (item->category == SF_GROUND_ITEM_GOLD_CATEGORY &&
           item->definition_id == SF_GROUND_ITEM_GOLD_DEFINITION)
-        ++items->gold_landing_events;
+        sf_ground_items_emit_sound(items, 85u);
+      else if (item->category == 2u)
+        sf_ground_items_emit_sound(items, 93u);
       else
-        ++items->ordinary_landing_events;
+        sf_ground_items_emit_sound(items, 15u);
     } else {
       item->bounce_state = 2u;
     }
   }
+}
+
+void sf_ground_items_emit_sound(SfGroundItemSet *items, uint16_t sample) {
+  if (!items || items->sound_count >= 8u) return;
+  items->sound_samples[items->sound_count++] = sample;
 }

@@ -134,6 +134,7 @@ void sf_screen_runtime_resolve_input(
   if (!input) return;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->pointed_ground_item_id = -1;
   input->conversation_choices_resolved = false;
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;

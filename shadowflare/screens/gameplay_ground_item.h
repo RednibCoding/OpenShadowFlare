@@ -33,6 +33,6 @@ bool sf_gameplay_ground_item_visible(
 void sf_gameplay_ground_item_draw(
   SfRenderer *renderer, const SfGroundItemAssets *assets,
   const SfGroundItem *item, const SfWorldRenderView *view,
-  bool shadow, const SfRect *clip);
+  bool shadow, bool hovered, const SfRect *clip);
 
 #endif

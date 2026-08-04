@@ -289,7 +289,10 @@ static void sf_gameplay_draw_object_pass(
       if (default_class && item_index < world->ground_items.count)
         sf_gameplay_ground_item_draw(
           renderer, &assets->ground_items,
-          &world->ground_items.items[item_index], view, shadow, clip);
+          &world->ground_items.items[item_index], view, shadow,
+          !shadow && world->pointer.hovered_ground_item_id ==
+            world->ground_items.items[item_index].id,
+          clip);
     } else {
       const SfMapObject *object = &assets->objects.objects[indices[index]];
       if ((sf_depth_class(object->status) == 0) != default_class) continue;

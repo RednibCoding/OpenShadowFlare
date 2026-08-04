@@ -47,6 +47,7 @@ void sf_player_init(SfPlayerState *player, uint8_t gender) {
   player->walking_speed_tier = 5u;
   player->motion = SF_PLAYER_IDLE;
   player->previous_motion = SF_PLAYER_IDLE;
+  sf_inventory_init(&player->inventory);
   sf_route_reset(&player->route);
 }
 

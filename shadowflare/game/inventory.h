@@ -17,21 +17,38 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_ITEM_RECORDS_H
-#define SHADOWFLARE_DATA_ITEM_RECORDS_H
+#ifndef SHADOWFLARE_GAME_INVENTORY_H
+#define SHADOWFLARE_GAME_INVENTORY_H
+
+#include "data/item.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef bool (*SfItemRecordWord)(
-  void *user, uint8_t category, uint16_t offset, int32_t value);
-typedef bool (*SfItemRecordName)(
-  void *user, uint8_t category, const char *name);
+#define SF_INVENTORY_WIDTH 9u
+#define SF_INVENTORY_HEIGHT 4u
+#define SF_INVENTORY_ITEM_LIMIT 36u
 
-bool sf_item_scan_records(
-  const char *path, SfItemRecordWord word, void *user);
-bool sf_item_scan_named_records(
-  const char *path, SfItemRecordName name,
-  SfItemRecordWord word, void *user);
+typedef struct SfInventoryItem {
+  int32_t definition_id;
+  int32_t quantity;
+  int32_t durability;
+  uint8_t category;
+  uint8_t grid_x;
+  uint8_t grid_y;
+  uint8_t width;
+  uint8_t height;
+  bool identified;
+} SfInventoryItem;
+
+typedef struct SfInventoryState {
+  SfInventoryItem items[SF_INVENTORY_ITEM_LIMIT];
+  uint8_t count;
+} SfInventoryState;
+
+void sf_inventory_init(SfInventoryState *inventory);
+bool sf_inventory_store(
+  SfInventoryState *inventory, const SfItemGroundDefinition *definition,
+  int32_t quantity);
 
 #endif

@@ -46,7 +46,7 @@ typedef struct SfGroundItemVisual {
 typedef struct SfGroundItemAssets {
   SfItemGroundDefinition *definitions;
   SfGroundItemVisual *visuals;
-  SfPcmU8 landing_sounds[2];
+  SfPcmU8 sounds[5];
   size_t memory_bytes;
   uint8_t definition_count;
   uint8_t visual_count;
@@ -59,5 +59,7 @@ const SfGroundItemVisual *sf_ground_item_visual(
   const SfGroundItemAssets *assets, int32_t resource_id);
 const SfCafSelectedAnimation *sf_ground_item_animation(
   const SfGroundItemVisual *visual, int32_t chart);
+const SfPcmU8 *sf_ground_item_sound(
+  const SfGroundItemAssets *assets, uint16_t sample);
 
 #endif
