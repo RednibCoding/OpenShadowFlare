@@ -74,6 +74,14 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(X11 REQUIRED)
   find_package(OpenGL REQUIRED)
   target_link_libraries(twl PRIVATE X11::X11 OpenGL::GL)
+elseif(NINTENDO_SWITCH)
+  target_sources(
+    twl
+    PRIVATE
+      backends/switch/window.c
+      backends/switch/input.c
+      backends/switch/presentation.c
+  )
 else()
   target_sources(twl PRIVATE backends/null/backend.c)
 endif()
