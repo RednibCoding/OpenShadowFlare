@@ -151,6 +151,9 @@ bool sf_retail_root_find(
   root[0] = '\0';
   if (requested_root)
     return sf_retail_try_root(root, capacity, requested_root);
+#ifdef SF_RETAIL_ROOT_FALLBACK
+  if (sf_retail_try_root(root, capacity, SF_RETAIL_ROOT_FALLBACK)) return true;
+#endif
   if (sf_retail_executable_directory(
         executable_directory, sizeof(executable_directory), executable_path)) {
     if (sf_retail_try_root(root, capacity, executable_directory)) return true;

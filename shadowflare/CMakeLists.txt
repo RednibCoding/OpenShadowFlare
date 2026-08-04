@@ -179,3 +179,15 @@ if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
       Twl::Twl
   )
 endif()
+
+if(NINTENDO_SWITCH)
+  target_compile_definitions(
+    shadowflare_core PRIVATE SF_RETAIL_ROOT_FALLBACK="sdmc:/ShadowFlare")
+
+  if(NOT COMMAND nx_create_nro)
+    message(FATAL_ERROR
+      "nx_create_nro is unavailable. Configure the Switch build with "
+      "-DCMAKE_TOOLCHAIN_FILE=$ENV{DEVKITPRO}/cmake/Switch.cmake.")
+  endif()
+  nx_create_nro(osf ICON "${PROJECT_SOURCE_DIR}/readme/sf-logo-sm.jpg")
+endif()

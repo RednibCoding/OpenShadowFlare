@@ -62,8 +62,6 @@ elseif(APPLE)
       "${COREGRAPHICS_FRAMEWORK}"
       "${OPENGL_FRAMEWORK}"
   )
-elseif(NINTENDO_SWITCH)
-  target_sources(lwl PRIVATE lwl_switch.c)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lwl PRIVATE lwl_x11.c)
   find_package(OpenGL REQUIRED)
