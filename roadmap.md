@@ -102,6 +102,9 @@ values now reach the interpreter before its first periodic pass, so one-time
 handoffs such as Ostare's starter items stay complete. Mine count, walk/run
 pace, scenario, and authored entry reach the world owner as well. The three
 Remote Town saves also pass the complete asset-and-owner restore path. The
+load hand-off now recovers to the same selected row when a save belongs to a
+map which has not reached the C99 runtime yet, rather than closing the whole
+application after the honest asset-load failure. The
 remaining save work belongs to systems which are not in the small runtime yet:
 warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical

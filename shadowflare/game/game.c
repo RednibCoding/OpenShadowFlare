@@ -92,3 +92,15 @@ void sf_game_saved_catalog_changed(
   else if (game->load_game.selection >= saved_game_count)
     game->load_game.selection = (uint8_t) (saved_game_count - 1u);
 }
+
+bool sf_game_recover_saved_game_load_failure(SfGame *game) {
+  uint8_t selection;
+  if (!game || game->mode != SF_GAME_MODE_GAMEPLAY ||
+      game->load_game.selected_file_slot < 0) return false;
+  selection = game->load_game.selected_save;
+  game->mode = SF_GAME_MODE_LOAD_GAME;
+  sf_load_game_state_init(game);
+  if (selection < game->config.saved_game_count)
+    game->load_game.selection = selection;
+  return true;
+}

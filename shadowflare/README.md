@@ -170,7 +170,9 @@ and all 1,000 persistent script/conversation values before the scenario's first
 periodic pass. Mine count, walk/run pace, scenario, and authored entry restore
 through the world boundary too. Maps which the C99 runtime does not implement
 yet still fail honestly instead of silently moving that character back to
-Remote Town.
+Remote Town. A failed entry returns to the same highlighted Load Game row;
+it no longer closes the application and looks like a crash when `osf` was
+started from the desktop.
 
 ## Hard limits
 

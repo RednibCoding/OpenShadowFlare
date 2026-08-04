@@ -442,6 +442,8 @@ int sf_application_run(
         !sf_screen_runtime_load(screen_runtime, game)) {
       fprintf(stderr, "Could not load assets for game mode %d.\n",
         (int) game->mode);
+      if (sf_game_recover_saved_game_load_failure(game) &&
+          sf_screen_runtime_load(screen_runtime, game)) continue;
       running = false;
       continue;
     }
