@@ -25,7 +25,8 @@ cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTING=OFF \
-    -DOPENSHADOWFLARE_BUILD_EXE=OFF
+    -DOPENSHADOWFLARE_BUILD_EXE=OFF \
+    -DOPENSHADOWFLARE_C99_PRESENTATION_HZ=30
 cmake --build "$BUILD_DIR" --parallel
 
 NRO=$(find "$BUILD_DIR" -type f -name '*.nro' ! -path "$OUTPUT_NRO" -print -quit)
