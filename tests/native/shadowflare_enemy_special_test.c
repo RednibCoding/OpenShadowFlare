@@ -19,6 +19,7 @@
 
 #include "game/combat_effect_request.h"
 #include "game/enemy_direct_impact.h"
+#include "game/generic_effect_actor.h"
 #include "game/world.h"
 #include "game/world_enemy_combat.h"
 
@@ -109,6 +110,54 @@ static int sf_test_world_dispatch(void) {
   return 0;
 }
 
+static int sf_test_generic_actor_descriptors(void) {
+  static const int32_t effects[6] = {0, 1, 4, 5, 6, 7};
+  static const int32_t resources[6] = {0, 1, 0, 0, 4, 0};
+  SfCombatEffectRequest request;
+  SfGenericEffectActor actor;
+  uint8_t index;
+  memset(&request, 0, sizeof(request));
+  request.valid = true;
+  request.has_packet = true;
+  request.owner_kind = 4;
+  request.source_character_number = 14000012;
+  request.target_kind = 19;
+  request.target_identifier = -1;
+  request.direction_vector = (SfWorldPoint) {30, -40};
+  request.constructor_value_6 = 61;
+  request.constructor_value_7 = 71;
+  request.packet_kind = 8;
+  request.constructor_values_16_to_22[
+    SF_COMBAT_EFFECT_CONSTRUCTOR_21] = 211;
+  for (index = 0u; index < 6u; ++index) {
+    request.effect_number = effects[index];
+    if (!sf_generic_effect_actor_build(
+          &request, (SfWorldPoint) {1000, 2000}, &actor) ||
+        actor.resource_id != resources[index] ||
+        actor.position.x != 1126 || actor.position.y != 1832 ||
+        actor.animation_direction != (effects[index] == 1 ? 8 : 2) ||
+        actor.judgement.left != (effects[index] == 6 ? -160 : -30) ||
+        actor.judgement.right != (effects[index] == 6 ? 159 : 30) ||
+        actor.contact_effect_number !=
+          (effects[index] == 6 ? 21023 : -1) ||
+        actor.target_audio_sample != 20u || !actor.has_packet ||
+        !actor.expire_on_target ||
+        !actor.expire_on_environment_collision) {
+      fprintf(stderr, "Raw effect %d lost its retail actor descriptor\n",
+        effects[index]);
+      return 1;
+    }
+  }
+  request.effect_number = 10001;
+  if (sf_generic_effect_actor_build(
+        &request, (SfWorldPoint) {1000, 2000}, &actor)) {
+    fprintf(stderr, "A controller effect entered the generic actor owner\n");
+    return 1;
+  }
+  return 0;
+}
+
 int main(void) {
-  return sf_test_exact_request() || sf_test_world_dispatch();
+  return sf_test_exact_request() || sf_test_world_dispatch() ||
+    sf_test_generic_actor_descriptors();
 }

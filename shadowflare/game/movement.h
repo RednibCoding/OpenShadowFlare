@@ -39,6 +39,8 @@ int32_t sf_movement_point_distance(SfWorldPoint first, SfWorldPoint second);
 bool sf_movement_point_at_distance(
   SfWorldPoint from, SfWorldPoint toward, uint32_t distance,
   SfWorldPoint *result);
+bool sf_movement_vector_at_distance(
+  SfWorldPoint direction, uint32_t distance, SfWorldPoint *result);
 int32_t sf_movement_bounds_distance(
   SfWorldPoint first_position, SfObjectBounds first_bounds,
   SfWorldPoint second_position, SfObjectBounds second_bounds);

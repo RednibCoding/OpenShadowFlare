@@ -204,13 +204,15 @@ the main screen arena untouched, and can be rewound without touching the
 fixed framebuffer. This is a generic resource/chart boundary, not a list of
 special maps or Goblin IDs.
 
-The immediate target is the retail consumer for raw direct-special effect kinds
-`0/1/4/5/6/7`, followed by enemy presentation actions five through seven.
-Those raw kinds must not be guessed to be the already reconstructed `10001+`
-projectile controllers. Retail tracing should identify their lifetime and
-resource rules before the bounded request queue is consumed. Hit/death CAF
-presentation can then consume the reaction state already published by the
-receivers.
+The immediate target is the fixed generic-effect actor owner and its bounded
+OPTION resource bank, followed by enemy presentation actions five through
+seven. Retail dispatch is now proven: raw direct-special kinds `0/1/4/5/6/7`
+map to resources `0/1/0/0/4/0`, not the `10001+` projectile controllers. The
+integer-only descriptor boundary preserves projection, bounds, direction,
+packet and collision policy. The next slice should load only the required
+resource, advance actors without allocation, and keep their state outside the
+renderer. Hit/death CAF presentation can then consume the reaction state
+already published by the receivers.
 
 ## Where we are now
 

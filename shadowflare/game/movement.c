@@ -115,6 +115,12 @@ bool sf_movement_point_at_distance(
   return true;
 }
 
+bool sf_movement_vector_at_distance(
+    SfWorldPoint direction, uint32_t distance, SfWorldPoint *result) {
+  return sf_movement_point_at_distance(
+    (SfWorldPoint) {0, 0}, direction, distance, result);
+}
+
 static int64_t sf_separated_edge_distance(
     int64_t first_start, int64_t first_end,
     int64_t second_start, int64_t second_end) {

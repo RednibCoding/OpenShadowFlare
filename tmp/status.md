@@ -1,1 +1,1 @@
-Publish retail enemy direct-special requests
+Reconstruct retail generic effect descriptors

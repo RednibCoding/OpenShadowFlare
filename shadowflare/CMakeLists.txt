@@ -101,6 +101,7 @@ add_library(
   game/enemy_direct_impact.c
   game/game.c
   game/gameplay_service.c
+  game/generic_effect_actor.c
   game/ground_item.c
   game/inventory.c
   game/item_condition.c

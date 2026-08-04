@@ -444,10 +444,19 @@ It retains the exact entry target vector using integer coordinates, consumes
 both retail visual draws, applies the raw effect-kind packet switch, and writes
 the complete 22-argument request into a fixed eight-entry frame queue. The
 queue reports saturation and clears by resetting two small fields; it does not
-zero or allocate packet storage in the update hot path. The raw retail kinds
-`0/1/4/5/6/7` deliberately remain requests until their executable consumer is
-reconstructed, rather than being misidentified as the unrelated `10001+`
-projectile family.
+zero or allocate packet storage in the update hot path. At this enqueue
+boundary the raw retail kinds `0/1/4/5/6/7` deliberately remain requests,
+rather than being misidentified as the unrelated `10001+` projectile family.
+
+The retail consumer for those raw requests is now identified and represented
+as a separate integer-only actor descriptor. Direct kinds `0/1/4/5/6/7` map
+to OPTION resources `0/1/0/0/4/0`; the builder retains source ownership,
+packet, speed, height, exact projected origin, direction, scenery and
+first-target expiry, and contact sample 20. Kind 6 also keeps its larger
+`[-160,-160,159,159]` judgement and contact visual 21023. Asset lifetime,
+movement, collision dispatch, and drawing remain the next fixed actor-owner
+slice rather than leaking into this packet translator.
+
 Those rules live in small `game/` files and never enter movement or rendering.
 
 Only the needed cells from combat tables 7, 11, 24, 25, and 26 are retained in
