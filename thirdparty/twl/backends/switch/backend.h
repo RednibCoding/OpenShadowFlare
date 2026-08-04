@@ -26,6 +26,7 @@
  * handheld screen or the docked TV output. */
 #define TWL_SWITCH_SCREEN_WIDTH 1280
 #define TWL_SWITCH_SCREEN_HEIGHT 720
+#define TWL_SWITCH_MAX_BUFFERS 4
 
 typedef struct {
   Framebuffer framebuffer;
@@ -38,6 +39,8 @@ typedef struct {
   int32_t view_h;
   int32_t pointer_x;
   int32_t pointer_y;
+  void *cleared_buffers[TWL_SWITCH_MAX_BUFFERS];
+  uint32_t cleared_count;
   bool touching;
   bool fb_ready;
   bool pad_ready;

@@ -16,6 +16,14 @@
 #include "backend.h"
 #include <stdint.h>
 
+static bool twl_switch_buffer_cleared(const TwlSwitch *sw, const void *buffer) {
+  uint32_t index;
+  for (index = 0u; index < sw->cleared_count; ++index) {
+    if (sw->cleared_buffers[index] == buffer) return true;
+  }
+  return false;
+}
+
 TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   TwlSwitch *sw = twl ? (TwlSwitch *) twl->backend : NULL;
   uint32_t stride;
@@ -44,10 +52,15 @@ TwlResult twl_backend_prepare_frame(Twl *twl, const TwlSurface *surface) {
   src = (const uint16_t *) surface->pixels;
   src_stride = surface->stride_bytes / sizeof(uint16_t);
 
-  for (y = 0; y < TWL_SWITCH_SCREEN_HEIGHT; ++y) {
-    uint32_t *row = output + (uint32_t) y * output_stride;
-    for (x = 0; x < TWL_SWITCH_SCREEN_WIDTH; ++x) {
-      row[x] = RGBA8(0, 0, 0, 255);
+  if (!twl_switch_buffer_cleared(sw, output)) {
+    for (y = 0; y < TWL_SWITCH_SCREEN_HEIGHT; ++y) {
+      uint32_t *row = output + (uint32_t) y * output_stride;
+      for (x = 0; x < TWL_SWITCH_SCREEN_WIDTH; ++x) {
+        row[x] = RGBA8(0, 0, 0, 255);
+      }
+    }
+    if (sw->cleared_count < TWL_SWITCH_MAX_BUFFERS) {
+      sw->cleared_buffers[sw->cleared_count++] = output;
     }
   }
 
