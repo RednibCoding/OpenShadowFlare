@@ -203,6 +203,8 @@ void sf_world_interaction_read_input(
   pointer->active = input->pointer_active;
   pointer->hovered_actor_id = input->world_pointer_resolved
     ? input->pointed_actor_id : -1;
+  pointer->hovered_enemy_id = input->world_pointer_resolved
+    ? input->pointed_enemy_id : -1;
   pointer->hovered_scenario_object_id = input->world_pointer_resolved
     ? input->pointed_scenario_object_id : -1;
   pointer->hovered_ground_item_id = input->world_pointer_resolved
@@ -211,6 +213,7 @@ void sf_world_interaction_read_input(
     (void) sf_world_transport_activate(
       world, input->transport_destination);
     pointer->hovered_actor_id = -1;
+    pointer->hovered_enemy_id = -1;
     pointer->hovered_scenario_object_id = -1;
     pointer->hovered_ground_item_id = -1;
     return;
@@ -220,6 +223,8 @@ void sf_world_interaction_read_input(
     inventory_consumed_input;
   if (message_consumed_input)
     pointer->hovered_actor_id = -1;
+  if (message_consumed_input)
+    pointer->hovered_enemy_id = -1;
   if (message_consumed_input)
     pointer->hovered_scenario_object_id = -1;
   if (message_consumed_input)

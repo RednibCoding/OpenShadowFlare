@@ -365,7 +365,10 @@ static void sf_gameplay_draw_object_pass(
       if (default_class && enemy)
         sf_gameplay_enemy_draw(
           renderer, &assets->enemies, enemy, view,
-          interpolation, shadow, clip);
+          interpolation, shadow,
+          !shadow && world->pointer.hovered_enemy_id ==
+            enemy->definition->id,
+          clip);
     } else if (sf_gameplay_scenario_object_entry(indices[index])) {
       const uint16_t object_index = (uint16_t) (
         indices[index] - SF_GAMEPLAY_SCENARIO_OBJECT_ENTRY_BASE);

@@ -39,6 +39,7 @@ typedef struct SfGameplayScreen {
   SfGameplayTransportUi transport;
   uint32_t rendered_animation_frame;
   uint32_t rendered_ground_item_revision;
+  uint32_t rendered_enemy_revision;
   uint32_t rendered_scenario_label_revision;
   uint32_t rendered_companion_frame;
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
@@ -57,6 +58,7 @@ typedef struct SfGameplayScreen {
   int32_t rendered_companion_y;
   int32_t rendered_companion_life;
   int32_t rendered_hovered_actor_id;
+  int32_t rendered_hovered_enemy_id;
   int32_t rendered_hovered_scenario_object_id;
   int32_t rendered_hovered_ground_item_id;
   int32_t rendered_message_id;

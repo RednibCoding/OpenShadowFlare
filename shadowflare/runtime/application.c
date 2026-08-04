@@ -161,6 +161,7 @@ static void sf_clear_input(SfGameInput *input) {
   input->world_view_offset_x = 0;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
+  input->pointed_enemy_id = -1;
   input->pointed_scenario_object_id = -1;
   input->pointed_ground_item_id = -1;
   input->conversation_choices_resolved = false;

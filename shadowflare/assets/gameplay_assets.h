@@ -61,6 +61,7 @@ typedef struct SfGameplayAssets {
   SfNjpSelected speech_frame;
   SfNjpDecodedResource hud;
   SfNjpDecodedResource inventory_panel;
+  SfNjpSelected status_icons;
   SfNjpDecodedResource magic_icons;
   SfNjpDecodedResource magic_bar_icons;
   SfPlayerInitialParameters player_parameters;

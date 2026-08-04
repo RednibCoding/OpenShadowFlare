@@ -49,6 +49,7 @@ void sf_world_pointer_overlay_draw(
   pointer = &world->pointer;
   length = bounds.width;
   opacity = pointer->hovered_actor_id >= 0 ||
+    pointer->hovered_enemy_id >= 0 ||
     pointer->hovered_scenario_object_id >= 0 ? 300u : 100u;
   line = (SfRect) {
     bounds.x, bounds.y,

@@ -17,22 +17,19 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_SCREENS_GAMEPLAY_ENEMY_H
-#define SHADOWFLARE_SCREENS_GAMEPLAY_ENEMY_H
+#ifndef SHADOWFLARE_UI_ENEMY_NAMEPLATE_H
+#define SHADOWFLARE_UI_ENEMY_NAMEPLATE_H
 
-#include "assets/scenario_enemy_assets.h"
-#include "game/scenario_enemy.h"
+#include "assets/gameplay_assets.h"
 #include "game/world.h"
 #include "render/renderer.h"
 
-#include <stdbool.h>
-
-bool sf_gameplay_enemy_visible(
-  const SfScenarioEnemyAssets *assets, const SfScenarioEnemy *enemy,
-  const SfWorldRenderView *view, uint16_t interpolation, bool shadow);
-void sf_gameplay_enemy_draw(
-  SfRenderer *renderer, const SfScenarioEnemyAssets *assets,
-  const SfScenarioEnemy *enemy, const SfWorldRenderView *view,
-  uint16_t interpolation, bool shadow, bool hovered, const SfRect *clip);
+bool sf_enemy_nameplate_bounds(
+  const SfGameplayAssets *assets, const SfWorldState *world,
+  const SfWorldRenderView *view, uint16_t interpolation, SfRect *bounds);
+void sf_enemy_nameplate_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfWorldState *world, const SfWorldRenderView *view,
+  uint16_t interpolation);
 
 #endif

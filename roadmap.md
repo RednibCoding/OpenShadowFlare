@@ -155,12 +155,18 @@ inclusive 0..5000 living-target range run their controller. Walk chart one is
 retained for all eight directions of each prepared resource, and blockers move
 with their owning enemy.
 
-The immediate target is the first attack boundary: add enemy pointer picking
-and the retail health/name/element plate in `ui/`, then implement the ordinary
-action-two presentation through its CAF marker without inventing a second
-combat actor. The small enemy resource working set still needs a predictable
-reload boundary before later maps can move into resources outside their entry
-vicinity.
+Enemy pointer presentation is live too. The configured click square tests the
+opaque pixels of the current CAF cells, enemies retain their higher retail
+default click priority, and hover adds the original +300 pale tint. The UI
+draws the authored name and color over the proportional life fill, with the
+native-element marker from `StatusIcon.njp`. Enemy animation and movement now
+invalidate the world presentation even while the player stands still.
+
+The immediate target is the rest of the first attack boundary: implement the
+ordinary action-two presentation through its CAF marker without inventing a
+second combat actor. The small enemy resource working set still needs a
+predictable reload boundary before later maps can move into resources outside
+their entry vicinity.
 
 ## Where we are now
 

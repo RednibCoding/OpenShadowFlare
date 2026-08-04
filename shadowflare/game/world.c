@@ -51,6 +51,7 @@ void sf_world_state_enter(
   if (!world || direction > 7u) return;
   memset(&world->pointer, 0, sizeof(world->pointer));
   world->pointer.hovered_actor_id = -1;
+  world->pointer.hovered_enemy_id = -1;
   world->pointer.hovered_scenario_object_id = -1;
   world->pointer.hovered_ground_item_id = -1;
   world->pointer.pending_actor_id = -1;
@@ -259,6 +260,7 @@ static void sf_world_update_scenario_enemies(
     SfCollisionQuery collision) {
   SfScenarioEnemyControllerContext context;
   uint16_t enemy_index;
+  bool presentation_changed = false;
   memset(&context, 0, sizeof(context));
   context.catalog = world->ai_controls;
   context.collision = &collision;
@@ -272,13 +274,21 @@ static void sf_world_update_scenario_enemies(
   context.companion.judgement = world->companion.judgement;
   for (enemy_index = 0u; enemy_index < world->enemies.count; ++enemy_index) {
     SfScenarioEnemy *enemy = &world->enemies.enemies[enemy_index];
+    const SfWorldPoint old_position = enemy->position;
+    const uint32_t old_frame = enemy->animation_frame;
+    const uint8_t old_chart = enemy->animation_chart;
     collision.ignored_blocker_id = sf_scenario_enemy_character_number(enemy);
     context.collision = &collision;
     sf_scenario_enemy_controller_update(enemy, &context);
     if (enemy_blocker_indices[enemy_index] != UINT16_MAX)
       world->movement_blockers[
         enemy_blocker_indices[enemy_index]].position = enemy->position;
+    if (enemy->position.x != old_position.x ||
+        enemy->position.y != old_position.y ||
+        enemy->animation_frame != old_frame ||
+        enemy->animation_chart != old_chart) presentation_changed = true;
   }
+  if (presentation_changed) ++world->enemies.presentation_revision;
 }
 
 void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {

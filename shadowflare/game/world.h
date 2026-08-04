@@ -43,6 +43,7 @@
 
 typedef struct SfWorldPointerControl {
   int32_t hovered_actor_id;
+  int32_t hovered_enemy_id;
   int32_t hovered_scenario_object_id;
   int32_t hovered_ground_item_id;
   int32_t pending_actor_id;

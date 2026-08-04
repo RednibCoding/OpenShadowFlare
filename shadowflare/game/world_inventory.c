@@ -37,6 +37,7 @@ static void sf_world_inventory_cancel_world_command(SfWorldState *world) {
   world->pointer.pending_scenario_object_id = -1;
   world->pointer.pending_ground_item_id = -1;
   world->pointer.hovered_actor_id = -1;
+  world->pointer.hovered_enemy_id = -1;
   world->pointer.hovered_scenario_object_id = -1;
   world->pointer.hovered_ground_item_id = -1;
   world->pointer.interaction_command_active = false;

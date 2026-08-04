@@ -70,6 +70,11 @@ and colored text composition. The interpreter only emits opcode 27's authored
 label values into a small fixed world owner; it never includes UI or renderer
 headers.
 
+Enemy selection follows that boundary as well. `enemy_pointer.c` tests opaque
+pixels in the current retained CAF cells, while `enemy_nameplate.c` composes
+the authored name color, proportional life fill, and native-element marker.
+Neither component owns enemy life, AI, movement, or combat decisions.
+
 The owned-companion strip follows the same rule. Its draw file composes the
 retail life bar and active/inactive `Bar.njp` cells, while its input file owns
 the exact bottom-left hit rectangle and emits only a toggle intent. Companion

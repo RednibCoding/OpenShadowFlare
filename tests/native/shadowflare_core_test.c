@@ -245,6 +245,7 @@ static int test_actor_interaction_approach(void) {
   input.pointer_active = true;
   input.world_pointer_resolved = true;
   input.pointed_actor_id = 0;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = -1;
   input.pointer_primary_pressed = true;
   sf_world_state_update(&world, &input);

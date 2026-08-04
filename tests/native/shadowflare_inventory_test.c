@@ -561,6 +561,7 @@ static int test_live_inventory(
   input.pointer_primary_pressed = true;
   input.world_pointer_resolved = true;
   input.pointed_actor_id = -1;
+  input.pointed_enemy_id = -1;
   input.pointed_ground_item_id = dropped_id;
   sf_world_state_update(&world, &input);
   if (world.ground_items.count != 0u || world.player.inventory.count != 1u ||
