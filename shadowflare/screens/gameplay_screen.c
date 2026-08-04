@@ -22,6 +22,7 @@
 #include "screens/gameplay_player.h"
 #include "ui/actor_nameplate.h"
 #include "ui/conversation_bubble.h"
+#include "ui/gameplay_hud.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/world_pointer_overlay.h"
 
@@ -162,6 +163,7 @@ void sf_gameplay_screen_draw(
   sf_conversation_bubble_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_world_pointer_overlay_draw(renderer, &game->world);
+  sf_gameplay_hud_draw(renderer, assets, player, clip);
   screen->rendered_animation_frame = player->animation_frame;
   sf_gameplay_remember_actor_frames(screen, &game->world, interpolation);
   screen->rendered_player_x = view.player_position.x;

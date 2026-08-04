@@ -30,13 +30,16 @@ original item definitions, artwork, palettes, bounce, and landing sounds.
 Those drops can now be hovered, approached, and picked up into the player's
 fixed 9x4 inventory, including retail dimensions, gold stacks, failure bounce,
 and pickup sounds. Harley's complete `Explanation` branch also runs from the
-shipped SCS data. The next slices should keep growing shared systems in
-dependency order: draw the first gameplay HUD and inventory view from these
-real owners, add the next native services needed by Remote Town, then saves,
-scenario travel, combat and companions, and finally the remaining `SF_EXE`
-feature set. A slice is only done after the C99/TWL/TAL tests, a release build,
-a practical check when visible behavior changed, and a fresh measured budget
-when assets changed.
+shipped SCS data. The authored bottom HUD now reads level, life, mana,
+experience, and walk/run state from the player owner. Its initial values come
+from a streaming scan of retail's parameter tables, and HUD clicks cannot leak
+into world movement. The next slices should keep growing shared systems in
+dependency order: expose the owned items through the first inventory panel,
+then add the next native services needed by Remote Town, saves, scenario
+travel, combat and companions, and finally the remaining `SF_EXE` feature set.
+A slice is only done after the C99/TWL/TAL tests, a release build, a practical
+check when visible behavior changed, and a fresh measured budget when assets
+changed.
 
 ## Where we are now
 

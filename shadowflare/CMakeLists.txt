@@ -61,9 +61,11 @@ add_library(
   data/njp_sparse.c
   data/obl.c
   data/pattern_list.c
+  data/player_parameters.c
   data/rclib.c
   data/save.c
   data/scs.c
+  data/table.c
   data/voc.c
   game/character_create.c
   game/collision.c
@@ -100,6 +102,8 @@ add_library(
   ui/conversation_bubble.c
   ui/conversation_input.c
   ui/conversation_layout.c
+  ui/gameplay_hud.c
+  ui/gameplay_hud_input.c
   ui/ground_item_nameplate.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c

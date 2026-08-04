@@ -74,10 +74,12 @@ typedef struct SfRetailGroundItemPaths {
 } SfRetailGroundItemPaths;
 
 typedef struct SfRetailGamePaths {
+  const char *parameter_tables;
   const char *item_database;
   const char *common_sounds;
   const char *font;
   const char *speech_frame;
+  const char *hud;
 } SfRetailGamePaths;
 
 extern const SfRetailTitlePaths sf_retail_title_paths;

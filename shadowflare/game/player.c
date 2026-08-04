@@ -45,10 +45,32 @@ void sf_player_init(SfPlayerState *player, uint8_t gender) {
   player->judgement = (SfObjectBounds) {-80, -80, 79, 79};
   player->direction = 1u;
   player->walking_speed_tier = 5u;
+  player->level = 1;
+  player->current_life = 1;
+  player->current_mana = 1;
   player->motion = SF_PLAYER_IDLE;
   player->previous_motion = SF_PLAYER_IDLE;
   sf_inventory_init(&player->inventory);
   sf_route_reset(&player->route);
+}
+
+bool sf_player_apply_initial_parameters(
+    SfPlayerState *player, const SfPlayerInitialParameters *parameters) {
+  int32_t speed_tier;
+  if (!player || !parameters || parameters->values[2] <= 0 ||
+      parameters->values[3] <= 0 ||
+      parameters->experience_threshold <= 0) return false;
+  player->initial_parameters = *parameters;
+  player->level = 1;
+  player->current_life = parameters->values[2];
+  player->current_mana = parameters->values[3];
+  player->experience = 0;
+  speed_tier = (parameters->values[1] + 32) / 32;
+  if (speed_tier < 0) speed_tier = 0;
+  if (speed_tier > 9) speed_tier = 9;
+  player->walking_speed_tier = (uint8_t) speed_tier;
+  player->parameters_initialized = true;
+  return true;
 }
 
 void sf_player_enter(

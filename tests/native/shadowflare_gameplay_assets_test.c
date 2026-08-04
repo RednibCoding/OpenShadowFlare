@@ -28,6 +28,7 @@
 #include "screens/gameplay_object_visual.h"
 #include "ui/conversation_input.h"
 #include "ui/conversation_layout.h"
+#include "ui/gameplay_hud.h"
 #include "ui/world_pointer.h"
 
 #include <ctype.h>
@@ -42,6 +43,8 @@ typedef union SfGameplayTestMemory {
 } SfGameplayTestMemory;
 
 static SfGameplayTestMemory sf_gameplay_test_memory;
+static uint16_t sf_gameplay_test_pixels[640u * 480u];
+static uint16_t sf_gameplay_test_hud_copy[640u * 87u];
 
 static int is_shadow_name(const char *name) {
   const size_t length = name ? strlen(name) : 0u;
@@ -145,6 +148,59 @@ static int test_ground_item_assets(const SfGameplayAssets *assets) {
       }
     }
   }
+  return 0;
+}
+
+static int test_gameplay_hud(
+    const SfGameplayAssets *assets, SfPlayerState *player) {
+  SfRenderer renderer;
+  size_t index;
+  size_t changed = 0u;
+  if (assets->hud.pattern_count != 18u ||
+      assets->player_parameters.values[0] != 100 ||
+      assets->player_parameters.values[1] != 128 ||
+      assets->player_parameters.values[2] != 150 ||
+      assets->player_parameters.values[3] != 150 ||
+      assets->player_parameters.experience_threshold != 25 ||
+      !sf_player_apply_initial_parameters(
+        player, &assets->player_parameters) ||
+      player->current_life != 150 || player->current_mana != 150 ||
+      player->walking_speed_tier != 5u) {
+    fprintf(stderr, "The retail new-player HUD values differ\n");
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_gameplay_test_pixels,
+        sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_hud_draw(&renderer, assets, player, NULL);
+  for (index = 0u; index < 640u * 393u; ++index) {
+    if (sf_gameplay_test_pixels[index] != 0x1234u) {
+      fprintf(stderr, "The gameplay HUD drew above its retail surface\n");
+      return 1;
+    }
+  }
+  for (; index < 640u * 480u; ++index)
+    if (sf_gameplay_test_pixels[index] != 0x1234u) ++changed;
+  if (changed < 640u * 60u) {
+    fprintf(stderr, "The retail bottom HUD was not composed\n");
+    return 1;
+  }
+  memcpy(
+    sf_gameplay_test_hud_copy,
+    sf_gameplay_test_pixels + 640u * 393u,
+    sizeof(sf_gameplay_test_hud_copy));
+  player->pace = SF_PLAYER_PACE_RUN;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_gameplay_hud_draw(&renderer, assets, player, NULL);
+  if (memcmp(
+        sf_gameplay_test_hud_copy,
+        sf_gameplay_test_pixels + 640u * 393u,
+        sizeof(sf_gameplay_test_hud_copy)) == 0) {
+    fprintf(stderr, "Walk and run use the same HUD indicator\n");
+    return 1;
+  }
+  player->pace = SF_PLAYER_PACE_WALK;
   return 0;
 }
 
@@ -688,8 +744,11 @@ int main(void) {
   }
   if (test_object_intersection(&assets)) return 1;
   if (test_ground_item_assets(&assets)) return 1;
+  if (test_gameplay_hud(&assets, &player)) return 1;
   if (test_inventory_storage(&assets)) return 1;
   sf_world_state_init(&world, 0, 0, player.gender);
+  if (!sf_player_apply_initial_parameters(
+        &world.player, &assets.player_parameters)) return 1;
   sf_world_state_bind_collision(&world, &assets.ground, &assets.objects);
   sf_world_state_bind_ground_items(
     &world, assets.ground_items.definitions,

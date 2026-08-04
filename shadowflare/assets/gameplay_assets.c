@@ -180,6 +180,10 @@ bool sf_gameplay_assets_load(
   char path[SF_RETAIL_PATH_CAPACITY];
   static const uint8_t font_pattern = 0u;
   static const uint8_t speech_patterns[5] = {0u, 1u, 2u, 3u, 4u};
+  static const uint8_t hud_patterns[18] = {
+    0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
+    19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
+  };
   size_t mark;
   bool success = false;
   if (!assets || !data_root || scenario_id < 0 || !arena) return false;
@@ -227,6 +231,15 @@ bool sf_gameplay_assets_load(
         path, sizeof(path), data_root, sf_retail_game_paths.speech_frame) ||
       !sf_njp_load_selected(
         path, speech_patterns, 5u, arena, &assets->speech_frame) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.hud) ||
+      !sf_njp_load_decoded_patterns(
+        path, hud_patterns, 18u, arena, &assets->hud) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root,
+        sf_retail_game_paths.parameter_tables) ||
+      !sf_player_initial_parameters_load(
+        path, player_gender, &assets->player_parameters) ||
       !sf_player_assets_load(
         &assets->player, data_root, player_gender,
         appearance_parts, appearance_part_count,

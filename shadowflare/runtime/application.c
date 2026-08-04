@@ -144,6 +144,7 @@ static void sf_read_event(
 }
 
 static void sf_clear_input(SfGameInput *input) {
+  input->pointer_over_gameplay_ui = false;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
   input->pointed_ground_item_id = -1;

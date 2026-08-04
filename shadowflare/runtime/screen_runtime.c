@@ -20,6 +20,7 @@
 #include "runtime/screen_runtime.h"
 
 #include "ui/conversation_input.h"
+#include "ui/gameplay_hud_input.h"
 #include "ui/world_pointer.h"
 
 #include <string.h>
@@ -77,16 +78,22 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
-      sf_world_state_bind_collision(
-        &game->world, &runtime->assets.gameplay.ground,
-        &runtime->assets.gameplay.objects);
-      sf_world_state_bind_ground_items(
-        &game->world,
-        runtime->assets.gameplay.ground_items.definitions,
-        runtime->assets.gameplay.ground_items.definition_count);
-      success = sf_world_state_bind_scenario(
-        &game->world, &runtime->assets.gameplay.scenario,
-        runtime->assets.gameplay.script);
+      if (!game->world.player.parameters_initialized)
+        success = sf_player_apply_initial_parameters(
+          &game->world.player,
+          &runtime->assets.gameplay.player_parameters);
+      if (success) {
+        sf_world_state_bind_collision(
+          &game->world, &runtime->assets.gameplay.ground,
+          &runtime->assets.gameplay.objects);
+        sf_world_state_bind_ground_items(
+          &game->world,
+          runtime->assets.gameplay.ground_items.definitions,
+          runtime->assets.gameplay.ground_items.definition_count);
+        success = sf_world_state_bind_scenario(
+          &game->world, &runtime->assets.gameplay.scenario,
+          runtime->assets.gameplay.script);
+      }
       if (success) sf_world_state_enter(
           &game->world, entry->world_x, entry->world_y,
           (uint8_t) entry->direction);
@@ -132,6 +139,7 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
 void sf_screen_runtime_resolve_input(
     const SfScreenRuntime *runtime, const SfGame *game, SfGameInput *input) {
   if (!input) return;
+  input->pointer_over_gameplay_ui = false;
   input->world_pointer_resolved = false;
   input->pointed_actor_id = -1;
   input->pointed_ground_item_id = -1;
@@ -144,9 +152,12 @@ void sf_screen_runtime_resolve_input(
   if (game->world.actor_script_state.message_active)
     sf_conversation_input_resolve(
       &runtime->assets.gameplay, &game->world, input);
-  else
+  else {
+    sf_gameplay_hud_input_resolve(input);
+    if (input->pointer_over_gameplay_ui) return;
     sf_world_pointer_resolve(
       &runtime->assets.gameplay, &game->world, input);
+  }
 }
 
 const SfTitleAssets *sf_screen_runtime_title_assets(

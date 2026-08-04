@@ -28,6 +28,7 @@
 #include "data/mct.h"
 #include "data/njp.h"
 #include "data/obl.h"
+#include "data/player_parameters.h"
 #include "data/scs.h"
 
 #include <stdbool.h>
@@ -49,6 +50,8 @@ typedef struct SfGameplayAssets {
   SfMctEntry entry;
   SfNjpSelected font;
   SfNjpSelected speech_frame;
+  SfNjpDecodedResource hud;
+  SfPlayerInitialParameters player_parameters;
   SfPlayerAssets player;
   SfScenarioActorAssets actors;
   SfGroundItemAssets ground_items;

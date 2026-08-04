@@ -17,36 +17,21 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_GAME_INPUT_H
-#define SHADOWFLARE_GAME_INPUT_H
+#ifndef SHADOWFLARE_DATA_PLAYER_PARAMETERS_H
+#define SHADOWFLARE_DATA_PLAYER_PARAMETERS_H
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct SfGameInput {
-  int32_t pointed_actor_id;
-  int32_t pointed_ground_item_id;
-  int8_t pointed_conversation_option;
-  int16_t pointer_x;
-  int16_t pointer_y;
-  uint8_t conversation_option_count;
-  bool pointer_active;
-  bool pointer_over_gameplay_ui;
-  bool world_pointer_resolved;
-  bool conversation_choices_resolved;
-  bool pointer_primary_pressed;
-  bool pointer_primary_down;
-  bool up_pressed;
-  bool down_pressed;
-  bool left_pressed;
-  bool right_pressed;
-  bool confirm_pressed;
-  bool cancel_pressed;
-  bool backspace_pressed;
-  bool delete_pressed;
-  bool pace_toggle_pressed;
-  char text[16];
-  uint8_t text_length;
-} SfGameInput;
+#define SF_PLAYER_INITIAL_PARAMETER_COUNT 13u
+
+typedef struct SfPlayerInitialParameters {
+  int32_t values[SF_PLAYER_INITIAL_PARAMETER_COUNT];
+  int32_t experience_threshold;
+} SfPlayerInitialParameters;
+
+bool sf_player_initial_parameters_load(
+  const char *path, uint8_t gender,
+  SfPlayerInitialParameters *parameters);
 
 #endif

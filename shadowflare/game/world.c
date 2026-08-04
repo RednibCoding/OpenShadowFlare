@@ -268,6 +268,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
     pointer->hold_updates = 0u;
   } else if (!message_consumed_input &&
              (input->pointer_primary_pressed || input->pointer_primary_down) &&
+             !input->pointer_over_gameplay_ui &&
              !pointer->interaction_command_active) {
     const SfWorldPoint target = sf_world_pointer_target(world, input);
     pointer->pending_actor_id = -1;

@@ -193,6 +193,18 @@ static int test_world_pointer_movement(void) {
             world.player.motion == SF_PLAYER_IDLE,
             "releasing a held pointer did not stop movement immediately"))
     return 1;
+
+  sf_world_state_enter(&world, 1000, 1000, 1u);
+  memset(&input, 0, sizeof(input));
+  input.pointer_x = 420;
+  input.pointer_y = 440;
+  input.pointer_primary_pressed = true;
+  input.pointer_over_gameplay_ui = true;
+  sf_world_state_update(&world, &input);
+  if (check(world.player.position.x == 1000 &&
+            world.player.position.y == 1000 &&
+            world.player.motion == SF_PLAYER_IDLE,
+            "a HUD click leaked into world movement")) return 1;
   return 0;
 }
 

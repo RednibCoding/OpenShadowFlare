@@ -86,6 +86,14 @@ the original 10,000-piece stack limit, failed pickups leave the inventory
 untouched and replay the drop bounce, and pickup sounds follow the retail
 item category and weight rules. Hovering an item applies the original pale
 tint and draws its quantity or decoded name above the world sprite.
+The first always-visible gameplay HUD is live too. It draws the authored
+`Bar.njp` pieces over retail's black lower surface, with the level digit,
+life, mana, experience, and walk/run indicator coming from the player owner.
+A streaming `Table.Tbd` reader extracts only the active gender's 13 starting
+parameters and level-one experience threshold; the 460,387-byte decoded table
+payload is never retained. HUD input is resolved in `ui/`, so clicking its
+surface cannot leak through as a movement command. Belt items, selected magic,
+companion controls, and the three panel buttons remain later HUD slices.
 
 ## Hard limits
 
@@ -168,8 +176,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,439,709 bytes of the 7 MiB main arena,
-leaving 5,900,323 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,439,781 bytes of the 7 MiB main arena,
+leaving 5,900,251 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -182,21 +190,21 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 752,632 bytes of the main arena, leaving 6,587,400 bytes free;
+assets. It uses 752,704 bytes of the main arena, leaving 6,587,328 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 712,848 bytes of the main arena, leaving 6,627,184
+The load-game screen uses 712,920 bytes of the main arena, leaving 6,627,112
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,353,938 bytes of the main
-arena, leaving 2,986,094 bytes free. Its screen-owned scenario, script, map,
-player, PEOPLE, ground-item, and UI data and artwork account for 4,015,411
+The complete Remote Town gameplay screen uses 4,413,906 bytes of the main
+arena, leaving 2,926,126 bytes free. Its screen-owned scenario, script, map,
+player, PEOPLE, ground-item, and UI data and artwork account for 4,075,307
 bytes. GND
 rendering
 data is decoded directly from its compressed three-plane stream into two bytes
@@ -257,6 +265,13 @@ Conversation input follows the same boundary. `ui/conversation_input.c` turns
 the rendered choice spans into an option number and count. The small game-side
 conversation owner changes selection, resumes the interpreter, and releases
 the speaking actor. No renderer or target backend knows about script choices.
+
+The bottom HUD follows that rule as well. `data/table.c` walks compressed or
+plain retail parameter tables through a numeric callback without allocating a
+database. `game/player.c` owns the selected starting values, while
+`ui/gameplay_hud.c` composes the 18 currently required `Bar.njp` patterns.
+Only the active patterns and their 19 referenced parts are decoded. The
+renderer remains unaware of gauges, levels, pace, or HUD hit areas.
 
 Ground items follow the same ownership rule. The active SCS is scanned for
 its fixed or initial temporary category/definition pairs, and `Item.Ibn` is
