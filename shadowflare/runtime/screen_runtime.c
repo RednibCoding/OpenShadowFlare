@@ -30,16 +30,19 @@
 #include <string.h>
 
 bool sf_screen_runtime_init(
-    SfScreenRuntime *runtime, SfArena *arena, const char *data_root,
+    SfScreenRuntime *runtime, SfArena *arena, SfArena *video_arena,
+    const char *data_root,
     void *decode_scratch, size_t decode_scratch_size) {
-  if (!runtime || !arena || !data_root || !decode_scratch ||
+  if (!runtime || !arena || !video_arena || !data_root || !decode_scratch ||
       decode_scratch_size == 0u) return false;
   memset(runtime, 0, sizeof(*runtime));
   runtime->arena = arena;
+  runtime->video_arena = video_arena;
   runtime->data_root = data_root;
   runtime->decode_scratch = decode_scratch;
   runtime->decode_scratch_size = decode_scratch_size;
   runtime->arena_mark = sf_arena_mark(arena);
+  runtime->video_arena_mark = sf_arena_mark(video_arena);
   return true;
 }
 
@@ -50,6 +53,8 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
   mode = game->mode;
   if (runtime->loaded && runtime->loaded_mode == mode) return true;
   if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+  if (!sf_arena_rewind(
+        runtime->video_arena, runtime->video_arena_mark)) return false;
   memset(&runtime->assets, 0, sizeof(runtime->assets));
   memset(&runtime->screen, 0, sizeof(runtime->screen));
   if (mode == SF_GAME_MODE_TITLE) {
@@ -101,6 +106,8 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
         game->world.travel_request.scenario_id != game->world.scenario_id) {
       const SfScenarioTravelRequest travel = game->world.travel_request;
       if (!sf_arena_rewind(runtime->arena, runtime->arena_mark)) return false;
+      if (!sf_arena_rewind(
+            runtime->video_arena, runtime->video_arena_mark)) return false;
       memset(&runtime->assets, 0, sizeof(runtime->assets));
       memset(&runtime->screen, 0, sizeof(runtime->screen));
       if (!sf_gameplay_runtime_load(
@@ -112,6 +119,10 @@ bool sf_screen_runtime_prepare(SfScreenRuntime *runtime, SfGame *game) {
       runtime->blank_drawn = false;
       return true;
     }
+    if (!sf_gameplay_runtime_prepare_enemy_attack(
+          &runtime->assets.gameplay, runtime->video_arena,
+          runtime->video_arena_mark, runtime->data_root, &game->world))
+      return false;
     const SfGameplayServiceRequest request = sf_gameplay_service_take(
       &game->world.service_request);
     if (!sf_gameplay_service_apply(

@@ -20,6 +20,7 @@
 #include "game/enemy_action.h"
 
 #include "game/enemy_movement.h"
+#include "game/enemy_presentation.h"
 #include "game/scenario_enemy_controller.h"
 
 #include <limits.h>
@@ -27,6 +28,7 @@
 #define SF_ENEMY_WAIT_ACTION 0
 #define SF_ENEMY_PATROL_ACTION 1
 #define SF_ENEMY_APPROACH_ACTION 10
+#define SF_ENEMY_DIRECT_ATTACK_ACTION 2
 #define SF_ENEMY_IDLE_PRESENTATION 7u
 #define SF_ENEMY_WALK_PRESENTATION 8u
 #define SF_ENEMY_WAIT_EVENT 11
@@ -158,6 +160,23 @@ static void sf_enemy_update_approach(
         ? SF_ENEMY_APPROACH_ACTION : SF_ENEMY_APPROACH_EVENT;
 }
 
+static void sf_enemy_update_direct_attack(
+    SfScenarioEnemy *enemy,
+    const SfScenarioEnemyControllerContext *context) {
+  if (enemy->presentation_action == 1u) return;
+  if (!enemy->direct_attack_animations) {
+    if (context->attack_request && context->attack_request->resource_id < 0) {
+      context->attack_request->resource_id = enemy->definition->resource_id;
+      context->attack_request->chart =
+        enemy->definition->post_ai_values[41] + 4;
+    }
+    return;
+  }
+  sf_enemy_movement_stop(enemy);
+  if (!sf_enemy_presentation_begin_direct(enemy, context))
+    enemy->event_number = SF_ENEMY_DIRECT_ATTACK_ACTION;
+}
+
 void sf_enemy_action_update(
     SfScenarioEnemy *enemy,
     const SfScenarioEnemyControllerContext *context,
@@ -178,6 +197,8 @@ void sf_enemy_action_update(
     sf_enemy_update_patrol(enemy, entering, context);
   } else if (action == SF_ENEMY_APPROACH_ACTION) {
     sf_enemy_update_approach(enemy, entering, context, distances);
+  } else if (action == SF_ENEMY_DIRECT_ATTACK_ACTION) {
+    sf_enemy_update_direct_attack(enemy, context);
   } else {
     enemy->event_number = 0;
     enemy->selected_action = NULL;

@@ -94,6 +94,7 @@ typedef struct SfWorldState {
   const SfAiControlCatalog *ai_controls;
   SfWorldPointerControl pointer;
   int32_t script_transport_service;
+  SfEnemyAttackRequest enemy_attack_request;
   int32_t companion_type;
   uint16_t movement_blocker_count;
   bool entered;

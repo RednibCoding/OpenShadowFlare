@@ -53,6 +53,7 @@ typedef union SfGameplayTestMemory {
 } SfGameplayTestMemory;
 
 static SfGameplayTestMemory sf_gameplay_test_memory;
+static uint8_t sf_gameplay_test_video_memory[SF_VIDEO_MEMORY_LIMIT_BYTES];
 static uint16_t sf_gameplay_test_pixels[640u * 480u];
 static uint16_t sf_gameplay_test_hud_copy[640u * 87u];
 
@@ -123,6 +124,32 @@ static int test_non_town_gameplay_load(
   patrol_action = goblin_control
     ? sf_ai_control_action(
         &assets.ai_controls, goblin_control, 0u, 0u) : NULL;
+  if (goblin) {
+    SfArena video_arena;
+    SfScenarioEnemyAttackAssets attack;
+    uint8_t attack_direction;
+    sf_arena_init(
+      &video_arena, sf_gameplay_test_video_memory,
+      sizeof(sf_gameplay_test_video_memory));
+    if (!sf_arena_push(
+          &video_arena, SF_FRAMEBUFFER_BYTES, sizeof(uint16_t)) ||
+        !sf_scenario_enemy_attack_assets_load(
+          &attack, root, &assets.scenario,
+          goblin->resource_id,
+          (uint16_t) (goblin->post_ai_values[41] + 4), &video_arena) ||
+        attack.resource_id != goblin->resource_id || attack.chart != 4u ||
+        attack.memory_bytes > SF_VIDEO_ASSET_BUDGET_BYTES) {
+      fprintf(stderr, "The Goblin attack did not fit the video working set\n");
+      return 1;
+    }
+    for (attack_direction = 0u; attack_direction < 8u;
+         ++attack_direction) {
+      if (attack.animations[attack_direction].frame_count == 0u) {
+        fprintf(stderr, "The Goblin attack is missing a retail direction\n");
+        return 1;
+      }
+    }
+  }
   if (goblin_visual) {
     for (direction = 0u; direction < 8u; ++direction) {
       if (goblin_visual->animations[1][direction].frame_count == 0u) {

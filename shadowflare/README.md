@@ -283,8 +283,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,543,133 bytes of the 7 MiB main arena,
-leaving 5,796,899 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,548,485 bytes of the 7 MiB main arena,
+leaving 5,791,547 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -297,20 +297,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 856,056 bytes of the main arena, leaving 6,483,976 bytes free;
+assets. It uses 861,408 bytes of the main arena, leaving 6,478,624 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 816,272 bytes of the main arena, leaving 6,523,760
+The load-game screen uses 821,624 bytes of the main arena, leaving 6,518,408
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,277,220 bytes of the main
-arena, leaving 62,812 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,282,572 bytes of the main
+arena, leaving 57,460 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
 inventory-panel, transport, equipment, and UI data and artwork account for
 6,835,269 bytes. GND rendering data is decoded directly from its compressed three-plane
@@ -318,8 +318,8 @@ stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
-The same runtime reload measured in Near Remote Town uses 7,241,992 bytes,
-leaving 98,040 bytes free; 6,800,041 bytes belong to that screen. The
+The same runtime reload measured in Near Remote Town uses 7,247,344 bytes,
+leaving 92,688 bytes free; 6,800,041 bytes belong to that screen. The
 transition never retains two maps at once. Its fixed request lives with the
 game owner, while the screen arena is rewound before the next scenario is
 decoded.
@@ -420,9 +420,22 @@ entry-vicinity resource, movement uses the shared route controller, and the
 enemy's dynamic blocker is updated in the same tick as its position. Attack
 selection and cadence, route movement, and the small per-enemy coordinator
 live in separate files so adding more actions does not grow one controller. The
-attack presentations are deliberately still dormant; the next slice will
-connect their CAF marker and damage boundary rather than applying damage from
-the movement controller.
+ordinary action-two presentation now lives in its own game file. It uses the
+MCT direct-attack chart, range, and speed index, faces the retained target,
+scans crossed CAF cells for the three audio bits and `0x40` impact bit, holds
+the final frame, and returns retail event two. Damage is deliberately not
+applied by the movement controller; the next slice will connect the marker to
+the direct-impact receiver.
+
+Direct-attack artwork uses the previously empty video-memory tail instead of
+consuming the final main-RAM headroom. Only one inactive resource bank is
+replaceable at a time. The runtime rewinds that tail at a clear resource
+boundary, loads all eight directions for the requested chart, and binds the
+immutable cells to matching live enemies. The measured resource-one Goblin
+bank is 842,596 bytes. Together with the 614,400-byte RGB555 framebuffer it
+uses 1,456,996 bytes of the 4 MiB video pool, leaving 2,737,308 bytes. Ordinary
+updates and draws allocate nothing and perform no file access; only a missing
+attack bank enters this bounded prepare step.
 
 The pointer side of that boundary is now live. Opaque pixels from the current
 enemy CAF frame participate in the normal click range with the enemy class's

@@ -36,6 +36,7 @@ bool sf_gameplay_enemy_visible(
     const SfScenarioEnemyAssets *assets, const SfScenarioEnemy *enemy,
     const SfWorldRenderView *view, uint16_t interpolation, bool shadow) {
   const SfScenarioEnemyVisual *visual;
+  SfScenarioEnemyFrameAssets frame_assets;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
   SfScreenPoint anchor;
@@ -46,11 +47,11 @@ bool sf_gameplay_enemy_visible(
   visual = sf_scenario_enemy_visual(
     assets, enemy->definition->resource_id);
   if (!visual) return false;
-  if (enemy->animation_chart >= SF_SCENARIO_ENEMY_ANIMATION_COUNT)
-    return false;
-  animation = &visual->animations[enemy->animation_chart][enemy->direction];
-  resource = shadow ? &visual->shadows : &visual->artwork;
-  if (animation->frame_count == 0u) return false;
+  if (!sf_scenario_enemy_frame_assets(
+        assets, enemy->definition->resource_id, enemy->animation_chart,
+        enemy->direction, &frame_assets)) return false;
+  animation = frame_assets.animation;
+  resource = shadow ? frame_assets.shadows : frame_assets.artwork;
   frame = (uint16_t) (enemy->animation_frame % animation->frame_count);
   anchor = sf_world_to_screen(
     sf_scenario_enemy_render_position(enemy, interpolation));
@@ -76,6 +77,7 @@ void sf_gameplay_enemy_draw(
     const SfScenarioEnemy *enemy, const SfWorldRenderView *view,
     uint16_t interpolation, bool shadow, bool hovered, const SfRect *clip) {
   const SfScenarioEnemyVisual *visual;
+  SfScenarioEnemyFrameAssets frame_assets;
   const SfCafSelectedAnimation *animation;
   const SfNjpSparseResource *resource;
   SfScreenPoint anchor;
@@ -86,10 +88,11 @@ void sf_gameplay_enemy_draw(
   visual = sf_scenario_enemy_visual(
     assets, enemy->definition->resource_id);
   if (!visual) return;
-  if (enemy->animation_chart >= SF_SCENARIO_ENEMY_ANIMATION_COUNT) return;
-  animation = &visual->animations[enemy->animation_chart][enemy->direction];
-  resource = shadow ? &visual->shadows : &visual->artwork;
-  if (animation->frame_count == 0u) return;
+  if (!sf_scenario_enemy_frame_assets(
+        assets, enemy->definition->resource_id, enemy->animation_chart,
+        enemy->direction, &frame_assets)) return;
+  animation = frame_assets.animation;
+  resource = shadow ? frame_assets.shadows : frame_assets.artwork;
   frame = (uint16_t) (enemy->animation_frame % animation->frame_count);
   anchor = sf_world_to_screen(
     sf_scenario_enemy_render_position(enemy, interpolation));

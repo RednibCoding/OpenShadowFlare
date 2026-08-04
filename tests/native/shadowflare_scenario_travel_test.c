@@ -33,6 +33,7 @@ typedef union SfScenarioTravelTestMemory {
 } SfScenarioTravelTestMemory;
 
 static SfScenarioTravelTestMemory sf_scenario_travel_memory;
+static uint8_t sf_scenario_travel_video_memory[SF_VIDEO_MEMORY_LIMIT_BYTES];
 
 static void sf_scenario_travel_test_input(SfGameInput *input) {
   memset(input, 0, sizeof(*input));
@@ -70,6 +71,7 @@ static int sf_scenario_travel_test_enter_trigger(
 int main(void) {
 #if defined(OPENSHADOWFLARE_SOURCE_DIR)
   SfArena arena;
+  SfArena video_arena;
   SfGame *game;
   SfScreenRuntime *runtime;
   void *scratch;
@@ -96,13 +98,19 @@ int main(void) {
   sf_arena_init(
     &arena, sf_scenario_travel_memory.bytes,
     sizeof(sf_scenario_travel_memory.bytes));
+  sf_arena_init(
+    &video_arena, sf_scenario_travel_video_memory,
+    sizeof(sf_scenario_travel_video_memory));
+  if (!sf_arena_push(
+        &video_arena, SF_FRAMEBUFFER_BYTES, sizeof(uint16_t))) return 1;
   game = (SfGame *) sf_arena_push_zero(
     &arena, sizeof(*game), sizeof(void *));
   runtime = (SfScreenRuntime *) sf_arena_push_zero(
     &arena, sizeof(*runtime), sizeof(void *));
   scratch = sf_arena_push(&arena, 60000u, 4u);
   if (!game || !runtime || !scratch ||
-      !sf_screen_runtime_init(runtime, &arena, root, scratch, 60000u)) return 1;
+      !sf_screen_runtime_init(
+        runtime, &arena, &video_arena, root, scratch, 60000u)) return 1;
   sf_game_init(game, NULL);
   sf_world_state_init(&game->world, 0, 0, 1u);
   game->mode = SF_GAME_MODE_GAMEPLAY;
@@ -144,6 +152,72 @@ int main(void) {
   if (game->world.travel_request.pending) {
     fprintf(stderr, "The outdoor entry immediately retriggered travel\n");
     return 1;
+  }
+  {
+    SfScenarioEnemy *goblin = NULL;
+    const SfAiAction *direct_attack = NULL;
+    uint16_t enemy_index;
+    uint16_t action_index;
+    bool presentation_seen = false;
+    bool impact_seen = false;
+    bool completion_seen = false;
+    uint8_t update;
+    for (enemy_index = 0u; enemy_index < game->world.enemies.count;
+         ++enemy_index) {
+      SfScenarioEnemy *candidate =
+        &game->world.enemies.enemies[enemy_index];
+      if (candidate->definition && candidate->definition->id == 101) {
+        goblin = candidate;
+        break;
+      }
+    }
+    if (goblin && goblin->control) {
+      for (action_index = 0u;
+           action_index < goblin->control->events[0].action_count;
+           ++action_index) {
+        const SfAiAction *candidate = sf_ai_control_action(
+          game->world.ai_controls, goblin->control, 0u, action_index);
+        if (candidate && candidate->action_number == 2) {
+          direct_attack = candidate;
+          break;
+        }
+      }
+    }
+    if (!goblin || !direct_attack) {
+      fprintf(stderr, "The gate Goblin has no retail direct attack\n");
+      return 1;
+    }
+    goblin->position.x = game->world.player.position.x + 100;
+    goblin->position.y = game->world.player.position.y;
+    goblin->previous_position = goblin->position;
+    goblin->selected_action = direct_attack;
+    goblin->current_action = -1;
+    goblin->event_number = -1;
+    goblin->presentation_action = 7u;
+    sf_world_state_update(&game->world, &input);
+    if (game->world.enemy_attack_request.resource_id !=
+          goblin->definition->resource_id ||
+        game->world.enemy_attack_request.chart != 4 ||
+        !sf_screen_runtime_prepare(runtime, game) ||
+        !runtime->assets.gameplay.enemies.attack.loaded ||
+        runtime->assets.gameplay.enemies.attack.resource_id !=
+          goblin->definition->resource_id ||
+        !goblin->direct_attack_animations ||
+        video_arena.used > video_arena.capacity) {
+      fprintf(stderr, "The enemy attack working set did not load on demand\n");
+      return 1;
+    }
+    for (update = 0u; update < 64u && !completion_seen; ++update) {
+      sf_world_state_update(&game->world, &input);
+      if (goblin->presentation_action == 1u) presentation_seen = true;
+      if (goblin->direct_impact_pending) impact_seen = true;
+      if (presentation_seen && goblin->event_number == 2)
+        completion_seen = true;
+    }
+    if (!presentation_seen || !impact_seen || !completion_seen) {
+      fprintf(stderr, "The retail Goblin attack did not cross its CAF marker\n");
+      return 1;
+    }
   }
   if (sf_scenario_travel_test_enter_trigger(
         game, 10000000, 0, 0) ||

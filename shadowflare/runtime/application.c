@@ -293,6 +293,12 @@ int sf_application_run(
   }
   sf_arena_init(&main_arena, main_memory, main_memory_size);
   sf_arena_init(&video_arena, video_memory, video_memory_size);
+  frame_memory = sf_arena_push(
+    &video_arena, SF_FRAMEBUFFER_BYTES, sizeof(uint16_t));
+  if (!frame_memory || !sf_renderer_init(
+        &renderer, frame_memory, SF_FRAMEBUFFER_BYTES,
+        SF_FRAME_WIDTH, SF_FRAME_HEIGHT)) return 4;
+  framebuffer = sf_renderer_framebuffer(&renderer);
 
   window_config = twl_config_default();
   window_config.title = "OpenShadowFlare";
@@ -331,7 +337,7 @@ int sf_application_run(
   if (!game || !menu_assets || !screen_runtime || !decode_scratch ||
       !sf_menu_assets_load(menu_assets, data_root, &main_arena) ||
       !sf_screen_runtime_init(
-        screen_runtime, &main_arena, data_root,
+        screen_runtime, &main_arena, &video_arena, data_root,
         decode_scratch, SF_TITLE_DECODE_SCRATCH_BYTES) ||
       !sf_screen_runtime_load(screen_runtime, game)) {
     fprintf(stderr, "Could not load the retail menu assets from '%s'.\n",
@@ -340,16 +346,6 @@ int sf_application_run(
     twl_shutdown(window);
     return 3;
   }
-  frame_memory = sf_arena_push(
-    &video_arena, SF_FRAMEBUFFER_BYTES, sizeof(uint16_t));
-  if (!frame_memory || !sf_renderer_init(
-        &renderer, frame_memory, SF_FRAMEBUFFER_BYTES,
-        SF_FRAME_WIDTH, SF_FRAME_HEIGHT)) {
-    if (audio) tal_shutdown(audio);
-    twl_shutdown(window);
-    return 4;
-  }
-  framebuffer = sf_renderer_framebuffer(&renderer);
   title_assets = sf_screen_runtime_title_assets(screen_runtime);
   if (!title_assets) {
     if (audio) tal_shutdown(audio);

@@ -39,6 +39,8 @@ void sf_world_state_init(
   world->scenario_id = scenario_id;
   world->entry_key = entry_key;
   world->script_transport_service = -1;
+  world->enemy_attack_request.resource_id = -1;
+  world->enemy_attack_request.chart = -1;
   sf_scenario_travel_clear(&world->travel_request);
   sf_ground_items_init(&world->ground_items);
   sf_player_init(&world->player, player_gender);
@@ -61,6 +63,8 @@ void sf_world_state_enter(
   world->pointer.range_enabled = true;
   sf_gameplay_service_clear(&world->service_request);
   world->script_transport_service = -1;
+  world->enemy_attack_request.resource_id = -1;
+  world->enemy_attack_request.chart = -1;
   sf_scenario_labels_begin(&world->scenario_labels);
   sf_scenario_labels_end(&world->scenario_labels);
   sf_player_enter(
@@ -265,6 +269,7 @@ static void sf_world_update_scenario_enemies(
   context.catalog = world->ai_controls;
   context.collision = &collision;
   context.random_state = &world->random_state;
+  context.attack_request = &world->enemy_attack_request;
   context.player.valid = world->player.current_life > 0;
   context.player.position = world->player.position;
   context.player.judgement = world->player.judgement;
@@ -298,6 +303,8 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   uint16_t enemy_blocker_indices[SF_MCT_ENEMY_LIMIT];
   uint16_t companion_blocker_index;
   if (!world || !world->entered || !input) return;
+  world->enemy_attack_request.resource_id = -1;
+  world->enemy_attack_request.chart = -1;
   sf_scenario_labels_begin(&world->scenario_labels);
   sf_ground_items_update(&world->ground_items);
   sf_sound_events_reset(&world->sounds);

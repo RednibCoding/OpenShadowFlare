@@ -106,6 +106,9 @@ headers, legacy libraries, and heap allocation.
 - A loading transition must fit its peak budget, not only its final state.
 - Assets are loaded for their current screen, map, or owner and released at a
   clear lifetime boundary.
+- Replaceable video artwork starts after the fixed framebuffer mark. A reload
+  may rewind that tail only when no live presentation still references it;
+  target backends do not own or reimplement this policy.
 - Main-RAM and video-RAM totals need tests whenever a new asset class lands.
 - Do not trade large lookup tables or caches for small CPU wins without
   measuring the memory cost.

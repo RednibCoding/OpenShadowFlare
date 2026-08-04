@@ -162,11 +162,27 @@ draws the authored name and color over the proportional life fill, with the
 native-element marker from `StatusIcon.njp`. Enemy animation and movement now
 invalidate the world presentation even while the player stands still.
 
-The immediate target is the rest of the first attack boundary: implement the
-ordinary action-two presentation through its CAF marker without inventing a
-second combat actor. The small enemy resource working set still needs a
-predictable reload boundary before later maps can move into resources outside
-their entry vicinity.
+The first ordinary enemy attack presentation is live as well. Action two asks
+for direct presentation one, faces the retained player or companion target,
+and advances the MCT-selected CAF with the retail ten-entry speed table using
+integer ratios. It scans every crossed frame for the three sound bits and the
+`0x40` impact marker, holds the final frame for one update, then publishes
+completion event two. The game still owns the one live enemy; there is no
+second presentation actor or renderer-side combat rule.
+
+Attack art has a separate predictable lifetime. An action whose resource is
+not resident publishes a small request and waits. Between update and draw, the
+runtime may replace one inactive attack resource in the video-memory tail,
+then binds its immutable eight-direction CAF timeline back to every matching
+enemy. Near Remote Town's resource-one Goblin bank costs 842,596 bytes, leaves
+the main screen arena untouched, and can be rewound without touching the
+fixed framebuffer. This is a generic resource/chart boundary, not a list of
+special maps or Goblin IDs.
+
+The immediate target is the direct impact receiver behind that marker:
+reconstruct the retail hit packet, defense and damage result, player or
+companion reaction, and presentation sounds. After that, the same working-set
+boundary can grow to direct variants two and three and the effect actions.
 
 ## Where we are now
 
