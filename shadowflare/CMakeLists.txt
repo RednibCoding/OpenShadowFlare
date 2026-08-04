@@ -39,6 +39,7 @@ add_library(
   assets/ground_item_requests.c
   assets/inventory_item_assets.c
   assets/gameplay_assets.c
+  assets/gameplay_sound_assets.c
   assets/load_game_assets.c
   assets/menu_assets.c
   assets/player_assets.c
@@ -73,6 +74,7 @@ add_library(
   data/save_player.c
   data/save_player_items.c
   data/scs.c
+  data/spell_parameters.c
   data/table.c
   data/voc.c
   game/character_create.c
@@ -86,6 +88,7 @@ add_library(
   game/load_game.c
   game/movement.c
   game/player.c
+  game/player_magic.c
   game/player_elements.c
   game/player_item.c
   game/player_loadout.c
@@ -94,11 +97,13 @@ add_library(
   game/route.c
   game/route_tables.c
   game/scenario_actor.c
+  game/sound_event.c
   game/special_items.c
   game/title.c
   game/world.c
   game/world_conversation.c
   game/world_inventory.c
+  game/world_magic.c
   game/world_save.c
   game/world_script.c
   interpreter/scenario_actor_script.c
@@ -128,6 +133,9 @@ add_library(
   ui/gameplay_hud_input.c
   ui/gameplay_inventory.c
   ui/gameplay_inventory_input.c
+  ui/gameplay_magic_input.c
+  ui/gameplay_magic_layout.c
+  ui/gameplay_magic.c
   ui/gameplay_panels_input.c
   ui/gameplay_item_information.c
   ui/gameplay_item_icon.c

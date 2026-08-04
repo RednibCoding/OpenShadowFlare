@@ -226,11 +226,19 @@ bool sf_gameplay_assets_load(
     0u, 3u, 7u, 8u, 10u, 11u, 14u, 15u,
     19u, 20u, 21u, 22u, 23u, 24u, 25u, 26u, 27u, 28u
   };
-  static const uint8_t inventory_patterns[33] = {
-    0u, 1u, 2u, 3u, 5u, 14u, 15u, 16u,
+  static const uint8_t inventory_patterns[37] = {
+    0u, 1u, 2u, 3u, 5u, 6u, 14u, 15u, 16u, 32u,
     36u, 37u, 38u, 39u, 40u, 41u, 42u, 43u, 44u, 45u, 46u,
     47u, 48u, 49u, 50u, 51u, 52u, 53u, 54u, 55u, 56u, 57u,
-    67u, 116u, 117u
+    67u, 69u, 70u, 116u, 117u
+  };
+  static const uint8_t magic_icon_patterns[23] = {
+    0u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u,
+    13u, 14u, 15u, 16u, 17u, 18u, 19u, 20u, 21u, 22u, 23u
+  };
+  static const uint8_t magic_bar_patterns[24] = {
+    2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u, 13u,
+    14u, 15u, 16u, 17u, 18u, 19u, 20u, 21u, 22u, 23u, 24u, 25u
   };
   size_t mark;
   bool success = false;
@@ -240,7 +248,9 @@ bool sf_gameplay_assets_load(
   memset(&selection, 0, sizeof(selection));
   assets->script = (SfScsScript *) sf_arena_push_zero(
     arena, sizeof(*assets->script), sizeof(int32_t));
-  if (!assets->script) goto done;
+  assets->spell_parameters = (SfSpellParameters *) sf_arena_push_zero(
+    arena, sizeof(*assets->spell_parameters), sizeof(int32_t));
+  if (!assets->script || !assets->spell_parameters) goto done;
   if (!sf_gameplay_path(
         path, sizeof(path), data_root,
         sf_retail_world_paths.scenario_format, NULL, scenario_id) ||
@@ -286,12 +296,24 @@ bool sf_gameplay_assets_load(
       !sf_retail_path_join(
         path, sizeof(path), data_root, sf_retail_game_paths.status) ||
       !sf_njp_stream_decoded_patterns(
-        path, inventory_patterns, 33u, arena, &assets->inventory_panel) ||
+        path, inventory_patterns, 37u, arena, &assets->inventory_panel) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root, sf_retail_game_paths.magic_icons) ||
+      !sf_njp_stream_decoded_patterns(
+        path, magic_icon_patterns, 23u, arena, &assets->magic_icons) ||
+      !sf_retail_path_join(
+        path, sizeof(path), data_root,
+        sf_retail_game_paths.magic_bar_icons) ||
+      !sf_njp_stream_decoded_patterns(
+        path, magic_bar_patterns, 24u, arena, &assets->magic_bar_icons) ||
       !sf_retail_path_join(
         path, sizeof(path), data_root,
         sf_retail_game_paths.parameter_tables) ||
       !sf_player_initial_parameters_load(
         path, player_gender, player_level, &assets->player_parameters) ||
+      !sf_spell_parameters_load(path, assets->spell_parameters) ||
+      !sf_gameplay_sound_assets_load(
+        &assets->sounds, data_root, arena) ||
       !sf_ground_item_assets_load(
         &assets->ground_items, data_root, assets->script,
         retained_items, retained_item_count, arena) ||

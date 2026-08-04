@@ -121,7 +121,7 @@ left and right panels can remain open together; opening only one shifts the
 live world and its input anchor to the exposed half of the screen. Items move
 directly between either owner without a second transfer path, and the fourth
 retail save container restores exact Special Item cells on load.
-`S` and the authored STATUS button open the first tab of the shared
+`S` and the authored STATUS button open the Status tab of the shared
 Status/Magic window. The live Status page uses retail pattern 5 for its frame
 and labels, then overlays the character identity, current pools, base and
 equipment-adjusted physical and magical values, eight elemental affinities,
@@ -129,8 +129,20 @@ and the saved elemental marker. Its game-side profile ignores broken gear and
 suppressed off-hand items; the UI only formats and draws the result. Status can
 remain open beside Inventory, replaces Special Item on the left, shifts the
 world and input by the same integer offset, and is closed together with other
-open panels by Escape. The shared panel owner already has a separate Magic tab
-state so that the next slice can add Magic without creating another window.
+open panels by Escape.
+
+`M` and the authored top tab open the other half of that same owner. Magic uses
+retail pattern 6, four six-spell pages, authored icon wells, saved availability,
+level and experience arrays, and streamed Tables 16, 17, 27, and 600 through
+621. Learned icons can be dragged into eight saved slots and moved without
+duplicates. The always-visible bar above the HUD uses its original compact and
+selected icons, expands around the selected spell, and follows the retail
+full/left/right-panel positions. Clicking its final icon selects normal attack;
+every new or loaded gameplay entry starts there. UI code owns the page, hit
+rectangles, tooltip, and held icon, while `game/player_magic.c` owns spell data
+and applies the emitted selection or assignment. Samples 57 and 58 use a small
+general world-event queue and dedicated gameplay-interface assets before TAL
+plays them at the runtime edge.
 
 Choosing a retail save now restores more than its load-screen summary. The
 `ShadowFlare0005` envelope is decoded and checksummed as a stream, so even a
@@ -228,8 +240,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,452,293 bytes of the 7 MiB main arena,
-leaving 5,887,739 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,454,573 bytes of the 7 MiB main arena,
+leaving 5,885,459 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -242,22 +254,22 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 765,216 bytes of the main arena, leaving 6,574,816 bytes free;
+assets. It uses 767,496 bytes of the main arena, leaving 6,572,536 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 725,432 bytes of the main arena, leaving 6,614,600
+The load-game screen uses 727,712 bytes of the main arena, leaving 6,612,320
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 5,199,068 bytes of the main
-arena, leaving 2,140,964 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 5,423,692 bytes of the main
+arena, leaving 1,916,340 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
-artwork account for 4,847,957
+artwork account for 5,070,301
 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
@@ -346,7 +358,7 @@ grid placement, single-item swaps, invalid-placement rollback, and partial
 Gold merges all stay in `game/inventory.c`.
 
 The inventory and character panels follow the same lifetime. `Status.njp` is
-streamed twice to retain only 33 required patterns, without constructing
+streamed to retain only 37 required patterns, without constructing
 metadata for its other 115 patterns. Item definitions provide the inventory
 group, pattern, and optional palette directly; only groups and cells referenced
 by the active map's retained definitions are decoded.
@@ -363,6 +375,15 @@ closing a panel, as it does in retail. The left Special Item panel has its own
 fixed 9x10 owner but shares this pointer transfer and item presentation path.
 Both panels can be open at once; their opposing integer camera offsets cancel,
 while either panel alone leaves the other half as the live world.
+
+Magic follows the same prepared-resource rule. Only the 23 required
+`MagicIcon.njp` patterns and 24 required `MagicBarIcon.njp` patterns are
+decoded when gameplay loads. The table scanner copies the 22 fixed MP/effect
+rows, experience thresholds, and bounded help lines into gameplay-owned
+storage, then discards the table stream. Panel rendering performs no file
+access, allocation, decompression, or format conversion. Its only normal-frame
+cost is composing the nine small gameplay-bar entries when that region is
+redrawn; the four-page panel is drawn only while open or visibly changing.
 
 The same held-item path now owns all nine visible equipment regions. Their
 retail rectangles live in one small UI layout file, while category, subtype,

@@ -24,6 +24,7 @@
 #include "game/ground_item.h"
 #include "game/player.h"
 #include "game/scenario_actor.h"
+#include "game/sound_event.h"
 #include "interpreter/scenario_actor_script.h"
 
 #include <stdbool.h>
@@ -63,6 +64,7 @@ typedef struct SfWorldState {
   SfPlayerState player;
   SfScenarioActorSet actors;
   SfGroundItemSet ground_items;
+  SfSoundEventQueue sounds;
   SfScenarioActorScriptState actor_script_state;
   SfCollisionWorld collision;
   SfMovementBlocker movement_blockers[SF_WORLD_MOVEMENT_BLOCKER_LIMIT];

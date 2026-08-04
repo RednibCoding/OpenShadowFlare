@@ -78,6 +78,8 @@ const SfRetailGamePaths sf_retail_game_paths = {
   "System/Game/Pattern/Hukidasi.njp",
   "System/Game/Pattern/Bar.njp",
   "System/Game/Pattern/Status.njp",
+  "System/Game/Pattern/MagicIcon.njp",
+  "System/Game/Pattern/MagicBarIcon.njp",
   "System/Game/Pattern/Item%04u.njp"
 };
 

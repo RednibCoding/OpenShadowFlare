@@ -21,7 +21,6 @@
 
 #include <string.h>
 
-#define SF_SAVED_MAGIC_VALUE_COUNT (22u * 3u + 8u)
 #define SF_SAVED_COMPANION_LIMIT 256u
 
 static bool sf_saved_game_i32(
@@ -76,12 +75,22 @@ static bool sf_saved_game_progress(
   return true;
 }
 
-static bool sf_saved_game_skip_magic(SfSavePayloadReader *reader) {
+static bool sf_saved_game_magic(
+    SfSavePayloadReader *reader, SfSavedMagic *magic) {
   int32_t count;
-  const uint32_t bytes = SF_SAVED_MAGIC_VALUE_COUNT * 4u;
-  return sf_saved_game_i32(reader, &count) && count == 22 &&
-    sf_save_payload_content_remaining(reader) >= bytes &&
-    sf_save_payload_skip(reader, bytes);
+  uint8_t index;
+  if (!sf_saved_game_i32(reader, &count) ||
+      count != (int32_t) SF_SAVED_SPELL_COUNT) return false;
+  for (index = 0u; index < SF_SAVED_SPELL_COUNT; ++index)
+    if (!sf_saved_game_i32(reader, &magic->availability[index])) return false;
+  for (index = 0u; index < SF_SAVED_SPELL_COUNT; ++index)
+    if (!sf_saved_game_i32(reader, &magic->levels[index])) return false;
+  for (index = 0u; index < SF_SAVED_SPELL_COUNT; ++index)
+    if (!sf_saved_game_i32(reader, &magic->experience[index])) return false;
+  for (index = 0u; index < SF_SAVED_MAGIC_BAR_SLOT_COUNT; ++index)
+    if (!sf_saved_game_i32(reader, &magic->bar_slots[index])) return false;
+  magic->present = true;
+  return true;
 }
 
 static bool sf_saved_game_skip_companions(SfSavePayloadReader *reader) {
@@ -115,7 +124,7 @@ bool sf_save_game_read_progress(
   if (sf_save_payload_content_remaining(reader) == 0u) return true;
   if (!sf_saved_game_progress(reader, &game->progress)) return false;
   if (sf_save_payload_content_remaining(reader) == 0u) return true;
-  if (!sf_saved_game_skip_magic(reader)) return false;
+  if (!sf_saved_game_magic(reader, &game->magic)) return false;
   if (sf_save_payload_content_remaining(reader) == 0u) return true;
   if (!sf_saved_game_skip_companions(reader)) return false;
   if (sf_save_payload_content_remaining(reader) == 0u) return true;

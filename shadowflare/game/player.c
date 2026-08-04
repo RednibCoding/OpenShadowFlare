@@ -55,6 +55,7 @@ void sf_player_init(SfPlayerState *player, uint8_t gender) {
   sf_equipment_init(&player->equipment);
   sf_belt_init(&player->belt);
   sf_special_items_init(&player->special_items);
+  sf_player_magic_init(&player->magic);
   sf_route_reset(&player->route);
 }
 

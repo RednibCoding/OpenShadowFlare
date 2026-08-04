@@ -21,6 +21,7 @@
 #define SHADOWFLARE_GAME_PLAYER_SAVE_H
 
 #include "data/save_player.h"
+#include "data/save_game.h"
 #include "game/player.h"
 
 #include <stdbool.h>
@@ -30,5 +31,7 @@ bool sf_player_restore_save(
   SfPlayerState *player, const SfSavedPlayer *saved,
   const SfItemGroundDefinition *definitions, uint8_t definition_count,
   int32_t experience_threshold);
+bool sf_player_restore_magic(
+  SfPlayerState *player, const SfSavedMagic *saved);
 
 #endif

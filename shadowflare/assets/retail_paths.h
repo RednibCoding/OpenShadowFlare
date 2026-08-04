@@ -81,6 +81,8 @@ typedef struct SfRetailGamePaths {
   const char *speech_frame;
   const char *hud;
   const char *status;
+  const char *magic_icons;
+  const char *magic_bar_icons;
   const char *inventory_item_format;
 } SfRetailGamePaths;
 

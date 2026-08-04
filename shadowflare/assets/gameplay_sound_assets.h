@@ -17,25 +17,24 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_TABLE_H
-#define SHADOWFLARE_DATA_TABLE_H
+#ifndef SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
+#define SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
+
+#include "core/arena.h"
+#include "data/voc.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef bool (*SfTableNumericValue)(
-  void *user, int32_t table, int32_t row,
-  int32_t column, int32_t value);
+#define SF_GAMEPLAY_INTERFACE_SOUND_COUNT 2u
 
-typedef bool (*SfTableTextByte)(
-  void *user, int32_t table, int32_t row, int32_t column,
-  uint32_t byte_index, uint32_t byte_count, uint8_t value);
+typedef struct SfGameplaySoundAssets {
+  SfPcmU8 interface_sounds[SF_GAMEPLAY_INTERFACE_SOUND_COUNT];
+} SfGameplaySoundAssets;
 
-bool sf_table_scan(
-  const char *path, SfTableNumericValue numeric, void *numeric_user,
-  SfTableTextByte text, void *text_user);
-
-bool sf_table_scan_numeric(
-  const char *path, SfTableNumericValue value, void *user);
+bool sf_gameplay_sound_assets_load(
+  SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena);
+const SfPcmU8 *sf_gameplay_interface_sound(
+  const SfGameplaySoundAssets *assets, uint16_t sample);
 
 #endif

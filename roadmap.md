@@ -66,15 +66,18 @@ single-item swaps, partial Gold merges, hover information, and condition
 markers use the ordinary shared rules. Its fourth retail save container is
 decoded into a separate fixed owner and its required definitions stay in the
 active resource request.
-The shared Status/Magic window now has its first complete tab. `S` and the HUD
-button open the live Status page on the left, where the authored frame is
-combined with the saved identity, current pools, table-backed base values,
-valid equipment bonuses, affinities, and elemental marker. A small game-side
-profile owns those derived values, while the panel and its layout stay in
-`ui/`. Status coexists with right-side Inventory, replaces Special Item on the
-left, and uses the same camera and input offset. The shared owner has an
-explicit Magic tab ready for the spell-page slice instead of treating these as
-two unrelated windows.
+The shared Status/Magic window now has both retail tabs. `S` and the HUD button
+open Status with the saved identity, current pools, table-backed base values,
+valid equipment bonuses, affinities, and elemental marker. `M` or the top tab
+opens Magic's four six-spell pages, including availability states, saved
+levels and experience, table-backed MP/effect values, help text, arrows, and
+the authored large icons. Learned spells drag into eight persistent save-owned
+slots, while the small gameplay bar keeps retail's dynamic position beside
+left and right panels. Every gameplay load starts on normal attack as retail
+does. UI state only emits actions; persistent spell ownership remains in
+`game/`, table scanning in `data/`, and samples 57/58 reach TAL through a small
+general world event queue. Both tabs coexist with right-side Inventory,
+replace Special Item on the left, and share the same camera and input offset.
 
 Selecting a retail save now
 streams and verifies its `ShadowFlare0005` envelope without allocating a
@@ -87,8 +90,8 @@ values now reach the interpreter before its first periodic pass, so one-time
 handoffs such as Ostare's starter items stay complete. Mine count, walk/run
 pace, scenario, and authored entry reach the world owner as well. The three
 Remote Town saves also pass the complete asset-and-owner restore path. The
-remaining save work belongs to the systems which are not in the small runtime
-yet: magic, companions, warehouse pages, automatic-item pages, and writing saves.
+remaining save work belongs to systems which are not in the small runtime yet:
+companions, warehouse pages, automatic-item pages, and writing saves.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

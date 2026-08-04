@@ -17,25 +17,13 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_TABLE_H
-#define SHADOWFLARE_DATA_TABLE_H
+#ifndef SHADOWFLARE_GAME_WORLD_MAGIC_H
+#define SHADOWFLARE_GAME_WORLD_MAGIC_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "game/input.h"
+#include "game/player.h"
 
-typedef bool (*SfTableNumericValue)(
-  void *user, int32_t table, int32_t row,
-  int32_t column, int32_t value);
-
-typedef bool (*SfTableTextByte)(
-  void *user, int32_t table, int32_t row, int32_t column,
-  uint32_t byte_index, uint32_t byte_count, uint8_t value);
-
-bool sf_table_scan(
-  const char *path, SfTableNumericValue numeric, void *numeric_user,
-  SfTableTextByte text, void *text_user);
-
-bool sf_table_scan_numeric(
-  const char *path, SfTableNumericValue value, void *user);
+void sf_world_magic_update(
+  SfPlayerState *player, const SfGameInput *input);
 
 #endif

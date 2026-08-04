@@ -20,5 +20,10 @@
 #include "ui/gameplay_character_panel.h"
 
 void sf_gameplay_character_panel_init(SfGameplayCharacterPanelUi *panel) {
-  if (panel) panel->tab = SF_GAMEPLAY_CHARACTER_TAB_CLOSED;
+  if (!panel) return;
+  panel->tab = SF_GAMEPLAY_CHARACTER_TAB_CLOSED;
+  panel->pointer_x = 0;
+  panel->pointer_y = 0;
+  panel->held_spell = -1;
+  panel->magic_page = 0u;
 }

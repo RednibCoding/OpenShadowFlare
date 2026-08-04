@@ -28,6 +28,7 @@
 #include "game/inventory.h"
 #include "game/equipment.h"
 #include "game/belt.h"
+#include "game/player_magic.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -59,6 +60,7 @@ typedef struct SfPlayerState {
   SfEquipmentState equipment;
   SfBeltState belt;
   SfSpecialItemState special_items;
+  SfPlayerMagicState magic;
   SfPlayerInitialParameters initial_parameters;
   int32_t current_life;
   int32_t current_mana;

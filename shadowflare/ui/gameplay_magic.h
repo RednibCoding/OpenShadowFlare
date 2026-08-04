@@ -17,25 +17,24 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_TABLE_H
-#define SHADOWFLARE_DATA_TABLE_H
+#ifndef SHADOWFLARE_UI_GAMEPLAY_MAGIC_H
+#define SHADOWFLARE_UI_GAMEPLAY_MAGIC_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "assets/gameplay_assets.h"
+#include "game/player.h"
+#include "render/renderer.h"
+#include "ui/gameplay_character_panel.h"
 
-typedef bool (*SfTableNumericValue)(
-  void *user, int32_t table, int32_t row,
-  int32_t column, int32_t value);
-
-typedef bool (*SfTableTextByte)(
-  void *user, int32_t table, int32_t row, int32_t column,
-  uint32_t byte_index, uint32_t byte_count, uint8_t value);
-
-bool sf_table_scan(
-  const char *path, SfTableNumericValue numeric, void *numeric_user,
-  SfTableTextByte text, void *text_user);
-
-bool sf_table_scan_numeric(
-  const char *path, SfTableNumericValue value, void *user);
+void sf_gameplay_magic_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfPlayerState *player, const SfGameplayCharacterPanelUi *panel,
+  const SfRect *clip);
+void sf_gameplay_magic_bar_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfPlayerState *player, bool left_panel, bool right_panel,
+  const SfRect *clip);
+void sf_gameplay_magic_held_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfGameplayCharacterPanelUi *panel);
 
 #endif

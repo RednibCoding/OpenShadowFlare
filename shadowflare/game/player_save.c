@@ -186,3 +186,19 @@ bool sf_player_restore_save(
   sf_player_refresh_visible_items(player);
   return true;
 }
+
+bool sf_player_restore_magic(
+    SfPlayerState *player, const SfSavedMagic *saved) {
+  uint8_t index;
+  if (!player || !saved || !saved->present) return false;
+  for (index = 0u; index < SF_PLAYER_SPELL_COUNT; ++index) {
+    player->magic.availability[index] = saved->availability[index];
+    player->magic.levels[index] = saved->levels[index];
+    player->magic.experience[index] = saved->experience[index];
+  }
+  for (index = 0u; index < SF_PLAYER_MAGIC_BAR_SLOT_COUNT; ++index)
+    player->magic.bar_slots[index] = saved->bar_slots[index];
+  player->magic.selected_spell = -1;
+  player->magic.targeting = false;
+  return true;
+}

@@ -25,6 +25,7 @@
 #include "ui/gameplay_belt.h"
 #include "ui/gameplay_hud.h"
 #include "ui/gameplay_inventory.h"
+#include "ui/gameplay_magic.h"
 #include "ui/gameplay_item_condition.h"
 #include "ui/gameplay_item_information.h"
 #include "ui/gameplay_special_items.h"
@@ -188,10 +189,19 @@ void sf_gameplay_screen_draw(
     renderer, assets, player, &screen->inventory, game->ticks, clip);
   sf_gameplay_status_draw(
     renderer, assets, player, &screen->character_panel, clip);
+  sf_gameplay_magic_draw(
+    renderer, assets, player, &screen->character_panel, clip);
   sf_gameplay_hud_draw(renderer, assets, player, clip);
   sf_gameplay_belt_draw(renderer, assets, player, clip);
+  sf_gameplay_magic_bar_draw(
+    renderer, assets, player,
+    screen->character_panel.tab != SF_GAMEPLAY_CHARACTER_TAB_CLOSED ||
+      screen->inventory.special_open,
+    screen->inventory.open, clip);
   sf_gameplay_inventory_draw_held(
     renderer, assets, player, &screen->inventory, game->ticks);
+  sf_gameplay_magic_held_draw(
+    renderer, assets, &screen->character_panel);
   sf_gameplay_item_information_draw(
     renderer, assets, player, &screen->inventory);
   screen->rendered_animation_frame = player->animation_frame;

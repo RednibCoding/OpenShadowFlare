@@ -22,6 +22,14 @@
 void sf_gameplay_status_pattern_draw(
     SfRenderer *renderer, const SfNjpDecodedResource *resource,
     uint8_t source_pattern, int x, int y, const SfRect *clip) {
+  sf_gameplay_status_pattern_draw_opacity(
+    renderer, resource, source_pattern, x, y, 1000u, clip);
+}
+
+void sf_gameplay_status_pattern_draw_opacity(
+    SfRenderer *renderer, const SfNjpDecodedResource *resource,
+    uint8_t source_pattern, int x, int y, uint16_t opacity,
+    const SfRect *clip) {
   const SfNjpDecodedPattern *pattern =
     sf_njp_decoded_pattern(resource, source_pattern);
   uint8_t reference;
@@ -36,6 +44,7 @@ void sf_gameplay_status_pattern_draw(
     image.palette = resource->palettes[pattern->palette];
     sf_renderer_draw_indexed(
       renderer, &image, x + item->x, y + item->y,
-      1000u, 1000u, SF_BLEND_MASKED, clip);
+      1000u, opacity,
+      opacity < 1000u ? SF_BLEND_TRANSLUCENT : SF_BLEND_MASKED, clip);
   }
 }

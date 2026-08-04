@@ -117,6 +117,12 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
         success = sf_player_apply_initial_parameters(
           &game->world.player,
           &runtime->assets.gameplay.player_parameters);
+      if (success && loading_save)
+        success = sf_player_restore_magic(
+          &game->world.player, &saved_game.magic);
+      if (success)
+        (void) sf_player_magic_set_targeting(
+          &game->world.player.magic, true);
       if (success) {
         sf_world_state_bind_collision(
           &game->world, &runtime->assets.gameplay.ground,
@@ -188,6 +194,10 @@ void sf_screen_runtime_resolve_input(
   input->pointed_conversation_option = -1;
   input->conversation_option_count = 0u;
   input->inventory_action = SF_INVENTORY_ACTION_NONE;
+  input->magic_action = SF_MAGIC_ACTION_NONE;
+  input->magic_spell = -1;
+  input->magic_bar_slot = -1;
+  input->interface_sound = 0u;
   input->inventory_item_index = -1;
   input->inventory_grid_x = -1;
   input->inventory_grid_y = -1;

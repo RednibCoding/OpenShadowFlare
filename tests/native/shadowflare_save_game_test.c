@@ -105,6 +105,20 @@ static bool append_zeroes(FixtureBytes *output, uint16_t count) {
   return true;
 }
 
+static bool append_magic(FixtureBytes *payload) {
+  uint8_t index;
+  if (!append_i32(payload, 22)) return false;
+  for (index = 0u; index < 22u; ++index)
+    if (!append_i32(payload, index == 0u ? 3 : 0)) return false;
+  for (index = 0u; index < 22u; ++index)
+    if (!append_i32(payload, index == 0u ? 4 : 1)) return false;
+  for (index = 0u; index < 22u; ++index)
+    if (!append_i32(payload, index == 0u ? 5 : 0)) return false;
+  for (index = 0u; index < 8u; ++index)
+    if (!append_i32(payload, index == 0u ? 0 : -1)) return false;
+  return true;
+}
+
 static bool append_progress(FixtureBytes *payload) {
   static const uint8_t extension_signature[8] = {
     'O', 'S', 'F', 'S', 'T', '0', '1', 0
@@ -115,7 +129,7 @@ static bool append_progress(FixtureBytes *payload) {
     append_i32(payload, 5) && append_i32(payload, 4) &&
     append_i32(payload, 6) && append_i32(payload, 7) &&
     append_i32(payload, 8) && append_i32(payload, 9) &&
-    append_i32(payload, 22) && append_zeroes(payload, 74u) &&
+    append_magic(payload) &&
     append_i32(payload, 6) && append_zeroes(payload, 12u) &&
     append_i32(payload, 7) && append_i32(payload, 1) &&
     append_i32(payload, 0) && append_i32(payload, 0) &&
@@ -305,14 +319,20 @@ int main(int argument_count, char **arguments) {
         return 1;
       }
     }
-    printf(
+    {
+      uint8_t learned = 0u;
+      uint8_t spell;
+      for (spell = 0u; spell < SF_SAVED_SPELL_COUNT; ++spell)
+        if (saved_game.magic.availability[spell] == 3) ++learned;
+      printf(
       "%s: level %d, %u backpack, %u belt, %u special, %u definitions, "
-      "flags %u/%u/%u, mines %d, world %d:%d, run %d\n",
+      "flags %u/%u/%u, %u spells, mines %d, world %d:%d, run %d\n",
       saved.name, saved.level, saved.backpack_count, saved.belt_count,
       saved.special_item_count, required_count, saved_game.progress.quest_count,
       saved_game.progress.transport_count, saved_game.progress.script_count,
-      saved_game.world.mine_count, saved_game.world.scenario_id,
+      learned, saved_game.world.mine_count, saved_game.world.scenario_id,
       saved_game.world.entry_value, saved_game.world.running ? 1 : 0);
+    }
     return 0;
   }
   make_record(record);
@@ -347,6 +367,10 @@ int main(int argument_count, char **arguments) {
       saved_game.progress.transport_count != 2u ||
       saved_game.progress.script_count != 4u ||
       saved_game.progress.script_values[3] != 9 ||
+      !saved_game.magic.present || saved_game.magic.availability[0] != 3 ||
+      saved_game.magic.levels[0] != 4 ||
+      saved_game.magic.experience[0] != 5 ||
+      saved_game.magic.bar_slots[0] != 0 ||
       !saved_game.world.present || !saved_game.world.running ||
       saved_game.world.mine_count != 7 || saved_game.world.scenario_id != 0 ||
       saved_game.world.entry_value != 0 ||
@@ -362,10 +386,14 @@ int main(int argument_count, char **arguments) {
   definitions[4] = definition(3u, 10000000, 0, 1, 1);
   sf_player_init(&player, 1u);
   if (!sf_player_restore_save(&player, &saved, definitions, 5u, 100) ||
+      !sf_player_restore_magic(&player, &saved_game.magic) ||
       strcmp(player.name, "Save Hero") != 0 || player.gender != 0u ||
       player.job != 16 || player.level != 4 || player.current_life != 123 ||
       player.current_mana != 77 || player.experience != 42 ||
       player.element_x != 10000 || player.element_y != -10000 ||
+      !sf_player_magic_learned(&player.magic, 0) ||
+      player.magic.levels[0] != 4 || player.magic.experience[0] != 5 ||
+      player.magic.bar_slots[0] != 0 ||
       !player.loadout_initialized || player.inventory.count != 2u ||
       player.belt.count != 1u || player.special_items.count != 1u ||
       !(player.equipment.occupied &

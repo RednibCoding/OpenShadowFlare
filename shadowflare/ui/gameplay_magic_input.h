@@ -17,25 +17,17 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_TABLE_H
-#define SHADOWFLARE_DATA_TABLE_H
+#ifndef SHADOWFLARE_UI_GAMEPLAY_MAGIC_INPUT_H
+#define SHADOWFLARE_UI_GAMEPLAY_MAGIC_INPUT_H
+
+#include "game/input.h"
+#include "game/player.h"
+#include "ui/gameplay_character_panel.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 
-typedef bool (*SfTableNumericValue)(
-  void *user, int32_t table, int32_t row,
-  int32_t column, int32_t value);
-
-typedef bool (*SfTableTextByte)(
-  void *user, int32_t table, int32_t row, int32_t column,
-  uint32_t byte_index, uint32_t byte_count, uint8_t value);
-
-bool sf_table_scan(
-  const char *path, SfTableNumericValue numeric, void *numeric_user,
-  SfTableTextByte text, void *text_user);
-
-bool sf_table_scan_numeric(
-  const char *path, SfTableNumericValue value, void *user);
+bool sf_gameplay_magic_input_resolve(
+  SfGameplayCharacterPanelUi *panel, const SfPlayerState *player,
+  bool left_panel, bool right_panel, SfGameInput *input);
 
 #endif

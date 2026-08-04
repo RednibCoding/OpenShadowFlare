@@ -17,25 +17,19 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_TABLE_H
-#define SHADOWFLARE_DATA_TABLE_H
+#ifndef SHADOWFLARE_GAME_SOUND_EVENT_H
+#define SHADOWFLARE_GAME_SOUND_EVENT_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
-typedef bool (*SfTableNumericValue)(
-  void *user, int32_t table, int32_t row,
-  int32_t column, int32_t value);
+#define SF_SOUND_EVENT_LIMIT 8u
 
-typedef bool (*SfTableTextByte)(
-  void *user, int32_t table, int32_t row, int32_t column,
-  uint32_t byte_index, uint32_t byte_count, uint8_t value);
+typedef struct SfSoundEventQueue {
+  uint16_t samples[SF_SOUND_EVENT_LIMIT];
+  uint8_t count;
+} SfSoundEventQueue;
 
-bool sf_table_scan(
-  const char *path, SfTableNumericValue numeric, void *numeric_user,
-  SfTableTextByte text, void *text_user);
-
-bool sf_table_scan_numeric(
-  const char *path, SfTableNumericValue value, void *user);
+void sf_sound_events_reset(SfSoundEventQueue *events);
+void sf_sound_events_push(SfSoundEventQueue *events, uint16_t sample);
 
 #endif

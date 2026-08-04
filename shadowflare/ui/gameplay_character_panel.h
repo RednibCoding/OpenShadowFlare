@@ -20,6 +20,8 @@
 #ifndef SHADOWFLARE_UI_GAMEPLAY_CHARACTER_PANEL_H
 #define SHADOWFLARE_UI_GAMEPLAY_CHARACTER_PANEL_H
 
+#include <stdint.h>
+
 typedef enum SfGameplayCharacterTab {
   SF_GAMEPLAY_CHARACTER_TAB_CLOSED = 0,
   SF_GAMEPLAY_CHARACTER_TAB_STATUS,
@@ -28,6 +30,10 @@ typedef enum SfGameplayCharacterTab {
 
 typedef struct SfGameplayCharacterPanelUi {
   SfGameplayCharacterTab tab;
+  int16_t pointer_x;
+  int16_t pointer_y;
+  int8_t held_spell;
+  uint8_t magic_page;
 } SfGameplayCharacterPanelUi;
 
 void sf_gameplay_character_panel_init(SfGameplayCharacterPanelUi *panel);

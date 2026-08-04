@@ -28,5 +28,9 @@
 void sf_gameplay_status_pattern_draw(
   SfRenderer *renderer, const SfNjpDecodedResource *resource,
   uint8_t source_pattern, int x, int y, const SfRect *clip);
+void sf_gameplay_status_pattern_draw_opacity(
+  SfRenderer *renderer, const SfNjpDecodedResource *resource,
+  uint8_t source_pattern, int x, int y, uint16_t opacity,
+  const SfRect *clip);
 
 #endif

@@ -289,7 +289,7 @@ static int test_gameplay_inventory(
   uint16_t empty_item[32u * 96u];
   size_t changed = 0u;
   int y;
-  if (!dagger || assets->inventory_panel.pattern_count != 33u ||
+  if (!dagger || assets->inventory_panel.pattern_count != 37u ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 2u) ||
       sf_njp_decoded_pattern(
         &assets->inventory_panel, 2u)->reference_count != 3u ||
@@ -299,11 +299,36 @@ static int test_gameplay_inventory(
       !sf_njp_decoded_pattern(&assets->inventory_panel, 14u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 15u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 5u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 6u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 32u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 36u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 57u) ||
       !sf_njp_decoded_pattern(&assets->inventory_panel, 67u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 69u) ||
+      !sf_njp_decoded_pattern(&assets->inventory_panel, 70u) ||
       sf_njp_decoded_pattern(&assets->inventory_panel, 74u)) {
     fprintf(stderr, "The retail inventory panel patterns are incomplete\n");
+    return 1;
+  }
+  if (assets->magic_icons.pattern_count != 23u ||
+      assets->magic_bar_icons.pattern_count != 24u ||
+      !sf_njp_decoded_pattern(&assets->magic_icons, 0u) ||
+      !sf_njp_decoded_pattern(&assets->magic_icons, 23u) ||
+      !sf_njp_decoded_pattern(&assets->magic_bar_icons, 2u) ||
+      !sf_njp_decoded_pattern(&assets->magic_bar_icons, 25u) ||
+      !assets->spell_parameters ||
+      sf_spell_threshold(assets->spell_parameters, 0, 1) <= 0 ||
+      assets->spell_parameters->description_lines[0] < 3u ||
+      strcmp(assets->spell_parameters->descriptions[0][0],
+        "Transport") != 0 ||
+      assets->spell_parameters->descriptions[0][1][0] != '\0') {
+    fprintf(stderr, "The retail Magic resources are incomplete\n");
+    return 1;
+  }
+  if (!sf_gameplay_interface_sound(&assets->sounds, 57u) ||
+      !sf_gameplay_interface_sound(&assets->sounds, 58u) ||
+      sf_gameplay_interface_sound(&assets->sounds, 56u)) {
+    fprintf(stderr, "The retail Magic feedback samples are incomplete\n");
     return 1;
   }
   artwork = sf_inventory_item_artwork(

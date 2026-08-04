@@ -24,6 +24,7 @@
 #include "game/player_item.h"
 #include "game/world_conversation.h"
 #include "game/world_inventory.h"
+#include "game/world_magic.h"
 #include "game/world_script.h"
 
 #include <string.h>
@@ -264,6 +265,10 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   bool inventory_consumed_input;
   if (!world || !world->entered || !input) return;
   sf_ground_items_update(&world->ground_items);
+  sf_sound_events_reset(&world->sounds);
+  if (input->interface_sound != 0u)
+    sf_sound_events_push(&world->sounds, input->interface_sound);
+  sf_world_magic_update(&world->player, input);
   pointer = &world->pointer;
   pointer->screen_x = input->pointer_x;
   pointer->screen_y = input->pointer_y;

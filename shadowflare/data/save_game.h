@@ -26,6 +26,8 @@
 #include <stdint.h>
 
 #define SF_SAVED_PROGRESS_VALUE_LIMIT 1000u
+#define SF_SAVED_SPELL_COUNT 22u
+#define SF_SAVED_MAGIC_BAR_SLOT_COUNT 8u
 
 typedef struct SfSavedProgress {
   int32_t quest_values[SF_SAVED_PROGRESS_VALUE_LIMIT];
@@ -46,9 +48,18 @@ typedef struct SfSavedWorldState {
   bool present;
 } SfSavedWorldState;
 
+typedef struct SfSavedMagic {
+  int32_t availability[SF_SAVED_SPELL_COUNT];
+  int32_t levels[SF_SAVED_SPELL_COUNT];
+  int32_t experience[SF_SAVED_SPELL_COUNT];
+  int32_t bar_slots[SF_SAVED_MAGIC_BAR_SLOT_COUNT];
+  bool present;
+} SfSavedMagic;
+
 typedef struct SfSavedGame {
   SfSavedPlayer player;
   SfSavedProgress progress;
+  SfSavedMagic magic;
   SfSavedWorldState world;
 } SfSavedGame;
 
