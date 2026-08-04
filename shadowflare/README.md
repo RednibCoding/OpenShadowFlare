@@ -89,17 +89,29 @@ tint and draws its quantity or decoded name above the world sprite.
 The first always-visible gameplay HUD is live too. It draws the authored
 `Bar.njp` pieces over retail's black lower surface, with the level digit,
 life, mana, experience, and walk/run indicator coming from the player owner.
-A streaming `Table.Tbd` reader extracts only the active gender's 13 starting
-parameters and level-one experience threshold; the 460,387-byte decoded table
-payload is never retained. HUD input is resolved in `ui/`, so clicking its
-surface cannot leak through as a movement command. `I` and the authored ITEM
-button now open the right-hand inventory panel while the live world shifts to
+A streaming `Table.Tbd` reader extracts only the active gender's 13 base
+parameters and the current level's experience threshold; the 460,387-byte
+decoded table payload is never retained. HUD input is resolved in `ui/`, so
+clicking its surface cannot leak through as a movement command. `I` and the
+authored ITEM button now open the right-hand inventory panel while the live world shifts to
 the retail x=160 camera anchor. The panel reads Gold from the fixed owner and
 draws picked-up items in their real 9x4 cells from the separate inventory
 patterns in `Item0000.njp` through `Item0013.njp`. Its frame, gender silhouette,
 values, and Close tab come from the required pieces of `Status.njp`; unrelated
-parts of those large archives are never retained. Belt items, selected magic,
-companion controls, and the Menu and Status panels remain later HUD slices.
+parts of those large archives are never retained. The lower HUD also owns the
+retail 4x2 belt: `1` through `8` and right-click consume Tablets and Capsules,
+while mines use their separate 5/10 counter instead of occupying bag cells.
+
+Choosing a retail save now restores more than its load-screen summary. The
+`ShadowFlare0005` envelope is decoded and checksummed as a stream, so even a
+large save never needs a second payload-sized buffer. The complete plain
+player record restores name, sex, job, level, life, mana, experience, and base
+parameters. Its following owned-item stream restores exact backpack and belt
+cells plus all eleven equipment slots, including the two hidden alternate
+weapon slots. Item definitions and artwork are still loaded through the active
+map's ordinary resource request, not from save-specific shortcuts. Scenario,
+quest, conversation, mine, pace, and map-position persistence are the next
+save slices.
 
 ## Hard limits
 
@@ -182,8 +194,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,440,445 bytes of the 7 MiB main arena,
-leaving 5,899,587 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,440,517 bytes of the 7 MiB main arena,
+leaving 5,899,515 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -196,20 +208,20 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 753,368 bytes of the main arena, leaving 6,586,664 bytes free;
+assets. It uses 753,440 bytes of the main arena, leaving 6,586,592 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 713,584 bytes of the main arena, leaving 6,626,448
+The load-game screen uses 713,656 bytes of the main arena, leaving 6,626,376
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 4,907,748 bytes of the main
-arena, leaving 2,432,284 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 4,907,820 bytes of the main
+arena, leaving 2,432,212 bytes free. Its screen-owned scenario, script, map,
 player, PEOPLE, ground-item, inventory-panel, equipment, and UI data and
 artwork account for 4,568,485
 bytes. GND rendering data is decoded directly from its compressed three-plane

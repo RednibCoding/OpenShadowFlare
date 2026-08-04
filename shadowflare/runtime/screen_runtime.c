@@ -19,6 +19,8 @@
 
 #include "runtime/screen_runtime.h"
 
+#include "data/save_player.h"
+#include "game/player_save.h"
 #include "ui/conversation_input.h"
 #include "ui/gameplay_hud_input.h"
 #include "ui/gameplay_inventory_input.h"
@@ -70,23 +72,46 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
       runtime->decode_scratch, runtime->decode_scratch_size);
     if (success) sf_load_game_screen_init(&runtime->screen.load_game);
   } else if (mode == SF_GAME_MODE_GAMEPLAY) {
+    SfSavedPlayer saved_player;
     SfItemReference retained_items[SF_GROUND_ITEM_DEFINITION_LIMIT];
-    uint8_t retained_item_count;
-    success = sf_player_required_item_definitions(
-      &game->world.player, retained_items,
-      SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
+    uint8_t retained_item_count = 0u;
+    int32_t player_level = game->world.player.level;
+    const bool loading_save = game->load_game.selected_file_slot >= 0;
+    if (loading_save) {
+      success = sf_save_player_load(
+        runtime->data_root,
+        (uint8_t) game->load_game.selected_file_slot, &saved_player);
+      if (success) {
+        game->world.player.gender = saved_player.gender == 1 ? 1u : 0u;
+        player_level = saved_player.level;
+        success = sf_saved_player_required_items(
+          &saved_player, retained_items,
+          SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
+      }
+    } else {
+      success = sf_player_required_item_definitions(
+        &game->world.player, retained_items,
+        SF_GROUND_ITEM_DEFINITION_LIMIT, &retained_item_count);
+    }
     if (success)
       success = sf_gameplay_assets_load(
         &runtime->assets.gameplay, runtime->data_root,
         game->world.scenario_id, game->world.entry_key,
-        game->world.player.gender, game->world.player.appearance_parts,
+        game->world.player.gender, player_level,
+        game->world.player.appearance_parts,
         game->world.player.appearance_part_count,
         game->world.player.visible_items,
         game->world.player.visible_item_count,
         retained_items, retained_item_count, runtime->arena);
     if (success) {
       const SfMctEntry *entry = &runtime->assets.gameplay.entry;
-      if (!game->world.player.parameters_initialized)
+      if (loading_save)
+        success = sf_player_restore_save(
+          &game->world.player, &saved_player,
+          runtime->assets.gameplay.ground_items.definitions,
+          runtime->assets.gameplay.ground_items.definition_count,
+          runtime->assets.gameplay.player_parameters.experience_threshold);
+      else if (!game->world.player.parameters_initialized)
         success = sf_player_apply_initial_parameters(
           &game->world.player,
           &runtime->assets.gameplay.player_parameters);
@@ -98,7 +123,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
           &game->world,
           runtime->assets.gameplay.ground_items.definitions,
           runtime->assets.gameplay.ground_items.definition_count);
-        success = sf_world_state_bind_scenario(
+        if (success) success = sf_world_state_bind_scenario(
           &game->world, &runtime->assets.gameplay.scenario,
           runtime->assets.gameplay.script);
       }
@@ -107,6 +132,7 @@ bool sf_screen_runtime_load(SfScreenRuntime *runtime, SfGame *game) {
           (uint8_t) entry->direction);
       if (success) success = sf_gameplay_screen_init(
         &runtime->screen.gameplay, &runtime->assets.gameplay, &game->world);
+      if (success && loading_save) game->load_game.selected_file_slot = -1;
     }
   }
   runtime->loaded = success;

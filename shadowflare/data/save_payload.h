@@ -17,35 +17,32 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_SAVE_H
-#define SHADOWFLARE_DATA_SAVE_H
+#ifndef SHADOWFLARE_DATA_SAVE_PAYLOAD_H
+#define SHADOWFLARE_DATA_SAVE_PAYLOAD_H
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
-#define SF_SAVE_SLOT_COUNT 6u
+#define SF_SAVE_PLAYER_RECORD_SIZE 0x160u
 
-typedef struct SfSaveSummary {
-  char name[17];
-  int32_t gender;
-  int32_t job;
-  int32_t level;
-  int32_t life;
-  int32_t mana;
-  int32_t experience;
-  uint8_t file_slot;
-} SfSaveSummary;
+typedef struct SfSavePayloadReader {
+  FILE *file;
+  uint32_t remaining;
+  uint32_t checksum;
+  uint32_t expected_checksum;
+  uint8_t substitution[256];
+  uint8_t xor_key;
+} SfSavePayloadReader;
 
-typedef struct SfSaveCatalog {
-  SfSaveSummary entries[SF_SAVE_SLOT_COUNT];
-  uint8_t count;
-} SfSaveCatalog;
-
-bool sf_save_catalog_load(const char *data_root, SfSaveCatalog *catalog);
-bool sf_save_slot_data_path(
-  char *path, size_t capacity, const char *data_root, uint8_t file_slot);
-bool sf_save_catalog_delete(
-  const char *data_root, const SfSaveCatalog *catalog, uint8_t catalog_index);
+bool sf_save_payload_open(
+  SfSavePayloadReader *reader, const char *path,
+  uint8_t player_record[SF_SAVE_PLAYER_RECORD_SIZE], bool *has_envelope);
+bool sf_save_payload_read(
+  SfSavePayloadReader *reader, void *bytes, size_t size);
+bool sf_save_payload_skip(SfSavePayloadReader *reader, size_t size);
+bool sf_save_payload_finish(SfSavePayloadReader *reader);
+void sf_save_payload_close(SfSavePayloadReader *reader);
 
 #endif

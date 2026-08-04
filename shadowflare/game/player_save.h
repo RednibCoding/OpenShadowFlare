@@ -17,35 +17,18 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_DATA_SAVE_H
-#define SHADOWFLARE_DATA_SAVE_H
+#ifndef SHADOWFLARE_GAME_PLAYER_SAVE_H
+#define SHADOWFLARE_GAME_PLAYER_SAVE_H
+
+#include "data/save_player.h"
+#include "game/player.h"
 
 #include <stdbool.h>
-#include <stddef.h>
 #include <stdint.h>
 
-#define SF_SAVE_SLOT_COUNT 6u
-
-typedef struct SfSaveSummary {
-  char name[17];
-  int32_t gender;
-  int32_t job;
-  int32_t level;
-  int32_t life;
-  int32_t mana;
-  int32_t experience;
-  uint8_t file_slot;
-} SfSaveSummary;
-
-typedef struct SfSaveCatalog {
-  SfSaveSummary entries[SF_SAVE_SLOT_COUNT];
-  uint8_t count;
-} SfSaveCatalog;
-
-bool sf_save_catalog_load(const char *data_root, SfSaveCatalog *catalog);
-bool sf_save_slot_data_path(
-  char *path, size_t capacity, const char *data_root, uint8_t file_slot);
-bool sf_save_catalog_delete(
-  const char *data_root, const SfSaveCatalog *catalog, uint8_t catalog_index);
+bool sf_player_restore_save(
+  SfPlayerState *player, const SfSavedPlayer *saved,
+  const SfItemGroundDefinition *definitions, uint8_t definition_count,
+  int32_t experience_threshold);
 
 #endif

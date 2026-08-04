@@ -115,6 +115,7 @@ int main(int argument_count, char **arguments) {
       !sf_screen_runtime_init(
         screen_runtime, &arena, data_root,
         scratch, SF_TITLE_DECODE_SCRATCH_BYTES)) return 3;
+  sf_game_init(game, NULL);
 
   puts("screen             total bytes  screen bytes free bytes");
   if (!sf_measure_screen(

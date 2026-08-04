@@ -57,6 +57,19 @@ void sf_player_init(SfPlayerState *player, uint8_t gender) {
   sf_route_reset(&player->route);
 }
 
+void sf_player_set_identity(
+    SfPlayerState *player, const char *name, int32_t job) {
+  size_t length = 0u;
+  if (!player) return;
+  memset(player->name, 0, sizeof(player->name));
+  if (name) {
+    while (length + 1u < sizeof(player->name) && name[length] != '\0')
+      ++length;
+    memcpy(player->name, name, length);
+  }
+  player->job = job;
+}
+
 bool sf_player_apply_initial_parameters(
     SfPlayerState *player, const SfPlayerInitialParameters *parameters) {
   int32_t speed_tier;

@@ -128,6 +128,22 @@ if(TARGET shadowflare_core)
   endif()
   add_test(NAME shadowflare_belt COMMAND shadowflare_belt_test)
 
+  add_executable(
+    shadowflare_save_player_test shadowflare_save_player_test.c)
+  target_link_libraries(
+    shadowflare_save_player_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_save_player_test PRIVATE c_std_99)
+  set_target_properties(
+    shadowflare_save_player_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_save_player_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_save_player_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_save_player COMMAND shadowflare_save_player_test)
+
   add_test(
     NAME shadowflare_c99_boundaries
     COMMAND

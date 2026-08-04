@@ -31,7 +31,7 @@ typedef struct SfPlayerInitialParameters {
 } SfPlayerInitialParameters;
 
 bool sf_player_initial_parameters_load(
-  const char *path, uint8_t gender,
+  const char *path, uint8_t gender, int32_t level,
   SfPlayerInitialParameters *parameters);
 
 #endif

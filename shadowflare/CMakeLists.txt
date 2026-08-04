@@ -67,6 +67,9 @@ add_library(
   data/player_parameters.c
   data/rclib.c
   data/save.c
+  data/save_payload.c
+  data/save_player.c
+  data/save_player_items.c
   data/scs.c
   data/table.c
   data/voc.c
@@ -82,6 +85,7 @@ add_library(
   game/player.c
   game/player_item.c
   game/player_loadout.c
+  game/player_save.c
   game/route.c
   game/route_tables.c
   game/scenario_actor.c

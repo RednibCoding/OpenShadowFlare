@@ -49,7 +49,9 @@ bool sf_equipment_take(
 static bool sf_equipment_accepts(
     SfEquipmentSlot slot, const SfItemGroundDefinition *definition) {
   if (!definition) return false;
-  if (slot == SF_EQUIPMENT_MAIN_HAND) return definition->category == 0u;
+  if (slot == SF_EQUIPMENT_MAIN_HAND ||
+      slot == SF_EQUIPMENT_ALTERNATE_MAIN_HAND)
+    return definition->category == 0u;
   if (slot >= SF_EQUIPMENT_ACCESSORY_1 &&
       slot <= SF_EQUIPMENT_ACCESSORY_4)
     return definition->category == 2u && definition->inventory_width == 1;
@@ -57,7 +59,9 @@ static bool sf_equipment_accepts(
   if (slot == SF_EQUIPMENT_HELMET) return definition->subtype == 0;
   if (slot == SF_EQUIPMENT_BODY) return definition->subtype == 1;
   if (slot == SF_EQUIPMENT_BOOTS) return definition->subtype == 3;
-  return slot == SF_EQUIPMENT_OFF_HAND && definition->subtype == 2;
+  return (slot == SF_EQUIPMENT_OFF_HAND ||
+          slot == SF_EQUIPMENT_ALTERNATE_OFF_HAND) &&
+    definition->subtype == 2;
 }
 
 SfEquipmentPlacement sf_equipment_place(
@@ -131,7 +135,7 @@ int32_t sf_equipment_total_weight(
   int32_t total = 0;
   uint8_t slot;
   if (!equipment || !definitions) return 0;
-  for (slot = 0u; slot < SF_EQUIPMENT_SLOT_COUNT; ++slot) {
+  for (slot = 0u; slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT; ++slot) {
     const SfInventoryItem *item = sf_equipment_item(
       equipment, (SfEquipmentSlot) slot);
     const SfItemGroundDefinition *definition = item
@@ -154,7 +158,7 @@ const SfItemGroundDefinition *sf_equipment_part_definition(
     uint8_t appearance_part) {
   uint8_t slot;
   if (!equipment || !definitions) return NULL;
-  for (slot = 0u; slot < SF_EQUIPMENT_SLOT_COUNT; ++slot) {
+  for (slot = 0u; slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT; ++slot) {
     const SfInventoryItem *item;
     const SfItemGroundDefinition *definition;
     if (slot == SF_EQUIPMENT_OFF_HAND && sf_equipment_off_hand_hidden(

@@ -126,7 +126,7 @@ void sf_gameplay_inventory_draw(
       &player->equipment, assets->ground_items.definitions,
       assets->ground_items.definition_count),
     471, 224, value_color);
-  for (item = 0u; item < SF_EQUIPMENT_SLOT_COUNT; ++item) {
+  for (item = 0u; item < SF_EQUIPMENT_VISIBLE_SLOT_COUNT; ++item) {
     const SfInventoryItem *equipped = sf_equipment_item(
       &player->equipment, (SfEquipmentSlot) item);
     int x;

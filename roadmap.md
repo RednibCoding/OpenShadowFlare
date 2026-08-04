@@ -49,9 +49,15 @@ same item-transfer path as the backpack. A new hero receives the full retail
 loadout: Leather Cloth, four Tablets and four Capsules in both backpack and
 belt, and five mines in the separate 5/10 counter. Full life or mana leaves a
 medicine untouched, successful use plays the authored sound, and mine pickups
-fill their counter instead of entering the bag. The next slice should make
-that growing player record survive gameplay saves before more Remote Town,
-travel, combat, and companion state is layered onto it.
+fill their counter instead of entering the bag. Selecting a retail save now
+streams and verifies its `ShadowFlare0005` envelope without allocating a
+payload buffer. The plain player record and exact backpack, belt, visible
+equipment, and hidden alternate-weapon slots all populate the same fixed game
+owners used by new characters. The four development saves currently in the
+retail tree have been checked through the complete Remote Town asset and owner
+restore path. The next save slice should carry over the retail progress arrays
+and world entry so Ostare's starter handoff, conversation state, and map
+position do not reset; mine and walk/run persistence belong with that work.
 A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.

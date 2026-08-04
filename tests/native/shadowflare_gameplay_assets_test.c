@@ -853,7 +853,7 @@ int main(void) {
         &player, retained_items, SF_GROUND_ITEM_DEFINITION_LIMIT,
         &retained_item_count) ||
       !sf_gameplay_assets_load(
-        &assets, root, 0, 0, player.gender,
+        &assets, root, 0, 0, player.gender, player.level,
         player.appearance_parts, player.appearance_part_count,
         player.visible_items, player.visible_item_count,
         retained_items, retained_item_count, &arena)) {

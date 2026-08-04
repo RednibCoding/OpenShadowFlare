@@ -21,7 +21,7 @@
 
 #include "ui/gameplay_inventory.h"
 
-static const SfRect sf_equipment_regions[SF_EQUIPMENT_SLOT_COUNT] = {
+static const SfRect sf_equipment_regions[SF_EQUIPMENT_VISIBLE_SLOT_COUNT] = {
   {560, 16, 64, 64},
   {560, 88, 64, 96},
   {560, 192, 64, 64},
@@ -34,13 +34,13 @@ static const SfRect sf_equipment_regions[SF_EQUIPMENT_SLOT_COUNT] = {
 };
 
 const SfRect *sf_gameplay_equipment_slot_region(SfEquipmentSlot slot) {
-  if (slot < 0 || slot >= SF_EQUIPMENT_SLOT_COUNT) return NULL;
+  if (slot < 0 || slot >= SF_EQUIPMENT_VISIBLE_SLOT_COUNT) return NULL;
   return &sf_equipment_regions[(uint8_t) slot];
 }
 
 SfEquipmentSlot sf_gameplay_equipment_slot_at(int16_t x, int16_t y) {
   uint8_t slot;
-  for (slot = 0u; slot < SF_EQUIPMENT_SLOT_COUNT; ++slot) {
+  for (slot = 0u; slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT; ++slot) {
     const SfRect *region = &sf_equipment_regions[slot];
     if (x >= region->x && x < region->x + region->width &&
         y >= region->y && y < region->y + region->height)

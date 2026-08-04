@@ -1,0 +1,127 @@
+/*
+ * Copyright (C) 2026 Michael Binder and contributors
+ *
+ * This file is part of OpenShadowFlare.
+ *
+ * OpenShadowFlare is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * OpenShadowFlare is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
+ * details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "data/save_player.h"
+
+#include "assets/retail_paths.h"
+#include "data/save.h"
+#include "data/save_payload.h"
+#include "data/save_player_internal.h"
+
+#include <string.h>
+
+static int32_t sf_saved_i32(const uint8_t *bytes) {
+  return (int32_t) ((uint32_t) bytes[0] |
+    ((uint32_t) bytes[1] << 8u) | ((uint32_t) bytes[2] << 16u) |
+    ((uint32_t) bytes[3] << 24u));
+}
+
+static bool sf_save_player_read_record(
+    const uint8_t record[SF_SAVE_PLAYER_RECORD_SIZE],
+    SfSavedPlayer *player) {
+  static const uint16_t parameter_offsets[SF_PLAYER_INITIAL_PARAMETER_COUNT] = {
+    0x28u, 0x2cu, 0x30u, 0x38u, 0x40u, 0x44u, 0x48u,
+    0x54u, 0x58u, 0x4cu, 0x50u, 0x5cu, 0x60u
+  };
+  uint8_t index;
+  memcpy(player->name, record, 24u);
+  player->name[24] = '\0';
+  player->gender = sf_saved_i32(record + 0x18u);
+  player->job = sf_saved_i32(record + 0x1cu);
+  player->level = sf_saved_i32(record + 0x24u);
+  player->current_life = sf_saved_i32(record + 0x34u);
+  player->current_mana = sf_saved_i32(record + 0x3cu);
+  player->experience = sf_saved_i32(record + 0xd8u);
+  for (index = 0u; index < SF_PLAYER_INITIAL_PARAMETER_COUNT; ++index)
+    player->parameters.values[index] = sf_saved_i32(
+      record + parameter_offsets[index]);
+  return (player->gender == 0 || player->gender == 1) &&
+    player->level > 0 && player->level <= 100 &&
+    player->parameters.values[2] > 0 && player->parameters.values[3] > 0;
+}
+
+bool sf_save_player_load_path(const char *path, SfSavedPlayer *player) {
+  SfSavePayloadReader reader;
+  uint8_t record[SF_SAVE_PLAYER_RECORD_SIZE];
+  uint8_t duplicate[SF_SAVE_PLAYER_RECORD_SIZE];
+  bool has_envelope;
+  bool success = false;
+  if (!path || !player) return false;
+  memset(player, 0, sizeof(*player));
+  if (!sf_save_payload_open(&reader, path, record, &has_envelope) ||
+      !sf_save_player_read_record(record, player)) goto done;
+  if (!has_envelope) {
+    success = true;
+    goto done;
+  }
+  if (!sf_save_payload_read(&reader, duplicate, sizeof(duplicate)) ||
+      memcmp(record, duplicate, sizeof(record)) != 0 ||
+      !sf_save_player_read_items(&reader, player) ||
+      !sf_save_payload_finish(&reader)) goto done;
+  success = true;
+done:
+  sf_save_payload_close(&reader);
+  if (!success) memset(player, 0, sizeof(*player));
+  return success;
+}
+
+bool sf_save_player_load(
+    const char *data_root, uint8_t file_slot, SfSavedPlayer *player) {
+  char path[SF_RETAIL_PATH_CAPACITY];
+  return data_root && player &&
+    sf_save_slot_data_path(
+      path, sizeof(path), data_root, file_slot) &&
+    sf_save_player_load_path(path, player);
+}
+
+static bool sf_saved_player_add_item(
+    SfItemReference *items, uint8_t *count, uint8_t capacity,
+    const SfSavedItem *item) {
+  uint8_t index;
+  if (!item->present) return true;
+  for (index = 0u; index < *count; ++index)
+    if (items[index].category == item->category &&
+        items[index].definition_id == item->definition_id) return true;
+  if (*count >= capacity) return false;
+  items[*count].category = item->category;
+  items[*count].definition_id = item->definition_id;
+  ++*count;
+  return true;
+}
+
+bool sf_saved_player_required_items(
+    const SfSavedPlayer *player, SfItemReference *items,
+    uint8_t capacity, uint8_t *item_count) {
+  uint8_t index;
+  if (!player || !items || !item_count || capacity == 0u) return false;
+  *item_count = 0u;
+  for (index = 0u; index < SF_SAVED_EQUIPMENT_COUNT; ++index)
+    if (!sf_saved_player_add_item(
+          items, item_count, capacity, &player->equipment[index]))
+      return false;
+  for (index = 0u; index < player->backpack_count; ++index)
+    if (!sf_saved_player_add_item(
+          items, item_count, capacity, &player->backpack[index]))
+      return false;
+  for (index = 0u; index < player->belt_count; ++index)
+    if (!sf_saved_player_add_item(
+          items, item_count, capacity, &player->belt[index]))
+      return false;
+  return true;
+}

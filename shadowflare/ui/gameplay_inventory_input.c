@@ -88,10 +88,10 @@ bool sf_gameplay_inventory_input_resolve(
     equipment_slot = sf_gameplay_equipment_slot_at(
       input->pointer_x, input->pointer_y);
   if (inventory->hovered_equipment_slot !=
-      (equipment_slot < SF_EQUIPMENT_SLOT_COUNT
+      (equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
         ? (int8_t) equipment_slot : -1)) {
     inventory->hovered_equipment_slot =
-      equipment_slot < SF_EQUIPMENT_SLOT_COUNT
+      equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT
         ? (int8_t) equipment_slot : -1;
     changed = true;
   }
@@ -145,13 +145,13 @@ bool sf_gameplay_inventory_input_resolve(
     input->pointer_over_gameplay_ui = true;
     changed = true;
   } else if (inventory->open && input->pointer_primary_pressed && holding &&
-             equipment_slot < SF_EQUIPMENT_SLOT_COUNT) {
+             equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT) {
     input->inventory_action = SF_INVENTORY_ACTION_PLACE_EQUIPMENT;
     input->equipment_slot = (int8_t) equipment_slot;
     input->pointer_over_gameplay_ui = true;
     changed = true;
   } else if (inventory->open && input->pointer_primary_pressed && !holding &&
-             equipment_slot < SF_EQUIPMENT_SLOT_COUNT &&
+             equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT &&
              sf_equipment_item(&player->equipment, equipment_slot)) {
     input->inventory_action = SF_INVENTORY_ACTION_TAKE_EQUIPMENT;
     input->equipment_slot = (int8_t) equipment_slot;

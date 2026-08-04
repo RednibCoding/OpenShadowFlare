@@ -156,7 +156,7 @@ static int test_live_belt(const char *root, SfArena *arena) {
     return 1;
   retained[retained_count++] = (SfItemReference) {1, 4u};
   if (!sf_gameplay_assets_load(
-        &assets, root, 0, 0, loader_player.gender,
+        &assets, root, 0, 0, loader_player.gender, loader_player.level,
         loader_player.appearance_parts, loader_player.appearance_part_count,
         loader_player.visible_items, loader_player.visible_item_count,
         retained, retained_count, arena)) {

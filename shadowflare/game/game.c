@@ -29,6 +29,7 @@ void sf_game_init(SfGame *game, const SfGameConfig *config) {
   if (!game) return;
   memset(game, 0, sizeof(*game));
   if (config) game->config = *config;
+  game->load_game.selected_file_slot = -1;
   game->player_gender = 1u;
   game->mode = SF_GAME_MODE_TITLE;
   sf_title_state_init(game);
@@ -59,6 +60,9 @@ void sf_game_update(SfGame *game, const SfGameInput *input) {
     game->character_create.sound_events = 0u;
     game->load_game.sound_events = 0u;
     sf_world_state_init(&game->world, 0, 0, game->player_gender);
+    if (game->load_game.selected_file_slot < 0)
+      sf_player_set_identity(
+        &game->world.player, game->character_create.name, 0x10);
     game->mode = SF_GAME_MODE_GAMEPLAY;
   } else {
     game->title.sound_events = 0u;

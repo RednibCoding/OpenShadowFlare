@@ -33,6 +33,7 @@
 
 #define SF_PLAYER_APPEARANCE_PART_LIMIT 8u
 #define SF_PLAYER_VISIBLE_ITEM_LIMIT 5u
+#define SF_PLAYER_NAME_CAPACITY 25u
 
 typedef enum SfPlayerMotion {
   SF_PLAYER_IDLE = 0,
@@ -46,6 +47,7 @@ typedef enum SfPlayerPace {
 } SfPlayerPace;
 
 typedef struct SfPlayerState {
+  char name[SF_PLAYER_NAME_CAPACITY];
   SfWorldPoint position;
   SfWorldPoint previous_position;
   SfWorldPoint destination;
@@ -60,6 +62,7 @@ typedef struct SfPlayerState {
   int32_t current_mana;
   int32_t experience;
   int32_t level;
+  int32_t job;
   int32_t mine_count;
   int32_t maximum_mines;
   uint32_t action_counter;
@@ -79,6 +82,8 @@ typedef struct SfPlayerState {
 } SfPlayerState;
 
 void sf_player_init(SfPlayerState *player, uint8_t gender);
+void sf_player_set_identity(
+  SfPlayerState *player, const char *name, int32_t job);
 bool sf_player_apply_initial_parameters(
   SfPlayerState *player, const SfPlayerInitialParameters *parameters);
 bool sf_player_initialize_loadout(

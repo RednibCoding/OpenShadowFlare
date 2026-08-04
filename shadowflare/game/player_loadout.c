@@ -23,7 +23,7 @@ void sf_player_refresh_visible_items(SfPlayerState *player) {
   uint8_t slot;
   uint8_t count = 0u;
   if (!player) return;
-  for (slot = 0u; slot < SF_EQUIPMENT_SLOT_COUNT &&
+  for (slot = 0u; slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT &&
        count < SF_PLAYER_VISIBLE_ITEM_LIMIT; ++slot) {
     const SfInventoryItem *item = sf_equipment_item(
       &player->equipment, (SfEquipmentSlot) slot);

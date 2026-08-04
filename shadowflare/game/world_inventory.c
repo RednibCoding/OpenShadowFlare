@@ -86,7 +86,7 @@ bool sf_world_inventory_update(
   } else if (input->inventory_action ==
                SF_INVENTORY_ACTION_TAKE_EQUIPMENT &&
              !transfer->holding_item && input->equipment_slot >= 0 &&
-             input->equipment_slot < SF_EQUIPMENT_SLOT_COUNT &&
+             input->equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT &&
              sf_equipment_take(
                &world->player.equipment,
                (SfEquipmentSlot) input->equipment_slot,
@@ -108,7 +108,7 @@ bool sf_world_inventory_update(
   } else if (input->inventory_action ==
                SF_INVENTORY_ACTION_PLACE_EQUIPMENT &&
              transfer->holding_item && input->equipment_slot >= 0 &&
-             input->equipment_slot < SF_EQUIPMENT_SLOT_COUNT) {
+             input->equipment_slot < SF_EQUIPMENT_VISIBLE_SLOT_COUNT) {
     definition = sf_ground_items_definition(
       &world->ground_items, transfer->held_item.category,
       transfer->held_item.definition_id);
