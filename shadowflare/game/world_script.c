@@ -21,6 +21,29 @@
 
 #include "core/retail_random.h"
 
+static bool sf_world_script_anchor(
+    const SfWorldState *world, int32_t character_number,
+    SfWorldPoint *anchor) {
+  const SfScenarioActor *actor;
+  const SfScenarioObject *object;
+  if (!world || !anchor) return false;
+  if (character_number >= 0 && character_number < 4) {
+    if (character_number != 0) return false;
+    *anchor = world->player.position;
+    return true;
+  }
+  actor = sf_scenario_actor_find_const(&world->actors, character_number);
+  if (actor) {
+    *anchor = actor->position;
+    return true;
+  }
+  object = sf_scenario_object_find_const(
+    &world->scenario_objects, character_number);
+  if (!object) return false;
+  *anchor = object->position;
+  return true;
+}
+
 static bool sf_world_native_command(
     void *user, int32_t opcode, const int32_t *arguments,
     uint8_t argument_count) {
@@ -31,6 +54,25 @@ static bool sf_world_native_command(
       &world->ground_items, arguments[0], arguments[1],
       (SfWorldPoint) {arguments[2], arguments[3]},
       arguments[4], arguments[5]);
+  if (opcode == 16 && argument_count >= 1u && argument_count <= 4u) {
+    if (arguments[0] < 0 || arguments[0] > UINT16_MAX) return false;
+    if (argument_count >= 4u && arguments[1] == 0 &&
+        sf_movement_point_distance(
+          world->player.position,
+          (SfWorldPoint) {arguments[2], arguments[3]}) > 3000) return true;
+    sf_sound_events_push(&world->sounds, (uint16_t) arguments[0]);
+    return true;
+  }
+  if (opcode == 27 && argument_count == 8u) {
+    SfWorldPoint anchor;
+    if (!world->script ||
+        !sf_world_script_anchor(world, arguments[0], &anchor) ||
+        !sf_scs_message(world->script, arguments[3])) return false;
+    return sf_scenario_labels_add(
+      &world->scenario_labels, (SfScenarioLabel) {
+        anchor, arguments[1], arguments[2], arguments[3],
+        arguments[4], arguments[5], arguments[6], arguments[7]});
+  }
   if (opcode == 36)
     return sf_scenario_placed_effect_add(
       &world->placed_effects, arguments, argument_count);

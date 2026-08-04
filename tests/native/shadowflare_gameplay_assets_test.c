@@ -35,6 +35,7 @@
 #include "ui/gameplay_panels_input.h"
 #include "ui/gameplay_service_controller.h"
 #include "ui/scenario_object_nameplate.h"
+#include "ui/scenario_label.h"
 #include "ui/world_pointer.h"
 
 #include <ctype.h>
@@ -397,10 +398,11 @@ static int test_gameplay_inventory(
     fprintf(stderr, "The retail Magic resources are incomplete\n");
     return 1;
   }
-  if (!sf_gameplay_interface_sound(&assets->sounds, 57u) ||
-      !sf_gameplay_interface_sound(&assets->sounds, 58u) ||
-      sf_gameplay_interface_sound(&assets->sounds, 56u)) {
-    fprintf(stderr, "The retail Magic feedback samples are incomplete\n");
+  if (!sf_gameplay_sound(&assets->sounds, 57u) ||
+      !sf_gameplay_sound(&assets->sounds, 58u) ||
+      !sf_gameplay_sound(&assets->sounds, 80u) ||
+      sf_gameplay_sound(&assets->sounds, 56u)) {
+    fprintf(stderr, "The retained gameplay sound samples are incomplete\n");
     return 1;
   }
   artwork = sf_inventory_item_artwork(
@@ -906,6 +908,111 @@ static int test_transport_service(
   return 0;
 }
 
+static int test_transport_discovery(
+    const SfGameplayAssets *assets, SfWorldState *world) {
+  SfScenarioObject *activation = sf_scenario_object_find(
+    &world->scenario_objects, 10000202);
+  SfScenarioObject *first_visual = sf_scenario_object_find(
+    &world->scenario_objects, 10000203);
+  SfScenarioObject *second_visual = sf_scenario_object_find(
+    &world->scenario_objects, 10000204);
+  SfGameInput input;
+  SfWorldRenderView view;
+  SfRect bounds;
+  SfRenderer renderer;
+  uint32_t label_revision;
+  size_t changed = 0u;
+  int y;
+  if (!activation || !first_visual || !second_visual) return 1;
+  world->actor_script_state.progress.transport_values[0] = 0;
+  world->actor_script_state.progress.transport_count = 0u;
+  sf_world_state_enter(
+    world, activation->position.x, activation->position.y, 7u);
+  memset(&input, 0, sizeof(input));
+  input.pointed_actor_id = -1;
+  input.pointed_scenario_object_id = -1;
+  input.pointed_ground_item_id = -1;
+  input.transport_destination = -1;
+  sf_world_state_update(world, &input);
+  sf_world_render_view(world, 1000u, &view);
+  if (world->actor_script_state.progress.transport_count != 1u ||
+      world->actor_script_state.progress.transport_values[0] != 1 ||
+      world->scenario_labels.count != 1u ||
+      world->scenario_labels.labels[0].message_id != 1000060 ||
+      world->scenario_labels.labels[0].anchor.x != 95259 ||
+      world->scenario_labels.labels[0].anchor.y != -3241 ||
+      world->scenario_labels.labels[0].offset_x != 0 ||
+      world->scenario_labels.labels[0].offset_y != -160 ||
+      world->scenario_labels.labels[0].red != 224 ||
+      world->scenario_labels.labels[0].green != 224 ||
+      world->scenario_labels.labels[0].blue != 224 ||
+      world->scenario_labels.labels[0].background_opacity != 1000 ||
+      world->sounds.count != 1u || world->sounds.samples[0] != 80u ||
+      first_visual->draw_strength != 50 ||
+      second_visual->draw_strength != 50 ||
+      !sf_scenario_label_bounds(assets, world, &view, 0u, &bounds) ||
+      bounds.width != 72 || bounds.height != 18) {
+    fprintf(stderr,
+      "The Remote Town periodic transporter did not discover and label "
+      "itself\n");
+    fprintf(stderr, "unsupported opcode: %d, labels: %u, transport: %d\n",
+      (int) world->actor_script_state.unsupported_opcode,
+      (unsigned) world->scenario_labels.count,
+      (int) world->actor_script_state.progress.transport_values[0]);
+    return 1;
+  }
+  if (!sf_renderer_init(
+        &renderer, sf_gameplay_test_pixels,
+        sizeof(sf_gameplay_test_pixels), 640u, 480u)) return 1;
+  sf_renderer_clear(&renderer, 0x1234u);
+  sf_scenario_labels_draw(
+    &renderer, assets, world, &view, NULL);
+  for (y = bounds.y; y < bounds.y + bounds.height; ++y) {
+    int x;
+    for (x = bounds.x; x < bounds.x + bounds.width; ++x)
+      if (x >= 0 && x < 640 && y >= 0 && y < 480 &&
+          sf_gameplay_test_pixels[(size_t) y * 640u + (size_t) x] !=
+            0x1234u) ++changed;
+  }
+  if (changed < 300u) {
+    fprintf(stderr, "The retail teleporter label was not composed\n");
+    return 1;
+  }
+  label_revision = world->scenario_labels.revision;
+  sf_world_state_update(world, &input);
+  if (world->scenario_labels.revision != label_revision ||
+      world->scenario_labels.count != 1u || world->sounds.count != 0u ||
+      first_visual->draw_strength != 100 ||
+      second_visual->draw_strength != 100) {
+    fprintf(stderr,
+      "A steady teleporter label redrew or replayed its activation sound\n");
+    return 1;
+  }
+  sf_world_state_enter(
+    world, assets->entry.world_x, assets->entry.world_y,
+    (uint8_t) assets->entry.direction);
+  world->script_transport_service = 0;
+  memset(&input, 0, sizeof(input));
+  input.pointed_actor_id = -1;
+  input.pointed_scenario_object_id = -1;
+  input.pointed_ground_item_id = -1;
+  input.transport_destination = -1;
+  sf_world_state_update(world, &input);
+  sf_world_state_update(world, &input);
+  if (world->scenario_labels.count != 0u ||
+      first_visual->draw_strength != 0 ||
+      second_visual->draw_strength != 0 ||
+      world->service_request.kind != SF_GAMEPLAY_SERVICE_CLOSE_TRANSPORT ||
+      world->service_request.argument != 0 ||
+      world->actor_script_state.progress.transport_values[0] != 1) {
+    fprintf(stderr,
+      "Leaving the Remote Town transporter did not fade and close it\n");
+    return 1;
+  }
+  sf_gameplay_service_clear(&world->service_request);
+  return 0;
+}
+
 static int test_ostare_conversation(
     const SfGameplayAssets *assets, SfWorldState *world) {
   SfScenarioScriptEnvironment environment;
@@ -1304,6 +1411,7 @@ int main(void) {
     assets.ground_items.definition_count);
   if (test_scenario_actors(&assets, &world)) return 1;
   if (test_scenario_objects(&assets, &world)) return 1;
+  if (test_transport_discovery(&assets, &world)) return 1;
   if (test_transport_service(&assets, &world)) return 1;
   sf_world_state_enter(
     &world, assets.entry.world_x, assets.entry.world_y,

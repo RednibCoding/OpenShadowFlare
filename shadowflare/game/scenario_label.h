@@ -17,24 +17,39 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
-#define SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
+#ifndef SHADOWFLARE_GAME_SCENARIO_LABEL_H
+#define SHADOWFLARE_GAME_SCENARIO_LABEL_H
 
-#include "core/arena.h"
-#include "data/voc.h"
+#include "game/movement.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_SOUND_COUNT 3u
+#define SF_SCENARIO_LABEL_LIMIT 8u
 
-typedef struct SfGameplaySoundAssets {
-  SfPcmU8 sounds[SF_GAMEPLAY_SOUND_COUNT];
-} SfGameplaySoundAssets;
+typedef struct SfScenarioLabel {
+  SfWorldPoint anchor;
+  int32_t offset_x;
+  int32_t offset_y;
+  int32_t message_id;
+  int32_t red;
+  int32_t green;
+  int32_t blue;
+  int32_t background_opacity;
+} SfScenarioLabel;
 
-bool sf_gameplay_sound_assets_load(
-  SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena);
-const SfPcmU8 *sf_gameplay_sound(
-  const SfGameplaySoundAssets *assets, uint16_t sample);
+typedef struct SfScenarioLabelSet {
+  SfScenarioLabel labels[SF_SCENARIO_LABEL_LIMIT];
+  uint32_t revision;
+  uint32_t signature;
+  uint32_t building_signature;
+  uint8_t count;
+  bool building;
+} SfScenarioLabelSet;
+
+void sf_scenario_labels_begin(SfScenarioLabelSet *labels);
+bool sf_scenario_labels_add(
+  SfScenarioLabelSet *labels, SfScenarioLabel label);
+void sf_scenario_labels_end(SfScenarioLabelSet *labels);
 
 #endif

@@ -17,24 +17,22 @@
  * with OpenShadowFlare. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
-#define SHADOWFLARE_ASSETS_GAMEPLAY_SOUND_ASSETS_H
+#ifndef SHADOWFLARE_UI_SCENARIO_LABEL_H
+#define SHADOWFLARE_UI_SCENARIO_LABEL_H
 
-#include "core/arena.h"
-#include "data/voc.h"
+#include "assets/gameplay_assets.h"
+#include "game/world.h"
+#include "render/renderer.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_SOUND_COUNT 3u
-
-typedef struct SfGameplaySoundAssets {
-  SfPcmU8 sounds[SF_GAMEPLAY_SOUND_COUNT];
-} SfGameplaySoundAssets;
-
-bool sf_gameplay_sound_assets_load(
-  SfGameplaySoundAssets *assets, const char *data_root, SfArena *arena);
-const SfPcmU8 *sf_gameplay_sound(
-  const SfGameplaySoundAssets *assets, uint16_t sample);
+bool sf_scenario_label_bounds(
+  const SfGameplayAssets *assets, const SfWorldState *world,
+  const SfWorldRenderView *view, uint8_t index, SfRect *bounds);
+void sf_scenario_labels_draw(
+  SfRenderer *renderer, const SfGameplayAssets *assets,
+  const SfWorldState *world, const SfWorldRenderView *view,
+  const SfRect *clip);
 
 #endif

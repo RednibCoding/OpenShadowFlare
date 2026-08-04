@@ -221,6 +221,13 @@ SfScenarioScriptResult sf_scenario_script_execute_command(
           context->environment)) return SF_SCENARIO_SCRIPT_INVALID;
     return SF_SCENARIO_SCRIPT_COMPLETE;
   }
+  if (command->opcode == 16) {
+    const uint8_t arguments = command->operand_count > 4u
+      ? 4u : (uint8_t) command->operand_count;
+    return arguments == 0u
+      ? SF_SCENARIO_SCRIPT_INVALID
+      : sf_scenario_script_native(context, command, operands, arguments);
+  }
   if (command->opcode == 18 || command->opcode == 19 ||
       command->opcode == 21) {
     if (command->operand_count < 1u) return SF_SCENARIO_SCRIPT_INVALID;
@@ -235,6 +242,8 @@ SfScenarioScriptResult sf_scenario_script_execute_command(
           command->opcode == 22 ? 1 : 0)) return SF_SCENARIO_SCRIPT_INVALID;
     return SF_SCENARIO_SCRIPT_COMPLETE;
   }
+  if (command->opcode == 27)
+    return sf_scenario_script_native(context, command, operands, 8u);
   if (command->opcode == 34) {
     int32_t distance;
     if (command->operand_count < 2u ||

@@ -125,11 +125,12 @@ A slice is only done after the C99/TWL/TAL tests, a release build, a practical
 check when visible behavior changed, and a fresh measured budget when assets
 changed.
 
-The immediate C99 target is the rest of the authored transport path. Periodic
-teleporter status should discover and save its Table 40 row, opcode 27 should
-draw the activation label, and cross-scenario selection should go through one
-clean screen-runtime reload rather than a map-specific shortcut. That same
-transition seam can then serve the ordinary opcode 17 exits around Remote Town.
+The immediate C99 target is the shared scenario-transition seam. Authored
+teleporter discovery, its saved Table 40 row, activation sound and fades, and
+opcode-27 label are now live. Cross-scenario transport selection should next
+go through one clean screen-runtime reload rather than a map-specific
+shortcut. That same seam can then serve the ordinary opcode-17 exits around
+Remote Town.
 
 ## Where we are now
 

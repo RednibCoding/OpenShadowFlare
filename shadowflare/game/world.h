@@ -28,6 +28,7 @@
 #include "game/player.h"
 #include "game/scenario_actor.h"
 #include "game/scenario_effect.h"
+#include "game/scenario_label.h"
 #include "game/scenario_object.h"
 #include "game/sound_event.h"
 #include "interpreter/scenario_actor_script.h"
@@ -74,6 +75,7 @@ typedef struct SfWorldState {
   SfCompanionState companion;
   SfScenarioActorSet actors;
   SfScenarioPlacedEffectSet placed_effects;
+  SfScenarioLabelSet scenario_labels;
   SfScenarioObjectSet scenario_objects;
   SfGroundItemSet ground_items;
   SfSoundEventQueue sounds;

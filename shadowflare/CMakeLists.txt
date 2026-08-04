@@ -105,6 +105,7 @@ add_library(
   game/route_tables.c
   game/scenario_actor.c
   game/scenario_effect.c
+  game/scenario_label.c
   game/scenario_object.c
   game/sound_event.c
   game/special_items.c
@@ -162,6 +163,7 @@ add_library(
   ui/gameplay_transport.c
   ui/ground_item_nameplate.c
   ui/scenario_object_nameplate.c
+  ui/scenario_label.c
   ui/world_pointer.c
   ui/world_pointer_overlay.c
 )

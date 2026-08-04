@@ -548,12 +548,15 @@ service cleanup. It closes transport only when its argument matches the
 script-opened selector, leaving an independently open right-side inventory
 and its camera layout untouched.
 
-The C99 runtime now follows that split directly. The interpreter only forwards
-37 and 38 through its native hook. The world records a one-shot typed request,
-the screen-side service controller opens or closes UI state, and the selected
-same-scenario row is resolved through the MCT by `game/world_transport.c`.
-Panel artwork, paging, hover, and click consumption stay in `ui/`; no script
-opcode includes a UI header or knows a screen rectangle.
+The C99 runtime now follows that split directly. The interpreter forwards 16,
+27, 37, and 38 through its native hook. The world queues opcode 16's sound,
+keeps opcode 27's fixed actor-relative label values, and records service
+requests. A stable label revision avoids redrawing an unchanged label every
+30 Hz update. The screen-side service controller opens or closes UI state,
+and the selected same-scenario row is resolved through the MCT by
+`game/world_transport.c`. Label measurement and composition, panel artwork,
+paging, hover, and click consumption stay in `ui/`; no script opcode includes
+a UI header or knows a screen rectangle.
 
 The one shipped nonzero opcode-41 call is scenario `99000013`, sentence 10.
 Its object `10000900` is named `Giant Warehouse` in the Tower of Ordeal 12F

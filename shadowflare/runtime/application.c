@@ -233,7 +233,7 @@ static void sf_play_world_events(
       &assets->ground_items, world->ground_items.sound_samples[index]),
       false);
   for (index = 0u; index < world->sounds.count; ++index)
-    (void) sf_play_pcm(audio, sf_gameplay_interface_sound(
+    (void) sf_play_pcm(audio, sf_gameplay_sound(
       &assets->sounds, world->sounds.samples[index]), false);
 }
 

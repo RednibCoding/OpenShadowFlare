@@ -680,8 +680,10 @@ key as `local player number + entry * 4`, so row zero resolves entry key 200.
 The small C99 runtime streams exactly these 51 records into a fixed catalog;
 it does not retain the rest of `Table.Tbd`. The UI reads names and enabled-row
 state from that catalog, while `game/world_transport.c` resolves the selected
-entry through the active MCT. Cross-scenario rows deliberately wait for the
-shared scenario-reload boundary instead of pretending they are local entries.
+entry through the active MCT. Periodic SCS activation now enables the matching
+row in that same catalog, so newly discovered destinations appear without a
+second hardcoded list. Cross-scenario rows deliberately wait for the shared
+scenario-reload boundary instead of pretending they are local entries.
 
 Scenario folders use zero-padded decimal IDs, not hexadecimal IDs. For
 example, Table 40 row one names scenario `6`, which lives at

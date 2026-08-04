@@ -34,6 +34,7 @@
 #include "ui/gameplay_transport.h"
 #include "ui/ground_item_nameplate.h"
 #include "ui/scenario_object_nameplate.h"
+#include "ui/scenario_label.h"
 #include "ui/world_pointer_overlay.h"
 
 #include <string.h>
@@ -190,6 +191,8 @@ void sf_gameplay_screen_draw(
     screen->rendered_companion_life != game->world.companion.current_life ||
     screen->rendered_ground_item_revision !=
       game->world.ground_items.presentation_revision ||
+    screen->rendered_scenario_label_revision !=
+      game->world.scenario_labels.revision ||
     (screen->rendered_condition_phase != condition_phase &&
      sf_gameplay_item_condition_animation_active(
        assets, player, &screen->inventory)) ||
@@ -222,6 +225,8 @@ void sf_gameplay_screen_draw(
   sf_gameplay_scene_draw(
     &screen->scene, renderer, assets, &game->world, &view,
     interpolation, clip);
+  sf_scenario_labels_draw(
+    renderer, assets, &game->world, &view, clip);
   sf_actor_nameplate_draw(
     renderer, assets, &game->world, &view, interpolation);
   sf_scenario_object_nameplate_draw(
@@ -289,6 +294,8 @@ void sf_gameplay_screen_draw(
   screen->rendered_companion_life = game->world.companion.current_life;
   screen->rendered_ground_item_revision =
     game->world.ground_items.presentation_revision;
+  screen->rendered_scenario_label_revision =
+    game->world.scenario_labels.revision;
   screen->rendered_condition_phase = condition_phase;
   screen->drawn = true;
 }

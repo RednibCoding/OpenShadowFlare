@@ -137,6 +137,13 @@ static int test_player_movement(void) {
     (SfWorldPoint) {0, 0}, (SfWorldPoint) {3, 4}, 20u);
   if (check(step.arrived && step.position.x == 3 && step.position.y == 4,
             "a short movement step overshot its destination") ||
+      check(sf_movement_point_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {3, 4}) == 5 &&
+            sf_movement_point_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {3000, 1}) == 3000 &&
+            sf_movement_point_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {3001, 0}) == 3001,
+            "integer point distance did not preserve the retail range floor") ||
       check(sf_movement_direction(
               (SfWorldPoint) {0, 0}, (SfWorldPoint) {1, 1}) == 0u &&
             sf_movement_direction(

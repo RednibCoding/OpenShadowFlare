@@ -39,6 +39,7 @@ typedef struct SfGameplayScreen {
   SfGameplayTransportUi transport;
   uint32_t rendered_animation_frame;
   uint32_t rendered_ground_item_revision;
+  uint32_t rendered_scenario_label_revision;
   uint32_t rendered_companion_frame;
   uint32_t rendered_actor_frames[SF_MCT_PERSON_LIMIT];
   uint32_t rendered_scenario_object_frames[SF_MCT_OBJECT_LIMIT];

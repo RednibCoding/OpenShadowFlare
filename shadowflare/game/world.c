@@ -57,6 +57,8 @@ void sf_world_state_enter(
   world->pointer.range_enabled = true;
   sf_gameplay_service_clear(&world->service_request);
   world->script_transport_service = -1;
+  sf_scenario_labels_begin(&world->scenario_labels);
+  sf_scenario_labels_end(&world->scenario_labels);
   sf_player_enter(
     &world->player, (SfWorldPoint) {player_x, player_y}, direction);
   screen = sf_world_to_screen(world->player.position);
@@ -113,8 +115,13 @@ bool sf_world_state_bind_scenario_progress(
   world->script_transport_service = -1;
   world->companion_type = world->player.companions.type;
   environment = sf_world_script_environment(world);
-  return sf_scenario_actor_script_run_periodic(
-    &world->actor_script_state, script, &environment);
+  sf_scenario_labels_begin(&world->scenario_labels);
+  {
+    const bool result = sf_scenario_actor_script_run_periodic(
+      &world->actor_script_state, script, &environment);
+    sf_scenario_labels_end(&world->scenario_labels);
+    return result;
+  }
 }
 
 bool sf_world_state_bind_companion(
@@ -225,12 +232,14 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   if (companion_blocker_index != UINT8_MAX)
     world->movement_blockers[companion_blocker_index].position =
       world->companion.position;
+  sf_scenario_labels_begin(&world->scenario_labels);
   if (world->script) {
     const SfScenarioScriptEnvironment environment =
       sf_world_script_environment(world);
     (void) sf_scenario_actor_script_run_periodic(
       &world->actor_script_state, world->script, &environment);
   }
+  sf_scenario_labels_end(&world->scenario_labels);
   player_screen = sf_world_to_screen(world->player.position);
   world->camera_x = player_screen.x - 320;
   world->camera_y = player_screen.y - 240;

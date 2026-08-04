@@ -64,6 +64,12 @@ the retail left panel, compact ten-row paging, hover and click rectangles, and
 camera intent; Table 40 and script progress remain data/game concerns, and
 entry relocation remains in `game/`.
 
+Scenario labels use the same boundary. `scenario_label.c` owns the retail
+6-by-12 Shift-JIS measurement, actor-relative screen bounds, backing, shadow,
+and colored text composition. The interpreter only emits opcode 27's authored
+label values into a small fixed world owner; it never includes UI or renderer
+headers.
+
 The owned-companion strip follows the same rule. Its draw file composes the
 retail life bar and active/inactive `Bar.njp` cells, while its input file owns
 the exact bottom-left hit rectangle and emits only a toggle intent. Companion
