@@ -39,6 +39,7 @@
 #include "data/spell_parameters.h"
 #include "data/transport.h"
 #include "data/companion_parameters.h"
+#include "data/combat_tables.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -66,6 +67,7 @@ typedef struct SfGameplayAssets {
   SfNjpDecodedResource magic_bar_icons;
   SfPlayerInitialParameters player_parameters;
   SfCompanionProfile companion_profile;
+  SfCombatTables combat_tables;
   SfSpellParameters *spell_parameters;
   SfTransportCatalog transports;
   SfAiControlCatalog ai_controls;

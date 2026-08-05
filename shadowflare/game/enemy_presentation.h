@@ -26,7 +26,8 @@
 
 bool sf_enemy_presentation_begin_direct(
   SfScenarioEnemy *enemy,
-  const SfScenarioEnemyControllerContext *context);
+  const SfScenarioEnemyControllerContext *context,
+  uint8_t variant);
 void sf_enemy_presentation_update(
   SfScenarioEnemy *enemy,
   const SfScenarioEnemyControllerContext *context);

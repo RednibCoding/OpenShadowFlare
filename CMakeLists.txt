@@ -6,7 +6,7 @@ project(
   LANGUAGES C CXX
 )
 
-if(NINTENDO_SWITCH OR VITA OR CMAKE_SYSTEM_NAME STREQUAL "Vita")
+if(NINTENDO_SWITCH)
   set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 endif()
 
@@ -24,13 +24,7 @@ option(
   ON
 )
 
-if(NINTENDO_SWITCH)
-  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "nxfb")
-elseif(VITA OR CMAKE_SYSTEM_NAME STREQUAL "Vita")
-  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "vita")
-else()
-  set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "lgl")
-endif()
+set(OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND "lgl")
 set(
   OPENSHADOWFLARE_PRESENTATION_BACKEND
   "${OPENSHADOWFLARE_DEFAULT_PRESENTATION_BACKEND}"
@@ -39,14 +33,17 @@ set(
 )
 set_property(
   CACHE OPENSHADOWFLARE_PRESENTATION_BACKEND
-  PROPERTY STRINGS lgl nxfb vita
+  PROPERTY STRINGS lgl
 )
 
-add_subdirectory(thirdparty/lwl)
-add_subdirectory(thirdparty/lal)
+if(OPENSHADOWFLARE_BUILD_EXE OR BUILD_TESTING)
+  add_subdirectory(thirdparty/lwl)
+  add_subdirectory(thirdparty/lal)
+endif()
 add_subdirectory(thirdparty/twl)
 add_subdirectory(thirdparty/tal)
-if(OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl" OR BUILD_TESTING)
+if((OPENSHADOWFLARE_BUILD_EXE AND
+    OPENSHADOWFLARE_PRESENTATION_BACKEND STREQUAL "lgl") OR BUILD_TESTING)
   add_subdirectory(thirdparty/lgl)
 endif()
 

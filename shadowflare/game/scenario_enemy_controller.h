@@ -30,6 +30,7 @@
 typedef struct SfEnemyControllerTarget {
   SfWorldPoint position;
   SfObjectBounds judgement;
+  int32_t combat_defense;
   bool valid;
 } SfEnemyControllerTarget;
 

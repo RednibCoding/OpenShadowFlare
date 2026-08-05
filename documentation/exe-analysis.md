@@ -1819,6 +1819,16 @@ judgement, the complete combat packet, the authored delay, and the remaining
 constructor values. The list updater at `0x0042fd60` keeps that node until the
 handler selected by `0x00429ec0` returns zero.
 
+The low raw effect numbers do not enter the specialized controller families.
+Dispatcher `0x00429ec0` sends values `0..7` to generic initializer
+`0x0042a300` with OPTION resources `0,1,2,3,0,0,4,0`. This includes all
+shipped direct-special values `0,1,4,5,6,7`. The normal direct forms use
+30-unit bounds, whereas type six uses `[-160,-160,159,159]` and contact
+visual 21023. They project from the live owner by constructor field 21, carry
+the packet, collide with scenery and the first target, and use contact sample
+20. This makes the raw family a generic runtime actor, not a truncated form
+of effect `10001`.
+
 All twelve nonnegative effect types found in the shipped enemy records have a
 specialized branch. The dispatch covers types 1, 2, 3, 4, 5, 10, 11, 12, 13,
 14, 16, and 21. This is separate from the much simpler 21000-series receiver

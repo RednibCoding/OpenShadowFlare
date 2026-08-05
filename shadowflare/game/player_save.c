@@ -190,7 +190,11 @@ bool sf_player_restore_save(
 bool sf_player_restore_magic(
     SfPlayerState *player, const SfSavedMagic *saved) {
   uint8_t index;
-  if (!player || !saved || !saved->present) return false;
+  if (!player || !saved) return false;
+  if (!saved->present) {
+    sf_player_magic_init(&player->magic);
+    return true;
+  }
   for (index = 0u; index < SF_PLAYER_SPELL_COUNT; ++index) {
     player->magic.availability[index] = saved->availability[index];
     player->magic.levels[index] = saved->levels[index];
@@ -206,8 +210,24 @@ bool sf_player_restore_magic(
 bool sf_player_restore_companions(
     SfPlayerState *player, const SfSavedPlayer *saved_player,
     const SfSavedCompanions *saved_companions) {
-  if (!player || !saved_player || !saved_companions ||
-      !saved_companions->present) return false;
+  SfPlayerCompanionProgress fallback;
+  if (!player || !saved_player || !saved_companions) return false;
+  if (!saved_companions->present) {
+    if (saved_player->companion_type < 0 ||
+        saved_player->companion_type >= (int32_t) SF_COMPANION_COUNT ||
+        saved_player->companion_level < 1 ||
+        saved_player->companion_level > 35 ||
+        saved_player->companion_experience < 0 ||
+        saved_player->companion_defeated_updates < 0) return false;
+    sf_player_companion_progress_init(&fallback);
+    fallback.type = saved_player->companion_type;
+    fallback.levels[fallback.type] = saved_player->companion_level;
+    fallback.experience[fallback.type] =
+      saved_player->companion_experience;
+    fallback.defeated_updates = saved_player->companion_defeated_updates;
+    player->companions = fallback;
+    return true;
+  }
   return sf_player_companion_progress_restore(
     &player->companions, saved_player->companion_type,
     saved_player->companion_defeated_updates,

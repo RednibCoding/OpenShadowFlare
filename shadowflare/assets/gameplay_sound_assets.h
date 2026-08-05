@@ -26,7 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define SF_GAMEPLAY_SOUND_COUNT 3u
+#define SF_GAMEPLAY_SOUND_COUNT 5u
 
 typedef struct SfGameplaySoundAssets {
   SfPcmU8 sounds[SF_GAMEPLAY_SOUND_COUNT];

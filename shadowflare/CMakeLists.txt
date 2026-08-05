@@ -56,6 +56,7 @@ add_library(
   data/caf.c
   data/ai_control.c
   data/companion_parameters.c
+  data/combat_tables.c
   data/bmp.c
   data/gnd.c
   data/item.c
@@ -86,21 +87,28 @@ add_library(
   data/voc.c
   game/character_create.c
   game/companion.c
+  game/companion_damage.c
   game/belt.c
   game/collision.c
+  game/combat_damage.c
+  game/combat_effect_request.c
   game/equipment.c
   game/enemy_ai_selection.c
   game/enemy_action.c
   game/enemy_movement.c
+  game/enemy_target_movement.c
   game/enemy_presentation.c
+  game/enemy_direct_impact.c
   game/game.c
   game/gameplay_service.c
+  game/generic_effect_actor.c
   game/ground_item.c
   game/inventory.c
   game/item_condition.c
   game/load_game.c
   game/movement.c
   game/player.c
+  game/player_damage.c
   game/player_companion.c
   game/player_magic.c
   game/player_elements.c
@@ -121,6 +129,7 @@ add_library(
   game/special_items.c
   game/title.c
   game/world.c
+  game/world_enemy_combat.c
   game/world_conversation.c
   game/world_inventory.c
   game/world_interaction.c
@@ -235,4 +244,16 @@ if(OPENSHADOWFLARE_ENABLE_DEBUG_TOOLS)
       Tal::Tal
       Twl::Twl
   )
+endif()
+
+if(NINTENDO_SWITCH)
+  target_compile_definitions(
+    shadowflare_core PRIVATE SF_RETAIL_ROOT_FALLBACK="sdmc:/ShadowFlare")
+
+  if(NOT COMMAND nx_create_nro)
+    message(FATAL_ERROR
+      "nx_create_nro is unavailable. Configure the Switch build with "
+      "-DCMAKE_TOOLCHAIN_FILE=$ENV{DEVKITPRO}/cmake/Switch.cmake.")
+  endif()
+  nx_create_nro(osf ICON "${PROJECT_SOURCE_DIR}/readme/sf-logo-sm.jpg")
 endif()

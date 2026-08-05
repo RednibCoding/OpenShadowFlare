@@ -26,6 +26,7 @@
 #include "game/world_magic.h"
 #include "game/world_script.h"
 #include "game/world_transport.h"
+#include "game/world_enemy_combat.h"
 
 #include <limits.h>
 #include <string.h>
@@ -62,6 +63,7 @@ void sf_world_state_enter(
   world->pointer.range = 2u;
   world->pointer.range_enabled = true;
   sf_gameplay_service_clear(&world->service_request);
+  sf_combat_effect_requests_reset(&world->combat_effect_requests);
   world->script_transport_service = -1;
   world->enemy_attack_request.resource_id = -1;
   world->enemy_attack_request.chart = -1;
@@ -89,6 +91,11 @@ bool sf_world_state_bind_ai_controls(
         &world->enemies, catalog)) return false;
   world->ai_controls = catalog;
   return true;
+}
+
+void sf_world_state_bind_combat_tables(
+    SfWorldState *world, const SfCombatTables *tables) {
+  if (world) world->combat_tables = tables;
 }
 
 void sf_world_state_bind_collision(
@@ -270,13 +277,7 @@ static void sf_world_update_scenario_enemies(
   context.collision = &collision;
   context.random_state = &world->random_state;
   context.attack_request = &world->enemy_attack_request;
-  context.player.valid = world->player.current_life > 0;
-  context.player.position = world->player.position;
-  context.player.judgement = world->player.judgement;
-  context.companion.valid = world->companion.valid &&
-    !world->companion.inactive && world->companion.current_life > 0;
-  context.companion.position = world->companion.position;
-  context.companion.judgement = world->companion.judgement;
+  sf_world_enemy_combat_targets(world, &context);
   for (enemy_index = 0u; enemy_index < world->enemies.count; ++enemy_index) {
     SfScenarioEnemy *enemy = &world->enemies.enemies[enemy_index];
     const SfWorldPoint old_position = enemy->position;
@@ -285,6 +286,8 @@ static void sf_world_update_scenario_enemies(
     collision.ignored_blocker_id = sf_scenario_enemy_character_number(enemy);
     context.collision = &collision;
     sf_scenario_enemy_controller_update(enemy, &context);
+    if (enemy->direct_impact_pending)
+      (void) sf_world_enemy_combat_apply_direct(world, enemy, &context);
     if (enemy_blocker_indices[enemy_index] != UINT16_MAX)
       world->movement_blockers[
         enemy_blocker_indices[enemy_index]].position = enemy->position;
@@ -305,6 +308,7 @@ void sf_world_state_update(SfWorldState *world, const SfGameInput *input) {
   if (!world || !world->entered || !input) return;
   world->enemy_attack_request.resource_id = -1;
   world->enemy_attack_request.chart = -1;
+  sf_combat_effect_requests_reset(&world->combat_effect_requests);
   sf_scenario_labels_begin(&world->scenario_labels);
   sf_ground_items_update(&world->ground_items);
   sf_sound_events_reset(&world->sounds);

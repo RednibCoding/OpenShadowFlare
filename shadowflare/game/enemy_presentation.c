@@ -23,7 +23,8 @@
 
 #include <limits.h>
 
-#define SF_ENEMY_DIRECT_PRESENTATION 1u
+#define SF_ENEMY_FIRST_DIRECT_PRESENTATION 1u
+#define SF_ENEMY_LAST_DIRECT_PRESENTATION 3u
 #define SF_ENEMY_IDLE_PRESENTATION 7u
 #define SF_ENEMY_IMPACT_MARKER 0x40
 #define SF_ENEMY_DIRECT_RANGE_INDEX 3u
@@ -44,9 +45,10 @@ static int32_t sf_enemy_target_distance(
 
 static const SfEnemyControllerTarget *sf_enemy_direct_target(
     const SfScenarioEnemy *enemy,
-    const SfScenarioEnemyControllerContext *context, uint8_t *target_index) {
+    const SfScenarioEnemyControllerContext *context, uint8_t variant,
+    uint8_t *target_index) {
   const int32_t maximum =
-    enemy->definition->post_ai_values[SF_ENEMY_DIRECT_RANGE_INDEX];
+    enemy->definition->post_ai_values[SF_ENEMY_DIRECT_RANGE_INDEX + variant];
   const int32_t player_distance = sf_enemy_target_distance(
     enemy, context->player);
   const int32_t companion_distance = sf_enemy_target_distance(
@@ -60,6 +62,16 @@ static const SfEnemyControllerTarget *sf_enemy_direct_target(
     return &context->companion;
   }
   return NULL;
+}
+
+static SfWorldPoint sf_enemy_facing_vector(uint8_t direction) {
+  static const int8_t vectors[8][2] = {
+    {1, 1}, {1, 0}, {1, -1}, {0, -1},
+    {-1, -1}, {-1, 0}, {-1, 1}, {0, 1}
+  };
+  if (direction >= 8u) return (SfWorldPoint) {1, 0};
+  return (SfWorldPoint) {
+    vectors[direction][0], vectors[direction][1]};
 }
 
 void sf_enemy_presentation_reset(SfScenarioEnemy *enemy) {
@@ -85,23 +97,35 @@ static void sf_enemy_presentation_finish(SfScenarioEnemy *enemy) {
 
 bool sf_enemy_presentation_begin_direct(
     SfScenarioEnemy *enemy,
-    const SfScenarioEnemyControllerContext *context) {
+    const SfScenarioEnemyControllerContext *context, uint8_t variant) {
   const SfEnemyControllerTarget *target;
   int32_t chart;
   if (!enemy || !enemy->definition || !context ||
-      !enemy->direct_attack_animations) return false;
-  chart = enemy->definition->post_ai_values[SF_ENEMY_DIRECT_CHART_INDEX] + 4;
-  if (chart < 0 || chart > UINT8_MAX) return false;
-  enemy->presentation_action = SF_ENEMY_DIRECT_PRESENTATION;
+      variant >= 3u || !enemy->direct_attack_animations) return false;
+  chart = enemy->definition->post_ai_values[
+    SF_ENEMY_DIRECT_CHART_INDEX + variant] + 4;
+  if (chart < 0 || chart > UINT8_MAX ||
+      enemy->direct_attack_chart != (uint16_t) chart) return false;
+  enemy->presentation_action = (uint8_t) (
+    SF_ENEMY_FIRST_DIRECT_PRESENTATION + variant);
   enemy->animation_chart = (uint8_t) chart;
   enemy->animation_frame = 0u;
   enemy->presentation_elapsed = 0;
   enemy->presentation_previous_frame = -1;
   enemy->presentation_target = UINT8_MAX;
   target = sf_enemy_direct_target(
-    enemy, context, &enemy->presentation_target);
-  if (target)
+    enemy, context, variant, &enemy->presentation_target);
+  if (target) {
+    const int64_t dx = (int64_t) target->position.x - enemy->position.x;
+    const int64_t dy = (int64_t) target->position.y - enemy->position.y;
     enemy->direction = sf_movement_direction(enemy->position, target->position);
+    enemy->presentation_direction.x = dx < INT32_MIN ? INT32_MIN :
+      dx > INT32_MAX ? INT32_MAX : (int32_t) dx;
+    enemy->presentation_direction.y = dy < INT32_MIN ? INT32_MIN :
+      dy > INT32_MAX ? INT32_MAX : (int32_t) dy;
+  } else {
+    enemy->presentation_direction = sf_enemy_facing_vector(enemy->direction);
+  }
   return true;
 }
 
@@ -113,15 +137,6 @@ static uint8_t sf_enemy_audio_markers(int16_t status) {
   return markers;
 }
 
-static bool sf_enemy_impact_target_valid(
-    const SfScenarioEnemy *enemy,
-    const SfScenarioEnemyControllerContext *context) {
-  uint8_t target_index = UINT8_MAX;
-  const SfEnemyControllerTarget *target = sf_enemy_direct_target(
-    enemy, context, &target_index);
-  return target && target_index == enemy->presentation_target;
-}
-
 void sf_enemy_presentation_update(
     SfScenarioEnemy *enemy,
     const SfScenarioEnemyControllerContext *context) {
@@ -129,12 +144,19 @@ void sf_enemy_presentation_update(
   int32_t speed_index;
   int32_t frame;
   int32_t scan;
-  if (!enemy || !context || enemy->presentation_action != 1u) return;
+  uint8_t variant;
+  if (!enemy || !context ||
+      enemy->presentation_action < SF_ENEMY_FIRST_DIRECT_PRESENTATION ||
+      enemy->presentation_action > SF_ENEMY_LAST_DIRECT_PRESENTATION) return;
+  variant = (uint8_t) (
+    enemy->presentation_action - SF_ENEMY_FIRST_DIRECT_PRESENTATION);
   enemy->presentation_audio_markers = 0u;
   enemy->direct_impact_pending = false;
-  speed_index = enemy->definition->post_ai_values[SF_ENEMY_DIRECT_SPEED_INDEX];
+  speed_index = enemy->definition->post_ai_values[
+    SF_ENEMY_DIRECT_SPEED_INDEX + variant];
   if (speed_index < 0 || speed_index >= 10 || enemy->direction >= 8u) {
-    if (enemy->event_number == -1) enemy->event_number = 2;
+    if (enemy->event_number == -1)
+      enemy->event_number = (int32_t) enemy->presentation_action + 1;
     sf_enemy_presentation_finish(enemy);
     return;
   }
@@ -142,7 +164,8 @@ void sf_enemy_presentation_update(
   if (animation->frame_count == 0u ||
       enemy->presentation_previous_frame ==
         (int16_t) animation->frame_count - 1) {
-    if (enemy->event_number == -1) enemy->event_number = 2;
+    if (enemy->event_number == -1)
+      enemy->event_number = (int32_t) enemy->presentation_action + 1;
     sf_enemy_presentation_finish(enemy);
     return;
   }
@@ -159,8 +182,7 @@ void sf_enemy_presentation_update(
       const int16_t status = cells[scan].status;
       enemy->presentation_audio_markers = (uint8_t) (
         enemy->presentation_audio_markers | sf_enemy_audio_markers(status));
-      if ((status & SF_ENEMY_IMPACT_MARKER) != 0 &&
-          sf_enemy_impact_target_valid(enemy, context))
+      if ((status & SF_ENEMY_IMPACT_MARKER) != 0)
         enemy->direct_impact_pending = true;
     }
   }

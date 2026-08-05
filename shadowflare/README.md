@@ -193,7 +193,10 @@ the active map's ordinary resource request, not from save-specific shortcuts.
 The three counted progress owners restore quest state, unlocked transports,
 and all 1,000 persistent script/conversation values before the scenario's first
 periodic pass. Mine count, walk/run pace, scenario, and authored entry restore
-through the world boundary too. Maps which the C99 runtime does not implement
+through the world boundary too. Older portable saves which end before the
+optional magic and all-companion tables keep the normal empty magic state and
+rebuild their active companion from the base player record. Maps which the
+C99 runtime does not implement
 yet still fail honestly instead of silently moving that character back to
 Remote Town. A failed entry returns to the same highlighted Load Game row;
 it no longer closes the application and looks like a crash when `osf` was
@@ -283,8 +286,8 @@ it is invalid.
 
 ## Current screen budgets
 
-The complete title currently uses 1,548,485 bytes of the 7 MiB main arena,
-leaving 5,791,547 bytes free. Its screen-scoped artwork accounts for 1,101,182
+The complete title currently uses 1,554,845 bytes of the 7 MiB main arena,
+leaving 5,785,187 bytes free. Its screen-scoped artwork accounts for 1,101,182
 bytes. The rest includes TWL/TAL state, game and screen metadata, persistent
 8-bit menu music and effects, and one reusable 60,000-byte decode buffer. The
 video pool contains only the 614,400-byte RGB555 framebuffer, leaving 3,579,904
@@ -297,29 +300,29 @@ nonblank case, all ten smoke streams together decode at most 57,864 bytes into
 the same reusable buffer during one rendered frame.
 
 Character creation releases all title-only artwork before loading its own
-assets. It uses 861,408 bytes of the main arena, leaving 6,478,624 bytes free;
+assets. It uses 867,768 bytes of the main arena, leaving 6,472,264 bytes free;
 414,105 bytes of that total are character-screen artwork and font data. Shared
 NJP parts are decoded only once even when several patterns reference them, and
 a static character screen is not filled again until a visible state changes.
 
-The load-game screen uses 821,624 bytes of the main arena, leaving 6,518,408
+The load-game screen uses 827,984 bytes of the main arena, leaving 6,512,048
 bytes free. Its screen-scoped artwork, font, and selected save preview account
 for 374,321 bytes. Save headers stay in a fixed six-entry catalog, while only
 the selected 391x114 thumbnail occupies memory. Changing selection decodes the
 new preview into the same 89,148-byte RGB555 buffer; idle frames perform no
 file access and do not refill the framebuffer.
 
-The complete Remote Town gameplay screen uses 7,282,572 bytes of the main
-arena, leaving 57,460 bytes free. Its screen-owned scenario, script, map,
+The complete Remote Town gameplay screen uses 7,301,716 bytes of the main
+arena, leaving 38,316 bytes free. Its screen-owned scenario, script, map,
 player, owned companion, PEOPLE, type-zero objects, ground-item,
-inventory-panel, transport, equipment, and UI data and artwork account for
-6,835,269 bytes. GND rendering data is decoded directly from its compressed three-plane
+inventory-panel, transport, equipment, combat tables and sounds, and UI data
+and artwork account for 6,848,053 bytes. GND rendering data is decoded directly from its compressed three-plane
 stream into two bytes
 per tile, so the 300x300 town grid occupies 180,000 bytes instead of retaining
 the 540,000-byte source layout.
 
-The same runtime reload measured in Near Remote Town uses 7,247,344 bytes,
-leaving 92,688 bytes free; 6,800,041 bytes belong to that screen. The
+The same runtime reload measured in Near Remote Town uses 7,266,488 bytes,
+leaving 73,544 bytes free; 6,812,825 bytes belong to that screen. The
 transition never retains two maps at once. Its fixed request lives with the
 game owner, while the screen arena is rewound before the next scenario is
 decoded.
@@ -382,7 +385,7 @@ The owned companion is prepared just as narrowly. The active save row chooses
 one PARTNER resource, and its loader keeps only charts zero through two for the
 eight ordinary directions, deduplicating every referenced NJP and SDW pattern.
 That companion slice accounts for most of the latest gameplay increase, so the
-remaining 68,308-byte headroom is now a hard warning for upcoming combat and
+remaining gameplay headroom is now a hard warning for upcoming combat and
 effect work: later slices must retire or stream existing screen data rather
 than quietly raising the arena limit.
 
@@ -410,22 +413,57 @@ world preparation fail instead of silently selecting a made-up behavior.
 
 The first controller consumes those compact rows directly. Its evaluator
 preserves the DLL's condition checks, priority-list quirk, reverse traversal,
-weighted draw, and fallback events. Wait, patrol, and approach actions keep
-their authored counters and movement scale. The gate Goblin therefore starts
-with its event-zero patrol row, publishes event 12, and enters the matching
-action-ten approach while the player remains in range. Target refresh and the
-retail random turn use a fixed CORDIC rotation, so the hot path remains entirely
-integer-only. Walk chart one is prepared in all eight directions for each
-entry-vicinity resource, movement uses the shared route controller, and the
-enemy's dynamic blocker is updated in the same tick as its position. Attack
+weighted draw, and fallback events. Wait, patrol, retreat, and approach actions
+keep their authored counters and movement scale. The gate Goblin therefore
+starts with its event-zero patrol row, publishes event 12, and enters the
+matching action-ten approach while the player remains in range. Action nine
+uses retail's 10,000-unit retreat boundary, inclusive duration, events 14 and
+9, and even preserves the companion-target no-step quirk. Target refresh and
+the retail random turn use fixed-point projection and a fixed CORDIC rotation,
+so the hot path remains entirely integer-only. Walk chart one is prepared in
+all eight directions for each entry-vicinity resource, movement uses the shared
+route controller, and the enemy's dynamic blocker is updated in the same tick
+as its position. Attack
 selection and cadence, route movement, and the small per-enemy coordinator
 live in separate files so adding more actions does not grow one controller. The
-ordinary action-two presentation now lives in its own game file. It uses the
-MCT direct-attack chart, range, and speed index, faces the retained target,
-scans crossed CAF cells for the three audio bits and `0x40` impact bit, holds
-the final frame, and returns retail event two. Damage is deliberately not
-applied by the movement controller; the next slice will connect the marker to
-the direct-impact receiver.
+three direct presentations now live in their own game file. AI actions two
+through four select variants zero through two, with the matching MCT range,
+chart, speed index, packet columns, and completion event. The controller faces
+the retained target, scans crossed CAF cells for the three audio bits and
+`0x40` impact bit, holds the final frame, and returns its retail event. The
+impact marker always fires; at that exact update a separate combat owner
+searches the attack cone again, preferring the player before an active
+companion, and builds the original 77-word packet. A target-less swing still
+consumes its visual random draw. Ordinary hits use the retail 20..98 chance
+clamp, table-scaled physical or elemental defense, durability and reflection
+draw order, revival item, reaction chance and duration, hit/death state, event
+17, and common hit or revival sound.
+
+MCT's alternative direct-special branch stays separate from ordinary damage.
+It retains the exact entry target vector using integer coordinates, consumes
+both retail visual draws, applies the raw effect-kind packet switch, and writes
+the complete 22-argument request into a fixed eight-entry frame queue. The
+queue reports saturation and clears by resetting two small fields; it does not
+zero or allocate packet storage in the update hot path. At this enqueue
+boundary the raw retail kinds `0/1/4/5/6/7` deliberately remain requests,
+rather than being misidentified as the unrelated `10001+` projectile family.
+
+The retail consumer for those raw requests is now identified and represented
+as a separate integer-only actor descriptor. Direct kinds `0/1/4/5/6/7` map
+to OPTION resources `0/1/0/0/4/0`; the builder retains source ownership,
+packet, speed, height, exact projected origin, direction, scenery and
+first-target expiry, and contact sample 20. Kind 6 also keeps its larger
+`[-160,-160,159,159]` judgement and contact visual 21023. Asset lifetime,
+movement, collision dispatch, and drawing remain the next fixed actor-owner
+slice rather than leaking into this packet translator.
+
+Those rules live in small `game/` files and never enter movement or rendering.
+
+Only the needed cells from combat tables 7, 11, 24, 25, and 26 are retained in
+a fixed 912-byte owner shared by every screen runtime. Common samples 6 and
+17 add the hit and revival cues to the gameplay sound bank. Ordinary updates
+allocate nothing and read no files; the extra work happens only on a crossed
+CAF impact marker. The measured gameplay totals above include both additions.
 
 Direct-attack artwork uses the previously empty video-memory tail instead of
 consuming the final main-RAM headroom. Only one inactive resource bank is

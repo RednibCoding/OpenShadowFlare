@@ -74,6 +74,66 @@ if(TARGET shadowflare_core)
     COMMAND shadowflare_enemy_controller_test)
 
   add_executable(
+    shadowflare_enemy_variants_test
+    shadowflare_enemy_variants_test.c)
+  target_link_libraries(
+    shadowflare_enemy_variants_test PRIVATE ShadowFlare::Core)
+  target_compile_features(
+    shadowflare_enemy_variants_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_enemy_variants_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_enemy_variants_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_enemy_variants_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_enemy_variants_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_enemy_variants
+    COMMAND shadowflare_enemy_variants_test)
+
+  add_executable(shadowflare_combat_test shadowflare_combat_test.c)
+  target_link_libraries(shadowflare_combat_test PRIVATE ShadowFlare::Core)
+  target_compile_features(shadowflare_combat_test PRIVATE c_std_99)
+  target_compile_definitions(
+    shadowflare_combat_test
+    PRIVATE OPENSHADOWFLARE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+  set_target_properties(
+    shadowflare_combat_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_combat_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_combat_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(NAME shadowflare_combat COMMAND shadowflare_combat_test)
+
+  add_executable(
+    shadowflare_enemy_special_test
+    shadowflare_enemy_special_test.c)
+  target_link_libraries(
+    shadowflare_enemy_special_test PRIVATE ShadowFlare::Core)
+  target_compile_features(
+    shadowflare_enemy_special_test PRIVATE c_std_99)
+  set_target_properties(
+    shadowflare_enemy_special_test
+    PROPERTIES C_EXTENSIONS OFF C_STANDARD 99 C_STANDARD_REQUIRED ON)
+  if(MSVC)
+    target_compile_options(shadowflare_enemy_special_test PRIVATE /W4)
+  else()
+    target_compile_options(
+      shadowflare_enemy_special_test PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  add_test(
+    NAME shadowflare_enemy_special
+    COMMAND shadowflare_enemy_special_test)
+
+  add_executable(
     shadowflare_gameplay_assets_test
     shadowflare_gameplay_assets_test.c)
   target_link_libraries(

@@ -60,6 +60,7 @@ void sf_scenario_enemies_init(
     enemy->presentation_action = 7u;
     enemy->presentation_target = UINT8_MAX;
     enemy->presentation_previous_frame = -1;
+    enemy->direct_attack_chart = UINT16_MAX;
     sf_route_reset(&enemy->route);
     for (part = 0u; part < SF_MCT_PERSON_PART_LIMIT; ++part) {
       if (!definition->custom_parts ||
@@ -78,10 +79,16 @@ bool sf_scenario_enemies_bind_direct_attack(
   if (!enemies || resource_id < 0 || !animations) return false;
   for (index = 0u; index < enemies->count; ++index) {
     SfScenarioEnemy *enemy = &enemies->enemies[index];
+    uint8_t variant;
     if (!enemy->definition || enemy->definition->resource_id != resource_id)
       continue;
-    if (enemy->definition->post_ai_values[41] + 4 != chart) continue;
+    for (variant = 0u; variant < 3u; ++variant) {
+      if (enemy->definition->post_ai_values[41u + variant] + 4 == chart)
+        break;
+    }
+    if (variant == 3u) continue;
     enemy->direct_attack_animations = animations;
+    enemy->direct_attack_chart = chart;
     matched = true;
   }
   return matched;
@@ -90,8 +97,10 @@ bool sf_scenario_enemies_bind_direct_attack(
 void sf_scenario_enemies_unbind_direct_attack(SfScenarioEnemySet *enemies) {
   uint16_t index;
   if (!enemies) return;
-  for (index = 0u; index < enemies->count; ++index)
+  for (index = 0u; index < enemies->count; ++index) {
     enemies->enemies[index].direct_attack_animations = NULL;
+    enemies->enemies[index].direct_attack_chart = UINT16_MAX;
+  }
 }
 
 bool sf_scenario_enemies_attack_resource_active(
@@ -100,9 +109,11 @@ bool sf_scenario_enemies_attack_resource_active(
   if (!enemies || resource_id < 0) return false;
   for (index = 0u; index < enemies->count; ++index) {
     const SfScenarioEnemy *enemy = &enemies->enemies[index];
-    if (enemy->definition && enemy->definition->resource_id == resource_id &&
-        enemy->definition->post_ai_values[41] + 4 == chart &&
-        enemy->presentation_action == 1u) return true;
+    const uint8_t action = enemy->presentation_action;
+    if (enemy->definition && action >= 1u && action <= 3u &&
+        enemy->definition->resource_id == resource_id &&
+        enemy->definition->post_ai_values[40u + action] + 4 == chart)
+      return true;
   }
   return false;
 }

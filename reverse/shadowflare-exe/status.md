@@ -22,8 +22,25 @@ remaining authored constructor values. `0x0042fd60` updates this controller
 list and removes a node only when its selected handler returns zero.
 
 `0x00429ec0` is the controller dispatch, not a visual-resource lookup table.
-The twelve effect numbers present in shipped enemy profiles dispatch as
-follows:
+Before the `10001+` controller switch, raw effects `0..7` all dispatch to the
+generic actor initializer at `0x0042a300`. Its OPTION-resource arguments are
+`0,1,2,3,0,0,4,0`. Effects 0, 4, 5, and 7 therefore deliberately share
+resource zero; effect 1 uses resource one; and the shipped direct-special
+effect 6 uses resource four. The ordinary direct-special set is
+`0/1/4/5/6/7`, so none of those values belongs to the specialized controller
+table below.
+
+The direct generic forms project a live source by constructor argument 21,
+move at argument six, draw at height seven, use chart zero, collide with the
+environment and the first eligible target, retain the packet, and request
+sample 20 on contact. Their normal judgement is `[-30,-30,30,30]`; effect 6
+instead uses `[-160,-160,159,159]` and contact visual 21023. Effect 1 always
+draws direction eight, while the others derive direction from the stored
+angle when packet kind is eight. The integer-only C99 descriptor preserves
+the unreduced source-to-target vector and projects it without floating point.
+
+`0x00429ec0` then dispatches the twelve effect numbers present in shipped
+enemy profiles as follows:
 
 | Effect | Controller |
 |---:|---:|

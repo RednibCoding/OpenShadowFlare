@@ -87,16 +87,6 @@ elseif(APPLE)
       "${AUDIOTOOLBOX_FRAMEWORK}"
       Threads::Threads
   )
-elseif(NINTENDO_SWITCH)
-  target_sources(lal PRIVATE lal_switch.c)
-elseif(VITA OR CMAKE_SYSTEM_NAME STREQUAL "Vita")
-  target_sources(lal PRIVATE lal_vita.c)
-  target_link_libraries(
-    lal
-    PRIVATE
-      SceAudio_stub
-      SceKernelThreadMgr_stub
-  )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(lal PRIVATE lal_alsa.c)
   find_package(ALSA REQUIRED)

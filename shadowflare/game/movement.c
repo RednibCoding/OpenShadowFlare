@@ -85,6 +85,42 @@ int32_t sf_movement_point_distance(
     ? INT32_MAX : (int32_t) distance;
 }
 
+bool sf_movement_point_at_distance(
+    SfWorldPoint from, SfWorldPoint toward, uint32_t distance,
+    SfWorldPoint *result) {
+  const int64_t dx = (int64_t) toward.x - from.x;
+  const int64_t dy = (int64_t) toward.y - from.y;
+  const uint64_t squared =
+    (uint64_t) (dx * dx) + (uint64_t) (dy * dy);
+  unsigned fractional_shift = 24u;
+  uint64_t scale;
+  uint32_t scaled_length;
+  int64_t x;
+  int64_t y;
+  if (!result || squared == 0u) return false;
+  while (fractional_shift != 0u &&
+         squared > (UINT64_MAX >> fractional_shift)) {
+    fractional_shift -= 2u;
+  }
+  scale = UINT64_C(1) << (fractional_shift / 2u);
+  scaled_length = sf_integer_sqrt(squared << fractional_shift);
+  if (scaled_length == 0u) return false;
+  x = (int64_t) from.x +
+    dx * (int64_t) distance * (int64_t) scale / scaled_length;
+  y = (int64_t) from.y +
+    dy * (int64_t) distance * (int64_t) scale / scaled_length;
+  if (x < INT32_MIN || x > INT32_MAX ||
+      y < INT32_MIN || y > INT32_MAX) return false;
+  *result = (SfWorldPoint) {(int32_t) x, (int32_t) y};
+  return true;
+}
+
+bool sf_movement_vector_at_distance(
+    SfWorldPoint direction, uint32_t distance, SfWorldPoint *result) {
+  return sf_movement_point_at_distance(
+    (SfWorldPoint) {0, 0}, direction, distance, result);
+}
+
 static int64_t sf_separated_edge_distance(
     int64_t first_start, int64_t first_end,
     int64_t second_start, int64_t second_end) {

@@ -111,6 +111,7 @@ static int test_player_movement(void) {
   SfPlayerState player;
   SfMovementStep step;
   SfWorldPoint rendered;
+  SfWorldPoint projected;
   sf_player_init(&player, 1u);
   sf_player_enter(&player, (SfWorldPoint) {1000, 1000}, 1u);
   sf_player_move_to(&player, (SfWorldPoint) {1100, 1000});
@@ -144,6 +145,11 @@ static int test_player_movement(void) {
             sf_movement_point_distance(
               (SfWorldPoint) {0, 0}, (SfWorldPoint) {3001, 0}) == 3001,
             "integer point distance did not preserve the retail range floor") ||
+      check(sf_movement_point_at_distance(
+              (SfWorldPoint) {0, 0}, (SfWorldPoint) {10, 10},
+              10001u, &projected) &&
+            projected.x == 7071 && projected.y == 7071,
+            "integer point projection lost retail diagonal precision") ||
       check(sf_movement_direction(
               (SfWorldPoint) {0, 0}, (SfWorldPoint) {1, 1}) == 0u &&
             sf_movement_direction(

@@ -334,6 +334,7 @@ bool sf_gameplay_assets_load(
         path, player_gender, player_level, &assets->player_parameters) ||
       !sf_companion_profile_load(
         path, companion_type, companion_level, &assets->companion_profile) ||
+      !sf_combat_tables_load(path, &assets->combat_tables) ||
       !sf_spell_parameters_load(path, assets->spell_parameters) ||
       !sf_transport_catalog_load(path, &assets->transports) ||
       !sf_retail_path_join(

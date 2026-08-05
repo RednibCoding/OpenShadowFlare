@@ -147,13 +147,16 @@ without retaining its 90 KiB file image, and Near Remote Town keeps only its
 three referenced control lists and 48 actions. Every live enemy resolves its
 exact Shift-JIS MCT control name before the world starts. The event evaluator
 now applies the retail life/target conditions, priority quirk, reverse file
-order, weighted random draw, and fallback events. Actions zero, one, and ten
-drive wait, patrol, and player/active-companion approach through authored
-durations, speed scaling, target refresh, integer random turning, and the same
-collision route used by the player and PEOPLE. Only enemies within the retail
-inclusive 0..5000 living-target range run their controller. Walk chart one is
-retained for all eight directions of each prepared resource, and blockers move
-with their owning enemy.
+order, weighted random draw, and fallback events. Actions zero, one, nine, and
+ten drive wait, patrol, retreat, and player/active-companion approach through
+authored durations, speed scaling, target refresh, integer random turning, and
+the same collision route used by the player and PEOPLE. Retreat uses the exact
+10,000-unit stop boundary, event 14 while moving, event 9 on completion, and
+the retail companion-target no-step quirk. Its center-point projection keeps
+sub-unit precision using integer fixed-point math. Only enemies within the
+retail inclusive 0..5000 living-target range run their controller. Walk chart
+one is retained for all eight directions of each prepared resource, and
+blockers move with their owning enemy.
 
 Enemy pointer presentation is live too. The configured click square tests the
 opaque pixels of the current CAF cells, enemies retain their higher retail
@@ -162,13 +165,35 @@ draws the authored name and color over the proportional life fill, with the
 native-element marker from `StatusIcon.njp`. Enemy animation and movement now
 invalidate the world presentation even while the player stands still.
 
-The first ordinary enemy attack presentation is live as well. Action two asks
-for direct presentation one, faces the retained player or companion target,
-and advances the MCT-selected CAF with the retail ten-entry speed table using
-integer ratios. It scans every crossed frame for the three sound bits and the
-`0x40` impact marker, holds the final frame for one update, then publishes
-completion event two. The game still owns the one live enemy; there is no
-second presentation actor or renderer-side combat rule.
+The three direct enemy attacks share one live path. Actions two, three, and
+four select presentation variants zero, one, and two, each with its own MCT
+range, chart, speed, packet columns, and completion event. Action three is
+covered by shipped scenario data and its real second-chart artwork; action
+four remains covered synthetically because no retail scenario references it.
+The controller faces the retained player or companion target and advances the
+selected CAF with the retail ten-entry speed table using integer ratios. It
+scans every crossed frame for the three sound bits and the `0x40` impact
+marker, holds the final frame for one update, then publishes its retail event.
+The marker performs a fresh directional target search instead of trusting the
+target seen at animation start. It builds the retail 77-word packet, preserves
+the original random draws and 20..98 hit clamp, and sends an ordinary hit
+through the player or active-companion defense and damage receiver.
+
+The alternative direct-special branch reaches its exact enqueue boundary too.
+The presentation retains the full target vector at action entry rather than
+reducing it to one of eight directions. When MCT value 21 is enabled and value
+25 selects the current variant, the marker skips ordinary targeting, consumes
+the two retail visual draws, applies the effect-kind `0/4/5/7/default` packet
+switch, and publishes all 22 constructor arguments into a fixed eight-entry
+frame queue. Overflow is explicit, ordinary updates only reset the queue's
+count, and no target backend or renderer owns this combat state.
+
+The receiver streams only tables 7, 11, 24, 25, and 26 into a compact fixed
+owner. Physical and elemental defense scaling, equipment durability rolls,
+the revival item, hit/death state, reaction chance and duration, event 17, and
+common hit and revival sounds now stay in `game/`; neither the enemy renderer
+nor the target backend owns combat rules. A focused test covers the packet,
+damage tables, both receivers, and the live marker-to-life/audio seam.
 
 Attack art has a separate predictable lifetime. An action whose resource is
 not resident publishes a small request and waits. Between update and draw, the
@@ -179,10 +204,15 @@ the main screen arena untouched, and can be rewound without touching the
 fixed framebuffer. This is a generic resource/chart boundary, not a list of
 special maps or Goblin IDs.
 
-The immediate target is the direct impact receiver behind that marker:
-reconstruct the retail hit packet, defense and damage result, player or
-companion reaction, and presentation sounds. After that, the same working-set
-boundary can grow to direct variants two and three and the effect actions.
+The immediate target is the fixed generic-effect actor owner and its bounded
+OPTION resource bank, followed by enemy presentation actions five through
+seven. Retail dispatch is now proven: raw direct-special kinds `0/1/4/5/6/7`
+map to resources `0/1/0/0/4/0`, not the `10001+` projectile controllers. The
+integer-only descriptor boundary preserves projection, bounds, direction,
+packet and collision policy. The next slice should load only the required
+resource, advance actors without allocation, and keep their state outside the
+renderer. Hit/death CAF presentation can then consume the reaction state
+already published by the receivers.
 
 ## Where we are now
 
