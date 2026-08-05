@@ -81,8 +81,8 @@ bool ItemInventoryResource::prepareGroups(
         std::snprintf(
             retail_path,
             sizeof(retail_path),
-            "System\\Game\\Pattern\\Item%04zu.njp",
-            index);
+            "System\\Game\\Pattern\\Item%04lu.njp",
+            static_cast<unsigned long>(index));
         std::string resource_error;
         if (!groups_[index].load(
                 resolveRetailPath(data_root_, retail_path),
@@ -128,8 +128,8 @@ bool ItemInventoryResource::preparePatterns(
         std::snprintf(
             retail_path,
             sizeof(retail_path),
-            "System\\Game\\Pattern\\Item%04zu.njp",
-            index);
+            "System\\Game\\Pattern\\Item%04lu.njp",
+            static_cast<unsigned long>(index));
         std::string resource_error;
         if (!groups_[index].loadSelectedPatterns(
                 resolveRetailPath(

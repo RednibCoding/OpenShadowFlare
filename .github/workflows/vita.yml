@@ -1,0 +1,55 @@
+name: Build PlayStation Vita VPK
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/vita.yml'
+      - 'CMakeLists.txt'
+      - 'assets/vita/**'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/vita/**'
+  pull_request:
+    paths:
+      - '.github/workflows/vita.yml'
+      - 'CMakeLists.txt'
+      - 'assets/vita/**'
+      - 'src/**'
+      - 'thirdparty/**'
+      - 'tools/vita/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: vitasdk/vitasdk:latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Install build requirements
+        run: apk add --no-cache cmake ninja
+
+      - name: Build the release VPK
+        run: sh tools/vita/build-vpk.sh
+
+      - name: Verify the VPK
+        run: test -s build/vita/release/src/SF_EXE/OpenShadowFlare.vpk
+
+      - name: Upload the VPK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openshadowflare-vita-release
+          path: build/vita/release/src/SF_EXE/OpenShadowFlare.vpk
+          if-no-files-found: error

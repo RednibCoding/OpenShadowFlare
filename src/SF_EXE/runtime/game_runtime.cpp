@@ -9,6 +9,9 @@
 #include "runtime/gameplay_artwork.hpp"
 #include "runtime/gameplay_ui_controller.hpp"
 #include "runtime/input_adapter.hpp"
+#ifdef OSF_PLATFORM_VITA
+#include "runtime/platform/platform_text_input.hpp"
+#endif
 #include "runtime/presentation/surface_presenter.hpp"
 #include "runtime/runtime_renderer.hpp"
 #include "runtime/state_bindings.hpp"
@@ -328,13 +331,30 @@ private:
                 running = false;
             }
             break;
-        }
-        case osf::GameState::character_select: {
-            input_.characterSelect().saved_game_count =
-                resources_.savedGameCount();
-            characterFrame_ =
+          }
+          case osf::GameState::character_select: {
+              input_.characterSelect().saved_game_count =
+                  resources_.savedGameCount();
+#ifdef OSF_PLATFORM_VITA
+              if (!pendingCharacterName_.empty()) {
+                  input_.characterSelect().text_input =
+                      pendingCharacterName_;
+                  pendingCharacterName_.clear();
+              }
+#endif
+              characterFrame_ =
                 characterSelectState_.update(
                     input_.characterSelect());
+#ifdef OSF_PLATFORM_VITA
+            if (characterFrame_.mode_action ==
+                osf::CharacterSelectModeAction::begin_name_entry) {
+                pendingCharacterName_ =
+                    osf::runtime::openPlatformTextInput(
+                        "Enter character name",
+                        characterSelectState_.data().character_name,
+                        15);
+            }
+#endif
             audio_.playCharacterSelectFrame(characterFrame_);
             if (characterFrame_.action ==
                 osf::CharacterSelectAction::return_to_title) {
@@ -552,6 +572,9 @@ private:
     osf::debug::FrameProfiler profiler_;
 #endif
     osf::GameConfig gameConfig_;
+#ifdef OSF_PLATFORM_VITA
+    std::string pendingCharacterName_;
+#endif
     osf::PlayerLoadRequest gameplayPlayer_;
     std::filesystem::path dataRoot_;
     osf::ResourceManager resources_;

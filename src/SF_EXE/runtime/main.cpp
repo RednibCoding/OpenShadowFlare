@@ -55,6 +55,14 @@ std::filesystem::path findDataRoot() {
             return std::filesystem::path{};
         };
 
+#ifdef OSF_PLATFORM_VITA
+    const std::filesystem::path vitaDataRoot =
+        "ux0:data/OpenShadowFlare/ShadowFlare";
+    if (isDataRoot(vitaDataRoot)) {
+        return vitaDataRoot;
+    }
+#endif
+
     std::error_code error;
     const std::filesystem::path fromWorkingDirectory =
         searchParents(std::filesystem::current_path(error));
