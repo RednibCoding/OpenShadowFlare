@@ -82,6 +82,29 @@ elseif(NINTENDO_SWITCH)
       backends/switch/input.c
       backends/switch/presentation.c
   )
+elseif(VITA OR CMAKE_SYSTEM_NAME STREQUAL "Vita")
+  target_sources(
+    twl
+    PRIVATE
+      backends/vita/window.c
+      backends/vita/presentation.c
+      backends/vita/input.c
+  )
+  target_link_libraries(
+    twl
+    PUBLIC
+      vita2d
+      SceGxm_stub
+      SceDisplay_stub
+      SceCommonDialog_stub
+      SceSysmodule_stub
+      SceAppMgr_stub
+      SceCtrl_stub
+      SceTouch_stub
+      SceLibKernel_stub
+      SceKernelThreadMgr_stub
+      m
+  )
 else()
   target_sources(twl PRIVATE backends/null/backend.c)
 endif()
