@@ -203,6 +203,12 @@ bool WorldScene::loadInitialScenario(
         !speech_patterns_.load(
             data_root / "System" / "Game" / "Pattern" /
                 "Hukidasi.njp",
+            error) ||
+        !compass_patterns_.load(
+            data_root / "Player" / "Common" / "compasses.Njp",
+            error) ||
+        !compass_animation_.load(
+            data_root / "Player" / "Common" / "compasses.Caf",
             error)) {
         clear();
         return false;
@@ -416,6 +422,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
         camera_shake_magnitude_ = 0;
         player_identify_mode_active_ = false;
         player_unlock_switch_active_ = false;
+        compass_active_ = false;
+        compass_text_.clear();
         pointer_.clearSelection();
         scenario_world_.setEntry(
             start.entry_value, *entry);
@@ -475,6 +483,8 @@ ScenarioTravelResult WorldScene::transitionScenario(
     script_transport_service_ = -1;
     player_identify_mode_active_ = false;
     player_unlock_switch_active_ = false;
+    compass_active_ = false;
+    compass_text_.clear();
     scenario_world_ = std::move(prepared_scenario);
     releaseUnusedItemWorldResources();
     releaseInactiveEffectResources();

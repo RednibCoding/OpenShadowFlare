@@ -2,6 +2,9 @@
 #define OPENSHADOWFLARE_GAMEPLAY_HUD_RENDERER_HPP
 
 #include <cstdint>
+#include <string>
+
+#include "world/scenario_visual_presentation.hpp"
 
 namespace osf {
 
@@ -9,6 +12,7 @@ class PlayerData;
 class CompanionActor;
 struct PlayerRuntimeProfile;
 enum class MovementPace;
+class WorldScene;
 
 namespace gapi {
 class Backend;
@@ -59,7 +63,9 @@ std::int32_t gameplayHudCompanionBarWidth(
 void renderGameplayHud(
     gapi::Backend& renderer,
     const gapi::NjpImage& bar_patterns,
-    const GameplayHudValues& values);
+    const GameplayHudValues& values,
+    const gapi::NjpImage& font,
+    const WorldScene& world);
 
 }  // namespace osf
 

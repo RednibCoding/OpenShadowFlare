@@ -35,8 +35,7 @@ in vec2 texture_coordinate;
 out vec4 fragment_color;
 uniform sampler2D surface_texture;
 
-const float kSharpness = 1.0;
-const float kFlatRange = 0.05;
+const float kBlur = 0.1;
 
 vec3 sampleAt(vec2 uv) {
     return texture(
@@ -58,27 +57,13 @@ void main() {
     vec3 h = sampleAt(flipped + vec2( 0.0,       texel.y));
     vec3 i = sampleAt(flipped + vec2( texel.x,   texel.y));
 
-    vec3 luma_weights = vec3(0.299, 0.587, 0.114);
-    float la = dot(a, luma_weights);
-    float lb = dot(b, luma_weights);
-    float lc = dot(c, luma_weights);
-    float ld = dot(d, luma_weights);
-    float lf = dot(f, luma_weights);
-    float lg = dot(g, luma_weights);
-    float lh = dot(h, luma_weights);
-    float li = dot(i, luma_weights);
-
-    float min_luma = min(min(min(min(la, lb), min(lc, ld)), min(lf, lg)), min(lh, li));
-    float max_luma = max(max(max(max(la, lb), max(lc, ld)), max(lf, lg)), max(lh, li));
-    float range = max_luma - min_luma;
-    float amount = kSharpness * smoothstep(0.0, kFlatRange, range);
-
-    vec3 lowpass = (a + c + g + i) * 0.0625
+    vec3 lowpass = (a + c + g + i) * 0.1
                  + (b + d + f + h) * 0.125
                  + e * 0.25;
-    vec3 sharpened = e + (e - lowpass) * amount;
 
-    fragment_color = vec4(clamp(sharpened, 0.0, 1.0), 1.0);
+    vec3 blurred = mix(e, lowpass, kBlur);
+
+    fragment_color = vec4(clamp(blurred, 0.0, 1.0), 1.0);
 }
 )";
 

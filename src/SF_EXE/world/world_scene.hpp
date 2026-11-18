@@ -163,6 +163,13 @@ public:
     bool scenarioVisualActive() const;
     void requestScenarioVisualAdvance();
     void advanceScenarioVisualFrame();
+    bool compassActive() const;
+    const std::string& compassText() const;
+    const gapi::NjpImage& compassPatterns() const;
+    const gapi::CafAnimation& compassAnimation() const;
+    std::uint32_t frameCounter() const;
+    std::uint32_t compassActivatedFrame() const;
+    void activateCompass(std::uint32_t frame, const std::string& text);
     const ScenarioScreenParticles& scenarioScreenParticles() const;
     const QuestState& quests() const;
     const MissionCatalog& missions() const;
@@ -571,6 +578,13 @@ private:
     bool player_infinite_life_ = false;
     bool player_infinite_mana_ = false;
     bool owned_companion_inactive_ = true;
+    bool compass_active_ = false;
+    std::uint32_t compass_activated_frame_ = 0;
+    std::string compass_text_;
+    gapi::NjpImage compass_patterns_;
+    gapi::CafAnimation compass_animation_;
+    std::uint32_t frame_counter_ = 0;
+    std::string last_caption_text_;
 };
 
 }  // namespace osf

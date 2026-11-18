@@ -6,6 +6,7 @@
 #include "world/player_actor.hpp"
 #include "world/player_data.hpp"
 #include "world/player_runtime_profile.hpp"
+#include "world/world_scene.hpp"
 
 #include <algorithm>
 #include <array>
@@ -30,6 +31,110 @@ void drawClippedBar(
     gapi::PatternDraw draw;
     draw.clip = {x, y, width, height};
     renderer.drawPattern(patterns, pattern, draw);
+}
+
+void drawTownLegend(
+    gapi::Backend& renderer,
+    const gapi::NjpImage& font,
+    const WorldScene& world) {
+    if (!world.compassActive() ||
+        world.compassPatterns().patterns().empty()) {
+        return;
+    }
+
+    constexpr std::int32_t kCompassTicksPerFrame = 1;
+    constexpr std::int32_t kCompassHoldTicks = 120;
+    constexpr std::int32_t kCompassFadeTicks = 60;
+    constexpr std::int32_t kCompassCenterX = 50;
+    constexpr std::int32_t kCompassCenterY = 38;
+    constexpr std::int32_t kCompassTextX = 106;
+    constexpr std::int32_t kCompassTextY = 32;
+    constexpr std::int32_t kCompassDirection = 8;
+
+    const std::int32_t ticks_elapsed =
+        static_cast<std::int32_t>(world.frameCounter()) -
+        static_cast<std::int32_t>(world.compassActivatedFrame());
+    const std::int32_t settle_ticks = 7 * kCompassTicksPerFrame;
+    const std::int32_t hold_end_ticks =
+        settle_ticks + kCompassHoldTicks;
+
+    std::int32_t fade_alpha = 1000;
+    if (ticks_elapsed > hold_end_ticks) {
+        const std::int32_t fade_ticks = ticks_elapsed - hold_end_ticks;
+        if (fade_ticks >= kCompassFadeTicks) {
+            return;
+        }
+        fade_alpha = 1000 - fade_ticks * 1000 / kCompassFadeTicks;
+        if (fade_alpha <= 0) {
+            return;
+        }
+    }
+
+    const gapi::CafAnimation& animation = world.compassAnimation();
+    if (animation.charts().empty()) {
+        return;
+    }
+    const gapi::CafChart& chart = animation.charts().front();
+    const gapi::CafDirection& direction =
+        chart.directions[static_cast<std::size_t>(kCompassDirection)];
+    if (direction.frame_count <= 0 || direction.parts.empty()) {
+        return;
+    }
+
+    const std::int32_t anim_frame =
+        ticks_elapsed / kCompassTicksPerFrame;
+    const std::int32_t frame_idx = std::min(
+        anim_frame, direction.frame_count - 1);
+
+    const gapi::NjpImage& patterns = world.compassPatterns();
+    for (const std::vector<gapi::CafCell>& part : direction.parts) {
+        if (static_cast<std::int32_t>(part.size()) <= frame_idx) {
+            continue;
+        }
+        const gapi::CafCell& cell =
+            part[static_cast<std::size_t>(frame_idx)];
+        if (cell.pattern_index < 0 ||
+            static_cast<std::size_t>(cell.pattern_index) >=
+                patterns.patterns().size()) {
+            continue;
+        }
+        const gapi::NjpPattern& pattern =
+            patterns.patterns()[static_cast<std::size_t>(
+                cell.pattern_index)];
+        const std::int32_t cell_opacity =
+            cell.transparency * fade_alpha / 1000;
+        const std::int32_t draw_x =
+            kCompassCenterX - pattern.x - pattern.width / 2;
+        const std::int32_t draw_y =
+            kCompassCenterY - pattern.y - pattern.height / 2;
+        renderer.drawPattern(
+            patterns,
+            static_cast<std::size_t>(cell.pattern_index),
+            {draw_x,
+             draw_y,
+             1000,
+             1000,
+             1000,
+             cell_opacity,
+             1000,
+             1000,
+             1000,
+             -1,
+             {},
+             (cell.status & 0x10) != 0
+                 ? gapi::PatternBlendMode::additive
+                 : gapi::PatternBlendMode::normal});
+    }
+
+    if (!world.compassText().empty() && !font.patterns().empty()) {
+        gapi::TextDraw text_draw;
+        text_draw.x = kCompassTextX;
+        text_draw.y = kCompassTextY;
+        text_draw.color = {255, 255, 255,
+                           static_cast<std::uint8_t>(
+                               (255 * fade_alpha) / 1000)};
+        renderer.drawText(font, world.compassText(), text_draw);
+    }
 }
 
 void drawLevel(
@@ -149,7 +254,9 @@ std::int32_t gameplayHudBarWidth(
 void renderGameplayHud(
     gapi::Backend& renderer,
     const gapi::NjpImage& bar_patterns,
-    const GameplayHudValues& values) {
+    const GameplayHudValues& values,
+    const gapi::NjpImage& font,
+    const WorldScene& world) {
     // The bottom 68 pixels are a reserved UI surface in retail. Bar.njp has
     // transparent openings for its gauges and quick slots, so scenery must
     // not remain underneath them.
@@ -244,6 +351,8 @@ void renderGameplayHud(
             values.experience,
             values.experience_threshold),
         9);
+
+    drawTownLegend(renderer, font, world);
 }
 
 }  // namespace osf

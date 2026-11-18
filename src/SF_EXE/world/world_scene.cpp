@@ -122,6 +122,11 @@ void WorldScene::clear() {
     scenario_visual_continue_patterns_.clear();
     scenario_screen_particles_.clear();
     level_up_notice_ = {};
+    compass_active_ = false;
+    compass_activated_frame_ = 0;
+    compass_text_.clear();
+    frame_counter_ = 0;
+    last_caption_text_.clear();
     pending_combat_effects_.clear();
     combat_effects_.clear();
     runtime_effects_.clear();
@@ -462,6 +467,38 @@ void WorldScene::advanceScenarioVisualFrame() {
     scenario_visual_.advanceFrame();
 }
 
+bool WorldScene::compassActive() const {
+    return compass_active_;
+}
+
+const std::string& WorldScene::compassText() const {
+    return compass_text_;
+}
+
+const gapi::NjpImage& WorldScene::compassPatterns() const {
+    return compass_patterns_;
+}
+
+const gapi::CafAnimation& WorldScene::compassAnimation() const {
+    return compass_animation_;
+}
+
+std::uint32_t WorldScene::frameCounter() const {
+    return frame_counter_;
+}
+
+std::uint32_t WorldScene::compassActivatedFrame() const {
+    return compass_activated_frame_;
+}
+
+void WorldScene::activateCompass(
+    std::uint32_t frame,
+    const std::string& text) {
+    compass_active_ = true;
+    compass_activated_frame_ = frame;
+    compass_text_ = text;
+}
+
 const ScenarioScreenParticles&
 WorldScene::scenarioScreenParticles() const {
     return scenario_screen_particles_;
@@ -799,6 +836,7 @@ bool WorldScene::activatePlayerIncreasedPower() {
 }
 
 void WorldScene::update() {
+    ++frame_counter_;
     scenario_text_labels_.clear();
     if (scenario_visual_.active()) {
         return;
@@ -848,6 +886,13 @@ void WorldScene::update() {
         combat_effects_.end());
     if (!scenario_script_.messageActive()) {
         scenario_script_.runStatusKind(5);
+        const std::string& current_caption =
+            scenario_script_.caption().text;
+        if (!current_caption.empty() &&
+            current_caption != last_caption_text_) {
+            last_caption_text_ = current_caption;
+            activateCompass(frame_counter_, current_caption);
+        }
     }
     scenario_screen_particles_.update(item_random_);
     if (scenario_visual_.active()) {
