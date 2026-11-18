@@ -58,6 +58,7 @@ struct LwlWindow {
   Window handle;
   GC gc;
   XImage *image;
+  Colormap colormap;
 #ifdef LWL_HAVE_XSHM
   XShmSegmentInfo shm;
   bool use_shm;
@@ -408,16 +409,76 @@ LwlWindow* lwl_window_create(const char *title, int width, int height) {
   int window_x = area_x + (area_w - width) / 2;
   int window_y = area_y + (area_h - height) / 2;
 
+  // Find a GL-compatible FBConfig before creating the window so we can
+  // create the X window with a matching visual. This is required for
+  // OpenGL context creation to succeed.
+  XVisualInfo *glx_visual = NULL;
+  {
+    int fb_attributes[] = {
+      GLX_X_RENDERABLE, True,
+      GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+      GLX_RENDER_TYPE, GLX_RGBA_BIT,
+      GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+      GLX_RED_SIZE, 8,
+      GLX_GREEN_SIZE, 8,
+      GLX_BLUE_SIZE, 8,
+      GLX_ALPHA_SIZE, 8,
+      GLX_DEPTH_SIZE, 24,
+      GLX_STENCIL_SIZE, 8,
+      GLX_DOUBLEBUFFER, True,
+      None
+    };
+    int fb_count = 0;
+    GLXFBConfig *fbc = glXChooseFBConfig(
+        window->display, window->screen,
+        fb_attributes, &fb_count);
+    if (fbc && fb_count > 0) {
+      glx_visual = glXGetVisualFromFBConfig(window->display, fbc[0]);
+      XFree(fbc);
+    }
+    if (!glx_visual) {
+      // Fall back to relaxed attributes (drop alpha, lower depth/stencil)
+      int relaxed_attributes[] = {
+        GLX_X_RENDERABLE, True,
+        GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+        GLX_RENDER_TYPE, GLX_RGBA_BIT,
+        GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+        GLX_RED_SIZE, 8,
+        GLX_GREEN_SIZE, 8,
+        GLX_BLUE_SIZE, 8,
+        GLX_DEPTH_SIZE, 16,
+        GLX_DOUBLEBUFFER, True,
+        None
+      };
+      fbc = glXChooseFBConfig(
+          window->display, window->screen,
+          relaxed_attributes, &fb_count);
+      if (fbc && fb_count > 0) {
+        glx_visual = glXGetVisualFromFBConfig(window->display, fbc[0]);
+        XFree(fbc);
+      }
+    }
+  }
+
   XSetWindowAttributes attrs;
   attrs.event_mask =
     ExposureMask | StructureNotifyMask | KeyPressMask | KeyReleaseMask |
     ButtonPressMask | ButtonReleaseMask | PointerMotionMask | FocusChangeMask |
     PropertyChangeMask;
+  if (glx_visual) {
+    attrs.colormap = XCreateColormap(
+        window->display, RootWindow(window->display, window->screen),
+        glx_visual->visual, AllocNone);
+    attrs.border_pixel = 0;
+  }
 
   window->handle = XCreateWindow(
     window->display, RootWindow(window->display, window->screen),
     window_x, window_y, (unsigned) width, (unsigned) height, 0,
-    CopyFromParent, InputOutput, CopyFromParent, CWEventMask, &attrs);
+    glx_visual ? glx_visual->depth : CopyFromParent,
+    InputOutput,
+    glx_visual ? glx_visual->visual : CopyFromParent,
+    CWEventMask | CWColormap | CWBorderPixel, &attrs);
   if (!window->handle) {
     free(window);
     return NULL;
@@ -499,6 +560,7 @@ void lwl_window_destroy(LwlWindow *window) {
     XFreeCursor(window->display, window->custom_cursor);
   }
   if (window->invisible_cursor) { XFreeCursor(window->display, window->invisible_cursor); }
+  if (window->colormap) { XFreeColormap(window->display, window->colormap); }
   destroy_framebuffer(window);
   free(window->clipboard_text);
   if (window->gc) { XFreeGC(window->display, window->gc); }
@@ -1096,7 +1158,6 @@ LwlGlContext* lwl_gl_context_create(
   int framebuffer_count;
   GLXFBConfig *framebuffers;
   GLXFBConfig selected;
-  VisualID window_visual;
   int index;
   LwlGlxCreateContextAttribs create_context;
   GLXContext handle;
@@ -1148,8 +1209,13 @@ LwlGlContext* lwl_gl_context_create(
   }
 
   selected = NULL;
-  window_visual = XVisualIDFromVisual(
-    DefaultVisual(window->display, window->screen));
+  VisualID window_visual = 0;
+  {
+    XWindowAttributes wa;
+    if (XGetWindowAttributes(window->display, window->handle, &wa)) {
+      window_visual = XVisualIDFromVisual(wa.visual);
+    }
+  }
   for (index = 0; index < framebuffer_count; ++index) {
     XVisualInfo *visual =
       glXGetVisualFromFBConfig(window->display, framebuffers[index]);
