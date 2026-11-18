@@ -11,6 +11,7 @@
 #include "render/system_cursor_renderer.hpp"
 #include "render/title_renderer.hpp"
 #include "resources/font_resource.hpp"
+#include "world/world_scene.hpp"
 
 #include <algorithm>
 #include <array>
@@ -481,6 +482,8 @@ bool testNjpAndSoftwareBackend() {
 
 bool testGameplayHudPackets() {
     osf::gapi::NjpImage bar;
+    osf::gapi::NjpImage font;
+    osf::WorldScene world;
     RecordingBackend backend;
     osf::renderGameplayHud(
         backend,
@@ -497,7 +500,9 @@ bool testGameplayHudPackets() {
             true,
             false,
             2,
-        });
+        },
+        font,
+        world);
 
     RecordingBackend activationBackend;
     osf::renderGameplayHud(
@@ -515,7 +520,9 @@ bool testGameplayHudPackets() {
             false,
             true,
             0,
-        });
+        },
+        font,
+        world);
     RecordingBackend companionBackend;
     osf::GameplayHudValues companionValues;
     companionValues.companion_present = true;
@@ -526,13 +533,17 @@ bool testGameplayHudPackets() {
     osf::renderGameplayHud(
         companionBackend,
         bar,
-        companionValues);
+        companionValues,
+        font,
+        world);
     RecordingBackend activeCompanionBackend;
     companionValues.companion_inactive = false;
     osf::renderGameplayHud(
         activeCompanionBackend,
         bar,
-        companionValues);
+        companionValues,
+        font,
+        world);
     return check(
         osf::gameplayHudBarWidth(0, 100) == 0 &&
             osf::gameplayHudBarWidth(1, 1000) == 1 &&

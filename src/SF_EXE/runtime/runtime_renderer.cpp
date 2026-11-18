@@ -308,6 +308,8 @@ gapi::SurfaceView RuntimeRenderer::render(
             const auto* bar =
                 context.resources.pattern(5);
             if (bar) {
+                const auto* font =
+                    context.resources.pattern(1);
                 renderGameplayHud(
                     renderer_,
                     *bar,
@@ -326,7 +328,9 @@ gapi::SurfaceView RuntimeRenderer::render(
                         context.world.hasCompanion()
                             ? &context.world.companion()
                             : nullptr,
-                        context.world.ownedCompanionInactive()));
+                        context.world.ownedCompanionInactive()),
+                    font ? *font : *bar,
+                    context.world);
                 renderGameplayBeltItems(
                     renderer_,
                     context.world);

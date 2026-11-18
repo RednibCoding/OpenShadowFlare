@@ -633,10 +633,24 @@ bool SoftwareBackend::drawText(
                     if (readPixelIndex(part, sourceX, sourceY) == 0) {
                         continue;
                     }
-                    pixels_[
+                    // Enable text opacity/blending
+                    Color& destination = pixels_[
                         static_cast<std::size_t>(targetY) *
                             static_cast<std::size_t>(width_) +
-                        static_cast<std::size_t>(targetX)] = color;
+                        static_cast<std::size_t>(targetX)];
+                    const int text_opacity =
+                        static_cast<int>(color.alpha) * 1000 / 255;
+                    if (text_opacity >= 1000) {
+                        destination = color;
+                    } else if (text_opacity > 0) {
+                        destination.red = blendChannel(
+                            destination.red, color.red, text_opacity);
+                        destination.green = blendChannel(
+                            destination.green, color.green, text_opacity);
+                        destination.blue = blendChannel(
+                            destination.blue, color.blue, text_opacity);
+                        destination.alpha = 255;
+                    }
                 }
             }
         }
